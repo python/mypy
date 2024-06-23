@@ -178,7 +178,7 @@ def generate_stub_for_c_module(
     gen.generate_module()
     output = gen.output()
 
-    with open(target, "w") as file:
+    with open(target, "w", encoding="utf-8") as file:
         file.write(output)
 
 
@@ -466,6 +466,9 @@ class InspectionStubGenerator(BaseStubGenerator):
                 "__module__",
                 "__weakref__",
                 "__annotations__",
+                "__firstlineno__",
+                "__static_attributes__",
+                "__annotate__",
             )
             or attr in self.IGNORED_DUNDERS
             or is_pybind_skipped_attribute(attr)  # For pickling
@@ -730,7 +733,7 @@ class InspectionStubGenerator(BaseStubGenerator):
 
     def get_type_fullname(self, typ: type) -> str:
         """Given a type, return a string representation"""
-        if typ is Any:
+        if typ is Any:  # type: ignore[comparison-overlap]
             return "Any"
         typename = getattr(typ, "__qualname__", typ.__name__)
         module_name = self.get_obj_module(typ)

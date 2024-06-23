@@ -239,6 +239,9 @@ class TypeFixer(TypeVisitor[None]):
             a.accept(self)
         if inst.last_known_value is not None:
             inst.last_known_value.accept(self)
+        if inst.extra_attrs:
+            for v in inst.extra_attrs.attrs.values():
+                v.accept(self)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         type_ref = t.type_ref

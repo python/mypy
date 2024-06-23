@@ -314,6 +314,8 @@ class AliasPrinter(NodeVisitor[str]):
                 return " | ".join([item.accept(self) for item in node.index.items])
             return node.index.accept(self)
         if base_fullname == "typing.Optional":
+            if isinstance(node.index, TupleExpr):
+                return self.stubgen.add_name("_typeshed.Incomplete")
             return f"{node.index.accept(self)} | None"
         base = node.base.accept(self)
         index = node.index.accept(self)
@@ -453,6 +455,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         self.analyzed = analyzed
         # Short names of methods defined in the body of the current class
         self.method_names: set[str] = set()
+        self.processing_enum = False
         self.processing_dataclass = False
 
     def visit_mypy_file(self, o: MypyFile) -> None:
@@ -727,6 +730,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         if base_types:
             for base in base_types:
                 self.import_tracker.require_name(base)
+        if self.analyzed and o.info.is_enum:
+            self.processing_enum = True
         if isinstance(o.metaclass, (NameExpr, MemberExpr)):
             meta = o.metaclass.accept(AliasPrinter(self))
             base_types.append("metaclass=" + meta)
@@ -756,6 +761,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             self._state = CLASS
         self.method_names = set()
         self.processing_dataclass = False
+        self.processing_enum = False
         self._current_class = None
 
     def get_base_types(self, cdef: ClassDef) -> list[str]:
@@ -1056,6 +1062,10 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 else:
                     return False
             return all(self.is_alias_expression(i, top_level=False) for i in indices)
+        elif isinstance(expr, OpExpr) and expr.op == "|":
+            return self.is_alias_expression(
+                expr.left, top_level=False
+            ) and self.is_alias_expression(expr.right, top_level=False)
         else:
             return False
 
@@ -1153,6 +1163,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 # Final without type argument is invalid in stubs.
                 final_arg = self.get_str_type_of_node(rvalue)
                 typename += f"[{final_arg}]"
+        elif self.processing_enum:
+            initializer, _ = self.get_str_default_of_node(rvalue)
+            return f"{self._indent}{lvalue} = {initializer}\n"
         elif self.processing_dataclass:
             # attribute without annotation is not a dataclass field, don't add annotation.
             return f"{self._indent}{lvalue} = ...\n"

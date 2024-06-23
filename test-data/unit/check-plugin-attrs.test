@@ -2170,8 +2170,8 @@ class B:
 
 a_or_b: A[int] | B
 a2 = attrs.evolve(a_or_b, x=42, y=True)
-a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')  # E: Argument "z" to "evolve" of "Union[A[int], B]" has incompatible type "str"; expected Never
-a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected Never
+a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')  # E: Argument "z" to "evolve" of "Union[A[int], B]" has incompatible type "str"; expected "Never"
+a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected "Never"
 
 [builtins fixtures/plugin_attrs.pyi]
 

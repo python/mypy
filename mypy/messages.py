@@ -83,12 +83,14 @@ from mypy.types import (
     TypeOfAny,
     TypeStrVisitor,
     TypeType,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     UnboundType,
     UninhabitedType,
     UnionType,
     UnpackType,
+    flatten_nested_unions,
     get_proper_type,
     get_proper_types,
 )
@@ -143,6 +145,9 @@ UNSUPPORTED_NUMBERS_TYPES: Final = {
     "numbers.Rational",
     "numbers.Integral",
 }
+
+MAX_TUPLE_ITEMS = 10
+MAX_UNION_ITEMS = 10
 
 
 class MessageBuilder:
@@ -1623,13 +1628,21 @@ class MessageBuilder:
             context,
         )
 
-    def overloaded_signatures_overlap(self, index1: int, index2: int, context: Context) -> None:
+    def overloaded_signatures_overlap(
+        self, index1: int, index2: int, flip_note: bool, context: Context
+    ) -> None:
         self.fail(
             "Overloaded function signatures {} and {} overlap with "
             "incompatible return types".format(index1, index2),
             context,
             code=codes.OVERLOAD_OVERLAP,
         )
+        if flip_note:
+            self.note(
+                "Flipping the order of overloads will fix this error",
+                context,
+                code=codes.OVERLOAD_OVERLAP,
+            )
 
     def overloaded_signature_will_never_match(
         self, index1: int, index2: int, context: Context
@@ -2329,7 +2342,7 @@ class MessageBuilder:
         """
         if isinstance(subtype, TupleType):
             if (
-                len(subtype.items) > 10
+                len(subtype.items) > MAX_TUPLE_ITEMS
                 and isinstance(supertype, Instance)
                 and supertype.type.fullname == "builtins.tuple"
             ):
@@ -2338,7 +2351,7 @@ class MessageBuilder:
                 self.generate_incompatible_tuple_error(lhs_types, subtype.items, context, msg)
                 return True
             elif isinstance(supertype, TupleType) and (
-                len(subtype.items) > 10 or len(supertype.items) > 10
+                len(subtype.items) > MAX_TUPLE_ITEMS or len(supertype.items) > MAX_TUPLE_ITEMS
             ):
                 if len(subtype.items) != len(supertype.items):
                     if supertype_label is not None and subtype_label is not None:
@@ -2361,7 +2374,7 @@ class MessageBuilder:
     def format_long_tuple_type(self, typ: TupleType) -> str:
         """Format very long tuple type using an ellipsis notation"""
         item_cnt = len(typ.items)
-        if item_cnt > 10:
+        if item_cnt > MAX_TUPLE_ITEMS:
             return "{}[{}, {}, ... <{} more items>]".format(
                 "tuple" if self.options.use_lowercase_names() else "Tuple",
                 format_type_bare(typ.items[0], self.options),
@@ -2421,12 +2434,20 @@ class MessageBuilder:
             code=codes.ANNOTATION_UNCHECKED,
         )
 
+    def type_parameters_should_be_declared(self, undeclared: list[str], context: Context) -> None:
+        names = ", ".join('"' + n + '"' for n in undeclared)
+        self.fail(
+            message_registry.TYPE_PARAMETERS_SHOULD_BE_DECLARED.format(names),
+            context,
+            code=codes.VALID_TYPE,
+        )
+
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
     no_quote_regex = r"^<(tuple|union): \d+ items>$"
     if (
-        type_string in ["Module", "overloaded function", "Never", "<deleted>"]
+        type_string in ["Module", "overloaded function", "<deleted>"]
         or type_string.startswith("Module ")
         or re.match(no_quote_regex, type_string) is not None
         or type_string.endswith("?")
@@ -2480,11 +2501,21 @@ def format_type_inner(
     def format_list(types: Sequence[Type]) -> str:
         return ", ".join(format(typ) for typ in types)
 
-    def format_union(types: Sequence[Type]) -> str:
+    def format_union_items(types: Sequence[Type]) -> list[str]:
         formatted = [format(typ) for typ in types if format(typ) != "None"]
+        if len(formatted) > MAX_UNION_ITEMS and verbosity == 0:
+            more = len(formatted) - MAX_UNION_ITEMS // 2
+            formatted = formatted[: MAX_UNION_ITEMS // 2]
+        else:
+            more = 0
+        if more:
+            formatted.append(f"<{more} more items>")
         if any(format(typ) == "None" for typ in types):
             formatted.append("None")
-        return " | ".join(formatted)
+        return formatted
+
+    def format_union(types: Sequence[Type]) -> str:
+        return " | ".join(format_union_items(types))
 
     def format_literal_value(typ: LiteralType) -> str:
         if typ.is_enum_literal():
@@ -2494,14 +2525,16 @@ def format_type_inner(
             return typ.value_repr()
 
     if isinstance(typ, TypeAliasType) and typ.is_recursive:
-        # TODO: find balance here, str(typ) doesn't support custom verbosity, and may be
-        # too verbose for user messages, OTOH it nicely shows structure of recursive types.
-        if verbosity < 2:
-            type_str = typ.alias.name if typ.alias else "<alias (unfixed)>"
+        if typ.alias is None:
+            type_str = "<alias (unfixed)>"
+        else:
+            if verbosity >= 2 or (fullnames and typ.alias.fullname in fullnames):
+                type_str = typ.alias.fullname
+            else:
+                type_str = typ.alias.name
             if typ.args:
                 type_str += f"[{format_list(typ.args)}]"
-            return type_str
-        return str(typ)
+        return type_str
 
     # TODO: always mention type alias names in errors.
     typ = get_proper_type(typ)
@@ -2542,9 +2575,15 @@ def format_type_inner(
         return f"Unpack[{format(typ.type)}]"
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
+        fullname = scoped_type_var_name(typ)
+        if verbosity >= 2 or (fullnames and fullname in fullnames):
+            return fullname
         return typ.name
     elif isinstance(typ, TypeVarTupleType):
         # This is similar to non-generic instance types.
+        fullname = scoped_type_var_name(typ)
+        if verbosity >= 2 or (fullnames and fullname in fullnames):
+            return fullname
         return typ.name
     elif isinstance(typ, ParamSpecType):
         # Concatenate[..., P]
@@ -2555,6 +2594,7 @@ def format_type_inner(
 
             return f"[{args}, **{typ.name_with_suffix()}]"
         else:
+            # TODO: better disambiguate ParamSpec name clashes.
             return typ.name_with_suffix()
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
@@ -2579,6 +2619,9 @@ def format_type_inner(
     elif isinstance(typ, LiteralType):
         return f"Literal[{format_literal_value(typ)}]"
     elif isinstance(typ, UnionType):
+        typ = get_proper_type(ignore_last_known_values(typ))
+        if not isinstance(typ, UnionType):
+            return format(typ)
         literal_items, union_items = separate_union_literals(typ)
 
         # Coalesce multiple Literal[] members. This also changes output order.
@@ -2598,7 +2641,7 @@ def format_type_inner(
                 return (
                     f"{literal_str} | {format_union(union_items)}"
                     if options.use_or_syntax()
-                    else f"Union[{format_list(union_items)}, {literal_str}]"
+                    else f"Union[{', '.join(format_union_items(union_items))}, {literal_str}]"
                 )
             else:
                 return literal_str
@@ -2619,7 +2662,7 @@ def format_type_inner(
                 s = (
                     format_union(typ.items)
                     if options.use_or_syntax()
-                    else f"Union[{format_list(typ.items)}]"
+                    else f"Union[{', '.join(format_union_items(typ.items))}]"
                 )
             return s
     elif isinstance(typ, NoneType):
@@ -2629,10 +2672,7 @@ def format_type_inner(
     elif isinstance(typ, DeletedType):
         return "<deleted>"
     elif isinstance(typ, UninhabitedType):
-        if typ.is_noreturn:
-            return "NoReturn"
-        else:
-            return "Never"
+        return "Never"
     elif isinstance(typ, TypeType):
         type_name = "type" if options.use_lowercase_names() else "Type"
         return f"{type_name}[{format(typ.item)}]"
@@ -2675,29 +2715,51 @@ def format_type_inner(
         return "object"
 
 
-def collect_all_instances(t: Type) -> list[Instance]:
-    """Return all instances that `t` contains (including `t`).
+def collect_all_named_types(t: Type) -> list[Type]:
+    """Return all instances/aliases/type variables that `t` contains (including `t`).
 
     This is similar to collect_all_inner_types from typeanal but only
     returns instances and will recurse into fallbacks.
     """
-    visitor = CollectAllInstancesQuery()
+    visitor = CollectAllNamedTypesQuery()
     t.accept(visitor)
-    return visitor.instances
+    return visitor.types
 
 
-class CollectAllInstancesQuery(TypeTraverserVisitor):
+class CollectAllNamedTypesQuery(TypeTraverserVisitor):
     def __init__(self) -> None:
-        self.instances: list[Instance] = []
+        self.types: list[Type] = []
 
     def visit_instance(self, t: Instance) -> None:
-        self.instances.append(t)
+        self.types.append(t)
         super().visit_instance(t)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         if t.alias and not t.is_recursive:
-            t.alias.target.accept(self)
-        super().visit_type_alias_type(t)
+            get_proper_type(t).accept(self)
+        else:
+            self.types.append(t)
+            super().visit_type_alias_type(t)
+
+    def visit_type_var(self, t: TypeVarType) -> None:
+        self.types.append(t)
+        super().visit_type_var(t)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
+        self.types.append(t)
+        super().visit_type_var_tuple(t)
+
+    def visit_param_spec(self, t: ParamSpecType) -> None:
+        self.types.append(t)
+        super().visit_param_spec(t)
+
+
+def scoped_type_var_name(t: TypeVarLikeType) -> str:
+    if not t.id.namespace:
+        return t.name
+    # TODO: support rare cases when both TypeVar name and namespace suffix coincide.
+    *_, suffix = t.id.namespace.split(".")
+    return f"{t.name}@{suffix}"
 
 
 def find_type_overlaps(*types: Type) -> set[str]:
@@ -2708,8 +2770,14 @@ def find_type_overlaps(*types: Type) -> set[str]:
     """
     d: dict[str, set[str]] = {}
     for type in types:
-        for inst in collect_all_instances(type):
-            d.setdefault(inst.type.name, set()).add(inst.type.fullname)
+        for t in collect_all_named_types(type):
+            if isinstance(t, ProperType) and isinstance(t, Instance):
+                d.setdefault(t.type.name, set()).add(t.type.fullname)
+            elif isinstance(t, TypeAliasType) and t.alias:
+                d.setdefault(t.alias.name, set()).add(t.alias.fullname)
+            else:
+                assert isinstance(t, TypeVarLikeType)
+                d.setdefault(t.name, set()).add(scoped_type_var_name(t))
     for shortname in d.keys():
         if f"typing.{shortname}" in TYPES_FOR_UNIMPORTED_HINTS:
             d[shortname].add(f"typing.{shortname}")
@@ -2727,7 +2795,7 @@ def format_type(
     """
     Convert a type to a relatively short string suitable for error messages.
 
-    `verbosity` is a coarse grained control on the verbosity of the type
+    `verbosity` is a coarse-grained control on the verbosity of the type
 
     This function returns a string appropriate for unmodified use in error
     messages; this means that it will be quoted in most cases.  If
@@ -2743,7 +2811,7 @@ def format_type_bare(
     """
     Convert a type to a relatively short string suitable for error messages.
 
-    `verbosity` is a coarse grained control on the verbosity of the type
+    `verbosity` is a coarse-grained control on the verbosity of the type
     `fullnames` specifies a set of names that should be printed in full
 
     This function will return an unquoted string.  If a caller doesn't need to
@@ -2877,10 +2945,10 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
                     isinstance(upper_bound, Instance)
                     and upper_bound.type.fullname != "builtins.object"
                 ):
-                    tvars.append(f"{tvar.name} <: {format_type_bare(upper_bound, options)}")
+                    tvars.append(f"{tvar.name}: {format_type_bare(upper_bound, options)}")
                 elif tvar.values:
                     tvars.append(
-                        "{} in ({})".format(
+                        "{}: ({})".format(
                             tvar.name,
                             ", ".join([format_type_bare(tp, options) for tp in tvar.values]),
                         )
@@ -3131,6 +3199,23 @@ def append_invariance_notes(
     return notes
 
 
+def append_union_note(
+    notes: list[str], arg_type: UnionType, expected_type: UnionType, options: Options
+) -> list[str]:
+    """Point to specific union item(s) that may cause failure in subtype check."""
+    non_matching = []
+    items = flatten_nested_unions(arg_type.items)
+    if len(items) < MAX_UNION_ITEMS:
+        return notes
+    for item in items:
+        if not is_subtype(item, expected_type):
+            non_matching.append(item)
+    if non_matching:
+        types = ", ".join([format_type(typ, options) for typ in non_matching])
+        notes.append(f"Item{plural_s(non_matching)} in the first union not in the second: {types}")
+    return notes
+
+
 def append_numbers_notes(
     notes: list[str], arg_type: Instance, expected_type: Instance
 ) -> list[str]:
@@ -3184,3 +3269,23 @@ def format_key_list(keys: list[str], *, short: bool = False) -> str:
         return f"{td}key {formatted_keys[0]}"
     else:
         return f"{td}keys ({', '.join(formatted_keys)})"
+
+
+def ignore_last_known_values(t: UnionType) -> Type:
+    """This will avoid types like str | str in error messages.
+
+    last_known_values are kept during union simplification, but may cause
+    weird formatting for e.g. tuples of literals.
+    """
+    union_items: list[Type] = []
+    seen_instances = set()
+    for item in t.items:
+        if isinstance(item, ProperType) and isinstance(item, Instance):
+            erased = item.copy_modified(last_known_value=None)
+            if erased in seen_instances:
+                continue
+            seen_instances.add(erased)
+            union_items.append(erased)
+        else:
+            union_items.append(item)
+    return UnionType.make_union(union_items, t.line, t.column)

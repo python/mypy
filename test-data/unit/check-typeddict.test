@@ -1648,7 +1648,7 @@ a.setdefault('y', '') # E: Argument 2 to "setdefault" of "TypedDict" has incompa
 x = ''
 a.setdefault(x, 1) # E: Expected TypedDict key to be string literal
 alias = a.setdefault
-alias(x, 1) # E: Argument 1 has incompatible type "str"; expected "NoReturn"
+alias(x, 1) # E: Argument 1 has incompatible type "str"; expected "Never"
 
 a.update({})
 a.update({'x': 1})
@@ -1680,8 +1680,8 @@ b.pop('x') # E: Key "x" of TypedDict "B" cannot be deleted
 x = ''
 b.pop(x) # E: Expected TypedDict key to be string literal
 pop = b.pop
-pop('x') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
-pop('invalid') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
+pop('x') # E: Argument 1 has incompatible type "str"; expected "Never"
+pop('invalid') # E: Argument 1 has incompatible type "str"; expected "Never"
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictDel]
@@ -3486,4 +3486,67 @@ class A(Generic[T]):
         self.a(y=2)  # E: Missing named argument "x"
         return self.a(x=1)
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testNameUndefinedErrorDoesNotLoseUnpackedKWArgsInformation]
+from typing import overload
+from typing_extensions import TypedDict, Unpack
+
+class TD(TypedDict, total=False):
+    x: int
+    y: str
+
+@overload
+def f(self, *, x: int) -> None: ...
+@overload
+def f(self, *, y: str) -> None: ...
+def f(self, **kwargs: Unpack[TD]) -> None:
+    z  # E: Name "z" is not defined
+
+@overload
+def g(self, *, x: float) -> None: ...
+@overload
+def g(self, *, y: str) -> None: ...
+def g(self, **kwargs: Unpack[TD]) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+    z  # E: Name "z" is not defined
+
+class A:
+    def f(self, *, x: int) -> None: ...
+    def g(self, *, x: float) -> None: ...
+class B(A):
+    def f(self, **kwargs: Unpack[TD]) -> None:
+        z  # E: Name "z" is not defined
+    def g(self, **kwargs: Unpack[TD]) -> None:  # E: Signature of "g" incompatible with supertype "A" \
+                                                # N:      Superclass: \
+                                                # N:          def g(self, *, x: float) -> None \
+                                                # N:      Subclass: \
+                                                # N:          def g(*, x: int = ..., y: str = ...) -> None
+        z  # E: Name "z" is not defined
+reveal_type(B.f)  # N: Revealed type is "def (self: __main__.B, **kwargs: Unpack[TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: builtins.str})])"
+B().f(x=1.0)  # E: Argument "x" to "f" of "B" has incompatible type "float"; expected "int"
+[builtins fixtures/primitives.pyi]
+
+[case testTypedDictUnpackWithParamSpecInference]
+from typing import TypeVar, ParamSpec, Callable
+from typing_extensions import TypedDict, Unpack
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def run(func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+class Params(TypedDict):
+    temperature: float
+
+def test(temperature: int) -> None: ...
+def test2(temperature: float, other: str) -> None: ...
+
+class Test:
+    def f(self, c: Callable[..., None], **params: Unpack[Params]) -> None:
+        run(c, **params)
+    def g(self, **params: Unpack[Params]) -> None:
+        run(test, **params)  # E: Argument "temperature" to "run" has incompatible type "float"; expected "int"
+    def h(self, **params: Unpack[Params]) -> None:
+        run(test2, other="yes", **params)
+        run(test2, other=0, **params)  # E: Argument "other" to "run" has incompatible type "int"; expected "str"
 [builtins fixtures/tuple.pyi]

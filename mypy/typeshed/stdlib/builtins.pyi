@@ -445,7 +445,7 @@ class str(Sequence[str]):
     def expandtabs(self, tabsize: SupportsIndex = 8) -> str: ...  # type: ignore[misc]
     def find(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
     def format(self, *args: object, **kwargs: object) -> str: ...
-    def format_map(self, map: _FormatMapMapping) -> str: ...
+    def format_map(self, mapping: _FormatMapMapping, /) -> str: ...
     def index(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
     def isalnum(self) -> bool: ...
     def isalpha(self) -> bool: ...
@@ -464,7 +464,10 @@ class str(Sequence[str]):
     def lower(self) -> str: ...  # type: ignore[misc]
     def lstrip(self, chars: str | None = None, /) -> str: ...  # type: ignore[misc]
     def partition(self, sep: str, /) -> tuple[str, str, str]: ...  # type: ignore[misc]
-    def replace(self, old: str, new: str, count: SupportsIndex = -1, /) -> str: ...  # type: ignore[misc]
+    if sys.version_info >= (3, 13):
+        def replace(self, old: str, new: str, /, count: SupportsIndex = -1) -> str: ...  # type: ignore[misc]
+    else:
+        def replace(self, old: str, new: str, count: SupportsIndex = -1, /) -> str: ...  # type: ignore[misc]
     if sys.version_info >= (3, 9):
         def removeprefix(self, prefix: str, /) -> str: ...  # type: ignore[misc]
         def removesuffix(self, suffix: str, /) -> str: ...  # type: ignore[misc]
@@ -1126,6 +1129,9 @@ class property:
     fset: Callable[[Any, Any], None] | None
     fdel: Callable[[Any], None] | None
     __isabstractmethod__: bool
+    if sys.version_info >= (3, 13):
+        __name__: str
+
     def __init__(
         self,
         fget: Callable[[Any], Any] | None = ...,
@@ -1233,12 +1239,34 @@ def divmod(x: _T_contra, y: SupportsRDivMod[_T_contra, _T_co], /) -> _T_co: ...
 
 # The `globals` argument to `eval` has to be `dict[str, Any]` rather than `dict[str, object]` due to invariance.
 # (The `globals` argument has to be a "real dict", rather than any old mapping, unlike the `locals` argument.)
-def eval(
-    source: str | ReadableBuffer | CodeType, globals: dict[str, Any] | None = None, locals: Mapping[str, object] | None = None, /
-) -> Any: ...
+if sys.version_info >= (3, 13):
+    def eval(
+        source: str | ReadableBuffer | CodeType,
+        /,
+        globals: dict[str, Any] | None = None,
+        locals: Mapping[str, object] | None = None,
+    ) -> Any: ...
+
+else:
+    def eval(
+        source: str | ReadableBuffer | CodeType,
+        globals: dict[str, Any] | None = None,
+        locals: Mapping[str, object] | None = None,
+        /,
+    ) -> Any: ...
 
 # Comment above regarding `eval` applies to `exec` as well
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 13):
+    def exec(
+        source: str | ReadableBuffer | CodeType,
+        /,
+        globals: dict[str, Any] | None = None,
+        locals: Mapping[str, object] | None = None,
+        *,
+        closure: tuple[CellType, ...] | None = None,
+    ) -> None: ...
+
+elif sys.version_info >= (3, 11):
     def exec(
         source: str | ReadableBuffer | CodeType,
         globals: dict[str, Any] | None = None,
@@ -1550,9 +1578,9 @@ def pow(base: float, exp: complex | _SupportsSomeKindOfPow, mod: None = None) ->
 @overload
 def pow(base: complex, exp: complex | _SupportsSomeKindOfPow, mod: None = None) -> complex: ...
 @overload
-def pow(base: _SupportsPow2[_E, _T_co], exp: _E, mod: None = None) -> _T_co: ...
+def pow(base: _SupportsPow2[_E, _T_co], exp: _E, mod: None = None) -> _T_co: ...  # type: ignore[overload-overlap]
 @overload
-def pow(base: _SupportsPow3NoneOnly[_E, _T_co], exp: _E, mod: None = None) -> _T_co: ...
+def pow(base: _SupportsPow3NoneOnly[_E, _T_co], exp: _E, mod: None = None) -> _T_co: ...  # type: ignore[overload-overlap]
 @overload
 def pow(base: _SupportsPow3[_E, _M, _T_co], exp: _E, mod: _M) -> _T_co: ...
 @overload
@@ -1947,3 +1975,7 @@ if sys.version_info >= (3, 11):
         def split(
             self, condition: Callable[[_ExceptionT_co | Self], bool], /
         ) -> tuple[ExceptionGroup[_ExceptionT_co] | None, ExceptionGroup[_ExceptionT_co] | None]: ...
+
+if sys.version_info >= (3, 13):
+    class IncompleteInputError(SyntaxError): ...
+    class PythonFinalizationError(RuntimeError): ...

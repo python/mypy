@@ -616,6 +616,9 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         # NOTE: res.info will be set in the fixup phase.
         return res
 
+    def is_dynamic(self) -> bool:
+        return all(item.is_dynamic() for item in self.items)
+
 
 class Argument(Node):
     """A single argument in a FuncItem."""
@@ -937,6 +940,9 @@ class Decorator(SymbolNode, Statement):
         dec = Decorator(FuncDef.deserialize(data["func"]), [], Var.deserialize(data["var"]))
         dec.is_overload = data["is_overload"]
         return dec
+
+    def is_dynamic(self) -> bool:
+        return self.func.is_dynamic()
 
 
 VAR_FLAGS: Final = [
@@ -1641,19 +1647,21 @@ class MatchStmt(Statement):
 
 
 class TypeAliasStmt(Statement):
-    __slots__ = ("name", "type_args", "value")
+    __slots__ = ("name", "type_args", "value", "invalid_recursive_alias")
 
     __match_args__ = ("name", "type_args", "value")
 
     name: NameExpr
     type_args: list[TypeParam]
-    value: Expression  # Will get translated into a type
+    value: LambdaExpr  # Return value will get translated into a type
+    invalid_recursive_alias: bool
 
-    def __init__(self, name: NameExpr, type_args: list[TypeParam], value: Expression) -> None:
+    def __init__(self, name: NameExpr, type_args: list[TypeParam], value: LambdaExpr) -> None:
         super().__init__()
         self.name = name
         self.type_args = type_args
         self.value = value
+        self.invalid_recursive_alias = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_type_alias_stmt(self)
@@ -2527,8 +2535,9 @@ class TypeVarLikeExpr(SymbolNode, Expression):
         default: mypy.types.Type,
         variance: int = INVARIANT,
         is_new_style: bool = False,
+        line: int = -1,
     ) -> None:
-        super().__init__()
+        super().__init__(line=line)
         self._name = name
         self._fullname = fullname
         self.upper_bound = upper_bound
@@ -2574,8 +2583,9 @@ class TypeVarExpr(TypeVarLikeExpr):
         default: mypy.types.Type,
         variance: int = INVARIANT,
         is_new_style: bool = False,
+        line: int = -1,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, default, variance, is_new_style)
+        super().__init__(name, fullname, upper_bound, default, variance, is_new_style, line=line)
         self.values = values
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -2653,8 +2663,9 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
         default: mypy.types.Type,
         variance: int = INVARIANT,
         is_new_style: bool = False,
+        line: int = -1,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, default, variance, is_new_style)
+        super().__init__(name, fullname, upper_bound, default, variance, is_new_style, line=line)
         self.tuple_fallback = tuple_fallback
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -3570,6 +3581,7 @@ class TypeAlias(SymbolNode):
         "_is_recursive",
         "eager",
         "tvar_tuple_index",
+        "python_3_12_type_alias",
     )
 
     __match_args__ = ("name", "target", "alias_tvars", "no_args")
@@ -3585,6 +3597,7 @@ class TypeAlias(SymbolNode):
         no_args: bool = False,
         normalized: bool = False,
         eager: bool = False,
+        python_3_12_type_alias: bool = False,
     ) -> None:
         self._fullname = fullname
         self.target = target
@@ -3597,6 +3610,7 @@ class TypeAlias(SymbolNode):
         # it is the cached value.
         self._is_recursive: bool | None = None
         self.eager = eager
+        self.python_3_12_type_alias = python_3_12_type_alias
         self.tvar_tuple_index = None
         for i, t in enumerate(alias_tvars):
             if isinstance(t, mypy.types.TypeVarTupleType):
@@ -3667,6 +3681,7 @@ class TypeAlias(SymbolNode):
             "normalized": self.normalized,
             "line": self.line,
             "column": self.column,
+            "python_3_12_type_alias": self.python_3_12_type_alias,
         }
         return data
 
@@ -3684,6 +3699,7 @@ class TypeAlias(SymbolNode):
         normalized = data["normalized"]
         line = data["line"]
         column = data["column"]
+        python_3_12_type_alias = data["python_3_12_type_alias"]
         return cls(
             target,
             fullname,
@@ -3692,6 +3708,7 @@ class TypeAlias(SymbolNode):
             alias_tvars=cast(List[mypy.types.TypeVarLikeType], alias_tvars),
             no_args=no_args,
             normalized=normalized,
+            python_3_12_type_alias=python_3_12_type_alias,
         )
 
 

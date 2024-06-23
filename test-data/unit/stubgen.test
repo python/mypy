@@ -4342,3 +4342,57 @@ alias = tuple[()]
 def f(x: tuple[()]): ...
 
 class C(tuple[()]): ...
+
+[case testPreserveEnumValue_semanal]
+from enum import Enum
+
+class Foo(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+class Bar(Enum):
+    A = object()
+    B = "a" + "b"
+
+[out]
+from enum import Enum
+
+class Foo(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+class Bar(Enum):
+    A = ...
+    B = ...
+
+[case testGracefullyHandleInvalidOptionalUsage]
+from typing import Optional
+
+x: Optional  # invalid
+y: Optional[int]  # valid
+z: Optional[int, str]  # invalid
+w: Optional[int | str]  # valid
+r: Optional[type[int | str]]
+
+X = Optional
+Y = Optional[int]
+Z = Optional[int, str]
+W = Optional[int | str]
+R = Optional[type[int | str]]
+
+[out]
+from _typeshed import Incomplete
+from typing import Optional
+
+x: Incomplete
+y: int | None
+z: Incomplete
+w: int | str | None
+r: type[int | str] | None
+X = Optional
+Y = int | None
+Z = Incomplete
+W = int | str | None
+R = type[int | str] | None

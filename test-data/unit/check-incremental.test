@@ -1833,6 +1833,21 @@ main:3: note: Revealed type is "builtins.int"
 main:3: note: Revealed type is "Any"
 
 
+[case testIncrementalIgnoreErrors]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+import module_that_will_be_deleted
+[file module_that_will_be_deleted.py]
+
+[file mypy.ini]
+\[mypy]
+\[mypy-a]
+ignore_errors = True
+[delete module_that_will_be_deleted.py.2]
+[out1]
+[out2]
+
 [case testIncrementalNamedTupleInMethod]
 from ntcrash import nope
 [file ntcrash.py]
@@ -6574,6 +6589,67 @@ class TheClass:
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
+
+
+[case testIncrementalFunctoolsPartial]
+import a
+
+[file a.py]
+from typing import Callable
+from partial import p1, p2
+
+p1(1, "a", 3)  # OK
+p1(1, "a", c=3)  # OK
+p1(1, b="a", c=3)  # OK
+
+reveal_type(p1)
+
+def takes_callable_int(f: Callable[..., int]) -> None: ...
+def takes_callable_str(f: Callable[..., str]) -> None: ...
+takes_callable_int(p1)
+takes_callable_str(p1)
+
+p2("a")  # OK
+p2("a", 3)  # OK
+p2("a", c=3)  # OK
+p2(1, 3)
+p2(1, "a", 3)
+p2(a=1, b="a", c=3)
+
+[file a.py.2]
+from typing import Callable
+from partial import p3
+
+p3(1)  # OK
+p3(1, c=3)  # OK
+p3(a=1)  # OK
+p3(1, b="a", c=3)  # OK, keywords can be clobbered
+p3(1, 3)
+
+[file partial.py]
+from typing import Callable
+import functools
+
+def foo(a: int, b: str, c: int = 5) -> int: ...
+
+p1 = functools.partial(foo)
+p2 = functools.partial(foo, 1)
+p3 = functools.partial(foo, b="a")
+[builtins fixtures/dict.pyi]
+[out]
+tmp/a.py:8: note: Revealed type is "functools.partial[builtins.int]"
+tmp/a.py:13: error: Argument 1 to "takes_callable_str" has incompatible type "partial[int]"; expected "Callable[..., str]"
+tmp/a.py:13: note: "partial[int].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], int]"
+tmp/a.py:18: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+tmp/a.py:19: error: Too many arguments for "foo"
+tmp/a.py:19: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+tmp/a.py:19: error: Argument 2 to "foo" has incompatible type "str"; expected "int"
+tmp/a.py:20: error: Unexpected keyword argument "a" for "foo"
+tmp/partial.py:4: note: "foo" defined here
+[out2]
+tmp/a.py:8: error: Too many positional arguments for "foo"
+tmp/a.py:8: error: Argument 2 to "foo" has incompatible type "int"; expected "str"
+
 
 [case testStartUsingTypeGuard]
 import a

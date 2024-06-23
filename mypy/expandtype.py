@@ -231,7 +231,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def visit_type_var(self, t: TypeVarType) -> Type:
         # Normally upper bounds can't contain other type variables, the only exception is
         # special type variable Self`0 <: C[T, S], where C is the class where Self is used.
-        if t.id.raw_id == 0:
+        if t.id.is_self():
             t = t.copy_modified(upper_bound=t.upper_bound.accept(self))
         repl = self.variables.get(t.id, t)
         if isinstance(repl, ProperType) and isinstance(repl, Instance):
@@ -326,7 +326,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         new_unpack: Type
         if isinstance(var_arg_type, Instance):
             # we have something like Unpack[Tuple[Any, ...]]
-            new_unpack = var_arg
+            new_unpack = UnpackType(var_arg.type.accept(self))
         elif isinstance(var_arg_type, TupleType):
             # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
             expanded_tuple = var_arg_type.accept(self)

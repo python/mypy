@@ -789,6 +789,9 @@ NAMESPACE_TYPE: Final = "type"
 # Namespace for modules
 NAMESPACE_MODULE: Final = "module"
 
+# Namespace for Python 3.12 type variable objects (implicitly created TypeVar instances, etc.)
+NAMESPACE_TYPE_VAR: Final = "typevar"
+
 
 class LoadStatic(RegisterOp):
     """Load a static name (name :: static).

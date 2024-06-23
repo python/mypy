@@ -1640,7 +1640,7 @@ from typing import Generator
 def g() -> Generator[int, None, None]:
     x = yield from ()  # E: Function does not return a value (it only ever returns None)
     x = yield from (0, 1, 2)  # E: Function does not return a value (it only ever returns None)
-    x = yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "object", expected type "int") \
+    x = yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "Union[int, str]", expected type "int") \
                                  # E: Function does not return a value (it only ever returns None)
     x = yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int") \
                                # E: Function does not return a value (it only ever returns None)
@@ -2449,5 +2449,7 @@ def f() -> int:  # E: Missing return statement
 from typing import TypeVar
 T = TypeVar("T")
 x: int
-x + T  # E: Unsupported operand types for + ("int" and "object")
-T()  # E: "object" not callable
+x + T  # E: Unsupported left operand type for + ("int")
+T()  # E: "TypeVar" not callable
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

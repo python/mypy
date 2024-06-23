@@ -839,14 +839,13 @@ b: NoReturn
 c: None
 
 fa(lit)
-fb(lit)  # E: Argument 1 to "fb" has incompatible type "Literal[1]"; expected "NoReturn"
+fb(lit)  # E: Argument 1 to "fb" has incompatible type "Literal[1]"; expected "Never"
 fc(lit)  # E: Argument 1 to "fc" has incompatible type "Literal[1]"; expected "None"
 
 f_lit(a)
 f_lit(b)
 f_lit(c) # E: Argument 1 to "f_lit" has incompatible type "None"; expected "Literal[1]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testLiteralCheckSubtypingNoStrictOptional]
 # flags: --no-strict-optional
@@ -865,14 +864,13 @@ b: NoReturn
 c: None
 
 fa(lit)
-fb(lit)  # E: Argument 1 to "fb" has incompatible type "Literal[1]"; expected "NoReturn"
+fb(lit)  # E: Argument 1 to "fb" has incompatible type "Literal[1]"; expected "Never"
 fc(lit)  # E: Argument 1 to "fc" has incompatible type "Literal[1]"; expected "None"
 
 f_lit(a)
 f_lit(b)
 f_lit(c)
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testLiteralCallingOverloadedFunction]
 from typing import overload, Generic, TypeVar, Any
