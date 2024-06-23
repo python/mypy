@@ -14,6 +14,7 @@ import binascii
 import os
 import time
 from abc import abstractmethod
+from gzip import compress, decompress
 from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
@@ -92,8 +93,8 @@ class FilesystemMetadataStore(MetadataStore):
         if not self.cache_dir_prefix:
             raise FileNotFoundError()
 
-        with open(os.path.join(self.cache_dir_prefix, name)) as f:
-            return f.read()
+        with open(os.path.join(self.cache_dir_prefix, name), "rb") as f:
+            return decompress(f.read()).decode()
 
     def write(self, name: str, data: str, mtime: float | None = None) -> bool:
         assert os.path.normpath(name) != os.path.abspath(name), "Don't use absolute paths!"
@@ -105,8 +106,8 @@ class FilesystemMetadataStore(MetadataStore):
         tmp_filename = path + "." + random_string()
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(tmp_filename, "w") as f:
-                f.write(data)
+            with open(tmp_filename, "wb") as f:
+                f.write(compress(data.encode(), 1, mtime=0))
             os.replace(tmp_filename, path)
             if mtime is not None:
                 os.utime(path, times=(mtime, mtime))
