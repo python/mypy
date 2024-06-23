@@ -455,3 +455,16 @@ first_kw([1])  # E: Too many positional arguments for "get" \
                # E: Too few arguments for "get" \
                # E: Argument 1 to "get" has incompatible type "List[int]"; expected "int"
 [builtins fixtures/list.pyi]
+
+[case testFunctoolsPartialClassObjectMatchingPartial]
+from functools import partial
+
+class A:
+    def __init__(self, var: int, b: int, c: int) -> None: ...
+
+p = partial(A, 1)
+reveal_type(p)  # N: Revealed type is "functools.partial[__main__.A]"
+p(1, "no")  # E: Argument 2 to "A" has incompatible type "str"; expected "int"
+
+q: partial[A] = partial(A, 1)  # OK
+[builtins fixtures/tuple.pyi]
