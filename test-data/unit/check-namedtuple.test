@@ -1249,7 +1249,7 @@ nti: NT[int]
 reveal_type(nti * x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 nts: NT[str]
-reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1310,9 +1310,9 @@ reveal_type(foo(nti, nts))  # N: Revealed type is "Tuple[builtins.int, builtins.
 reveal_type(foo(nts, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
 
 reveal_type(foo(nti, x))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 reveal_type(foo(x, nti))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 

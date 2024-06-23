@@ -6,6 +6,7 @@ from typing import Final, NamedTuple
 
 import mypy.checker
 import mypy.plugin
+import mypy.semanal
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, CallExpr, FuncItem, Var
 from mypy.plugins.common import add_method_to_class
@@ -23,6 +24,8 @@ from mypy.types import (
 functools_total_ordering_makers: Final = {"functools.total_ordering"}
 
 _ORDERING_METHODS: Final = {"__lt__", "__le__", "__gt__", "__ge__"}
+
+PARTIAL = "functools.partial"
 
 
 class _MethodInfo(NamedTuple):
@@ -142,7 +145,8 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
                 else (ArgKind.ARG_NAMED_OPT if k == ArgKind.ARG_NAMED else k)
             )
             for k in fn_type.arg_kinds
-        ]
+        ],
+        ret_type=ctx.api.named_generic_type(PARTIAL, [fn_type.ret_type]),
     )
     if defaulted.line < 0:
         # Make up a line number if we don't have one
@@ -188,6 +192,13 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     bound = get_proper_type(bound)
     if not isinstance(bound, CallableType):
         return ctx.default_return_type
+    wrapped_ret_type = get_proper_type(bound.ret_type)
+    if not isinstance(wrapped_ret_type, Instance) or wrapped_ret_type.type.fullname != PARTIAL:
+        return ctx.default_return_type
+    if not mypy.semanal.refers_to_fullname(ctx.args[0][0], PARTIAL):
+        # If the first argument is partial, above call will trigger the plugin
+        # again, in between the wrapping above an unwrapping here.
+        bound = bound.copy_modified(ret_type=wrapped_ret_type.args[0])
 
     formal_to_actual = map_actuals_to_formals(
         actual_kinds=actual_arg_kinds,
@@ -239,7 +250,7 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         ret_type=ret_type,
     )
 
-    ret = ctx.api.named_generic_type("functools.partial", [ret_type])
+    ret = ctx.api.named_generic_type(PARTIAL, [ret_type])
     ret = ret.copy_with_extra_attr("__mypy_partial", partially_applied)
     return ret
 
@@ -249,7 +260,7 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
     if (
         not isinstance(ctx.api, mypy.checker.TypeChecker)  # use internals
         or not isinstance(ctx.type, Instance)
-        or ctx.type.type.fullname != "functools.partial"
+        or ctx.type.type.fullname != PARTIAL
         or not ctx.type.extra_attrs
         or "__mypy_partial" not in ctx.type.extra_attrs.attrs
     ):
