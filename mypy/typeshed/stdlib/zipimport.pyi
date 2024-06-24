@@ -4,8 +4,7 @@ from importlib.abc import ResourceReader
 from importlib.machinery import ModuleSpec
 from types import CodeType, ModuleType
 
-if sys.version_info >= (3, 8):
-    __all__ = ["ZipImportError", "zipimporter"]
+__all__ = ["ZipImportError", "zipimporter"]
 
 class ZipImportError(ImportError): ...
 

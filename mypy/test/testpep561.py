@@ -131,7 +131,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
 
         steps = testcase.find_steps()
         if steps != [[]]:
-            steps = [[]] + steps  # type: ignore[assignment]
+            steps = [[]] + steps
 
         for i, operations in enumerate(steps):
             perform_file_operations(operations)

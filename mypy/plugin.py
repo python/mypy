@@ -247,7 +247,7 @@ class CheckerPluginInterface:
 
     @abstractmethod
     def named_generic_type(self, name: str, args: list[Type]) -> Instance:
-        """Construct an instance of a builtin type with given type arguments."""
+        """Construct an instance of a generic type with given type arguments."""
         raise NotImplementedError
 
     @abstractmethod
@@ -328,7 +328,6 @@ class SemanticAnalyzerPluginInterface:
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
         report_invalid_types: bool = True,
-        third_pass: bool = False,
     ) -> Type | None:
         """Analyze an unbound type.
 

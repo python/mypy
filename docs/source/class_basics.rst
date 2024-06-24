@@ -263,7 +263,7 @@ effect at runtime:
 Abstract base classes and multiple inheritance
 **********************************************
 
-Mypy supports Python :doc:`abstract base classes <library/abc>` (ABCs). Abstract classes
+Mypy supports Python :doc:`abstract base classes <python:library/abc>` (ABCs). Abstract classes
 have at least one abstract method or property that must be implemented
 by any *concrete* (non-abstract) subclass. You can define abstract base
 classes using the :py:class:`abc.ABCMeta` metaclass and the :py:func:`@abc.abstractmethod <abc.abstractmethod>`
@@ -371,8 +371,7 @@ property or an instance variable.
 Slots
 *****
 
-When a class has explicitly defined
-`__slots__ <https://docs.python.org/3/reference/datamodel.html#slots>`_,
+When a class has explicitly defined :std:term:`__slots__`,
 mypy will check that all attributes assigned to are members of ``__slots__``:
 
 .. code-block:: python

@@ -52,16 +52,23 @@ _T = TypeVar("_T")
 _UrlopenRet: TypeAlias = Any
 _DataType: TypeAlias = ReadableBuffer | SupportsRead[bytes] | Iterable[bytes] | None
 
-def urlopen(
-    url: str | Request,
-    data: _DataType | None = None,
-    timeout: float | None = ...,
-    *,
-    cafile: str | None = None,
-    capath: str | None = None,
-    cadefault: bool = False,
-    context: ssl.SSLContext | None = None,
-) -> _UrlopenRet: ...
+if sys.version_info >= (3, 13):
+    def urlopen(
+        url: str | Request, data: _DataType | None = None, timeout: float | None = ..., *, context: ssl.SSLContext | None = None
+    ) -> _UrlopenRet: ...
+
+else:
+    def urlopen(
+        url: str | Request,
+        data: _DataType | None = None,
+        timeout: float | None = ...,
+        *,
+        cafile: str | None = None,
+        capath: str | None = None,
+        cadefault: bool = False,
+        context: ssl.SSLContext | None = None,
+    ) -> _UrlopenRet: ...
+
 def install_opener(opener: OpenerDirector) -> None: ...
 def build_opener(*handlers: BaseHandler | Callable[[], BaseHandler]) -> OpenerDirector: ...
 
@@ -228,6 +235,8 @@ class _HTTPConnectionProtocol(Protocol):
     def __call__(
         self,
         host: str,
+        /,
+        *,
         port: int | None = ...,
         timeout: float = ...,
         source_address: tuple[str, int] | None = ...,
@@ -235,7 +244,11 @@ class _HTTPConnectionProtocol(Protocol):
     ) -> HTTPConnection: ...
 
 class AbstractHTTPHandler(BaseHandler):  # undocumented
-    def __init__(self, debuglevel: int = 0) -> None: ...
+    if sys.version_info >= (3, 12):
+        def __init__(self, debuglevel: int | None = None) -> None: ...
+    else:
+        def __init__(self, debuglevel: int = 0) -> None: ...
+
     def set_http_debuglevel(self, level: int) -> None: ...
     def do_request_(self, request: Request) -> Request: ...
     def do_open(self, http_class: _HTTPConnectionProtocol, req: Request, **http_conn_args: Any) -> HTTPResponse: ...
@@ -245,9 +258,15 @@ class HTTPHandler(AbstractHTTPHandler):
     def http_request(self, request: Request) -> Request: ...  # undocumented
 
 class HTTPSHandler(AbstractHTTPHandler):
-    def __init__(
-        self, debuglevel: int = 0, context: ssl.SSLContext | None = None, check_hostname: bool | None = None
-    ) -> None: ...
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self, debuglevel: int | None = None, context: ssl.SSLContext | None = None, check_hostname: bool | None = None
+        ) -> None: ...
+    else:
+        def __init__(
+            self, debuglevel: int = 0, context: ssl.SSLContext | None = None, check_hostname: bool | None = None
+        ) -> None: ...
+
     def https_open(self, req: Request) -> HTTPResponse: ...
     def https_request(self, request: Request) -> Request: ...  # undocumented
 
@@ -326,6 +345,7 @@ class URLopener:
     def open_https(self, url: str, data: ReadableBuffer | None = None) -> _UrlopenRet: ...  # undocumented
     def open_local_file(self, url: str) -> addinfourl: ...  # undocumented
     def open_unknown_proxy(self, proxy: str, fullurl: str, data: ReadableBuffer | None = None) -> None: ...  # undocumented
+    def __del__(self) -> None: ...
 
 class FancyURLopener(URLopener):
     def prompt_user_passwd(self, host: str, realm: str) -> tuple[str, str]: ...

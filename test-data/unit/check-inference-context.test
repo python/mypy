@@ -22,7 +22,7 @@ if int():
 if int():
     ab = f()
 if int():
-    b = f() # E: Incompatible types in assignment (expression has type "A[<nothing>]", variable has type "B")
+    b = f() # E: Incompatible types in assignment (expression has type "A[Never]", variable has type "B")
 [case testBasicContextInferenceForConstructor]
 from typing import TypeVar, Generic
 T = TypeVar('T')
@@ -37,7 +37,7 @@ if int():
 if int():
     ab = A()
 if int():
-    b = A() # E: Incompatible types in assignment (expression has type "A[<nothing>]", variable has type "B")
+    b = A() # E: Incompatible types in assignment (expression has type "A[Never]", variable has type "B")
 [case testIncompatibleContextInference]
 from typing import TypeVar, Generic
 T = TypeVar('T')
@@ -372,7 +372,7 @@ ao: List[object]
 a: A
 def f(): a, aa, ao # Prevent redefinition
 
-a = [] # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "A")
+a = [] # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "A")
 
 aa = []
 ao = []
@@ -842,7 +842,7 @@ T = TypeVar('T')
 def f(x: Union[List[T], str]) -> None: pass
 f([1])
 f('')
-f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[List[<nothing>], str]"
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[List[Never], str]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIgnoringInferenceContext]
@@ -911,7 +911,7 @@ from typing import TypeVar, Callable, Generic
 T = TypeVar('T')
 class A(Generic[T]):
     pass
-reveal_type(A()) # N: Revealed type is "__main__.A[<nothing>]"
+reveal_type(A()) # N: Revealed type is "__main__.A[Never]"
 b = reveal_type(A())  # type: A[int] # N: Revealed type is "__main__.A[builtins.int]"
 
 [case testUnionWithGenericTypeItemContext]
@@ -1305,13 +1305,32 @@ def g(l: List[C], x: str) -> Optional[C]:
     return f(l, lambda c: reveal_type(c).x)  # N: Revealed type is "__main__.C"
 [builtins fixtures/list.pyi]
 
+[case testPartialTypeContextWithTwoLambdas]
+from typing import Any, Generic, TypeVar, Callable
+
+def int_to_any(x: int) -> Any: ...
+def any_to_int(x: Any) -> int: ...
+def any_to_str(x: Any) -> str: ...
+
+T = TypeVar("T")
+class W(Generic[T]):
+    def __init__(
+        self, serialize: Callable[[T], Any], deserialize: Callable[[Any], T]
+    ) -> None:
+        ...
+reveal_type(W(lambda x: int_to_any(x), lambda x: any_to_int(x)))  # N: Revealed type is "__main__.W[builtins.int]"
+W(
+    lambda x: int_to_any(x),  # E: Argument 1 to "int_to_any" has incompatible type "str"; expected "int"
+    lambda x: any_to_str(x)
+)
+
 [case testWideOuterContextEmpty]
 from typing import List, TypeVar
 
 T = TypeVar('T', bound=int)
 def f(x: List[T]) -> T: ...
 
-# mypy infers List[<nothing>] here, and <nothing> is a subtype of str
+# mypy infers List[Never] here, and Never is a subtype of str
 y: str = f([])
 [builtins fixtures/list.pyi]
 
@@ -1321,11 +1340,7 @@ from typing import List, TypeVar
 T = TypeVar('T', bound=int)
 def f(x: List[T]) -> List[T]: ...
 
-# TODO: improve error message for such cases, see #3283 and #5706
-y: List[str] = f([]) \
- # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[str]") \
- # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
- # N: Consider using "Sequence" instead, which is covariant
+y: List[str] = f([])
 [builtins fixtures/list.pyi]
 
 [case testWideOuterContextNoArgs]
@@ -1342,10 +1357,7 @@ from typing import TypeVar, Optional, List
 T = TypeVar('T', bound=int)
 def f(x: Optional[T] = None) -> List[T]: ...
 
-y: List[str] = f()  \
-      # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[str]") \
-      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
-      # N: Consider using "Sequence" instead, which is covariant
+y: List[str] = f()
 [builtins fixtures/list.pyi]
 
 [case testUseCovariantGenericOuterContext]
@@ -1470,3 +1482,16 @@ b: Any
 i = i if isinstance(i, int) else b
 reveal_type(i)  # N: Revealed type is "Union[Any, builtins.int]"
 [builtins fixtures/isinstance.pyi]
+
+[case testLambdaInferenceUsesNarrowedTypes]
+from typing import Optional, Callable
+
+def f1(key: Callable[[], str]) -> None: ...
+def f2(key: object) -> None: ...
+
+def g(b: Optional[str]) -> None:
+    if b:
+        f1(lambda: reveal_type(b))  # N: Revealed type is "builtins.str"
+        z: Callable[[], str] = lambda: reveal_type(b)  # N: Revealed type is "builtins.str"
+        f2(lambda: reveal_type(b))  # N: Revealed type is "builtins.str"
+        lambda: reveal_type(b)  # N: Revealed type is "builtins.str"

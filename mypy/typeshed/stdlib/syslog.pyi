@@ -1,6 +1,5 @@
 import sys
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 
 if sys.platform != "win32":
     LOG_ALERT: Literal[1]
@@ -36,11 +35,20 @@ if sys.platform != "win32":
     LOG_USER: Literal[8]
     LOG_UUCP: Literal[64]
     LOG_WARNING: Literal[4]
-    def LOG_MASK(a: int) -> int: ...
-    def LOG_UPTO(a: int) -> int: ...
+
+    if sys.version_info >= (3, 13):
+        LOG_FTP: Literal[88]
+        LOG_INSTALL: Literal[112]
+        LOG_LAUNCHD: Literal[192]
+        LOG_NETINFO: Literal[96]
+        LOG_RAS: Literal[120]
+        LOG_REMOTEAUTH: Literal[104]
+
+    def LOG_MASK(pri: int, /) -> int: ...
+    def LOG_UPTO(pri: int, /) -> int: ...
     def closelog() -> None: ...
     def openlog(ident: str = ..., logoption: int = ..., facility: int = ...) -> None: ...
-    def setlogmask(x: int) -> int: ...
+    def setlogmask(maskpri: int, /) -> int: ...
     @overload
     def syslog(priority: int, message: str) -> None: ...
     @overload

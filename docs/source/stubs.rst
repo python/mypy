@@ -114,7 +114,7 @@ For example:
 
 .. code-block:: python
 
-    from typing_extensions import Protocol
+    from typing import Protocol
 
     class Resource(Protocol):
         def ok_1(self, foo: list[str] = ...) -> None: ...

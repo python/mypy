@@ -4,8 +4,8 @@ import types
 from _typeshed import SupportsKeysAndGetItem, Unused
 from builtins import property as _builtins_property
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import Any, Generic, Literal, TypeVar, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = ["EnumMeta", "Enum", "IntEnum", "Flag", "IntFlag", "auto", "unique"]
 
@@ -31,10 +31,12 @@ if sys.version_info >= (3, 11):
         "nonmember",
         "property",
         "verify",
+        "pickle_by_enum_name",
+        "pickle_by_global_name",
     ]
 
-if sys.version_info >= (3, 12):
-    __all__ += ["pickle_by_enum_name", "pickle_by_global_name"]
+if sys.version_info >= (3, 13):
+    __all__ += ["EnumDict"]
 
 _EnumMemberT = TypeVar("_EnumMemberT")
 _EnumerationT = TypeVar("_EnumerationT", bound=type[Enum])
@@ -74,6 +76,12 @@ class _EnumDict(dict[str, Any]):
         def update(self, members: SupportsKeysAndGetItem[str, Any], **more_members: Any) -> None: ...
         @overload
         def update(self, members: Iterable[tuple[str, Any]], **more_members: Any) -> None: ...
+    if sys.version_info >= (3, 13):
+        @property
+        def member_names(self) -> list[str]: ...
+
+if sys.version_info >= (3, 13):
+    EnumDict = _EnumDict
 
 # Structurally: Iterable[T], Reversible[T], Container[T] where T is the enum itself
 class EnumMeta(type):
@@ -119,10 +127,12 @@ class EnumMeta(type):
     def __len__(self) -> int: ...
     def __bool__(self) -> Literal[True]: ...
     def __dir__(self) -> list[str]: ...
-    # Simple value lookup
+
+    # Overload 1: Value lookup on an already existing enum class (simple case)
     @overload
     def __call__(cls: type[_EnumMemberT], value: Any, names: None = None) -> _EnumMemberT: ...
-    # Functional Enum API
+
+    # Overload 2: Functional API for constructing new enum classes.
     if sys.version_info >= (3, 11):
         @overload
         def __call__(
@@ -148,6 +158,18 @@ class EnumMeta(type):
             type: type | None = None,
             start: int = 1,
         ) -> type[Enum]: ...
+
+    # Overload 3 (py312+ only): Value lookup on an already existing enum class (complex case)
+    #
+    # >>> class Foo(enum.Enum):
+    # ...     X = 1, 2, 3
+    # >>> Foo(1, 2, 3)
+    # <Foo.X: (1, 2, 3)>
+    #
+    if sys.version_info >= (3, 12):
+        @overload
+        def __call__(cls: type[_EnumMemberT], value: Any, *values: Any) -> _EnumMemberT: ...
+
     _member_names_: list[str]  # undocumented
     _member_map_: dict[str, Enum]  # undocumented
     _value2member_map_: dict[Any, Enum]  # undocumented
@@ -160,6 +182,8 @@ if sys.version_info >= (3, 11):
         def __set_name__(self, ownerclass: type[Enum], name: str) -> None: ...
         name: str
         clsname: str
+        member: Enum | None
+
     _magic_enum_attr = property
 else:
     _magic_enum_attr = types.DynamicClassAttribute
@@ -188,9 +212,12 @@ class Enum(metaclass=EnumMeta):
     def __hash__(self) -> int: ...
     def __format__(self, format_spec: str) -> str: ...
     def __reduce_ex__(self, proto: Unused) -> tuple[Any, ...]: ...
-    if sys.version_info >= (3, 12):
+    if sys.version_info >= (3, 11):
         def __copy__(self) -> Self: ...
         def __deepcopy__(self, memo: Any) -> Self: ...
+    if sys.version_info >= (3, 12):
+        @classmethod
+        def __signature__(cls) -> str: ...
 
 if sys.version_info >= (3, 11):
     class ReprEnum(Enum): ...
@@ -240,9 +267,10 @@ if sys.version_info >= (3, 11):
         def _generate_next_value_(name: str, start: int, count: int, last_values: list[str]) -> str: ...
 
     class EnumCheck(StrEnum):
-        CONTINUOUS: str
-        NAMED_FLAGS: str
-        UNIQUE: str
+        CONTINUOUS = "no skipped integer values"
+        NAMED_FLAGS = "multi-flag aliases may not contain unnamed flags"
+        UNIQUE = "one name per value"
+
     CONTINUOUS = EnumCheck.CONTINUOUS
     NAMED_FLAGS = EnumCheck.NAMED_FLAGS
     UNIQUE = EnumCheck.UNIQUE
@@ -252,10 +280,11 @@ if sys.version_info >= (3, 11):
         def __call__(self, enumeration: _EnumerationT) -> _EnumerationT: ...
 
     class FlagBoundary(StrEnum):
-        STRICT: str
-        CONFORM: str
-        EJECT: str
-        KEEP: str
+        STRICT = "strict"
+        CONFORM = "conform"
+        EJECT = "eject"
+        KEEP = "keep"
+
     STRICT = FlagBoundary.STRICT
     CONFORM = FlagBoundary.CONFORM
     EJECT = FlagBoundary.EJECT
@@ -294,6 +323,6 @@ class auto(IntFlag):
     def value(self) -> Any: ...
     def __new__(cls) -> Self: ...
 
-if sys.version_info >= (3, 12):
+if sys.version_info >= (3, 11):
     def pickle_by_global_name(self: Enum, proto: int) -> str: ...
     def pickle_by_enum_name(self: _EnumMemberT, proto: int) -> tuple[Callable[..., Any], tuple[type[_EnumMemberT], str]]: ...

@@ -928,7 +928,7 @@ class L:
 
 def last(seq: Linked[T]) -> T:
     pass
-last(L()) # E: Argument 1 to "last" has incompatible type "L"; expected "Linked[<nothing>]"
+last(L()) # E: Argument 1 to "last" has incompatible type "L"; expected "Linked[Never]"
 
 [case testMutuallyRecursiveProtocols]
 from typing import Protocol, Sequence, List
@@ -2182,7 +2182,7 @@ main:11: note: Following member(s) of "B" have conflicts:
 main:11: note:     Expected:
 main:11: note:         def [T] f(self, x: T) -> None
 main:11: note:     Got:
-main:11: note:         def [S <: int, T] f(self, x: S, y: T) -> None
+main:11: note:         def [S: int, T] f(self, x: S, y: T) -> None
 
 [case testProtocolIncompatibilityWithGenericRestricted]
 from typing import Protocol, TypeVar
@@ -2202,7 +2202,7 @@ main:11: note: Following member(s) of "B" have conflicts:
 main:11: note:     Expected:
 main:11: note:         def [T] f(self, x: T) -> None
 main:11: note:     Got:
-main:11: note:         def [S in (int, str), T] f(self, x: S, y: T) -> None
+main:11: note:         def [S: (int, str), T] f(self, x: S, y: T) -> None
 
 [case testProtocolIncompatibilityWithManyOverloads]
 from typing import Protocol, overload

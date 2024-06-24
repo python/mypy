@@ -124,10 +124,10 @@ z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unuse
 # flags: --enable-error-code ignore-without-code
 # type: ignore  # whole file ignore
 x
-y # type: ignore  # ignore the lack of error code since we're ignore the whole file
+y # type: ignore  # ignore the lack of error code since we ignore the whole file
 
 [case testErrorCodeMissingMultiple]
-# flags: --enable-error-code ignore-without-code --python-version 3.7
+# flags: --enable-error-code ignore-without-code
 from __future__ import annotations
 class A:
     attr: int
@@ -553,15 +553,15 @@ from typing import Callable
 
 def f() -> None: pass
 
-x = f()  # E: "f" does not return a value  [func-returns-value]
+x = f()  # E: "f" does not return a value (it only ever returns None)  [func-returns-value]
 
 class A:
     def g(self) -> None: pass
 
-y = A().g()  # E: "g" of "A" does not return a value  [func-returns-value]
+y = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
 
 c: Callable[[], None]
-z = c()  # E: Function does not return a value  [func-returns-value]
+z = c()  # E: Function does not return a value (it only ever returns None)  [func-returns-value]
 
 [case testErrorCodeInstantiateAbstract]
 from abc import abstractmethod
@@ -981,11 +981,13 @@ def f(d: D, s: str) -> None:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testRecommendErrorCode]
-# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax]
+# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax] \
+                          # N: Error code "syntax" not covered by "type: ignore" comment
 1 + "asdf"
 
 [case testRecommendErrorCode2]
-# type: ignore[whatever, other]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax]
+# type: ignore[whatever, other]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax] \
+                                 # N: Error code "syntax" not covered by "type: ignore" comment
 1 + "asdf"
 
 [case testShowErrorCodesInConfig]
@@ -1078,3 +1080,119 @@ A.f = h  # type: ignore[assignment]  # E: Unused "type: ignore" comment, use nar
 [case testUnusedIgnoreEnableCode]
 # flags: --enable-error-code=unused-ignore
 x = 1  # type: ignore  # E: Unused "type: ignore" comment  [unused-ignore]
+
+[case testErrorCodeUnsafeOverloadError]
+from typing import overload, Union
+
+@overload
+def unsafe_func(x: int) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types  [overload-overlap]
+@overload
+def unsafe_func(x: object) -> str: ...
+def unsafe_func(x: object) -> Union[int, str]:
+    if isinstance(x, int):
+        return 42
+    else:
+        return "some string"
+[builtins fixtures/isinstancelist.pyi]
+
+
+###
+# unimported-reveal
+###
+
+[case testUnimportedRevealType]
+# flags: --enable-error-code=unimported-reveal
+x = 1
+reveal_type(x)
+[out]
+main:3: error: Name "reveal_type" is not defined  [unimported-reveal]
+main:3: note: Did you forget to import it from "typing_extensions"? (Suggestion: "from typing_extensions import reveal_type")
+main:3: note: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypePy311]
+# flags: --enable-error-code=unimported-reveal --python-version=3.11
+x = 1
+reveal_type(x)
+[out]
+main:3: error: Name "reveal_type" is not defined  [unimported-reveal]
+main:3: note: Did you forget to import it from "typing"? (Suggestion: "from typing import reveal_type")
+main:3: note: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypeInUncheckedFunc]
+# flags: --enable-error-code=unimported-reveal
+def unchecked():
+    x = 1
+    reveal_type(x)
+[out]
+main:4: error: Name "reveal_type" is not defined  [unimported-reveal]
+main:4: note: Did you forget to import it from "typing_extensions"? (Suggestion: "from typing_extensions import reveal_type")
+main:4: note: Revealed type is "Any"
+main:4: note: 'reveal_type' always outputs 'Any' in unchecked functions
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypeImportedTypingExtensions]
+# flags: --enable-error-code=unimported-reveal
+from typing_extensions import reveal_type
+x = 1
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypeImportedTyping311]
+# flags: --enable-error-code=unimported-reveal --python-version=3.11
+from typing import reveal_type
+x = 1
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnimportedRevealLocals]
+# flags: --enable-error-code=unimported-reveal
+x = 1
+reveal_locals()
+[out]
+main:3: note: Revealed local types are:
+main:3: note:     x: builtins.int
+main:3: error: Name "reveal_locals" is not defined  [unimported-reveal]
+[builtins fixtures/isinstancelist.pyi]
+
+[case testCovariantMutableOverride]
+# flags: --enable-error-code=mutable-override
+from typing import Any
+
+class C:
+    x: float
+    y: float
+    z: float
+    w: Any
+    @property
+    def foo(self) -> float: ...
+    @property
+    def bar(self) -> float: ...
+    @bar.setter
+    def bar(self, val: float) -> None: ...
+    baz: float
+    bad1: float
+    bad2: float
+class D(C):
+    x: int  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    y: float
+    z: Any
+    w: float
+    foo: int
+    bar: int  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    def one(self) -> None:
+        self.baz = 5
+    bad1 = 5  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    def other(self) -> None:
+        self.bad2: int = 5  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+[builtins fixtures/property.pyi]
+
+[case testNarrowedTypeNotSubtype]
+from typing_extensions import TypeIs
+
+def f(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of input type "str"  [narrowed-type-not-subtype]
+    pass
+
+[builtins fixtures/tuple.pyi]

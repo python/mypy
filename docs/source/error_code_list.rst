@@ -537,7 +537,7 @@ Example:
 
 .. code-block:: python
 
-    from typing_extensions import TypedDict
+    from typing import TypedDict
 
     class Point(TypedDict):
         x: int
@@ -562,7 +562,7 @@ to have been validated at the point of construction. Example:
 
 .. code-block:: python
 
-    from typing_extensions import TypedDict
+    from typing import TypedDict
 
     class Point(TypedDict):
         x: int
@@ -741,7 +741,7 @@ returns ``None``:
    # OK: we don't do anything with the return value
    f()
 
-   # Error: "f" does not return a value  [func-returns-value]
+   # Error: "f" does not return a value (it only ever returns None)  [func-returns-value]
    if f():
         print("not false")
 
@@ -868,7 +868,7 @@ the return type affects which lines mypy thinks are reachable after a
 ``True`` may swallow exceptions. An imprecise return type can result
 in mysterious errors reported near ``with`` statements.
 
-To fix this, use either ``typing_extensions.Literal[False]`` or
+To fix this, use either ``typing.Literal[False]`` or
 ``None`` as the return type. Returning ``None`` is equivalent to
 returning ``False`` in this context, since both are treated as false
 values.
@@ -897,7 +897,7 @@ You can use ``Literal[False]`` to fix the error:
 
 .. code-block:: python
 
-   from typing_extensions import Literal
+   from typing import Literal
 
    class MyContext:
        ...
@@ -1114,6 +1114,41 @@ Warn about cases where a bytes object may be converted to a string in an unexpec
     print(f"The alphabet starts with {b!r}")  # The alphabet starts with b'abc'
     print(f"The alphabet starts with {b.decode('utf-8')}")  # The alphabet starts with abc
 
+.. _code-overload-overlap:
+
+Check that overloaded functions don't overlap [overload-overlap]
+----------------------------------------------------------------
+
+Warn if multiple ``@overload`` variants overlap in potentially unsafe ways.
+This guards against the following situation:
+
+.. code-block:: python
+
+    from typing import overload
+
+    class A: ...
+    class B(A): ...
+
+    @overload
+    def foo(x: B) -> int: ...  # Error: Overloaded function signatures 1 and 2 overlap with incompatible return types  [overload-overlap]
+    @overload
+    def foo(x: A) -> str: ...
+    def foo(x): ...
+
+    def takes_a(a: A) -> str:
+        return foo(a)
+
+    a: A = B()
+    value = takes_a(a)
+    # mypy will think that value is a str, but it could actually be an int
+    reveal_type(value) # Revealed type is "builtins.str"
+
+
+Note that in cases where you ignore this error, mypy will usually still infer the
+types you expect.
+
+See :ref:`overloading <function-overloading>` for more explanation.
+
 .. _code-annotation-unchecked:
 
 Notify about an annotation in an unchecked function [annotation-unchecked]
@@ -1135,6 +1170,29 @@ annotations in an unchecked function:
 
 Note that mypy will still exit with return code ``0``, since such behaviour is
 specified by :pep:`484`.
+
+.. _code-prop-decorator:
+
+Decorator preceding property not supported [prop-decorator]
+-----------------------------------------------------------
+
+Mypy does not yet support analysis of decorators that precede the property
+decorator. If the decorator does not preserve the declared type of the property,
+mypy will not infer the correct type for the declaration. If the decorator cannot
+be moved after the ``@property`` decorator, then you must use a type ignore
+comment:
+
+.. code-block:: python
+
+    class MyClass
+        @special  # type: ignore[prop-decorator]
+        @property
+        def magic(self) -> str:
+            return "xyzzy"
+
+.. note::
+
+    For backward compatibility, this error code is a subcode of the generic ``[misc]`` code.
 
 .. _code-syntax:
 

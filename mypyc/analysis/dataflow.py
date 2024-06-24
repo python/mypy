@@ -38,6 +38,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     RegisterOp,
     Return,
@@ -46,6 +47,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -71,11 +73,8 @@ class CFG:
         self.exits = exits
 
     def __str__(self) -> str:
-        lines = []
-        lines.append("exits: %s" % sorted(self.exits, key=lambda e: int(e.label)))
-        lines.append("succ: %s" % self.succ)
-        lines.append("pred: %s" % self.pred)
-        return "\n".join(lines)
+        exits = sorted(self.exits, key=lambda e: int(e.label))
+        return f"exits: {exits}\nsucc: {self.succ}\npred: {self.pred}"
 
 
 def get_cfg(blocks: list[BasicBlock]) -> CFG:
@@ -236,6 +235,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     def visit_call_c(self, op: CallC) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
     def visit_truncate(self, op: Truncate) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
@@ -270,6 +272,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
         return self.visit_register_op(op)
 
     def visit_keep_alive(self, op: KeepAlive) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_unborrow(self, op: Unborrow) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
 

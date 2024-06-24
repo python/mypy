@@ -3,7 +3,7 @@
 Type narrowing
 ==============
 
-This section is dedicated to  several type narrowing
+This section is dedicated to several type narrowing
 techniques which are supported by mypy.
 
 Type narrowing is when you convince a type checker that a broader type is actually more specific, for instance, that an object of type ``Shape`` is actually of the narrower type ``Square``.
@@ -14,10 +14,11 @@ Type narrowing expressions
 
 The simplest way to narrow a type is to use one of the supported expressions:
 
-- :py:func:`isinstance` like in ``isinstance(obj, float)`` will narrow ``obj`` to have ``float`` type
-- :py:func:`issubclass` like in ``issubclass(cls, MyClass)`` will narrow ``cls`` to be ``Type[MyClass]``
-- :py:class:`type` like in ``type(obj) is int`` will narrow ``obj`` to have ``int`` type
-- :py:func:`callable` like in ``callable(obj)`` will narrow object to callable type
+- :py:func:`isinstance` like in :code:`isinstance(obj, float)` will narrow ``obj`` to have ``float`` type
+- :py:func:`issubclass` like in :code:`issubclass(cls, MyClass)` will narrow ``cls`` to be ``Type[MyClass]``
+- :py:class:`type` like in :code:`type(obj) is int` will narrow ``obj`` to have ``int`` type
+- :py:func:`callable` like in :code:`callable(obj)` will narrow object to callable type
+- :code:`obj is not None` will narrow object to its :ref:`non-optional form <strict_optional>`
 
 Type narrowing is contextual. For example, based on the condition, mypy will narrow an expression only within an ``if`` branch:
 
@@ -82,6 +83,7 @@ We can also use ``assert`` to narrow types in the same context:
      assert isinstance(x, str)
      reveal_type(x)  # Revealed type is "builtins.int"
      print(x + '!')  # Typechecks with `mypy`, but fails in runtime.
+
 
 issubclass
 ~~~~~~~~~~
@@ -359,3 +361,33 @@ What happens here?
 .. note::
 
   The same will work with ``isinstance(x := a, float)`` as well.
+
+Limitations
+-----------
+
+Mypy's analysis is limited to individual symbols and it will not track
+relationships between symbols. For example, in the following code
+it's easy to deduce that if :code:`a` is None then :code:`b` must not be,
+therefore :code:`a or b` will always be a string, but Mypy will not be able to tell that:
+
+.. code-block:: python
+
+    def f(a: str | None, b: str | None) -> str:
+        if a is not None or b is not None:
+            return a or b  # Incompatible return value type (got "str | None", expected "str")
+        return 'spam'
+
+Tracking these sort of cross-variable conditions in a type checker would add significant complexity
+and performance overhead.
+
+You can use an ``assert`` to convince the type checker, override it with a :ref:`cast <casts>`
+or rewrite the function to be slightly more verbose:
+
+.. code-block:: python
+
+    def f(a: str | None, b: str | None) -> str:
+        if a is not None:
+            return a
+        elif b is not None:
+            return b
+        return 'spam'

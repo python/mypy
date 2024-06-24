@@ -1,8 +1,7 @@
 import sys
 from _typeshed import GenericPath, StrOrBytesPath
 from collections.abc import Callable, Iterable, Sequence
-from typing import Any, AnyStr, Generic
-from typing_extensions import Literal
+from typing import Any, AnyStr, Generic, Literal
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -53,6 +52,6 @@ class dircmp(Generic[AnyStr]):
     def phase4(self) -> None: ...
     def phase4_closure(self) -> None: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 def clear_cache() -> None: ...

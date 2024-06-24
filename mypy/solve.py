@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Sequence, Tuple
+from typing import Iterable, Sequence
 from typing_extensions import TypeAlias as _TypeAlias
 
-from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
+from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
 from mypy.expandtype import expand_type
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.join import join_types
@@ -43,6 +43,7 @@ def solve_constraints(
     constraints: list[Constraint],
     strict: bool = True,
     allow_polymorphic: bool = False,
+    skip_unsatisfied: bool = False,
 ) -> tuple[list[Type | None], list[TypeVarLikeType]]:
     """Solve type constraints.
 
@@ -54,6 +55,8 @@ def solve_constraints(
     If allow_polymorphic=True, then use the full algorithm that can potentially return
     free type variables in solutions (these require special care when applying). Otherwise,
     use a simplified algorithm that just solves each type variable individually if possible.
+
+    The skip_unsatisfied flag matches the same one in applytype.apply_generic_arguments().
     """
     vars = [tv.id for tv in original_vars]
     if not vars:
@@ -65,6 +68,10 @@ def solve_constraints(
     for c in constraints:
         extra_vars.extend([v.id for v in c.extra_tvars if v.id not in vars + extra_vars])
         originals.update({v.id: v for v in c.extra_tvars if v.id not in originals})
+
+    if allow_polymorphic:
+        # Constraints inferred from unions require special handling in polymorphic inference.
+        constraints = skip_reverse_union_constraints(constraints)
 
     # Collect a list of constraints for each type variable.
     cmap: dict[TypeVarId, list[Constraint]] = {tv: [] for tv in vars + extra_vars}
@@ -109,6 +116,13 @@ def solve_constraints(
             else:
                 candidate = AnyType(TypeOfAny.special_form)
             res.append(candidate)
+
+    if not free_vars and not skip_unsatisfied:
+        # Most of the validation for solutions is done in applytype.py, but here we can
+        # quickly test solutions w.r.t. to upper bounds, and use the latter (if possible),
+        # if solutions are actually not valid (due to poor inference context).
+        res = pre_validate_solutions(res, original_vars, constraints)
+
     return res, free_vars
 
 
@@ -144,6 +158,8 @@ def solve_with_dependent(
         if all(not lowers[tv] and not uppers[tv] for tv in scc):
             best_free = choose_free([originals[tv] for tv in scc], original_vars)
             if best_free:
+                # TODO: failing to choose may cause leaking type variables,
+                # we need to fail gracefully instead.
                 free_vars.append(best_free.id)
                 free_solutions[best_free.id] = best_free
 
@@ -237,6 +253,20 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
     top: Type | None = None
     candidate: Type | None = None
 
+    # Filter out previous results of failed inference, they will only spoil the current pass...
+    new_uppers = []
+    for u in uppers:
+        pu = get_proper_type(u)
+        if not isinstance(pu, UninhabitedType) or not pu.ambiguous:
+            new_uppers.append(u)
+    uppers = new_uppers
+
+    # ...unless this is the only information we have, then we just pass it on.
+    if not uppers and not lowers:
+        candidate = UninhabitedType()
+        candidate.ambiguous = True
+        return candidate
+
     # Process each bound separately, and calculate the lower and upper
     # bounds based on constraints. Note that we assume that the constraint
     # targets do not have constraint references.
@@ -300,8 +330,8 @@ def choose_free(
     common_upper_bound_p = get_proper_type(common_upper_bound)
     # We include None for when strict-optional is disabled.
     if isinstance(common_upper_bound_p, (UninhabitedType, NoneType)):
-        # This will cause to infer <nothing>, which is better than a free TypeVar
-        # that has an upper bound <nothing>.
+        # This will cause to infer Never, which is better than a free TypeVar
+        # that has an upper bound Never.
         return None
 
     values: list[Type] = []
@@ -323,17 +353,19 @@ def choose_free(
     best = sorted(scc, key=lambda x: (x.id not in original_vars, x.id.raw_id))[0]
     if isinstance(best, TypeVarType):
         return best.copy_modified(values=values, upper_bound=common_upper_bound)
-    if is_trivial_bound(common_upper_bound_p):
+    if is_trivial_bound(common_upper_bound_p, allow_tuple=True):
         # TODO: support more cases for ParamSpecs/TypeVarTuples
         return best
     return None
 
 
-def is_trivial_bound(tp: ProperType) -> bool:
+def is_trivial_bound(tp: ProperType, allow_tuple: bool = False) -> bool:
+    if isinstance(tp, Instance) and tp.type.fullname == "builtins.tuple":
+        return allow_tuple and is_trivial_bound(get_proper_type(tp.args[0]))
     return isinstance(tp, Instance) and tp.type.fullname == "builtins.object"
 
 
-def find_linear(c: Constraint) -> Tuple[bool, TypeVarId | None]:
+def find_linear(c: Constraint) -> tuple[bool, TypeVarId | None]:
     """Find out if this constraint represent a linear relationship, return target id if yes."""
     if isinstance(c.origin_type_var, TypeVarType):
         if isinstance(c.target, TypeVarType):
@@ -403,10 +435,7 @@ def transitive_closure(
                     uppers[l] |= uppers[upper]
             for lt in lowers[lower]:
                 for ut in uppers[upper]:
-                    # TODO: what if secondary constraints result in inference
-                    # against polymorphic actual (also in below branches)?
-                    remaining |= set(infer_constraints(lt, ut, SUBTYPE_OF))
-                    remaining |= set(infer_constraints(ut, lt, SUPERTYPE_OF))
+                    add_secondary_constraints(remaining, lt, ut)
         elif c.op == SUBTYPE_OF:
             if c.target in uppers[c.type_var]:
                 continue
@@ -414,8 +443,7 @@ def transitive_closure(
                 if (l, c.type_var) in graph:
                     uppers[l].add(c.target)
             for lt in lowers[c.type_var]:
-                remaining |= set(infer_constraints(lt, c.target, SUBTYPE_OF))
-                remaining |= set(infer_constraints(c.target, lt, SUPERTYPE_OF))
+                add_secondary_constraints(remaining, lt, c.target)
         else:
             assert c.op == SUPERTYPE_OF
             if c.target in lowers[c.type_var]:
@@ -424,9 +452,22 @@ def transitive_closure(
                 if (c.type_var, u) in graph:
                     lowers[u].add(c.target)
             for ut in uppers[c.type_var]:
-                remaining |= set(infer_constraints(ut, c.target, SUPERTYPE_OF))
-                remaining |= set(infer_constraints(c.target, ut, SUBTYPE_OF))
+                add_secondary_constraints(remaining, c.target, ut)
     return graph, lowers, uppers
+
+
+def add_secondary_constraints(cs: set[Constraint], lower: Type, upper: Type) -> None:
+    """Add secondary constraints inferred between lower and upper (in place)."""
+    if isinstance(get_proper_type(upper), UnionType) and isinstance(
+        get_proper_type(lower), UnionType
+    ):
+        # When both types are unions, this can lead to inferring spurious constraints,
+        # for example Union[T, int] <: S <: Union[T, int] may infer T <: int.
+        # To avoid this, just skip them for now.
+        return
+    # TODO: what if secondary constraints result in inference against polymorphic actual?
+    cs.update(set(infer_constraints(lower, upper, SUBTYPE_OF)))
+    cs.update(set(infer_constraints(upper, lower, SUPERTYPE_OF)))
 
 
 def compute_dependencies(
@@ -466,6 +507,63 @@ def check_linear(scc: set[TypeVarId], lowers: Bounds, uppers: Bounds) -> bool:
     return True
 
 
+def skip_reverse_union_constraints(cs: list[Constraint]) -> list[Constraint]:
+    """Avoid ambiguities for constraints inferred from unions during polymorphic inference.
+
+    Polymorphic inference implicitly relies on assumption that a reverse of a linear constraint
+    is a linear constraint. This is however not true in presence of union types, for example
+    T :> Union[S, int] vs S <: T. Trying to solve such constraints would be detected ambiguous
+    as (T, S) form a non-linear SCC. However, simply removing the linear part results in a valid
+    solution T = Union[S, int], S = <free>. A similar scenario is when we get T <: Union[T, int],
+    such constraints carry no information, and will equally confuse linearity check.
+
+    TODO: a cleaner solution may be to avoid inferring such constraints in first place, but
+    this would require passing around a flag through all infer_constraints() calls.
+    """
+    reverse_union_cs = set()
+    for c in cs:
+        p_target = get_proper_type(c.target)
+        if isinstance(p_target, UnionType):
+            for item in p_target.items:
+                if isinstance(item, TypeVarType):
+                    if item == c.origin_type_var and c.op == SUBTYPE_OF:
+                        reverse_union_cs.add(c)
+                        continue
+                    # These two forms are semantically identical, but are different from
+                    # the point of view of Constraint.__eq__().
+                    reverse_union_cs.add(Constraint(item, neg_op(c.op), c.origin_type_var))
+                    reverse_union_cs.add(Constraint(c.origin_type_var, c.op, item))
+    return [c for c in cs if c not in reverse_union_cs]
+
+
 def get_vars(target: Type, vars: list[TypeVarId]) -> set[TypeVarId]:
     """Find type variables for which we are solving in a target type."""
     return {tv.id for tv in get_all_type_vars(target)} & set(vars)
+
+
+def pre_validate_solutions(
+    solutions: list[Type | None],
+    original_vars: Sequence[TypeVarLikeType],
+    constraints: list[Constraint],
+) -> list[Type | None]:
+    """Check is each solution satisfies the upper bound of the corresponding type variable.
+
+    If it doesn't satisfy the bound, check if bound itself satisfies all constraints, and
+    if yes, use it instead as a fallback solution.
+    """
+    new_solutions: list[Type | None] = []
+    for t, s in zip(original_vars, solutions):
+        if s is not None and not is_subtype(s, t.upper_bound):
+            bound_satisfies_all = True
+            for c in constraints:
+                if c.op == SUBTYPE_OF and not is_subtype(t.upper_bound, c.target):
+                    bound_satisfies_all = False
+                    break
+                if c.op == SUPERTYPE_OF and not is_subtype(c.target, t.upper_bound):
+                    bound_satisfies_all = False
+                    break
+            if bound_satisfies_all:
+                new_solutions.append(t.upper_bound)
+                continue
+        new_solutions.append(s)
+    return new_solutions
