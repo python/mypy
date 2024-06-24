@@ -3383,23 +3383,25 @@ for factory in (
     var = factory()
 [builtins fixtures/tuple.pyi]
 
-[case testAyncContextManagerOverload]
-from contextlib import asynccontextmanager
-from typing import AsyncIterator, Iterator, Union, overload
+[case testAsyncIteratorOverload]
+from typing import AsyncIterator, Callable, Iterator, TypeVar, Union, overload
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+def deco(fn: Callable[[T], AsyncIterator[U]]) -> Callable[[T], U]:
+    ...
 
 @overload
-@asynccontextmanager
+@deco
 async def test_async(val: int) -> AsyncIterator[int]: ...
 
 @overload
-@asynccontextmanager
-async def test_async(val: str) -> AsyncIterator[str]: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+@deco
+async def test_async(val: str) -> AsyncIterator[str]: ...
 
-# NB: the error above is caused by naive `asynccontextmanager` definition in test stubs.
-
-@asynccontextmanager
+@deco
 async def test_async(val: Union[int, str]) -> AsyncIterator[Union[int, str]]:
     yield val
 
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-async.pyi]

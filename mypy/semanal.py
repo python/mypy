@@ -1285,14 +1285,17 @@ class SemanticAnalyzer(
         trivial body of an overload this produces incorrect results.
         """
         for fdef in defn.items:
+            assert isinstance(fdef, Decorator)
             if not fdef.func.is_async_generator:
                 # If it was *not* identified as an async generator, then we wrapped it
                 # with erroneous Coroutine before. Remove this wrapper and record that.
                 fdef.func.is_async_generator = True
                 fdef.func.is_generator = True
-                fdef.func.type = fdef.func.type.copy_modified(
-                    ret_type=fdef.func.type.ret_type.args[2]
-                )
+                if (ftype := fdef.func.type) is not None:
+                    assert isinstance(ftype, CallableType)
+                    ret_type = get_proper_type(ftype.ret_type)
+                    assert isinstance(ret_type, Instance)
+                    fdef.func.type = ftype.copy_modified(ret_type=ret_type.args[2])
 
     def analyze_overload_sigs_and_impl(
         self, defn: OverloadedFuncDef
