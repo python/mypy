@@ -7146,7 +7146,7 @@ T = TypeVar('T', bound=str)
 a.py:2: error: No overload variant of "f" matches argument type "int"
 a.py:2: note: Possible overload variants:
 a.py:2: note:     def f(x: C) -> None
-a.py:2: note:     def [c.T <: str] f(x: c.T) -> c.T
+a.py:2: note:     def [c.T: str] f(x: c.T) -> c.T
 
 [case testOverloadsGenericToNonGeneric]
 import a
@@ -10388,6 +10388,7 @@ from b import C, D
 A = C | D
 a: A
 reveal_type(a)
+[builtins fixtures/type.pyi]
 
 [file b.py]
 C = int

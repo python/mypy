@@ -501,7 +501,7 @@ class TypeVarId:
     # function type variables.
 
     # Metavariables are allocated unique ids starting from 1.
-    raw_id: int = 0
+    raw_id: int
 
     # Level of the variable in type inference. Currently either 0 for
     # declared types, or 1 for type inference metavariables.
@@ -544,6 +544,10 @@ class TypeVarId:
 
     def is_meta_var(self) -> bool:
         return self.meta_level > 0
+
+    def is_self(self) -> bool:
+        # This is a special value indicating typing.Self variable.
+        return self.raw_id == 0
 
 
 class TypeVarLikeType(ProperType):
@@ -2839,6 +2843,7 @@ class UnionType(ProperType):
         items: Sequence[Type],
         line: int = -1,
         column: int = -1,
+        *,
         is_evaluated: bool = True,
         uses_pep604_syntax: bool = False,
     ) -> None:
@@ -3112,8 +3117,7 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
 
 
 @overload
-def get_proper_types(types: list[Type] | tuple[Type, ...]) -> list[ProperType]:  # type: ignore[overload-overlap]
-    ...
+def get_proper_types(types: list[Type] | tuple[Type, ...]) -> list[ProperType]: ...
 
 
 @overload

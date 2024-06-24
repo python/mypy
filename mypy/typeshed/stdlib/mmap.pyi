@@ -1,7 +1,7 @@
 import sys
 from _typeshed import ReadableBuffer, Unused
 from collections.abc import Iterable, Iterator, Sized
-from typing import NoReturn, overload
+from typing import Final, NoReturn, overload
 from typing_extensions import Self
 
 ACCESS_DEFAULT: int
@@ -76,6 +76,8 @@ class mmap(Iterable[int], Sized):
     def __exit__(self, *args: Unused) -> None: ...
     def __buffer__(self, flags: int, /) -> memoryview: ...
     def __release_buffer__(self, buffer: memoryview, /) -> None: ...
+    if sys.version_info >= (3, 13):
+        def seekable(self) -> bool: ...
 
 if sys.platform != "win32":
     MADV_NORMAL: int
@@ -111,3 +113,9 @@ if sys.platform != "linux" and sys.platform != "darwin" and sys.platform != "win
 if sys.version_info >= (3, 10) and sys.platform == "darwin":
     MADV_FREE_REUSABLE: int
     MADV_FREE_REUSE: int
+
+if sys.version_info >= (3, 13) and sys.platform != "win32":
+    MAP_32BIT: Final = 32768
+
+if sys.version_info >= (3, 13) and sys.platform == "darwin":
+    MAP_TPRO: Final = 524288

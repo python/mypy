@@ -1185,8 +1185,16 @@ class ASTConverter:
                 explicit_type_params.append(TypeParam(p.name, TYPE_VAR_TUPLE_KIND, None, []))
             else:
                 if isinstance(p.bound, ast3.Tuple):
-                    conv = TypeConverter(self.errors, line=p.lineno)
-                    values = [conv.visit(t) for t in p.bound.elts]
+                    if len(p.bound.elts) < 2:
+                        self.fail(
+                            message_registry.TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES,
+                            p.lineno,
+                            p.col_offset,
+                            blocker=False,
+                        )
+                    else:
+                        conv = TypeConverter(self.errors, line=p.lineno)
+                        values = [conv.visit(t) for t in p.bound.elts]
                 elif p.bound is not None:
                     bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
                 explicit_type_params.append(TypeParam(p.name, TYPE_VAR_KIND, bound, values))
@@ -1783,7 +1791,13 @@ class ASTConverter:
         if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
             type_params = self.translate_type_params(n.type_params)
             value = self.visit(n.value)
-            node = TypeAliasStmt(self.visit_Name(n.name), type_params, value)
+            # Since the value is evaluated lazily, wrap the value inside a lambda.
+            # This helps mypyc.
+            ret = ReturnStmt(value)
+            self.set_line(ret, n.value)
+            value_func = LambdaExpr(body=Block([ret]))
+            self.set_line(value_func, n.value)
+            node = TypeAliasStmt(self.visit_Name(n.name), type_params, value_func)
             return self.set_line(node, n)
         else:
             self.fail(

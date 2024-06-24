@@ -454,11 +454,13 @@ A[int, str, int]() # E: Type application has too many types (2 expected)
 [out]
 
 [case testInvalidTypeApplicationType]
+import types
 a: A
 class A: pass
 a[A]()  # E: Value of type "A" is not indexable
 A[A]()  # E: The type "Type[A]" is not generic and not indexable
-[out]
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypeApplicationArgTypes]
 from typing import TypeVar, Generic
@@ -513,8 +515,9 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
+import types
 type[int] # this was crashing, see #2302 (comment)  # E: The type "Type[type]" is not generic and not indexable
-[out]
+[builtins fixtures/tuple.pyi]
 
 
 -- Generic type aliases
@@ -624,6 +627,7 @@ reveal_type(y)
 X = T # Error
 
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:9:5: error: "Node" expects 2 type arguments, but 1 given
 main:11:5: error: "Node" expects 2 type arguments, but 3 given
@@ -2927,8 +2931,8 @@ def mix(fs: List[Callable[[S], T]]) -> Callable[[S], List[T]]:
 def id(__x: U) -> U:
     ...
 fs = [id, id, id]
-reveal_type(mix(fs))  # N: Revealed type is "def [S] (S`7) -> builtins.list[S`7]"
-reveal_type(mix([id, id, id]))  # N: Revealed type is "def [S] (S`9) -> builtins.list[S`9]"
+reveal_type(mix(fs))  # N: Revealed type is "def [S] (S`11) -> builtins.list[S`11]"
+reveal_type(mix([id, id, id]))  # N: Revealed type is "def [S] (S`13) -> builtins.list[S`13]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCurry]
@@ -3099,13 +3103,13 @@ def dec4_bound(f: Callable[[I], List[T]]) -> Callable[[I], T]:
     ...
 
 reveal_type(dec1(lambda x: x))  # N: Revealed type is "def [T] (T`3) -> builtins.list[T`3]"
-reveal_type(dec2(lambda x: x))  # N: Revealed type is "def [S] (S`4) -> builtins.list[S`4]"
-reveal_type(dec3(lambda x: x[0]))  # N: Revealed type is "def [S] (S`6) -> S`6"
-reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`9) -> S`9"
+reveal_type(dec2(lambda x: x))  # N: Revealed type is "def [S] (S`5) -> builtins.list[S`5]"
+reveal_type(dec3(lambda x: x[0]))  # N: Revealed type is "def [S] (S`8) -> S`8"
+reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`12) -> S`12"
 reveal_type(dec1(lambda x: 1))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
 reveal_type(dec5(lambda x: x))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
-reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`16) -> builtins.list[S`16]"
-reveal_type(dec4(lambda x: x))  # N: Revealed type is "def [T] (builtins.list[T`19]) -> T`19"
+reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`20) -> builtins.list[S`20]"
+reveal_type(dec4(lambda x: x))  # N: Revealed type is "def [T] (builtins.list[T`24]) -> T`24"
 dec4_bound(lambda x: x)  # E: Value of type variable "I" of "dec4_bound" cannot be "List[T]"
 [builtins fixtures/list.pyi]
 
@@ -3185,7 +3189,7 @@ reveal_type(dec(id))  # N: Revealed type is "def [T] (T`3) -> T`3"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (T`6, x: T`6) -> T`6"
 reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`9, x: U`-1) -> Tuple[T`9, U`-1]"
 # This is counter-intuitive but looks correct, dec matches itself only if P can be empty
-reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`12, f: def () -> def (T`12) -> S`13) -> S`13"
+reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`13, f: def () -> def (T`13) -> S`14) -> S`14"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecVsParamSpec]
@@ -3383,7 +3387,7 @@ reveal_type(dec(id))  # N: Revealed type is "def [T] (T`3) -> T`3"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (T`6, T`6) -> T`6"
 reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`9, U`-1) -> Tuple[T`9, U`-1]"
 # This is counter-intuitive but looks correct, dec matches itself only if Ts is empty
-reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`12, def () -> def (T`12) -> S`13) -> S`13"
+reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`13, def () -> def (T`13) -> S`14) -> S`14"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericVariadicVsVariadic]
@@ -3442,3 +3446,104 @@ reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[b
 h: Callable[[Unpack[Us]], Foo[int]]
 reveal_type(dec(h))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[builtins.int]"
 [builtins fixtures/list.pyi]
+
+[case testTypeApplicationGenericConstructor]
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar("T")
+S = TypeVar("S")
+class C(Generic[T]):
+    def __init__(self, f: Callable[[S], T], x: S) -> None:
+        self.x = f(x)
+
+reveal_type(C[int])  # N: Revealed type is "def [S] (f: def (S`-1) -> builtins.int, x: S`-1) -> __main__.C[builtins.int]"
+Alias = C[int]
+C[int, str]  # E: Type application has too many types (1 expected)
+
+[case testHigherOrderGenericPartial]
+from typing import TypeVar, Callable
+
+T = TypeVar("T")
+S = TypeVar("S")
+U = TypeVar("U")
+def apply(f: Callable[[T], S], x: T) -> S: ...
+def id(x: U) -> U: ...
+
+A1 = TypeVar("A1")
+A2 = TypeVar("A2")
+R = TypeVar("R")
+def fake_partial(fun: Callable[[A1, A2], R], arg: A1) -> Callable[[A2], R]: ...
+
+f_pid = fake_partial(apply, id)
+reveal_type(f_pid)  # N: Revealed type is "def [A2] (A2`2) -> A2`2"
+reveal_type(f_pid(1))  # N: Revealed type is "builtins.int"
+
+[case testInvalidTypeVarParametersConcrete]
+from typing import Callable, Generic, ParamSpec, Protocol, TypeVar, overload
+
+P = ParamSpec('P')
+P2 = ParamSpec('P2')
+R = TypeVar('R')
+R2 = TypeVar('R2')
+
+class C(Generic[P, R, P2, R2]): ...
+
+class Proto(Protocol[P, R]):
+    @overload
+    def __call__(self, f: Callable[P2, R2]) -> C[P2, R2, ..., R]: ...
+    @overload
+    def __call__(self, **kwargs) -> C[P, R, ..., [int, str]]: ...  # E: Cannot use "[int, str]" for regular type variable, only for ParamSpec
+[builtins fixtures/tuple.pyi]
+
+[case testInvalidTypeVarParametersArbitrary]
+from typing import Callable, Generic, ParamSpec, Protocol, TypeVar, overload
+
+P = ParamSpec('P')
+P2 = ParamSpec('P2')
+R = TypeVar('R')
+R2 = TypeVar('R2')
+
+class C(Generic[P, R, P2, R2]): ...
+
+class Proto(Protocol[P, R]):
+    @overload
+    def __call__(self, f: Callable[P2, R2]) -> C[P2, R2, ..., R]: ...
+    @overload
+    def __call__(self, **kwargs) -> C[P, R, ..., ...]: ...  # E: Cannot use "[VarArg(Any), KwArg(Any)]" for regular type variable, only for ParamSpec
+[builtins fixtures/tuple.pyi]
+
+[case testGenericOverloadOverlapUnion]
+from typing import TypeVar, overload, Union, Generic
+
+K = TypeVar("K")
+V = TypeVar("V")
+T = TypeVar("T")
+
+class C(Generic[K, V]):
+    @overload
+    def pop(self, key: K) -> V: ...
+    @overload
+    def pop(self, key: K, default: Union[V, T] = ...) -> Union[V, T]: ...
+    def pop(self, key: K, default: Union[V, T] = ...) -> Union[V, T]:
+        ...
+
+[case testOverloadedGenericInit]
+from typing import TypeVar, overload, Union, Generic
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Int(Generic[T]): ...
+class Str(Generic[T]): ...
+
+class C(Generic[T]):
+    @overload
+    def __init__(self: C[Int[S]], x: int, y: S) -> None: ...
+    @overload
+    def __init__(self: C[Str[S]], x: str, y: S) -> None: ...
+    def __init__(self, x, y) -> None: ...
+
+def foo(x: T):
+    reveal_type(C)  # N: Revealed type is "Overload(def [T, S] (x: builtins.int, y: S`-1) -> __main__.C[__main__.Int[S`-1]], def [T, S] (x: builtins.str, y: S`-1) -> __main__.C[__main__.Str[S`-1]])"
+    reveal_type(C(0, x))  # N: Revealed type is "__main__.C[__main__.Int[T`-1]]"
+    reveal_type(C("yes", x))  # N: Revealed type is "__main__.C[__main__.Str[T`-1]]"

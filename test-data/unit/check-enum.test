@@ -1068,7 +1068,7 @@ _empty: Final = Empty.token
 def func(x: Union[int, None, Empty] = _empty) -> int:
     boom = x + 42       # E: Unsupported left operand type for + ("None") \
                         # E: Unsupported left operand type for + ("Empty") \
-                        # N: Left operand is of type "Union[int, None, Empty]"
+                        # N: Left operand is of type "Union[int, Empty, None]"
     if x is _empty:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0
@@ -1114,7 +1114,7 @@ _empty = Empty.token
 def func(x: Union[int, None, Empty] = _empty) -> int:
     boom = x + 42       # E: Unsupported left operand type for + ("None") \
                         # E: Unsupported left operand type for + ("Empty") \
-                        # N: Left operand is of type "Union[int, None, Empty]"
+                        # N: Left operand is of type "Union[int, Empty, None]"
     if x is _empty:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0
@@ -1142,7 +1142,7 @@ _empty = Empty.token
 def func(x: Union[int, None, Empty] = _empty) -> int:
     boom = x + 42       # E: Unsupported left operand type for + ("None") \
                         # E: Unsupported left operand type for + ("Empty") \
-                        # N: Left operand is of type "Union[int, None, Empty]"
+                        # N: Left operand is of type "Union[int, Empty, None]"
     if x is _empty:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0
@@ -2202,4 +2202,51 @@ elif e == MyEnum.B:
     reveal_type(e)  # N: Revealed type is "Literal[__main__.MyEnum.B]"
 else:
     reveal_type(e)  # E: Statement is unreachable
+[builtins fixtures/dict.pyi]
+
+
+[case testEnumNonMemberSupport]
+# flags: --python-version 3.11
+# This was added in 3.11
+from enum import Enum, nonmember
+
+class My(Enum):
+    a = 1
+    b = 2
+    c = nonmember(3)
+
+reveal_type(My.a)  # N: Revealed type is "Literal[__main__.My.a]?"
+reveal_type(My.b)  # N: Revealed type is "Literal[__main__.My.b]?"
+reveal_type(My.c)  # N: Revealed type is "builtins.int"
+
+def accepts_my(my: My):
+    reveal_type(my.value)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+
+class Other(Enum):
+    a = 1
+    @nonmember
+    class Support:
+        b = 2
+
+reveal_type(Other.a)  # N: Revealed type is "Literal[__main__.Other.a]?"
+reveal_type(Other.Support.b)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+
+
+[case testEnumMemberSupport]
+# flags: --python-version 3.11
+# This was added in 3.11
+from enum import Enum, member
+
+class A(Enum):
+    x = member(1)
+    y = 2
+
+reveal_type(A.x)  # N: Revealed type is "Literal[__main__.A.x]?"
+reveal_type(A.x.value)  # N: Revealed type is "Literal[1]?"
+reveal_type(A.y)  # N: Revealed type is "Literal[__main__.A.y]?"
+reveal_type(A.y.value)  # N: Revealed type is "Literal[2]?"
+
+def some_a(a: A):
+    reveal_type(a.value)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
 [builtins fixtures/dict.pyi]

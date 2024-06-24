@@ -178,7 +178,7 @@ function_op(
 )
 
 # obj1[obj2]
-method_op(
+py_get_item_op = method_op(
     name="__getitem__",
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,

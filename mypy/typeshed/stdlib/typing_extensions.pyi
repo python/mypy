@@ -419,6 +419,8 @@ if sys.version_info >= (3, 13):
     from typing import (
         NoDefault as NoDefault,
         ParamSpec as ParamSpec,
+        ReadOnly as ReadOnly,
+        TypeIs as TypeIs,
         TypeVar as TypeVar,
         TypeVarTuple as TypeVarTuple,
         get_protocol_members as get_protocol_members,
@@ -520,11 +522,11 @@ else:
         def has_default(self) -> bool: ...
         def __typing_prepare_subst__(self, alias: Any, args: Any) -> tuple[Any, ...]: ...
 
+    ReadOnly: _SpecialForm
+    TypeIs: _SpecialForm
+
 class Doc:
     documentation: str
     def __init__(self, documentation: str, /) -> None: ...
     def __hash__(self) -> int: ...
     def __eq__(self, other: object) -> bool: ...
-
-ReadOnly: _SpecialForm
-TypeIs: _SpecialForm

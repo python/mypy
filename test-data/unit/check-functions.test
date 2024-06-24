@@ -40,11 +40,10 @@ class B(A):
 class C(A):
     def f(self, *, b: int, a: str) -> None: pass  # Fail
 [out]
-main:10: error: Signature of "f" incompatible with supertype "A"
-main:10: note:      Superclass:
-main:10: note:          def f(self, *, a: int, b: str) -> None
-main:10: note:      Subclass:
-main:10: note:          def f(self, *, b: int, a: str) -> None
+main:10: error: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str"
+main:10: note: This violates the Liskov substitution principle
+main:10: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+main:10: error: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int"
 
 [case testPositionalOverridingArgumentNameInsensitivity]
 import typing
@@ -1780,10 +1779,10 @@ def Arg(x, y): pass
 F = Callable[[Arg(int, 'x')], int]  # E: Invalid argument constructor "__main__.Arg"
 
 [case testCallableParsingFromExpr]
-
 from typing import Callable, List
 from mypy_extensions import Arg, VarArg, KwArg
 import mypy_extensions
+import types  # Needed for type checking
 
 def WrongArg(x, y): return y
 # Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
@@ -1800,11 +1799,10 @@ L = Callable[[Arg(name='x', type=int)], int] # ok
 # I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
 # M = Callable[[Arg(gnome='x', type=int)], int]   E: Invalid type alias: expression is not a valid type   E: Unexpected keyword argument "gnome" for "Arg"
 N = Callable[[Arg(name=None, type=int)], int] # ok
-O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias: expression is not a valid type  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type "Type[List[Any]]" is not generic and not indexable
+O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias: expression is not a valid type  # E: Value of type "int" is not indexable  # E: Type expected within [...]
 P = Callable[[mypy_extensions.VarArg(int)], int] # ok
 Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias: expression is not a valid type  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "type"
 R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias: expression is not a valid type  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "name"
-
 [builtins fixtures/dict.pyi]
 
 [case testCallableParsing]
@@ -3302,3 +3300,85 @@ class C:  # Note: Generic[T] missing
 
     def nope(self, x: T) -> None:
         self.x = x  # E: Incompatible types in assignment (expression has type "T@nope", variable has type "T@bad_idea")
+
+[case testNoCrashOnBadCallablePropertyOverride]
+from typing import Callable, Union
+
+class C: ...
+class D: ...
+
+A = Callable[[C], None]
+B = Callable[[D], None]
+
+class Foo:
+    @property
+    def method(self) -> Callable[[int, Union[A, B]], None]:
+        ...
+
+class Bar(Foo):
+    @property
+    def method(self) -> Callable[[int, A], None]:  # E: Argument 2 of "method" is incompatible with supertype "Foo"; supertype defines the argument type as "Union[Callable[[C], None], Callable[[D], None]]" \
+                                                   # N: This violates the Liskov substitution principle \
+                                                   # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+        ...
+[builtins fixtures/property.pyi]
+
+[case testNoCrashOnUnpackOverride]
+from typing import Unpack
+from typing_extensions import TypedDict
+
+class Params(TypedDict):
+    x: int
+    y: str
+
+class Other(TypedDict):
+    x: int
+    y: int
+
+class B:
+    def meth(self, **kwargs: Unpack[Params]) -> None:
+        ...
+class C(B):
+    def meth(self, **kwargs: Unpack[Other]) -> None:  # E: Signature of "meth" incompatible with supertype "B" \
+                                                      # N:      Superclass: \
+                                                      # N:          def meth(*, x: int, y: str) -> None \
+                                                      # N:      Subclass: \
+                                                      # N:          def meth(*, x: int, y: int) -> None
+
+        ...
+[builtins fixtures/tuple.pyi]
+
+[case testOverrideErrorLocationNamed]
+class B:
+    def meth(
+        self, *,
+        x: int,
+        y: str,
+    ) -> None:
+        ...
+class C(B):
+    def meth(
+        self, *,
+        y: int,  # E: Argument 1 of "meth" is incompatible with supertype "B"; supertype defines the argument type as "str" \
+                 # N: This violates the Liskov substitution principle \
+                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+        x: int,
+    ) -> None:
+        ...
+[builtins fixtures/tuple.pyi]
+
+[case testLambdaAlwaysAllowed]
+# flags: --disallow-untyped-calls
+from typing import Callable, Optional
+
+def func() -> Optional[str]: ...
+var: Optional[str]
+
+factory: Callable[[], Optional[str]]
+for factory in (
+    lambda: var,
+    func,
+):
+    reveal_type(factory)  # N: Revealed type is "def () -> Union[builtins.str, None]"
+    var = factory()
+[builtins fixtures/tuple.pyi]
