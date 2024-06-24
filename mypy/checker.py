@@ -1939,11 +1939,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         context: Context | None = None,
     ) -> None:
         plugin_generated = False
-        if (
-            defn.info
-            and (node := defn.info.get(defn.name))
-            and node.plugin_generated
-        ):
+        if defn.info and (node := defn.info.get(defn.name)) and node.plugin_generated:
             # Do not report issues for plugin generated nodes,
             # they can't realistically use `@override` for their methods.
             plugin_generated = True
