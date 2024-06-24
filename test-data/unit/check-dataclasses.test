@@ -2475,3 +2475,17 @@ class Base:
 class Child(Base):
     y: int
 [builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassInheritanceWorksWithExplicitOverridesAndOrdering]
+# flags: --enable-error-code explicit-override
+from dataclasses import dataclass
+
+@dataclass(order=True)
+class Base:
+    x: int
+
+@dataclass(order=True)
+class Child(Base):
+    y: int
+[builtins fixtures/dataclasses.pyi]
