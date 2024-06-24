@@ -3405,3 +3405,26 @@ async def test_async(val: Union[int, str]) -> AsyncIterator[Union[int, str]]:
     yield val
 
 [typing fixtures/typing-async.pyi]
+
+[case testAsyncIteratorOverloadMixedAsync]
+from typing import AsyncIterator, Callable, Iterator, TypeVar, Union, overload
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+def deco(fn: Callable[[T], AsyncIterator[U]]) -> Callable[[T], U]:
+    ...
+
+@overload
+@deco
+def test_async(val: int) -> AsyncIterator[int]: ...
+
+@overload
+@deco
+def test_async(val: str) -> AsyncIterator[str]: ...
+
+@deco
+async def test_async(val: Union[int, str]) -> AsyncIterator[Union[int, str]]:
+    yield val
+
+[typing fixtures/typing-async.pyi]

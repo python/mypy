@@ -1286,7 +1286,7 @@ class SemanticAnalyzer(
         """
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
-            if not fdef.func.is_async_generator:
+            if not fdef.func.is_async_generator and fdef.func.is_coroutine:
                 # If it was *not* identified as an async generator, then we wrapped it
                 # with erroneous Coroutine before. Remove this wrapper and record that.
                 fdef.func.is_async_generator = True
