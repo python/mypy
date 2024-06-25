@@ -3067,6 +3067,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )
 
     def split_into_literals(self, typ: Instance) -> UnionType:
+        """Represent a finite type as a union of literals.
+
+        When trying overloads, enum and bool can fail to match to union of overloads.
+        Convert them to union representation to try harder.
+        """
+
         if typ.type.fullname == "builtins.bool":
             return UnionType.make_union(
                 [
@@ -3076,7 +3082,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
         if typ.type.is_enum:
             return UnionType.make_union([LiteralType(name, typ) for name in typ.get_enum_values()])
-        raise NotImplementedError
+        raise NotImplementedError("Only bool and enum types can be split into union.")
 
     @contextmanager
     def type_overrides_set(
