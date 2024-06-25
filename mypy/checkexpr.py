@@ -3062,7 +3062,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             isinstance(typ, UnionType)
             and len(typ.relevant_items()) > 1
             or isinstance(typ, Instance)
-            and typ.type is not None
             and (typ.type.is_enum or typ.type.fullname == "builtins.bool")
         )
 
@@ -3074,14 +3073,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
 
         if typ.type.fullname == "builtins.bool":
-            return UnionType.make_union(
+            union = UnionType.make_union(
                 [
                     LiteralType(True, self.chk.named_type("builtins.bool")),
                     LiteralType(False, self.chk.named_type("builtins.bool")),
                 ]
             )
+            assert isinstance(union, UnionType)
+            return union
         if typ.type.is_enum:
-            return UnionType.make_union([LiteralType(name, typ) for name in typ.get_enum_values()])
+            union = UnionType.make_union(
+                [LiteralType(name, typ) for name in typ.get_enum_values()]
+            )
+            assert isinstance(union, UnionType)
+            return union
         raise NotImplementedError("Only bool and enum types can be split into union.")
 
     @contextmanager
