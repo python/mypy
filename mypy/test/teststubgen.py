@@ -1357,6 +1357,17 @@ class IsValidTypeSuite(unittest.TestCase):
         assert is_valid_type("List[int]")
         assert is_valid_type("Dict[str, int]")
         assert is_valid_type("None")
+        assert is_valid_type("Literal[26]")
+        assert is_valid_type("Literal[0x1A]")
+        assert is_valid_type('Literal["hello world"]')
+        assert is_valid_type('Literal[b"hello world"]')
+        assert is_valid_type('Literal[u"hello world"]')
+        assert is_valid_type("Literal[True]")
+        assert is_valid_type("Literal[Color.RED]")
+        assert is_valid_type("Literal[None]")
+        assert is_valid_type(
+            'Literal[26, 0x1A, "hello world", b"hello world", u"hello world", True, Color.RED, None]'
+        )
         assert not is_valid_type("foo-bar")
         assert not is_valid_type("x->y")
         assert not is_valid_type("True")
