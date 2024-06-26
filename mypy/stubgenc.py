@@ -309,7 +309,7 @@ class InspectionStubGenerator(BaseStubGenerator):
             if defaults and i >= len(args) - len(defaults):
                 default_value = defaults[i - (len(args) - len(defaults))]
                 if arg in annotations:
-                    argtype = annotations[arg]
+                    argtype = get_annotation(arg)
                 else:
                     argtype = self.get_type_annotation(default_value)
                     if argtype == "None":
@@ -738,7 +738,9 @@ class InspectionStubGenerator(BaseStubGenerator):
         typename = getattr(typ, "__qualname__", typ.__name__)
         module_name = self.get_obj_module(typ)
         assert module_name is not None, typ
-        if module_name != "builtins":
+        if module_name == "typing" and typename == "Optional":
+            typename = str(typ)
+        elif module_name != "builtins":
             typename = f"{module_name}.{typename}"
         return typename
 
@@ -835,7 +837,14 @@ class InspectionStubGenerator(BaseStubGenerator):
             bases_str = "(%s)" % ", ".join(bases)
         else:
             bases_str = ""
-        if types or static_properties or rw_properties or methods or ro_properties:
+        if (
+            types
+            or static_properties
+            or rw_properties
+            or methods
+            or ro_properties
+            or class_info.docstring
+        ):
             output.append(f"{self._indent}class {class_name}{bases_str}:")
             for line in types:
                 if (
@@ -846,6 +855,10 @@ class InspectionStubGenerator(BaseStubGenerator):
                 ):
                     output.append("")
                 output.append(line)
+            if class_info.docstring:
+                self.indent()
+                output.append(f'{self._indent}"""{class_info.docstring}"""')
+                self.dedent()
             for line in static_properties:
                 output.append(line)
             for line in rw_properties:
