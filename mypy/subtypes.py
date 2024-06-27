@@ -1602,6 +1602,8 @@ def are_parameters_compatible(
     if are_trivial_parameters(right) and not is_proper_subtype:
         return True
     trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
+    # erased typevartuples, like erased paramspecs or erased typevars are trivial
+    trivial_varargs = right_star and isinstance(right_star.typ, UnpackType) and isinstance(right_star.typ.type, TupleType) and right_star.typ.type.erased_typevartuple
 
     if (
         right.arg_kinds == [ARG_STAR]
@@ -1644,7 +1646,7 @@ def are_parameters_compatible(
         if right_arg is None:
             return False
         if left_arg is None:
-            return not allow_partial_overlap and not trivial_suffix
+            return not allow_partial_overlap and not trivial_suffix and not trivial_varargs
         return not is_compat(right_arg.typ, left_arg.typ)
 
     if _incompatible(left_star, right_star) or _incompatible(left_star2, right_star2):
@@ -1673,7 +1675,7 @@ def are_parameters_compatible(
     #           arguments. Get all further positional args of left, and make sure
     #           they're more general than the corresponding member in right.
     # TODO: are we handling UnpackType correctly here?
-    if right_star is not None and not trivial_suffix:
+    if right_star is not None and not trivial_suffix and not trivial_varargs:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)
         assert right_by_position is not None
