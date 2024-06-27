@@ -1092,13 +1092,19 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
                             # for now, simplify the problem: if `other` isn't at the end,
                             # or kw-only, give up
-                            if other.pos is not None and other.pos + 1 != cactual.max_possible_positional_args():
+                            if (
+                                other.pos is not None
+                                and other.pos + 1 != cactual.max_possible_positional_args()
+                            ):
                                 continue
 
                             cactual = cactual.copy_modified(
                                 cactual.arg_types,
-                                [k if i != other.pos else ArgKind.ARG_NAMED for (i,k) in enumerate(cactual.arg_kinds)],
-                                cactual.arg_names
+                                [
+                                    k if i != other.pos else ArgKind.ARG_NAMED
+                                    for (i, k) in enumerate(cactual.arg_kinds)
+                                ],
+                                cactual.arg_names,
                             )
                             res.extend(infer_constraints(arg.typ, other.typ, self.direction))
 
@@ -1452,7 +1458,9 @@ def repack_callable_args(callable: CallableType, tuple_type: TypeInfo) -> list[T
     in e.g. a TupleType).
     """
     if ARG_STAR not in callable.arg_kinds:
-        return [t for (t,k) in zip(callable.arg_types, callable.arg_kinds) if k != ArgKind.ARG_NAMED]
+        return [
+            t for (t, k) in zip(callable.arg_types, callable.arg_kinds) if k != ArgKind.ARG_NAMED
+        ]
     star_index = callable.arg_kinds.index(ARG_STAR)
     arg_types = callable.arg_types[:star_index]
     star_type = callable.arg_types[star_index]

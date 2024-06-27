@@ -1603,7 +1603,14 @@ def are_parameters_compatible(
         return True
     trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
     # erased typevartuples, like erased paramspecs or erased typevars are trivial
-    trivial_varargs = right_star and isinstance(right_star.typ, UnpackType) and isinstance(right_star.typ.type, TupleType) and right_star.typ.type.erased_typevartuple
+    if right_star and isinstance(right_star.typ, UnpackType):
+        right_star_inner_type = get_proper_type(right_star.typ.type)
+        trivial_varargs = (
+            isinstance(right_star_inner_type, TupleType)
+            and right_star_inner_type.erased_typevartuple
+        )
+    else:
+        trivial_varargs = False
 
     if (
         right.arg_kinds == [ARG_STAR]

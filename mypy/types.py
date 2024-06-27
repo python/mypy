@@ -2424,7 +2424,11 @@ class TupleType(ProperType):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TupleType):
             return NotImplemented
-        return self.items == other.items and self.partial_fallback == other.partial_fallback and self.erased_typevartuple == other.erased_typevartuple
+        return (
+            self.items == other.items
+            and self.partial_fallback == other.partial_fallback
+            and self.erased_typevartuple == other.erased_typevartuple
+        )
 
     def serialize(self) -> JsonDict:
         return {
@@ -2505,7 +2509,9 @@ class TupleType(ProperType):
                 return None
         else:
             slice_items = self.items[begin:end:stride]
-        return TupleType(slice_items, fallback, self.line, self.column, self.implicit, self.erased_typevartuple)
+        return TupleType(
+            slice_items, fallback, self.line, self.column, self.implicit, self.erased_typevartuple
+        )
 
 
 class TypedDictType(ProperType):

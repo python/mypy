@@ -213,7 +213,7 @@ class TypeVarEraser(TypeTranslator):
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         if self.erase_id(t.id):
             # TODO: should t.tuple_fallback become a TupleType?
-            return TupleType([], t.tuple_fallback,  erased_typevartuple=True)
+            return TupleType([], t.tuple_fallback, erased_typevartuple=True)
         return t
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
