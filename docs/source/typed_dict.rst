@@ -216,18 +216,17 @@ Now ``BookBasedMovie`` has keys ``name``, ``year`` and ``based_on``.
 Mixing required and non-required items
 --------------------------------------
 
-In addition to allowing reuse across ``TypedDict`` types, inheritance also allows
-you to mix required and non-required (using ``total=False``) items
-in a single ``TypedDict``. Example:
+Special type qualifiers ``Required[T]`` and ``NotRequired[T]`` can be used to
+specify required and non-required keys of a ``TypedDict``.
 
 .. code-block:: python
 
-   class MovieBase(TypedDict):
+   from typing_extensions import NotRequired
+
+   class Movie(TypedDict):
        name: str
        year: int
-
-   class Movie(MovieBase, total=False):
-       based_on: str
+       based_on: NotRequired[str]
 
 Now ``Movie`` has required keys ``name`` and ``year``, while ``based_on``
 can be left out when constructing an object. A ``TypedDict`` with a mix of required
@@ -235,6 +234,68 @@ and non-required keys, such as ``Movie`` above, will only be compatible with
 another ``TypedDict`` if all required keys in the other ``TypedDict`` are required keys in the
 first ``TypedDict``, and all non-required keys of the other ``TypedDict`` are also non-required keys
 in the first ``TypedDict``.
+
+Depending on the totality of the ``TypedDict`` either ``Required`` or
+``NotRequired`` can be explicitly used on some of the keys. For instance, the
+``Movie`` type from the example above could be also defined as:
+
+.. code-block:: python
+
+   from typing_extensions import Required
+
+   class Movie(TypedDict, total=False):
+       name: Required[str]
+       year: Required[int]
+       based_on: str
+
+and the two definitions would be equivalent.
+
+As a rule of thumb, if more keys of a particular ``TypedDict`` are required
+than not, construct the new type with the ``total`` parameter set to ``True``
+and qualify the non required keys using ``NotRequired``. Otherwise, construct
+the new type with the ``total`` parameter set to ``False`` and qualify the
+required keys with ``Required``.
+
+Using ``Required`` with a total ``TypedDict`` and using ``NotRequired`` with a
+partial ``TypedDict`` is redundant. However, it is allowed and can be used to
+qualify the required and not required keys explicitly.
+
+If a particular key can accept ``None``, it is recommended to avoid mixing
+``Optional`` with either ``Required`` or ``NotRequired`` and use the
+``TYPE|None`` notation instead:
+
+.. code-block:: python
+
+   # Preferred approach.
+   class Car(TypedDict):
+       model: str
+       owner: NotRequired[str | None]
+
+   # Not recommended.
+   class Car(TypedDict):
+       model: str
+       owner: NotRequired[Optional[str]]
+
+The ``Required`` and ``NotRequired`` type qualifiers are supported since
+Python 3.11. For earlier versions of Python, both ``TypedDict`` and
+``Required`` and ``NotRequired`` type qualifiers have to be imported from the
+``typing_extensions``.
+
+Mixing required and not required items in a single ``TypedDict`` can also be
+achieved with inheritance, by using a mix of total and partial typed
+dictionaries:
+
+.. code-block:: python
+
+   class MovieBase(TypedDict):
+       name: str
+       year: int
+   
+   class Movie(MovieBase, total=False):
+       based_on: str
+
+A ``Movie`` type defined like this would be equivalent to the other ``Movie``
+types defined in this section.
 
 Unions of TypedDicts
 --------------------
@@ -248,3 +309,32 @@ section of the docs has a full description with an example, but in short, you wi
 need to give each TypedDict the same key where each value has a unique
 :ref:`Literal type <literal_types>`. Then, check that key to distinguish
 between your TypedDicts.
+
+Typing function's ``**kwargs``
+------------------------------
+
+``TypedDict`` can be used along with ``Unpack`` to precisely type annotate the
+``**kwargs`` in a function signature:
+
+.. code-block:: python
+
+   from typing_extensions import Unpack
+
+   class Options(TypedDict):
+       timeout: int
+       on_error: Callable[[int], None]
+      
+   def handle_error(code: int) -> None: ...
+   
+   # This function expects a keyword argument `timeout` of type `int` and a
+   # keyword argument `on_error` that is a `Callable[[int], None]`
+   def call(**options: Unpack[Options]): ...
+
+   call(timeout=5, on_error=handle_error)
+
+That way, both keyword names and their types are checked during static type
+analysis.
+
+Note that ``Unpack`` has to be used, as annotating ``**kwargs`` directly with a
+certain type means, that the function expects all of its keyword arguments
+captured by ``**kwargs`` to be of that type.

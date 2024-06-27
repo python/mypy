@@ -88,7 +88,7 @@ Functions
 
 .. code-block:: python
 
-   from typing import Callable, Iterator, Union, Optional
+   from typing import Callable, Iterator, Union, Unpack, Optional, TypedDict
 
    # This is how you annotate a function definition
    def stringify(num: int) -> str:
@@ -146,6 +146,19 @@ Functions
        reveal_type(kwargs)  # Revealed type is "dict[str, str]"
        request = make_request(*args, **kwargs)
        return self.do_api_query(request)
+    
+    # For more precise keyword typing, you can use `Unpack` along with a
+    # `TypedDict`
+    class Options(TypedDict):
+        timeout: int
+        on_error: Callable[[int], None]
+    
+    # This function expects a keyword argument `timeout` of type `int` and a
+    # keyword argument `on_error` that is a `Callable[[int], None]`
+    def call(**options: Unpack[Options]) -> str:
+        reveal_type(options)  # Revealed type is "Options"
+        request = create_request(options['timeout'], options['on_error'])
+        return self.do_api_query(request)
 
 Classes
 *******
