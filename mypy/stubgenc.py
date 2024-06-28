@@ -307,10 +307,13 @@ class InspectionStubGenerator(BaseStubGenerator):
         arglist: list[ArgSig] = []
 
         # Add the arguments to the signature
-        def add_args(args, get_default_value: Callable[[int, str], object | None]):
+        def add_args(
+            args: list[str], get_default_value: Callable[[int, str], object | None]
+        ) -> None:
             for i, arg in enumerate(args):
                 # Check if the argument has a default value
-                if default_value := get_default_value(i, arg):
+                default_value = get_default_value(i, arg)
+                if default_value is not None:
                     if arg in annotations:
                         argtype = annotations[arg]
                     else:
@@ -325,7 +328,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                 else:
                     arglist.append(ArgSig(arg, get_annotation(arg), default=False))
 
-        def get_pos_default(i: int, _arg: str) -> object | None:
+        def get_pos_default(i: int, _arg: str) -> Any | None:
             if defaults and i >= len(args) - len(defaults):
                 return defaults[i - (len(args) - len(defaults))]
             else:
@@ -340,7 +343,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         elif kwonlyargs:
             arglist.append(ArgSig("*"))
 
-        def get_kw_default(_i: int, arg: str) -> object | None:
+        def get_kw_default(_i: int, arg: str) -> Any | None:
             if kwonlydefaults:
                 return kwonlydefaults.get(arg)
             else:
