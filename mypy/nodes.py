@@ -3165,9 +3165,6 @@ class TypeInfo(SymbolNode):
                     self.type_var_tuple_prefix = i
                     self.type_var_tuple_suffix = len(self.defn.type_vars) - i - 1
                 self.type_vars.append(vd.name)
-        assert not (
-            self.has_param_spec_type and self.has_type_var_tuple_type
-        ), "Mixing type var tuples and param specs not supported yet"
 
     @property
     def name(self) -> str:
