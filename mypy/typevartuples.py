@@ -5,9 +5,12 @@ from __future__ import annotations
 from typing import Sequence
 
 from mypy.types import (
+    AnyType,
     Instance,
     ProperType,
     Type,
+    TypeVarLikeType,
+    TypeVarTupleType,
     UnpackType,
     get_proper_type,
     split_with_prefix_and_suffix,
@@ -30,3 +33,14 @@ def extract_unpack(types: Sequence[Type]) -> ProperType | None:
         if isinstance(types[0], UnpackType):
             return get_proper_type(types[0].type)
     return None
+
+
+def erased_vars(type_vars: Sequence[TypeVarLikeType], type_of_any: int) -> list[Type]:
+    args: list[Type] = []
+    for tv in type_vars:
+        # Valid erasure for *Ts is *tuple[Any, ...], not just Any.
+        if isinstance(tv, TypeVarTupleType):
+            args.append(UnpackType(tv.tuple_fallback.copy_modified(args=[AnyType(type_of_any)])))
+        else:
+            args.append(AnyType(type_of_any))
+    return args
