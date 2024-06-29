@@ -252,6 +252,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                         "Iterable",
                         "Iterator",
                         "List",
+                        "Literal",
                         "NamedTuple",
                         "Optional",
                         "Tuple",
