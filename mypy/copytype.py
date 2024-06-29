@@ -5,15 +5,18 @@ from typing import Any, cast
 from mypy.types import (
     AnyType,
     CallableType,
+    CompoundType,
     DeletedType,
     ErasedType,
     Instance,
     LiteralType,
     NoneType,
+    OpType,
     Overloaded,
     Parameters,
     ParamSpecType,
     PartialType,
+    PowerType,
     ProperType,
     TupleType,
     TypeAliasType,
@@ -44,6 +47,15 @@ def copy_type(t: ProperType) -> ProperType:
 
 class TypeShallowCopier(TypeVisitor[ProperType]):
     def visit_unbound_type(self, t: UnboundType) -> ProperType:
+        return t
+
+    def visit_op_type(self, t: OpType) -> ProperType:
+        return t
+
+    def visit_power_type(self, t: PowerType) -> ProperType:
+        return t
+
+    def visit_compound_type(self, t: CompoundType) -> ProperType:
         return t
 
     def visit_any(self, t: AnyType) -> ProperType:

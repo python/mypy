@@ -21,9 +21,12 @@ from mypy.subtypes import is_same_type, is_subtype
 from mypy.types import (
     AnyType,
     CallableType,
+    CompoundType,
     Instance,
+    OpType,
     Parameters,
     ParamSpecType,
+    PowerType,
     TupleType,
     Type,
     TypeAliasType,
@@ -100,6 +103,19 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # expand_type() but we can't do this here since it is not a translator visitor,
         # and we need to return an Instance instead of TupleType.
         super().visit_tuple_type(t)
+
+    def visit_compound_type(self, t: CompoundType) -> None:
+        for type in t.numeric_type:
+            type.accept(self)
+        t.units.accept(self)
+
+    def visit_op_type(self, t: OpType) -> None:
+        t.left.accept(self)
+        t.right.accept(self)
+
+    def visit_power_type(self, t: PowerType) -> None:
+        t.left.accept(self)
+        t.right.accept(self)
 
     def visit_callable_type(self, t: CallableType) -> None:
         super().visit_callable_type(t)

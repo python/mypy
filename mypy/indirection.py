@@ -78,6 +78,19 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     def visit_parameters(self, t: types.Parameters) -> set[str]:
         return self._visit(t.arg_types)
 
+    def visit_compound_type(self, t: types.CompoundType) -> set[str]:
+        out = self._visit(t.numeric_type)
+        for s in t.units.left.type.mro:
+            out.update(split_module_names(s.module_name))
+        if t.units.left.type.metaclass_type is not None:
+            out.update(split_module_names(t.units.left.type.metaclass_type.type.module_name))
+        if isinstance(t.units, types.OpType):
+            for s in t.units.right.type.mro:
+                out.update(split_module_names(s.module_name))
+            if t.units.right.type.metaclass_type is not None:
+                    out.update(split_module_names(t.units.right.type.metaclass_type.type.module_name))
+        return out
+
     def visit_instance(self, t: types.Instance) -> set[str]:
         out = self._visit(t.args)
         if t.type:

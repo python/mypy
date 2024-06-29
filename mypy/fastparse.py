@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import copy
 import re
 import sys
@@ -105,8 +106,11 @@ from mypy.types import (
     AnyType,
     CallableArgument,
     CallableType,
+    CompoundType,
     EllipsisType,
     Instance,
+    OpType,
+    PowerType,
     ProperType,
     RawExpressionType,
     TupleType,
@@ -469,7 +473,7 @@ class ASTConverter:
 
         res: list[Statement] = []
         for stmt in stmts:
-            node = self.visit(stmt)
+            node = self.visit(stmt) ### hila - this is the point where we get the error ###
             res.append(node)
 
         # Slow case for stripping function bodies
@@ -1400,6 +1404,7 @@ class ASTConverter:
 
     # BinOp(expr left, operator op, expr right)
     def visit_BinOp(self, n: ast3.BinOp) -> OpExpr:
+        ### hila - maybe the place where he fail to recognize the op ###
         op = self.from_operator(n.op)
 
         if op is None:
@@ -1805,7 +1810,7 @@ class TypeConverter:
             method = "visit_" + node.__class__.__name__
             visitor = getattr(self, method, None)
             if visitor is not None:
-                typ = visitor(node)
+                typ = visitor(node) ### hila - to enter that ###
                 assert isinstance(typ, ProperType)
                 return typ
             else:
@@ -1902,18 +1907,44 @@ class TypeConverter:
         return UnboundType(n.id, line=self.line, column=self.convert_column(n.col_offset))
 
     def visit_BinOp(self, n: ast3.BinOp) -> Type:
-        if not isinstance(n.op, ast3.BitOr):
-            return self.invalid_type(n)
+        ### hila -  here the operation failes - added option of division ###
 
+        # if not isinstance(n.op, ast3.BitOr) and not isinstance(n.op, ast3.Div):
+        #     return self.invalid_type(n)
+        # hila - maybe it will make a problem if n is invalid type, if it does then we need to check at the beginning
+        # like the two rows before
         left = self.visit(n.left)
         right = self.visit(n.right)
-        return UnionType(
-            [left, right],
-            line=self.line,
-            column=self.convert_column(n.col_offset),
-            is_evaluated=self.is_evaluated,
-            uses_pep604_syntax=True,
-        )
+        ### hila - code that handle the division ###
+        if isinstance(n.op, ast3.Div):
+            return OpType(
+                left,
+                right,
+                "div",
+                line=self.line,
+                column=self.convert_column(n.col_offset),
+            )
+        elif isinstance(n.op, ast3.Pow):
+            if isinstance(left, PowerType):
+                right.literal_value = left.right.literal_value * right.literal_value
+                left = left.left
+            return PowerType(
+                left,
+                right,
+                "pow",
+                line=self.line,
+                column=self.convert_column(n.col_offset),
+            )
+        elif isinstance(n.op, ast3.BitOr):
+            return UnionType(
+                [left, right],
+                line=self.line,
+                column=self.convert_column(n.col_offset),
+                is_evaluated=self.is_evaluated,
+                uses_pep604_syntax=True,
+            )
+        else:
+            return self.invalid_type(n)
 
     def visit_Constant(self, n: Constant) -> Type:
         val = n.value
@@ -2015,13 +2046,21 @@ class TypeConverter:
             params = [self.visit(sliceval)]
 
         value = self.visit(n.value)
-        if isinstance(value, UnboundType) and not value.args:
+        if isinstance(value, UnboundType) and not value.args: ### hila - did I got here? ###
             return UnboundType(
                 value.name,
                 params,
                 line=self.line,
                 column=value.column,
                 empty_tuple_index=empty_tuple_index,
+            )
+        elif isinstance(value, OpType) or isinstance(value, PowerType):
+            return CompoundType(
+                "compound_type",
+                value,
+                params,
+                line=self.line,
+                column=value.column
             )
         else:
             return self.invalid_type(n)

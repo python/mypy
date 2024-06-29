@@ -50,6 +50,7 @@ Some important properties:
 
 from __future__ import annotations
 
+import builtins
 from contextlib import contextmanager
 from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, TypeVar, cast
 from typing_extensions import TypeAlias as _TypeAlias
@@ -3453,6 +3454,9 @@ class SemanticAnalyzer(
                 self.defer(s)
                 return
             s.type = analyzed
+            ### hila - here we are changing the type to builtins.any ###
+            # s.type = AnyType(TypeOfAny.explicit)
+            ####################################
             if (
                 self.type
                 and self.type.is_protocol
@@ -3469,6 +3473,7 @@ class SemanticAnalyzer(
                 and self.is_annotated_protocol_member(s)
                 and not self.is_func_scope()
             ):
+                ### hila - message for type any ###
                 self.fail("All protocol members must have explicitly declared types", s) #hila - this is the message I want to throw
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
             if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
@@ -3888,7 +3893,7 @@ class SemanticAnalyzer(
                 )
 
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
-            ################hila - my_code############
+            ### hila - message for type any ###
             if not explicit_type and has_explicit_value:
                 self.fail("All protocol members must have explicitly declared types", lvalue)
             # Define new variable.
@@ -5689,7 +5694,7 @@ class SemanticAnalyzer(
             if table is not None and name in table:
                 return table[name]
         # 4. Current file global scope
-        if name in self.globals:
+        if name in self.globals: ### hila - we should enter here but we don't ###
             return self.globals[name]
         # 5. Builtins
         b = self.globals.get("__builtins__", None)
@@ -5705,7 +5710,7 @@ class SemanticAnalyzer(
                 return node
         # Give up.
         if not implicit_name and not suppress_errors:
-            self.name_not_defined(name, ctx)
+            self.name_not_defined(name, ctx) ### hila - the call to the function that trows the name error ###
         else:
             if implicit_name:
                 return implicit_node
@@ -6484,7 +6489,7 @@ class SemanticAnalyzer(
             # later on. Defer current target.
             self.record_incomplete_ref()
             return
-        message = f'Name "{name}" is not defined'
+        message = f'Name "{name}" is not defined' ### hila - the name error ###
         self.fail(message, ctx, code=codes.NAME_DEFINED)
 
         if f"builtins.{name}" in SUGGESTED_TEST_FIXTURES:

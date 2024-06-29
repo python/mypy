@@ -66,15 +66,18 @@ from mypy.typeops import separate_union_literals
 from mypy.types import (
     AnyType,
     CallableType,
+    CompoundType,
     DeletedType,
     FunctionLike,
     Instance,
     LiteralType,
     NoneType,
+    OpType,
     Overloaded,
     Parameters,
     ParamSpecType,
     PartialType,
+    PowerType,
     ProperType,
     TupleType,
     Type,
@@ -590,6 +593,7 @@ class MessageBuilder:
         if self.are_type_names_disabled():
             msg = f"Unsupported left operand type for {op} (some union)"
         else:
+        ### hila - the division error ####
             msg = f"Unsupported left operand type for {op} ({format_type(typ, self.options)})"
         self.fail(msg, context, code=codes.OPERATOR)
 
@@ -2691,6 +2695,18 @@ class CollectAllInstancesQuery(TypeTraverserVisitor):
     def visit_instance(self, t: Instance) -> None:
         self.instances.append(t)
         super().visit_instance(t)
+
+    def visit_compound_type(self, t: CompoundType) -> None:
+        if isinstance(t.units, PowerType):
+            types = [t.units.left]
+        elif isinstance(t.units, OpType):
+            types = [t.units.left, t.units.right]
+        for type in t.numeric_type:
+            types.append(type)
+        # types = [(for type in t.numeric_type : type), t.units.left, t.units.right]
+        # types = [t.numeric_type, t.units.left, t.units.right]
+        for type in types:
+            self.visit_instance(type)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         if t.alias and not t.is_recursive:
