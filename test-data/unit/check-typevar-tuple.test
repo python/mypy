@@ -2460,3 +2460,30 @@ def test(x: T, *args: Unpack[Ts]) -> Tuple[T, Unpack[Ts]]: ...
 
 reveal_type(test)  # N: Revealed type is "def [T, Ts] (builtins.list[T`2], *args: Unpack[Ts`-2]) -> __main__.CM[Tuple[T`2, Unpack[Ts`-2]]]"
 [builtins fixtures/tuple.pyi]
+
+[case testMixingTypeVarTupleAndParamSpec]
+from typing import Generic, ParamSpec, TypeVarTuple, Unpack, Callable, TypeVar
+
+P = ParamSpec("P")
+Ts = TypeVarTuple("Ts")
+
+class A(Generic[P, Unpack[Ts]]): ...
+class B(Generic[Unpack[Ts], P]): ...
+
+a: A[[int, str], int, str]
+reveal_type(a)  # N: Revealed type is "__main__.A[[builtins.int, builtins.str], builtins.int, builtins.str]"
+b: B[int, str, [int, str]]
+reveal_type(b)  # N: Revealed type is "__main__.B[builtins.int, builtins.str, [builtins.int, builtins.str]]"
+
+x: A[int, str, [int, str]]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
+reveal_type(x)  # N: Revealed type is "__main__.A[Any, Unpack[builtins.tuple[Any, ...]]]"
+y: B[[int, str], int, str]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "str"
+reveal_type(y)  # N: Revealed type is "__main__.B[Unpack[builtins.tuple[Any, ...]], Any]"
+
+R = TypeVar("R")
+class C(Generic[P, R]):
+    fn: Callable[P, None]
+
+c: C[int, str]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
+reveal_type(c.fn)  # N: Revealed type is "def (*Any, **Any)"
+[builtins fixtures/tuple.pyi]
