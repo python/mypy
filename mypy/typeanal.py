@@ -1223,7 +1223,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         req_keys = set()
         items = {}
-        for (item_name, item_type) in t.items.items():
+        for item_name, item_type in t.items.items():
             analyzed = self.anal_type(item_type, allow_required=True)
             if isinstance(analyzed, RequiredType):
                 if analyzed.required:
