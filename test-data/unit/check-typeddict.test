@@ -3550,3 +3550,42 @@ class Test:
         run(test2, other="yes", **params)
         run(test2, other=0, **params)  # E: Argument "other" to "run" has incompatible type "int"; expected "str"
 [builtins fixtures/tuple.pyi]
+
+[case testTypedDictInlineNoOldStyleAlias]
+X = {"int": int, "str": str}
+reveal_type(X)  # N: Revealed type is "builtins.dict[builtins.str, def () -> builtins.object]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineYesMidStyleAlias]
+from typing_extensions import TypeAlias
+X: TypeAlias = {"int": int, "str": str}
+x: X
+reveal_type(x)  # N:  # N: Revealed type is "TypedDict({'int': builtins.int, 'str': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNoEmpty]
+x: {}  # E: Invalid type comment or annotation
+reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNotRequired]
+from typing import NotRequired
+
+x: {"one": int, "other": NotRequired[int]}
+x = {"one": 1}  # OK
+y: {"one": int, "other": int}
+y = {"one": 1}  # E: Expected TypedDict keys ("one", "other") but found only key "one"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNestedSchema]
+def nested() -> {"one": str, "other": {"a": int, "b": int}}:
+    if bool():
+        return {"one": "yes", "other": {"a": 1, "b": 2}}  # OK
+    else:
+        return {"one": "no", "other": {"a": 1, "b": "2"}}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

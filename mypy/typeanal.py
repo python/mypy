@@ -25,6 +25,7 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    MISSING_FALLBACK,
     SYMBOL_FUNCBASE_TYPES,
     ArgKind,
     Context,
@@ -1220,10 +1221,25 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return TupleType(self.anal_array(t.items, allow_unpack=True), fallback, t.line)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        items = {
-            item_name: self.anal_type(item_type) for (item_name, item_type) in t.items.items()
-        }
-        return TypedDictType(items, set(t.required_keys), t.fallback)
+        req_keys = set()
+        items = {}
+        for (item_name, item_type) in t.items.items():
+            analyzed = self.anal_type(item_type, allow_required=True)
+            if isinstance(analyzed, RequiredType):
+                if analyzed.required:
+                    req_keys.add(item_name)
+                analyzed = analyzed.item
+            else:
+                # Keys are required by default.
+                req_keys.add(item_name)
+            items[item_name] = analyzed
+        if t.fallback.type is MISSING_FALLBACK:  # anonymous/inline TypedDict
+            required_keys = req_keys
+            fallback = self.named_type("typing._TypedDict")
+        else:
+            required_keys = t.required_keys
+            fallback = t.fallback
+        return TypedDictType(items, required_keys, fallback, t.line, t.column)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
         # We should never see a bare Literal. We synthesize these raw literals
@@ -1761,11 +1777,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_param_spec: bool = False,
         allow_unpack: bool = False,
         allow_ellipsis: bool = False,
+        allow_required: bool = False,
     ) -> Type:
         if nested:
             self.nesting_level += 1
         old_allow_required = self.allow_required
-        self.allow_required = False
+        self.allow_required = allow_required
         old_allow_ellipsis = self.allow_ellipsis
         self.allow_ellipsis = allow_ellipsis
         old_allow_unpack = self.allow_unpack

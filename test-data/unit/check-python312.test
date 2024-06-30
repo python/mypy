@@ -1656,3 +1656,13 @@ type I2 = C[Any] | None
 type I3 = None | C[TD]
 [builtins fixtures/type.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testTypedDictInlineYesNewStyleAlias]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+type X[T] = {"item": T, "other": X[T] | None}
+x: X[str]
+reveal_type(x)  # N: Revealed type is "TypedDict({'item': builtins.str, 'other': Union[..., None]})"
+if x["other"] is not None:
+    reveal_type(x["other"]["item"])  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
