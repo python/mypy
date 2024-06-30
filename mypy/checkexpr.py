@@ -5585,8 +5585,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_generator_expr(self, e: GeneratorExpr) -> Type:
         # If any of the comprehensions use async for, the expression will return an async generator
-        # object, or if the left-side expression uses await.
-        if any(e.is_async) or has_await_expression(e.left_expr):
+        # object, or await is used anywhere but in the leftmost sequence.
+        if (
+            any(e.is_async)
+            or has_await_expression(e.left_expr)
+            or any(has_await_expression(sequence) for sequence in e.sequences[1:])
+            or any(has_await_expression(cond) for condlist in e.condlists for cond in condlist)
+        ):
             typ = "typing.AsyncGenerator"
             # received type is always None in async generator expressions
             additional_args: list[Type] = [NoneType()]
