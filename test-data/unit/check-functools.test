@@ -527,3 +527,16 @@ callback1(partial(fn, 1))
 # TODO: false negative
 callback2(partial(fn, 1))
 [builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialClassObjectMatchingPartial]
+from functools import partial
+
+class A:
+    def __init__(self, var: int, b: int, c: int) -> None: ...
+
+p = partial(A, 1)
+reveal_type(p)  # N: Revealed type is "functools.partial[__main__.A]"
+p(1, "no")  # E: Argument 2 to "A" has incompatible type "str"; expected "int"
+
+q: partial[A] = partial(A, 1)  # OK
+[builtins fixtures/tuple.pyi]

@@ -25,7 +25,7 @@ functools_total_ordering_makers: Final = {"functools.total_ordering"}
 
 _ORDERING_METHODS: Final = {"__lt__", "__le__", "__gt__", "__ge__"}
 
-PARTIAL = "functools.partial"
+PARTIAL: Final = "functools.partial"
 
 
 class _MethodInfo(NamedTuple):
@@ -137,6 +137,20 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     # We must normalize from the start to have coherent view together with TypeChecker.
     fn_type = fn_type.with_unpacked_kwargs().with_normalized_var_args()
 
+    last_context = ctx.api.type_context[-1]
+    if not fn_type.is_type_obj():
+        # We wrap the return type to get use of a possible type context provided by caller.
+        # We cannot do this in case of class objects, since otherwise the plugin may get
+        # falsely triggered when evaluating the constructed call itself.
+        ret_type: Type = ctx.api.named_generic_type(PARTIAL, [fn_type.ret_type])
+        wrapped_return = True
+    else:
+        ret_type = fn_type.ret_type
+        # Instead, for class objects we ignore any type context to avoid spurious errors,
+        # since the type context will be partial[X] etc., not X.
+        ctx.api.type_context[-1] = None
+        wrapped_return = False
+
     defaulted = fn_type.copy_modified(
         arg_kinds=[
             (
@@ -146,7 +160,7 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
             )
             for k in fn_type.arg_kinds
         ],
-        ret_type=ctx.api.named_generic_type(PARTIAL, [fn_type.ret_type]),
+        ret_type=ret_type,
     )
     if defaulted.line < 0:
         # Make up a line number if we don't have one
@@ -189,16 +203,20 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         arg_names=actual_arg_names,
         context=call_expr,
     )
+    if not wrapped_return:
+        # Restore previously ignored context.
+        ctx.api.type_context[-1] = last_context
+
     bound = get_proper_type(bound)
     if not isinstance(bound, CallableType):
         return ctx.default_return_type
-    wrapped_ret_type = get_proper_type(bound.ret_type)
-    if not isinstance(wrapped_ret_type, Instance) or wrapped_ret_type.type.fullname != PARTIAL:
-        return ctx.default_return_type
-    if not mypy.semanal.refers_to_fullname(ctx.args[0][0], PARTIAL):
-        # If the first argument is partial, above call will trigger the plugin
-        # again, in between the wrapping above an unwrapping here.
-        bound = bound.copy_modified(ret_type=wrapped_ret_type.args[0])
+
+    if wrapped_return:
+        # Reverse the wrapping we did above.
+        ret_type = get_proper_type(bound.ret_type)
+        if not isinstance(ret_type, Instance) or ret_type.type.fullname != PARTIAL:
+            return ctx.default_return_type
+        bound = bound.copy_modified(ret_type=ret_type.args[0])
 
     formal_to_actual = map_actuals_to_formals(
         actual_kinds=actual_arg_kinds,

@@ -165,6 +165,9 @@ This feature was contributed by Shantanu (PR [16756](https://github.com/python/m
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=7c8e82fe483a40ec4cb0a2505cfdb0f3e7cc81d9+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
+#### Mypy 1.10.1
+
+- Fix error reporting on cached run after uninstallation of third party library (Shantanu, PR [17420](https://github.com/python/mypy/pull/17420))
 
 #### Acknowledgements
 Thanks to all mypy contributors who contributed to this release:

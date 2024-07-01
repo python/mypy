@@ -175,6 +175,8 @@ RUNTIME_PROTOCOL_DECOS: Final = (
     "typing_extensions.runtime_checkable",
 )
 
+LAMBDA_NAME: Final = "<lambda>"
+
 
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
@@ -2262,7 +2264,7 @@ class LambdaExpr(FuncItem, Expression):
 
     @property
     def name(self) -> str:
-        return "<lambda>"
+        return LAMBDA_NAME
 
     def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
@@ -3163,9 +3165,6 @@ class TypeInfo(SymbolNode):
                     self.type_var_tuple_prefix = i
                     self.type_var_tuple_suffix = len(self.defn.type_vars) - i - 1
                 self.type_vars.append(vd.name)
-        assert not (
-            self.has_param_spec_type and self.has_type_var_tuple_type
-        ), "Mixing type var tuples and param specs not supported yet"
 
     @property
     def name(self) -> str:
