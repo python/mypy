@@ -10,7 +10,11 @@ from typing_extensions import Protocol
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
 from mypy.expandtype import expand_type
-from mypy.message_registry import INVALID_PARAM_SPEC_LOCATION, INVALID_PARAM_SPEC_LOCATION_NOTE
+from mypy.message_registry import (
+    INVALID_PARAM_SPEC_LOCATION,
+    INVALID_PARAM_SPEC_LOCATION_NOTE,
+    TYPEDDICT_OVERRIDE_MERGE,
+)
 from mypy.messages import (
     MessageBuilder,
     format_type,
@@ -1236,6 +1240,20 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if t.fallback.type is MISSING_FALLBACK:  # anonymous/inline TypedDict
             required_keys = req_keys
             fallback = self.named_type("typing._TypedDict")
+            for typ in t.extra_items_from:
+                analyzed = self.analyze_type(typ)
+                p_analyzed = get_proper_type(analyzed)
+                if not isinstance(p_analyzed, TypedDictType):
+                    if not isinstance(p_analyzed, (AnyType, PlaceholderType)):
+                        self.fail("Can only merge-in other TypedDict", t, code=codes.VALID_TYPE)
+                    continue
+                for sub_item_name, sub_item_type in p_analyzed.items.items():
+                    if sub_item_name in items:
+                        self.fail(TYPEDDICT_OVERRIDE_MERGE.format(sub_item_name), t)
+                        continue
+                    items[sub_item_name] = sub_item_type
+                    if sub_item_name in p_analyzed.required_keys:
+                        req_keys.add(sub_item_name)
         else:
             required_keys = t.required_keys
             fallback = t.fallback

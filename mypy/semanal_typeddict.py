@@ -8,6 +8,7 @@ from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
 from mypy.expandtype import expand_type
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.message_registry import TYPEDDICT_OVERRIDE_MERGE
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ARG_NAMED,
@@ -216,7 +217,7 @@ class TypedDictAnalyzer:
             valid_items = self.map_items_to_base(valid_items, tvars, base_args)
         for key in base_items:
             if key in keys:
-                self.fail(f'Overwriting TypedDict field "{key}" while merging', ctx)
+                self.fail(TYPEDDICT_OVERRIDE_MERGE.format(key), ctx)
         keys.extend(valid_items.keys())
         types.extend(valid_items.values())
         required_keys.update(base_typed_dict.required_keys)
@@ -505,17 +506,7 @@ class TypedDictAnalyzer:
                     field_type_expr, self.options, self.api.is_stub_file
                 )
             except TypeTranslationError:
-                if (
-                    isinstance(field_type_expr, CallExpr)
-                    and isinstance(field_type_expr.callee, RefExpr)
-                    and field_type_expr.callee.fullname in TPDICT_NAMES
-                ):
-                    self.fail_typeddict_arg(
-                        "Inline TypedDict types not supported; use assignment to define TypedDict",
-                        field_type_expr,
-                    )
-                else:
-                    self.fail_typeddict_arg("Invalid field type", field_type_expr)
+                self.fail_typeddict_arg("Use dict literal for nested TypedDict", field_type_expr)
                 return [], [], False
             analyzed = self.api.anal_type(
                 type,

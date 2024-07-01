@@ -78,7 +78,7 @@ p = Point(x='meaning_of_life', y=1337)  # E: Incompatible types (expression has 
 [case testCannotCreateTypedDictInstanceWithInlineTypedDict]
 from mypy_extensions import TypedDict
 D = TypedDict('D', {
-    'x': TypedDict('E', {  # E: Inline TypedDict types not supported; use assignment to define TypedDict
+    'x': TypedDict('E', {  # E: Use dict literal for nested TypedDict
         'y': int
     })
 })
@@ -3589,3 +3589,14 @@ def nested() -> {"one": str, "other": {"a": int, "b": int}}:
         return {"one": "no", "other": {"a": 1, "b": "2"}}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineMergeAnother]
+from typing import TypeVar
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+X: TypeAlias = {"item": T}
+x: {"a": int, **X[str], "b": int}
+reveal_type(x)  # N: Revealed type is "TypedDict({'a': builtins.int, 'b': builtins.int, 'item': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]

@@ -216,12 +216,22 @@ def expr_to_unanalyzed_type(
         if not expr.items:
             raise TypeTranslationError()
         items: dict[str, Type] = {}
+        extra_items_from = []
         for item_name, value in expr.items:
             if not isinstance(item_name, StrExpr):
+                if item_name is None:
+                    extra_items_from.append(
+                        expr_to_unanalyzed_type(value, options, allow_new_syntax, expr)
+                    )
+                    continue
                 raise TypeTranslationError()
             items[item_name.value] = expr_to_unanalyzed_type(
                 value, options, allow_new_syntax, expr
             )
-        return TypedDictType(items, set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column)
+        result = TypedDictType(
+            items, set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
+        )
+        result.extra_items_from = extra_items_from
+        return result
     else:
         raise TypeTranslationError()
