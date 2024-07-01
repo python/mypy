@@ -444,7 +444,7 @@ False
 [case testOverlappingOperatorMethods]
 class X: pass
 class A:
-    def __add__(self, x) -> int:
+    def __add__(self, x: object) -> int:
         if isinstance(x, X):
             return 1
         return NotImplemented
@@ -1606,8 +1606,8 @@ class Foo(Enum):
     Bar: Foo = Callable[[str], None]
     Baz: Foo = Callable[[Dict[str, "Missing"]], None]
 [out]
-_testEnumValueWithPlaceholderNodeType.py:5: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
-_testEnumValueWithPlaceholderNodeType.py:6: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
+_testEnumValueWithPlaceholderNodeType.py:5: error: Incompatible types in assignment (expression has type "<typing special form>", variable has type "Foo")
+_testEnumValueWithPlaceholderNodeType.py:6: error: Incompatible types in assignment (expression has type "<typing special form>", variable has type "Foo")
 _testEnumValueWithPlaceholderNodeType.py:6: error: Name "Missing" is not defined
 
 [case testTypeshedRecursiveTypesExample]
@@ -1781,9 +1781,9 @@ C = str | int
 D: TypeAlias = str | int
 [out]
 _testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Invalid type alias: expression is not a valid type
-_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: The type "Type[type]" is not generic and not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Unsupported left operand type for | ("<typing special form>")
 _testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Invalid type alias: expression is not a valid type
-_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: The type "Type[type]" is not generic and not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Unsupported left operand type for | ("Type[str]")
 _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Invalid type alias: expression is not a valid type
 _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Unsupported left operand type for | ("Type[str]")
 _testTypeAliasNotSupportedWithNewStyleUnion.py:6: error: Invalid type alias: expression is not a valid type
@@ -1942,13 +1942,13 @@ class Bar(Generic[P]): ...
 def bad(foo: Foo[[int]], bar: Bar[[int]]) -> bool:
     return foo == bar
 
-def good1(foo1: Foo[[int]], foo2: Foo[[str]]) -> bool:
+def bad1(foo1: Foo[[int]], foo2: Foo[[str]]) -> bool:
     return foo1 == foo2
 
-def good2(foo1: Foo[[int, str]], foo2: Foo[[int, bytes]]) -> bool:
+def bad2(foo1: Foo[[int, str]], foo2: Foo[[int, bytes]]) -> bool:
     return foo1 == foo2
 
-def good3(foo1: Foo[[int]], foo2: Foo[[int, int]]) -> bool:
+def bad3(foo1: Foo[[int]], foo2: Foo[[int, int]]) -> bool:
     return foo1 == foo2
 
 def good4(foo1: Foo[[int]], foo2: Foo[[int]]) -> bool:
@@ -1971,6 +1971,9 @@ def good9(foo1: Foo[Concatenate[int, P]], foo2: Foo[[int, str, bytes]], *args: P
 
 [out]
 _testStrictEqualitywithParamSpec.py:11: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Bar[[int]]")
+_testStrictEqualitywithParamSpec.py:14: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Foo[[str]]")
+_testStrictEqualitywithParamSpec.py:17: error: Non-overlapping equality check (left operand type: "Foo[[int, str]]", right operand type: "Foo[[int, bytes]]")
+_testStrictEqualitywithParamSpec.py:20: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Foo[[int, int]]")
 
 [case testInferenceOfDunderDictOnClassObjects]
 class Foo: ...
@@ -2117,3 +2120,81 @@ def func(
     a2 = action  # Error
 [out]
 _testPEP695VarianceInference.py:17: error: Incompatible types in assignment (expression has type "Job[None]", variable has type "Job[int]")
+
+[case testPEP695TypeAliasWithDifferentTargetTypes]
+# flags: --python-version=3.12 --enable-incomplete-feature=NewGenericSyntax
+from typing import Any, Callable, List, Literal, TypedDict, overload, TypeAlias, TypeVar, Never
+
+class C[T]: pass
+
+class O[T]:
+    @overload
+    def __init__(self) -> None: ...
+    @overload
+    def __init__(self, x: int) -> None: ...
+    def __init__(self, x: int = 0) -> None:
+        pass
+
+class TD(TypedDict):
+    x: int
+
+S = TypeVar("S")
+A = list[S]
+B: TypeAlias = list[S]
+
+type A1 = type[int]
+type A2 = type[int] | None
+type A3 = None | type[int]
+type A4 = type[Any]
+type A5 = type[C] | None
+type A6 = None | type[C]
+type A7 = type[O] | None
+type A8 = None | type[O]
+
+type B1[**P, R] = Callable[P, R] | None
+type B2[**P, R] = None | Callable[P, R]
+type B3 = Callable[[str], int]
+type B4 = Callable[..., int]
+
+type C1 = A1 | None
+type C2 = None | A1
+
+type D1 = Any | None
+type D2 = None | Any
+
+type E1 = List[int]
+type E2 = List[int] | None
+type E3 = None | List[int]
+
+type F1 = Literal[1]
+type F2 = Literal['x'] | None
+type F3 = None | Literal[True]
+
+type G1 = tuple[int, Any]
+type G2 = tuple[int, Any] | None
+type G3 = None | tuple[int, Any]
+
+type H1 = TD
+type H2 = TD | None
+type H3 = None | TD
+
+type I1 = C[int]
+type I2 = C[Any] | None
+type I3 = None | C[TD]
+type I4 = O[int] | None
+type I5 = None | O[int]
+
+type J1[T] = T | None
+type J2[T] = None | T
+type J3[*Ts] = tuple[*Ts]
+type J4[T] = J1[T] | None
+type J5[T] = None | J1[T]
+type J6[*Ts] = J3[*Ts] | None
+
+type K1 = A[int] | None
+type K2 = None | A[int]
+type K3 = B[int] | None
+type K4 = None | B[int]
+
+type L1 = Never
+type L2 = list[Never]

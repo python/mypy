@@ -41,7 +41,7 @@ class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
-        from mypy.plugins import ctypes, singledispatch
+        from mypy.plugins import ctypes, enums, singledispatch
 
         if fullname == "_ctypes.Array":
             return ctypes.array_constructor_callback
@@ -51,6 +51,8 @@ class DefaultPlugin(Plugin):
             import mypy.plugins.functools
 
             return mypy.plugins.functools.partial_new_callback
+        elif fullname == "enum.member":
+            return enums.enum_member_callback
 
         return None
 

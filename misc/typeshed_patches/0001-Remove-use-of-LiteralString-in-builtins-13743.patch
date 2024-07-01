@@ -1,14 +1,14 @@
-From 5c00e362d40aa26e0a22a740f05a52d05edf0f91 Mon Sep 17 00:00:00 2001
+From 3ec9b878d6bbe3fae64a508a62372f10a886406f Mon Sep 17 00:00:00 2001
 From: Shantanu <12621235+hauntsaninja@users.noreply.github.com>
 Date: Mon, 26 Sep 2022 12:55:07 -0700
 Subject: [PATCH] Remove use of LiteralString in builtins (#13743)
 
 ---
- mypy/typeshed/stdlib/builtins.pyi | 88 -------------------------------
- 1 file changed, 88 deletions(-)
+ mypy/typeshed/stdlib/builtins.pyi | 95 -------------------------------
+ 1 file changed, 95 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
-index b4765b26c..99919c64c 100644
+index 53e00ec6a..bad3250ef 100644
 --- a/mypy/typeshed/stdlib/builtins.pyi
 +++ b/mypy/typeshed/stdlib/builtins.pyi
 @@ -61,7 +61,6 @@ from typing import (  # noqa: Y022
@@ -19,7 +19,7 @@ index b4765b26c..99919c64c 100644
      ParamSpec,
      Self,
      TypeAlias,
-@@ -434,31 +433,16 @@ class str(Sequence[str]):
+@@ -435,31 +434,16 @@ class str(Sequence[str]):
      def __new__(cls, object: object = ...) -> Self: ...
      @overload
      def __new__(cls, object: ReadableBuffer, encoding: str = ..., errors: str = ...) -> Self: ...
@@ -49,9 +49,9 @@ index b4765b26c..99919c64c 100644
 -    def format(self: LiteralString, *args: LiteralString, **kwargs: LiteralString) -> LiteralString: ...
 -    @overload
      def format(self, *args: object, **kwargs: object) -> str: ...
-     def format_map(self, map: _FormatMapMapping) -> str: ...
+     def format_map(self, mapping: _FormatMapMapping, /) -> str: ...
      def index(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
-@@ -474,89 +458,32 @@ class str(Sequence[str]):
+@@ -475,99 +459,35 @@ class str(Sequence[str]):
      def isspace(self) -> bool: ...
      def istitle(self) -> bool: ...
      def isupper(self) -> bool: ...
@@ -75,10 +75,20 @@ index b4765b26c..99919c64c 100644
 -    def partition(self: LiteralString, sep: LiteralString, /) -> tuple[LiteralString, LiteralString, LiteralString]: ...
 -    @overload
      def partition(self, sep: str, /) -> tuple[str, str, str]: ...  # type: ignore[misc]
--    @overload
--    def replace(self: LiteralString, old: LiteralString, new: LiteralString, count: SupportsIndex = -1, /) -> LiteralString: ...
--    @overload
-     def replace(self, old: str, new: str, count: SupportsIndex = -1, /) -> str: ...  # type: ignore[misc]
+     if sys.version_info >= (3, 13):
+-        @overload
+-        def replace(
+-            self: LiteralString, old: LiteralString, new: LiteralString, /, count: SupportsIndex = -1
+-        ) -> LiteralString: ...
+-        @overload
+         def replace(self, old: str, new: str, /, count: SupportsIndex = -1) -> str: ...  # type: ignore[misc]
+     else:
+-        @overload
+-        def replace(
+-            self: LiteralString, old: LiteralString, new: LiteralString, count: SupportsIndex = -1, /
+-        ) -> LiteralString: ...
+-        @overload
+         def replace(self, old: str, new: str, count: SupportsIndex = -1, /) -> str: ...  # type: ignore[misc]
      if sys.version_info >= (3, 9):
 -        @overload
 -        def removeprefix(self: LiteralString, prefix: LiteralString, /) -> LiteralString: ...
@@ -141,7 +151,7 @@ index b4765b26c..99919c64c 100644
      def zfill(self, width: SupportsIndex, /) -> str: ...  # type: ignore[misc]
      @staticmethod
      @overload
-@@ -567,9 +494,6 @@ class str(Sequence[str]):
+@@ -578,9 +498,6 @@ class str(Sequence[str]):
      @staticmethod
      @overload
      def maketrans(x: str, y: str, z: str, /) -> dict[int, int | None]: ...
@@ -151,7 +161,7 @@ index b4765b26c..99919c64c 100644
      def __add__(self, value: str, /) -> str: ...  # type: ignore[misc]
      # Incompatible with Sequence.__contains__
      def __contains__(self, key: str, /) -> bool: ...  # type: ignore[override]
-@@ -578,25 +502,13 @@ class str(Sequence[str]):
+@@ -589,25 +506,13 @@ class str(Sequence[str]):
      def __getitem__(self, key: SupportsIndex | slice, /) -> str: ...
      def __gt__(self, value: str, /) -> bool: ...
      def __hash__(self) -> int: ...
@@ -178,5 +188,5 @@ index b4765b26c..99919c64c 100644
      def __getnewargs__(self) -> tuple[str]: ...
  
 -- 
-2.39.3 (Apple Git-146)
+2.45.2
 

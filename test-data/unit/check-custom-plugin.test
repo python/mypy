@@ -1050,6 +1050,39 @@ reveal_type(my_class.stmethod)  # N: Revealed type is "Overload(def (arg: builti
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/add_overloaded_method.py
 
+[case testAddMethodPluginExplicitOverride]
+# flags: --python-version 3.12 --config-file tmp/mypy.ini
+from typing import override, TypeVar
+
+T = TypeVar('T', bound=type)
+
+def inject_foo(t: T) -> T:
+    # Imitates:
+    # t.foo_implicit = some_method
+    return t
+
+class BaseWithoutFoo: pass
+
+@inject_foo
+class ChildWithFoo(BaseWithoutFoo): pass
+reveal_type(ChildWithFoo.foo_implicit)  # N: Revealed type is "def (self: __main__.ChildWithFoo)"
+
+@inject_foo
+class SomeWithFoo(ChildWithFoo): pass
+reveal_type(SomeWithFoo.foo_implicit)  # N: Revealed type is "def (self: __main__.SomeWithFoo)"
+
+class ExplicitOverride(SomeWithFoo):
+    @override
+    def foo_implicit(self) -> None: pass
+
+class ImplicitOverride(SomeWithFoo):
+    def foo_implicit(self) -> None: pass  # E: Method "foo_implicit" is not using @override but is overriding a method in class "__main__.SomeWithFoo"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_method.py
+enable_error_code = explicit-override
+[typing fixtures/typing-override.pyi]
+
 [case testCustomErrorCodePlugin]
 # flags: --config-file tmp/mypy.ini  --show-error-codes
 def main() -> int:

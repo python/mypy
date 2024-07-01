@@ -93,11 +93,9 @@ T = TypeVar('T')
 
 A = Tuple[T, T]
 if int():
-    A = Union[T, int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
-                   # E: Value of type "int" is not indexable
-                   # the second error is because of `Union = 0` in lib-stub/typing.pyi
+    A = Union[T, int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
 [builtins fixtures/tuple.pyi]
-[out]
+[typing fixtures/typing-full.pyi]
 
 [case testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes]
 
@@ -967,6 +965,7 @@ a: A
 b: B
 reveal_type(a)  # N: Revealed type is "Union[builtins.list[Any], builtins.int]"
 reveal_type(b)  # N: Revealed type is "Union[builtins.int, builtins.list[Any]]"
+[builtins fixtures/type.pyi]
 
 [case testValidTypeAliasValues]
 from typing import TypeVar, Generic, List
@@ -1201,8 +1200,7 @@ unbound_tvt_alias2: Ta10[int]  # E: Bad number of arguments for type alias, expe
 reveal_type(unbound_tvt_alias2)  # N: Revealed type is "def (*Any) -> builtins.str"
 
 class A(Generic[T]):
-    Ta11 = TypeAliasType("Ta11", Dict[str, T], type_params=(T,))  # E: Can't use bound type variable "T" to define generic alias \
-                                                                  # E: "T" is a type variable and only valid in type context
+    Ta11 = TypeAliasType("Ta11", Dict[str, T], type_params=(T,))  # E: Can't use bound type variable "T" to define generic alias
 x: A.Ta11 = {"a": 1}
 reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
 [builtins fixtures/dict.pyi]

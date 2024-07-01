@@ -175,6 +175,8 @@ RUNTIME_PROTOCOL_DECOS: Final = (
     "typing_extensions.runtime_checkable",
 )
 
+LAMBDA_NAME: Final = "<lambda>"
+
 
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
@@ -1653,10 +1655,10 @@ class TypeAliasStmt(Statement):
 
     name: NameExpr
     type_args: list[TypeParam]
-    value: Expression  # Will get translated into a type
+    value: LambdaExpr  # Return value will get translated into a type
     invalid_recursive_alias: bool
 
-    def __init__(self, name: NameExpr, type_args: list[TypeParam], value: Expression) -> None:
+    def __init__(self, name: NameExpr, type_args: list[TypeParam], value: LambdaExpr) -> None:
         super().__init__()
         self.name = name
         self.type_args = type_args
@@ -2262,7 +2264,7 @@ class LambdaExpr(FuncItem, Expression):
 
     @property
     def name(self) -> str:
-        return "<lambda>"
+        return LAMBDA_NAME
 
     def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
@@ -2535,8 +2537,9 @@ class TypeVarLikeExpr(SymbolNode, Expression):
         default: mypy.types.Type,
         variance: int = INVARIANT,
         is_new_style: bool = False,
+        line: int = -1,
     ) -> None:
-        super().__init__()
+        super().__init__(line=line)
         self._name = name
         self._fullname = fullname
         self.upper_bound = upper_bound
@@ -2582,8 +2585,9 @@ class TypeVarExpr(TypeVarLikeExpr):
         default: mypy.types.Type,
         variance: int = INVARIANT,
         is_new_style: bool = False,
+        line: int = -1,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, default, variance, is_new_style)
+        super().__init__(name, fullname, upper_bound, default, variance, is_new_style, line=line)
         self.values = values
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -2661,8 +2665,9 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
         default: mypy.types.Type,
         variance: int = INVARIANT,
         is_new_style: bool = False,
+        line: int = -1,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, default, variance, is_new_style)
+        super().__init__(name, fullname, upper_bound, default, variance, is_new_style, line=line)
         self.tuple_fallback = tuple_fallback
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -3160,9 +3165,6 @@ class TypeInfo(SymbolNode):
                     self.type_var_tuple_prefix = i
                     self.type_var_tuple_suffix = len(self.defn.type_vars) - i - 1
                 self.type_vars.append(vd.name)
-        assert not (
-            self.has_param_spec_type and self.has_type_var_tuple_type
-        ), "Mixing type var tuples and param specs not supported yet"
 
     @property
     def name(self) -> str:

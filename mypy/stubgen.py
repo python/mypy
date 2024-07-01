@@ -314,6 +314,8 @@ class AliasPrinter(NodeVisitor[str]):
                 return " | ".join([item.accept(self) for item in node.index.items])
             return node.index.accept(self)
         if base_fullname == "typing.Optional":
+            if isinstance(node.index, TupleExpr):
+                return self.stubgen.add_name("_typeshed.Incomplete")
             return f"{node.index.accept(self)} | None"
         base = node.base.accept(self)
         index = node.index.accept(self)
@@ -1060,6 +1062,10 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 else:
                     return False
             return all(self.is_alias_expression(i, top_level=False) for i in indices)
+        elif isinstance(expr, OpExpr) and expr.op == "|":
+            return self.is_alias_expression(
+                expr.left, top_level=False
+            ) and self.is_alias_expression(expr.right, top_level=False)
         else:
             return False
 

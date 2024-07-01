@@ -55,6 +55,7 @@ from mypy.plugins.common import (
     deserialize_and_fixup_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
+from mypy.state import state
 from mypy.typeops import get_type_vars, make_simplified_union, map_type_from_supertype
 from mypy.types import (
     AnyType,
@@ -317,9 +318,23 @@ def attr_class_maker_callback(
 
     See https://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
-    If this returns False, some required metadata was not ready yet and we need another
+    If this returns False, some required metadata was not ready yet, and we need another
     pass.
     """
+    with state.strict_optional_set(ctx.api.options.strict_optional):
+        # This hook is called during semantic analysis, but it uses a bunch of
+        # type-checking ops, so it needs the strict optional set properly.
+        return attr_class_maker_callback_impl(
+            ctx, auto_attribs_default, frozen_default, slots_default
+        )
+
+
+def attr_class_maker_callback_impl(
+    ctx: mypy.plugin.ClassDefContext,
+    auto_attribs_default: bool | None,
+    frozen_default: bool,
+    slots_default: bool,
+) -> bool:
     info = ctx.cls.info
 
     init = _get_decorator_bool_argument(ctx, "init", True)
