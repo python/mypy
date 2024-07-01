@@ -191,6 +191,7 @@ functools.partial(1)  # E: "int" not callable \
 
 [case testFunctoolsPartialStar]
 import functools
+from typing import List
 
 def foo(a: int, b: str, *args: int, d: str, **kwargs: int) -> int: ...
 
@@ -215,6 +216,13 @@ def bar(*a: bytes, **k: int):
     p1("a", **k)  # E: Argument 2 to "foo" has incompatible type "**Dict[str, int]"; expected "str"
     p1(**k)  # E: Argument 1 to "foo" has incompatible type "**Dict[str, int]"; expected "str"
     p1(*a)  # E: List or tuple expected as variadic arguments
+
+
+def baz(a: int, b: int) -> int: ...
+def test_baz(xs: List[int]):
+    p3 = functools.partial(baz, *xs)
+    p3()
+    p3(1)  # E: Too many arguments for "baz"
 [builtins fixtures/dict.pyi]
 
 [case testFunctoolsPartialGeneric]
@@ -408,32 +416,82 @@ def foo(cls3: Type[B[T]]):
 from typing_extensions import TypedDict, Unpack
 from functools import partial
 
-class Data(TypedDict, total=False):
-    x: int
+class D1(TypedDict, total=False):
+    a1: int
 
-def f(**kwargs: Unpack[Data]) -> None: ...
-def g(**kwargs: Unpack[Data]) -> None:
-    partial(f, **kwargs)()
+def fn1(a1: int) -> None: ...  # N: "fn1" defined here
+def main1(**d1: Unpack[D1]) -> None:
+    partial(fn1, **d1)()
+    partial(fn1, **d1)(**d1)
+    partial(fn1, **d1)(a1=1)
+    partial(fn1, **d1)(a1="asdf")  # E: Argument "a1" to "fn1" has incompatible type "str"; expected "int"
+    partial(fn1, **d1)(oops=1)  # E: Unexpected keyword argument "oops" for "fn1"
 
-class MoreData(TypedDict, total=False):
-    x: int
-    y: int
+def fn2(**kwargs: Unpack[D1]) -> None: ...  # N: "fn2" defined here
+def main2(**d1: Unpack[D1]) -> None:
+    partial(fn2, **d1)()
+    partial(fn2, **d1)(**d1)
+    partial(fn2, **d1)(a1=1)
+    partial(fn2, **d1)(a1="asdf")  # E: Argument "a1" to "fn2" has incompatible type "str"; expected "int"
+    partial(fn2, **d1)(oops=1)  # E: Unexpected keyword argument "oops" for "fn2"
 
-def f_more(**kwargs: Unpack[MoreData]) -> None: ...
-def g_more(**kwargs: Unpack[MoreData]) -> None:
-    partial(f_more, **kwargs)()
+class D2(TypedDict, total=False):
+    a1: int
+    a2: str
 
-class Good(TypedDict, total=False):
-    y: int
-class Bad(TypedDict, total=False):
-    y: str
+class A2Good(TypedDict, total=False):
+    a2: str
+class A2Bad(TypedDict, total=False):
+    a2: int
 
-def h(**kwargs: Unpack[Data]) -> None:
-    bad: Bad
-    partial(f_more, **kwargs)(**bad)  # E: Argument "y" to "f_more" has incompatible type "str"; expected "int"
-    good: Good
-    partial(f_more, **kwargs)(**good)
+def fn3(a1: int, a2: str) -> None: ...  # N: "fn3" defined here
+def main3(a2good: A2Good, a2bad: A2Bad, **d2: Unpack[D2]) -> None:
+    partial(fn3, **d2)()
+    partial(fn3, **d2)(a1=1, a2="asdf")
+
+    partial(fn3, **d2)(**d2)
+
+    partial(fn3, **d2)(a1="asdf")  # E: Argument "a1" to "fn3" has incompatible type "str"; expected "int"
+    partial(fn3, **d2)(a1=1, a2="asdf", oops=1)  # E: Unexpected keyword argument "oops" for "fn3"
+
+    partial(fn3, **d2)(**a2good)
+    partial(fn3, **d2)(**a2bad)  # E: Argument "a2" to "fn3" has incompatible type "int"; expected "str"
+
+def fn4(**kwargs: Unpack[D2]) -> None: ...  # N: "fn4" defined here
+def main4(a2good: A2Good, a2bad: A2Bad, **d2: Unpack[D2]) -> None:
+    partial(fn4, **d2)()
+    partial(fn4, **d2)(a1=1, a2="asdf")
+
+    partial(fn4, **d2)(**d2)
+
+    partial(fn4, **d2)(a1="asdf")  # E: Argument "a1" to "fn4" has incompatible type "str"; expected "int"
+    partial(fn4, **d2)(a1=1, a2="asdf", oops=1)  # E: Unexpected keyword argument "oops" for "fn4"
+
+    partial(fn3, **d2)(**a2good)
+    partial(fn3, **d2)(**a2bad)  # E: Argument "a2" to "fn3" has incompatible type "int"; expected "str"
+
+def main5(**d2: Unpack[D2]) -> None:
+    partial(fn1, **d2)()  # E: Extra argument "a2" from **args for "fn1"
+    partial(fn2, **d2)()  # E: Extra argument "a2" from **args for "fn2"
+
+def main6(a2good: A2Good, a2bad: A2Bad, **d1: Unpack[D1]) -> None:
+    partial(fn3, **d1)()  # E: Missing positional argument "a1" in call to "fn3"
+    partial(fn3, **d1)("asdf")  # E: Too many positional arguments for "fn3" \
+                                # E: Too few arguments for "fn3" \
+                                # E: Argument 1 to "fn3" has incompatible type "str"; expected "int"
+    partial(fn3, **d1)(a2="asdf")
+    partial(fn3, **d1)(**a2good)
+    partial(fn3, **d1)(**a2bad)  # E: Argument "a2" to "fn3" has incompatible type "int"; expected "str"
+
+    partial(fn4, **d1)()
+    partial(fn4, **d1)("asdf")  # E: Too many positional arguments for "fn4" \
+                                # E: Argument 1 to "fn4" has incompatible type "str"; expected "int"
+    partial(fn4, **d1)(a2="asdf")
+    partial(fn4, **d1)(**a2good)
+    partial(fn4, **d1)(**a2bad)  # E: Argument "a2" to "fn4" has incompatible type "int"; expected "str"
+
 [builtins fixtures/dict.pyi]
+
 
 [case testFunctoolsPartialNestedGeneric]
 from functools import partial
@@ -455,6 +513,21 @@ first_kw([1])  # E: Too many positional arguments for "get" \
                # E: Too few arguments for "get" \
                # E: Argument 1 to "get" has incompatible type "List[int]"; expected "int"
 [builtins fixtures/list.pyi]
+
+[case testFunctoolsPartialHigherOrder]
+from functools import partial
+from typing import Callable
+
+def fn(a: int, b: str, c: bytes) -> int: ...
+
+def callback1(fn: Callable[[str, bytes], int]) -> None: ...
+def callback2(fn: Callable[[str, int], int]) -> None: ...
+
+callback1(partial(fn, 1))
+# TODO: false negative
+# https://github.com/python/mypy/issues/17461
+callback2(partial(fn, 1))
+[builtins fixtures/tuple.pyi]
 
 [case testFunctoolsPartialClassObjectMatchingPartial]
 from functools import partial
