@@ -227,8 +227,9 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
             partial_kinds.append(fn_type.arg_kinds[i])
             partial_types.append(arg_type)
             partial_names.append(fn_type.arg_names[i])
-        elif actuals:
-            if any(actual_arg_kinds[j] == ArgKind.ARG_POS for j in actuals):
+        else:
+            assert actuals
+            if any(actual_arg_kinds[j] in (ArgKind.ARG_POS, ArgKind.ARG_STAR) for j in actuals):
                 # Don't add params for arguments passed positionally
                 continue
             # Add defaulted params for arguments passed via keyword
