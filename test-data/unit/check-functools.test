@@ -525,6 +525,7 @@ def callback2(fn: Callable[[str, int], int]) -> None: ...
 
 callback1(partial(fn, 1))
 # TODO: false negative
+# https://github.com/python/mypy/issues/17461
 callback2(partial(fn, 1))
 [builtins fixtures/tuple.pyi]
 
