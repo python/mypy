@@ -954,7 +954,9 @@ class ASTConverter:
                 else:
                     self.fail(
                         ErrorMessage(
-                            "PEP 695 generics are not yet supported", code=codes.VALID_TYPE
+                            "PEP 695 generics are not yet supported. "
+                            "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
+                            code=codes.VALID_TYPE,
                         ),
                         n.type_params[0].lineno,
                         n.type_params[0].col_offset,
@@ -1145,7 +1147,11 @@ class ASTConverter:
                 explicit_type_params = self.translate_type_params(n.type_params)
             else:
                 self.fail(
-                    ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
+                    ErrorMessage(
+                        "PEP 695 generics are not yet supported. "
+                        "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
+                        code=codes.VALID_TYPE,
+                    ),
                     n.type_params[0].lineno,
                     n.type_params[0].col_offset,
                     blocker=False,
@@ -1801,7 +1807,11 @@ class ASTConverter:
             return self.set_line(node, n)
         else:
             self.fail(
-                ErrorMessage("PEP 695 type aliases are not yet supported", code=codes.VALID_TYPE),
+                ErrorMessage(
+                    "PEP 695 type aliases are not yet supported. "
+                    "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
+                    code=codes.VALID_TYPE,
+                ),
                 n.lineno,
                 n.col_offset,
                 blocker=False,
