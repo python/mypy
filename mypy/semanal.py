@@ -1275,6 +1275,28 @@ class SemanticAnalyzer(
             if impl.abstract_status != NOT_ABSTRACT:
                 impl.is_trivial_body = True
 
+        if impl.is_async_generator:
+            self.propagate_async_generator_overloads(defn)
+
+    def propagate_async_generator_overloads(self, defn: OverloadedFuncDef) -> None:
+        """Propagate async generator status from implementation to overloads.
+
+        `is_async_generator` is set based on `yield` presence in function body. With
+        trivial body of an overload this produces incorrect results.
+        """
+        for fdef in defn.items:
+            assert isinstance(fdef, Decorator)
+            if not fdef.func.is_async_generator and fdef.func.is_coroutine:
+                # If it was *not* identified as an async generator, then we wrapped it
+                # with erroneous Coroutine before. Remove this wrapper and record that.
+                fdef.func.is_async_generator = True
+                fdef.func.is_generator = True
+                if (ftype := fdef.func.type) is not None:
+                    assert isinstance(ftype, CallableType)
+                    ret_type = get_proper_type(ftype.ret_type)
+                    assert isinstance(ret_type, Instance)
+                    fdef.func.type = ftype.copy_modified(ret_type=ret_type.args[2])
+
     def analyze_overload_sigs_and_impl(
         self, defn: OverloadedFuncDef
     ) -> tuple[list[CallableType], OverloadPart | None, list[int]]:
