@@ -6750,3 +6750,42 @@ def foo(x: object) -> str: ...
 def bar(x: int) -> int: ...
 @overload
 def bar(x: Any) -> str: ...
+
+[case testOverloadFiniteTypeBoolMatches]
+from typing import Union, overload
+from typing_extensions import Literal
+
+@overload
+def foo(a: Literal[True]) -> int: ...
+
+@overload
+def foo(a: Literal[False]) -> str: ...
+
+def foo(a: bool) -> Union[int, str]: ...
+
+a: bool
+reveal_type(foo(a))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadFiniteTypeEnumMatches]
+from enum import Enum
+from typing import Union, overload
+from typing_extensions import Literal
+
+class A(Enum):
+    a = 1
+    b = 2
+
+@overload
+def foo(a: Literal[A.a]) -> int: ...
+
+@overload
+def foo(a: Literal[A.b]) -> str: ...
+
+def foo(a: A) -> Union[int, str]: ...
+
+a: A
+reveal_type(foo(a))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[builtins fixtures/tuple.pyi]
