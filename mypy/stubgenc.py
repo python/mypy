@@ -861,7 +861,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                 prop_type_name = self.strip_or_import(annotations[attr])
                 static_properties.append(f"{self._indent}{attr}: {prop_type_name} = ...")
 
-                if "ClassVar[" in prop_type_name[: len("ClassVar[")]:
+                if prop_type_name.startswith("ClassVar["):
                     self.add_name("typing.ClassVar")
             else:
                 prop_type_name = self.strip_or_import(self.get_type_annotation(value))
