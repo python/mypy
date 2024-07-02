@@ -1727,36 +1727,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee = callee.copy_modified(ret_type=fresh_ret_type)
 
         if callee.is_generic():
-            need_refresh = any(
-                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
+            callee, formal_to_actual = self.adjust_generic_callable_params_mapping(
+                callee, args, arg_kinds, arg_names, formal_to_actual, context
             )
-            callee = freshen_function_type_vars(callee)
-            callee = self.infer_function_type_arguments_using_context(callee, context)
-            if need_refresh:
-                # Argument kinds etc. may have changed due to
-                # ParamSpec or TypeVarTuple variables being replaced with an arbitrary
-                # number of arguments; recalculate actual-to-formal map
-                formal_to_actual = map_actuals_to_formals(
-                    arg_kinds,
-                    arg_names,
-                    callee.arg_kinds,
-                    callee.arg_names,
-                    lambda i: self.accept(args[i]),
-                )
-            callee = self.infer_function_type_arguments(
-                callee, args, arg_kinds, arg_names, formal_to_actual, need_refresh, context
-            )
-            if need_refresh:
-                formal_to_actual = map_actuals_to_formals(
-                    arg_kinds,
-                    arg_names,
-                    callee.arg_kinds,
-                    callee.arg_names,
-                    lambda i: self.accept(args[i]),
-                )
 
         param_spec = callee.param_spec()
-        if param_spec is not None and arg_kinds == [ARG_STAR, ARG_STAR2]:
+        if (
+            param_spec is not None
+            and arg_kinds == [ARG_STAR, ARG_STAR2]
+            and len(formal_to_actual) == 2
+        ):
             arg1 = self.accept(args[0])
             arg2 = self.accept(args[1])
             if (
@@ -2362,6 +2342,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Positional argument when expecting a keyword argument.
                 self.msg.too_many_positional_arguments(callee, context)
                 ok = False
+            elif callee.param_spec() is not None:
+                if (
+                    not formal_to_actual[i]
+                    and not callee.param_spec_parts_bound[kind == ArgKind.ARG_STAR2]
+                    and callee.special_sig != "partial"
+                ):
+                    self.msg.too_few_arguments(callee, context, actual_names)
+                    ok = False
+                elif (
+                    formal_to_actual[i]
+                    and kind == ArgKind.ARG_STAR
+                    and callee.param_spec_parts_bound[0]
+                ):
+                    self.msg.too_many_arguments(callee, context)
+                    ok = False
         return ok
 
     def check_for_extra_actual_arguments(
@@ -2636,7 +2631,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         arg_types = self.infer_arg_types_in_empty_context(args)
         # Step 1: Filter call targets to remove ones where the argument counts don't match
         plausible_targets = self.plausible_overload_call_targets(
-            arg_types, arg_kinds, arg_names, callee
+            args, arg_types, arg_kinds, arg_names, callee, context
         )
 
         # Step 2: If the arguments contain a union, we try performing union math first,
@@ -2754,12 +2749,52 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.fail(message_registry.TOO_MANY_UNION_COMBINATIONS, context)
         return result
 
+    def adjust_generic_callable_params_mapping(
+        self,
+        callee: CallableType,
+        args: list[Expression],
+        arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None] | None,
+        formal_to_actual: list[list[int]],
+        context: Context,
+    ) -> tuple[CallableType, list[list[int]]]:
+        need_refresh = any(
+            isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
+        )
+        callee = freshen_function_type_vars(callee)
+        callee = self.infer_function_type_arguments_using_context(callee, context)
+        if need_refresh:
+            # Argument kinds etc. may have changed due to
+            # ParamSpec or TypeVarTuple variables being replaced with an arbitrary
+            # number of arguments; recalculate actual-to-formal map
+            formal_to_actual = map_actuals_to_formals(
+                arg_kinds,
+                arg_names,
+                callee.arg_kinds,
+                callee.arg_names,
+                lambda i: self.accept(args[i]),
+            )
+        callee = self.infer_function_type_arguments(
+            callee, args, arg_kinds, arg_names, formal_to_actual, need_refresh, context
+        )
+        if need_refresh:
+            formal_to_actual = map_actuals_to_formals(
+                arg_kinds,
+                arg_names,
+                callee.arg_kinds,
+                callee.arg_names,
+                lambda i: self.accept(args[i]),
+            )
+        return callee, formal_to_actual
+
     def plausible_overload_call_targets(
         self,
+        args: list[Expression],
         arg_types: list[Type],
         arg_kinds: list[ArgKind],
         arg_names: Sequence[str | None] | None,
         overload: Overloaded,
+        context: Context,
     ) -> list[CallableType]:
         """Returns all overload call targets that having matching argument counts.
 
@@ -2793,8 +2828,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names, typ.arg_kinds, typ.arg_names, lambda i: arg_types[i]
             )
-
             with self.msg.filter_errors():
+                if typ.is_generic() and typ.param_spec() is not None:
+                    typ, formal_to_actual = self.adjust_generic_callable_params_mapping(
+                        typ, args, arg_kinds, arg_names, formal_to_actual, context
+                    )
+
                 if self.check_argument_count(
                     typ, arg_types, arg_kinds, arg_names, formal_to_actual, None
                 ):
