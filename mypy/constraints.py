@@ -9,15 +9,7 @@ import mypy.typeops
 from mypy.argmap import ArgTypeExpander
 from mypy.erasetype import erase_typevars
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import (
-    ARG_OPT,
-    ARG_POS,
-    ARG_STAR,
-    ARG_STAR2,
-    CONTRAVARIANT,
-    ArgKind,
-    TypeInfo,
-)
+from mypy.nodes import ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, CONTRAVARIANT, ArgKind, TypeInfo
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
