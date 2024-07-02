@@ -151,7 +151,9 @@ def f4(a, n, b):
     a :: object
     n :: int
     b :: bool
-    r0, r1, r2, r3 :: object
+    r0 :: union[object, int]
+    r1, r2 :: object
+    r3 :: union[int, object]
     r4 :: int
 L0:
     if b goto L1 else goto L2 :: bool
