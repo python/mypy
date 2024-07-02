@@ -957,15 +957,19 @@ class StubgencSuite(unittest.TestCase):
 
     def test_generate_c_class_fields_from__annotations__(self) -> None:
         class TestClass:
-            __annotations__ = {"x": "dict[str, int]"}
+            __annotations__ = {"x": "dict[str, int]", "y": "ClassVar[dict[int, bool]]"}
             x = {}  # type:ignore [var-annotated]
+            y = {}  # type:ignore [var-annotated]
 
         output: list[str] = []
         mod = ModuleType("module", "")  # any module is fine
         gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
         gen.generate_class_stub("C", TestClass, output)
-        assert_equal(output, ["class C:", "    x: dict[str, int] = ..."])
-        assert_equal(gen.get_imports().splitlines(), [])
+        assert_equal(
+            output,
+            ["class C:", "    x: dict[str, int] = ...", "    y: ClassVar[dict[int, bool]] = ..."],
+        )
+        assert_equal(gen.get_imports().splitlines(), ["from typing import ClassVar"])
 
     def test_generate_c_module_fields_from__annotations__(self) -> None:
         mod = ModuleType("module", "")  # any module is fine
