@@ -955,6 +955,27 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(output, ["def test(self, arg0: int) -> Any: ..."])
         assert_equal(gen.get_imports().splitlines(), [])
 
+    def test_generate_c_class_fields_from__annotations__(self) -> None:
+        class TestClass:
+            __annotations__ = {"x": "dict[str, int]"}
+            x = {}  # type:ignore [var-annotated]
+
+        output: list[str] = []
+        mod = ModuleType("module", "")  # any module is fine
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        gen.generate_class_stub("C", TestClass, output)
+        assert_equal(output, ["class C:", "    x: dict[str, int] = ..."])
+        assert_equal(gen.get_imports().splitlines(), [])
+
+    def test_generate_c_module_fields_from__annotations__(self) -> None:
+        mod = ModuleType("module", "")  # any module is fine
+        mod.__annotations__ = {"x": "dict[str, int]"}
+        mod.x = {}  # type:ignore [attr-defined]
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        gen.generate_module()
+        assert_equal(gen.output(), "x: dict[str, int]\n")
+        assert_equal(gen.get_imports().splitlines(), [])
+
     def test_generate_c_type_classmethod(self) -> None:
         class TestClass:
             @classmethod
