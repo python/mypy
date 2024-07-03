@@ -2509,5 +2509,6 @@ reveal_type(replaced)  # N: Revealed type is "__main__.Coords"
 Coords(2, 4).__replace__(x="asdf")  # E: Argument "x" to "__replace__" of "Coords" has incompatible type "str"; expected "int"
 Coords(2, 4).__replace__(23)          # E: Too many positional arguments for "Coords"
 Coords(2, 4).__replace__(23, 25)      # E: Too many positional arguments for "Coords"
+Coords(2, 4).__replace__(x=23, y=25, z=42)  # E: Unexpected keyword argument "z" for "__replace__" of "Coords"
 
 [builtins fixtures/tuple.pyi]
