@@ -632,9 +632,10 @@ class NamedTupleAnalyzer:
             args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars],
         )
         if self.options.python_version >= (3, 13):
+            type_vars = [tv for tv in info.defn.type_vars]
             add_method(
                 "__replace__",
-                ret=Instance(info, []),
+                ret=Instance(info, type_vars),
                 args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars],
             )
 
