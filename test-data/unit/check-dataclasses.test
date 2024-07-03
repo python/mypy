@@ -2520,5 +2520,6 @@ class Gen(Generic[T]):
 
 replaced_2 = Gen(2).__replace__(x=2)
 reveal_type(replaced_2)  # N: Revealed type is "__main__.Gen[builtins.int]"
+Gen(2).__replace__(x="not an int")  # E: Argument "x" to "__replace__" of "Gen" has incompatible type "str"; expected "int"
 
 [builtins fixtures/tuple.pyi]
