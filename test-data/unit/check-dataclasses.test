@@ -2503,7 +2503,7 @@ class Coords:
 replaced = Coords(2, 4).__replace__(x=2, y=5)
 reveal_type(replaced)  # N: Revealed type is "__main__.Coords"
 
-replaced = Coords(2, 4).__replace(x=2)
+replaced = Coords(2, 4).__replace__(x=2)
 reveal_type(replaced)  # N: Revealed type is "__main__.Coords"
 
 Coords(2, 4).__replace__(x="asdf")  # E: Argument "x" to "__replace__" of "Coords" has incompatible type "str"; expected "int"
