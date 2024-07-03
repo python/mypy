@@ -403,7 +403,11 @@ class DataclassTransformer:
         args = [attr.to_argument(self._cls.info, of="replace") for attr in attributes]
         if self._cls.info.self_type:
             add_method_to_class(
-                self._api, self._cls, "__replace__", args=args, return_type=self._cls.info.self_type
+                self._api,
+                self._cls,
+                "__replace__",
+                args=args,
+                return_type=self._cls.info.self_type,
             )
 
     def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
