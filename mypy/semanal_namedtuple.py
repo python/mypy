@@ -57,6 +57,7 @@ from mypy.types import (
     TYPED_NAMEDTUPLE_NAMES,
     AnyType,
     CallableType,
+    Instance,
     LiteralType,
     TupleType,
     Type,
@@ -633,7 +634,7 @@ class NamedTupleAnalyzer:
         if self.options.python_version >= (3, 13):
             add_method(
                 "__replace__",
-                ret=None,
+                ret=Instance(info, []),
                 args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars],
             )
 
