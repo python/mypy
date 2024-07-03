@@ -319,19 +319,17 @@ def analyze_instance_member_access(
             getter = method.items[0]
             assert isinstance(getter, Decorator)
             if (
-                mx.is_lvalue and
-                (len(items := method.items) > 1) and
-                isinstance(setter := items[1], Decorator)
+                mx.is_lvalue
+                and (len(items := method.items) > 1)
+                and isinstance(setter := items[1], Decorator)
             ):
-                if (
-                    isinstance(co := setter.func.type, (CallableType, Overloaded)) and
-                    ((deprecated := co.deprecated) is not None)
+                if isinstance(co := setter.func.type, (CallableType, Overloaded)) and (
+                    (deprecated := co.deprecated) is not None
                 ):
                     mx.chk.warn_deprecated(co, deprecated, mx.context)
             return analyze_var(name, getter.var, typ, info, mx)
-        elif (
-            isinstance(co := method.type, (CallableType, Overloaded)) and
-            ((deprecated := co.deprecated) is not None)
+        elif isinstance(co := method.type, (CallableType, Overloaded)) and (
+            (deprecated := co.deprecated) is not None
         ):
             mx.chk.warn_deprecated(co, deprecated, mx.context)
 
@@ -790,9 +788,9 @@ def analyze_var(
         typ = get_proper_type(typ)
 
         if (
-            var.is_property and
-            isinstance(typ, CallableType) and
-            ((deprecated := typ.deprecated) is not None)
+            var.is_property
+            and isinstance(typ, CallableType)
+            and ((deprecated := typ.deprecated) is not None)
         ):
             mx.chk.warn_deprecated(typ, deprecated, mx.context)
 

@@ -2341,7 +2341,7 @@ class Overloaded(FunctionLike):
         return {
             ".class": "Overloaded",
             "items": [t.serialize() for t in self.items],
-            "deprecated": self.deprecated
+            "deprecated": self.deprecated,
         }
 
     @classmethod
