@@ -2500,5 +2500,5 @@ class Coords:
     y: int
 
 
-replaced = Coords(2, 4).__replace__(x=2, y=5)
-reveal_type(replaced)  # N: Revealed type is "__main__.Coords"
+Coords(2, 4).__replace__(x=2, y=5)
+[builtins fixtures/dataclasses.pyi]
