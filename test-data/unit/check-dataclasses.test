@@ -2491,6 +2491,7 @@ class Child(Base):
 [builtins fixtures/dataclasses.pyi]
 
 [case testDunderReplacePresent]
+# flags: --python-version 3.13
 from dataclasses import dataclass
 
 @dataclass
