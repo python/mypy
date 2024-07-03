@@ -406,7 +406,7 @@ class DataclassTransformer:
             self._cls,
             "__replace__",
             args=args,
-            return_type=NoneType(),
+            return_type=Instance(self._cls.info, []),
         )
 
     def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
