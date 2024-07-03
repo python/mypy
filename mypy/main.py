@@ -565,7 +565,7 @@ def process_options(
         "--no-namespace-packages",
         dest="namespace_packages",
         default=True,
-        help="Support namespace packages (PEP 420, __init__.py-less)",
+        help="Disable support for namespace packages (PEP 420, __init__.py-less)",
         group=imports_group,
     )
     imports_group.add_argument(
