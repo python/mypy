@@ -184,13 +184,13 @@ from mypy.typeops import (
 )
 from mypy.types import (
     ANY_STRATEGY,
+    DEPRECATED_TYPE_NAMES,
     MYPYC_NATIVE_INT_NAMES,
     OVERLOAD_NAMES,
     AnyType,
     BoolTypeQuery,
     CallableType,
     DeletedType,
-    DEPRECATED_TYPE_NAMES,
     ErasedType,
     FunctionLike,
     Instance,
@@ -660,9 +660,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if defn.impl:
             defn.impl.accept(self)
             if (
-                isinstance(impl := defn.impl, Decorator) and
-                isinstance(ct := impl.func.type, CallableType) and
-                ((deprecated := ct.deprecated) is not None)
+                isinstance(impl := defn.impl, Decorator)
+                and isinstance(ct := impl.func.type, CallableType)
+                and ((deprecated := ct.deprecated) is not None)
             ):
                 if isinstance(ct := defn.type, (CallableType, Overloaded)):
                     ct.deprecated = deprecated
@@ -2855,9 +2855,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if (sym := self.globals.get(name)) is not None:
                 if isinstance(sym.node, TypeInfo) and ((depr := sym.node.deprecated) is not None):
                     self.warn_deprecated(sym.node, depr, node)
-                elif (
-                    isinstance(co := get_proper_type(sym.type), (CallableType, Overloaded)) and
-                    ((depr := co.deprecated) is not None)
+                elif isinstance(co := get_proper_type(sym.type), (CallableType, Overloaded)) and (
+                    (depr := co.deprecated) is not None
                 ):
                     self.warn_deprecated(co, depr, node)
         self.check_import(node)
@@ -2952,9 +2951,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
             for lvalue in s.lvalues:
                 if (
-                    isinstance(lvalue, NameExpr) and
-                    isinstance(var := lvalue.node, Var) and
-                    isinstance(instance := get_proper_type(var.type), Instance)
+                    isinstance(lvalue, NameExpr)
+                    and isinstance(var := lvalue.node, Var)
+                    and isinstance(instance := get_proper_type(var.type), Instance)
                 ):
                     self.check_deprecated_class(instance.type, s, False)
 
@@ -7560,11 +7559,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def get_deprecation_warning(self, decorators: Iterable[Expression]) -> str | None:
         for decorator in decorators:
             if (
-                isinstance(decorator, CallExpr) and
-                isinstance(callee := decorator.callee, NameExpr) and
-                ((callee.fullname in DEPRECATED_TYPE_NAMES) or (not callee.fullname and callee.name == "deprecated")) and
-                (len(args := decorator.args) == 1) and
-                isinstance(arg := args[0], StrExpr)
+                isinstance(decorator, CallExpr)
+                and isinstance(callee := decorator.callee, NameExpr)
+                and (
+                    (callee.fullname in DEPRECATED_TYPE_NAMES)
+                    or (not callee.fullname and callee.name == "deprecated")
+                )
+                and (len(args := decorator.args) == 1)
+                and isinstance(arg := args[0], StrExpr)
             ):
                 return arg.value
         return None
@@ -7576,7 +7578,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_deprecated_class(self, typ: TypeInfo, context: Context, memberaccess: bool) -> None:
         self._check_deprecated(typ, context, memberaccess)
 
-    def _check_deprecated(self, typ: CallableType | Overloaded | TypeInfo, context: Context, memberaccess: bool) -> None:
+    def _check_deprecated(
+        self, typ: CallableType | Overloaded | TypeInfo, context: Context, memberaccess: bool
+    ) -> None:
         if (depr := typ.deprecated) is not None:
             if memberaccess:
                 self.warn_deprecated(typ, depr, context)
@@ -7587,7 +7591,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     self.warn_deprecated(typ, depr, context)
 
-    def warn_deprecated(self, type_: CallableType | Overloaded | TypeInfo, deprecated: str, context: Context) -> None:
+    def warn_deprecated(
+        self, type_: CallableType | Overloaded | TypeInfo, deprecated: str, context: Context
+    ) -> None:
         name = type_.name
         if isinstance(type_, CallableType):
             if (defn := type_.definition) is not None:

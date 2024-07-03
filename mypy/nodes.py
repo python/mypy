@@ -3379,7 +3379,7 @@ class TypeInfo(SymbolNode):
                 if self.dataclass_transform_spec is not None
                 else None
             ),
-            "deprecated":  self.deprecated,
+            "deprecated": self.deprecated,
         }
         return data
 
