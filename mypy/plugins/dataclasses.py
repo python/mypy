@@ -385,7 +385,9 @@ class DataclassTransformer:
 
         self._add_dataclass_fields_magic_attribute()
         self._add_internal_replace_method(attributes)
-        self._add_dunder_replace(attributes)
+        if self._api.options.python_version >= (3, 13):
+            self._add_dunder_replace(attributes)
+
         if "__post_init__" in info.names:
             self._add_internal_post_init_method(attributes)
 
