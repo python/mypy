@@ -2489,3 +2489,16 @@ class Base:
 class Child(Base):
     y: int
 [builtins fixtures/dataclasses.pyi]
+
+[case testDunderReplacePresent]
+from dataclasses import dataclass
+
+@dataclass
+class Coords:
+    x: int
+    y: int
+
+
+replaced = Coords(2, 4).__replace__(x=2, y=5)
+reveal_type(replaced)  # N: Revealed type is "__main__.Coords"
+
