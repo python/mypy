@@ -1408,7 +1408,7 @@ class A(NamedTuple):
     x: int
 
 replaced = A(x=0).__replace__(x=1)
-reveal_type(replaced)  # N: Revealed type is "__main__.A"
+reveal_type(replaced)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.A]"
 
 A(x=0).__replace__(x="asdf")  # E: Argument "x" to "__replace__" of "A" has incompatible type "str"; expected "int"
 A(x=0).__replace__(y=1)  # E: Unexpected keyword argument "y" for "__replace__" of "A"
