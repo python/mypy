@@ -956,7 +956,7 @@ a = []  # type: List[Dict[str, str]]
 sorted(a, key=lambda y: y[''])
 
 [case testAbstractProperty]
-from abc import abstractproperty, ABCMeta
+from abc import abstractproperty, ABCMeta  # type: ignore[deprecated]
 class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self) -> int: pass
