@@ -401,12 +401,13 @@ class DataclassTransformer:
     def _add_dunder_replace(self, attributes: list[DataclassAttribute]) -> None:
         """Add a `__replace__` method to the class, which is used to replace attributes in the `copy` module."""
         args = [attr.to_argument(self._cls.info, of="replace") for attr in attributes]
+        type_vars = [tv for tv in self._cls.type_vars]
         add_method_to_class(
             self._api,
             self._cls,
             "__replace__",
             args=args,
-            return_type=Instance(self._cls.info, []),
+            return_type=Instance(self._cls.info, type_vars),
         )
 
     def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
