@@ -2942,6 +2942,7 @@ class TypeInfo(SymbolNode):
         "self_type",
         "dataclass_transform_spec",
         "is_type_check_only",
+        "deprecated",
     )
 
     _fullname: str  # Fully qualified name
@@ -3095,6 +3096,9 @@ class TypeInfo(SymbolNode):
     # Is set to `True` when class is decorated with `@typing.type_check_only`
     is_type_check_only: bool
 
+    # The type's deprecation message (in case it is deprecated)
+    deprecated: str | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3152,6 +3156,7 @@ class TypeInfo(SymbolNode):
         self.self_type = None
         self.dataclass_transform_spec = None
         self.is_type_check_only = False
+        self.deprecated = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3374,6 +3379,7 @@ class TypeInfo(SymbolNode):
                 if self.dataclass_transform_spec is not None
                 else None
             ),
+            "deprecated":  self.deprecated,
         }
         return data
 
@@ -3441,6 +3447,7 @@ class TypeInfo(SymbolNode):
             ti.dataclass_transform_spec = DataclassTransformSpec.deserialize(
                 data["dataclass_transform_spec"]
             )
+        ti.deprecated = data.get("deprecated")
         return ti
 
 

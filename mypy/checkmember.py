@@ -316,9 +316,25 @@ def analyze_instance_member_access(
 
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
-            first_item = method.items[0]
-            assert isinstance(first_item, Decorator)
-            return analyze_var(name, first_item.var, typ, info, mx)
+            getter = method.items[0]
+            assert isinstance(getter, Decorator)
+            if (
+                mx.is_lvalue and
+                (len(items := method.items) > 1) and
+                isinstance(setter := items[1], Decorator)
+            ):
+                if (
+                    isinstance(co := setter.func.type, (CallableType, Overloaded)) and
+                    ((deprecated := co.deprecated) is not None)
+                ):
+                    mx.chk.warn_deprecated(co, deprecated, mx.context)
+            return analyze_var(name, getter.var, typ, info, mx)
+        elif (
+            isinstance(co := method.type, (CallableType, Overloaded)) and
+            ((deprecated := co.deprecated) is not None)
+        ):
+            mx.chk.warn_deprecated(co, deprecated, mx.context)
+
         if mx.is_lvalue:
             mx.msg.cant_assign_to_method(mx.context)
         if not isinstance(method, OverloadedFuncDef):
@@ -772,6 +788,13 @@ def analyze_var(
         freeze_all_type_vars(t)
         result = t
         typ = get_proper_type(typ)
+
+        if (
+            var.is_property and
+            isinstance(typ, CallableType) and
+            ((deprecated := typ.deprecated) is not None)
+        ):
+            mx.chk.warn_deprecated(typ, deprecated, mx.context)
 
         call_type: ProperType | None = None
         if var.is_initialized_in_class and (not is_instance_var(var) or mx.is_operator):
