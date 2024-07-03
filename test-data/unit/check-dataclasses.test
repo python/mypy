@@ -2511,7 +2511,7 @@ Coords(2, 4).__replace__(23)          # E: Too many positional arguments for "Co
 Coords(2, 4).__replace__(23, 25)      # E: Too many positional arguments for "Coords"
 Coords(2, 4).__replace__(x=23, y=25, z=42)  # E: Unexpected keyword argument "z" for "__replace__" of "Coords"
 
-from typing import Generic
+from typing import Generic, TypeVar
 T = TypeVar('T')
 
 @dataclass
