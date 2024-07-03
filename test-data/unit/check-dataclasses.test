@@ -2489,3 +2489,37 @@ class Base:
 class Child(Base):
     y: int
 [builtins fixtures/dataclasses.pyi]
+
+[case testDunderReplacePresent]
+# flags: --python-version 3.13
+from dataclasses import dataclass
+
+@dataclass
+class Coords:
+    x: int
+    y: int
+
+
+replaced = Coords(2, 4).__replace__(x=2, y=5)
+reveal_type(replaced)  # N: Revealed type is "__main__.Coords"
+
+replaced = Coords(2, 4).__replace__(x=2)
+reveal_type(replaced)  # N: Revealed type is "__main__.Coords"
+
+Coords(2, 4).__replace__(x="asdf")  # E: Argument "x" to "__replace__" of "Coords" has incompatible type "str"; expected "int"
+Coords(2, 4).__replace__(23)          # E: Too many positional arguments for "__replace__" of "Coords"
+Coords(2, 4).__replace__(23, 25)      # E: Too many positional arguments for "__replace__" of "Coords"
+Coords(2, 4).__replace__(x=23, y=25, z=42)  # E: Unexpected keyword argument "z" for "__replace__" of "Coords"
+
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+@dataclass
+class Gen(Generic[T]):
+    x: T
+
+replaced_2 = Gen(2).__replace__(x=2)
+reveal_type(replaced_2)  # N: Revealed type is "__main__.Gen[builtins.int]"
+Gen(2).__replace__(x="not an int")  # E: Argument "x" to "__replace__" of "Gen" has incompatible type "str"; expected "int"
+
+[builtins fixtures/tuple.pyi]
