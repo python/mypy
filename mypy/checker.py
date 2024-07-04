@@ -7561,10 +7561,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if (
                 isinstance(decorator, CallExpr)
                 and isinstance(callee := decorator.callee, NameExpr)
-                and (
-                    (callee.fullname in DEPRECATED_TYPE_NAMES)
-                    or (not callee.fullname and callee.name == "deprecated")
-                )
+                and (callee.fullname in DEPRECATED_TYPE_NAMES)
                 and (len(args := decorator.args) >= 1)
                 and isinstance(arg := args[0], StrExpr)
             ):
