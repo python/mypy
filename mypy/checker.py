@@ -660,15 +660,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if defn.impl:
             defn.impl.accept(self)
             if (
-                isinstance(impl := defn.impl, Decorator)
-                and isinstance(ct := impl.func.type, CallableType)
-                and ((deprecated := ct.deprecated) is not None)
+                isinstance(defn.impl, Decorator)
+                and isinstance(defn.impl.func.type, CallableType)
+                and ((deprecated := defn.impl.func.type.deprecated) is not None)
             ):
-                if isinstance(ct := defn.type, (CallableType, Overloaded)):
-                    ct.deprecated = deprecated
+                if isinstance(defn.type, (CallableType, Overloaded)):
+                    defn.type.deprecated = deprecated
                 for subdef in defn.items:
-                    if isinstance(ct := get_proper_type(subdef.type), (CallableType, Overloaded)):
-                        ct.deprecated = deprecated
+                    type_ = get_proper_type(subdef.type)
+                    if isinstance(type_, (CallableType, Overloaded)):
+                        type_.deprecated = deprecated
         if not defn.is_property:
             self.check_overlapping_overloads(defn)
             if defn.type is None:
