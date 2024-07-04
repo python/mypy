@@ -48,7 +48,7 @@ from mypy.nodes import (
     check_arg_names,
     get_nongen_builtins,
 )
-from mypy.options import Options
+from mypy.options import INLINE_TYPEDDICT, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import (
     SemanticAnalyzerCoreInterface,
@@ -1238,6 +1238,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 req_keys.add(item_name)
             items[item_name] = analyzed
         if t.fallback.type is MISSING_FALLBACK:  # anonymous/inline TypedDict
+            if INLINE_TYPEDDICT not in self.options.enable_incomplete_feature:
+                self.fail(
+                    "Inline TypedDict is experimental,"
+                    " must be enabled with --enable-incomplete-feature=InlineTypedDict",
+                    t,
+                )
             required_keys = req_keys
             fallback = self.named_type("typing._TypedDict")
             for typ in t.extra_items_from:

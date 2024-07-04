@@ -59,7 +59,7 @@ def _extract_argument_name(expr: Expression) -> str | None:
 
 def expr_to_unanalyzed_type(
     expr: Expression,
-    options: Options | None = None,
+    options: Options,
     allow_new_syntax: bool = False,
     _parent: Expression | None = None,
     allow_unpack: bool = False,
@@ -122,7 +122,7 @@ def expr_to_unanalyzed_type(
     elif (
         isinstance(expr, OpExpr)
         and expr.op == "|"
-        and ((options and options.python_version >= (3, 10)) or allow_new_syntax)
+        and ((options.python_version >= (3, 10)) or allow_new_syntax)
     ):
         return UnionType(
             [

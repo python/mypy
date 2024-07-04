@@ -3552,12 +3552,14 @@ class Test:
 [builtins fixtures/tuple.pyi]
 
 [case testTypedDictInlineNoOldStyleAlias]
+# flags: --enable-incomplete-feature=InlineTypedDict
 X = {"int": int, "str": str}
 reveal_type(X)  # N: Revealed type is "builtins.dict[builtins.str, def () -> builtins.object]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictInlineYesMidStyleAlias]
+# flags: --enable-incomplete-feature=InlineTypedDict
 from typing_extensions import TypeAlias
 X: TypeAlias = {"int": int, "str": str}
 x: X
@@ -3566,12 +3568,14 @@ reveal_type(x)  # N:  # N: Revealed type is "TypedDict({'int': builtins.int, 'st
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictInlineNoEmpty]
+# flags: --enable-incomplete-feature=InlineTypedDict
 x: {}  # E: Invalid type comment or annotation
 reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictInlineNotRequired]
+# flags: --enable-incomplete-feature=InlineTypedDict
 from typing import NotRequired
 
 x: {"one": int, "other": NotRequired[int]}
@@ -3582,6 +3586,7 @@ y = {"one": 1}  # E: Expected TypedDict keys ("one", "other") but found only key
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictInlineNestedSchema]
+# flags: --enable-incomplete-feature=InlineTypedDict
 def nested() -> {"one": str, "other": {"a": int, "b": int}}:
     if bool():
         return {"one": "yes", "other": {"a": 1, "b": 2}}  # OK
@@ -3591,6 +3596,7 @@ def nested() -> {"one": str, "other": {"a": int, "b": int}}:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictInlineMergeAnother]
+# flags: --enable-incomplete-feature=InlineTypedDict
 from typing import TypeVar
 from typing_extensions import TypeAlias
 
