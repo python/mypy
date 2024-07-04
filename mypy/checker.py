@@ -7563,7 +7563,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         overload = False
         deprecation: str | None = None
         for decorator in decorators:
-            if (isinstance(decorator, NameExpr) and (decorator.fullname in OVERLOAD_NAMES)):
+            if isinstance(decorator, NameExpr) and (decorator.fullname in OVERLOAD_NAMES):
                 overload = True
                 if deprecation is not None:
                     self.msg.note("@overload should be placed before @deprecated", decorator)
