@@ -7561,7 +7561,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self, decorators: Iterable[Expression], callable: CallableType | None = None
     ) -> str | None:
         overload = False
-        deprecation = None
+        deprecation: str | None = None
         for decorator in decorators:
             if (isinstance(decorator, NameExpr) and (decorator.fullname in OVERLOAD_NAMES)):
                 overload = True
