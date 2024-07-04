@@ -248,10 +248,10 @@ class A:
     def __iadd__(self, v: Union[int, str]) -> A: ...
 
 a = A()
-a + 1  # N: __main__.A.__add__ is deprecated: no A + int
+a + 1  # N: __main__.A.__add__ is deprecated [overload def (__main__.A, builtins.int)]: no A + int
 a + "x"
 1 + a
-"x" + a  # N: __main__.A.__radd__ is deprecated: no str + A
+"x" + a  # N: __main__.A.__radd__ is deprecated [overload def (__main__.A, builtins.str)]: no str + A
 a += 1  # N: __main__.A.__iadd__ is deprecated: no A += Any
 a += "x"  # N: __main__.A.__iadd__ is deprecated: no A += Any
 
@@ -370,7 +370,7 @@ def g(x: str) -> str: ...
 def g(x: Union[int, str]) -> Union[int, str]: ...
 
 g
-g(1)  # N: __main__.g is deprecated: work with str instead
+g(1)  # N: __main__.g is deprecated [overload def (x: builtins.int) -> builtins.int]: work with str instead
 g("x")
 g(1.0)  # E: No overload variant of "g" matches argument type "float" \
         # N: Possible overload variants: \
@@ -386,7 +386,7 @@ def h(x: Union[int, str]) -> Union[int, str]: ...
 
 h
 h(1)
-h("x")  # N: __main__.h is deprecated: work with int instead
+h("x")  # N: __main__.h is deprecated [overload def (x: builtins.str) -> builtins.str]: work with int instead
 h(1.0)  # E: No overload variant of "h" matches argument type "float" \
         # N: Possible overload variants: \
         # N:     def h(x: int) -> int \
