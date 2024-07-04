@@ -231,6 +231,40 @@ incorrect control flow or conditional checks that are accidentally always true o
         # Error: Statement is unreachable  [unreachable]
         print('unreachable')
 
+.. _code-deprecated:
+
+Check that imported or used feature is deprecated [deprecated]
+--------------------------------------------------------------
+
+If you use :option:`--warn-deprecated <mypy --warn-deprecated>`, mypy generates a note if
+your code imports a deprecated function or class with a ``from mod import depr" statement
+or uses a deprecated function, method or class imported otherwise or defined locally.
+Features are considered deprecated when decorated with ``warnings.deprecated``, as
+specified in `PEP 702 <https://peps.python.org/pep-0702>`_.
+
+.. note::
+
+    The ``warnings`` module provides the ``@deprecated`` decorator since Python 3.13.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+Examples:
+
+.. code-block:: python
+
+    # mypy: warn-deprecated
+
+    # Note: abc.abstractproperty is deprecated: Deprecated, use 'property' with 'abstractmethod' instead
+    from abc import abstractproperty
+
+    from typing_extensions import deprecated
+
+    @deprecated("use new_function")
+    def old_function() -> None:
+        print("I am old")
+
+    # Note: __main__.old_function is deprecated: use new_function
+    old_function()
+
 .. _code-redundant-expr:
 
 Check that expression is redundant [redundant-expr]

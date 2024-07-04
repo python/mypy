@@ -533,6 +533,12 @@ potentially problematic or redundant in some way.
 
         This limitation will be removed in future releases of mypy.
 
+.. option:: --warn-deprecated
+
+    This flag will make mypy report an error whenever your code imports a deprecated
+    function or class with a ``from mod import depr" statement or uses a deprecated
+    function, method or class imported otherwise or defined locally.  Features are
+    considered deprecated when decorated with ``warnings.deprecated``.
 
 .. _miscellaneous-strictness-flags:
 
