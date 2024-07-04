@@ -1,5 +1,47 @@
 -- Type checker test cases for reporting deprecations.
 
+
+[case testDeprecatedDisableNotes]
+# flags: --disable-error-code=deprecated
+
+from typing_extensions import deprecated
+
+@deprecated("use f2 instead")
+def f() -> None: ...
+
+f()
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedAsNoteWithErrorCode]
+# flags: --show-error-codes
+
+from typing_extensions import deprecated
+
+@deprecated("use f2 instead")
+def f() -> None: ...
+
+f() # type: ignore[deprecated]
+f() # N: __main__.f is deprecated: use f2 instead  [deprecated]
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedAsErrorWithErrorCode]
+# flags: --report-deprecated-as-error --show-error-codes
+
+from typing_extensions import deprecated
+
+@deprecated("use f2 instead")
+def f() -> None: ...
+
+f() # type: ignore[deprecated]
+f() # E: __main__.f is deprecated: use f2 instead  [deprecated]
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedFunction]
 
 from typing_extensions import deprecated

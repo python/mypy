@@ -236,11 +236,13 @@ incorrect control flow or conditional checks that are accidentally always true o
 Check that imported or used feature is deprecated [deprecated]
 --------------------------------------------------------------
 
-If you use :option:`--warn-deprecated <mypy --warn-deprecated>`, mypy generates a note if
-your code imports a deprecated function or class with a ``from mod import depr" statement
-or uses a deprecated function, method or class imported otherwise or defined locally.
-Features are considered deprecated when decorated with ``warnings.deprecated``, as
-specified in `PEP 702 <https://peps.python.org/pep-0702>`_.
+By default, mypy generates a note if your code imports a deprecated feature explicitly with a
+``from mod import depr" statement or uses a deprecated feature imported otherwise or defined
+locally.  Features are considered deprecated when decorated with ``warnings.deprecated``, as
+specified in `PEP 702 <https://peps.python.org/pep-0702>`_.  You can silence single notes via
+``# type: ignore[deprecated]`` or turn off this check completely via ``--disable-error-code=deprecated``.
+Use the :option:`--report-deprecated-as-error <mypy --report-deprecated-as-error>` option for
+more strictness, which turns all such notes into errors.
 
 .. note::
 
@@ -251,9 +253,9 @@ Examples:
 
 .. code-block:: python
 
-    # mypy: warn-deprecated
+    # mypy: report-deprecated-as-error
 
-    # Note: abc.abstractproperty is deprecated: Deprecated, use 'property' with 'abstractmethod' instead
+    # Error: abc.abstractproperty is deprecated: Deprecated, use 'property' with 'abstractmethod' instead
     from abc import abstractproperty
 
     from typing_extensions import deprecated
@@ -262,8 +264,10 @@ Examples:
     def old_function() -> None:
         print("I am old")
 
-    # Note: __main__.old_function is deprecated: use new_function
+    # Error: __main__.old_function is deprecated: use new_function
     old_function()
+    old_function()  # type: ignore[deprecated]
+
 
 .. _code-redundant-expr:
 

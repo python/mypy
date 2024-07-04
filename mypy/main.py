@@ -801,10 +801,10 @@ def process_options(
         group=lint_group,
     )
     add_invertible_flag(
-        "--warn-deprecated",
+        "--report-deprecated-as-error",
         default=False,
         strict_flag=False,
-        help="Warn when importing or using deprecated features",
+        help="Report importing or using deprecated features as errors instead of notes",
         group=lint_group,
     )
 

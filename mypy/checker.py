@@ -7601,7 +7601,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 name = func.fullname
         else:
             name = type_.fullname
-        self.msg.note(f"{name} is deprecated: {deprecated}", context, code=codes.DEPRECATED)
+        warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
+        warn(f"{name} is deprecated: {deprecated}", context, code=codes.DEPRECATED)
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
