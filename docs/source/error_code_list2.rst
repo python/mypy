@@ -237,7 +237,7 @@ Check that imported or used feature is deprecated [deprecated]
 --------------------------------------------------------------
 
 By default, mypy generates a note if your code imports a deprecated feature explicitly with a
-``from mod import depr" statement or uses a deprecated feature imported otherwise or defined
+``from mod import depr`` statement or uses a deprecated feature imported otherwise or defined
 locally.  Features are considered deprecated when decorated with ``warnings.deprecated``, as
 specified in `PEP 702 <https://peps.python.org/pep-0702>`_.  You can silence single notes via
 ``# type: ignore[deprecated]`` or turn off this check completely via ``--disable-error-code=deprecated``.
