@@ -379,8 +379,8 @@ g(1.0)  # E: No overload variant of "g" matches argument type "float" \
 
 @overload
 def h(x: int) -> int: ...
-@overload
 @deprecated("work with int instead")
+@overload  # N: @overload should be placed before @deprecated
 def h(x: str) -> str: ...
 def h(x: Union[int, str]) -> Union[int, str]: ...
 

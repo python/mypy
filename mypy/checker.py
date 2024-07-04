@@ -7558,16 +7558,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return self.expr_checker.accept(node, type_context=type_context)
 
     def get_deprecation_warning(self, decorators: Iterable[Expression]) -> str | None:
+        deprecation = None
         for decorator in decorators:
-            if (
+            if (isinstance(decorator, NameExpr) and (decorator.fullname in OVERLOAD_NAMES)):
+                if deprecation is not None:
+                    self.msg.note("@overload should be placed before @deprecated", decorator)
+            elif (
                 isinstance(decorator, CallExpr)
                 and isinstance(callee := decorator.callee, NameExpr)
                 and (callee.fullname in DEPRECATED_TYPE_NAMES)
                 and (len(args := decorator.args) >= 1)
                 and isinstance(arg := args[0], StrExpr)
+                and ((value := arg.value) is not None)
             ):
-                return arg.value
-        return None
+                deprecation = value
+        return deprecation
 
     def check_deprecated_function(self, typ: Type, context: Context, memberaccess: bool) -> None:
         if isinstance(typ := get_proper_type(typ), (CallableType, Overloaded)):
