@@ -250,7 +250,7 @@ class D(A):
                               # N:5:          def f(self) -> None
 
 [case testColumnMissingTypeParameters]
-# flags: --disallow-any-generics
+# flags: --python-version 3.8 --disallow-any-generics
 from typing import List, Callable
 def f(x: List) -> None: pass # E:10: Missing type parameters for generic type "List"
 def g(x: list) -> None: pass # E:10: Implicit generic "Any". Use "typing.List" and specify generic parameters
