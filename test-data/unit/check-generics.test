@@ -515,6 +515,7 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
+# flags: --python-version 3.8
 import types
 type[int] # this was crashing, see #2302 (comment)  # E: The type "Type[type]" is not generic and not indexable
 [builtins fixtures/tuple.pyi]
@@ -1130,6 +1131,7 @@ reveal_type(Bad) # N: Revealed type is "Any"
 [out]
 
 [case testNoSubscriptionOfBuiltinAliases]
+# flags: --python-version 3.8
 from typing import List, TypeVar
 
 list[int]() # E: "list" is not subscriptable
