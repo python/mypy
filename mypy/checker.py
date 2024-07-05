@@ -7562,15 +7562,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Create a warning when visiting a deprecated (decorated) callable, overload or
         class that may be used later if the deprecated feature is used."""
 
-        name = typ.name
         if isinstance(typ, CallableType):
-            if (defn := typ.definition) is not None:
-                name = defn.fullname
+            if (defn := typ.definition) is None:
+                name = f"function {typ.name}"
+            else:
+                name = f"function {defn.fullname}"
         elif isinstance(typ, Overloaded):
             if isinstance(func := typ.items[0].definition, FuncDef):
-                name = func.fullname
+                name = f"function {func.fullname}"
+            else:
+                name = f"function {typ.name}"
         else:
-            name = typ.fullname
+            name = f"class {typ.fullname}"
 
         overload = False
         deprecation: str | None = None
@@ -7594,7 +7597,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if deprecation is not None:
             if overload:
-                typ.deprecated = f"{name} is deprecated [overload {typ}]: {deprecation}"
+                typ.deprecated = f"overload {typ} of {name} is deprecated: {deprecation}"
             else:
                 typ.deprecated = f"{name} is deprecated: {deprecation}"
 
