@@ -101,3 +101,26 @@ normal_from_reverse_op: Final = {m: n for n, m in reverse_op_methods.items()}
 reverse_op_method_set: Final = set(reverse_op_methods.values())
 
 unary_op_methods: Final = {"-": "__neg__", "+": "__pos__", "~": "__invert__"}
+
+int_op_to_method: Final = {
+    "==": int.__eq__,
+    "is": int.__eq__,
+    "<": int.__lt__,
+    "<=": int.__le__,
+    "!=": int.__ne__,
+    "is not": int.__ne__,
+    ">": int.__gt__,
+    ">=": int.__ge__,
+}
+
+flip_ops: Final = {"<": ">", "<=": ">=", ">": "<", ">=": "<="}
+neg_ops: Final = {
+    "==": "!=",
+    "!=": "==",
+    "is": "is not",
+    "is not": "is",
+    "<": ">=",
+    "<=": ">",
+    ">": "<=",
+    ">=": "<",
+}

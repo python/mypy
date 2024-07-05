@@ -1,7 +1,7 @@
 import sys
-from collections.abc import Container, Iterable, Iterator
-from typing import Any, Generic, SupportsInt, TypeVar, overload
-from typing_extensions import Literal, Self, TypeAlias
+from collections.abc import Iterable, Iterator
+from typing import Any, Generic, Literal, SupportsInt, TypeVar, overload
+from typing_extensions import Self, TypeAlias
 
 # Undocumented length constants
 IPV4LENGTH: Literal[32]
@@ -70,7 +70,7 @@ class _BaseAddress(_IPAddressBase, SupportsInt):
     @property
     def packed(self) -> bytes: ...
 
-class _BaseNetwork(_IPAddressBase, Container[_A], Iterable[_A], Generic[_A]):
+class _BaseNetwork(_IPAddressBase, Generic[_A]):
     network_address: _A
     netmask: _A
     def __init__(self, address: object, strict: bool = ...) -> None: ...
@@ -147,7 +147,11 @@ class _BaseV4:
     @property
     def max_prefixlen(self) -> Literal[32]: ...
 
-class IPv4Address(_BaseV4, _BaseAddress): ...
+class IPv4Address(_BaseV4, _BaseAddress):
+    if sys.version_info >= (3, 13):
+        @property
+        def ipv6_mapped(self) -> IPv6Address: ...
+
 class IPv4Network(_BaseV4, _BaseNetwork[IPv4Address]): ...
 
 class IPv4Interface(IPv4Address, _BaseInterface[IPv4Address, IPv4Network]):

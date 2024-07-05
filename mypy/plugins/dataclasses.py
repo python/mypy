@@ -23,6 +23,8 @@ from mypy.nodes import (
     ClassDef,
     Context,
     DataclassTransformSpec,
+    Decorator,
+    EllipsisExpr,
     Expression,
     FuncDef,
     FuncItem,
@@ -63,6 +65,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeOfAny,
+    TypeVarId,
     TypeVarType,
     UninhabitedType,
     UnionType,
@@ -148,13 +151,13 @@ class DataclassAttribute:
         return Argument(
             variable=self.to_var(current_info),
             type_annotation=self.expand_type(current_info),
-            initializer=None,
+            initializer=EllipsisExpr() if self.has_default else None,  # Only used by stubgen
             kind=arg_kind,
         )
 
     def expand_type(self, current_info: TypeInfo) -> Type | None:
         if self.type is not None and self.info.self_type is not None:
-            # In general, it is not safe to call `expand_type()` during semantic analyzis,
+            # In general, it is not safe to call `expand_type()` during semantic analysis,
             # however this plugin is called very late, so all types should be fully ready.
             # Also, it is tricky to avoid eager expansion of Self types here (e.g. because
             # we serialize attributes).
@@ -268,11 +271,17 @@ class DataclassTransformer:
                     if arg.kind == ARG_POS:
                         arg.kind = ARG_OPT
 
-                nameless_var = Var("")
+                existing_args_names = {arg.variable.name for arg in args}
+                gen_args_name = "generated_args"
+                while gen_args_name in existing_args_names:
+                    gen_args_name += "_"
+                gen_kwargs_name = "generated_kwargs"
+                while gen_kwargs_name in existing_args_names:
+                    gen_kwargs_name += "_"
                 args = [
-                    Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR),
+                    Argument(Var(gen_args_name), AnyType(TypeOfAny.explicit), None, ARG_STAR),
                     *args,
-                    Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR2),
+                    Argument(Var(gen_kwargs_name), AnyType(TypeOfAny.explicit), None, ARG_STAR2),
                 ]
 
             add_method_to_class(
@@ -306,8 +315,8 @@ class DataclassTransformer:
                 obj_type = self._api.named_type("builtins.object")
                 order_tvar_def = TypeVarType(
                     SELF_TVAR_NAME,
-                    info.fullname + "." + SELF_TVAR_NAME,
-                    id=-1,
+                    f"{info.fullname}.{SELF_TVAR_NAME}",
+                    id=TypeVarId(-1, namespace=f"{info.fullname}.{method_name}"),
                     values=[],
                     upper_bound=obj_type,
                     default=AnyType(TypeOfAny.from_omitted_generics),
@@ -375,9 +384,10 @@ class DataclassTransformer:
             add_attribute_to_class(self._api, self._cls, "__match_args__", match_args_type)
 
         self._add_dataclass_fields_magic_attribute()
+        self._add_internal_replace_method(attributes)
+        if self._api.options.python_version >= (3, 13):
+            self._add_dunder_replace(attributes)
 
-        if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
-            self._add_internal_replace_method(attributes)
         if "__post_init__" in info.names:
             self._add_internal_post_init_method(attributes)
 
@@ -387,6 +397,18 @@ class DataclassTransformer:
         }
 
         return True
+
+    def _add_dunder_replace(self, attributes: list[DataclassAttribute]) -> None:
+        """Add a `__replace__` method to the class, which is used to replace attributes in the `copy` module."""
+        args = [attr.to_argument(self._cls.info, of="replace") for attr in attributes]
+        type_vars = [tv for tv in self._cls.type_vars]
+        add_method_to_class(
+            self._api,
+            self._cls,
+            "__replace__",
+            args=args,
+            return_type=Instance(self._cls.info, type_vars),
+        )
 
     def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
         """
@@ -577,6 +599,10 @@ class DataclassTransformer:
                 # but the only alternative would be to modify the SymbolTable,
                 # and it's a little hairy to do that in a plugin.
                 continue
+            if isinstance(node, Decorator):
+                # This might be a property / field name clash.
+                # We will issue an error later.
+                continue
 
             assert isinstance(node, Var)
 
@@ -727,7 +753,7 @@ class DataclassTransformer:
         for attr in attributes:
             # Classes that directly specify a dataclass_transform metaclass must be neither frozen
             # non non-frozen per PEP681. Though it is surprising, this means that attributes from
-            # such a class must be writable even if the rest of the class heirarchy is frozen. This
+            # such a class must be writable even if the rest of the class hierarchy is frozen. This
             # matches the behavior of Pyright (the reference implementation).
             if attr.is_neither_frozen_nor_nonfrozen:
                 continue
@@ -1070,8 +1096,8 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     )
 
 
-def is_processed_dataclass(info: TypeInfo | None) -> bool:
-    return info is not None and "dataclass" in info.metadata
+def is_processed_dataclass(info: TypeInfo) -> bool:
+    return bool(info) and "dataclass" in info.metadata
 
 
 def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:

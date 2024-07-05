@@ -129,6 +129,9 @@ __all__ = [
     "Terminator",
 ]
 
+if sys.version_info >= (3, 12):
+    __all__ += ["teleport"]
+
 # Note: '_Color' is the alias we use for arguments and _AnyColor is the
 # alias we use for return types. Really, these two aliases should be the
 # same, but as per the "no union returns" typeshed policy, we'll return
@@ -333,7 +336,7 @@ class TPen:
     def isvisible(self) -> bool: ...
     # Note: signatures 1 and 2 overlap unsafely when no arguments are provided
     @overload
-    def pen(self) -> _PenState: ...  # type: ignore[misc]
+    def pen(self) -> _PenState: ...  # type: ignore[overload-overlap]
     @overload
     def pen(
         self,
@@ -379,7 +382,7 @@ class RawTurtle(TPen, TNavigator):
     def shape(self, name: str) -> None: ...
     # Unsafely overlaps when no arguments are provided
     @overload
-    def shapesize(self) -> tuple[float, float, float]: ...  # type: ignore[misc]
+    def shapesize(self) -> tuple[float, float, float]: ...  # type: ignore[overload-overlap]
     @overload
     def shapesize(
         self, stretch_wid: float | None = None, stretch_len: float | None = None, outline: float | None = None
@@ -390,7 +393,7 @@ class RawTurtle(TPen, TNavigator):
     def shearfactor(self, shear: float) -> None: ...
     # Unsafely overlaps when no arguments are provided
     @overload
-    def shapetransform(self) -> tuple[float, float, float, float]: ...  # type: ignore[misc]
+    def shapetransform(self) -> tuple[float, float, float, float]: ...  # type: ignore[overload-overlap]
     @overload
     def shapetransform(
         self, t11: float | None = None, t12: float | None = None, t21: float | None = None, t22: float | None = None
@@ -614,7 +617,7 @@ def isvisible() -> bool: ...
 
 # Note: signatures 1 and 2 overlap unsafely when no arguments are provided
 @overload
-def pen() -> _PenState: ...  # type: ignore[misc]
+def pen() -> _PenState: ...  # type: ignore[overload-overlap]
 @overload
 def pen(
     pen: _PenState | None = None,
@@ -648,9 +651,12 @@ def shape(name: None = None) -> str: ...
 @overload
 def shape(name: str) -> None: ...
 
+if sys.version_info >= (3, 12):
+    def teleport(x: float | None = None, y: float | None = None, *, fill_gap: bool = False) -> None: ...
+
 # Unsafely overlaps when no arguments are provided
 @overload
-def shapesize() -> tuple[float, float, float]: ...  # type: ignore[misc]
+def shapesize() -> tuple[float, float, float]: ...  # type: ignore[overload-overlap]
 @overload
 def shapesize(stretch_wid: float | None = None, stretch_len: float | None = None, outline: float | None = None) -> None: ...
 @overload
@@ -660,7 +666,7 @@ def shearfactor(shear: float) -> None: ...
 
 # Unsafely overlaps when no arguments are provided
 @overload
-def shapetransform() -> tuple[float, float, float, float]: ...  # type: ignore[misc]
+def shapetransform() -> tuple[float, float, float, float]: ...  # type: ignore[overload-overlap]
 @overload
 def shapetransform(
     t11: float | None = None, t12: float | None = None, t21: float | None = None, t22: float | None = None

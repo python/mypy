@@ -6,8 +6,8 @@ from builtins import list as _list  # aliases to avoid name clashes with fields 
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from gzip import _ReadableFileobj as _GzipReadableFileobj, _WritableFileobj as _GzipWritableFileobj
 from types import TracebackType
-from typing import IO, ClassVar, Protocol, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, ClassVar, Literal, Protocol, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "TarFile",
@@ -43,10 +43,10 @@ _FilterFunction: TypeAlias = Callable[[TarInfo, str], TarInfo | None]
 _TarfileFilter: TypeAlias = Literal["fully_trusted", "tar", "data"] | _FilterFunction
 
 class _Fileobj(Protocol):
-    def read(self, __size: int) -> bytes: ...
-    def write(self, __b: bytes) -> object: ...
+    def read(self, size: int, /) -> bytes: ...
+    def write(self, b: bytes, /) -> object: ...
     def tell(self) -> int: ...
-    def seek(self, __pos: int) -> object: ...
+    def seek(self, pos: int, /) -> object: ...
     def close(self) -> object: ...
     # Optional fields:
     # name: str | bytes
@@ -103,10 +103,13 @@ PAX_NAME_FIELDS: set[str]
 
 ENCODING: str
 
+_FileCreationModes: TypeAlias = Literal["a", "w", "x"]
+
+@overload
 def open(
     name: StrOrBytesPath | None = None,
     mode: str = "r",
-    fileobj: IO[bytes] | None = None,  # depends on mode
+    fileobj: IO[bytes] | None = None,
     bufsize: int = 10240,
     *,
     format: int | None = ...,
@@ -119,6 +122,26 @@ def open(
     debug: int | None = ...,
     errorlevel: int | None = ...,
     compresslevel: int | None = ...,
+    preset: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] | None = ...,
+) -> TarFile: ...
+@overload
+def open(
+    name: StrOrBytesPath | None = None,
+    mode: _FileCreationModes = ...,
+    fileobj: _Fileobj | None = None,
+    bufsize: int = 10240,
+    *,
+    format: int | None = ...,
+    tarinfo: type[TarInfo] | None = ...,
+    dereference: bool | None = ...,
+    ignore_zeros: bool | None = ...,
+    encoding: str | None = ...,
+    errors: str = ...,
+    pax_headers: Mapping[str, str] | None = ...,
+    debug: int | None = ...,
+    errorlevel: int | None = ...,
+    compresslevel: int | None = ...,
+    preset: int | None = ...,
 ) -> TarFile: ...
 
 class ExFileObject(io.BufferedReader):
@@ -141,22 +164,43 @@ class TarFile:
     errorlevel: int | None
     offset: int  # undocumented
     extraction_filter: _FilterFunction | None
-    def __init__(
-        self,
-        name: StrOrBytesPath | None = None,
-        mode: Literal["r", "a", "w", "x"] = "r",
-        fileobj: _Fileobj | None = None,
-        format: int | None = None,
-        tarinfo: type[TarInfo] | None = None,
-        dereference: bool | None = None,
-        ignore_zeros: bool | None = None,
-        encoding: str | None = None,
-        errors: str = "surrogateescape",
-        pax_headers: Mapping[str, str] | None = None,
-        debug: int | None = None,
-        errorlevel: int | None = None,
-        copybufsize: int | None = None,  # undocumented
-    ) -> None: ...
+    if sys.version_info >= (3, 13):
+        stream: bool
+        def __init__(
+            self,
+            name: StrOrBytesPath | None = None,
+            mode: Literal["r", "a", "w", "x"] = "r",
+            fileobj: _Fileobj | None = None,
+            format: int | None = None,
+            tarinfo: type[TarInfo] | None = None,
+            dereference: bool | None = None,
+            ignore_zeros: bool | None = None,
+            encoding: str | None = None,
+            errors: str = "surrogateescape",
+            pax_headers: Mapping[str, str] | None = None,
+            debug: int | None = None,
+            errorlevel: int | None = None,
+            copybufsize: int | None = None,  # undocumented
+            stream: bool = False,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            name: StrOrBytesPath | None = None,
+            mode: Literal["r", "a", "w", "x"] = "r",
+            fileobj: _Fileobj | None = None,
+            format: int | None = None,
+            tarinfo: type[TarInfo] | None = None,
+            dereference: bool | None = None,
+            ignore_zeros: bool | None = None,
+            encoding: str | None = None,
+            errors: str = "surrogateescape",
+            pax_headers: Mapping[str, str] | None = None,
+            debug: int | None = None,
+            errorlevel: int | None = None,
+            copybufsize: int | None = None,  # undocumented
+        ) -> None: ...
+
     def __enter__(self) -> Self: ...
     def __exit__(
         self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
@@ -291,32 +335,26 @@ class TarFile:
     def getnames(self) -> _list[str]: ...
     def list(self, verbose: bool = True, *, members: _list[TarInfo] | None = None) -> None: ...
     def next(self) -> TarInfo | None: ...
-    if sys.version_info >= (3, 8):
-        def extractall(
-            self,
-            path: StrOrBytesPath = ".",
-            members: Iterable[TarInfo] | None = None,
-            *,
-            numeric_owner: bool = False,
-            filter: _TarfileFilter | None = ...,
-        ) -> None: ...
-        def extract(
-            self,
-            member: str | TarInfo,
-            path: StrOrBytesPath = "",
-            set_attrs: bool = True,
-            *,
-            numeric_owner: bool = False,
-            filter: _TarfileFilter | None = ...,
-        ) -> None: ...
-    else:
-        def extractall(
-            self, path: StrOrBytesPath = ".", members: Iterable[TarInfo] | None = None, *, numeric_owner: bool = False
-        ) -> None: ...
-        def extract(
-            self, member: str | TarInfo, path: StrOrBytesPath = "", set_attrs: bool = True, *, numeric_owner: bool = False
-        ) -> None: ...
-
+    # Calling this method without `filter` is deprecated, but it may be set either on the class or in an
+    # individual call, so we can't mark it as @deprecated here.
+    def extractall(
+        self,
+        path: StrOrBytesPath = ".",
+        members: Iterable[TarInfo] | None = None,
+        *,
+        numeric_owner: bool = False,
+        filter: _TarfileFilter | None = ...,
+    ) -> None: ...
+    # Same situation as for `extractall`.
+    def extract(
+        self,
+        member: str | TarInfo,
+        path: StrOrBytesPath = "",
+        set_attrs: bool = True,
+        *,
+        numeric_owner: bool = False,
+        filter: _TarfileFilter | None = ...,
+    ) -> None: ...
     def _extract_member(
         self, tarinfo: TarInfo, targetpath: str, set_attrs: bool = True, numeric_owner: bool = False
     ) -> None: ...  # undocumented
@@ -350,9 +388,6 @@ if sys.version_info >= (3, 9):
 else:
     def is_tarfile(name: StrOrBytesPath) -> bool: ...
 
-if sys.version_info < (3, 8):
-    def filemode(mode: int) -> str: ...  # undocumented
-
 class TarError(Exception): ...
 class ReadError(TarError): ...
 class CompressionError(TarError): ...
@@ -360,30 +395,29 @@ class StreamError(TarError): ...
 class ExtractError(TarError): ...
 class HeaderError(TarError): ...
 
-if sys.version_info >= (3, 8):
-    class FilterError(TarError):
-        # This attribute is only set directly on the subclasses, but the documentation guarantees
-        # that it is always present on FilterError.
-        tarinfo: TarInfo
+class FilterError(TarError):
+    # This attribute is only set directly on the subclasses, but the documentation guarantees
+    # that it is always present on FilterError.
+    tarinfo: TarInfo
 
-    class AbsolutePathError(FilterError):
-        def __init__(self, tarinfo: TarInfo) -> None: ...
+class AbsolutePathError(FilterError):
+    def __init__(self, tarinfo: TarInfo) -> None: ...
 
-    class OutsideDestinationError(FilterError):
-        def __init__(self, tarinfo: TarInfo, path: str) -> None: ...
+class OutsideDestinationError(FilterError):
+    def __init__(self, tarinfo: TarInfo, path: str) -> None: ...
 
-    class SpecialFileError(FilterError):
-        def __init__(self, tarinfo: TarInfo) -> None: ...
+class SpecialFileError(FilterError):
+    def __init__(self, tarinfo: TarInfo) -> None: ...
 
-    class AbsoluteLinkError(FilterError):
-        def __init__(self, tarinfo: TarInfo) -> None: ...
+class AbsoluteLinkError(FilterError):
+    def __init__(self, tarinfo: TarInfo) -> None: ...
 
-    class LinkOutsideDestinationError(FilterError):
-        def __init__(self, tarinfo: TarInfo, path: str) -> None: ...
+class LinkOutsideDestinationError(FilterError):
+    def __init__(self, tarinfo: TarInfo, path: str) -> None: ...
 
-    def fully_trusted_filter(member: TarInfo, dest_path: str) -> TarInfo: ...
-    def tar_filter(member: TarInfo, dest_path: str) -> TarInfo: ...
-    def data_filter(member: TarInfo, dest_path: str) -> TarInfo: ...
+def fully_trusted_filter(member: TarInfo, dest_path: str) -> TarInfo: ...
+def tar_filter(member: TarInfo, dest_path: str) -> TarInfo: ...
+def data_filter(member: TarInfo, dest_path: str) -> TarInfo: ...
 
 class TarInfo:
     name: str
@@ -414,27 +448,21 @@ class TarInfo:
     def linkpath(self) -> str: ...
     @linkpath.setter
     def linkpath(self, linkname: str) -> None: ...
-    if sys.version_info >= (3, 8):
-        def replace(
-            self,
-            *,
-            name: str = ...,
-            mtime: int = ...,
-            mode: int = ...,
-            linkname: str = ...,
-            uid: int = ...,
-            gid: int = ...,
-            uname: str = ...,
-            gname: str = ...,
-            deep: bool = True,
-        ) -> Self: ...
-
+    def replace(
+        self,
+        *,
+        name: str = ...,
+        mtime: int = ...,
+        mode: int = ...,
+        linkname: str = ...,
+        uid: int = ...,
+        gid: int = ...,
+        uname: str = ...,
+        gname: str = ...,
+        deep: bool = True,
+    ) -> Self: ...
     def get_info(self) -> Mapping[str, str | int | bytes | Mapping[str, str]]: ...
-    if sys.version_info >= (3, 8):
-        def tobuf(self, format: int | None = 2, encoding: str | None = "utf-8", errors: str = "surrogateescape") -> bytes: ...
-    else:
-        def tobuf(self, format: int | None = 1, encoding: str | None = "utf-8", errors: str = "surrogateescape") -> bytes: ...
-
+    def tobuf(self, format: int | None = 2, encoding: str | None = "utf-8", errors: str = "surrogateescape") -> bytes: ...
     def create_ustar_header(
         self, info: Mapping[str, str | int | bytes | Mapping[str, str]], encoding: str, errors: str
     ) -> bytes: ...

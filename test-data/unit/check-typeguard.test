@@ -9,6 +9,17 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeGuardStringified]
+from typing_extensions import TypeGuard
+class Point: pass
+def is_point(a: object) -> "TypeGuard[Point]": pass
+def main(a: object) -> None:
+    if is_point(a):
+        reveal_type(a)  # N: Revealed type is "__main__.Point"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeGuardTypeArgsNone]
 from typing_extensions import TypeGuard
 def foo(a: object) -> TypeGuard:  # E: TypeGuard must have exactly one type argument
@@ -53,6 +64,18 @@ def main(a: object, b: object) -> None:
         reveal_type(a)  # N: Revealed type is "__main__.Point"
         reveal_type(b)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardTypeVarReturn]
+from typing import Callable, Optional, TypeVar
+from typing_extensions import TypeGuard
+T = TypeVar('T')
+def is_str(x: object) -> TypeGuard[str]: pass
+def main(x: object, type_check_func: Callable[[object], TypeGuard[T]]) -> T:
+    if not type_check_func(x):
+        raise Exception()
+    return x
+reveal_type(main("a", is_str))  # N: Revealed type is "builtins.str"
+[builtins fixtures/exception.pyi]
 
 [case testTypeGuardIsBool]
 from typing_extensions import TypeGuard
@@ -504,7 +527,7 @@ def with_bool(o: object) -> bool: pass
 
 accepts_typeguard(with_bool_typeguard)
 accepts_typeguard(with_str_typeguard)
-accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeGuard[bool]]"
+accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeGuard[Never]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardAsOverloadedFunctionArg]
@@ -694,3 +717,18 @@ def foo(x: object) -> TypeGuard[List[str]]: ...
 def test(f: A[T]) -> T: ...
 reveal_type(test(foo))  # N: Revealed type is "builtins.str"
 [builtins fixtures/list.pyi]
+
+[case testNoCrashOnDunderCallTypeGuard]
+from typing_extensions import TypeGuard
+
+class A:
+    def __call__(self, x) -> TypeGuard[int]:
+        return True
+
+a: A
+assert a(x=1)
+
+x: object
+assert a(x=x)
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]

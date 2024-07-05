@@ -477,11 +477,6 @@ def is_complex(t: Type) -> bool:
     return is_generic(t) or isinstance(t, (FunctionLike, TupleType, TypeVarType))
 
 
-def ensure_dir_exists(dir: str) -> None:
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-
-
 def is_special_form_any(t: AnyType) -> bool:
     return get_original_any(t).type_of_any == TypeOfAny.special_form
 

@@ -1,6 +1,6 @@
 TypeVar = 0
 Generic = 0
-Any = 0
+Any = object()
 overload = 0
 Type = 0
 Literal = 0
@@ -21,5 +21,6 @@ class Mapping(Iterable[KT], Generic[KT, T_co]):
     def keys(self) -> Iterable[T]: pass  # Approximate return type
     def __getitem__(self, key: T) -> T_co: pass
 
-
 def override(__arg: T) -> T: ...
+
+class _SpecialForm: pass

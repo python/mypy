@@ -7,8 +7,22 @@ from collections.abc import Awaitable, Callable, Iterable, Sequence, Set as Abst
 from dataclasses import Field
 from os import PathLike
 from types import FrameType, TracebackType
-from typing import Any, AnyStr, ClassVar, Generic, Protocol, TypeVar, overload
-from typing_extensions import Buffer, Final, Literal, LiteralString, TypeAlias, final
+from typing import (
+    Any,
+    AnyStr,
+    ClassVar,
+    Final,
+    Generic,
+    Literal,
+    Protocol,
+    SupportsFloat,
+    SupportsIndex,
+    SupportsInt,
+    TypeVar,
+    final,
+    overload,
+)
+from typing_extensions import Buffer, LiteralString, TypeAlias
 
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
@@ -19,8 +33,10 @@ _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 
-# Use for "self" annotations:
-#   def __enter__(self: Self) -> Self: ...
+# Alternative to `typing_extensions.Self`, exclusively for use with `__new__`
+# in metaclasses:
+#     def __new__(cls: type[Self], ...) -> Self: ...
+# In other cases, use `typing_extensions.Self`.
 Self = TypeVar("Self")  # noqa: Y001
 
 # covariant version of typing.AnyStr, useful for protocols
@@ -31,10 +47,15 @@ AnyStr_co = TypeVar("AnyStr_co", str, bytes, covariant=True)  # noqa: Y001
 # isn't possible or a type is already partially known. In cases like these,
 # use Incomplete instead of Any as a marker. For example, use
 # "Incomplete | None" instead of "Any | None".
-Incomplete: TypeAlias = Any
+Incomplete: TypeAlias = Any  # stable
 
 # To describe a function parameter that is unused and will work with anything.
-Unused: TypeAlias = object
+Unused: TypeAlias = object  # stable
+
+# Marker for return types that include None, but where forcing the user to
+# check for None can be detrimental. Sometimes called "the Any trick". See
+# CONTRIBUTING.md for more information.
+MaybeNone: TypeAlias = Any  # stable
 
 # Used to mark arguments that default to a sentinel value. This prevents
 # stubtest from complaining about the default value not matching.
@@ -47,11 +68,11 @@ Unused: TypeAlias = object
 # _SentinelType = NewType("_SentinelType", object)
 # sentinel: _SentinelType
 # def foo(x: int | None | _SentinelType = ...) -> None: ...
-sentinel = Any  # noqa: Y026
+sentinel: Any
 
 # stable
 class IdentityFunction(Protocol):
-    def __call__(self, __x: _T) -> _T: ...
+    def __call__(self, x: _T, /) -> _T: ...
 
 # stable
 class SupportsNext(Protocol[_T_co]):
@@ -64,16 +85,16 @@ class SupportsAnext(Protocol[_T_co]):
 # Comparison protocols
 
 class SupportsDunderLT(Protocol[_T_contra]):
-    def __lt__(self, __other: _T_contra) -> bool: ...
+    def __lt__(self, other: _T_contra, /) -> bool: ...
 
 class SupportsDunderGT(Protocol[_T_contra]):
-    def __gt__(self, __other: _T_contra) -> bool: ...
+    def __gt__(self, other: _T_contra, /) -> bool: ...
 
 class SupportsDunderLE(Protocol[_T_contra]):
-    def __le__(self, __other: _T_contra) -> bool: ...
+    def __le__(self, other: _T_contra, /) -> bool: ...
 
 class SupportsDunderGE(Protocol[_T_contra]):
-    def __ge__(self, __other: _T_contra) -> bool: ...
+    def __ge__(self, other: _T_contra, /) -> bool: ...
 
 class SupportsAllComparisons(
     SupportsDunderLT[Any], SupportsDunderGT[Any], SupportsDunderLE[Any], SupportsDunderGE[Any], Protocol
@@ -85,22 +106,22 @@ SupportsRichComparisonT = TypeVar("SupportsRichComparisonT", bound=SupportsRichC
 # Dunder protocols
 
 class SupportsAdd(Protocol[_T_contra, _T_co]):
-    def __add__(self, __x: _T_contra) -> _T_co: ...
+    def __add__(self, x: _T_contra, /) -> _T_co: ...
 
 class SupportsRAdd(Protocol[_T_contra, _T_co]):
-    def __radd__(self, __x: _T_contra) -> _T_co: ...
+    def __radd__(self, x: _T_contra, /) -> _T_co: ...
 
 class SupportsSub(Protocol[_T_contra, _T_co]):
-    def __sub__(self, __x: _T_contra) -> _T_co: ...
+    def __sub__(self, x: _T_contra, /) -> _T_co: ...
 
 class SupportsRSub(Protocol[_T_contra, _T_co]):
-    def __rsub__(self, __x: _T_contra) -> _T_co: ...
+    def __rsub__(self, x: _T_contra, /) -> _T_co: ...
 
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
-    def __divmod__(self, __other: _T_contra) -> _T_co: ...
+    def __divmod__(self, other: _T_contra, /) -> _T_co: ...
 
 class SupportsRDivMod(Protocol[_T_contra, _T_co]):
-    def __rdivmod__(self, __other: _T_contra) -> _T_co: ...
+    def __rdivmod__(self, other: _T_contra, /) -> _T_co: ...
 
 # This protocol is generic over the iterator type, while Iterable is
 # generic over the type that is iterated over.
@@ -114,7 +135,7 @@ class SupportsAiter(Protocol[_T_co]):
 
 class SupportsLenAndGetItem(Protocol[_T_co]):
     def __len__(self) -> int: ...
-    def __getitem__(self, __k: int) -> _T_co: ...
+    def __getitem__(self, k: int, /) -> _T_co: ...
 
 class SupportsTrunc(Protocol):
     def __trunc__(self) -> int: ...
@@ -128,17 +149,26 @@ class SupportsItems(Protocol[_KT_co, _VT_co]):
 # stable
 class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
     def keys(self) -> Iterable[_KT]: ...
-    def __getitem__(self, __key: _KT) -> _VT_co: ...
+    def __getitem__(self, key: _KT, /) -> _VT_co: ...
 
-# stable
+# This protocol is currently under discussion. Use SupportsContainsAndGetItem
+# instead, if you require the __contains__ method.
+# See https://github.com/python/typeshed/issues/11822.
 class SupportsGetItem(Protocol[_KT_contra, _VT_co]):
-    def __contains__(self, __x: Any) -> bool: ...
-    def __getitem__(self, __key: _KT_contra) -> _VT_co: ...
+    def __contains__(self, x: Any, /) -> bool: ...
+    def __getitem__(self, key: _KT_contra, /) -> _VT_co: ...
 
 # stable
-class SupportsItemAccess(SupportsGetItem[_KT_contra, _VT], Protocol[_KT_contra, _VT]):
-    def __setitem__(self, __key: _KT_contra, __value: _VT) -> None: ...
-    def __delitem__(self, __key: _KT_contra) -> None: ...
+class SupportsContainsAndGetItem(Protocol[_KT_contra, _VT_co]):
+    def __contains__(self, x: Any, /) -> bool: ...
+    def __getitem__(self, key: _KT_contra, /) -> _VT_co: ...
+
+# stable
+class SupportsItemAccess(Protocol[_KT_contra, _VT]):
+    def __contains__(self, x: Any, /) -> bool: ...
+    def __getitem__(self, key: _KT_contra, /) -> _VT: ...
+    def __setitem__(self, key: _KT_contra, value: _VT, /) -> None: ...
+    def __delitem__(self, key: _KT_contra, /) -> None: ...
 
 StrPath: TypeAlias = str | PathLike[str]  # stable
 BytesPath: TypeAlias = bytes | PathLike[bytes]  # stable
@@ -222,11 +252,11 @@ FileDescriptorOrPath: TypeAlias = int | StrOrBytesPath
 
 # stable
 class SupportsRead(Protocol[_T_co]):
-    def read(self, __length: int = ...) -> _T_co: ...
+    def read(self, length: int = ..., /) -> _T_co: ...
 
 # stable
 class SupportsReadline(Protocol[_T_co]):
-    def readline(self, __length: int = ...) -> _T_co: ...
+    def readline(self, length: int = ..., /) -> _T_co: ...
 
 # stable
 class SupportsNoArgReadline(Protocol[_T_co]):
@@ -234,7 +264,11 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 
 # stable
 class SupportsWrite(Protocol[_T_contra]):
-    def write(self, __s: _T_contra) -> object: ...
+    def write(self, s: _T_contra, /) -> object: ...
+
+# stable
+class SupportsFlush(Protocol):
+    def flush(self) -> object: ...
 
 # Unfortunately PEP 688 does not allow us to distinguish read-only
 # from writable buffers. We use these aliases for readability for now.
@@ -247,17 +281,17 @@ WriteableBuffer: TypeAlias = Buffer
 ReadableBuffer: TypeAlias = Buffer  # stable
 
 class SliceableBuffer(Buffer, Protocol):
-    def __getitem__(self, __slice: slice) -> Sequence[int]: ...
+    def __getitem__(self, slice: slice, /) -> Sequence[int]: ...
 
 class IndexableBuffer(Buffer, Protocol):
-    def __getitem__(self, __i: int) -> int: ...
+    def __getitem__(self, i: int, /) -> int: ...
 
 class SupportsGetItemBuffer(SliceableBuffer, IndexableBuffer, Protocol):
-    def __contains__(self, __x: Any) -> bool: ...
+    def __contains__(self, x: Any, /) -> bool: ...
     @overload
-    def __getitem__(self, __slice: slice) -> Sequence[int]: ...
+    def __getitem__(self, slice: slice, /) -> Sequence[int]: ...
     @overload
-    def __getitem__(self, __i: int) -> int: ...
+    def __getitem__(self, i: int, /) -> int: ...
 
 class SizedBuffer(Sized, Buffer, Protocol): ...
 
@@ -292,6 +326,8 @@ class structseq(Generic[_T_co]):
     # but only has any meaning if you supply it a dict where the keys are strings.
     # https://github.com/python/typeshed/pull/6560#discussion_r767149830
     def __new__(cls: type[Self], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self: ...
+    if sys.version_info >= (3, 13):
+        def __replace__(self: Self, **kwargs: Any) -> Self: ...
 
 # Superset of typing.AnyStr that also includes LiteralString
 AnyOrLiteralStr = TypeVar("AnyOrLiteralStr", str, bytes, LiteralString)  # noqa: Y001
@@ -312,3 +348,16 @@ TraceFunction: TypeAlias = Callable[[FrameType, str, Any], TraceFunction | None]
 #   https://github.com/microsoft/pyright/issues/4339
 class DataclassInstance(Protocol):
     __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
+
+# Anything that can be passed to the int/float constructors
+ConvertibleToInt: TypeAlias = str | ReadableBuffer | SupportsInt | SupportsIndex | SupportsTrunc
+ConvertibleToFloat: TypeAlias = str | ReadableBuffer | SupportsFloat | SupportsIndex
+
+# A few classes updated from Foo(str, Enum) to Foo(StrEnum). This is a convenience so these
+# can be accurate on all python versions without getting too wordy
+if sys.version_info >= (3, 11):
+    from enum import StrEnum as StrEnum
+else:
+    from enum import Enum
+
+    class StrEnum(str, Enum): ...

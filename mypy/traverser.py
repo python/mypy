@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mypy_extensions import mypyc_attr
+from mypy_extensions import mypyc_attr, trait
 
 from mypy.nodes import (
     REVEAL_TYPE,
@@ -71,6 +71,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeAlias,
     TypeAliasExpr,
+    TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
     TypeVarExpr,
@@ -94,6 +95,7 @@ from mypy.patterns import (
 from mypy.visitor import NodeVisitor
 
 
+@trait
 @mypyc_attr(allow_interpreted_subclasses=True)
 class TraverserVisitor(NodeVisitor[None]):
     """A parse tree visitor that traverses the parse tree during visiting.
@@ -241,6 +243,10 @@ class TraverserVisitor(NodeVisitor[None]):
             if guard is not None:
                 guard.accept(self)
             o.bodies[i].accept(self)
+
+    def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
+        o.name.accept(self)
+        o.value.accept(self)
 
     def visit_member_expr(self, o: MemberExpr) -> None:
         o.expr.accept(self)

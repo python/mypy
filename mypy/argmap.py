@@ -14,6 +14,8 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeOfAny,
+    TypeVarTupleType,
+    UnpackType,
     get_proper_type,
 )
 
@@ -174,6 +176,7 @@ class ArgTypeExpander:
         actual_kind: nodes.ArgKind,
         formal_name: str | None,
         formal_kind: nodes.ArgKind,
+        allow_unpack: bool = False,
     ) -> Type:
         """Return the actual (caller) type(s) of a formal argument with the given kinds.
 
@@ -189,6 +192,11 @@ class ArgTypeExpander:
         original_actual = actual_type
         actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
+            if isinstance(actual_type, TypeVarTupleType):
+                # This code path is hit when *Ts is passed to a callable and various
+                # special-handling didn't catch this. The best thing we can do is to use
+                # the upper bound.
+                actual_type = get_proper_type(actual_type.upper_bound)
             if isinstance(actual_type, Instance) and actual_type.args:
                 from mypy.subtypes import is_subtype
 
@@ -209,7 +217,20 @@ class ArgTypeExpander:
                     self.tuple_index = 1
                 else:
                     self.tuple_index += 1
-                return actual_type.items[self.tuple_index - 1]
+                item = actual_type.items[self.tuple_index - 1]
+                if isinstance(item, UnpackType) and not allow_unpack:
+                    # An upack item that doesn't have special handling, use upper bound as above.
+                    unpacked = get_proper_type(item.type)
+                    if isinstance(unpacked, TypeVarTupleType):
+                        fallback = get_proper_type(unpacked.upper_bound)
+                    else:
+                        fallback = unpacked
+                    assert (
+                        isinstance(fallback, Instance)
+                        and fallback.type.fullname == "builtins.tuple"
+                    )
+                    item = fallback.args[0]
+                return item
             elif isinstance(actual_type, ParamSpecType):
                 # ParamSpec is valid in *args but it can't be unpacked.
                 return actual_type

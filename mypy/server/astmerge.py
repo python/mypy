@@ -394,7 +394,7 @@ class NodeReplaceVisitor(TraverserVisitor):
         # have bodies in the AST so we need to iterate over their symbol
         # tables separately, unlike normal classes.
         self.process_type_info(info)
-        for name, node in info.names.items():
+        for node in info.names.values():
             if node.node:
                 node.node.accept(self)
 
@@ -507,7 +507,8 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         typ.fallback.accept(self)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> None:
-        pass
+        if t.node is not None:
+            t.node.accept(self)
 
     def visit_literal_type(self, typ: LiteralType) -> None:
         typ.fallback.accept(self)
@@ -549,7 +550,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 def replace_nodes_in_symbol_table(
     symbols: SymbolTable, replacements: dict[SymbolNode, SymbolNode]
 ) -> None:
-    for name, node in symbols.items():
+    for node in symbols.values():
         if node.node:
             if node.node in replacements:
                 new = replacements[node.node]

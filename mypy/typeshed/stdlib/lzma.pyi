@@ -1,8 +1,8 @@
-import io
+from _compression import BaseStream
 from _typeshed import ReadableBuffer, StrOrBytesPath
 from collections.abc import Mapping, Sequence
-from typing import IO, Any, TextIO, overload
-from typing_extensions import Literal, Self, TypeAlias, final
+from typing import IO, Any, Literal, TextIO, final, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "CHECK_NONE",
@@ -99,12 +99,12 @@ class LZMACompressor:
     def __init__(
         self, format: int | None = ..., check: int = ..., preset: int | None = ..., filters: _FilterChain | None = ...
     ) -> None: ...
-    def compress(self, __data: ReadableBuffer) -> bytes: ...
+    def compress(self, data: ReadableBuffer, /) -> bytes: ...
     def flush(self) -> bytes: ...
 
 class LZMAError(Exception): ...
 
-class LZMAFile(io.BufferedIOBase, IO[bytes]):  # type: ignore[misc]  # incompatible definitions of writelines in the base classes
+class LZMAFile(BaseStream, IO[bytes]):  # type: ignore[misc]  # incompatible definitions of writelines in the base classes
     def __init__(
         self,
         filename: _PathOrFile | None = None,
@@ -194,4 +194,4 @@ def compress(
 def decompress(
     data: ReadableBuffer, format: int = 0, memlimit: int | None = None, filters: _FilterChain | None = None
 ) -> bytes: ...
-def is_check_supported(__check_id: int) -> bool: ...
+def is_check_supported(check_id: int, /) -> bool: ...

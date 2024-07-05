@@ -47,8 +47,23 @@ if sys.version_info >= (3, 11):
         col_offset: int | None = None
         end_col_offset: int | None = None
 
-if sys.version_info >= (3, 11):
-    class Instruction(NamedTuple):
+if sys.version_info >= (3, 13):
+    class _Instruction(NamedTuple):
+        opname: str
+        opcode: int
+        arg: int | None
+        argval: Any
+        argrepr: str
+        offset: int
+        start_offset: int
+        starts_line: bool
+        line_number: int | None
+        label: int | None = None
+        positions: Positions | None = None
+        cache_info: list[tuple[str, int, Any]] | None = None
+
+elif sys.version_info >= (3, 11):
+    class _Instruction(NamedTuple):
         opname: str
         opcode: int
         arg: int | None
@@ -60,7 +75,7 @@ if sys.version_info >= (3, 11):
         positions: Positions | None = None
 
 else:
-    class Instruction(NamedTuple):
+    class _Instruction(NamedTuple):
         opname: str
         opcode: int
         arg: int | None
@@ -69,6 +84,9 @@ else:
         offset: int
         starts_line: int | None
         is_jump_target: bool
+
+class Instruction(_Instruction):
+    def _disassemble(self, lineno_width: int = 3, mark_as_current: bool = False, offset_width: int = 4) -> str: ...
 
 class Bytecode:
     codeobj: types.CodeType

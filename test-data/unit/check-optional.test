@@ -361,9 +361,9 @@ def f() -> None:
 def g(x: Optional[int]) -> int:
   pass
 
-x = f()  # E: "f" does not return a value
-f() + 1  # E: "f" does not return a value
-g(f())  # E: "f" does not return a value
+x = f()  # E: "f" does not return a value (it only ever returns None)
+f() + 1  # E: "f" does not return a value (it only ever returns None)
+g(f())  # E: "f" does not return a value (it only ever returns None)
 
 [case testEmptyReturn]
 def f() -> None:
@@ -395,7 +395,7 @@ def lookup_field(name, obj):
         attr = None
 
 [case testTernaryWithNone]
-reveal_type(None if bool() else 0)  # N: Revealed type is "Union[Literal[0]?, None]"
+reveal_type(None if bool() else 0)  # N: Revealed type is "Union[None, Literal[0]?]"
 [builtins fixtures/bool.pyi]
 
 [case testListWithNone]

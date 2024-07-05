@@ -1236,6 +1236,27 @@ LambdaExpr(10) : def (x: builtins.int) -> builtins.int
 LambdaExpr(12) : def (y: builtins.str) -> builtins.str
 LambdaExpr(13) : def (x: builtins.str) -> builtins.str
 
+[case testExportOverloadArgTypeDict]
+## DictExpr
+from typing import TypeVar, Generic, Any, overload, Dict
+T = TypeVar("T")
+class Key(Generic[T]): ...
+@overload
+def f(x: Key[T], y: T) -> T: ...
+@overload
+def f(x: int, y: Any) -> Any: ...
+def f(x, y): ...
+d: Dict = {}
+d.get(
+  "", {})
+f(
+  2, {})
+[builtins fixtures/dict.pyi]
+[out]
+DictExpr(10) : builtins.dict[Any, Any]
+DictExpr(12) : builtins.dict[Any, Any]
+DictExpr(14) : builtins.dict[Any, Any]
+
 -- TODO
 --
 -- test expressions

@@ -5,8 +5,8 @@ Error codes for optional checks
 
 This section documents various errors codes that mypy generates only
 if you enable certain options. See :ref:`error-codes` for general
-documentation about error codes. :ref:`error-code-list` documents
-error codes that are enabled by default.
+documentation about error codes and their configuration.
+:ref:`error-code-list` documents error codes that are enabled by default.
 
 .. note::
 
@@ -241,7 +241,7 @@ mypy generates an error if it thinks that an expression is redundant.
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code redundant-expr ..."
+    # mypy: enable-error-code="redundant-expr"
 
     def example(x: int) -> None:
         # Error: Left operand of "and" is always true  [redundant-expr]
@@ -268,7 +268,7 @@ example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code possibly-undefined ..."
+    # mypy: enable-error-code="possibly-undefined"
 
     from typing import Iterable
 
@@ -297,7 +297,7 @@ Using an iterable value in a boolean context has a separate error code
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code truthy-bool ..."
+    # mypy: enable-error-code="truthy-bool"
 
     class Foo:
         pass
@@ -347,7 +347,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code ignore-without-code ..."
+    # mypy: enable-error-code="ignore-without-code"
 
     class Foo:
         def __init__(self, name: str) -> None:
@@ -378,7 +378,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code unused-awaitable ..."
+    # mypy: enable-error-code="unused-awaitable"
 
     import asyncio
 
@@ -389,7 +389,7 @@ Example:
         #        Are you missing an await?
         asyncio.create_task(f())
 
-You can assign the value to a temporary, otherwise unused to variable to
+You can assign the value to a temporary, otherwise unused variable to
 silence the error:
 
 .. code-block:: python
@@ -462,7 +462,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code explicit-override ..."
+    # mypy: enable-error-code="explicit-override"
 
     from typing import override
 
@@ -481,3 +481,93 @@ Example:
         @override
         def g(self, y: int) -> None:
             pass
+
+.. _code-mutable-override:
+
+Check that overrides of mutable attributes are safe [mutable-override]
+----------------------------------------------------------------------
+
+`mutable-override` will enable the check for unsafe overrides of mutable attributes.
+For historical reasons, and because this is a relatively common pattern in Python,
+this check is not enabled by default. The example below is unsafe, and will be
+flagged when this error code is enabled:
+
+.. code-block:: python
+
+    from typing import Any
+
+    class C:
+        x: float
+        y: float
+        z: float
+
+    class D(C):
+        x: int  # Error: Covariant override of a mutable attribute
+                # (base class "C" defined the type as "float",
+                # expression has type "int")  [mutable-override]
+        y: float  # OK
+        z: Any  # OK
+
+    def f(c: C) -> None:
+        c.x = 1.1
+    d = D()
+    f(d)
+    d.x >> 1  # This will crash at runtime, because d.x is now float, not an int
+
+.. _code-unimported-reveal:
+
+Check that ``reveal_type`` is imported from typing or typing_extensions [unimported-reveal]
+-------------------------------------------------------------------------------------------
+
+Mypy used to have ``reveal_type`` as a special builtin
+that only existed during type-checking.
+In runtime it fails with expected ``NameError``,
+which can cause real problem in production, hidden from mypy.
+
+But, in Python3.11 :py:func:`typing.reveal_type` was added.
+``typing_extensions`` ported this helper to all supported Python versions.
+
+Now users can actually import ``reveal_type`` to make the runtime code safe.
+
+.. note::
+
+    Starting with Python 3.11, the ``reveal_type`` function can be imported from ``typing``.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+.. code-block:: python
+
+    # mypy: enable-error-code="unimported-reveal"
+
+    x = 1
+    reveal_type(x)  # Note: Revealed type is "builtins.int" \
+                    # Error: Name "reveal_type" is not defined
+
+Correct usage:
+
+.. code-block:: python
+
+    # mypy: enable-error-code="unimported-reveal"
+    from typing import reveal_type   # or `typing_extensions`
+
+    x = 1
+    # This won't raise an error:
+    reveal_type(x)  # Note: Revealed type is "builtins.int"
+
+When this code is enabled, using ``reveal_locals`` is always an error,
+because there's no way one can import it.
+
+.. _code-narrowed-type-not-subtype:
+
+Check that ``TypeIs`` narrows types [narrowed-type-not-subtype]
+---------------------------------------------------------------
+
+:pep:`742` requires that when ``TypeIs`` is used, the narrowed
+type must be a subtype of the original type::
+
+    from typing_extensions import TypeIs
+
+    def f(x: int) -> TypeIs[str]:  # Error, str is not a subtype of int
+        ...
+
+    def g(x: object) -> TypeIs[str]:  # OK
+        ...

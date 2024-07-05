@@ -63,8 +63,7 @@ class MetadataStore:
         """
 
     @abstractmethod
-    def list_all(self) -> Iterable[str]:
-        ...
+    def list_all(self) -> Iterable[str]: ...
 
 
 def random_string() -> str:
@@ -112,7 +111,7 @@ class FilesystemMetadataStore(MetadataStore):
             if mtime is not None:
                 os.utime(path, times=(mtime, mtime))
 
-        except os.error:
+        except OSError:
             return False
         return True
 

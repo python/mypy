@@ -276,7 +276,10 @@ for k in range(12):
 [out]
 
 [case testForIterable]
-from typing import Iterable, Dict, Any, Tuple
+from typing import Iterable, Dict, Any, Tuple, TypeVar
+
+T = TypeVar("T")
+
 def iterate_over_any(a: Any) -> None:
     for element in a:
         print(element)
@@ -350,13 +353,13 @@ iterate_over_tuple((1, 2, 3))
 Traceback (most recent call last):
   File "driver.py", line 16, in <module>
     iterate_over_any(5)
-  File "native.py", line 3, in iterate_over_any
+  File "native.py", line 6, in iterate_over_any
     for element in a:
 TypeError: 'int' object is not iterable
 Traceback (most recent call last):
   File "driver.py", line 20, in <module>
     iterate_over_iterable(broken_generator(5))
-  File "native.py", line 7, in iterate_over_iterable
+  File "native.py", line 10, in iterate_over_iterable
     for element in iterable:
   File "driver.py", line 8, in broken_generator
     raise Exception('Exception Manually Raised')
@@ -364,7 +367,7 @@ Exception: Exception Manually Raised
 Traceback (most recent call last):
   File "driver.py", line 24, in <module>
     iterate_and_delete(d)
-  File "native.py", line 11, in iterate_and_delete
+  File "native.py", line 14, in iterate_and_delete
     for key in d:
 RuntimeError: dictionary changed size during iteration
 15

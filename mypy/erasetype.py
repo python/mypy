@@ -34,6 +34,7 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
 )
+from mypy.typevartuples import erased_vars
 
 
 def erase_type(typ: Type) -> ProperType:
@@ -77,7 +78,8 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return t
 
     def visit_instance(self, t: Instance) -> ProperType:
-        return Instance(t.type, [AnyType(TypeOfAny.special_form)] * len(t.args), t.line)
+        args = erased_vars(t.type.defn.type_vars, TypeOfAny.special_form)
+        return Instance(t.type, args, t.line)
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
@@ -89,7 +91,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         raise RuntimeError("Parameters should have been bound to a class")
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
-        return AnyType(TypeOfAny.special_form)
+        # Likely, we can never get here because of aggressive erasure of types that
+        # can contain this, but better still return a valid replacement.
+        return t.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
 
     def visit_unpack_type(self, t: UnpackType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
@@ -165,9 +169,41 @@ class TypeVarEraser(TypeTranslator):
             return self.replacement
         return t
 
+    # TODO: below two methods duplicate some logic with expand_type().
+    # In fact, we may want to refactor this whole visitor to use expand_type().
+    def visit_instance(self, t: Instance) -> Type:
+        result = super().visit_instance(t)
+        assert isinstance(result, ProperType) and isinstance(result, Instance)
+        if t.type.fullname == "builtins.tuple":
+            # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
+            arg = result.args[0]
+            if isinstance(arg, UnpackType):
+                unpacked = get_proper_type(arg.type)
+                if isinstance(unpacked, Instance):
+                    assert unpacked.type.fullname == "builtins.tuple"
+                    return unpacked
+        return result
+
+    def visit_tuple_type(self, t: TupleType) -> Type:
+        result = super().visit_tuple_type(t)
+        assert isinstance(result, ProperType) and isinstance(result, TupleType)
+        if len(result.items) == 1:
+            # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
+            item = result.items[0]
+            if isinstance(item, UnpackType):
+                unpacked = get_proper_type(item.type)
+                if isinstance(unpacked, Instance):
+                    assert unpacked.type.fullname == "builtins.tuple"
+                    if result.partial_fallback.type.fullname != "builtins.tuple":
+                        # If it is a subtype (like named tuple) we need to preserve it,
+                        # this essentially mimics the logic in tuple_fallback().
+                        return result.partial_fallback.accept(self)
+                    return unpacked
+        return result
+
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         if self.erase_id(t.id):
-            return self.replacement
+            return t.tuple_fallback.copy_modified(args=[self.replacement])
         return t
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:

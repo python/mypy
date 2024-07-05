@@ -1,5 +1,9 @@
+from __future__ import annotations
+
+
 class MyPlugin:
     pass
 
-def plugin(version):
+
+def plugin(version: str) -> type[MyPlugin]:
     return MyPlugin

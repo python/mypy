@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Final, Iterable, Mapping, Sequence, TypeVar, cast, overload
 
-from mypy.nodes import ARG_STAR, Var
+from mypy.nodes import ARG_STAR, FakeInfo, Var
 from mypy.state import state
 from mypy.types import (
     ANY_STRATEGY,
@@ -26,6 +26,7 @@ from mypy.types import (
     Type,
     TypeAliasType,
     TypedDictType,
+    TypeOfAny,
     TypeType,
     TypeVarId,
     TypeVarLikeType,
@@ -50,18 +51,15 @@ import mypy.type_visitor  # ruff: isort: skip
 
 
 @overload
-def expand_type(typ: CallableType, env: Mapping[TypeVarId, Type]) -> CallableType:
-    ...
+def expand_type(typ: CallableType, env: Mapping[TypeVarId, Type]) -> CallableType: ...
 
 
 @overload
-def expand_type(typ: ProperType, env: Mapping[TypeVarId, Type]) -> ProperType:
-    ...
+def expand_type(typ: ProperType, env: Mapping[TypeVarId, Type]) -> ProperType: ...
 
 
 @overload
-def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
-    ...
+def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type: ...
 
 
 def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
@@ -72,24 +70,21 @@ def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
 
 
 @overload
-def expand_type_by_instance(typ: CallableType, instance: Instance) -> CallableType:
-    ...
+def expand_type_by_instance(typ: CallableType, instance: Instance) -> CallableType: ...
 
 
 @overload
-def expand_type_by_instance(typ: ProperType, instance: Instance) -> ProperType:
-    ...
+def expand_type_by_instance(typ: ProperType, instance: Instance) -> ProperType: ...
 
 
 @overload
-def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
-    ...
+def expand_type_by_instance(typ: Type, instance: Instance) -> Type: ...
 
 
 def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
     """Substitute type variables in type using values from an Instance.
     Type variables are considered to be bound by the class declaration."""
-    if not instance.args:
+    if not instance.args and not instance.type.has_type_var_tuple_type:
         return typ
     else:
         variables: dict[TypeVarId, Type] = {}
@@ -185,6 +180,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         self.variables = variables
+        self.recursive_tvar_guard: dict[TypeVarId, Type | None] = {}
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -212,21 +208,44 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
     def visit_instance(self, t: Instance) -> Type:
         args = self.expand_types_with_unpack(list(t.args))
-        if isinstance(args, list):
+
+        if isinstance(t.type, FakeInfo):
+            # The type checker expands function definitions and bodies
+            # if they depend on constrained type variables but the body
+            # might contain a tuple type comment (e.g., # type: (int, float)),
+            # in which case 't.type' is not yet available.
+            #
+            # See: https://github.com/python/mypy/issues/16649
             return t.copy_modified(args=args)
-        else:
-            return args
+
+        if t.type.fullname == "builtins.tuple":
+            # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
+            arg = args[0]
+            if isinstance(arg, UnpackType):
+                unpacked = get_proper_type(arg.type)
+                if isinstance(unpacked, Instance):
+                    assert unpacked.type.fullname == "builtins.tuple"
+                    args = list(unpacked.args)
+        return t.copy_modified(args=args)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         # Normally upper bounds can't contain other type variables, the only exception is
         # special type variable Self`0 <: C[T, S], where C is the class where Self is used.
-        if t.id.raw_id == 0:
+        if t.id.is_self():
             t = t.copy_modified(upper_bound=t.upper_bound.accept(self))
         repl = self.variables.get(t.id, t)
         if isinstance(repl, ProperType) and isinstance(repl, Instance):
             # TODO: do we really need to do this?
             # If I try to remove this special-casing ~40 tests fail on reveal_type().
             return repl.copy_modified(last_known_value=None)
+        if isinstance(repl, TypeVarType) and repl.has_default():
+            if (tvar_id := repl.id) in self.recursive_tvar_guard:
+                return self.recursive_tvar_guard[tvar_id] or repl
+            self.recursive_tvar_guard[tvar_id] = None
+            repl = repl.accept(self)
+            if isinstance(repl, TypeVarType):
+                repl.default = repl.default.accept(self)
+            self.recursive_tvar_guard[tvar_id] = repl
         return repl
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
@@ -236,7 +255,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             return repl.copy_modified(
                 flavor=t.flavor,
                 prefix=t.prefix.copy_modified(
-                    arg_types=self.expand_types(t.prefix.arg_types + repl.prefix.arg_types),
+                    arg_types=self.expand_types(t.prefix.arg_types) + repl.prefix.arg_types,
                     arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
                     arg_names=t.prefix.arg_names + repl.prefix.arg_names,
                 ),
@@ -244,13 +263,15 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         elif isinstance(repl, Parameters):
             assert t.flavor == ParamSpecFlavor.BARE
             return Parameters(
-                self.expand_types(t.prefix.arg_types + repl.arg_types),
+                self.expand_types(t.prefix.arg_types) + repl.arg_types,
                 t.prefix.arg_kinds + repl.arg_kinds,
                 t.prefix.arg_names + repl.arg_names,
                 variables=[*t.prefix.variables, *repl.variables],
+                imprecise_arg_kinds=repl.imprecise_arg_kinds,
             )
         else:
-            # TODO: replace this with "assert False"
+            # We could encode Any as trivial parameters etc., but it would be too verbose.
+            # TODO: assert this is a trivial type, like Any, Never, or object.
             return repl
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
@@ -259,6 +280,13 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         repl = self.variables.get(t.id, t)
         if isinstance(repl, TypeVarTupleType):
             return repl
+        elif isinstance(repl, ProperType) and isinstance(repl, (AnyType, UninhabitedType)):
+            # Some failed inference scenarios will try to set all type variables to Never.
+            # Instead of being picky and require all the callers to wrap them,
+            # do this here instead.
+            # Note: most cases when this happens are handled in expand unpack below, but
+            # in rare cases (e.g. ParamSpec containing Unpack star args) it may be skipped.
+            return t.tuple_fallback.copy_modified(args=[repl])
         raise NotImplementedError
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
@@ -276,6 +304,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def expand_unpack(self, t: UnpackType) -> list[Type]:
         assert isinstance(t.type, TypeVarTupleType)
         repl = get_proper_type(self.variables.get(t.type.id, t.type))
+        if isinstance(repl, UnpackType):
+            repl = get_proper_type(repl.type)
         if isinstance(repl, TupleType):
             return repl.items
         elif (
@@ -285,7 +315,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         ):
             return [UnpackType(typ=repl)]
         elif isinstance(repl, (AnyType, UninhabitedType)):
-            # Replace *Ts = Any with *Ts = *tuple[Any, ...] and some for Never.
+            # Replace *Ts = Any with *Ts = *tuple[Any, ...] and same for Never.
             # These types may appear here as a result of user error or failed inference.
             return [UnpackType(t.type.tuple_fallback.copy_modified(args=[repl]))]
         else:
@@ -300,18 +330,26 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         suffix = self.expand_types(t.arg_types[star_index + 1 :])
 
         var_arg_type = get_proper_type(var_arg.type)
-        # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
-        if isinstance(var_arg_type, TupleType):
+        new_unpack: Type
+        if isinstance(var_arg_type, Instance):
+            # we have something like Unpack[Tuple[Any, ...]]
+            new_unpack = UnpackType(var_arg.type.accept(self))
+        elif isinstance(var_arg_type, TupleType):
+            # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
             expanded_tuple = var_arg_type.accept(self)
             assert isinstance(expanded_tuple, ProperType) and isinstance(expanded_tuple, TupleType)
             expanded_items = expanded_tuple.items
             fallback = var_arg_type.partial_fallback
-        else:
+            new_unpack = UnpackType(TupleType(expanded_items, fallback))
+        elif isinstance(var_arg_type, TypeVarTupleType):
             # We have plain Unpack[Ts]
-            assert isinstance(var_arg_type, TypeVarTupleType)
             fallback = var_arg_type.tuple_fallback
             expanded_items = self.expand_unpack(var_arg)
-        new_unpack = UnpackType(TupleType(expanded_items, fallback))
+            new_unpack = UnpackType(TupleType(expanded_items, fallback))
+        else:
+            # We have invalid type in Unpack. This can happen when expanding aliases
+            # to Callable[[*Invalid], Ret]
+            new_unpack = AnyType(TypeOfAny.from_error, line=var_arg.line, column=var_arg.column)
         return prefix + [new_unpack] + suffix
 
     def visit_callable_type(self, t: CallableType) -> CallableType:
@@ -327,20 +365,29 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # the replacement is ignored.
             if isinstance(repl, Parameters):
                 # We need to expand both the types in the prefix and the ParamSpec itself
-                t = t.expand_param_spec(repl)
-                return t.copy_modified(
-                    arg_types=self.expand_types(t.arg_types),
+                expanded = t.copy_modified(
+                    arg_types=self.expand_types(t.arg_types[:-2]) + repl.arg_types,
+                    arg_kinds=t.arg_kinds[:-2] + repl.arg_kinds,
+                    arg_names=t.arg_names[:-2] + repl.arg_names,
                     ret_type=t.ret_type.accept(self),
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
+                    type_is=(t.type_is.accept(self) if t.type_is is not None else None),
                     imprecise_arg_kinds=(t.imprecise_arg_kinds or repl.imprecise_arg_kinds),
+                    variables=[*repl.variables, *t.variables],
                 )
+                var_arg = expanded.var_arg()
+                if var_arg is not None and isinstance(var_arg.typ, UnpackType):
+                    # Sometimes we get new unpacks after expanding ParamSpec.
+                    expanded.normalize_trivial_unpack()
+                return expanded
             elif isinstance(repl, ParamSpecType):
                 # We're substituting one ParamSpec for another; this can mean that the prefix
                 # changes, e.g. substitute Concatenate[int, P] in place of Q.
                 prefix = repl.prefix
                 clean_repl = repl.copy_modified(prefix=Parameters([], [], []))
                 return t.copy_modified(
-                    arg_types=self.expand_types(t.arg_types[:-2] + prefix.arg_types)
+                    arg_types=self.expand_types(t.arg_types[:-2])
+                    + prefix.arg_types
                     + [
                         clean_repl.with_flavor(ParamSpecFlavor.ARGS),
                         clean_repl.with_flavor(ParamSpecFlavor.KWARGS),
@@ -363,6 +410,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             arg_types=arg_types,
             ret_type=t.ret_type.accept(self),
             type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
+            type_is=(t.type_is.accept(self) if t.type_is is not None else None),
         )
         if needs_normalization:
             return expanded.with_normalized_var_args()
@@ -377,15 +425,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             items.append(new_item)
         return Overloaded(items)
 
-    def expand_types_with_unpack(
-        self, typs: Sequence[Type]
-    ) -> list[Type] | AnyType | UninhabitedType:
-        """Expands a list of types that has an unpack.
-
-        In corner cases, this can return a type rather than a list, in which case this
-        indicates use of Any or some error occurred earlier. In this case callers should
-        simply propagate the resulting type.
-        """
+    def expand_types_with_unpack(self, typs: Sequence[Type]) -> list[Type]:
+        """Expands a list of types that has an unpack."""
         items: list[Type] = []
         for item in typs:
             if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):
@@ -396,24 +437,21 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         items = self.expand_types_with_unpack(t.items)
-        if isinstance(items, list):
-            if len(items) == 1:
-                # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
-                item = items[0]
-                if isinstance(item, UnpackType):
-                    unpacked = get_proper_type(item.type)
-                    if isinstance(unpacked, Instance):
-                        assert unpacked.type.fullname == "builtins.tuple"
-                        if t.partial_fallback.type.fullname != "builtins.tuple":
-                            # If it is a subtype (like named tuple) we need to preserve it,
-                            # this essentially mimics the logic in tuple_fallback().
-                            return t.partial_fallback.accept(self)
-                        return unpacked
-            fallback = t.partial_fallback.accept(self)
-            assert isinstance(fallback, ProperType) and isinstance(fallback, Instance)
-            return t.copy_modified(items=items, fallback=fallback)
-        else:
-            return items
+        if len(items) == 1:
+            # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
+            item = items[0]
+            if isinstance(item, UnpackType):
+                unpacked = get_proper_type(item.type)
+                if isinstance(unpacked, Instance):
+                    assert unpacked.type.fullname == "builtins.tuple"
+                    if t.partial_fallback.type.fullname != "builtins.tuple":
+                        # If it is a subtype (like named tuple) we need to preserve it,
+                        # this essentially mimics the logic in tuple_fallback().
+                        return t.partial_fallback.accept(self)
+                    return unpacked
+        fallback = t.partial_fallback.accept(self)
+        assert isinstance(fallback, ProperType) and isinstance(fallback, Instance)
+        return t.copy_modified(items=items, fallback=fallback)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         fallback = t.fallback.accept(self)
@@ -453,11 +491,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         # Target of the type alias cannot contain type variables (not bound by the type
         # alias itself), so we just expand the arguments.
         args = self.expand_types_with_unpack(t.args)
-        if isinstance(args, list):
-            # TODO: normalize if target is Tuple, and args are [*tuple[X, ...]]?
-            return t.copy_modified(args=args)
-        else:
-            return args
+        # TODO: normalize if target is Tuple, and args are [*tuple[X, ...]]?
+        return t.copy_modified(args=args)
 
     def expand_types(self, types: Iterable[Type]) -> list[Type]:
         a: list[Type] = []
@@ -467,13 +502,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
 
 @overload
-def expand_self_type(var: Var, typ: ProperType, replacement: ProperType) -> ProperType:
-    ...
+def expand_self_type(var: Var, typ: ProperType, replacement: ProperType) -> ProperType: ...
 
 
 @overload
-def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type:
-    ...
+def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type: ...
 
 
 def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type:

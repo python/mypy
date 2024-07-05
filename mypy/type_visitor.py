@@ -213,6 +213,7 @@ class TypeTranslator(TypeVisitor[Type]):
             line=t.line,
             column=t.column,
             last_known_value=last_known_value,
+            extra_attrs=t.extra_attrs,
         )
 
     def visit_type_var(self, t: TypeVarType) -> Type:
@@ -266,7 +267,12 @@ class TypeTranslator(TypeVisitor[Type]):
         return LiteralType(value=t.value, fallback=fallback, line=t.line, column=t.column)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        return UnionType(self.translate_types(t.items), t.line, t.column)
+        return UnionType(
+            self.translate_types(t.items),
+            t.line,
+            t.column,
+            uses_pep604_syntax=t.uses_pep604_syntax,
+        )
 
     def translate_types(self, types: Iterable[Type]) -> list[Type]:
         return [t.accept(self) for t in types]
@@ -376,6 +382,8 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.items.values())
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> T:
+        if t.node is not None:
+            return t.node.accept(self)
         return self.strategy([])
 
     def visit_literal_type(self, t: LiteralType) -> T:
@@ -516,6 +524,8 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         return self.query_types(list(t.items.values()))
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> bool:
+        if t.node is not None:
+            return t.node.accept(self)
         return self.default
 
     def visit_literal_type(self, t: LiteralType) -> bool:

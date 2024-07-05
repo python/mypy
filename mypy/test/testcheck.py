@@ -10,7 +10,6 @@ from mypy import build
 from mypy.build import Graph
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
-from mypy.options import TYPE_VAR_TUPLE, UNPACK
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 from mypy.test.helpers import (
@@ -26,9 +25,10 @@ from mypy.test.helpers import (
 from mypy.test.update_data import update_testcase_output
 
 try:
-    import lxml  # type: ignore[import]
+    import lxml  # type: ignore[import-untyped]
 except ImportError:
     lxml = None
+
 
 import pytest
 
@@ -43,6 +43,8 @@ if sys.version_info < (3, 10):
     typecheck_files.remove("check-python310.test")
 if sys.version_info < (3, 11):
     typecheck_files.remove("check-python311.test")
+if sys.version_info < (3, 12):
+    typecheck_files.remove("check-python312.test")
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform not in ("darwin", "win32"):
@@ -98,9 +100,11 @@ class TypeCheckSuite(DataSuite):
     def run_case_once(
         self,
         testcase: DataDrivenTestCase,
-        operations: list[FileOperation] = [],
+        operations: list[FileOperation] | None = None,
         incremental_step: int = 0,
     ) -> None:
+        if operations is None:
+            operations = []
         original_program_text = "\n".join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 
@@ -123,8 +127,6 @@ class TypeCheckSuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
-        if not testcase.name.endswith("_no_incomplete"):
-            options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.

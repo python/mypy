@@ -74,6 +74,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.semanal_shared import find_dataclass_transform_spec
+from mypy.state import state
 from mypy.types import (
     AnyType,
     CallableType,
@@ -377,11 +378,20 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return snapshot_simple_type(typ)
 
     def visit_instance(self, typ: Instance) -> SnapshotItem:
+        extra_attrs: SnapshotItem
+        if typ.extra_attrs:
+            extra_attrs = (
+                tuple(sorted((k, v.accept(self)) for k, v in typ.extra_attrs.attrs.items())),
+                tuple(typ.extra_attrs.immutable),
+            )
+        else:
+            extra_attrs = ()
         return (
             "Instance",
             encode_optional_str(typ.type.fullname),
             snapshot_types(typ.args),
             ("None",) if typ.last_known_value is None else snapshot_type(typ.last_known_value),
+            extra_attrs,
         )
 
     def visit_type_var(self, typ: TypeVarType) -> SnapshotItem:
@@ -456,7 +466,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 tv = v.copy_modified(id=tid)
             tvs.append(tv)
             tvmap[v.id] = tv
-        return expand_type(typ, tvmap).copy_modified(variables=tvs)
+        with state.strict_optional_set(True):
+            return expand_type(typ, tvmap).copy_modified(variables=tvs)
 
     def visit_tuple_type(self, typ: TupleType) -> SnapshotItem:
         return ("TupleType", snapshot_types(typ.items))

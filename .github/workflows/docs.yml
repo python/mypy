@@ -8,6 +8,10 @@ on:
   pull_request:
     paths:
     - 'docs/**'
+    # We now have a docs check that fails if any error codes don't have documentation,
+    # so it's important to do the docs build on all PRs touching mypy/errorcodes.py
+    # in case somebody's adding a new error code without any docs
+    - 'mypy/errorcodes.py'
     - 'mypyc/doc/**'
     - '**/*.rst'
     - '**/*.md'
@@ -29,8 +33,8 @@ jobs:
       TOX_SKIP_MISSING_INTERPRETERS: False
       VERIFY_MYPY_ERROR_CODES: 1
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.8'
       - name: Install tox

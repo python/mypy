@@ -152,6 +152,17 @@ def check_follow_imports(choice: str) -> str:
     return choice
 
 
+def check_junit_format(choice: str) -> str:
+    choices = ["global", "per_file"]
+    if choice not in choices:
+        raise argparse.ArgumentTypeError(
+            "invalid choice '{}' (choose from {})".format(
+                choice, ", ".join(f"'{x}'" for x in choices)
+            )
+        )
+    return choice
+
+
 def split_commas(value: str) -> list[str]:
     # Uses a bit smarter technique to allow last trailing comma
     # and to remove last `""` item from the split.
@@ -173,6 +184,7 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "files": split_and_match_files,
     "quickstart_file": expand_path,
     "junit_xml": expand_path,
+    "junit_format": check_junit_format,
     "follow_imports": check_follow_imports,
     "no_site_packages": bool,
     "plugins": lambda s: [p.strip() for p in split_commas(s)],
@@ -200,6 +212,7 @@ toml_config_types.update(
         "python_version": parse_version,
         "mypy_path": lambda s: [expand_path(p) for p in try_split(s, "[,:]")],
         "files": lambda s: split_and_match_files_list(try_split(s)),
+        "junit_format": lambda s: check_junit_format(str(s)),
         "follow_imports": lambda s: check_follow_imports(str(s)),
         "plugins": try_split,
         "always_true": try_split,
@@ -292,14 +305,18 @@ def parse_config_file(
             )
             if report_dirs:
                 print(
-                    "%sPer-module sections should not specify reports (%s)"
-                    % (prefix, ", ".join(s + "_report" for s in sorted(report_dirs))),
+                    prefix,
+                    "Per-module sections should not specify reports ({})".format(
+                        ", ".join(s + "_report" for s in sorted(report_dirs))
+                    ),
                     file=stderr,
                 )
             if set(updates) - PER_MODULE_OPTIONS:
                 print(
-                    "%sPer-module sections should only specify per-module flags (%s)"
-                    % (prefix, ", ".join(sorted(set(updates) - PER_MODULE_OPTIONS))),
+                    prefix,
+                    "Per-module sections should only specify per-module flags ({})".format(
+                        ", ".join(sorted(set(updates) - PER_MODULE_OPTIONS))
+                    ),
                     file=stderr,
                 )
                 updates = {k: v for k, v in updates.items() if k in PER_MODULE_OPTIONS}
@@ -315,8 +332,9 @@ def parse_config_file(
                     "*" in x and x != "*" for x in glob.split(".")
                 ):
                     print(
-                        "%sPatterns must be fully-qualified module names, optionally "
-                        "with '*' in some components (e.g spam.*.eggs.*)" % prefix,
+                        prefix,
+                        "Patterns must be fully-qualified module names, optionally "
+                        "with '*' in some components (e.g spam.*.eggs.*)",
                         file=stderr,
                     )
                 else:
@@ -329,7 +347,7 @@ def get_prefix(file_read: str, name: str) -> str:
     else:
         module_name_str = name
 
-    return f"{file_read}: [{module_name_str}]: "
+    return f"{file_read}: [{module_name_str}]:"
 
 
 def is_toml(filename: str) -> bool:
@@ -411,8 +429,7 @@ def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
                         raise ConfigTOMLValueError(
                             "toml config file contains "
                             "[[tool.mypy.overrides]] sections with conflicting "
-                            "values. Module '%s' has two different values for '%s'"
-                            % (module, new_key)
+                            f"values. Module '{module}' has two different values for '{new_key}'"
                         )
                     result[old_config_name][new_key] = new_value
 
@@ -434,11 +451,26 @@ def parse_section(
     """
     results: dict[str, object] = {}
     report_dirs: dict[str, str] = {}
+
+    # Because these fields exist on Options, without proactive checking, we would accept them
+    # and crash later
+    invalid_options = {
+        "enabled_error_codes": "enable_error_code",
+        "disabled_error_codes": "disable_error_code",
+    }
+
     for key in section:
         invert = False
         options_key = key
         if key in config_types:
             ct = config_types[key]
+        elif key in invalid_options:
+            print(
+                f"{prefix}Unrecognized option: {key} = {section[key]}"
+                f" (did you mean {invalid_options[key]}?)",
+                file=stderr,
+            )
+            continue
         else:
             dv = None
             # We have to keep new_semantic_analyzer in Options

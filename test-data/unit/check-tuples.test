@@ -107,17 +107,145 @@ class A: pass
 class B(A): pass
 [builtins fixtures/tuple.pyi]
 
-[case testSubtypingWithNamedTupleType]
-from typing import Tuple
-t1: Tuple[A, A]
-t2: tuple
+[case testSubtypingWithTupleType]
+from __future__ import annotations
+from typing import Any, Tuple
 
-if int():
-    t1 = t2 # E: Incompatible types in assignment (expression has type "Tuple[Any, ...]", variable has type "Tuple[A, A]")
-if int():
-    t2 = t1
+tuple_aa: tuple[A, A]
+Tuple_aa: Tuple[A, A]
+
+tuple_obj: tuple[object, ...]
+Tuple_obj: Tuple[object, ...]
+
+tuple_obj_one: tuple[object]
+Tuple_obj_one: Tuple[object]
+
+tuple_obj_two: tuple[object, object]
+Tuple_obj_two: Tuple[object, object]
+
+tuple_any_implicit: tuple
+Tuple_any_implicit: Tuple
+
+tuple_any: tuple[Any, ...]
+Tuple_any: Tuple[Any, ...]
+
+tuple_any_one: tuple[Any]
+Tuple_any_one: Tuple[Any]
+
+tuple_any_two: tuple[Any, Any]
+Tuple_any_two: Tuple[Any, Any]
+
+def takes_tuple_aa(t: tuple[A, A]): ...
+
+takes_tuple_aa(tuple_aa)
+takes_tuple_aa(Tuple_aa)
+takes_tuple_aa(tuple_obj)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "Tuple[object, ...]"; expected "Tuple[A, A]"
+takes_tuple_aa(Tuple_obj)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "Tuple[object, ...]"; expected "Tuple[A, A]"
+takes_tuple_aa(tuple_obj_one)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "Tuple[object]"; expected "Tuple[A, A]"
+takes_tuple_aa(Tuple_obj_one)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "Tuple[object]"; expected "Tuple[A, A]"
+takes_tuple_aa(tuple_obj_two)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "Tuple[object, object]"; expected "Tuple[A, A]"
+takes_tuple_aa(Tuple_obj_two)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "Tuple[object, object]"; expected "Tuple[A, A]"
+takes_tuple_aa(tuple_any_implicit)
+takes_tuple_aa(Tuple_any_implicit)
+takes_tuple_aa(tuple_any)
+takes_tuple_aa(Tuple_any)
+takes_tuple_aa(tuple_any_one)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "Tuple[Any]"; expected "Tuple[A, A]"
+takes_tuple_aa(Tuple_any_one)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "Tuple[Any]"; expected "Tuple[A, A]"
+takes_tuple_aa(tuple_any_two)
+takes_tuple_aa(Tuple_any_two)
+
+def takes_tuple_any_implicit(t: tuple): ...
+
+takes_tuple_any_implicit(tuple_aa)
+takes_tuple_any_implicit(Tuple_aa)
+takes_tuple_any_implicit(tuple_obj)
+takes_tuple_any_implicit(Tuple_obj)
+takes_tuple_any_implicit(tuple_obj_one)
+takes_tuple_any_implicit(Tuple_obj_one)
+takes_tuple_any_implicit(tuple_obj_two)
+takes_tuple_any_implicit(Tuple_obj_two)
+takes_tuple_any_implicit(tuple_any_implicit)
+takes_tuple_any_implicit(Tuple_any_implicit)
+takes_tuple_any_implicit(tuple_any)
+takes_tuple_any_implicit(Tuple_any)
+takes_tuple_any_implicit(tuple_any_one)
+takes_tuple_any_implicit(Tuple_any_one)
+takes_tuple_any_implicit(tuple_any_two)
+takes_tuple_any_implicit(Tuple_any_two)
+
+def takes_tuple_any_one(t: tuple[Any]): ...
+
+takes_tuple_any_one(tuple_aa)  # E: Argument 1 to "takes_tuple_any_one" has incompatible type "Tuple[A, A]"; expected "Tuple[Any]"
+takes_tuple_any_one(Tuple_aa)  # E: Argument 1 to "takes_tuple_any_one" has incompatible type "Tuple[A, A]"; expected "Tuple[Any]"
+takes_tuple_any_one(tuple_obj)  # E: Argument 1 to "takes_tuple_any_one" has incompatible type "Tuple[object, ...]"; expected "Tuple[Any]"
+takes_tuple_any_one(Tuple_obj)  # E: Argument 1 to "takes_tuple_any_one" has incompatible type "Tuple[object, ...]"; expected "Tuple[Any]"
+takes_tuple_any_one(tuple_obj_one)
+takes_tuple_any_one(Tuple_obj_one)
+takes_tuple_any_one(tuple_obj_two)  # E: Argument 1 to "takes_tuple_any_one" has incompatible type "Tuple[object, object]"; expected "Tuple[Any]"
+takes_tuple_any_one(Tuple_obj_two)  # E: Argument 1 to "takes_tuple_any_one" has incompatible type "Tuple[object, object]"; expected "Tuple[Any]"
+takes_tuple_any_one(tuple_any_implicit)
+takes_tuple_any_one(Tuple_any_implicit)
+takes_tuple_any_one(tuple_any)
+takes_tuple_any_one(Tuple_any)
+takes_tuple_any_one(tuple_any_one)
+takes_tuple_any_one(Tuple_any_one)
+takes_tuple_any_one(tuple_any_two)  # E: Argument 1 to "takes_tuple_any_one" has incompatible type "Tuple[Any, Any]"; expected "Tuple[Any]"
+takes_tuple_any_one(Tuple_any_two)  # E: Argument 1 to "takes_tuple_any_one" has incompatible type "Tuple[Any, Any]"; expected "Tuple[Any]"
 
 class A: pass
+[builtins fixtures/tuple.pyi]
+
+[case testSubtypingWithTupleTypeSubclass]
+from __future__ import annotations
+from typing import Any, Tuple
+
+class A: ...
+
+inst_tuple_aa: Tuple[A, A]
+
+class tuple_aa_subclass(Tuple[A, A]): ...
+inst_tuple_aa_subclass: tuple_aa_subclass
+
+class tuple_any_subclass(Tuple[Any, ...]): ...
+inst_tuple_any_subclass: tuple_any_subclass
+
+class tuple_any_one_subclass(Tuple[Any]): ...
+inst_tuple_any_one_subclass: tuple_any_one_subclass
+
+class tuple_any_two_subclass(Tuple[Any, Any]): ...
+inst_tuple_any_two_subclass: tuple_any_two_subclass
+
+class tuple_obj_subclass(Tuple[object, ...]): ...
+inst_tuple_obj_subclass: tuple_obj_subclass
+
+class tuple_obj_one_subclass(Tuple[object]): ...
+inst_tuple_obj_one_subclass: tuple_obj_one_subclass
+
+class tuple_obj_two_subclass(Tuple[object, object]): ...
+inst_tuple_obj_two_subclass: tuple_obj_two_subclass
+
+def takes_tuple_aa(t: Tuple[A, A]): ...
+
+takes_tuple_aa(inst_tuple_aa)
+takes_tuple_aa(inst_tuple_aa_subclass)
+takes_tuple_aa(inst_tuple_any_subclass)
+takes_tuple_aa(inst_tuple_any_one_subclass)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "tuple_any_one_subclass"; expected "Tuple[A, A]"
+takes_tuple_aa(inst_tuple_any_two_subclass)
+takes_tuple_aa(inst_tuple_obj_subclass)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "tuple_obj_subclass"; expected "Tuple[A, A]"
+takes_tuple_aa(inst_tuple_obj_one_subclass)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "tuple_obj_one_subclass"; expected "Tuple[A, A]"
+takes_tuple_aa(inst_tuple_obj_two_subclass)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "tuple_obj_two_subclass"; expected "Tuple[A, A]"
+
+def takes_tuple_aa_subclass(t: tuple_aa_subclass): ...
+
+takes_tuple_aa_subclass(inst_tuple_aa)  # E: Argument 1 to "takes_tuple_aa_subclass" has incompatible type "Tuple[A, A]"; expected "tuple_aa_subclass"
+takes_tuple_aa_subclass(inst_tuple_aa_subclass)
+takes_tuple_aa_subclass(inst_tuple_any_subclass)  # E: Argument 1 to "takes_tuple_aa_subclass" has incompatible type "tuple_any_subclass"; expected "tuple_aa_subclass"
+takes_tuple_aa_subclass(inst_tuple_any_one_subclass)  # E: Argument 1 to "takes_tuple_aa_subclass" has incompatible type "tuple_any_one_subclass"; expected "tuple_aa_subclass"
+takes_tuple_aa_subclass(inst_tuple_any_two_subclass)  # E: Argument 1 to "takes_tuple_aa_subclass" has incompatible type "tuple_any_two_subclass"; expected "tuple_aa_subclass"
+takes_tuple_aa_subclass(inst_tuple_obj_subclass)  # E: Argument 1 to "takes_tuple_aa_subclass" has incompatible type "tuple_obj_subclass"; expected "tuple_aa_subclass"
+takes_tuple_aa_subclass(inst_tuple_obj_one_subclass)  # E: Argument 1 to "takes_tuple_aa_subclass" has incompatible type "tuple_obj_one_subclass"; expected "tuple_aa_subclass"
+takes_tuple_aa_subclass(inst_tuple_obj_two_subclass)  # E: Argument 1 to "takes_tuple_aa_subclass" has incompatible type "tuple_obj_two_subclass"; expected "tuple_aa_subclass"
+
 [builtins fixtures/tuple.pyi]
 
 [case testTupleInitializationWithNone]
@@ -169,8 +297,8 @@ class C(B): pass
 import typing
 def f() -> None: pass
 
-(None, f()) # E: "f" does not return a value
-(f(), None) # E: "f" does not return a value
+(None, f()) # E: "f" does not return a value (it only ever returns None)
+(f(), None) # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/tuple.pyi]
 
 
@@ -210,9 +338,11 @@ if int():
 if int():
     a = t1[(0)]
 if int():
+    b = t1[+1]
+if int():
     x = t3[0:3] # type (A, B, C)
 if int():
-    y = t3[0:5:2] # type (A, C, E)
+    y = t3[0:+5:2] # type (A, C, E)
 if int():
     x = t3[:-2] # type (A, B, C)
 
@@ -829,6 +959,12 @@ for x in B(), A():
 [builtins fixtures/for.pyi]
 
 [case testTupleIterable]
+from typing import Iterable, Optional, TypeVar
+
+T = TypeVar("T")
+
+def sum(iterable: Iterable[T], start: Optional[T] = None) -> T: pass
+
 y = 'a'
 x = sum((1,2))
 if int():
@@ -975,12 +1111,28 @@ b = (0, *a)
 reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
+[case testTupleWithStarExpr2Precise]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
+a = [1]
+b = (0, *a)
+reveal_type(b)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
+[builtins fixtures/tuple.pyi]
+
 [case testTupleWithStarExpr3]
 a = ['']
 b = (0, *a)
 reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
 c = (*a, '')
 reveal_type(c)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithStarExpr3Precise]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
+a = ['']
+b = (0, *a)
+reveal_type(b)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]]]"
+c = (*a, '')
+reveal_type(c)  # N: Revealed type is "Tuple[Unpack[builtins.tuple[builtins.str, ...]], builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr4]
@@ -990,7 +1142,7 @@ a = (0, *b, '')
 [builtins fixtures/tuple.pyi]
 
 [case testUnpackSyntaxError]
-*foo  # E: Can use starred expression only as assignment target
+*foo  # E: can't use starred expression here
 [builtins fixtures/tuple.pyi]
 
 [case testUnpackBases]
@@ -1076,68 +1228,76 @@ x, y = g(z) # E: Argument 1 to "g" has incompatible type "int"; expected "Tuple[
 [out]
 
 [case testFixedTupleJoinVarTuple]
-from typing import Tuple
+from typing import Tuple, TypeVar
 
 class A: pass
 class B(A): pass
 
 fixtup: Tuple[B, B]
 
+T = TypeVar("T")
+def join(x: T, y: T) -> T: ...
+
 vartup_b: Tuple[B, ...]
-reveal_type(fixtup if int() else vartup_b)  # N: Revealed type is "builtins.tuple[__main__.B, ...]"
-reveal_type(vartup_b if int() else fixtup)  # N: Revealed type is "builtins.tuple[__main__.B, ...]"
+reveal_type(join(fixtup, vartup_b))  # N: Revealed type is "builtins.tuple[__main__.B, ...]"
+reveal_type(join(vartup_b, fixtup))  # N: Revealed type is "builtins.tuple[__main__.B, ...]"
 
 vartup_a: Tuple[A, ...]
-reveal_type(fixtup if int() else vartup_a)  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
-reveal_type(vartup_a if int() else fixtup)  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
-
+reveal_type(join(fixtup, vartup_a))  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
+reveal_type(join(vartup_a, fixtup))  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
 
 [builtins fixtures/tuple.pyi]
 [out]
 
 [case testFixedTupleJoinList]
-from typing import Tuple, List
+from typing import Tuple, List, TypeVar
 
 class A: pass
 class B(A): pass
 
 fixtup: Tuple[B, B]
 
+T = TypeVar("T")
+def join(x: T, y: T) -> T: ...
+
 lst_b: List[B]
-reveal_type(fixtup if int() else lst_b)  # N: Revealed type is "typing.Sequence[__main__.B]"
-reveal_type(lst_b if int() else fixtup)  # N: Revealed type is "typing.Sequence[__main__.B]"
+reveal_type(join(fixtup, lst_b))  # N: Revealed type is "typing.Sequence[__main__.B]"
+reveal_type(join(lst_b, fixtup))  # N: Revealed type is "typing.Sequence[__main__.B]"
 
 lst_a: List[A]
-reveal_type(fixtup if int() else lst_a)  # N: Revealed type is "typing.Sequence[__main__.A]"
-reveal_type(lst_a if int() else fixtup)  # N: Revealed type is "typing.Sequence[__main__.A]"
+reveal_type(join(fixtup, lst_a))  # N: Revealed type is "typing.Sequence[__main__.A]"
+reveal_type(join(lst_a, fixtup))  # N: Revealed type is "typing.Sequence[__main__.A]"
 
 [builtins fixtures/tuple.pyi]
 [out]
 
 [case testEmptyTupleJoin]
-from typing import Tuple, List
+from typing import Tuple, List, TypeVar
 
 class A: pass
 
 empty = ()
 
+T = TypeVar("T")
+def join(x: T, y: T) -> T: ...
+
 fixtup: Tuple[A]
-reveal_type(fixtup if int() else empty)  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
-reveal_type(empty if int() else fixtup)  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
+reveal_type(join(fixtup, empty))  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
+reveal_type(join(empty, fixtup))  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
 
 vartup: Tuple[A, ...]
-reveal_type(empty if int() else vartup)  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
-reveal_type(vartup if int() else empty)  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
+reveal_type(join(vartup, empty))  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
+reveal_type(join(empty, vartup))  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
 
 lst: List[A]
-reveal_type(empty if int() else lst)  # N: Revealed type is "typing.Sequence[__main__.A]"
-reveal_type(lst if int() else empty)  # N: Revealed type is "typing.Sequence[__main__.A]"
+reveal_type(join(empty, lst))  # N: Revealed type is "typing.Sequence[__main__.A]"
+reveal_type(join(lst, empty))  # N: Revealed type is "typing.Sequence[__main__.A]"
 
 [builtins fixtures/tuple.pyi]
 [out]
 
 [case testTupleSubclassJoin]
-from typing import Tuple, NamedTuple
+from typing import Tuple, NamedTuple, TypeVar
 
 class NTup(NamedTuple):
     a: bool
@@ -1150,32 +1310,38 @@ ntup: NTup
 subtup: SubTuple
 vartup: SubVarTuple
 
-reveal_type(ntup if int() else vartup)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(subtup if int() else vartup)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+T = TypeVar("T")
+def join(x: T, y: T) -> T: ...
+
+reveal_type(join(ntup, vartup))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(join(subtup, vartup))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 [builtins fixtures/tuple.pyi]
 [out]
 
 [case testTupleJoinIrregular]
-from typing import Tuple
+from typing import Tuple, TypeVar
 
 tup1: Tuple[bool, int]
 tup2: Tuple[bool]
 
-reveal_type(tup1 if int() else tup2)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(tup2 if int() else tup1)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+T = TypeVar("T")
+def join(x: T, y: T) -> T: ...
 
-reveal_type(tup1 if int() else ())  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(() if int() else tup1)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(join(tup1, tup2))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(join(tup2, tup1))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
-reveal_type(tup2 if int() else ())  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
-reveal_type(() if int() else tup2)  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
+reveal_type(join(tup1, ()))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(join((), tup1))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+
+reveal_type(join(tup2, ()))  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
+reveal_type(join((), tup2))  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
 
 [builtins fixtures/tuple.pyi]
 [out]
 
 [case testTupleSubclassJoinIrregular]
-from typing import Tuple, NamedTuple
+from typing import Tuple, NamedTuple, TypeVar
 
 class NTup1(NamedTuple):
     a: bool
@@ -1190,14 +1356,17 @@ tup1: NTup1
 tup2: NTup2
 subtup: SubTuple
 
-reveal_type(tup1 if int() else tup2)  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
-reveal_type(tup2 if int() else tup1)  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
+T = TypeVar("T")
+def join(x: T, y: T) -> T: ...
 
-reveal_type(tup1 if int() else subtup)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(subtup if int() else tup1)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(join(tup1, tup2))  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
+reveal_type(join(tup2, tup1))  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
 
-reveal_type(tup2 if int() else subtup)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(subtup if int() else tup2)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(join(tup1, subtup))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(join(subtup, tup1))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+
+reveal_type(join(tup2, subtup))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(join(subtup, tup2))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 [builtins fixtures/tuple.pyi]
 [out]
@@ -1205,7 +1374,7 @@ reveal_type(subtup if int() else tup2)  # N: Revealed type is "builtins.tuple[bu
 [case testTupleWithUndersizedContext]
 a = ([1], 'x')
 if int():
-    a = ([], 'x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[List[int], str, int]", variable has type "Tuple[List[int], str]")
+    a = ([], 'x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[List[Never], str, int]", variable has type "Tuple[List[int], str]")
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithOversizedContext]
@@ -1256,8 +1425,8 @@ y = ""
 reveal_type(t[x])  # N: Revealed type is "Union[builtins.int, builtins.str]"
 t[y]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
       # N: Possible overload variants: \
-      # N:     def __getitem__(self, int, /) -> object \
-      # N:     def __getitem__(self, slice, /) -> Tuple[object, ...]
+      # N:     def __getitem__(self, int, /) -> Union[int, str] \
+      # N:     def __getitem__(self, slice, /) -> Tuple[Union[int, str], ...]
 
 [builtins fixtures/tuple.pyi]
 
@@ -1306,7 +1475,21 @@ def foo(o: CallableTuple) -> int:
 class CallableTuple(Tuple[str, int]):
     def __call__(self, n: int, m: int) -> int:
         return n
+[builtins fixtures/tuple.pyi]
 
+[case testTypeTupleGenericCall]
+from typing import Generic, Tuple, TypeVar
+
+T = TypeVar('T')
+
+def foo(o: CallableTuple[int]) -> int:
+    reveal_type(o)  # N: Revealed type is "Tuple[builtins.str, builtins.int, fallback=__main__.CallableTuple[builtins.int]]"
+    reveal_type(o.count(3))  # N: Revealed type is "builtins.int"
+    return o(1, 2)
+
+class CallableTuple(Tuple[str, T]):
+    def __call__(self, n: int, m: int) -> int:
+        return n
 [builtins fixtures/tuple.pyi]
 
 [case testTupleCompatibleWithSequence]
@@ -1521,4 +1704,31 @@ class Bar(aaaaaaaaaa):  # E: Name "aaaaaaaaaa" is not defined
 
 class FooBarTuple(Tuple[Foo, Bar]):
     ...
+[builtins fixtures/tuple.pyi]
+
+
+[case testTupleOverloadZipAny]
+from typing import Any, Iterable, Iterator, Tuple, TypeVar, overload
+
+T = TypeVar("T")
+
+@overload
+def zip(__i: Iterable[T]) -> Iterator[Tuple[T]]: ...
+@overload
+def zip(*i: Iterable[Any]) -> Iterator[Tuple[Any, ...]]: ...
+def zip(i): ...
+
+def g(t: Tuple):
+    reveal_type(zip(*t))  # N: Revealed type is "typing.Iterator[builtins.tuple[Any, ...]]"
+    reveal_type(zip(t))  # N: Revealed type is "typing.Iterator[Tuple[Any]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTupleSubclassSlice]
+from typing import Tuple
+
+class A: ...
+
+class tuple_aa_subclass(Tuple[A, A]): ...
+
+inst_tuple_aa_subclass: tuple_aa_subclass = tuple_aa_subclass((A(), A()))[:]  # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "tuple_aa_subclass")
 [builtins fixtures/tuple.pyi]

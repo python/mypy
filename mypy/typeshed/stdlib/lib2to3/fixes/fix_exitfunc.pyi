@@ -1,7 +1,6 @@
 from _typeshed import Incomplete, StrPath
 from lib2to3 import fixer_base
-from typing import ClassVar
-from typing_extensions import Literal
+from typing import ClassVar, Literal
 
 from ..pytree import Node
 

@@ -12,6 +12,8 @@ import importlib.util
 from typing import Callable, Sequence
 
 from mypy.nodes import (
+    ARG_NAMED,
+    ARG_POS,
     AssertStmt,
     AssignmentStmt,
     AwaitExpr,
@@ -37,6 +39,7 @@ from mypy.nodes import (
     TempNode,
     TryStmt,
     TupleExpr,
+    TypeAliasStmt,
     WhileStmt,
     WithStmt,
     YieldExpr,
@@ -59,11 +62,13 @@ from mypyc.ir.ops import (
     Register,
     Return,
     TupleGet,
+    Unborrow,
     Unreachable,
     Value,
 )
 from mypyc.ir.rtypes import (
     RInstance,
+    RTuple,
     c_pyssize_t_rprimitive,
     exc_rtuple,
     is_tagged,
@@ -72,7 +77,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
-from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
+from mypyc.irbuild.builder import IRBuilder, create_type_params, int_borrow_friendly_op
 from mypyc.irbuild.for_helpers import for_loop_helper
 from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
@@ -103,7 +108,9 @@ from mypyc.primitives.misc_ops import (
     coro_op,
     import_from_many_op,
     import_many_op,
+    import_op,
     send_op,
+    set_type_alias_compute_function_op,
     type_op,
     yield_from_except_op,
 )
@@ -116,8 +123,13 @@ ValueGenFunc = Callable[[], Value]
 
 def transform_block(builder: IRBuilder, block: Block) -> None:
     if not block.is_unreachable:
+        builder.block_reachable_stack.append(True)
         for stmt in block.body:
             builder.accept(stmt)
+            if not builder.block_reachable_stack[-1]:
+                # The rest of the block is unreachable, so skip it
+                break
+        builder.block_reachable_stack.pop()
     # Raise a RuntimeError if we hit a non-empty unreachable block.
     # Don't complain about empty unreachable blocks, since mypy inserts
     # those after `if MYPY`.
@@ -183,8 +195,29 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
 
     line = stmt.rvalue.line
     rvalue_reg = builder.accept(stmt.rvalue)
+
     if builder.non_function_scope() and stmt.is_final_def:
         builder.init_final_static(first_lvalue, rvalue_reg)
+
+    # Special-case multiple assignments like 'x, y = expr' to reduce refcount ops.
+    if (
+        isinstance(first_lvalue, (TupleExpr, ListExpr))
+        and isinstance(rvalue_reg.type, RTuple)
+        and len(rvalue_reg.type.types) == len(first_lvalue.items)
+        and len(lvalues) == 1
+        and all(is_simple_lvalue(item) for item in first_lvalue.items)
+        and any(t.is_refcounted for t in rvalue_reg.type.types)
+    ):
+        n = len(first_lvalue.items)
+        for i in range(n):
+            target = builder.get_assignment_target(first_lvalue.items[i])
+            rvalue_item = builder.add(TupleGet(rvalue_reg, i, borrow=True))
+            rvalue_item = builder.add(Unborrow(rvalue_item))
+            builder.assign(target, rvalue_item, line)
+        builder.builder.keep_alive([rvalue_reg], steal=True)
+        builder.flush_keep_alives()
+        return
+
     for lvalue in lvalues:
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
@@ -987,3 +1020,30 @@ def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
 
 def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
     m.accept(MatchVisitor(builder, m))
+
+
+def transform_type_alias_stmt(builder: IRBuilder, s: TypeAliasStmt) -> None:
+    line = s.line
+    # Use "_typing" to avoid importing "typing", as the latter can be expensive.
+    # "_typing" includes everything we need here.
+    mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
+    type_params = create_type_params(builder, mod, s.type_args, s.line)
+
+    type_alias_type = builder.py_get_attr(mod, "TypeAliasType", line)
+    args = [builder.load_str(s.name.name), builder.none()]
+    arg_names: list[str | None] = [None, None]
+    arg_kinds = [ARG_POS, ARG_POS]
+    if s.type_args:
+        args.append(builder.new_tuple(type_params, line))
+        arg_names.append("type_params")
+        arg_kinds.append(ARG_NAMED)
+    alias = builder.py_call(type_alias_type, args, line, arg_names=arg_names, arg_kinds=arg_kinds)
+
+    # Use primitive to set function used to lazily compute type alias type value.
+    # The value needs to be lazily computed to match Python runtime behavior, but
+    # Python public APIs don't support this, so we use a C primitive.
+    compute_fn = s.value.accept(builder.visitor)
+    builder.builder.primitive_op(set_type_alias_compute_function_op, [alias, compute_fn], line)
+
+    target = builder.get_assignment_target(s.name)
+    builder.assign(target, alias, line)

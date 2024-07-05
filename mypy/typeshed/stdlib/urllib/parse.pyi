@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from typing import Any, AnyStr, Generic, NamedTuple, TypeVar, overload
-from typing_extensions import Literal, TypeAlias
+from typing import Any, AnyStr, Generic, Literal, NamedTuple, TypeVar, overload
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -56,7 +56,7 @@ class _NetlocResultMixinBase(Generic[AnyStr]):
     @property
     def port(self) -> int | None: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr): ...
 class _NetlocResultMixinBytes(_NetlocResultMixinBase[bytes], _ResultMixinBytes): ...
