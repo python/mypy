@@ -2856,8 +2856,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if (sym := self.globals.get(name)) is not None:
                 if isinstance(sym.node, TypeInfo):
                     self.warn_deprecated(sym.node, node)
-                elif isinstance(co := get_proper_type(sym.type), (CallableType, Overloaded)):
-                    self.warn_deprecated(co, node)
+                elif isinstance(typ := get_proper_type(sym.type), (CallableType, Overloaded)):
+                    self.warn_deprecated(typ, node)
         self.check_import(node)
 
     def visit_import_all(self, node: ImportAll) -> None:
@@ -2954,7 +2954,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     and isinstance(var := lvalue.node, Var)
                     and isinstance(instance := get_proper_type(var.type), Instance)
                 ):
-                    self.check_deprecated_class(instance.type, s, False)
+                    self.check_deprecated_class(instance.type, s)
 
         # Avoid type checking type aliases in stubs to avoid false
         # positives about modern type syntax available in stubs such
@@ -4700,7 +4700,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if inplace:
             # There is __ifoo__, treat as x = x.__ifoo__(y)
             rvalue_type, method_type = self.expr_checker.check_op(method, lvalue_type, s.rvalue, s)
-            self.check_deprecated_function(method_type, s, True)
+            if isinstance(method_type := get_proper_type(method_type), (CallableType, Overloaded)):
+                self.warn_deprecated(method_type, s)
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
         else:
@@ -7595,19 +7596,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return f"{name} is deprecated: {deprecation}"
         return f"{name} is deprecated [overload {typ}]: {deprecation}"
 
-    def check_deprecated_function(self, typ: Type, context: Context, memberaccess: bool) -> None:
+    def check_deprecated_function(self, typ: Type, context: Context) -> None:
         if isinstance(typ := get_proper_type(typ), (CallableType, Overloaded)):
-            self._check_deprecated(typ, context, memberaccess)
+            self._check_deprecated(typ, context)
 
-    def check_deprecated_class(self, typ: TypeInfo, context: Context, memberaccess: bool) -> None:
-        self._check_deprecated(typ, context, memberaccess)
+    def check_deprecated_class(self, typ: TypeInfo, context: Context) -> None:
+        self._check_deprecated(typ, context)
 
-    def _check_deprecated(
-        self, typ: CallableType | Overloaded | TypeInfo, context: Context, memberaccess: bool
-    ) -> None:
-        if memberaccess:
-            self.warn_deprecated(typ, context)
-        elif typ.deprecated is not None:
+    def _check_deprecated(self, typ: CallableType | Overloaded | TypeInfo, context: Context) -> None:
+        if typ.deprecated is not None:
             for imp in self.tree.imports:
                 if isinstance(imp, ImportFrom) and any(typ.name == n[0] for n in imp.names):
                     break
