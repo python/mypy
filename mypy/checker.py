@@ -639,7 +639,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         for item in defn.items:
             if isinstance(item, Decorator) and isinstance(ct := item.func.type, CallableType):
-                ct.deprecated = self.get_deprecation_warning(ct, item.decorators)
+                self.create_deprecation_warning(ct, item.decorators)
 
         if defn.is_property:
             # HACK: Infer the type of the property.
@@ -2422,7 +2422,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
         typ = defn.info
-        typ.deprecated = self.get_deprecation_warning(typ, defn.decorators)
+        self.create_deprecation_warning(typ, defn.decorators)
         for base in typ.mro[1:]:
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
@@ -5028,7 +5028,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def visit_decorator(self, e: Decorator) -> None:
         if isinstance(ct := e.func.type, CallableType):
-            ct.deprecated = self.get_deprecation_warning(ct, e.decorators)
+            self.create_deprecation_warning(ct, e.decorators)
         for d in e.decorators:
             if isinstance(d, RefExpr):
                 if d.fullname == "typing.no_type_check":
@@ -7556,9 +7556,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
         return self.expr_checker.accept(node, type_context=type_context)
 
-    def get_deprecation_warning(
+    def create_deprecation_warning(
         self, typ: CallableType | Overloaded | TypeInfo, decorators: Iterable[Expression]
-    ) -> str | None:
+    ) -> None:
+        """Create a warning when visiting a deprecated (decorated) callable, overload or
+        class that may be used later if the deprecated feature is used."""
 
         name = typ.name
         if isinstance(typ, CallableType):
@@ -7590,11 +7592,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ):
                 deprecation = value
 
-        if deprecation is None:
-            return None
-        if not overload:
-            return f"{name} is deprecated: {deprecation}"
-        return f"{name} is deprecated [overload {typ}]: {deprecation}"
+        if deprecation is not None:
+            if overload:
+                typ.deprecated = f"{name} is deprecated [overload {typ}]: {deprecation}"
+            else:
+                typ.deprecated = f"{name} is deprecated: {deprecation}"
 
     def check_deprecated(self, typ: CallableType | Overloaded | TypeInfo, context: Context) -> None:
         """Warn if deprecated and not directly imported with a `from` statement."""
