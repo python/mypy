@@ -160,7 +160,7 @@ jobs:
       - name: Setup tox environment
         run: tox run -e py --notest
       - name: Test
-        run: tox run -e py --skip-pkg-install -- "-n 2"
+        run: tox run -e py --skip-pkg-install -- "-n 4"
         continue-on-error: true
       - name: Mark as a success
         run: exit 0
