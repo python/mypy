@@ -213,6 +213,7 @@ class TypeTranslator(TypeVisitor[Type]):
             line=t.line,
             column=t.column,
             last_known_value=last_known_value,
+            extra_attrs=t.extra_attrs,
         )
 
     def visit_type_var(self, t: TypeVarType) -> Type:

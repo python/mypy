@@ -245,11 +245,14 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
             partial_kinds.append(fn_type.arg_kinds[i])
             partial_types.append(arg_type)
             partial_names.append(fn_type.arg_names[i])
-        elif actuals:
-            if any(actual_arg_kinds[j] == ArgKind.ARG_POS for j in actuals):
+        else:
+            assert actuals
+            if any(actual_arg_kinds[j] in (ArgKind.ARG_POS, ArgKind.ARG_STAR) for j in actuals):
+                # Don't add params for arguments passed positionally
                 continue
+            # Add defaulted params for arguments passed via keyword
             kind = actual_arg_kinds[actuals[0]]
-            if kind == ArgKind.ARG_NAMED:
+            if kind == ArgKind.ARG_NAMED or kind == ArgKind.ARG_STAR2:
                 kind = ArgKind.ARG_NAMED_OPT
             partial_kinds.append(kind)
             partial_types.append(arg_type)
@@ -286,15 +289,25 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
     if len(ctx.arg_types) != 2:  # *args, **kwargs
         return ctx.default_return_type
 
-    args = [a for param in ctx.args for a in param]
-    arg_kinds = [a for param in ctx.arg_kinds for a in param]
-    arg_names = [a for param in ctx.arg_names for a in param]
+    # See comments for similar actual to formal code above
+    actual_args = []
+    actual_arg_kinds = []
+    actual_arg_names = []
+    seen_args = set()
+    for i, param in enumerate(ctx.args):
+        for j, a in enumerate(param):
+            if a in seen_args:
+                continue
+            seen_args.add(a)
+            actual_args.append(a)
+            actual_arg_kinds.append(ctx.arg_kinds[i][j])
+            actual_arg_names.append(ctx.arg_names[i][j])
 
     result = ctx.api.expr_checker.check_call(
         callee=partial_type,
-        args=args,
-        arg_kinds=arg_kinds,
-        arg_names=arg_names,
+        args=actual_args,
+        arg_kinds=actual_arg_kinds,
+        arg_names=actual_arg_names,
         context=ctx.context,
     )
     return result[0]
