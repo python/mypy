@@ -642,6 +642,26 @@ of the above sections.
 
        assert text is not None  # OK, check against None is allowed as a special case.
 
+.. option:: --strict-bool
+
+    By default ``bool`` values are treated as subtypes of ``int``,
+    just like in runtime:
+
+    .. code-block:: python
+
+        >>> bool.__mro__
+        (<class 'bool'>, <class 'int'>, <class 'object'>)
+
+    While it will work in runtime,
+    some cases might require a little bit more strictness.
+    With this flag enabled, you will get the following error:
+
+    .. code-block:: python
+
+        def requires_int(arg: int) -> None: ...
+
+        requires_int(5 > 0)  # Error: Argument 1 has incompatible type "bool"; expected "int"
+
 .. option:: --extra-checks
 
     This flag enables additional checks that are technically correct but may be

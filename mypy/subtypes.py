@@ -512,6 +512,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if left.type.alt_promote and left.type.alt_promote.type is right.type:
                     return True
             rname = right.type.fullname
+            if (
+                self.options
+                and self.options.strict_bool
+                and left.type.fullname == "builtins.bool"
+                and rname == "builtins.int"
+            ):
+                return False
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
             # NamedTuples are a special case, because `NamedTuple` is not listed
