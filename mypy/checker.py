@@ -7578,7 +7578,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         overload = False
         deprecation: str | None = None
         for decorator in decorators:
-            if (isinstance(typ, CallableType)
+            if (
+                isinstance(typ, CallableType)
                 and isinstance(decorator, NameExpr)
                 and (decorator.fullname in OVERLOAD_NAMES)
             ):
@@ -7601,7 +7602,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 typ.deprecated = f"{name} is deprecated: {deprecation}"
 
-    def check_deprecated(self, typ: CallableType | Overloaded | TypeInfo, context: Context) -> None:
+    def check_deprecated(
+        self, typ: CallableType | Overloaded | TypeInfo, context: Context
+    ) -> None:
         """Warn if deprecated and not directly imported with a `from` statement."""
         if typ.deprecated is not None:
             for imp in self.tree.imports:
@@ -7610,9 +7613,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 self.warn_deprecated(typ, context)
 
-    def warn_deprecated(
-        self, typ: CallableType | Overloaded | TypeInfo, context: Context
-    ) -> None:
+    def warn_deprecated(self, typ: CallableType | Overloaded | TypeInfo, context: Context) -> None:
         """Warn if deprecated."""
         if (deprecated := typ.deprecated) is not None:
             warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
