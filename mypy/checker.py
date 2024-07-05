@@ -2954,7 +2954,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     and isinstance(var := lvalue.node, Var)
                     and isinstance(instance := get_proper_type(var.type), Instance)
                 ):
-                    self.check_deprecated_class(instance.type, s)
+                    self.check_deprecated(instance.type, s)
 
         # Avoid type checking type aliases in stubs to avoid false
         # positives about modern type syntax available in stubs such
@@ -7596,14 +7596,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return f"{name} is deprecated: {deprecation}"
         return f"{name} is deprecated [overload {typ}]: {deprecation}"
 
-    def check_deprecated_function(self, typ: Type, context: Context) -> None:
-        if isinstance(typ := get_proper_type(typ), (CallableType, Overloaded)):
-            self._check_deprecated(typ, context)
-
-    def check_deprecated_class(self, typ: TypeInfo, context: Context) -> None:
-        self._check_deprecated(typ, context)
-
-    def _check_deprecated(self, typ: CallableType | Overloaded | TypeInfo, context: Context) -> None:
+    def check_deprecated(self, typ: CallableType | Overloaded | TypeInfo, context: Context) -> None:
+        """Warn if deprecated and not directly imported with a `from` statement."""
         if typ.deprecated is not None:
             for imp in self.tree.imports:
                 if isinstance(imp, ImportFrom) and any(typ.name == n[0] for n in imp.names):
@@ -7614,6 +7608,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def warn_deprecated(
         self, typ: CallableType | Overloaded | TypeInfo, context: Context
     ) -> None:
+        """Warn if deprecated."""
         if (deprecated := typ.deprecated) is not None:
             warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
             warn(deprecated, context, code=codes.DEPRECATED)
