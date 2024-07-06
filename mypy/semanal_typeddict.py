@@ -310,11 +310,11 @@ class TypedDictAnalyzer:
                 # Append stmt, name, and type in this case...
                 fields.append(name)
                 statements.append(stmt)
-                if stmt.type is None:
+                if stmt.unanalyzed_type is None:
                     types.append(AnyType(TypeOfAny.unannotated))
                 else:
                     analyzed = self.api.anal_type(
-                        stmt.type,
+                        stmt.unanalyzed_type,
                         allow_required=True,
                         allow_placeholder=not self.api.is_func_scope(),
                         prohibit_self_type="TypedDict item type",
@@ -322,6 +322,8 @@ class TypedDictAnalyzer:
                     if analyzed is None:
                         return None, [], [], set()  # Need to defer
                     types.append(analyzed)
+                    if not has_placeholder(analyzed):
+                        stmt.type = analyzed
                 # ...despite possible minor failures that allow further analysis.
                 if stmt.type is None or hasattr(stmt, "new_syntax") and not stmt.new_syntax:
                     self.fail(TPDICT_CLASS_ERROR, stmt)
