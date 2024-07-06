@@ -1120,7 +1120,7 @@ class AnyType(ProperType):
         # Mark with Bogus because _dummy is just an object (with type Any)
         type_of_any: int = _dummy_int,
         original_any: Bogus[AnyType | None] = _dummy,
-        missing_import_name: Bogus[str | None] = _dummy
+        missing_import_name: Bogus[str | None] = _dummy,
     ) -> AnyType:
         if type_of_any == _dummy_int:
             type_of_any = self.type_of_any
