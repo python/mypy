@@ -3935,6 +3935,9 @@ class SemanticAnalyzer(
         # When this type alias gets "inlined", the Any is not explicit anymore,
         # so we need to replace it with non-explicit Anys.
         res = make_any_non_explicit(res)
+        if self.options.disallow_any_unimported and has_any_from_unimported_type(res):
+            self.msg.unimported_type_becomes_any("Type alias target", res, s)
+            res = make_any_non_unimported(res)
         # Note: with the new (lazy) type alias representation we only need to set no_args to True
         # if the expected number of arguments is non-zero, so that aliases like `A = List` work
         # but not aliases like `A = TypeAliasType("A", List)` as these need explicit type params.
@@ -5407,6 +5410,9 @@ class SemanticAnalyzer(
             # When this type alias gets "inlined", the Any is not explicit anymore,
             # so we need to replace it with non-explicit Anys.
             res = make_any_non_explicit(res)
+            if self.options.disallow_any_unimported and has_any_from_unimported_type(res):
+                self.msg.unimported_type_becomes_any("Type alias target", res, s)
+                res = make_any_non_unimported(res)
             eager = self.is_func_scope()
             if isinstance(res, ProperType) and isinstance(res, Instance) and not res.args:
                 fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
@@ -7427,6 +7433,21 @@ class MakeAnyNonExplicit(TrivialSyntheticTypeTranslator):
     def visit_any(self, t: AnyType) -> Type:
         if t.type_of_any == TypeOfAny.explicit:
             return t.copy_modified(TypeOfAny.special_form)
+        return t
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
+
+
+def make_any_non_unimported(t: Type) -> Type:
+    """Replace all Any types that come from unimported types with special form Any."""
+    return t.accept(MakeAnyNonUnimported())
+
+
+class MakeAnyNonUnimported(TrivialSyntheticTypeTranslator):
+    def visit_any(self, t: AnyType) -> Type:
+        if t.type_of_any == TypeOfAny.from_unimported_type:
+            return t.copy_modified(TypeOfAny.special_form, missing_import_name=None)
         return t
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
