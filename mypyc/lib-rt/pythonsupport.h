@@ -48,7 +48,7 @@ update_bases(PyObject *bases)
             }
             continue;
         }
-        if (_PyObject_LookupAttrId(base, &PyId___mro_entries__, &meth) < 0) {
+        if (PyObject_GetOptionalAttrString(base, PyId___mro_entries__.string, &meth) < 0) {
             goto error;
         }
         if (!meth) {
@@ -374,7 +374,7 @@ _CPyDictView_New(PyObject *dict, PyTypeObject *type)
 static int
 _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     PyObject *tmp = NULL;
-    int result = _PyObject_LookupAttrId(v, name, &tmp);
+    int result = PyObject_GetOptionalAttrString(v, name->string, &tmp);
     if (tmp) {
         Py_DECREF(tmp);
     }
