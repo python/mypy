@@ -13,6 +13,17 @@
 #include <assert.h>
 #include "mypyc_util.h"
 
+#if CPY_3_13_FEATURES
+#ifndef Py_BUILD_CORE
+#define Py_BUILD_CORE
+#endif
+#include "internal/pycore_bytesobject.h"  // _PyBytes_Join
+#include "internal/pycore_call.h"  // _PyObject_CallMethodIdNoArgs, _PyObject_CallMethodIdObjArgs, _PyObject_CallMethodIdOneArg
+#include "internal/pycore_genobject.h"  // _PyGen_FetchStopIterationValue
+#include "internal/pycore_object.h"  // _PyType_CalculateMetaclass
+#include "internal/pycore_pyerrors.h"  // _PyErr_FormatFromCause, _PyErr_SetKeyError
+#endif
+
 #if CPY_3_12_FEATURES
 #include "internal/pycore_frame.h"
 #endif
