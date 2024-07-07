@@ -59,7 +59,7 @@ update_bases(PyObject *bases)
             }
             continue;
         }
-        new_base = _PyObject_FastCall(meth, stack, 1);
+        new_base = _PyObject_Vectorcall(meth, stack, 1, NULL);
         Py_DECREF(meth);
         if (!new_base) {
             goto error;
@@ -108,7 +108,7 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
     PyObject *super, *func, *result;
     PyObject *args[2] = {(PyObject *)type, (PyObject *)type};
 
-    super = _PyObject_FastCall((PyObject *)&PySuper_Type, args, 2);
+    super = _PyObject_Vectorcall((PyObject *)&PySuper_Type, args, 2, NULL);
     if (super == NULL) {
         return -1;
     }
