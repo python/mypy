@@ -307,8 +307,6 @@ list_count(PyListObject *self, PyObject *value)
     return CPyTagged_ShortFromSsize_t(count);
 }
 
-#define CPyUnicode_EqualToASCIIString(x, y) _PyUnicode_EqualToASCIIString(x, y)
-
 // Adapted from genobject.c in Python 3.7.2
 // Copied because it wasn't in 3.5.2 and it is undocumented anyways.
 /*
