@@ -80,7 +80,7 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
         sz += add_sz;
 
         // If these strings have different kind, we would call
-        // _PyUnicode_FastCopyCharacters() in the following part.
+        // PyUnicode_CopyCharacters() in the following part.
         if (use_memcpy && last_obj != NULL) {
             if (PyUnicode_KIND(last_obj) != PyUnicode_KIND(item))
                 use_memcpy = 0;
