@@ -462,6 +462,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, TupleType):
+            if right.erased_typevartuple:
+                return True  # treat it like Any
+
             if len(right.items) == 1:
                 # Non-normalized Tuple type (may be left after semantic analysis
                 # because semanal_typearg visitor is not a type translator).
