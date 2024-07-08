@@ -1938,8 +1938,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         found_method_base_classes: list[TypeInfo] | None,
         context: Context | None = None,
     ) -> None:
+        plugin_generated = False
+        if defn.info and (node := defn.info.get(defn.name)) and node.plugin_generated:
+            # Do not report issues for plugin generated nodes,
+            # they can't realistically use `@override` for their methods.
+            plugin_generated = True
+
         if (
-            found_method_base_classes
+            not plugin_generated
+            and found_method_base_classes
             and not defn.is_explicit_override
             and defn.name not in ("__init__", "__new__")
             and not is_private(defn.name)
@@ -2964,7 +2971,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.annotation_in_unchecked_function(context=s)
 
     def check_type_alias_rvalue(self, s: AssignmentStmt) -> None:
-        alias_type = self.expr_checker.accept(s.rvalue)
+        with self.msg.filter_errors():
+            alias_type = self.expr_checker.accept(s.rvalue)
         self.store_type(s.lvalues[-1], alias_type)
 
     def check_assignment(
@@ -5304,7 +5312,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         del type_map[expr]
 
     def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
-        self.expr_checker.accept(o.value)
+        with self.msg.filter_errors():
+            self.expr_checker.accept(o.value)
 
     def make_fake_typeinfo(
         self,

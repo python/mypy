@@ -291,6 +291,8 @@ def process_top_level_function(
         deferred, incomplete, progress = semantic_analyze_target(
             target, module, state, node, active_type, final_iteration, patches
         )
+        if not incomplete:
+            state.manager.incomplete_namespaces.discard(module)
         if final_iteration:
             assert not deferred, "Must not defer during final iteration"
         if not progress:

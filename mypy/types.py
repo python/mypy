@@ -1120,15 +1120,18 @@ class AnyType(ProperType):
         # Mark with Bogus because _dummy is just an object (with type Any)
         type_of_any: int = _dummy_int,
         original_any: Bogus[AnyType | None] = _dummy,
+        missing_import_name: Bogus[str | None] = _dummy,
     ) -> AnyType:
         if type_of_any == _dummy_int:
             type_of_any = self.type_of_any
         if original_any is _dummy:
             original_any = self.source_any
+        if missing_import_name is _dummy:
+            missing_import_name = self.missing_import_name
         return AnyType(
             type_of_any=type_of_any,
             source_any=original_any,
-            missing_import_name=self.missing_import_name,
+            missing_import_name=missing_import_name,
             line=self.line,
             column=self.column,
         )
@@ -1417,8 +1420,7 @@ class Instance(ProperType):
         self._hash = -1
 
         # Additional attributes defined per instance of this type. For example modules
-        # have different attributes per instance of types.ModuleType. This is intended
-        # to be "short-lived", we don't serialize it, and even don't store as variable type.
+        # have different attributes per instance of types.ModuleType.
         self.extra_attrs = extra_attrs
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -2084,6 +2086,17 @@ class CallableType(FunctionLike):
         prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
         return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
+    def normalize_trivial_unpack(self) -> None:
+        # Normalize trivial unpack in var args as *args: *tuple[X, ...] -> *args: X in place.
+        if self.is_var_arg:
+            star_index = self.arg_kinds.index(ARG_STAR)
+            star_type = self.arg_types[star_index]
+            if isinstance(star_type, UnpackType):
+                p_type = get_proper_type(star_type.type)
+                if isinstance(p_type, Instance):
+                    assert p_type.type.fullname == "builtins.tuple"
+                    self.arg_types[star_index] = p_type.args[0]
+
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
             return cast(NormalizedCallableType, self)
@@ -2113,7 +2126,7 @@ class CallableType(FunctionLike):
         if not isinstance(unpacked, TupleType):
             # Note that we don't normalize *args: *tuple[X, ...] -> *args: X,
             # this should be done once in semanal_typeargs.py for user-defined types,
-            # and we ourselves should never construct such type.
+            # and we ourselves rarely construct such type.
             return self
         unpack_index = find_unpack_in_list(unpacked.items)
         if unpack_index == 0 and len(unpacked.items) > 1:
@@ -2508,11 +2521,12 @@ class TypedDictType(ProperType):
     TODO: The fallback structure is perhaps overly complicated.
     """
 
-    __slots__ = ("items", "required_keys", "fallback")
+    __slots__ = ("items", "required_keys", "fallback", "extra_items_from")
 
     items: dict[str, Type]  # item_name -> item_type
     required_keys: set[str]
     fallback: Instance
+    extra_items_from: list[ProperType]  # only used during semantic analysis
 
     def __init__(
         self,
@@ -2528,6 +2542,7 @@ class TypedDictType(ProperType):
         self.fallback = fallback
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.required_keys) == 0
+        self.extra_items_from = []
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_typeddict_type(self)

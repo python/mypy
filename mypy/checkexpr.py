@@ -5585,8 +5585,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_generator_expr(self, e: GeneratorExpr) -> Type:
         # If any of the comprehensions use async for, the expression will return an async generator
-        # object, or if the left-side expression uses await.
-        if any(e.is_async) or has_await_expression(e.left_expr):
+        # object, or await is used anywhere but in the leftmost sequence.
+        if (
+            any(e.is_async)
+            or has_await_expression(e.left_expr)
+            or any(has_await_expression(sequence) for sequence in e.sequences[1:])
+            or any(has_await_expression(cond) for condlist in e.condlists for cond in condlist)
+        ):
             typ = "typing.AsyncGenerator"
             # received type is always None in async generator expressions
             additional_args: list[Type] = [NoneType()]
@@ -5761,16 +5766,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 context=if_type_fallback,
                 allow_none_return=allow_none_return,
             )
-
-        # Only create a union type if the type context is a union, to be mostly
-        # compatible with older mypy versions where we always did a join.
-        #
-        # TODO: Always create a union or at least in more cases?
-        if isinstance(get_proper_type(self.type_context[-1]), UnionType):
-            res: Type = make_simplified_union([if_type, full_context_else_type])
-        else:
-            res = join.join_types(if_type, else_type)
-
+        res: Type = make_simplified_union([if_type, else_type])
+        if has_uninhabited_component(res) and not isinstance(
+            get_proper_type(self.type_context[-1]), UnionType
+        ):
+            # In rare cases with empty collections join may give a better result.
+            alternative = join.join_types(if_type, else_type)
+            p_alt = get_proper_type(alternative)
+            if not isinstance(p_alt, Instance) or p_alt.type.fullname != "builtins.object":
+                res = alternative
         return res
 
     def analyze_cond_branch(
