@@ -22,6 +22,7 @@
 #include "internal/pycore_genobject.h"  // _PyGen_FetchStopIterationValue
 #include "internal/pycore_object.h"  // _PyType_CalculateMetaclass
 #include "internal/pycore_pyerrors.h"  // _PyErr_FormatFromCause, _PyErr_SetKeyError
+#include "internal/pycore_setobject.h"  // _PySet_Update
 #include "internal/pycore_unicodeobject.h"  // _PyUnicode_EQ, _PyUnicode_FastCopyCharacters
 #endif
 
