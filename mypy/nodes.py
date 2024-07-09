@@ -3480,6 +3480,7 @@ class FakeInfo(TypeInfo):
 VAR_NO_INFO: Final[TypeInfo] = FakeInfo("Var is lacking info")
 CLASSDEF_NO_INFO: Final[TypeInfo] = FakeInfo("ClassDef is lacking info")
 FUNC_NO_INFO: Final[TypeInfo] = FakeInfo("FuncBase for non-methods lack info")
+MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
 
 
 class TypeAlias(SymbolNode):
