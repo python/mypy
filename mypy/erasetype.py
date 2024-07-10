@@ -80,6 +80,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         args: list[Type] = []
         for tv in t.type.defn.type_vars:
             # Valid erasure for *Ts is *tuple[Any, ...], not just Any.
+            # TODO: try updating this to use TupleType
             if isinstance(tv, TypeVarTupleType):
                 args.append(
                     UnpackType(

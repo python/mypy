@@ -67,6 +67,7 @@ def fill_typevars_with_any(typ: TypeInfo) -> Instance | TupleType:
     args: list[Type] = []
     for tv in typ.defn.type_vars:
         # Valid erasure for *Ts is *tuple[Any, ...], not just Any.
+        # TODO: use TupleType
         if isinstance(tv, TypeVarTupleType):
             args.append(
                 UnpackType(tv.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)]))

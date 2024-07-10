@@ -827,6 +827,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right_unpack = right.items[right_unpack_index]
         assert isinstance(right_unpack, UnpackType)
         right_unpacked = get_proper_type(right_unpack.type)
+        if isinstance(right_unpacked, TupleType) and right_unpacked.erased_typevartuple:
+            return True  # treat it as Any
         if not isinstance(right_unpacked, Instance):
             # This case should be handled by the caller.
             return False
