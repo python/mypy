@@ -1086,7 +1086,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             # this arg will get dropped in `repack_callable_args` later;
                             # handle it instead! ... this isn't very thorough though
                             other = cactual.argument_by_name(arg.name)
-                            assert not other or arg.required
                             if not other:
                                 continue
 
