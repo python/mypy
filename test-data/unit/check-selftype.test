@@ -2132,3 +2132,31 @@ class D:
     x: int
 x: Union[C, D]
 reveal_type(x.x)  # N: Revealed type is "Union[__main__.C, builtins.int]"
+
+[case testCallableProtocolTypingSelf]
+from typing import Protocol, Self
+
+class MyProtocol(Protocol):
+    __name__: str
+
+    def __call__(
+        self: Self,
+    ) -> None: ...
+
+def test() -> None: ...
+value: MyProtocol = test
+
+[case testCallableProtocolOldSelf]
+from typing import Protocol, TypeVar
+
+Self = TypeVar("Self", bound="MyProtocol")
+
+class MyProtocol(Protocol):
+    __name__: str
+
+    def __call__(
+        self: Self,
+    ) -> None: ...
+
+def test() -> None: ...
+value: MyProtocol = test

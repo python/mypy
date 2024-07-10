@@ -368,14 +368,18 @@ Limitations
 Mypy's analysis is limited to individual symbols and it will not track
 relationships between symbols. For example, in the following code
 it's easy to deduce that if :code:`a` is None then :code:`b` must not be,
-therefore :code:`a or b` will always be a string, but Mypy will not be able to tell that:
+therefore :code:`a or b` will always be an instance of :code:`C`,
+but Mypy will not be able to tell that:
 
 .. code-block:: python
 
-    def f(a: str | None, b: str | None) -> str:
+    class C:
+        pass
+
+    def f(a: C | None, b: C | None) -> C:
         if a is not None or b is not None:
-            return a or b  # Incompatible return value type (got "str | None", expected "str")
-        return 'spam'
+            return a or b  # Incompatible return value type (got "C | None", expected "C")
+        return C()
 
 Tracking these sort of cross-variable conditions in a type checker would add significant complexity
 and performance overhead.
@@ -385,9 +389,9 @@ or rewrite the function to be slightly more verbose:
 
 .. code-block:: python
 
-    def f(a: str | None, b: str | None) -> str:
+    def f(a: C | None, b: C | None) -> C:
         if a is not None:
             return a
         elif b is not None:
             return b
-        return 'spam'
+        return C()

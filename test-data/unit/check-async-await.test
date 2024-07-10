@@ -573,6 +573,25 @@ async def return_f() -> AsyncGenerator[int, None]:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
 
+[case testImplicitAsyncGenerator]
+from typing import List
+
+async def get_list() -> List[int]:
+    return [1]
+
+async def predicate() -> bool:
+    return True
+
+async def test_implicit_generators() -> None:
+    reveal_type(await predicate() for _ in [1])  # N: Revealed type is "typing.AsyncGenerator[builtins.bool, None]"
+    reveal_type(x for x in [1] if await predicate())  # N: Revealed type is "typing.AsyncGenerator[builtins.int, None]"
+    reveal_type(x for x in await get_list())  # N: Revealed type is "typing.Generator[builtins.int, None, None]"
+    reveal_type(x for _ in [1] for x in await get_list())  # N: Revealed type is "typing.AsyncGenerator[builtins.int, None]"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-async.pyi]
+
+
 -- The full matrix of coroutine compatibility
 -- ------------------------------------------
 

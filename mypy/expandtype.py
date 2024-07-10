@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Final, Iterable, Mapping, Sequence, TypeVar, cast, overload
 
-from mypy.nodes import ARG_STAR, Var
+from mypy.nodes import ARG_STAR, FakeInfo, Var
 from mypy.state import state
 from mypy.types import (
     ANY_STRATEGY,
@@ -216,6 +216,16 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
     def visit_instance(self, t: Instance) -> Type:
         args = self.expand_types_with_unpack(list(t.args))[0]
+
+        if isinstance(t.type, FakeInfo):
+            # The type checker expands function definitions and bodies
+            # if they depend on constrained type variables but the body
+            # might contain a tuple type comment (e.g., # type: (int, float)),
+            # in which case 't.type' is not yet available.
+            #
+            # See: https://github.com/python/mypy/issues/16649
+            return t.copy_modified(args=args)
+
         if t.type.fullname == "builtins.tuple":
             # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
             arg = args[0]
