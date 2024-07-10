@@ -787,6 +787,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             return False
         elif isinstance(right, TupleType):
+            if right.erased_typevartuple:
+                return True  # treat it like Any
             # If right has a variadic unpack this needs special handling. If there is a TypeVarTuple
             # unpack, item count must coincide. If the left has variadic unpack but right
             # doesn't have one, we will fall through to False down the line.

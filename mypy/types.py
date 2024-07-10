@@ -2450,13 +2450,21 @@ class TupleType(ProperType):
         )
 
     def copy_modified(
-        self, *, fallback: Instance | None = None, items: list[Type] | None = None
+        self,
+        *,
+        fallback: Instance | None = None,
+        items: list[Type] | None = None,
+        erased_typevartuple: bool | None = None,
     ) -> TupleType:
         if fallback is None:
             fallback = self.partial_fallback
         if items is None:
             items = self.items
-        return TupleType(items, fallback, self.line, self.column)
+        if erased_typevartuple is None:
+            erased_typevartuple = self.erased_typevartuple
+        return TupleType(
+            items, fallback, self.line, self.column, erased_typevartuple=erased_typevartuple
+        )
 
     def slice(
         self, begin: int | None, end: int | None, stride: int | None, *, fallback: Instance | None
