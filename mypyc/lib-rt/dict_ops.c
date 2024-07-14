@@ -141,7 +141,7 @@ static int CPyDict_UpdateGeneral(PyObject *dict, PyObject *stuff) {
     if (name == NULL) {
         return -1;
     }
-    PyObject *res = _PyObject_CallMethodOneArg(dict, name, stuff);
+    PyObject *res = PyObject_CallMethodOneArg(dict, name, stuff);
     return CPy_ObjectToStatus(res);
 }
 
