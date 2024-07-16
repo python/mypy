@@ -37,6 +37,24 @@ str_op = function_op(
     error_kind=ERR_MAGIC,
 )
 
+# chr(int)
+str_from_ordinal_op = function_op(
+    name="builtins.chr",
+    arg_types=[c_int_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="PyUnicode_FromOrdinal",
+    error_kind=ERR_MAGIC,
+)
+
+# ord(str)
+function_op(
+    name="builtins.ord",
+    arg_types=[str_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPy_Ordinal",
+    error_kind=ERR_MAGIC,
+)
+
 # str1 + str2
 binary_op(
     name="+",
