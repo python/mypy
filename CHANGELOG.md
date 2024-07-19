@@ -102,6 +102,17 @@ The details of how mypy checks if two `@overload` signatures are unsafely overla
 This feature was contribted by Ivan Levkivskyi (PR [17392](https://github.com/python/mypy/pull/17392)).
 
 
+#### Allow Type Hints in Expressions
+
+Mypy now allows all type expressions in all expressions, outside type annotations and other type contexts. For example, this no longer generates an error:
+
+```python
+from typing import Callable
+
+print(Callable[[], int] | None)  # No error
+```
+
+
 #### Mypyc Improvements
 
 Mypyc now supports the new syntax for generics introduced in Python 3.12 (see above). Another notable improvement is signficantly faster basic operations on `int` values.
