@@ -405,7 +405,7 @@ This feature was contributed by Shantanu (PR [16756](https://github.com/python/m
 
 #### Typeshed Updates
 
-Please see [git log](https://github.com/python/typeshed/commits/main?after=7c8e82fe483a40ec4cb0a2505cfdb0f3e7cc81d9+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
+Please see [git log](https://github.com/python/typeshed/commits/main?after=6dda799d8ad1d89e0f8aad7ac41d2d34bd838ace+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
 #### Mypy 1.10.1
 
