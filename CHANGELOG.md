@@ -28,7 +28,7 @@ reveal_type(f(1))  # Revealed type is 'int'
 # Generic class
 class C[T]:
     def __init__(self, x: T) -> None:
-       self.x = value
+       self.x = x
 
 c = C('a')
 reveal_type(c.x)  # Revealed type is 'str'
@@ -38,6 +38,7 @@ type A[T] = C[list[T]]
 ```
 
 This feature was contributed by Jukka Lehtosalo.
+
 
 #### Support for `functools.partial`
 
@@ -51,7 +52,9 @@ from functools import partial
 def f(a: int, b: str) -> None: ...
 
 g = partial(f, 1)
-g(1)  # Argument "1" has incompatible type "int"; expected "str"
+
+# Argument has incompatible type "int"; expected "str"
+g(11)
 ```
 
 This feature was contributed by Shantanu (PR [16939](https://github.com/python/mypy/pull/16939)).
@@ -68,7 +71,8 @@ class Base:
     def f(self, x: int = 0) -> None: ...
 
 class Derived(Base):
-   def f(self): ...   # error: Incompatible with base class
+    # Signature incompatible with "Base"
+    def f(self): ...
 ```
 
 This feature was contributed by Steven Troxler (PR [17276](https://github.com/python/mypy/pull/17276)).
@@ -80,12 +84,12 @@ The new polymorphic inference algorithm introduced in mypy 1.5 is now used in mo
 
 This feature was contributed by Ivan Levkivskyi (PR [17348](https://github.com/python/mypy/pull/17348)).
 
-Mypy now uses unions of tuple item types in certtain contexts to enable more precise inferred types. Example:
+Mypy now uses unions of tuple item types in certain contexts to enable more precise inferred types. Example:
 
 ```python
 for x in (1, 'x'):
     # Previously inferred as 'object'
-    reveal_type(x)  # 'int' | 'str'
+    reveal_type(x)  # Revealed type is 'int | str'
 ```
 
 This was also contributed by Ivan Levkivskyi (PR [17408](https://github.com/python/mypy/pull/17408)).
@@ -93,9 +97,18 @@ This was also contributed by Ivan Levkivskyi (PR [17408](https://github.com/pyth
 
 #### Improvements to Detection of Overlapping Overloads
 
-The details of how mypy checks if two overload items are unsafely overlapping were overhauled. This both fixes some false positives, and allows mypy to detect additional unsafe use cases.
+The details of how mypy checks if two `@overload` signatures are unsafely overlapping were overhauled. This both fixes some false positives, and allows mypy to detect additional unsafe signatures.
 
 This feature was contribted by Ivan Levkivskyi (PR [17392](https://github.com/python/mypy/pull/17392)).
+
+
+#### Mypyc Improvements
+ * Support Python 3.12 syntax for generic functions and classes (Jukka Lehtosalo, PR [17357](https://github.com/python/mypy/pull/17357))
+ * Support Python 3.12 type alias syntax (Jukka Lehtosalo, PR [17384](https://github.com/python/mypy/pull/17384))
+ * Fix ParamSpec (Shantanu, PR [17309](https://github.com/python/mypy/pull/17309))
+ * Inline fast paths of integer unboxing operations (Jukka Lehtosalo, PR [17266](https://github.com/python/mypy/pull/17266))
+ * Inline tagged integer arithmetic and bitwise operations (Jukka Lehtosalo, PR [17265](https://github.com/python/mypy/pull/17265))
+ * Allow specifying primitives as pure (Jukka Lehtosalo, PR [17263](https://github.com/python/mypy/pull/17263))
 
 
 #### Changes to Stubtest
@@ -107,15 +120,6 @@ This feature was contribted by Ivan Levkivskyi (PR [17392](https://github.com/py
  * Gracefully handle invalid `Optional` and recognize aliases to PEP 604 unions (Ali Hamdan, PR [17386](https://github.com/python/mypy/pull/17386))
  * Fix for Python 3.13 (Jelle Zijlstra, PR [17290](https://github.com/python/mypy/pull/17290))
  * Preserve enum value initialisers (Shantanu, PR [17125](https://github.com/python/mypy/pull/17125))
-
-
-#### Changes to Mypyc
- * Support Python 3.12 syntax for generic functions and classes (Jukka Lehtosalo, PR [17357](https://github.com/python/mypy/pull/17357))
- * Support Python 3.12 type alias syntax (Jukka Lehtosalo, PR [17384](https://github.com/python/mypy/pull/17384))
- * Fix ParamSpec (Shantanu, PR [17309](https://github.com/python/mypy/pull/17309))
- * Inline fast paths of integer unboxing operations (Jukka Lehtosalo, PR [17266](https://github.com/python/mypy/pull/17266))
- * Inline tagged integer arithmetic and bitwise operations (Jukka Lehtosalo, PR [17265](https://github.com/python/mypy/pull/17265))
- * Allow specifying primitives as pure (Jukka Lehtosalo, PR [17263](https://github.com/python/mypy/pull/17263))
 
 
 #### Miscellaneous New Features
@@ -130,8 +134,7 @@ This feature was contribted by Ivan Levkivskyi (PR [17392](https://github.com/py
 #### Changes to Error Reporting
  * Mention `--enable-incomplete-feature=NewGenericSyntax` in messages (Shantanu, PR [17462](https://github.com/python/mypy/pull/17462))
  * Do not report plugin-generated methods with `explicit-override` (sobolevn, PR [17433](https://github.com/python/mypy/pull/17433))
- * Fix explicit type for partial (Ivan Levkivskyi, PR [17424](https://github.com/python/mypy/pull/17424))
- * Use namespaces for function type variables (Ivan Levkivskyi, PR [17311](https://github.com/python/mypy/pull/17311))
+ * Use and display namespaces for function type variables (Ivan Levkivskyi, PR [17311](https://github.com/python/mypy/pull/17311))
  * Fix false positive for Final local scope variable in Protocol (GiorgosPapoutsakis, PR [17308](https://github.com/python/mypy/pull/17308))
  * Use Never in more messages, use ambiguous in join (Shantanu, PR [17304](https://github.com/python/mypy/pull/17304))
  * Log full path to config file in verbose output (dexterkennedy, PR [17180](https://github.com/python/mypy/pull/17180))
@@ -150,7 +153,7 @@ This feature was contribted by Ivan Levkivskyi (PR [17392](https://github.com/py
  * Fix crash on invalid callable property override (Ivan Levkivskyi, PR [17352](https://github.com/python/mypy/pull/17352))
  * Fix crash on unpacking self in NamedTuple (Ivan Levkivskyi, PR [17351](https://github.com/python/mypy/pull/17351))
  * Fix crash on recursive alias with an optional type (Ivan Levkivskyi, PR [17350](https://github.com/python/mypy/pull/17350))
- * Fix type comments crash inside generic definitions (Bénédikt Tran, PR [16849](https://github.com/python/mypy/pull/16849))
+ * Fix crash on type comment inside generic definitions (Bénédikt Tran, PR [16849](https://github.com/python/mypy/pull/16849))
 
 
 #### Changes to Documentation
@@ -162,6 +165,7 @@ This feature was contribted by Ivan Levkivskyi (PR [17392](https://github.com/py
 
 #### Other Notable Improvements and Fixes
  * Fix ParamSpec inference against TypeVarTuple (Ivan Levkivskyi, PR [17431](https://github.com/python/mypy/pull/17431))
+ * Fix explicit type for `partial` (Ivan Levkivskyi, PR [17424](https://github.com/python/mypy/pull/17424))
  * Always allow lambda calls (Ivan Levkivskyi, PR [17430](https://github.com/python/mypy/pull/17430))
  * Fix isinstance checks with PEP 604 unions containing None (Shantanu, PR [17415](https://github.com/python/mypy/pull/17415))
  * Fix self-referential upper bound in new-style type variables (Ivan Levkivskyi, PR [17407](https://github.com/python/mypy/pull/17407))
@@ -170,7 +174,7 @@ This feature was contribted by Ivan Levkivskyi (PR [17392](https://github.com/py
  * Fix isinstance with type aliases to PEP 604 unions (Shantanu, PR [17371](https://github.com/python/mypy/pull/17371))
  * Properly handle unpacks in overlap checks (Ivan Levkivskyi, PR [17356](https://github.com/python/mypy/pull/17356))
  * Fix type application for classes with generic constructors (Ivan Levkivskyi, PR [17354](https://github.com/python/mypy/pull/17354))
- * Update 'typing_extensions' to >=4.6.0 to fix Python 3.12 error (Ben Brown, PR [17312](https://github.com/python/mypy/pull/17312))
+ * Update `typing_extensions` to >=4.6.0 to fix Python 3.12 error (Ben Brown, PR [17312](https://github.com/python/mypy/pull/17312))
  * Avoid "does not return" error in lambda (Shantanu, PR [17294](https://github.com/python/mypy/pull/17294))
  * Fix bug with descriptors in non-strict-optional mode (Max Murin, PR [17293](https://github.com/python/mypy/pull/17293))
  * Don’t leak unreachability from lambda body to surrounding scope (Anders Kaseorg, PR [17287](https://github.com/python/mypy/pull/17287))
