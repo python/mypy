@@ -66,7 +66,7 @@ Past mypy versions didn't check if untyped methods were compatible with overridd
 
 For example, this now generates an error if using `--check-untyped-defs`:
 
-```py
+```python
 class Base:
     def f(self, x: int = 0) -> None: ...
 
@@ -99,18 +99,22 @@ This was also contributed by Ivan Levkivskyi (PR [17408](https://github.com/pyth
 
 The details of how mypy checks if two `@overload` signatures are unsafely overlapping were overhauled. This both fixes some false positives, and allows mypy to detect additional unsafe signatures.
 
-This feature was contribted by Ivan Levkivskyi (PR [17392](https://github.com/python/mypy/pull/17392)).
+This feature was contributed by Ivan Levkivskyi (PR [17392](https://github.com/python/mypy/pull/17392)).
 
 
-#### Allow Type Hints in Expressions
+#### Better Support for Type Hints in Expressions
 
-Mypy now allows all type expressions in all expressions, outside type annotations and other type contexts. For example, this no longer generates an error:
+Mypy now allows more expressions that evaluate to valid type annotations in all expression contexts. The inferred types of these expressions are also sometimes more precise. Previously they were often `object`.
+
+This example uses a union type that includes a callable type as an expression, and it no longer generates an error:
 
 ```python
 from typing import Callable
 
 print(Callable[[], int] | None)  # No error
 ```
+
+This feature was contributed by Jukka Lehtosalo (PR [17404](https://github.com/python/mypy/pull/17404)).
 
 
 #### Mypyc Improvements
