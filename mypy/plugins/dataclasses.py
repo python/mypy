@@ -385,6 +385,9 @@ class DataclassTransformer:
 
         self._add_dataclass_fields_magic_attribute()
         self._add_internal_replace_method(attributes)
+        if self._api.options.python_version >= (3, 13):
+            self._add_dunder_replace(attributes)
+
         if "__post_init__" in info.names:
             self._add_internal_post_init_method(attributes)
 
@@ -394,6 +397,18 @@ class DataclassTransformer:
         }
 
         return True
+
+    def _add_dunder_replace(self, attributes: list[DataclassAttribute]) -> None:
+        """Add a `__replace__` method to the class, which is used to replace attributes in the `copy` module."""
+        args = [attr.to_argument(self._cls.info, of="replace") for attr in attributes]
+        type_vars = [tv for tv in self._cls.type_vars]
+        add_method_to_class(
+            self._api,
+            self._cls,
+            "__replace__",
+            args=args,
+            return_type=Instance(self._cls.info, type_vars),
+        )
 
     def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
         """

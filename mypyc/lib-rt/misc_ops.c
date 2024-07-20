@@ -131,6 +131,52 @@ static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     return matches;
 }
 
+#if CPY_3_13_FEATURES
+
+// Adapted from CPython 3.13.0b3
+/* Determine the most derived metatype. */
+PyObject *CPy_CalculateMetaclass(PyObject *metatype, PyObject *bases)
+{
+    Py_ssize_t i, nbases;
+    PyTypeObject *winner;
+    PyObject *tmp;
+    PyTypeObject *tmptype;
+
+    /* Determine the proper metatype to deal with this,
+       and check for metatype conflicts while we're at it.
+       Note that if some other metatype wins to contract,
+       it's possible that its instances are not types. */
+
+    nbases = PyTuple_GET_SIZE(bases);
+    winner = (PyTypeObject *)metatype;
+    for (i = 0; i < nbases; i++) {
+        tmp = PyTuple_GET_ITEM(bases, i);
+        tmptype = Py_TYPE(tmp);
+        if (PyType_IsSubtype(winner, tmptype))
+            continue;
+        if (PyType_IsSubtype(tmptype, winner)) {
+            winner = tmptype;
+            continue;
+        }
+        /* else: */
+        PyErr_SetString(PyExc_TypeError,
+                        "metaclass conflict: "
+                        "the metaclass of a derived class "
+                        "must be a (non-strict) subclass "
+                        "of the metaclasses of all its bases");
+        return NULL;
+    }
+    return (PyObject *)winner;
+}
+
+#else
+
+PyObject *CPy_CalculateMetaclass(PyObject *metatype, PyObject *bases) {
+    return (PyObject *)_PyType_CalculateMetaclass((PyTypeObject *)metatype, bases);
+}
+
+#endif
+
 // Create a heap type based on a template non-heap type.
 // This is super hacky and maybe we should suck it up and use PyType_FromSpec instead.
 // We allow bases to be NULL to represent just inheriting from object.
@@ -163,7 +209,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
         // Find the appropriate metaclass from our base classes. We
         // care about this because Generic uses a metaclass prior to
         // Python 3.7.
-        metaclass = _PyType_CalculateMetaclass(metaclass, bases);
+        metaclass = (PyTypeObject *)CPy_CalculateMetaclass((PyObject *)metaclass, bases);
         if (!metaclass)
             goto error;
 

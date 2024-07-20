@@ -17,6 +17,7 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    MISSING_FALLBACK,
     PARAM_SPEC_KIND,
     TYPE_VAR_KIND,
     TYPE_VAR_TUPLE_KIND,
@@ -42,7 +43,6 @@ from mypy.nodes import (
     EllipsisExpr,
     Expression,
     ExpressionStmt,
-    FakeInfo,
     FloatExpr,
     ForStmt,
     FuncDef,
@@ -116,6 +116,7 @@ from mypy.types import (
     RawExpressionType,
     TupleType,
     Type,
+    TypedDictType,
     TypeList,
     TypeOfAny,
     UnboundType,
@@ -190,7 +191,6 @@ N = TypeVar("N", bound=Node)
 
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
-MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
 TYPE_IGNORE_PATTERN: Final = re.compile(r"[^#]*#\s*type:\s*ignore\s*(.*)")
@@ -954,7 +954,9 @@ class ASTConverter:
                 else:
                     self.fail(
                         ErrorMessage(
-                            "PEP 695 generics are not yet supported", code=codes.VALID_TYPE
+                            "PEP 695 generics are not yet supported. "
+                            "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
+                            code=codes.VALID_TYPE,
                         ),
                         n.type_params[0].lineno,
                         n.type_params[0].col_offset,
@@ -1145,7 +1147,11 @@ class ASTConverter:
                 explicit_type_params = self.translate_type_params(n.type_params)
             else:
                 self.fail(
-                    ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
+                    ErrorMessage(
+                        "PEP 695 generics are not yet supported. "
+                        "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
+                        code=codes.VALID_TYPE,
+                    ),
                     n.type_params[0].lineno,
                     n.type_params[0].col_offset,
                     blocker=False,
@@ -1801,7 +1807,11 @@ class ASTConverter:
             return self.set_line(node, n)
         else:
             self.fail(
-                ErrorMessage("PEP 695 type aliases are not yet supported", code=codes.VALID_TYPE),
+                ErrorMessage(
+                    "PEP 695 type aliases are not yet supported. "
+                    "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
+                    code=codes.VALID_TYPE,
+                ),
                 n.lineno,
                 n.col_offset,
                 blocker=False,
@@ -2095,6 +2105,22 @@ class TypeConverter:
             line=self.line,
             column=self.convert_column(n.col_offset),
         )
+
+    def visit_Dict(self, n: ast3.Dict) -> Type:
+        if not n.keys:
+            return self.invalid_type(n)
+        items: dict[str, Type] = {}
+        extra_items_from = []
+        for item_name, value in zip(n.keys, n.values):
+            if not isinstance(item_name, ast3.Constant) or not isinstance(item_name.value, str):
+                if item_name is None:
+                    extra_items_from.append(self.visit(value))
+                    continue
+                return self.invalid_type(n)
+            items[item_name.value] = self.visit(value)
+        result = TypedDictType(items, set(), _dummy_fallback, n.lineno, n.col_offset)
+        result.extra_items_from = extra_items_from
+        return result
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> Type:

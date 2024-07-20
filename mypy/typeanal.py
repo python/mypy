@@ -10,7 +10,11 @@ from typing_extensions import Protocol
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
 from mypy.expandtype import expand_type
-from mypy.message_registry import INVALID_PARAM_SPEC_LOCATION, INVALID_PARAM_SPEC_LOCATION_NOTE
+from mypy.message_registry import (
+    INVALID_PARAM_SPEC_LOCATION,
+    INVALID_PARAM_SPEC_LOCATION_NOTE,
+    TYPEDDICT_OVERRIDE_MERGE,
+)
 from mypy.messages import (
     MessageBuilder,
     format_type,
@@ -25,6 +29,7 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    MISSING_FALLBACK,
     SYMBOL_FUNCBASE_TYPES,
     ArgKind,
     Context,
@@ -43,7 +48,7 @@ from mypy.nodes import (
     check_arg_names,
     get_nongen_builtins,
 )
-from mypy.options import Options
+from mypy.options import INLINE_TYPEDDICT, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import (
     SemanticAnalyzerCoreInterface,
@@ -1220,10 +1225,45 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return TupleType(self.anal_array(t.items, allow_unpack=True), fallback, t.line)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        items = {
-            item_name: self.anal_type(item_type) for (item_name, item_type) in t.items.items()
-        }
-        return TypedDictType(items, set(t.required_keys), t.fallback)
+        req_keys = set()
+        items = {}
+        for item_name, item_type in t.items.items():
+            analyzed = self.anal_type(item_type, allow_required=True)
+            if isinstance(analyzed, RequiredType):
+                if analyzed.required:
+                    req_keys.add(item_name)
+                analyzed = analyzed.item
+            else:
+                # Keys are required by default.
+                req_keys.add(item_name)
+            items[item_name] = analyzed
+        if t.fallback.type is MISSING_FALLBACK:  # anonymous/inline TypedDict
+            if INLINE_TYPEDDICT not in self.options.enable_incomplete_feature:
+                self.fail(
+                    "Inline TypedDict is experimental,"
+                    " must be enabled with --enable-incomplete-feature=InlineTypedDict",
+                    t,
+                )
+            required_keys = req_keys
+            fallback = self.named_type("typing._TypedDict")
+            for typ in t.extra_items_from:
+                analyzed = self.analyze_type(typ)
+                p_analyzed = get_proper_type(analyzed)
+                if not isinstance(p_analyzed, TypedDictType):
+                    if not isinstance(p_analyzed, (AnyType, PlaceholderType)):
+                        self.fail("Can only merge-in other TypedDict", t, code=codes.VALID_TYPE)
+                    continue
+                for sub_item_name, sub_item_type in p_analyzed.items.items():
+                    if sub_item_name in items:
+                        self.fail(TYPEDDICT_OVERRIDE_MERGE.format(sub_item_name), t)
+                        continue
+                    items[sub_item_name] = sub_item_type
+                    if sub_item_name in p_analyzed.required_keys:
+                        req_keys.add(sub_item_name)
+        else:
+            required_keys = t.required_keys
+            fallback = t.fallback
+        return TypedDictType(items, required_keys, fallback, t.line, t.column)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
         # We should never see a bare Literal. We synthesize these raw literals
@@ -1761,11 +1801,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_param_spec: bool = False,
         allow_unpack: bool = False,
         allow_ellipsis: bool = False,
+        allow_required: bool = False,
     ) -> Type:
         if nested:
             self.nesting_level += 1
         old_allow_required = self.allow_required
-        self.allow_required = False
+        self.allow_required = allow_required
         old_allow_ellipsis = self.allow_ellipsis
         self.allow_ellipsis = allow_ellipsis
         old_allow_unpack = self.allow_unpack
