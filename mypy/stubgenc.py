@@ -11,6 +11,7 @@ import importlib
 import inspect
 import keyword
 import os.path
+import sys
 from types import FunctionType, ModuleType
 from typing import Any, Callable, Mapping
 
@@ -848,7 +849,10 @@ class InspectionStubGenerator(BaseStubGenerator):
                 attrs.append((attr, value))
 
         # Gets annotations if they exist
-        annotations = inspect.get_annotations(cls)
+        if sys.version_info >= (3, 10):
+            annotations = inspect.get_annotations(cls)
+        else:
+            annotations = cls.__annotations__
 
         for attr, value in attrs:
             if attr == "__hash__" and value is None:
@@ -907,7 +911,10 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.record_name(name)
 
         # Gets annotations if they exist
-        annotations = inspect.get_annotations(self.module)
+        if sys.version_info >= (3, 10):
+            annotations = inspect.get_annotations(self.module)
+        else:
+            annotations = self.module.__annotations__
 
         if name in annotations:
             type_str = self.strip_or_import(annotations[name])
