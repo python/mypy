@@ -852,7 +852,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         if sys.version_info >= (3, 10):
             annotations = inspect.get_annotations(cls)
         else:
-            annotations = cls.__annotations__
+            annotations = getattr(cls, '__annotations__', {})
 
         for attr, value in attrs:
             if attr == "__hash__" and value is None:
@@ -914,7 +914,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         if sys.version_info >= (3, 10):
             annotations = inspect.get_annotations(self.module)
         else:
-            annotations = self.module.__annotations__
+            annotations = getattr(self.module, '__annotations__', {})
 
         if name in annotations:
             type_str = self.strip_or_import(annotations[name])
