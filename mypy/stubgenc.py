@@ -848,10 +848,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                 attrs.append((attr, value))
 
         # Gets annotations if they exist
-        try:
-            annotations = cls.__annotations__
-        except AttributeError:
-            annotations = {}
+        annotations = inspect.get_annotations(cls)
 
         for attr, value in attrs:
             if attr == "__hash__" and value is None:
@@ -910,10 +907,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.record_name(name)
 
         # Gets annotations if they exist
-        try:
-            annotations = self.module.__annotations__
-        except AttributeError:
-            annotations = {}
+        annotations = inspect.get_annotations(self.module)
 
         if name in annotations:
             type_str = self.strip_or_import(annotations[name])
