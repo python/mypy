@@ -108,6 +108,7 @@ class FunctionSig(NamedTuple):
         is_async: bool = False,
         any_val: str | None = None,
         docstring: str | None = None,
+        generic: str = ""
     ) -> str:
         args: list[str] = []
         for arg in self.args:
@@ -141,8 +142,8 @@ class FunctionSig(NamedTuple):
             retfield = " -> " + ret_type
 
         prefix = "async " if is_async else ""
-        sig = "{indent}{prefix}def {name}({args}){ret}:".format(
-            indent=indent, prefix=prefix, name=self.name, args=", ".join(args), ret=retfield
+        sig = "{indent}{prefix}def {name}{generic}({args}){ret}:".format(
+            indent=indent, prefix=prefix, name=self.name, args=", ".join(args), ret=retfield, generic=generic
         )
         if docstring:
             suffix = f"\n{indent}    {mypy.util.quote_docstring(docstring)}"

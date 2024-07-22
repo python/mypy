@@ -614,6 +614,29 @@ class StubgenUtilSuite(unittest.TestCase):
         assert common_dir_prefix([r"foo\bar/x.pyi"]) == r"foo\bar"
         assert common_dir_prefix([r"foo/bar/x.pyi"]) == r"foo\bar"
 
+    def test_generate_inline_generic(self) -> None:
+        assert generate_inline_generic(()) == ""
+        T = TypeVar("T")
+        assert generate_inline_generic((T,)) == "[T]"
+        TBound = TypeVar("TBound", bound=int)
+        assert generate_inline_generic((TBound,)) == "[TBound: int]"
+        TBoundTuple = TypeVar("TBoundTuple", int, str)
+        assert generate_inline_generic((TBoundTuple,)) == "[TBoundTuple: (int, str)]"
+        P = ParamSpec("P")
+        p_tuple = cast(tuple[ParamSpec], (P,))
+        assert generate_inline_generic(p_tuple) == "[**P]"
+        U = TypeVarTuple("U")
+        u_tuple = cast(tuple[TypeVarTuple], (U,))
+        assert generate_inline_generic(u_tuple) == "[*U]"
+        all_tuple = cast(
+            tuple[TypeVar, TypeVar, TypeVar, ParamSpec, TypeVarTuple],
+            (T, TBound, TBoundTuple, P, U),
+        )
+        assert (
+            generate_inline_generic(all_tuple)
+            == "[T, TBound: int, TBoundTuple: (int, str), **P, *U]"
+        )
+
 
 class StubgenHelpersSuite(unittest.TestCase):
     def test_is_blacklisted_path(self) -> None:
@@ -826,28 +849,6 @@ class StubgencSuite(unittest.TestCase):
         for op in ("float", "bool", "bytes", "int"):
             assert_equal(infer_method_ret_type(f"__{op}__"), op)
 
-    def test_generate_inline_generic(self) -> None:
-        T = TypeVar("T")
-        assert generate_inline_generic((T,)) == "[T]"
-        TBound = TypeVar("TBound", bound=int)
-        assert generate_inline_generic((TBound,)) == "[TBound: int]"
-        TBoundTuple = TypeVar("TBoundTuple", int, str)
-        assert generate_inline_generic((TBoundTuple,)) == "[TBoundTuple: (int, str)]"
-        P = ParamSpec("P")
-        p_tuple = cast(tuple[ParamSpec], (P,))
-        assert generate_inline_generic(p_tuple) == "[**P]"
-        U = TypeVarTuple("U")
-        u_tuple = cast(tuple[TypeVarTuple], (U,))
-        assert generate_inline_generic(u_tuple) == "[*U]"
-        all_tuple = cast(
-            tuple[TypeVar, TypeVar, TypeVar, ParamSpec, TypeVarTuple],
-            (T, TBound, TBoundTuple, P, U),
-        )
-        assert (
-            generate_inline_generic(all_tuple)
-            == "[T, TBound: int, TBoundTuple: (int, str), **P, *U]"
-        )
-
     def test_generate_class_stub_no_crash_for_object(self) -> None:
         output: list[str] = []
         mod = ModuleType("module", "")  # any module is fine
@@ -941,6 +942,28 @@ class StubgencSuite(unittest.TestCase):
         gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
         gen.generate_class_stub("C", TestClass, output)
         assert_equal(output, ["class C[T]: ..."])
+
+    def test_inline_generic_function(self) -> None:
+        T = TypeVar("T", bound=int)
+        class TestClass:
+            def test(self, arg0: T) -> T:
+                """
+                test(self, arg0: T) -> T
+                """
+                return arg0
+
+            test.__type_params__ = (T, )
+
+        output: list[str] = []
+        mod = ModuleType(TestClass.__module__, "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        gen.generate_function_stub(
+            "test",
+            TestClass.test,
+            output=output,
+            class_info=ClassInfo(self_var="self", cls=TestClass, name="TestClass"),
+        )
+        assert_equal(output, ["def test[T: int](self, arg0: T) -> T: ..."])
 
     def test_generate_c_type_inheritance_builtin_type(self) -> None:
         class TestClass(type):

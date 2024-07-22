@@ -766,6 +766,7 @@ class BaseStubGenerator:
         is_coroutine: bool = False,
         decorators: list[str] | None = None,
         docstring: str | None = None,
+        generic: str = "",
     ) -> list[str]:
         lines: list[str] = []
         if decorators is None:
@@ -781,6 +782,7 @@ class BaseStubGenerator:
                     indent=self._indent,
                     is_async=is_coroutine,
                     docstring=docstring if self._include_docstrings else None,
+                    generic=generic
                 )
             )
         return lines
@@ -846,6 +848,9 @@ class BaseStubGenerator:
 
 def generate_inline_generic(type_params: tuple[TypeVar | ParamSpec | TypeVarTuple, ...]) -> str:
     """Generate stub for inline generic from __type_params__"""
+
+    if len(type_params) == 0:
+        return ""
 
     generic_arg_list: list[str] = []
 

@@ -647,7 +647,13 @@ class InspectionStubGenerator(BaseStubGenerator):
 
         if docstring:
             docstring = self._indent_docstring(docstring)
-        output.extend(self.format_func_def(inferred, decorators=decorators, docstring=docstring))
+
+        if hasattr(obj, "__type_params__"):
+            generic = generate_inline_generic(obj.__type_params__)
+        else:
+            generic = ""
+
+        output.extend(self.format_func_def(inferred, decorators=decorators, docstring=docstring, generic=generic))
         self._fix_iter(ctx, inferred, output)
 
     def _indent_docstring(self, docstring: str) -> str:
