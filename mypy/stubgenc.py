@@ -856,6 +856,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                 continue
             elif attr == "__type_params__":
                 inline_generic = generate_inline_generic(value)
+                continue
 
             prop_type_name = self.strip_or_import(self.get_type_annotation(value))
             classvar = self.add_name("typing.ClassVar")
