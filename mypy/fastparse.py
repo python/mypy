@@ -1180,6 +1180,26 @@ class ASTConverter:
         self.class_and_function_stack.pop()
         return cdef
 
+    def validate_type_param(self, type_param: Any) -> None:
+        if isinstance(type_param.bound, (ast3.Yield, ast3.YieldFrom)):
+            self.fail(
+                message_registry.TYPE_VAR_YIELD_EXPRESSION_IN_BOUND,
+                type_param.lineno,
+                type_param.col_offset,
+            )
+        if isinstance(type_param.bound, ast3.NamedExpr):
+            self.fail(
+                message_registry.TYPE_VAR_NAMED_EXPRESSION_IN_BOUND,
+                type_param.lineno,
+                type_param.col_offset,
+            )
+        if isinstance(type_param.bound, ast3.Await):
+            self.fail(
+                message_registry.TYPE_VAR_AWAIT_EXPRESSION_IN_BOUND,
+                type_param.lineno,
+                type_param.col_offset,
+            )
+
     def translate_type_params(self, type_params: list[Any]) -> list[TypeParam]:
         explicit_type_params = []
         for p in type_params:
@@ -1202,6 +1222,7 @@ class ASTConverter:
                         conv = TypeConverter(self.errors, line=p.lineno)
                         values = [conv.visit(t) for t in p.bound.elts]
                 elif p.bound is not None:
+                    self.validate_type_param(p)
                     bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
                 explicit_type_params.append(TypeParam(p.name, TYPE_VAR_KIND, bound, values))
         return explicit_type_params
@@ -1791,11 +1812,20 @@ class ASTConverter:
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
         return self.set_line(node, n)
 
+    def validate_type_alias(self, n: Any) -> None:
+        if isinstance(n.value, (ast3.Yield, ast3.YieldFrom)):
+            self.fail(message_registry.TYPE_ALIAS_WITH_YIELD_EXPRESSION, n.lineno, n.col_offset)
+        if isinstance(n.value, ast3.NamedExpr):
+            self.fail(message_registry.TYPE_ALIAS_WITH_NAMED_EXPRESSION, n.lineno, n.col_offset)
+        if isinstance(n.value, ast3.Await):
+            self.fail(message_registry.TYPE_ALIAS_WITH_AWAIT_EXPRESSION, n.lineno, n.col_offset)
+
     # TypeAlias(identifier name, type_param* type_params, expr value)
     def visit_TypeAlias(self, n: ast_TypeAlias) -> TypeAliasStmt | AssignmentStmt:
         node: TypeAliasStmt | AssignmentStmt
         if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
             type_params = self.translate_type_params(n.type_params)
+            self.validate_type_alias(n)
             value = self.visit(n.value)
             # Since the value is evaluated lazily, wrap the value inside a lambda.
             # This helps mypyc.
