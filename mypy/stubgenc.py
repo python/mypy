@@ -880,7 +880,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         else:
             bases_str = ""
         if types or static_properties or rw_properties or methods or ro_properties:
-            output.append(f"{self._indent}class {class_name}{bases_str}:")
+            output.append(f"{self._indent}class {class_name}{inline_generic}{bases_str}:")
             for line in types:
                 if (
                     output
