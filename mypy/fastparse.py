@@ -347,7 +347,7 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
 
 def is_incorrect_expression_used(expr: Any) -> ast.expr | None:
     if not hasattr(expr, "_fields"):
-        return
+        return None
     for attr_name in expr._fields:
         attr = getattr(expr, attr_name, None)
         if attr_name is None:
