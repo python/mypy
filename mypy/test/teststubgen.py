@@ -946,6 +946,13 @@ class StubgencSuite(unittest.TestCase):
 
     @unittest.skipIf(sys.version_info < (3, 12), "Inline Generics not supported before Python3.12")
     def test_inline_generic_function(self) -> None:
+
+        if sys.version_info < (
+            3,
+            12,
+        ):  # Done to prevent mypy [attr-defined] error on __type_params__ in older versions of python
+            return
+
         T = TypeVar("T", bound=int)
 
         class TestClass:
