@@ -8,7 +8,7 @@ import sys
 from abc import abstractmethod
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import Final, Iterable, Iterator, Mapping
+from typing import Final, Iterable, Iterator, Mapping, ParamSpec, TypeVar, TypeVarTuple, cast
 from typing_extensions import overload
 
 from mypy_extensions import mypyc_attr
@@ -842,3 +842,31 @@ class BaseStubGenerator:
         if self._all_:
             return name in self._all_
         return True
+
+
+def generate_inline_generic(type_params: tuple[TypeVar | ParamSpec | TypeVarTuple, ...]) -> str:
+        """Generate stub for inline generic from __type_params__"""
+
+        generic_arg_list: list[str] = []
+
+        for type_param in type_params:
+            # Not done with isinstance checks so compiled code doesn't necessarily need to use
+            # typing.TypeVar, just something with similar duck typing.
+            if hasattr(type_param, "__constraints__"):
+                # Is TypeVar
+                typevar = cast(TypeVar, type_param)
+                if typevar.__bound__:
+                    generic_arg_list.append(f'{typevar.__name__}: {typevar.__bound__}')
+                else:
+                    generic_arg_list.append(f'{typevar.__name__}: {typevar.__constraints__}')
+            elif hasattr(type_param, "__bounds__"):
+                # Is ParamSpec
+                param_spec = cast(ParamSpec, type_param)
+                generic_arg_list.append(f'**{param_spec.__name__}')
+            else:
+                # Is TypeVarTuple
+                typevar_tuple = cast(TypeVarTuple, type_param)
+                generic_arg_list.append(f'*{typevar_tuple.__name__}')
+
+        flat_internals = ",".join(generic_arg_list)
+        return f"[{flat_internals}]"

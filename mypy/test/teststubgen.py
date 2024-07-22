@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 from types import ModuleType
-from typing import Any
+from typing import Any, ParamSpec, TypeVar, TypeVarTuple
 
 import pytest
 
@@ -39,6 +39,7 @@ from mypy.stubgenc import InspectionStubGenerator, infer_c_method_args
 from mypy.stubutil import (
     ClassInfo,
     common_dir_prefix,
+    generate_inline_generic,
     infer_method_ret_type,
     remove_misplaced_type_comments,
     walk_packages,
@@ -823,6 +824,19 @@ class StubgencSuite(unittest.TestCase):
     def test_infer_cast_sig(self) -> None:
         for op in ("float", "bool", "bytes", "int"):
             assert_equal(infer_method_ret_type(f"__{op}__"), op)
+
+    def test_generate_inline_generic(self) -> None:
+        T = TypeVar('T')
+        assert generate_inline_generic((T, )) == "[T]"
+        TBound = TypeVar('TBound', bound=int)
+        assert generate_inline_generic((TBound, )) == "[TBound: int]"
+        TBoundTuple = TypeVar('TBoundTuple', int, str)
+        assert generate_inline_generic((TBoundTuple, )) == "[TBoundTuple: (int, str)]"
+        P = ParamSpec('P')
+        assert generate_inline_generic((P, )) == "[**P]"
+        U = TypeVarTuple('U')
+        assert generate_inline_generic((U, )) == "[*U]"
+        assert generate_inline_generic((T, TBound, TBoundTuple, P, U)) =="[T, TBound: int, TBoundTuple: (int, str), **P, *U]"
 
     def test_generate_class_stub_no_crash_for_object(self) -> None:
         output: list[str] = []

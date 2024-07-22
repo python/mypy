@@ -33,6 +33,7 @@ from mypy.stubutil import (
     ClassInfo,
     FunctionContext,
     SignatureGenerator,
+    generate_inline_generic,
     infer_method_arg_types,
     infer_method_ret_type,
 )
@@ -847,10 +848,15 @@ class InspectionStubGenerator(BaseStubGenerator):
             else:
                 attrs.append((attr, value))
 
+        inline_generic = ""
+
         for attr, value in attrs:
             if attr == "__hash__" and value is None:
                 # special case for __hash__
                 continue
+            elif attr == "__type_params__":
+                inline_generic = generate_inline_generic(value)
+
             prop_type_name = self.strip_or_import(self.get_type_annotation(value))
             classvar = self.add_name("typing.ClassVar")
             static_properties.append(f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ...")
@@ -882,7 +888,7 @@ class InspectionStubGenerator(BaseStubGenerator):
             for line in ro_properties:
                 output.append(line)
         else:
-            output.append(f"{self._indent}class {class_name}{bases_str}: ...")
+            output.append(f"{self._indent}class {class_name}{inline_generic}{bases_str}: ...")
 
     def generate_variable_stub(self, name: str, obj: object, output: list[str]) -> None:
         """Generate stub for a single variable using runtime introspection.
