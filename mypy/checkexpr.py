@@ -4341,14 +4341,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(left_type, FunctionLike) and left_type.is_type_obj():
             if left_type.type_object().is_enum:
                 return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
-            elif left_type.type_object().type_vars:
-                return self.named_type("types.GenericAlias")
-            elif (
-                left_type.type_object().fullname == "builtins.type"
-                and self.chk.options.python_version >= (3, 9)
+            elif self.chk.options.python_version >= (3, 9) and (
+                left_type.type_object().type_vars
+                or left_type.type_object().fullname == "builtins.type"
             ):
-                # builtins.type is special: it's not generic in stubs, but it supports indexing
-                return self.named_type("typing._SpecialForm")
+                return self.named_type("types.GenericAlias")
 
         if isinstance(left_type, TypeVarType) and not self.has_member(
             left_type.upper_bound, "__getitem__"
