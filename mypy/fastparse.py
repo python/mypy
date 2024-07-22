@@ -345,6 +345,20 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     return False
 
 
+def is_incorrect_expression_used(expr: Any) -> ast.expr | None:
+    if not hasattr(expr, "_fields"):
+        return
+    for attr_name in expr._fields:
+        attr = getattr(expr, attr_name, None)
+        if attr_name is None:
+            continue
+        if isinstance(attr, (ast3.Yield, ast3.YieldFrom, ast3.NamedExpr, ast3.Await)):
+            return attr
+        res = is_incorrect_expression_used(attr)
+        if res is not None:
+            return res
+
+
 class ASTConverter:
     def __init__(
         self,
@@ -1181,19 +1195,22 @@ class ASTConverter:
         return cdef
 
     def validate_type_param(self, type_param: Any) -> None:
-        if isinstance(type_param.bound, (ast3.Yield, ast3.YieldFrom)):
+        incorrect_expr = is_incorrect_expression_used(type_param)
+        if incorrect_expr is None:
+            return
+        if isinstance(incorrect_expr, (ast3.Yield, ast3.YieldFrom)):
             self.fail(
                 message_registry.TYPE_VAR_YIELD_EXPRESSION_IN_BOUND,
                 type_param.lineno,
                 type_param.col_offset,
             )
-        if isinstance(type_param.bound, ast3.NamedExpr):
+        if isinstance(incorrect_expr, ast3.NamedExpr):
             self.fail(
                 message_registry.TYPE_VAR_NAMED_EXPRESSION_IN_BOUND,
                 type_param.lineno,
                 type_param.col_offset,
             )
-        if isinstance(type_param.bound, ast3.Await):
+        if isinstance(incorrect_expr, ast3.Await):
             self.fail(
                 message_registry.TYPE_VAR_AWAIT_EXPRESSION_IN_BOUND,
                 type_param.lineno,
@@ -1813,11 +1830,14 @@ class ASTConverter:
         return self.set_line(node, n)
 
     def validate_type_alias(self, n: Any) -> None:
-        if isinstance(n.value, (ast3.Yield, ast3.YieldFrom)):
+        incorrect_expr = is_incorrect_expression_used(n)
+        if incorrect_expr is None:
+            return
+        if isinstance(incorrect_expr, (ast3.Yield, ast3.YieldFrom)):
             self.fail(message_registry.TYPE_ALIAS_WITH_YIELD_EXPRESSION, n.lineno, n.col_offset)
-        if isinstance(n.value, ast3.NamedExpr):
+        if isinstance(incorrect_expr, ast3.NamedExpr):
             self.fail(message_registry.TYPE_ALIAS_WITH_NAMED_EXPRESSION, n.lineno, n.col_offset)
-        if isinstance(n.value, ast3.Await):
+        if isinstance(incorrect_expr, ast3.Await):
             self.fail(message_registry.TYPE_ALIAS_WITH_AWAIT_EXPRESSION, n.lineno, n.col_offset)
 
     # TypeAlias(identifier name, type_param* type_params, expr value)

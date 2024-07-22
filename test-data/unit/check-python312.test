@@ -1676,15 +1676,30 @@ type Y[T: (yield from [])] = Any # E: Yield expression cannot be used as a type 
 type Z[T: (a := 1)] = Any  # E: Named expression cannot be used as a type variable bound
 type K[T: (await 1)] = Any # E: Await expression cannot be used as a type variable bound
 
+type XNested[T: (1 + (yield 1))] = Any  # E: Yield expression cannot be used as a type variable bound
+type YNested[T: (1 + (yield from []))] = Any # E: Yield expression cannot be used as a type variable bound
+type ZNested[T: (1 + (a := 1))] = Any  # E: Named expression cannot be used as a type variable bound
+type KNested[T: (1 + (await 1))] = Any # E: Await expression cannot be used as a type variable bound
+
 class FooX[T: (yield 1)]: pass  # E: Yield expression cannot be used as a type variable bound
 class FooY[T: (yield from [])]: pass  # E: Yield expression cannot be used as a type variable bound
 class FooZ[T: (a := 1)]: pass  # E: Named expression cannot be used as a type variable bound
 class FooK[T: (await 1)]: pass  # E: Await expression cannot be used as a type variable bound
 
+class FooXNested[T: (1 + (yield 1))]: pass  # E: Yield expression cannot be used as a type variable bound
+class FooYNested[T: (1 + (yield from []))]: pass  # E: Yield expression cannot be used as a type variable bound
+class FooZNested[T: (1 + (a := 1))]: pass  # E: Named expression cannot be used as a type variable bound
+class FooKNested[T: (1 + (await 1))]: pass  # E: Await expression cannot be used as a type variable bound
+
 def foox[T: (yield 1)](): pass  # E: Yield expression cannot be used as a type variable bound
 def fooy[T: (yield from [])](): pass  # E: Yield expression cannot be used as a type variable bound
 def fooz[T: (a := 1)](): pass  # E: Named expression cannot be used as a type variable bound
 def fook[T: (await 1)](): pass  # E: Await expression cannot be used as a type variable bound
+
+def foox_nested[T: (1 + (yield 1))](): pass  # E: Yield expression cannot be used as a type variable bound
+def fooy_nested[T: (1 + (yield from []))](): pass  # E: Yield expression cannot be used as a type variable bound
+def fooz_nested[T: (1 + (a := 1))](): pass  # E: Named expression cannot be used as a type variable bound
+def fook_nested[T: (1 +(await 1))](): pass  # E: Await expression cannot be used as a type variable bound
 
 [case testPEP695UsingIncorrectExpressionsInTypeAlias]
 # flags: --enable-incomplete-feature=NewGenericSyntax
@@ -1693,3 +1708,8 @@ type X = (yield 1)  # E: Yield expression cannot be used within a type alias
 type Y = (yield from []) # E: Yield expression cannot be used within a type alias
 type Z = (a := 1)  # E: Named expression cannot be used within a type alias
 type K = (await 1)  # E: Await expression cannot be used within a type alias
+
+type XNested = (1 + (yield 1))  # E: Yield expression cannot be used within a type alias
+type YNested = (1 + (yield from [])) # E: Yield expression cannot be used within a type alias
+type ZNested = (1 + (a := 1))  # E: Named expression cannot be used within a type alias
+type KNested = (1 + (await 1))  # E: Await expression cannot be used within a type alias
