@@ -1084,6 +1084,15 @@ yc: A.ClassAlias = ""  # E: Incompatible types in assignment (expression has typ
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypeAliasTypePython311]
+# flags: --python-version 3.11
+# Pinning to 3.11, because 3.12 have `TypeAliasType`
+from typing_extensions import TypeAliasType
+
+TestType = TypeAliasType("TestType", int)
+x: TestType = 1
+[builtins fixtures/tuple.pyi]
+
 [case testTypeAliasTypeInvalid]
 from typing_extensions import TypeAliasType
 
