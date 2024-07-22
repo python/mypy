@@ -945,6 +945,7 @@ class StubgencSuite(unittest.TestCase):
 
     def test_inline_generic_function(self) -> None:
         T = TypeVar("T", bound=int)
+
         class TestClass:
             def test(self, arg0: T) -> T:
                 """
@@ -952,7 +953,7 @@ class StubgencSuite(unittest.TestCase):
                 """
                 return arg0
 
-            test.__type_params__ = (T, )
+            test.__type_params__ = (T,)
 
         output: list[str] = []
         mod = ModuleType(TestClass.__module__, "")

@@ -653,7 +653,11 @@ class InspectionStubGenerator(BaseStubGenerator):
         else:
             generic = ""
 
-        output.extend(self.format_func_def(inferred, decorators=decorators, docstring=docstring, generic=generic))
+        output.extend(
+            self.format_func_def(
+                inferred, decorators=decorators, docstring=docstring, generic=generic
+            )
+        )
         self._fix_iter(ctx, inferred, output)
 
     def _indent_docstring(self, docstring: str) -> str:

@@ -782,7 +782,7 @@ class BaseStubGenerator:
                     indent=self._indent,
                     is_async=is_coroutine,
                     docstring=docstring if self._include_docstrings else None,
-                    generic=generic
+                    generic=generic,
                 )
             )
         return lines
