@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 from types import ModuleType
-from typing import Any, TypeVar, cast
+from typing import Any, Tuple, TypeVar, cast
 from typing_extensions import ParamSpec, TypeVarTuple
 
 import pytest
@@ -623,13 +623,13 @@ class StubgenUtilSuite(unittest.TestCase):
         TBoundTuple = TypeVar("TBoundTuple", int, str)
         assert generate_inline_generic((TBoundTuple,)) == "[TBoundTuple: (int, str)]"
         P = ParamSpec("P")
-        p_tuple = cast(tuple[ParamSpec], (P,))
+        p_tuple = cast(Tuple[ParamSpec], (P,))
         assert generate_inline_generic(p_tuple) == "[**P]"
         U = TypeVarTuple("U")
-        u_tuple = cast(tuple[TypeVarTuple], (U,))
+        u_tuple = cast(Tuple[TypeVarTuple], (U,))
         assert generate_inline_generic(u_tuple) == "[*U]"
         all_tuple = cast(
-            tuple[TypeVar, TypeVar, TypeVar, ParamSpec, TypeVarTuple],
+            Tuple[TypeVar, TypeVar, TypeVar, ParamSpec, TypeVarTuple],
             (T, TBound, TBoundTuple, P, U),
         )
         assert (
