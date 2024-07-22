@@ -115,4 +115,7 @@ static inline void CPyLong_SetUnsignedSize(PyLongObject *o, Py_ssize_t n) {
 
 #endif
 
+// Are we targeting Python 3.13 or newer?
+#define CPY_3_13_FEATURES (PY_VERSION_HEX >= 0x030d0000)
+
 #endif

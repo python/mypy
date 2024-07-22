@@ -585,8 +585,7 @@ reveal_type(a)  # N: Revealed type is "Any"
 
 [case testPEP695TypeAliasInvalidType]
 # flags: --enable-incomplete-feature=NewGenericSyntax
-type A = int | 1  # E: Invalid type: try using Literal[1] instead? \
-                  # E: Unsupported operand types for | ("Type[int]" and "int")
+type A = int | 1  # E: Invalid type: try using Literal[1] instead?
 
 a: A
 reveal_type(a)  # N: Revealed type is "Union[builtins.int, Any]"
@@ -1655,6 +1654,18 @@ type I1 = C[int]
 type I2 = C[Any] | None
 type I3 = None | C[TD]
 [builtins fixtures/type.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictInlineYesNewStyleAlias]
+# flags: --enable-incomplete-feature=NewGenericSyntax --enable-incomplete-feature=InlineTypedDict
+type X[T] = {"item": T, "other": X[T] | None}
+x: X[str]
+reveal_type(x)  # N: Revealed type is "TypedDict({'item': builtins.str, 'other': Union[..., None]})"
+if x["other"] is not None:
+    reveal_type(x["other"]["item"])  # N: Revealed type is "builtins.str"
+
+type Y[T] = {"item": T, **Y[T]}  # E: Overwriting TypedDict field "item" while merging
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testPEP695UsingIncorrectExpressionsInTypeVariableBound]
