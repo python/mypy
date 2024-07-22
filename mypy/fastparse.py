@@ -181,10 +181,12 @@ else:
 if sys.version_info >= (3, 12):
     ast_TypeAlias = ast3.TypeAlias
     ast_ParamSpec = ast3.ParamSpec
+    ast_TypeVar = ast3.TypeVar
     ast_TypeVarTuple = ast3.TypeVarTuple
 else:
     ast_TypeAlias = Any
     ast_ParamSpec = Any
+    ast_TypeVar = Any
     ast_TypeVarTuple = Any
 
 N = TypeVar("N", bound=Node)
@@ -345,18 +347,12 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     return False
 
 
-def is_incorrect_expression_used(expr: Any) -> ast3.expr | None:
+def find_incorrect_expression(expr: Any) -> ast3.expr | None:
     if not hasattr(expr, "_fields"):
         return None
-    for attr_name in expr._fields:
-        attr = getattr(expr, attr_name, None)
-        if attr_name is None:
-            continue
-        if isinstance(attr, (ast3.Yield, ast3.YieldFrom, ast3.NamedExpr, ast3.Await)):
-            return attr
-        res = is_incorrect_expression_used(attr)
-        if res is not None:
-            return res
+    for node in ast3.walk(expr):
+        if isinstance(node, (ast3.Yield, ast3.YieldFrom, ast3.NamedExpr, ast3.Await)):
+            return node
     return None
 
 
@@ -1195,8 +1191,8 @@ class ASTConverter:
         self.class_and_function_stack.pop()
         return cdef
 
-    def validate_type_param(self, type_param: Any) -> None:
-        incorrect_expr = is_incorrect_expression_used(type_param)
+    def validate_type_param(self, type_param: ast_TypeVar) -> None:
+        incorrect_expr = find_incorrect_expression(type_param.bound)
         if incorrect_expr is None:
             return
         if isinstance(incorrect_expr, (ast3.Yield, ast3.YieldFrom)):
@@ -1830,8 +1826,8 @@ class ASTConverter:
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
         return self.set_line(node, n)
 
-    def validate_type_alias(self, n: Any) -> None:
-        incorrect_expr = is_incorrect_expression_used(n)
+    def validate_type_alias(self, n: ast_TypeAlias) -> None:
+        incorrect_expr = find_incorrect_expression(n.value)
         if incorrect_expr is None:
             return
         if isinstance(incorrect_expr, (ast3.Yield, ast3.YieldFrom)):
