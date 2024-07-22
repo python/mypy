@@ -945,6 +945,10 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(output, ["class C[T]: ..."])
 
     @unittest.skipIf(sys.version_info < (3, 12), "Inline Generics not supported before Python3.12")
+    def test_generic_class(self) -> None:
+        exec("class Test[A]: ...")
+
+    @unittest.skipIf(sys.version_info < (3, 12), "Inline Generics not supported before Python3.12")
     def test_inline_generic_function(self) -> None:
 
         if sys.version_info < (
