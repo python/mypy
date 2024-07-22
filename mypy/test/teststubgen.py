@@ -931,6 +931,9 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(output, ["class C(argparse.Action): ..."])
         assert_equal(gen.get_imports().splitlines(), ["import argparse"])
 
+    @unittest.skipIf(
+        sys.version < (3, 12), "Inline Generics not supported before Python3.12"
+    )
     def test_inline_generic_class(self) -> None:
         T = TypeVar("T")
 
@@ -943,6 +946,9 @@ class StubgencSuite(unittest.TestCase):
         gen.generate_class_stub("C", TestClass, output)
         assert_equal(output, ["class C[T]: ..."])
 
+    @unittest.skipIf(
+        sys.version < (3, 12), "Inline Generics not supported before Python3.12"
+    )
     def test_inline_generic_function(self) -> None:
         T = TypeVar("T", bound=int)
 
