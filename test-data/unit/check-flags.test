@@ -924,9 +924,9 @@ class A(List[Unchecked]): # E: Base type becomes "List[Any]" due to an unfollowe
 from missing import Unchecked
 from typing import List
 
-X = List[Unchecked]
+X = List[Unchecked]  # E: Type alias target becomes "List[Any]" due to an unfollowed import
 
-def f(x: X) -> None:  # E: Argument 1 to "f" becomes "List[Any]" due to an unfollowed import
+def f(x: X) -> None:
     pass
 [builtins fixtures/list.pyi]
 

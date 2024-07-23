@@ -381,6 +381,41 @@ RuntimeError: dictionary changed size during iteration
 1
 2
 3
+[out version>=3.13]
+Traceback (most recent call last):
+  File "driver.py", line 16, in <module>
+    iterate_over_any(5)
+    ~~~~~~~~~~~~~~~~^^^
+  File "native.py", line 6, in iterate_over_any
+    for element in a:
+TypeError: 'int' object is not iterable
+Traceback (most recent call last):
+  File "driver.py", line 20, in <module>
+    iterate_over_iterable(broken_generator(5))
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "native.py", line 10, in iterate_over_iterable
+    for element in iterable:
+  File "driver.py", line 8, in broken_generator
+    raise Exception('Exception Manually Raised')
+Exception: Exception Manually Raised
+Traceback (most recent call last):
+  File "driver.py", line 24, in <module>
+    iterate_and_delete(d)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "native.py", line 14, in iterate_and_delete
+    for key in d:
+RuntimeError: dictionary changed size during iteration
+15
+6
+3
+0
+1
+2
+3
+4
+1
+2
+3
 
 [case testContinueFor]
 def f() -> None:

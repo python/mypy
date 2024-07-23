@@ -553,6 +553,11 @@ def pre_validate_solutions(
     """
     new_solutions: list[Type | None] = []
     for t, s in zip(original_vars, solutions):
+        if is_callable_protocol(t.upper_bound):
+            # This is really ad-hoc, but a proper fix would be much more complex,
+            # and otherwise this may cause crash in a relatively common scenario.
+            new_solutions.append(s)
+            continue
         if s is not None and not is_subtype(s, t.upper_bound):
             bound_satisfies_all = True
             for c in constraints:
@@ -567,3 +572,10 @@ def pre_validate_solutions(
                 continue
         new_solutions.append(s)
     return new_solutions
+
+
+def is_callable_protocol(t: Type) -> bool:
+    proper_t = get_proper_type(t)
+    if isinstance(proper_t, Instance) and proper_t.type.is_protocol:
+        return "__call__" in proper_t.type.protocol_members
+    return False

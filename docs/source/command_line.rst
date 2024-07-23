@@ -1075,6 +1075,27 @@ List of currently incomplete/experimental features:
          # Without PreciseTupleTypes: tuple[int, ...]
          # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
 
+* ``NewGenericSyntax``: this feature enables support for syntax defined
+  by :pep:`695`. For example:
+
+  .. code-block:: python
+
+     class Container[T]:  # defines a generic class
+         content: T
+
+     def first[T](items: list[T]) -> T:  # defines a generic function
+         return items[0]
+
+     type Items[T] = list[tuple[T, T]]  # defines a generic type alias
+
+* ``InlineTypedDict``: this feature enables non-standard syntax for inline
+  :ref:`TypedDicts <typeddict>`, for example:
+
+  .. code-block:: python
+
+     def test_values() -> {"int": int, "str": str}:
+         return {"int": 42, "str": "test"}
+
 
 Miscellaneous
 *************
