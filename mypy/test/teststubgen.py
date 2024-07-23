@@ -949,7 +949,7 @@ class StubgencSuite(unittest.TestCase):
         exec("class Test[A]: ...")
 
         # type: ignore used for older versions of python type checking
-        class TestClass[A]: ...  # type: ignore[invalid-syntax]
+        class TestClass[A]: ...  # type: ignore[syntax]
 
         output: list[str] = []
         mod = ModuleType("module", "")
