@@ -946,15 +946,10 @@ class StubgencSuite(unittest.TestCase):
 
     @unittest.skipIf(sys.version_info < (3, 12), "Inline Generics not supported before Python3.12")
     def test_generic_class(self) -> None:
-        if sys.version_info < (
-            3,
-            12,
-        ):  # Done to prevent mypy [syntax] error on inline Generics in older versions of python
-            return
-
         exec("class Test[A]: ...")
 
-        class TestClass[A]: ...
+        # type: ignore used for older versions of python type checking
+        class TestClass[A]: ...  # type: ignore[invalid-syntax]
 
         output: list[str] = []
         mod = ModuleType("module", "")
