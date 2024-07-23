@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 from types import ModuleType
-from typing import Any, Tuple, TypeVar, cast, no_type_check
+from typing import Any, Tuple, TypeVar, cast
 from typing_extensions import ParamSpec, TypeVarTuple
 
 import pytest
@@ -944,10 +944,9 @@ class StubgencSuite(unittest.TestCase):
         gen.generate_class_stub("C", TestClass, output)
         assert_equal(output, ["class C[T]: ..."])
 
-    # type: ignore used for older versions of python type checking inline generics.
-    @no_type_check
     @unittest.skipIf(sys.version_info < (3, 12), "Inline Generics not supported before Python3.12")
     def test_generic_class(self) -> None:
+        # mypy: enable-incomplete-feature=NewGenericSyntax
         exec("class Test[A]: ...")
 
         class TestClass[A]: ...
