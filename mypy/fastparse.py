@@ -347,7 +347,7 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     return False
 
 
-def find_incorrect_expression(expr: ast3.expr | None) -> ast3.expr | None:
+def find_disallowed_expression_in_annotation_scope(expr: ast3.expr | None) -> ast3.expr | None:
     if expr is None:
         return None
     for node in ast3.walk(expr):
@@ -1192,7 +1192,7 @@ class ASTConverter:
         return cdef
 
     def validate_type_param(self, type_param: ast_TypeVar) -> None:
-        incorrect_expr = find_incorrect_expression(type_param.bound)
+        incorrect_expr = find_disallowed_expression_in_annotation_scope(type_param.bound)
         if incorrect_expr is None:
             return
         if isinstance(incorrect_expr, (ast3.Yield, ast3.YieldFrom)):
@@ -1827,7 +1827,7 @@ class ASTConverter:
         return self.set_line(node, n)
 
     def validate_type_alias(self, n: ast_TypeAlias) -> None:
-        incorrect_expr = find_incorrect_expression(n.value)
+        incorrect_expr = find_disallowed_expression_in_annotation_scope(n.value)
         if incorrect_expr is None:
             return
         if isinstance(incorrect_expr, (ast3.Yield, ast3.YieldFrom)):
