@@ -347,8 +347,8 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     return False
 
 
-def find_incorrect_expression(expr: Any) -> ast3.expr | None:
-    if not hasattr(expr, "_fields"):
+def find_incorrect_expression(expr: ast3.expr | None) -> ast3.expr | None:
+    if expr is None:
         return None
     for node in ast3.walk(expr):
         if isinstance(node, (ast3.Yield, ast3.YieldFrom, ast3.NamedExpr, ast3.Await)):
