@@ -948,7 +948,7 @@ class StubgencSuite(unittest.TestCase):
     def test_generic_class(self) -> None:
         # This class declaration lives in exec to avoid syntax version on python versions < 3.12
         local: dict[str, Any] = {}
-        exec("class Test[A]: ...", globals(), local)
+        exec("class Test[A]: ...", None, local)
 
         output: list[str] = []
         mod = ModuleType("module", "")
