@@ -946,17 +946,15 @@ class StubgencSuite(unittest.TestCase):
 
     @unittest.skipIf(sys.version_info < (3, 12), "Inline Generics not supported before Python3.12")
     def test_generic_class(self) -> None:
-        # This test lives in the exec block to avoid syntax errors on python versions < 3.12
-        code = """
-class Test[A]: ...
+        # This class declaration lives in exec to avoid syntax version on python versions < 3.12
+        local: dict[str, Any] = {}
+        exec("class Test[A]: ...", globals(), local)
 
-output: list[str] = []
-mod = ModuleType("module", "")
-gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
-gen.generate_class_stub("C", Test, output)
-assert_equal(output, ["class C[A]: ..."])
-        """
-        exec(code)
+        output: list[str] = []
+        mod = ModuleType("module", "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        gen.generate_class_stub("C", local['Test'], output)
+        assert_equal(output, ["class C[A]: ..."])
 
     @unittest.skipIf(sys.version_info < (3, 12), "Inline Generics not supported before Python3.12")
     def test_inline_generic_function(self) -> None:
