@@ -11,6 +11,7 @@ import importlib
 import inspect
 import keyword
 import os.path
+from contextlib import suppress
 from types import FunctionType, ModuleType
 from typing import Any, Callable, Mapping
 
@@ -497,6 +498,8 @@ class InspectionStubGenerator(BaseStubGenerator):
                 "__firstlineno__",
                 "__static_attributes__",
                 "__annotate__",
+                "__orig_bases__",
+                "__parameters__",
             )
             or attr in self.IGNORED_DUNDERS
             or is_pybind_skipped_attribute(attr)  # For pickling
@@ -875,6 +878,10 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.dedent()
 
         bases = self.get_base_types(cls)
+        if inline_generic != "":
+            # Removes typing.Generic form bases if it exists for python3.12 inline generics
+            with suppress(ValueError):
+                bases.remove("typing.Generic")
         if bases:
             bases_str = "(%s)" % ", ".join(bases)
         else:

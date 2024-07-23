@@ -948,6 +948,14 @@ class StubgencSuite(unittest.TestCase):
     def test_generic_class(self) -> None:
         exec("class Test[A]: ...")
 
+        class TestClass[A]: ...
+
+        output: list[str] = []
+        mod = ModuleType("module", "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        gen.generate_class_stub("C", TestClass, output)
+        assert_equal(output, ["class C[A]: ..."])
+
     @unittest.skipIf(sys.version_info < (3, 12), "Inline Generics not supported before Python3.12")
     def test_inline_generic_function(self) -> None:
 
