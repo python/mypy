@@ -946,7 +946,7 @@ class StubgencSuite(unittest.TestCase):
 
     @unittest.skipIf(sys.version_info < (3, 12), "Inline Generics not supported before Python3.12")
     def test_generic_class(self) -> None:
-        # This test lives in the exec block to avoid syntax version on python versions < 3.12
+        # This test lives in the exec block to avoid syntax errors on python versions < 3.12
         code = """
 class Test[A]: ...
 
