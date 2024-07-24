@@ -747,6 +747,17 @@ in error messages.
 
         main.py:12:9: error: Unsupported operand types for / ("int" and "str")
 
+.. option:: --show-error-code-links
+
+    This flag will also display a link to error code documentation, anchored to the error code reported by mypy.
+    The corresponding error code will be highlighted within the documentation page.
+    If we enable this flag, the error message now looks like this::
+
+        main.py:3: error: Unsupported operand types for - ("int" and "str")  [operator]
+        main.py:3: note: See 'https://mypy.rtfd.io/en/stable/_refs.html#code-operator' for more info
+
+
+
 .. option:: --show-error-end
 
     This flag will make mypy show not just that start position where
@@ -1043,6 +1054,27 @@ List of currently incomplete/experimental features:
          reveal_type(numbers)
          # Without PreciseTupleTypes: tuple[int, ...]
          # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
+
+* ``NewGenericSyntax``: this feature enables support for syntax defined
+  by :pep:`695`. For example:
+
+  .. code-block:: python
+
+     class Container[T]:  # defines a generic class
+         content: T
+
+     def first[T](items: list[T]) -> T:  # defines a generic function
+         return items[0]
+
+     type Items[T] = list[tuple[T, T]]  # defines a generic type alias
+
+* ``InlineTypedDict``: this feature enables non-standard syntax for inline
+  :ref:`TypedDicts <typeddict>`, for example:
+
+  .. code-block:: python
+
+     def test_values() -> {"int": int, "str": str}:
+         return {"int": 42, "str": "test"}
 
 
 Miscellaneous

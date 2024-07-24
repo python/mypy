@@ -230,12 +230,11 @@ PyObject *CPyDict_Keys(PyObject *dict) {
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 
@@ -250,12 +249,11 @@ PyObject *CPyDict_Values(PyObject *dict) {
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 
@@ -270,12 +268,11 @@ PyObject *CPyDict_Items(PyObject *dict) {
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 

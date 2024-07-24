@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from mypy.fastparse import parse_type_string
 from mypy.nodes import (
+    MISSING_FALLBACK,
     BytesExpr,
     CallExpr,
     ComplexExpr,
+    DictExpr,
     EllipsisExpr,
     Expression,
     FloatExpr,
@@ -29,9 +31,11 @@ from mypy.types import (
     AnyType,
     CallableArgument,
     EllipsisType,
+    Instance,
     ProperType,
     RawExpressionType,
     Type,
+    TypedDictType,
     TypeList,
     TypeOfAny,
     UnboundType,
@@ -55,7 +59,7 @@ def _extract_argument_name(expr: Expression) -> str | None:
 
 def expr_to_unanalyzed_type(
     expr: Expression,
-    options: Options | None = None,
+    options: Options,
     allow_new_syntax: bool = False,
     _parent: Expression | None = None,
     allow_unpack: bool = False,
@@ -67,6 +71,8 @@ def expr_to_unanalyzed_type(
 
     If allow_new_syntax is True, allow all type syntax independent of the target
     Python version (used in stubs).
+
+    # TODO: a lot of code here is duplicated in fastparse.py, refactor this.
     """
     # The `parent` parameter is used in recursive calls to provide context for
     # understanding whether an CallableArgument is ok.
@@ -116,13 +122,14 @@ def expr_to_unanalyzed_type(
     elif (
         isinstance(expr, OpExpr)
         and expr.op == "|"
-        and ((options and options.python_version >= (3, 10)) or allow_new_syntax)
+        and ((options.python_version >= (3, 10)) or allow_new_syntax)
     ):
         return UnionType(
             [
                 expr_to_unanalyzed_type(expr.left, options, allow_new_syntax),
                 expr_to_unanalyzed_type(expr.right, options, allow_new_syntax),
-            ]
+            ],
+            uses_pep604_syntax=True,
         )
     elif isinstance(expr, CallExpr) and isinstance(_parent, ListExpr):
         c = expr.callee
@@ -205,5 +212,26 @@ def expr_to_unanalyzed_type(
         return UnpackType(
             expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax), from_star_syntax=True
         )
+    elif isinstance(expr, DictExpr):
+        if not expr.items:
+            raise TypeTranslationError()
+        items: dict[str, Type] = {}
+        extra_items_from = []
+        for item_name, value in expr.items:
+            if not isinstance(item_name, StrExpr):
+                if item_name is None:
+                    extra_items_from.append(
+                        expr_to_unanalyzed_type(value, options, allow_new_syntax, expr)
+                    )
+                    continue
+                raise TypeTranslationError()
+            items[item_name.value] = expr_to_unanalyzed_type(
+                value, options, allow_new_syntax, expr
+            )
+        result = TypedDictType(
+            items, set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
+        )
+        result.extra_items_from = extra_items_from
+        return result
     else:
         raise TypeTranslationError()

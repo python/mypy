@@ -787,6 +787,13 @@ These options may only be set in the global section (``[mypy]``).
 
     Shows column numbers in error messages.
 
+.. confval:: show_error_code_links
+
+    :type: boolean
+    :default: False
+
+    Shows documentation link to corresponding error code.
+
 .. confval:: hide_error_codes
 
     :type: boolean
