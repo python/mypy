@@ -86,7 +86,7 @@ from mypy.modulefinder import (
     compute_search_paths,
 )
 from mypy.nodes import Expression
-from mypy.options import Options
+from mypy.options import ConfigValue, Options
 from mypy.parse import parse
 from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
@@ -577,6 +577,8 @@ class BuildManager:
       old_plugins_snapshot:
                        Plugins snapshot from previous incremental run (or None in
                        non-incremental mode and if cache was not found)
+      old_per_module_options:
+                       per_module_options from previous run (or empty dictionary if cache was not found)
       errors:          Used for reporting all errors
       flush_errors:    A function for processing errors after each SCC
       cache_enabled:   Whether cache is being read. This is set based on options,
@@ -693,6 +695,7 @@ class BuildManager:
         self.plugin = plugin
         self.plugins_snapshot = plugins_snapshot
         self.old_plugins_snapshot = read_plugins_snapshot(self)
+        self.old_per_module_options = read_per_module_options_file(self)
         self.quickstart_state = read_quickstart_file(options, self.stdout)
         # Fine grained targets (module top levels and top level functions) processed by
         # the semantic analyzer, used only for testing. Currently used only by the new
@@ -1070,6 +1073,37 @@ def read_plugins_snapshot(manager: BuildManager) -> dict[str, str] | None:
     return snapshot
 
 
+PER_MODULE_OPTIONS_FILE: Final = "@per_module_options.json"
+
+
+def write_per_module_options_file(manager: BuildManager) -> None:
+    """Write per_module_options into a json."""
+    per_module_options = json.dumps(manager.options.per_module_options, separators=(",", ":"))
+    if not manager.metastore.write(PER_MODULE_OPTIONS_FILE, per_module_options):
+        manager.errors.set_file(_cache_dir_prefix(manager.options), None, manager.options)
+        manager.errors.report(0, 0, "Error writing per_module_options file", blocker=True)
+
+
+def read_per_module_options_file(
+    manager: BuildManager,
+) -> dict[str, dict[str, ConfigValue]] | None:
+    """Read cached per_module_options from previous run."""
+    per_module_options = _load_json_file(
+        PER_MODULE_OPTIONS_FILE,
+        manager,
+        log_success="per_module_options file ",
+        log_error="Could not load per_module_options file: ",
+    )
+    if per_module_options is None:
+        return {}
+    if not isinstance(per_module_options, dict):
+        manager.log(
+            f"Could not load per_module_options file: cache is not a dict: {type(per_module_options)}"
+        )
+        return {}
+    return per_module_options
+
+
 def read_quickstart_file(
     options: Options, stdout: TextIO
 ) -> dict[str, tuple[float, int, str]] | None:
@@ -1340,6 +1374,9 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
         if manager.plugins_snapshot != manager.old_plugins_snapshot:
             manager.log(f"Metadata abandoned for {id}: plugins differ")
             return None
+    if manager.old_per_module_options != manager.options.per_module_options:
+        manager.log(f"Metadata abandoned for {id}: per_module_options differ")
+        return None
     # So that plugins can return data with tuples in it without
     # things silently always invalidating modules, we round-trip
     # the config data. This isn't beautiful.
@@ -2950,6 +2987,8 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
         process_graph(graph, manager)
         # Update plugins snapshot.
         write_plugins_snapshot(manager)
+        # Cache per_module_options for the next run
+        write_per_module_options_file(manager)
         manager.old_plugins_snapshot = manager.plugins_snapshot
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
             # If we are running a daemon or are going to write cache for further fine grained use,
