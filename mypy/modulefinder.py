@@ -721,7 +721,10 @@ def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]
     if (
         python_executable is None
         or python_executable == sys.executable
-        or (sys.platform() in ["win32", "darwin"] and python_executable.lower() == sys.executable.lower())
+        or (
+            sys.platform() in ["win32", "darwin"]
+            and python_executable.lower() == sys.executable.lower()
+        )
     ):
         # Use running Python's package dirs
         sys_path, site_packages = pyinfo.getsearchdirs()
