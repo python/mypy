@@ -1442,6 +1442,18 @@ reveal_type(x) # N: Revealed type is "TypedDict('__main__.X', {'a': TypedDict('_
 reveal_type(x['a']['b']) # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictForwardReferenceCacheFineGrained]
+# flags: --cache-fine-grained
+from mypy_extensions import TypedDict
+class A(TypedDict):
+    b: "B"
+class B(TypedDict):
+    c: "C"
+class C(TypedDict):
+    d: "D"
+class D:
+    pass
+
 [case testSelfRecursiveTypedDictInheriting]
 from mypy_extensions import TypedDict
 
