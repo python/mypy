@@ -262,6 +262,12 @@ MUTABLE_OVERRIDE: Final[ErrorCode] = ErrorCode(
     default_enabled=False,
 )
 
+OVERLOADED_FUNCTION_MATCHING: Final[ErrorCode] = ErrorCode(
+    "overloaded-function-matching",
+    "Warn user about signature matching for overloaded functions.",
+    "General",
+)
+
 # Syntax errors are often blocking.
 SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")
 

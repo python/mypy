@@ -362,3 +362,8 @@ TYPE_ALIAS_WITH_NAMED_EXPRESSION: Final = ErrorMessage(
 TYPE_ALIAS_WITH_AWAIT_EXPRESSION: Final = ErrorMessage(
     "Await expression cannot be used within a type alias", codes.SYNTAX
 )
+
+# Overloads
+OVERLOADED_FUNCTION_SIGNATURE: Final = ErrorMessage(
+    "Overloaded function signature {} will never be matched", codes.OVERLOADED_FUNCTION_MATCHING
+)
