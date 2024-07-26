@@ -1151,6 +1151,23 @@ See :ref:`overloading <function-overloading>` for more explanation.
 
 .. _code-annotation-unchecked:
 
+Check error code of overload function signature match
+--------------------------------------------------------------------------
+
+.. code-block:: python
+
+    from typing import overload, Union
+
+    @overload
+    def process(response1: float,response2: float) -> float:
+        ...
+    @overload
+    def process(response1: int,response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overloaded-function-matching]
+        ...
+
+    def process(response1,response2)-> Union[float,int]:  
+    return response1 + response2
+
 Notify about an annotation in an unchecked function [annotation-unchecked]
 --------------------------------------------------------------------------
 
