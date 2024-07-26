@@ -1149,7 +1149,8 @@ types you expect.
 
 See :ref:`overloading <function-overloading>` for more explanation.
 
-.. _code-annotation-unchecked:
+
+.. _code-overloaded-function-matching:
 
 Check error code of overload function signature match
 --------------------------------------------------------------------------
@@ -1167,6 +1168,8 @@ Check error code of overload function signature match
 
     def process(response1,response2)-> Union[float,int]:
     return response1 + response2
+
+.. _code-annotation-unchecked:
 
 Notify about an annotation in an unchecked function [annotation-unchecked]
 --------------------------------------------------------------------------
