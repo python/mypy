@@ -768,7 +768,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     continue
 
                 if overload_can_never_match(sig1, sig2):
-                    
+
                     self.msg.overloaded_signature_will_never_match(i + 1, i + j + 2, item2.func)
                 elif not is_descriptor_get:
                     # Note: we force mypy to check overload signatures in strict-optional mode
