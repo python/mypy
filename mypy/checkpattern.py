@@ -244,6 +244,22 @@ class PatternChecker(PatternVisitor[PatternType]):
         # get inner types of original type
         #
         unpack_index = None
+
+        if isinstance(current_type, UnionType):
+            captures = {}
+            items = []
+            for t in current_type.items:
+                typ, _, capture = self.accept(o, t)
+                if not isinstance(typ, UninhabitedType):
+                    items.append(typ)
+                    captures.update(capture)
+            if len(items) == 0:
+                typ = UninhabitedType()
+            elif len(items) == 1:
+                typ = items[0]
+            else:
+                typ = UnionType(items=items)
+            return PatternType(type=typ, rest_type=current_type, captures=captures)
         if isinstance(current_type, TupleType):
             inner_types = current_type.items
             unpack_index = find_unpack_in_list(inner_types)
