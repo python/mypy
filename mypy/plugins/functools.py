@@ -161,6 +161,7 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
             for k in fn_type.arg_kinds
         ],
         ret_type=ret_type,
+        special_sig="partial",
     )
     if defaulted.line < 0:
         # Make up a line number if we don't have one
@@ -267,6 +268,10 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         arg_kinds=partial_kinds,
         arg_names=partial_names,
         ret_type=ret_type,
+        param_spec_parts_bound=(
+            ArgKind.ARG_STAR in actual_arg_kinds,
+            ArgKind.ARG_STAR2 in actual_arg_kinds,
+        ),
     )
 
     ret = ctx.api.named_generic_type(PARTIAL, [ret_type])
