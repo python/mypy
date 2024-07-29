@@ -262,12 +262,6 @@ MUTABLE_OVERRIDE: Final[ErrorCode] = ErrorCode(
     default_enabled=False,
 )
 
-OVERLOADED_FUNCTION_MATCHING: Final[ErrorCode] = ErrorCode(
-    "overloaded-function-matching",
-    "Warn user about signature matching for overloaded functions.",
-    "General",
-    sub_code_of=MISC,
-)
 
 # Syntax errors are often blocking.
 SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")
@@ -279,6 +273,14 @@ del error_codes[FILE.code]
 
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final[ErrorCode] = ErrorCode("misc", "Miscellaneous other checks", "General")
+
+OVERLOADED_FUNCTION_MATCHING: Final[ErrorCode] = ErrorCode(
+    "overloaded-function-matching",
+    "Warn user about signature matching for overloaded functions.",
+    "General",
+    sub_code_of=MISC,
+)
+
 
 OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
     "overload-overlap",
