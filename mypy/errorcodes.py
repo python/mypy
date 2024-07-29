@@ -266,6 +266,7 @@ OVERLOADED_FUNCTION_MATCHING: Final[ErrorCode] = ErrorCode(
     "overloaded-function-matching",
     "Warn user about signature matching for overloaded functions.",
     "General",
+    sub_code_of=MISC,
 )
 
 # Syntax errors are often blocking.
