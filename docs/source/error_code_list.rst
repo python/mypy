@@ -1157,7 +1157,7 @@ Check error code of overload function signature match
 
 In the case of an overloaded function, if one of the signatures is never accessible, this error may occur.
 An example where this can occur is with the utilization of floats and int types, due to the behavior of integers matching floats in mypy.
-Consider swapping the declaration of the two types so that the narrower signature is declared before the broader signature.                
+Consider swapping the declaration of the two types so that the narrower signature is declared before the broader signature.
 
 Example:
 
