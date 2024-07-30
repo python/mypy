@@ -1150,7 +1150,7 @@ types you expect.
 See :ref:`overloading <function-overloading>` for more explanation.
 
 
-.. _code-overloaded-function-matching:
+.. _code-overload-cannot-match:
 
 Check error code of overload function signature match
 --------------------------------------------------------------------------
@@ -1163,7 +1163,7 @@ Check error code of overload function signature match
     def process(response1: float,response2: float) -> float:
         ...
     @overload
-    def process(response1: int,response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overloaded-function-matching]
+    def process(response1: int,response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overload-cannot-match]
         ...
 
     def process(response1,response2)-> Union[float,int]:

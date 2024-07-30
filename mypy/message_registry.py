@@ -365,5 +365,5 @@ TYPE_ALIAS_WITH_AWAIT_EXPRESSION: Final = ErrorMessage(
 
 # Overloads
 OVERLOADED_FUNCTION_SIGNATURE: Final = ErrorMessage(
-    "Overloaded function signature {} will never be matched", codes.OVERLOADED_FUNCTION_MATCHING
+    "Overloaded function signature {} will never be matched", codes.OVERLOAD_CANNOT_MATCH
 )

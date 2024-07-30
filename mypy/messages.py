@@ -1653,7 +1653,7 @@ class MessageBuilder:
                 index1=index1, index2=index2
             ),
             context,
-            code=codes.OVERLOADED_FUNCTION_MATCHING,
+            code=codes.OVERLOAD_CANNOT_MATCH,
         )
 
     def overloaded_signatures_typevar_specific(self, index: int, context: Context) -> None:
