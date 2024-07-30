@@ -48,6 +48,7 @@ from mypy.types import (
     CallableType,
     FunctionLike,
     Instance,
+    RequiredType,
     TupleType,
     Type,
     TypeOfAny,
@@ -205,7 +206,7 @@ class StatisticsVisitor(TraverserVisitor):
         if o.type:
             # If there is an explicit type, don't visit the l.h.s. as an expression
             # to avoid double-counting and mishandling special forms.
-            self.type(o.type)
+            self.type(o.type.item if isinstance(o.type, RequiredType) else o.type)
             o.rvalue.accept(self)
             return
         elif self.inferred and not self.all_nodes:

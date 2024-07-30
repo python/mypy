@@ -198,6 +198,7 @@ from mypy.types import (
     Overloaded,
     PartialType,
     ProperType,
+    RequiredType,
     TupleType,
     Type,
     TypeAliasType,
@@ -2945,7 +2946,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     "A type on this line", AnyType(TypeOfAny.special_form), s
                 )
             else:
-                self.msg.unimported_type_becomes_any("Type of variable", s.type, s)
+                self.msg.unimported_type_becomes_any(
+                    "Type of variable",
+                    s.type.item if isinstance(s.type, RequiredType) else s.type,
+                    s,
+                )
         check_for_explicit_any(s.type, self.options, self.is_typeshed_stub, self.msg, context=s)
 
         if len(s.lvalues) > 1:
