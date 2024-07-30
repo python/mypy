@@ -4679,7 +4679,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
             if tapp.expr.node.python_3_12_type_alias:
-                return self.named_type("typing.TypeAliasType")
+                return self.type_alias_type_type()
             # Subscription of a (generic) alias in runtime context, expand the alias.
             item = instantiate_type_alias(
                 tapp.expr.node,
@@ -4743,7 +4743,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             y = cast(A, ...)
         """
         if alias.python_3_12_type_alias:
-            return self.named_type("typing.TypeAliasType")
+            return self.type_alias_type_type()
         if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore[misc]
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)
@@ -5862,6 +5862,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         arguments. Alias for TypeChecker.named_type.
         """
         return self.chk.named_type(name)
+
+    def type_alias_type_type(self) -> Instance:
+        """Returns a `typing.TypeAliasType` or `typing_extensions.TypeAliasType`."""
+        if self.chk.options.python_version >= (3, 12):
+            return self.named_type("typing.TypeAliasType")
+        return self.named_type("typing_extensions.TypeAliasType")
 
     def is_valid_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a *args argument?"""
