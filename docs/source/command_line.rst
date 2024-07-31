@@ -96,6 +96,10 @@ Optional arguments
 
     Show program's version number and exit.
 
+.. option:: --O FORMAT, --output FORMAT {json}
+
+    Set a custom output format.
+
 .. _config-file-flag:
 
 Config file
