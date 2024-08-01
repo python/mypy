@@ -15,7 +15,7 @@ if sys.platform == "win32":
 else:
     __all__ = ["send_handle", "recv_handle", "ForkingPickler", "register", "dump", "DupFd", "sendfds", "recvfds"]
 
-HAVE_SEND_HANDLE: bool
+HAVE_SEND_HANDLE: Final[bool]
 
 class ForkingPickler(pickle.Pickler):
     dispatch_table: _DispatchTableType
