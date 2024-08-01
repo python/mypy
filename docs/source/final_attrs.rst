@@ -225,6 +225,7 @@ Here are some situations where using a final class may be useful:
 An abstract class that defines at least one abstract method or
 property and has ``@final`` decorator will generate an error from
 mypy, since those attributes could never be implemented.
+This does not apply to abstract classes that inherit from the ``Protocol`` class.
 
 .. code-block:: python
 
