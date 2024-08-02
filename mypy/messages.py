@@ -261,6 +261,17 @@ class MessageBuilder:
             assert origin_span is not None
             origin_span = itertools.chain(origin_span, span_from_context(secondary_context))
 
+        end_line = context.end_line if context else -1
+        end_column = context.end_column if context else -1
+
+        # FuncDef's end includes the body, use the def's end information if available.
+        if isinstance(context, FuncDef):
+            end_line = context.def_end_line
+            # column is 1-based, see also format_messages in errors.py
+            end_column = (
+                context.def_end_column + 1 if context.def_end_column is not None else end_column
+            )
+
         self.errors.report(
             context.line if context else -1,
             context.column if context else -1,
@@ -269,8 +280,8 @@ class MessageBuilder:
             file=file,
             offset=offset,
             origin_span=origin_span,
-            end_line=context.end_line if context else -1,
-            end_column=context.end_column if context else -1,
+            end_line=end_line,
+            end_column=end_column,
             code=code,
             allow_dups=allow_dups,
         )
