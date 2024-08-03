@@ -1224,6 +1224,9 @@ def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[s
     if isinstance(runtime, property):
         yield from _verify_final_method(stub.func, runtime.fget, MISSING)
         return
+    if isinstance(runtime, functools.cached_property):
+        yield from _verify_final_method(stub.func, runtime.func, MISSING)
+        return
     if inspect.isdatadescriptor(runtime):
         # It's enough like a property...
         return
