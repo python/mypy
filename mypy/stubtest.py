@@ -1941,6 +1941,12 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
 
         parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
 
+    def error_callback(msg: str) -> typing.NoReturn:
+        print(_style("error:", color="red", bold=True), msg)
+        sys.exit(1)
+
+    options.process_error_codes(error_callback=error_callback)
+
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
     except StubtestFailure as stubtest_failure:
