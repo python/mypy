@@ -981,7 +981,7 @@ class StubtestUnit(unittest.TestCase):
             """,
             runtime="""
             from functools import cached_property
-            from typing import final
+            from typing_extensions import final
             class FinalBad:
                 @cached_property
                 @final
