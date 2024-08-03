@@ -931,12 +931,12 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             from functools import cached_property
-            class GoodAttrAsCachedProperty:
+            class GoodCachedAttr:
                 @cached_property
                 def f(self) -> int: ...
             """,
             runtime="""
-            class GoodAttrAsCachedProperty:
+            class GoodCachedAttr:
                 f = 1
             """,
             error=None,
@@ -944,41 +944,15 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             from functools import cached_property
-            class BadAttrAsCachedProperty:
+            class BadCachedAttr:
                 @cached_property
                 def f(self) -> str: ...
             """,
             runtime="""
-            class BadAttrAsCachedProperty:
+            class BadCachedAttr:
                 f = 1
             """,
-            error="BadAttrAsCachedProperty.f",
-        )
-        yield Case(
-            stub="""
-            class GoodCachedPropertyAsAttr:
-                f: int
-            """,
-            runtime="""
-            from functools import cached_property
-            class GoodCachedPropertyAsAttr:
-                @cached_property
-                def f(self) -> int: ...
-            """,
-            error=None,
-        )
-        yield Case(
-            stub="""
-            class BadCachedPropertyAsAttr:
-                f: int
-            """,
-            runtime="""
-            from functools import cached_property
-            class BadCachedPropertyAsAttr:
-                @cached_property
-                def f(self) -> str: ...
-            """,
-            error=None,
+            error="BadCachedAttr.f",
         )
         yield Case(
             stub="""

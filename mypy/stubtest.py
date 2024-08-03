@@ -1115,18 +1115,6 @@ def verify_var(
                 and proper_type.type.fullname == "builtins.ellipsis"
             ):
                 should_error = False
-        # Runtime @cached_property is allowed to be represented as normal attribute in stubs
-        if isinstance(runtime, functools.cached_property):
-            func_type = get_mypy_type_of_runtime_value(runtime.func)
-            cached_property_type = (
-                func_type.ret_type if isinstance(func_type, mypy.types.CallableType) else None
-            )
-            if (
-                runtime_type is not None
-                and cached_property_type is not None
-                and is_subtype_helper(runtime_type, cached_property_type)
-            ):
-                should_error = False
 
         if should_error:
             yield Error(
