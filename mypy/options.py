@@ -416,6 +416,23 @@ class Options:
     def __repr__(self) -> str:
         return f"Options({pprint.pformat(self.snapshot())})"
 
+    def process_error_codes(self, *, error_callback: Callable[[str], Any]) -> None:
+        # Process `--enable-error-code` and `--disable-error-code` flags
+        disabled_codes = set(self.disable_error_code)
+        enabled_codes = set(self.enable_error_code)
+
+        valid_error_codes = set(error_codes.keys())
+
+        invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
+        if invalid_codes:
+            error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
+
+        self.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
+        self.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+
+        # Enabling an error code always overrides disabling
+        self.disabled_error_codes -= self.enabled_error_codes
+
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.
         new_options = Options()
