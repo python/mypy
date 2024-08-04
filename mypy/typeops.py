@@ -310,12 +310,14 @@ def bind_self(
     if not func.arg_types:
         # Invalid method, return something.
         return cast(F, func)
-    if func.arg_kinds[0] == ARG_STAR:
+    if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
         # since func will be absorbed by the *args.
-
         # TODO: infer bounds on the type of *args?
+
+        # In the case of **kwargs we should probably emit an error, but
+        # for now we simply skip it, to avoid crashes down the line.
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
 
