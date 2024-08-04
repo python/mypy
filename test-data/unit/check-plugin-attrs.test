@@ -2170,8 +2170,8 @@ class B:
 
 a_or_b: A[int] | B
 a2 = attrs.evolve(a_or_b, x=42, y=True)
-a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')  # E: Argument "z" to "evolve" of "Union[A[int], B]" has incompatible type "str"; expected Never
-a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected Never
+a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')  # E: Argument "z" to "evolve" of "Union[A[int], B]" has incompatible type "str"; expected "Never"
+a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected "Never"
 
 [builtins fixtures/plugin_attrs.pyi]
 
@@ -2474,4 +2474,24 @@ class B:
     pass
 reveal_type(B.__hash__)  # N: Revealed type is "None"
 
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsStrictOptionalSetProperly]
+from typing import Generic, Optional, TypeVar
+
+import attr
+
+T = TypeVar("T")
+
+@attr.mutable()
+class Parent(Generic[T]):
+    run_type: Optional[int] = None
+
+@attr.mutable()
+class Child(Parent[float]):
+    pass
+
+Parent(run_type = None)
+c = Child(run_type = None)
+reveal_type(c.run_type)  # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/plugin_attrs.pyi]

@@ -7,8 +7,8 @@ from re import Pattern
 from string import Template
 from time import struct_time
 from types import FrameType, TracebackType
-from typing import Any, ClassVar, Generic, Literal, Protocol, TextIO, TypeVar, overload
-from typing_extensions import Self, TypeAlias
+from typing import Any, ClassVar, Final, Generic, Literal, Protocol, TextIO, TypeVar, overload
+from typing_extensions import Self, TypeAlias, deprecated
 
 if sys.version_info >= (3, 11):
     from types import GenericAlias
@@ -236,14 +236,14 @@ class Logger(Filterer):
     def hasHandlers(self) -> bool: ...
     def callHandlers(self, record: LogRecord) -> None: ...  # undocumented
 
-CRITICAL: int
-FATAL: int
-ERROR: int
-WARNING: int
-WARN: int
-INFO: int
-DEBUG: int
-NOTSET: int
+CRITICAL: Final = 50
+FATAL: Final = CRITICAL
+ERROR: Final = 40
+WARNING: Final = 30
+WARN: Final = WARNING
+INFO: Final = 20
+DEBUG: Final = 10
+NOTSET: Final = 0
 
 class Handler(Filterer):
     level: int  # undocumented
@@ -572,7 +572,11 @@ fatal = critical
 
 def disable(level: int = 50) -> None: ...
 def addLevelName(level: int, levelName: str) -> None: ...
-def getLevelName(level: _Level) -> Any: ...
+@overload
+def getLevelName(level: int) -> str: ...
+@overload
+@deprecated("The str -> int case is considered a mistake.")
+def getLevelName(level: str) -> Any: ...
 
 if sys.version_info >= (3, 11):
     def getLevelNamesMapping() -> dict[str, int]: ...
@@ -680,6 +684,6 @@ class StrFormatStyle(PercentStyle):  # undocumented
 class StringTemplateStyle(PercentStyle):  # undocumented
     _tpl: Template
 
-_STYLES: dict[str, tuple[PercentStyle, str]]
+_STYLES: Final[dict[str, tuple[PercentStyle, str]]]
 
-BASIC_FORMAT: str
+BASIC_FORMAT: Final[str]

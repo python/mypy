@@ -914,8 +914,8 @@ if sys.platform != "win32":
     def forkpty() -> tuple[int, int]: ...  # some flavors of Unix
     def killpg(pgid: int, signal: int, /) -> None: ...
     def nice(increment: int, /) -> int: ...
-    if sys.platform != "darwin":
-        def plock(op: int, /) -> None: ...  # ???op is int?
+    if sys.platform != "darwin" and sys.platform != "linux":
+        def plock(op: int, /) -> None: ...
 
 class _wrap_close(_TextIOWrapper):
     def __init__(self, stream: _TextIOWrapper, proc: Popen[str]) -> None: ...
@@ -971,7 +971,8 @@ else:
     def spawnvp(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
     def spawnvpe(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
     def wait() -> tuple[int, int]: ...  # Unix only
-    if sys.platform != "darwin":
+    # Added to MacOS in 3.13
+    if sys.platform != "darwin" or sys.version_info >= (3, 13):
         @final
         class waitid_result(structseq[int], tuple[int, int, int, int, int]):
             if sys.version_info >= (3, 10):
@@ -1141,17 +1142,38 @@ if sys.version_info >= (3, 10) and sys.platform == "linux":
 if sys.version_info >= (3, 12) and sys.platform == "linux":
     CLONE_FILES: int
     CLONE_FS: int
-    CLONE_NEWCGROUP: int
-    CLONE_NEWIPC: int
-    CLONE_NEWNET: int
+    CLONE_NEWCGROUP: int  # Linux 4.6+
+    CLONE_NEWIPC: int  # Linux 2.6.19+
+    CLONE_NEWNET: int  # Linux 2.6.24+
     CLONE_NEWNS: int
-    CLONE_NEWPID: int
-    CLONE_NEWTIME: int
-    CLONE_NEWUSER: int
-    CLONE_NEWUTS: int
+    CLONE_NEWPID: int  # Linux 3.8+
+    CLONE_NEWTIME: int  # Linux 5.6+
+    CLONE_NEWUSER: int  # Linux 3.8+
+    CLONE_NEWUTS: int  # Linux 2.6.19+
     CLONE_SIGHAND: int
-    CLONE_SYSVSEM: int
+    CLONE_SYSVSEM: int  # Linux 2.6.26+
     CLONE_THREAD: int
     CLONE_VM: int
     def unshare(flags: int) -> None: ...
     def setns(fd: FileDescriptorLike, nstype: int = 0) -> None: ...
+
+if sys.version_info >= (3, 13) and sys.platform != "win32":
+    def posix_openpt(oflag: int, /) -> int: ...
+    def grantpt(fd: FileDescriptorLike, /) -> None: ...
+    def unlockpt(fd: FileDescriptorLike, /) -> None: ...
+    def ptsname(fd: FileDescriptorLike, /) -> str: ...
+
+if sys.version_info >= (3, 13) and sys.platform == "linux":
+    TFD_TIMER_ABSTIME: Final = 1
+    TFD_TIMER_CANCEL_ON_SET: Final = 2
+    TFD_NONBLOCK: Final[int]
+    TFD_CLOEXEC: Final[int]
+    POSIX_SPAWN_CLOSEFROM: Final[int]
+
+    def timerfd_create(clockid: int, /, *, flags: int = 0) -> int: ...
+    def timerfd_settime(
+        fd: FileDescriptor, /, *, flags: int = 0, initial: float = 0.0, interval: float = 0.0
+    ) -> tuple[float, float]: ...
+    def timerfd_settime_ns(fd: FileDescriptor, /, *, flags: int = 0, initial: int = 0, interval: int = 0) -> tuple[int, int]: ...
+    def timerfd_gettime(fd: FileDescriptor, /) -> tuple[float, float]: ...
+    def timerfd_gettime_ns(fd: FileDescriptor, /) -> tuple[int, int]: ...

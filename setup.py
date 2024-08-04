@@ -218,9 +218,9 @@ setup(
     },
     classifiers=classifiers,
     cmdclass=cmdclass,
-    # When changing this, also update mypy-requirements.txt.
+    # When changing this, also update mypy-requirements.txt and pyproject.toml
     install_requires=[
-        "typing_extensions>=4.1.0",
+        "typing_extensions>=4.6.0",
         "mypy_extensions >= 1.0.0",
         "tomli>=1.1.0; python_version<'3.11'",
     ],

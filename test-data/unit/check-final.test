@@ -6,13 +6,11 @@
 [case testFinalDefiningModuleVar]
 from typing import Final
 
-w: 'Final' = int()
 x: Final = int()
 y: Final[float] = int()
 z: Final[int] = int()
 bad: Final[str] = int()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-reveal_type(w)  # N: Revealed type is "builtins.int"
 reveal_type(x)  # N: Revealed type is "builtins.int"
 reveal_type(y)  # N: Revealed type is "builtins.float"
 reveal_type(z)  # N: Revealed type is "builtins.int"
@@ -299,6 +297,50 @@ class P(Protocol):
     @final  # E: Protocol member cannot be final
     def other(self, x):
         pass
+[out]
+
+[case testFinalInProtocol]
+from typing import Final, Protocol, final
+
+class P(Protocol):
+    var1 : Final[int] = 0 # E: Protocol member cannot be final
+
+    @final # E: Protocol member cannot be final
+    def meth1(self) -> None:
+        var2: Final = 0
+
+    def meth2(self) -> None:
+        var3: Final = 0
+
+    def meth3(self) -> None:
+        class Inner:
+            var3: Final = 0  # OK
+
+            @final
+            def inner(self) -> None: ...
+
+    class Inner:
+        var3: Final = 0  # OK
+
+        @final
+        def inner(self) -> None: ...
+
+[out]
+
+[case testFinalWithClassVarInProtocol]
+from typing import Protocol, Final, final, ClassVar
+
+class P(Protocol):
+    var1 : Final[ClassVar[int]] = 0 # E: Variable should not be annotated with both ClassVar and Final
+    var2: ClassVar[int] = 1
+
+    @final # E: Protocol member cannot be final
+    def meth1(self) -> None:
+        ...
+
+    def meth2(self) -> None:
+        var3: Final[ClassVar[int]] = 0 # E: Variable should not be annotated with both ClassVar and Final # E: ClassVar can only be used for assignments in class body
+
 [out]
 
 [case testFinalNotInLoops]
