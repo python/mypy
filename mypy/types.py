@@ -271,9 +271,6 @@ class Type(mypy.nodes.Context):
     def can_be_false_default(self) -> bool:
         return True
 
-    def resolve_string_annotation(self) -> Type:
-        return self
-
     def accept(self, visitor: TypeVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
 
@@ -906,7 +903,14 @@ class TypeVarTupleType(TypeVarLikeType):
 class UnboundType(ProperType):
     """Instance type that has not been bound during semantic analysis."""
 
-    __slots__ = ("name", "args", "optional", "empty_tuple_index")
+    __slots__ = (
+        "name",
+        "args",
+        "optional",
+        "empty_tuple_index",
+        "original_str_expr",
+        "original_str_fallback",
+    )
 
     def __init__(
         self,
@@ -916,6 +920,8 @@ class UnboundType(ProperType):
         column: int = -1,
         optional: bool = False,
         empty_tuple_index: bool = False,
+        original_str_expr: str | None = None,
+        original_str_fallback: str | None = None,
     ) -> None:
         super().__init__(line, column)
         if not args:
@@ -927,6 +933,21 @@ class UnboundType(ProperType):
         self.optional = optional
         # Special case for X[()]
         self.empty_tuple_index = empty_tuple_index
+        # If this UnboundType was originally defined as a str or bytes, keep track of
+        # the original contents of that string-like thing. This way, if this UnboundExpr
+        # ever shows up inside of a LiteralType, we can determine whether that
+        # Literal[...] is valid or not. E.g. Literal[foo] is most likely invalid
+        # (unless 'foo' is an alias for another literal or something) and
+        # Literal["foo"] most likely is.
+        #
+        # We keep track of the entire string instead of just using a boolean flag
+        # so we can distinguish between things like Literal["foo"] vs
+        # Literal["    foo   "].
+        #
+        # We also keep track of what the original base fallback type was supposed to be
+        # so we don't have to try and recompute it later
+        self.original_str_expr = original_str_expr
+        self.original_str_fallback = original_str_fallback
 
     def copy_modified(self, args: Bogus[Sequence[Type] | None] = _dummy) -> UnboundType:
         if args is _dummy:
@@ -938,19 +959,25 @@ class UnboundType(ProperType):
             column=self.column,
             optional=self.optional,
             empty_tuple_index=self.empty_tuple_index,
+            original_str_expr=self.original_str_expr,
+            original_str_fallback=self.original_str_fallback,
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_unbound_type(self)
 
     def __hash__(self) -> int:
-        return hash((self.name, self.optional, tuple(self.args)))
+        return hash((self.name, self.optional, tuple(self.args), self.original_str_expr))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, UnboundType):
             return NotImplemented
         return (
-            self.name == other.name and self.optional == other.optional and self.args == other.args
+            self.name == other.name
+            and self.optional == other.optional
+            and self.args == other.args
+            and self.original_str_expr == other.original_str_expr
+            and self.original_str_fallback == other.original_str_fallback
         )
 
     def serialize(self) -> JsonDict:
@@ -958,12 +985,19 @@ class UnboundType(ProperType):
             ".class": "UnboundType",
             "name": self.name,
             "args": [a.serialize() for a in self.args],
+            "expr": self.original_str_expr,
+            "expr_fallback": self.original_str_fallback,
         }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> UnboundType:
         assert data[".class"] == "UnboundType"
-        return UnboundType(data["name"], [deserialize_type(a) for a in data["args"]])
+        return UnboundType(
+            data["name"],
+            [deserialize_type(a) for a in data["args"]],
+            original_str_expr=data["expr"],
+            original_str_fallback=data["expr_fallback"],
+        )
 
 
 class CallableArgument(ProperType):
@@ -2644,7 +2678,7 @@ class RawExpressionType(ProperType):
 
     This synthetic type is only used at the beginning stages of semantic analysis
     and should be completely removing during the process for mapping UnboundTypes to
-    actual types: we turn it into its "node" argument, a LiteralType, or an AnyType.
+    actual types: we either turn it into a LiteralType or an AnyType.
 
     For example, suppose `Foo[1]` is initially represented as the following:
 
@@ -2682,7 +2716,7 @@ class RawExpressionType(ProperType):
         )
     """
 
-    __slots__ = ("literal_value", "base_type_name", "note", "node")
+    __slots__ = ("literal_value", "base_type_name", "note")
 
     def __init__(
         self,
@@ -2691,13 +2725,11 @@ class RawExpressionType(ProperType):
         line: int = -1,
         column: int = -1,
         note: str | None = None,
-        node: Type | None = None,
     ) -> None:
         super().__init__(line, column)
         self.literal_value = literal_value
         self.base_type_name = base_type_name
         self.note = note
-        self.node = node
 
     def simple_name(self) -> str:
         return self.base_type_name.replace("builtins.", "")
@@ -2706,21 +2738,6 @@ class RawExpressionType(ProperType):
         assert isinstance(visitor, SyntheticTypeVisitor)
         ret: T = visitor.visit_raw_expression_type(self)
         return ret
-
-    def copy_modified(self, node: Type | None) -> RawExpressionType:
-        return RawExpressionType(
-            literal_value=self.literal_value,
-            base_type_name=self.base_type_name,
-            line=self.line,
-            column=self.column,
-            note=self.note,
-            node=node,
-        )
-
-    def resolve_string_annotation(self) -> Type:
-        if self.node is not None:
-            return self.node.resolve_string_annotation()
-        return self
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -2733,7 +2750,6 @@ class RawExpressionType(ProperType):
             return (
                 self.base_type_name == other.base_type_name
                 and self.literal_value == other.literal_value
-                and self.node == other.node
             )
         else:
             return NotImplemented
@@ -3409,8 +3425,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"TypedDict({prefix}{s})"
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> str:
-        if t.node is not None:
-            return t.node.accept(self)
         return repr(t.literal_value)
 
     def visit_literal_type(self, t: LiteralType) -> str:
@@ -3474,9 +3488,6 @@ class TrivialSyntheticTypeTranslator(TypeTranslator, SyntheticTypeVisitor[Type])
         return t
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
-        if t.node is not None:
-            node = t.node.accept(self)
-            return t.copy_modified(node=node)
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
