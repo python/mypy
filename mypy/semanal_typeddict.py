@@ -324,7 +324,9 @@ class TypedDictAnalyzer:
                         return None, [], [], set()  # Need to defer
                     types.append(analyzed)
                     if not has_placeholder(analyzed):
-                        stmt.type = analyzed
+                        stmt.type = (
+                            analyzed.item if isinstance(analyzed, RequiredType) else analyzed
+                        )
                 # ...despite possible minor failures that allow further analysis.
                 if stmt.type is None or hasattr(stmt, "new_syntax") and not stmt.new_syntax:
                     self.fail(TPDICT_CLASS_ERROR, stmt)
