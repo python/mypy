@@ -2529,7 +2529,7 @@ class StubtestMiscUnit(unittest.TestCase):
         stub = "temp: int\n"
         config_file = "[mypy]\ndisable_error_code = not-a-valid-name\n"
         output, outerr = run_stubtest(
-            stub=stub, runtime=runtime, options=[], config_file=config_file, include_stderr=True,
+            stub=stub, runtime=runtime, options=[], config_file=config_file, include_stderr=True
         )
         assert output == "Success: no issues found in 1 module\n"
         assert outerr == (
