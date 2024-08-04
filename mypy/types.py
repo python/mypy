@@ -2849,7 +2849,11 @@ class UnionType(ProperType):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
     __slots__ = (
-        "items", "is_evaluated", "uses_pep604_syntax", "original_str_expr", "original_str_fallback"
+        "items",
+        "is_evaluated",
+        "uses_pep604_syntax",
+        "original_str_expr",
+        "original_str_fallback",
     )
 
     def __init__(
