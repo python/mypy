@@ -2382,6 +2382,14 @@ class ForceDeferredEval: pass
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictRequiredUnimportedAny]
+# flags: --disallow-any-unimported
+from typing import NotRequired, TypedDict
+from nonexistent import Foo  # type: ignore[import-not-found]
+class Bar(TypedDict):
+    foo: NotRequired[Foo]  # E: Type of variable becomes "Any" due to an unfollowed import
+[typing fixtures/typing-typeddict.pyi]
+
 -- Required[]
 
 [case testDoesRecognizeRequiredInTypedDictWithClass]
