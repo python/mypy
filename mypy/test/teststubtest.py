@@ -9,7 +9,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, Literal, overload
 
 import mypy.stubtest
 from mypy.stubtest import parse_options, test_stubs
@@ -144,9 +144,38 @@ class Flag(Enum):
 """
 
 
+@overload
 def run_stubtest(
-    stub: str, runtime: str, options: list[str], config_file: str | None = None
+    stub: str,
+    runtime: str,
+    options: list[str],
+    config_file: str | None = None,
+    *,
+    include_stderr: Literal[True],
+) -> tuple[str, str]:
+    """Include the stderr result."""
+
+
+@overload
+def run_stubtest(
+    stub: str,
+    runtime: str,
+    options: list[str],
+    config_file: str | None = None,
+    *,
+    include_stderr: Literal[False] = False,
 ) -> str:
+    """Do not include the stderr result."""
+
+
+def run_stubtest(
+    stub: str,
+    runtime: str,
+    options: list[str],
+    config_file: str | None = None,
+    *,
+    include_stderr: bool = False,
+) -> str | tuple[str, str]:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
             f.write(stubtest_builtins_stub)
@@ -163,13 +192,18 @@ def run_stubtest(
                 f.write(config_file)
             options = options + ["--mypy-config-file", f"{TEST_MODULE_NAME}_config.ini"]
         output = io.StringIO()
-        with contextlib.redirect_stdout(output):
+        outerr = io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(outerr):
             test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
-        return remove_color_code(
+        filtered_output = remove_color_code(
             output.getvalue()
             # remove cwd as it's not available from outside
             .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
         )
+        if not include_stderr:
+            return filtered_output
+
+        return (filtered_output, outerr.getvalue())
 
 
 class Case:
@@ -2489,6 +2523,19 @@ class StubtestMiscUnit(unittest.TestCase):
         config_file = "[mypy]\ndisable_error_code = name-defined\n"
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == "Success: no issues found in 1 module\n"
+
+    def test_config_file_error_codes_invalid(self) -> None:
+        runtime = "temp = 5\n"
+        stub = "temp: int\n"
+        config_file = "[mypy]\ndisable_error_code = not-a-valid-name\n"
+        output, outerr = run_stubtest(
+            stub=stub, runtime=runtime, options=[], config_file=config_file, include_stderr=True,
+        )
+        assert output == "Success: no issues found in 1 module\n"
+        assert outerr == (
+            "test_module_config.ini: [mypy]: disable_error_code: "
+            "Invalid error code(s): not-a-valid-name\n"
+        )
 
     def test_no_modules(self) -> None:
         output = io.StringIO()
