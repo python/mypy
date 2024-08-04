@@ -433,6 +433,16 @@ class Options:
         # Enabling an error code always overrides disabling
         self.disabled_error_codes -= self.enabled_error_codes
 
+    def validate_incomplete_features(
+        self, *, error_callback: Callable[[str], Any], warning_callback: Callable[[str], Any]
+    ) -> None:
+        # Validate incomplete features.
+        for feature in self.enable_incomplete_feature:
+            if feature not in INCOMPLETE_FEATURES | COMPLETE_FEATURES:
+                error_callback(f"Unknown incomplete feature: {feature}")
+            if feature in COMPLETE_FEATURES:
+                warning_callback(f"Warning: {feature} is already enabled by default")
+
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.
         new_options = Options()
