@@ -2705,8 +2705,6 @@ class RawExpressionType(ProperType):
         return self.base_type_name.replace("builtins.", "")
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
-        if self.node is not None:
-            return self.node.accept(visitor)
         assert isinstance(visitor, SyntheticTypeVisitor)
         ret: T = visitor.visit_raw_expression_type(self)
         return ret
