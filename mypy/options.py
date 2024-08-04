@@ -433,7 +433,7 @@ class Options:
         # Enabling an error code always overrides disabling
         self.disabled_error_codes -= self.enabled_error_codes
 
-    def validate_incomplete_features(
+    def process_incomplete_features(
         self, *, error_callback: Callable[[str], Any], warning_callback: Callable[[str], Any]
     ) -> None:
         # Validate incomplete features.

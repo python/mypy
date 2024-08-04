@@ -1949,7 +1949,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
         print(_style("warning:", color="yellow", bold=True), msg)
 
     options.process_error_codes(error_callback=error_callback)
-    options.validate_incomplete_features(
+    options.process_incomplete_features(
         error_callback=error_callback, warning_callback=warning_callback
     )
 
