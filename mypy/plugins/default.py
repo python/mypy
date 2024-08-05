@@ -372,6 +372,10 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
             )
             return AnyType(TypeOfAny.from_error)
 
+        assigned_readonly_keys = ctx.type.readonly_keys & set(keys)
+        if assigned_readonly_keys:
+            ctx.api.msg.readonly_keys_mutated(assigned_readonly_keys, context=ctx.context)
+
         default_type = ctx.arg_types[1][0]
 
         value_types = []

@@ -229,7 +229,7 @@ def expr_to_unanalyzed_type(
                 value, options, allow_new_syntax, expr
             )
         result = TypedDictType(
-            items, set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
+            items, set(), set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
         )
         result.extra_items_from = extra_items_from
         return result

@@ -986,6 +986,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         always_present_keys: set[str],
     ) -> Type:
         actual_keys = kwargs.keys()
+        assigned_readonly_keys = actual_keys & callee.readonly_keys
+        if assigned_readonly_keys:
+            self.msg.readonly_keys_mutated(assigned_readonly_keys, context=context)
         if not (
             callee.required_keys <= always_present_keys and actual_keys <= callee.items.keys()
         ):
@@ -4337,7 +4340,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 return self.nonliteral_tuple_index_helper(left_type, index)
         elif isinstance(left_type, TypedDictType):
-            return self.visit_typeddict_index_expr(left_type, e.index)
+            return self.visit_typeddict_index_expr(left_type, e.index)[0]
         elif isinstance(left_type, FunctionLike) and left_type.is_type_obj():
             if left_type.type_object().is_enum:
                 return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
@@ -4518,7 +4521,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_typeddict_index_expr(
         self, td_type: TypedDictType, index: Expression, setitem: bool = False
-    ) -> Type:
+    ) -> tuple[Type, set[str]]:
         if isinstance(index, StrExpr):
             key_names = [index.value]
         else:
@@ -4541,17 +4544,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     key_names.append(key_type.value)
                 else:
                     self.msg.typeddict_key_must_be_string_literal(td_type, index)
-                    return AnyType(TypeOfAny.from_error)
+                    return AnyType(TypeOfAny.from_error), set()
 
         value_types = []
         for key_name in key_names:
             value_type = td_type.items.get(key_name)
             if value_type is None:
                 self.msg.typeddict_key_not_found(td_type, key_name, index, setitem)
-                return AnyType(TypeOfAny.from_error)
+                return AnyType(TypeOfAny.from_error), set()
             else:
                 value_types.append(value_type)
-        return make_simplified_union(value_types)
+        return make_simplified_union(value_types), set(key_names)
 
     def visit_enum_index_expr(
         self, enum_type: TypeInfo, index: Expression, context: Context
