@@ -26,6 +26,7 @@ TypedDict = 0
 NoReturn = 0
 Required = 0
 NotRequired = 0
+ReadOnly = 0
 Self = 0
 
 T = TypeVar('T')
@@ -58,6 +59,10 @@ class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     def values(self) -> Iterable[T_co]: pass  # Approximate return type
     def __len__(self) -> int: ...
     def __contains__(self, arg: object) -> int: pass
+
+class MutableMapping(Mapping[T, T_co], Generic[T, T_co], metaclass=ABCMeta):
+    # Other methods are not used in tests.
+    def clear(self) -> None: ...
 
 # Fallback type for all typed dicts (does not exist at runtime).
 class _TypedDict(Mapping[str, object]):

@@ -634,7 +634,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             # We need to filter by items.keys() since some required keys present in both t and
             # self.s might be missing from the join if the types are incompatible.
             required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
-            return TypedDictType(items, required_keys, fallback)
+            # If one type has a key as readonly, we mark it as readonly for both:
+            readonly_keys = t.readonly_keys | t.readonly_keys
+            return TypedDictType(items, required_keys, readonly_keys, fallback)
         elif isinstance(self.s, Instance):
             return join_types(self.s, t.fallback)
         else:

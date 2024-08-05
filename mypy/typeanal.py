@@ -83,6 +83,7 @@ from mypy.types import (
     PlaceholderType,
     ProperType,
     RawExpressionType,
+    ReadOnlyType,
     RequiredType,
     SyntheticTypeVisitor,
     TrivialSyntheticTypeTranslator,
@@ -219,7 +220,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
         allow_placeholder: bool = False,
-        allow_required: bool = False,
+        allow_typed_dict_special_forms: bool = False,
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
         report_invalid_types: bool = True,
@@ -253,7 +254,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # If false, record incomplete ref if we generate PlaceholderType.
         self.allow_placeholder = allow_placeholder
         # Are we in a context where Required[] is allowed?
-        self.allow_required = allow_required
+        self.allow_typed_dict_special_forms = allow_typed_dict_special_forms
         # Are we in a context where ParamSpec literals are allowed?
         self.allow_param_spec_literals = allow_param_spec_literals
         # Are we in context where literal "..." specifically is allowed?
@@ -684,7 +685,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.from_error)
             return self.anal_type(t.args[0])
         elif fullname in ("typing_extensions.Required", "typing.Required"):
-            if not self.allow_required:
+            if not self.allow_typed_dict_special_forms:
                 self.fail(
                     "Required[] can be only used in a TypedDict definition",
                     t,
@@ -696,9 +697,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     "Required[] must have exactly one type argument", t, code=codes.VALID_TYPE
                 )
                 return AnyType(TypeOfAny.from_error)
-            return RequiredType(self.anal_type(t.args[0]), required=True)
+            return RequiredType(
+                self.anal_type(t.args[0], allow_typed_dict_special_forms=True), required=True
+            )
         elif fullname in ("typing_extensions.NotRequired", "typing.NotRequired"):
-            if not self.allow_required:
+            if not self.allow_typed_dict_special_forms:
                 self.fail(
                     "NotRequired[] can be only used in a TypedDict definition",
                     t,
@@ -710,7 +713,23 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     "NotRequired[] must have exactly one type argument", t, code=codes.VALID_TYPE
                 )
                 return AnyType(TypeOfAny.from_error)
-            return RequiredType(self.anal_type(t.args[0]), required=False)
+            return RequiredType(
+                self.anal_type(t.args[0], allow_typed_dict_special_forms=True), required=False
+            )
+        elif fullname in ("typing_extensions.ReadOnly", "typing.ReadOnly"):
+            if not self.allow_typed_dict_special_forms:
+                self.fail(
+                    "ReadOnly[] can be only used in a TypedDict definition",
+                    t,
+                    code=codes.VALID_TYPE,
+                )
+                return AnyType(TypeOfAny.from_error)
+            if len(t.args) != 1:
+                self.fail(
+                    '"ReadOnly[]" must have exactly one type argument', t, code=codes.VALID_TYPE
+                )
+                return AnyType(TypeOfAny.from_error)
+            return ReadOnlyType(self.anal_type(t.args[0], allow_typed_dict_special_forms=True))
         elif (
             self.anal_type_guard_arg(t, fullname) is not None
             or self.anal_type_is_arg(t, fullname) is not None
@@ -1223,9 +1242,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         req_keys = set()
+        readonly_keys = set()
         items = {}
         for item_name, item_type in t.items.items():
-            analyzed = self.anal_type(item_type, allow_required=True)
+            # TODO: rework
+            analyzed = self.anal_type(item_type, allow_typed_dict_special_forms=True)
             if isinstance(analyzed, RequiredType):
                 if analyzed.required:
                     req_keys.add(item_name)
@@ -1233,6 +1254,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 # Keys are required by default.
                 req_keys.add(item_name)
+            if isinstance(analyzed, ReadOnlyType):
+                readonly_keys.add(item_name)
+                analyzed = analyzed.item
             items[item_name] = analyzed
         if t.fallback.type is MISSING_FALLBACK:  # anonymous/inline TypedDict
             if INLINE_TYPEDDICT not in self.options.enable_incomplete_feature:
@@ -1257,10 +1281,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     items[sub_item_name] = sub_item_type
                     if sub_item_name in p_analyzed.required_keys:
                         req_keys.add(sub_item_name)
+                    if sub_item_name in p_analyzed.readonly_keys:
+                        readonly_keys.add(sub_item_name)
         else:
             required_keys = t.required_keys
             fallback = t.fallback
-        return TypedDictType(items, required_keys, fallback, t.line, t.column)
+        return TypedDictType(items, required_keys, readonly_keys, fallback, t.line, t.column)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
         # We should never see a bare Literal. We synthesize these raw literals
@@ -1807,12 +1833,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_param_spec: bool = False,
         allow_unpack: bool = False,
         allow_ellipsis: bool = False,
-        allow_required: bool = False,
+        allow_typed_dict_special_forms: bool = False,
     ) -> Type:
         if nested:
             self.nesting_level += 1
-        old_allow_required = self.allow_required
-        self.allow_required = allow_required
+        old_allow_typed_dict_special_forms = self.allow_typed_dict_special_forms
+        self.allow_typed_dict_special_forms = allow_typed_dict_special_forms
         old_allow_ellipsis = self.allow_ellipsis
         self.allow_ellipsis = allow_ellipsis
         old_allow_unpack = self.allow_unpack
@@ -1822,7 +1848,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         finally:
             if nested:
                 self.nesting_level -= 1
-            self.allow_required = old_allow_required
+            self.allow_typed_dict_special_forms = old_allow_typed_dict_special_forms
             self.allow_ellipsis = old_allow_ellipsis
             self.allow_unpack = old_allow_unpack
         if (

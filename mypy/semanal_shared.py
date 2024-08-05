@@ -181,7 +181,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         tvar_scope: TypeVarLikeScope | None = None,
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
-        allow_required: bool = False,
+        allow_typed_dict_special_forms: bool = False,
         allow_placeholder: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,

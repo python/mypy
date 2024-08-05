@@ -41,6 +41,7 @@ TypeVarTuple: _SpecialForm
 Unpack: _SpecialForm
 Required: _SpecialForm
 NotRequired: _SpecialForm
+ReadOnly: _SpecialForm
 
 @final
 class TypeAliasType:

@@ -1017,7 +1017,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             items = dict(item_list)
             fallback = self.s.create_anonymous_fallback()
             required_keys = t.required_keys | self.s.required_keys
-            return TypedDictType(items, required_keys, fallback)
+            readonly_keys = t.readonly_keys | self.s.readonly_keys
+            return TypedDictType(items, required_keys, readonly_keys, fallback)
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
             return t
         else:
@@ -1139,6 +1140,9 @@ def typed_dict_mapping_overlap(
       - TypedDict(x=str, y=str, total=False) doesn't overlap with Dict[str, int]
       - TypedDict(x=int, y=str, total=False) overlaps with Dict[str, str]
 
+    * A TypedDict with at least one ReadOnly[] key does not overlap
+      with Dict or MutableMapping, because they assume mutable data.
+
     As usual empty, dictionaries lie in a gray area. In general, List[str] and List[str]
     are considered non-overlapping despite empty list belongs to both. However, List[int]
     and List[Never] are considered overlapping.
@@ -1158,6 +1162,12 @@ def typed_dict_mapping_overlap(
         assert isinstance(left, Instance)
         assert isinstance(right, TypedDictType)
         typed, other = right, left
+
+    mutable_mapping = next(
+        (base for base in other.type.mro if base.fullname == "typing.MutableMapping"), None
+    )
+    if mutable_mapping is not None and typed.readonly_keys:
+        return False
 
     mapping = next(base for base in other.type.mro if base.fullname == "typing.Mapping")
     other = map_instance_to_supertype(other, mapping)

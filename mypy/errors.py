@@ -680,11 +680,6 @@ class Errors:
                 self.has_blockers.remove(path)
 
     def generate_unused_ignore_errors(self, file: str) -> None:
-        if (
-            is_typeshed_file(self.options.abs_custom_typeshed_dir if self.options else None, file)
-            or file in self.ignored_files
-        ):
-            return
         ignored_lines = self.ignored_lines[file]
         used_ignored_lines = self.used_ignored_lines[file]
         for line, ignored_codes in ignored_lines.items():
