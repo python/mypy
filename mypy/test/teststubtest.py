@@ -894,6 +894,106 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_cached_property(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class Good:
+                @cached_property
+                def read_only_attr(self) -> int: ...
+                @cached_property
+                def read_only_attr2(self) -> int: ...
+            """,
+            runtime="""
+            import functools as ft
+            from functools import cached_property
+            class Good:
+                @cached_property
+                def read_only_attr(self): return 1
+                @ft.cached_property
+                def read_only_attr2(self): return 1
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class Bad:
+                @cached_property
+                def f(self) -> int: ...
+            """,
+            runtime="""
+            class Bad:
+                def f(self) -> int: return 1
+            """,
+            error="Bad.f",
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class GoodCachedAttr:
+                @cached_property
+                def f(self) -> int: ...
+            """,
+            runtime="""
+            class GoodCachedAttr:
+                f = 1
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class BadCachedAttr:
+                @cached_property
+                def f(self) -> str: ...
+            """,
+            runtime="""
+            class BadCachedAttr:
+                f = 1
+            """,
+            error="BadCachedAttr.f",
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            from typing import final
+            class FinalGood:
+                @cached_property
+                @final
+                def attr(self) -> int: ...
+            """,
+            runtime="""
+            from functools import cached_property
+            from typing import final
+            class FinalGood:
+                @cached_property
+                @final
+                def attr(self):
+                    return 1
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class FinalBad:
+                @cached_property
+                def attr(self) -> int: ...
+            """,
+            runtime="""
+            from functools import cached_property
+            from typing_extensions import final
+            class FinalBad:
+                @cached_property
+                @final
+                def attr(self):
+                    return 1
+            """,
+            error="FinalBad.attr",
+        )
+
+    @collect_cases
     def test_var(self) -> Iterator[Case]:
         yield Case(stub="x1: int", runtime="x1 = 5", error=None)
         yield Case(stub="x2: str", runtime="x2 = 5", error="x2")
