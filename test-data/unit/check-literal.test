@@ -12,8 +12,12 @@ reveal_type(g1)  # N: Revealed type is "def (x: Literal['A['])"
 
 def f2(x: 'A B') -> None: pass  # E: Invalid type comment or annotation
 def g2(x: Literal['A B']) -> None: pass
+def h2(x: 'A|int') -> None: pass  # E: Name "A" is not defined
+def i2(x: Literal['A|B']) -> None: pass
 reveal_type(f2)  # N: Revealed type is "def (x: Any)"
 reveal_type(g2)  # N: Revealed type is "def (x: Literal['A B'])"
+reveal_type(h2)  # N: Revealed type is "def (x: Union[Any, builtins.int])"
+reveal_type(i2)  # N: Revealed type is "def (x: Literal['A|B'])"
 [builtins fixtures/tuple.pyi]
 [out]
 
