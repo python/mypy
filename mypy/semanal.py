@@ -1435,15 +1435,17 @@ class SemanticAnalyzer(
         for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
                 if len(item.decorators) >= 1:
-                    node = item.decorators[0]
-                    if isinstance(node, MemberExpr):
-                        if node.name == "setter":
+                    first_node = item.decorators[0]
+                    if isinstance(first_node, MemberExpr):
+                        if first_node.name == "setter":
                             # The first item represents the entire property.
                             first_item.var.is_settable_property = True
                             # Get abstractness from the original definition.
                             item.func.abstract_status = first_item.func.abstract_status
-                        if node.name == "deleter":
+                        if first_node.name == "deleter":
                             item.func.abstract_status = first_item.func.abstract_status
+                        for other_node in item.decorators[1:]:
+                            other_node.accept(self)
                     else:
                         self.fail(
                             f"Only supported top decorator is @{first_item.func.name}.setter", item

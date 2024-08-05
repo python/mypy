@@ -173,6 +173,9 @@ class Options:
         # declared with a precise type
         self.warn_return_any = False
 
+        # Report importing or using deprecated features as errors instead of notes.
+        self.report_deprecated_as_error = False
+
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 

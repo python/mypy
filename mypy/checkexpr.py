@@ -354,7 +354,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ref_expr(e)
-        return self.narrow_type_from_binder(e, result)
+        narrowed = self.narrow_type_from_binder(e, result)
+        if isinstance(e.node, TypeInfo):
+            self.chk.check_deprecated(e.node, e)
+        elif isinstance(typ := get_proper_type(narrowed), (CallableType, Overloaded)):
+            self.chk.check_deprecated(typ, e)
+        return narrowed
 
     def analyze_ref_expr(self, e: RefExpr, lvalue: bool = False) -> Type:
         result: Type | None = None
@@ -1475,6 +1480,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             object_type=object_type,
         )
         proper_callee = get_proper_type(callee_type)
+        if isinstance(proper_callee, (CallableType, Overloaded)):
+            self.chk.check_deprecated(proper_callee, e)
         if isinstance(e.callee, RefExpr) and isinstance(proper_callee, CallableType):
             # Cache it for find_isinstance_check()
             if proper_callee.type_guard is not None:
@@ -3252,7 +3259,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Visit member expression (of form e.id)."""
         self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ordinary_member_access(e, is_lvalue)
-        return self.narrow_type_from_binder(e, result)
+        narrowed = self.narrow_type_from_binder(e, result)
+        if isinstance(e.node, TypeInfo):
+            self.chk.warn_deprecated(e.node, e)
+        elif isinstance(typ := get_proper_type(narrowed), (CallableType, Overloaded)):
+            self.chk.warn_deprecated(typ, e)
+        return narrowed
 
     def analyze_ordinary_member_access(self, e: MemberExpr, is_lvalue: bool) -> Type:
         """Analyse member expression or member lvalue."""
@@ -3477,6 +3489,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 assert_never(use_reverse)
             e.method_type = method_type
+            if isinstance(mt := get_proper_type(method_type), (CallableType, Overloaded)):
+                self.chk.check_deprecated(mt, e)
             return result
         else:
             raise RuntimeError(f"Unknown operator {e.op}")
@@ -3793,6 +3807,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
         )
+        if isinstance(mt := get_proper_type(method_type), (CallableType, Overloaded)):
+            self.chk.warn_deprecated(mt, context)
         return self.check_method_call(method, base_type, method_type, args, arg_kinds, context)
 
     def check_union_method_call_by_name(
