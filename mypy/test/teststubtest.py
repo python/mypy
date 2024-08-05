@@ -2490,6 +2490,20 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == "Success: no issues found in 1 module\n"
 
+    def test_config_file_wrong_incomplete_feature(self) -> None:
+        runtime = "x = 1\n"
+        stub = "x: int\n"
+        config_file = "[mypy]\nenable_incomplete_feature = Unpack\n"
+        output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
+        assert output == (
+            "warning: Warning: Unpack is already enabled by default\n"
+            "Success: no issues found in 1 module\n"
+        )
+
+        config_file = "[mypy]\nenable_incomplete_feature = not-a-valid-name\n"
+        with self.assertRaises(SystemExit):
+            run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
+
     def test_no_modules(self) -> None:
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
