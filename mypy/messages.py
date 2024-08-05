@@ -932,7 +932,7 @@ class MessageBuilder:
         else:
             suffix = "are"
         self.fail(
-            "ReadOnly {} TypedDict {} mutated".format(format_key_list(list(sorted(keys))), suffix),
+            "ReadOnly {} TypedDict {} mutated".format(format_key_list(sorted(keys)), suffix),
             code=codes.TYPEDDICT_READONLY_MUTATED,
             context=context,
         )

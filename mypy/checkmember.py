@@ -12,7 +12,6 @@ from mypy.expandtype import (
     freshen_all_functions_type_vars,
 )
 from mypy.maptype import map_instance_to_supertype
-from mypy import errorcodes as codes
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ARG_POS,
