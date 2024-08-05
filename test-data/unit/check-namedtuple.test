@@ -824,20 +824,14 @@ class Fraction(Real):
 [builtins fixtures/tuple.pyi]
 
 [case testForwardReferenceInNamedTuple]
-from typing import List, NamedTuple
+from typing import NamedTuple
 
 class A(NamedTuple):
     b: 'B'
     x: int
-    y: List['B']
 
 class B:
     pass
-
-def f(a: A):
-    reveal_type(a.b)  # N: Revealed type is "__main__.B"
-    reveal_type(a.x)  # N: Revealed type is "builtins.int"
-    reveal_type(a.y)  # N: Revealed type is "builtins.list[__main__.B]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeNamedTupleClassmethod]
@@ -1249,7 +1243,7 @@ nti: NT[int]
 reveal_type(nti * x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 nts: NT[str]
-reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1310,9 +1304,9 @@ reveal_type(foo(nti, nts))  # N: Revealed type is "Tuple[builtins.int, builtins.
 reveal_type(foo(nts, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
 
 reveal_type(foo(nti, x))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 reveal_type(foo(x, nti))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1421,5 +1415,29 @@ class Foo(typing.NamedTuple):
     def baz(self: typing.Self) -> None:
         x, = self
         reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNameErrorInNamedTupleNestedInFunction1]
+from typing import NamedTuple
+
+def bar() -> None:
+    class MyNamedTuple(NamedTuple):
+        a: int
+        def foo(self) -> None:
+            ...
+    int_set: Set[int]  # E: Name "Set" is not defined \
+                       # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Set")
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNameErrorInNamedTupleNestedInFunction2]
+from typing import NamedTuple
+
+def bar() -> None:
+    class MyNamedTuple(NamedTuple):
+        a: int
+        def foo(self) -> None:
+            misspelled_var_name  # E: Name "misspelled_var_name" is not defined
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]

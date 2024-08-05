@@ -94,8 +94,6 @@ def is_recursive_pair(s: Type, t: Type) -> bool:
 
 def tuple_fallback(typ: TupleType) -> Instance:
     """Return fallback type for a tuple."""
-    from mypy.join import join_type_list
-
     info = typ.partial_fallback.type
     if info.fullname != "builtins.tuple":
         return typ.partial_fallback
@@ -114,8 +112,9 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError
         else:
             items.append(item)
-    # TODO: we should really use a union here, tuple types are special.
-    return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
+    return Instance(
+        info, [make_simplified_union(items)], extra_attrs=typ.partial_fallback.extra_attrs
+    )
 
 
 def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
@@ -310,12 +309,14 @@ def bind_self(
     if not func.arg_types:
         # Invalid method, return something.
         return cast(F, func)
-    if func.arg_kinds[0] == ARG_STAR:
+    if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
         # since func will be absorbed by the *args.
-
         # TODO: infer bounds on the type of *args?
+
+        # In the case of **kwargs we should probably emit an error, but
+        # for now we simply skip it, to avoid crashes down the line.
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
 

@@ -17,16 +17,7 @@ import mypy.options
 from mypy.modulefinder import ModuleNotFoundReason
 from mypy.moduleinspect import InspectError, ModuleInspect
 from mypy.stubdoc import ArgSig, FunctionSig
-from mypy.types import (
-    AnyType,
-    NoneType,
-    RawExpressionType,
-    Type,
-    TypeList,
-    TypeStrVisitor,
-    UnboundType,
-    UnionType,
-)
+from mypy.types import AnyType, NoneType, Type, TypeList, TypeStrVisitor, UnboundType, UnionType
 
 # Modules that may fail when imported, or that may have side effects (fully qualified).
 NOT_IMPORTABLE_MODULES = ()
@@ -257,7 +248,9 @@ class AnnotationPrinter(TypeStrVisitor):
         if fullname == "typing.Union":
             return " | ".join([item.accept(self) for item in t.args])
         if fullname == "typing.Optional":
-            return f"{t.args[0].accept(self)} | None"
+            if len(t.args) == 1:
+                return f"{t.args[0].accept(self)} | None"
+            return self.stubgen.add_name("_typeshed.Incomplete")
         if fullname in TYPING_BUILTIN_REPLACEMENTS:
             s = self.stubgen.add_name(TYPING_BUILTIN_REPLACEMENTS[fullname], require=True)
         if self.known_modules is not None and "." in s:
@@ -300,11 +293,12 @@ class AnnotationPrinter(TypeStrVisitor):
         The main difference from list_str is the preservation of quotes for string
         arguments
         """
+        types = ["builtins.bytes", "builtins.str"]
         res = []
         for arg in args:
             arg_str = arg.accept(self)
-            if isinstance(arg, RawExpressionType):
-                res.append(repr(arg.literal_value))
+            if isinstance(arg, UnboundType) and arg.original_str_fallback in types:
+                res.append(f"'{arg_str}'")
             else:
                 res.append(arg_str)
         return ", ".join(res)

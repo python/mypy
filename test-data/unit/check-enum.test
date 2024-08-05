@@ -1010,7 +1010,7 @@ _empty: Final = Empty.token
 def func(x: Union[int, None, Empty] = _empty) -> int:
     boom = x + 42       # E: Unsupported left operand type for + ("None") \
                         # E: Unsupported left operand type for + ("Empty") \
-                        # N: Left operand is of type "Union[int, None, Empty]"
+                        # N: Left operand is of type "Union[int, Empty, None]"
     if x is _empty:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0
@@ -1056,7 +1056,7 @@ _empty = Empty.token
 def func(x: Union[int, None, Empty] = _empty) -> int:
     boom = x + 42       # E: Unsupported left operand type for + ("None") \
                         # E: Unsupported left operand type for + ("Empty") \
-                        # N: Left operand is of type "Union[int, None, Empty]"
+                        # N: Left operand is of type "Union[int, Empty, None]"
     if x is _empty:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0
@@ -1084,7 +1084,7 @@ _empty = Empty.token
 def func(x: Union[int, None, Empty] = _empty) -> int:
     boom = x + 42       # E: Unsupported left operand type for + ("None") \
                         # E: Unsupported left operand type for + ("Empty") \
-                        # N: Left operand is of type "Union[int, None, Empty]"
+                        # N: Left operand is of type "Union[int, Empty, None]"
     if x is _empty:
         reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0

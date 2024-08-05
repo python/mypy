@@ -248,3 +248,41 @@ section of the docs has a full description with an example, but in short, you wi
 need to give each TypedDict the same key where each value has a unique
 :ref:`Literal type <literal_types>`. Then, check that key to distinguish
 between your TypedDicts.
+
+Inline TypedDict types
+----------------------
+
+.. note::
+
+    This is an experimental (non-standard) feature. Use
+    ``--enable-incomplete-feature=InlineTypedDict`` to enable.
+
+Sometimes you may want to define a complex nested JSON schema, or annotate
+a one-off function that returns a TypedDict. In such cases it may be convenient
+to use inline TypedDict syntax. For example:
+
+.. code-block:: python
+
+    def test_values() -> {"int": int, "str": str}:
+        return {"int": 42, "str": "test"}
+
+    class Response(TypedDict):
+        status: int
+        msg: str
+        # Using inline syntax here avoids defining two additional TypedDicts.
+        content: {"items": list[{"key": str, "value": str}]}
+
+Inline TypedDicts can also by used as targets of type aliases, but due to
+ambiguity with a regular variables it is only allowed for (newer) explicit
+type alias forms:
+
+.. code-block:: python
+
+    from typing import TypeAlias
+
+    X = {"a": int, "b": int}  # creates a variable with type dict[str, type[int]]
+    Y: TypeAlias = {"a": int, "b": int}  # creates a type alias
+    type Z = {"a": int, "b": int}  # same as above (Python 3.12+ only)
+
+Also, due to incompatibility with runtime type-checking it is strongly recommended
+to *not* use inline syntax in union types.

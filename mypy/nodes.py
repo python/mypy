@@ -175,6 +175,8 @@ RUNTIME_PROTOCOL_DECOS: Final = (
     "typing_extensions.runtime_checkable",
 )
 
+LAMBDA_NAME: Final = "<lambda>"
+
 
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
@@ -1653,10 +1655,10 @@ class TypeAliasStmt(Statement):
 
     name: NameExpr
     type_args: list[TypeParam]
-    value: Expression  # Will get translated into a type
+    value: LambdaExpr  # Return value will get translated into a type
     invalid_recursive_alias: bool
 
-    def __init__(self, name: NameExpr, type_args: list[TypeParam], value: Expression) -> None:
+    def __init__(self, name: NameExpr, type_args: list[TypeParam], value: LambdaExpr) -> None:
         super().__init__()
         self.name = name
         self.type_args = type_args
@@ -2262,7 +2264,7 @@ class LambdaExpr(FuncItem, Expression):
 
     @property
     def name(self) -> str:
-        return "<lambda>"
+        return LAMBDA_NAME
 
     def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
@@ -3163,9 +3165,6 @@ class TypeInfo(SymbolNode):
                     self.type_var_tuple_prefix = i
                     self.type_var_tuple_suffix = len(self.defn.type_vars) - i - 1
                 self.type_vars.append(vd.name)
-        assert not (
-            self.has_param_spec_type and self.has_type_var_tuple_type
-        ), "Mixing type var tuples and param specs not supported yet"
 
     @property
     def name(self) -> str:
@@ -3481,6 +3480,7 @@ class FakeInfo(TypeInfo):
 VAR_NO_INFO: Final[TypeInfo] = FakeInfo("Var is lacking info")
 CLASSDEF_NO_INFO: Final[TypeInfo] = FakeInfo("ClassDef is lacking info")
 FUNC_NO_INFO: Final[TypeInfo] = FakeInfo("FuncBase for non-methods lack info")
+MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
 
 
 class TypeAlias(SymbolNode):

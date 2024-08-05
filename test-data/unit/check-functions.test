@@ -1779,10 +1779,11 @@ def Arg(x, y): pass
 F = Callable[[Arg(int, 'x')], int]  # E: Invalid argument constructor "__main__.Arg"
 
 [case testCallableParsingFromExpr]
-
+# flags: --python-version 3.9
 from typing import Callable, List
 from mypy_extensions import Arg, VarArg, KwArg
 import mypy_extensions
+import types  # Needed for type checking
 
 def WrongArg(x, y): return y
 # Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
@@ -1799,10 +1800,22 @@ L = Callable[[Arg(name='x', type=int)], int] # ok
 # I have commented out the following test because I don't know how to expect the "defined here" note part of the error.
 # M = Callable[[Arg(gnome='x', type=int)], int]   E: Invalid type alias: expression is not a valid type   E: Unexpected keyword argument "gnome" for "Arg"
 N = Callable[[Arg(name=None, type=int)], int] # ok
-O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias: expression is not a valid type  # E: Value of type "int" is not indexable  # E: Type expected within [...] # E: The type "Type[List[Any]]" is not generic and not indexable
+O = Callable[[List[Arg(int)]], int]  # E: Invalid type alias: expression is not a valid type \
+                                     # E: Value of type "int" is not indexable \
+                                     # E: Type expected within [...]
 P = Callable[[mypy_extensions.VarArg(int)], int] # ok
-Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias: expression is not a valid type  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "type"
-R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias: expression is not a valid type  # E: Value of type "int" is not indexable  # E: "Arg" gets multiple values for keyword argument "name"
+Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias: expression is not a valid type \
+                                         # E: Value of type "int" is not indexable \
+                                         # E: "Arg" gets multiple values for keyword argument "type"
+R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias: expression is not a valid type \
+                                              # E: Value of type "int" is not indexable \
+                                              # E: "Arg" gets multiple values for keyword argument "name"
+
+
+
+
+
+
 
 [builtins fixtures/dict.pyi]
 
@@ -2251,13 +2264,26 @@ def dec(f: Callable[[A, str], None]) -> Callable[[A, int], None]: pass
 [out]
 
 [case testUnknownFunctionNotCallable]
+from typing import TypeVar
+
 def f() -> None:
     pass
 def g(x: int) -> None:
     pass
 h = f if bool() else g
-reveal_type(h) # N: Revealed type is "builtins.function"
-h(7) # E: Cannot call function of unknown type
+reveal_type(h) # N: Revealed type is "Union[def (), def (x: builtins.int)]"
+h(7) # E: Too many arguments for "f"
+
+T = TypeVar("T")
+def join(x: T, y: T) -> T: ...
+
+h2 = join(f, g)
+reveal_type(h2)  # N: Revealed type is "builtins.function"
+h2(7)  # E: Cannot call function of unknown type
+
+h3 = join(g, f)
+reveal_type(h3)  # N: Revealed type is "builtins.function"
+h3(7)  # E: Cannot call function of unknown type
 [builtins fixtures/bool.pyi]
 
 [case testFunctionWithNameUnderscore]
@@ -3366,4 +3392,57 @@ class C(B):
         x: int,
     ) -> None:
         ...
+[builtins fixtures/tuple.pyi]
+
+[case testLambdaAlwaysAllowed]
+# flags: --disallow-untyped-calls
+from typing import Callable, Optional
+
+def func() -> Optional[str]: ...
+var: Optional[str]
+
+factory: Callable[[], Optional[str]]
+for factory in (
+    lambda: var,
+    func,
+):
+    reveal_type(factory)  # N: Revealed type is "def () -> Union[builtins.str, None]"
+    var = factory()
+[builtins fixtures/tuple.pyi]
+
+[case testLambdaInDeferredDecoratorNoCrash]
+def foo(x):
+    pass
+
+class Bar:
+    def baz(self, x):
+        pass
+
+class Qux(Bar):
+    @foo(lambda x: None)
+    def baz(self, x) -> None:
+        pass
+[builtins fixtures/tuple.pyi]
+
+[case testGeneratorInDeferredDecoratorNoCrash]
+from typing import Protocol, TypeVar
+
+T = TypeVar("T", covariant=True)
+
+class SupportsNext(Protocol[T]):
+    def __next__(self) -> T: ...
+
+def next(i: SupportsNext[T]) -> T: ...
+
+def foo(x):
+    pass
+
+class Bar:
+    def baz(self, x):
+        pass
+
+class Qux(Bar):
+    @next(f for f in [foo])
+    def baz(self, x) -> None:
+        pass
 [builtins fixtures/tuple.pyi]

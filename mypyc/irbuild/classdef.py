@@ -7,8 +7,6 @@ from abc import abstractmethod
 from typing import Callable, Final
 
 from mypy.nodes import (
-    PARAM_SPEC_KIND,
-    TYPE_VAR_KIND,
     TYPE_VAR_TUPLE_KIND,
     AssignmentStmt,
     CallExpr,
@@ -28,7 +26,7 @@ from mypy.nodes import (
     TypeParam,
     is_class_var,
 )
-from mypy.types import ENUM_REMOVED_PROPS, Instance, RawExpressionType, get_proper_type
+from mypy.types import ENUM_REMOVED_PROPS, Instance, UnboundType, get_proper_type
 from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
@@ -57,7 +55,7 @@ from mypyc.ir.rtypes import (
     is_optional_type,
     object_rprimitive,
 )
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, create_type_params
 from mypyc.irbuild.function import (
     gen_property_getter_ir,
     gen_property_setter_ir,
@@ -475,35 +473,20 @@ def make_generic_base_class(
 ) -> Value:
     """Construct Generic[...] base class object for a new-style generic class (Python 3.12)."""
     mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
-    tvs = []
-    type_var_imported: Value | None = None
-    for type_param in type_args:
-        unpack = False
-        if type_param.kind == TYPE_VAR_KIND:
-            if type_var_imported:
-                # Reuse previously imported value as a minor optimization
-                tvt = type_var_imported
-            else:
-                tvt = builder.py_get_attr(mod, "TypeVar", line)
-                type_var_imported = tvt
-        elif type_param.kind == TYPE_VAR_TUPLE_KIND:
-            tvt = builder.py_get_attr(mod, "TypeVarTuple", line)
-            unpack = True
-        else:
-            assert type_param.kind == PARAM_SPEC_KIND
-            tvt = builder.py_get_attr(mod, "ParamSpec", line)
-        tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
-        builder.init_type_var(tv, type_param.name, line)
-        if unpack:
+    tvs = create_type_params(builder, mod, type_args, line)
+    args = []
+    for tv, type_param in zip(tvs, type_args):
+        if type_param.kind == TYPE_VAR_TUPLE_KIND:
             # Evaluate *Ts for a TypeVarTuple
             it = builder.call_c(iter_op, [tv], line)
             tv = builder.call_c(next_op, [it], line)
-        tvs.append(tv)
+        args.append(tv)
+
     gent = builder.py_get_attr(mod, "Generic", line)
-    if len(tvs) == 1:
-        arg = tvs[0]
+    if len(args) == 1:
+        arg = args[0]
     else:
-        arg = builder.new_tuple(tvs, line)
+        arg = builder.new_tuple(args, line)
 
     base = builder.call_c(py_get_item_op, [gent, arg], line)
     return base
@@ -657,15 +640,16 @@ def add_non_ext_class_attr_ann(
     if typ is None:
         # FIXME: if get_type_info is not provided, don't fall back to stmt.type?
         ann_type = get_proper_type(stmt.type)
-        if isinstance(stmt.unanalyzed_type, RawExpressionType) and isinstance(
-            stmt.unanalyzed_type.literal_value, str
+        if (
+            isinstance(stmt.unanalyzed_type, UnboundType)
+            and stmt.unanalyzed_type.original_str_expr is not None
         ):
             # Annotation is a forward reference, so don't attempt to load the actual
             # type and load the string instead.
             #
             # TODO: is it possible to determine whether a non-string annotation is
             # actually a forward reference due to the __annotations__ future?
-            typ = builder.load_str(stmt.unanalyzed_type.literal_value)
+            typ = builder.load_str(stmt.unanalyzed_type.original_str_expr)
         elif isinstance(ann_type, Instance):
             typ = load_type(builder, ann_type.type, stmt.line)
         else:

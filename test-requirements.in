@@ -8,8 +8,6 @@ black==24.3.0  # must match version in .pre-commit-config.yaml
 filelock>=3.3.0
 # lxml 4.9.3 switched to manylinux_2_28, the wheel builder still uses manylinux2014
 lxml>=4.9.1,<4.9.3; (python_version<'3.11' or sys_platform!='win32') and python_version<'3.12'
-pre-commit
-pre-commit-hooks==4.5.0
 psutil>=4.0
 pytest>=8.1.0
 pytest-xdist>=1.34.0

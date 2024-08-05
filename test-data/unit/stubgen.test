@@ -361,6 +361,15 @@ def g(x, *, y=1, z=2): ...
 def f(x, *, y: int = 1) -> None: ...
 def g(x, *, y: int = 1, z: int = 2) -> None: ...
 
+[case testKeywordOnlyArg_inspect]
+def f(x, *, y=1): ...
+def g(x, *, y=1, z=2): ...
+def h(x, *, y, z=2): ...
+[out]
+def f(x, *, y: int = ...): ...
+def g(x, *, y: int = ..., z: int = ...): ...
+def h(x, *, y, z: int = ...): ...
+
 [case testProperty]
 class A:
     @property
@@ -4366,3 +4375,33 @@ class Foo(Enum):
 class Bar(Enum):
     A = ...
     B = ...
+
+[case testGracefullyHandleInvalidOptionalUsage]
+from typing import Optional
+
+x: Optional  # invalid
+y: Optional[int]  # valid
+z: Optional[int, str]  # invalid
+w: Optional[int | str]  # valid
+r: Optional[type[int | str]]
+
+X = Optional
+Y = Optional[int]
+Z = Optional[int, str]
+W = Optional[int | str]
+R = Optional[type[int | str]]
+
+[out]
+from _typeshed import Incomplete
+from typing import Optional
+
+x: Incomplete
+y: int | None
+z: Incomplete
+w: int | str | None
+r: type[int | str] | None
+X = Optional
+Y = int | None
+Z = Incomplete
+W = int | str | None
+R = type[int | str] | None

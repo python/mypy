@@ -17,6 +17,10 @@ _T3 = TypeVar("_T3")
 _T4 = TypeVar("_T4")
 _T5 = TypeVar("_T5")
 _T6 = TypeVar("_T6")
+_T7 = TypeVar("_T7")
+_T8 = TypeVar("_T8")
+_T9 = TypeVar("_T9")
+_T10 = TypeVar("_T10")
 
 _Step: TypeAlias = SupportsFloat | SupportsInt | SupportsIndex | SupportsComplex
 
@@ -214,6 +218,60 @@ class product(Iterator[_T_co]):
         /,
     ) -> product[tuple[_T1, _T2, _T3, _T4, _T5, _T6]]: ...
     @overload
+    def __new__(
+        cls,
+        iter1: Iterable[_T1],
+        iter2: Iterable[_T2],
+        iter3: Iterable[_T3],
+        iter4: Iterable[_T4],
+        iter5: Iterable[_T5],
+        iter6: Iterable[_T6],
+        iter7: Iterable[_T7],
+        /,
+    ) -> product[tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]]: ...
+    @overload
+    def __new__(
+        cls,
+        iter1: Iterable[_T1],
+        iter2: Iterable[_T2],
+        iter3: Iterable[_T3],
+        iter4: Iterable[_T4],
+        iter5: Iterable[_T5],
+        iter6: Iterable[_T6],
+        iter7: Iterable[_T7],
+        iter8: Iterable[_T8],
+        /,
+    ) -> product[tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]: ...
+    @overload
+    def __new__(
+        cls,
+        iter1: Iterable[_T1],
+        iter2: Iterable[_T2],
+        iter3: Iterable[_T3],
+        iter4: Iterable[_T4],
+        iter5: Iterable[_T5],
+        iter6: Iterable[_T6],
+        iter7: Iterable[_T7],
+        iter8: Iterable[_T8],
+        iter9: Iterable[_T9],
+        /,
+    ) -> product[tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9]]: ...
+    @overload
+    def __new__(
+        cls,
+        iter1: Iterable[_T1],
+        iter2: Iterable[_T2],
+        iter3: Iterable[_T3],
+        iter4: Iterable[_T4],
+        iter5: Iterable[_T5],
+        iter6: Iterable[_T6],
+        iter7: Iterable[_T7],
+        iter8: Iterable[_T8],
+        iter9: Iterable[_T9],
+        iter10: Iterable[_T10],
+        /,
+    ) -> product[tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9, _T10]]: ...
+    @overload
     def __new__(cls, *iterables: Iterable[_T1], repeat: int = 1) -> product[tuple[_T1, ...]]: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> _T_co: ...
@@ -268,6 +326,10 @@ if sys.version_info >= (3, 10):
 
 if sys.version_info >= (3, 12):
     class batched(Iterator[tuple[_T_co, ...]], Generic[_T_co]):
-        def __new__(cls, iterable: Iterable[_T_co], n: int) -> Self: ...
+        if sys.version_info >= (3, 13):
+            def __new__(cls, iterable: Iterable[_T_co], n: int, *, strict: bool = False) -> Self: ...
+        else:
+            def __new__(cls, iterable: Iterable[_T_co], n: int) -> Self: ...
+
         def __iter__(self) -> Self: ...
         def __next__(self) -> tuple[_T_co, ...]: ...

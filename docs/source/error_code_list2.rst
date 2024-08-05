@@ -389,7 +389,7 @@ Example:
         #        Are you missing an await?
         asyncio.create_task(f())
 
-You can assign the value to a temporary, otherwise unused to variable to
+You can assign the value to a temporary, otherwise unused variable to
 silence the error:
 
 .. code-block:: python

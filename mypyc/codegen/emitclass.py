@@ -734,7 +734,7 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_visit(f"self->{emitter.attr(attr)}", rtype)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("_PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
+        emitter.emit_line("PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -757,7 +757,7 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("_PyObject_ClearManagedDict((PyObject *)self);")
+        emitter.emit_line("PyObject_ClearManagedDict((PyObject *)self);")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that

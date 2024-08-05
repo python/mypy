@@ -454,11 +454,13 @@ A[int, str, int]() # E: Type application has too many types (2 expected)
 [out]
 
 [case testInvalidTypeApplicationType]
+import types
 a: A
 class A: pass
 a[A]()  # E: Value of type "A" is not indexable
 A[A]()  # E: The type "Type[A]" is not generic and not indexable
-[out]
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypeApplicationArgTypes]
 from typing import TypeVar, Generic
@@ -513,8 +515,9 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
+import types
 type[int] # this was crashing, see #2302 (comment)  # E: The type "Type[type]" is not generic and not indexable
-[out]
+[builtins fixtures/tuple.pyi]
 
 
 -- Generic type aliases
@@ -624,6 +627,7 @@ reveal_type(y)
 X = T # Error
 
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:9:5: error: "Node" expects 2 type arguments, but 1 given
 main:11:5: error: "Node" expects 2 type arguments, but 3 given
@@ -3027,7 +3031,7 @@ def dec(f: Callable[[T], S], g: Callable[[T], U]) -> Callable[[T], Tuple[S, U]]:
 def id(x: V) -> V:
     ...
 
-reveal_type(dec(id, id))  # N: Revealed type is "def [T] (T`7) -> Tuple[T`7, T`7]"
+reveal_type(dec(id, id))  # N: Revealed type is "def [T] (T`1) -> Tuple[T`1, T`1]"
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericEllipsisSelfSpecialCase]
@@ -3263,8 +3267,8 @@ def transform(
 
 def dec(f: Callable[W, U]) -> Callable[W, U]: ...
 def dec2(f: Callable[Concatenate[str, W], U]) -> Callable[Concatenate[bytes, W], U]: ...
-reveal_type(transform(dec))  # N: Revealed type is "def [P, T] (def (builtins.int, *P.args, **P.kwargs) -> T`9) -> def (builtins.int, *P.args, **P.kwargs) -> T`9"
-reveal_type(transform(dec2))  # N: Revealed type is "def [W, T] (def (builtins.int, builtins.str, *W.args, **W.kwargs) -> T`13) -> def (builtins.int, builtins.bytes, *W.args, **W.kwargs) -> T`13"
+reveal_type(transform(dec))  # N: Revealed type is "def [P, T] (def (builtins.int, *P.args, **P.kwargs) -> T`3) -> def (builtins.int, *P.args, **P.kwargs) -> T`3"
+reveal_type(transform(dec2))  # N: Revealed type is "def [W, T] (def (builtins.int, builtins.str, *W.args, **W.kwargs) -> T`7) -> def (builtins.int, builtins.bytes, *W.args, **W.kwargs) -> T`7"
 [builtins fixtures/tuple.pyi]
 
 [case testNoAccidentalVariableClashInNestedGeneric]
@@ -3318,8 +3322,8 @@ def id(x: U) -> U: ...
 def either(x: U, y: U) -> U: ...
 def pair(x: U, y: V) -> Tuple[U, V]: ...
 
-reveal_type(dec(id))  # N: Revealed type is "def [T] (T`9) -> builtins.list[T`9]"
-reveal_type(dec(either))  # N: Revealed type is "def [T] (T`11, T`11) -> builtins.list[T`11]"
+reveal_type(dec(id))  # N: Revealed type is "def [T] (T`3) -> builtins.list[T`3]"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (T`5, T`5) -> builtins.list[T`5]"
 reveal_type(dec(pair))  # N: Revealed type is "def [U, V] (U`-1, V`-2) -> builtins.list[Tuple[U`-1, V`-2]]"
 [builtins fixtures/tuple.pyi]
 
@@ -3337,8 +3341,8 @@ V = TypeVar("V")
 def id(x: U) -> U: ...
 def either(x: U, y: U) -> U: ...
 
-reveal_type(dec(id))  # N: Revealed type is "def [T] (builtins.list[T`9]) -> T`9"
-reveal_type(dec(either))  # N: Revealed type is "def [T] (builtins.list[T`11], builtins.list[T`11]) -> T`11"
+reveal_type(dec(id))  # N: Revealed type is "def [T] (builtins.list[T`3]) -> T`3"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (builtins.list[T`5], builtins.list[T`5]) -> T`5"
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericVariadicPopOff]
