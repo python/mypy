@@ -1601,14 +1601,24 @@ _testSpecialTypingProtocols.py:8: error: Statement is unreachable
 [case testEnumValueWithPlaceholderNodeType]
 # https://github.com/python/mypy/issues/11971
 from enum import Enum
-from typing import Callable, Dict
+from typing import Any, Callable, Dict
 class Foo(Enum):
     Bar: Foo = Callable[[str], None]
-    Baz: Foo = Callable[[Dict[str, "Missing"]], None]
+    Baz: Any = Callable[[Dict[str, "Missing"]], None]
+
+reveal_type(Foo.Bar)
+reveal_type(Foo.Bar.value)  # this should probably not be "Foo" https://typing.readthedocs.io/en/latest/spec/enums.html#member-values
+reveal_type(Foo.Baz)
+reveal_type(Foo.Baz.value)
 [out]
+_testEnumValueWithPlaceholderNodeType.py:5: error: Type annotations are not allowed for enum members
 _testEnumValueWithPlaceholderNodeType.py:5: error: Incompatible types in assignment (expression has type "<typing special form>", variable has type "Foo")
-_testEnumValueWithPlaceholderNodeType.py:6: error: Incompatible types in assignment (expression has type "<typing special form>", variable has type "Foo")
+_testEnumValueWithPlaceholderNodeType.py:6: error: Type annotations are not allowed for enum members
 _testEnumValueWithPlaceholderNodeType.py:6: error: Name "Missing" is not defined
+_testEnumValueWithPlaceholderNodeType.py:8: note: Revealed type is "Literal[_testEnumValueWithPlaceholderNodeType.Foo.Bar]?"
+_testEnumValueWithPlaceholderNodeType.py:9: note: Revealed type is "_testEnumValueWithPlaceholderNodeType.Foo"
+_testEnumValueWithPlaceholderNodeType.py:10: note: Revealed type is "Literal[_testEnumValueWithPlaceholderNodeType.Foo.Baz]?"
+_testEnumValueWithPlaceholderNodeType.py:11: note: Revealed type is "Any"
 
 [case testTypeshedRecursiveTypesExample]
 from typing import List, Union

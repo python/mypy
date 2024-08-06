@@ -1,39 +1,3 @@
-[case testMatchLiteralPatternEnumWithNonMember-xfail]
-from enum import Enum, nonmember
-from typing import NoReturn
-def assert_never(x: NoReturn) -> None: ...
-
-class int:
-    def __new__(cls, value: int): pass
-
-class Medal(int, Enum):
-    prize: str = nonmember("nothing")
-
-    def __new__(cls, value: int, prize: str | None = None) -> Medal:
-        enum = int.__new__(cls, value)
-        enum._value_ = value
-        if prize is not None:
-            enum.prize = prize
-        return enum
-
-    gold = (1, 'cash prize')
-    silver = (2, 'sponsorship')
-    bronze = (3,)
-
-m: Medal
-
-match m:
-    case Medal.gold:
-        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
-    case Medal.silver:
-        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver]"
-    case Medal.bronze:
-        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
-    case _ as unreachable:
-        assert_never(unreachable)
-
-[builtins fixtures/tuple.pyi]
-
 [case testTryStarSimple]
 try:
     pass
