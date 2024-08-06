@@ -3437,10 +3437,10 @@ class SemanticAnalyzer(
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         # We cannot use s.type, because analyze_simple_literal_type() will set it.
         explicit = s.unanalyzed_type is not None
-        final_type = self.unwrap_final_type(s.unanalyzed_type)
-        if final_type is not None:
+        if self.is_final_type(s.unanalyzed_type):
             # We need to exclude bare Final.
-            if not final_type.args:
+            assert isinstance(s.unanalyzed_type, UnboundType)
+            if not s.unanalyzed_type.args:
                 explicit = False
 
         if s.rvalue:
@@ -3506,19 +3506,19 @@ class SemanticAnalyzer(
 
         Returns True if Final[...] was present.
         """
-        final_type = self.unwrap_final_type(s.unanalyzed_type)
-        if final_type is None:
+        if not s.unanalyzed_type or not self.is_final_type(s.unanalyzed_type):
             return False
-        if len(final_type.args) > 1:
-            self.fail("Final[...] takes at most one type argument", final_type)
+        assert isinstance(s.unanalyzed_type, UnboundType)
+        if len(s.unanalyzed_type.args) > 1:
+            self.fail("Final[...] takes at most one type argument", s.unanalyzed_type)
         invalid_bare_final = False
-        if not final_type.args:
+        if not s.unanalyzed_type.args:
             s.type = None
             if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
                 invalid_bare_final = True
                 self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
         else:
-            s.type = final_type.args[0]
+            s.type = s.unanalyzed_type.args[0]
 
         if s.type is not None and self.is_classvar(s.type):
             self.fail("Variable should not be annotated with both ClassVar and Final", s)
@@ -4937,18 +4937,13 @@ class SemanticAnalyzer(
             return False
         return sym.node.fullname == "typing.ClassVar"
 
-    def unwrap_final_type(self, typ: Type | None) -> UnboundType | None:
-        if typ is None:
-            return None
-        typ = typ.resolve_string_annotation()
+    def is_final_type(self, typ: Type | None) -> bool:
         if not isinstance(typ, UnboundType):
-            return None
+            return False
         sym = self.lookup_qualified(typ.name, typ)
         if not sym or not sym.node:
-            return None
-        if sym.node.fullname in FINAL_TYPE_NAMES:
-            return typ
-        return None
+            return False
+        return sym.node.fullname in FINAL_TYPE_NAMES
 
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail(message_registry.CLASS_VAR_OUTSIDE_OF_CLASS, context)

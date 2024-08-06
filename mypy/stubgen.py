@@ -1772,7 +1772,7 @@ def parse_options(args: list[str]) -> Options:
         action="store_true",
         help="don't perform semantic analysis of sources, just parse them "
         "(only applies to Python modules, might affect quality of stubs. "
-        "Not compatible with --inspect)",
+        "Not compatible with --inspect-mode)",
     )
     parser.add_argument(
         "--inspect-mode",

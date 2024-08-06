@@ -1442,18 +1442,6 @@ reveal_type(x) # N: Revealed type is "TypedDict('__main__.X', {'a': TypedDict('_
 reveal_type(x['a']['b']) # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
-[case testTypedDictForwardReferenceCacheFineGrained]
-# flags: --cache-fine-grained
-from mypy_extensions import TypedDict
-class A(TypedDict):
-    b: "B"
-class B(TypedDict):
-    c: "C"
-class C(TypedDict):
-    d: "D"
-class D:
-    pass
-
 [case testSelfRecursiveTypedDictInheriting]
 from mypy_extensions import TypedDict
 
@@ -2392,6 +2380,14 @@ class Inner(Generic[T2]): pass
 
 class ForceDeferredEval: pass
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictRequiredUnimportedAny]
+# flags: --disallow-any-unimported
+from typing import NotRequired, TypedDict
+from nonexistent import Foo  # type: ignore[import-not-found]
+class Bar(TypedDict):
+    foo: NotRequired[Foo]  # E: Type of variable becomes "Any" due to an unfollowed import
 [typing fixtures/typing-typeddict.pyi]
 
 -- Required[]
@@ -3581,6 +3577,24 @@ class Test:
     def h(self, **params: Unpack[Params]) -> None:
         run(test2, other="yes", **params)
         run(test2, other=0, **params)  # E: Argument "other" to "run" has incompatible type "int"; expected "str"
+[builtins fixtures/tuple.pyi]
+
+[case testTypedDictUnpackSingleWithSubtypingNoCrash]
+from typing import Callable
+from typing_extensions import TypedDict, Unpack
+
+class Kwargs(TypedDict):
+    name: str
+
+def f(**kwargs: Unpack[Kwargs]) -> None:
+    pass
+
+class C:
+    d: Callable[[Unpack[Kwargs]], None]
+
+# TODO: it is an old question whether we should allow this, for now simply don't crash.
+class D(C):
+    d = f
 [builtins fixtures/tuple.pyi]
 
 [case testTypedDictInlineNoOldStyleAlias]
