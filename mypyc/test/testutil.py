@@ -236,12 +236,12 @@ def fudge_dir_mtimes(dir: str, delta: int) -> None:
 
 
 def replace_word_size(text: list[str]) -> list[str]:
-    """Replace WORDSIZE with platform specific word sizes"""
+    """Replace WORD_SIZE with platform specific word sizes"""
     result = []
     for line in text:
         index = line.find("WORD_SIZE")
         if index != -1:
-            # get 'WORDSIZE*n' token
+            # get 'WORD_SIZE*n' token
             word_size_token = line[index:].split()[0]
             n = int(word_size_token[10:])
             replace_str = str(PLATFORM_SIZE * n)
