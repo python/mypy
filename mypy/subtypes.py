@@ -462,6 +462,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, TupleType):
+            if right.erased_typevartuple:
+                return True  # treat it like Any
+
             if len(right.items) == 1:
                 # Non-normalized Tuple type (may be left after semantic analysis
                 # because semanal_typearg visitor is not a type translator).
@@ -784,6 +787,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             return False
         elif isinstance(right, TupleType):
+            if right.erased_typevartuple:
+                return True  # treat it like Any
             # If right has a variadic unpack this needs special handling. If there is a TypeVarTuple
             # unpack, item count must coincide. If the left has variadic unpack but right
             # doesn't have one, we will fall through to False down the line.
@@ -824,6 +829,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right_unpack = right.items[right_unpack_index]
         assert isinstance(right_unpack, UnpackType)
         right_unpacked = get_proper_type(right_unpack.type)
+        if isinstance(right_unpacked, TupleType) and right_unpacked.erased_typevartuple:
+            return True  # treat it as Any
         if not isinstance(right_unpacked, Instance):
             # This case should be handled by the caller.
             return False
@@ -1602,6 +1609,15 @@ def are_parameters_compatible(
     if are_trivial_parameters(right) and not is_proper_subtype:
         return True
     trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
+    # erased typevartuples, like erased paramspecs or erased typevars are trivial
+    if right_star and isinstance(right_star.typ, UnpackType):
+        right_star_inner_type = get_proper_type(right_star.typ.type)
+        trivial_varargs = (
+            isinstance(right_star_inner_type, TupleType)
+            and right_star_inner_type.erased_typevartuple
+        )
+    else:
+        trivial_varargs = False
 
     if (
         right.arg_kinds == [ARG_STAR]
@@ -1644,7 +1660,7 @@ def are_parameters_compatible(
         if right_arg is None:
             return False
         if left_arg is None:
-            return not allow_partial_overlap and not trivial_suffix
+            return not allow_partial_overlap and not trivial_suffix and not trivial_varargs
         return not is_compat(right_arg.typ, left_arg.typ)
 
     if _incompatible(left_star, right_star) or _incompatible(left_star2, right_star2):
@@ -1673,7 +1689,7 @@ def are_parameters_compatible(
     #           arguments. Get all further positional args of left, and make sure
     #           they're more general than the corresponding member in right.
     # TODO: are we handling UnpackType correctly here?
-    if right_star is not None and not trivial_suffix:
+    if right_star is not None and not trivial_suffix and not trivial_varargs:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)
         assert right_by_position is not None
