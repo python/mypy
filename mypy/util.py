@@ -451,10 +451,10 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 8):  # noqa: UP036
+    if sys.version_info[:2] < (3, 9):
         sys.exit(
-            "Running {name} with Python 3.7 or lower is not supported; "
-            "please upgrade to 3.8 or newer".format(name=program)
+            "Running {name} with Python 3.8 or lower is not supported; "
+            "please upgrade to 3.9 or newer".format(name=program)
         )
 
 
