@@ -344,7 +344,8 @@ class A:
 class B:
     y: str
 a: Union[A, B]
-a.x  # E: Item "B" of "Union[A, B]" has no attribute "x"  [union-attr]
+a.x  # E: Item "B" of "Union[A, B]" has no attribute "x"  [union-attr] \
+     # N: You can use 'if hasattr( a, 'x'):' to guard against missing attribute error
 
 [case testErrorCodeFunctionHasNoAnnotation]
 # flags: --disallow-untyped-defs
