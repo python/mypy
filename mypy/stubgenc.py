@@ -11,6 +11,7 @@ import importlib
 import inspect
 import keyword
 import os.path
+import sys
 from types import FunctionType, ModuleType
 from typing import Any, Callable, Mapping
 
@@ -241,7 +242,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.module_name = module_name
         if self.is_c_module:
             # Add additional implicit imports.
-            # C-extensions are given more lattitude since they do not import the typing module.
+            # C-extensions are given more latitude since they do not import the typing module.
             self.known_imports.update(
                 {
                     "typing": [
@@ -847,13 +848,28 @@ class InspectionStubGenerator(BaseStubGenerator):
             else:
                 attrs.append((attr, value))
 
+        # Gets annotations if they exist
+        if sys.version_info >= (3, 10):
+            annotations = inspect.get_annotations(cls)
+        else:
+            annotations = getattr(cls, "__annotations__", {})
+
         for attr, value in attrs:
             if attr == "__hash__" and value is None:
                 # special case for __hash__
                 continue
-            prop_type_name = self.strip_or_import(self.get_type_annotation(value))
-            classvar = self.add_name("typing.ClassVar")
-            static_properties.append(f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ...")
+            if attr in annotations:
+                prop_type_name = self.strip_or_import(annotations[attr])
+                static_properties.append(f"{self._indent}{attr}: {prop_type_name} = ...")
+
+                if prop_type_name.startswith("ClassVar["):
+                    self.add_name("typing.ClassVar")
+            else:
+                prop_type_name = self.strip_or_import(self.get_type_annotation(value))
+                classvar = self.add_name("typing.ClassVar")
+                static_properties.append(
+                    f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ..."
+                )
 
         self.dedent()
 
@@ -893,7 +909,17 @@ class InspectionStubGenerator(BaseStubGenerator):
         if self.is_private_name(name, f"{self.module_name}.{name}") or self.is_not_in_all(name):
             return
         self.record_name(name)
-        type_str = self.strip_or_import(self.get_type_annotation(obj))
+
+        # Gets annotations if they exist
+        if sys.version_info >= (3, 10):
+            annotations = inspect.get_annotations(self.module)
+        else:
+            annotations = getattr(self.module, "__annotations__", {})
+
+        if name in annotations:
+            type_str = self.strip_or_import(annotations[name])
+        else:
+            type_str = self.strip_or_import(self.get_type_annotation(obj))
         output.append(f"{name}: {type_str}")
 
 
