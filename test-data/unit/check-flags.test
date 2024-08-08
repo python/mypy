@@ -79,6 +79,13 @@ async def g(x: int) -> Any:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
+[case testDisallowUntypedDefsAndGeneric]
+# flags: --disallow-untyped-defs --disallow-any-generics
+def get_tasks(self):
+    return 'whatever'
+[out]
+main:2: error: Function is missing a return type annotation
+
 [case testDisallowUntypedDefsUntypedDecorator]
 # flags: --disallow-untyped-decorators
 def d(p):
@@ -540,21 +547,30 @@ tmp/b.py:1: error: Unsupported operand types for + ("int" and "str")
 [case testFollowImportsNormal]
 # flags: --follow-imports=normal
 from mod import x
-x + ""
+x + 0
+x + ""  # E: Unsupported operand types for + ("int" and "str")
+import mod
+mod.x + 0
+mod.x + ""  # E: Unsupported operand types for + ("int" and "str")
+mod.y  # E: "object" has no attribute "y"
+mod + 0  # E: Unsupported left operand type for + ("object")
 [file mod.py]
-1 + ""
+1 + ""  # E: Unsupported operand types for + ("int" and "str")
 x = 0
-[out]
-tmp/mod.py:1: error: Unsupported operand types for + ("int" and "str")
-main:3: error: Unsupported operand types for + ("int" and "str")
+x += ""  # E: Unsupported operand types for + ("int" and "str")
 
 [case testFollowImportsSilent]
 # flags: --follow-imports=silent
 from mod import x
 x + ""  # E: Unsupported operand types for + ("int" and "str")
+import mod
+mod.x + ""  # E: Unsupported operand types for + ("int" and "str")
+mod.y  # E: "object" has no attribute "y"
+mod + 0  # E: Unsupported left operand type for + ("object")
 [file mod.py]
 1 + ""
 x = 0
+x += ""
 
 [case testFollowImportsSilentTypeIgnore]
 # flags: --warn-unused-ignores --follow-imports=silent
@@ -565,20 +581,55 @@ x = 3  # type: ignore
 [case testFollowImportsSkip]
 # flags: --follow-imports=skip
 from mod import x
+reveal_type(x)  # N: Revealed type is "Any"
 x + ""
+import mod
+reveal_type(mod.x)  # N: Revealed type is "Any"
 [file mod.py]
 this deliberate syntax error will not be reported
-[out]
 
 [case testFollowImportsError]
 # flags: --follow-imports=error
-from mod import x
+from mod import x  # E: Import of "mod" ignored \
+                   # N: (Using --follow-imports=error, module not passed on command line)
 x + ""
+reveal_type(x)  # N: Revealed type is "Any"
+import mod
+reveal_type(mod.x) # N: Revealed type is "Any"
 [file mod.py]
 deliberate syntax error
-[out]
-main:2: error: Import of "mod" ignored
-main:2: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testFollowImportsSelective]
+# flags: --config-file tmp/mypy.ini
+import normal
+import silent
+import skip
+import error  # E: Import of "error" ignored \
+              # N: (Using --follow-imports=error, module not passed on command line)
+reveal_type(normal.x)  # N: Revealed type is "builtins.int"
+reveal_type(silent.x)  # N: Revealed type is "builtins.int"
+reveal_type(skip)  # N: Revealed type is "Any"
+reveal_type(error)  # N: Revealed type is "Any"
+[file mypy.ini]
+\[mypy]
+\[mypy-normal]
+follow_imports = normal
+\[mypy-silent]
+follow_imports = silent
+\[mypy-skip]
+follow_imports = skip
+\[mypy-error]
+follow_imports = error
+[file normal.py]
+x = 0
+x += ''  # E: Unsupported operand types for + ("int" and "str")
+[file silent.py]
+x = 0
+x += ''
+[file skip.py]
+bla bla
+[file error.py]
+bla bla
 
 [case testIgnoreMissingImportsFalse]
 from mod import x
@@ -589,6 +640,15 @@ main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missin
 [case testIgnoreMissingImportsTrue]
 # flags: --ignore-missing-imports
 from mod import x
+[out]
+
+[case testNoConfigFile]
+# flags: --config-file=
+# type: ignore
+
+[file mypy.ini]
+\[mypy]
+warn_unused_ignores = True
 [out]
 
 [case testPerFileIncompleteDefsBasic]
@@ -868,6 +928,16 @@ implicit_optional = true
 module = 'optional'
 strict_optional = true
 
+[case testSilentMissingImportsOff]
+-- ignore_missing_imports is False by default.
+import missing  # E: Cannot find implementation or library stub for module named "missing" \
+                # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+reveal_type(missing.x)  # N: Revealed type is "Any"
+
+[case testSilentMissingImportsOn]
+# flags: --ignore-missing-imports
+import missing
+reveal_type(missing.x)  # N: Revealed type is "Any"
 
 [case testDisallowImplicitTypesIgnoreMissingTypes]
 # flags: --ignore-missing-imports --disallow-any-unimported
@@ -1447,6 +1517,29 @@ class Queue(Generic[_T]): ...
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testDisallowAnyGenericsBuiltinTuplePre39]
+# flags: --disallow-any-generics --python-version 3.8
+s = tuple([1, 2, 3])
+def f(t: tuple) -> None: pass  # E: Implicit generic "Any". Use "typing.Tuple" and specify generic parameters
+[builtins fixtures/tuple.pyi]
+
+[case testDisallowAnyGenericsBuiltinListPre39]
+# flags: --disallow-any-generics --python-version 3.8
+l = list([1, 2, 3])
+def f(t: list) -> None: pass  # E: Implicit generic "Any". Use "typing.List" and specify generic parameters
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyGenericsBuiltinSetPre39]
+# flags: --disallow-any-generics --python-version 3.8
+l = set({1, 2, 3})
+def f(s: set) -> None: pass  # E: Implicit generic "Any". Use "typing.Set" and specify generic parameters
+[builtins fixtures/set.pyi]
+
+[case testDisallowAnyGenericsBuiltinDictPre39]
+# flags: --disallow-any-generics --python-version 3.8
+l = dict([('a', 1)])
+def f(d: dict) -> None: pass  # E: Implicit generic "Any". Use "typing.Dict" and specify generic parameters
+[builtins fixtures/dict.pyi]
 
 [case testCheckDefaultAllowAnyGeneric]
 from typing import TypeVar, Callable
@@ -1863,8 +1956,9 @@ x: Tuple = ()  # E: Missing type parameters for generic type "Tuple"
 # flags: --disallow-any-generics
 from typing import Tuple, List
 
-def f(s: List[Tuple]) -> None: pass  # E: Missing type parameters for generic type "Tuple"
-def g(s: List[Tuple[str, str]]) -> None: pass  # no error
+def f(s: Tuple) -> None: pass  # E: Missing type parameters for generic type "Tuple"
+def g(s: List[Tuple]) -> None: pass  # E: Missing type parameters for generic type "Tuple"
+def h(s: List[Tuple[str, str]]) -> None: pass  # no error
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyGenericsTypeType]
@@ -1908,13 +2002,35 @@ x: A = ('a', 'b', 1)  # E: Missing type parameters for generic type "A"
 from typing import List
 
 def f(l: List) -> None: pass  # E: Missing type parameters for generic type "List"
-def g(l: List[str]) -> None: pass  # no error
+def g(l: List[str]) -> None: pass
 def h(l: List[List]) -> None: pass   # E: Missing type parameters for generic type "List"
 def i(l: List[List[List[List]]]) -> None: pass  # E: Missing type parameters for generic type "List"
+def j() -> List: pass  # E: Missing type parameters for generic type "List"
 
 x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 y: List = []  # E: Missing type parameters for generic type "List"
 [builtins fixtures/list.pyi]
+
+[case testDisallowAnyGenericsPlainDict]
+# flags: --disallow-any-generics
+from typing import List, Dict
+
+def f(d: Dict) -> None: pass  # E: Missing type parameters for generic type "Dict"
+def g(d: Dict[str, Dict]) -> None: pass  # E: Missing type parameters for generic type "Dict"
+def h(d: List[Dict]) -> None: pass  # E: Missing type parameters for generic type "Dict"
+
+d: Dict = {}  # E: Missing type parameters for generic type "Dict"
+[builtins fixtures/dict.pyi]
+
+[case testDisallowAnyGenericsPlainSet]
+# flags: --disallow-any-generics
+from typing import Set
+
+def f(s: Set) -> None: pass  # E: Missing type parameters for generic type "Set"
+def g(s: Set[Set]) -> None: pass  # E: Missing type parameters for generic type "Set"
+
+s: Set = set()  # E: Missing type parameters for generic type "Set"
+[builtins fixtures/set.pyi]
 
 [case testDisallowAnyGenericsCustomGenericClass]
 # flags: --disallow-any-generics
@@ -2162,6 +2278,38 @@ allow_untyped_defs = True
 allow_untyped_calls = True
 disable_error_code = var-annotated
 
+[case testPerFileIgnoreErrors]
+# flags: --config-file tmp/mypy.ini
+import foo, bar
+[file foo.py]
+x: str = 5
+[file bar.py]
+x: str = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[file mypy.ini]
+\[mypy]
+\[mypy-foo]
+ignore_errors = True
+
+[case testPerFileUntypedDefs]
+# flags: --config-file tmp/mypy.ini
+import x, y, z
+[file x.py]
+def f(a): ...  # E: Function is missing a type annotation
+def g(a: int) -> int: return f(a)
+[file y.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file z.py]
+def f(a): pass  # E: Function is missing a type annotation
+def g(a: int) -> int: return f(a)  # E: Call to untyped function "f" in typed context
+[file mypy.ini]
+\[mypy]
+disallow_untyped_defs = True
+\[mypy-y]
+disallow_untyped_defs = False
+\[mypy-z]
+disallow_untyped_calls = True
+
 [case testPerModuleErrorCodesOverride]
 # flags: --config-file tmp/mypy.ini
 import tests.foo
@@ -2284,3 +2432,8 @@ class C(Generic[T]): ...
 
 A = Union[C, List]  # OK
 [builtins fixtures/list.pyi]
+
+[case testNotesOnlyResultInExitSuccess]
+-- check_untyped_defs is False by default.
+def f():
+    x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
