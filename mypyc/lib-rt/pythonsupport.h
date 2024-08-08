@@ -401,6 +401,8 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     _PyObject_CallMethodIdObjArgs((self), (name), NULL)
 #define _PyObject_CallMethodIdOneArg(self, name, arg) \
     _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
+#define PyObject_CallMethodOneArg(self, name, arg) \
+    PyObject_CallMethodObjArgs((self), (name), (arg), NULL)
 #endif
 
 #if CPY_3_13_FEATURES
