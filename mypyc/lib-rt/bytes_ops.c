@@ -95,15 +95,26 @@ PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     return CPyObject_GetSlice(obj, start, end);
 }
 
-// Like _PyBytes_Join but fallback to dynamic call if 'sep' is not bytes
-// (mostly commonly, for bytearrays)
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter) {
+#if CPY_3_13_FEATURES
+    PyObject *args[2] = {sep, iter};
+    _Py_IDENTIFIER(join);
+    PyObject *method = _PyUnicode_FromId(&PyId_join); /* borrowed */
+    if (method == NULL) {
+        return NULL;
+    }
+    PyObject *res = PyObject_VectorcallMethod(
+        method, args, 2 | PY_VECTORCALL_ARGUMENTS_OFFSET, NULL);
+    return res;
+#else
+    // Fallback to dynamic call if 'sep' is not bytes (most commonly, for bytearrays)
     if (PyBytes_CheckExact(sep)) {
         return _PyBytes_Join(sep, iter);
     } else {
         _Py_IDENTIFIER(join);
         return _PyObject_CallMethodIdOneArg(sep, &PyId_join, iter);
     }
+#endif
 }
 
 PyObject *CPyBytes_Build(Py_ssize_t len, ...) {
