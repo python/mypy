@@ -253,9 +253,10 @@ class PatternChecker(PatternVisitor[PatternType]):
                 if not isinstance(get_proper_type(typ), UninhabitedType):
                     union_items.append(typ)
                     union_captures.update(capture)
-            if len(union_items) == 0:
+            num_items = len(union_items)
+            if num_items == 0:
                 typ = UninhabitedType()
-            elif len(union_items) == 1:
+            elif num_items == 1:
                 typ = union_items[0]
             else:
                 typ = UnionType(items=union_items)
