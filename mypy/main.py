@@ -83,6 +83,9 @@ def main(
     if options.non_interactive and not options.install_types:
         fail("error: --non-interactive is only supported with --install-types", stderr, options)
 
+    if options.user and not options.install_types:
+        fail("error: --user is only supported with --install-types", stderr, options)
+
     if options.install_types and not options.incremental:
         fail(
             "error: --install-types not supported with incremental mode disabled", stderr, options
@@ -1104,6 +1107,14 @@ def process_options(
         group=other_group,
         inverse="--interactive",
     )
+    other_group.add_argument(
+        "--user",
+        action="store_true",
+        help=(
+            "Install stubs to the user's local python package install "
+            + "location when used together with --install-types"
+        ),
+    )
 
     if server_options:
         # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
@@ -1553,7 +1564,8 @@ def install_types(
         print()
     print("Installing missing stub packages:")
     assert options.python_executable, "Python executable required to install types"
-    cmd = [options.python_executable, "-m", "pip", "install"] + packages
+    pip_options = ["--user"] if options.user else []
+    cmd = [options.python_executable, "-m", "pip", "install"] + pip_options + packages
     print(formatter.style(" ".join(cmd), "none", bold=True))
     print()
     if not non_interactive:
