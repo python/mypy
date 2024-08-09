@@ -379,6 +379,21 @@ class StubgenUtilSuite(unittest.TestCase):
             ],
         )
 
+        assert_equal(
+            infer_sig_from_docstring("\nfunc(*args)", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="*args")], ret_type="Any")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("\nfunc(**kwargs)", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="**kwargs")], ret_type="Any")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("\nfunc(*args, **kwargs)", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="*args"), ArgSig(name="**kwargs")], ret_type="Any")],
+        )
+
     def test_infer_sig_from_docstring_duplicate_args(self) -> None:
         assert_equal(
             infer_sig_from_docstring("\nfunc(x, x) -> str\nfunc(x, y) -> int", "func"),
@@ -422,6 +437,21 @@ class StubgenUtilSuite(unittest.TestCase):
         assert_equal(infer_sig_from_docstring("\nfunc(name) -> cpp::type", "func"), [])
         assert_equal(infer_sig_from_docstring("\nvoid func(int name) {", "func"), [])
         assert_equal(infer_sig_from_docstring("\nvoid func(std::vector<int> name)", "func"), [])
+
+    def test_infer_sig_from_docstring_multiple_overloads(self) -> None:
+        input = """
+func(*args, **kwargs)
+Overloaded function.
+
+1. func(self: class_type) -> None
+
+2. func(self: class_type, a: float, b: int) -> None
+"""
+        assert_equal(infer_sig_from_docstring(input, "func"), [
+            FunctionSig(name="func", args=[ArgSig(name="self", type="class_type")], ret_type="None"),
+            FunctionSig(name="func", args=[ArgSig(name="self", type="class_type"), ArgSig(name="a", type="float"), ArgSig(name="b", type="int")], ret_type="None"),
+            FunctionSig(name="func", args=[ArgSig(name="*args"), ArgSig(name="**kwargs")], ret_type="Any")
+        ])
 
     def test_infer_sig_from_docstring_deeply_nested_types(self) -> None:
         assert_equal(
@@ -1489,3 +1519,15 @@ def module_to_path(out_dir: str, module: str) -> str:
         if os.path.exists(alt_fnam):
             return alt_fnam
     return fnam
+
+def main():
+    suite = StubgenUtilSuite()
+    suite.test_infer_sig_from_docstring_invalid_signature()
+    suite.test_infer_sig_from_docstring()
+    suite.test_infer_sig_from_docstring_bad_indentation()
+    suite.test_infer_sig_from_docstring_duplicate_args()
+    suite.test_infer_sig_from_docstring_deeply_nested_types()
+    suite.test_infer_sig_from_docstring_multiple_overloads()
+    
+if __name__ == "__main__":
+    main()

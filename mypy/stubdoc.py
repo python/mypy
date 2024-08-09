@@ -325,8 +325,11 @@ class DocStringParser:
             token.type == tokenize.NAME
             and self.state[-1] == STATE_ARGUMENT_LIST
             and len(self.accumulator) != 0
+            and self.accumulator != "*"
+            and self.accumulator != "**"
         ):
-            # not the first name in a row
+            # not the token after the argument list started
+            # special case for *args and **kwargs
             self.reset()
             return
         else:
