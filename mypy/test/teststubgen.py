@@ -1542,17 +1542,3 @@ def module_to_path(out_dir: str, module: str) -> str:
         if os.path.exists(alt_fnam):
             return alt_fnam
     return fnam
-
-
-def main():
-    suite = StubgenUtilSuite()
-    suite.test_infer_sig_from_docstring_invalid_signature()
-    suite.test_infer_sig_from_docstring()
-    suite.test_infer_sig_from_docstring_bad_indentation()
-    suite.test_infer_sig_from_docstring_duplicate_args()
-    suite.test_infer_sig_from_docstring_deeply_nested_types()
-    suite.test_infer_sig_from_docstring_multiple_overloads()
-
-
-if __name__ == "__main__":
-    main()
