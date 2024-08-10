@@ -543,12 +543,17 @@ q: partial[A] = partial(A, 1)  # OK
 [builtins fixtures/tuple.pyi]
 
 [case testFunctoolsPartialTypeVarBound]
-from typing import Callable, TypeVar
+from typing import Callable, TypeVar, Type
 import functools
 
 T = TypeVar("T", bound=Callable[[str, int], str])
+S = TypeVar("S", bound=Type[int])
 
 def foo(f: T) -> T:
     g = functools.partial(f, "foo")
     return f
-[builtins fixtures/tuple.pyi]
+
+def bar(f: S) -> S:
+    g = functools.partial(f, "foo")
+    return f
+[builtins fixtures/primitives.pyi]
