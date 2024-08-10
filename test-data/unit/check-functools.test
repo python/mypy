@@ -541,3 +541,19 @@ p(1, "no")  # E: Argument 2 to "A" has incompatible type "str"; expected "int"
 
 q: partial[A] = partial(A, 1)  # OK
 [builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialTypeVarBound]
+from typing import Callable, TypeVar, Type
+import functools
+
+T = TypeVar("T", bound=Callable[[str, int], str])
+S = TypeVar("S", bound=Type[int])
+
+def foo(f: T) -> T:
+    g = functools.partial(f, "foo")
+    return f
+
+def bar(f: S) -> S:
+    g = functools.partial(f, "foo")
+    return f
+[builtins fixtures/primitives.pyi]
