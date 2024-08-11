@@ -1575,7 +1575,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def analyze_literal_param(self, idx: int, arg: Type, ctx: Context) -> list[Type] | None:
         # This UnboundType was originally defined as a string.
-        if isinstance(arg, UnboundType) and arg.original_str_expr is not None:
+        if (
+            isinstance(arg, ProperType)
+            and isinstance(arg, (UnboundType, UnionType))
+            and arg.original_str_expr is not None
+        ):
             assert arg.original_str_fallback is not None
             return [
                 LiteralType(
