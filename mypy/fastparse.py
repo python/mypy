@@ -329,11 +329,9 @@ def parse_type_string(
     """
     try:
         _, node = parse_type_comment(f"({expr_string})", line=line, column=column, errors=None)
-        if isinstance(node, UnboundType) and node.original_str_expr is None:
+        if isinstance(node, (UnboundType, UnionType)) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name
-            return node
-        elif isinstance(node, UnionType):
             return node
         else:
             return RawExpressionType(expr_string, expr_fallback_name, line, column)
