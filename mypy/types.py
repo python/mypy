@@ -914,7 +914,7 @@ class UnboundType(ProperType):
 
     def __init__(
         self,
-        name: str | None,
+        name: str,
         args: Sequence[Type] | None = None,
         line: int = -1,
         column: int = -1,
@@ -926,7 +926,6 @@ class UnboundType(ProperType):
         super().__init__(line, column)
         if not args:
             args = []
-        assert name is not None
         self.name = name
         self.args = tuple(args)
         # Should this type be wrapped in an Optional?
@@ -2847,7 +2846,13 @@ class LiteralType(ProperType):
 class UnionType(ProperType):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
-    __slots__ = ("items", "is_evaluated", "uses_pep604_syntax")
+    __slots__ = (
+        "items",
+        "is_evaluated",
+        "uses_pep604_syntax",
+        "original_str_expr",
+        "original_str_fallback",
+    )
 
     def __init__(
         self,
@@ -2866,6 +2871,11 @@ class UnionType(ProperType):
         self.is_evaluated = is_evaluated
         # uses_pep604_syntax is True if Union uses OR syntax (X | Y)
         self.uses_pep604_syntax = uses_pep604_syntax
+        # The meaning of these two is the same as for UnboundType. A UnionType can be
+        # return by type parser from a string "A|B", and we need to be able to fall back
+        # to plain string, when such a string appears inside a Literal[...].
+        self.original_str_expr: str | None = None
+        self.original_str_fallback: str | None = None
 
     def can_be_true_default(self) -> bool:
         return any(item.can_be_true for item in self.items)
