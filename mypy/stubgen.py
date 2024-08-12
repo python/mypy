@@ -304,7 +304,9 @@ class AliasPrinter(NodeVisitor[str]):
     def visit_member_expr(self, o: MemberExpr) -> str:
         return self._visit_ref_expr(o)
 
-    def _visit_literal_node(self, node: StrExpr | BytesExpr | IntExpr | FloatExpr | ComplexExpr) -> str:
+    def _visit_literal_node(
+        self, node: StrExpr | BytesExpr | IntExpr | FloatExpr | ComplexExpr
+    ) -> str:
         return repr(node.value)
 
     def visit_str_expr(self, node: StrExpr) -> str:
