@@ -54,6 +54,7 @@ import mypy.mixedtraverser
 import mypy.parse
 import mypy.traverser
 import mypy.util
+import mypy.version
 from mypy.build import build
 from mypy.errors import CompileError, Errors
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -1846,6 +1847,9 @@ def parse_options(args: list[str]) -> Options:
         nargs="*",
         dest="files",
         help="generate stubs for given files or directories",
+    )
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + mypy.version.__version__
     )
 
     ns = parser.parse_args(args)
