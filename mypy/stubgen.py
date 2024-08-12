@@ -305,8 +305,25 @@ class AliasPrinter(NodeVisitor[str]):
     def visit_member_expr(self, o: MemberExpr) -> str:
         return self._visit_ref_expr(o)
 
-    def visit_str_expr(self, node: StrExpr) -> str:
+    def _visit_literal_node(
+        self, node: StrExpr | BytesExpr | IntExpr | FloatExpr | ComplexExpr
+    ) -> str:
         return repr(node.value)
+
+    def visit_str_expr(self, node: StrExpr) -> str:
+        return self._visit_literal_node(node)
+
+    def visit_bytes_expr(self, node: BytesExpr) -> str:
+        return f"b{self._visit_literal_node(node)}"
+
+    def visit_int_expr(self, node: IntExpr) -> str:
+        return self._visit_literal_node(node)
+
+    def visit_float_expr(self, node: FloatExpr) -> str:
+        return self._visit_literal_node(node)
+
+    def visit_complex_expr(self, node: ComplexExpr) -> str:
+        return self._visit_literal_node(node)
 
     def visit_index_expr(self, node: IndexExpr) -> str:
         base_fullname = self.stubgen.get_fullname(node.base)
@@ -805,7 +822,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         for name, value in cdef.keywords.items():
             if name == "metaclass":
                 continue  # handled separately
-            base_types.append(f"{name}={value.accept(p)}")
+            processed_value = value.accept(p) or "..."  # at least, don't crash
+            base_types.append(f"{name}={processed_value}")
         return base_types
 
     def get_class_decorators(self, cdef: ClassDef) -> list[str]:
