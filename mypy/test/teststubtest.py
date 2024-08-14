@@ -9,7 +9,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from typing import Any, Callable, Iterator, Literal, overload
+from typing import Any, Callable, Iterator
 
 import mypy.stubtest
 from mypy.stubtest import parse_options, test_stubs
@@ -144,38 +144,9 @@ class Flag(Enum):
 """
 
 
-@overload
-def run_stubtest(
-    stub: str,
-    runtime: str,
-    options: list[str],
-    config_file: str | None = None,
-    *,
-    include_stderr: Literal[True],
+def run_stubtest_with_stderr(
+    stub: str, runtime: str, options: list[str], config_file: str | None = None
 ) -> tuple[str, str]:
-    """Include the stderr result."""
-
-
-@overload
-def run_stubtest(
-    stub: str,
-    runtime: str,
-    options: list[str],
-    config_file: str | None = None,
-    *,
-    include_stderr: Literal[False] = False,
-) -> str:
-    """Do not include the stderr result."""
-
-
-def run_stubtest(
-    stub: str,
-    runtime: str,
-    options: list[str],
-    config_file: str | None = None,
-    *,
-    include_stderr: bool = False,
-) -> str | tuple[str, str]:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
             f.write(stubtest_builtins_stub)
@@ -195,15 +166,23 @@ def run_stubtest(
         outerr = io.StringIO()
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(outerr):
             test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
-        filtered_output = remove_color_code(
-            output.getvalue()
-            # remove cwd as it's not available from outside
-            .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
-        )
-        if not include_stderr:
-            return filtered_output
+    filtered_output = remove_color_code(
+        output.getvalue()
+        # remove cwd as it's not available from outside
+        .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
+    )
+    filtered_outerr = remove_color_code(
+        outerr.getvalue()
+        # remove cwd as it's not available from outside
+        .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
+    )
+    return filtered_output, filtered_outerr
 
-        return (filtered_output, outerr.getvalue())
+
+def run_stubtest(
+    stub: str, runtime: str, options: list[str], config_file: str | None = None
+) -> str:
+    return run_stubtest_with_stderr(stub, runtime, options, config_file)[0]
 
 
 class Case:
@@ -2628,8 +2607,8 @@ class StubtestMiscUnit(unittest.TestCase):
         runtime = "temp = 5\n"
         stub = "temp: int\n"
         config_file = "[mypy]\ndisable_error_code = not-a-valid-name\n"
-        output, outerr = run_stubtest(
-            stub=stub, runtime=runtime, options=[], config_file=config_file, include_stderr=True
+        output, outerr = run_stubtest_with_stderr(
+            stub=stub, runtime=runtime, options=[], config_file=config_file
         )
         assert output == "Success: no issues found in 1 module\n"
         assert outerr == (
