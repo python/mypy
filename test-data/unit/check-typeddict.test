@@ -3685,14 +3685,35 @@ x["other"] = "a"  # E: ReadOnly TypedDict key "other" TypedDict is mutated  [typ
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testTypedDictReadOnlyDel]
+[case testTypedDictReadOnlyCreation]
 from typing import ReadOnly, TypedDict
 
+class TD(TypedDict):
+    x: ReadOnly[int]
+    y: int
+
+# Ok:
+x = TD({"x": 1, "y": 2})
+y = TD(x=1, y=2)
+z: TD = {"x": 1, "y": 2}
+
+# Error:
+x2 = TD({"x": "a", "y": 2})  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+y2 = TD(x="a", y=2)          # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+z2: TD = {"x": "a", "y": 2}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyDel]
+from typing import ReadOnly, TypedDict, NotRequired
+
 class TP(TypedDict):
-    key: ReadOnly[str]
+    required_key: ReadOnly[str]
+    optional_key: ReadOnly[NotRequired[str]]
 
 x: TP
-del x["key"]  # E: Key "key" of TypedDict "TP" cannot be deleted
+del x["required_key"]  # E: Key "required_key" of TypedDict "TP" cannot be deleted
+del x["optional_key"]  # E: Key "optional_key" of TypedDict "TP" cannot be deleted
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -3710,10 +3731,35 @@ reveal_type(x.pop("key"))  # E: Key "key" of TypedDict "TP" cannot be deleted \
 
 x.update({"key": "abc", "other": 1, "mutable": True})  # E: ReadOnly TypedDict keys ("key", "other") TypedDict are mutated
 x.setdefault("key", "abc")  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+x.setdefault("other", 1)  # E: ReadOnly TypedDict key "other" TypedDict is mutated
+x.setdefault("mutable", False)  # ok
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testTypedDictReadOnlyMutateStatements]
+[case testTypedDictFromTypingExtensionsReadOnlyMutateMethods]
+from typing_extensions import ReadOnly, TypedDict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+
+x: TP
+x.update({"key": "abc"})  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictFromMypyExtensionsReadOnlyMutateMethods]
+from mypy_extensions import TypedDict
+from typing_extensions import ReadOnly
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+
+x: TP
+x.update({"key": "abc"})  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyMutate__ior__Statements]
 from typing_extensions import ReadOnly, TypedDict
 
 class TP(TypedDict):
@@ -3727,6 +3773,50 @@ x |= {"key": "a"}  # E: ReadOnly TypedDict key "key" TypedDict is mutated
 x |= {"key": "a", "other": 1, "mutable": True}  # E: ReadOnly TypedDict keys ("key", "other") TypedDict are mutated
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
+
+[case testTypedDictReadOnlyMutate__or__Statements]
+from typing_extensions import ReadOnly, TypedDict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+    other: ReadOnly[int]
+    mutable: bool
+
+x: TP
+# These are new objects, not mutation:
+x = x | {"mutable": True}
+x = x | {"key": "a"}
+x = x | {"key": "a", "other": 1, "mutable": True}
+y1 = x | {"mutable": True}
+y2 = x | {"key": "a"}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
+
+[case testTypedDictReadOnlyMutateWithOtherDicts]
+from typing import ReadOnly, TypedDict, Dict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+    mutable: bool
+
+class Mutable(TypedDict):
+    mutable: bool
+
+class Regular(TypedDict):
+    key: str
+
+m: Mutable
+r: Regular
+d: Dict[str, object]
+
+# Creating new objects is ok:
+tp: TP = {**r, **m}
+tp1: TP = {**tp, **m}
+tp2: TP = {**r, **m}
+tp3: TP = {**tp, **r}
+tp4: TP = {**tp, **d}  # E: Unsupported type "Dict[str, object]" for ** expansion in TypedDict
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictGenericReadOnly]
 from typing import ReadOnly, TypedDict, TypeVar, Generic

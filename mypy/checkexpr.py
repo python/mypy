@@ -986,9 +986,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         always_present_keys: set[str],
     ) -> Type:
         actual_keys = kwargs.keys()
-        assigned_readonly_keys = actual_keys & callee.readonly_keys
-        if assigned_readonly_keys:
-            self.msg.readonly_keys_mutated(assigned_readonly_keys, context=context)
+        if callee.to_be_mutated:
+            assigned_readonly_keys = actual_keys & callee.readonly_keys
+            if assigned_readonly_keys:
+                self.msg.readonly_keys_mutated(assigned_readonly_keys, context=context)
         if not (
             callee.required_keys <= always_present_keys and actual_keys <= callee.items.keys()
         ):

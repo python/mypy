@@ -2568,13 +2568,22 @@ class TypedDictType(ProperType):
     TODO: The fallback structure is perhaps overly complicated.
     """
 
-    __slots__ = ("items", "required_keys", "readonly_keys", "fallback", "extra_items_from")
+    __slots__ = (
+        "items",
+        "required_keys",
+        "readonly_keys",
+        "fallback",
+        "extra_items_from",
+        "to_be_mutated",
+    )
 
     items: dict[str, Type]  # item_name -> item_type
     required_keys: set[str]
     readonly_keys: set[str]
     fallback: Instance
+
     extra_items_from: list[ProperType]  # only used during semantic analysis
+    to_be_mutated: bool  # only used in a plugin for `.update`, `|=`, etc
 
     def __init__(
         self,
@@ -2593,6 +2602,7 @@ class TypedDictType(ProperType):
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.required_keys) == 0
         self.extra_items_from = []
+        self.to_be_mutated = False
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_typeddict_type(self)
