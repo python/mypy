@@ -426,10 +426,7 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-_TP_DICT_MUTATING_METHODS: Final = frozenset({
-    "update of TypedDict",
-    "__ior__ of TypedDict",
-})
+_TP_DICT_MUTATING_METHODS: Final = frozenset({"update of TypedDict", "__ior__ of TypedDict"})
 
 
 def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
