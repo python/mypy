@@ -144,9 +144,9 @@ class Flag(Enum):
 """
 
 
-def run_stubtest(
+def run_stubtest_with_stderr(
     stub: str, runtime: str, options: list[str], config_file: str | None = None
-) -> str:
+) -> tuple[str, str]:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
             f.write(stubtest_builtins_stub)
@@ -163,13 +163,26 @@ def run_stubtest(
                 f.write(config_file)
             options = options + ["--mypy-config-file", f"{TEST_MODULE_NAME}_config.ini"]
         output = io.StringIO()
-        with contextlib.redirect_stdout(output):
+        outerr = io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(outerr):
             test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
-        return remove_color_code(
-            output.getvalue()
-            # remove cwd as it's not available from outside
-            .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
-        )
+    filtered_output = remove_color_code(
+        output.getvalue()
+        # remove cwd as it's not available from outside
+        .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
+    )
+    filtered_outerr = remove_color_code(
+        outerr.getvalue()
+        # remove cwd as it's not available from outside
+        .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
+    )
+    return filtered_output, filtered_outerr
+
+
+def run_stubtest(
+    stub: str, runtime: str, options: list[str], config_file: str | None = None
+) -> str:
+    return run_stubtest_with_stderr(stub, runtime, options, config_file)[0]
 
 
 class Case:
@@ -2589,6 +2602,19 @@ class StubtestMiscUnit(unittest.TestCase):
         config_file = "[mypy]\ndisable_error_code = name-defined\n"
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == "Success: no issues found in 1 module\n"
+
+    def test_config_file_error_codes_invalid(self) -> None:
+        runtime = "temp = 5\n"
+        stub = "temp: int\n"
+        config_file = "[mypy]\ndisable_error_code = not-a-valid-name\n"
+        output, outerr = run_stubtest_with_stderr(
+            stub=stub, runtime=runtime, options=[], config_file=config_file
+        )
+        assert output == "Success: no issues found in 1 module\n"
+        assert outerr == (
+            "test_module_config.ini: [mypy]: disable_error_code: "
+            "Invalid error code(s): not-a-valid-name\n"
+        )
 
     def test_config_file_wrong_incomplete_feature(self) -> None:
         runtime = "x = 1\n"
