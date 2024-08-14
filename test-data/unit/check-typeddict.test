@@ -3684,14 +3684,31 @@ from typing import ReadOnly, TypedDict
 class TP(TypedDict):
     key: ReadOnly[str]
     other: ReadOnly[int]
+    mutable: bool
 
 x: TP
 reveal_type(x.pop("key"))  # E: Key "key" of TypedDict "TP" cannot be deleted \
                            # N: Revealed type is "builtins.str"
-x.update({"key": "abc", "other": 1})  # E: ReadOnly TypedDict keys ("key", "other") TypedDict are mutated
+
+x.update({"key": "abc", "other": 1, "mutable": True})  # E: ReadOnly TypedDict keys ("key", "other") TypedDict are mutated
 x.setdefault("key", "abc")  # E: ReadOnly TypedDict key "key" TypedDict is mutated
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyMutateStatements]
+from typing_extensions import ReadOnly, TypedDict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+    other: ReadOnly[int]
+    mutable: bool
+
+x: TP
+x |= {"mutable": True}  # ok
+x |= {"key": "a"}  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+x |= {"key": "a", "other": 1, "mutable": True}  # E: ReadOnly TypedDict keys ("key", "other") TypedDict are mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
 
 [case testTypedDictGenericReadOnly]
 from typing import ReadOnly, TypedDict, TypeVar, Generic
