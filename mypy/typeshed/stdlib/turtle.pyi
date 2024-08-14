@@ -338,7 +338,7 @@ class TPen:
     def isvisible(self) -> bool: ...
     # Note: signatures 1 and 2 overlap unsafely when no arguments are provided
     @overload
-    def pen(self) -> _PenState: ...
+    def pen(self) -> _PenState: ...  # type: ignore[overload-overlap]
     @overload
     def pen(
         self,
@@ -384,7 +384,7 @@ class RawTurtle(TPen, TNavigator):
     def shape(self, name: str) -> None: ...
     # Unsafely overlaps when no arguments are provided
     @overload
-    def shapesize(self) -> tuple[float, float, float]: ...
+    def shapesize(self) -> tuple[float, float, float]: ...  # type: ignore[overload-overlap]
     @overload
     def shapesize(
         self, stretch_wid: float | None = None, stretch_len: float | None = None, outline: float | None = None
@@ -395,7 +395,7 @@ class RawTurtle(TPen, TNavigator):
     def shearfactor(self, shear: float) -> None: ...
     # Unsafely overlaps when no arguments are provided
     @overload
-    def shapetransform(self) -> tuple[float, float, float, float]: ...
+    def shapetransform(self) -> tuple[float, float, float, float]: ...  # type: ignore[overload-overlap]
     @overload
     def shapetransform(
         self, t11: float | None = None, t12: float | None = None, t21: float | None = None, t22: float | None = None
@@ -622,7 +622,7 @@ def isvisible() -> bool: ...
 
 # Note: signatures 1 and 2 overlap unsafely when no arguments are provided
 @overload
-def pen() -> _PenState: ...
+def pen() -> _PenState: ...  # type: ignore[overload-overlap]
 @overload
 def pen(
     pen: _PenState | None = None,
@@ -671,7 +671,7 @@ def shearfactor(shear: float) -> None: ...
 
 # Unsafely overlaps when no arguments are provided
 @overload
-def shapetransform() -> tuple[float, float, float, float]: ...
+def shapetransform() -> tuple[float, float, float, float]: ...  # type: ignore[overload-overlap]
 @overload
 def shapetransform(
     t11: float | None = None, t12: float | None = None, t21: float | None = None, t22: float | None = None
