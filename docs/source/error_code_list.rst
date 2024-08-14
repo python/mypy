@@ -1156,7 +1156,7 @@ Check for overload signatures that cannot match [overload-cannot-match]
 --------------------------------------------------------------------------
 
 In the case of an overloaded function, if one of the signatures is never accessible, this error may occur.
-An example where this can occur is with the utilization of floats and int types, due to the behavior of integers matching floats in mypy.
+An example where this can occur is with the utilization of object and int types.
 Consider swapping the declaration of the two types so that the narrower signature is declared before the broader signature.
 
 Example:
@@ -1166,13 +1166,13 @@ Example:
     from typing import overload, Union
 
     @overload
-    def process(response1: float,response2: float) -> float:
+    def process(response1: object,response2: object) -> object:
         ...
     @overload
     def process(response1: int,response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overload-cannot-match]
         ...
 
-    def process(response1,response2)-> Union[float,int]:
+    def process(response1,response2)-> Union[object,int]:
     return response1 + response2
 
 .. _code-annotation-unchecked:
