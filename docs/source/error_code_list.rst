@@ -1152,7 +1152,7 @@ See :ref:`overloading <function-overloading>` for more explanation.
 
 .. _code-overload-cannot-match:
 
-Check error code of overload function signature match
+Check for overload signatures that cannot match [overload-cannot-match]
 --------------------------------------------------------------------------
 
 In the case of an overloaded function, if one of the signatures is never accessible, this error may occur.

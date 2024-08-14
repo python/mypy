@@ -275,7 +275,7 @@ MISC: Final[ErrorCode] = ErrorCode("misc", "Miscellaneous other checks", "Genera
 
 OVERLOAD_CANNOT_MATCH: Final[ErrorCode] = ErrorCode(
     "overload-cannot-match",
-    "Warn user about signature matching for overloaded functions.",
+    "Warn if an @overload signature can never be matched",
     "General",
     sub_code_of=MISC,
 )
