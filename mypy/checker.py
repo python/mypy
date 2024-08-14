@@ -540,10 +540,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_top_level(node)
         else:
             self.recurse_into_functions = True
-            if isinstance(node, LambdaExpr):
-                self.expr_checker.accept(node)
-            else:
-                self.accept(node)
+            with self.binder.top_frame_context():
+                if isinstance(node, LambdaExpr):
+                    self.expr_checker.accept(node)
+                else:
+                    self.accept(node)
 
     def check_top_level(self, node: MypyFile) -> None:
         """Check only the top-level of a module, skipping function definitions."""
@@ -682,6 +683,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         inner_type = get_proper_type(inner_type)
         outer_type: CallableType | None = None
         if inner_type is not None and not isinstance(inner_type, AnyType):
+            if isinstance(inner_type, TypeVarLikeType):
+                inner_type = get_proper_type(inner_type.upper_bound)
             if isinstance(inner_type, TypeType):
                 if isinstance(inner_type.item, Instance):
                     inner_type = expand_type_by_instance(

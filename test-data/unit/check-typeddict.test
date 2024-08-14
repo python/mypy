@@ -3581,6 +3581,24 @@ class Test:
         run(test2, other=0, **params)  # E: Argument "other" to "run" has incompatible type "int"; expected "str"
 [builtins fixtures/tuple.pyi]
 
+[case testTypedDictUnpackSingleWithSubtypingNoCrash]
+from typing import Callable
+from typing_extensions import TypedDict, Unpack
+
+class Kwargs(TypedDict):
+    name: str
+
+def f(**kwargs: Unpack[Kwargs]) -> None:
+    pass
+
+class C:
+    d: Callable[[Unpack[Kwargs]], None]
+
+# TODO: it is an old question whether we should allow this, for now simply don't crash.
+class D(C):
+    d = f
+[builtins fixtures/tuple.pyi]
+
 [case testTypedDictInlineNoOldStyleAlias]
 # flags: --enable-incomplete-feature=InlineTypedDict
 X = {"int": int, "str": str}
