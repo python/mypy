@@ -928,6 +928,106 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_cached_property(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class Good:
+                @cached_property
+                def read_only_attr(self) -> int: ...
+                @cached_property
+                def read_only_attr2(self) -> int: ...
+            """,
+            runtime="""
+            import functools as ft
+            from functools import cached_property
+            class Good:
+                @cached_property
+                def read_only_attr(self): return 1
+                @ft.cached_property
+                def read_only_attr2(self): return 1
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class Bad:
+                @cached_property
+                def f(self) -> int: ...
+            """,
+            runtime="""
+            class Bad:
+                def f(self) -> int: return 1
+            """,
+            error="Bad.f",
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class GoodCachedAttr:
+                @cached_property
+                def f(self) -> int: ...
+            """,
+            runtime="""
+            class GoodCachedAttr:
+                f = 1
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class BadCachedAttr:
+                @cached_property
+                def f(self) -> str: ...
+            """,
+            runtime="""
+            class BadCachedAttr:
+                f = 1
+            """,
+            error="BadCachedAttr.f",
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            from typing import final
+            class FinalGood:
+                @cached_property
+                @final
+                def attr(self) -> int: ...
+            """,
+            runtime="""
+            from functools import cached_property
+            from typing import final
+            class FinalGood:
+                @cached_property
+                @final
+                def attr(self):
+                    return 1
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class FinalBad:
+                @cached_property
+                def attr(self) -> int: ...
+            """,
+            runtime="""
+            from functools import cached_property
+            from typing_extensions import final
+            class FinalBad:
+                @cached_property
+                @final
+                def attr(self):
+                    return 1
+            """,
+            error="FinalBad.attr",
+        )
+
+    @collect_cases
     def test_var(self) -> Iterator[Case]:
         yield Case(stub="x1: int", runtime="x1 = 5", error=None)
         yield Case(stub="x2: str", runtime="x2 = 5", error="x2")
@@ -2536,6 +2636,20 @@ class StubtestMiscUnit(unittest.TestCase):
             "test_module_config.ini: [mypy]: disable_error_code: "
             "Invalid error code(s): not-a-valid-name\n"
         )
+
+    def test_config_file_wrong_incomplete_feature(self) -> None:
+        runtime = "x = 1\n"
+        stub = "x: int\n"
+        config_file = "[mypy]\nenable_incomplete_feature = Unpack\n"
+        output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
+        assert output == (
+            "warning: Warning: Unpack is already enabled by default\n"
+            "Success: no issues found in 1 module\n"
+        )
+
+        config_file = "[mypy]\nenable_incomplete_feature = not-a-valid-name\n"
+        with self.assertRaises(SystemExit):
+            run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
 
     def test_no_modules(self) -> None:
         output = io.StringIO()
