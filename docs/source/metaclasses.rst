@@ -90,7 +90,7 @@ so it's better not to combine metaclasses and class hierarchies:
 For some builtin types, mypy assumes that their metaclass is :py:class:`abc.ABCMeta`
 even if it's :py:class:`type`. In those cases, you can either
 
-* use :py:class:`abc.ABCMetaclass` instead of :py:class:`type` as the
+* use :py:class:`abc.ABCMeta` instead of :py:class:`type` as the
   superclass of your metaclass if that works in your use case,
 * mute the error with ``# type: ignore[metaclass]``, or
 * compute the metaclass' superclass dynamically, which mypy doesn't understand
