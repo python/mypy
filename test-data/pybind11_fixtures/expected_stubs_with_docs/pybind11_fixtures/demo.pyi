@@ -7,9 +7,9 @@ class Point:
     class AngleUnit:
         """Members:
 
-            radian
+              radian
 
-            degree"""
+              degree"""
         __members__: ClassVar[dict] = ...  # read-only
         __entries: ClassVar[dict] = ...
         degree: ClassVar[Point.AngleUnit] = ...
@@ -34,11 +34,11 @@ class Point:
     class LengthUnit:
         """Members:
 
-            mm
+              mm
 
-            pixel
+              pixel
 
-            inch"""
+              inch"""
         __members__: ClassVar[dict] = ...  # read-only
         __entries: ClassVar[dict] = ...
         inch: ClassVar[Point.LengthUnit] = ...
