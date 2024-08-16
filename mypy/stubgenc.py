@@ -36,6 +36,7 @@ from mypy.stubutil import (
     infer_method_arg_types,
     infer_method_ret_type,
 )
+import mypy.util
 
 
 class ExternalSignatureGenerator(SignatureGenerator):
@@ -809,6 +810,9 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.indent()
 
         class_info = ClassInfo(class_name, "", getattr(cls, "__doc__", None), cls)
+        docstring = class_info.docstring if self._include_docstrings else None
+        if docstring:
+            docstring = self._indent_docstring(docstring)
 
         for attr, value in items:
             # use unevaluated descriptors when dealing with property inspection
@@ -862,8 +866,10 @@ class InspectionStubGenerator(BaseStubGenerator):
             bases_str = "(%s)" % ", ".join(bases)
         else:
             bases_str = ""
-        if types or static_properties or rw_properties or methods or ro_properties:
+        if types or static_properties or rw_properties or methods or ro_properties or docstring:
             output.append(f"{self._indent}class {class_name}{bases_str}:")
+            if docstring:
+                output.append(f"{self._indent}    {mypy.util.quote_docstring(docstring)}")
             for line in types:
                 if (
                     output
