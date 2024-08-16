@@ -811,8 +811,6 @@ class InspectionStubGenerator(BaseStubGenerator):
 
         class_info = ClassInfo(class_name, "", getattr(cls, "__doc__", None), cls)
         docstring = class_info.docstring if self._include_docstrings else None
-        if docstring:
-            docstring = self._indent_docstring(docstring)
 
         for attr, value in items:
             # use unevaluated descriptors when dealing with property inspection
@@ -860,6 +858,9 @@ class InspectionStubGenerator(BaseStubGenerator):
             static_properties.append(f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ...")
 
         self.dedent()
+
+        if docstring:
+            docstring = self._indent_docstring(docstring)
 
         bases = self.get_base_types(cls)
         if bases:
