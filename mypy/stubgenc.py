@@ -14,6 +14,7 @@ import os.path
 from types import FunctionType, ModuleType
 from typing import Any, Callable, Mapping
 
+import mypy.util
 from mypy.fastparse import parse_type_comment
 from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
@@ -36,7 +37,6 @@ from mypy.stubutil import (
     infer_method_arg_types,
     infer_method_ret_type,
 )
-import mypy.util
 
 
 class ExternalSignatureGenerator(SignatureGenerator):
