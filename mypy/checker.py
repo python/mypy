@@ -2809,7 +2809,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.base_class_definitions_incompatible(name, base1, base2, ctx)
 
     def check_metaclass_compatibility(self, typ: TypeInfo) -> None:
-        """Ensure that metaclasses of all parent types are compatible."""
+        """Ensures that metaclasses of all parent types are compatible."""
         if (
             typ.is_metaclass()
             or typ.is_protocol

@@ -2648,7 +2648,11 @@ class SemanticAnalyzer(
             elif isinstance(metaclass_expr, MemberExpr):
                 metaclass_name = get_member_expr_fullname(metaclass_expr)
             if metaclass_name is None:
-                self.fail(f'Dynamic metaclass not supported for "{name}"', metaclass_expr, code=codes.METACLASS)
+                self.fail(
+                    f'Dynamic metaclass not supported for "{name}"',
+                    metaclass_expr,
+                    code=codes.METACLASS,
+                )
                 return None, False, True
             sym = self.lookup_qualified(metaclass_name, metaclass_expr)
             if sym is None:
@@ -2677,7 +2681,9 @@ class SemanticAnalyzer(
                 metaclass_info = sym.node
 
             if not isinstance(metaclass_info, TypeInfo) or metaclass_info.tuple_type is not None:
-                self.fail(f'Invalid metaclass "{metaclass_name}"', metaclass_expr, code=codes.METACLASS)
+                self.fail(
+                    f'Invalid metaclass "{metaclass_name}"', metaclass_expr, code=codes.METACLASS
+                )
                 return None, False, False
             if not metaclass_info.is_metaclass():
                 self.fail(

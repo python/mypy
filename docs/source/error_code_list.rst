@@ -231,6 +231,9 @@ must be a subclass of ``type``. Further, the class hierarchy must yield
 a consistent metaclass. For more details, see the
 `Python documentation <https://docs.python.org/3.13/reference/datamodel.html#determining-the-appropriate-metaclass>`_
 
+Note that mypy's metaclass checking is limited and may produce false-positives.
+See also :ref:`limitations`.
+
 Example with an error:
 
 .. code-block:: python
