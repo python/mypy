@@ -5,6 +5,11 @@ __version__: str
 
 class Point:
     class AngleUnit:
+        """Members:
+
+            radian
+
+            degree"""
         __members__: ClassVar[dict] = ...  # read-only
         __entries: ClassVar[dict] = ...
         degree: ClassVar[Point.AngleUnit] = ...
@@ -27,6 +32,13 @@ class Point:
         def value(self) -> int: ...
 
     class LengthUnit:
+        """Members:
+
+            mm
+
+            pixel
+
+            inch"""
         __members__: ClassVar[dict] = ...  # read-only
         __entries: ClassVar[dict] = ...
         inch: ClassVar[Point.LengthUnit] = ...
