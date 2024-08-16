@@ -1195,8 +1195,11 @@ from typing_extensions import TypeIs
 def f(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of input type "str"  [narrowed-type-not-subtype]
     pass
 
+[builtins fixtures/tuple.pyi]
+
 [case testDynamicMetaclass]
 class A(metaclass=type(tuple)): pass  # E: Dynamic metaclass not supported for "A"  [metaclass]
+[builtins fixtures/tuple.pyi]
 
 [case testMetaclassOfTypeAny]
 # mypy: disallow-subclassing-any=True
@@ -1224,5 +1227,3 @@ class A2(six.with_metaclass(M1), metaclass=M1): pass  # E: Multiple metaclass de
 
 @six.add_metaclass(M1)
 class A3(six.with_metaclass(M1)): pass  # E: Multiple metaclass definitions  [metaclass]
-
-[builtins fixtures/tuple.pyi]
