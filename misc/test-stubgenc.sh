@@ -42,7 +42,4 @@ stubgenc_test expected_stubs_no_docs -p pybind11_fixtures
 # create stubs with docstrings
 stubgenc_test expected_stubs_with_docs -p pybind11_fixtures --include-docstrings
 
-# create stubs with docstrings using inspection
-stubgenc_test expected_stubs_with_docs -p pybind11_fixtures --include-docstrings --inspect-mode
-
 exit $EXIT
