@@ -55,17 +55,23 @@ class Point:
         mm: ClassVar[Point.LengthUnit] = ...
         pixel: ClassVar[Point.LengthUnit] = ...
         def __init__(self, value: int) -> None:
-            """__init__(self: pybind11_fixtures.demo.Point.LengthUnit, value: int) -> None"""
+            """__init__(self: pybind11_fixtures.demo.Point.LengthUnit, value: int) -> None
+            """
         def __eq__(self, other: object) -> bool:
-            """__eq__(self: object, other: object) -> bool"""
+            """__eq__(self: object, other: object) -> bool
+            """
         def __hash__(self) -> int:
-            """__hash__(self: object) -> int"""
+            """__hash__(self: object) -> int
+            """
         def __index__(self) -> int:
-            """__index__(self: pybind11_fixtures.demo.Point.LengthUnit) -> int"""
+            """__index__(self: pybind11_fixtures.demo.Point.LengthUnit) -> int
+            """
         def __int__(self) -> int:
-            """__int__(self: pybind11_fixtures.demo.Point.LengthUnit) -> int"""
+            """__int__(self: pybind11_fixtures.demo.Point.LengthUnit) -> int
+            """
         def __ne__(self, other: object) -> bool:
-            """__ne__(self: object, other: object) -> bool"""
+            """__ne__(self: object, other: object) -> bool
+            """
         @property
         def name(self) -> str: ...
         @property
