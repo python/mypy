@@ -250,7 +250,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             union_items: list[Type] = []
             for t in current_type.items:
                 typ, _, capture = self.accept(o, t)
-                if not isinstance(get_proper_type(typ), UninhabitedType):
+                if not is_uninhabited(get_proper_type(typ)):
                     union_items.append(typ)
                     union_captures.update(capture)
             typ = UnionType.make_union(items=union_items)
