@@ -11,6 +11,7 @@ import importlib
 import inspect
 import keyword
 import os.path
+import sys
 from types import FunctionType, ModuleType
 from typing import Any, Callable, Mapping
 
@@ -652,21 +653,34 @@ class InspectionStubGenerator(BaseStubGenerator):
 
     def _indent_docstring(self, docstring: str) -> str:
         """Fix indentation of docstring extracted from pybind11 or other binding generators."""
-        lines = docstring.splitlines(keepends=True)
+        # this follows inspect.cleandoc except it only changes the margins.
+        # it won't remove empty lines at the start or end.
+        # nor remove whitespace at the start of the first line.
+        # essentially it should do as little to the docstring as possible.
+
+        lines = docstring.expandtabs().split("\n")
+
+        # Find minimum indentation of any non-blank lines after first line.
+        margin = sys.maxsize
+        for line in lines[1:]:
+            content = len(line.lstrip(" "))
+            if content:
+                indent = len(line) - content
+                margin = min(margin, indent)
+
         indent = self._indent + "    "
-        if len(lines) > 1:
-            if not all(line.startswith(indent) or not line.strip() for line in lines):
-                # if the docstring is not indented, then indent all but the first line
-                for i, line in enumerate(lines[1:]):
-                    if line.strip():
-                        lines[i + 1] = indent + line
-        # if there's a trailing newline, add a final line to visually indent the quoted docstring
-        if lines[-1].endswith("\n"):
-            if len(lines) > 1:
-                lines.append(indent)
-            else:
-                lines[-1] = lines[-1][:-1]
-        return "".join(lines)
+        # Remove margin and set it to indent.
+        if margin < sys.maxsize:
+            for i in range(1, len(lines)):
+                dedent_line = lines[i][margin:]
+                # if the lile after dedent was not empty, add our indent
+                if dedent_line:
+                    dedent_line = indent + dedent_line
+                lines[i] = dedent_line
+        if lines[-1] == "":
+            #  if the last line was empty, indent it so the triple end quote is in a good spot.
+            lines[-1] = indent + lines[-1]
+        return "\n".join(lines)
 
     def _fix_iter(
         self, ctx: FunctionContext, inferred: list[FunctionSig], output: list[str]
