@@ -668,18 +668,19 @@ class InspectionStubGenerator(BaseStubGenerator):
                 indent = len(line) - content
                 margin = min(margin, indent)
 
-        indent = self._indent + "    "
+        doc_indent = self._indent + "    "
         # Remove margin and set it to indent.
         if margin < sys.maxsize:
             for i in range(1, len(lines)):
-                dedent_line = lines[i][margin:]
-                # if the lile after dedent was not empty, add our indent
-                if dedent_line:
-                    dedent_line = indent + dedent_line
-                lines[i] = dedent_line
+                # dedent the line
+                line = lines[i][margin:]
+                # if the line after dedent was not empty, prepend our indent
+                if line:
+                    line = doc_indent + line
+                lines[i] = line
         if lines[-1] == "":
             #  if the last line was empty, indent it so the triple end quote is in a good spot.
-            lines[-1] = indent + lines[-1]
+            lines[-1] = doc_indent + lines[-1]
         return "\n".join(lines)
 
     def _fix_iter(
