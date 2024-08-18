@@ -4405,3 +4405,13 @@ Y = int | None
 Z = Incomplete
 W = int | str | None
 R = type[int | str] | None
+
+[case testClassInheritanceWithKeywordsConstants]
+class Test(Whatever, a=1, b='b', c=True, d=1.5, e=None, f=1j, g=b'123'): ...
+[out]
+class Test(Whatever, a=1, b='b', c=True, d=1.5, e=None, f=1j, g=b'123'): ...
+
+[case testClassInheritanceWithKeywordsDynamic]
+class Test(Whatever, keyword=SomeName * 2, attr=SomeName.attr): ...
+[out]
+class Test(Whatever, keyword=SomeName * 2, attr=SomeName.attr): ...
