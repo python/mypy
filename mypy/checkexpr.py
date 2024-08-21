@@ -2619,7 +2619,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         arg_types = self.infer_arg_types_in_empty_context(args)
         # Step 1: Filter call targets to remove ones where the argument counts don't match
         plausible_targets = self.plausible_overload_call_targets(
-            args, arg_types, arg_kinds, arg_names, callee, context
+            arg_types, arg_kinds, arg_names, callee
         )
 
         # Step 2: If the arguments contain a union, we try performing union math first,
@@ -2777,12 +2777,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def plausible_overload_call_targets(
         self,
-        args: list[Expression],
         arg_types: list[Type],
         arg_kinds: list[ArgKind],
         arg_names: Sequence[str | None] | None,
         overload: Overloaded,
-        context: Context,
     ) -> list[CallableType]:
         """Returns all overload call targets that having matching argument counts.
 
