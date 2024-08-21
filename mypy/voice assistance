@@ -1,0 +1,81 @@
+#this is a voice assistance, whch help you in your basic problems.
+
+import pyttsx3
+import speech_recognition as sr
+import webbrowser
+import datetime
+import pyjokes
+import quote
+
+def sptext():
+    recognizer=sr.Recognizer()
+    with sr.Microphone() as source:
+      print("Listening...")
+      recognizer.adjust_for_ambient_noise(source)
+      audio = recognizer.listen(source)
+      try:
+        print("recognizing...")
+        data = recognizer.recognize_google(audio)
+        print(data)
+        return data
+      except sr.UnknownValueError:
+        print(" Not Understand ")
+
+        
+def speechtx(x):
+  engine = pyttsx3.init()
+  voices = engine.getProperty('voices')
+  engine.setProperty('voice',voices[0].id)
+  rate = engine.getProperty('rate')
+  engine.setProperty('rate',150)
+  engine.say(x)
+  engine.runAndWait()
+  
+  
+if __name__ == '__main__':
+  
+    #if sptext().lower() == "Hey Peter":
+      data1=sptext().lower()
+      if "your name" in data1:
+        name = "my name is Harry"
+        speechtx(name)
+        
+      elif "old are you" in data1:
+        age = "i am one year old"
+        speechtx(age)
+        
+      elif 'time' in data1:
+        time = datetime.datetime.now().strftime("%I%M%p")
+        speechtx(time)
+        
+      elif 'youtube' in data1:
+        webbrowser.open("https://www.youtube.com/")
+        
+      elif 'song' in data1:
+        webbrowser.open("https://www.youtube.com/watch?v=nFgsBxw-zWQ")
+        
+      elif "who is your father" in data1:
+        father = "my father name is ajinesh, he is a great programmer"
+        speechtx(father)
+
+      elif "joke" in data1:
+        joke_1 = pyjokes.get_joke(language="en",category="neutral")
+        speechtx(joke_1)
+        
+      elif 'chatgpt' in data1:
+        webbrowser.open("https://chatgpt.com/")
+        
+      elif "quote" in data1:
+        quote = quote.get_quote()
+        speechtx(quote)
+        
+      
+
+
+
+    
+      else:
+       print("thanks")
+
+
+    
