@@ -10,7 +10,18 @@ from typing_extensions import Protocol
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
 from mypy.expandtype import expand_type
-from mypy.messages import MessageBuilder, format_type_bare, quote_type_string, wrong_type_arg_count
+from mypy.message_registry import (
+    INVALID_PARAM_SPEC_LOCATION,
+    INVALID_PARAM_SPEC_LOCATION_NOTE,
+    TYPEDDICT_OVERRIDE_MERGE,
+)
+from mypy.messages import (
+    MessageBuilder,
+    format_type,
+    format_type_bare,
+    quote_type_string,
+    wrong_type_arg_count,
+)
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -18,6 +29,7 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    MISSING_FALLBACK,
     SYMBOL_FUNCBASE_TYPES,
     ArgKind,
     Context,
@@ -36,7 +48,7 @@ from mypy.nodes import (
     check_arg_names,
     get_nongen_builtins,
 )
-from mypy.options import Options
+from mypy.options import INLINE_TYPEDDICT, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import (
     SemanticAnalyzerCoreInterface,
@@ -93,7 +105,6 @@ from mypy.types import (
     callable_with_ellipsis,
     find_unpack_in_list,
     flatten_nested_tuples,
-    flatten_nested_unions,
     get_proper_type,
     has_type_vars,
 )
@@ -1027,10 +1038,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_parameters(self, t: Parameters) -> Type:
         raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")
 
-    def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
+    def visit_callable_type(
+        self, t: CallableType, nested: bool = True, namespace: str = ""
+    ) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
-        with self.tvar_scope_frame():
-            unpacked_kwargs = False
+        # TODO: attach namespace for nested free type variables (these appear in return type only).
+        with self.tvar_scope_frame(namespace=namespace):
+            unpacked_kwargs = t.unpack_kwargs
             if self.defining_alias:
                 variables = t.variables
             else:
@@ -1098,7 +1112,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return ret
 
     def anal_type_guard(self, t: Type) -> Type | None:
-        t = t.resolve_string_annotation()
         if isinstance(t, UnboundType):
             sym = self.lookup_qualified(t.name, t)
             if sym is not None and sym.node is not None:
@@ -1117,7 +1130,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return None
 
     def anal_type_is(self, t: Type) -> Type | None:
-        t = t.resolve_string_annotation()
         if isinstance(t, UnboundType):
             sym = self.lookup_qualified(t.name, t)
             if sym is not None and sym.node is not None:
@@ -1135,7 +1147,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def anal_star_arg_type(self, t: Type, kind: ArgKind, nested: bool) -> Type:
         """Analyze signature argument type for *args and **kwargs argument."""
-        t = t.resolve_string_annotation()
         if isinstance(t, UnboundType) and t.name and "." in t.name and not t.args:
             components = t.name.split(".")
             tvar_name = ".".join(components[:-1])
@@ -1211,10 +1222,45 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return TupleType(self.anal_array(t.items, allow_unpack=True), fallback, t.line)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        items = {
-            item_name: self.anal_type(item_type) for (item_name, item_type) in t.items.items()
-        }
-        return TypedDictType(items, set(t.required_keys), t.fallback)
+        req_keys = set()
+        items = {}
+        for item_name, item_type in t.items.items():
+            analyzed = self.anal_type(item_type, allow_required=True)
+            if isinstance(analyzed, RequiredType):
+                if analyzed.required:
+                    req_keys.add(item_name)
+                analyzed = analyzed.item
+            else:
+                # Keys are required by default.
+                req_keys.add(item_name)
+            items[item_name] = analyzed
+        if t.fallback.type is MISSING_FALLBACK:  # anonymous/inline TypedDict
+            if INLINE_TYPEDDICT not in self.options.enable_incomplete_feature:
+                self.fail(
+                    "Inline TypedDict is experimental,"
+                    " must be enabled with --enable-incomplete-feature=InlineTypedDict",
+                    t,
+                )
+            required_keys = req_keys
+            fallback = self.named_type("typing._TypedDict")
+            for typ in t.extra_items_from:
+                analyzed = self.analyze_type(typ)
+                p_analyzed = get_proper_type(analyzed)
+                if not isinstance(p_analyzed, TypedDictType):
+                    if not isinstance(p_analyzed, (AnyType, PlaceholderType)):
+                        self.fail("Can only merge-in other TypedDict", t, code=codes.VALID_TYPE)
+                    continue
+                for sub_item_name, sub_item_type in p_analyzed.items.items():
+                    if sub_item_name in items:
+                        self.fail(TYPEDDICT_OVERRIDE_MERGE.format(sub_item_name), t)
+                        continue
+                    items[sub_item_name] = sub_item_type
+                    if sub_item_name in p_analyzed.required_keys:
+                        req_keys.add(sub_item_name)
+        else:
+            required_keys = t.required_keys
+            fallback = t.fallback
+        return TypedDictType(items, required_keys, fallback, t.line, t.column)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
         # We should never see a bare Literal. We synthesize these raw literals
@@ -1226,8 +1272,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # make signatures like "foo(x: 20) -> None" legal, we can change
         # this method so it generates and returns an actual LiteralType
         # instead.
-        if t.node is not None:
-            return t.node.accept(self)
 
         if self.report_invalid_types:
             if t.base_type_name in ("builtins.int", "builtins.bool"):
@@ -1262,7 +1306,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             and not self.options.python_version >= (3, 10)
         ):
             self.fail("X | Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
-        return UnionType(self.anal_array(t.items), t.line)
+        return UnionType(self.anal_array(t.items), t.line, uses_pep604_syntax=t.uses_pep604_syntax)
 
     def visit_partial_type(self, t: PartialType) -> Type:
         assert False, "Internal error: Unexpected partial type"
@@ -1432,7 +1476,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
             else:
                 # Callable[P, RET] (where P is ParamSpec)
-                with self.tvar_scope_frame():
+                with self.tvar_scope_frame(namespace=""):
                     # Temporarily bind ParamSpecs to allow code like this:
                     #     my_fun: Callable[Q, Foo[Q]]
                     # We usually do this later in visit_callable_type(), but the analysis
@@ -1490,7 +1534,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         invalid_unpacks: list[Type] = []
         second_unpack_last = False
         for i, arg in enumerate(arglist.items):
-            arg = arg.resolve_string_annotation()
             if isinstance(arg, CallableArgument):
                 args.append(arg.typ)
                 names.append(arg.name)
@@ -1571,6 +1614,22 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return UnionType.make_union(output, line=t.line)
 
     def analyze_literal_param(self, idx: int, arg: Type, ctx: Context) -> list[Type] | None:
+        # This UnboundType was originally defined as a string.
+        if (
+            isinstance(arg, ProperType)
+            and isinstance(arg, (UnboundType, UnionType))
+            and arg.original_str_expr is not None
+        ):
+            assert arg.original_str_fallback is not None
+            return [
+                LiteralType(
+                    value=arg.original_str_expr,
+                    fallback=self.named_type(arg.original_str_fallback),
+                    line=arg.line,
+                    column=arg.column,
+                )
+            ]
+
         # If arg is an UnboundType that was *not* originally defined as
         # a string, try expanding it in case it's a type alias or something.
         if isinstance(arg, UnboundType):
@@ -1648,9 +1707,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.note_func(msg, ctx, code=code)
 
     @contextmanager
-    def tvar_scope_frame(self) -> Iterator[None]:
+    def tvar_scope_frame(self, namespace: str) -> Iterator[None]:
         old_scope = self.tvar_scope
-        self.tvar_scope = self.tvar_scope.method_frame()
+        self.tvar_scope = self.tvar_scope.method_frame(namespace)
         yield
         self.tvar_scope = old_scope
 
@@ -1752,11 +1811,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_param_spec: bool = False,
         allow_unpack: bool = False,
         allow_ellipsis: bool = False,
+        allow_required: bool = False,
     ) -> Type:
         if nested:
             self.nesting_level += 1
         old_allow_required = self.allow_required
-        self.allow_required = False
+        self.allow_required = allow_required
         old_allow_ellipsis = self.allow_ellipsis
         self.allow_ellipsis = allow_ellipsis
         old_allow_unpack = self.allow_unpack
@@ -1780,12 +1840,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 analyzed = AnyType(TypeOfAny.from_error)
             else:
                 self.fail(
-                    f'Invalid location for ParamSpec "{analyzed.name}"', t, code=codes.VALID_TYPE
+                    INVALID_PARAM_SPEC_LOCATION.format(format_type(analyzed, self.options)),
+                    t,
+                    code=codes.VALID_TYPE,
                 )
                 self.note(
-                    "You can use ParamSpec as the first argument to Callable, e.g., "
-                    "'Callable[{}, int]'".format(analyzed.name),
+                    INVALID_PARAM_SPEC_LOCATION_NOTE.format(analyzed.name),
                     t,
+                    code=codes.VALID_TYPE,
                 )
                 analyzed = AnyType(TypeOfAny.from_error)
         return analyzed
@@ -1795,7 +1857,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return TypeVarType(
                 name=var_def.name,
                 fullname=var_def.fullname,
-                id=var_def.id.raw_id,
+                id=var_def.id,
                 values=self.anal_array(var_def.values),
                 upper_bound=var_def.upper_bound.accept(self),
                 default=var_def.default.accept(self),
@@ -2334,16 +2396,11 @@ def make_optional_type(t: Type) -> Type:
     is called during semantic analysis and simplification only works during
     type checking.
     """
-    p_t = get_proper_type(t)
-    if isinstance(p_t, NoneType):
+    if isinstance(t, ProperType) and isinstance(t, NoneType):
         return t
-    elif isinstance(p_t, UnionType):
+    elif isinstance(t, ProperType) and isinstance(t, UnionType):
         # Eagerly expanding aliases is not safe during semantic analysis.
-        items = [
-            item
-            for item in flatten_nested_unions(p_t.items, handle_type_alias_type=False)
-            if not isinstance(get_proper_type(item), NoneType)
-        ]
+        items = [item for item in t.items if not isinstance(get_proper_type(item), NoneType)]
         return UnionType(items + [NoneType()], t.line, t.column)
     else:
         return UnionType([t, NoneType()], t.line, t.column)
@@ -2370,6 +2427,12 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
         if not t.args:
             if not (empty_tuple_index and len(t.type.type_vars) == 1):
                 # The Any arguments should be set by the caller.
+                if empty_tuple_index and min_tv_count:
+                    fail(
+                        f"At least {min_tv_count} type argument(s) expected, none given",
+                        t,
+                        code=codes.TYPE_ARG,
+                    )
                 return False
         elif not correct:
             fail(
@@ -2552,8 +2615,7 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.process_types(list(t.items.values()))
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> None:
-        if t.node is not None:
-            t.node.accept(self)
+        pass
 
     def visit_literal_type(self, t: LiteralType) -> None:
         pass

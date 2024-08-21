@@ -49,6 +49,7 @@ from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
     MessageBuilder,
     append_invariance_notes,
+    append_union_note,
     format_type,
     format_type_bare,
     format_type_distinctly,
@@ -125,6 +126,7 @@ from mypy.nodes import (
     TryStmt,
     TupleExpr,
     TypeAlias,
+    TypeAliasStmt,
     TypeInfo,
     TypeVarExpr,
     UnaryExpr,
@@ -169,7 +171,6 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
-    get_type_vars,
     is_literal_type_like,
     is_singleton_type,
     make_simplified_union,
@@ -539,10 +540,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_top_level(node)
         else:
             self.recurse_into_functions = True
-            if isinstance(node, LambdaExpr):
-                self.expr_checker.accept(node)
-            else:
-                self.accept(node)
+            with self.binder.top_frame_context():
+                if isinstance(node, LambdaExpr):
+                    self.expr_checker.accept(node)
+                else:
+                    self.accept(node)
 
     def check_top_level(self, node: MypyFile) -> None:
         """Check only the top-level of a module, skipping function definitions."""
@@ -681,6 +683,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         inner_type = get_proper_type(inner_type)
         outer_type: CallableType | None = None
         if inner_type is not None and not isinstance(inner_type, AnyType):
+            if isinstance(inner_type, TypeVarLikeType):
+                inner_type = get_proper_type(inner_type.upper_bound)
             if isinstance(inner_type, TypeType):
                 if isinstance(inner_type.item, Instance):
                     inner_type = expand_type_by_instance(
@@ -786,14 +790,35 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     type_vars = current_class.defn.type_vars if current_class else []
                     with state.strict_optional_set(True):
                         if is_unsafe_overlapping_overload_signatures(sig1, sig2, type_vars):
-                            self.msg.overloaded_signatures_overlap(i + 1, i + j + 2, item.func)
+                            flip_note = (
+                                j == 0
+                                and not is_unsafe_overlapping_overload_signatures(
+                                    sig2, sig1, type_vars
+                                )
+                                and not overload_can_never_match(sig2, sig1)
+                            )
+                            self.msg.overloaded_signatures_overlap(
+                                i + 1, i + j + 2, flip_note, item.func
+                            )
 
             if impl_type is not None:
                 assert defn.impl is not None
 
+                # This is what we want from implementation, it should accept all arguments
+                # of an overload, but the return types should go the opposite way.
+                if is_callable_compatible(
+                    impl_type,
+                    sig1,
+                    is_compat=is_subtype,
+                    is_proper_subtype=False,
+                    is_compat_return=lambda l, r: is_subtype(r, l),
+                ):
+                    continue
+                # If the above check didn't work, we repeat some key steps in
+                # is_callable_compatible() to give a better error message.
+
                 # We perform a unification step that's very similar to what
-                # 'is_callable_compatible' would have done if we had set
-                # 'unify_generics' to True -- the only difference is that
+                # 'is_callable_compatible' does -- the only difference is that
                 # we check and see if the impl_type's return value is a
                 # *supertype* of the overload alternative, not a *subtype*.
                 #
@@ -1751,6 +1776,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # second operand is the right argument -- we switch the order of
         # the arguments of the reverse method.
 
+        # TODO: this manipulation is dangerous if callables are generic.
+        # Shuffling arguments between callables can create meaningless types.
         forward_tweaked = forward_item.copy_modified(
             arg_types=[forward_base_erased, forward_item.arg_types[0]],
             arg_kinds=[nodes.ARG_POS] * 2,
@@ -1777,7 +1804,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         current_class = self.scope.active_class()
         type_vars = current_class.defn.type_vars if current_class else []
-        return is_unsafe_overlapping_overload_signatures(first, second, type_vars)
+        return is_unsafe_overlapping_overload_signatures(
+            first, second, type_vars, partial_only=False
+        )
 
     def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.
@@ -1912,8 +1941,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         found_method_base_classes: list[TypeInfo] | None,
         context: Context | None = None,
     ) -> None:
+        plugin_generated = False
+        if defn.info and (node := defn.info.get(defn.name)) and node.plugin_generated:
+            # Do not report issues for plugin generated nodes,
+            # they can't realistically use `@override` for their methods.
+            plugin_generated = True
+
         if (
-            found_method_base_classes
+            not plugin_generated
+            and found_method_base_classes
             and not defn.is_explicit_override
             and defn.name not in ("__init__", "__new__")
             and not is_private(defn.name)
@@ -2171,7 +2207,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def get_op_other_domain(self, tp: FunctionLike) -> Type | None:
         if isinstance(tp, CallableType):
             if tp.arg_kinds and tp.arg_kinds[0] == ARG_POS:
-                return tp.arg_types[0]
+                # For generic methods, domain comparison is tricky, as a first
+                # approximation erase all remaining type variables.
+                return erase_typevars(tp.arg_types[0], {v.id for v in tp.variables})
             return None
         elif isinstance(tp, Overloaded):
             raw_items = [self.get_op_other_domain(it) for it in tp.items]
@@ -2241,6 +2279,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if fail:
             emitted_msg = False
 
+            offset_arguments = isinstance(override, CallableType) and override.unpack_kwargs
             # Normalize signatures, so we get better diagnostics.
             if isinstance(override, (CallableType, Overloaded)):
                 override = override.with_unpacked_kwargs()
@@ -2271,13 +2310,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 def erase_override(t: Type) -> Type:
                     return erase_typevars(t, ids_to_erase=override_ids)
 
-                for i in range(len(override.arg_types)):
-                    if not is_subtype(
-                        original.arg_types[i], erase_override(override.arg_types[i])
-                    ):
-                        arg_type_in_super = original.arg_types[i]
-
-                        if isinstance(node, FuncDef):
+                for i, (sub_kind, super_kind) in enumerate(
+                    zip(override.arg_kinds, original.arg_kinds)
+                ):
+                    if sub_kind.is_positional() and super_kind.is_positional():
+                        override_arg_type = override.arg_types[i]
+                        original_arg_type = original.arg_types[i]
+                    elif sub_kind.is_named() and super_kind.is_named() and not offset_arguments:
+                        arg_name = override.arg_names[i]
+                        if arg_name in original.arg_names:
+                            override_arg_type = override.arg_types[i]
+                            original_i = original.arg_names.index(arg_name)
+                            original_arg_type = original.arg_types[original_i]
+                        else:
+                            continue
+                    else:
+                        continue
+                    if not is_subtype(original_arg_type, erase_override(override_arg_type)):
+                        if isinstance(node, FuncDef) and not node.is_property:
                             context: Context = node.arguments[i + len(override.bound_args)]
                         else:
                             context = node
@@ -2286,7 +2336,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             name,
                             type_name,
                             name_in_super,
-                            arg_type_in_super,
+                            original_arg_type,
                             supertype,
                             context,
                             secondary_context=node,
@@ -2924,7 +2974,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.annotation_in_unchecked_function(context=s)
 
     def check_type_alias_rvalue(self, s: AssignmentStmt) -> None:
-        alias_type = self.expr_checker.accept(s.rvalue)
+        with self.msg.filter_errors():
+            alias_type = self.expr_checker.accept(s.rvalue)
         self.store_type(s.lvalues[-1], alias_type)
 
     def check_assignment(
@@ -3837,6 +3888,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.expr_checker.accept(rvalue, lvalue_type)
                 )
 
+                if isinstance(reinferred_rvalue_type, TypeVarLikeType):
+                    reinferred_rvalue_type = get_proper_type(reinferred_rvalue_type.upper_bound)
                 if isinstance(reinferred_rvalue_type, UnionType):
                     # If this is an Optional type in non-strict Optional code, unwrap it.
                     relevant_items = reinferred_rvalue_type.relevant_items()
@@ -5261,6 +5314,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if node not in inferred_types or not is_subtype(typ, inferred_types[node]):
                         del type_map[expr]
 
+    def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
+        with self.msg.filter_errors():
+            self.expr_checker.accept(o.value)
+
     def make_fake_typeinfo(
         self,
         curr_module_fullname: str,
@@ -5717,7 +5774,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else_map = {}
         return if_map, else_map
 
-    def find_isinstance_check(self, node: Expression) -> tuple[TypeMap, TypeMap]:
+    def find_isinstance_check(
+        self, node: Expression, *, in_boolean_context: bool = True
+    ) -> tuple[TypeMap, TypeMap]:
         """Find any isinstance checks (within a chain of ands).  Includes
         implicit and explicit checks for None and calls to callable.
         Also includes TypeGuard and TypeIs functions.
@@ -5728,15 +5787,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         If either of the values in the tuple is None, then that particular
         branch can never occur.
 
+        If `in_boolean_context=True` is passed, it means that we handle
+        a walrus expression. We treat rhs values
+        in expressions like `(a := A())` specially:
+        for example, some errors are suppressed.
+
         May return {}, {}.
         Can return None, None in situations involving NoReturn.
         """
-        if_map, else_map = self.find_isinstance_check_helper(node)
+        if_map, else_map = self.find_isinstance_check_helper(
+            node, in_boolean_context=in_boolean_context
+        )
         new_if_map = self.propagate_up_typemap_info(if_map)
         new_else_map = self.propagate_up_typemap_info(else_map)
         return new_if_map, new_else_map
 
-    def find_isinstance_check_helper(self, node: Expression) -> tuple[TypeMap, TypeMap]:
+    def find_isinstance_check_helper(
+        self, node: Expression, *, in_boolean_context: bool = True
+    ) -> tuple[TypeMap, TypeMap]:
         if is_true_literal(node):
             return {}, None
         if is_false_literal(node):
@@ -5946,11 +6014,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if_map, else_map = {}, {}
 
                     if left_index in narrowable_operand_index_to_hash:
-                        # We only try and narrow away 'None' for now
-                        if is_overlapping_none(item_type):
-                            collection_item_type = get_proper_type(
-                                builtin_item_type(iterable_type)
-                            )
+                        collection_item_type = get_proper_type(builtin_item_type(iterable_type))
+                        # Narrow if the collection is a subtype
+                        if (
+                            collection_item_type is not None
+                            and collection_item_type != item_type
+                            and is_subtype(collection_item_type, item_type)
+                        ):
+                            if_map[operands[left_index]] = collection_item_type
+                        # Try and narrow away 'None'
+                        elif is_overlapping_none(item_type):
                             if (
                                 collection_item_type is not None
                                 and not is_overlapping_none(collection_item_type)
@@ -6005,7 +6078,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if else_assignment_map is not None:
                 else_map.update(else_assignment_map)
 
-            if_condition_map, else_condition_map = self.find_isinstance_check(node.value)
+            if_condition_map, else_condition_map = self.find_isinstance_check(
+                node.value, in_boolean_context=False
+            )
 
             if if_condition_map is not None:
                 if_map.update(if_condition_map)
@@ -6067,7 +6142,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
         original_vartype = self.lookup_type(node)
-        self._check_for_truthy_type(original_vartype, node)
+        if in_boolean_context:
+            # We don't check `:=` values in expressions like `(a := A())`,
+            # because they produce two error messages.
+            self._check_for_truthy_type(original_vartype, node)
         vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
 
         if_type = true_only(vartype)
@@ -6770,6 +6848,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):
                 notes = append_invariance_notes(notes, subtype, supertype)
+            if isinstance(subtype, UnionType) and isinstance(supertype, UnionType):
+                notes = append_union_note(notes, subtype, supertype, self.options)
         if extra_info:
             msg = msg.with_additional_msg(" (" + ", ".join(extra_info) + ")")
 
@@ -7272,7 +7352,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def get_isinstance_type(self, expr: Expression) -> list[TypeRange] | None:
         if isinstance(expr, OpExpr) and expr.op == "|":
             left = self.get_isinstance_type(expr.left)
+            if left is None and is_literal_none(expr.left):
+                left = [TypeRange(NoneType(), is_upper_bound=False)]
             right = self.get_isinstance_type(expr.right)
+            if right is None and is_literal_none(expr.right):
+                right = [TypeRange(NoneType(), is_upper_bound=False)]
             if left is None or right is None:
                 return None
             return left + right
@@ -7295,6 +7379,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
                 object_type = Instance(typ.type.mro[-1], [])
                 types.append(TypeRange(object_type, is_upper_bound=True))
+            elif isinstance(typ, Instance) and typ.type.fullname == "types.UnionType" and typ.args:
+                types.append(TypeRange(UnionType(typ.args), is_upper_bound=False))
             elif isinstance(typ, AnyType):
                 types.append(TypeRange(typ, is_upper_bound=False))
             else:  # we didn't see an actual type, but rather a variable with unknown value
@@ -7793,68 +7879,112 @@ def are_argument_counts_overlapping(t: CallableType, s: CallableType) -> bool:
     return min_args <= max_args
 
 
+def expand_callable_variants(c: CallableType) -> list[CallableType]:
+    """Expand a generic callable using all combinations of type variables' values/bounds."""
+    for tv in c.variables:
+        # We need to expand self-type before other variables, because this is the only
+        # type variable that can have other type variables in the upper bound.
+        if tv.id.is_self():
+            c = expand_type(c, {tv.id: tv.upper_bound}).copy_modified(
+                variables=[v for v in c.variables if not v.id.is_self()]
+            )
+            break
+
+    if not c.is_generic():
+        # Fast path.
+        return [c]
+
+    tvar_values = []
+    for tvar in c.variables:
+        if isinstance(tvar, TypeVarType) and tvar.values:
+            tvar_values.append(tvar.values)
+        else:
+            tvar_values.append([tvar.upper_bound])
+
+    variants = []
+    for combination in itertools.product(*tvar_values):
+        tvar_map = {tv.id: subst for (tv, subst) in zip(c.variables, combination)}
+        variants.append(expand_type(c, tvar_map).copy_modified(variables=[]))
+    return variants
+
+
 def is_unsafe_overlapping_overload_signatures(
-    signature: CallableType, other: CallableType, class_type_vars: list[TypeVarLikeType]
+    signature: CallableType,
+    other: CallableType,
+    class_type_vars: list[TypeVarLikeType],
+    partial_only: bool = True,
 ) -> bool:
     """Check if two overloaded signatures are unsafely overlapping or partially overlapping.
 
-    We consider two functions 's' and 't' to be unsafely overlapping if both
-    of the following are true:
+    We consider two functions 's' and 't' to be unsafely overlapping if three
+    conditions hold:
 
-    1.  s's parameters are all more precise or partially overlapping with t's
-    2.  s's return type is NOT a subtype of t's.
+    1.  s's parameters are partially overlapping with t's. i.e. there are calls that are
+        valid for both signatures.
+    2.  for these common calls, some of t's parameters types are wider that s's.
+    3.  s's return type is NOT a subset of t's.
+
+    Note that we use subset rather than subtype relationship in these checks because:
+    * Overload selection happens at runtime, not statically.
+    * This results in more lenient behavior.
+    This can cause false negatives (e.g. if overloaded function returns an externally
+    visible attribute with invariant type), but such situations are rare. In general,
+    overloads in Python are generally unsafe, so we intentionally try to avoid giving
+    non-actionable errors (see more details in comments below).
 
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
     # Try detaching callables from the containing class so that all TypeVars
-    # are treated as being free.
-    #
-    # This lets us identify cases where the two signatures use completely
-    # incompatible types -- e.g. see the testOverloadingInferUnionReturnWithMixedTypevars
-    # test case.
+    # are treated as being free, i.e. the signature is as seen from inside the class,
+    # where "self" is not yet bound to anything.
     signature = detach_callable(signature, class_type_vars)
     other = detach_callable(other, class_type_vars)
 
-    # Note: We repeat this check twice in both directions due to a slight
-    # asymmetry in 'is_callable_compatible'. When checking for partial overlaps,
-    # we attempt to unify 'signature' and 'other' both against each other.
-    #
-    # If 'signature' cannot be unified with 'other', we end early. However,
-    # if 'other' cannot be modified with 'signature', the function continues
-    # using the older version of 'other'.
-    #
-    # This discrepancy is unfortunately difficult to get rid of, so we repeat the
-    # checks twice in both directions for now.
-    #
-    # Note that we ignore possible overlap between type variables and None. This
-    # is technically unsafe, but unsafety is tiny and this prevents some common
-    # use cases like:
-    #     @overload
-    #     def foo(x: None) -> None: ..
-    #     @overload
-    #     def foo(x: T) -> Foo[T]: ...
-    return is_callable_compatible(
-        signature,
-        other,
-        is_compat=is_overlapping_types_no_promote_no_uninhabited_no_none,
-        is_proper_subtype=False,
-        is_compat_return=lambda l, r: not is_subtype_no_promote(l, r),
-        ignore_return=False,
-        check_args_covariantly=True,
-        allow_partial_overlap=True,
-        no_unify_none=True,
-    ) or is_callable_compatible(
-        other,
-        signature,
-        is_compat=is_overlapping_types_no_promote_no_uninhabited_no_none,
-        is_proper_subtype=False,
-        is_compat_return=lambda l, r: not is_subtype_no_promote(r, l),
-        ignore_return=False,
-        check_args_covariantly=False,
-        allow_partial_overlap=True,
-        no_unify_none=True,
-    )
+    # Note: We repeat this check twice in both directions compensate for slight
+    # asymmetries in 'is_callable_compatible'.
+
+    for sig_variant in expand_callable_variants(signature):
+        for other_variant in expand_callable_variants(other):
+            # Using only expanded callables may cause false negatives, we can add
+            # more variants (e.g. using inference between callables) in the future.
+            if is_subset_no_promote(sig_variant.ret_type, other_variant.ret_type):
+                continue
+            if not (
+                is_callable_compatible(
+                    sig_variant,
+                    other_variant,
+                    is_compat=is_overlapping_types_for_overload,
+                    check_args_covariantly=False,
+                    is_proper_subtype=False,
+                    is_compat_return=lambda l, r: not is_subset_no_promote(l, r),
+                    allow_partial_overlap=True,
+                )
+                or is_callable_compatible(
+                    other_variant,
+                    sig_variant,
+                    is_compat=is_overlapping_types_for_overload,
+                    check_args_covariantly=True,
+                    is_proper_subtype=False,
+                    is_compat_return=lambda l, r: not is_subset_no_promote(r, l),
+                    allow_partial_overlap=True,
+                )
+            ):
+                continue
+            # Using the same `allow_partial_overlap` flag as before, can cause false
+            # negatives in case where star argument is used in a catch-all fallback overload.
+            # But again, practicality beats purity here.
+            if not partial_only or not is_callable_compatible(
+                other_variant,
+                sig_variant,
+                is_compat=is_subset_no_promote,
+                check_args_covariantly=True,
+                is_proper_subtype=False,
+                ignore_return=True,
+                allow_partial_overlap=True,
+            ):
+                return True
+    return False
 
 
 def detach_callable(typ: CallableType, class_type_vars: list[TypeVarLikeType]) -> CallableType:
@@ -7863,21 +7993,11 @@ def detach_callable(typ: CallableType, class_type_vars: list[TypeVarLikeType]) -
     A callable normally keeps track of the type variables it uses within its 'variables' field.
     However, if the callable is from a method and that method is using a class type variable,
     the callable will not keep track of that type variable since it belongs to the class.
-
-    This function will traverse the callable and find all used type vars and add them to the
-    variables field if it isn't already present.
-
-    The caller can then unify on all type variables whether the callable is originally from
-    the class or not."""
+    """
     if not class_type_vars:
         # Fast path, nothing to update.
         return typ
-    seen_type_vars = set()
-    for t in typ.arg_types + [typ.ret_type]:
-        seen_type_vars |= set(get_type_vars(t))
-    return typ.copy_modified(
-        variables=list(typ.variables) + [tv for tv in class_type_vars if tv in seen_type_vars]
-    )
+    return typ.copy_modified(variables=list(typ.variables) + class_type_vars)
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
@@ -8354,21 +8474,24 @@ def get_property_type(t: ProperType) -> ProperType:
     return t
 
 
-def is_subtype_no_promote(left: Type, right: Type) -> bool:
-    return is_subtype(left, right, ignore_promotions=True)
+def is_subset_no_promote(left: Type, right: Type) -> bool:
+    return is_subtype(left, right, ignore_promotions=True, always_covariant=True)
 
 
-def is_overlapping_types_no_promote_no_uninhabited_no_none(left: Type, right: Type) -> bool:
-    # For the purpose of unsafe overload checks we consider list[Never] and list[int]
-    # non-overlapping. This is consistent with how we treat list[int] and list[str] as
-    # non-overlapping, despite [] belongs to both. Also this will prevent false positives
-    # for failed type inference during unification.
+def is_overlapping_types_for_overload(left: Type, right: Type) -> bool:
+    # Note that among other effects 'overlap_for_overloads' flag will effectively
+    # ignore possible overlap between type variables and None. This is technically
+    # unsafe, but unsafety is tiny and this prevents some common use cases like:
+    #     @overload
+    #     def foo(x: None) -> None: ..
+    #     @overload
+    #     def foo(x: T) -> Foo[T]: ...
     return is_overlapping_types(
         left,
         right,
         ignore_promotions=True,
-        ignore_uninhabited=True,
         prohibit_none_typevar_overlap=True,
+        overlap_for_overloads=True,
     )
 
 

@@ -460,7 +460,7 @@ a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict 
 b: D = {'y': ''}  # E: Missing key "x" for TypedDict "D"  [typeddict-item] \
                   # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key]
 c = D(x=0) if int() else E(x=0, y=0)
-c = {}  # E: Expected TypedDict key "x" but found no keys  [typeddict-item]
+c = {}  # E: Missing key "x" for TypedDict "D"  [typeddict-item]
 d: D = {'x': '', 'y': 1}  # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key] \
                           # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
 
@@ -891,6 +891,12 @@ if a:
 
 any_or_object: Union[object, Any]
 if any_or_object:
+    pass
+
+if (my_foo := Foo()):  # E: "__main__.my_foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+
+if my_a := (a or Foo()):  # E: "__main__.Foo" returns "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 [builtins fixtures/list.pyi]
 

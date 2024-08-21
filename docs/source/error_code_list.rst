@@ -1184,7 +1184,7 @@ comment:
 
 .. code-block:: python
 
-    class MyClass
+    class MyClass:
         @special  # type: ignore[prop-decorator]
         @property
         def magic(self) -> str:

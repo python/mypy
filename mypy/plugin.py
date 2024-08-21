@@ -240,7 +240,7 @@ class CheckerPluginInterface:
 
     @abstractmethod
     def fail(
-        self, msg: str | ErrorMessage, ctx: Context, *, code: ErrorCode | None = None
+        self, msg: str | ErrorMessage, ctx: Context, /, *, code: ErrorCode | None = None
     ) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
@@ -328,7 +328,6 @@ class SemanticAnalyzerPluginInterface:
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
         report_invalid_types: bool = True,
-        third_pass: bool = False,
     ) -> Type | None:
         """Analyze an unbound type.
 

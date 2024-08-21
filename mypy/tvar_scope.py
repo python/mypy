@@ -85,29 +85,27 @@ class TypeVarLikeScope:
             return False
         return True
 
-    def method_frame(self) -> TypeVarLikeScope:
+    def method_frame(self, namespace: str) -> TypeVarLikeScope:
         """A new scope frame for binding a method"""
-        return TypeVarLikeScope(self, False, None)
+        return TypeVarLikeScope(self, False, None, namespace=namespace)
 
     def class_frame(self, namespace: str) -> TypeVarLikeScope:
         """A new scope frame for binding a class. Prohibits *this* class's tvars"""
         return TypeVarLikeScope(self.get_function_scope(), True, self, namespace=namespace)
 
-    def new_unique_func_id(self) -> int:
+    def new_unique_func_id(self) -> TypeVarId:
         """Used by plugin-like code that needs to make synthetic generic functions."""
         self.func_id -= 1
-        return self.func_id
+        return TypeVarId(self.func_id)
 
     def bind_new(self, name: str, tvar_expr: TypeVarLikeExpr) -> TypeVarLikeType:
         if self.is_class_scope:
             self.class_id += 1
             i = self.class_id
-            namespace = self.namespace
         else:
             self.func_id -= 1
             i = self.func_id
-            # TODO: Consider also using namespaces for functions
-            namespace = ""
+        namespace = self.namespace
         tvar_expr.default.accept(TypeVarLikeNamespaceSetter(namespace))
 
         if isinstance(tvar_expr, TypeVarExpr):
@@ -124,9 +122,9 @@ class TypeVarLikeScope:
             )
         elif isinstance(tvar_expr, ParamSpecExpr):
             tvar_def = ParamSpecType(
-                name,
-                tvar_expr.fullname,
-                i,
+                name=name,
+                fullname=tvar_expr.fullname,
+                id=TypeVarId(i, namespace=namespace),
                 flavor=ParamSpecFlavor.BARE,
                 upper_bound=tvar_expr.upper_bound,
                 default=tvar_expr.default,
@@ -135,9 +133,9 @@ class TypeVarLikeScope:
             )
         elif isinstance(tvar_expr, TypeVarTupleExpr):
             tvar_def = TypeVarTupleType(
-                name,
-                tvar_expr.fullname,
-                i,
+                name=name,
+                fullname=tvar_expr.fullname,
+                id=TypeVarId(i, namespace=namespace),
                 upper_bound=tvar_expr.upper_bound,
                 tuple_fallback=tvar_expr.tuple_fallback,
                 default=tvar_expr.default,

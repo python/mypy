@@ -1,0 +1,82 @@
+[case testPEP695TypeAliasDep]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+import m
+def g() -> m.C:
+    return m.f()
+[file m.py]
+type C = int
+
+def f() -> int:
+    pass
+[file m.py.2]
+type C = str
+
+def f() -> int:
+    pass
+[out]
+==
+main:4: error: Incompatible return value type (got "int", expected "str")
+
+[case testPEP695ChangeOldStyleToNewStyleTypeAlias]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from m import A
+A()
+
+[file m.py]
+A = int
+
+[file m.py.2]
+type A = int
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:3: error: "TypeAliasType" not callable
+
+[case testPEP695VarianceChangesDueToDependency]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from a import C
+
+x: C[object] = C[int]()
+
+[file a.py]
+from b import A
+
+class C[T]:
+    def f(self) -> A[T]: ...
+
+[file b.py]
+class A[T]:
+    def f(self) -> T: ...
+
+[file b.py.2]
+class A[T]:
+    def f(self) -> list[T]: ...
+
+[out]
+==
+main:4: error: Incompatible types in assignment (expression has type "C[int]", variable has type "C[object]")
+
+[case testPEP695TypeAliasChangesDueToDependency]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from a import A
+x: A
+x = 0
+x = ''
+
+[file a.py]
+from b import B
+type A = B[int, str]
+
+[file b.py]
+from typing import Union as B
+
+[file b.py.2]
+from builtins import tuple as B
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:4: error: Incompatible types in assignment (expression has type "int", variable has type "tuple[int, str]")
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "tuple[int, str]")

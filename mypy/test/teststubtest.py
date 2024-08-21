@@ -144,9 +144,9 @@ class Flag(Enum):
 """
 
 
-def run_stubtest(
+def run_stubtest_with_stderr(
     stub: str, runtime: str, options: list[str], config_file: str | None = None
-) -> str:
+) -> tuple[str, str]:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
             f.write(stubtest_builtins_stub)
@@ -163,13 +163,26 @@ def run_stubtest(
                 f.write(config_file)
             options = options + ["--mypy-config-file", f"{TEST_MODULE_NAME}_config.ini"]
         output = io.StringIO()
-        with contextlib.redirect_stdout(output):
+        outerr = io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(outerr):
             test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
-        return remove_color_code(
-            output.getvalue()
-            # remove cwd as it's not available from outside
-            .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
-        )
+    filtered_output = remove_color_code(
+        output.getvalue()
+        # remove cwd as it's not available from outside
+        .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
+    )
+    filtered_outerr = remove_color_code(
+        outerr.getvalue()
+        # remove cwd as it's not available from outside
+        .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
+    )
+    return filtered_output, filtered_outerr
+
+
+def run_stubtest(
+    stub: str, runtime: str, options: list[str], config_file: str | None = None
+) -> str:
+    return run_stubtest_with_stderr(stub, runtime, options, config_file)[0]
 
 
 class Case:
@@ -891,6 +904,106 @@ class StubtestUnit(unittest.TestCase):
                 attr = _EvilDescriptor()
             """,
             error=None,
+        )
+
+    @collect_cases
+    def test_cached_property(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class Good:
+                @cached_property
+                def read_only_attr(self) -> int: ...
+                @cached_property
+                def read_only_attr2(self) -> int: ...
+            """,
+            runtime="""
+            import functools as ft
+            from functools import cached_property
+            class Good:
+                @cached_property
+                def read_only_attr(self): return 1
+                @ft.cached_property
+                def read_only_attr2(self): return 1
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class Bad:
+                @cached_property
+                def f(self) -> int: ...
+            """,
+            runtime="""
+            class Bad:
+                def f(self) -> int: return 1
+            """,
+            error="Bad.f",
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class GoodCachedAttr:
+                @cached_property
+                def f(self) -> int: ...
+            """,
+            runtime="""
+            class GoodCachedAttr:
+                f = 1
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class BadCachedAttr:
+                @cached_property
+                def f(self) -> str: ...
+            """,
+            runtime="""
+            class BadCachedAttr:
+                f = 1
+            """,
+            error="BadCachedAttr.f",
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            from typing import final
+            class FinalGood:
+                @cached_property
+                @final
+                def attr(self) -> int: ...
+            """,
+            runtime="""
+            from functools import cached_property
+            from typing import final
+            class FinalGood:
+                @cached_property
+                @final
+                def attr(self):
+                    return 1
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from functools import cached_property
+            class FinalBad:
+                @cached_property
+                def attr(self) -> int: ...
+            """,
+            runtime="""
+            from functools import cached_property
+            from typing_extensions import final
+            class FinalBad:
+                @cached_property
+                @final
+                def attr(self):
+                    return 1
+            """,
+            error="FinalBad.attr",
         )
 
     @collect_cases
@@ -2476,6 +2589,46 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == "Success: no issues found in 1 module\n"
+
+    def test_config_file_error_codes(self) -> None:
+        runtime = "temp = 5\n"
+        stub = "temp = SOME_GLOBAL_CONST"
+        output = run_stubtest(stub=stub, runtime=runtime, options=[])
+        assert output == (
+            "error: not checking stubs due to mypy build errors:\n"
+            'test_module.pyi:1: error: Name "SOME_GLOBAL_CONST" is not defined  [name-defined]\n'
+        )
+
+        config_file = "[mypy]\ndisable_error_code = name-defined\n"
+        output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
+        assert output == "Success: no issues found in 1 module\n"
+
+    def test_config_file_error_codes_invalid(self) -> None:
+        runtime = "temp = 5\n"
+        stub = "temp: int\n"
+        config_file = "[mypy]\ndisable_error_code = not-a-valid-name\n"
+        output, outerr = run_stubtest_with_stderr(
+            stub=stub, runtime=runtime, options=[], config_file=config_file
+        )
+        assert output == "Success: no issues found in 1 module\n"
+        assert outerr == (
+            "test_module_config.ini: [mypy]: disable_error_code: "
+            "Invalid error code(s): not-a-valid-name\n"
+        )
+
+    def test_config_file_wrong_incomplete_feature(self) -> None:
+        runtime = "x = 1\n"
+        stub = "x: int\n"
+        config_file = "[mypy]\nenable_incomplete_feature = Unpack\n"
+        output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
+        assert output == (
+            "warning: Warning: Unpack is already enabled by default\n"
+            "Success: no issues found in 1 module\n"
+        )
+
+        config_file = "[mypy]\nenable_incomplete_feature = not-a-valid-name\n"
+        with self.assertRaises(SystemExit):
+            run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
 
     def test_no_modules(self) -> None:
         output = io.StringIO()
