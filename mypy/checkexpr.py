@@ -2786,9 +2786,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     ) -> list[CallableType]:
         """Returns all overload call targets that having matching argument counts.
 
-        If the given args contains a star-arg (*arg or **kwarg argument), this method
-        will ensure all star-arg overloads appear at the start of the list, instead
-        of their usual location.
+        If the given args contains a star-arg (*arg or **kwarg argument, including
+        ParamSpec), this method will ensure all star-arg overloads appear at the start
+        of the list, instead of their usual location.
 
         The only exception is if the starred argument is something like a Tuple or a
         NamedTuple, which has a definitive "shape". If so, we don't move the corresponding
@@ -2817,12 +2817,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 arg_kinds, arg_names, typ.arg_kinds, typ.arg_names, lambda i: arg_types[i]
             )
             with self.msg.filter_errors():
-                if typ.is_generic() and typ.param_spec() is not None:
-                    typ, formal_to_actual = self.adjust_generic_callable_params_mapping(
-                        typ, args, arg_kinds, arg_names, formal_to_actual, context
-                    )
-
-                if self.check_argument_count(
+                if typ.param_spec() is not None:
+                    # ParamSpec can be expanded in a lot of different ways. We may try
+                    # to expand it here instead, but picking an impossible overload
+                    # is safe: it will be filtered out later.
+                    star_matches.append(typ)
+                elif self.check_argument_count(
                     typ, arg_types, arg_kinds, arg_names, formal_to_actual, None
                 ):
                     if args_have_var_arg and typ.is_var_arg:
