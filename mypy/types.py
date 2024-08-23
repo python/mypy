@@ -3629,10 +3629,7 @@ def extend_args_for_prefix_and_suffix(
 
 
 def flatten_nested_unions(
-    types: Sequence[Type],
-    *,
-    handle_type_alias_type: bool = True,
-    handle_recursive: bool = True,
+    types: Sequence[Type], *, handle_type_alias_type: bool = True, handle_recursive: bool = True
 ) -> list[Type]:
     """Flatten nested unions in a type list."""
     if not isinstance(types, list):
