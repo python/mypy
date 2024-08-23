@@ -441,9 +441,9 @@ class ASTConverter:
                 return expr
 
             else:
-              # re-raise original recursion error if it *can* be unparsed,
-              # maybe this is some other issue that shouldn't be silenced/misdirected
-              raise e
+                # re-raise original recursion error if it *can* be unparsed,
+                # maybe this is some other issue that shouldn't be silenced/misdirected
+                raise e
 
     def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
