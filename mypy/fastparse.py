@@ -414,7 +414,36 @@ class ASTConverter:
             method = "visit_" + node.__class__.__name__
             visitor = getattr(self, method)
             self.visitor_cache[typeobj] = visitor
-        return visitor(node)
+
+        try:
+
+            return visitor(node)
+
+        except RecursionError as e:
+            # For very complex expressions it is possible to hit recursion limit
+            # before reaching a leaf node.
+            # E.G. x1+x2+x3+...+xn -> BinOp(left=BinOp(left=BinOp(left=...
+            try:
+                # But to prove that is the cause of this particular recursion error,
+                # try to unparse the node
+                ast3.unparse(node)
+            except RecursionError:
+                self.errors.report(
+                    node.lineno,
+                    node.col_offset,
+                    "Expression too complex to parse",
+                    blocker=True,
+                    code=codes.MISC,
+                )
+
+                expr = TempNode(AnyType(TypeOfAny.from_error), no_rhs=True)
+                self.set_line(expr, node)
+                return expr
+
+            else:
+              # re-raise original recursion error if it *can* be unparsed,
+              # maybe this is some other issue that shouldn't be silenced/misdirected
+              raise e
 
     def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
