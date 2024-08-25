@@ -267,6 +267,10 @@ class BadStatus(Exception):
 def main(argv: list[str]) -> None:
     """The code is top-down."""
     check_python_version("dmypy")
+
+    # set recursion limit consistent with mypy/main.py
+    sys.setrecursionlimit(2**14)
+
     args = parser.parse_args(argv)
     if not args.action:
         parser.print_usage()
