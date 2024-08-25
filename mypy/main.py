@@ -31,6 +31,7 @@ orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
 RECURSION_LIMIT: Final = 2**14
 
+
 def stat_proxy(path: str) -> os.stat_result:
     try:
         st = orig_stat(path)

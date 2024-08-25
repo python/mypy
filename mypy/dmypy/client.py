@@ -16,10 +16,10 @@ import time
 import traceback
 from typing import Any, Callable, Mapping, NoReturn
 
-from mypy.main import RECURSION_LIMIT
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive, send
 from mypy.ipc import IPCClient, IPCException
+from mypy.main import RECURSION_LIMIT
 from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__
 
