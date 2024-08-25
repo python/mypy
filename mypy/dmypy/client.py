@@ -16,6 +16,7 @@ import time
 import traceback
 from typing import Any, Callable, Mapping, NoReturn
 
+from mypy.main import RECURSION_LIMIT
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive, send
 from mypy.ipc import IPCClient, IPCException
@@ -269,7 +270,7 @@ def main(argv: list[str]) -> None:
     check_python_version("dmypy")
 
     # set recursion limit consistent with mypy/main.py
-    sys.setrecursionlimit(2**14)
+    sys.setrecursionlimit(RECURSION_LIMIT)
 
     args = parser.parse_args(argv)
     if not args.action:
