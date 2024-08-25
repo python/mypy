@@ -241,7 +241,6 @@ def parse(
             path=fnam,
         ).visit(ast)
 
-
     except RecursionError as e:
         # For very complex expressions it is possible to hit recursion limit
         # before reaching a leaf node.
@@ -254,11 +253,7 @@ def parse(
             ast3.NodeVisitor().visit(ast)
         except RecursionError:
             errors.report(
-                -1,
-                -1,
-                "Source expression too complex to parse",
-                blocker=False,
-                code=codes.MISC,
+                -1, -1, "Source expression too complex to parse", blocker=False, code=codes.MISC
             )
 
             tree = MypyFile([], [], False, {})
