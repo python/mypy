@@ -1227,3 +1227,4 @@ class A2(six.with_metaclass(M1), metaclass=M1): pass  # E: Multiple metaclass de
 
 @six.add_metaclass(M1)
 class A3(six.with_metaclass(M1)): pass  # E: Multiple metaclass definitions  [metaclass]
+[builtins fixtures/tuple.pyi]
