@@ -2202,6 +2202,7 @@ class CallableType(FunctionLike):
                 tuple(self.arg_names),
                 tuple(self.arg_kinds),
                 self.fallback,
+                self.deprecated,
             )
         )
 
@@ -2216,6 +2217,7 @@ class CallableType(FunctionLike):
                 and self.is_type_obj() == other.is_type_obj()
                 and self.is_ellipsis_args == other.is_ellipsis_args
                 and self.fallback == other.fallback
+                and self.deprecated == other.deprecated
             )
         else:
             return NotImplemented
@@ -2242,6 +2244,7 @@ class CallableType(FunctionLike):
             "from_concatenate": self.from_concatenate,
             "imprecise_arg_kinds": self.imprecise_arg_kinds,
             "unpack_kwargs": self.unpack_kwargs,
+            "deprecated": self.deprecated,
         }
 
     @classmethod
@@ -2267,6 +2270,7 @@ class CallableType(FunctionLike):
             from_concatenate=data["from_concatenate"],
             imprecise_arg_kinds=data["imprecise_arg_kinds"],
             unpack_kwargs=data["unpack_kwargs"],
+            deprecated=data["deprecated"],
         )
 
 
