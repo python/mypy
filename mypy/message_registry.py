@@ -338,3 +338,27 @@ NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorMessage(
 TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES: Final = ErrorMessage(
     "Type variable must have at least two constrained types", codes.MISC
 )
+
+TYPE_VAR_YIELD_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Yield expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_NAMED_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Named expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_AWAIT_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Await expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_ALIAS_WITH_YIELD_EXPRESSION: Final = ErrorMessage(
+    "Yield expression cannot be used within a type alias", codes.SYNTAX
+)
+
+TYPE_ALIAS_WITH_NAMED_EXPRESSION: Final = ErrorMessage(
+    "Named expression cannot be used within a type alias", codes.SYNTAX
+)
+
+TYPE_ALIAS_WITH_AWAIT_EXPRESSION: Final = ErrorMessage(
+    "Await expression cannot be used within a type alias", codes.SYNTAX
+)

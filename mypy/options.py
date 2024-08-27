@@ -416,6 +416,33 @@ class Options:
     def __repr__(self) -> str:
         return f"Options({pprint.pformat(self.snapshot())})"
 
+    def process_error_codes(self, *, error_callback: Callable[[str], Any]) -> None:
+        # Process `--enable-error-code` and `--disable-error-code` flags
+        disabled_codes = set(self.disable_error_code)
+        enabled_codes = set(self.enable_error_code)
+
+        valid_error_codes = set(error_codes.keys())
+
+        invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
+        if invalid_codes:
+            error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
+
+        self.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
+        self.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+
+        # Enabling an error code always overrides disabling
+        self.disabled_error_codes -= self.enabled_error_codes
+
+    def process_incomplete_features(
+        self, *, error_callback: Callable[[str], Any], warning_callback: Callable[[str], Any]
+    ) -> None:
+        # Validate incomplete features.
+        for feature in self.enable_incomplete_feature:
+            if feature not in INCOMPLETE_FEATURES | COMPLETE_FEATURES:
+                error_callback(f"Unknown incomplete feature: {feature}")
+            if feature in COMPLETE_FEATURES:
+                warning_callback(f"Warning: {feature} is already enabled by default")
+
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.
         new_options = Options()

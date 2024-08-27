@@ -54,6 +54,7 @@ import mypy.mixedtraverser
 import mypy.parse
 import mypy.traverser
 import mypy.util
+import mypy.version
 from mypy.build import build
 from mypy.errors import CompileError, Errors
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -304,8 +305,25 @@ class AliasPrinter(NodeVisitor[str]):
     def visit_member_expr(self, o: MemberExpr) -> str:
         return self._visit_ref_expr(o)
 
-    def visit_str_expr(self, node: StrExpr) -> str:
+    def _visit_literal_node(
+        self, node: StrExpr | BytesExpr | IntExpr | FloatExpr | ComplexExpr
+    ) -> str:
         return repr(node.value)
+
+    def visit_str_expr(self, node: StrExpr) -> str:
+        return self._visit_literal_node(node)
+
+    def visit_bytes_expr(self, node: BytesExpr) -> str:
+        return f"b{self._visit_literal_node(node)}"
+
+    def visit_int_expr(self, node: IntExpr) -> str:
+        return self._visit_literal_node(node)
+
+    def visit_float_expr(self, node: FloatExpr) -> str:
+        return self._visit_literal_node(node)
+
+    def visit_complex_expr(self, node: ComplexExpr) -> str:
+        return self._visit_literal_node(node)
 
     def visit_index_expr(self, node: IndexExpr) -> str:
         base_fullname = self.stubgen.get_fullname(node.base)
@@ -804,7 +822,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         for name, value in cdef.keywords.items():
             if name == "metaclass":
                 continue  # handled separately
-            base_types.append(f"{name}={value.accept(p)}")
+            processed_value = value.accept(p) or "..."  # at least, don't crash
+            base_types.append(f"{name}={processed_value}")
         return base_types
 
     def get_class_decorators(self, cdef: ClassDef) -> list[str]:
@@ -1772,7 +1791,7 @@ def parse_options(args: list[str]) -> Options:
         action="store_true",
         help="don't perform semantic analysis of sources, just parse them "
         "(only applies to Python modules, might affect quality of stubs. "
-        "Not compatible with --inspect)",
+        "Not compatible with --inspect-mode)",
     )
     parser.add_argument(
         "--inspect-mode",
@@ -1846,6 +1865,9 @@ def parse_options(args: list[str]) -> Options:
         nargs="*",
         dest="files",
         help="generate stubs for given files or directories",
+    )
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + mypy.version.__version__
     )
 
     ns = parser.parse_args(args)
