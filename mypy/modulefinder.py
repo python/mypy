@@ -13,7 +13,7 @@ import re
 import subprocess
 import sys
 from enum import Enum, unique
-from typing import Dict, Final, List, NamedTuple, Optional, Tuple, Union
+from typing import cast, Dict, Final, List, NamedTuple, Optional, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import pyinfo
@@ -334,6 +334,19 @@ class FindModuleCache:
             if approved_stub_package_exists(".".join(components[:i])):
                 return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         if plausible_match:
+            if self.options:
+                enable_installed_packages = self.options.enable_installed_packages
+                try:
+                    enable_installed_packages = cast(
+                        bool,
+                        self.options.per_module_options[components[0]][
+                            "enable_installed_packages"
+                        ],
+                    )
+                except KeyError:
+                    pass
+                if enable_installed_packages:
+                    return os.path.join(pkg_dir, *components[:-1]), False
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
             return ModuleNotFoundReason.NOT_FOUND
