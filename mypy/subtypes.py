@@ -462,9 +462,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, TupleType):
-            if right.erased_typevartuple:
-                return True  # treat it like Any
-
             if len(right.items) == 1:
                 # Non-normalized Tuple type (may be left after semantic analysis
                 # because semanal_typearg visitor is not a type translator).
@@ -787,8 +784,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             return False
         elif isinstance(right, TupleType):
-            if right.erased_typevartuple:
-                return True  # treat it like Any
             # If right has a variadic unpack this needs special handling. If there is a TypeVarTuple
             # unpack, item count must coincide. If the left has variadic unpack but right
             # doesn't have one, we will fall through to False down the line.
@@ -829,8 +824,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right_unpack = right.items[right_unpack_index]
         assert isinstance(right_unpack, UnpackType)
         right_unpacked = get_proper_type(right_unpack.type)
-        if isinstance(right_unpacked, TupleType) and right_unpacked.erased_typevartuple:
-            return True  # treat it as Any
         if not isinstance(right_unpacked, Instance):
             # This case should be handled by the caller.
             return False
@@ -1609,12 +1602,15 @@ def are_parameters_compatible(
     if are_trivial_parameters(right) and not is_proper_subtype:
         return True
     trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
-    # erased typevartuples, like erased paramspecs or erased typevars are trivial
+
+    # tuple[Any, ...] allows any number of arguments, not just infinite.
     if right_star and isinstance(right_star.typ, UnpackType):
         right_star_inner_type = get_proper_type(right_star.typ.type)
         trivial_varargs = (
-            isinstance(right_star_inner_type, TupleType)
-            and right_star_inner_type.erased_typevartuple
+            isinstance(right_star_inner_type, Instance)
+            and right_star_inner_type.type.fullname == "builtins.tuple"
+            and len(right_star_inner_type.args) == 1
+            and isinstance(right_star_inner_type.args[0], AnyType)
         )
     else:
         trivial_varargs = False

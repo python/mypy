@@ -100,15 +100,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
             )
             tvar = tvars_middle[0]
             assert isinstance(tvar, TypeVarTupleType)
-
-            tvar_value: Type = TupleType(list(args_middle), tvar.tuple_fallback)
-            if len(args_middle) == 1:
-                # prevent nested Unpacks
-                middle_arg = get_proper_type(args_middle[0])
-                if isinstance(middle_arg, UnpackType):
-                    tvar_value = middle_arg.type
-
-            variables = {tvar.id: tvar_value}
+            variables = {tvar.id: TupleType(list(args_middle), tvar.tuple_fallback)}
             instance_args = args_prefix + args_suffix
             tvars = tvars_prefix + tvars_suffix
         else:
@@ -215,7 +207,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        args = self.expand_types_with_unpack(list(t.args))[0]
+        args = self.expand_types_with_unpack(list(t.args))
 
         if isinstance(t.type, FakeInfo):
             # The type checker expands function definitions and bodies
@@ -309,24 +301,23 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         # example is non-normalized types when called from semanal.py.
         return UnpackType(t.type.accept(self))
 
-    # TODO: there must be a cleaner way to not discard `erased_typevartuple`
-    def expand_unpack(self, t: UnpackType) -> tuple[list[Type], bool]:
+    def expand_unpack(self, t: UnpackType) -> list[Type]:
         assert isinstance(t.type, TypeVarTupleType)
         repl = get_proper_type(self.variables.get(t.type.id, t.type))
         if isinstance(repl, UnpackType):
             repl = get_proper_type(repl.type)
         if isinstance(repl, TupleType):
-            return repl.items, repl.erased_typevartuple
+            return repl.items
         elif (
             isinstance(repl, Instance)
             and repl.type.fullname == "builtins.tuple"
             or isinstance(repl, TypeVarTupleType)
         ):
-            return [UnpackType(typ=repl)], False
+            return [UnpackType(typ=repl)]
         elif isinstance(repl, (AnyType, UninhabitedType)):
             # Replace *Ts = Any with *Ts = *tuple[Any, ...] and same for Never.
             # These types may appear here as a result of user error or failed inference.
-            return [UnpackType(t.type.tuple_fallback.copy_modified(args=[repl]))], False
+            return [UnpackType(t.type.tuple_fallback.copy_modified(args=[repl]))]
         else:
             raise RuntimeError(f"Invalid type replacement to expand: {repl}")
 
@@ -348,12 +339,13 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             expanded_tuple = var_arg_type.accept(self)
             assert isinstance(expanded_tuple, ProperType) and isinstance(expanded_tuple, TupleType)
             expanded_items = expanded_tuple.items
-            new_unpack = UnpackType(var_arg_type.copy_modified(items=expanded_items))
+            fallback = var_arg_type.partial_fallback
+            new_unpack = UnpackType(TupleType(expanded_items, fallback))
         elif isinstance(var_arg_type, TypeVarTupleType):
             # We have plain Unpack[Ts]
             fallback = var_arg_type.tuple_fallback
-            expanded_items, etv = self.expand_unpack(var_arg)
-            new_unpack = UnpackType(TupleType(expanded_items, fallback, erased_typevartuple=etv))
+            expanded_items = self.expand_unpack(var_arg)
+            new_unpack = UnpackType(TupleType(expanded_items, fallback))
         else:
             # We have invalid type in Unpack. This can happen when expanding aliases
             # to Callable[[*Invalid], Ret]
@@ -433,23 +425,18 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             items.append(new_item)
         return Overloaded(items)
 
-    def expand_types_with_unpack(self, typs: Sequence[Type]) -> tuple[list[Type], bool]:
+    def expand_types_with_unpack(self, typs: Sequence[Type]) -> list[Type]:
         """Expands a list of types that has an unpack."""
         items: list[Type] = []
-        met_erased_typevartuple = False  # not sure this is the right behavior.
         for item in typs:
             if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):
-                its, etv = self.expand_unpack(item)
-                met_erased_typevartuple = met_erased_typevartuple or etv
-                items.extend(its)
+                items.extend(self.expand_unpack(item))
             else:
                 items.append(item.accept(self))
-
-        assert not met_erased_typevartuple or len(typs) == 1
-        return items, met_erased_typevartuple
+        return items
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        items, etv = self.expand_types_with_unpack(t.items)
+        items = self.expand_types_with_unpack(t.items)
         if len(items) == 1:
             # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
             item = items[0]
@@ -464,7 +451,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                     return unpacked
         fallback = t.partial_fallback.accept(self)
         assert isinstance(fallback, ProperType) and isinstance(fallback, Instance)
-        return t.copy_modified(items=items, fallback=fallback, erased_typevartuple=etv)
+        return t.copy_modified(items=items, fallback=fallback)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         fallback = t.fallback.accept(self)
@@ -503,7 +490,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Target of the type alias cannot contain type variables (not bound by the type
         # alias itself), so we just expand the arguments.
-        args = self.expand_types_with_unpack(t.args)[0]
+        args = self.expand_types_with_unpack(t.args)
         # TODO: normalize if target is Tuple, and args are [*tuple[X, ...]]?
         return t.copy_modified(args=args)
 

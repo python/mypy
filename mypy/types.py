@@ -2128,8 +2128,6 @@ class CallableType(FunctionLike):
             # this should be done once in semanal_typeargs.py for user-defined types,
             # and we ourselves rarely construct such type.
             return self
-        if unpacked.erased_typevartuple:
-            return self
         unpack_index = find_unpack_in_list(unpacked.items)
         if unpack_index == 0 and len(unpacked.items) > 1:
             # Already normalized.
@@ -2356,16 +2354,13 @@ class TupleType(ProperType):
             a tuple base class. Use mypy.typeops.tuple_fallback to calculate the
             precise fallback type derived from item types.
         implicit: If True, derived from a tuple expression (t,....) instead of Tuple[t, ...]
-        erased_typevartuple: If True, this came from a (now-erased) TypeVarTuple. This
-            indicates that this tuple should act more like an Any.
     """
 
-    __slots__ = ("items", "partial_fallback", "implicit", "erased_typevartuple")
+    __slots__ = ("items", "partial_fallback", "implicit")
 
     items: list[Type]
     partial_fallback: Instance
     implicit: bool
-    erased_typevartuple: bool
 
     def __init__(
         self,
@@ -2374,13 +2369,11 @@ class TupleType(ProperType):
         line: int = -1,
         column: int = -1,
         implicit: bool = False,
-        erased_typevartuple: bool = False,
     ) -> None:
         super().__init__(line, column)
         self.partial_fallback = fallback
         self.items = items
         self.implicit = implicit
-        self.erased_typevartuple = erased_typevartuple
 
     def can_be_true_default(self) -> bool:
         if self.can_be_any_bool():
@@ -2421,16 +2414,12 @@ class TupleType(ProperType):
         return visitor.visit_tuple_type(self)
 
     def __hash__(self) -> int:
-        return hash((tuple(self.items), self.partial_fallback, self.erased_typevartuple))
+        return hash((tuple(self.items), self.partial_fallback))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TupleType):
             return NotImplemented
-        return (
-            self.items == other.items
-            and self.partial_fallback == other.partial_fallback
-            and self.erased_typevartuple == other.erased_typevartuple
-        )
+        return self.items == other.items and self.partial_fallback == other.partial_fallback
 
     def serialize(self) -> JsonDict:
         return {
@@ -2438,7 +2427,6 @@ class TupleType(ProperType):
             "items": [t.serialize() for t in self.items],
             "partial_fallback": self.partial_fallback.serialize(),
             "implicit": self.implicit,
-            "erased_typevartuple": self.erased_typevartuple,
         }
 
     @classmethod
@@ -2448,25 +2436,16 @@ class TupleType(ProperType):
             [deserialize_type(t) for t in data["items"]],
             Instance.deserialize(data["partial_fallback"]),
             implicit=data["implicit"],
-            erased_typevartuple=data["erased_typevartuple"],
         )
 
     def copy_modified(
-        self,
-        *,
-        fallback: Instance | None = None,
-        items: list[Type] | None = None,
-        erased_typevartuple: bool | None = None,
+        self, *, fallback: Instance | None = None, items: list[Type] | None = None
     ) -> TupleType:
         if fallback is None:
             fallback = self.partial_fallback
         if items is None:
             items = self.items
-        if erased_typevartuple is None:
-            erased_typevartuple = self.erased_typevartuple
-        return TupleType(
-            items, fallback, self.line, self.column, erased_typevartuple=erased_typevartuple
-        )
+        return TupleType(items, fallback, self.line, self.column)
 
     def slice(
         self, begin: int | None, end: int | None, stride: int | None, *, fallback: Instance | None
@@ -2519,9 +2498,7 @@ class TupleType(ProperType):
                 return None
         else:
             slice_items = self.items[begin:end:stride]
-        return TupleType(
-            slice_items, fallback, self.line, self.column, self.implicit, self.erased_typevartuple
-        )
+        return TupleType(slice_items, fallback, self.line, self.column, self.implicit)
 
 
 class TypedDictType(ProperType):
@@ -3400,8 +3377,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"Overload({', '.join(a)})"
 
     def visit_tuple_type(self, t: TupleType) -> str:
-        if t.erased_typevartuple:
-            return "tuple[...]"
         s = self.list_str(t.items) or "()"
         tuple_name = "tuple" if self.options.use_lowercase_names() else "Tuple"
         if t.partial_fallback and t.partial_fallback.type:
