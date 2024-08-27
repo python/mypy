@@ -1610,7 +1610,7 @@ def are_parameters_compatible(
             isinstance(right_star_inner_type, Instance)
             and right_star_inner_type.type.fullname == "builtins.tuple"
             and len(right_star_inner_type.args) == 1
-            and isinstance(right_star_inner_type.args[0], AnyType)
+            and isinstance(get_proper_type(right_star_inner_type.args[0]), AnyType)
         )
     else:
         trivial_varargs = False
