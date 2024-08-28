@@ -2136,7 +2136,6 @@ get_items(b)  # E: Argument 1 to "get_items" has incompatible type "Bad"; expect
               # N:         def items(self) -> Tuple[Never, ...] \
               # N:     Got: \
               # N:         def items(self) -> List[int]
-# TODO: this *should* work.
 match(b)  # E: Argument 1 to "match" has incompatible type "Bad"; expected "PC[Unpack[Tuple[Never, ...]]]" \
           # N: Following member(s) of "Bad" have conflicts: \
           # N:     Expected: \
