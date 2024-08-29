@@ -537,9 +537,23 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
 
     ### hila - is this right? ###
     def visit_compound_type(self, t: CompoundType) -> bool:
-        types = [t.units.left, t.units.right]
+        # types = [t.units.left, t.units.right]
+        # return any(t.accept(self) for t in types)
+        if isinstance(t.units, PowerType):
+            return super().visit_power_type(t.units)
+        elif isinstance(t.units, OpType):
+            return super().visit_op_type(t.units)
+        else:
+            self.fail("Compound Type cannot be constructed from this type", t, code=codes.Semantic)
+            return
+
+    def visit_op_type(self, t: OpType) -> bool:
+        types = [t.left, t.right]
         return any(t.accept(self) for t in types)
 
+    def visit_power_type(self, t: PowerType) -> bool:
+        types = [t.base]
+        return any(t.accept(self) for t in types)
 
     def visit_overloaded(self, t: Overloaded) -> bool:
         return self.query_types(t.items)  # type: ignore[arg-type]

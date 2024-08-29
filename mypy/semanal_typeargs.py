@@ -114,8 +114,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         t.right.accept(self)
 
     def visit_power_type(self, t: PowerType) -> None:
-        t.left.accept(self)
-        t.right.accept(self)
+        t.base.accept(self)
 
     def visit_callable_type(self, t: CallableType) -> None:
         super().visit_callable_type(t)

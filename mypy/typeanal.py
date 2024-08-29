@@ -299,7 +299,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         #     self.fail("X op Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
         left = t.left.accept(self)
         right = t.right.accept(self)
-        if 'Units' not in left.type.fullname or 'Units' not in right.type.fullname:
+        if isinstance(left, OpType) and isinstance(right, OpType):
+            return OpType(left, right, t.op, t.line)
+        elif isinstance(right, OpType):
+            if not left.type.declared_metaclass or left.type.declared_metaclass.type.fullname != 'Units.UnitMeta':
+                self.fail("OpType requires left that is UnitsType", t, code=codes.SYNTAX)
+            return OpType(left, right, t.op, t.line)
+        elif isinstance(left, OpType):
+            if not right.type.declared_metaclass or right.type.declared_metaclass.type.fullname != 'Units.UnitMeta':
+                self.fail("OpType requires right that is UnitsType", t, code=codes.SYNTAX)
+            return OpType(left, right, t.op, t.line)
+        elif not right.type.declared_metaclass or not left.type.declared_metaclass or left.type.declared_metaclass.type.fullname != 'Units.UnitMeta' or right.type.declared_metaclass.type.fullname != 'Units.UnitMeta':
             self.fail("OpType requires left and right that are UnitsType", t, code=codes.SYNTAX)
         return OpType(left, right, t.op, t.line)
 
@@ -311,16 +321,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         #     and not self.options.python_version >= (3, 10)
         # ):
         #     self.fail("X op Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
-        left = t.left.accept(self)
-        if 'Units' not in left.type.fullname or not isinstance(t.right, RawExpressionType):
-            self.fail("powerType requires left type that is UnitsType and right type that is int", t,
+        base = t.base.accept(self)
+        if base.type.declared_metaclass.type.fullname != 'Units.UnitMeta':
+            self.fail("powerType requires left type that is UnitsType", t,
                       code=codes.SYNTAX)
             return AnyType(TypeOfAny.from_error)
-        if not (t.right.base_type_name == 'builtins.int'):
-            self.fail("powerType requires left type that is UnitsType and right type that is int", t,
-                      code=codes.SYNTAX)
-            return AnyType(TypeOfAny.from_error)
-        return PowerType(left, t.right, t.op, t.line)
+        return PowerType(base, t.power, t.op, t.line)
 
 
     def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -> Type:

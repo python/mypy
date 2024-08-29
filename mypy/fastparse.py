@@ -1924,10 +1924,24 @@ class TypeConverter:
                 line=self.line,
                 column=self.convert_column(n.col_offset),
             )
+        elif isinstance(n.op, ast3.Mult):
+            return OpType(
+                left,
+                right,
+                "mul",
+                line=self.line,
+                column=self.convert_column(n.col_offset),
+            )
         elif isinstance(n.op, ast3.Pow):
+            # TODO (-1) will not work, we will fix this in the futer
+            if not isinstance(n.right, Constant):
+                # self.fail("Compound Type cannot be constructed from this type", n.lineno, -1)
+                self.fail(message_registry.INCOMPATIBLE_TYPES, n.lineno, -1)
+                return AnyType(TypeOfAny.from_error)
+            right = n.right.value
             if isinstance(left, PowerType):
-                right.literal_value = left.right.literal_value * right.literal_value
-                left = left.left
+                right = left.power * right
+                left = left.base
             return PowerType(
                 left,
                 right,

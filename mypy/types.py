@@ -998,8 +998,8 @@ class PowerType(ProperType):
     """Type that refers to a type derived from the division of two types."""
 
     __slots__ = (
-        "left",
-        "right",
+        "base",
+        "power",
         "op",
         "is_evaluated",
         "uses_pep604_syntax",
@@ -1007,8 +1007,8 @@ class PowerType(ProperType):
 
     def __init__(
         self,
-        left: Type,
-        right: int,
+        base: Type,
+        power: float,
         op: str,
         line: int = -1,
         column: int = -1,
@@ -1016,10 +1016,10 @@ class PowerType(ProperType):
         uses_pep604_syntax: bool = False,
     ) -> None:
         super().__init__(line, column)
-        assert left is not None
-        self.left = left
-        assert right is not None
-        self.right = right
+        assert base is not None
+        self.base = base
+        assert power is not None
+        self.power = power
         assert op is not None
         self.op = op
         # is_evaluated should be set to false for type comments and string literals
@@ -1028,20 +1028,20 @@ class PowerType(ProperType):
         self.uses_pep604_syntax = uses_pep604_syntax
 
     def can_be_true_default(self) -> bool:
-        return any(self.left_item.can_be_true or self.right_item.can_be_true)
+        return any(self.base.can_be_true or self.power.can_be_true)
 
     def can_be_false_default(self) -> bool:
-        return any(self.left_item.can_be_false or self.right_item.can_be_false)
+        return any(self.base.can_be_false or self.power.can_be_false)
 
     def __hash__(self) -> int:
-        return hash((self.left, self.right , self.op))
+        return hash((self.base, self.power , self.op))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PowerType):
             return NotImplemented
         return (
-            self.left == other.left
-            and self.right == other.right
+            self.base == other.base
+            and self.power == other.power
             and self.op == other.op
         )
 
@@ -1061,8 +1061,8 @@ class PowerType(ProperType):
     def serialize(self) -> JsonDict:
         return {
             ".class": "PowerType",
-            "left": self.left,
-            "right": self.right,
+            "base": self.base,
+            "power": self.power,
             "op": self.op,
         }
 
@@ -1070,8 +1070,8 @@ class PowerType(ProperType):
     def deserialize(cls, data: JsonDict) -> PowerType:
         assert data[".class"] == "PowerType"
         return PowerType(
-            data["left"],
-            data["right"],
+            data["base"],
+            data["power"],
             data["op"],
         )
 
@@ -3857,15 +3857,15 @@ def extend_args_for_prefix_and_suffix(
         end = ()
     return types[:idx] + start + (types[idx],) + end + types[idx + 1 :]
 
-def flatten_nested_op(
-    types: Sequence[Type], handle_type_alias_type: bool = True
-) -> list[Type]:
-    """Flatten nested unions in a type list."""
-    if not isinstance(types, list):
-        typelist = list(types)
-    else:
-        typelist = cast("list[Type]", types)
-    return typelist
+# def flatten_nested_op(
+#     types: Sequence[Type], handle_type_alias_type: bool = True
+# ) -> list[Type]:
+#     """Flatten nested unions in a type list."""
+#     if not isinstance(types, list):
+#         typelist = list(types)
+#     else:
+#         typelist = cast("list[Type]", types)
+#     return typelist
     # Fast path: most of the time there is nothing to flatten
     # if not any(isinstance(t, (TypeAliasType, OpType)) for t in typelist):  # type: ignore[misc]
     #     return typelist
