@@ -51,8 +51,8 @@ class _CDataMeta(type):
     # By default mypy complains about the following two methods, because strictly speaking cls
     # might not be a Type[_CT]. However this can never actually happen, because the only class that
     # uses _CDataMeta as its metaclass is _CData. So it's safe to ignore the errors here.
-    def __mul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]
-    def __rmul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]
+    def __mul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
+    def __rmul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
 
 class _CData(metaclass=_CDataMeta):
     _b_base_: int
@@ -168,7 +168,11 @@ class Array(_CData, Generic[_CT]):
     def _type_(self) -> type[_CT]: ...
     @_type_.setter
     def _type_(self, value: type[_CT]) -> None: ...
-    raw: bytes  # Note: only available if _CT == c_char
+    # Note: only available if _CT == c_char
+    @property
+    def raw(self) -> bytes: ...
+    @raw.setter
+    def raw(self, value: ReadableBuffer) -> None: ...
     value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
     # TODO These methods cannot be annotated correctly at the moment.
     # All of these "Any"s stand for the array's element type, but it's not possible to use _CT
