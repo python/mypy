@@ -259,9 +259,11 @@ class PatternChecker(PatternVisitor[PatternType]):
                 if all(used_item != item for used_item in union_items):
                     rest_items.append(item)
 
-            typ = UnionType.make_union(items=union_items)
-            rest_type = UnionType.make_union(items=rest_items)
-            return PatternType(type=typ, rest_type=rest_type, captures=union_captures)
+            return PatternType(
+                type=UnionType.make_union(items=union_items),
+                rest_type=UnionType.make_union(items=rest_items),
+                captures=union_captures
+            )
 
         if isinstance(current_type, TupleType):
             inner_types = current_type.items
