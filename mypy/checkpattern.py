@@ -253,8 +253,15 @@ class PatternChecker(PatternVisitor[PatternType]):
                 if not is_uninhabited(get_proper_type(typ)):
                     union_items.append(typ)
                     union_captures.update(capture)
+
+            rest_items: list[Type] = []
+            for item in current_type.items:
+                if all(used_item != item for used_item in union_items):
+                    rest_items.append(item)
+
             typ = UnionType.make_union(items=union_items)
-            return PatternType(type=typ, rest_type=current_type, captures=union_captures)
+            rest_type = UnionType.make_union(items=rest_items)
+            return PatternType(type=typ, rest_type=rest_type, captures=union_captures)
 
         if isinstance(current_type, TupleType):
             inner_types = current_type.items
