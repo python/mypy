@@ -262,7 +262,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             return PatternType(
                 type=UnionType.make_union(items=union_items),
                 rest_type=UnionType.make_union(items=rest_items),
-                captures=union_captures
+                captures=union_captures,
             )
 
         if isinstance(current_type, TupleType):
