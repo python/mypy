@@ -31,24 +31,18 @@ jobs:
         include:
         # Make sure to run mypyc compiled unit tests for both
         # the oldest and newest supported Python versions
-        - name: Test suite with py38-ubuntu, mypyc-compiled
-          python: '3.8'
+        - name: Test suite with py39-ubuntu, mypyc-compiled
+          python: '3.9'
           arch: x64
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
-        - name: Test suite with py38-windows-64
-          python: '3.8'
-          arch: x64
-          os: windows-latest
-          toxenv: py38
-          tox_extra_args: "-n 4"
-        - name: Test suite with py39-ubuntu
+        - name: Test suite with py39-windows-64
           python: '3.9'
           arch: x64
-          os: ubuntu-latest
-          toxenv: py
+          os: windows-latest
+          toxenv: py39
           tox_extra_args: "-n 4"
         - name: Test suite with py310-ubuntu
           python: '3.10'
@@ -72,27 +66,27 @@ jobs:
           test_mypyc: true
 
         - name: mypyc runtime tests with py39-macos
-          python: '3.9.18'
+          python: '3.9.19'
           arch: x64
           # TODO: macos-13 is the last one to support Python 3.9, change it to macos-latest when updating the Python version
           os: macos-13
           toxenv: py
           tox_extra_args: "-n 3 mypyc/test/test_run.py mypyc/test/test_external.py"
-        - name: mypyc runtime tests with py38-debug-build-ubuntu
-          python: '3.8.17'
+        - name: mypyc runtime tests with py39-debug-build-ubuntu
+          python: '3.9.19'
           arch: x64
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 4 mypyc/test/test_run.py mypyc/test/test_external.py"
           debug_build: true
 
-        - name: Type check our own code (py38-ubuntu)
-          python: '3.8'
+        - name: Type check our own code (py39-ubuntu)
+          python: '3.9'
           arch: x64
           os: ubuntu-latest
           toxenv: type
-        - name: Type check our own code (py38-windows-64)
-          python: '3.8'
+        - name: Type check our own code (py39-windows-64)
+          python: '3.9'
           arch: x64
           os: windows-latest
           toxenv: type

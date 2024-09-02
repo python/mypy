@@ -8,8 +8,8 @@ import os.path
 import sys
 from typing import TYPE_CHECKING, Any
 
-if sys.version_info < (3, 8, 0):  # noqa: UP036
-    sys.stderr.write("ERROR: You need Python 3.8 or later to use mypy.\n")
+if sys.version_info < (3, 9, 0):
+    sys.stderr.write("ERROR: You need Python 3.9 or later to use mypy.\n")
     exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
@@ -185,7 +185,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -232,7 +231,7 @@ setup(
         "reports": "lxml",
         "install-types": "pip",
     },
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     include_package_data=True,
     project_urls={
         "Documentation": "https://mypy.readthedocs.io/en/stable/index.html",
