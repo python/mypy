@@ -391,7 +391,8 @@ class StringFormatterChecker:
                 )  # dynamic spec cannot be last, this should have been detected earlier
 
                 if isinstance(next_expression, StrExpr):  # now inline the literal
-                    parsed = parse_format_value(f"{{:{next_expression.value}}}", call, self.msg)
+                    new_format_string = f"{{{spec.conversion or ''}:{next_expression.value}}}"
+                    parsed = parse_format_value(new_format_string, call, self.msg)
                     if parsed is None or len(parsed) != 1:
                         continue
                     spec = parsed[0]
