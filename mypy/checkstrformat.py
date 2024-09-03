@@ -356,16 +356,20 @@ class StringFormatterChecker:
             return
         self.check_specs_in_format_call(call, conv_specs, format_value)
 
-    def _spec_expression_with_peek(self, specs: list[ConversionSpecifier], expressions: list[Expression]) -> Iterator[tuple[ConversionSpecifier, Expression, Expression | None]]:
+    def _spec_expression_with_peek(
+        self, specs: list[ConversionSpecifier], expressions: list[Expression]
+    ) -> Iterator[tuple[ConversionSpecifier, Expression, Expression | None]]:
         """
         Basically zip specs with expressions and the next expression
         """
         optional_expression: Sequence[Expression | None] = expressions
         expression_it = chain(optional_expression, [None])
         next(expression_it)
-        return zip(specs, expressions, expression_it, )
+        return zip(specs, expressions, expression_it)
 
-    def inline_semi_dynamic_specs(self, call: CallExpr, specs: list[ConversionSpecifier], expressions: list[Expression]) -> tuple[list[ConversionSpecifier], list[Expression]]:
+    def inline_semi_dynamic_specs(
+        self, call: CallExpr, specs: list[ConversionSpecifier], expressions: list[Expression]
+    ) -> tuple[list[ConversionSpecifier], list[Expression]]:
         """
         Try to inline literal expressions into "dynamic" format specifiers
 
@@ -381,11 +385,13 @@ class StringFormatterChecker:
 
         spec_with_pairwise_expression = self._spec_expression_with_peek(specs, expressions)
         for spec, expression, next_expression in spec_with_pairwise_expression:
-            if spec.format_spec == ':{}':  # most simple dynamic case
-                assert expression is not None  # dynamic spec cannot be last, this should have been detected earlier
+            if spec.format_spec == ":{}":  # most simple dynamic case
+                assert (
+                    expression is not None
+                )  # dynamic spec cannot be last, this should have been detected earlier
 
                 if isinstance(next_expression, StrExpr):  # now inline the literal
-                    parsed = parse_format_value(f'{{:{next_expression.value}}}', call, self.msg)
+                    parsed = parse_format_value(f"{{:{next_expression.value}}}", call, self.msg)
                     if parsed is None or len(parsed) != 1:
                         continue
                     spec = parsed[0]
