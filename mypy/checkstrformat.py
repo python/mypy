@@ -14,7 +14,19 @@ from __future__ import annotations
 
 import re
 from itertools import chain
-from typing import TYPE_CHECKING, Callable, Dict, Final, Match, Pattern, Tuple, Union, cast, Sequence, Iterator
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    Final,
+    Iterator,
+    Match,
+    Pattern,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes
@@ -392,7 +404,6 @@ class StringFormatterChecker:
 
         The core logic for format checking is implemented in this method.
         """
-        #raise RuntimeError
         assert all(s.key for s in specs), "Keys must be auto-generated first!"
         replacements = self.find_replacements_in_call(call, [cast(str, s.key) for s in specs])
         assert len(replacements) == len(specs)
