@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import textwrap
 import tempfile
-from mypy.report import CoberturaPackage, get_line_rate, CoberturaXmlReporter, Reports
+import textwrap
+
+from mypy.report import CoberturaPackage, CoberturaXmlReporter, Reports, get_line_rate
 from mypy.test.helpers import Suite, assert_equal
 
 try:
@@ -66,4 +67,3 @@ class CoberturaReportSuite(Suite):
         # Check that the required attributes are present
         assert f'lines-covered="{cobertura_package.covered_lines}"' in xml_str
         assert f'lines-valid="{cobertura_package.total_lines}"' in xml_str
-
