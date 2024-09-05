@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import textwrap
-
-from mypy.report import CoberturaPackage, get_line_rate, CoberturaXmlReporter
+import tempfile
+from mypy.report import CoberturaPackage, get_line_rate, CoberturaXmlReporter, Reports
 from mypy.test.helpers import Suite, assert_equal
 
 try:
@@ -53,7 +53,10 @@ class CoberturaReportSuite(Suite):
         assert_equal(
             expected_output, etree.tostring(cobertura_package.as_xml(), pretty_print=True)
         )
-        cobertura_reporter = CoberturaXmlReporter(None, ".")
+        with tempfile.TemporaryDirectory() as tempdir:
+            reports = Reports(data_dir=tempdir, report_dirs={"dummy_report": tempdir})
+
+        cobertura_reporter = CoberturaXmlReporter(reports, ".")
         cobertura_reporter.root_package = cobertura_package
         cobertura_reporter.on_finish()
 
