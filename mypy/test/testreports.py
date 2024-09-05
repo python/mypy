@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import textwrap
 
-from mypy.report import CoberturaPackage, get_line_rate
+from mypy.report import CoberturaPackage, get_line_rate, CoberturaXmlReporter
 from mypy.test.helpers import Suite, assert_equal
 
 try:
@@ -53,3 +53,14 @@ class CoberturaReportSuite(Suite):
         assert_equal(
             expected_output, etree.tostring(cobertura_package.as_xml(), pretty_print=True)
         )
+        cobertura_reporter = CoberturaXmlReporter(None, ".")
+        cobertura_reporter.root_package = cobertura_package
+        cobertura_reporter.on_finish()
+
+        # Convert the XML document to a string
+        xml_str = etree.tostring(cobertura_reporter.doc, pretty_print=True).decode("utf-8")
+
+        # Check that the required attributes are present
+        assert f'lines-covered="{cobertura_package.covered_lines}"' in xml_str
+        assert f'lines-valid="{cobertura_package.total_lines}"' in xml_str
+
