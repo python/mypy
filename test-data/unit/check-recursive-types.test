@@ -994,3 +994,15 @@ class T2(Tuple[T1, "T4", "T4"]): ...
 class T3(Tuple[str, "T4", "T4"]): ...
 T4 = Union[T2, T3]
 [builtins fixtures/tuple.pyi]
+
+[case testRecursiveTupleFallback5]
+from typing import Protocol, Tuple, Union
+
+class Proto(Protocol):
+    def __len__(self) -> int: ...
+
+A = Union[Proto, Tuple[A]]
+ta: Tuple[A]
+p: Proto
+p = ta
+[builtins fixtures/tuple.pyi]
