@@ -22,6 +22,12 @@ class int:
 class float:
     def __float__(self) -> float: pass
     def __add__(self, x: float) -> float: pass
+
+class Kilometer(Generic[T]):
+    def __init__(self, x: object = ..., base: T = ...) -> None: pass
+
+    def __contains__(self, other: object) -> Kilometer: pass
+
 class complex:
     def __add__(self, x: complex) -> complex: pass
 class bool(int): pass

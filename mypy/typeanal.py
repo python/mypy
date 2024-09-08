@@ -57,7 +57,9 @@ from mypy.types import (
     BoolTypeQuery,
     CallableArgument,
     CallableType,
+    CompoundType,
     DeletedType,
+    OpType,
     EllipsisType,
     ErasedType,
     Instance,
@@ -69,6 +71,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     PlaceholderType,
+    PowerType,
     ProperType,
     RawExpressionType,
     RequiredType,
@@ -271,7 +274,63 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return make_optional_type(typ)
         return typ
 
+    ## hila - I had this for the division ###
+    def visit_compound_type(self, t: CompoundType, defining_literal: bool = False) -> Type:
+
+        # if (
+        #     # t.uses_pep604_syntax is True
+        #     # and t.is_evaluated is True
+        #     not self.always_allow_new_syntax
+        #     and not self.options.python_version >= (3, 10)
+        # ):
+        #     self.fail("X op Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
+        units = t.units.accept(self)
+        if self.api.errors.error_info_map:
+            return AnyType(TypeOfAny.from_error)
+        return CompoundType("compound_type", units, self.anal_array(t.numeric_type), t.line, t.column)
+    ### hila - I had this for the division ###
+    def visit_op_type(self, t: OpType, defining_literal: bool = False) -> Type:
+        # if (
+        #     t.uses_pep604_syntax is True
+        #     and t.is_evaluated is True
+        #     and not self.always_allow_new_syntax
+        #     and not self.options.python_version >= (3, 10)
+        # ):
+        #     self.fail("X op Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
+        left = t.left.accept(self)
+        right = t.right.accept(self)
+        if isinstance(left, OpType) and isinstance(right, OpType):
+            return OpType(left, right, t.op, t.line)
+        elif isinstance(right, OpType):
+            if not left.type.declared_metaclass or left.type.declared_metaclass.type.fullname != 'Units.UnitMeta':
+                self.fail("OpType requires left that is UnitsType", t, code=codes.SYNTAX)
+            return OpType(left, right, t.op, t.line)
+        elif isinstance(left, OpType):
+            if not right.type.declared_metaclass or right.type.declared_metaclass.type.fullname != 'Units.UnitMeta':
+                self.fail("OpType requires right that is UnitsType", t, code=codes.SYNTAX)
+            return OpType(left, right, t.op, t.line)
+        elif not right.type.declared_metaclass or not left.type.declared_metaclass or left.type.declared_metaclass.type.fullname != 'Units.UnitMeta' or right.type.declared_metaclass.type.fullname != 'Units.UnitMeta':
+            self.fail("OpType requires left and right that are UnitsType", t, code=codes.SYNTAX)
+        return OpType(left, right, t.op, t.line)
+
+    def visit_power_type(self, t: PowerType, defining_literal: bool = False) -> Type:
+        # if (
+        #     t.uses_pep604_syntax is True
+        #     and t.is_evaluated is True
+        #     and not self.always_allow_new_syntax
+        #     and not self.options.python_version >= (3, 10)
+        # ):
+        #     self.fail("X op Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
+        base = t.base.accept(self)
+        if base.type.declared_metaclass.type.fullname != 'Units.UnitMeta':
+            self.fail("powerType requires left type that is UnitsType", t,
+                      code=codes.SYNTAX)
+            return AnyType(TypeOfAny.from_error)
+        return PowerType(base, t.power, t.op, t.line)
+
+
     def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -> Type:
+        ### hila - here is the creation of t.type.type_vars #####
         sym = self.lookup_qualified(t.name, t)
         if sym is not None:
             node = sym.node
@@ -462,6 +521,200 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
         else:  # sym is None
             return AnyType(TypeOfAny.special_form)
+
+    ### hila - I had this for the division ###
+    # def visit_op_type_nonoptional(self, t: OpType, defining_literal: bool) -> Type:
+    #     ### hila - here is the creation of t.type.type_vars #####
+    #     sym = self.lookup_qualified(t.name, t)
+    #     if sym is not None:
+    #         node = sym.node
+    #         if isinstance(node, PlaceholderNode):
+    #             if node.becomes_typeinfo:
+    #                 # Reference to placeholder type.
+    #                 if self.api.final_iteration:
+    #                     self.cannot_resolve_type(t)
+    #                     return AnyType(TypeOfAny.from_error)
+    #                 elif self.allow_placeholder:
+    #                     self.api.defer()
+    #                 else:
+    #                     self.api.record_incomplete_ref()
+    #                 # Always allow ParamSpec for placeholders, if they are actually not valid,
+    #                 # they will be reported later, after we resolve placeholders.
+    #                 return PlaceholderType(
+    #                     node.fullname,
+    #                     self.anal_array(
+    #                         t.args,
+    #                         allow_param_spec=True,
+    #                         allow_param_spec_literals=True,
+    #                         allow_unpack=True,
+    #                     ),
+    #                     t.line,
+    #                 )
+    #             else:
+    #                 if self.api.final_iteration:
+    #                     self.cannot_resolve_type(t)
+    #                     return AnyType(TypeOfAny.from_error)
+    #                 else:
+    #                     # Reference to an unknown placeholder node.
+    #                     self.api.record_incomplete_ref()
+    #                     return AnyType(TypeOfAny.special_form)
+    #         if node is None:
+    #             self.fail(f"Internal error (node is None, kind={sym.kind})", t)
+    #             return AnyType(TypeOfAny.special_form)
+    #         fullname = node.fullname
+    #         hook = self.plugin.get_type_analyze_hook(fullname)
+    #         if hook is not None:
+    #             return hook(AnalyzeTypeContext(t, t, self))
+    #         if (
+    #             fullname in get_nongen_builtins(self.options.python_version)
+    #             and t.args
+    #             and not self.always_allow_new_syntax
+    #         ):
+    #             self.fail(
+    #                 no_subscript_builtin_alias(fullname, propose_alt=not self.defining_alias), t
+    #             )
+    #         tvar_def = self.tvar_scope.get_binding(sym)
+    #         if isinstance(sym.node, ParamSpecExpr):
+    #             if tvar_def is None:
+    #                 if self.allow_unbound_tvars:
+    #                     return t
+    #                 self.fail(f'ParamSpec "{t.name}" is unbound', t, code=codes.VALID_TYPE)
+    #                 return AnyType(TypeOfAny.from_error)
+    #             assert isinstance(tvar_def, ParamSpecType)
+    #             if len(t.args) > 0:
+    #                 self.fail(
+    #                     f'ParamSpec "{t.name}" used with arguments', t, code=codes.VALID_TYPE
+    #                 )
+    #             # Change the line number
+    #             return ParamSpecType(
+    #                 tvar_def.name,
+    #                 tvar_def.fullname,
+    #                 tvar_def.id,
+    #                 tvar_def.flavor,
+    #                 tvar_def.upper_bound,
+    #                 tvar_def.default,
+    #                 line=t.line,
+    #                 column=t.column,
+    #             )
+    #         if (
+    #             isinstance(sym.node, TypeVarExpr)
+    #             and self.defining_alias
+    #             and not defining_literal
+    #             and (tvar_def is None or tvar_def not in self.allowed_alias_tvars)
+    #         ):
+    #             self.fail(
+    #                 f'Can\'t use bound type variable "{t.name}" to define generic alias',
+    #                 t,
+    #                 code=codes.VALID_TYPE,
+    #             )
+    #             return AnyType(TypeOfAny.from_error)
+    #         if isinstance(sym.node, TypeVarExpr) and tvar_def is not None:
+    #             assert isinstance(tvar_def, TypeVarType)
+    #             if len(t.args) > 0:
+    #                 self.fail(
+    #                     f'Type variable "{t.name}" used with arguments', t, code=codes.VALID_TYPE
+    #                 )
+    #             # Change the line number
+    #             return tvar_def.copy_modified(line=t.line, column=t.column)
+    #         if isinstance(sym.node, TypeVarTupleExpr) and (
+    #             tvar_def is not None
+    #             and self.defining_alias
+    #             and tvar_def not in self.allowed_alias_tvars
+    #         ):
+    #             self.fail(
+    #                 f'Can\'t use bound type variable "{t.name}" to define generic alias',
+    #                 t,
+    #                 code=codes.VALID_TYPE,
+    #             )
+    #             return AnyType(TypeOfAny.from_error)
+    #         if isinstance(sym.node, TypeVarTupleExpr):
+    #             if tvar_def is None:
+    #                 if self.allow_unbound_tvars:
+    #                     return t
+    #                 self.fail(f'TypeVarTuple "{t.name}" is unbound', t, code=codes.VALID_TYPE)
+    #                 return AnyType(TypeOfAny.from_error)
+    #             assert isinstance(tvar_def, TypeVarTupleType)
+    #             if not self.allow_type_var_tuple:
+    #                 self.fail(
+    #                     f'TypeVarTuple "{t.name}" is only valid with an unpack',
+    #                     t,
+    #                     code=codes.VALID_TYPE,
+    #                 )
+    #                 return AnyType(TypeOfAny.from_error)
+    #             if len(t.args) > 0:
+    #                 self.fail(
+    #                     f'Type variable "{t.name}" used with arguments', t, code=codes.VALID_TYPE
+    #                 )
+    #
+    #             # Change the line number
+    #             return TypeVarTupleType(
+    #                 tvar_def.name,
+    #                 tvar_def.fullname,
+    #                 tvar_def.id,
+    #                 tvar_def.upper_bound,
+    #                 sym.node.tuple_fallback,
+    #                 tvar_def.default,
+    #                 line=t.line,
+    #                 column=t.column,
+    #             )
+    #         special = self.try_analyze_special_unbound_type(t, fullname)
+    #         if special is not None:
+    #             return special
+    #         if isinstance(node, TypeAlias):
+    #             self.aliases_used.add(fullname)
+    #             an_args = self.anal_array(
+    #                 t.args,
+    #                 allow_param_spec=True,
+    #                 allow_param_spec_literals=node.has_param_spec_type,
+    #                 allow_unpack=True,  # Fixed length unpacks can be used for non-variadic aliases.
+    #             )
+    #             if node.has_param_spec_type and len(node.alias_tvars) == 1:
+    #                 an_args = self.pack_paramspec_args(an_args)
+    #
+    #             disallow_any = self.options.disallow_any_generics and not self.is_typeshed_stub
+    #             res = instantiate_type_alias(
+    #                 node,
+    #                 an_args,
+    #                 self.fail,
+    #                 node.no_args,
+    #                 t,
+    #                 self.options,
+    #                 unexpanded_type=t,
+    #                 disallow_any=disallow_any,
+    #                 empty_tuple_index=t.empty_tuple_index,
+    #             )
+    #             # The only case where instantiate_type_alias() can return an incorrect instance is
+    #             # when it is top-level instance, so no need to recurse.
+    #             if (
+    #                 isinstance(res, ProperType)
+    #                 and isinstance(res, Instance)
+    #                 and not (self.defining_alias and self.nesting_level == 0)
+    #                 and not validate_instance(res, self.fail, t.empty_tuple_index)
+    #             ):
+    #                 fix_instance(
+    #                     res,
+    #                     self.fail,
+    #                     self.note,
+    #                     disallow_any=disallow_any,
+    #                     options=self.options,
+    #                     use_generic_error=True,
+    #                     unexpanded_type=t,
+    #                 )
+    #             if node.eager:
+    #                 res = get_proper_type(res)
+    #             return res
+    #         elif isinstance(node, TypeInfo):
+    #             return self.analyze_type_with_type_info(node, t.args, t, t.empty_tuple_index)
+    #         elif node.fullname in TYPE_ALIAS_NAMES:
+    #             return AnyType(TypeOfAny.special_form)
+    #         # Concatenate is an operator, no need for a proper type
+    #         elif node.fullname in ("typing_extensions.Concatenate", "typing.Concatenate"):
+    #             # We check the return type further up the stack for valid use locations
+    #             return self.apply_concatenate_operator(t)
+    #         else:
+    #             return self.analyze_op_type_without_type_info(t, sym, defining_literal)
+    #     else:  # sym is None
+    #         return AnyType(TypeOfAny.special_form)
 
     def pack_paramspec_args(self, an_args: Sequence[Type]) -> list[Type]:
         # "Aesthetic" ParamSpec literals for single ParamSpec: C[int, str] -> C[[int, str]].
@@ -2294,6 +2547,7 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
+########## hila - here the error happens ####################
 def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -> bool:
     """Check if this is a well-formed instance with respect to argument count/positions."""
     # TODO: combine logic with instantiate_type_alias().
@@ -2351,7 +2605,7 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
         max_tv_count = len(t.type.type_vars)
         if arg_count and (arg_count < min_tv_count or arg_count > max_tv_count):
             fail(
-                wrong_type_arg_count(min_tv_count, max_tv_count, str(arg_count), t.type.name),
+                wrong_type_arg_count(min_tv_count, max_tv_count, str(arg_count), t.type.name),  ### hila
                 t,
                 code=codes.TYPE_ARG,
             )
@@ -2374,6 +2628,12 @@ class HasSelfType(BoolTypeQuery):
         if sym and sym.fullname in SELF_TYPE_NAMES:
             return True
         return super().visit_unbound_type(t)
+
+    def visit_compound_type(self, t: CompoundType) -> bool:
+        sym = self.lookup(t.name)
+        if sym and sym.fullname in SELF_TYPE_NAMES:
+            return True
+        return super().visit_compound_type(t)
 
 
 def unknown_unpack(t: Type) -> bool:

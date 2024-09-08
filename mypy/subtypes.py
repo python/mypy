@@ -62,7 +62,7 @@ from mypy.types import (
     find_unpack_in_list,
     get_proper_type,
     is_named_instance,
-    split_with_prefix_and_suffix,
+    split_with_prefix_and_suffix, CompoundType,
 )
 from mypy.types_utils import flatten_types
 from mypy.typestate import SubtypeKind, type_state
@@ -416,6 +416,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
         # This can be called if there is a bad type annotation. The result probably
         # doesn't matter much but by returning True we simplify these bad types away
         # from unions, which could filter out some bogus messages.
+        return True
+
+    def visit_compound_type(self, left: CompoundType) -> bool:
         return True
 
     def visit_any(self, left: AnyType) -> bool:

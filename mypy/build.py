@@ -189,7 +189,7 @@ def build(
     extra_plugins = extra_plugins or []
 
     try:
-        result = _build(
+        result = _build( #here need to be breakpoint
             sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr, extra_plugins
         )
         result.errors = messages
@@ -263,7 +263,7 @@ def _build(
 
     reset_global_state()
     try:
-        graph = dispatch(sources, manager, stdout)
+        graph = dispatch(sources, manager, stdout) #here need to be breakpoint
         if not options.fine_grained_incremental:
             type_state.reset_all_subtype_caches()
         if options.timing_stats is not None:
@@ -2307,7 +2307,7 @@ class State:
             return
         t0 = time_ref()
         with self.wrap_context():
-            self.type_checker().check_first_pass()
+            self.type_checker().check_first_pass() #here need to be breakpoint
         self.time_spent_us += time_spent_us(t0)
 
     def type_checker(self) -> TypeChecker:
@@ -2939,7 +2939,7 @@ def dispatch(sources: list[BuildSource], manager: BuildManager, stdout: TextIO) 
     # don't want to do a real incremental reprocess of the
     # graph---we'll handle it all later.
     if not manager.use_fine_grained_cache():
-        process_graph(graph, manager)
+        process_graph(graph, manager) #here need to be breakpoint
         # Update plugins snapshot.
         write_plugins_snapshot(manager)
         manager.old_plugins_snapshot = manager.plugins_snapshot
@@ -3337,7 +3337,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 manager.log(f"Processing SCC singleton ({scc_str}) as {fresh_msg}")
             else:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
-            process_stale_scc(graph, scc, manager)
+            process_stale_scc(graph, scc, manager) #here need to be breakpoint
 
     sccs_left = len(fresh_scc_queue)
     nodes_left = sum(len(scc) for scc in fresh_scc_queue)

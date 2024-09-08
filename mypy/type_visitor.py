@@ -22,17 +22,20 @@ from mypy.types import (
     AnyType,
     CallableArgument,
     CallableType,
+    CompoundType,
     DeletedType,
     EllipsisType,
     ErasedType,
     Instance,
     LiteralType,
     NoneType,
+    OpType,
     Overloaded,
     Parameters,
     ParamSpecType,
     PartialType,
     PlaceholderType,
+    PowerType,
     RawExpressionType,
     TupleType,
     Type,
@@ -60,6 +63,13 @@ class TypeVisitor(Generic[T]):
 
     The parameter T is the return type of the visit methods.
     """
+
+    ### hila - I had this for the division ###
+    def visit_op_type(self, t: OpType) -> T:
+        pass
+
+    def visit_power_type(self, t: PowerType) -> T:
+        pass
 
     @abstractmethod
     def visit_unbound_type(self, t: UnboundType) -> T:
@@ -523,6 +533,27 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
 
     def visit_union_type(self, t: UnionType) -> bool:
         return self.query_types(t.items)
+
+
+    ### hila - is this right? ###
+    def visit_compound_type(self, t: CompoundType) -> bool:
+        # types = [t.units.left, t.units.right]
+        # return any(t.accept(self) for t in types)
+        if isinstance(t.units, PowerType):
+            return super().visit_power_type(t.units)
+        elif isinstance(t.units, OpType):
+            return super().visit_op_type(t.units)
+        else:
+            self.fail("Compound Type cannot be constructed from this type", t, code=codes.Semantic)
+            return
+
+    def visit_op_type(self, t: OpType) -> bool:
+        types = [t.left, t.right]
+        return any(t.accept(self) for t in types)
+
+    def visit_power_type(self, t: PowerType) -> bool:
+        types = [t.base]
+        return any(t.accept(self) for t in types)
 
     def visit_overloaded(self, t: Overloaded) -> bool:
         return self.query_types(t.items)  # type: ignore[arg-type]

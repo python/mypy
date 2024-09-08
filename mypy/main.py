@@ -97,7 +97,7 @@ def main(
         install_types(formatter, options, non_interactive=options.non_interactive)
         return
 
-    res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+    res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr) #here need to be breakpoint
 
     if options.non_interactive:
         missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
@@ -179,7 +179,7 @@ def run_build(
     try:
         # Keep a dummy reference (res) for memory profiling afterwards, as otherwise
         # the result could be freed.
-        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
+        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr) #here need to be breakpoint
     except CompileError as e:
         blockers = True
         if not e.use_stdout:

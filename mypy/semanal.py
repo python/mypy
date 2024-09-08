@@ -50,6 +50,7 @@ Some important properties:
 
 from __future__ import annotations
 
+import builtins
 from contextlib import contextmanager
 from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, TypeVar, cast
 from typing_extensions import TypeAlias as _TypeAlias
@@ -588,7 +589,7 @@ class SemanticAnalyzer(
         active_type: TypeInfo | None = None,
     ) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
-        self.patches = patches
+        self.patches = patches #here need to be breakpoint
         self.deferred = False
         self.incomplete = False
         self._final_iteration = final_iteration
@@ -596,7 +597,7 @@ class SemanticAnalyzer(
 
         with self.file_context(file_node, options, active_type):
             if isinstance(node, MypyFile):
-                self.refresh_top_level(node)
+                self.refresh_top_level(node) #here need to be breakpoint
             else:
                 self.recurse_into_functions = True
                 self.accept(node)
@@ -607,7 +608,7 @@ class SemanticAnalyzer(
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
-            self.accept(d)
+            self.accept(d) #here need to be breakpoint
         if file_node.fullname == "typing":
             self.add_builtin_aliases(file_node)
         if file_node.fullname == "typing_extensions":
@@ -2846,6 +2847,7 @@ class SemanticAnalyzer(
                 break
         return True
 
+    #Hila - 1
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.statement = s
 
@@ -2918,7 +2920,7 @@ class SemanticAnalyzer(
         s.is_alias_def = False
 
         # OK, this is a regular assignment, perform the necessary analysis steps.
-        s.is_final_def = self.unwrap_final(s)
+        s.is_final_def = self.unwrap_final(s) #here need to be breakpoint
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
         self.store_final_status(s)
@@ -3230,6 +3232,9 @@ class SemanticAnalyzer(
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         # We cannot use s.type, because analyze_simple_literal_type() will set it.
         explicit = s.unanalyzed_type is not None
+        #########################################################################
+        #hila - maybe here?
+
         if self.is_final_type(s.unanalyzed_type):
             # We need to exclude bare Final.
             assert isinstance(s.unanalyzed_type, UnboundType)
@@ -3245,6 +3250,11 @@ class SemanticAnalyzer(
             has_explicit_value = False
 
         for lval in s.lvalues:
+            # name = lval.name
+            # names = self.current_symbol_table(escape_comprehensions=has_explicit_value)
+            # existing = names.get(name)
+            # if not explicit and not existing:
+            #     self.fail("All protocol members must have explicitly declared types", s)
             self.analyze_lvalue(
                 lval,
                 explicit_type=explicit,
@@ -3434,6 +3444,7 @@ class SemanticAnalyzer(
 
     def process_type_annotation(self, s: AssignmentStmt) -> None:
         """Analyze type annotation or infer simple literal type."""
+        # print("I am in process_type_annotation")
         if s.type:
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
@@ -3443,6 +3454,9 @@ class SemanticAnalyzer(
                 self.defer(s)
                 return
             s.type = analyzed
+            ### hila - here we are changing the type to builtins.any ###
+            # s.type = AnyType(TypeOfAny.explicit)
+            ####################################
             if (
                 self.type
                 and self.type.is_protocol
@@ -3459,7 +3473,8 @@ class SemanticAnalyzer(
                 and self.is_annotated_protocol_member(s)
                 and not self.is_func_scope()
             ):
-                self.fail("All protocol members must have explicitly declared types", s)
+                ### hila - message for type any ###
+                self.fail("All protocol members must have explicitly declared types", s) #hila - this is the message I want to throw
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
             if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
                 ref_expr = s.lvalues[0]
@@ -3469,8 +3484,9 @@ class SemanticAnalyzer(
                     # decide here what to infer: int or Literal[42].
                     safe_literal_inference = self.type.mro[1].get(ref_expr.name) is None
                 if safe_literal_inference and ref_expr.is_inferred_def:
-                    s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
+                    s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def) #hila - this is the point where we give variable the type of the rvalue
         if s.type:
+            # print("I am in process_type_annotation at the last if")
             # Store type into nodes.
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
@@ -3861,7 +3877,7 @@ class SemanticAnalyzer(
             else:
                 self.msg.cant_assign_to_final(name, self.type is not None, lvalue)
 
-        kind = self.current_symbol_kind()
+        kind = self.current_symbol_kind() ## mybe its related
         names = self.current_symbol_table(escape_comprehensions=escape_comprehensions)
         existing = names.get(name)
 
@@ -3877,6 +3893,9 @@ class SemanticAnalyzer(
                 )
 
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
+            ### hila - message for type any ###
+            if not explicit_type and has_explicit_value:
+                self.fail("All protocol members must have explicitly declared types", lvalue)
             # Define new variable.
             var = self.make_name_lvalue_var(lvalue, kind, not explicit_type, has_explicit_value)
             added = self.add_symbol(name, var, lvalue, escape_comprehensions=escape_comprehensions)
@@ -5675,7 +5694,7 @@ class SemanticAnalyzer(
             if table is not None and name in table:
                 return table[name]
         # 4. Current file global scope
-        if name in self.globals:
+        if name in self.globals: ### hila - we should enter here but we don't ###
             return self.globals[name]
         # 5. Builtins
         b = self.globals.get("__builtins__", None)
@@ -5691,7 +5710,7 @@ class SemanticAnalyzer(
                 return node
         # Give up.
         if not implicit_name and not suppress_errors:
-            self.name_not_defined(name, ctx)
+            self.name_not_defined(name, ctx) ### hila - the call to the function that trows the name error ###
         else:
             if implicit_name:
                 return implicit_node
@@ -6470,7 +6489,7 @@ class SemanticAnalyzer(
             # later on. Defer current target.
             self.record_incomplete_ref()
             return
-        message = f'Name "{name}" is not defined'
+        message = f'Name "{name}" is not defined' ### hila - the name error ###
         self.fail(message, ctx, code=codes.NAME_DEFINED)
 
         if f"builtins.{name}" in SUGGESTED_TEST_FIXTURES:

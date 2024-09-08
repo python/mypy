@@ -78,6 +78,68 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     def visit_parameters(self, t: types.Parameters) -> set[str]:
         return self._visit(t.arg_types)
 
+    def visit_compound_type(self, t: types.CompoundType) -> set[str]:
+        if isinstance(t.units, types.PowerType) or isinstance(t.units, types.OpType):
+            return self._visit(t.units)
+        else:
+            self.fail("Compound Type cannot be constructed from this type", t, code=codes.Semantic)
+            return
+        # out = self._visit(t.numeric_type)
+        # for s in t.units.left.type.mro:
+        #     out.update(split_module_names(s.module_name))
+        # if t.units.left.type.metaclass_type is not None:
+        #     out.update(split_module_names(t.units.left.type.metaclass_type.type.module_name))
+        # if isinstance(t.units, types.OpType):
+        #     for s in t.units.right.type.mro:
+        #         out.update(split_module_names(s.module_name))
+        #     if t.units.right.type.metaclass_type is not None:
+        #             out.update(split_module_names(t.units.right.type.metaclass_type.type.module_name))
+        # return out
+
+    def visit_power_type(self, t: types.CompoundType) -> set[str]:
+        out = self._visit(t.numeric_type)
+        for s in t.units.base.type.mro:
+            out.update(split_module_names(s.module_name))
+        if t.units.base.type.metaclass_type is not None:
+            out.update(split_module_names(t.units.base.type.metaclass_type.type.module_name))
+        return out
+
+    def visit_op_type(self, t: types.CompoundType) -> set[str]:
+        out = set("")
+        if isinstance(t, types.CompoundType):
+            out = self._visit(t.numeric_type)
+        elif isinstance(t, types.PowerType) or isinstance(t, types.OpType):
+            # for s in t.left.type.mro:
+            #     out.update(split_module_names(s.module_name))
+            # if t.left.type.metaclass_type is not None:
+            #     out.update(split_module_names(t.left.type.metaclass_type.type.module_name))
+            # for s in t.right.type.mro:
+            #     out.update(split_module_names(s.module_name))
+            # if t.right.type.metaclass_type is not None:
+            #     out.update(split_module_names(t.right.type.metaclass_type.type.module_name))
+            out.update(self._visit(t.left))
+            out.update(self._visit(t.right))
+            return out
+        if isinstance(t.units.left, types.OpType):
+            out.update(self.visit_op_type(t.units.left))
+        elif isinstance(t.units.left, types.PowerType):
+            out.update(self.visit_power_type(t.units.left))
+        else:
+            for s in t.units.left.type.mro:
+                out.update(split_module_names(s.module_name))
+            if t.units.left.type.metaclass_type is not None:
+                out.update(split_module_names(t.units.left.type.metaclass_type.type.module_name))
+        if isinstance(t.units.right, types.OpType):
+            out.update(self.visit_op_type(t.units.right))
+        elif isinstance(t.units.right, types.PowerType):
+            out.update(self.visit_power_type(t.units.right))
+        else:
+            for s in t.units.right.type.mro:
+                out.update(split_module_names(s.module_name))
+            if t.units.right.type.metaclass_type is not None:
+                out.update(split_module_names(t.units.right.type.metaclass_type.type.module_name))
+        return out
+
     def visit_instance(self, t: types.Instance) -> set[str]:
         out = self._visit(t.args)
         if t.type:

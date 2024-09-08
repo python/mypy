@@ -217,7 +217,7 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
             next_id = worklist.pop()
             state = graph[next_id]
             assert state.tree is not None
-            deferred, incomplete, progress = semantic_analyze_target(
+            deferred, incomplete, progress = semantic_analyze_target( #here need to be breakpoint
                 next_id, next_id, state, state.tree, None, final_iteration, patches
             )
             all_deferred += deferred
@@ -346,7 +346,7 @@ def semantic_analyze_target(
         if isinstance(refresh_node, Decorator):
             # Decorator expressions will be processed as part of the module top level.
             refresh_node = refresh_node.func
-        analyzer.refresh_partial(
+        analyzer.refresh_partial( #here need to be breakpoint
             refresh_node,
             patches,
             final_iteration,

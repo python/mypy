@@ -66,15 +66,18 @@ from mypy.typeops import separate_union_literals
 from mypy.types import (
     AnyType,
     CallableType,
+    CompoundType,
     DeletedType,
     FunctionLike,
     Instance,
     LiteralType,
     NoneType,
+    OpType,
     Overloaded,
     Parameters,
     ParamSpecType,
     PartialType,
+    PowerType,
     ProperType,
     TupleType,
     Type,
@@ -590,6 +593,7 @@ class MessageBuilder:
         if self.are_type_names_disabled():
             msg = f"Unsupported left operand type for {op} (some union)"
         else:
+        ### hila - the division error ####
             msg = f"Unsupported left operand type for {op} ({format_type(typ, self.options)})"
         self.fail(msg, context, code=codes.OPERATOR)
 
@@ -2554,6 +2558,17 @@ def format_type_inner(
             return f"[{args}, **{typ.name_with_suffix()}]"
         else:
             return typ.name_with_suffix()
+    elif isinstance(typ, CompoundType):
+        # types_list = [typ.units.left, typ.units.right]
+        if isinstance(typ.units, OpType):
+            left_item = format(typ.units.left) or "()"
+            right_item = format(typ.units.right) or "()"
+            s = f"{left_item} / {right_item}"
+        elif isinstance(typ.units, PowerType):
+            base_item = format(typ.units.base) or "()"
+            power_item = format(typ.units.power) or "()"
+            s = f"{base_item} ** {power_item}"
+        return s
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != "builtins.tuple":
@@ -2691,6 +2706,35 @@ class CollectAllInstancesQuery(TypeTraverserVisitor):
     def visit_instance(self, t: Instance) -> None:
         self.instances.append(t)
         super().visit_instance(t)
+
+    def visit_compound_type(self, t: CompoundType) -> None:
+        types = []
+        for type in t.numeric_type:
+            types.append(type)
+        for type in types:
+            self.visit_instance(type)
+        if isinstance(t.units, PowerType):
+            return self.visit_power_type(t.units)
+        elif isinstance(t.units, OpType):
+            return self.visit_op_type(t.units)
+        else:
+            self.fail("Compound Type cannot be constructed from this type", t, code=codes.Semantic)
+            return
+
+    def visit_op_type(self, t: OpType) -> None:
+        types = [t.left, t.right]
+        for type in types:
+            if isinstance(type, PowerType):
+                self.visit_power_type(type)
+            elif isinstance(type, OpType):
+                self.visit_op_type(type)
+            else:
+                self.visit_instance(type)
+
+    def visit_power_type(self, t: PowerType) -> None:
+        types = [t.base]
+        for type in types:
+            self.visit_instance(type)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         if t.alias and not t.is_recursive:

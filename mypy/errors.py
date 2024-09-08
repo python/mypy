@@ -1212,6 +1212,7 @@ def report_internal_error(
 
     This optionally starts pdb or shows a traceback.
     """
+    print(err)
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
     # Dump out errors so far, they often provide a clue.

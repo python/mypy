@@ -896,6 +896,296 @@ class TypeVarTupleType(TypeVarLikeType):
             min_len=self.min_len if min_len is _dummy else min_len,
         )
 
+### hila - I had this for the division ###
+class OpType(ProperType):
+    """Type that refers to a type derived from the division of two types."""
+
+    __slots__ = (
+        "left",
+        "right",
+        "op",
+        "is_evaluated",
+        "uses_pep604_syntax",
+    )
+
+    def __init__(
+        self,
+        left: Type,
+        right: Type,
+        op: str,
+        line: int = -1,
+        column: int = -1,
+        is_evaluated: bool = True,
+        uses_pep604_syntax: bool = False,
+    ) -> None:
+        super().__init__(line, column)
+        assert left is not None
+        self.left = left
+        assert right is not None
+        self.right = right
+        assert op is not None
+        self.op = op
+        # is_evaluated should be set to false for type comments and string literals
+        self.is_evaluated = is_evaluated
+        # uses_pep604_syntax is True if Union uses OR syntax (X | Y)
+        self.uses_pep604_syntax = uses_pep604_syntax
+
+    def can_be_true_default(self) -> bool:
+        return any(self.left_item.can_be_true or self.right_item.can_be_true)
+
+    def can_be_false_default(self) -> bool:
+        return any(self.left_item.can_be_false or self.right_item.can_be_false)
+
+    def __hash__(self) -> int:
+        return hash((self.left, self.right , self.op))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, OpType):
+            return NotImplemented
+        return (
+            self.left == other.left
+            and self.right == other.right
+            and self.op == other.op
+        )
+
+    # def length(self) -> int:
+    #     return len(self.items)
+
+    def accept(self, visitor: TypeVisitor[T]) -> T:
+        return visitor.visit_op_type(self)
+
+    # def relevant_items(self) -> list[Type]:
+    #     """Removes NoneTypes from Unions when strict Optional checking is off."""
+    #     if state.strict_optional:
+    #         return self.items
+    #     else:
+    #         return [i for i in self.items if not isinstance(get_proper_type(i), NoneType)]
+
+    def serialize(self) -> JsonDict:
+        return {
+            ".class": "OpType",
+            "left": self.left,
+            "right": self.right,
+            "op": self.op,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> OpType:
+        assert data[".class"] == "OpType"
+        return OpType(
+            data["left"],
+            data["right"],
+            data["op"],
+        )
+
+    # def copy_modified(self, args: Bogus[Sequence[Type] | None] = _dummy) -> DivisionType:
+    #     if args is _dummy:
+    #         args = self.args
+    #     return DivisionType(
+    #         name=self.name,
+    #         left_item=self.left_item,
+    #         right_item=self.right_item,
+    #         args=args,
+    #         line=self.line,
+    #         column=self.column,
+    #         # optional=self.optional,
+    #         empty_tuple_index=self.empty_tuple_index,
+    #         # original_str_expr=self.original_str_expr,
+    #         # original_str_fallback=self.original_str_fallback,
+    #     )
+
+class PowerType(ProperType):
+    """Type that refers to a type derived from the division of two types."""
+
+    __slots__ = (
+        "base",
+        "power",
+        "op",
+        "is_evaluated",
+        "uses_pep604_syntax",
+    )
+
+    def __init__(
+        self,
+        base: Type,
+        power: float,
+        op: str,
+        line: int = -1,
+        column: int = -1,
+        is_evaluated: bool = True,
+        uses_pep604_syntax: bool = False,
+    ) -> None:
+        super().__init__(line, column)
+        assert base is not None
+        self.base = base
+        assert power is not None
+        self.power = power
+        assert op is not None
+        self.op = op
+        # is_evaluated should be set to false for type comments and string literals
+        self.is_evaluated = is_evaluated
+        # uses_pep604_syntax is True if Union uses OR syntax (X | Y)
+        self.uses_pep604_syntax = uses_pep604_syntax
+
+    def can_be_true_default(self) -> bool:
+        return any(self.base.can_be_true or self.power.can_be_true)
+
+    def can_be_false_default(self) -> bool:
+        return any(self.base.can_be_false or self.power.can_be_false)
+
+    def __hash__(self) -> int:
+        return hash((self.base, self.power , self.op))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PowerType):
+            return NotImplemented
+        return (
+            self.base == other.base
+            and self.power == other.power
+            and self.op == other.op
+        )
+
+    # def length(self) -> int:
+    #     return len(self.items)
+
+    def accept(self, visitor: TypeVisitor[T]) -> T:
+        return visitor.visit_power_type(self)
+
+    # def relevant_items(self) -> list[Type]:
+    #     """Removes NoneTypes from Unions when strict Optional checking is off."""
+    #     if state.strict_optional:
+    #         return self.items
+    #     else:
+    #         return [i for i in self.items if not isinstance(get_proper_type(i), NoneType)]
+
+    def serialize(self) -> JsonDict:
+        return {
+            ".class": "PowerType",
+            "base": self.base,
+            "power": self.power,
+            "op": self.op,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> PowerType:
+        assert data[".class"] == "PowerType"
+        return PowerType(
+            data["base"],
+            data["power"],
+            data["op"],
+        )
+
+
+class CompoundType(ProperType):
+    """Instance type that has not been bound during semantic analysis."""
+
+    __slots__ = (
+        "name",
+        "units",
+        "numeric_type",
+        # "optional",
+        # "empty_tuple_index",
+        # "original_str_expr",
+        # "original_str_fallback",
+    )
+
+    def __init__(
+        self,
+        name: str | None,
+        units: type | None,
+        numeric_type: Sequence[Type] | None = None,
+        line: int = -1,
+        column: int = -1,
+
+        # optional: bool = False,
+        # empty_tuple_index: bool = False,
+        # original_str_expr: str | None = None,
+        # original_str_fallback: str | None = None,
+    ) -> None:
+        super().__init__(line, column)
+        if not numeric_type:
+            numeric_type = []
+        # assert name is not None
+        self.name = name
+        self.units = units
+        self.numeric_type = tuple(numeric_type)
+
+
+# Should this type be wrapped in an Optional?
+        # self.optional = optional
+        # Special case for X[()]
+        # self.empty_tuple_index = empty_tuple_index
+        # If this UnboundType was originally defined as a str or bytes, keep track of
+        # the original contents of that string-like thing. This way, if this UnboundExpr
+        # ever shows up inside of a LiteralType, we can determine whether that
+        # Literal[...] is valid or not. E.g. Literal[foo] is most likely invalid
+        # (unless 'foo' is an alias for another literal or something) and
+        # Literal["foo"] most likely is.
+        #
+        # We keep track of the entire string instead of just using a boolean flag
+        # so we can distinguish between things like Literal["foo"] vs
+        # Literal["    foo   "].
+        #
+        # We also keep track of what the original base fallback type was supposed to be
+        # so we don't have to try and recompute it later
+        # self.original_str_expr = original_str_expr
+        # self.original_str_fallback = original_str_fallback
+
+    def copy_modified(self, numeric_type: Bogus[Sequence[Type] | None] = _dummy) -> UnboundType:
+        if numeric_type is _dummy:
+            numeric_type = self.numeric_type
+        return CompoundType(
+            name=self.name,
+            type=self.units,
+            args=numeric_type,
+            line=self.line,
+            column=self.column,
+            # optional=self.optional,
+            # empty_tuple_index=self.empty_tuple_index,
+            # original_str_expr=self.original_str_expr,
+            # original_str_fallback=self.original_str_fallback,
+        )
+
+    def accept(self, visitor: TypeVisitor[T]) -> T:
+        return visitor.visit_compound_type(self)
+
+    def __hash__(self) -> int:
+        return hash(( self.name, self.units, tuple(self.numeric_type)))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, CompoundType):
+            return NotImplemented
+        return (
+            self.name == other.name
+            and self.units == other.units
+            # and self.optional == other.optional
+            and self.numeric_type == other.numeric_type
+            # and self.original_str_expr == other.original_str_expr
+            # and self.original_str_fallback == other.original_str_fallback
+        )
+
+    def serialize(self) -> JsonDict:
+        return {
+            ".class": "CompoundType",
+            "name": self.name,
+            "units": self.units,
+            "numeric_type": [a.serialize() for a in self.numeric_type],
+
+            # "expr": self.original_str_expr,
+            # "expr_fallback": self.original_str_fallback,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> CompoundType:
+        assert data[".class"] == "CompoundType"
+        return CompoundType(
+            data["name"],
+            data["units"],
+            [deserialize_type(a) for a in data["numeric_type"]],
+
+            # original_str_expr=data["expr"],
+            # original_str_fallback=data["expr_fallback"],
+        )
 
 class UnboundType(ProperType):
     """Instance type that has not been bound during semantic analysis."""
@@ -3567,6 +3857,30 @@ def extend_args_for_prefix_and_suffix(
         end = ()
     return types[:idx] + start + (types[idx],) + end + types[idx + 1 :]
 
+# def flatten_nested_op(
+#     types: Sequence[Type], handle_type_alias_type: bool = True
+# ) -> list[Type]:
+#     """Flatten nested unions in a type list."""
+#     if not isinstance(types, list):
+#         typelist = list(types)
+#     else:
+#         typelist = cast("list[Type]", types)
+#     return typelist
+    # Fast path: most of the time there is nothing to flatten
+    # if not any(isinstance(t, (TypeAliasType, OpType)) for t in typelist):  # type: ignore[misc]
+    #     return typelist
+    #
+    # flat_items: list[Type] = []
+    # for t in typelist:
+    #     tp = get_proper_type(t) if handle_type_alias_type else t
+    #     if isinstance(tp, ProperType) and isinstance(tp, OpType):
+    #         flat_items.extend(
+    #             flatten_nested_op(tp.items, handle_type_alias_type=handle_type_alias_type)
+    #         )
+    #     else:
+    #         # Must preserve original aliases when possible.
+    #         flat_items.append(t)
+    # return flat_items
 
 def flatten_nested_unions(
     types: Sequence[Type], handle_type_alias_type: bool = True
