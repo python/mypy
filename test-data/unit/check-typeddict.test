@@ -78,7 +78,7 @@ p = Point(x='meaning_of_life', y=1337)  # E: Incompatible types (expression has 
 [case testCannotCreateTypedDictInstanceWithInlineTypedDict]
 from mypy_extensions import TypedDict
 D = TypedDict('D', {
-    'x': TypedDict('E', {  # E: Inline TypedDict types not supported; use assignment to define TypedDict
+    'x': TypedDict('E', {  # E: Use dict literal for nested TypedDict
         'y': int
     })
 })
@@ -2362,6 +2362,34 @@ Foo = TypedDict('Foo', {'camelCaseKey': str})
 value: Foo = {}  # E: Missing key "camelCaseKey" for TypedDict "Foo"
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictWithDeferredFieldTypeEval]
+from typing import Generic, TypeVar, TypedDict, NotRequired
+
+class Foo(TypedDict):
+    y: NotRequired[int]
+    x: Outer[Inner[ForceDeferredEval]]
+
+var: Foo
+reveal_type(var)  # N: Revealed type is "TypedDict('__main__.Foo', {'y'?: builtins.int, 'x': __main__.Outer[__main__.Inner[__main__.ForceDeferredEval]]})"
+
+T1 = TypeVar("T1")
+class Outer(Generic[T1]): pass
+
+T2 = TypeVar("T2", bound="ForceDeferredEval")
+class Inner(Generic[T2]): pass
+
+class ForceDeferredEval: pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictRequiredUnimportedAny]
+# flags: --disallow-any-unimported
+from typing import NotRequired, TypedDict
+from nonexistent import Foo  # type: ignore[import-not-found]
+class Bar(TypedDict):
+    foo: NotRequired[Foo]  # E: Type of variable becomes "Any" due to an unfollowed import
+[typing fixtures/typing-typeddict.pyi]
+
 -- Required[]
 
 [case testDoesRecognizeRequiredInTypedDictWithClass]
@@ -3487,3 +3515,140 @@ class A(Generic[T]):
         return self.a(x=1)
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
+
+[case testNameUndefinedErrorDoesNotLoseUnpackedKWArgsInformation]
+from typing import overload
+from typing_extensions import TypedDict, Unpack
+
+class TD(TypedDict, total=False):
+    x: int
+    y: str
+
+@overload
+def f(self, *, x: int) -> None: ...
+@overload
+def f(self, *, y: str) -> None: ...
+def f(self, **kwargs: Unpack[TD]) -> None:
+    z  # E: Name "z" is not defined
+
+@overload
+def g(self, *, x: float) -> None: ...
+@overload
+def g(self, *, y: str) -> None: ...
+def g(self, **kwargs: Unpack[TD]) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+    z  # E: Name "z" is not defined
+
+class A:
+    def f(self, *, x: int) -> None: ...
+    def g(self, *, x: float) -> None: ...
+class B(A):
+    def f(self, **kwargs: Unpack[TD]) -> None:
+        z  # E: Name "z" is not defined
+    def g(self, **kwargs: Unpack[TD]) -> None:  # E: Signature of "g" incompatible with supertype "A" \
+                                                # N:      Superclass: \
+                                                # N:          def g(self, *, x: float) -> None \
+                                                # N:      Subclass: \
+                                                # N:          def g(*, x: int = ..., y: str = ...) -> None
+        z  # E: Name "z" is not defined
+reveal_type(B.f)  # N: Revealed type is "def (self: __main__.B, **kwargs: Unpack[TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: builtins.str})])"
+B().f(x=1.0)  # E: Argument "x" to "f" of "B" has incompatible type "float"; expected "int"
+[builtins fixtures/primitives.pyi]
+
+[case testTypedDictUnpackWithParamSpecInference]
+from typing import TypeVar, ParamSpec, Callable
+from typing_extensions import TypedDict, Unpack
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def run(func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+class Params(TypedDict):
+    temperature: float
+
+def test(temperature: int) -> None: ...
+def test2(temperature: float, other: str) -> None: ...
+
+class Test:
+    def f(self, c: Callable[..., None], **params: Unpack[Params]) -> None:
+        run(c, **params)
+    def g(self, **params: Unpack[Params]) -> None:
+        run(test, **params)  # E: Argument "temperature" to "run" has incompatible type "float"; expected "int"
+    def h(self, **params: Unpack[Params]) -> None:
+        run(test2, other="yes", **params)
+        run(test2, other=0, **params)  # E: Argument "other" to "run" has incompatible type "int"; expected "str"
+[builtins fixtures/tuple.pyi]
+
+[case testTypedDictUnpackSingleWithSubtypingNoCrash]
+from typing import Callable
+from typing_extensions import TypedDict, Unpack
+
+class Kwargs(TypedDict):
+    name: str
+
+def f(**kwargs: Unpack[Kwargs]) -> None:
+    pass
+
+class C:
+    d: Callable[[Unpack[Kwargs]], None]
+
+# TODO: it is an old question whether we should allow this, for now simply don't crash.
+class D(C):
+    d = f
+[builtins fixtures/tuple.pyi]
+
+[case testTypedDictInlineNoOldStyleAlias]
+# flags: --enable-incomplete-feature=InlineTypedDict
+X = {"int": int, "str": str}
+reveal_type(X)  # N: Revealed type is "builtins.dict[builtins.str, def () -> builtins.object]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineYesMidStyleAlias]
+# flags: --enable-incomplete-feature=InlineTypedDict
+from typing_extensions import TypeAlias
+X: TypeAlias = {"int": int, "str": str}
+x: X
+reveal_type(x)  # N:  # N: Revealed type is "TypedDict({'int': builtins.int, 'str': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNoEmpty]
+# flags: --enable-incomplete-feature=InlineTypedDict
+x: {}  # E: Invalid type comment or annotation
+reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNotRequired]
+# flags: --enable-incomplete-feature=InlineTypedDict
+from typing import NotRequired
+
+x: {"one": int, "other": NotRequired[int]}
+x = {"one": 1}  # OK
+y: {"one": int, "other": int}
+y = {"one": 1}  # E: Expected TypedDict keys ("one", "other") but found only key "one"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNestedSchema]
+# flags: --enable-incomplete-feature=InlineTypedDict
+def nested() -> {"one": str, "other": {"a": int, "b": int}}:
+    if bool():
+        return {"one": "yes", "other": {"a": 1, "b": 2}}  # OK
+    else:
+        return {"one": "no", "other": {"a": 1, "b": "2"}}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineMergeAnother]
+# flags: --enable-incomplete-feature=InlineTypedDict
+from typing import TypeVar
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+X: TypeAlias = {"item": T}
+x: {"a": int, **X[str], "b": int}
+reveal_type(x)  # N: Revealed type is "TypedDict({'a': builtins.int, 'b': builtins.int, 'item': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]

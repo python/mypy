@@ -87,9 +87,13 @@ still keep the other two error codes enabled. The overall logic is following:
 
 * Individual config sections *adjust* them per glob/module
 
-* Inline ``# mypy: disable-error-code="..."`` comments can further
-  *adjust* them for a specific module.
-  For example: ``# mypy: disable-error-code="truthy-bool, ignore-without-code"``
+* Inline ``# mypy: disable-error-code="..."`` and ``# mypy: enable-error-code="..."``
+  comments can further *adjust* them for a specific file.
+  For example:
+
+.. code-block:: python
+
+  # mypy: enable-error-code="truthy-bool, ignore-without-code"
 
 So one can e.g. enable some code globally, disable it for all tests in
 the corresponding config section, and then re-enable it with an inline

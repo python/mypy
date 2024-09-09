@@ -1008,7 +1008,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature {PreciseTupleTypes}
+.. option:: --enable-incomplete-feature {PreciseTupleTypes, NewGenericSyntax, InlineTypedDict}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
@@ -1054,6 +1054,27 @@ List of currently incomplete/experimental features:
          reveal_type(numbers)
          # Without PreciseTupleTypes: tuple[int, ...]
          # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
+
+* ``NewGenericSyntax``: this feature enables support for syntax defined
+  by :pep:`695`. For example:
+
+  .. code-block:: python
+
+     class Container[T]:  # defines a generic class
+         content: T
+
+     def first[T](items: list[T]) -> T:  # defines a generic function
+         return items[0]
+
+     type Items[T] = list[tuple[T, T]]  # defines a generic type alias
+
+* ``InlineTypedDict``: this feature enables non-standard syntax for inline
+  :ref:`TypedDicts <typeddict>`, for example:
+
+  .. code-block:: python
+
+     def test_values() -> {"int": int, "str": str}:
+         return {"int": 42, "str": "test"}
 
 
 Miscellaneous

@@ -2,7 +2,7 @@ import sys
 from _typeshed import sentinel
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
-from typing import IO, Any, Generic, Literal, NewType, NoReturn, Protocol, TypeVar, overload
+from typing import IO, Any, Final, Generic, NewType, NoReturn, Protocol, TypeVar, overload
 from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
@@ -32,6 +32,7 @@ _T = TypeVar("_T")
 _ActionT = TypeVar("_ActionT", bound=Action)
 _ArgumentParserT = TypeVar("_ArgumentParserT", bound=ArgumentParser)
 _N = TypeVar("_N")
+_ActionType: TypeAlias = Callable[[str], Any] | FileType | str
 # more precisely, Literal["store", "store_const", "store_true",
 # "store_false", "append", "append_const", "count", "help", "version",
 # "extend"], but using this would make it hard to annotate callers
@@ -42,15 +43,15 @@ _ActionStr: TypeAlias = str
 # callers that don't use a literal argument
 _NArgsStr: TypeAlias = str
 
-ONE_OR_MORE: Literal["+"]
-OPTIONAL: Literal["?"]
-PARSER: Literal["A..."]
-REMAINDER: Literal["..."]
+ONE_OR_MORE: Final = "+"
+OPTIONAL: Final = "?"
+PARSER: Final = "A..."
+REMAINDER: Final = "..."
 _SUPPRESS_T = NewType("_SUPPRESS_T", str)
 SUPPRESS: _SUPPRESS_T | str  # not using Literal because argparse sometimes compares SUPPRESS with is
 # the | str is there so that foo = argparse.SUPPRESS; foo = "test" checks out in mypy
-ZERO_OR_MORE: Literal["*"]
-_UNRECOGNIZED_ARGS_ATTR: str  # undocumented
+ZERO_OR_MORE: Final = "*"
+_UNRECOGNIZED_ARGS_ATTR: Final[str]  # undocumented
 
 class ArgumentError(Exception):
     argument_name: str | None
@@ -89,7 +90,7 @@ class _ActionsContainer:
         nargs: int | _NArgsStr | _SUPPRESS_T | None = None,
         const: Any = ...,
         default: Any = ...,
-        type: Callable[[str], _T] | FileType = ...,
+        type: _ActionType = ...,
         choices: Iterable[_T] | None = ...,
         required: bool = ...,
         help: str | None = ...,
@@ -313,7 +314,7 @@ class Action(_AttributeHolder):
     nargs: int | str | None
     const: Any
     default: Any
-    type: Callable[[str], Any] | FileType | None
+    type: _ActionType | None
     choices: Iterable[Any] | None
     required: bool
     help: str | None
@@ -356,7 +357,17 @@ class Action(_AttributeHolder):
 
 if sys.version_info >= (3, 12):
     class BooleanOptionalAction(Action):
-        if sys.version_info >= (3, 13):
+        if sys.version_info >= (3, 14):
+            def __init__(
+                self,
+                option_strings: Sequence[str],
+                dest: str,
+                default: bool | None = None,
+                required: bool = False,
+                help: str | None = None,
+                deprecated: bool = False,
+            ) -> None: ...
+        elif sys.version_info >= (3, 13):
             @overload
             def __init__(
                 self,
@@ -699,6 +710,7 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
             add_help: bool = ...,
             allow_abbrev: bool = ...,
             exit_on_error: bool = ...,
+            **kwargs: Any,  # Accepting any additional kwargs for custom parser classes
         ) -> _ArgumentParserT: ...
     elif sys.version_info >= (3, 9):
         def add_parser(
@@ -721,6 +733,7 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
             add_help: bool = ...,
             allow_abbrev: bool = ...,
             exit_on_error: bool = ...,
+            **kwargs: Any,  # Accepting any additional kwargs for custom parser classes
         ) -> _ArgumentParserT: ...
     else:
         def add_parser(
@@ -742,6 +755,7 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
             conflict_handler: str = ...,
             add_help: bool = ...,
             allow_abbrev: bool = ...,
+            **kwargs: Any,  # Accepting any additional kwargs for custom parser classes
         ) -> _ArgumentParserT: ...
 
     def _get_subactions(self) -> list[Action]: ...

@@ -1,11 +1,11 @@
 import sys
 from collections.abc import Iterable, Iterator
-from typing import Any, Generic, Literal, SupportsInt, TypeVar, overload
+from typing import Any, Final, Generic, Literal, SupportsInt, TypeVar, overload
 from typing_extensions import Self, TypeAlias
 
 # Undocumented length constants
-IPV4LENGTH: Literal[32]
-IPV6LENGTH: Literal[128]
+IPV4LENGTH: Final = 32
+IPV6LENGTH: Final = 128
 
 _A = TypeVar("_A", IPv4Address, IPv6Address)
 _N = TypeVar("_N", IPv4Network, IPv6Network)
@@ -147,7 +147,11 @@ class _BaseV4:
     @property
     def max_prefixlen(self) -> Literal[32]: ...
 
-class IPv4Address(_BaseV4, _BaseAddress): ...
+class IPv4Address(_BaseV4, _BaseAddress):
+    if sys.version_info >= (3, 13):
+        @property
+        def ipv6_mapped(self) -> IPv6Address: ...
+
 class IPv4Network(_BaseV4, _BaseNetwork[IPv4Address]): ...
 
 class IPv4Interface(IPv4Address, _BaseInterface[IPv4Address, IPv4Network]):

@@ -7,9 +7,12 @@ MypyFile:1(
     NameExpr(A)
     TypeParam(
       T)
-    IndexExpr:2(
-      NameExpr(C)
-      NameExpr(T))))
+    LambdaExpr:2(
+      Block:-1(
+        ReturnStmt:2(
+          IndexExpr:2(
+            NameExpr(C)
+            NameExpr(T)))))))
 
 [case testPEP695GenericFunction]
 # mypy: enable-incomplete-feature=NewGenericSyntax
