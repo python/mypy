@@ -464,18 +464,20 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.loops.append(loop)
         o.body.accept(self)
         self.tracker.next_branch()
-        self.tracker.end_branch_statement()
-        if o.else_body is not None:
-            # If the loop has a `break` inside, `else` is executed conditionally.
-            # If the loop doesn't have a `break` either the function will return or
-            # execute the `else`.
-            has_break = loop.has_break
-            if has_break:
-                self.tracker.start_branch_statement()
-                self.tracker.next_branch()
+        if o.else_body is None:
+            self.tracker.end_branch_statement()
+        elif loop.has_break:
+            # `else` is executed conditionally:
+            # - if iterable was empty
+            # - if iterable was non-empty and `break` was not executed
             o.else_body.accept(self)
-            if has_break:
-                self.tracker.end_branch_statement()
+            self.tracker.end_branch_statement()
+        else:
+            # `else` is always executed:
+            # - if iterable was empty
+            # - if iterable was non-empty (there is no `break`)
+            self.tracker.end_branch_statement()
+            o.else_body.accept(self)
         self.loops.pop()
 
     def visit_return_stmt(self, o: ReturnStmt) -> None:
