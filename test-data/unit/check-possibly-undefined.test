@@ -1043,3 +1043,13 @@ def foo(x: Union[int, str]) -> None:
         assert_never(x)
     f  # OK
 [builtins fixtures/tuple.pyi]
+
+[case testForLoopIndexMayBeUndefined]
+# flags: --enable-error-code possibly-undefined
+class Iterable:
+    def __iter__(self): ...
+
+for i in Iterable():
+    pass
+
+i  # E: Name "i" may be undefined  # if iterable was empty

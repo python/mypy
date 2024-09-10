@@ -457,9 +457,9 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
 
     def visit_for_stmt(self, o: ForStmt) -> None:
         o.expr.accept(self)
+        self.tracker.start_branch_statement()
         self.process_lvalue(o.index)
         o.index.accept(self)
-        self.tracker.start_branch_statement()
         loop = Loop()
         self.loops.append(loop)
         o.body.accept(self)
