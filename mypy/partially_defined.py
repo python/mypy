@@ -600,8 +600,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
             if has_break:
                 self.tracker.start_branch_statement()
                 self.tracker.next_branch()
-            if o.else_body:
-                o.else_body.accept(self)
+            o.else_body.accept(self)
             if has_break:
                 self.tracker.end_branch_statement()
         self.loops.pop()
