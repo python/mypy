@@ -114,7 +114,11 @@ def tuple_fallback(typ: TupleType) -> Instance:
         else:
             items.append(item)
     return Instance(
-        info, [make_simplified_union(items)], extra_attrs=typ.partial_fallback.extra_attrs
+        info,
+        # Note: flattening recursive unions is dangerous, since it can fool recursive
+        # types optimization in subtypes.py and go into infinite recursion.
+        [make_simplified_union(items, handle_recursive=False)],
+        extra_attrs=typ.partial_fallback.extra_attrs,
     )
 
 
@@ -440,6 +444,7 @@ def make_simplified_union(
     *,
     keep_erased: bool = False,
     contract_literals: bool = True,
+    handle_recursive: bool = True,
 ) -> ProperType:
     """Build union type with redundant union items removed.
 
@@ -465,7 +470,7 @@ def make_simplified_union(
     to_union().
     """
     # Step 1: expand all nested unions
-    items = flatten_nested_unions(items)
+    items = flatten_nested_unions(items, handle_recursive=handle_recursive)
 
     # Step 2: fast path for single item
     if len(items) == 1:
