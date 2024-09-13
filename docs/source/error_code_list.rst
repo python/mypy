@@ -1155,9 +1155,11 @@ See :ref:`overloading <function-overloading>` for more explanation.
 Check for overload signatures that cannot match [overload-cannot-match]
 --------------------------------------------------------------------------
 
-In the case of an overloaded function, if one of the signatures is never accessible, this error may occur.
-An example where this can occur is with the utilization of object and int types.
-Consider swapping the declaration of the two types so that the narrower signature is declared before the broader signature.
+Warn if an ``@overload`` variant can never be matched, because an earlier
+overload has a wider signature. For example, this can happen if the two
+overloads accept the same parameters and each parameter on the first overload
+has the same type or a wider type than the corresponding parameter on the second
+overload.
 
 Example:
 
