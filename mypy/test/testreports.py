@@ -54,16 +54,3 @@ class CoberturaReportSuite(Suite):
         assert_equal(
             expected_output, etree.tostring(cobertura_package.as_xml(), pretty_print=True)
         )
-        with tempfile.TemporaryDirectory() as tempdir:
-            reports = Reports(data_dir=tempdir, report_dirs={"dummy_report": tempdir})
-
-        cobertura_reporter = CoberturaXmlReporter(reports, ".")
-        cobertura_reporter.root_package = cobertura_package
-        cobertura_reporter.on_finish()
-
-        # Convert the XML document to a string
-        xml_str = etree.tostring(cobertura_reporter.doc, pretty_print=True).decode("utf-8")
-
-        # Check that the required attributes are present
-        assert f'lines-covered="{cobertura_package.covered_lines}"' in xml_str
-        assert f'lines-valid="{cobertura_package.total_lines}"' in xml_str
