@@ -5904,9 +5904,8 @@ class SemanticAnalyzer(
 
         if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
-            if not (
-                len(types) == 1 and isinstance(first_arg, (Parameters, ParamSpecType, AnyType))
-            ):
+            single_any = len(types) == 1 and isinstance(first_arg, AnyType)
+            if not (single_any or any(isinstance(t, (Parameters, ParamSpecType)) for t in types)):
                 types = [Parameters(types, [ARG_POS] * len(types), [None] * len(types))]
 
         return types
