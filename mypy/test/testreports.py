@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import tempfile
 import textwrap
 
-from mypy.report import CoberturaPackage, CoberturaXmlReporter, Reports, get_line_rate
+from mypy.report import CoberturaPackage, get_line_rate
 from mypy.test.helpers import Suite, assert_equal
 
 try:
