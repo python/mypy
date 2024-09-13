@@ -1173,7 +1173,7 @@ Example:
         ...
 
     def process(response1,response2)-> Union[object,int]:
-    return response1 + response2
+        return response1 + response2
 
 .. _code-annotation-unchecked:
 
