@@ -1166,13 +1166,13 @@ Example:
     from typing import overload, Union
 
     @overload
-    def process(response1: object,response2: object) -> object:
+    def process(response1: object, response2: object) -> object:
         ...
     @overload
-    def process(response1: int,response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overload-cannot-match]
+    def process(response1: int, response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overload-cannot-match]
         ...
 
-    def process(response1,response2)-> Union[object,int]:
+    def process(response1: object, response2: object) -> object:
         return response1 + response2
 
 .. _code-annotation-unchecked:
