@@ -37,9 +37,6 @@ from mypy.version import __version__ as mypy_version
 # ones.
 extensions = ["sphinx.ext.intersphinx", "docs.source.html_builder", "myst_parser"]
 
-# To prevent myst-parser from warning header level increases
-suppress_warnings = ["myst.header"]
-
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
