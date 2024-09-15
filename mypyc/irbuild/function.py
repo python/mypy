@@ -514,7 +514,7 @@ def calculate_arg_defaults(
 ) -> None:
     """Calculate default argument values and store them.
 
-    They are stored in statistics for top level functions and in
+    They are stored in statics for top level functions and in
     the function objects for nested functions (while constants are
     still stored computed on demand).
     """

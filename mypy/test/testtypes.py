@@ -867,7 +867,7 @@ class JoinSuite(Suite):
     def test_generics_with_multiple_args(self) -> None:
         self.assert_join(self.fx_co.hab, self.fx_co.hab, self.fx_co.hab)
         self.assert_join(self.fx_co.hab, self.fx_co.hbb, self.fx_co.hab)
-        self.assert_join(self.fx_co.had, self.fx_co.has, self.fx_co.hao)
+        self.assert_join(self.fx_co.had, self.fx_co.haa, self.fx_co.hao)
 
     def test_generics_with_inheritance(self) -> None:
         self.assert_join(self.fx_co.gsab, self.fx_co.gb, self.fx_co.gb)
@@ -1208,7 +1208,7 @@ class MeetSuite(Suite):
 
     def test_generics_with_multiple_args(self) -> None:
         self.assert_meet(self.fx.hab, self.fx.hab, self.fx.hab)
-        self.assert_meet(self.fx.hab, self.fx.has, self.fx.hab)
+        self.assert_meet(self.fx.hab, self.fx.haa, self.fx.hab)
         self.assert_meet(self.fx.hab, self.fx.had, self.fx.nonet)
         self.assert_meet(self.fx.hab, self.fx.hbb, self.fx.hbb)
 
