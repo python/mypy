@@ -187,7 +187,7 @@ def insert_branch_inc_and_decrefs(
 
     term = block.terminator
     for i, target in enumerate(term.targets()):
-        # HEX: After we've checked against an error value the value we must not touch the
+        # HAX: After we've checked against an error value the value we must not touch the
         #      refcount since it will be a null pointer. The correct way to do this would be
         #      to perform data flow analysis on whether a value can be null (or is always
         #      null).

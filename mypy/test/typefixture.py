@@ -182,7 +182,7 @@ class TypeFixture:
         self.gs2d = Instance(self.gs2i, [self.d])  # GS2[D]
 
         self.hab = Instance(self.hi, [self.a, self.b])  # H[A, B]
-        self.has = Instance(self.hi, [self.a, self.a])  # H[A, A]
+        self.haa = Instance(self.hi, [self.a, self.a])  # H[A, A]
         self.hbb = Instance(self.hi, [self.b, self.b])  # H[B, B]
         self.hts = Instance(self.hi, [self.t, self.s])  # H[T, S]
         self.had = Instance(self.hi, [self.a, self.d])  # H[A, D]

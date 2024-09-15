@@ -25,10 +25,10 @@ class TestNameGen(unittest.TestCase):
             "foo.bar": "bar.",
             "foo.baz": "baz.",
         }
-        assert make_module_translation_map(["czar", "foo.bar", "foo.baz"]) == {
+        assert make_module_translation_map(["zar", "foo.bar", "foo.baz"]) == {
             "foo.bar": "bar.",
             "foo.baz": "baz.",
-            "czar": "czar.",
+            "zar": "zar.",
         }
         assert make_module_translation_map(["foo.bar", "fu.bar", "foo.baz"]) == {
             "foo.bar": "foo.bar.",
@@ -37,11 +37,11 @@ class TestNameGen(unittest.TestCase):
         }
 
     def test_name_generator(self) -> None:
-        g = NameGenerator([["foo", "foo.czar"]])
+        g = NameGenerator([["foo", "foo.zar"]])
         assert g.private_name("foo", "f") == "foo___f"
         assert g.private_name("foo", "C.x.y") == "foo___C___x___y"
         assert g.private_name("foo", "C.x.y") == "foo___C___x___y"
-        assert g.private_name("foo.czar", "C.x.y") == "zar___C___x___y"
+        assert g.private_name("foo.zar", "C.x.y") == "zar___C___x___y"
         assert g.private_name("foo", "C.x_y") == "foo___C___x_y"
         assert g.private_name("foo", "C_x_y") == "foo___C_x_y"
         assert g.private_name("foo", "C_x_y") == "foo___C_x_y"

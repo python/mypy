@@ -780,7 +780,7 @@ class SetAttr(RegisterOp):
         return visitor.visit_set_attr(self)
 
 
-# Default name space for statistics, variables
+# Default name space for statics, variables
 NAMESPACE_STATIC: Final = "static"
 
 # Static namespace for pointers to native type objects
@@ -796,12 +796,12 @@ NAMESPACE_TYPE_VAR: Final = "typevar"
 class LoadStatic(RegisterOp):
     """Load a static name (name :: static).
 
-    Load a C static variable/pointer. The namespace for statistics is shared
+    Load a C static variable/pointer. The namespace for statics is shared
     for the entire compilation group. You can optionally provide a module
     name and a sub-namespace identifier for additional namespacing to avoid
     name conflicts. The static namespace does not overlap with other C names,
     since the final C name will get a prefix, so conflicts only must be
-    avoided with other statistics.
+    avoided with other statics.
     """
 
     error_kind = ERR_NEVER
@@ -1451,7 +1451,7 @@ class LoadAddress(RegisterOp):
       type: Type of the loaded address(e.g. ptr/object_ptr)
       src: Source value (str for globals like 'PyList_Type',
            Register for temporary values or locals, LoadStatic
-           for statistics.)
+           for statics.)
     """
 
     error_kind = ERR_NEVER
