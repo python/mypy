@@ -1208,7 +1208,7 @@ class MeetSuite(Suite):
 
     def test_generics_with_multiple_args(self) -> None:
         self.assert_meet(self.fx.hab, self.fx.hab, self.fx.hab)
-        self.assert_meet(self.fx.hab, self.fx.has, self.fx.hab)
+        self.assert_meet(self.fx.hab, self.fx.haa, self.fx.hab)
         self.assert_meet(self.fx.hab, self.fx.had, self.fx.nonet)
         self.assert_meet(self.fx.hab, self.fx.hbb, self.fx.hbb)
 
