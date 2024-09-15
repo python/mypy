@@ -519,7 +519,7 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
             "typing.Container",
             "typing.Sized",
         ):
-            # HAX: Synthesized base classes added by mypy don't exist at runtime, so skip them.
+            # HEX: Synthesized base classes added by mypy don't exist at runtime, so skip them.
             #      This could break if they were added explicitly, though...
             continue
         # Add the current class to the base classes list of concrete subclasses
@@ -529,7 +529,7 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
                 base_ir.children.append(ir)
 
         if cls.fullname in MAGIC_TYPED_DICT_CLASSES:
-            # HAX: Mypy internally represents TypedDict classes differently from what
+            # HEX: Mypy internally represents TypedDict classes differently from what
             #      should happen at runtime. Replace with something that works.
             module = "typing"
             if builder.options.capi_version < (3, 9):

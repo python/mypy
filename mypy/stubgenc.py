@@ -241,7 +241,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.module_name = module_name
         if self.is_c_module:
             # Add additional implicit imports.
-            # C-extensions are given more lattitude since they do not import the typing module.
+            # C-extensions are given more latitude since they do not import the typing module.
             self.known_imports.update(
                 {
                     "typing": [
@@ -340,7 +340,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         # Add *args if present
         if varargs:
             arglist.append(ArgSig(f"*{varargs}", get_annotation(varargs)))
-        # if we have keyword only args, then wee need to add "*"
+        # if we have keyword only args, then we need to add "*"
         elif kwonlyargs:
             arglist.append(ArgSig("*"))
 

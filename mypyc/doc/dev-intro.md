@@ -280,7 +280,7 @@ under `mypyc/lib-rt`.
 
 ## Inspecting Generated C
 
-It's often useful to inspect the C code genenerate by mypyc to debug
+It's often useful to inspect the C code generate by mypyc to debug
 issues.  Mypyc stores the generated C code as `build/__native.c`.
 Compiled native functions have the prefix `CPyDef_`, while wrapper
 functions used for calling functions from interpreted Python code have

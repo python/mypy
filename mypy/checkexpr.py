@@ -840,7 +840,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Having an optional key not explicitly declared by a ** unpacked
                 # TypedDict is unsafe, it may be an (incompatible) subtype at runtime.
                 # TODO: catch the cases where a declared key is overridden by a subsequent
-                # ** item without it (and not again overriden with complete ** item).
+                # ** item without it (and not again overridden with complete ** item).
                 self.msg.non_required_keys_absent_with_star(absent_keys, last_star_found)
         return result, always_present_keys
 

@@ -119,7 +119,7 @@ This feature was contributed by Jukka Lehtosalo (PR [17404](https://github.com/p
 
 #### Mypyc Improvements
 
-Mypyc now supports the new syntax for generics introduced in Python 3.12 (see above). Another notable improvement is signficantly faster basic operations on `int` values.
+Mypyc now supports the new syntax for generics introduced in Python 3.12 (see above). Another notable improvement is significantly faster basic operations on `int` values.
 
  * Support Python 3.12 syntax for generic functions and classes (Jukka Lehtosalo, PR [17357](https://github.com/python/mypy/pull/17357))
  * Support Python 3.12 type alias syntax (Jukka Lehtosalo, PR [17384](https://github.com/python/mypy/pull/17384))

@@ -1908,7 +1908,7 @@ class LowLevelIRBuilder:
             )
             return self.call_c(c_desc, args, line, result_type)
 
-        # This primitve gets transformed in a lowering pass to
+        # This primitive gets transformed in a lowering pass to
         # lower-level IR ops using a custom transform function.
 
         coerced = []

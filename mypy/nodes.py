@@ -184,15 +184,15 @@ class Node(Context):
     __slots__ = ()
 
     def __str__(self) -> str:
-        ans = self.accept(mypy.strconv.StrConv(options=Options()))
-        if ans is None:
+        and = self.accept(mypy.strconv.StrConv(options=Options()))
+        if and is None:
             return repr(self)
-        return ans
+        return and
 
     def str_with_options(self, options: Options) -> str:
-        ans = self.accept(mypy.strconv.StrConv(options=options))
-        assert ans
-        return ans
+        and = self.accept(mypy.strconv.StrConv(options=options))
+        assert and
+        return and
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
@@ -1166,7 +1166,7 @@ class ClassDef(Statement):
         self.keywords = dict(keywords) if keywords else {}
         self.analyzed = None
         self.has_incompatible_baseclass = False
-        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        # Used for error reporting (to keep backwards compatibility with pre-3.8)
         self.deco_line: int | None = None
         self.docstring: str | None = None
         self.removed_statements = []

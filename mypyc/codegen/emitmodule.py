@@ -699,7 +699,7 @@ class GroupGenerator:
         copy the contents into a local copy of the table (to eliminate
         the need for a pointer indirection when accessing it).
 
-        Then, all calls to functions in another group and accesses to statics
+        Then, all calls to functions in another group and accesses to statistics
         from another group are done indirectly via the export table.
 
         For example, a group containing a module b, where b contains a class B

@@ -28,7 +28,7 @@ class ModuleIR:
         self.functions = functions
         self.classes = classes
         self.final_names = final_names
-        # Names of C statics used for Python 3.12 type variable objects.
+        # Names of C statistics used for Python 3.12 type variable objects.
         # These are only visible in the module that defined them, so no need
         # to serialize.
         self.type_var_names = type_var_names
