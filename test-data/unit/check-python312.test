@@ -1713,3 +1713,24 @@ type XNested = (1 + (yield 1))  # E: Yield expression cannot be used within a ty
 type YNested = (1 + (yield from [])) # E: Yield expression cannot be used within a type alias
 type ZNested = (1 + (a := 1))  # E: Named expression cannot be used within a type alias
 type KNested = (1 + (await 1))  # E: Await expression cannot be used within a type alias
+
+[case testPEP695NestedGenericClass]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class C[T]:
+    def g(self) -> T: ...
+
+class A:
+    class B[T]:
+        def __init__(self, a: T) -> None:
+            self.a = a
+
+        def f(self, x: T) -> T:
+            return x
+        def g(self) -> T:
+            return self.a
+
+x: A.B[int]
+x.f("x")  # E: x
+reveal_type(x.f)  # N: x
+reveal_type(x.a)  # N: Revealed type is "builtins.int"
+reveal_type(x)  # N: Revealed type is "__main__.A.B[builtins.int]"
