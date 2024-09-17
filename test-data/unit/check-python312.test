@@ -1749,3 +1749,22 @@ class A:
 
 reveal_type(A().a)  # N: Revealed type is "__main__.B@4[builtins.str]"
 reveal_type(A().a.f())  # N: Revealed type is "builtins.str"
+
+[case testPEP695NestedGenericClass3]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class C[T]:
+    def f(self) -> T: ...
+    class D[S]:
+        x: T  # E: Name "T" is not defined
+        def g(self) -> S: ...
+
+a: C[int]
+reveal_type(a.f())  # N: Revealed type is "builtins.int"
+b: C.D[str]
+reveal_type(b.g())  # N: Revealed type is "builtins.str"
+
+class E[T]:
+    class F[T]:  # E: "T" already defined as a type parameter
+        x: T
+
+c: E.F[int]
