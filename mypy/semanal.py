@@ -824,6 +824,12 @@ class SemanticAnalyzer(
             self.num_incomplete_refs = 0
 
             if active_type:
+                fn = active_type.fullname
+                enclosing_fullname = ".".join(fn.split(".")[:-1])
+                if "." in enclosing_fullname:
+                    enclosing_node = self.lookup_fully_qualified_or_none(enclosing_fullname)
+                    if enclosing_node and isinstance(enclosing_node.node, TypeInfo):
+                        self._type = enclosing_node.node
                 self.push_type_args(active_type.defn.type_args, active_type.defn)
                 self.incomplete_type_stack.append(False)
                 scope.enter_class(active_type)

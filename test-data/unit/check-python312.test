@@ -1717,20 +1717,22 @@ type KNested = (1 + (await 1))  # E: Await expression cannot be used within a ty
 [case testPEP695NestedGenericClass]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 class C[T]:
-    def g(self) -> T: ...
+    def f(self) -> T: ...
 
 class A:
-    class B[T]:
-        def __init__(self, a: T) -> None:
+    class B[Q]:
+        def __init__(self, a: Q) -> None:
             self.a = a
 
-        def f(self, x: T) -> T:
-            return x
-        def g(self) -> T:
+        def f(self) -> Q:
             return self.a
 
+        def g(self, x: Q) -> None: ...
+
+    b: B[str]
+
 x: A.B[int]
-x.f("x")  # E: x
-reveal_type(x.f)  # N: x
+x.g("x")  # E: Argument 1 to "g" of "B" has incompatible type "str"; expected "int"
 reveal_type(x.a)  # N: Revealed type is "builtins.int"
 reveal_type(x)  # N: Revealed type is "__main__.A.B[builtins.int]"
+reveal_type(A.b)  # N: Revealed type is "__main__.A.B[builtins.str]"
