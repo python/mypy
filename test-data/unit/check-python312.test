@@ -1714,7 +1714,7 @@ type YNested = (1 + (yield from [])) # E: Yield expression cannot be used within
 type ZNested = (1 + (a := 1))  # E: Named expression cannot be used within a type alias
 type KNested = (1 + (await 1))  # E: Await expression cannot be used within a type alias
 
-[case testPEP695NestedGenericClass]
+[case testPEP695NestedGenericClass1]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 class C[T]:
     def f(self) -> T: ...
@@ -1736,3 +1736,16 @@ x.g("x")  # E: Argument 1 to "g" of "B" has incompatible type "str"; expected "i
 reveal_type(x.a)  # N: Revealed type is "builtins.int"
 reveal_type(x)  # N: Revealed type is "__main__.A.B[builtins.int]"
 reveal_type(A.b)  # N: Revealed type is "__main__.A.B[builtins.str]"
+
+[case testPEP695NestedGenericClass2]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class A:
+    def m(self) -> None:
+        class B[T]:
+            def f(self) -> T: ...
+        x: B[int]
+        reveal_type(x.f())  # N: Revealed type is "builtins.int"
+        self.a = B[str]()
+
+reveal_type(A().a)  # N: Revealed type is "__main__.B@4[builtins.str]"
+reveal_type(A().a.f())  # N: Revealed type is "builtins.str"
