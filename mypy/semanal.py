@@ -824,8 +824,7 @@ class SemanticAnalyzer(
             self.num_incomplete_refs = 0
 
             if active_type:
-                fn = active_type.fullname
-                enclosing_fullname = ".".join(fn.split(".")[:-1])
+                enclosing_fullname = active_type.fullname.rsplit(".", 1)[0]
                 if "." in enclosing_fullname:
                     enclosing_node = self.lookup_fully_qualified_or_none(enclosing_fullname)
                     if enclosing_node and isinstance(enclosing_node.node, TypeInfo):
