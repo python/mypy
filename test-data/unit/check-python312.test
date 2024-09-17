@@ -1768,3 +1768,14 @@ class E[T]:
         x: T
 
 c: E.F[int]
+
+[case testPEP695NestedGenericClass4]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class A:
+    class B[T]:
+        def __get__(self, instance: A, owner: type[A]) -> T:
+            return None  # E: Incompatible return value type (got "None", expected "T")
+    f = B[int]()
+
+a = A()
+v = a.f
