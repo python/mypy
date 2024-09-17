@@ -1713,3 +1713,25 @@ type XNested = (1 + (yield 1))  # E: Yield expression cannot be used within a ty
 type YNested = (1 + (yield from [])) # E: Yield expression cannot be used within a type alias
 type ZNested = (1 + (a := 1))  # E: Named expression cannot be used within a type alias
 type KNested = (1 + (await 1))  # E: Await expression cannot be used within a type alias
+
+[case testPEP695TypeAliasAndAnnotated]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing_extensions import Annotated, Annotated as _Annotated
+import typing_extensions as t
+
+def ann(*args): ...
+
+type A = Annotated[int, ann()]
+type B = Annotated[int | str, ann((1, 2))]
+type C = _Annotated[int, ann()]
+type D = t.Annotated[str, ann()]
+
+x: A
+y: B
+z: C
+zz: D
+reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(z)  # N: Revealed type is "builtins.int"
+reveal_type(zz)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]

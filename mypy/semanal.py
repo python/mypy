@@ -3744,7 +3744,9 @@ class SemanticAnalyzer(
         dynamic = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         global_scope = not self.type and not self.function_stack
         try:
-            typ = expr_to_unanalyzed_type(rvalue, self.options, self.is_stub_file)
+            typ = expr_to_unanalyzed_type(
+                rvalue, self.options, self.is_stub_file, lookup_qualified=self.lookup_qualified
+            )
         except TypeTranslationError:
             self.fail(
                 "Invalid type alias: expression is not a valid type", rvalue, code=codes.VALID_TYPE
