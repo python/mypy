@@ -570,7 +570,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if (
                 typ is not None
                 and isinstance(typ, UnionType)
-                and all([isinstance(t, LiteralType) for t in typ.items])
+                and all(isinstance(t, LiteralType) for t in typ.items)
             ):
                 # Returning strings is defined but order isn't so
                 # we need to return type * len of the union
