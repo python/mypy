@@ -1735,3 +1735,69 @@ reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(z)  # N: Revealed type is "builtins.int"
 reveal_type(zz)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695NestedGenericClass1]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class C[T]:
+    def f(self) -> T: ...
+
+class A:
+    class B[Q]:
+        def __init__(self, a: Q) -> None:
+            self.a = a
+
+        def f(self) -> Q:
+            return self.a
+
+        def g(self, x: Q) -> None: ...
+
+    b: B[str]
+
+x: A.B[int]
+x.g("x")  # E: Argument 1 to "g" of "B" has incompatible type "str"; expected "int"
+reveal_type(x.a)  # N: Revealed type is "builtins.int"
+reveal_type(x)  # N: Revealed type is "__main__.A.B[builtins.int]"
+reveal_type(A.b)  # N: Revealed type is "__main__.A.B[builtins.str]"
+
+[case testPEP695NestedGenericClass2]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class A:
+    def m(self) -> None:
+        class B[T]:
+            def f(self) -> T: ...
+        x: B[int]
+        reveal_type(x.f())  # N: Revealed type is "builtins.int"
+        self.a = B[str]()
+
+reveal_type(A().a)  # N: Revealed type is "__main__.B@4[builtins.str]"
+reveal_type(A().a.f())  # N: Revealed type is "builtins.str"
+
+[case testPEP695NestedGenericClass3]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class C[T]:
+    def f(self) -> T: ...
+    class D[S]:
+        x: T  # E: Name "T" is not defined
+        def g(self) -> S: ...
+
+a: C[int]
+reveal_type(a.f())  # N: Revealed type is "builtins.int"
+b: C.D[str]
+reveal_type(b.g())  # N: Revealed type is "builtins.str"
+
+class E[T]:
+    class F[T]:  # E: "T" already defined as a type parameter
+        x: T
+
+c: E.F[int]
+
+[case testPEP695NestedGenericClass4]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class A:
+    class B[T]:
+        def __get__(self, instance: A, owner: type[A]) -> T:
+            return None  # E: Incompatible return value type (got "None", expected "T")
+    f = B[int]()
+
+a = A()
+v = a.f
