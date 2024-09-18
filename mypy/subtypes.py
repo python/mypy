@@ -2004,7 +2004,8 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
         tvar = info.defn.type_vars[i]
         self_type = fill_typevars(info)
         for member in all_non_object_members(info):
-            if member in ("__init__", "__new__"):
+            # __mypy-replace is an implementation detail of the dataclass plugin
+            if member in ("__init__", "__new__", "__mypy-replace"):
                 continue
             node = info[member].node
             if isinstance(node, Var) and node.type is None:

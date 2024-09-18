@@ -249,6 +249,25 @@ if int():
 if int():
     f = e
 
+[case testPEP695InferVarianceInFrozenDataclass]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Covariant[T]:
+    x: T
+
+cov1: Covariant[float] = Covariant[int](1)
+cov2: Covariant[int] = Covariant[float](1)  # E: Incompatible types in assignment (expression has type "Covariant[float]", variable has type "Covariant[int]")
+
+@dataclass(frozen=True)
+class Invariant[T]:
+    x: list[T]
+
+inv1: Invariant[float] = Invariant[int]([1])  # E: Incompatible types in assignment (expression has type "Invariant[int]", variable has type "Invariant[float]")
+inv2: Invariant[int] = Invariant[float]([1])  # E: Incompatible types in assignment (expression has type "Invariant[float]", variable has type "Invariant[int]")
+[builtins fixtures/tuple.pyi]
+
 [case testPEP695InferVarianceCalculateOnDemand]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 
