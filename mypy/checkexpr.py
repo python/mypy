@@ -544,6 +544,39 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.msg.cannot_use_function_with_type(e.callee.name, "TypedDict", e)
                     elif typ.node.is_newtype:
                         self.msg.cannot_use_function_with_type(e.callee.name, "NewType", e)
+        if (
+            isinstance(e.callee, NameExpr)
+            and e.callee.fullname == "typing.get_args"
+            and len(e.args) == 1
+        ):
+            #Special hanlding for get_args(), returns a typed tuple
+            #with the type set by the input
+            typ = None
+            if isinstance(e.args[0], IndexExpr):
+                self.accept(e.args[0].index)
+                typ = self.chk.lookup_type(e.args[0].index)
+            else:
+                try:
+                    node = self.chk.lookup_qualified(e.args[0].name)
+                except KeyError:
+                            # Undefined names should already be reported in semantic analysis.
+                            pass
+                if node:
+                    if isinstance(node.node, TypeAlias):
+                        #Resolve type
+                        typ = get_proper_type(node.node.target)
+                    else:
+                        typ = node.node.type
+            if ( typ is not None
+                and isinstance(typ, UnionType)
+                and all([isinstance(t, LiteralType) for t in typ.items])
+            ):
+                # Returning strings is defined but order isn't so
+                # we need to return type * len of the union
+                return TupleType([typ] * len(typ.items), fallback=self.named_type("builtins.tuple"))
+            else:
+                # Fall back to what we did anyway (Tuple[Any])
+                return TupleType([AnyType(TypeOfAny.special_form)], fallback=self.named_type("builtins.tuple"))
         self.try_infer_partial_type(e)
         type_context = None
         if isinstance(e.callee, LambdaExpr):
