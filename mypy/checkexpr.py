@@ -558,15 +558,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 try:
                     node = self.chk.lookup_qualified(e.args[0].name)
+                    if node:
+                        if isinstance(node.node, TypeAlias):
+                            # Resolve type
+                            typ = get_proper_type(node.node.target)
+                        else:
+                            typ = node.node.type
                 except KeyError:
                     # Undefined names should already be reported in semantic analysis.
                     pass
-                if node:
-                    if isinstance(node.node, TypeAlias):
-                        # Resolve type
-                        typ = get_proper_type(node.node.target)
-                    else:
-                        typ = node.node.type
             if (
                 typ is not None
                 and isinstance(typ, UnionType)
