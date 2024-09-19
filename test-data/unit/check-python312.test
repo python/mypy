@@ -233,7 +233,7 @@ b: Invariant[int]
 if int():
     a = b  # E: Incompatible types in assignment (expression has type "Invariant[int]", variable has type "Invariant[object]")
 if int():
-    b = a  # E: Incompatible types in assignment (expression has type "Invariant[object]", variable has type "Invariant[int]")
+    b = a
 
 c: Covariant[object]
 d: Covariant[int]
@@ -423,6 +423,64 @@ class Invariant3[T]:
 inv3_1: Invariant3[float] = Invariant3[int](1)  # E: Incompatible types in assignment (expression has type "Invariant3[int]", variable has type "Invariant3[float]")
 inv3_2: Invariant3[int] = Invariant3[float](1)  # E: Incompatible types in assignment (expression has type "Invariant3[float]", variable has type "Invariant3[int]")
 [builtins fixtures/property.pyi]
+
+[case testPEP695InferVarianceWithInheritedSelf]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import overload, Self, TypeVar, Generic
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class C(Generic[T]):
+    def f(self, x: T) -> Self: ...
+    def g(self) -> T: ...
+
+class D[T1, T2](C[T1]):
+    def m(self, x: T2) -> None: ...
+
+a1: D[int, int] = D[int, object]()
+a2: D[int, object] = D[int, int]()  # E: Incompatible types in assignment (expression has type "D[int, int]", variable has type "D[int, object]")
+a3: D[int, int] = D[object, object]()  # E: Incompatible types in assignment (expression has type "D[object, object]", variable has type "D[int, int]")
+a4: D[object, int] = D[int, object]()  # E: Incompatible types in assignment (expression has type "D[int, object]", variable has type "D[object, int]")
+
+[case testPEP695InferVarianceWithReturnSelf]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import Self, overload
+
+class Cov[T]:
+    def f(self) -> Self: ...
+
+a1: Cov[int] = Cov[float]()  # E: Incompatible types in assignment (expression has type "Cov[float]", variable has type "Cov[int]")
+a2: Cov[float] = Cov[int]()
+
+class Contra[T]:
+    def f(self) -> Self: ...
+    def g(self, x: T) -> None: ...
+
+b1: Contra[int] = Contra[float]()
+b2: Contra[float] = Contra[int]()  # E: Incompatible types in assignment (expression has type "Contra[int]", variable has type "Contra[float]")
+
+class Cov2[T]:
+    @overload
+    def f(self, x): ...
+    @overload
+    def f(self) -> Self: ...
+    def f(self, x=None): ...
+
+c1: Cov2[int] = Cov2[float]()  # E: Incompatible types in assignment (expression has type "Cov2[float]", variable has type "Cov2[int]")
+c2: Cov2[float] = Cov2[int]()
+
+class Contra2[T]:
+    @overload
+    def f(self, x): ...
+    @overload
+    def f(self) -> Self: ...
+    def f(self, x=None): ...
+
+    def g(self, x: T) -> None: ...
+
+d1: Contra2[int] = Contra2[float]()
+d2: Contra2[float] = Contra2[int]()  # E: Incompatible types in assignment (expression has type "Contra2[int]", variable has type "Contra2[float]")
 
 [case testPEP695InheritInvariant]
 # flags: --enable-incomplete-feature=NewGenericSyntax

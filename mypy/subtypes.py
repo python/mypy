@@ -2024,6 +2024,16 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
 
             typ = find_member(member, self_type, self_type)
             if typ:
+                # It's okay for a method in a generic class with a contravariant type
+                # variable to return a generic instance of the class, if it doesn't involve
+                # variance (i.e. values of type variables are propagated). Our normal rules
+                # would disallow this. Replace such return types with 'Any' to allow this.
+                #
+                # This could probably be more lenient (e.g. allow self type be nested, don't
+                # require all type arguments to be identical to self_type), but this will
+                # hopefully cover the vast majority of such cases, including Self.
+                typ = erase_return_self_types(typ, self_type)
+
                 typ2 = expand_type(typ, {tvar.id: object_type})
                 if not is_subtype(typ, typ2):
                     co = False
@@ -2057,3 +2067,20 @@ def infer_class_variances(info: TypeInfo) -> bool:
             if not infer_variance(info, i):
                 success = False
     return success
+
+
+def erase_return_self_types(typ: Type, self_type: Instance) -> Type:
+    """If a typ is function-like and returns self_type, replace return type with Any."""
+    proper_type = get_proper_type(typ)
+    if isinstance(proper_type, CallableType):
+        ret = get_proper_type(proper_type.ret_type)
+        if isinstance(ret, Instance) and ret == self_type:
+            return proper_type.copy_modified(ret_type=AnyType(TypeOfAny.implementation_artifact))
+    elif isinstance(proper_type, Overloaded):
+        return Overloaded(
+            [
+                cast(CallableType, erase_return_self_types(it, self_type))
+                for it in proper_type.items
+            ]
+        )
+    return typ
