@@ -591,6 +591,40 @@ a4: A4
 reveal_type(a4)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/type.pyi]
 
+[case testPEP695TypeAliasNotValidAsBaseClass]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import TypeAlias
+
+import m
+
+type A1 = int
+class Bad1(A1):  # E: Type alias defined using "type" statement not valid as base class
+    pass
+
+type A2[T] = list[T]
+class Bad2(A2[int]):  # E: Type alias defined using "type" statement not valid as base class
+    pass
+
+class Bad3(m.A1):  # E: Type alias defined using "type" statement not valid as base class
+    pass
+
+class Bad4(m.A2[int]):  # E: Type alias defined using "type" statement not valid as base class
+    pass
+
+B1 = int
+B2 = list
+B3: TypeAlias = int
+class Good1(B1): pass
+class Good2(B2[int]): pass
+class Good3(list[A1]): pass
+class Good4(list[A2[int]]): pass
+class Good5(B3): pass
+
+[file m.py]
+type A1 = str
+type A2[T] = list[T]
+[typing fixtures/typing-medium.pyi]
+
 [case testPEP695TypeAliasWithUnusedTypeParams]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 type A[T] = int
@@ -637,9 +671,7 @@ class D: pass
 
 type A = C
 
-# Note that this doesn't actually work at runtime, but we currently don't
-# keep track whether a type alias is valid in various runtime type contexts.
-class D(A):
+class D(A):  # E: Type alias defined using "type" statement not valid as base class
     pass
 
 class C: pass
