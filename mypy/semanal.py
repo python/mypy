@@ -6955,6 +6955,7 @@ class SemanticAnalyzer(
             namespace is None
             and self.type
             and not self.is_func_scope()
+            and self.incomplete_type_stack
             and self.incomplete_type_stack[-1]
             and not self.final_iteration
         ):

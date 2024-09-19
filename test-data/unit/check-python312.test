@@ -1320,6 +1320,14 @@ class P[T](Protocol[T]):  # E: No arguments expected for "Protocol" base class
 class P2[T](Protocol[S]):  # E: No arguments expected for "Protocol" base class
     pass
 
+[case testPEP695CannotUseTypeVarFromOuterClass]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+class ClassG[V]:
+    # This used to crash
+    class ClassD[T: dict[str, V]]:  # E: Name "V" is not defined
+        ...
+[builtins fixtures/dict.pyi]
+
 [case testPEP695MixNewAndOldStyleGenerics]
 # mypy: enable-incomplete-feature=NewGenericSyntax
 from typing import TypeVar
