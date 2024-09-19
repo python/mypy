@@ -20,7 +20,7 @@ normalImplicit = Literal["a", "bc"]
 normalExplicit: TypeAlias = Literal["a", "bc"]
 reveal_type(get_args(normalImplicit)) # N: Revealed type is "Tuple[Union[Literal['a'], Literal['bc']], Union[Literal['a'], Literal['bc']]]"
 reveal_type(get_args(normalExplicit)) # N: Revealed type is "Tuple[Union[Literal['a'], Literal['bc']], Union[Literal['a'], Literal['bc']]]"
-#reveal_type(get_args(Literal["a", "bc"]))
+reveal_type(get_args(Literal["a", "bc"]))  # N: Revealed type is "typing._SpecialForm"
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
