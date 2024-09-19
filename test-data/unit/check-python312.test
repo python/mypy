@@ -1883,3 +1883,43 @@ class A:
 
 a = A()
 v = a.f
+
+[case testPEP695VarianceInheritedFromBaseWithExplicitVariance]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+class ParentInvariant(Generic[T]):
+    pass
+
+class Invariant1[T](ParentInvariant[T]):
+    pass
+
+a1: Invariant1[int] = Invariant1[float]()  # E: Incompatible types in assignment (expression has type "Invariant1[float]", variable has type "Invariant1[int]")
+a2: Invariant1[float] = Invariant1[int]()  # E: Incompatible types in assignment (expression has type "Invariant1[int]", variable has type "Invariant1[float]")
+
+T_contra = TypeVar("T_contra", contravariant=True)
+
+class ParentContravariant(Generic[T_contra]):
+    pass
+
+class Contravariant[T](ParentContravariant[T]):
+    pass
+
+b1: Contravariant[int] = Contravariant[float]()
+b2: Contravariant[float] = Contravariant[int]()  # E: Incompatible types in assignment (expression has type "Contravariant[int]", variable has type "Contravariant[float]")
+
+class Invariant2[T](ParentContravariant[T]):
+    def f(self) -> T: ...
+
+c1: Invariant2[int] = Invariant2[float]()  # E: Incompatible types in assignment (expression has type "Invariant2[float]", variable has type "Invariant2[int]")
+c2: Invariant2[float] = Invariant2[int]()  # E: Incompatible types in assignment (expression has type "Invariant2[int]", variable has type "Invariant2[float]")
+
+class Multi[T, S](ParentInvariant[T], ParentContravariant[S]):
+    pass
+
+d1: Multi[int, str] = Multi[float, str]()  # E: Incompatible types in assignment (expression has type "Multi[float, str]", variable has type "Multi[int, str]")
+d2: Multi[float, str] = Multi[int, str]()  # E: Incompatible types in assignment (expression has type "Multi[int, str]", variable has type "Multi[float, str]")
+d3: Multi[str, int] = Multi[str, float]()
+d4: Multi[str, float] = Multi[str, int]()  # E: Incompatible types in assignment (expression has type "Multi[str, int]", variable has type "Multi[str, float]")
