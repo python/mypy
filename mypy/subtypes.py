@@ -2031,6 +2031,15 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
                     contra = False
                     if settable:
                         co = False
+
+        # Infer variance from base classes, in case they have explicit variances
+        for base in info.bases:
+            base2 = expand_type(base, {tvar.id: object_type})
+            if not is_subtype(base, base2):
+                co = False
+            if not is_subtype(base2, base):
+                contra = False
+
         if co:
             v = COVARIANT
         elif contra:
