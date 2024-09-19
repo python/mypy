@@ -579,11 +579,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return TupleType(
                     [argtyp] * len(argtyp.items), fallback=self.named_type("builtins.tuple")
                 )
-            else:
-                # Fall back to what we did anyway (Tuple[Any])
-                return TupleType(
-                    [AnyType(TypeOfAny.special_form)], fallback=self.named_type("builtins.tuple")
-                )
         self.try_infer_partial_type(e)
         type_context = None
         if isinstance(e.callee, LambdaExpr):
