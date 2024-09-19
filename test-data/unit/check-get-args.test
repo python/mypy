@@ -7,9 +7,9 @@ intandunionliterals: Union[Literal["a"], Literal["bc"], int] = "a"
 inttype: int = 1
 reveal_type(get_args(literals)) # N: Revealed type is "Tuple[Union[Literal['a'], Literal['bc']], Union[Literal['a'], Literal['bc']]]"
 reveal_type(get_args(unionliterals)) # N: Revealed type is "Tuple[Union[Literal['a'], Literal['bc']], Union[Literal['a'], Literal['bc']]]"
-reveal_type(get_args(intandliterals)) # N: Revealed type is "Tuple[Any]"
-reveal_type(get_args(intandunionliterals)) # N: Revealed type is "Tuple[Any]"
-reveal_type(get_args(inttype))  # N: Revealed type is "Tuple[Any]"
+reveal_type(get_args(intandliterals)) # N: Revealed type is "Union[Literal['a'], Literal['bc'], builtins.int]"
+reveal_type(get_args(intandunionliterals)) # N: Revealed type is "Union[Literal['a'], Literal['bc'], builtins.int]"
+reveal_type(get_args(inttype))  # N: Revealed type is "builtins.int"
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
