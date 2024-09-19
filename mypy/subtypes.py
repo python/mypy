@@ -2004,18 +2004,25 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
         tvar = info.defn.type_vars[i]
         self_type = fill_typevars(info)
         for member in all_non_object_members(info):
-            if member in ("__init__", "__new__"):
+            # __mypy-replace is an implementation detail of the dataclass plugin
+            if member in ("__init__", "__new__", "__mypy-replace"):
                 continue
-            node = info[member].node
-            if isinstance(node, Var) and node.type is None:
-                tv.variance = VARIANCE_NOT_READY
-                return False
+
             if isinstance(self_type, TupleType):
                 self_type = mypy.typeops.tuple_fallback(self_type)
-
             flags = get_member_flags(member, self_type)
-            typ = find_member(member, self_type, self_type)
             settable = IS_SETTABLE in flags
+
+            node = info[member].node
+            if isinstance(node, Var):
+                if node.type is None:
+                    tv.variance = VARIANCE_NOT_READY
+                    return False
+                if has_underscore_prefix(member):
+                    # Special case to avoid false positives (and to pass conformance tests)
+                    settable = False
+
+            typ = find_member(member, self_type, self_type)
             if typ:
                 typ2 = expand_type(typ, {tvar.id: object_type})
                 if not is_subtype(typ, typ2):
@@ -2034,6 +2041,10 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
             break
         tv.variance = VARIANCE_NOT_READY
     return True
+
+
+def has_underscore_prefix(name: str) -> bool:
+    return name.startswith("_") and not (name.startswith("__") and name.endswith("__"))
 
 
 def infer_class_variances(info: TypeInfo) -> bool:
