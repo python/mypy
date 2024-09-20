@@ -2198,7 +2198,7 @@ type L1 = Never
 type L2 = list[Never]
 
 [case testPEP695VarianceInferenceSpecialCaseWithTypeshed]
-# flags: --python-version=3.12 --enable-incomplete-feature=NewGenericSyntax
+# flags: --python-version=3.12
 class C1[T1, T2](list[T1]):
     def m(self, a: T2) -> None: ...
 

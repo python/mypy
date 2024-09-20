@@ -394,7 +394,6 @@ inv3_2: Invariant3[int] = Invariant3[float](1)  # E: Incompatible types in assig
 [builtins fixtures/property.pyi]
 
 [case testPEP695InferVarianceWithInheritedSelf]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 from typing import overload, Self, TypeVar, Generic
 
 T = TypeVar("T")
@@ -413,7 +412,6 @@ a3: D[int, int] = D[object, object]()  # E: Incompatible types in assignment (ex
 a4: D[object, int] = D[int, object]()  # E: Incompatible types in assignment (expression has type "D[int, object]", variable has type "D[object, int]")
 
 [case testPEP695InferVarianceWithReturnSelf]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 from typing import Self, overload
 
 class Cov[T]:
