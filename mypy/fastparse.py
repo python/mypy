@@ -92,7 +92,7 @@ from mypy.nodes import (
     YieldFromExpr,
     check_arg_names,
 )
-from mypy.options import NEW_GENERIC_SYNTAX, Options
+from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
