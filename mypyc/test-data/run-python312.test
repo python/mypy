@@ -1,5 +1,4 @@
 [case testPEP695Basics]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 from typing import Any, TypeAliasType, cast
 
 from testutil import assertRaises
@@ -192,7 +191,6 @@ def test_recursive_type_alias() -> None:
 [typing fixtures/typing-full.pyi]
 
 [case testPEP695GenericTypeAlias]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 from typing import Callable
 from types import GenericAlias
 
