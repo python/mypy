@@ -1149,6 +1149,34 @@ types you expect.
 
 See :ref:`overloading <function-overloading>` for more explanation.
 
+
+.. _code-overload-cannot-match:
+
+Check for overload signatures that cannot match [overload-cannot-match]
+--------------------------------------------------------------------------
+
+Warn if an ``@overload`` variant can never be matched, because an earlier
+overload has a wider signature. For example, this can happen if the two
+overloads accept the same parameters and each parameter on the first overload
+has the same type or a wider type than the corresponding parameter on the second
+overload.
+
+Example:
+
+.. code-block:: python
+
+    from typing import overload, Union
+
+    @overload
+    def process(response1: object, response2: object) -> object:
+        ...
+    @overload
+    def process(response1: int, response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overload-cannot-match]
+        ...
+
+    def process(response1: object, response2: object) -> object:
+        return response1 + response2
+
 .. _code-annotation-unchecked:
 
 Notify about an annotation in an unchecked function [annotation-unchecked]
