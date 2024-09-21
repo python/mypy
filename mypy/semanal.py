@@ -1824,6 +1824,8 @@ class SemanticAnalyzer(
             defn, bases, context=defn
         )
 
+        self.check_type_alias_bases(bases)
+
         for tvd in tvar_defs:
             if isinstance(tvd, TypeVarType) and any(
                 has_placeholder(t) for t in [tvd.upper_bound] + tvd.values
@@ -1894,6 +1896,19 @@ class SemanticAnalyzer(
                 self.scope_stack.append(SCOPE_ANNOTATION)
 
             self.analyze_class_body_common(defn)
+
+    def check_type_alias_bases(self, bases: list[Expression]) -> None:
+        for base in bases:
+            if isinstance(base, IndexExpr):
+                base = base.base
+            if (
+                isinstance(base, RefExpr)
+                and isinstance(base.node, TypeAlias)
+                and base.node.python_3_12_type_alias
+            ):
+                self.fail(
+                    'Type alias defined using "type" statement not valid as base class', base
+                )
 
     def setup_type_vars(self, defn: ClassDef, tvar_defs: list[TypeVarLikeType]) -> None:
         defn.type_vars = tvar_defs
@@ -6955,6 +6970,7 @@ class SemanticAnalyzer(
             namespace is None
             and self.type
             and not self.is_func_scope()
+            and self.incomplete_type_stack
             and self.incomplete_type_stack[-1]
             and not self.final_iteration
         ):
