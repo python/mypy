@@ -1428,6 +1428,20 @@ else:
                                     # N: Redefinition: \
                                     # N:     def f(x: int = ...) -> None
 
+[case testIncompatibleConditionalFunctionDefinition4]
+from typing import Any, Union, TypeVar
+T1 = TypeVar('T1')
+T2 = TypeVar('T2', bound=Union[int, str])
+x = None # type: Any
+if x:
+    def f(x: T1) -> T1: pass
+else:
+    def f(x: T2) -> T2: pass # E: All conditional function variants must have identical signatures \
+                             # N: Original: \
+                             # N:     def [T1] f(x: T1) -> T1 \
+                             # N: Redefinition: \
+                             # N:     def [T2: Union[int, str]] f(x: T2) -> T2
+
 [case testConditionalFunctionDefinitionUsingDecorator1]
 from typing import Callable
 
