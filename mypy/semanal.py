@@ -249,6 +249,7 @@ from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_
 from mypy.types import (
     ASSERT_TYPE_NAMES,
     DATACLASS_TRANSFORM_NAMES,
+    DEPRECATED_TYPE_NAMES,
     FINAL_DECORATOR_NAMES,
     FINAL_TYPE_NAMES,
     IMPORTED_REVEAL_TYPE_NAMES,
@@ -1255,9 +1256,50 @@ class SemanticAnalyzer(
             return
 
         # We know this is an overload def. Infer properties and perform some checks.
+        self.process_deprecated_overload(defn)
         self.process_final_in_overload(defn)
         self.process_static_or_class_method_in_overload(defn)
         self.process_overload_impl(defn)
+
+    def process_deprecated_overload(self, defn: OverloadedFuncDef) -> None:
+        if defn.is_property:
+            return
+
+        if isinstance(impl := defn.impl, Decorator) and isinstance(
+            type_ := impl.func.type, CallableType
+        ) and (
+            (deprecated := type_.deprecated) is not None
+        ):
+            if isinstance(defn.type, Overloaded):
+                defn.type.deprecated = deprecated
+            for item in defn.items:
+                if isinstance(item, Decorator) and isinstance(item.func.type, Overloaded):
+                    item.func.type.deprecated = deprecated
+
+        for item in defn.items:
+            deprecation = False
+            if isinstance(item, Decorator):
+                for d in item.decorators:
+                    if deprecation and refers_to_fullname(d, OVERLOAD_NAMES):
+                        self.msg.note("@overload should be placed before @deprecated", d)
+                    elif (deprecated := self.get_deprecated(d)) is not None:
+                        deprecation = True
+                        if isinstance(type_ := item.func.type, CallableType):
+                            type_.deprecated = (
+                                f"overload {type_} of function {defn.fullname} is deprecated: "
+                                f"{deprecated}"
+                            )
+
+    @staticmethod
+    def get_deprecated(expression: Expression) -> str | None:
+        if (
+            isinstance(expression, CallExpr)
+            and refers_to_fullname(expression.callee, DEPRECATED_TYPE_NAMES)
+            and (len(args := expression.args) >= 1)
+            and isinstance(deprecated := args[0], StrExpr)
+        ):
+            return deprecated.value
+        return None
 
     def process_overload_impl(self, defn: OverloadedFuncDef) -> None:
         """Set flags for an overload implementation.
@@ -1456,6 +1498,15 @@ class SemanticAnalyzer(
                 deleted_items.append(i + 1)
         for i in reversed(deleted_items):
             del items[i]
+
+        for item in items[1:]:
+            if isinstance(item, Decorator):
+                for d in item.decorators:
+                    if (deprecated := self.get_deprecated(d)) is not None:
+                        if isinstance(type_ := item.func.type, CallableType):
+                            type_.deprecated = (
+                                f"function {item.fullname} is deprecated: {deprecated}"
+                            )
 
     def add_function_to_symbol_table(self, func: FuncDef | OverloadedFuncDef) -> None:
         if self.is_class_scope():
@@ -1660,6 +1711,11 @@ class SemanticAnalyzer(
                 d.callee, DATACLASS_TRANSFORM_NAMES
             ):
                 dec.func.dataclass_transform_spec = self.parse_dataclass_transform_spec(d)
+            elif (deprecated := self.get_deprecated(d)) is not None:
+                if isinstance(type_ := dec.func.type, CallableType):
+                    type_.deprecated = (
+                        f"function {dec.fullname} is deprecated: {deprecated}"
+                    )
             elif not dec.var.is_property:
                 # We have seen a "non-trivial" decorator before seeing @property, if
                 # we will see a @property later, give an error, as we don't support this.
@@ -2081,6 +2137,8 @@ class SemanticAnalyzer(
             info.is_final = True
         elif refers_to_fullname(decorator, TYPE_CHECK_ONLY_NAMES):
             info.is_type_check_only = True
+        elif (deprecated := self.get_deprecated(decorator)) is not None:
+            info.deprecated = f"class {defn.fullname} is deprecated: {deprecated}"
 
     def clean_up_bases_and_infer_type_variables(
         self, defn: ClassDef, base_type_exprs: list[Expression], context: Context

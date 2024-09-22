@@ -184,7 +184,6 @@ from mypy.typeops import (
 )
 from mypy.types import (
     ANY_STRATEGY,
-    DEPRECATED_TYPE_NAMES,
     MYPYC_NATIVE_INT_NAMES,
     OVERLOAD_NAMES,
     AnyType,
@@ -637,10 +636,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if len(defn.items) == 1:
             self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, defn)
 
-        for item in defn.items:
-            if isinstance(item, Decorator) and isinstance(ct := item.func.type, CallableType):
-                self.create_deprecation_warning(ct, item.decorators)
-
         if defn.is_property:
             # HACK: Infer the type of the property.
             assert isinstance(defn.items[0], Decorator)
@@ -659,17 +654,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.fail(message_registry.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
         if defn.impl:
             defn.impl.accept(self)
-            if (
-                isinstance(defn.impl, Decorator)
-                and isinstance(defn.impl.func.type, CallableType)
-                and ((deprecated := defn.impl.func.type.deprecated) is not None)
-            ):
-                if isinstance(defn.type, (CallableType, Overloaded)):
-                    defn.type.deprecated = deprecated
-                for subdef in defn.items:
-                    type_ = get_proper_type(subdef.type)
-                    if isinstance(type_, (CallableType, Overloaded)):
-                        type_.deprecated = deprecated
         if not defn.is_property:
             self.check_overlapping_overloads(defn)
             if defn.type is None:
@@ -2422,7 +2406,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
         typ = defn.info
-        self.create_deprecation_warning(typ, defn.decorators)
         for base in typ.mro[1:]:
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
@@ -5027,8 +5010,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     )
 
     def visit_decorator(self, e: Decorator) -> None:
-        if isinstance(ct := e.func.type, CallableType):
-            self.create_deprecation_warning(ct, e.decorators)
         for d in e.decorators:
             if isinstance(d, RefExpr):
                 if d.fullname == "typing.no_type_check":
@@ -7555,52 +7536,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
         return self.expr_checker.accept(node, type_context=type_context)
-
-    def create_deprecation_warning(
-        self, typ: CallableType | Overloaded | TypeInfo, decorators: Iterable[Expression]
-    ) -> None:
-        """Create a warning when visiting a deprecated (decorated) callable, overload or
-        class that may be used later if the deprecated feature is used."""
-
-        if isinstance(typ, CallableType):
-            if (defn := typ.definition) is None:
-                name = f"function {typ.name}"
-            else:
-                name = f"function {defn.fullname}"
-        elif isinstance(typ, Overloaded):
-            if isinstance(func := typ.items[0].definition, FuncDef):
-                name = f"function {func.fullname}"
-            else:
-                name = f"function {typ.name}"
-        else:
-            name = f"class {typ.fullname}"
-
-        overload = False
-        deprecation: str | None = None
-        for decorator in decorators:
-            if (
-                isinstance(typ, CallableType)
-                and isinstance(decorator, NameExpr)
-                and (decorator.fullname in OVERLOAD_NAMES)
-            ):
-                overload = True
-                if deprecation is not None:
-                    self.msg.note("@overload should be placed before @deprecated", decorator)
-            elif (
-                isinstance(decorator, CallExpr)
-                and isinstance(callee := decorator.callee, NameExpr)
-                and (callee.fullname in DEPRECATED_TYPE_NAMES)
-                and (len(args := decorator.args) >= 1)
-                and isinstance(arg := args[0], StrExpr)
-                and ((value := arg.value) is not None)
-            ):
-                deprecation = value
-
-        if deprecation is not None:
-            if overload:
-                typ.deprecated = f"overload {typ} of {name} is deprecated: {deprecation}"
-            else:
-                typ.deprecated = f"{name} is deprecated: {deprecation}"
 
     def check_deprecated(
         self, typ: CallableType | Overloaded | TypeInfo, context: Context
