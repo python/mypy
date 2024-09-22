@@ -1265,10 +1265,10 @@ class SemanticAnalyzer(
         if defn.is_property:
             return
 
-        if isinstance(impl := defn.impl, Decorator) and isinstance(
-            type_ := impl.func.type, CallableType
-        ) and (
-            (deprecated := type_.deprecated) is not None
+        if (
+            isinstance(impl := defn.impl, Decorator)
+            and isinstance(type_ := impl.func.type, CallableType)
+            and ((deprecated := type_.deprecated) is not None)
         ):
             if isinstance(defn.type, Overloaded):
                 defn.type.deprecated = deprecated
@@ -1713,9 +1713,7 @@ class SemanticAnalyzer(
                 dec.func.dataclass_transform_spec = self.parse_dataclass_transform_spec(d)
             elif (deprecated := self.get_deprecated(d)) is not None:
                 if isinstance(type_ := dec.func.type, CallableType):
-                    type_.deprecated = (
-                        f"function {dec.fullname} is deprecated: {deprecated}"
-                    )
+                    type_.deprecated = f"function {dec.fullname} is deprecated: {deprecated}"
             elif not dec.var.is_property:
                 # We have seen a "non-trivial" decorator before seeing @property, if
                 # we will see a @property later, give an error, as we don't support this.
