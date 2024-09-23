@@ -16,8 +16,34 @@ have one or more type parameters, which can be arbitrary types. For
 example, ``dict[int, str]`` has the type parameters ``int`` and
 ``str``, and ``list[int]`` has a type parameter ``int``.
 
+Python 3.12 introduced a new syntax for defining generic classes
+and functions. Most examples are given using both the new and
+old syntax. Unless explicitly mentioned otherwise, they behave
+the same -- but the new syntax is more readable and convenient
+to use.
+
 Programs can also define new generic classes. Here is a very simple
-generic class that represents a stack:
+generic class that represents a stack (Python 3.12 syntax):
+
+.. code-block:: python
+
+   class Stack[T]:
+       def __init__(self) -> None:
+           # Create an empty list with items of type T
+           self.items: list[T] = []
+
+       def push(self, item: T) -> None:
+           self.items.append(item)
+
+       def pop(self) -> T:
+           return self.items.pop()
+
+       def empty(self) -> bool:
+           return not self.items
+
+
+Here is the same example using the old syntax (required for Python 3.11
+and earlier, but also supported on newer Python versions):
 
 .. code-block:: python
 
@@ -52,11 +78,11 @@ Using ``Stack`` is similar to built-in container types:
    stack.pop()
    stack.push('x')  # error: Argument 1 to "push" of "Stack" has incompatible type "str"; expected "int"
 
-Construction of instances of generic types is type checked:
+Construction of instances of generic types is type checked (Python 3.12):
 
 .. code-block:: python
 
-   class Box(Generic[T]):
+   class Box[T]:
        def __init__(self, content: T) -> None:
            self.content = content
 
@@ -64,13 +90,52 @@ Construction of instances of generic types is type checked:
    Box[int](1)  # Also OK
    Box[int]('some string')  # error: Argument 1 to "Box" has incompatible type "str"; expected "int"
 
+Here is the class definition using the legacy syntax (Python 3.11 and earlier):
+
+.. code-block:: python
+
+   class Box(Generic[T]):
+       def __init__(self, content: T) -> None:
+           self.content = content
+
+
 .. _generic-subclasses:
 
 Defining subclasses of generic classes
 **************************************
 
 User-defined generic classes and generic classes defined in :py:mod:`typing`
-can be used as a base class for another class (generic or non-generic). For example:
+can be used as a base class for another class (generic or non-generic). For
+example (Python 3.12 syntax):
+
+.. code-block:: python
+
+   from typing import Mapping, Iterator
+
+   # This is a generic subclass of Mapping
+   class MyMapp[KT, VT](Mapping[KT, VT]):
+       def __getitem__(self, k: KT) -> VT: ...
+       def __iter__(self) -> Iterator[KT]: ...
+       def __len__(self) -> int: ...
+
+   items: MyMap[str, int]  # OK
+
+   # This is a non-generic subclass of dict
+   class StrDict(dict[str, str]):
+       def __str__(self) -> str:
+           return f'StrDict({super().__str__()})'
+
+   data: StrDict[int, int]  # Error! StrDict is not generic
+   data2: StrDict  # OK
+
+   # This is a user-defined generic class
+   class Receiver[T]:
+       def accept(self, value: T) -> None: ...
+
+   # This is a generic subclass of Receiver
+   class AdvancedReceiver[T](Receiver[T]): ...
+
+Here is the above example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -92,7 +157,6 @@ can be used as a base class for another class (generic or non-generic). For exam
        def __str__(self) -> str:
            return f'StrDict({super().__str__()})'
 
-
    data: StrDict[int, int]  # Error! StrDict is not generic
    data2: StrDict  # OK
 
@@ -111,7 +175,8 @@ can be used as a base class for another class (generic or non-generic). For exam
     *structural subtyping* for these ABCs, unlike simpler protocols
     like :py:class:`~typing.Iterable`, which use :ref:`structural subtyping <protocol-types>`.
 
-:py:class:`Generic <typing.Generic>` can be omitted from bases if there are
+When using the legacy syntax, :py:class:`Generic <typing.Generic>` can be omitted
+from bases if there are
 other base classes that include type variables, such as ``Mapping[KT, VT]``
 in the above example. If you include ``Generic[...]`` in bases, then
 it should list all type variables present in other bases (or more,
@@ -142,12 +207,25 @@ For example:
    x: First[int, str]        # Here T is bound to int, S is bound to str
    y: Second[int, str, Any]  # Here T is Any, S is int, and U is str
 
+When using the Python 3.12 syntax, all type parameters must always be
+explicitly defined, and the ``Generic[...]`` base class is never used.
+
 .. _generic-functions:
 
 Generic functions
 *****************
 
-Type variables can be used to define generic functions:
+Type variables can be used to define generic functions (Python 3.12):
+
+.. code-block:: python
+
+   from typing Sequence
+
+   # A generic function!
+   def first[T](seq: Sequence[T]) -> T:
+       return seq[0]
+
+Here is the same example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -168,9 +246,10 @@ return type is derived from the sequence item type. For example:
    reveal_type(first([1, 2, 3]))   # Revealed type is "builtins.int"
    reveal_type(first(['a', 'b']))  # Revealed type is "builtins.str"
 
-Note also that a single definition of a type variable (such as ``T``
-above) can be used in multiple generic functions or classes. In this
-example we use the same type variable in two generic functions:
+When using the legacy syntax, a single definition of a type variable
+(such as ``T`` above) can be used in multiple generic functions or
+classes. In this example we use the same type variable in two generic
+functions:
 
 .. code-block:: python
 
@@ -183,6 +262,9 @@ example we use the same type variable in two generic functions:
 
    def last(seq: Sequence[T]) -> T:
        return seq[-1]
+
+Since the Python 3.12 syntax is more concise, it doesn't have an
+equivalent way of sharing type parameter definitions.
 
 A variable cannot have a type variable in its type unless the type
 variable is bound in a containing generic class or function.
