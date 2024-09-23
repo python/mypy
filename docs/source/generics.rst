@@ -950,7 +950,25 @@ Decorator factories
 -------------------
 
 Functions that take arguments and return a decorator (also called second-order decorators), are
-similarly supported via generics:
+similarly supported via generics (Python 3.12 syntax):
+
+.. code-block:: python
+
+    from typing import Any, Callable
+
+    def route[F: Callable[..., Any]](url: str) -> Callable[[F], F]:
+        ...
+
+    @route(url='/')
+    def index(request: Any) -> str:
+        return 'Hello world'
+
+Note that mypy infers that ``F`` is used to make the ``Callable`` return value
+of ``route`` generic, instead of making ``route`` itself generic, since ``F`` is
+only used in the return type. Python has no explicit syntax to mark that ``F``
+is only bound in the return value.
+
+Here is the example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -966,20 +984,18 @@ similarly supported via generics:
         return 'Hello world'
 
 Sometimes the same decorator supports both bare calls and calls with arguments. This can be
-achieved by combining with :py:func:`@overload <typing.overload>`:
+achieved by combining with :py:func:`@overload <typing.overload>` (Python 3.12):
 
 .. code-block:: python
 
-    from typing import Any, Callable, Optional, TypeVar, overload
-
-    F = TypeVar('F', bound=Callable[..., Any])
+    from typing import Any, Callable, Optional, overload
 
     # Bare decorator usage
     @overload
-    def atomic(__func: F) -> F: ...
+    def atomic[F: Callable[..., Any]](__func: F) -> F: ...
     # Decorator with arguments
     @overload
-    def atomic(*, savepoint: bool = True) -> Callable[[F], F]: ...
+    def atomic[F: Callable[..., Any]](*, savepoint: bool = True) -> Callable[[F], F]: ...
 
     # Implementation
     def atomic(__func: Optional[Callable[..., Any]] = None, *, savepoint: bool = True):
@@ -997,21 +1013,40 @@ achieved by combining with :py:func:`@overload <typing.overload>`:
     @atomic(savepoint=False)
     def func2() -> None: ...
 
+Here is the decorator from the example using the legacy syntax
+(Python 3.11 and earlier):
+
+.. code-block:: python
+
+    from typing import Any, Callable, Optional, TypeVar, overload
+
+    F = TypeVar('F', bound=Callable[..., Any])
+
+    # Bare decorator usage
+    @overload
+    def atomic(__func: F) -> F: ...
+    # Decorator with arguments
+    @overload
+    def atomic(*, savepoint: bool = True) -> Callable[[F], F]: ...
+
+    # Implementation
+    def atomic(__func: Optional[Callable[..., Any]] = None, *, savepoint: bool = True):
+        ...  # Same as above
+
 Generic protocols
 *****************
 
 Mypy supports generic protocols (see also :ref:`protocol-types`). Several
 :ref:`predefined protocols <predefined_protocols>` are generic, such as
-:py:class:`Iterable[T] <typing.Iterable>`, and you can define additional generic protocols. Generic
-protocols mostly follow the normal rules for generic classes. Example:
+:py:class:`Iterable[T] <typing.Iterable>`, and you can define additional
+generic protocols. Generic protocols mostly follow the normal rules for
+generic classes. Example (Python 3.12 syntax):
 
 .. code-block:: python
 
-   from typing import Protocol, TypeVar
+   from typing import Protocol
 
-   T = TypeVar('T')
-
-   class Box(Protocol[T]):
+   class Box[T](Protocol):
        content: T
 
    def do_stuff(one: Box[str], other: Box[bytes]) -> None:
@@ -1031,15 +1066,29 @@ protocols mostly follow the normal rules for generic classes. Example:
    y: Box[int] = ...
    x = y  # Error -- Box is invariant
 
-Note that ``class ClassName(Protocol[T])`` is allowed as a shorthand for
-``class ClassName(Protocol, Generic[T])``, as per :pep:`PEP 544: Generic protocols <544#generic-protocols>`,
+Here is the definition of ``Box`` from the above example using the legacy
+syntax (Python 3.11 and earlier):
 
-The main difference between generic protocols and ordinary generic
-classes is that mypy checks that the declared variances of generic
-type variables in a protocol match how they are used in the protocol
-definition.  The protocol in this example is rejected, since the type
-variable ``T`` is used covariantly as a return type, but the type
-variable is invariant:
+.. code-block:: python
+
+   from typing import Protocol, TypeVar
+
+   T = TypeVar('T')
+
+   class Box(Protocol[T]):
+       content: T
+
+Note that ``class ClassName(Protocol[T])`` is allowed as a shorthand for
+``class ClassName(Protocol, Generic[T])`` when using the legacy syntax,
+as per :pep:`PEP 544: Generic protocols <544#generic-protocols>`.
+This form is only valid when using the legacy syntax.
+
+When using the legacy syntax, there is an important difference between
+generic protocols and ordinary generic classes: mypy checks that the
+declared variances of generic type variables in a protocol match how
+they are used in the protocol definition.  The protocol in this example
+is rejected, since the type variable ``T`` is used covariantly as
+a return type, but the type variable is invariant:
 
 .. code-block:: python
 
@@ -1067,13 +1116,11 @@ This example correctly uses a covariant type variable:
 
 See :ref:`variance-of-generics` for more about variance.
 
-Generic protocols can also be recursive. Example:
+Generic protocols can also be recursive. Example (Python 3.12 synta):
 
 .. code-block:: python
 
-   T = TypeVar('T')
-
-   class Linked(Protocol[T]):
+   class Linked[T](Protocol):
        val: T
        def next(self) -> 'Linked[T]': ...
 
@@ -1085,6 +1132,19 @@ Generic protocols can also be recursive. Example:
 
    result = last(L())
    reveal_type(result)  # Revealed type is "builtins.int"
+
+Here is the definition of ``Linked`` using the legacy syntax
+(Python 3.11 and earlier):
+
+.. code-block:: python
+
+   from typing import TypeVar
+
+   T = TypeVar('T')
+
+   class Linked(Protocol[T]):
+       val: T
+       def next(self) -> 'Linked[T]': ...
 
 .. _generic-type-aliases:
 
