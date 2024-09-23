@@ -84,7 +84,9 @@ Using ``Stack`` is similar to built-in container types:
    stack = Stack[int]()
    stack.push(2)
    stack.pop()
-   stack.push('x')  # error: Argument 1 to "push" of "Stack" has incompatible type "str"; expected "int"
+
+   # error: Argument 1 to "push" of "Stack" has incompatible type "str"; expected "int"
+   stack.push('x')
 
 Construction of instances of generic types is type checked (Python 3.12 syntax):
 
@@ -96,11 +98,17 @@ Construction of instances of generic types is type checked (Python 3.12 syntax):
 
    Box(1)       # OK, inferred type is Box[int]
    Box[int](1)  # Also OK
-   Box[int]('some string')  # error: Argument 1 to "Box" has incompatible type "str"; expected "int"
+
+   # error: Argument 1 to "Box" has incompatible type "str"; expected "int"
+   Box[int]('some string')
 
 Here is the class definition using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
+
+   from typing import TypeVar, Generic
+
+   T = TypeVar('T')
 
    class Box(Generic[T]):
        def __init__(self, content: T) -> None:
@@ -222,7 +230,7 @@ explicitly defined, and the ``Generic[...]`` base class is never used.
 Generic functions
 *****************
 
-Type variables can be used to define generic functions (Python 3.12):
+Type variables can be used to define generic functions (Python 3.12 syntax):
 
 .. code-block:: python
 
@@ -270,8 +278,8 @@ functions:
    def last(seq: Sequence[T]) -> T:
        return seq[-1]
 
-Since the Python 3.12 syntax is more concise, it doesn't have an
-equivalent way of sharing type parameter definitions.
+Since the Python 3.12 syntax is more concise, it doesn't need (or have)
+an equivalent way of sharing type parameter definitions.
 
 A variable cannot have a type variable in its type unless the type
 variable is bound in a containing generic class or function.
@@ -646,9 +654,9 @@ above:
 
 .. code-block:: python
 
-   largest_in_absolute_value(-3.5, 2)   # Okay, has type float.
-   largest_in_absolute_value(5+6j, 7)   # Okay, has type complex.
-   largest_in_absolute_value('a', 'b')  # Error: 'str' is not a subtype of SupportsAbs[float].
+   max_by_abs(-3.5, 2)   # Okay, has type float.
+   max_by_abs(5+6j, 7)   # Okay, has type complex.
+   max_by_abs('a', 'b')  # Error: 'str' is not a subtype of SupportsAbs[float].
 
 Type parameters of generic classes may also have upper bounds, which
 restrict the valid values for the type parameter in the same way.
