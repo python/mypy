@@ -302,24 +302,42 @@ class PatternChecker(PatternVisitor[PatternType]):
         new_type: Type
         rest_type: Type = current_type
         if isinstance(current_type, TupleType) and unpack_index is None:
-            narrowed_inner_types = []
-            inner_rest_types = []
-            for inner_type, new_inner_type in zip(inner_types, new_inner_types):
-                (narrowed_inner_type, inner_rest_type) = (
-                    self.chk.conditional_types_with_intersection(
-                        new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
-                    )
-                )
-                narrowed_inner_types.append(narrowed_inner_type)
-                inner_rest_types.append(inner_rest_type)
-            if all(not is_uninhabited(typ) for typ in narrowed_inner_types):
-                new_type = TupleType(narrowed_inner_types, current_type.partial_fallback)
+            if all(not is_uninhabited(typ) for typ in new_inner_types):
+                new_type = TupleType(new_inner_types, current_type.partial_fallback)
             else:
                 new_type = UninhabitedType()
 
-            if all(is_uninhabited(typ) for typ in inner_rest_types):
-                # All subpatterns always match, so we can apply negative narrowing
-                rest_type = TupleType(rest_inner_types, current_type.partial_fallback)
+            if all(is_uninhabited(typ) for typ in rest_inner_types):
+                # If all types are uninhabited there is no other pattern that can
+                # match this tuple
+                rest_type = UninhabitedType()
+            elif any(is_uninhabited(typ) for typ in rest_inner_types):
+                # If at least one rest type is uninhabited the rest type can be narrowed
+                narrowed_types: list[Type] = []
+                for inner_type, rest_type in zip(inner_types, rest_inner_types):
+                    # if the narrowed rest type is Uninhabited that means that that the next
+                    # pattern could match any of the original inner types of the tuple.
+                    if is_uninhabited(rest_type):
+                        narrowed_types.append(inner_type)
+                    else:
+                        narrowed_types.append(rest_type)
+                rest_type = TupleType(narrowed_types, current_type.partial_fallback)
+            elif len(rest_inner_types) == 1:
+                # Otherwise we need can apply negative narrowing if the alternative type
+                # is totally disjoint from the pattern narrowed type. And there is only
+                # one field in the tuple.
+                narrowed_inner_types = []
+                inner_rest_types = []
+                for inner_type, new_inner_type in zip(inner_types, new_inner_types):
+                    (narrowed_inner_type, inner_rest_type) = (
+                        self.chk.conditional_types_with_intersection(
+                            new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
+                        )
+                    )
+                    narrowed_inner_types.append(narrowed_inner_type)
+                    inner_rest_types.append(inner_rest_type)
+                if all(is_uninhabited(typ) for typ in inner_rest_types):
+                    rest_type = TupleType(rest_inner_types, current_type.partial_fallback)
         elif isinstance(current_type, TupleType):
             # For variadic tuples it is too tricky to match individual items like for fixed
             # tuples, so we instead try to narrow the entire type.
