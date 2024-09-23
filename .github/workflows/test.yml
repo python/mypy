@@ -59,7 +59,7 @@ jobs:
           git clone --depth 1 --branch 3.13 https://github.com/python/cpython.git
           cd cpython
           ./configure
-          make -j 0
+          make -j 4
           make install
       - name: Install tox
         run: python3.13 -m pip install setuptools==68.2.2 tox==4.11.0
