@@ -56,8 +56,8 @@ jobs:
             zlib1g-dev
       - name: Compile Python from 3.13 branch
         run: |
-          git clone --depth 1 --branch 3.13 https://github.com/python/cpython.git
-          cd cpython
+          git clone --depth 1 --branch 3.13 https://github.com/python/cpython.git /tmp/cpython
+          cd /tmp/cpython
           ./configure
           make -j 4
           sudo make install
