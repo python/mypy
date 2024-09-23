@@ -16,14 +16,23 @@ have one or more type parameters, which can be arbitrary types. For
 example, ``dict[int, str]`` has the type parameters ``int`` and
 ``str``, and ``list[int]`` has a type parameter ``int``.
 
-Python 3.12 introduced a new syntax for defining generic classes
-and functions. Most examples are given using both the new and
-old syntax. Unless explicitly mentioned otherwise, they behave
-the same -- but the new syntax is more readable and convenient
-to use.
+Programs can also define new generic classes. There are two syntax
+variants for defining generic classes in Python.
+Python 3.12 introduced a new dedicated syntax for defining generic
+classes (and also functions and type aliases, which we will discuss
+later). Most examples are given using both the new and
+the old (or legacy) syntax variants. Unless explicitly mentioned otherwise,
+they behave identically -- but the new syntax is more readable and
+convenient to use.
 
-Programs can also define new generic classes. Here is a very simple
-generic class that represents a stack (Python 3.12 syntax):
+.. note::
+
+    There are no plans to deprecate the legacy syntax in the future.
+    You can freely mix code using the new and old syntax variants,
+    even within a single file.
+
+Here is a very simple generic class that represents a stack
+(Python 3.12 syntax):
 
 .. code-block:: python
 
@@ -40,7 +49,6 @@ generic class that represents a stack (Python 3.12 syntax):
 
        def empty(self) -> bool:
            return not self.items
-
 
 Here is the same example using the old syntax (required for Python 3.11
 and earlier, but also supported on newer Python versions):
@@ -78,7 +86,7 @@ Using ``Stack`` is similar to built-in container types:
    stack.pop()
    stack.push('x')  # error: Argument 1 to "push" of "Stack" has incompatible type "str"; expected "int"
 
-Construction of instances of generic types is type checked (Python 3.12):
+Construction of instances of generic types is type checked (Python 3.12 syntax):
 
 .. code-block:: python
 
@@ -97,7 +105,6 @@ Here is the class definition using the legacy syntax (Python 3.11 and earlier):
    class Box(Generic[T]):
        def __init__(self, content: T) -> None:
            self.content = content
-
 
 .. _generic-subclasses:
 
@@ -1155,8 +1162,39 @@ Type aliases can be generic. In this case they can be used in two ways:
 Subscripted aliases are equivalent to original types with substituted type
 variables, so the number of type arguments must match the number of free type variables
 in the generic type alias. Unsubscripted aliases are treated as original types with free
-variables replaced with ``Any``. Examples (following :pep:`PEP 484: Type aliases
-<484#type-aliases>`):
+variables replaced with ``Any``.
+
+The ``type`` statement introduced in Python 3.12 is used to define generic
+type aliases (it also supports non-generic type aliases):
+
+.. code-block:: python
+
+    from typing import Iterable, Callable
+
+    type TInt[S] = tuple[int, S]
+    type UInt[S] = S | int
+    type CBack[S] = Callable[..., S]
+
+    def response(query: str) -> UInt[str]:  # Same as str | int
+        ...
+    def activate[S](cb: CBack[S]) -> S:        # Same as Callable[..., S]
+        ...
+    table_entry: TInt  # Same as tuple[int, Any]
+
+    type Vec[T: (int, float, complex)] = Iterable[tuple[T, T]]
+
+    def inproduct[T: (int, float, complex)](v: Vec[T]) -> T:
+        return sum(x*y for x, y in v)
+
+    def dilate[T: (int, float, complex)](v: Vec[T], scale: T) -> Vec[T]:
+        return ((x * scale, y * scale) for x, y in v)
+
+    v1: Vec[int] = []      # Same as Iterable[tuple[int, int]]
+    v2: Vec = []           # Same as Iterable[tuple[Any, Any]]
+    v3: Vec[int, int] = [] # Error: Invalid alias, too many type arguments!
+
+There is also a legacy syntax that relies on ``TypeVar`` (following
+:pep:`PEP 484: Type aliases <484#type-aliases>`, Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -1191,7 +1229,36 @@ variables replaced with ``Any``. Examples (following :pep:`PEP 484: Type aliases
 Type aliases can be imported from modules just like other names. An
 alias can also target another alias, although building complex chains
 of aliases is not recommended -- this impedes code readability, thus
-defeating the purpose of using aliases.  Example:
+defeating the purpose of using aliases.  Example (Python 3.12 syntax):
+
+.. code-block:: python
+
+    from example1 import AliasType
+    from example2 import Vec
+
+    # AliasType and Vec are type aliases (Vec as defined above)
+
+    def fun() -> AliasType:
+        ...
+
+    type OIntVec = Vec[int] | None
+
+Type aliases defined using the ``type`` statement are not valid as
+base classes, and they can't be used to construct instances:
+
+.. code-block:: python
+
+    from example1 import AliasType
+    from example2 import Vec
+
+    # AliasType and Vec are type aliases (Vec as defined above)
+
+    class NewVec[T](Vec[T]):  # Error: not valid as base class
+        ...
+
+    x = AliasType()  # Error: can't be used to create instances
+
+Here are examples using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -1204,18 +1271,48 @@ defeating the purpose of using aliases.  Example:
     def fun() -> AliasType:
         ...
 
+    OIntVec = Optional[Vec[int]]
+
     T = TypeVar('T')
+
+    # Old-style type aliases can be used as base classes and you can
+    # construct instances using them
 
     class NewVec(Vec[T]):
         ...
 
+    x = AliasType()
+
     for i, j in NewVec[int]():
         ...
 
-    OIntVec = Optional[Vec[int]]
-
 Using type variable bounds or values in generic aliases has the same effect
 as in generic classes/functions.
+
+
+Differences between the new and old syntax
+******************************************
+
+There are a few notable differences between the new (Python 3.12 and later)
+and the old syntax for generic classes, functions and type aliases, beyond
+the obvious syntactic differences:
+
+ * Type variables defined using the old syntax create definitions at runtime
+   in the surrounding namespace, whereas the type variables defined using the
+   new syntax are only defined within the class, function or type variable
+   that uses them.
+ * Type variable definitions can be shared when using the old syntax, but
+   the new syntax doesn't support this.
+ * When using the new syntax, the variance of class type variables is always
+   inferred.
+ * Type aliases defined using the new syntax can contain forward references
+   and recursive references without using string literal escaping.
+ * The new syntax lets you define a generic alias where the definition doesn't
+   contain a reference to a type parameter. This is occasionally useful, at
+   least when conditionally defining type aliases.
+ * Type aliases defined using the new syntax can't be used as base classes
+   and can't be used to construct instances, unlike aliases defined using the
+   old syntax.
 
 
 Generic class internals
@@ -1223,7 +1320,20 @@ Generic class internals
 
 You may wonder what happens at runtime when you index a generic class.
 Indexing returns a *generic alias* to the original class that returns instances
-of the original class on instantiation:
+of the original class on instantiation (Python 3.12 syntax):
+
+.. code-block:: python
+
+   >>> class Stack[T]: ...
+   >>> Stack
+   __main__.Stack
+   >>> Stack[int]
+   __main__.Stack[int]
+   >>> instance = Stack[int]()
+   >>> instance.__class__
+   __main__.Stack
+
+Here is the same example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -1242,10 +1352,17 @@ Generic aliases can be instantiated or subclassed, similar to real
 classes, but the above examples illustrate that type variables are
 erased at runtime. Generic ``Stack`` instances are just ordinary
 Python objects, and they have no extra runtime overhead or magic due
-to being generic, other than a metaclass that overloads the indexing
-operator.
+to being generic, other than the ``Generic`` base class that overloads
+the indexing operator using ``__class_getitem__``. ``typing.Generic``
+is included as an implicit base class even when using the new syntax:
 
-Note that in Python 3.8 and lower, the built-in types
+.. code-block:: python
+
+   >>> class Stack[T]: ...
+   >>> Stack.mro()
+   [<class '__main__.Stack'>, <class 'typing.Generic'>, <class 'object'>]
+
+Note that in Python 3.8 and earlier, the built-in types
 :py:class:`list`, :py:class:`dict` and others do not support indexing.
 This is why we have the aliases :py:class:`~typing.List`,
 :py:class:`~typing.Dict` and so on in the :py:mod:`typing`
@@ -1256,16 +1373,18 @@ class in more recent versions of Python:
 .. code-block:: python
 
    >>> # Only relevant for Python 3.8 and below
-   >>> # For Python 3.9 onwards, prefer `list[int]` syntax
+   >>> # If using Python 3.9 or newer, prefer the 'list[int]' syntax
    >>> from typing import List
    >>> List[int]
    typing.List[int]
 
 Note that the generic aliases in ``typing`` don't support constructing
-instances:
+instances, unlike the corresponding built-in classes:
 
 .. code-block:: python
 
+   >>> list[int]()
+   []
    >>> from typing import List
    >>> List[int]()
    Traceback (most recent call last):
