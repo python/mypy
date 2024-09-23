@@ -654,7 +654,21 @@ Type variables with value restriction
 By default, a type variable can be replaced with any type. However, sometimes
 it's useful to have a type variable that can only have some specific types
 as its value. A typical example is a type variable that can only have values
-``str`` and ``bytes``:
+``str`` and ``bytes``. This lets us define a function that can concatenate
+two strings or bytes objects, but it can't be called with other argument
+types (Python 3.12 syntax):
+
+.. code-block:: python
+
+   def concat[S: (str, bytes)](x: S, y: S) -> S:
+       return x + y
+
+   concat('a', 'b')    # Okay
+   concat(b'a', b'b')  # Okay
+   concat(1, 2)        # Error!
+
+
+The same thing is also possibly using the legacy syntax (Python 3.11 or earlier):
 
 .. code-block:: python
 
@@ -662,25 +676,11 @@ as its value. A typical example is a type variable that can only have values
 
    AnyStr = TypeVar('AnyStr', str, bytes)
 
-This is actually such a common type variable that :py:data:`~typing.AnyStr` is
-defined in :py:mod:`typing` and we don't need to define it ourselves.
-
-We can use :py:data:`~typing.AnyStr` to define a function that can concatenate
-two strings or bytes objects, but it can't be called with other
-argument types:
-
-.. code-block:: python
-
-   from typing import AnyStr
-
    def concat(x: AnyStr, y: AnyStr) -> AnyStr:
        return x + y
 
-   concat('a', 'b')    # Okay
-   concat(b'a', b'b')  # Okay
-   concat(1, 2)        # Error!
-
-Importantly, this is different from a union type, since combinations
+No matter which syntax you use, this is called a type variable with a value
+restriction. Importantly, this is different from a union type, since combinations
 of ``str`` and ``bytes`` are not accepted:
 
 .. code-block:: python
@@ -689,11 +689,11 @@ of ``str`` and ``bytes`` are not accepted:
 
 In this case, this is exactly what we want, since it's not possible
 to concatenate a string and a bytes object! If we tried to use
-``Union``, the type checker would complain about this possibility:
+a union type, the type checker would complain about this possibility:
 
 .. code-block:: python
 
-   def union_concat(x: Union[str, bytes], y: Union[str, bytes]) -> Union[str, bytes]:
+   def union_concat(x: str | bytes, y: str | bytes) -> str | bytes:
        return x + y  # Error: can't concatenate str and bytes
 
 Another interesting special case is calling ``concat()`` with a
@@ -721,13 +721,26 @@ this is correct for ``concat``, since ``concat`` actually returns a
     >>> print(type(ss))
     <class 'str'>
 
-You can also use a :py:class:`~typing.TypeVar` with a restricted set of possible
-values when defining a generic class. For example, mypy uses the type
-:py:class:`Pattern[AnyStr] <typing.Pattern>` for the return value of :py:func:`re.compile`,
-since regular expressions can be based on a string or a bytes pattern.
+You can also use type variables with a restricted set of possible
+values when defining a generic class. For example, the type
+:py:class:`Pattern[S] <typing.Pattern>` is used for the return
+value of :py:func:`re.compile`, where ``S`` can be either ``str``
+or ``bytes``. Regular expressions can be based on a string or a
+bytes pattern.
 
-A type variable may not have both a value restriction (see
-:ref:`type-variable-upper-bound`) and an upper bound.
+A type variable may not have both a value restriction and an upper bound
+(see :ref:`type-variable-upper-bound`).
+
+Note that if you use the legacy syntax, :py:data:`~typing.AnyStr` as we defined
+it above is predefined in :py:mod:`typing`, and it isn't necessary to define it:
+
+.. code-block:: python
+
+   from typing import AnyStr
+
+   def concat(x: AnyStr, y: AnyStr) -> AnyStr:
+       return x + y
+
 
 .. _declaring-decorators:
 
