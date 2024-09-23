@@ -151,16 +151,44 @@ jobs:
     runs-on: ubuntu-latest
     name: Test suite with Python nightly
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.13-dev'
+      # - uses: actions/checkout@v3
+      # - uses: actions/setup-python@v4
+      # TODO try - uses: deadsnakes/action@v3.2.0
+      #   with:
+      #     python-version: '3.13-dev'
+
+      # Build Python from 3.13 branch
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y \
+          build-essential \
+          libssl-dev \
+          zlib1g-dev \
+          libncurses5-dev \
+          libncursesw5-dev \
+          libreadline-dev \
+          libsqlite3-dev \
+          libgdbm-dev \
+          libdb5.3-dev \
+          libbz2-dev \
+          libexpat1-dev \
+          liblzma-dev \
+          tk-dev \
+          libffi-dev \
+          liblzma-dev \
+          uuid-dev
+      - name: Compile Python from 3.13 branch
+        run: |
+          git clone --depth 1 --branch 3.13
+          cd cpython
+          ./configure
+          make -j 0
+          make install
       - name: Install tox
-        run: pip install setuptools==68.2.2 tox==4.11.0
+        run: python3.13 -m pip install setuptools==68.2.2 tox==4.11.0
       - name: Setup tox environment
-        run: tox run -e py --notest
+        run: python3.13 -m tox run -e py --notest
       - name: Test
-        run: tox run -e py --skip-pkg-install -- "-n 4"
+        run: python3.13 -m tox run -e py --skip-pkg-install -- "-n 4"
         continue-on-error: true
       - name: Mark as a success
         run: exit 0
