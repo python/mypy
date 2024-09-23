@@ -749,11 +749,12 @@ Declaring decorators
 
 Decorators are typically functions that take a function as an argument and
 return another function. Describing this behaviour in terms of types can
-be a little tricky; we'll show how you can use ``TypeVar`` and a special
+be a little tricky; we'll show how you can use type variables and a special
 kind of type variable called a *parameter specification* to do so.
 
 Suppose we have the following decorator, not type annotated yet,
-that preserves the original function's signature and merely prints the decorated function's name:
+that preserves the original function's signature and merely prints the decorated
+function's name:
 
 .. code-block:: python
 
@@ -763,7 +764,7 @@ that preserves the original function's signature and merely prints the decorated
            return func(*args, **kwds)
        return wrapper
 
-and we use it to decorate function ``add_forty_two``:
+We can use it to decorate function ``add_forty_two``:
 
 .. code-block:: python
 
@@ -789,7 +790,28 @@ Note that class decorators are handled differently than function decorators in
 mypy: decorating a class does not erase its type, even if the decorator has
 incomplete type annotations.
 
-Here's how one could annotate the decorator:
+Here's how one could annotate the decorator (Python 3.12 syntax):
+
+.. code-block:: python
+
+   from typing import Any, Callable, cast
+
+   # A decorator that preserves the signature.
+   def printing_decorator[F: Callable[..., Any]](func: F) -> F:
+       def wrapper(*args, **kwds):
+           print("Calling", func)
+           return func(*args, **kwds)
+       return cast(F, wrapper)
+
+   @printing_decorator
+   def add_forty_two(value: int) -> int:
+       return value + 42
+
+   a = add_forty_two(3)
+   reveal_type(a)      # Revealed type is "builtins.int"
+   add_forty_two('x')  # Argument 1 to "add_forty_two" has incompatible type "str"; expected "int"
+
+Here is the example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -814,15 +836,28 @@ Here's how one could annotate the decorator:
 
 This still has some shortcomings. First, we need to use the unsafe
 :py:func:`~typing.cast` to convince mypy that ``wrapper()`` has the same
-signature as ``func``. See :ref:`casts <casts>`.
+signature as ``func`` (see :ref:`casts <casts>`).
 
 Second, the ``wrapper()`` function is not tightly type checked, although
 wrapper functions are typically small enough that this is not a big
 problem. This is also the reason for the :py:func:`~typing.cast` call in the
 ``return`` statement in ``printing_decorator()``.
 
-However, we can use a parameter specification (:py:class:`~typing.ParamSpec`),
-for a more faithful type annotation:
+However, we can use a parameter specification, introduced using ``**P``,
+for a more faithful type annotation (Python 3.12 syntax):
+
+.. code-block:: python
+
+   from typing import Callable
+
+   def printing_decorator[**P, T](func: Callable[P, T]) -> Callable[P, T]:
+       def wrapper(*args: P.args, **kwds: P.kwargs) -> T:
+           print("Calling", func)
+           return func(*args, **kwds)
+       return wrapper
+
+The same is possible using the legacy syntax with :py:class:`~typing.ParamSpec`
+(Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -839,7 +874,27 @@ for a more faithful type annotation:
        return wrapper
 
 Parameter specifications also allow you to describe decorators that
-alter the signature of the input function:
+alter the signature of the input function (Python 3.12 syntax):
+
+.. code-block:: python
+
+   from typing import Callable
+
+    # We reuse 'P' in the return type, but replace 'T' with 'str'
+   def stringify[**P, T](func: Callable[P, T]) -> Callable[P, str]:
+       def wrapper(*args: P.args, **kwds: P.kwargs) -> str:
+           return str(func(*args, **kwds))
+       return wrapper
+
+    @stringify
+    def add_forty_two(value: int) -> int:
+        return value + 42
+
+    a = add_forty_two(3)
+    reveal_type(a)      # Revealed type is "builtins.str"
+    add_forty_two('x')  # error: Argument 1 to "add_forty_two" has incompatible type "str"; expected "int"
+
+Here is the above example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -855,15 +910,25 @@ alter the signature of the input function:
            return str(func(*args, **kwds))
        return wrapper
 
-    @stringify
+You can also insert an argument in a decorator (Python 3.12 syntax):
+
+.. code-block:: python
+
+    from typing import Callable, Concatenate
+
+    def printing_decorator[**P, T](func: Callable[P, T]) -> Callable[Concatenate[str, P], T]:
+        def wrapper(msg: str, /, *args: P.args, **kwds: P.kwargs) -> T:
+            print("Calling", func, "with", msg)
+            return func(*args, **kwds)
+        return wrapper
+
+    @printing_decorator
     def add_forty_two(value: int) -> int:
         return value + 42
 
-    a = add_forty_two(3)
-    reveal_type(a)      # Revealed type is "builtins.str"
-    add_forty_two('x')  # error: Argument 1 to "add_forty_two" has incompatible type "str"; expected "int"
+    a = add_forty_two('three', 3)
 
-Or insert an argument:
+Here is the same function using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -878,12 +943,6 @@ Or insert an argument:
             print("Calling", func, "with", msg)
             return func(*args, **kwds)
         return wrapper
-
-    @printing_decorator
-    def add_forty_two(value: int) -> int:
-        return value + 42
-
-    a = add_forty_two('three', 3)
 
 .. _decorator-factories:
 
