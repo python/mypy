@@ -279,7 +279,29 @@ method signature that is different from class type variables. In
 particular, the ``self`` argument may also be generic, allowing a
 method to return the most precise type known at the point of access.
 In this way, for example, you can type check a chain of setter
-methods:
+methods (Python 3.12 syntax):
+
+.. code-block:: python
+
+   class Shape:
+       def set_scale[T](self: T, scale: float) -> T:
+           self.scale = scale
+           return self
+
+   class Circle(Shape):
+       def set_radius(self, r: float) -> 'Circle':
+           self.radius = r
+           return self
+
+   class Square(Shape):
+       def set_width(self, w: float) -> 'Square':
+           self.width = w
+           return self
+
+   circle: Circle = Circle().set_scale(0.5).set_radius(2.7)
+   square: Square = Square().set_scale(0.5).set_width(3.2)
+
+Here is the same example using the legacy syntax (3.11 and earlier):
 
 .. code-block:: python
 
@@ -310,7 +332,28 @@ checked properly, since the return type of ``set_scale`` would be
 ``Shape``, which doesn't define ``set_radius`` or ``set_width``.
 
 Other uses are factory methods, such as copy and deserialization.
-For class methods, you can also define generic ``cls``, using :py:class:`Type[T] <typing.Type>`:
+For class methods, you can also define generic ``cls``, using ``type[T]``
+or :py:class:`Type[T] <typing.Type>` (Python 3.12 syntax):
+
+.. code-block:: python
+
+   class Friend:
+       other: "Friend" = None
+
+       @classmethod
+       def make_pair[T: Friend](cls: type[T]) -> tuple[T, T]:
+           a, b = cls(), cls()
+           a.other = b
+           b.other = a
+           return a, b
+
+   class SuperFriend(Friend):
+       pass
+
+   a, b = SuperFriend.make_pair()
+
+Here is the same example using the legacy syntax (3.11 and earlier, though
+3.9 and later can use lower-case ``type[T]``):
 
 .. code-block:: python
 
@@ -344,16 +387,13 @@ possibly by making use of the ``Any`` type or a ``# type: ignore`` comment.
 
 Note that mypy lets you use generic self types in certain unsafe ways
 in order to support common idioms. For example, using a generic
-self type in an argument type is accepted even though it's unsafe:
+self type in an argument type is accepted even though it's unsafe (Python 3.12
+syntax):
 
 .. code-block:: python
 
-   from typing import TypeVar
-
-   T = TypeVar("T")
-
    class Base:
-       def compare(self: T, other: T) -> bool:
+       def compare[T](self: T, other: T) -> bool:
            return False
 
    class Sub(Base):
@@ -362,7 +402,7 @@ self type in an argument type is accepted even though it's unsafe:
 
        # This is unsafe (see below) but allowed because it's
        # a common pattern and rarely causes issues in practice.
-       def compare(self, other: Sub) -> bool:
+       def compare(self, other: 'Sub') -> bool:
            return self.x > other.x
 
    b: Base = Sub(42)
@@ -375,7 +415,7 @@ Automatic self types using typing.Self
 
 Since the patterns described above are quite common, mypy supports a
 simpler syntax, introduced in :pep:`673`, to make them easier to use.
-Instead of defining a type variable and using an explicit annotation
+Instead of introducing a type variable and using an explicit annotation
 for ``self``, you can import the special type ``typing.Self`` that is
 automatically transformed into a type variable with the current class
 as the upper bound, and you don't need an annotation for ``self`` (or
@@ -449,7 +489,7 @@ Let us illustrate this by few simple examples:
     triangles: Sequence[Triangle]
     count_lines(triangles)  # OK
 
-    def foo(triangle: Triangle, num: int):
+    def foo(triangle: Triangle, num: int) -> None:
         shape_or_number: Union[Shape, int]
         # a Triangle is a Shape, and a Shape is a valid Union[Shape, int]
         shape_or_number = triangle
@@ -482,7 +522,7 @@ Let us illustrate this by few simple examples:
   triangle. If we give it a callable that can calculate the area of an
   arbitrary shape (not just triangles), everything still works.
 
-* :py:class:`~typing.List` is an invariant generic type. Naively, one would think
+* ``list`` is an invariant generic type. Naively, one would think
   that it is covariant, like :py:class:`~typing.Sequence` above, but consider this code:
 
   .. code-block:: python
@@ -498,13 +538,48 @@ Let us illustrate this by few simple examples:
      add_one(my_circles)     # This may appear safe, but...
      my_circles[-1].rotate()  # ...this will fail, since my_circles[0] is now a Shape, not a Circle
 
-  Another example of invariant type is :py:class:`~typing.Dict`. Most mutable containers
+  Another example of invariant type is ``dict``. Most mutable containers
   are invariant.
 
-By default, mypy assumes that all user-defined generics are invariant.
-To declare a given generic class as covariant or contravariant use
-type variables defined with special keyword arguments ``covariant`` or
-``contravariant``. For example:
+When using the Python 3.12 syntax for generics, mypy will be automatically
+infer the most flexible variance for each class type variable. Here
+``Box`` will be inferred as covariant:
+
+.. code-block:: python
+
+   class Box[T]:  # this type is implilicitly covariant
+       def __init__(self, content: T) -> None:
+           self._content = content
+
+       def get_content(self) -> T:
+           return self._content
+
+   def look_into(box: Box[Animal]): ...
+
+   my_box = Box(Cat())
+   look_into(my_box)  # OK, but mypy would complain here for an invariant type
+
+Here the underscore prefix for ``_content`` is significant. Without an
+underscore prefix, the class would be invariant, as the attribute would
+be understood as a public, mutable attribute (a single underscore prefix
+has no special significance in other contexts). By declaring the attribute
+as ``Final``, the class could still be made covariant:
+
+.. code-block:: python
+
+   from typing import Final
+
+   class Box[T]:  # this type is implilicitly covariant
+       def __init__(self, content: T) -> None:
+           self.content: Final = content
+
+       def get_content(self) -> T:
+           return self._content
+
+When using the legacy syntax, mypy assumes that all user-defined generics
+are invariant by default. To declare a given generic class as covariant or
+contravariant, use type variables defined with special keyword arguments
+``covariant`` or ``contravariant``. For example (Python 3.11 or earlier):
 
 .. code-block:: python
 
@@ -531,8 +606,23 @@ Type variables with upper bounds
 
 A type variable can also be restricted to having values that are
 subtypes of a specific type. This type is called the upper bound of
-the type variable, and is specified with the ``bound=...`` keyword
+the type variable, and it is specified using ``T: <bound>`` when using the
+Python 3.12 syntax. In the definition of a generic function that uses
+such a type variable ``T``, the type represented by ``T`` is assumed
+to be a subtype of its upper bound, so the function can use methods
+of the upper bound on values of type ``T`` (Python 3.12 syntax):
+
+.. code-block:: python
+
+   from typing import SupportsAbs
+
+   def max_by_abs[T: SupportsAbs[float]](*xs: T) -> T:
+       # Okay, because T is a subtype of SupportsAbs[float].
+       return max(xs, key=abs)
+
+An upper bound can also be specified with the ``bound=...`` keyword
 argument to :py:class:`~typing.TypeVar`.
+Here is the example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -540,15 +630,8 @@ argument to :py:class:`~typing.TypeVar`.
 
    T = TypeVar('T', bound=SupportsAbs[float])
 
-In the definition of a generic function that uses such a type variable
-``T``, the type represented by ``T`` is assumed to be a subtype of
-its upper bound, so the function can use methods of the upper bound on
-values of type ``T``.
-
-.. code-block:: python
-
-   def largest_in_absolute_value(*xs: T) -> T:
-       return max(xs, key=abs)  # Okay, because T is a subtype of SupportsAbs[float].
+   def max_by_abs(*xs: T) -> T:
+       return max(xs, key=abs)
 
 In a call to such a function, the type ``T`` must be replaced by a
 type that is a subtype of its upper bound. Continuing the example
