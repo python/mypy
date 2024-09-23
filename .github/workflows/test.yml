@@ -61,6 +61,7 @@ jobs:
           ./configure
           make -j 4
           sudo make install
+      - uses: actions/checkout@v3
       - name: Install tox
         run: python3.13 -m pip install setuptools==68.2.2 tox==4.11.0
       - name: Setup tox environment
