@@ -36,8 +36,8 @@ jobs:
       # Build Python from 3.13 branch
       - name: Install build dependencies
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
             build-essential \
             gdb \
             lcov \
