@@ -61,6 +61,20 @@ jobs:
           ./configure
           make -j 4
           sudo make install
+      - name: which python
+        run: |
+          echo which python
+          which python
+          echo python --version
+          python --version
+          echo which python3
+          which python3
+          echo python3 --version
+          python3 --version
+          echo which python3.13
+          which python3.13
+          echo python3.13 --version
+          python3.13 --version
       - uses: actions/checkout@v3
       - name: Install tox
         run: python3.13 -m pip install setuptools==68.2.2 tox==4.11.0
