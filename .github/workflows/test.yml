@@ -23,68 +23,168 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  python-nightly:
-    runs-on: ubuntu-latest
-    name: Test suite with Python nightly
-    steps:
-      # - uses: actions/checkout@v3
-      # - uses: actions/setup-python@v4
-      # TODO try - uses: deadsnakes/action@v3.2.0
-      #   with:
-      #     python-version: '3.13-dev'
+  main:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        # Make sure to run mypyc compiled unit tests for both
+        # the oldest and newest supported Python versions
+        - name: Test suite with py38-ubuntu, mypyc-compiled
+          python: '3.8'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
+        - name: Test suite with py38-windows-64
+          python: '3.8'
+          arch: x64
+          os: windows-latest
+          toxenv: py38
+          tox_extra_args: "-n 4"
+        - name: Test suite with py39-ubuntu
+          python: '3.9'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+        - name: Test suite with py310-ubuntu
+          python: '3.10'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+        - name: Test suite with py311-ubuntu, mypyc-compiled
+          python: '3.11'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
+        - name: Test suite with py312-ubuntu, mypyc-compiled
+          python: '3.12'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
 
-      # Build Python from 3.13 branch
-      - name: Install build dependencies
-        run: |
+        - name: Test suit with py313-dev-ubuntu, mypyc-compiled
+          python: '3.13-dev'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
+
+        - name: mypyc runtime tests with py39-macos
+          python: '3.9.18'
+          arch: x64
+          # TODO: macos-13 is the last one to support Python 3.9, change it to macos-latest when updating the Python version
+          os: macos-13
+          toxenv: py
+          tox_extra_args: "-n 3 mypyc/test/test_run.py mypyc/test/test_external.py"
+        - name: mypyc runtime tests with py38-debug-build-ubuntu
+          python: '3.8.17'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4 mypyc/test/test_run.py mypyc/test/test_external.py"
+          debug_build: true
+
+        - name: Type check our own code (py38-ubuntu)
+          python: '3.8'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: type
+        - name: Type check our own code (py38-windows-64)
+          python: '3.8'
+          arch: x64
+          os: windows-latest
+          toxenv: type
+
+          # We also run these checks with pre-commit in CI,
+          # but it's useful to run them with tox too,
+          # to ensure the tox env works as expected
+        - name: Formatting and code style with Black + ruff
+          python: '3.10'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: lint
+
+    name: ${{ matrix.name }}
+    env:
+      TOX_SKIP_MISSING_INTERPRETERS: False
+      # Rich (pip)
+      FORCE_COLOR: 1
+      # Tox
+      PY_COLORS: 1
+      # Mypy (see https://github.com/python/mypy/issues/7771)
+      TERM: xterm-color
+      MYPY_FORCE_COLOR: 1
+      MYPY_FORCE_TERMINAL_WIDTH: 200
+      # Pytest
+      PYTEST_ADDOPTS: --color=yes
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Debug build
+      if: ${{ matrix.debug_build }}
+      run: |
+        PYTHONVERSION=${{ matrix.python }}
+        PYTHONDIR=~/python-debug/python-$PYTHONVERSION
+        VENV=$PYTHONDIR/env
+        ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
+        # TODO: does this do anything? env vars aren't passed to the next step right
+        source $VENV/bin/activate
+    - name: Latest Dev build
+      if: ${{ endsWith(matrix.python-version, '-dev') }}
+      run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            gdb \
-            lcov \
-            libbz2-dev \
-            libffi-dev \
-            libgdbm-dev \
-            liblzma-dev \
-            libncurses5-dev \
-            libreadline6-dev \
-            libsqlite3-dev \
-            libssl-dev \
-            lzma \
-            lzma-dev \
-            tk-dev \
-            uuid-dev \
-            zlib1g-dev
-      - name: Compile Python from 3.13 branch
-        run: |
-          git clone --depth 1 --branch 3.13 https://github.com/python/cpython.git /tmp/cpython
+            build-essential gdb lcov libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncurses5-dev \
+            libreadline6-dev libsqlite3-dev libssl-dev lzma lzma-dev tk-dev uuid-dev zlib1g-dev
+          git clone --depth 1 https://github.com/python/cpython.git /tmp/cpython --branch $( echo ${{ matrix.python-version }} | sed 's/-dev//' )
           cd /tmp/cpython
+          git show
           ./configure
-          make -j 4
+          make -j$(nproc)
           sudo make install
-      - name: which python
-        run: |
-          echo which python
-          which python
-          echo python --version
-          python --version
-          echo which python3
-          which python3
-          echo python3 --version
-          python3 --version
-          echo which python3.13
-          which python3.13
-          echo python3.13 --version
-          python3.13 --version
-      - uses: actions/checkout@v3
-      - name: Install tox
-        run: python3.13 -m pip install setuptools==68.2.2 tox==4.11.0
-      - name: Setup tox environment
-        run: python3.13 -m tox run -e py --notest
-      - name: Test
-        run: python3.13 -m tox run -e py --skip-pkg-install -- "-n 4"
-        continue-on-error: true
-      - name: Mark as a success
-        run: exit 0
+    - uses: actions/setup-python@v5
+      if: ${{ !(matrix.debug_build || endsWith(matrix.python-version, '-dev')) }}
+      with:
+        python-version: ${{ matrix.python }}
+        architecture: ${{ matrix.arch }}
+
+    - name: Install tox
+      run: |
+        echo which python; which python
+        echo which pip; which pip
+        echo python version; python -c 'import sys; print(sys.version)'
+        echo debug build; python -c 'import sysconfig; print(bool(sysconfig.get_config_var("Py_DEBUG")))'
+        echo os.cpu_count; python -c 'import os; print(os.cpu_count())'
+        echo os.sched_getaffinity; python -c 'import os; print("os.sched_getaffinity", len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
+        pip install setuptools==68.2.2 tox==4.11.0
+
+    - name: Compiled with mypyc
+      if: ${{ matrix.test_mypyc }}
+      run: |
+        pip install -r test-requirements.txt
+        CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
+
+    - name: Setup tox environment
+      run: |
+        tox run -e ${{ matrix.toxenv }} --notes
+    - name: Test
+      run: tox run -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
+      continue-on-error: ${{ matrix.allow_failure == 'true' }}
+
+    - name: Mark as success (check failures manually)
+      if: ${{ matrix.allow_failure == 'true' }}
+      run: exit 0
 
   python_32bits:
     runs-on: ubuntu-latest
