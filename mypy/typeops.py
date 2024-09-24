@@ -658,9 +658,9 @@ def false_only(t: Type) -> ProperType:
         can_be_false_items = [item for item in new_items if item.can_be_false]
         return make_simplified_union(can_be_false_items, line=t.line, column=t.column)
     elif isinstance(t, Instance) and t.type.fullname in ("builtins.str", "builtins.bytes"):
-            return LiteralType("", fallback=t)
+        return LiteralType("", fallback=t)
     elif isinstance(t, Instance) and t.type.fullname == "builtins.int":
-            return LiteralType(0, fallback=t)
+        return LiteralType(0, fallback=t)
     else:
         ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
             t, name="__len__"
