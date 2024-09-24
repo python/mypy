@@ -1187,11 +1187,10 @@ Here is the definition of ``Linked`` using the legacy syntax
 Generic type aliases
 ********************
 
-Type aliases can be generic. In this case they can be used in two ways:
-Subscripted aliases are equivalent to original types with substituted type
-variables, so the number of type arguments must match the number of free type variables
-in the generic type alias. Unsubscripted aliases are treated as original types with free
-variables replaced with ``Any``.
+Type aliases can be generic. In this case they can be used in two ways.
+First, subscripted aliases are equivalent to original types with substituted type
+variables. Second, unsubscripted aliases are treated as original types with type
+parameters replaced with ``Any``.
 
 The ``type`` statement introduced in Python 3.12 is used to define generic
 type aliases (it also supports non-generic type aliases):
@@ -1222,7 +1221,10 @@ type aliases (it also supports non-generic type aliases):
     v2: Vec = []           # Same as Iterable[tuple[Any, Any]]
     v3: Vec[int, int] = [] # Error: Invalid alias, too many type arguments!
 
-There is also a legacy syntax that relies on ``TypeVar`` (following
+There is also a legacy syntax that relies on ``TypeVar``.
+Here the number of type arguments must match the number of free type variables
+in the generic type alias definition. A type variables is free if it's not
+a type parameter of a surrounding class or function. Example (following
 :pep:`PEP 484: Type aliases <484#type-aliases>`, Python 3.11 and earlier):
 
 .. code-block:: python
@@ -1231,7 +1233,7 @@ There is also a legacy syntax that relies on ``TypeVar`` (following
 
     S = TypeVar('S')
 
-    TInt = tuple[int, S]
+    TInt = tuple[int, S]  # 1 type parameter, since only S is free
     UInt = Union[S, int]
     CBack = Callable[..., S]
 
@@ -1315,8 +1317,8 @@ Here are examples using the legacy syntax (Python 3.11 and earlier):
     for i, j in NewVec[int]():
         ...
 
-Using type variable bounds or values in generic aliases has the same effect
-as in generic classes/functions.
+Using type variable bounds or value restriction in generic aliases has
+the same effect as in generic classes and functions.
 
 
 Differences between the new and old syntax
