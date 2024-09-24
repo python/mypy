@@ -6408,9 +6408,32 @@ class SemanticAnalyzer(
         # TODO: support nested classes (but consider performance impact,
         #       we might keep the module level only lookup for thing like 'builtins.int').
         assert "." in fullname
+
         module, name = fullname.rsplit(".", maxsplit=1)
+
+        # The reason for this is that we want to be able to handle cases such as importlib.machinery
         if module not in self.modules:
-            return None
+            # Check if there's nested module A.B.C
+            splitted = fullname.rsplit(".")
+            module, name = splitted[0], splitted[1:]
+            # If module still not in modules, return None
+            if module not in self.modules:
+                return None
+            filenode = self.modules[module]
+            result = filenode.names.get(name[0])
+
+            if result is None and self.is_incomplete_namespace(module):
+                # TODO: More explicit handling of incomplete refs?
+                self.record_incomplete_ref()
+
+            for part in name[1:]:
+                if result is not None and isinstance(result.node, TypeInfo):
+                    filenode = result.node
+                    result = filenode.names.get(part)
+                else:
+                    return None
+            return result
+
         filenode = self.modules[module]
         result = filenode.names.get(name)
         if result is None and self.is_incomplete_namespace(module):
