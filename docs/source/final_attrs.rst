@@ -86,7 +86,7 @@ You can use ``Final`` in one of these forms:
 
 * Finally, you can write ``self.id: Final = 1`` (also optionally with
   a type in square brackets). This is allowed *only* in
-  :py:meth:`__init__ <object.__init__>` methods, so the final instance attribute is
+  :py:meth:`__init__ <object.__init__>` methods so the final instance attribute is
   assigned only once when an instance is created.
 
 Details of using ``Final``
@@ -224,7 +224,7 @@ Here are some situations where using a final class may be useful:
 
 An abstract class that defines at least one abstract method or
 property and has ``@final`` decorator will generate an error from
-mypy, since those attributes could never be implemented.
+mypy since those attributes could never be implemented.
 
 .. code-block:: python
 
