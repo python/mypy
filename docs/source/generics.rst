@@ -2,7 +2,7 @@ Generics
 ========
 
 This section explains how you can define your own generic classes that take
-one or more type parameters, similar to built-in types such as ``list[X]``.
+one or more type arguments, similar to built-in types such as ``list[T]``.
 User-defined generics are a moderately advanced feature and you can get far
 without ever using them -- feel free to skip this section and come back later.
 
@@ -12,27 +12,14 @@ Defining generic classes
 ************************
 
 The built-in collection classes are generic classes. Generic types
-have one or more type parameters, which can be arbitrary types. For
-example, ``dict[int, str]`` has the type parameters ``int`` and
-``str``, and ``list[int]`` has a type parameter ``int``.
+accept one or more type arguments within ``[...]``, which can be
+arbitrary types. For example, the type ``dict[int, str]`` has the
+type arguments ``int`` and ``str``, and ``list[int]`` has the type
+argument ``int``.
 
-Programs can also define new generic classes. There are two syntax
-variants for defining generic classes in Python.
-Python 3.12 introduced a new dedicated syntax for defining generic
-classes (and also functions and type aliases, which we will discuss
-later). Most examples are given using both the new and
-the old (or legacy) syntax variants. Unless explicitly mentioned otherwise,
-they behave identically -- but the new syntax is more readable and
-convenient to use.
-
-.. note::
-
-    There are no plans to deprecate the legacy syntax in the future.
-    You can freely mix code using the new and old syntax variants,
-    even within a single file.
-
-Here is a very simple generic class that represents a stack
-(Python 3.12 syntax):
+Programs can also define new generic classes. Here is a very simple
+generic class that represents a stack (using the syntax introduced in
+Python 3.12):
 
 .. code-block:: python
 
@@ -50,6 +37,14 @@ Here is a very simple generic class that represents a stack
        def empty(self) -> bool:
            return not self.items
 
+There are two syntax variants for defining generic classes in Python.
+Python 3.12 introduced a new dedicated syntax for defining generic
+classes (and also functions and type aliases, which we will discuss
+later). The above example used the new syntax. Most examples are
+given using both the new and the old (or legacy) syntax variants.
+Unless mentioned otherwise, they work the same -- but the new syntax
+is more readable and more convenient.
+
 Here is the same example using the old syntax (required for Python 3.11
 and earlier, but also supported on newer Python versions):
 
@@ -57,7 +52,7 @@ and earlier, but also supported on newer Python versions):
 
    from typing import TypeVar, Generic
 
-   T = TypeVar('T')
+   T = TypeVar('T')  # Define type variable "T"
 
    class Stack(Generic[T]):
        def __init__(self) -> None:
@@ -73,8 +68,16 @@ and earlier, but also supported on newer Python versions):
        def empty(self) -> bool:
            return not self.items
 
+.. note::
+
+    There are currently no plans to deprecate the legacy syntax.
+    You can freely mix code using the new and old syntax variants,
+    even within a single file.
+
 The ``Stack`` class can be used to represent a stack of any type:
-``Stack[int]``, ``Stack[tuple[int, str]]``, etc.
+``Stack[int]``, ``Stack[tuple[int, str]]``, etc. You can think of
+``Stack[int]`` as referring to the definition of ``Stack`` above,
+but with all instances of ``T`` replaced with ``int``.
 
 Using ``Stack`` is similar to built-in container types:
 
@@ -87,6 +90,9 @@ Using ``Stack`` is similar to built-in container types:
 
    # error: Argument 1 to "push" of "Stack" has incompatible type "str"; expected "int"
    stack.push('x')
+
+   stack2: Stack[str] = Stack()
+   stack2.append('x')
 
 Construction of instances of generic types is type checked (Python 3.12 syntax):
 
@@ -102,7 +108,7 @@ Construction of instances of generic types is type checked (Python 3.12 syntax):
    # error: Argument 1 to "Box" has incompatible type "str"; expected "int"
    Box[int]('some string')
 
-Here is the class definition using the legacy syntax (Python 3.11 and earlier):
+Here is the definition of ``Box`` using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
@@ -113,6 +119,17 @@ Here is the class definition using the legacy syntax (Python 3.11 and earlier):
    class Box(Generic[T]):
        def __init__(self, content: T) -> None:
            self.content = content
+
+.. note::
+
+    Before moving on, let's clarify some terminology.
+    The name ``T`` in ``class Stack[T]`` or ``class Stack(Generic[T])``
+    declares a *type parameter* ``T`` (of class ``Stack``).
+    ``T`` is also called a *type variable*, especially in a type annotation,
+    such as in the signature of ``push`` above.
+    When the type ``Stack[...]`` is used in a type annotation, the type
+    within square brackets is called a *type argument*.
+    This is similar to the distinction between function parameters and arguments.
 
 .. _generic-subclasses:
 
@@ -195,15 +212,15 @@ from bases if there are
 other base classes that include type variables, such as ``Mapping[KT, VT]``
 in the above example. If you include ``Generic[...]`` in bases, then
 it should list all type variables present in other bases (or more,
-if needed). The order of type variables is defined by the following
+if needed). The order of type parameters is defined by the following
 rules:
 
-* If ``Generic[...]`` is present, then the order of variables is
+* If ``Generic[...]`` is present, then the order of parameters is
   always determined by their order in ``Generic[...]``.
-* If there are no ``Generic[...]`` in bases, then all type variables
+* If there are no ``Generic[...]`` in bases, then all type parameters
   are collected in the lexicographic order (i.e. by first appearance).
 
-For example:
+Example:
 
 .. code-block:: python
 
@@ -223,14 +240,15 @@ For example:
    y: Second[int, str, Any]  # Here T is Any, S is int, and U is str
 
 When using the Python 3.12 syntax, all type parameters must always be
-explicitly defined, and the ``Generic[...]`` base class is never used.
+explicitly defined immediately after the class name within ``[...]``, and the
+``Generic[...]`` base class is never used.
 
 .. _generic-functions:
 
 Generic functions
 *****************
 
-Type variables can be used to define generic functions (Python 3.12 syntax):
+Functions can also be generic, i.e. they can have type parameters (Python 3.12 syntax):
 
 .. code-block:: python
 
@@ -252,25 +270,25 @@ Here is the same example using the legacy syntax (Python 3.11 and earlier):
    def first(seq: Sequence[T]) -> T:
        return seq[0]
 
-As with generic classes, the type variable can be replaced with any
-type. That means ``first`` can be used with any sequence type, and the
-return type is derived from the sequence item type. For example:
+As with generic classes, the type parameter ``T`` can be replaced with any
+type. That means ``first`` can be passed an argument with any sequence type,
+and the return type is derived from the sequence item type. Example:
 
 .. code-block:: python
 
    reveal_type(first([1, 2, 3]))   # Revealed type is "builtins.int"
-   reveal_type(first(['a', 'b']))  # Revealed type is "builtins.str"
+   reveal_type(first(('a', 'b')))  # Revealed type is "builtins.str"
 
 When using the legacy syntax, a single definition of a type variable
 (such as ``T`` above) can be used in multiple generic functions or
 classes. In this example we use the same type variable in two generic
-functions:
+functions to declarare type parameters:
 
 .. code-block:: python
 
    from typing import TypeVar, Sequence
 
-   T = TypeVar('T')      # Declare type variable
+   T = TypeVar('T')      # Define type variable
 
    def first(seq: Sequence[T]) -> T:
        return seq[0]
@@ -284,13 +302,20 @@ an equivalent way of sharing type parameter definitions.
 A variable cannot have a type variable in its type unless the type
 variable is bound in a containing generic class or function.
 
+When calling a generic function, you can't explicitly pass the values of
+type parameters as type arguments. The values of type parameters are always
+inferred by mypy. This is not valid:
+
+.. code-block:: python
+
+    first[int]([1, 2])  # Error: can't use [...] with generic function
+
 .. _generic-methods-and-generic-self:
 
 Generic methods and generic self
 ********************************
 
-You can also define generic methods — just use a type variable in the
-method signature that is different from class type variables. In
+You can also define generic methods. In
 particular, the ``self`` argument may also be generic, allowing a
 method to return the most precise type known at the point of access.
 In this way, for example, you can type check a chain of setter
@@ -299,7 +324,7 @@ methods (Python 3.12 syntax):
 .. code-block:: python
 
    class Shape:
-       def set_scale[T](self: T, scale: float) -> T:
+       def set_scale[T: Shape](self: T, scale: float) -> T:
            self.scale = scale
            return self
 
@@ -316,7 +341,14 @@ methods (Python 3.12 syntax):
    circle: Circle = Circle().set_scale(0.5).set_radius(2.7)
    square: Square = Square().set_scale(0.5).set_width(3.2)
 
-Here is the same example using the legacy syntax (3.11 and earlier):
+Without using generic ``self``, the last two lines could not be type
+checked properly, since the return type of ``set_scale`` would be
+``Shape``, which doesn't define ``set_radius`` or ``set_width``.
+
+When using the legacy syntax, just use a type variable in the
+method signature that is different from class type parameters (if any
+are defined). Here is the abaove example using the legacy
+syntax (3.11 and earlier):
 
 .. code-block:: python
 
@@ -342,18 +374,14 @@ Here is the same example using the legacy syntax (3.11 and earlier):
    circle: Circle = Circle().set_scale(0.5).set_radius(2.7)
    square: Square = Square().set_scale(0.5).set_width(3.2)
 
-Without using generic ``self``, the last two lines could not be type
-checked properly, since the return type of ``set_scale`` would be
-``Shape``, which doesn't define ``set_radius`` or ``set_width``.
-
-Other uses are factory methods, such as copy and deserialization.
+Other uses include factory methods, such as copy and deserialization methods.
 For class methods, you can also define generic ``cls``, using ``type[T]``
 or :py:class:`Type[T] <typing.Type>` (Python 3.12 syntax):
 
 .. code-block:: python
 
    class Friend:
-       other: "Friend" = None
+       other: "Friend | None" = None
 
        @classmethod
        def make_pair[T: Friend](cls: type[T]) -> tuple[T, T]:
@@ -372,15 +400,15 @@ Here is the same example using the legacy syntax (3.11 and earlier, though
 
 .. code-block:: python
 
-   from typing import TypeVar, Type
+   from typing import TypeVar
 
    T = TypeVar('T', bound='Friend')
 
    class Friend:
-       other: "Friend" = None
+       other: "Friend | None" = None
 
        @classmethod
-       def make_pair(cls: Type[T]) -> tuple[T, T]:
+       def make_pair(cls: type[T]) -> tuple[T, T]:
            a, b = cls(), cls()
            a.other = b
            b.other = a
@@ -408,7 +436,7 @@ syntax):
 .. code-block:: python
 
    class Base:
-       def compare[T](self: T, other: T) -> bool:
+       def compare[T: Base](self: T, other: T) -> bool:
            return False
 
    class Sub(Base):
@@ -430,12 +458,12 @@ Automatic self types using typing.Self
 
 Since the patterns described above are quite common, mypy supports a
 simpler syntax, introduced in :pep:`673`, to make them easier to use.
-Instead of introducing a type variable and using an explicit annotation
+Instead of introducing a type parameter and using an explicit annotation
 for ``self``, you can import the special type ``typing.Self`` that is
-automatically transformed into a type variable with the current class
-as the upper bound, and you don't need an annotation for ``self`` (or
-``cls`` in class methods). The example from the previous section can
-be made simpler by using ``Self``:
+automatically transformed into a method-level type parameter with the
+current class as the upper bound, and you don't need an annotation for
+``self`` (or ``cls`` in class methods). The example from the previous
+section can be made simpler by using ``Self``:
 
 .. code-block:: python
 
@@ -456,7 +484,7 @@ be made simpler by using ``Self``:
 
    a, b = SuperFriend.make_pair()
 
-This is more compact than using explicit type variables. Also, you can
+This is more compact than using explicit type parameters. Also, you can
 use ``Self`` in attribute annotations in addition to methods.
 
 .. note::
