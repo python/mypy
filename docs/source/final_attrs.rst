@@ -25,7 +25,7 @@ Final names
 
 You can use the ``typing.Final`` qualifier to indicate that
 a name or attribute should not be reassigned, redefined, or
-overridden.  This is often useful for module and class level constants
+overridden.  This is often useful for module and class-level constants
 as a way to prevent unintended modification.  Mypy will prevent
 further assignments to final names in type-checked code:
 
@@ -81,7 +81,7 @@ You can use ``Final`` in one of these forms:
   Here mypy will infer type ``Literal[1]`` for ``ID``. Note that unlike for
   generic classes this is *not* the same as ``Final[Any]``.
 
-* In class bodies and stub files you can omit the right hand side and just write
+* In class bodies and stub files you can omit the right-hand side and just write
   ``ID: Final[int]``.
 
 * Finally, you can write ``self.id: Final = 1`` (also optionally with
