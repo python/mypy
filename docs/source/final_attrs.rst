@@ -86,7 +86,7 @@ You can use ``Final`` in one of these forms:
 
 * Finally, you can write ``self.id: Final = 1`` (also optionally with
   a type in square brackets). This is allowed *only* in
-  :py:meth:`__init__ <object.__init__>` methods, so that the final instance attribute is
+  :py:meth:`__init__ <object.__init__>` methods, so the final instance attribute is
   assigned only once when an instance is created.
 
 Details of using ``Final``
