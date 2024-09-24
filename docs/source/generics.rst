@@ -597,16 +597,16 @@ infer the most flexible variance for each class type variable. Here
        def get_content(self) -> T:
            return self._content
 
-   def look_into(box: Box[Animal]): ...
+   def look_into(box: Box[Shape]): ...
 
-   my_box = Box(Cat())
+   my_box = Box(Square())
    look_into(my_box)  # OK, but mypy would complain here for an invariant type
 
 Here the underscore prefix for ``_content`` is significant. Without an
 underscore prefix, the class would be invariant, as the attribute would
 be understood as a public, mutable attribute (a single underscore prefix
-has no special significance in other contexts). By declaring the attribute
-as ``Final``, the class could still be made covariant:
+has no special significance for mypy in most other contexts). By declaring
+the attribute as ``Final``, the class could still be made covariant:
 
 .. code-block:: python
 
@@ -637,9 +637,9 @@ contravariant, use type variables defined with special keyword arguments
        def get_content(self) -> T_co:
            return self._content
 
-   def look_into(box: Box[Animal]): ...
+   def look_into(box: Box[Shape]): ...
 
-   my_box = Box(Cat())
+   my_box = Box(Square())
    look_into(my_box)  # OK, but mypy would complain here for an invariant type
 
 .. _type-variable-upper-bound:
@@ -722,9 +722,9 @@ The same thing is also possibly using the legacy syntax (Python 3.11 or earlier)
    def concat(x: AnyStr, y: AnyStr) -> AnyStr:
        return x + y
 
-No matter which syntax you use, this is called a type variable with a value
-restriction. Importantly, this is different from a union type, since combinations
-of ``str`` and ``bytes`` are not accepted:
+No matter which syntax you use, such a type variable is called a type variable
+with a value restriction. Importantly, this is different from a union type,
+since combinations of ``str`` and ``bytes`` are not accepted:
 
 .. code-block:: python
 
@@ -774,16 +774,9 @@ bytes pattern.
 A type variable may not have both a value restriction and an upper bound
 (see :ref:`type-variable-upper-bound`).
 
-Note that if you use the legacy syntax, :py:data:`~typing.AnyStr` as we defined
-it above is predefined in :py:mod:`typing`, and it isn't necessary to define it:
-
-.. code-block:: python
-
-   from typing import AnyStr
-
-   def concat(x: AnyStr, y: AnyStr) -> AnyStr:
-       return x + y
-
+Note that you may come across :py:data:`~typing.AnyStr` imported from
+:py:mod:`typing`. This feature is now deprecated, but it means the same
+as our definition of ``AnyStr`` above.
 
 .. _declaring-decorators:
 
@@ -923,7 +916,7 @@ alter the signature of the input function (Python 3.12 syntax):
 
    from typing import Callable
 
-    # We reuse 'P' in the return type, but replace 'T' with 'str'
+   # We reuse 'P' in the return type, but replace 'T' with 'str'
    def stringify[**P, T](func: Callable[P, T]) -> Callable[P, str]:
        def wrapper(*args: P.args, **kwds: P.kwargs) -> str:
            return str(func(*args, **kwds))
@@ -947,7 +940,7 @@ Here is the above example using the legacy syntax (Python 3.11 and earlier):
    P = ParamSpec('P')
    T = TypeVar('T')
 
-    # We reuse 'P' in the return type, but replace 'T' with 'str'
+   # We reuse 'P' in the return type, but replace 'T' with 'str'
    def stringify(func: Callable[P, T]) -> Callable[P, str]:
        def wrapper(*args: P.args, **kwds: P.kwargs) -> str:
            return str(func(*args, **kwds))
@@ -1027,11 +1020,11 @@ Here is the example using the legacy syntax (Python 3.11 and earlier):
         return 'Hello world'
 
 Sometimes the same decorator supports both bare calls and calls with arguments. This can be
-achieved by combining with :py:func:`@overload <typing.overload>` (Python 3.12):
+achieved by combining with :py:func:`@overload <typing.overload>` (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from typing import Any, Callable, Optional, overload
+    from typing import Any, Callable, overload
 
     # Bare decorator usage
     @overload
@@ -1041,7 +1034,7 @@ achieved by combining with :py:func:`@overload <typing.overload>` (Python 3.12):
     def atomic[F: Callable[..., Any]](*, savepoint: bool = True) -> Callable[[F], F]: ...
 
     # Implementation
-    def atomic(__func: Optional[Callable[..., Any]] = None, *, savepoint: bool = True):
+    def atomic(__func: Callable[..., Any] | None = None, *, savepoint: bool = True):
         def decorator(func: Callable[..., Any]):
             ...  # Code goes here
         if __func is not None:
