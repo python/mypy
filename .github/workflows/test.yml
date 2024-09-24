@@ -149,10 +149,12 @@ jobs:
             libreadline6-dev libsqlite3-dev libssl-dev lzma lzma-dev tk-dev uuid-dev zlib1g-dev
           git clone --depth 1 https://github.com/python/cpython.git /tmp/cpython --branch $( echo ${{ matrix.python }} | sed 's/-dev//' )
           cd /tmp/cpython
-          git show
-          ./configure
+          echo git rev-parse HEAD; git rev-parse HEAD
+          git show --no-patch
+          ./configure --prefix=/opt/pythondev
           make -j$(nproc)
           sudo make install
+          echo "/opt/pythondev/bin" >> $GITHUB_PATH
     - uses: actions/setup-python@v5
       if: ${{ !(matrix.debug_build || endsWith(matrix.python, '-dev')) }}
       with:
