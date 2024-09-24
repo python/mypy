@@ -2192,3 +2192,114 @@ parametrize(_test, Case(1, b=2), Case(3, b=4))
 parametrize(_test, Case(1, 2), Case(3))
 parametrize(_test, Case(1, 2), Case(3, b=4))
 [builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecInsufficientArgs]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable
+
+_P = ParamSpec("_P")
+
+def run(predicate: Callable[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None:  # N: "run" defined here
+    predicate()  # E: Too few arguments
+    predicate(*args)  # E: Too few arguments
+    predicate(**kwargs)  # E: Too few arguments
+    predicate(*args, **kwargs)
+
+def fn() -> None: ...
+def fn_args(x: int) -> None: ...
+def fn_posonly(x: int, /) -> None: ...
+
+run(fn)
+run(fn_args, 1)
+run(fn_args, x=1)
+run(fn_posonly, 1)
+run(fn_posonly, x=1)  # E: Unexpected keyword argument "x" for "run"
+
+[builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecConcatenateInsufficientArgs]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable
+
+_P = ParamSpec("_P")
+
+def run(predicate: Callable[Concatenate[int, _P], None], *args: _P.args, **kwargs: _P.kwargs) -> None:  # N: "run" defined here
+    predicate()  # E: Too few arguments
+    predicate(1)  # E: Too few arguments
+    predicate(1, *args)  # E: Too few arguments
+    predicate(1, *args)  # E: Too few arguments
+    predicate(1, **kwargs)  # E: Too few arguments
+    predicate(*args, **kwargs)  # E: Argument 1 has incompatible type "*_P.args"; expected "int"
+    predicate(1, *args, **kwargs)
+
+def fn() -> None: ...
+def fn_args(x: int, y: str) -> None: ...
+def fn_posonly(x: int, /) -> None: ...
+def fn_posonly_args(x: int, /, y: str) -> None: ...
+
+run(fn)  # E: Argument 1 to "run" has incompatible type "Callable[[], None]"; expected "Callable[[int], None]"
+run(fn_args, 1, 'a')  # E: Too many arguments for "run" \
+                      # E: Argument 2 to "run" has incompatible type "int"; expected "str"
+run(fn_args, y='a')
+run(fn_args, 'a')
+run(fn_posonly)
+run(fn_posonly, x=1)  # E: Unexpected keyword argument "x" for "run"
+run(fn_posonly_args)  # E: Missing positional argument "y" in call to "run"
+run(fn_posonly_args, 'a')
+run(fn_posonly_args, y='a')
+
+[builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecConcatenateInsufficientArgsInDecorator]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable
+
+P = ParamSpec("P")
+
+def decorator(fn: Callable[Concatenate[str, P], None]) -> Callable[P, None]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> None:
+        fn("value")  # E: Too few arguments
+        fn("value", *args)  # E: Too few arguments
+        fn("value", **kwargs)  # E: Too few arguments
+        fn(*args, **kwargs)  # E: Argument 1 has incompatible type "*P.args"; expected "str"
+        fn("value", *args, **kwargs)
+    return inner
+
+@decorator
+def foo(s: str, s2: str) -> None: ...
+
+[builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecOverload]
+from typing_extensions import ParamSpec
+from typing import Callable, NoReturn, TypeVar, Union, overload
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+@overload
+def capture(
+    sync_fn: Callable[P, NoReturn],
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> int: ...
+@overload
+def capture(
+    sync_fn: Callable[P, T],
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> Union[T, int]: ...
+def capture(
+    sync_fn: Callable[P, T],
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> Union[T, int]:
+    return sync_fn(*args, **kwargs)
+
+def fn() -> str: return ''
+def err() -> NoReturn: ...
+
+reveal_type(capture(fn))  # N: Revealed type is "Union[builtins.str, builtins.int]"
+reveal_type(capture(err))  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/paramspec.pyi]
