@@ -70,7 +70,7 @@ You can use ``Final`` in one of these forms:
 
      ID: Final[int] = 1
 
-  Here mypy will infer type ``int`` for ``ID``.
+  Here, mypy will infer type ``int`` for ``ID``.
 
 * You can omit the type:
 
@@ -78,10 +78,10 @@ You can use ``Final`` in one of these forms:
 
      ID: Final = 1
 
-  Here mypy will infer type ``Literal[1]`` for ``ID``. Note that unlike for
-  generic classes this is *not* the same as ``Final[Any]``.
+  Here, mypy will infer type ``Literal[1]`` for ``ID``. Note that unlike for
+  generic classes, this is *not* the same as ``Final[Any]``.
 
-* In class bodies and stub files you can omit the right-hand side and just write
+* In class bodies and stub files, you can omit the right-hand side and just write
   ``ID: Final[int]``.
 
 * Finally, you can write ``self.id: Final = 1`` (also optionally with
@@ -129,7 +129,7 @@ the scope of a final declaration automatically depending on whether it was
 initialized in the class body or in :py:meth:`__init__ <object.__init__>`.
 
 A final attribute can't be overridden by a subclass (even with another
-explicit final declaration). Note however that a final attribute can
+explicit final declaration). Note, however, that a final attribute can
 override a read-only property:
 
 .. code-block:: python
@@ -176,7 +176,7 @@ overriding. You can use the ``typing.final`` decorator for this purpose:
 This ``@final`` decorator can be used with instance methods, class methods,
 static methods, and properties.
 
-For overloaded methods you should add ``@final`` on the implementation
+For overloaded methods, you should add ``@final`` on the implementation
 to make it final (or on the first overload in stubs):
 
 .. code-block:: python
