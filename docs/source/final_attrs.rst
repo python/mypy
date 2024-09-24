@@ -181,7 +181,7 @@ to make it final (or on the first overload in stubs):
 
 .. code-block:: python
 
-   from typing import Any, overload
+   from typing import final, overload
 
    class Base:
        @overload
