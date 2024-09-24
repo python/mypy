@@ -1,6 +1,6 @@
 .. _final_attrs:
 
-Final names, methods and classes
+Final names, methods, and classes
 ================================
 
 This section introduces these related features:
