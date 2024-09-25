@@ -434,19 +434,20 @@ the runtime with some limitations (see :ref:`runtime_troubles`).
 Type aliases
 ************
 
-In certain situations, type names may end up being long and painful to type:
+In certain situations, type names may end up being long and painful to type,
+especially if they are used frequently:
 
 .. code-block:: python
 
-   def f() -> Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]:
+   def f() -> list[dict[tuple[int, str], set[int]]] | tuple[str, list[str]]:
        ...
 
 When cases like this arise, you can define a type alias by simply
-assigning the type to a variable:
+assigning the type to a variable (this is an *implicit type alias*):
 
 .. code-block:: python
 
-   AliasType = Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]
+   AliasType = list[dict[tuple[int, str], set[int]]] | tuple[str, list[str]]
 
    # Now we can use AliasType in place of the full name:
 
@@ -459,8 +460,18 @@ assigning the type to a variable:
     another type -- it's equivalent to the target type except for
     :ref:`generic aliases <generic-type-aliases>`.
 
-Since Mypy 0.930 you can also use *explicit type aliases*, which were
-introduced in :pep:`613`.
+Python 3.12 introduced the ``type`` statement for defining *explicit type aliases*.
+Explicit type aliases are unambiguous and can also improve readability by
+making the intent clear:
+
+.. code-block:: python
+
+   type AliasType = list[dict[tuple[int, str], set[int]]] | tuple[str, list[str]]
+
+   # Now we can use AliasType in place of the full name:
+
+   def f() -> AliasType:
+       ...
 
 There can be confusion about exactly when an assignment defines an implicit type alias --
 for example, when the alias contains forward references, invalid types, or violates some other
@@ -469,8 +480,17 @@ distinction between an unannotated variable and a type alias is implicit,
 ambiguous or incorrect type alias declarations default to defining
 a normal variable instead of a type alias.
 
-Explicit type aliases are unambiguous and can also improve readability by
-making the intent clear:
+Aliases defined using the ``type`` statement have these properties, which
+distinguish them from implicit type aliases:
+
+* The definition may contain forward references without having to use string
+  literal escaping, since it is evaluated lazily.
+* The alias can be used in type annotations, type arguments, and casts, but
+  it can't be used in contexts which require a class object. For example, it's
+  not valid as a base class and it can't be used to construct instances.
+
+There is also use an older syntax for defining explicit type aliases, which was
+introduced in Python 3.10 (:pep:`613`):
 
 .. code-block:: python
 
