@@ -81,9 +81,7 @@ treated as ``Any``:
 
 .. code-block:: python
 
-    from typing import List
-
-    def f(x: List) -> None:
+    def f(x: list) -> None:
         reveal_type(x)        # Revealed type is "builtins.list[Any]"
         reveal_type(x[0])     # Revealed type is "Any"
         x[0].anything_goes()  # OK

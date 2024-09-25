@@ -88,7 +88,8 @@ Functions
 
 .. code-block:: python
 
-   from typing import Callable, Iterator, Union, Optional
+   from collections.abc import Iterator
+   from typing import Callable, Union, Optional
 
    # This is how you annotate a function definition
    def stringify(num: int) -> str:
@@ -274,7 +275,8 @@ that are common in idiomatic Python are standardized.
 
 .. code-block:: python
 
-   from typing import Mapping, MutableMapping, Sequence, Iterable
+   from collections.abc import Mapping, MutableMapping, Sequence, Iterable
+   # or 'from typing import ...' (required in Python 3.8)
 
    # Use Iterable for generic iterables (anything usable in "for"),
    # and Sequence where a sequence (supporting "len" and "__getitem__") is

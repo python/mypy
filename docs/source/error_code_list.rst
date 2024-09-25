@@ -124,8 +124,6 @@ Example:
 
 .. code-block:: python
 
-    from typing import Sequence
-
     def greet(name: str) -> None:
          print('hello', name)
 

@@ -136,7 +136,7 @@ purpose. Example:
 .. note::
 
    Usually it's a better idea to use ``Sequence[T]`` instead of ``tuple[T, ...]``, as
-   :py:class:`~typing.Sequence` is also compatible with lists and other non-tuple sequences.
+   :py:class:`~collections.abc.Sequence` is also compatible with lists and other non-tuple sequences.
 
 .. note::
 

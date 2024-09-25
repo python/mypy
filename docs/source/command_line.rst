@@ -630,13 +630,11 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import Text
-
        items: list[int]
        if 'some string' in items:  # Error: non-overlapping container check!
            ...
 
-       text: Text
+       text: str
        if text != b'other bytes':  # Error: non-overlapping equality check!
            ...
 

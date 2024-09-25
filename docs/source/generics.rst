@@ -1079,7 +1079,7 @@ Generic protocols
 
 Mypy supports generic protocols (see also :ref:`protocol-types`). Several
 :ref:`predefined protocols <predefined_protocols>` are generic, such as
-:py:class:`Iterable[T] <typing.Iterable>`, and you can define additional
+:py:class:`Iterable[T] <collections.abc.Iterable>`, and you can define additional
 generic protocols. Generic protocols mostly follow the normal rules for
 generic classes. Example (Python 3.12 syntax):
 
@@ -1202,7 +1202,8 @@ type aliases (it also supports non-generic type aliases):
 
 .. code-block:: python
 
-    from typing import Iterable, Callable
+    from collections.abc import Iterable
+    from typing import Callable
 
     type TInt[S] = tuple[int, S]
     type UInt[S] = S | int
