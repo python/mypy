@@ -316,7 +316,7 @@ Generic methods and generic self
 ********************************
 
 You can also define generic methods. In
-particular, the ``self`` argument may also be generic, allowing a
+particular, the ``self`` parameter may also be generic, allowing a
 method to return the most precise type known at the point of access.
 In this way, for example, you can type check a chain of setter
 methods (Python 3.12 syntax):
@@ -347,7 +347,7 @@ checked properly, since the return type of ``set_scale`` would be
 
 When using the legacy syntax, just use a type variable in the
 method signature that is different from class type parameters (if any
-are defined). Here is the abaove example using the legacy
+are defined). Here is the above example using the legacy
 syntax (3.11 and earlier):
 
 .. code-block:: python
@@ -584,7 +584,7 @@ Let us illustrate this by few simple examples:
   Another example of invariant type is ``dict``. Most mutable containers
   are invariant.
 
-When using the Python 3.12 syntax for generics, mypy will be automatically
+When using the Python 3.12 syntax for generics, mypy will automatically
 infer the most flexible variance for each class type variable. Here
 ``Box`` will be inferred as covariant:
 
@@ -1028,13 +1028,13 @@ achieved by combining with :py:func:`@overload <typing.overload>` (Python 3.12 s
 
     # Bare decorator usage
     @overload
-    def atomic[F: Callable[..., Any]](__func: F) -> F: ...
+    def atomic[F: Callable[..., Any]](func: F, /) -> F: ...
     # Decorator with arguments
     @overload
     def atomic[F: Callable[..., Any]](*, savepoint: bool = True) -> Callable[[F], F]: ...
 
     # Implementation
-    def atomic(__func: Callable[..., Any] | None = None, *, savepoint: bool = True):
+    def atomic(func: Callable[..., Any] | None = None, /, *, savepoint: bool = True):
         def decorator(func: Callable[..., Any]):
             ...  # Code goes here
         if __func is not None:
@@ -1060,13 +1060,13 @@ Here is the decorator from the example using the legacy syntax
 
     # Bare decorator usage
     @overload
-    def atomic(__func: F) -> F: ...
+    def atomic(func: F, /) -> F: ...
     # Decorator with arguments
     @overload
     def atomic(*, savepoint: bool = True) -> Callable[[F], F]: ...
 
     # Implementation
-    def atomic(__func: Optional[Callable[..., Any]] = None, *, savepoint: bool = True):
+    def atomic(func: Optional[Callable[..., Any]] = None, /, *, savepoint: bool = True):
         ...  # Same as above
 
 Generic protocols
@@ -1337,7 +1337,8 @@ the obvious syntactic differences:
  * When using the new syntax, the variance of class type variables is always
    inferred.
  * Type aliases defined using the new syntax can contain forward references
-   and recursive references without using string literal escaping.
+   and recursive references without using string literal escaping. The
+   same is true for the bounds and constraints of type variables.
  * The new syntax lets you define a generic alias where the definition doesn't
    contain a reference to a type parameter. This is occasionally useful, at
    least when conditionally defining type aliases.
