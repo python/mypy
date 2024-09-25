@@ -434,15 +434,11 @@ Check type variable values [type-var]
 Mypy checks that value of a type variable is compatible with a value
 restriction or the upper bound type.
 
-Example:
+Example (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from typing import TypeVar
-
-    T1 = TypeVar('T1', int, float)
-
-    def add(x: T1, y: T1) -> T1:
+    def add[T1: (int, float)](x: T1, y: T1) -> T1:
         return x + y
 
     add(4, 5.5)  # OK
@@ -783,27 +779,25 @@ Example:
 Safe handling of abstract type object types [type-abstract]
 -----------------------------------------------------------
 
-Mypy always allows instantiating (calling) type objects typed as ``Type[t]``,
+Mypy always allows instantiating (calling) type objects typed as ``type[t]``,
 even if it is not known that ``t`` is non-abstract, since it is a common
 pattern to create functions that act as object factories (custom constructors).
 Therefore, to prevent issues described in the above section, when an abstract
-type object is passed where ``Type[t]`` is expected, mypy will give an error.
-Example:
+type object is passed where ``type[t]`` is expected, mypy will give an error.
+Example (Python 3.12 syntax):
 
 .. code-block:: python
 
    from abc import ABCMeta, abstractmethod
-   from typing import List, Type, TypeVar
 
    class Config(metaclass=ABCMeta):
        @abstractmethod
        def get_value(self, attr: str) -> str: ...
 
-   T = TypeVar("T")
-   def make_many(typ: Type[T], n: int) -> List[T]:
+   def make_many[T](typ: type[T], n: int) -> list[T]:
        return [typ() for _ in range(n)]  # This will raise if typ is abstract
 
-   # Error: Only concrete class can be given where "Type[Config]" is expected [type-abstract]
+   # Error: Only concrete class can be given where "type[Config]" is expected [type-abstract]
    make_many(Config, 5)
 
 .. _code-safe-super:

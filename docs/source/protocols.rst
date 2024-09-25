@@ -225,7 +225,7 @@ such as trees and linked lists:
 
 .. code-block:: python
 
-   from typing import TypeVar, Optional, Protocol
+   from typing import Optional, Protocol
 
    class TreeLike(Protocol):
        value: int
@@ -315,8 +315,8 @@ member:
                             # different name and kind in the callback
 
 Callback protocols and :py:data:`~typing.Callable` types can be used mostly interchangeably.
-Argument names in :py:meth:`__call__ <object.__call__>` methods must be identical, unless
-a double underscore prefix is used. For example:
+Parameter names in :py:meth:`__call__ <object.__call__>` methods must be identical, unless
+the parameters are positional-only. Example (using the legacy syntax for generic functions):
 
 .. code-block:: python
 
@@ -325,7 +325,8 @@ a double underscore prefix is used. For example:
    T = TypeVar('T')
 
    class Copy(Protocol):
-       def __call__(self, __origin: T) -> T: ...
+       # '/' marks the end of positional-only parameters
+       def __call__(self, origin: T, /) -> T: ...
 
    copy_a: Callable[[T], T]
    copy_b: Copy
