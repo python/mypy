@@ -162,7 +162,7 @@ jobs:
           ./configure --prefix=/opt/pythondev
           make -j$(nproc)
           sudo make install
-          ln -s /opt/pythondev/bin/python3 /opt/pythondev/bin/python
+          sudo ln -s /opt/pythondev/bin/python3 /opt/pythondev/bin/python
           echo "/opt/pythondev/bin" >> $GITHUB_PATH
     - uses: actions/setup-python@v5
       if: ${{ !(matrix.debug_build || endsWith(matrix.python, '-dev')) }}
