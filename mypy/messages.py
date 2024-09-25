@@ -2942,9 +2942,9 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
         for tvar in tp.variables:
             if isinstance(tvar, TypeVarType):
                 upper_bound = get_proper_type(tvar.upper_bound)
-                if (
+                if not (
                     isinstance(upper_bound, Instance)
-                    and upper_bound.type.fullname != "builtins.object"
+                    and upper_bound.type.fullname == "builtins.object"
                 ):
                     tvars.append(f"{tvar.name}: {format_type_bare(upper_bound, options)}")
                 elif tvar.values:

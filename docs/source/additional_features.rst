@@ -46,21 +46,18 @@ define dataclasses. For example:
     UnorderedPoint(1, 2) < UnorderedPoint(3, 4)  # Error: Unsupported operand types
 
 Dataclasses can be generic and can be used in any other way a normal
-class can be used:
+class can be used (Python 3.12 syntax):
 
 .. code-block:: python
 
     from dataclasses import dataclass
-    from typing import Generic, TypeVar
-
-    T = TypeVar('T')
 
     @dataclass
-    class BoxedData(Generic[T]):
+    class BoxedData[T]:
         data: T
         label: str
 
-    def unbox(bd: BoxedData[T]) -> T:
+    def unbox[T](bd: BoxedData[T]) -> T:
         ...
 
     val = unbox(BoxedData(42, "<important>"))  # OK, inferred type is int
@@ -98,17 +95,16 @@ does **not** work:
 
 
 To have Mypy recognize a wrapper of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`
-as a dataclass decorator, consider using the :py:func:`~typing.dataclass_transform` decorator:
+as a dataclass decorator, consider using the :py:func:`~typing.dataclass_transform`
+decorator (example uses Python 3.12 syntax):
 
 .. code-block:: python
 
     from dataclasses import dataclass, Field
-    from typing import TypeVar, dataclass_transform
-
-    T = TypeVar('T')
+    from typing import dataclass_transform
 
     @dataclass_transform(field_specifiers=(Field,))
-    def my_dataclass(cls: type[T]) -> type[T]:
+    def my_dataclass[T](cls: type[T]) -> type[T]:
         ...
         return dataclass(cls)
 

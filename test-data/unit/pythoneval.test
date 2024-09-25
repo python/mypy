@@ -2196,3 +2196,23 @@ type K4 = None | B[int]
 
 type L1 = Never
 type L2 = list[Never]
+
+[case testPEP695VarianceInferenceSpecialCaseWithTypeshed]
+# flags: --python-version=3.12
+class C1[T1, T2](list[T1]):
+    def m(self, a: T2) -> None: ...
+
+def func1(p: C1[int, object]):
+    x: C1[int, int] = p
+
+class C2[T1, T2, T3](dict[T2, T3]):
+    def m(self, a: T1) -> None: ...
+
+def func2(p: C2[object, int, int]):
+    x: C2[int, int, int] = p
+
+class C3[T1, T2](tuple[T1, ...]):
+    def m(self, a: T2) -> None: ...
+
+def func3(p: C3[int, object]):
+    x: C3[int, int] = p

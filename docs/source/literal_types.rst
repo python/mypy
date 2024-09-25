@@ -264,19 +264,15 @@ use the same technique with regular objects, tuples, or namedtuples.
 Similarly, tags do not need to be specifically str Literals: they can be any type
 you can normally narrow within ``if`` statements and the like. For example, you
 could have your tags be int or Enum Literals or even regular classes you narrow
-using ``isinstance()``:
+using ``isinstance()`` (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from typing import Generic, TypeVar, Union
-
-    T = TypeVar('T')
-
-    class Wrapper(Generic[T]):
+    class Wrapper[T]:
         def __init__(self, inner: T) -> None:
             self.inner = inner
 
-    def process(w: Union[Wrapper[int], Wrapper[str]]) -> None:
+    def process(w: Wrapper[int] | Wrapper[str]) -> None:
         # Doing `if isinstance(w, Wrapper[int])` does not work: isinstance requires
         # that the second argument always be an *erased* type, with no generics.
         # This is because generics are a typing-only concept and do not exist at
