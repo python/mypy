@@ -1507,3 +1507,41 @@ x = 0  # not unreachable
 
 f2: Callable[[], NoReturn] = lambda: foo()
 x = 0  # not unreachable
+
+[case testUnreachableTypeGuardNever]
+# flags: --warn-unreachable
+from typing_extensions import Never, TypeGuard
+
+def guard(x: object) -> TypeGuard[Never]:
+    pass
+
+a: object
+assert not guard(a)
+
+if guard(a):
+    reveal_type(a)  # E: Statement is unreachable
+else:
+    reveal_type(a)  # N: Revealed type is "builtins.object"
+
+assert guard(a)
+b = 0  # E: Statement is unreachable
+[builtins fixtures/tuple.pyi]
+
+[case testUnreachableTypeIsNever]
+# flags: --warn-unreachable
+from typing_extensions import Never, TypeIs
+
+def guard(x: object) -> TypeIs[Never]:
+    pass
+
+a: object
+assert not guard(a)
+
+if guard(a):
+    reveal_type(a)  # E: Statement is unreachable
+else:
+    reveal_type(a)  # N: Revealed type is "builtins.object"
+
+assert guard(a)
+b = 0  # E: Statement is unreachable
+[builtins fixtures/tuple.pyi]
