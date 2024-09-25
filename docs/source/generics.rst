@@ -202,11 +202,12 @@ Here is the above example using the legacy syntax (Python 3.11 and earlier):
 
 .. note::
 
-    You have to add an explicit :py:class:`~typing.Mapping` base class
+    You have to add an explicit :py:class:`~collections.abc.Mapping` base class
     if you want mypy to consider a user-defined class as a mapping (and
-    :py:class:`~typing.Sequence` for sequences, etc.). This is because mypy doesn't use
-    *structural subtyping* for these ABCs, unlike simpler protocols
-    like :py:class:`~typing.Iterable`, which use :ref:`structural subtyping <protocol-types>`.
+    :py:class:`~collections.abc.Sequence` for sequences, etc.). This is because
+    mypy doesn't use *structural subtyping* for these ABCs, unlike simpler protocols
+    like :py:class:`~collections.abc.Iterable`, which use
+    :ref:`structural subtyping <protocol-types>`.
 
 When using the legacy syntax, :py:class:`Generic <typing.Generic>` can be omitted
 from bases if there are
@@ -253,7 +254,7 @@ Functions can also be generic, i.e. they can have type parameters (Python 3.12 s
 
 .. code-block:: python
 
-   from typing Sequence
+   from collections.abc import Sequence
 
    # A generic function!
    def first[T](seq: Sequence[T]) -> T:
@@ -570,7 +571,7 @@ Let us illustrate this by few simple examples:
   arbitrary shape (not just triangles), everything still works.
 
 * ``list`` is an invariant generic type. Naively, one would think
-  that it is covariant, like :py:class:`~typing.Sequence` above, but consider this code:
+  that it is covariant, like :py:class:`~collections.abc.Sequence` above, but consider this code:
 
   .. code-block:: python
 
