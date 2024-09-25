@@ -455,10 +455,10 @@ functions, they differ in important ways:
 While both TypeIs and TypeGuard allow you to define custom type narrowing
 functions, they differ in important ways:
 
-- **Type narrowing behavior**: TypeIs narrows the type in both the if and else branches, 
+- **Type narrowing behavior**: TypeIs narrows the type in both the if and else branches,
   whereas TypeGuard narrows only in the if branch.
 
-- **Compatibility requirement**: TypeIs requires that the narrowed type T be 
+- **Compatibility requirement**: TypeIs requires that the narrowed type T be
   compatible with the input type of the function. TypeGuard does not have this restriction.
 
 - **Type inference**: With TypeIs, the type checker may infer a more precise type by
