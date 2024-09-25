@@ -228,6 +228,7 @@ instance of ``C`` or the type of ``C`` itself. This also works with
 
 
 .. _union-types:
+.. _alternative_union_syntax:
 
 Union types
 ***********
@@ -236,8 +237,8 @@ Python functions often accept values of two or more different
 types. You can use :ref:`overloading <function-overloading>` to
 represent this, but union types are often more convenient.
 
-Use the ``Union[T1, ..., Tn]`` type constructor to construct a union
-type. For example, if an argument has type ``Union[int, str]``, both
+Use the ``T1 | ... | Tn`` type constructor to construct a union
+type. For example, if an argument has type ``int | str``, both
 integers and strings are valid argument values.
 
 You can use an :py:func:`isinstance` check to narrow down a union type to a
@@ -245,9 +246,7 @@ more specific type:
 
 .. code-block:: python
 
-   from typing import Union
-
-   def f(x: Union[int, str]) -> None:
+   def f(x: int | str) -> None:
        x + 1     # Error: str + int is not valid
        if isinstance(x, int):
            # Here type of x is int.
@@ -269,20 +268,41 @@ more specific type:
     since the caller may have to use :py:func:`isinstance` before doing anything
     interesting with the value.
 
+Python 3.9 and older only partially support this syntax. Instead, you can
+use the legacy ``Union[T1, ..., Tn]`` type constructor.
+
+This example uses the legacy ``Union[...]`` syntax (Python 3.9 and earlier,
+but also supported on later Python versions):
+
+.. code-block:: python
+
+   from typing import Union
+
+   def f(x: Union[int, str]) -> None:
+       ...
+
+It is also possible to use the new syntax with versions of Python where it
+isn't supported by the runtime with some limitations, if you use
+``from __future__ import annotations`` (see :ref:`runtime_troubles`):
+
+.. code-block:: python
+
+   from __future__ import annotations
+
+   def f(x: int | str) -> None:   # OK on Python 3.7 and later
+       ...
+
 .. _strict_optional:
 
 Optional types and the None type
 ********************************
 
-You can use the :py:data:`~typing.Optional` type modifier to define a type variant
-that allows ``None``, such as ``Optional[int]`` (``Optional[X]`` is
-the preferred shorthand for ``Union[X, None]``):
+You can use ``t | None`` to define a type variant that allows ``None`` values,
+such as ``int | None``. This is called an *optional type*:
 
 .. code-block:: python
 
-   from typing import Optional
-
-   def strlen(s: str) -> Optional[int]:
+   def strlen(s: str) -> int | None:
        if not s:
            return None  # OK
        return len(s)
@@ -292,12 +312,23 @@ the preferred shorthand for ``Union[X, None]``):
            return None  # Error: None not compatible with int
        return len(s)
 
-Most operations will not be allowed on unguarded ``None`` or :py:data:`~typing.Optional`
-values:
+To support Python 3.9 and earlier, you can use the :py:data:`~typing.Optional`
+type modifier instead, such as ``Optional[int]`` (``Optional[X]`` is
+the preferred shorthand for ``Union[X, None]``):
 
 .. code-block:: python
 
-   def my_inc(x: Optional[int]) -> int:
+   from typing import Optional
+
+   def strlen(s: str) -> Optional[int]:
+       ...
+
+Most operations will not be allowed on unguarded ``None`` or *optional* values
+(values with an optional type):
+
+.. code-block:: python
+
+   def my_inc(x: int | None) -> int:
        return x + 1  # Error: Cannot add None and int
 
 Instead, an explicit ``None`` check is required. Mypy has
@@ -307,7 +338,7 @@ recognizes ``is None`` checks:
 
 .. code-block:: python
 
-   def my_inc(x: Optional[int]) -> int:
+   def my_inc(x: int | None) -> int:
        if x is None:
            return 0
        else:
@@ -323,7 +354,7 @@ Other supported checks for guarding against a ``None`` value include
 
 .. code-block:: python
 
-   def concat(x: Optional[str], y: Optional[str]) -> Optional[str]:
+   def concat(x: str | None, y: str | None) -> str | None:
        if x is not None and y is not None:
            # Both x and y are not None here
            return x + y
@@ -340,7 +371,7 @@ will complain about the possible ``None`` value. You can use
 .. code-block:: python
 
    class Resource:
-       path: Optional[str] = None
+       path: str | None = None
 
        def initialize(self, path: str) -> None:
            self.path = path
@@ -363,7 +394,7 @@ This is why you need to annotate an attribute in cases like the class
 .. code-block:: python
 
     class Resource:
-        path: Optional[str] = None
+        path: str | None = None
         ...
 
 This also works for attributes defined within methods:
@@ -372,10 +403,11 @@ This also works for attributes defined within methods:
 
     class Counter:
         def __init__(self) -> None:
-            self.count: Optional[int] = None
+            self.count: int | None = None
 
-This is not a problem when using variable annotations, since no initial
-value is needed:
+Often it's easier to not use any initial value for an attribute.
+This way you don't need to use an optional type and can avoid ``assert ... is not None``
+checks. No initial value is needed if you annotate an attribute in the class body:
 
 .. code-block:: python
 
@@ -390,13 +422,13 @@ the right thing without an annotation:
 .. code-block:: python
 
    def f(i: int) -> None:
-       n = None  # Inferred type Optional[int] because of the assignment below
+       n = None  # Inferred type 'int | None' because of the assignment below
        if i > 0:
             n = i
        ...
 
 Sometimes you may get the error "Cannot determine type of <something>". In this
-case you should add an explicit ``Optional[...]`` annotation (or type comment).
+case you should add an explicit ``... | None`` annotation.
 
 .. note::
 
@@ -414,25 +446,11 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
 
 .. note::
 
-    ``Optional[...]`` *does not* mean a function argument with a default value.
-    It simply means that ``None`` is a valid value for the argument. This is
-    a common confusion because ``None`` is a common default value for arguments.
-
-.. _alternative_union_syntax:
-
-X | Y syntax for Unions
------------------------
-
-:pep:`604` introduced an alternative way for spelling union types. In Python
-3.10 and later, you can write ``Union[int, str]`` as ``int | str``. It is
-possible to use this syntax in versions of Python where it isn't supported by
-the runtime with some limitations (see :ref:`runtime_troubles`).
-
-.. code-block:: python
-
-    t1: int | str  # equivalent to Union[int, str]
-
-    t2: int | None  # equivalent to Optional[int]
+    The type ``... | None`` *does not* mean a function parameter with a default value.
+    It simply means that ``None`` is a valid argument value. This is
+    a common confusion because ``None`` is a common default value for parameters,
+    and parameters with default values are sometimes called *optional* parameters
+    (or arguments).
 
 .. _type-aliases:
 
@@ -501,7 +519,7 @@ introduced in Python 3.10 (:pep:`613`):
 
    from typing import TypeAlias  # "from typing_extensions" in Python 3.9 and earlier
 
-   AliasType: TypeAlias = Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]
+   AliasType: TypeAlias = list[dict[tuple[int, str], set[int]]] | tuple[str, list[str]]
 
 .. _named-tuples:
 
