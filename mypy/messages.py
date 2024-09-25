@@ -2560,14 +2560,25 @@ def format_type_inner(
             return typ.name_with_suffix()
     elif isinstance(typ, CompoundType):
         # types_list = [typ.units.left, typ.units.right]
-        if isinstance(typ.units, OpType):
-            left_item = format(typ.units.left) or "()"
-            right_item = format(typ.units.right) or "()"
-            s = f"{left_item} / {right_item}"
-        elif isinstance(typ.units, PowerType):
-            base_item = format(typ.units.base) or "()"
-            power_item = format(typ.units.power) or "()"
-            s = f"{base_item} ** {power_item}"
+        arg = format(typ.numeric_type[-1]) or "()"
+        unit = format(typ.units) or "()"
+        s = f"{unit}[{arg}]"
+        return s
+    elif isinstance(typ, OpType):
+        left_item = format(typ.left) or "()"
+        left_item = left_item.split("[")[0]
+        right_item = format(typ.right) or "()"
+        right_item = right_item.split("[")[0]
+        if typ.op == 'div':
+            s = f"({left_item}/{right_item})"
+        elif typ.op == 'mult':
+            s = f"({left_item}*{right_item})"
+        return s
+    elif isinstance(typ, PowerType):
+        base = format(typ.base) or "()"
+        base = base.split("[")[0]
+        power = typ.power
+        s = f"{base}**{power}"
         return s
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
