@@ -78,6 +78,14 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
+        # - name: Test suit with py314-dev-ubuntu
+        #   python: '3.14-dev'
+        #   arch: x64
+        #   os: ubuntu-latest
+        #   toxenv: py
+        #   tox_extra_args: "-n 4"
+        #   allow_failure: true
+        #   test_mypyc: true
 
         - name: mypyc runtime tests with py39-macos
           python: '3.9.18'
