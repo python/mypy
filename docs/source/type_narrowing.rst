@@ -429,6 +429,7 @@ to str in the if branch and to int in the else branch.
 
 Key points:
 
+
 - The function must accept at least one positional argument.
 
 - The return type is annotated as ``TypeIs[T]``, where ``T`` is the type you
@@ -450,14 +451,18 @@ TypeIs vs TypeGuard
 While both TypeIs and TypeGuard allow you to define custom type narrowing
 functions, they differ in important ways:
 
-- **Type narrowing behavior**: TypeIs narrows the type in both the if and else branches,
-whereas TypeGuard narrows only in the if branch.
 
-- **Compatibility requirement**: TypeIs requires that the narrowed type T be compatible
-with the input type of the function. TypeGuard does not have this restriction.
+While both TypeIs and TypeGuard allow you to define custom type narrowing
+functions, they differ in important ways:
+
+- **Type narrowing behavior**: TypeIs narrows the type in both the if and else branches, 
+  whereas TypeGuard narrows only in the if branch.
+
+- **Compatibility requirement**: TypeIs requires that the narrowed type T be 
+  compatible with the input type of the function. TypeGuard does not have this restriction.
 
 - **Type inference**: With TypeIs, the type checker may infer a more precise type by
-combining existing type information with T.
+  combining existing type information with T.
 
 Here's an example demonstrating the behavior with TypeGuard:
 
