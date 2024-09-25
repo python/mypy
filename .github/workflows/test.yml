@@ -31,45 +31,45 @@ jobs:
         include:
         # Make sure to run mypyc compiled unit tests for both
         # the oldest and newest supported Python versions
-        # - name: Test suite with py38-ubuntu, mypyc-compiled
-        #   python: '3.8'
-        #   arch: x64
-        #   os: ubuntu-latest
-        #   toxenv: py
-        #   tox_extra_args: "-n 4"
-        #   test_mypyc: true
-        # - name: Test suite with py38-windows-64
-        #   python: '3.8'
-        #   arch: x64
-        #   os: windows-latest
-        #   toxenv: py38
-        #   tox_extra_args: "-n 4"
-        # - name: Test suite with py39-ubuntu
-        #   python: '3.9'
-        #   arch: x64
-        #   os: ubuntu-latest
-        #   toxenv: py
-        #   tox_extra_args: "-n 4"
-        # - name: Test suite with py310-ubuntu
-        #   python: '3.10'
-        #   arch: x64
-        #   os: ubuntu-latest
-        #   toxenv: py
-        #   tox_extra_args: "-n 4"
-        # - name: Test suite with py311-ubuntu, mypyc-compiled
-        #   python: '3.11'
-        #   arch: x64
-        #   os: ubuntu-latest
-        #   toxenv: py
-        #   tox_extra_args: "-n 4"
-        #   test_mypyc: true
-        # - name: Test suite with py312-ubuntu, mypyc-compiled
-        #   python: '3.12'
-        #   arch: x64
-        #   os: ubuntu-latest
-        #   toxenv: py
-        #   tox_extra_args: "-n 4"
-        #   test_mypyc: true
+        - name: Test suite with py38-ubuntu, mypyc-compiled
+          python: '3.8'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
+        - name: Test suite with py38-windows-64
+          python: '3.8'
+          arch: x64
+          os: windows-latest
+          toxenv: py38
+          tox_extra_args: "-n 4"
+        - name: Test suite with py39-ubuntu
+          python: '3.9'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+        - name: Test suite with py310-ubuntu
+          python: '3.10'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+        - name: Test suite with py311-ubuntu, mypyc-compiled
+          python: '3.11'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
+        - name: Test suite with py312-ubuntu, mypyc-compiled
+          python: '3.12'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
 
         - name: Test suit with py313-dev-ubuntu, mypyc-compiled
           python: '3.13-dev'
@@ -164,14 +164,13 @@ jobs:
 
     - name: Install tox
       run: |
-        echo ls /opt/pythondev/bin; ls /opt/pythondev/bin
         echo PATH; echo $PATH
         echo which python; which python
         echo which pip; which pip
         echo python version; python -c 'import sys; print(sys.version)'
         echo debug build; python -c 'import sysconfig; print(bool(sysconfig.get_config_var("Py_DEBUG")))'
         echo os.cpu_count; python -c 'import os; print(os.cpu_count())'
-        echo os.sched_getaffinity; python -c 'import os; print("os.sched_getaffinity", len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
+        echo os.sched_getaffinity; python -c 'import os; print(len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
         pip install setuptools==68.2.2 tox==4.11.0
 
     - name: Compiled with mypyc
