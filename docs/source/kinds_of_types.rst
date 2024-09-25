@@ -604,14 +604,21 @@ doesn't see that the ``buyer`` variable has type ``ProUser``:
    buyer.pay()  # Rejected, not a method on User
 
 However, using the ``type[C]`` syntax and a type variable with an upper bound (see
-:ref:`type-variable-upper-bound`) we can do better:
+:ref:`type-variable-upper-bound`) we can do better (Python 3.12 syntax):
+
+.. code-block:: python
+
+   def new_user[U: User](user_class: type[U]) -> U:
+       # Same implementation as before
+
+Here is the example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
    U = TypeVar('U', bound=User)
 
    def new_user(user_class: type[U]) -> U:
-       # Same  implementation as before
+       # Same implementation as before
 
 Now mypy will infer the correct type of the result when we call
 ``new_user()`` with a specific subclass of ``User``:
