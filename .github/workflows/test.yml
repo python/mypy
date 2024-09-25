@@ -71,14 +71,14 @@ jobs:
           tox_extra_args: "-n 4"
           test_mypyc: true
 
-        - name: Test suit with py313-dev-ubuntu, mypyc-compiled
+        - name: Test suite with py313-dev-ubuntu, mypyc-compiled
           python: '3.13-dev'
           arch: x64
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
-        # - name: Test suit with py314-dev-ubuntu
+        # - name: Test suite with py314-dev-ubuntu
         #   python: '3.14-dev'
         #   arch: x64
         #   os: ubuntu-latest
@@ -146,19 +146,18 @@ jobs:
         PYTHONDIR=~/python-debug/python-$PYTHONVERSION
         VENV=$PYTHONDIR/env
         ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
-        # TODO: does this do anything? env vars aren't passed to the next step right
-        source $VENV/bin/activate
-    - name: Latest Dev build
+        echo "$VENV/bin" >> $GITHUB_PATH
+    - name: Latest dev build
       if: ${{ endsWith(matrix.python, '-dev') }}
       run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential gdb lcov libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncurses5-dev \
-            libreadline6-dev libsqlite3-dev libssl-dev lzma lzma-dev tk-dev uuid-dev zlib1g-dev
           git clone --depth 1 https://github.com/python/cpython.git /tmp/cpython --branch $( echo ${{ matrix.python }} | sed 's/-dev//' )
           cd /tmp/cpython
           echo git rev-parse HEAD; git rev-parse HEAD
           git show --no-patch
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            build-essential gdb lcov libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncurses5-dev \
+            libreadline6-dev libsqlite3-dev libssl-dev lzma lzma-dev tk-dev uuid-dev zlib1g-dev
           ./configure --prefix=/opt/pythondev
           make -j$(nproc)
           sudo make install
