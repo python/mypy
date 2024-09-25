@@ -5889,7 +5889,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Also note that a care must be taken to unwrap this back at read places
                         # where we use this to narrow down declared type.
                         if node.callee.type_guard is not None:
-                            if isinstance(get_proper_type(node.callee.type_guard), UninhabitedType):
+                            if isinstance(
+                                get_proper_type(node.callee.type_guard), UninhabitedType
+                            ):
                                 return None, {}
                             return {expr: TypeGuardedType(node.callee.type_guard)}, {}
                         else:
