@@ -1836,6 +1836,15 @@ c: C[int, [int, str], str]  # E: Nested parameter specifications are not allowed
 reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
 [builtins fixtures/paramspec.pyi]
 
+[case testParamSpecInheritNoCrashOnNested]
+from typing import Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+class C(Generic[P]): ...
+class D(C[int, [int, str], str]): ... # E: Nested parameter specifications are not allowed
+[builtins fixtures/paramspec.pyi]
+
 [case testParamSpecConcatenateSelfType]
 from typing import Callable
 from typing_extensions import ParamSpec, Concatenate

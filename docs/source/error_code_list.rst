@@ -434,15 +434,11 @@ Check type variable values [type-var]
 Mypy checks that value of a type variable is compatible with a value
 restriction or the upper bound type.
 
-Example:
+Example (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from typing import TypeVar
-
-    T1 = TypeVar('T1', int, float)
-
-    def add(x: T1, y: T1) -> T1:
+    def add[T1: (int, float)](x: T1, y: T1) -> T1:
         return x + y
 
     add(4, 5.5)  # OK
@@ -783,27 +779,25 @@ Example:
 Safe handling of abstract type object types [type-abstract]
 -----------------------------------------------------------
 
-Mypy always allows instantiating (calling) type objects typed as ``Type[t]``,
+Mypy always allows instantiating (calling) type objects typed as ``type[t]``,
 even if it is not known that ``t`` is non-abstract, since it is a common
 pattern to create functions that act as object factories (custom constructors).
 Therefore, to prevent issues described in the above section, when an abstract
-type object is passed where ``Type[t]`` is expected, mypy will give an error.
-Example:
+type object is passed where ``type[t]`` is expected, mypy will give an error.
+Example (Python 3.12 syntax):
 
 .. code-block:: python
 
    from abc import ABCMeta, abstractmethod
-   from typing import List, Type, TypeVar
 
    class Config(metaclass=ABCMeta):
        @abstractmethod
        def get_value(self, attr: str) -> str: ...
 
-   T = TypeVar("T")
-   def make_many(typ: Type[T], n: int) -> List[T]:
+   def make_many[T](typ: type[T], n: int) -> list[T]:
        return [typ() for _ in range(n)]  # This will raise if typ is abstract
 
-   # Error: Only concrete class can be given where "Type[Config]" is expected [type-abstract]
+   # Error: Only concrete class can be given where "type[Config]" is expected [type-abstract]
    make_many(Config, 5)
 
 .. _code-safe-super:
@@ -1148,6 +1142,34 @@ Note that in cases where you ignore this error, mypy will usually still infer th
 types you expect.
 
 See :ref:`overloading <function-overloading>` for more explanation.
+
+
+.. _code-overload-cannot-match:
+
+Check for overload signatures that cannot match [overload-cannot-match]
+--------------------------------------------------------------------------
+
+Warn if an ``@overload`` variant can never be matched, because an earlier
+overload has a wider signature. For example, this can happen if the two
+overloads accept the same parameters and each parameter on the first overload
+has the same type or a wider type than the corresponding parameter on the second
+overload.
+
+Example:
+
+.. code-block:: python
+
+    from typing import overload, Union
+
+    @overload
+    def process(response1: object, response2: object) -> object:
+        ...
+    @overload
+    def process(response1: int, response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overload-cannot-match]
+        ...
+
+    def process(response1: object, response2: object) -> object:
+        return response1 + response2
 
 .. _code-annotation-unchecked:
 

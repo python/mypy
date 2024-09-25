@@ -256,11 +256,34 @@ method receives an integer we return a single item. If it receives a
 ``slice``, we return a :py:class:`~typing.Sequence` of items.
 
 We can precisely encode this relationship between the argument and the
-return type by using overloads like so:
+return type by using overloads like so (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from typing import Sequence, TypeVar, Union, overload
+    from collections.abc import Sequence
+    from typing import overload
+
+    class MyList[T](Sequence[T]):
+        @overload
+        def __getitem__(self, index: int) -> T: ...
+
+        @overload
+        def __getitem__(self, index: slice) -> Sequence[T]: ...
+
+        def __getitem__(self, index: int | slice) -> T | Sequence[T]:
+            if isinstance(index, int):
+                # Return a T here
+            elif isinstance(index, slice):
+                # Return a sequence of Ts here
+            else:
+                raise TypeError(...)
+
+Here is the same example using the legacy syntax (Python 3.11 and earlier):
+
+.. code-block:: python
+
+    from collections.abc import Sequence
+    from typing import TypeVar, Union, overload
 
     T = TypeVar('T')
 
@@ -697,14 +720,13 @@ Restricted methods in generic classes
 -------------------------------------
 
 In generic classes some methods may be allowed to be called only
-for certain values of type arguments:
+for certain values of type arguments (Python 3.12 syntax):
 
 .. code-block:: python
 
-   T = TypeVar('T')
-
-   class Tag(Generic[T]):
+   class Tag[T]:
        item: T
+
        def uppercase_item(self: Tag[str]) -> str:
            return self.item.upper()
 
@@ -714,18 +736,18 @@ for certain values of type arguments:
        ts.uppercase_item()  # This is OK
 
 This pattern also allows matching on nested types in situations where the type
-argument is itself generic:
+argument is itself generic (Python 3.12 syntax):
 
 .. code-block:: python
 
-  T = TypeVar('T', covariant=True)
-  S = TypeVar('S')
+   from collections.abc import Sequence
 
-   class Storage(Generic[T]):
+   class Storage[T]:
        def __init__(self, content: T) -> None:
-           self.content = content
-       def first_chunk(self: Storage[Sequence[S]]) -> S:
-           return self.content[0]
+           self._content = content
+
+       def first_chunk[S](self: Storage[Sequence[S]]) -> S:
+           return self._content[0]
 
    page: Storage[list[str]]
    page.first_chunk()  # OK, type is "str"
@@ -734,13 +756,13 @@ argument is itself generic:
                              # "first_chunk" with type "Callable[[Storage[Sequence[S]]], S]"
 
 Finally, one can use overloads on self-type to express precise types of
-some tricky methods:
+some tricky methods (Python 3.12 syntax):
 
 .. code-block:: python
 
-   T = TypeVar('T')
+   from typing import overload, Callable
 
-   class Tag(Generic[T]):
+   class Tag[T]:
        @overload
        def export(self: Tag[str]) -> str: ...
        @overload
@@ -799,23 +821,22 @@ Precise typing of alternative constructors
 ------------------------------------------
 
 Some classes may define alternative constructors. If these
-classes are generic, self-type allows giving them precise signatures:
+classes are generic, self-type allows giving them precise
+signatures (Python 3.12 syntax):
 
 .. code-block:: python
 
-   T = TypeVar('T')
+   from typing import Self
 
-   class Base(Generic[T]):
-       Q = TypeVar('Q', bound='Base[T]')
-
+   class Base[T]:
        def __init__(self, item: T) -> None:
            self.item = item
 
        @classmethod
-       def make_pair(cls: Type[Q], item: T) -> tuple[Q, Q]:
+       def make_pair(cls, item: T) -> tuple[Self, Self]:
            return cls(item), cls(item)
 
-   class Sub(Base[T]):
+   class Sub[T](Base[T]):
        ...
 
    pair = Sub.make_pair('yes')  # Type is "tuple[Sub[str], Sub[str]]"
