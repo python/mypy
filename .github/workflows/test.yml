@@ -163,6 +163,8 @@ jobs:
 
     - name: Install tox
       run: |
+        echo ls /opt/pythondev/bin; ls /opt/pythondev/bin
+        echo PATH; echo $PATH
         echo which python; which python
         echo which pip; which pip
         echo python version; python -c 'import sys; print(sys.version)'
