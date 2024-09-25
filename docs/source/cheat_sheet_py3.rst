@@ -349,7 +349,20 @@ Decorators
 **********
 
 Decorator functions can be expressed via generics. See
-:ref:`declaring-decorators` for more details.
+:ref:`declaring-decorators` for more details. Example using Python 3.12
+syntax:
+
+.. code-block:: python
+
+    from typing import Any, Callable
+
+    def bare_decorator[F: Callable[..., Any]](func: F) -> F:
+        ...
+
+    def decorator_args[F: Callable[..., Any]](url: str) -> Callable[[F], F]:
+        ...
+
+The same example using pre-3.12 syntax:
 
 .. code-block:: python
 
