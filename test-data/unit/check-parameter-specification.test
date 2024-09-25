@@ -2364,7 +2364,8 @@ def run3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwar
 
 def run_bad(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, *args)  # E: Argument 1 has incompatible type "*P.args"; expected "int"
-    return func2(1, **kwargs)  # E: Too many arguments
+    return func2(1, **kwargs)  # E: Too many arguments \
+                               # E: Argument 1 has incompatible type "int"; expected "P.args"
 
 def run_bad2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, 1, *args)
@@ -2375,5 +2376,7 @@ def run_bad3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.
     func2 = partial(func, 1, *args)
     return func2(1, **kwargs)  # E: Too many arguments \
                                # E: Argument 1 has incompatible type "int"; expected "P.args"
+
+
 
 [builtins fixtures/paramspec.pyi]
