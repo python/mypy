@@ -38,9 +38,10 @@ Python 3.12):
            return not self.items
 
 There are two syntax variants for defining generic classes in Python.
-Python 3.12 introduced a new dedicated syntax for defining generic
-classes (and also functions and type aliases, which we will discuss
-later). The above example used the new syntax. Most examples are
+Python 3.12 introduced a
+`new dedicated syntax <https://docs.python.org/3/whatsnew/3.12.html#pep-695-type-parameter-syntax>`_
+for defining generic classes (and also functions and type aliases, which
+we will discuss later). The above example used the new syntax. Most examples are
 given using both the new and the old (or legacy) syntax variants.
 Unless mentioned otherwise, they work the same -- but the new syntax
 is more readable and more convenient.
@@ -72,7 +73,7 @@ and earlier, but also supported on newer Python versions):
 
     There are currently no plans to deprecate the legacy syntax.
     You can freely mix code using the new and old syntax variants,
-    even within a single file.
+    even within a single file (but *not* within a single class).
 
 The ``Stack`` class can be used to represent a stack of any type:
 ``Stack[int]``, ``Stack[tuple[int, str]]``, etc. You can think of
@@ -310,6 +311,9 @@ inferred by mypy. This is not valid:
 
     first[int]([1, 2])  # Error: can't use [...] with generic function
 
+If you really need this, you can define a generic class with a ``__call__``
+method.
+
 .. _generic-methods-and-generic-self:
 
 Generic methods and generic self
@@ -519,8 +523,8 @@ Let us illustrate this by few simple examples:
     class Triangle(Shape): ...
     class Square(Shape): ...
 
-* Most immutable containers, such as :py:class:`~typing.Sequence` and
-  :py:class:`~typing.FrozenSet` are covariant. :py:data:`~typing.Union` is
+* Most immutable container types, such as :py:class:`~collections.abc.Sequence`
+  and :py:class:`~frozenset` are covariant. :py:data:`~typing.Union` is
   also covariant in all variables: ``Union[Triangle, int]`` is
   a subtype of ``Union[Shape, int]``.
 
