@@ -404,8 +404,8 @@ TypeIs
 
 Mypy should support TypeIs (:pep:`754`).
 
-A TypeIs function allows you to define custom type checks that 
-can narrow the type of a variable in both the if and else branches 
+A TypeIs function allows you to define custom type checks that
+can narrow the type of a variable in both the if and else branches
 of a conditional, similar to how the built-in isinstance() function works.
 
 Consider the following example using TypeIs:
@@ -425,33 +425,33 @@ Consider the following example using TypeIs:
             reveal_type(x)  # Revealed type is 'int'
             print(x + 1)  # Valid: x is int
 
-In this example, the function is_str is a type narrowing function 
-that returns TypeIs[str]. When used in an if statement, x is narrowed 
+In this example, the function is_str is a type narrowing function
+that returns TypeIs[str]. When used in an if statement, x is narrowed
 to str in the if branch and to int in the else branch.
 
 Key points:
 
 - The function must accept at least one positional argument.
-- The return type is annotated as ``TypeIs[T]``, where ``T`` is the type you 
+- The return type is annotated as ``TypeIs[T]``, where ``T`` is the type you
 want to narrow to.
 - The function must return a ``bool`` value.
 - In the ``if`` branch (when the function returns ``True``), the type of the
  argument is narrowed to the intersection of its original type and ``T``.
-- In the ``else`` branch (when the function returns ``False``), the type of 
-the argument is narrowed to the intersection of its original type and the 
+- In the ``else`` branch (when the function returns ``False``), the type of
+the argument is narrowed to the intersection of its original type and the
 complement of ``T``.
 
 TypeIs vs TypeGuard
 -------------------
 
-While both TypeIs and TypeGuard allow you to define custom type narrowing 
+While both TypeIs and TypeGuard allow you to define custom type narrowing
 functions, they differ in important ways:
 
-- **Type narrowing behavior**: TypeIs narrows the type in both the if and else branches, 
+- **Type narrowing behavior**: TypeIs narrows the type in both the if and else branches,
 whereas TypeGuard narrows only in the if branch.
-- **Compatibility requirement**: TypeIs requires that the narrowed type T be compatible 
+- **Compatibility requirement**: TypeIs requires that the narrowed type T be compatible
 with the input type of the function. TypeGuard does not have this restriction.
-- **Type inference**: With TypeIs, the type checker may infer a more precise type by 
+- **Type inference**: With TypeIs, the type checker may infer a more precise type by
 combining existing type information with T.
 
 Here's an example demonstrating the behavior with TypeGuard:
@@ -494,7 +494,7 @@ Generic TypeIs
 
 TypeIs with Additional Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-TypeIs functions can accept additional parameters beyond the first. 
+TypeIs functions can accept additional parameters beyond the first.
 The type narrowing applies only to the first argument.
 
 .. code-block:: python
@@ -516,8 +516,8 @@ The type narrowing applies only to the first argument.
 TypeIs in Methods
 ~~~~~~~~~~~~~~~~~
 
-A method can also serve as a ``TypeIs`` function. Note that in instance or 
-class methods, the type narrowing applies to the second parameter 
+A method can also serve as a ``TypeIs`` function. Note that in instance or
+class methods, the type narrowing applies to the second parameter
 (after ``self`` or ``cls``).
 
 .. code-block:: python
