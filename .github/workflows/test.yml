@@ -189,7 +189,7 @@ jobs:
 
     - name: Setup tox environment
       run: |
-        tox run -e ${{ matrix.toxenv }} --notes
+        tox run -e ${{ matrix.toxenv }} --notest
     - name: Test
       run: tox run -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
       continue-on-error: ${{ matrix.allow_failure == 'true' }}
