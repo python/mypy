@@ -88,8 +88,8 @@ Functions
 
 .. code-block:: python
 
-   from collections.abc import Iterator
-   from typing import Callable, Union, Optional
+   from collections.abc import Iterator, Callable
+   from typing import Union, Optional
 
    # This is how you annotate a function definition
    def stringify(num: int) -> str:
@@ -356,7 +356,8 @@ syntax:
 
 .. code-block:: python
 
-    from typing import Any, Callable
+    from collections.abc import Callable
+    from typing import Any
 
     def bare_decorator[F: Callable[..., Any]](func: F) -> F:
         ...
@@ -368,7 +369,8 @@ The same example using pre-3.12 syntax:
 
 .. code-block:: python
 
-    from typing import Any, Callable, TypeVar
+    from collections.abc import Callable
+    from typing import Any, TypeVar
 
     F = TypeVar('F', bound=Callable[..., Any])
 

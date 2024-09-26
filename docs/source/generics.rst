@@ -591,7 +591,7 @@ Let us illustrate this by few simple examples:
   Covariance should feel relatively intuitive, but contravariance and invariance
   can be harder to reason about.
 
-* :py:data:`~typing.Callable` is an example of type that behaves contravariant
+* :py:class:`~collections.abc.Callable` is an example of type that behaves contravariant
   in types of arguments. That is, ``Callable[[Shape], int]`` is a subtype of
   ``Callable[[Triangle], int]``, despite ``Shape`` being a supertype of
   ``Triangle``. To understand this, consider:
@@ -833,7 +833,8 @@ Here's how one could annotate the decorator (Python 3.12 syntax):
 
 .. code-block:: python
 
-   from typing import Any, Callable, cast
+   from collections.abc import Callable
+   from typing import Any, cast
 
    # A decorator that preserves the signature.
    def printing_decorator[F: Callable[..., Any]](func: F) -> F:
@@ -854,7 +855,8 @@ Here is the example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
-   from typing import Any, Callable, TypeVar, cast
+   from collections.abc import Callable
+   from typing import Any, TypeVar, cast
 
    F = TypeVar('F', bound=Callable[..., Any])
 
@@ -887,7 +889,7 @@ for a more faithful type annotation (Python 3.12 syntax):
 
 .. code-block:: python
 
-   from typing import Callable
+   from collections.abc import Callable
 
    def printing_decorator[**P, T](func: Callable[P, T]) -> Callable[P, T]:
        def wrapper(*args: P.args, **kwds: P.kwargs) -> T:
@@ -900,7 +902,8 @@ The same is possible using the legacy syntax with :py:class:`~typing.ParamSpec`
 
 .. code-block:: python
 
-   from typing import Callable, TypeVar
+   from collections.abc import Callable
+   from typing import TypeVar
    from typing_extensions import ParamSpec
 
    P = ParamSpec('P')
@@ -917,7 +920,7 @@ alter the signature of the input function (Python 3.12 syntax):
 
 .. code-block:: python
 
-   from typing import Callable
+   from collections.abc import Callable
 
    # We reuse 'P' in the return type, but replace 'T' with 'str'
    def stringify[**P, T](func: Callable[P, T]) -> Callable[P, str]:
@@ -937,7 +940,8 @@ Here is the above example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
-   from typing import Callable, TypeVar
+   from collections.abc import Callable
+   from typing import TypeVar
    from typing_extensions import ParamSpec
 
    P = ParamSpec('P')
@@ -953,7 +957,8 @@ You can also insert an argument in a decorator (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from typing import Callable, Concatenate
+    from collections.abc import Callable
+    from typing import Concatenate
 
     def printing_decorator[**P, T](func: Callable[P, T]) -> Callable[Concatenate[str, P], T]:
         def wrapper(msg: str, /, *args: P.args, **kwds: P.kwargs) -> T:
@@ -971,7 +976,8 @@ Here is the same function using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
-    from typing import Callable, TypeVar
+    from collections.abc import Callable
+    from typing import TypeVar
     from typing_extensions import Concatenate, ParamSpec
 
     P = ParamSpec('P')
@@ -993,7 +999,8 @@ similarly supported via generics (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from typing import Any, Callable
+    from colletions.abc import Callable
+    from typing import Any
 
     def route[F: Callable[..., Any]](url: str) -> Callable[[F], F]:
         ...
@@ -1011,7 +1018,8 @@ Here is the example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
-    from typing import Any, Callable, TypeVar
+    from collections.abc import Callable
+    from typing import Any, TypeVar
 
     F = TypeVar('F', bound=Callable[..., Any])
 
@@ -1027,7 +1035,8 @@ achieved by combining with :py:func:`@overload <typing.overload>` (Python 3.12 s
 
 .. code-block:: python
 
-    from typing import Any, Callable, overload
+    from collections.abc import Callable
+    from typing import Any, overload
 
     # Bare decorator usage
     @overload
@@ -1057,7 +1066,8 @@ Here is the decorator from the example using the legacy syntax
 
 .. code-block:: python
 
-    from typing import Any, Callable, Optional, TypeVar, overload
+    from collections.abc import Callable
+    from typing import Any, Optional, TypeVar, overload
 
     F = TypeVar('F', bound=Callable[..., Any])
 
@@ -1200,8 +1210,7 @@ type aliases (it also supports non-generic type aliases):
 
 .. code-block:: python
 
-    from collections.abc import Iterable
-    from typing import Callable
+    from collections.abc import Callable, Iterable
 
     type TInt[S] = tuple[int, S]
     type UInt[S] = S | int

@@ -155,7 +155,7 @@ and returns ``Rt`` is ``Callable[[A1, ..., An], Rt]``. Example:
 
 .. code-block:: python
 
-   from typing import Callable
+   from collections.abc import Callable
 
    def twice(i: int, next: Callable[[int], int]) -> int:
        return next(next(i))
@@ -164,6 +164,11 @@ and returns ``Rt`` is ``Callable[[A1, ..., An], Rt]``. Example:
        return i + 1
 
    print(twice(3, add))   # 5
+
+.. note::
+
+    Import :py:data:`Callable[...] <typing.Callable>` from ``typing`` instead
+    of ``collections.abc`` if you use Python 3.8 or earlier.
 
 You can only have positional arguments, and only ones without default
 values, in callable types. These cover the vast majority of uses of
@@ -178,7 +183,7 @@ Any)`` function signature. Example:
 
 .. code-block:: python
 
-   from typing import Callable
+   from collections.abc import Callable
 
    def arbitrary_call(f: Callable[..., int]) -> int:
        return f('x') + f(y=2)  # OK
@@ -205,7 +210,7 @@ Callables can also be used against type objects, matching their
 
 .. code-block:: python
 
-    from typing import Callable
+    from collections.abc import Callable
 
     class C:
         def __init__(self, app: str) -> None:

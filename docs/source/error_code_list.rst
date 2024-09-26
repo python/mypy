@@ -208,11 +208,11 @@ This example incorrectly uses the function ``log`` as a type:
         for x in objs:
             f(x)
 
-You can use :py:data:`~typing.Callable` as the type for callable objects:
+You can use :py:class:`~collections.abc.Callable` as the type for callable objects:
 
 .. code-block:: python
 
-    from typing import Callable
+    from collections.abc import Callable
 
     # OK
     def log_all(objs: list[object], f: Callable[[object], None]) -> None:

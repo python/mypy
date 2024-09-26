@@ -302,9 +302,10 @@ Callback protocols
 ******************
 
 Protocols can be used to define flexible callback types that are hard
-(or even impossible) to express using the :py:data:`Callable[...] <typing.Callable>` syntax, such as variadic,
-overloaded, and complex generic callbacks. They are defined with a special :py:meth:`__call__ <object.__call__>`
-member:
+(or even impossible) to express using the
+:py:class:`Callable[...] <collections.abc.Callable>` syntax,
+such as variadic, overloaded, and complex generic callbacks. They are defined with a
+special :py:meth:`__call__ <object.__call__>` member:
 
 .. code-block:: python
 
@@ -327,13 +328,14 @@ member:
    batch_proc([], bad_cb)   # Error! Argument 2 has incompatible type because of
                             # different name and kind in the callback
 
-Callback protocols and :py:data:`~typing.Callable` types can be used mostly interchangeably.
+Callback protocols and :py:class:`~collections.abc.Callable` types can be used mostly interchangeably.
 Parameter names in :py:meth:`__call__ <object.__call__>` methods must be identical, unless
 the parameters are positional-only. Example (using the legacy syntax for generic functions):
 
 .. code-block:: python
 
-   from typing import Callable, Protocol, TypeVar
+   from collections.abc import Callable
+   from typing import Protocol, TypeVar
 
    T = TypeVar('T')
 

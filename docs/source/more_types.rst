@@ -760,7 +760,8 @@ some tricky methods (Python 3.12 syntax):
 
 .. code-block:: python
 
-   from typing import overload, Callable
+   from collections.abc import Callable
+   from typing import overload
 
    class Tag[T]:
        @overload
