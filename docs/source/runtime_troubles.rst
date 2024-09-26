@@ -21,9 +21,9 @@ problems you may encounter.
 String literal types and type comments
 --------------------------------------
 
-Mypy let you add type annotations using the (now deprecated) ``# type:``
+Mypy lets you add type annotations using the (now deprecated) ``# type:``
 type comment syntax. These were required with Python versions older than 3.6,
-since they didn't have full native support type annotations. Example:
+since they didn't support type annotations on variables. Example:
 
 .. code-block:: python
 
