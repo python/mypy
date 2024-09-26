@@ -237,7 +237,7 @@ Python functions often accept values of two or more different
 types. You can use :ref:`overloading <function-overloading>` to
 represent this, but union types are often more convenient.
 
-Use the ``T1 | ... | Tn`` type constructor to construct a union
+Use ``T1 | ... | Tn`` to construct a union
 type. For example, if an argument has type ``int | str``, both
 integers and strings are valid argument values.
 
@@ -443,7 +443,7 @@ case you should add an explicit ``... | None`` annotation.
 
 .. note::
 
-    The type ``... | None`` *does not* mean a function parameter with a default value.
+    The type ``Optional[T]`` *does not* mean a function parameter with a default value.
     It simply means that ``None`` is a valid argument value. This is
     a common confusion because ``None`` is a common default value for parameters,
     and parameters with default values are sometimes called *optional* parameters
