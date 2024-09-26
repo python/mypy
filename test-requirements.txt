@@ -34,7 +34,7 @@ platformdirs==3.11.0
     # via black
 pluggy==1.4.0
     # via pytest
-psutil==5.9.6
+psutil==6.0.0
     # via -r test-requirements.in
 pytest==8.1.1
     # via
