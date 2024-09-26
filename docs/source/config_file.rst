@@ -575,7 +575,7 @@ section of the command line docs.
     :default: False
 
     Causes mypy to treat parameters with a ``None``
-    default value as having an implicit optional type (``t | None``).
+    default value as having an implicit optional type (``T | None``).
 
     **Note:** This was True by default in mypy versions 0.980 and earlier.
 

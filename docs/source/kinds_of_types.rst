@@ -294,7 +294,7 @@ isn't supported by the runtime with some limitations, if you use
 Optional types and the None type
 ********************************
 
-You can use ``t | None`` to define a type variant that allows ``None`` values,
+You can use ``T | None`` to define a type variant that allows ``None`` values,
 such as ``int | None``. This is called an *optional type*:
 
 .. code-block:: python

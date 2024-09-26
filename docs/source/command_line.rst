@@ -421,7 +421,7 @@ The following flags adjust how mypy handles values of type ``None``.
 .. option:: --implicit-optional
 
     This flag causes mypy to treat parameters with a ``None``
-    default value as having an implicit optional type (``t | None``).
+    default value as having an implicit optional type (``T | None``).
 
     For example, if this flag is set, mypy would assume that the ``x``
     parameter is actually of type ``int | None`` in the code snippet below,
@@ -575,7 +575,7 @@ of the above sections.
 .. option:: --local-partial-types
 
     In mypy, the most common cases for partial types are variables initialized using ``None``,
-    but without explicit ``... | None`` annotations. By default, mypy won't check partial types
+    but without explicit ``X | None`` annotations. By default, mypy won't check partial types
     spanning module top level or class top level. This flag changes the behavior to only allow
     partial types at local level, therefore it disallows inferring variable type for ``None``
     from two assignments in different scopes. For example:
