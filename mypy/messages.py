@@ -534,7 +534,8 @@ class MessageBuilder:
                     context,
                     code=codes.UNION_ATTR,
                 )
-                self.note(
+                if(typ_format == '"None"'):
+                    self.note(
                     'You can use "if <variable_name> is not None" check to guard against a None value',
                     context,
                     code=codes.UNION_ATTR,
