@@ -179,7 +179,7 @@ Function overloading
 ********************
 
 Sometimes the arguments and types in a function depend on each other
-in ways that can't be captured with a :py:data:`~typing.Union`. For example, suppose
+in ways that can't be captured with a :ref:`union types <union-types>`. For example, suppose
 we want to write a function that can accept x-y coordinates. If we pass
 in just a single x-y coordinate, we return a ``ClickEvent`` object. However,
 if we pass in two x-y coordinates, we return a ``DragEvent`` object.
@@ -188,12 +188,10 @@ Our first attempt at writing this function might look like this:
 
 .. code-block:: python
 
-    from typing import Union, Optional
-
     def mouse_event(x1: int,
                     y1: int,
-                    x2: Optional[int] = None,
-                    y2: Optional[int] = None) -> Union[ClickEvent, DragEvent]:
+                    x2: int | None = None,
+                    y2: int | None = None) -> ClickEvent | DragEvent:
         if x2 is None and y2 is None:
             return ClickEvent(x1, y1)
         elif x2 is not None and y2 is not None:
@@ -213,7 +211,7 @@ to more accurately describe the function's behavior:
 
 .. code-block:: python
 
-    from typing import Union, overload
+    from typing import overload
 
     # Overload *variants* for 'mouse_event'.
     # These variants give extra information to the type checker.
@@ -236,8 +234,8 @@ to more accurately describe the function's behavior:
 
     def mouse_event(x1: int,
                     y1: int,
-                    x2: Optional[int] = None,
-                    y2: Optional[int] = None) -> Union[ClickEvent, DragEvent]:
+                    x2: int | None = None,
+                    y2: int | None = None) -> ClickEvent | DragEvent:
         if x2 is None and y2 is None:
             return ClickEvent(x1, y1)
         elif x2 is not None and y2 is not None:
@@ -283,7 +281,7 @@ Here is the same example using the legacy syntax (Python 3.11 and earlier):
 .. code-block:: python
 
     from collections.abc import Sequence
-    from typing import TypeVar, Union, overload
+    from typing import TypeVar, overload
 
     T = TypeVar('T')
 
@@ -294,7 +292,7 @@ Here is the same example using the legacy syntax (Python 3.11 and earlier):
         @overload
         def __getitem__(self, index: slice) -> Sequence[T]: ...
 
-        def __getitem__(self, index: Union[int, slice]) -> Union[T, Sequence[T]]:
+        def __getitem__(self, index: int | slice) -> T | Sequence[T]:
             if isinstance(index, int):
                 # Return a T here
             elif isinstance(index, slice):
@@ -412,9 +410,9 @@ matching variant returns:
 
 .. code-block:: python
 
-    some_list: Union[list[int], list[str]]
+    some_list: list[int] | list[str]
 
-    # output3 is of type 'Union[float, str]'
+    # output3 is of type 'float | str'
     output3 = summarize(some_list)
 
 .. note::
@@ -441,7 +439,7 @@ types:
 
 .. code-block:: python
 
-    from typing import overload, Union
+    from typing import overload
 
     class Expression:
         # ...snip...
@@ -492,7 +490,7 @@ the following unsafe overload definition:
 
 .. code-block:: python
 
-    from typing import overload, Union
+    from typing import overload
 
     @overload
     def unsafe_func(x: int) -> int: ...
@@ -500,7 +498,7 @@ the following unsafe overload definition:
     @overload
     def unsafe_func(x: object) -> str: ...
 
-    def unsafe_func(x: object) -> Union[int, str]:
+    def unsafe_func(x: object) -> int | str:
         if isinstance(x, int):
             return 42
         else:
@@ -569,8 +567,8 @@ Type checking the implementation
 The body of an implementation is type-checked against the
 type hints provided on the implementation. For example, in the
 ``MyList`` example up above, the code in the body is checked with
-argument list ``index: Union[int, slice]`` and a return type of
-``Union[T, Sequence[T]]``. If there are no annotations on the
+argument list ``index: int | slice`` and a return type of
+``T | Sequence[T]``. If there are no annotations on the
 implementation, then the body is not type checked. If you want to
 force mypy to check the body anyways, use the :option:`--check-untyped-defs <mypy --check-untyped-defs>`
 flag (:ref:`more details here <untyped-definitions-and-calls>`).
@@ -578,10 +576,10 @@ flag (:ref:`more details here <untyped-definitions-and-calls>`).
 The variants must also also be compatible with the implementation
 type hints. In the ``MyList`` example, mypy will check that the
 parameter type ``int`` and the return type ``T`` are compatible with
-``Union[int, slice]`` and ``Union[T, Sequence]`` for the
+``int | slice`` and ``T | Sequence`` for the
 first variant. For the second variant it verifies the parameter
 type ``slice`` and the return type ``Sequence[T]`` are compatible
-with ``Union[int, slice]`` and ``Union[T, Sequence]``.
+with ``int | slice`` and ``T | Sequence``.
 
 .. note::
 

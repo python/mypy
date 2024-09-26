@@ -571,9 +571,9 @@ Let us illustrate this by few simple examples:
     class Square(Shape): ...
 
 * Most immutable container types, such as :py:class:`~collections.abc.Sequence`
-  and :py:class:`~frozenset` are covariant. :py:data:`~typing.Union` is
-  also covariant in all variables: ``Union[Triangle, int]`` is
-  a subtype of ``Union[Shape, int]``.
+  and :py:class:`~frozenset` are covariant. Union types are
+  also covariant in all union items: ``Triangle | int`` is
+  a subtype of ``Shape | int``.
 
   .. code-block:: python
 

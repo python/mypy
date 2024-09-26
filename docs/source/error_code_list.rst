@@ -59,8 +59,6 @@ Example:
 
 .. code-block:: python
 
-   from typing import Union
-
    class Cat:
        def sleep(self) -> None: ...
        def miaow(self) -> None: ...
@@ -69,10 +67,10 @@ Example:
        def sleep(self) -> None: ...
        def follow_me(self) -> None: ...
 
-   def func(animal: Union[Cat, Dog]) -> None:
+   def func(animal: Cat | Dog) -> None:
        # OK: 'sleep' is defined for both Cat and Dog
        animal.sleep()
-       # Error: Item "Cat" of "Union[Cat, Dog]" has no attribute "follow_me"  [union-attr]
+       # Error: Item "Cat" of "Cat | Dog" has no attribute "follow_me"  [union-attr]
        animal.follow_me()
 
 You can often work around these errors by using ``assert isinstance(obj, ClassName)``
@@ -273,16 +271,14 @@ Example:
 
 .. code-block:: python
 
-   from typing import Optional, Union
-
    class Base:
        def method(self,
-                  arg: int) -> Optional[int]:
+                  arg: int) -> int | None:
            ...
 
    class Derived(Base):
        def method(self,
-                  arg: Union[int, str]) -> int:  # OK
+                  arg: int | str) -> int:  # OK
            ...
 
    class DerivedBad(Base):

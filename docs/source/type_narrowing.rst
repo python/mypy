@@ -123,15 +123,14 @@ So, we know what ``callable()`` will return. For example:
   else:
       ...  # Will never be executed and will raise error with `--warn-unreachable`
 
-``callable`` function can even split ``Union`` type
-for callable and non-callable parts:
+The ``callable`` function can even split union types into
+callable and non-callable parts:
 
 .. code-block:: python
 
   from collections.abc import Callable
-  from typing import Union
 
-  x: Union[int, Callable[[], int]]
+  x: int | Callable[[], int]
 
   if callable(x):
       reveal_type(x)  # N: Revealed type is "def () -> builtins.int"

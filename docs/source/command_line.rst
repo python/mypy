@@ -575,26 +575,24 @@ of the above sections.
 .. option:: --local-partial-types
 
     In mypy, the most common cases for partial types are variables initialized using ``None``,
-    but without explicit ``Optional`` annotations. By default, mypy won't check partial types
+    but without explicit ``... | None`` annotations. By default, mypy won't check partial types
     spanning module top level or class top level. This flag changes the behavior to only allow
     partial types at local level, therefore it disallows inferring variable type for ``None``
     from two assignments in different scopes. For example:
 
     .. code-block:: python
 
-        from typing import Optional
-
         a = None  # Need type annotation here if using --local-partial-types
-        b: Optional[int] = None
+        b: int | None = None
 
         class Foo:
             bar = None  # Need type annotation here if using --local-partial-types
-            baz: Optional[int] = None
+            baz: int | None = None
 
             def __init__(self) -> None:
                 self.bar = 1
 
-        reveal_type(Foo().bar)  # Union[int, None] without --local-partial-types
+        reveal_type(Foo().bar)  # 'int | None' without --local-partial-types
 
     Note: this option is always implicitly enabled in mypy daemon and will become
     enabled by default for mypy in a future release.
