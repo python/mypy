@@ -1,5 +1,4 @@
 [case testPEP695TypeAliasDep]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 import m
 def g() -> m.C:
     return m.f()
@@ -15,10 +14,9 @@ def f() -> int:
     pass
 [out]
 ==
-main:4: error: Incompatible return value type (got "int", expected "str")
+main:3: error: Incompatible return value type (got "int", expected "str")
 
 [case testPEP695ChangeOldStyleToNewStyleTypeAlias]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 from m import A
 A()
 
@@ -31,10 +29,9 @@ type A = int
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-main:3: error: "TypeAliasType" not callable
+main:2: error: "TypeAliasType" not callable
 
 [case testPEP695VarianceChangesDueToDependency]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 from a import C
 
 x: C[object] = C[int]()
@@ -55,10 +52,9 @@ class A[T]:
 
 [out]
 ==
-main:4: error: Incompatible types in assignment (expression has type "C[int]", variable has type "C[object]")
+main:3: error: Incompatible types in assignment (expression has type "C[int]", variable has type "C[object]")
 
 [case testPEP695TypeAliasChangesDueToDependency]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 from a import A
 x: A
 x = 0
@@ -78,5 +74,24 @@ from builtins import tuple as B
 [typing fixtures/typing-full.pyi]
 [out]
 ==
-main:4: error: Incompatible types in assignment (expression has type "int", variable has type "tuple[int, str]")
-main:5: error: Incompatible types in assignment (expression has type "str", variable has type "tuple[int, str]")
+main:3: error: Incompatible types in assignment (expression has type "int", variable has type "Tuple[int, str]")
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "Tuple[int, str]")
+
+[case testPEP695NestedGenericClassMethodUpdated]
+from a import f
+
+class C:
+    class D[T]:
+        x: T
+        def m(self) -> T:
+            f()
+            return self.x
+
+[file a.py]
+def f() -> None: pass
+
+[file a.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+main:7: error: Missing positional argument "x" in call to "f"

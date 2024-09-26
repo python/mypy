@@ -114,7 +114,7 @@ So, we know what ``callable()`` will return. For example:
 
 .. code-block:: python
 
-  from typing import Callable
+  from collections.abc import Callable
 
   x: Callable[[], int]
 
@@ -123,14 +123,14 @@ So, we know what ``callable()`` will return. For example:
   else:
       ...  # Will never be executed and will raise error with `--warn-unreachable`
 
-``callable`` function can even split ``Union`` type
-for callable and non-callable parts:
+The ``callable`` function can even split union types into
+callable and non-callable parts:
 
 .. code-block:: python
 
-  from typing import Callable, Union
+  from collections.abc import Callable
 
-  x: Union[int, Callable[[], int]]
+  x: int | Callable[[], int]
 
   if callable(x):
       reveal_type(x)  # N: Revealed type is "def () -> builtins.int"
@@ -255,16 +255,13 @@ to the type specified as the first type parameter (``list[str]``).
 Generic TypeGuards
 ~~~~~~~~~~~~~~~~~~
 
-``TypeGuard`` can also work with generic types:
+``TypeGuard`` can also work with generic types (Python 3.12 syntax):
 
 .. code-block:: python
 
-  from typing import TypeVar
   from typing import TypeGuard  # use `typing_extensions` for `python<3.10`
 
-  _T = TypeVar("_T")
-
-  def is_two_element_tuple(val: tuple[_T, ...]) -> TypeGuard[tuple[_T, _T]]:
+  def is_two_element_tuple[T](val: tuple[T, ...]) -> TypeGuard[tuple[T, T]]:
       return len(val) == 2
 
   def func(names: tuple[str, ...]):
@@ -276,16 +273,13 @@ Generic TypeGuards
 TypeGuards with parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Type guard functions can accept extra arguments:
+Type guard functions can accept extra arguments (Python 3.12 syntax):
 
 .. code-block:: python
 
-  from typing import Type, TypeVar
   from typing import TypeGuard  # use `typing_extensions` for `python<3.10`
 
-  _T = TypeVar("_T")
-
-  def is_set_of(val: set[Any], type: Type[_T]) -> TypeGuard[set[_T]]:
+  def is_set_of[T](val: set[Any], type: type[T]) -> TypeGuard[set[T]]:
       return all(isinstance(x, type) for x in val)
 
   items: set[Any]

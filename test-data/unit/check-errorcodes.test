@@ -846,21 +846,31 @@ foo = Foo()
 if foo:  # E: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
+not foo  # E: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+
 zero = 0
 if zero:
     pass
+
+not zero
 
 false = False
 if false:
     pass
 
+not false
+
 null = None
 if null:
     pass
 
+not null
+
 s = ''
 if s:
     pass
+
+not s
 
 good_union: Union[str, int] = 5
 if good_union:
@@ -868,11 +878,15 @@ if good_union:
 if not good_union:
     pass
 
+not good_union
+
 bad_union: Union[Foo, Bar] = Foo()
 if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 if not bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
+
+not bad_union  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
 
 # 'object' is special and is treated as potentially falsy
 obj: object = Foo()
@@ -881,17 +895,25 @@ if obj:
 if not obj:
     pass
 
+not obj
+
 lst: List[int] = []
 if lst:
     pass
+
+not lst
 
 a: Any
 if a:
     pass
 
+not a
+
 any_or_object: Union[object, Any]
 if any_or_object:
     pass
+
+not any_or_object
 
 if (my_foo := Foo()):  # E: "__main__.my_foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
@@ -909,12 +931,16 @@ if not f:  # E: Function "f" could always be true in boolean context  [truthy-fu
     pass
 conditional_result = 'foo' if f else 'bar'  # E: Function "f" could always be true in boolean context  [truthy-function]
 
+not f  # E: Function "f" could always be true in boolean context  [truthy-function]
+
 [case testTruthyIterable]
 # flags: --enable-error-code truthy-iterable
 from typing import Iterable
 def func(var: Iterable[str]) -> None:
     if var:  # E: "var" has type "Iterable[str]" which can always be true in boolean context. Consider using "Collection[str]" instead.  [truthy-iterable]
         ...
+
+    not var  # E: "var" has type "Iterable[str]" which can always be true in boolean context. Consider using "Collection[str]" instead.  [truthy-iterable]
 
 [case testNoOverloadImplementation]
 from typing import overload
@@ -1196,3 +1222,17 @@ def f(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of inpu
     pass
 
 [builtins fixtures/tuple.pyi]
+
+
+[case testOverloadedFunctionSignature]
+from typing import overload, Union
+
+@overload
+def process(response1: float,response2: float) -> float:
+    ...
+@overload
+def process(response1: int,response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overload-cannot-match]
+    ...
+
+def process(response1,response2)-> Union[float,int]:
+   return response1 + response2
