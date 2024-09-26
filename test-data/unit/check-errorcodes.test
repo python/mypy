@@ -564,6 +564,7 @@ c: Callable[[], None]
 z = c()  # E: Function does not return a value (it only ever returns None)  [func-returns-value]
 
 [case testErrorCodeStaticmethodDoesNotReturnValue-xfail]
+# See: https://github.com/python/mypy/issues/14179
 class A:
     @staticmethod
     def g() -> None: pass
