@@ -571,6 +571,7 @@ class A:
 
 y1 = A.g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
 y2 = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
+[builtins fixtures/staticmethod.pyi]
 
 [case testErrorCodeInstantiateAbstract]
 from abc import abstractmethod
