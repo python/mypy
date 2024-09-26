@@ -140,9 +140,7 @@ Example:
 
 .. code-block:: python
 
-    from typing import Optional
-
-    def first(x: list[int]) -> Optional[int]:
+    def first(x: list[int]) -> int:
         return x[0] if x else 0
 
     t = (5, 4)
@@ -163,7 +161,7 @@ Example:
 
 .. code-block:: python
 
-   from typing import overload, Optional
+   from typing import overload
 
    @overload
    def inc_maybe(x: None) -> None: ...
@@ -171,7 +169,7 @@ Example:
    @overload
    def inc_maybe(x: int) -> int: ...
 
-   def inc_maybe(x: Optional[int]) -> Optional[int]:
+   def inc_maybe(x: int | None) -> int | None:
         if x is None:
             return None
         else:

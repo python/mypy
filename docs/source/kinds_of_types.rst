@@ -269,10 +269,7 @@ more specific type:
     interesting with the value.
 
 Python 3.9 and older only partially support this syntax. Instead, you can
-use the legacy ``Union[T1, ..., Tn]`` type constructor.
-
-This example uses the legacy ``Union[...]`` syntax (Python 3.9 and earlier,
-but also supported on later Python versions):
+use the legacy ``Union[T1, ..., Tn]`` type constructor. Example:
 
 .. code-block:: python
 

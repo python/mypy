@@ -116,7 +116,7 @@ implicitly casting from ``UserId`` where ``int`` is expected. Examples:
 :py:class:`~typing.NewType` accepts exactly two arguments. The first argument must be a string literal
 containing the name of the new type and must equal the name of the variable to which the new
 type is assigned. The second argument must be a properly subclassable class, i.e.,
-not a type construct like :py:data:`~typing.Union`, etc.
+not a type construct like a union type, etc.
 
 The callable returned by :py:class:`~typing.NewType` accepts only one argument; this is equivalent to
 supporting only one constructor accepting an instance of the base class (see above).

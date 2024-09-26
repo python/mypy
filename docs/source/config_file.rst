@@ -574,8 +574,8 @@ section of the command line docs.
     :type: boolean
     :default: False
 
-    Causes mypy to treat arguments with a ``None``
-    default value as having an implicit :py:data:`~typing.Optional` type.
+    Causes mypy to treat parameters with a ``None``
+    default value as having an implicit optional type (``t | None``).
 
     **Note:** This was True by default in mypy versions 0.980 and earlier.
 
@@ -584,7 +584,7 @@ section of the command line docs.
     :type: boolean
     :default: True
 
-    Effectively disables checking of :py:data:`~typing.Optional`
+    Effectively disables checking of optional
     types and ``None`` values. With this option, mypy doesn't
     generally check the use of ``None`` values -- it is treated
     as compatible with every type.
