@@ -53,10 +53,10 @@ from typing import TypeVar
 T = TypeVar('T', int, str)
 def noop(l: list[TV]) -> list[TV]:
     return l
-x: list[int] = noop([])
-x: list[str] = noop([])
-x: list[int] | str = noop([])
-x: list[bool] = noop([]) # E: Incompatible types in assignment (expression has type "list[int]", variable has type "list[bool]")
+x1: list[int] = noop([])
+x2: list[str] = noop([])
+x3: list[int] | str = noop([])
+x4: list[bool] = noop([]) # E: Incompatible types in assignment (expression has type "list[int]", variable has type "list[bool]")
 [out]
 
 [case testCheckGenericFunctionBodyWithTypeVarValues]
