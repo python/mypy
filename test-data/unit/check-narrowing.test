@@ -1007,7 +1007,7 @@ str_or_false: Union[Literal[False], str]
 if str_or_false:
     reveal_type(str_or_false)   # N: Revealed type is "builtins.str"
 else:
-    reveal_type(str_or_false)   # N: Revealed type is "Union[Literal[False], builtins.str]"
+    reveal_type(str_or_false)   # N: Revealed type is "Union[Literal[False], Literal['']]"
 
 true_or_false: Literal[True, False]
 
@@ -1017,6 +1017,22 @@ else:
     reveal_type(true_or_false)  # N: Revealed type is "Literal[False]"
 [builtins fixtures/primitives.pyi]
 
+[case testNarrowingFalseyToLiteral]
+from typing import Union
+
+a: str
+b: bytes
+c: int
+d: Union[str, bytes, int]
+
+if not a:
+    reveal_type(a)  # N: Revealed type is "Literal['']"
+if not b:
+    reveal_type(b)  # N: Revealed type is "Literal[b'']"
+if not c:
+    reveal_type(c)  # N: Revealed type is "Literal[0]"
+if not d:
+    reveal_type(d)  # N: Revealed type is "Union[Literal[''], Literal[b''], Literal[0]]"
 
 [case testNarrowingIsInstanceFinalSubclass]
 # flags: --warn-unreachable
