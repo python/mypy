@@ -215,7 +215,7 @@ generic types or your own type aliases), look through the
 
    For brevity, we often omit imports from :py:mod:`typing` or :py:mod:`collections.abc`
    in code examples, but mypy will give an error if you use types such as
-   :py:class:`~typing.Iterable` without first importing them.
+   :py:class:`~collections.abc.Iterable` without first importing them.
 
 .. note::
 

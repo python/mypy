@@ -270,7 +270,7 @@ example:
 
     # mypy: enable-error-code="possibly-undefined"
 
-    from typing import Iterable
+    from collections.abc import Iterable
 
     def test(values: Iterable[int], flag: bool) -> None:
         if flag:
@@ -318,7 +318,7 @@ Example:
 
 .. code-block:: python
 
-    from typing import Iterable
+    from collections.abc import Iterable
 
     def transform(items: Iterable[int]) -> list[int]:
         # Error: "items" has type "Iterable[int]" which can always be true in boolean context. Consider using "Collection[int]" instead.  [truthy-iterable]

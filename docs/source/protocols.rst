@@ -27,15 +27,17 @@ of protocols and structural subtyping in Python.
 Predefined protocols
 ********************
 
-The :py:mod:`typing` module defines various protocol classes that correspond
-to common Python protocols, such as :py:class:`Iterable[T] <typing.Iterable>`. If a class
+The :py:mod:`collections.abc`, :py:mod:`typing` and other stdlib modules define
+various protocol classes that correspond to common Python protocols, such as
+:py:class:`Iterable[T] <collections.abc.Iterable>`. If a class
 defines a suitable :py:meth:`__iter__ <object.__iter__>` method, mypy understands that it
-implements the iterable protocol and is compatible with :py:class:`Iterable[T] <typing.Iterable>`.
+implements the iterable protocol and is compatible with :py:class:`Iterable[T] <collections.abc.Iterable>`.
 For example, ``IntList`` below is iterable, over ``int`` values:
 
 .. code-block:: python
 
-   from typing import Iterator, Iterable, Optional
+   from collections.abc import Iterator, Iterable
+   from typing import Optional
 
    class IntList:
        def __init__(self, value: int, next: Optional['IntList']) -> None:
@@ -56,9 +58,18 @@ For example, ``IntList`` below is iterable, over ``int`` values:
    print_numbered(x)  # OK
    print_numbered([4, 5])  # Also OK
 
-:ref:`predefined_protocols_reference` lists all protocols defined in
-:py:mod:`typing` and the signatures of the corresponding methods you need to define
-to implement each protocol.
+:ref:`predefined_protocols_reference` lists various protocols defined in
+:py:mod:`collections.abc` and :py:mod:`typing` and the signatures of the corresponding methods
+you need to define to implement each protocol.
+
+.. note::
+    ``typing`` also contains deprecated aliases to protocols and ABCs defined in
+    :py:mod:`collections.abc`, such as :py:class:`Iterable[T] <typing.Iterable>`.
+    These are only necessary in Python 3.8 and earlier, since the protocols in
+    ``collections.abc`` didn't yet support subscripting (``[]``) in Python 3.8,
+    but the aliases in ``typing`` have always supported
+    subscripting. In Python 3.9 and later, the aliases in ``typing`` don't provide
+    any extra functionality.
 
 Simple user-defined protocols
 *****************************
@@ -68,7 +79,8 @@ class:
 
 .. code-block:: python
 
-   from typing import Iterable, Protocol
+   from collections.abc import Iterable
+   from typing import Protocol
 
    class SupportsClose(Protocol):
        # Empty method body (explicit '...')
@@ -290,13 +302,15 @@ Callback protocols
 ******************
 
 Protocols can be used to define flexible callback types that are hard
-(or even impossible) to express using the :py:data:`Callable[...] <typing.Callable>` syntax, such as variadic,
-overloaded, and complex generic callbacks. They are defined with a special :py:meth:`__call__ <object.__call__>`
-member:
+(or even impossible) to express using the
+:py:class:`Callable[...] <collections.abc.Callable>` syntax,
+such as variadic, overloaded, and complex generic callbacks. They are defined with a
+special :py:meth:`__call__ <object.__call__>` member:
 
 .. code-block:: python
 
-   from typing import Optional, Iterable, Protocol
+   from collections.abc import Iterable
+   from typing import Optional, Protocol
 
    class Combiner(Protocol):
        def __call__(self, *vals: bytes, maxlen: Optional[int] = None) -> list[bytes]: ...
@@ -314,13 +328,14 @@ member:
    batch_proc([], bad_cb)   # Error! Argument 2 has incompatible type because of
                             # different name and kind in the callback
 
-Callback protocols and :py:data:`~typing.Callable` types can be used mostly interchangeably.
+Callback protocols and :py:class:`~collections.abc.Callable` types can be used mostly interchangeably.
 Parameter names in :py:meth:`__call__ <object.__call__>` methods must be identical, unless
 the parameters are positional-only. Example (using the legacy syntax for generic functions):
 
 .. code-block:: python
 
-   from typing import Callable, Protocol, TypeVar
+   from collections.abc import Callable
+   from typing import Protocol, TypeVar
 
    T = TypeVar('T')
 
@@ -345,8 +360,8 @@ Iteration protocols
 The iteration protocols are useful in many contexts. For example, they allow
 iteration of objects in for loops.
 
-Iterable[T]
------------
+collections.abc.Iterable[T]
+---------------------------
 
 The :ref:`example above <predefined_protocols>` has a simple implementation of an
 :py:meth:`__iter__ <object.__iter__>` method.
@@ -355,17 +370,17 @@ The :ref:`example above <predefined_protocols>` has a simple implementation of a
 
    def __iter__(self) -> Iterator[T]
 
-See also :py:class:`~typing.Iterable`.
+See also :py:class:`~collections.abc.Iterable`.
 
-Iterator[T]
------------
+collections.abc.Iterator[T]
+---------------------------
 
 .. code-block:: python
 
    def __next__(self) -> T
    def __iter__(self) -> Iterator[T]
 
-See also :py:class:`~typing.Iterator`.
+See also :py:class:`~collections.abc.Iterator`.
 
 Collection protocols
 ....................
@@ -374,8 +389,8 @@ Many of these are implemented by built-in container types such as
 :py:class:`list` and :py:class:`dict`, and these are also useful for user-defined
 collection objects.
 
-Sized
------
+collections.abc.Sized
+---------------------
 
 This is a type for objects that support :py:func:`len(x) <len>`.
 
@@ -383,10 +398,10 @@ This is a type for objects that support :py:func:`len(x) <len>`.
 
    def __len__(self) -> int
 
-See also :py:class:`~typing.Sized`.
+See also :py:class:`~collections.abc.Sized`.
 
-Container[T]
-------------
+collections.abc.Container[T]
+----------------------------
 
 This is a type for objects that support the ``in`` operator.
 
@@ -394,10 +409,10 @@ This is a type for objects that support the ``in`` operator.
 
    def __contains__(self, x: object) -> bool
 
-See also :py:class:`~typing.Container`.
+See also :py:class:`~collections.abc.Container`.
 
-Collection[T]
--------------
+collections.abc.Collection[T]
+-----------------------------
 
 .. code-block:: python
 
@@ -405,7 +420,7 @@ Collection[T]
    def __iter__(self) -> Iterator[T]
    def __contains__(self, x: object) -> bool
 
-See also :py:class:`~typing.Collection`.
+See also :py:class:`~collections.abc.Collection`.
 
 One-off protocols
 .................
@@ -413,8 +428,8 @@ One-off protocols
 These protocols are typically only useful with a single standard
 library function or class.
 
-Reversible[T]
--------------
+collections.abc.Reversible[T]
+-----------------------------
 
 This is a type for objects that support :py:func:`reversed(x) <reversed>`.
 
@@ -422,10 +437,10 @@ This is a type for objects that support :py:func:`reversed(x) <reversed>`.
 
    def __reversed__(self) -> Iterator[T]
 
-See also :py:class:`~typing.Reversible`.
+See also :py:class:`~collections.abc.Reversible`.
 
-SupportsAbs[T]
---------------
+typing.SupportsAbs[T]
+---------------------
 
 This is a type for objects that support :py:func:`abs(x) <abs>`. ``T`` is the type of
 value returned by :py:func:`abs(x) <abs>`.
@@ -436,8 +451,8 @@ value returned by :py:func:`abs(x) <abs>`.
 
 See also :py:class:`~typing.SupportsAbs`.
 
-SupportsBytes
--------------
+typing.SupportsBytes
+--------------------
 
 This is a type for objects that support :py:class:`bytes(x) <bytes>`.
 
@@ -449,8 +464,8 @@ See also :py:class:`~typing.SupportsBytes`.
 
 .. _supports-int-etc:
 
-SupportsComplex
----------------
+typing.SupportsComplex
+----------------------
 
 This is a type for objects that support :py:class:`complex(x) <complex>`. Note that no arithmetic operations
 are supported.
@@ -461,8 +476,8 @@ are supported.
 
 See also :py:class:`~typing.SupportsComplex`.
 
-SupportsFloat
--------------
+typing.SupportsFloat
+--------------------
 
 This is a type for objects that support :py:class:`float(x) <float>`. Note that no arithmetic operations
 are supported.
@@ -473,8 +488,8 @@ are supported.
 
 See also :py:class:`~typing.SupportsFloat`.
 
-SupportsInt
------------
+typing.SupportsInt
+------------------
 
 This is a type for objects that support :py:class:`int(x) <int>`. Note that no arithmetic operations
 are supported.
@@ -485,8 +500,8 @@ are supported.
 
 See also :py:class:`~typing.SupportsInt`.
 
-SupportsRound[T]
-----------------
+typing.SupportsRound[T]
+-----------------------
 
 This is a type for objects that support :py:func:`round(x) <round>`.
 
@@ -502,33 +517,33 @@ Async protocols
 These protocols can be useful in async code. See :ref:`async-and-await`
 for more information.
 
-Awaitable[T]
-------------
+collections.abc.Awaitable[T]
+----------------------------
 
 .. code-block:: python
 
    def __await__(self) -> Generator[Any, None, T]
 
-See also :py:class:`~typing.Awaitable`.
+See also :py:class:`~collections.abc.Awaitable`.
 
-AsyncIterable[T]
-----------------
+collections.abc.AsyncIterable[T]
+--------------------------------
 
 .. code-block:: python
 
    def __aiter__(self) -> AsyncIterator[T]
 
-See also :py:class:`~typing.AsyncIterable`.
+See also :py:class:`~collections.abc.AsyncIterable`.
 
-AsyncIterator[T]
-----------------
+collections.abc.AsyncIterator[T]
+--------------------------------
 
 .. code-block:: python
 
    def __anext__(self) -> Awaitable[T]
    def __aiter__(self) -> AsyncIterator[T]
 
-See also :py:class:`~typing.AsyncIterator`.
+See also :py:class:`~collections.abc.AsyncIterator`.
 
 Context manager protocols
 .........................
@@ -537,8 +552,8 @@ There are two protocols for context managers -- one for regular context
 managers and one for async ones. These allow defining objects that can
 be used in ``with`` and ``async with`` statements.
 
-ContextManager[T]
------------------
+contextlib.AbstractContextManager[T]
+------------------------------------
 
 .. code-block:: python
 
@@ -548,10 +563,10 @@ ContextManager[T]
                 exc_value: Optional[BaseException],
                 traceback: Optional[TracebackType]) -> Optional[bool]
 
-See also :py:class:`~typing.ContextManager`.
+See also :py:class:`~contextlib.AbstractContextManager`.
 
-AsyncContextManager[T]
-----------------------
+contextlib.AbstractAsyncContextManager[T]
+-----------------------------------------
 
 .. code-block:: python
 
@@ -561,4 +576,4 @@ AsyncContextManager[T]
                  exc_value: Optional[BaseException],
                  traceback: Optional[TracebackType]) -> Awaitable[Optional[bool]]
 
-See also :py:class:`~typing.AsyncContextManager`.
+See also :py:class:`~contextlib.AbstractAsyncContextManager`.

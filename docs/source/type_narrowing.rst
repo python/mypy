@@ -114,7 +114,7 @@ So, we know what ``callable()`` will return. For example:
 
 .. code-block:: python
 
-  from typing import Callable
+  from collections.abc import Callable
 
   x: Callable[[], int]
 
@@ -128,7 +128,8 @@ for callable and non-callable parts:
 
 .. code-block:: python
 
-  from typing import Callable, Union
+  from collections.abc import Callable
+  from typing import Union
 
   x: Union[int, Callable[[], int]]
 

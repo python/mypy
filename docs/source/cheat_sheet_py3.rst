@@ -88,7 +88,8 @@ Functions
 
 .. code-block:: python
 
-   from typing import Callable, Iterator, Union, Optional
+   from collections.abc import Iterator, Callable
+   from typing import Union, Optional
 
    # This is how you annotate a function definition
    def stringify(num: int) -> str:
@@ -274,7 +275,8 @@ that are common in idiomatic Python are standardized.
 
 .. code-block:: python
 
-   from typing import Mapping, MutableMapping, Sequence, Iterable
+   from collections.abc import Mapping, MutableMapping, Sequence, Iterable
+   # or 'from typing import ...' (required in Python 3.8)
 
    # Use Iterable for generic iterables (anything usable in "for"),
    # and Sequence where a sequence (supporting "len" and "__getitem__") is
@@ -354,7 +356,8 @@ syntax:
 
 .. code-block:: python
 
-    from typing import Any, Callable
+    from collections.abc import Callable
+    from typing import Any
 
     def bare_decorator[F: Callable[..., Any]](func: F) -> F:
         ...
@@ -366,7 +369,8 @@ The same example using pre-3.12 syntax:
 
 .. code-block:: python
 
-    from typing import Any, Callable, TypeVar
+    from collections.abc import Callable
+    from typing import Any, TypeVar
 
     F = TypeVar('F', bound=Callable[..., Any])
 

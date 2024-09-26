@@ -363,7 +363,8 @@ explicit type cast:
 
 .. code-block:: python
 
-  from typing import Sequence, cast
+  from collections.abc import Sequence
+  from typing import cast
 
   def find_first_str(a: Sequence[object]) -> str:
       index = next((i for i, s in enumerate(a) if isinstance(s, str)), -1)
@@ -700,7 +701,7 @@ This example demonstrates both safe and unsafe overrides:
 
 .. code-block:: python
 
-    from typing import Sequence, List, Iterable
+    from collections.abc import Sequence, Iterable
 
     class A:
         def test(self, t: Sequence[int]) -> Sequence[str]:
@@ -713,7 +714,7 @@ This example demonstrates both safe and unsafe overrides:
 
     class NarrowerArgument(A):
         # A more specific argument type isn't accepted
-        def test(self, t: List[int]) -> Sequence[str]:  # Error
+        def test(self, t: list[int]) -> Sequence[str]:  # Error
             ...
 
     class NarrowerReturn(A):

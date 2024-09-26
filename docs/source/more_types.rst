@@ -253,7 +253,7 @@ calls like ``mouse_event(5, 25, 2)``.
 As another example, suppose we want to write a custom container class that
 implements the :py:meth:`__getitem__ <object.__getitem__>` method (``[]`` bracket indexing). If this
 method receives an integer we return a single item. If it receives a
-``slice``, we return a :py:class:`~typing.Sequence` of items.
+``slice``, we return a :py:class:`~collections.abc.Sequence` of items.
 
 We can precisely encode this relationship between the argument and the
 return type by using overloads like so (Python 3.12 syntax):
@@ -760,7 +760,8 @@ some tricky methods (Python 3.12 syntax):
 
 .. code-block:: python
 
-   from typing import overload, Callable
+   from collections.abc import Callable
+   from typing import overload
 
    class Tag[T]:
        @overload
@@ -875,8 +876,8 @@ expect to get back when ``await``-ing the coroutine.
 
 The result of calling an ``async def`` function *without awaiting* will
 automatically be inferred to be a value of type
-:py:class:`Coroutine[Any, Any, T] <typing.Coroutine>`, which is a subtype of
-:py:class:`Awaitable[T] <typing.Awaitable>`:
+:py:class:`Coroutine[Any, Any, T] <collections.abc.Coroutine>`, which is a subtype of
+:py:class:`Awaitable[T] <collections.abc.Awaitable>`:
 
 .. code-block:: python
 
@@ -889,11 +890,12 @@ Asynchronous iterators
 ----------------------
 
 If you have an asynchronous iterator, you can use the
-:py:class:`~typing.AsyncIterator` type in your annotations:
+:py:class:`~collections.abc.AsyncIterator` type in your annotations:
 
 .. code-block:: python
 
-   from typing import Optional, AsyncIterator
+   from collections.abc import AsyncIterator
+   from typing import Optional
    import asyncio
 
    class arange:
@@ -926,7 +928,8 @@ async iterators:
 
 .. code-block:: python
 
-   from typing import AsyncGenerator, Optional
+   from collections.abc import AsyncGenerator
+   from typing import Optional
    import asyncio
 
    # Could also type this as returning AsyncIterator[int]
@@ -943,7 +946,7 @@ One common confusion is that the presence of a ``yield`` statement in an
 
 .. code-block:: python
 
-   from typing import AsyncIterator
+   from collections.abc import AsyncIterator
 
    async def arange(stop: int) -> AsyncIterator[int]:
        # When called, arange gives you an async iterator
@@ -969,7 +972,8 @@ This can sometimes come up when trying to define base classes, Protocols or over
 
 .. code-block:: python
 
-    from typing import AsyncIterator, Protocol, overload
+    from collections.abc import AsyncIterator
+    from typing import Protocol, overload
 
     class LauncherIncorrect(Protocol):
         # Because launch does not have yield, this has type
