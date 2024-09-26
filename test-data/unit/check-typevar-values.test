@@ -62,6 +62,8 @@ x1: "list[int]" = noop([])
 x2: "list[str]" = noop([])
 x3: "list[int]" | str = noop([])
 x4: "list[bool]" = noop([])  # E: Incompatible types in assignment (expression has type "list[int]", variable has type "list[bool]")
+[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionUsingAmbiguousTypeRevealType-xfail]
 from __future__ import annotations
@@ -74,6 +76,7 @@ def noop(l: list[T]) -> list[T]:
     return l
 
 reveal_type(noop([])  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
 
 [case testCheckGenericFunctionBodyWithTypeVarValues]
 from typing import TypeVar
