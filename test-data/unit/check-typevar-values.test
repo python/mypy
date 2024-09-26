@@ -48,6 +48,16 @@ class S(str): pass
 f(S())
 [out]
 
+[case testCallGenericFunctionWithTypeVarValueRestrictionUsingAmbiguousType]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+def noop(l: list[TV]) -> list[TV]:
+    return l
+x: list[int] = noop([])
+x: list[str] = noop([])
+x: list[int] | str = noop([])
+[out]
+
 [case testCheckGenericFunctionBodyWithTypeVarValues]
 from typing import TypeVar
 class A:
