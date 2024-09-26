@@ -49,15 +49,31 @@ f(S())
 [out]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionUsingAmbiguousType]
+from __future__ import annotations
+
 from typing import TypeVar
+
 T = TypeVar('T', int, str)
+
 def noop(l: list[T]) -> list[T]:
     return l
+
 x1: "list[int]" = noop([])
 x2: "list[str]" = noop([])
 x3: "list[int]" | str = noop([])
-x4: "list[bool]" = noop([]) # E: Incompatible types in assignment (expression has type "list[int]", variable has type "list[bool]")
-[out]
+x4: "list[bool]" = noop([])  # E: Incompatible types in assignment (expression has type "list[int]", variable has type "list[bool]")
+
+[case testCallGenericFunctionWithTypeVarValueRestrictionUsingAmbiguousTypeRevealType-xfail]
+from __future__ import annotations
+
+from typing import TypeVar
+
+T = TypeVar('T', int, str)
+
+def noop(l: list[T]) -> list[T]:
+    return l
+
+reveal_type(noop([])  # N: Revealed type is "builtins.list[builtins.str] | builtins.list[builtins.int]"
 
 [case testCheckGenericFunctionBodyWithTypeVarValues]
 from typing import TypeVar
