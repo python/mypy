@@ -72,9 +72,9 @@ Useful built-in types
    # On earlier versions, use Union
    x: list[Union[int, str]] = [3, 5, "test", "fun"]
 
-   # Use Optional[X] for a value that could be None
-   # Optional[X] is the same as X | None or Union[X, None]
-   x: Optional[str] = "something" if some_condition() else None
+   # Use X | None for a value that could be None on Python 3.10+
+   # Use Optional[X] on 3.9 and earlier; Optional[X] is the same as 'X | None'
+   x: str | None = "something" if some_condition() else None
    if x is not None:
        # Mypy understands x won't be None here because of the if-statement
        print(x.upper())
@@ -122,13 +122,14 @@ Functions
            i += 1
 
    # You can of course split a function annotation over multiple lines
-   def send_email(address: Union[str, list[str]],
-                  sender: str,
-                  cc: Optional[list[str]],
-                  bcc: Optional[list[str]],
-                  subject: str = '',
-                  body: Optional[list[str]] = None
-                  ) -> bool:
+   def send_email(
+       address: str | list[str],
+       sender: str,
+       cc: list[str] | None,
+       bcc: list[str] | None,
+       subject: str = '',
+       body: list[str] | None = None,
+   ) -> bool:
        ...
 
    # Mypy understands positional-only and keyword-only arguments
@@ -231,7 +232,7 @@ When you're puzzled or when things are complicated
    # If you initialize a variable with an empty container or "None"
    # you may have to help mypy a bit by providing an explicit type annotation
    x: list[str] = []
-   x: Optional[str] = None
+   x: str | None = None
 
    # Use Any if you don't know the type of something or it's too
    # dynamic to write a type for

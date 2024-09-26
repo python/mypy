@@ -36,11 +36,12 @@ For example, ``IntList`` below is iterable, over ``int`` values:
 
 .. code-block:: python
 
+   from __future__ import annotations
+
    from collections.abc import Iterator, Iterable
-   from typing import Optional
 
    class IntList:
-       def __init__(self, value: int, next: Optional['IntList']) -> None:
+       def __init__(self, value: int, next: IntList | None) -> None:
            self.value = value
            self.next = next
 
@@ -237,22 +238,24 @@ such as trees and linked lists:
 
 .. code-block:: python
 
-   from typing import Optional, Protocol
+   from __future__ import annotations
+
+   from typing import Protocol
 
    class TreeLike(Protocol):
        value: int
 
        @property
-       def left(self) -> Optional['TreeLike']: ...
+       def left(self) -> TreeLike | None: ...
 
        @property
-       def right(self) -> Optional['TreeLike']: ...
+       def right(self) -> TreeLike | None: ...
 
    class SimpleTree:
        def __init__(self, value: int) -> None:
            self.value = value
-           self.left: Optional['SimpleTree'] = None
-           self.right: Optional['SimpleTree'] = None
+           self.left: SimpleTree | None = None
+           self.right: SimpleTree | None = None
 
    root: TreeLike = SimpleTree(0)  # OK
 
@@ -313,15 +316,15 @@ special :py:meth:`__call__ <object.__call__>` member:
    from typing import Optional, Protocol
 
    class Combiner(Protocol):
-       def __call__(self, *vals: bytes, maxlen: Optional[int] = None) -> list[bytes]: ...
+       def __call__(self, *vals: bytes, maxlen: int | None = None) -> list[bytes]: ...
 
    def batch_proc(data: Iterable[bytes], cb_results: Combiner) -> bytes:
        for item in data:
            ...
 
-   def good_cb(*vals: bytes, maxlen: Optional[int] = None) -> list[bytes]:
+   def good_cb(*vals: bytes, maxlen: int | None = None) -> list[bytes]:
        ...
-   def bad_cb(*vals: bytes, maxitems: Optional[int]) -> list[bytes]:
+   def bad_cb(*vals: bytes, maxitems: int | None) -> list[bytes]:
        ...
 
    batch_proc([], good_cb)  # OK
@@ -559,9 +562,9 @@ contextlib.AbstractContextManager[T]
 
    def __enter__(self) -> T
    def __exit__(self,
-                exc_type: Optional[Type[BaseException]],
-                exc_value: Optional[BaseException],
-                traceback: Optional[TracebackType]) -> Optional[bool]
+                exc_type: type[BaseException] | None,
+                exc_value: BaseException | None,
+                traceback: TracebackType | None) -> bool | None
 
 See also :py:class:`~contextlib.AbstractContextManager`.
 
@@ -572,8 +575,8 @@ contextlib.AbstractAsyncContextManager[T]
 
    def __aenter__(self) -> Awaitable[T]
    def __aexit__(self,
-                 exc_type: Optional[Type[BaseException]],
-                 exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> Awaitable[Optional[bool]]
+                 exc_type: type[BaseException] | None,
+                 exc_value: BaseException | None,
+                 traceback: TracebackType | None) -> Awaitable[bool | None]
 
 See also :py:class:`~contextlib.AbstractAsyncContextManager`.

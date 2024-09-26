@@ -803,7 +803,7 @@ This is best understood via an example:
 
 .. code-block:: python
 
-    def foo(x: Optional[int]) -> Callable[[], int]:
+    def foo(x: int | None) -> Callable[[], int]:
         if x is None:
             x = 5
         print(x + 1)  # mypy correctly deduces x must be an int here

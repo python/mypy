@@ -70,7 +70,7 @@ complex types involving literals a little more convenient.
 
 Literal types may also contain ``None``. Mypy will treat ``Literal[None]`` as being
 equivalent to just ``None``. This means that ``Literal[4, None]``,
-``Union[Literal[4], None]``, and ``Optional[Literal[4]]`` are all equivalent.
+``Literal[4] | None``, and ``Optional[Literal[4]]`` are all equivalent.
 
 Literals may also contain aliases to other literal types. For example, the
 following program is legal:
