@@ -315,6 +315,53 @@ inferred by mypy. This is not valid:
 If you really need this, you can define a generic class with a ``__call__``
 method.
 
+.. _type-variable-upper-bound:
+
+Type variables with upper bounds
+********************************
+
+A type variable can also be restricted to having values that are
+subtypes of a specific type. This type is called the upper bound of
+the type variable, and it is specified using ``T: <bound>`` when using the
+Python 3.12 syntax. In the definition of a generic function or a generic
+class that uses such a type variable ``T``, the type represented by ``T``
+is assumed to be a subtype of its upper bound, so you can use methods
+of the upper bound on values of type ``T`` (Python 3.12 syntax):
+
+.. code-block:: python
+
+   from typing import SupportsAbs
+
+   def max_by_abs[T: SupportsAbs[float]](*xs: T) -> T:
+       # We can use abs(), because T is a subtype of SupportsAbs[float].
+       return max(xs, key=abs)
+
+An upper bound can also be specified with the ``bound=...`` keyword
+argument to :py:class:`~typing.TypeVar`.
+Here is the example using the legacy syntax (Python 3.11 and earlier):
+
+.. code-block:: python
+
+   from typing import TypeVar, SupportsAbs
+
+   T = TypeVar('T', bound=SupportsAbs[float])
+
+   def max_by_abs(*xs: T) -> T:
+       return max(xs, key=abs)
+
+In a call to such a function, the type ``T`` must be replaced by a
+type that is a subtype of its upper bound. Continuing the example
+above:
+
+.. code-block:: python
+
+   max_by_abs(-3.5, 2)   # Okay, has type 'float'
+   max_by_abs(5+6j, 7)   # Okay, has type 'complex'
+   max_by_abs('a', 'b')  # Error: 'str' is not a subtype of SupportsAbs[float]
+
+Type parameters of generic classes may also have upper bounds, which
+restrict the valid values for the type parameter in the same way.
+
 .. _generic-methods-and-generic-self:
 
 Generic methods and generic self
@@ -400,8 +447,7 @@ or :py:class:`Type[T] <typing.Type>` (Python 3.12 syntax):
 
    a, b = SuperFriend.make_pair()
 
-Here is the same example using the legacy syntax (3.11 and earlier, though
-3.9 and later can use lower-case ``type[T]``):
+Here is the same example using the legacy syntax (3.11 and earlier):
 
 .. code-block:: python
 
@@ -433,7 +479,7 @@ or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
 possibly by making use of the ``Any`` type or a ``# type: ignore`` comment.
 
-Note that mypy lets you use generic self types in certain unsafe ways
+Mypy lets you use generic self types in certain unsafe ways
 in order to support common idioms. For example, using a generic
 self type in an argument type is accepted even though it's unsafe (Python 3.12
 syntax):
@@ -647,59 +693,13 @@ contravariant, use type variables defined with special keyword arguments
    my_box = Box(Square())
    look_into(my_box)  # OK, but mypy would complain here for an invariant type
 
-.. _type-variable-upper-bound:
-
-Type variables with upper bounds
-********************************
-
-A type variable can also be restricted to having values that are
-subtypes of a specific type. This type is called the upper bound of
-the type variable, and it is specified using ``T: <bound>`` when using the
-Python 3.12 syntax. In the definition of a generic function that uses
-such a type variable ``T``, the type represented by ``T`` is assumed
-to be a subtype of its upper bound, so the function can use methods
-of the upper bound on values of type ``T`` (Python 3.12 syntax):
-
-.. code-block:: python
-
-   from typing import SupportsAbs
-
-   def max_by_abs[T: SupportsAbs[float]](*xs: T) -> T:
-       # Okay, because T is a subtype of SupportsAbs[float].
-       return max(xs, key=abs)
-
-An upper bound can also be specified with the ``bound=...`` keyword
-argument to :py:class:`~typing.TypeVar`.
-Here is the example using the legacy syntax (Python 3.11 and earlier):
-
-.. code-block:: python
-
-   from typing import TypeVar, SupportsAbs
-
-   T = TypeVar('T', bound=SupportsAbs[float])
-
-   def max_by_abs(*xs: T) -> T:
-       return max(xs, key=abs)
-
-In a call to such a function, the type ``T`` must be replaced by a
-type that is a subtype of its upper bound. Continuing the example
-above:
-
-.. code-block:: python
-
-   max_by_abs(-3.5, 2)   # Okay, has type float.
-   max_by_abs(5+6j, 7)   # Okay, has type complex.
-   max_by_abs('a', 'b')  # Error: 'str' is not a subtype of SupportsAbs[float].
-
-Type parameters of generic classes may also have upper bounds, which
-restrict the valid values for the type parameter in the same way.
-
 .. _type-variable-value-restriction:
 
 Type variables with value restriction
 *************************************
 
-By default, a type variable can be replaced with any type. However, sometimes
+By default, a type variable can be replaced with any type -- or any type that
+is a subtype of the upper bound, which defaults to ``object``. However, sometimes
 it's useful to have a type variable that can only have some specific types
 as its value. A typical example is a type variable that can only have values
 ``str`` and ``bytes``. This lets us define a function that can concatenate
@@ -758,11 +758,10 @@ You may expect that the type of ``ss`` is ``S``, but the type is
 actually ``str``: a subtype gets promoted to one of the valid values
 for the type variable, which in this case is ``str``.
 
-This is thus
-subtly different from *bounded quantification* in languages such as
-Java, where the return type would be ``S``. The way mypy implements
-this is correct for ``concat``, since ``concat`` actually returns a
-``str`` instance in the above example:
+This is thus subtly different from using ``str | bytes`` as an upper bound,
+where the return type would be ``S`` (see :ref:`type-variable-upper-bound`).
+Using a value restriction is correct for ``concat``, since ``concat``
+actually returns a ``str`` instance in the above example:
 
 .. code-block:: python
 
@@ -776,8 +775,7 @@ value of :py:func:`re.compile`, where ``S`` can be either ``str``
 or ``bytes``. Regular expressions can be based on a string or a
 bytes pattern.
 
-A type variable may not have both a value restriction and an upper bound
-(see :ref:`type-variable-upper-bound`).
+A type variable may not have both a value restriction and an upper bound.
 
 Note that you may come across :py:data:`~typing.AnyStr` imported from
 :py:mod:`typing`. This feature is now deprecated, but it means the same
