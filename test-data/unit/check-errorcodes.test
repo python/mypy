@@ -563,16 +563,6 @@ y = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)
 c: Callable[[], None]
 z = c()  # E: Function does not return a value (it only ever returns None)  [func-returns-value]
 
-[case testErrorCodeStaticmethodDoesNotReturnValue-xfail]
-# See: https://github.com/python/mypy/issues/14179
-class A:
-    @staticmethod
-    def g() -> None: pass
-
-y1 = A.g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
-y2 = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
-[builtins fixtures/staticmethod.pyi]
-
 [case testErrorCodeInstantiateAbstract]
 from abc import abstractmethod
 

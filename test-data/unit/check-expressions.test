@@ -1144,6 +1144,30 @@ f() and b  # E: "f" does not return a value (it only ever returns None)
 b or f()   # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/bool.pyi]
 
+[case testNoneReturnWithDecorators-xfail]
+# See: https://github.com/python/mypy/issues/14179
+from typing import Callable, TypeVar
+
+F = TypeVar('F', bound=Callable)
+
+def deco(f: F) -> F:
+    pass
+
+@deco
+@deco
+def f() -> None:
+    pass
+
+y1 = f()      # E: "f" does not return a value (it only ever returns None)  [func-returns-value]
+
+class A:
+    @staticmethod
+    def g() -> None: pass
+
+y2 = A.g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
+y3 = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
+[builtins fixtures/staticmethod.pyi]
+
 
 -- Slicing
 -- -------
