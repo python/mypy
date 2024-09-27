@@ -2493,16 +2493,20 @@ reveal_type(c.fn)  # N: Revealed type is "def (*Any, **Any)"
 # (for instance, passing a keyword argument is necessary)
 import operator
 from collections.abc import Callable
-from typing_extensions import TypeVarTuple, Unpack
+from typing_extensions import TypeVarTuple, Unpack, ParamSpec
 
 Ts = TypeVarTuple("Ts")
+P = ParamSpec("P")
 
 def run(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts], some_kwarg: None) -> None:
     return func(*args)
 
+def call(func: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None:
+    return func(*args, **kwargs)
+
 def foo() -> None:
-    raise NotImplementedError
+    return None
 
 run(foo, some_kwarg=None)
-operator.call(run, foo, some_kwarg=None)
+call(run, foo, some_kwarg=None)
 [builtins fixtures/tuple.pyi]
