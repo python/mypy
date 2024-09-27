@@ -1603,6 +1603,17 @@ def are_parameters_compatible(
         return True
     trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
 
+    # def _(*a: Unpack[tuple[object, ...]]) allows any number of arguments, not just infinite.
+    if right_star and isinstance(right_star.typ, UnpackType):
+        right_star_inner_type = get_proper_type(right_star.typ.type)
+        trivial_varargs = (
+            isinstance(right_star_inner_type, Instance)
+            and right_star_inner_type.type.fullname == "builtins.tuple"
+            and len(right_star_inner_type.args) == 1
+        )
+    else:
+        trivial_varargs = False
+
     if (
         right.arg_kinds == [ARG_STAR]
         and isinstance(get_proper_type(right.arg_types[0]), AnyType)
@@ -1644,7 +1655,7 @@ def are_parameters_compatible(
         if right_arg is None:
             return False
         if left_arg is None:
-            return not allow_partial_overlap and not trivial_suffix
+            return not allow_partial_overlap and not trivial_suffix and not trivial_varargs
         return not is_compat(right_arg.typ, left_arg.typ)
 
     if _incompatible(left_star, right_star) or _incompatible(left_star2, right_star2):
@@ -1672,8 +1683,7 @@ def are_parameters_compatible(
     # Phase 1c: Check var args. Right has an infinite series of optional positional
     #           arguments. Get all further positional args of left, and make sure
     #           they're more general than the corresponding member in right.
-    # TODO: are we handling UnpackType correctly here?
-    if right_star is not None and not trivial_suffix:
+    if right_star is not None and not trivial_suffix and not trivial_varargs:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)
         assert right_by_position is not None
