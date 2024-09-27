@@ -2271,6 +2271,7 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
         lookup: Callable[[str, Context], SymbolTableNode | None],
         scope: TypeVarLikeScope,
     ) -> None:
+        super().__init__()
         self.seen_nodes = seen_nodes
         self.lookup = lookup
         self.scope = scope
@@ -2660,6 +2661,7 @@ class TypeVarDefaultTranslator(TrivialSyntheticTypeTranslator):
     def __init__(
         self, api: SemanticAnalyzerInterface, tvar_expr_name: str, context: Context
     ) -> None:
+        super().__init__()
         self.api = api
         self.tvar_expr_name = tvar_expr_name
         self.context = context
