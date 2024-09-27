@@ -2487,3 +2487,22 @@ class C(Generic[P, R]):
 c: C[int, str]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
 reveal_type(c.fn)  # N: Revealed type is "def (*Any, **Any)"
 [builtins fixtures/tuple.pyi]
+
+[case testSubtypingWithUnpackAndTuples]
+# This test is convoluted as there is special casing to get past.
+# (for instance, passing a keyword argument is necessary)
+import operator
+from collections.abc import Callable
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+def run(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts], some_kwarg: None) -> None:
+    return func(*args)
+
+def foo() -> None:
+    raise NotImplementedError
+
+run(foo, some_kwarg=None)
+operator.call(run, foo, some_kwarg=None)
+[builtins fixtures/tuple.pyi]
