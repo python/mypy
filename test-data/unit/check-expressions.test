@@ -1164,8 +1164,8 @@ class A:
     @staticmethod
     def g() -> None: pass
 
-y2 = A.g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
-y3 = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
+y2 = A.g()  # E: "g" of "A" does not return a value (it only ever returns None)
+y3 = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)
 [builtins fixtures/staticmethod.pyi]
 
 [case testNoneReturnWithCallable-xfail]
