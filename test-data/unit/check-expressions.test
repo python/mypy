@@ -1172,7 +1172,7 @@ y3 = A().g()  # E: "g" of "A" does not return a value (it only ever returns None
 class A:
     def __call__(self) -> None: pass
 
-y = A()()  # E: "__call__" of "A" does not return a value (it only ever returns None)  [func-returns-value]
+y = A()()  # E: Function does not return a value (it only ever returns None)
 
 
 -- Slicing
