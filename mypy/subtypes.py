@@ -1651,11 +1651,17 @@ def are_parameters_compatible(
     #           Furthermore, if we're checking for compatibility in all cases,
     #           we confirm that if R accepts an infinite number of arguments,
     #           L must accept the same.
-    def _incompatible(left_arg: FormalArgument | None, right_arg: FormalArgument | None, varargs: bool) -> bool:
+    def _incompatible(
+        left_arg: FormalArgument | None, right_arg: FormalArgument | None, varargs: bool
+    ) -> bool:
         if right_arg is None:
             return False
         if left_arg is None:
-            return not allow_partial_overlap and not trivial_suffix and (not varargs or not trivial_varargs)
+            return (
+                not allow_partial_overlap
+                and not trivial_suffix
+                and (not varargs or not trivial_varargs)
+            )
         return not is_compat(right_arg.typ, left_arg.typ)
 
     if _incompatible(left_star, right_star, True) or _incompatible(left_star2, right_star2, False):
