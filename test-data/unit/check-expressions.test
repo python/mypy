@@ -1158,7 +1158,7 @@ def deco(f: F) -> F:
 def f() -> None:
     pass
 
-y1 = f()      # E: "f" does not return a value (it only ever returns None)  [func-returns-value]
+y1 = f()      # E: "f" does not return a value (it only ever returns None)
 
 class A:
     @staticmethod
