@@ -1,2 +1,3 @@
 sphinx>=5.1.0
 furo>=2022.3.4
+myst-parser>=4.0.0

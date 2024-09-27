@@ -1,4 +1,4 @@
-From 44bc98bd50e7170887f0740b53ed95a8eb04f00e Mon Sep 17 00:00:00 2001
+From 58c6a6ab863c1c38e95ccafaf13792ed9c00e499 Mon Sep 17 00:00:00 2001
 From: Shantanu <12621235+hauntsaninja@users.noreply.github.com>
 Date: Sat, 29 Oct 2022 12:47:21 -0700
 Subject: [PATCH] Revert sum literal integer change (#13961)
@@ -19,18 +19,18 @@ within mypy, I might pursue upstreaming this in typeshed.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
-index 99919c64c..680cd5561 100644
+index ea9f8c894..a6065cc67 100644
 --- a/mypy/typeshed/stdlib/builtins.pyi
 +++ b/mypy/typeshed/stdlib/builtins.pyi
-@@ -1596,7 +1596,7 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
+@@ -1653,7 +1653,7 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
  # without creating many false-positive errors (see #7578).
  # Instead, we special-case the most common examples of this: bool and literal integers.
  @overload
--def sum(iterable: Iterable[bool | _LiteralInteger], /, start: int = 0) -> int: ...  # type: ignore[overload-overlap]
-+def sum(iterable: Iterable[bool], /, start: int = 0) -> int: ...  # type: ignore[overload-overlap]
+-def sum(iterable: Iterable[bool | _LiteralInteger], /, start: int = 0) -> int: ...
++def sum(iterable: Iterable[bool], /, start: int = 0) -> int: ...
  @overload
  def sum(iterable: Iterable[_SupportsSumNoDefaultT], /) -> _SupportsSumNoDefaultT | Literal[0]: ...
  @overload
 -- 
-2.39.3 (Apple Git-146)
+2.46.0
 

@@ -274,9 +274,7 @@ def bin(f: IO[bytes]) -> None:
 txt(sys.stdout)
 bin(sys.stdout)
 [out]
-_program.py:5: error: No overload variant of "write" of "IO" matches argument type "bytes"
-_program.py:5: note: Possible overload variants:
-_program.py:5: note:     def write(self, str, /) -> int
+_program.py:5: error: Argument 1 to "write" of "IO" has incompatible type "bytes"; expected "str"
 _program.py:10: error: Argument 1 to "bin" has incompatible type "Union[TextIO, Any]"; expected "IO[bytes]"
 
 [case testBuiltinOpen]
@@ -2101,7 +2099,7 @@ def f(d: Description) -> None:
 _testDataclassStrictOptionalAlwaysSet.py:9: note: Revealed type is "def (Union[builtins.int, None]) -> Union[builtins.str, None]"
 
 [case testPEP695VarianceInference]
-# flags: --python-version=3.12 --enable-incomplete-feature=NewGenericSyntax
+# flags: --python-version=3.12
 from typing import Callable, Final
 
 class Job[_R_co]:
@@ -2122,7 +2120,7 @@ def func(
 _testPEP695VarianceInference.py:17: error: Incompatible types in assignment (expression has type "Job[None]", variable has type "Job[int]")
 
 [case testPEP695TypeAliasWithDifferentTargetTypes]
-# flags: --python-version=3.12 --enable-incomplete-feature=NewGenericSyntax
+# flags: --python-version=3.12
 from typing import Any, Callable, List, Literal, TypedDict, overload, TypeAlias, TypeVar, Never
 
 class C[T]: pass
@@ -2198,3 +2196,23 @@ type K4 = None | B[int]
 
 type L1 = Never
 type L2 = list[Never]
+
+[case testPEP695VarianceInferenceSpecialCaseWithTypeshed]
+# flags: --python-version=3.12
+class C1[T1, T2](list[T1]):
+    def m(self, a: T2) -> None: ...
+
+def func1(p: C1[int, object]):
+    x: C1[int, int] = p
+
+class C2[T1, T2, T3](dict[T2, T3]):
+    def m(self, a: T1) -> None: ...
+
+def func2(p: C2[object, int, int]):
+    x: C2[int, int, int] = p
+
+class C3[T1, T2](tuple[T1, ...]):
+    def m(self, a: T2) -> None: ...
+
+def func3(p: C3[int, object]):
+    x: C3[int, int] = p

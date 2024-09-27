@@ -2,7 +2,7 @@
 # ruff: noqa: F811
 # TODO: The collections import is required, otherwise mypy crashes.
 # https://github.com/python/mypy/issues/16744
-import collections  # noqa: F401  # pyright: ignore
+import collections  # noqa: F401  # pyright: ignore[reportUnusedImport]
 import sys
 import typing_extensions
 from _collections_abc import dict_items, dict_keys, dict_values
@@ -540,7 +540,7 @@ class AsyncIterator(AsyncIterable[_T_co], Protocol[_T_co]):
     def __aiter__(self) -> AsyncIterator[_T_co]: ...
 
 class AsyncGenerator(AsyncIterator[_YieldT_co], Generic[_YieldT_co, _SendT_contra]):
-    def __anext__(self) -> Awaitable[_YieldT_co]: ...
+    def __anext__(self) -> Coroutine[Any, Any, _YieldT_co]: ...
     @abstractmethod
     def asend(self, value: _SendT_contra, /) -> Coroutine[Any, Any, _YieldT_co]: ...
     @overload
@@ -800,16 +800,10 @@ class IO(Iterator[AnyStr]):
     def writable(self) -> bool: ...
     @abstractmethod
     @overload
-    def write(self: IO[str], s: str, /) -> int: ...
-    @abstractmethod
-    @overload
     def write(self: IO[bytes], s: ReadableBuffer, /) -> int: ...
     @abstractmethod
     @overload
     def write(self, s: AnyStr, /) -> int: ...
-    @abstractmethod
-    @overload
-    def writelines(self: IO[str], lines: Iterable[str], /) -> None: ...
     @abstractmethod
     @overload
     def writelines(self: IO[bytes], lines: Iterable[ReadableBuffer], /) -> None: ...
@@ -846,7 +840,8 @@ class TextIO(IO[str]):
     @abstractmethod
     def __enter__(self) -> TextIO: ...
 
-ByteString: typing_extensions.TypeAlias = bytes | bytearray | memoryview
+if sys.version_info < (3, 14):
+    ByteString: typing_extensions.TypeAlias = bytes | bytearray | memoryview
 
 # Functions
 
