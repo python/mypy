@@ -886,6 +886,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, TypedDictType):
+            if left == right:
+                return True  # Fast path
             if not left.names_are_wider_than(right):
                 return False
             for name, l, r in left.zip(right):
