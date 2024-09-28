@@ -4680,9 +4680,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if inplace:
             # There is __ifoo__, treat as x = x.__ifoo__(y)
             rvalue_type, method_type = self.expr_checker.check_op(method, lvalue_type, s.rvalue, s)
-            if (
-                isinstance(inst := get_proper_type(lvalue_type), Instance)
-                and isinstance(defn := inst.type.get_method(method), OverloadedFuncDef)
+            if isinstance(inst := get_proper_type(lvalue_type), Instance) and isinstance(
+                defn := inst.type.get_method(method), OverloadedFuncDef
             ):
                 for item in defn.items:
                     if (
@@ -7547,9 +7546,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Warn if deprecated and not directly imported with a `from` statement."""
         if isinstance(typ, Decorator):
             typ = typ.func
-        if (
-            isinstance(typ, (FuncDef, OverloadedFuncDef, TypeInfo))
-            and (typ.deprecated is not None)
+        if isinstance(typ, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
+            typ.deprecated is not None
         ):
             for imp in self.tree.imports:
                 if isinstance(imp, ImportFrom) and any(typ.name == n[0] for n in imp.names):
@@ -7561,9 +7559,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Warn if deprecated."""
         if isinstance(typ, Decorator):
             typ = typ.func
-        if (
-            isinstance(typ, (FuncDef, OverloadedFuncDef, TypeInfo))
-            and ((deprecated := typ.deprecated) is not None)
+        if isinstance(typ, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
+            (deprecated := typ.deprecated) is not None
         ):
             warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
             warn(deprecated, context, code=codes.DEPRECATED)

@@ -1265,9 +1265,8 @@ class SemanticAnalyzer(
         if defn.is_property:
             return
 
-        if (
-            isinstance(impl := defn.impl, Decorator)
-            and ((deprecated := impl.func.deprecated) is not None)
+        if isinstance(impl := defn.impl, Decorator) and (
+            (deprecated := impl.func.deprecated) is not None
         ):
             defn.deprecated = deprecated
             for item in defn.items:

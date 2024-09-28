@@ -4005,9 +4005,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 errors.append(local_errors.filtered_errors())
                 results.append(result)
             else:
-                if (
-                    isinstance(obj, Instance)
-                    and isinstance(defn := obj.type.get_method(name), OverloadedFuncDef)
+                if isinstance(obj, Instance) and isinstance(
+                    defn := obj.type.get_method(name), OverloadedFuncDef
                 ):
                     for item in defn.items:
                         if (

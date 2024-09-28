@@ -2332,10 +2332,7 @@ class Overloaded(FunctionLike):
         return self.items == other.items
 
     def serialize(self) -> JsonDict:
-        return {
-            ".class": "Overloaded",
-            "items": [t.serialize() for t in self.items],
-        }
+        return {".class": "Overloaded", "items": [t.serialize() for t in self.items]}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> Overloaded:
