@@ -1,0 +1,44 @@
+import os
+
+def merge_sort_files(file_input, file_output):
+    # Read input file
+    with open(file_input, 'r') as f:
+        arr = list(map(int, f.read().split()))
+    
+    # Sort the array
+    arr = merge_sort(arr)
+    
+    # Write sorted data to the output file
+    with open(file_output, 'w') as f:
+        f.write(" ".join(map(str, arr)))
+
+def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    
+    mid = len(arr) // 2
+    left_half = merge_sort(arr[:mid])
+    right_half = merge_sort(arr[mid:])
+    
+    return merge(left_half, right_half)
+
+def merge(left, right):
+    result = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result
+
+# Example usage
+input_file = "unsorted.txt"
+output_file = "sorted.txt"
+merge_sort_files(input_file, output_file)
+print(f"Sorted data written to {output_file}")
