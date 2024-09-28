@@ -318,16 +318,9 @@ def analyze_instance_member_access(
             assert isinstance(method, OverloadedFuncDef)
             getter = method.items[0]
             assert isinstance(getter, Decorator)
-            if (
-                mx.is_lvalue
-                and (len(items := method.items) > 1)
-                and isinstance(setter := items[1], Decorator)
-            ):
-                if isinstance(co := setter.func.type, (CallableType, Overloaded)):
-                    mx.chk.warn_deprecated(co, mx.context)
+            if mx.is_lvalue and (len(items := method.items) > 1):
+                mx.chk.warn_deprecated(items[1], mx.context)
             return analyze_var(name, getter.var, typ, info, mx)
-        elif isinstance(co := method.type, (CallableType, Overloaded)):
-            mx.chk.warn_deprecated(co, mx.context)
 
         if mx.is_lvalue:
             mx.msg.cant_assign_to_method(mx.context)
@@ -502,6 +495,8 @@ def analyze_member_var_access(
     """
     # It was not a method. Try looking up a variable.
     v = lookup_member_var_or_accessor(info, name, mx.is_lvalue)
+
+    mx.chk.warn_deprecated(v, mx.context)
 
     vv = v
     if isinstance(vv, Decorator):
@@ -783,9 +778,6 @@ def analyze_var(
         result = t
         typ = get_proper_type(typ)
 
-        if var.is_property and isinstance(typ, CallableType):
-            mx.chk.warn_deprecated(typ, mx.context)
-
         call_type: ProperType | None = None
         if var.is_initialized_in_class and (not is_instance_var(var) or mx.is_operator):
             if isinstance(typ, FunctionLike) and not typ.is_type_obj():
@@ -1016,6 +1008,8 @@ def analyze_class_attribute_access(
         # Return `None` here to signify that the name should be looked up
         # on the class object itself rather than the instance.
         return None
+
+    mx.chk.warn_deprecated(node.node, mx.context)
 
     is_decorated = isinstance(node.node, Decorator)
     is_method = is_decorated or isinstance(node.node, FuncBase)

@@ -561,17 +561,19 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     Overloaded variants must be consecutive in the source file.
     """
 
-    __slots__ = ("items", "unanalyzed_items", "impl")
+    __slots__ = ("items", "unanalyzed_items", "impl", "deprecated")
 
     items: list[OverloadPart]
     unanalyzed_items: list[OverloadPart]
     impl: OverloadPart | None
+    deprecated: str | None
 
     def __init__(self, items: list[OverloadPart]) -> None:
         super().__init__()
         self.items = items
         self.unanalyzed_items = items.copy()
         self.impl = None
+        self.deprecated = None
         if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
@@ -596,6 +598,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             "fullname": self._fullname,
             "impl": None if self.impl is None else self.impl.serialize(),
             "flags": get_flags(self, FUNCBASE_FLAGS),
+            "deprecated": self.deprecated,
         }
 
     @classmethod
@@ -615,6 +618,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             res.type = typ
         res._fullname = data["fullname"]
         set_flags(res, data["flags"])
+        res.deprecated = data["deprecated"]
         # NOTE: res.info will be set in the fixup phase.
         return res
 
@@ -781,6 +785,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # Present only when a function is decorated with @typing.datasclass_transform or similar
         "dataclass_transform_spec",
         "docstring",
+        "deprecated",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -810,6 +815,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_mypy_only = False
         self.dataclass_transform_spec: DataclassTransformSpec | None = None
         self.docstring: str | None = None
+        self.deprecated: str | None = None
 
     @property
     def name(self) -> str:
@@ -840,6 +846,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                 if self.dataclass_transform_spec is None
                 else self.dataclass_transform_spec.serialize()
             ),
+            "deprecated": self.deprecated,
         }
 
     @classmethod
@@ -867,6 +874,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             if data["dataclass_transform_spec"] is not None
             else None
         )
+        ret.deprecated = data["deprecated"]
         # Leave these uninitialized so that future uses will trigger an error
         del ret.arguments
         del ret.max_pos

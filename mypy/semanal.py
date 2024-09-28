@@ -1267,14 +1267,12 @@ class SemanticAnalyzer(
 
         if (
             isinstance(impl := defn.impl, Decorator)
-            and isinstance(type_ := impl.func.type, CallableType)
-            and ((deprecated := type_.deprecated) is not None)
+            and ((deprecated := impl.func.deprecated) is not None)
         ):
-            if isinstance(defn.type, Overloaded):
-                defn.type.deprecated = deprecated
+            defn.deprecated = deprecated
             for item in defn.items:
-                if isinstance(item, Decorator) and isinstance(item.func.type, Overloaded):
-                    item.func.type.deprecated = deprecated
+                if isinstance(item, Decorator):
+                    item.func.deprecated = deprecated
 
         for item in defn.items:
             deprecation = False
@@ -1285,10 +1283,13 @@ class SemanticAnalyzer(
                     elif (deprecated := self.get_deprecated(d)) is not None:
                         deprecation = True
                         if isinstance(type_ := item.func.type, CallableType):
-                            type_.deprecated = (
-                                f"overload {type_} of function {defn.fullname} is deprecated: "
-                                f"{deprecated}"
-                            )
+                            typestr = f" {type_} "
+                        else:
+                            typestr = " "
+                        item.func.deprecated = (
+                            f"overload{typestr}of function {defn.fullname} is deprecated: "
+                            f"{deprecated}"
+                        )
 
     @staticmethod
     def get_deprecated(expression: Expression) -> str | None:
@@ -1503,10 +1504,9 @@ class SemanticAnalyzer(
             if isinstance(item, Decorator):
                 for d in item.decorators:
                     if (deprecated := self.get_deprecated(d)) is not None:
-                        if isinstance(type_ := item.func.type, CallableType):
-                            type_.deprecated = (
-                                f"function {item.fullname} is deprecated: {deprecated}"
-                            )
+                        item.func.deprecated = (
+                            f"function {item.fullname} is deprecated: {deprecated}"
+                        )
 
     def add_function_to_symbol_table(self, func: FuncDef | OverloadedFuncDef) -> None:
         if self.is_class_scope():
@@ -1712,8 +1712,7 @@ class SemanticAnalyzer(
             ):
                 dec.func.dataclass_transform_spec = self.parse_dataclass_transform_spec(d)
             elif (deprecated := self.get_deprecated(d)) is not None:
-                if isinstance(type_ := dec.func.type, CallableType):
-                    type_.deprecated = f"function {dec.fullname} is deprecated: {deprecated}"
+                dec.func.deprecated = f"function {dec.fullname} is deprecated: {deprecated}"
             elif not dec.var.is_property:
                 # We have seen a "non-trivial" decorator before seeing @property, if
                 # we will see a @property later, give an error, as we don't support this.

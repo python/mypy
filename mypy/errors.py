@@ -194,6 +194,9 @@ class ErrorWatcher:
         Return True to filter out the error, preventing it from being seen by other
         ErrorWatcher further down the stack and from being recorded by Errors
         """
+        if info.code == codes.DEPRECATED:
+            return False
+
         self._has_new_errors = True
         if isinstance(self._filter, bool):
             should_filter = self._filter

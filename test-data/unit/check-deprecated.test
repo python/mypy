@@ -55,7 +55,7 @@ f(1)  # N: function __main__.f is deprecated: use f2 instead \
 f[1]  # N: function __main__.f is deprecated: use f2 instead \
       # E: Value of type "Callable[[], None]" is not indexable
 g = f  # N: function __main__.f is deprecated: use f2 instead
-g()  # N: function __main__.f is deprecated: use f2 instead
+g()
 t = (f, f, g)  # N: function __main__.f is deprecated: use f2 instead
 
 [builtins fixtures/tuple.pyi]
@@ -203,7 +203,7 @@ class A:
     def __invert__(self) -> A: ...
 
 class B:
-    @deprecated("no in")
+    @deprecated("still no in")
     def __contains__(self, v: int) -> int: ...
 
 a = A()
@@ -213,8 +213,8 @@ a + 1  # N: function __main__.A.__add__ is deprecated: no A + int
 a += 1  # N: function __main__.A.__iadd__ is deprecated: no A = A + int
 for i in a:  # N: function __main__.A.__iter__ is deprecated: no iteration
     reveal_type(i)  # N: Revealed type is "builtins.int"
-1 in a  # N: function __main__.A.__iter__ is deprecated: no iteration
-1 in b  # N: function __main__.B.__contains__ is deprecated: no in
+1 in a  # N: function __main__.A.__contains__ is deprecated: no in
+1 in b  # N: function __main__.B.__contains__ is deprecated: still no in
 ~a  # N: function __main__.A.__invert__ is deprecated: no inversion
 
 [builtins fixtures/tuple.pyi]
@@ -282,7 +282,7 @@ C().f()  # N: function __main__.C.f is deprecated: use g instead
 C().f(1)  # N: function __main__.C.f is deprecated: use g instead \
           # E: Too many arguments for "f" of "C"
 f = C().f  # N: function __main__.C.f is deprecated: use g instead
-f()  # N: function __main__.C.f is deprecated: use g instead
+f()
 t = (C.f, C.f, C.g)  # N: function __main__.C.f is deprecated: use g instead
 
 C().g()
@@ -329,8 +329,9 @@ C.f  # N: function __main__.C.f is deprecated: use f2 instead
 C().f  # N: function __main__.C.f is deprecated: use f2 instead
 C().f()  # N: function __main__.C.f is deprecated: use f2 instead \
          # E: "int" not callable
-C().f = 1  # E: Property "f" defined in "C" is read-only \
-           # N: function __main__.C.f is deprecated: use f2 instead
+C().f = 1  # N: function __main__.C.f is deprecated: use f2 instead \
+           # E: Property "f" defined in "C" is read-only
+
 
 C.g
 C().g
