@@ -4090,7 +4090,7 @@ def get_member_expr_fullname(expr: MemberExpr) -> str | None:
         initial = expr.expr.name
     elif isinstance(expr.expr, MemberExpr):
         initial = get_member_expr_fullname(expr.expr)
-    else:
+    if initial is None:
         return None
     return f"{initial}.{expr.name}"
 
