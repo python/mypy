@@ -10546,7 +10546,7 @@ m.py:9: error: Argument 2 to "foo" has incompatible type "str"; expected "int"
 m.py:10: error: Unexpected keyword argument "a" for "foo"
 partial.py:4: note: "foo" defined here
 
-[case testAddKeepChangeAndRemoveFunctionDeprecation]
+[case testDeprecatedAddKeepChangeAndRemoveFunctionDeprecation]
 from a import f
 f()
 import a
@@ -10587,7 +10587,7 @@ main:4: note: function a.f is deprecated: use f3 instead
 ==
 
 
-[case testRemoveFunctionDeprecation]
+[case testDeprecatedRemoveFunctionDeprecation]
 from a import f
 f()
 import a
@@ -10607,7 +10607,7 @@ main:1: note: function a.f is deprecated: use f2 instead
 main:4: note: function a.f is deprecated: use f2 instead
 ==
 
-[case testKeepFunctionDeprecation]
+[case testDeprecatedKeepFunctionDeprecation]
 from a import f
 f()
 import a
@@ -10632,7 +10632,7 @@ main:1: note: function a.f is deprecated: use f2 instead
 main:4: note: function a.f is deprecated: use f2 instead
 
 
-[case testAddFunctionDeprecationIndirectImport1-only_when_nocache]
+[case testDeprecatedAddFunctionDeprecationIndirectImport]
 from b import f
 f()
 import b
@@ -10649,15 +10649,15 @@ from typing_extensions import deprecated
 @deprecated("use f2 instead")
 def f() -> int: ...
 
-
 [builtins fixtures/tuple.pyi]
 [out]
 ==
+b.py:1: note: function a.f is deprecated: use f2 instead
 main:1: note: function a.f is deprecated: use f2 instead
 main:4: note: function a.f is deprecated: use f2 instead
-b.py:1: note: function a.f is deprecated: use f2 instead
 
-[case testAddFunctionDeprecationIndirectImport2-only_when_cache]
+
+[case testDeprecatedChangeFunctionDeprecationIndirectImport]
 from b import f
 f()
 import b
@@ -10667,6 +10667,8 @@ b.f()
 from a import f
 
 [file a.py]
+from typing_extensions import deprecated
+@deprecated("use f1 instead")
 def f() -> int: ...
 
 [file a.py.2]
@@ -10674,10 +10676,36 @@ from typing_extensions import deprecated
 @deprecated("use f2 instead")
 def f() -> int: ...
 
-
 [builtins fixtures/tuple.pyi]
 [out]
+b.py:1: note: function a.f is deprecated: use f1 instead
+main:1: note: function a.f is deprecated: use f1 instead
+main:4: note: function a.f is deprecated: use f1 instead
 ==
 b.py:1: note: function a.f is deprecated: use f2 instead
 main:1: note: function a.f is deprecated: use f2 instead
 main:4: note: function a.f is deprecated: use f2 instead
+
+[case testDeprecatedRemoveFunctionDeprecationIndirectImport]
+from b import f
+f()
+import b
+b.f()
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing_extensions import deprecated
+@deprecated("use f1 instead")
+def f() -> int: ...
+
+[file a.py.2]
+def f() -> int: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+b.py:1: note: function a.f is deprecated: use f1 instead
+main:1: note: function a.f is deprecated: use f1 instead
+main:4: note: function a.f is deprecated: use f1 instead
+==

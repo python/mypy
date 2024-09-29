@@ -217,11 +217,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sym
             )
         else:
             assert symbol.kind != UNBOUND_IMPORTED
-            if node and get_prefix(node.fullname) != name_prefix:
-                # This is a cross-reference to a node defined in another module.
-                result[name] = ("CrossRef", common)
-            else:
-                result[name] = snapshot_definition(node, common)
+            result[name] = snapshot_definition(node, common)
     return result
 
 
