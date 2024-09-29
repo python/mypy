@@ -96,6 +96,7 @@ from mypy.nodes import (
     TypeAliasExpr,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeInfo,
     TypeVarExpr,
     TypeVarTupleExpr,
@@ -4688,6 +4689,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )
         return target_type
 
+    def visit_type_form_expr(self, expr: TypeFormExpr) -> Type:
+        typ = expr.type
+        return TypeType.make_normalized(typ, line=typ.line, column=typ.column, is_type_form=True)
+
     def visit_assert_type_expr(self, expr: AssertTypeExpr) -> Type:
         source_type = self.accept(
             expr.expr,
@@ -5932,6 +5937,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         old_is_callee = self.is_callee
         self.is_callee = is_callee
         try:
+            p_type_context = get_proper_type(type_context)
             if allow_none_return and isinstance(node, CallExpr):
                 typ = self.visit_call_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, YieldFromExpr):
@@ -5940,6 +5946,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 typ = self.visit_conditional_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, AwaitExpr):
                 typ = self.visit_await_expr(node, allow_none_return=True)
+            elif (
+                isinstance(p_type_context, TypeType) and
+                p_type_context.is_type_form and
+                node.as_type is not None
+            ):
+                typ = TypeType.make_normalized(
+                    node.as_type,
+                    line=node.as_type.line,
+                    column=node.as_type.column,
+                    is_type_form=True,
+                )
             else:
                 typ = node.accept(self)
         except Exception as err:

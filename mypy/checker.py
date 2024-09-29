@@ -7786,7 +7786,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             fallback = typ.fallback.copy_with_extra_attr(name, any_type)
             return typ.copy_modified(fallback=fallback)
         if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
-            return TypeType.make_normalized(self.add_any_attribute_to_type(typ.item, name))
+            return TypeType.make_normalized(
+                self.add_any_attribute_to_type(typ.item, name),
+                is_type_form=typ.is_type_form,
+            )
         if isinstance(typ, TypeVarType):
             return typ.copy_modified(
                 upper_bound=self.add_any_attribute_to_type(typ.upper_bound, name),

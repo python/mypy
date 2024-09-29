@@ -30,6 +30,7 @@ Protocol = 0
 Tuple = 0
 _promote = 0
 Type = 0
+TypeForm = 0
 no_type_check = 0
 ClassVar = 0
 Final = 0

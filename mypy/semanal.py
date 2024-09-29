@@ -172,6 +172,7 @@ from mypy.nodes import (
     TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeInfo,
     TypeParam,
     TypeVarExpr,
@@ -191,7 +192,7 @@ from mypy.nodes import (
     type_aliases_source_versions,
     typing_extensions_aliases,
 )
-from mypy.options import Options
+from mypy.options import Options, TYPE_FORM
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -3209,6 +3210,7 @@ class SemanticAnalyzer(
         self.store_final_status(s)
         self.check_classvar(s)
         self.process_type_annotation(s)
+        self.analyze_rvalue_as_type_form(s)
         self.apply_dynamic_class_hook(s)
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
@@ -3536,6 +3538,10 @@ class SemanticAnalyzer(
                 is_final=s.is_final_def,
                 has_explicit_value=has_explicit_value,
             )
+
+    def analyze_rvalue_as_type_form(self, s: AssignmentStmt) -> None:
+        if TYPE_FORM in self.options.enable_incomplete_feature:
+            s.rvalue.as_type = self.try_parse_as_type_expression(s.rvalue)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
         if not isinstance(s.rvalue, CallExpr):
@@ -5271,6 +5277,8 @@ class SemanticAnalyzer(
             self.fail('"return" not allowed in except* block', s, serious=True)
         if s.expr:
             s.expr.accept(self)
+            if TYPE_FORM in self.options.enable_incomplete_feature:
+                s.expr.as_type = self.try_parse_as_type_expression(s.expr)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
         self.statement = s
@@ -5791,10 +5799,33 @@ class SemanticAnalyzer(
             with self.allow_unbound_tvars_set():
                 for a in expr.args:
                     a.accept(self)
+        elif refers_to_fullname(
+            expr.callee, ("typing.TypeForm", "typing_extensions.TypeForm")
+        ):
+            # Special form TypeForm(...).
+            if not self.check_fixed_args(expr, 1, "TypeForm"):
+                return
+            # Translate first argument to an unanalyzed type.
+            try:
+                typ = self.expr_to_unanalyzed_type(expr.args[0])
+            except TypeTranslationError:
+                self.fail("TypeForm argument is not a type", expr)
+                # Suppress future error: "<typing special form>" not callable
+                expr.analyzed = CastExpr(expr.args[0], AnyType(TypeOfAny.from_error))
+                return
+            # Piggyback TypeFormExpr object to the CallExpr object; it takes
+            # precedence over the CallExpr semantics.
+            expr.analyzed = TypeFormExpr(typ)
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
+            expr.analyzed.accept(self)
         else:
             # Normal call expression.
+            calculate_type_forms = TYPE_FORM in self.options.enable_incomplete_feature
             for a in expr.args:
                 a.accept(self)
+                if calculate_type_forms:
+                    a.as_type = self.try_parse_as_type_expression(a)
 
             if (
                 isinstance(expr.callee, MemberExpr)
@@ -6059,6 +6090,11 @@ class SemanticAnalyzer(
 
     def visit_cast_expr(self, expr: CastExpr) -> None:
         expr.expr.accept(self)
+        analyzed = self.anal_type(expr.type)
+        if analyzed is not None:
+            expr.type = analyzed
+
+    def visit_type_form_expr(self, expr: TypeFormExpr) -> None:
         analyzed = self.anal_type(expr.type)
         if analyzed is not None:
             expr.type = analyzed
@@ -7584,6 +7620,34 @@ class SemanticAnalyzer(
     def visit_singleton_pattern(self, o: SingletonPattern, /) -> None:
         return None
 
+    def try_parse_as_type_expression(self, maybe_type_expr: Expression) -> Type|None:
+        """Try to parse maybe_type_expr as a type expression.
+        If parsing fails return None and emit no errors."""
+        # Save SemanticAnalyzer state
+        original_errors = self.errors  # altered by fail()
+        original_num_incomplete_refs = self.num_incomplete_refs  # altered by record_incomplete_ref()
+        original_progress = self.progress  # altered by defer()
+        original_deferred = self.deferred  # altered by defer()
+        original_deferral_debug_context_len = len(self.deferral_debug_context)  # altered by defer()
+
+        self.errors = Errors(Options())
+        try:
+            t = self.expr_to_analyzed_type(maybe_type_expr)
+            if self.errors.is_errors():
+                raise TypeTranslationError
+            if isinstance(t, (UnboundType, PlaceholderType)):  # type: ignore[misc]
+                raise TypeTranslationError
+        except TypeTranslationError:
+            # Not a type expression. It must be a value expression.
+            t = None
+        finally:
+            # Restore SemanticAnalyzer state
+            self.errors = original_errors
+            self.num_incomplete_refs = original_num_incomplete_refs
+            self.progress = original_progress
+            self.deferred = original_deferred
+            del self.deferral_debug_context[original_deferral_debug_context_len:]
+        return t
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):

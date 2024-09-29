@@ -55,6 +55,7 @@ from typing import (  # noqa: Y022,Y037,Y038,Y039
     Tuple as Tuple,
     Type as Type,
     TypedDict as TypedDict,
+    TypeForm as TypeForm,
     Union as Union,
     ValuesView as ValuesView,
     _Alias,

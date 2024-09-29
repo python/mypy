@@ -201,7 +201,19 @@ class Statement(Node):
 class Expression(Node):
     """An expression node."""
 
-    __slots__ = ()
+    # NOTE: Cannot use __slots__ because some subclasses also inherit from
+    #       a different superclass with its own __slots__. A subclass in
+    #       Python is not allowed to have multiple superclasses that define
+    #       __slots__.
+    #__slots__ = ('as_type',)
+
+    # If this value expression can also be parsed as a valid type expression,
+    # represents the type denoted by the type expression.
+    as_type: mypy.types.Type | None
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.as_type = None
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
@@ -2205,6 +2217,23 @@ class CastExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_cast_expr(self)
+
+
+class TypeFormExpr(Expression):
+    """TypeForm(type) expression."""
+
+    __slots__ = ("type",)
+
+    __match_args__ = ("type",)
+
+    type: mypy.types.Type
+
+    def __init__(self, typ: mypy.types.Type) -> None:
+        super().__init__()
+        self.type = typ
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_type_form_expr(self)
 
 
 class AssertTypeExpr(Expression):

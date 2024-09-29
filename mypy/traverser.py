@@ -76,6 +76,7 @@ from mypy.nodes import (
     TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
@@ -288,6 +289,9 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_cast_expr(self, o: CastExpr, /) -> None:
         o.expr.accept(self)
+
+    def visit_type_form_expr(self, o: TypeFormExpr, /) -> None:
+        pass
 
     def visit_assert_type_expr(self, o: AssertTypeExpr, /) -> None:
         o.expr.accept(self)
@@ -736,6 +740,11 @@ class ExtendedTraverserVisitor(TraverserVisitor):
         if not self.visit(o):
             return
         super().visit_cast_expr(o)
+
+    def visit_type_form_expr(self, o: TypeFormExpr, /) -> None:
+        if not self.visit(o):
+            return
+        super().visit_type_form_expr(o)
 
     def visit_assert_type_expr(self, o: AssertTypeExpr, /) -> None:
         if not self.visit(o):
