@@ -102,7 +102,6 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
-from mypy.util import get_prefix
 
 # Snapshot representation of a symbol table node or type. The representation is
 # opaque -- the only supported operations are comparing for equality and
