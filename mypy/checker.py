@@ -7542,25 +7542,25 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
         return self.expr_checker.accept(node, type_context=type_context)
 
-    def check_deprecated(self, typ: SymbolNode | None, context: Context) -> None:
+    def check_deprecated(self, node: SymbolNode | None, context: Context) -> None:
         """Warn if deprecated and not directly imported with a `from` statement."""
-        if isinstance(typ, Decorator):
-            typ = typ.func
-        if isinstance(typ, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
-            typ.deprecated is not None
+        if isinstance(node, Decorator):
+            node = node.func
+        if isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
+            node.deprecated is not None
         ):
             for imp in self.tree.imports:
-                if isinstance(imp, ImportFrom) and any(typ.name == n[0] for n in imp.names):
+                if isinstance(imp, ImportFrom) and any(node.name == n[0] for n in imp.names):
                     break
             else:
-                self.warn_deprecated(typ, context)
+                self.warn_deprecated(node, context)
 
-    def warn_deprecated(self, typ: SymbolNode | None, context: Context) -> None:
+    def warn_deprecated(self, node: SymbolNode | None, context: Context) -> None:
         """Warn if deprecated."""
-        if isinstance(typ, Decorator):
-            typ = typ.func
-        if isinstance(typ, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
-            (deprecated := typ.deprecated) is not None
+        if isinstance(node, Decorator):
+            node = node.func
+        if isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
+            (deprecated := node.deprecated) is not None
         ):
             warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
             warn(deprecated, context, code=codes.DEPRECATED)
