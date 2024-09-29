@@ -1281,8 +1281,8 @@ class SemanticAnalyzer(
                         self.msg.note("@overload should be placed before @deprecated", d)
                     elif (deprecated := self.get_deprecated(d)) is not None:
                         deprecation = True
-                        if isinstance(type_ := item.func.type, CallableType):
-                            typestr = f" {type_} "
+                        if isinstance(typ := item.func.type, CallableType):
+                            typestr = f" {typ} "
                         else:
                             typestr = " "
                         item.func.deprecated = (
