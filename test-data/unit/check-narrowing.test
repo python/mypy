@@ -1305,6 +1305,53 @@ def f(t: Type[T], a: A, b: B) -> None:
     else:
         reveal_type(b)  # N: Revealed type is "__main__.B"
 
+[case testNarrowingTypeVarConstraints]
+from typing import TypeVar
+
+class A:
+    a: int
+class B:
+    b: int
+
+T = TypeVar("T", A, B)
+
+def f(x: T):
+    x.a                     # E: "B" has no attribute "a"
+    x.b                     # E: "A" has no attribute "b"
+    if isinstance(x, A):
+        reveal_type(x)      # N: Revealed type is "__main__.A" \
+                            # N: Revealed type is "__main__.<subclass of "B" and "A">"
+        x.a
+        x.b                 # E: "A" has no attribute "b"
+    else:
+        reveal_type(x)      # N: Revealed type is "__main__.B"
+        x.a                 # E: "B" has no attribute "a"
+        x.b
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingTypeVarUnionBound]
+from typing import Union, TypeVar
+
+class A:
+    a: int
+class B:
+    b: int
+
+T = TypeVar("T", bound=Union[A, B])
+
+def f(x: T):
+    x.a                     # E: Item "B" of the upper bound "Union[A, B]" of type variable "T" has no attribute "a"
+    x.b                     # E: Item "A" of the upper bound "Union[A, B]" of type variable "T" has no attribute "b"
+    if isinstance(x, A):
+        reveal_type(x)      # N: Revealed type is "__main__.A"
+        x.a
+        x.b                 # E: "A" has no attribute "b"
+    else:
+        reveal_type(x)      # N: Revealed type is "T`-1"
+        x.a                 # E: "T" has no attribute "a"
+        x.b
+[builtins fixtures/isinstance.pyi]
+
 [case testNarrowingNestedUnionOfTypedDicts]
 from typing import Union
 from typing_extensions import Literal, TypedDict
