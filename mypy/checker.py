@@ -140,6 +140,7 @@ from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
+from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.state import state
 from mypy.subtypes import (
@@ -309,6 +310,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     tscope: Scope
     scope: CheckerScope
+    # Innermost enclosing type
+    type: TypeInfo | None
     # Stack of function return types
     return_types: list[Type]
     # Flags; true for dynamically typed functions
@@ -383,6 +386,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder(options)
         self.globals = tree.names
+        self.type = None
         self.return_types = []
         self.dynamic_funcs = []
         self.partial_types = []
@@ -2552,7 +2556,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         for base in typ.mro[1:]:
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
-        with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
+        with (
+            self.tscope.class_scope(defn.info),
+            self.enter_partial_types(is_class=True),
+            self.enter_class(defn.info),
+        ):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder(self.options)
             with self.binder.top_frame_context():
@@ -2619,6 +2627,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
             self.check_enum(defn)
         infer_class_variances(defn.info)
+
+    @contextmanager
+    def enter_class(self, type: TypeInfo) -> Iterator[None]:
+        original_type = self.type
+        self.type = type
+        try:
+            yield
+        finally:
+            self.type = original_type
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -7818,7 +7835,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             fallback = typ.fallback.copy_with_extra_attr(name, any_type)
             return typ.copy_modified(fallback=fallback)
         if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
-            return TypeType.make_normalized(self.add_any_attribute_to_type(typ.item, name))
+            return TypeType.make_normalized(
+                self.add_any_attribute_to_type(typ.item, name), is_type_form=typ.is_type_form
+            )
         if isinstance(typ, TypeVarType):
             return typ.copy_modified(
                 upper_bound=self.add_any_attribute_to_type(typ.upper_bound, name),
@@ -7953,6 +7972,97 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def visit_global_decl(self, o: GlobalDecl, /) -> None:
         return None
+
+
+class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
+    """
+    Adapts TypeChecker to the SemanticAnalyzerCoreInterface,
+    allowing most type expressions to be parsed during the TypeChecker pass.
+
+    See ExpressionChecker.try_parse_as_type_expression() to understand how this
+    class is used.
+    """
+
+    _chk: TypeChecker
+    _names: dict[str, SymbolTableNode]
+    did_fail: bool
+
+    def __init__(self, chk: TypeChecker, names: dict[str, SymbolTableNode]) -> None:
+        self._chk = chk
+        self._names = names
+        self.did_fail = False
+
+    def lookup_qualified(
+        self, name: str, ctx: Context, suppress_errors: bool = False
+    ) -> SymbolTableNode | None:
+        sym = self._names.get(name)
+        # All names being looked up should have been previously gathered,
+        # even if the related SymbolTableNode does not refer to a valid SymbolNode
+        assert sym is not None, name
+        return sym
+
+    def lookup_fully_qualified(self, fullname: str, /) -> SymbolTableNode:
+        ret = self.lookup_fully_qualified_or_none(fullname)
+        assert ret is not None, fullname
+        return ret
+
+    def lookup_fully_qualified_or_none(self, fullname: str, /) -> SymbolTableNode | None:
+        try:
+            return self._chk.lookup_qualified(fullname)
+        except KeyError:
+            return None
+
+    def fail(
+        self,
+        msg: str,
+        ctx: Context,
+        serious: bool = False,
+        *,
+        blocker: bool = False,
+        code: ErrorCode | None = None,
+    ) -> None:
+        self.did_fail = True
+
+    def note(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -> None:
+        pass
+
+    def incomplete_feature_enabled(self, feature: str, ctx: Context) -> bool:
+        if feature not in self._chk.options.enable_incomplete_feature:
+            self.fail("__ignored__", ctx)
+            return False
+        return True
+
+    def record_incomplete_ref(self) -> None:
+        pass
+
+    def defer(self, debug_context: Context | None = None, force_progress: bool = False) -> None:
+        pass
+
+    def is_incomplete_namespace(self, fullname: str) -> bool:
+        return False
+
+    @property
+    def final_iteration(self) -> bool:
+        return True
+
+    def is_future_flag_set(self, flag: str) -> bool:
+        return self._chk.tree.is_future_flag_set(flag)
+
+    @property
+    def is_stub_file(self) -> bool:
+        return self._chk.tree.is_stub
+
+    def is_func_scope(self) -> bool:
+        # Return arbitrary value.
+        #
+        # This method is currently only used to decide whether to pair
+        # a fail() message with a note() message or not. Both of those
+        # message types are ignored.
+        return False
+
+    @property
+    def type(self) -> TypeInfo | None:
+        return self._chk.type
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):

@@ -2741,7 +2741,11 @@ def format_type_inner(
     elif isinstance(typ, UninhabitedType):
         return "Never"
     elif isinstance(typ, TypeType):
-        return f"type[{format(typ.item)}]"
+        if typ.is_type_form:
+            type_name = "TypeForm"
+        else:
+            type_name = "type"
+        return f"{type_name}[{format(typ.item)}]"
     elif isinstance(typ, FunctionLike):
         func = typ
         if func.is_type_obj():
