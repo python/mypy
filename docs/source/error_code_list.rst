@@ -1217,6 +1217,30 @@ If the code being checked is not syntactically valid, mypy issues a
 syntax error. Most, but not all, syntax errors are *blocking errors*:
 they can't be ignored with a ``# type: ignore`` comment.
 
+.. _code-typeddict-readonly-mutated:
+
+ReadOnly key of a TypedDict is mutated [typeddict-readonly-mutated]
+-------------------------------------------------------------------
+
+Consider this example:
+
+.. code-block:: python
+
+    from datetime import datetime
+    from typing import TypedDict
+    from typing_extensions import ReadOnly
+
+    class User(TypedDict):
+        username: ReadOnly[str]
+        last_active: datetime
+
+    user: User = {'username': 'foobar', 'last_active': datetime.now()}
+    user['last_active'] = datetime.now()  # ok
+    user['username'] = 'other'  # error: ReadOnly TypedDict key "key" TypedDict is mutated  [typeddict-readonly-mutated]
+
+`PEP 705 <https://peps.python.org/pep-0705>`_ specifies
+how ``ReadOnly`` special form works for ``TypedDict`` objects.
+
 .. _code-misc:
 
 Miscellaneous checks [misc]

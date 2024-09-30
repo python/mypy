@@ -276,6 +276,7 @@ class TypeTranslator(TypeVisitor[Type]):
         result = TypedDictType(
             items,
             t.required_keys,
+            t.readonly_keys,
             # TODO: This appears to be unsafe.
             cast(Any, t.fallback.accept(self)),
             t.line,

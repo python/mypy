@@ -498,7 +498,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             with self.msg.filter_errors() as local_errors:
                 result: Type | None = self.chk.expr_checker.visit_typeddict_index_expr(
                     mapping_type, key
-                )
+                )[0]
                 has_local_errors = local_errors.has_new_errors()
             # If we can't determine the type statically fall back to treating it as a normal
             # mapping

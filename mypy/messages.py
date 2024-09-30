@@ -926,6 +926,17 @@ class MessageBuilder:
             code=code,
         )
 
+    def readonly_keys_mutated(self, keys: set[str], context: Context) -> None:
+        if len(keys) == 1:
+            suffix = "is"
+        else:
+            suffix = "are"
+        self.fail(
+            "ReadOnly {} TypedDict {} mutated".format(format_key_list(sorted(keys)), suffix),
+            code=codes.TYPEDDICT_READONLY_MUTATED,
+            context=context,
+        )
+
     def too_few_arguments(
         self, callee: CallableType, context: Context, argument_names: Sequence[str | None] | None
     ) -> None:
@@ -2613,10 +2624,13 @@ def format_type_inner(
             return format(typ.fallback)
         items = []
         for item_name, item_type in typ.items.items():
-            modifier = "" if item_name in typ.required_keys else "?"
+            modifier = ""
+            if item_name not in typ.required_keys:
+                modifier += "?"
+            if item_name in typ.readonly_keys:
+                modifier += "="
             items.append(f"{item_name!r}{modifier}: {format(item_type)}")
-        s = f"TypedDict({{{', '.join(items)}}})"
-        return s
+        return f"TypedDict({{{', '.join(items)}}})"
     elif isinstance(typ, LiteralType):
         return f"Literal[{format_literal_value(typ)}]"
     elif isinstance(typ, UnionType):

@@ -914,6 +914,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 #       lands so here we are anticipating that change.
                 if (name in left.required_keys) != (name in right.required_keys):
                     return False
+                # Readonly fields check:
+                #
+                # A = TypedDict('A', {'x': ReadOnly[int]})
+                # B = TypedDict('A', {'x': int})
+                # def reset_x(b: B) -> None:
+                #     b['x'] = 0
+                #
+                # So, `A` cannot be a subtype of `B`, while `B` can be a subtype of `A`,
+                # because you can use `B` everywhere you use `A`, but not the other way around.
+                if name in left.readonly_keys and name not in right.readonly_keys:
+                    return False
             # (NOTE: Fallbacks don't matter.)
             return True
         else:
