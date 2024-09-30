@@ -1941,6 +1941,8 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
                 if (isinstance(get_proper_type(item), AnyType) or not covers_at_runtime(item, s))
             ]
         return UnionType.make_union(new_items)
+    elif isinstance(p_t, TypeVarType):
+        return p_t.copy_modified(upper_bound=restrict_subtype_away(p_t.upper_bound, s))
     elif covers_at_runtime(t, s):
         return UninhabitedType()
     else:
