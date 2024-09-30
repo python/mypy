@@ -463,9 +463,9 @@ def check_partial_list() -> None:
 if (x := 0):
     reveal_type(x)  # E: Statement is unreachable
 else:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
+    reveal_type(x)  # N: Revealed type is "Literal[0]"
 
-reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(x)  # N: Revealed type is "Literal[0]"
 
 [case testWalrusAssignmentAndConditionScopeForProperty]
 # flags: --warn-unreachable
@@ -483,7 +483,7 @@ wrapper = PropertyWrapper()
 if x := wrapper.f:
     reveal_type(x)  # N: Revealed type is "builtins.str"
 else:
-    reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(x)  # N: Revealed type is "Literal['']"
 
 reveal_type(x)  # N: Revealed type is "builtins.str"
 
@@ -505,7 +505,7 @@ def f() -> str: ...
 if x := f():
     reveal_type(x)  # N: Revealed type is "builtins.str"
 else:
-    reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(x)  # N: Revealed type is "Literal['']"
 
 reveal_type(x)  # N: Revealed type is "builtins.str"
 

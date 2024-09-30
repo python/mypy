@@ -1760,7 +1760,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 )
 
         param_spec = callee.param_spec()
-        if param_spec is not None and arg_kinds == [ARG_STAR, ARG_STAR2]:
+        if (
+            param_spec is not None
+            and arg_kinds == [ARG_STAR, ARG_STAR2]
+            and len(formal_to_actual) == 2
+        ):
             arg1 = self.accept(args[0])
             arg2 = self.accept(args[1])
             if (
@@ -2366,6 +2370,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Positional argument when expecting a keyword argument.
                 self.msg.too_many_positional_arguments(callee, context)
                 ok = False
+            elif callee.param_spec() is not None and not formal_to_actual[i]:
+                self.msg.too_few_arguments(callee, context, actual_names)
+                ok = False
         return ok
 
     def check_for_extra_actual_arguments(
@@ -2767,9 +2774,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     ) -> list[CallableType]:
         """Returns all overload call targets that having matching argument counts.
 
-        If the given args contains a star-arg (*arg or **kwarg argument), this method
-        will ensure all star-arg overloads appear at the start of the list, instead
-        of their usual location.
+        If the given args contains a star-arg (*arg or **kwarg argument, including
+        ParamSpec), this method will ensure all star-arg overloads appear at the start
+        of the list, instead of their usual location.
 
         The only exception is if the starred argument is something like a Tuple or a
         NamedTuple, which has a definitive "shape". If so, we don't move the corresponding
@@ -2797,9 +2804,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names, typ.arg_kinds, typ.arg_names, lambda i: arg_types[i]
             )
-
             with self.msg.filter_errors():
-                if self.check_argument_count(
+                if typ.param_spec() is not None:
+                    # ParamSpec can be expanded in a lot of different ways. We may try
+                    # to expand it here instead, but picking an impossible overload
+                    # is safe: it will be filtered out later.
+                    star_matches.append(typ)
+                elif self.check_argument_count(
                     typ, arg_types, arg_kinds, arg_names, formal_to_actual, None
                 ):
                     if args_have_var_arg and typ.is_var_arg:
@@ -4260,6 +4271,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         op = e.op
         if op == "not":
             result: Type = self.bool_type()
+            self.chk.check_for_truthy_type(operand_type, e.expr)
         else:
             method = operators.unary_op_methods[op]
             result, method_type = self.check_method_call_by_name(method, operand_type, [], [], e)

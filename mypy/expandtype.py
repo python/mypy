@@ -179,6 +179,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
+        super().__init__()
         self.variables = variables
         self.recursive_tvar_guard: dict[TypeVarId, Type | None] = {}
 
@@ -454,15 +455,25 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         return t.copy_modified(items=items, fallback=fallback)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        if cached := self.get_cached(t):
+            return cached
         fallback = t.fallback.accept(self)
         assert isinstance(fallback, ProperType) and isinstance(fallback, Instance)
-        return t.copy_modified(item_types=self.expand_types(t.items.values()), fallback=fallback)
+        result = t.copy_modified(item_types=self.expand_types(t.items.values()), fallback=fallback)
+        self.set_cached(t, result)
+        return result
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         # TODO: Verify this implementation is correct
         return t
 
     def visit_union_type(self, t: UnionType) -> Type:
+        # Use cache to avoid O(n**2) or worse expansion of types during translation
+        # (only for large unions, since caching adds overhead)
+        use_cache = len(t.items) > 3
+        if use_cache and (cached := self.get_cached(t)):
+            return cached
+
         expanded = self.expand_types(t.items)
         # After substituting for type variables in t.items, some resulting types
         # might be subtypes of others, however calling  make_simplified_union()
@@ -475,7 +486,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         # otherwise a single item union of a type alias will break it. Note this should not
         # cause infinite recursion since pathological aliases like A = Union[A, B] are
         # banned at the semantic analysis level.
-        return get_proper_type(simplified)
+        result = get_proper_type(simplified)
+
+        if use_cache:
+            self.set_cached(t, result)
+        return result
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t

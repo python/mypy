@@ -27,7 +27,7 @@ def bar() -> str:
 def untyped_function():
   return 42
 [outfile build/cobertura.xml]
-<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.7500" branch-rate="0">
+<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.7500" branch-rate="0" lines-covered="6" lines-valid="8">
   <sources>
     <source>$PWD</source>
   </sources>
@@ -81,7 +81,7 @@ def foo(a: int) -> MyDict:
     return {"a": a}
 md: MyDict = MyDict(**foo(42))
 [outfile build/cobertura.xml]
-<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="1.0000" branch-rate="0">
+<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="1.0000" branch-rate="0" lines-covered="6" lines-valid="6">
   <sources>
     <source>$PWD</source>
   </sources>

@@ -689,6 +689,8 @@ class CoberturaXmlReporter(AbstractReporter):
             self.root_package.covered_lines, self.root_package.total_lines
         )
         self.root.attrib["branch-rate"] = "0"
+        self.root.attrib["lines-covered"] = str(self.root_package.covered_lines)
+        self.root.attrib["lines-valid"] = str(self.root_package.total_lines)
         sources = etree.SubElement(self.root, "sources")
         source_element = etree.SubElement(sources, "source")
         source_element.text = os.getcwd()

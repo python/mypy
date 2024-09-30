@@ -357,7 +357,7 @@ class TypeAliasType(Type):
 
     def _partial_expansion(self, nothing_args: bool = False) -> tuple[ProperType, bool]:
         # Private method mostly for debugging and testing.
-        unroller = UnrollAliasVisitor(set())
+        unroller = UnrollAliasVisitor(set(), {})
         if nothing_args:
             alias = self.copy_modified(args=[UninhabitedType()] * len(self.args))
         else:
@@ -2620,7 +2620,8 @@ class TypedDictType(ProperType):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypedDictType):
             return NotImplemented
-
+        if self is other:
+            return True
         return (
             frozenset(self.items.keys()) == frozenset(other.items.keys())
             and all(
@@ -3549,7 +3550,11 @@ class TrivialSyntheticTypeTranslator(TypeTranslator, SyntheticTypeVisitor[Type])
 
 
 class UnrollAliasVisitor(TrivialSyntheticTypeTranslator):
-    def __init__(self, initial_aliases: set[TypeAliasType]) -> None:
+    def __init__(
+        self, initial_aliases: set[TypeAliasType], cache: dict[Type, Type] | None
+    ) -> None:
+        assert cache is not None
+        super().__init__(cache)
         self.recursed = False
         self.initial_aliases = initial_aliases
 
@@ -3561,7 +3566,7 @@ class UnrollAliasVisitor(TrivialSyntheticTypeTranslator):
         #     A = Tuple[B, B]
         #     B = int
         # will not be detected as recursive on the second encounter of B.
-        subvisitor = UnrollAliasVisitor(self.initial_aliases | {t})
+        subvisitor = UnrollAliasVisitor(self.initial_aliases | {t}, self.cache)
         result = get_proper_type(t).accept(subvisitor)
         if subvisitor.recursed:
             self.recursed = True
@@ -3671,7 +3676,7 @@ def extend_args_for_prefix_and_suffix(
 
 
 def flatten_nested_unions(
-    types: Sequence[Type], handle_type_alias_type: bool = True
+    types: Sequence[Type], *, handle_type_alias_type: bool = True, handle_recursive: bool = True
 ) -> list[Type]:
     """Flatten nested unions in a type list."""
     if not isinstance(types, list):
@@ -3685,7 +3690,13 @@ def flatten_nested_unions(
 
     flat_items: list[Type] = []
     for t in typelist:
-        tp = get_proper_type(t) if handle_type_alias_type else t
+        if handle_type_alias_type:
+            if not handle_recursive and isinstance(t, TypeAliasType) and t.is_recursive:
+                tp: Type = t
+            else:
+                tp = get_proper_type(t)
+        else:
+            tp = t
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(
                 flatten_nested_unions(tp.items, handle_type_alias_type=handle_type_alias_type)
