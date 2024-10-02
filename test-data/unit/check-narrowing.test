@@ -2206,3 +2206,45 @@ def f3(x: object) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "builtins.object"
 [builtins fixtures/primitives.pyi]
+
+[case testConsistentNarrowingEqAndIn]
+# flags: --python-version 3.10
+
+# https://github.com/python/mypy/issues/17864
+def f(x: str | int) -> None:
+    if x == "x":
+        reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+        y = x
+
+    if x in ["x"]:
+        # TODO: we should fix this reveal https://github.com/python/mypy/issues/3229
+        reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+        y = x
+        z = x
+    z = y
+[builtins fixtures/primitives.pyi]
+
+[case testConsistentNarrowingInWithCustomEq]
+# flags: --python-version 3.10
+
+# https://github.com/python/mypy/issues/17864
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __eq__(self, other: object) -> bool:
+        raise
+        # Example implementation:
+        # if isinstance(other, C) and other.x == self.x:
+        #     return True
+        # return NotImplemented
+
+class D(C):
+    pass
+
+def f(x: C) -> None:
+    if x in [D(5)]:
+        reveal_type(x)  # D  # N: Revealed type is "__main__.C"
+
+f(C(5))
+[builtins fixtures/primitives.pyi]
