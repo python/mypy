@@ -599,7 +599,7 @@ a(a)
 a(lambda: None)
 
 [case testCallableSubtypingTrivialSuffix]
-from typing import Any, Protocol
+from typing import Any, Protocol, Callable
 
 class Call(Protocol):
     def __call__(self, x: int, *args: Any, **kwargs: Any) -> None: ...
@@ -627,4 +627,9 @@ a7: Call = f7
 
 def f8(x: int, *args: int, **kwargs: str) -> None: ...
 a8: Call = f8
+
+def f9(c: Call) -> None: ...
+a9: Callable[[int, str, bytes], None]
+f9(a9) # E: Argument 1 to "f9" has incompatible type "Callable[[int, str, bytes], None]"; expected "Call" \
+       # N: "Call.__call__" has type "Callable[[int, str, DefaultArg(bytes)], None]"
 [builtins fixtures/tuple.pyi]
