@@ -2130,3 +2130,79 @@ else:
 
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/ops.pyi]
+
+[case testNarrowingWithIntEnum]
+# mypy: strict-equality
+from __future__ import annotations
+from typing import Any
+from enum import IntEnum, StrEnum
+
+class IE(IntEnum):
+    X = 1
+    Y = 2
+
+def f1(x: int) -> None:
+    if x == IE.X:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    if x != IE.X:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def f2(x: IE) -> None:
+    if x == 1:
+        reveal_type(x)  # N: Revealed type is "__main__.IE"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.IE"
+
+def f3(x: object) -> None:
+    if x == IE.X:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+
+def f4(x: int | Any) -> None:
+    if x == IE.X:
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+
+def f5(x: int) -> None:
+    if x is IE.X:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    if x is not IE.X:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingWithStrEnum]
+# mypy: strict-equality
+from enum import StrEnum
+
+class SE(StrEnum):
+    A = 'a'
+    B = 'b'
+
+def f1(x: str) -> None:
+    if x == SE.A:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def f2(x: SE) -> None:
+    if x == 'a':
+        reveal_type(x)  # N: Revealed type is "__main__.SE"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.SE"
+
+def f3(x: object) -> None:
+    if x == SE.A:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+[builtins fixtures/primitives.pyi]
