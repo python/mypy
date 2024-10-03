@@ -306,27 +306,23 @@ def bind_self(
 
     """
     if isinstance(method, Overloaded):
-        from mypy.meet import is_overlapping_types
-
         items = []
         original_type = get_proper_type(original_type)
         for c in method.items:
-            keep = True
-            if (
-                isinstance(original_type, Instance)
-                and c.arg_types
-                and isinstance((arg_type := get_proper_type(c.arg_types[0])), Instance)
-                and c.arg_kinds[0] in (ARG_POS, ARG_OPT)
-                and arg_type.args
-                and original_type.type.fullname != "functools._SingleDispatchCallable"
-            ):
-                if original_type.type is not arg_type.type:
-                    keep = True
-                else:
-                    ov = is_overlapping_types(original_type, c.arg_types[0])
-                    keep = keep and ov
+            if isinstance(original_type, Instance):
+                # Filter based on whether declared self type can match actual object type.
+                # For example, if self has type C[int] and method is accessed on a C[str] value,
+                # omit this item. This is best effort since bind_self can be called in many
+                # contexts, and doing complete validation might trigger infinite recursion.
+                keep = is_valid_self_type_best_effort(c, original_type)
+            else:
+                keep = True
             if keep:
                 items.append(bind_self(c, original_type, is_classmethod, ignore_instances))
+        if len(items) == 0:
+            # We must return a valid overloaded type, so pick the first item if none
+            # are matching (arbitrarily).
+            items.append(bind_self(method.items[0], original_type, is_classmethod, ignore_instances))
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
     func = method
@@ -396,6 +392,28 @@ def bind_self(
         bound_args=[original_type],
     )
     return cast(F, res)
+
+
+def is_valid_self_type_best_effort(c: CallableType, self_type: Instance) -> bool:
+    """Quickly check if self_type might match the self in a callable.
+
+    Avoid performing any complex type operations.
+    """
+    if (
+        c.arg_types
+        and isinstance((arg_type := get_proper_type(c.arg_types[0])), Instance)
+        and c.arg_kinds[0] in (ARG_POS, ARG_OPT)
+        and arg_type.args
+        and self_type.type.fullname != "functools._SingleDispatchCallable"
+    ):
+        if self_type.type is not arg_type.type:
+            # We can't map to supertype, since it could trigger expensive checks for
+            # protocol types, so we consevatively assume this is fine.
+            return True
+        else:
+            from mypy.meet import is_overlapping_types
+            return is_overlapping_types(self_type, c.arg_types[0])
+    return True
 
 
 def erase_to_bound(t: Type) -> Type:
