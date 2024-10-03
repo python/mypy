@@ -3874,3 +3874,29 @@ def foo(fdst: SupportsWrite[AnyStr]) -> None: ...
 
 x: IO[str]
 foo(x)
+
+[case testTypeVarValueConstraintAgainstGenericProtocol2]
+from typing import Generic, Protocol, TypeVar, overload
+
+AnyStr = TypeVar("AnyStr", str, bytes)
+T_co = TypeVar("T_co", covariant=True)
+T_contra = TypeVar("T_contra", contravariant=True)
+
+class SupportsRead(Generic[T_co]):
+    def read(self) -> T_co: ...
+
+class SupportsWrite(Protocol[T_contra]):
+    def write(self, s: T_contra) -> object: ...
+
+def copyfileobj(fsrc: SupportsRead[AnyStr], fdst: SupportsWrite[AnyStr]) -> None: ...
+
+class WriteToMe(Generic[AnyStr]):
+    @overload
+    def write(self: WriteToMe[str], s: str) -> int: ...
+    @overload
+    def write(self: WriteToMe[bytes], s: bytes) -> int: ...
+    def write(self, s): ...
+
+class WriteToMeOrReadFromMe(WriteToMe[AnyStr], SupportsRead[AnyStr]): ...
+
+copyfileobj(WriteToMeOrReadFromMe[bytes](), WriteToMe[bytes]())
