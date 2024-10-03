@@ -14,6 +14,7 @@ from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
+    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -306,11 +307,19 @@ def bind_self(
     """
     if isinstance(method, Overloaded):
         from mypy.meet import is_overlapping_types
+
         items = []
+        original_type = get_proper_type(original_type)
         for c in method.items:
             keep = True
-            if (isinstance(original_type, Instance) and c.arg_types and isinstance((arg_type := c.arg_types[0]), Instance)
-                    and arg_type.args and original_type.type.fullname != "functools._SingleDispatchCallable"):
+            if (
+                isinstance(original_type, Instance)
+                and c.arg_types
+                and isinstance((arg_type := get_proper_type(c.arg_types[0])), Instance)
+                and c.arg_kinds[0] in (ARG_POS, ARG_OPT)
+                and arg_type.args
+                and original_type.type.fullname != "functools._SingleDispatchCallable"
+            ):
                 if original_type.type is not arg_type.type:
                     keep = True
                 else:
