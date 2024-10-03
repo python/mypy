@@ -309,10 +309,13 @@ def bind_self(
         items = []
         for c in method.items:
             keep = True
-            if (original_type is not None and c.arg_types and isinstance(c.arg_types[0], Instance)
-                    and c.arg_types[0].args):
-
-                keep = keep and is_overlapping_types(original_type, c.arg_types[0])
+            if (isinstance(original_type, Instance) and c.arg_types and isinstance((arg_type := c.arg_types[0]), Instance)
+                    and arg_type.args and original_type.type.fullname != "functools._SingleDispatchCallable"):
+                if original_type.type is not arg_type.type:
+                    keep = True
+                else:
+                    ov = is_overlapping_types(original_type, c.arg_types[0])
+                    keep = keep and ov
             if keep:
                 items.append(bind_self(c, original_type, is_classmethod, ignore_instances))
         return cast(F, Overloaded(items))
