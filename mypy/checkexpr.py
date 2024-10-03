@@ -3035,6 +3035,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Step 4: Split the first remaining union type in arguments into items and
         # try to match each item individually (recursive).
         first_union = get_proper_type(arg_types[idx])
+        if not isinstance(first_union, UnionType):
+            assert isinstance(first_union, Instance)
+            # enum or bool
+            first_union = self.split_into_literals(first_union)
         assert isinstance(first_union, UnionType)
         res_items = []
         for item in first_union.relevant_items():
@@ -3069,7 +3073,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def real_union(self, typ: Type) -> bool:
         typ = get_proper_type(typ)
-        return isinstance(typ, UnionType) and len(typ.relevant_items()) > 1
+        return (
+            isinstance(typ, UnionType)
+            and len(typ.relevant_items()) > 1
+            or isinstance(typ, Instance)
+            and (typ.type.is_enum or typ.type.fullname == "builtins.bool")
+        )
+
+    def split_into_literals(self, typ: Instance) -> UnionType:
+        """Represent a finite type as a union of literals.
+
+        When trying overloads, enum and bool can fail to match to union of overloads.
+        Convert them to union representation to try harder.
+        """
+
+        if typ.type.fullname == "builtins.bool":
+            return UnionType(
+                [
+                    LiteralType(True, self.chk.named_type("builtins.bool")),
+                    LiteralType(False, self.chk.named_type("builtins.bool")),
+                ]
+            )
+        if typ.type.is_enum:
+            return UnionType([LiteralType(name, typ) for name in typ.get_enum_values()])
+        raise NotImplementedError("Only bool and enum types can be split into union.")
 
     @contextmanager
     def type_overrides_set(
