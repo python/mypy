@@ -2473,7 +2473,8 @@ def func(caller: Caller) -> None:
     pass
 
 func(call)
-func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int, VarArg(str)], None]"; expected "Caller"
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int, VarArg(str)], None]"; expected "Caller" \
+           # N: "Caller.__call__" has type "Callable[[Arg(int, 'x'), VarArg(str)], None]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2510,7 +2511,8 @@ def func(caller: Caller) -> None:
     pass
 
 func(call)
-func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int], int]"; expected "Caller"
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int], int]"; expected "Caller" \
+           # N: "Caller.__call__" has type "Callable[[Arg(int, 'x')], int]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2530,7 +2532,8 @@ def func(caller: Caller) -> None:
     pass
 
 func(call)
-func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[T], Tuple[T, T]]"; expected "Caller"
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[T], Tuple[T, T]]"; expected "Caller" \
+           # N: "Caller.__call__" has type "Callable[[Arg(T, 'x')], Tuple[T, T]]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2557,7 +2560,8 @@ def func(caller: Caller) -> None:
     pass
 
 func(call)
-func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[Union[int, str]], Union[int, str]]"; expected "Caller"
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[Union[int, str]], Union[int, str]]"; expected "Caller" \
+           # N: "Caller.__call__" has type "Callable[[Arg(Union[int, str], 'x')], Union[int, str]]"
 [out]
 
 [case testCallableImplementsProtocolExtraNote]
@@ -2596,7 +2600,8 @@ def anon(caller: CallerAnon) -> None:
 
 
 func(call)
-func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[str], None]"; expected "Caller"
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[str], None]"; expected "Caller" \
+           # N: "Caller.__call__" has type "Callable[[Arg(str, 'y')], None]"
 anon(bad)
 [out]
 
@@ -3584,6 +3589,7 @@ class C:
 def test(arg: P) -> None: ...
 test(B)  # OK
 test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+         # N: "P.__call__" has type "Type[C]" \
          # N: "C" has constructor incompatible with "__call__" of "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
@@ -3605,6 +3611,7 @@ class C:
 def test(arg: P) -> None: ...
 test(B)  # OK
 test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+         # N: "P.__call__" has type "Type[C]" \
          # N: "C" has constructor incompatible with "__call__" of "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \

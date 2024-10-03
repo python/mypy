@@ -3648,7 +3648,8 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(__x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[str], None]"; expected "Call[Never]"
+                   # E: Argument 1 to "f" has incompatible type "Callable[[str], None]"; expected "Call[Never]" \
+                   # N: "Call[Never].__call__" has type "Callable[[str], None]"
 [builtins fixtures/list.pyi]
 
 [case testCallableInferenceAgainstCallableNamedVsPosOnly]
@@ -3664,7 +3665,8 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(*, x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[NamedArg(str, 'x')], None]"; expected "Call[Never]"
+                   # E: Argument 1 to "f" has incompatible type "Callable[[NamedArg(str, 'x')], None]"; expected "Call[Never]" \
+                   # N: "Call[Never].__call__" has type "Callable[[NamedArg(str, 'x')], None]"
 [builtins fixtures/list.pyi]
 
 [case testCallableInferenceAgainstCallablePosOnlyVsKwargs]
@@ -3680,7 +3682,8 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(**x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[KwArg(str)], None]"; expected "Call[Never]"
+                   # E: Argument 1 to "f" has incompatible type "Callable[[KwArg(str)], None]"; expected "Call[Never]" \
+                   # N: "Call[Never].__call__" has type "Callable[[KwArg(str)], None]"
 [builtins fixtures/list.pyi]
 
 [case testCallableInferenceAgainstCallableNamedVsArgs]
@@ -3696,7 +3699,8 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(*args: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[Never]"
+                   # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[Never]" \
+                   # N: "Call[Never].__call__" has type "Callable[[VarArg(str)], None]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstTypeVarActualBound]
