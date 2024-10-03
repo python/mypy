@@ -323,11 +323,10 @@ def bind_self(
             if keep:
                 items.append(bind_self(c, original_type, is_classmethod, ignore_instances))
         if len(items) == 0:
-            # We must return a valid overloaded type, so pick the first item if none
-            # are matching (arbitrarily).
-            items.append(
-                bind_self(method.items[0], original_type, is_classmethod, ignore_instances)
-            )
+            # If no item matches, returning all items helps avoid some spurious errors
+            items = [
+                bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
+            ]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
     func = method
