@@ -185,6 +185,9 @@ UNREACHABLE: Final = ErrorCode(
 ANNOTATION_UNCHECKED = ErrorCode(
     "annotation-unchecked", "Notify about type annotations in unchecked functions", "General"
 )
+TYPEDDICT_READONLY_MUTATED = ErrorCode(
+    "typeddict-readonly-mutated", "TypedDict's ReadOnly key is mutated", "General"
+)
 POSSIBLY_UNDEFINED: Final[ErrorCode] = ErrorCode(
     "possibly-undefined",
     "Warn about variables that are defined only in some execution paths",

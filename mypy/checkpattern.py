@@ -307,7 +307,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             for inner_type, new_inner_type in zip(inner_types, new_inner_types):
                 (narrowed_inner_type, inner_rest_type) = (
                     self.chk.conditional_types_with_intersection(
-                        new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
+                        inner_type, [get_type_range(new_inner_type)], o, default=inner_type
                     )
                 )
                 narrowed_inner_types.append(narrowed_inner_type)
@@ -320,6 +320,16 @@ class PatternChecker(PatternVisitor[PatternType]):
             if all(is_uninhabited(typ) for typ in inner_rest_types):
                 # All subpatterns always match, so we can apply negative narrowing
                 rest_type = TupleType(rest_inner_types, current_type.partial_fallback)
+            elif sum(not is_uninhabited(typ) for typ in inner_rest_types) == 1:
+                # Exactly one subpattern may conditionally match, the rest always match.
+                # We can apply negative narrowing to this one position.
+                rest_type = TupleType(
+                    [
+                        curr if is_uninhabited(rest) else rest
+                        for curr, rest in zip(inner_types, inner_rest_types)
+                    ],
+                    current_type.partial_fallback,
+                )
         elif isinstance(current_type, TupleType):
             # For variadic tuples it is too tricky to match individual items like for fixed
             # tuples, so we instead try to narrow the entire type.
@@ -488,7 +498,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             with self.msg.filter_errors() as local_errors:
                 result: Type | None = self.chk.expr_checker.visit_typeddict_index_expr(
                     mapping_type, key
-                )
+                )[0]
                 has_local_errors = local_errors.has_new_errors()
             # If we can't determine the type statically fall back to treating it as a normal
             # mapping

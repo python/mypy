@@ -71,6 +71,22 @@ jobs:
           tox_extra_args: "-n 4"
           test_mypyc: true
 
+        - name: Test suite with py313-dev-ubuntu, mypyc-compiled
+          python: '3.13-dev'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
+        # - name: Test suite with py314-dev-ubuntu
+        #   python: '3.14-dev'
+        #   arch: x64
+        #   os: ubuntu-latest
+        #   toxenv: py
+        #   tox_extra_args: "-n 4"
+        #   allow_failure: true
+        #   test_mypyc: true
+
         - name: mypyc runtime tests with py39-macos
           python: '3.9.18'
           arch: x64
@@ -119,12 +135,10 @@ jobs:
       MYPY_FORCE_TERMINAL_WIDTH: 200
       # Pytest
       PYTEST_ADDOPTS: --color=yes
+
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python }}
-        architecture: ${{ matrix.arch }}
+
     - name: Debug build
       if: ${{ matrix.debug_build }}
       run: |
@@ -132,38 +146,58 @@ jobs:
         PYTHONDIR=~/python-debug/python-$PYTHONVERSION
         VENV=$PYTHONDIR/env
         ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
+        # TODO: does this do anything? env vars aren't passed to the next step right
         source $VENV/bin/activate
+    - name: Latest Dev build
+      if: ${{ endsWith(matrix.python, '-dev') }}
+      run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential gdb lcov libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncurses5-dev \
+            libreadline6-dev libsqlite3-dev libssl-dev lzma lzma-dev tk-dev uuid-dev zlib1g-dev
+          git clone --depth 1 https://github.com/python/cpython.git /tmp/cpython --branch $( echo ${{ matrix.python }} | sed 's/-dev//' )
+          cd /tmp/cpython
+          echo git rev-parse HEAD; git rev-parse HEAD
+          git show --no-patch
+          ./configure --prefix=/opt/pythondev
+          make -j$(nproc)
+          sudo make install
+          sudo ln -s /opt/pythondev/bin/python3 /opt/pythondev/bin/python
+          sudo ln -s /opt/pythondev/bin/pip3 /opt/pythondev/bin/pip
+          echo "/opt/pythondev/bin" >> $GITHUB_PATH
+    - uses: actions/setup-python@v5
+      if: ${{ !(matrix.debug_build || endsWith(matrix.python, '-dev')) }}
+      with:
+        python-version: ${{ matrix.python }}
+        architecture: ${{ matrix.arch }}
+
     - name: Install tox
-      run: pip install setuptools==68.2.2 tox==4.11.0
+      run: |
+        echo PATH; echo $PATH
+        echo which python; which python
+        echo which pip; which pip
+        echo python version; python -c 'import sys; print(sys.version)'
+        echo debug build; python -c 'import sysconfig; print(bool(sysconfig.get_config_var("Py_DEBUG")))'
+        echo os.cpu_count; python -c 'import os; print(os.cpu_count())'
+        echo os.sched_getaffinity; python -c 'import os; print(len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
+        pip install setuptools==68.2.2 tox==4.11.0
+
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
       run: |
         pip install -r test-requirements.txt
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
+
     - name: Setup tox environment
       run: |
-        tox run -e ${{ matrix.toxenv }} --notest
-        python -c 'import os; print("os.cpu_count", os.cpu_count(), "os.sched_getaffinity", len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
+        tox run -e ${{ matrix.toxenv }} --notes
     - name: Test
       run: tox run -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
+      continue-on-error: ${{ matrix.allow_failure == 'true' }}
 
-  python-nightly:
-    runs-on: ubuntu-latest
-    name: Test suite with Python nightly
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.13-dev'
-      - name: Install tox
-        run: pip install setuptools==68.2.2 tox==4.11.0
-      - name: Setup tox environment
-        run: tox run -e py --notest
-      - name: Test
-        run: tox run -e py --skip-pkg-install -- "-n 4"
-        continue-on-error: true
-      - name: Mark as a success
-        run: exit 0
+    - name: Mark as success (check failures manually)
+      if: ${{ matrix.allow_failure == 'true' }}
+      run: exit 0
 
   python_32bits:
     runs-on: ubuntu-latest

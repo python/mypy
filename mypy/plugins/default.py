@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable
+from typing import Callable, Final
 
 import mypy.errorcodes as codes
 from mypy import message_registry
@@ -372,6 +372,10 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
             )
             return AnyType(TypeOfAny.from_error)
 
+        assigned_readonly_keys = ctx.type.readonly_keys & set(keys)
+        if assigned_readonly_keys:
+            ctx.api.msg.readonly_keys_mutated(assigned_readonly_keys, context=ctx.context)
+
         default_type = ctx.arg_types[1][0]
 
         value_types = []
@@ -415,11 +419,14 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
             return AnyType(TypeOfAny.from_error)
 
         for key in keys:
-            if key in ctx.type.required_keys:
+            if key in ctx.type.required_keys or key in ctx.type.readonly_keys:
                 ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
             elif key not in ctx.type.items:
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
     return ctx.default_return_type
+
+
+_TP_DICT_MUTATING_METHODS: Final = frozenset({"update of TypedDict", "__ior__ of TypedDict"})
 
 
 def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
@@ -436,10 +443,19 @@ def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
         arg_type = arg_type.as_anonymous()
         arg_type = arg_type.copy_modified(required_keys=set())
         if ctx.args and ctx.args[0]:
-            with ctx.api.msg.filter_errors():
+            if signature.name in _TP_DICT_MUTATING_METHODS:
+                # If we want to mutate this object in place, we need to set this flag,
+                # it will trigger an extra check in TypedDict's checker.
+                arg_type.to_be_mutated = True
+            with ctx.api.msg.filter_errors(
+                filter_errors=lambda name, info: info.code != codes.TYPEDDICT_READONLY_MUTATED,
+                save_filtered_errors=True,
+            ):
                 inferred = get_proper_type(
                     ctx.api.get_expression_type(ctx.args[0][0], type_context=arg_type)
                 )
+            if arg_type.to_be_mutated:
+                arg_type.to_be_mutated = False  # Done!
             possible_tds = []
             if isinstance(inferred, TypedDictType):
                 possible_tds = [inferred]

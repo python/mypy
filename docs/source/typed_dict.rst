@@ -89,7 +89,7 @@ A ``TypedDict`` object is not a subtype of the regular ``dict[...]``
 type (and vice versa), since :py:class:`dict` allows arbitrary keys to be
 added and removed, unlike ``TypedDict``. However, any ``TypedDict`` object is
 a subtype of (that is, compatible with) ``Mapping[str, object]``, since
-:py:class:`~typing.Mapping` only provides read-only access to the dictionary items:
+:py:class:`~collections.abc.Mapping` only provides read-only access to the dictionary items:
 
 .. code-block:: python
 
@@ -158,7 +158,7 @@ You must use string literals as keys when calling most of the methods,
 as otherwise mypy won't be able to check that the key is valid. List
 of supported operations:
 
-* Anything included in :py:class:`~typing.Mapping`:
+* Anything included in :py:class:`~collections.abc.Mapping`:
 
   * ``d[key]``
   * ``key in d``
