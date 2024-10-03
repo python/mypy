@@ -631,5 +631,5 @@ a8: Call = f8
 def f9(c: Call) -> None: ...
 a9: Callable[[int, str, bytes], None]
 f9(a9) # E: Argument 1 to "f9" has incompatible type "Callable[[int, str, bytes], None]"; expected "Call" \
-       # N: "Call.__call__" has type "Callable[[int, str, DefaultArg(bytes)], None]"
+       # N: "Call.__call__" has type "Callable[[int, str, bytes], None]"
 [builtins fixtures/tuple.pyi]

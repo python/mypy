@@ -831,6 +831,12 @@ class MessageBuilder:
                     if isinstance(arg_type, Instance) and isinstance(type, Instance):
                         notes = append_invariance_notes(notes, arg_type, type)
                         notes = append_numbers_notes(notes, arg_type, type)
+                    if isinstance(arg_type,CallableType) and isinstance(type,Instance):
+                        if type.type.is_protocol and "__call__" in type.type.protocol_members:
+                            call = find_member("__call__", type, arg_type, is_operator=True)
+                            assert call is not None
+                            notes.append(self.note_call_message(type,arg_type))
+
             object_type = get_proper_type(object_type)
             if isinstance(object_type, TypedDictType):
                 code = codes.TYPEDDICT_ITEM
@@ -2038,13 +2044,18 @@ class MessageBuilder:
         self, subtype: Type, call: Type, context: Context, *, code: ErrorCode | None
     ) -> None:
         self.note(
-            '"{}.__call__" has type {}'.format(
-                format_type_bare(subtype, self.options),
-                format_type(call, self.options, verbosity=1),
-            ),
+            self.note_call_message(subtype,call),
             context,
             code=code,
         )
+
+    def note_call_message(
+        self, subtype: Type, call: Type
+    ) -> str:
+        return '"{}.__call__" has type {}'.format(
+                format_type_bare(subtype, self.options),
+                format_type(call, self.options, verbosity=1),
+            )
 
     def unreachable_statement(self, context: Context) -> None:
         self.fail("Statement is unreachable", context, code=codes.UNREACHABLE)
