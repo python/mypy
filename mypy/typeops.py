@@ -305,9 +305,16 @@ def bind_self(
 
     """
     if isinstance(method, Overloaded):
-        items = [
-            bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
-        ]
+        from mypy.meet import is_overlapping_types
+        items = []
+        for c in method.items:
+            keep = True
+            if (original_type is not None and c.arg_types and isinstance(c.arg_types[0], Instance)
+                    and c.arg_types[0].args):
+
+                keep = keep and is_overlapping_types(original_type, c.arg_types[0])
+            if keep:
+                items.append(bind_self(c, original_type, is_classmethod, ignore_instances))
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
     func = method
