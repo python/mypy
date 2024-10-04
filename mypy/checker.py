@@ -8645,6 +8645,8 @@ def _ambiguous_enum_variants(types: list[Type]) -> set[str]:
                 result.add("<other>")
         elif isinstance(t, LiteralType):
             result.update(_ambiguous_enum_variants([t.fallback]))
+        elif isinstance(t, NoneType):
+            pass
         else:
             result.add("<other>")
     return result
