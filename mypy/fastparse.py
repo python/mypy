@@ -138,7 +138,7 @@ from ast import AST, Attribute, Call, FunctionType, Index, Name, Starred, UAdd, 
 def ast3_parse(
     source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
 ) -> AST:
-    source = source.replace("# mypy: ignore", "# type: ignore") # hack to support "mypy: ignore" comments until the in-built compile function changes to allow us to detect it otherwise.
+    source = re.sub(r"#\s*mypy:\s*ignore", "# type: ignore", source) # hack to support "mypy: ignore" comments until the in-built compile function changes to allow us to detect it otherwise.
     return ast3.parse(
         source,
         filename,
