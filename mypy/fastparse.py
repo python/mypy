@@ -138,7 +138,9 @@ from ast import AST, Attribute, Call, FunctionType, Index, Name, Starred, UAdd, 
 def ast3_parse(
     source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
 ) -> AST:
-    source = re.sub(r"#\s*mypy:\s*ignore", "# type: ignore", source) # hack to support "mypy: ignore" comments until the in-built compile function changes to allow us to detect it otherwise.
+    # Hack to support "mypy: ignore" comments until the builtin compile function changes to allow us to detect it otherwise:
+    # (does not apply at the start of the line to avoid conflicting with mypy file configuration comments https://mypy.readthedocs.io/en/stable/inline_config.html ; see also, util.get_mypy_comments in this codebase)
+    source = re.sub(r"(?<!^)#\s*mypy:\s*ignore", "# type: ignore", source)
     return ast3.parse(
         source,
         filename,
