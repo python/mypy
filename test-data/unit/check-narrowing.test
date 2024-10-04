@@ -2243,6 +2243,20 @@ def f6(x: IE | Any) -> None:
          reveal_type(x)  # N: Revealed type is "Union[__main__.IE, Any]"
      else:
          reveal_type(x)  # N: Revealed type is "Union[__main__.IE, Any]"
+
+def f7(x: IE | None) -> None:
+     if x == IE.X:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.IE.Y], None]"
+
+def f8(x: IE | None) -> None:
+     if x is None:
+         reveal_type(x)  # N: Revealed type is "None"
+     elif x == IE.X:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.Y]"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingWithStrEnum]
