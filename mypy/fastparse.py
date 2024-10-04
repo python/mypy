@@ -141,9 +141,9 @@ def ast3_parse(
     # Hack to support "mypy: ignore" comments until the builtin compile function changes to allow us to detect it otherwise:
     # (does not apply at the start of the line to avoid conflicting with mypy file configuration comments https://mypy.readthedocs.io/en/stable/inline_config.html ; see also, util.get_mypy_comments in this codebase)
     if isinstance(source, str):
-        source = re.sub(r"(?<!^)#\s*mypy:\s*ignore", "# type: ignore", source)
+        source = re.sub(r"(?<!^)#\s*mypy:\s*ignore(?![-_])", "# type: ignore", source)
     else:
-        source = re.sub(rb"(?<!^)#\s*mypy:\s*ignore", b"# type: ignore", source)
+        source = re.sub(rb"(?<!^)#\s*mypy:\s*ignore(?![-_])", b"# type: ignore", source)
     return ast3.parse(
         source,
         filename,
