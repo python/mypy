@@ -166,9 +166,9 @@ def ast3_parse(
         )
     else:
         tokens = tokenize.tokenize(io.BytesIO(source).readline)
-        to_find, to_replace = rb"#\s*mypy:\s*ignore(?![-_])", b"# type: ignore"
+        to_find_bytes, to_replace_bytes = rb"#\s*mypy:\s*ignore(?![-_])", b"# type: ignore"
         source = tokenize.untokenize(
-            (t, re.sub(to_find, to_replace, s) if t == tokenize.COMMENT else s)
+            (t, re.sub(to_find_bytes, to_replace_bytes, s) if t == tokenize.COMMENT else s)
             for t, s, *_ in tokens
         )
     return p()
