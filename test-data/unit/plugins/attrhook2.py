@@ -13,7 +13,7 @@ class AttrPlugin(Plugin):
         if fullname == "m.Magic.nonexistent_field":
             return nonexistent_field_callback
         if fullname == "m.Magic.no_assignment_field":
-            return no_assignment_field
+            return no_assignment_field_callback
         return None
 
 
@@ -26,7 +26,7 @@ def nonexistent_field_callback(ctx: AttributeContext) -> Type:
     return AnyType(TypeOfAny.from_error)
 
 
-def no_assignment_field(ctx: AttributeContext) -> Type:
+def no_assignment_field_callback(ctx: AttributeContext) -> Type:
     if ctx.is_lvalue:
         ctx.api.fail(f"Cannot assign to field", ctx.context)
         return AnyType(TypeOfAny.from_error)
