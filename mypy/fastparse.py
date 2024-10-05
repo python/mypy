@@ -159,18 +159,12 @@ def ast3_parse(
     p()  # Call to assure syntactic validity (will throw an exception otherwise, exiting this function).
     if isinstance(source, str):
         tokens = tokenize.generate_tokens(io.StringIO(source).readline)
-        to_find, to_replace = r"#\s*mypy:\s*ignore(?![-_])", "# type: ignore"
-        source = tokenize.untokenize(
-            (t, re.sub(to_find, to_replace, s) if t == tokenize.COMMENT else s)
-            for t, s, *_ in tokens
-        )
     else:
         tokens = tokenize.tokenize(io.BytesIO(source).readline)
-        to_find_bytes, to_replace_bytes = rb"#\s*mypy:\s*ignore(?![-_])", b"# type: ignore"
-        source = tokenize.untokenize(
-            (t, re.sub(to_find_bytes, to_replace_bytes, s) if t == tokenize.COMMENT else s)
+    source = tokenize.untokenize(
+        (t, re.sub(r"#\s*mypy:\s*ignore(?![-_])", "# type: ignore", s) if t == tokenize.COMMENT else s)
             for t, s, *_ in tokens
-        )
+    )
     return p()
 
 
