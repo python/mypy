@@ -141,7 +141,8 @@ def ast3_parse(
     source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
 ) -> AST:
     """This function is just a convenience wrapper around ast.parse, with default flags useful to Mypy.
-    It also incorporates a hack to accomodate `# mypy: ignore` comments, which are treated by mypy as `# type: ignore` comments."""
+    It also incorporates a hack to accomodate `# mypy: ignore` comments, which are treated by mypy as `# type: ignore` comments.
+    """
     # Hack to support "mypy: ignore" comments until the builtin compile function changes to allow us to detect it otherwise:
     # (Note: completely distinct from https://mypy.readthedocs.io/en/stable/inline_config.html ; see also, util.get_mypy_comments in this codebase)
 
@@ -150,15 +151,19 @@ def ast3_parse(
     #     Note that the functions in this module are only designed to parse syntactically valid Python code (code that does not raise when parsed using ast.parse()). The behavior of the functions in this module is **undefined** when providing invalid Python code and it can change at any point.
     # So, we cannot rely on roundtrip behavior in tokenize iff ast.parse would throw when given `source`.
     # The simplest way to deal with that is just to call ast.parse twice, once before and once after. So, we do that.
-    p = lambda: ast3.parse(source, filename, mode, type_comments=True, feature_version=feature_version)
-    p() # Call to assure syntactic validity (will throw an exception otherwise, exiting this function).
+    p = lambda: ast3.parse(
+        source, filename, mode, type_comments=True, feature_version=feature_version
+    )
+    p()  # Call to assure syntactic validity (will throw an exception otherwise, exiting this function).
     if isinstance(source, str):
         tokens = tokenize.generate_tokens(io.StringIO(source).readline)
         to_find, to_replace = r"#\s*mypy:\s*ignore(?![-_])", "# type: ignore"
     else:
         tokens = tokenize.tokenize(io.BytesIO(source).readline)
         to_find, to_replace = rb"#\s*mypy:\s*ignore(?![-_])", b"# type: ignore"
-    source = tokenize.untokenize((t, re.sub(to_find, to_replace, s) if t == tokenize.COMMENT else s) for t, s, *_ in tokens)
+    source = tokenize.untokenize(
+        (t, re.sub(to_find, to_replace, s) if t == tokenize.COMMENT else s) for t, s, *_ in tokens
+    )
     return p()
 
 
