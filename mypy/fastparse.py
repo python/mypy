@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import copy
+import io
 import re
 import sys
+import tokenize
 import warnings
 from typing import Any, Callable, Final, List, Optional, Sequence, TypeVar, Union, cast
 from typing_extensions import Literal, overload
@@ -138,19 +140,26 @@ from ast import AST, Attribute, Call, FunctionType, Index, Name, Starred, UAdd, 
 def ast3_parse(
     source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
 ) -> AST:
+    """This function is just a convenience wrapper around ast.parse, with default flags useful to Mypy.
+    It also incorporates a hack to accomodate `# mypy: ignore` comments, which are treated by mypy as `# type: ignore` comments."""
     # Hack to support "mypy: ignore" comments until the builtin compile function changes to allow us to detect it otherwise:
-    # (does not apply at the start of the line to avoid conflicting with mypy file configuration comments https://mypy.readthedocs.io/en/stable/inline_config.html ; see also, util.get_mypy_comments in this codebase)
+    # (Note: completely distinct from https://mypy.readthedocs.io/en/stable/inline_config.html ; see also, util.get_mypy_comments in this codebase)
+
+    # We make the substitution in comments, and to find those comments we use Python's `tokenize`.
+    # https://docs.python.org/3/library/tokenize.html has a big red **Warning:**
+    #     Note that the functions in this module are only designed to parse syntactically valid Python code (code that does not raise when parsed using ast.parse()). The behavior of the functions in this module is **undefined** when providing invalid Python code and it can change at any point.
+    # So, we cannot rely on roundtrip behavior in tokenize iff ast.parse would throw when given `source`.
+    # The simplest way to deal with that is just to call ast.parse twice, once before and once after. So, we do that.
+    p = lambda: ast3.parse(source, filename, mode, type_comments=True, feature_version=feature_version)
+    p() # Call to assure syntactic validity (will throw an exception otherwise, exiting this function).
     if isinstance(source, str):
-        source = re.sub(r"(?<!^)#\s*mypy:\s*ignore(?![-_])", "# type: ignore", source)
+        tokens = tokenize.generate_tokens(io.StringIO(source).readline)
+        to_find, to_replace = r"#\s*mypy:\s*ignore(?![-_])", "# type: ignore"
     else:
-        source = re.sub(rb"(?<!^)#\s*mypy:\s*ignore(?![-_])", b"# type: ignore", source)
-    return ast3.parse(
-        source,
-        filename,
-        mode,
-        type_comments=True,  # This works the magic
-        feature_version=feature_version,
-    )
+        tokens = tokenize.tokenize(io.BytesIO(source).readline)
+        to_find, to_replace = rb"#\s*mypy:\s*ignore(?![-_])", b"# type: ignore"
+    source = tokenize.untokenize((t, re.sub(to_find, to_replace, s) if t == tokenize.COMMENT else s) for t, s, *_ in tokens)
+    return p()
 
 
 NamedExpr = ast3.NamedExpr
