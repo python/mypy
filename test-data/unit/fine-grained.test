@@ -10573,3 +10573,101 @@ m.py:9: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 m.py:9: error: Argument 2 to "foo" has incompatible type "str"; expected "int"
 m.py:10: error: Unexpected keyword argument "a" for "foo"
 partial.py:4: note: "foo" defined here
+
+[case testReplaceFunctionWithDecoratedFunctionIndirect]
+from b import f
+x: int = f()
+import b
+y: int = b.f()
+
+[file b.py]
+from a import f
+
+[file a.py]
+def f() -> int: ...
+
+[file a.py.2]
+from typing import Callable
+def d(t: Callable[[], str]) -> Callable[[], str]: ...
+
+@d
+def f() -> str: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testReplaceFunctionWithDecoratedFunctionIndirect2]
+from c import f
+x: int = f()
+import c
+y: int = c.f()
+
+[file c.py]
+from b import f
+
+[file b.py]
+from a import f
+
+[file a.py]
+def f() -> int: ...
+
+[file a.py.2]
+from typing import Callable
+def d(t: Callable[[], str]) -> Callable[[], str]: ...
+
+@d
+def f() -> str: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testReplaceFunctionWithClassIndirect]
+from b import f
+x: int = f()
+import b
+y: int = b.f()
+
+[file b.py]
+from a import f
+
+[file a.py]
+def f() -> int: ...
+
+[file a.py.2]
+class f: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:2: error: Incompatible types in assignment (expression has type "f", variable has type "int")
+main:4: error: Incompatible types in assignment (expression has type "f", variable has type "int")
+
+[case testReplaceFunctionWithClassIndirect2]
+from c import f
+x: int = f()
+import c
+y: int = c.f()
+
+[file c.py]
+from b import f
+
+[file b.py]
+from a import f
+
+[file a.py]
+def f() -> int: ...
+
+[file a.py.2]
+class f: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:2: error: Incompatible types in assignment (expression has type "f", variable has type "int")
+main:4: error: Incompatible types in assignment (expression has type "f", variable has type "int")
