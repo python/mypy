@@ -380,7 +380,9 @@ def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     seen_attrs: set[tuple[str, RType]] = set()
     lines: list[str] = []
-    lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
+    lines += ["typedef struct {", "PyObject_HEAD"]
+    if not cl.is_final_class:
+        lines.append("CPyVTableItem *vtable;")
     if cl.has_method("__call__") and emitter.use_vectorcall():
         lines.append("vectorcallfunc vectorcall;")
     bitmap_attrs = []
@@ -563,14 +565,16 @@ def generate_setup_for_class(
     emitter.emit_line("if (self == NULL)")
     emitter.emit_line("    return NULL;")
 
-    if shadow_vtable_name:
-        emitter.emit_line(f"if (type != {emitter.type_struct_name(cl)}) {{")
-        emitter.emit_line(f"self->vtable = {shadow_vtable_name};")
-        emitter.emit_line("} else {")
-        emitter.emit_line(f"self->vtable = {vtable_name};")
-        emitter.emit_line("}")
-    else:
-        emitter.emit_line(f"self->vtable = {vtable_name};")
+    if not cl.is_final_class:
+        if shadow_vtable_name:
+            emitter.emit_line(f"if (type != {emitter.type_struct_name(cl)}) {{")
+            emitter.emit_line(f"self->vtable = {shadow_vtable_name};")
+            emitter.emit_line("} else {")
+            emitter.emit_line(f"self->vtable = {vtable_name};")
+            emitter.emit_line("}")
+        else:
+            emitter.emit_line(f"self->vtable = {vtable_name};")
+
     for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
         field = emitter.bitmap_field(i)
         emitter.emit_line(f"self->{field} = 0;")

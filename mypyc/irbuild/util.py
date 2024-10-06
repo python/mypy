@@ -31,6 +31,14 @@ from mypy.nodes import (
 DATACLASS_DECORATORS = {"dataclasses.dataclass", "attr.s", "attr.attrs"}
 
 
+def is_final_decorator(d: Expression) -> bool:
+    return isinstance(d, RefExpr) and d.fullname == "typing.final"
+
+
+def is_final_class(cdef: ClassDef) -> bool:
+    return any(is_final_decorator(d) for d in cdef.decorators)
+
+
 def is_trait_decorator(d: Expression) -> bool:
     return isinstance(d, RefExpr) and d.fullname == "mypy_extensions.trait"
 
@@ -119,7 +127,7 @@ def get_mypyc_attrs(stmt: ClassDef | Decorator) -> dict[str, Any]:
 
 def is_extension_class(cdef: ClassDef) -> bool:
     if any(
-        not is_trait_decorator(d) and not is_dataclass_decorator(d) and not get_mypyc_attr_call(d)
+        not is_trait_decorator(d) and not is_dataclass_decorator(d) and not get_mypyc_attr_call(d) and not is_final_decorator(d)
         for d in cdef.decorators
     ):
         return False

@@ -93,6 +93,7 @@ class ClassIR:
         is_generated: bool = False,
         is_abstract: bool = False,
         is_ext_class: bool = True,
+        is_final_class: bool = False,
     ) -> None:
         self.name = name
         self.module_name = module_name
@@ -100,6 +101,7 @@ class ClassIR:
         self.is_generated = is_generated
         self.is_abstract = is_abstract
         self.is_ext_class = is_ext_class
+        self.is_final_class = is_final_class
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
@@ -248,8 +250,7 @@ class ClassIR:
     def is_method_final(self, name: str) -> bool:
         subs = self.subclasses()
         if subs is None:
-            # TODO: Look at the final attribute!
-            return False
+            return self.is_final_class
 
         if self.has_method(name):
             method_decl = self.method_decl(name)
