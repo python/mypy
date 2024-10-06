@@ -767,7 +767,10 @@ def analyze_var(
     # Found a member variable.
     original_itype = itype
     itype = map_instance_to_supertype(itype, var.info)
-    typ = var.type
+    if var.is_settable_property and mx.is_lvalue:
+        typ = var.setter_type
+    else:
+        typ = var.type
     if typ:
         if isinstance(typ, PartialType):
             return mx.chk.handle_partial_var_type(typ, mx.is_lvalue, var, mx.context)
@@ -825,7 +828,10 @@ def analyze_var(
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(expanded_signature, CallableType)
-                    result = expanded_signature.ret_type
+                    if var.is_settable_property and mx.is_lvalue:
+                        result = expanded_signature.arg_types[0]
+                    else:
+                        result = expanded_signature.ret_type
                 else:
                     result = expanded_signature
     else:

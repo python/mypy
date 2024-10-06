@@ -641,6 +641,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # HACK: Infer the type of the property.
             assert isinstance(defn.items[0], Decorator)
             self.visit_decorator(defn.items[0])
+            assert isinstance(defn.items[1], Decorator)
+            self.visit_decorator(defn.items[1])
+            defn.items[0].var.setter_type = defn.items[1].func.type
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
             if defn.is_property:
@@ -3146,7 +3149,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ):  # Ignore member access to modules
                     instance_type = self.expr_checker.accept(lvalue.expr)
                     rvalue_type, lvalue_type, infer_lvalue_type = self.check_member_assignment(
-                        instance_type, lvalue_type, rvalue, context=rvalue
+                        lvalue, instance_type, lvalue_type, rvalue, context=rvalue
                     )
                 else:
                     # Hacky special case for assigning a literal None
@@ -4389,7 +4392,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return rvalue_type
 
     def check_member_assignment(
-        self, instance_type: Type, attribute_type: Type, rvalue: Expression, context: Context
+        self,
+        lvalue: MemberExpr,
+        instance_type: Type,
+        attribute_type: Type,
+        rvalue: Expression,
+        context: Context,
     ) -> tuple[Type, Type, bool]:
         """Type member assignment.
 
@@ -4411,10 +4419,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
             return rvalue_type, attribute_type, True
 
+        with self.msg.filter_errors():
+            get_lvalue_type = self.expr_checker.analyze_ordinary_member_access(
+                lvalue, is_lvalue=False
+            )
+            use_binder = is_same_type(get_lvalue_type, attribute_type)
+
         if not isinstance(attribute_type, Instance):
             # TODO: support __set__() for union types.
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, attribute_type, True
+            return rvalue_type, attribute_type, use_binder
 
         mx = MemberContext(
             is_lvalue=False,
@@ -4433,7 +4447,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
             rvalue_type = self.check_simple_assignment(get_type, rvalue, context)
-            return rvalue_type, get_type, True
+            return rvalue_type, get_type, use_binder
 
         dunder_set = attribute_type.type.get_method("__set__")
         if dunder_set is None:
