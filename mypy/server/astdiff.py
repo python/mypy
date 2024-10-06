@@ -102,6 +102,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
+from mypy.util import get_prefix
 
 # Snapshot representation of a symbol table node or type. The representation is
 # opaque -- the only supported operations are comparing for equality and
@@ -216,7 +217,11 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sym
             )
         else:
             assert symbol.kind != UNBOUND_IMPORTED
-            result[name] = snapshot_definition(node, common)
+            if node and get_prefix(node.fullname) != name_prefix:
+                # This is a cross-reference to a node defined in another module.
+                result[name] = ("CrossRef", common)
+            else:
+                result[name] = snapshot_definition(node, common)
     return result
 
 
