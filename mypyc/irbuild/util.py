@@ -127,7 +127,10 @@ def get_mypyc_attrs(stmt: ClassDef | Decorator) -> dict[str, Any]:
 
 def is_extension_class(cdef: ClassDef) -> bool:
     if any(
-        not is_trait_decorator(d) and not is_dataclass_decorator(d) and not get_mypyc_attr_call(d) and not is_final_decorator(d)
+        not is_trait_decorator(d)
+        and not is_dataclass_decorator(d)
+        and not get_mypyc_attr_call(d)
+        and not is_final_decorator(d)
         for d in cdef.decorators
     ):
         return False
