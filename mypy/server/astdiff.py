@@ -256,6 +256,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             signature,
             is_trivial_body,
             dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
+            node.deprecated if isinstance(node, FuncDef) else None,
         )
     elif isinstance(node, Var):
         return ("Var", common, snapshot_optional_type(node.type), node.is_final)

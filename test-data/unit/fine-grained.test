@@ -10837,7 +10837,7 @@ main:1: note: function a.f is deprecated: use f1 instead
 main:4: note: function a.f is deprecated: use f1 instead
 ==
 
-[case testDeprecateFunctionAlreadyDecorated]
+[case testDeprecatedFunctionAlreadyDecorated1-only_when_cache]
 from b import f
 x: str = f()
 import b
@@ -10867,5 +10867,41 @@ def f() -> str: ...
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-main:2: note: deprecated decorated function
-main:4: note: deprecated decorated function
+b.py:1: note: function a.f is deprecated: deprecated decorated function
+main:1: note: function a.f is deprecated: deprecated decorated function
+main:4: note: function a.f is deprecated: deprecated decorated function
+
+
+[case testDeprecatedFunctionAlreadyDecorated2-only_when_nocache]
+from b import f
+x: str = f()
+import b
+y: str = b.f()
+
+[file b.py]
+from a import f
+
+[file a.py]
+from typing import Callable
+
+def d(t: Callable[[], str]) -> Callable[[], str]: ...
+
+@d
+def f() -> str: ...
+
+[file a.py.2]
+from typing import Callable
+from typing_extensions import deprecated
+
+def d(t: Callable[[], str]) -> Callable[[], str]: ...
+
+@deprecated("deprecated decorated function")
+@d
+def f() -> str: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:1: note: function a.f is deprecated: deprecated decorated function
+main:4: note: function a.f is deprecated: deprecated decorated function
+b.py:1: note: function a.f is deprecated: deprecated decorated function
