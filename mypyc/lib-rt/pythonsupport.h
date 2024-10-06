@@ -13,6 +13,19 @@
 #include <assert.h>
 #include "mypyc_util.h"
 
+#if CPY_3_13_FEATURES
+#ifndef Py_BUILD_CORE
+#define Py_BUILD_CORE
+#endif
+#include "internal/pycore_bytesobject.h"  // _PyBytes_Join
+#include "internal/pycore_call.h"  // _PyObject_CallMethodIdNoArgs, _PyObject_CallMethodIdObjArgs, _PyObject_CallMethodIdOneArg
+#include "internal/pycore_genobject.h"  // _PyGen_FetchStopIterationValue
+#include "internal/pycore_object.h"  // _PyType_CalculateMetaclass
+#include "internal/pycore_pyerrors.h"  // _PyErr_FormatFromCause, _PyErr_SetKeyError
+#include "internal/pycore_setobject.h"  // _PySet_Update
+#include "internal/pycore_unicodeobject.h"  // _PyUnicode_EQ, _PyUnicode_FastCopyCharacters
+#endif
+
 #if CPY_3_12_FEATURES
 #include "internal/pycore_frame.h"
 #endif
@@ -48,7 +61,7 @@ update_bases(PyObject *bases)
             }
             continue;
         }
-        if (_PyObject_LookupAttrId(base, &PyId___mro_entries__, &meth) < 0) {
+        if (PyObject_GetOptionalAttrString(base, PyId___mro_entries__.string, &meth) < 0) {
             goto error;
         }
         if (!meth) {
@@ -59,7 +72,7 @@ update_bases(PyObject *bases)
             }
             continue;
         }
-        new_base = _PyObject_FastCall(meth, stack, 1);
+        new_base = _PyObject_Vectorcall(meth, stack, 1, NULL);
         Py_DECREF(meth);
         if (!new_base) {
             goto error;
@@ -108,7 +121,7 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
     PyObject *super, *func, *result;
     PyObject *args[2] = {(PyObject *)type, (PyObject *)type};
 
-    super = _PyObject_FastCall((PyObject *)&PySuper_Type, args, 2);
+    super = _PyObject_Vectorcall((PyObject *)&PySuper_Type, args, 2, NULL);
     if (super == NULL) {
         return -1;
     }
@@ -307,8 +320,6 @@ list_count(PyListObject *self, PyObject *value)
     return CPyTagged_ShortFromSsize_t(count);
 }
 
-#define CPyUnicode_EqualToASCIIString(x, y) _PyUnicode_EqualToASCIIString(x, y)
-
 // Adapted from genobject.c in Python 3.7.2
 // Copied because it wasn't in 3.5.2 and it is undocumented anyways.
 /*
@@ -374,7 +385,7 @@ _CPyDictView_New(PyObject *dict, PyTypeObject *type)
 static int
 _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     PyObject *tmp = NULL;
-    int result = _PyObject_LookupAttrId(v, name, &tmp);
+    int result = PyObject_GetOptionalAttrString(v, name->string, &tmp);
     if (tmp) {
         Py_DECREF(tmp);
     }
@@ -390,9 +401,34 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     _PyObject_CallMethodIdObjArgs((self), (name), NULL)
 #define _PyObject_CallMethodIdOneArg(self, name, arg) \
     _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
+#define PyObject_CallMethodOneArg(self, name, arg) \
+    PyObject_CallMethodObjArgs((self), (name), (arg), NULL)
 #endif
 
-#if CPY_3_12_FEATURES
+#if CPY_3_13_FEATURES
+
+// These are copied from genobject.c in Python 3.13
+
+/* Returns a borrowed reference */
+static inline PyCodeObject *
+_PyGen_GetCode(PyGenObject *gen) {
+    _PyInterpreterFrame *frame = (_PyInterpreterFrame *)(gen->gi_iframe);
+    return _PyFrame_GetCode(frame);
+}
+
+static int
+gen_is_coroutine(PyObject *o)
+{
+    if (PyGen_CheckExact(o)) {
+        PyCodeObject *code = _PyGen_GetCode((PyGenObject*)o);
+        if (code->co_flags & CO_ITERABLE_COROUTINE) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+#elif CPY_3_12_FEATURES
 
 // These are copied from genobject.c in Python 3.12
 

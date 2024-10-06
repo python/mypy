@@ -824,20 +824,14 @@ class Fraction(Real):
 [builtins fixtures/tuple.pyi]
 
 [case testForwardReferenceInNamedTuple]
-from typing import List, NamedTuple
+from typing import NamedTuple
 
 class A(NamedTuple):
     b: 'B'
     x: int
-    y: List['B']
 
 class B:
     pass
-
-def f(a: A):
-    reveal_type(a.b)  # N: Revealed type is "__main__.B"
-    reveal_type(a.x)  # N: Revealed type is "builtins.int"
-    reveal_type(a.y)  # N: Revealed type is "builtins.list[__main__.B]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeNamedTupleClassmethod]
@@ -1407,23 +1401,9 @@ from typing import NamedTuple
 class A(NamedTuple):
     x: int
 
-replaced = A(x=0).__replace__(x=1)
-reveal_type(replaced)  # N: Revealed type is "__main__.A"
-
+A(x=0).__replace__(x=1)
 A(x=0).__replace__(x="asdf")  # E: Argument "x" to "__replace__" of "A" has incompatible type "str"; expected "int"
 A(x=0).__replace__(y=1)  # E: Unexpected keyword argument "y" for "__replace__" of "A"
-
-from typing import TypeVar, Generic
-
-T = TypeVar("T")
-
-class GenericA(NamedTuple, Generic[T]):
-    x: T
-
-replaced_2 = GenericA(x=0).__replace__(x=1)
-reveal_type(replaced_2)  # N: Revealed type is "__main__.GenericA"
-GenericA(x=0).__replace__(x="abc") # E: Argument "x" to "__replace__" of "GenericA" has incompatible type "str"; expected "int"
-
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1435,5 +1415,29 @@ class Foo(typing.NamedTuple):
     def baz(self: typing.Self) -> None:
         x, = self
         reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNameErrorInNamedTupleNestedInFunction1]
+from typing import NamedTuple
+
+def bar() -> None:
+    class MyNamedTuple(NamedTuple):
+        a: int
+        def foo(self) -> None:
+            ...
+    int_set: Set[int]  # E: Name "Set" is not defined \
+                       # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Set")
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNameErrorInNamedTupleNestedInFunction2]
+from typing import NamedTuple
+
+def bar() -> None:
+    class MyNamedTuple(NamedTuple):
+        a: int
+        def foo(self) -> None:
+            misspelled_var_name  # E: Name "misspelled_var_name" is not defined
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]

@@ -1224,6 +1224,9 @@ def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[s
     if isinstance(runtime, property):
         yield from _verify_final_method(stub.func, runtime.fget, MISSING)
         return
+    if isinstance(runtime, functools.cached_property):
+        yield from _verify_final_method(stub.func, runtime.func, MISSING)
+        return
     if inspect.isdatadescriptor(runtime):
         # It's enough like a property...
         return
@@ -1940,6 +1943,18 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
             return
 
         parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
+
+    def error_callback(msg: str) -> typing.NoReturn:
+        print(_style("error:", color="red", bold=True), msg)
+        sys.exit(1)
+
+    def warning_callback(msg: str) -> None:
+        print(_style("warning:", color="yellow", bold=True), msg)
+
+    options.process_error_codes(error_callback=error_callback)
+    options.process_incomplete_features(
+        error_callback=error_callback, warning_callback=warning_callback
+    )
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)

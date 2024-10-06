@@ -138,6 +138,7 @@ INVALID_TYPEDDICT_ARGS: Final = ErrorMessage(
 TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = ErrorMessage(
     "Expected TypedDict key to be string literal"
 )
+TYPEDDICT_OVERRIDE_MERGE: Final = 'Overwriting TypedDict field "{}" while merging'
 MALFORMED_ASSERT: Final = ErrorMessage("Assertion is always true, perhaps remove parentheses?")
 DUPLICATE_TYPE_SIGNATURES: Final = ErrorMessage("Function has duplicate type signatures")
 DESCRIPTOR_SET_NOT_CALLABLE: Final = ErrorMessage("{}.__set__ is not callable")
@@ -336,4 +337,33 @@ NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorMessage(
 )
 TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES: Final = ErrorMessage(
     "Type variable must have at least two constrained types", codes.MISC
+)
+
+TYPE_VAR_YIELD_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Yield expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_NAMED_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Named expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_AWAIT_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Await expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_ALIAS_WITH_YIELD_EXPRESSION: Final = ErrorMessage(
+    "Yield expression cannot be used within a type alias", codes.SYNTAX
+)
+
+TYPE_ALIAS_WITH_NAMED_EXPRESSION: Final = ErrorMessage(
+    "Named expression cannot be used within a type alias", codes.SYNTAX
+)
+
+TYPE_ALIAS_WITH_AWAIT_EXPRESSION: Final = ErrorMessage(
+    "Await expression cannot be used within a type alias", codes.SYNTAX
+)
+
+TYPE_PARAM_DEFAULT_NOT_SUPPORTED: Final = ErrorMessage(
+    "Type parameter default types not supported when using Python 3.12 type parameter syntax",
+    codes.MISC,
 )

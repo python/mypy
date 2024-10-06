@@ -59,8 +59,6 @@ Example:
 
 .. code-block:: python
 
-   from typing import Union
-
    class Cat:
        def sleep(self) -> None: ...
        def miaow(self) -> None: ...
@@ -69,10 +67,10 @@ Example:
        def sleep(self) -> None: ...
        def follow_me(self) -> None: ...
 
-   def func(animal: Union[Cat, Dog]) -> None:
+   def func(animal: Cat | Dog) -> None:
        # OK: 'sleep' is defined for both Cat and Dog
        animal.sleep()
-       # Error: Item "Cat" of "Union[Cat, Dog]" has no attribute "follow_me"  [union-attr]
+       # Error: Item "Cat" of "Cat | Dog" has no attribute "follow_me"  [union-attr]
        animal.follow_me()
 
 You can often work around these errors by using ``assert isinstance(obj, ClassName)``
@@ -124,8 +122,6 @@ Example:
 
 .. code-block:: python
 
-    from typing import Sequence
-
     def greet(name: str) -> None:
          print('hello', name)
 
@@ -144,9 +140,7 @@ Example:
 
 .. code-block:: python
 
-    from typing import Optional
-
-    def first(x: list[int]) -> Optional[int]:
+    def first(x: list[int]) -> int:
         return x[0] if x else 0
 
     t = (5, 4)
@@ -167,7 +161,7 @@ Example:
 
 .. code-block:: python
 
-   from typing import overload, Optional
+   from typing import overload
 
    @overload
    def inc_maybe(x: None) -> None: ...
@@ -175,7 +169,7 @@ Example:
    @overload
    def inc_maybe(x: int) -> int: ...
 
-   def inc_maybe(x: Optional[int]) -> Optional[int]:
+   def inc_maybe(x: int | None) -> int | None:
         if x is None:
             return None
         else:
@@ -210,11 +204,11 @@ This example incorrectly uses the function ``log`` as a type:
         for x in objs:
             f(x)
 
-You can use :py:data:`~typing.Callable` as the type for callable objects:
+You can use :py:class:`~collections.abc.Callable` as the type for callable objects:
 
 .. code-block:: python
 
-    from typing import Callable
+    from collections.abc import Callable
 
     # OK
     def log_all(objs: list[object], f: Callable[[object], None]) -> None:
@@ -275,16 +269,14 @@ Example:
 
 .. code-block:: python
 
-   from typing import Optional, Union
-
    class Base:
        def method(self,
-                  arg: int) -> Optional[int]:
+                  arg: int) -> int | None:
            ...
 
    class Derived(Base):
        def method(self,
-                  arg: Union[int, str]) -> int:  # OK
+                  arg: int | str) -> int:  # OK
            ...
 
    class DerivedBad(Base):
@@ -434,15 +426,11 @@ Check type variable values [type-var]
 Mypy checks that value of a type variable is compatible with a value
 restriction or the upper bound type.
 
-Example:
+Example (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from typing import TypeVar
-
-    T1 = TypeVar('T1', int, float)
-
-    def add(x: T1, y: T1) -> T1:
+    def add[T1: (int, float)](x: T1, y: T1) -> T1:
         return x + y
 
     add(4, 5.5)  # OK
@@ -783,27 +771,25 @@ Example:
 Safe handling of abstract type object types [type-abstract]
 -----------------------------------------------------------
 
-Mypy always allows instantiating (calling) type objects typed as ``Type[t]``,
+Mypy always allows instantiating (calling) type objects typed as ``type[t]``,
 even if it is not known that ``t`` is non-abstract, since it is a common
 pattern to create functions that act as object factories (custom constructors).
 Therefore, to prevent issues described in the above section, when an abstract
-type object is passed where ``Type[t]`` is expected, mypy will give an error.
-Example:
+type object is passed where ``type[t]`` is expected, mypy will give an error.
+Example (Python 3.12 syntax):
 
 .. code-block:: python
 
    from abc import ABCMeta, abstractmethod
-   from typing import List, Type, TypeVar
 
    class Config(metaclass=ABCMeta):
        @abstractmethod
        def get_value(self, attr: str) -> str: ...
 
-   T = TypeVar("T")
-   def make_many(typ: Type[T], n: int) -> List[T]:
+   def make_many[T](typ: type[T], n: int) -> list[T]:
        return [typ() for _ in range(n)]  # This will raise if typ is abstract
 
-   # Error: Only concrete class can be given where "Type[Config]" is expected [type-abstract]
+   # Error: Only concrete class can be given where "type[Config]" is expected [type-abstract]
    make_many(Config, 5)
 
 .. _code-safe-super:
@@ -1149,6 +1135,34 @@ types you expect.
 
 See :ref:`overloading <function-overloading>` for more explanation.
 
+
+.. _code-overload-cannot-match:
+
+Check for overload signatures that cannot match [overload-cannot-match]
+--------------------------------------------------------------------------
+
+Warn if an ``@overload`` variant can never be matched, because an earlier
+overload has a wider signature. For example, this can happen if the two
+overloads accept the same parameters and each parameter on the first overload
+has the same type or a wider type than the corresponding parameter on the second
+overload.
+
+Example:
+
+.. code-block:: python
+
+    from typing import overload, Union
+
+    @overload
+    def process(response1: object, response2: object) -> object:
+        ...
+    @overload
+    def process(response1: int, response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overload-cannot-match]
+        ...
+
+    def process(response1: object, response2: object) -> object:
+        return response1 + response2
+
 .. _code-annotation-unchecked:
 
 Notify about an annotation in an unchecked function [annotation-unchecked]
@@ -1184,7 +1198,7 @@ comment:
 
 .. code-block:: python
 
-    class MyClass
+    class MyClass:
         @special  # type: ignore[prop-decorator]
         @property
         def magic(self) -> str:
@@ -1202,6 +1216,30 @@ Report syntax errors [syntax]
 If the code being checked is not syntactically valid, mypy issues a
 syntax error. Most, but not all, syntax errors are *blocking errors*:
 they can't be ignored with a ``# type: ignore`` comment.
+
+.. _code-typeddict-readonly-mutated:
+
+ReadOnly key of a TypedDict is mutated [typeddict-readonly-mutated]
+-------------------------------------------------------------------
+
+Consider this example:
+
+.. code-block:: python
+
+    from datetime import datetime
+    from typing import TypedDict
+    from typing_extensions import ReadOnly
+
+    class User(TypedDict):
+        username: ReadOnly[str]
+        last_active: datetime
+
+    user: User = {'username': 'foobar', 'last_active': datetime.now()}
+    user['last_active'] = datetime.now()  # ok
+    user['username'] = 'other'  # error: ReadOnly TypedDict key "key" TypedDict is mutated  [typeddict-readonly-mutated]
+
+`PEP 705 <https://peps.python.org/pep-0705>`_ specifies
+how ``ReadOnly`` special form works for ``TypedDict`` objects.
 
 .. _code-misc:
 

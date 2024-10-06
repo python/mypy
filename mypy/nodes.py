@@ -3495,6 +3495,7 @@ class FakeInfo(TypeInfo):
 VAR_NO_INFO: Final[TypeInfo] = FakeInfo("Var is lacking info")
 CLASSDEF_NO_INFO: Final[TypeInfo] = FakeInfo("ClassDef is lacking info")
 FUNC_NO_INFO: Final[TypeInfo] = FakeInfo("FuncBase for non-methods lack info")
+MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
 
 
 class TypeAlias(SymbolNode):
@@ -4104,7 +4105,7 @@ def get_member_expr_fullname(expr: MemberExpr) -> str | None:
         initial = expr.expr.name
     elif isinstance(expr.expr, MemberExpr):
         initial = get_member_expr_fullname(expr.expr)
-    else:
+    if initial is None:
         return None
     return f"{initial}.{expr.name}"
 

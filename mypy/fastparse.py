@@ -17,6 +17,7 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    MISSING_FALLBACK,
     PARAM_SPEC_KIND,
     TYPE_VAR_KIND,
     TYPE_VAR_TUPLE_KIND,
@@ -42,7 +43,6 @@ from mypy.nodes import (
     EllipsisExpr,
     Expression,
     ExpressionStmt,
-    FakeInfo,
     FloatExpr,
     ForStmt,
     FuncDef,
@@ -92,7 +92,7 @@ from mypy.nodes import (
     YieldFromExpr,
     check_arg_names,
 )
-from mypy.options import NEW_GENERIC_SYNTAX, Options
+from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -116,6 +116,7 @@ from mypy.types import (
     RawExpressionType,
     TupleType,
     Type,
+    TypedDictType,
     TypeList,
     TypeOfAny,
     UnboundType,
@@ -180,17 +181,18 @@ else:
 if sys.version_info >= (3, 12):
     ast_TypeAlias = ast3.TypeAlias
     ast_ParamSpec = ast3.ParamSpec
+    ast_TypeVar = ast3.TypeVar
     ast_TypeVarTuple = ast3.TypeVarTuple
 else:
     ast_TypeAlias = Any
     ast_ParamSpec = Any
+    ast_TypeVar = Any
     ast_TypeVarTuple = Any
 
 N = TypeVar("N", bound=Node)
 
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
-MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
 TYPE_IGNORE_PATTERN: Final = re.compile(r"[^#]*#\s*type:\s*ignore\s*(.*)")
@@ -329,7 +331,12 @@ def parse_type_string(
     """
     try:
         _, node = parse_type_comment(f"({expr_string})", line=line, column=column, errors=None)
-        return RawExpressionType(expr_string, expr_fallback_name, line, column, node=node)
+        if isinstance(node, (UnboundType, UnionType)) and node.original_str_expr is None:
+            node.original_str_expr = expr_string
+            node.original_str_fallback = expr_fallback_name
+            return node
+        else:
+            return RawExpressionType(expr_string, expr_fallback_name, line, column)
     except (SyntaxError, ValueError):
         # Note: the parser will raise a `ValueError` instead of a SyntaxError if
         # the string happens to contain things like \x00.
@@ -343,6 +350,15 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
         if isinstance(expr.value, Name):
             return expr.value.id == "typing" and expr.attr == "no_type_check"
     return False
+
+
+def find_disallowed_expression_in_annotation_scope(expr: ast3.expr | None) -> ast3.expr | None:
+    if expr is None:
+        return None
+    for node in ast3.walk(expr):
+        if isinstance(node, (ast3.Yield, ast3.YieldFrom, ast3.NamedExpr, ast3.Await)):
+            return node
+    return None
 
 
 class ASTConverter:
@@ -949,19 +965,7 @@ class ASTConverter:
                 return_type = AnyType(TypeOfAny.from_error)
         else:
             if sys.version_info >= (3, 12) and n.type_params:
-                if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
-                    explicit_type_params = self.translate_type_params(n.type_params)
-                else:
-                    self.fail(
-                        ErrorMessage(
-                            "PEP 695 generics are not yet supported. "
-                            "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
-                            code=codes.VALID_TYPE,
-                        ),
-                        n.type_params[0].lineno,
-                        n.type_params[0].col_offset,
-                        blocker=False,
-                    )
+                explicit_type_params = self.translate_type_params(n.type_params)
 
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(
@@ -1046,8 +1050,6 @@ class ASTConverter:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
         optional = isinstance(initializer, NameExpr) and initializer.name == "None"
-        if isinstance(type, RawExpressionType) and type.node is not None:
-            type = type.node
         if isinstance(type, UnboundType):
             type.optional = optional
 
@@ -1143,19 +1145,7 @@ class ASTConverter:
         explicit_type_params: list[TypeParam] | None = None
 
         if sys.version_info >= (3, 12) and n.type_params:
-            if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
-                explicit_type_params = self.translate_type_params(n.type_params)
-            else:
-                self.fail(
-                    ErrorMessage(
-                        "PEP 695 generics are not yet supported. "
-                        "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
-                        code=codes.VALID_TYPE,
-                    ),
-                    n.type_params[0].lineno,
-                    n.type_params[0].col_offset,
-                    blocker=False,
-                )
+            explicit_type_params = self.translate_type_params(n.type_params)
 
         cdef = ClassDef(
             n.name,
@@ -1180,11 +1170,41 @@ class ASTConverter:
         self.class_and_function_stack.pop()
         return cdef
 
+    def validate_type_param(self, type_param: ast_TypeVar) -> None:
+        incorrect_expr = find_disallowed_expression_in_annotation_scope(type_param.bound)
+        if incorrect_expr is None:
+            return
+        if isinstance(incorrect_expr, (ast3.Yield, ast3.YieldFrom)):
+            self.fail(
+                message_registry.TYPE_VAR_YIELD_EXPRESSION_IN_BOUND,
+                type_param.lineno,
+                type_param.col_offset,
+            )
+        if isinstance(incorrect_expr, ast3.NamedExpr):
+            self.fail(
+                message_registry.TYPE_VAR_NAMED_EXPRESSION_IN_BOUND,
+                type_param.lineno,
+                type_param.col_offset,
+            )
+        if isinstance(incorrect_expr, ast3.Await):
+            self.fail(
+                message_registry.TYPE_VAR_AWAIT_EXPRESSION_IN_BOUND,
+                type_param.lineno,
+                type_param.col_offset,
+            )
+
     def translate_type_params(self, type_params: list[Any]) -> list[TypeParam]:
         explicit_type_params = []
         for p in type_params:
             bound = None
             values: list[Type] = []
+            if sys.version_info >= (3, 13) and p.default_value is not None:
+                self.fail(
+                    message_registry.TYPE_PARAM_DEFAULT_NOT_SUPPORTED,
+                    p.lineno,
+                    p.col_offset,
+                    blocker=False,
+                )
             if isinstance(p, ast_ParamSpec):  # type: ignore[misc]
                 explicit_type_params.append(TypeParam(p.name, PARAM_SPEC_KIND, None, []))
             elif isinstance(p, ast_TypeVarTuple):  # type: ignore[misc]
@@ -1202,6 +1222,7 @@ class ASTConverter:
                         conv = TypeConverter(self.errors, line=p.lineno)
                         values = [conv.visit(t) for t in p.bound.elts]
                 elif p.bound is not None:
+                    self.validate_type_param(p)
                     bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
                 explicit_type_params.append(TypeParam(p.name, TYPE_VAR_KIND, bound, values))
         return explicit_type_params
@@ -1791,33 +1812,31 @@ class ASTConverter:
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
         return self.set_line(node, n)
 
+    def validate_type_alias(self, n: ast_TypeAlias) -> None:
+        incorrect_expr = find_disallowed_expression_in_annotation_scope(n.value)
+        if incorrect_expr is None:
+            return
+        if isinstance(incorrect_expr, (ast3.Yield, ast3.YieldFrom)):
+            self.fail(message_registry.TYPE_ALIAS_WITH_YIELD_EXPRESSION, n.lineno, n.col_offset)
+        if isinstance(incorrect_expr, ast3.NamedExpr):
+            self.fail(message_registry.TYPE_ALIAS_WITH_NAMED_EXPRESSION, n.lineno, n.col_offset)
+        if isinstance(incorrect_expr, ast3.Await):
+            self.fail(message_registry.TYPE_ALIAS_WITH_AWAIT_EXPRESSION, n.lineno, n.col_offset)
+
     # TypeAlias(identifier name, type_param* type_params, expr value)
     def visit_TypeAlias(self, n: ast_TypeAlias) -> TypeAliasStmt | AssignmentStmt:
         node: TypeAliasStmt | AssignmentStmt
-        if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
-            type_params = self.translate_type_params(n.type_params)
-            value = self.visit(n.value)
-            # Since the value is evaluated lazily, wrap the value inside a lambda.
-            # This helps mypyc.
-            ret = ReturnStmt(value)
-            self.set_line(ret, n.value)
-            value_func = LambdaExpr(body=Block([ret]))
-            self.set_line(value_func, n.value)
-            node = TypeAliasStmt(self.visit_Name(n.name), type_params, value_func)
-            return self.set_line(node, n)
-        else:
-            self.fail(
-                ErrorMessage(
-                    "PEP 695 type aliases are not yet supported. "
-                    "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
-                    code=codes.VALID_TYPE,
-                ),
-                n.lineno,
-                n.col_offset,
-                blocker=False,
-            )
-            node = AssignmentStmt([NameExpr(n.name.id)], self.visit(n.value))
-            return self.set_line(node, n)
+        type_params = self.translate_type_params(n.type_params)
+        self.validate_type_alias(n)
+        value = self.visit(n.value)
+        # Since the value is evaluated lazily, wrap the value inside a lambda.
+        # This helps mypyc.
+        ret = ReturnStmt(value)
+        self.set_line(ret, n.value)
+        value_func = LambdaExpr(body=Block([ret]))
+        self.set_line(value_func, n.value)
+        node = TypeAliasStmt(self.visit_Name(n.name), type_params, value_func)
+        return self.set_line(node, n)
 
 
 class TypeConverter:
@@ -2105,6 +2124,22 @@ class TypeConverter:
             line=self.line,
             column=self.convert_column(n.col_offset),
         )
+
+    def visit_Dict(self, n: ast3.Dict) -> Type:
+        if not n.keys:
+            return self.invalid_type(n)
+        items: dict[str, Type] = {}
+        extra_items_from = []
+        for item_name, value in zip(n.keys, n.values):
+            if not isinstance(item_name, ast3.Constant) or not isinstance(item_name.value, str):
+                if item_name is None:
+                    extra_items_from.append(self.visit(value))
+                    continue
+                return self.invalid_type(n)
+            items[item_name.value] = self.visit(value)
+        result = TypedDictType(items, set(), set(), _dummy_fallback, n.lineno, n.col_offset)
+        result.extra_items_from = extra_items_from
+        return result
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> Type:

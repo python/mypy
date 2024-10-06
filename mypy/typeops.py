@@ -14,6 +14,7 @@ from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
+    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -114,7 +115,11 @@ def tuple_fallback(typ: TupleType) -> Instance:
         else:
             items.append(item)
     return Instance(
-        info, [make_simplified_union(items)], extra_attrs=typ.partial_fallback.extra_attrs
+        info,
+        # Note: flattening recursive unions is dangerous, since it can fool recursive
+        # types optimization in subtypes.py and go into infinite recursion.
+        [make_simplified_union(items, handle_recursive=False)],
+        extra_attrs=typ.partial_fallback.extra_attrs,
     )
 
 
@@ -301,21 +306,41 @@ def bind_self(
 
     """
     if isinstance(method, Overloaded):
-        items = [
-            bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
-        ]
+        items = []
+        original_type = get_proper_type(original_type)
+        for c in method.items:
+            if isinstance(original_type, Instance):
+                # Filter based on whether declared self type can match actual object type.
+                # For example, if self has type C[int] and method is accessed on a C[str] value,
+                # omit this item. This is best effort since bind_self can be called in many
+                # contexts, and doing complete validation might trigger infinite recursion.
+                #
+                # Note that overload item filtering normally happens elsewhere. This is needed
+                # at least during constraint inference.
+                keep = is_valid_self_type_best_effort(c, original_type)
+            else:
+                keep = True
+            if keep:
+                items.append(bind_self(c, original_type, is_classmethod, ignore_instances))
+        if len(items) == 0:
+            # If no item matches, returning all items helps avoid some spurious errors
+            items = [
+                bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
+            ]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
     func = method
     if not func.arg_types:
         # Invalid method, return something.
         return cast(F, func)
-    if func.arg_kinds[0] == ARG_STAR:
+    if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
         # since func will be absorbed by the *args.
-
         # TODO: infer bounds on the type of *args?
+
+        # In the case of **kwargs we should probably emit an error, but
+        # for now we simply skip it, to avoid crashes down the line.
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
 
@@ -371,6 +396,43 @@ def bind_self(
         bound_args=[original_type],
     )
     return cast(F, res)
+
+
+def is_valid_self_type_best_effort(c: CallableType, self_type: Instance) -> bool:
+    """Quickly check if self_type might match the self in a callable.
+
+    Avoid performing any complex type operations. This is performance-critical.
+
+    Default to returning True if we don't know (or it would be too expensive).
+    """
+    if (
+        self_type.args
+        and c.arg_types
+        and isinstance((arg_type := get_proper_type(c.arg_types[0])), Instance)
+        and c.arg_kinds[0] in (ARG_POS, ARG_OPT)
+        and arg_type.args
+        and self_type.type.fullname != "functools._SingleDispatchCallable"
+    ):
+        if self_type.type is not arg_type.type:
+            # We can't map to supertype, since it could trigger expensive checks for
+            # protocol types, so we consevatively assume this is fine.
+            return True
+
+        # Fast path: no explicit annotation on self
+        if all(
+            (
+                type(arg) is TypeVarType
+                and type(arg.upper_bound) is Instance
+                and arg.upper_bound.type.fullname == "builtins.object"
+            )
+            for arg in arg_type.args
+        ):
+            return True
+
+        from mypy.meet import is_overlapping_types
+
+        return is_overlapping_types(self_type, c.arg_types[0])
+    return True
 
 
 def erase_to_bound(t: Type) -> Type:
@@ -438,6 +500,7 @@ def make_simplified_union(
     *,
     keep_erased: bool = False,
     contract_literals: bool = True,
+    handle_recursive: bool = True,
 ) -> ProperType:
     """Build union type with redundant union items removed.
 
@@ -463,7 +526,7 @@ def make_simplified_union(
     to_union().
     """
     # Step 1: expand all nested unions
-    items = flatten_nested_unions(items)
+    items = flatten_nested_unions(items, handle_recursive=handle_recursive)
 
     # Step 2: fast path for single item
     if len(items) == 1:
@@ -650,6 +713,10 @@ def false_only(t: Type) -> ProperType:
         new_items = [false_only(item) for item in t.items]
         can_be_false_items = [item for item in new_items if item.can_be_false]
         return make_simplified_union(can_be_false_items, line=t.line, column=t.column)
+    elif isinstance(t, Instance) and t.type.fullname in ("builtins.str", "builtins.bytes"):
+        return LiteralType("", fallback=t)
+    elif isinstance(t, Instance) and t.type.fullname == "builtins.int":
+        return LiteralType(0, fallback=t)
     else:
         ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
             t, name="__len__"

@@ -577,7 +577,11 @@ def analyze_member_var_access(
                     if hook:
                         result = hook(
                             AttributeContext(
-                                get_proper_type(mx.original_type), result, mx.context, mx.chk
+                                get_proper_type(mx.original_type),
+                                result,
+                                mx.is_lvalue,
+                                mx.context,
+                                mx.chk,
                             )
                         )
                     return result
@@ -834,7 +838,9 @@ def analyze_var(
         result = analyze_descriptor_access(result, mx)
     if hook:
         result = hook(
-            AttributeContext(get_proper_type(mx.original_type), result, mx.context, mx.chk)
+            AttributeContext(
+                get_proper_type(mx.original_type), result, mx.is_lvalue, mx.context, mx.chk
+            )
         )
     return result
 
@@ -1155,7 +1161,9 @@ def apply_class_attr_hook(
 ) -> Type | None:
     if hook:
         result = hook(
-            AttributeContext(get_proper_type(mx.original_type), result, mx.context, mx.chk)
+            AttributeContext(
+                get_proper_type(mx.original_type), result, mx.is_lvalue, mx.context, mx.chk
+            )
         )
     return result
 
@@ -1192,9 +1200,12 @@ def analyze_typeddict_access(
         if isinstance(mx.context, IndexExpr):
             # Since we can get this during `a['key'] = ...`
             # it is safe to assume that the context is `IndexExpr`.
-            item_type = mx.chk.expr_checker.visit_typeddict_index_expr(
+            item_type, key_names = mx.chk.expr_checker.visit_typeddict_index_expr(
                 typ, mx.context.index, setitem=True
             )
+            assigned_readonly_keys = typ.readonly_keys & key_names
+            if assigned_readonly_keys:
+                mx.msg.readonly_keys_mutated(assigned_readonly_keys, context=mx.context)
         else:
             # It can also be `a.__setitem__(...)` direct call.
             # In this case `item_type` can be `Any`,

@@ -825,6 +825,11 @@ class SemanticAnalyzer(
             self.num_incomplete_refs = 0
 
             if active_type:
+                enclosing_fullname = active_type.fullname.rsplit(".", 1)[0]
+                if "." in enclosing_fullname:
+                    enclosing_node = self.lookup_fully_qualified_or_none(enclosing_fullname)
+                    if enclosing_node and isinstance(enclosing_node.node, TypeInfo):
+                        self._type = enclosing_node.node
                 self.push_type_args(active_type.defn.type_args, active_type.defn)
                 self.incomplete_type_stack.append(False)
                 scope.enter_class(active_type)
@@ -1873,6 +1878,8 @@ class SemanticAnalyzer(
             defn, bases, context=defn
         )
 
+        self.check_type_alias_bases(bases)
+
         for tvd in tvar_defs:
             if isinstance(tvd, TypeVarType) and any(
                 has_placeholder(t) for t in [tvd.upper_bound] + tvd.values
@@ -1943,6 +1950,19 @@ class SemanticAnalyzer(
                 self.scope_stack.append(SCOPE_ANNOTATION)
 
             self.analyze_class_body_common(defn)
+
+    def check_type_alias_bases(self, bases: list[Expression]) -> None:
+        for base in bases:
+            if isinstance(base, IndexExpr):
+                base = base.base
+            if (
+                isinstance(base, RefExpr)
+                and isinstance(base.node, TypeAlias)
+                and base.node.python_3_12_type_alias
+            ):
+                self.fail(
+                    'Type alias defined using "type" statement not valid as base class', base
+                )
 
     def setup_type_vars(self, defn: ClassDef, tvar_defs: list[TypeVarLikeType]) -> None:
         defn.type_vars = tvar_defs
@@ -3493,10 +3513,10 @@ class SemanticAnalyzer(
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         # We cannot use s.type, because analyze_simple_literal_type() will set it.
         explicit = s.unanalyzed_type is not None
-        final_type = self.unwrap_final_type(s.unanalyzed_type)
-        if final_type is not None:
+        if self.is_final_type(s.unanalyzed_type):
             # We need to exclude bare Final.
-            if not final_type.args:
+            assert isinstance(s.unanalyzed_type, UnboundType)
+            if not s.unanalyzed_type.args:
                 explicit = False
 
         if s.rvalue:
@@ -3562,19 +3582,19 @@ class SemanticAnalyzer(
 
         Returns True if Final[...] was present.
         """
-        final_type = self.unwrap_final_type(s.unanalyzed_type)
-        if final_type is None:
+        if not s.unanalyzed_type or not self.is_final_type(s.unanalyzed_type):
             return False
-        if len(final_type.args) > 1:
-            self.fail("Final[...] takes at most one type argument", final_type)
+        assert isinstance(s.unanalyzed_type, UnboundType)
+        if len(s.unanalyzed_type.args) > 1:
+            self.fail("Final[...] takes at most one type argument", s.unanalyzed_type)
         invalid_bare_final = False
-        if not final_type.args:
+        if not s.unanalyzed_type.args:
             s.type = None
             if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
                 invalid_bare_final = True
                 self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
         else:
-            s.type = final_type.args[0]
+            s.type = s.unanalyzed_type.args[0]
 
         if s.type is not None and self.is_classvar(s.type):
             self.fail("Variable should not be annotated with both ClassVar and Final", s)
@@ -3800,7 +3820,9 @@ class SemanticAnalyzer(
         dynamic = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         global_scope = not self.type and not self.function_stack
         try:
-            typ = expr_to_unanalyzed_type(rvalue, self.options, self.is_stub_file)
+            typ = expr_to_unanalyzed_type(
+                rvalue, self.options, self.is_stub_file, lookup_qualified=self.lookup_qualified
+            )
         except TypeTranslationError:
             self.fail(
                 "Invalid type alias: expression is not a valid type", rvalue, code=codes.VALID_TYPE
@@ -3991,6 +4013,9 @@ class SemanticAnalyzer(
         # When this type alias gets "inlined", the Any is not explicit anymore,
         # so we need to replace it with non-explicit Anys.
         res = make_any_non_explicit(res)
+        if self.options.disallow_any_unimported and has_any_from_unimported_type(res):
+            self.msg.unimported_type_becomes_any("Type alias target", res, s)
+            res = make_any_non_unimported(res)
         # Note: with the new (lazy) type alias representation we only need to set no_args to True
         # if the expected number of arguments is non-zero, so that aliases like `A = List` work
         # but not aliases like `A = TypeAliasType("A", List)` as these need explicit type params.
@@ -4990,18 +5015,13 @@ class SemanticAnalyzer(
             return False
         return sym.node.fullname == "typing.ClassVar"
 
-    def unwrap_final_type(self, typ: Type | None) -> UnboundType | None:
-        if typ is None:
-            return None
-        typ = typ.resolve_string_annotation()
+    def is_final_type(self, typ: Type | None) -> bool:
         if not isinstance(typ, UnboundType):
-            return None
+            return False
         sym = self.lookup_qualified(typ.name, typ)
         if not sym or not sym.node:
-            return None
-        if sym.node.fullname in FINAL_TYPE_NAMES:
-            return typ
-        return None
+            return False
+        return sym.node.fullname in FINAL_TYPE_NAMES
 
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail(message_registry.CLASS_VAR_OUTSIDE_OF_CLASS, context)
@@ -5463,6 +5483,9 @@ class SemanticAnalyzer(
             # When this type alias gets "inlined", the Any is not explicit anymore,
             # so we need to replace it with non-explicit Anys.
             res = make_any_non_explicit(res)
+            if self.options.disallow_any_unimported and has_any_from_unimported_type(res):
+                self.msg.unimported_type_becomes_any("Type alias target", res, s)
+                res = make_any_non_unimported(res)
             eager = self.is_func_scope()
             if isinstance(res, ProperType) and isinstance(res, Instance) and not res.args:
                 fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
@@ -5959,9 +5982,8 @@ class SemanticAnalyzer(
 
         if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
-            if not (
-                len(types) == 1 and isinstance(first_arg, (Parameters, ParamSpecType, AnyType))
-            ):
+            single_any = len(types) == 1 and isinstance(first_arg, AnyType)
+            if not (single_any or any(isinstance(t, (Parameters, ParamSpecType)) for t in types)):
                 types = [Parameters(types, [ARG_POS] * len(types), [None] * len(types))]
 
         return types
@@ -7003,6 +7025,7 @@ class SemanticAnalyzer(
             namespace is None
             and self.type
             and not self.is_func_scope()
+            and self.incomplete_type_stack
             and self.incomplete_type_stack[-1]
             and not self.final_iteration
         ):
@@ -7202,7 +7225,7 @@ class SemanticAnalyzer(
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
         allow_placeholder: bool = False,
-        allow_required: bool = False,
+        allow_typed_dict_special_forms: bool = False,
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
         report_invalid_types: bool = True,
@@ -7221,7 +7244,7 @@ class SemanticAnalyzer(
             allow_tuple_literal=allow_tuple_literal,
             report_invalid_types=report_invalid_types,
             allow_placeholder=allow_placeholder,
-            allow_required=allow_required,
+            allow_typed_dict_special_forms=allow_typed_dict_special_forms,
             allow_param_spec_literals=allow_param_spec_literals,
             allow_unpack=allow_unpack,
             prohibit_self_type=prohibit_self_type,
@@ -7244,7 +7267,7 @@ class SemanticAnalyzer(
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
         allow_placeholder: bool = False,
-        allow_required: bool = False,
+        allow_typed_dict_special_forms: bool = False,
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
         report_invalid_types: bool = True,
@@ -7279,7 +7302,7 @@ class SemanticAnalyzer(
             allow_unbound_tvars=allow_unbound_tvars,
             allow_tuple_literal=allow_tuple_literal,
             allow_placeholder=allow_placeholder,
-            allow_required=allow_required,
+            allow_typed_dict_special_forms=allow_typed_dict_special_forms,
             allow_param_spec_literals=allow_param_spec_literals,
             allow_unpack=allow_unpack,
             report_invalid_types=report_invalid_types,
@@ -7483,6 +7506,21 @@ class MakeAnyNonExplicit(TrivialSyntheticTypeTranslator):
     def visit_any(self, t: AnyType) -> Type:
         if t.type_of_any == TypeOfAny.explicit:
             return t.copy_modified(TypeOfAny.special_form)
+        return t
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
+
+
+def make_any_non_unimported(t: Type) -> Type:
+    """Replace all Any types that come from unimported types with special form Any."""
+    return t.accept(MakeAnyNonUnimported())
+
+
+class MakeAnyNonUnimported(TrivialSyntheticTypeTranslator):
+    def visit_any(self, t: AnyType) -> Type:
+        if t.type_of_any == TypeOfAny.from_unimported_type:
+            return t.copy_modified(TypeOfAny.special_form, missing_import_name=None)
         return t
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:

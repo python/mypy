@@ -114,7 +114,7 @@ So, we know what ``callable()`` will return. For example:
 
 .. code-block:: python
 
-  from typing import Callable
+  from collections.abc import Callable
 
   x: Callable[[], int]
 
@@ -123,14 +123,14 @@ So, we know what ``callable()`` will return. For example:
   else:
       ...  # Will never be executed and will raise error with `--warn-unreachable`
 
-``callable`` function can even split ``Union`` type
-for callable and non-callable parts:
+The ``callable`` function can even split union types into
+callable and non-callable parts:
 
 .. code-block:: python
 
-  from typing import Callable, Union
+  from collections.abc import Callable
 
-  x: Union[int, Callable[[], int]]
+  x: int | Callable[[], int]
 
   if callable(x):
       reveal_type(x)  # N: Revealed type is "def () -> builtins.int"
@@ -255,16 +255,13 @@ to the type specified as the first type parameter (``list[str]``).
 Generic TypeGuards
 ~~~~~~~~~~~~~~~~~~
 
-``TypeGuard`` can also work with generic types:
+``TypeGuard`` can also work with generic types (Python 3.12 syntax):
 
 .. code-block:: python
 
-  from typing import TypeVar
   from typing import TypeGuard  # use `typing_extensions` for `python<3.10`
 
-  _T = TypeVar("_T")
-
-  def is_two_element_tuple(val: tuple[_T, ...]) -> TypeGuard[tuple[_T, _T]]:
+  def is_two_element_tuple[T](val: tuple[T, ...]) -> TypeGuard[tuple[T, T]]:
       return len(val) == 2
 
   def func(names: tuple[str, ...]):
@@ -276,16 +273,13 @@ Generic TypeGuards
 TypeGuards with parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Type guard functions can accept extra arguments:
+Type guard functions can accept extra arguments (Python 3.12 syntax):
 
 .. code-block:: python
 
-  from typing import Type, TypeVar
   from typing import TypeGuard  # use `typing_extensions` for `python<3.10`
 
-  _T = TypeVar("_T")
-
-  def is_set_of(val: set[Any], type: Type[_T]) -> TypeGuard[set[_T]]:
+  def is_set_of[T](val: set[Any], type: type[T]) -> TypeGuard[set[T]]:
       return all(isinstance(x, type) for x in val)
 
   items: set[Any]
@@ -368,14 +362,18 @@ Limitations
 Mypy's analysis is limited to individual symbols and it will not track
 relationships between symbols. For example, in the following code
 it's easy to deduce that if :code:`a` is None then :code:`b` must not be,
-therefore :code:`a or b` will always be a string, but Mypy will not be able to tell that:
+therefore :code:`a or b` will always be an instance of :code:`C`,
+but Mypy will not be able to tell that:
 
 .. code-block:: python
 
-    def f(a: str | None, b: str | None) -> str:
+    class C:
+        pass
+
+    def f(a: C | None, b: C | None) -> C:
         if a is not None or b is not None:
-            return a or b  # Incompatible return value type (got "str | None", expected "str")
-        return 'spam'
+            return a or b  # Incompatible return value type (got "C | None", expected "C")
+        return C()
 
 Tracking these sort of cross-variable conditions in a type checker would add significant complexity
 and performance overhead.
@@ -385,9 +383,9 @@ or rewrite the function to be slightly more verbose:
 
 .. code-block:: python
 
-    def f(a: str | None, b: str | None) -> str:
+    def f(a: C | None, b: C | None) -> C:
         if a is not None:
             return a
         elif b is not None:
             return b
-        return 'spam'
+        return C()

@@ -78,7 +78,7 @@ p = Point(x='meaning_of_life', y=1337)  # E: Incompatible types (expression has 
 [case testCannotCreateTypedDictInstanceWithInlineTypedDict]
 from mypy_extensions import TypedDict
 D = TypedDict('D', {
-    'x': TypedDict('E', {  # E: Inline TypedDict types not supported; use assignment to define TypedDict
+    'x': TypedDict('E', {  # E: Use dict literal for nested TypedDict
         'y': int
     })
 })
@@ -2362,6 +2362,36 @@ Foo = TypedDict('Foo', {'camelCaseKey': str})
 value: Foo = {}  # E: Missing key "camelCaseKey" for TypedDict "Foo"
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictWithDeferredFieldTypeEval]
+from typing import Generic, TypeVar, TypedDict, NotRequired
+
+class Foo(TypedDict):
+    y: NotRequired[int]
+    x: Outer[Inner[ForceDeferredEval]]
+
+var: Foo
+reveal_type(var)  # N: Revealed type is "TypedDict('__main__.Foo', {'y'?: builtins.int, 'x': __main__.Outer[__main__.Inner[__main__.ForceDeferredEval]]})"
+
+T1 = TypeVar("T1")
+class Outer(Generic[T1]): pass
+
+T2 = TypeVar("T2", bound="ForceDeferredEval")
+class Inner(Generic[T2]): pass
+
+class ForceDeferredEval: pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictRequiredUnimportedAny]
+# flags: --disallow-any-unimported
+from typing import NotRequired, TypedDict, ReadOnly
+from nonexistent import Foo  # type: ignore[import-not-found]
+class Bar(TypedDict):
+    foo: NotRequired[Foo]  # E: Type of variable becomes "Any" due to an unfollowed import
+    bar: ReadOnly[Foo]  # E: Type of variable becomes "Any" due to an unfollowed import
+    baz: NotRequired[ReadOnly[Foo]]  # E: Type of variable becomes "Any" due to an unfollowed import
+[typing fixtures/typing-typeddict.pyi]
+
 -- Required[]
 
 [case testDoesRecognizeRequiredInTypedDictWithClass]
@@ -3550,3 +3580,411 @@ class Test:
         run(test2, other="yes", **params)
         run(test2, other=0, **params)  # E: Argument "other" to "run" has incompatible type "int"; expected "str"
 [builtins fixtures/tuple.pyi]
+
+[case testTypedDictUnpackSingleWithSubtypingNoCrash]
+from typing import Callable
+from typing_extensions import TypedDict, Unpack
+
+class Kwargs(TypedDict):
+    name: str
+
+def f(**kwargs: Unpack[Kwargs]) -> None:
+    pass
+
+class C:
+    d: Callable[[Unpack[Kwargs]], None]
+
+# TODO: it is an old question whether we should allow this, for now simply don't crash.
+class D(C):
+    d = f
+[builtins fixtures/tuple.pyi]
+
+[case testTypedDictInlineNoOldStyleAlias]
+# flags: --enable-incomplete-feature=InlineTypedDict
+X = {"int": int, "str": str}
+reveal_type(X)  # N: Revealed type is "builtins.dict[builtins.str, def () -> builtins.object]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineYesMidStyleAlias]
+# flags: --enable-incomplete-feature=InlineTypedDict
+from typing_extensions import TypeAlias
+X: TypeAlias = {"int": int, "str": str}
+x: X
+reveal_type(x)  # N:  # N: Revealed type is "TypedDict({'int': builtins.int, 'str': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNoEmpty]
+# flags: --enable-incomplete-feature=InlineTypedDict
+x: {}  # E: Invalid type comment or annotation
+reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNotRequired]
+# flags: --enable-incomplete-feature=InlineTypedDict
+from typing import NotRequired
+
+x: {"one": int, "other": NotRequired[int]}
+x = {"one": 1}  # OK
+y: {"one": int, "other": int}
+y = {"one": 1}  # E: Expected TypedDict keys ("one", "other") but found only key "one"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineReadOnly]
+# flags: --enable-incomplete-feature=InlineTypedDict
+from typing import ReadOnly
+
+x: {"one": int, "other": ReadOnly[int]}
+x["one"] = 1  # ok
+x["other"] = 1  # E: ReadOnly TypedDict key "other" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNestedSchema]
+# flags: --enable-incomplete-feature=InlineTypedDict
+def nested() -> {"one": str, "other": {"a": int, "b": int}}:
+    if bool():
+        return {"one": "yes", "other": {"a": 1, "b": 2}}  # OK
+    else:
+        return {"one": "no", "other": {"a": 1, "b": "2"}}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineMergeAnother]
+# flags: --enable-incomplete-feature=InlineTypedDict
+from typing import TypeVar
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+X: TypeAlias = {"item": T}
+x: {"a": int, **X[str], "b": int}
+reveal_type(x)  # N: Revealed type is "TypedDict({'a': builtins.int, 'b': builtins.int, 'item': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+# ReadOnly
+# See: https://peps.python.org/pep-0705
+
+[case testTypedDictReadOnly]
+# flags: --show-error-codes
+from typing import ReadOnly, TypedDict
+
+class TP(TypedDict):
+    one: int
+    other: ReadOnly[str]
+
+x: TP
+reveal_type(x["one"])   # N: Revealed type is "builtins.int"
+reveal_type(x["other"]) # N: Revealed type is "builtins.str"
+x["one"] = 1  # ok
+x["other"] = "a"  # E: ReadOnly TypedDict key "other" TypedDict is mutated  [typeddict-readonly-mutated]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyCreation]
+from typing import ReadOnly, TypedDict
+
+class TD(TypedDict):
+    x: ReadOnly[int]
+    y: int
+
+# Ok:
+x = TD({"x": 1, "y": 2})
+y = TD(x=1, y=2)
+z: TD = {"x": 1, "y": 2}
+
+# Error:
+x2 = TD({"x": "a", "y": 2})  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+y2 = TD(x="a", y=2)          # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+z2: TD = {"x": "a", "y": 2}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyDel]
+from typing import ReadOnly, TypedDict, NotRequired
+
+class TP(TypedDict):
+    required_key: ReadOnly[str]
+    optional_key: ReadOnly[NotRequired[str]]
+
+x: TP
+del x["required_key"]  # E: Key "required_key" of TypedDict "TP" cannot be deleted
+del x["optional_key"]  # E: Key "optional_key" of TypedDict "TP" cannot be deleted
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyMutateMethods]
+from typing import ReadOnly, TypedDict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+    other: ReadOnly[int]
+    mutable: bool
+
+x: TP
+reveal_type(x.pop("key"))  # E: Key "key" of TypedDict "TP" cannot be deleted \
+                           # N: Revealed type is "builtins.str"
+
+x.update({"key": "abc", "other": 1, "mutable": True})  # E: ReadOnly TypedDict keys ("key", "other") TypedDict are mutated
+x.setdefault("key", "abc")  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+x.setdefault("other", 1)  # E: ReadOnly TypedDict key "other" TypedDict is mutated
+x.setdefault("mutable", False)  # ok
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictFromTypingExtensionsReadOnlyMutateMethods]
+from typing_extensions import ReadOnly, TypedDict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+
+x: TP
+x.update({"key": "abc"})  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictFromMypyExtensionsReadOnlyMutateMethods]
+from mypy_extensions import TypedDict
+from typing_extensions import ReadOnly
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+
+x: TP
+x.update({"key": "abc"})  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyMutate__ior__Statements]
+from typing_extensions import ReadOnly, TypedDict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+    other: ReadOnly[int]
+    mutable: bool
+
+x: TP
+x |= {"mutable": True}  # ok
+x |= {"key": "a"}  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+x |= {"key": "a", "other": 1, "mutable": True}  # E: ReadOnly TypedDict keys ("key", "other") TypedDict are mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
+
+[case testTypedDictReadOnlyMutate__or__Statements]
+from typing_extensions import ReadOnly, TypedDict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+    other: ReadOnly[int]
+    mutable: bool
+
+x: TP
+# These are new objects, not mutation:
+x = x | {"mutable": True}
+x = x | {"key": "a"}
+x = x | {"key": "a", "other": 1, "mutable": True}
+y1 = x | {"mutable": True}
+y2 = x | {"key": "a"}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
+
+[case testTypedDictReadOnlyMutateWithOtherDicts]
+from typing import ReadOnly, TypedDict, Dict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+    mutable: bool
+
+class Mutable(TypedDict):
+    mutable: bool
+
+class Regular(TypedDict):
+    key: str
+
+m: Mutable
+r: Regular
+d: Dict[str, object]
+
+# Creating new objects is ok:
+tp: TP = {**r, **m}
+tp1: TP = {**tp, **m}
+tp2: TP = {**r, **m}
+tp3: TP = {**tp, **r}
+tp4: TP = {**tp, **d}  # E: Unsupported type "Dict[str, object]" for ** expansion in TypedDict
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictGenericReadOnly]
+from typing import ReadOnly, TypedDict, TypeVar, Generic
+
+T = TypeVar('T')
+
+class TP(TypedDict, Generic[T]):
+    key: ReadOnly[T]
+
+x: TP[int]
+reveal_type(x["key"])   # N: Revealed type is "builtins.int"
+x["key"] = 1  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+x["key"] = "a"  # E: ReadOnly TypedDict key "key" TypedDict is mutated \
+                # E: Value of "key" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyOtherTypedDict]
+from typing import ReadOnly, TypedDict
+
+class First(TypedDict):
+    field: int
+
+class TP(TypedDict):
+    key: ReadOnly[First]
+
+x: TP
+reveal_type(x["key"]["field"])   # N: Revealed type is "builtins.int"
+x["key"]["field"] = 1  # ok
+x["key"] = {"field": 2}  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyInheritance]
+from typing import ReadOnly, TypedDict
+
+class Base(TypedDict):
+    a: ReadOnly[str]
+
+class Child(Base):
+    b: ReadOnly[int]
+
+base: Base
+reveal_type(base["a"])   # N: Revealed type is "builtins.str"
+base["a"] = "x"  # E: ReadOnly TypedDict key "a" TypedDict is mutated
+base["b"]  # E: TypedDict "Base" has no key "b"
+
+child: Child
+reveal_type(child["a"])   # N: Revealed type is "builtins.str"
+reveal_type(child["b"])   # N: Revealed type is "builtins.int"
+child["a"] = "x"  # E: ReadOnly TypedDict key "a" TypedDict is mutated
+child["b"] = 1  # E: ReadOnly TypedDict key "b" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlySubtyping]
+from typing import ReadOnly, TypedDict
+
+class A(TypedDict):
+    key: ReadOnly[str]
+
+class B(TypedDict):
+    key: str
+
+a: A
+b: B
+
+def accepts_A(d: A): ...
+def accepts_B(d: B): ...
+
+accepts_A(a)
+accepts_A(b)
+accepts_B(a)  # E: Argument 1 to "accepts_B" has incompatible type "A"; expected "B"
+accepts_B(b)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyCall]
+from typing import ReadOnly, TypedDict
+
+TP = TypedDict("TP", {"one": int, "other": ReadOnly[str]})
+
+x: TP
+reveal_type(x["one"])   # N: Revealed type is "builtins.int"
+reveal_type(x["other"]) # N: Revealed type is "builtins.str"
+x["one"] = 1  # ok
+x["other"] = "a"  # E: ReadOnly TypedDict key "other" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyABCSubtypes]
+from typing import ReadOnly, TypedDict, Mapping, Dict, MutableMapping
+
+class TP(TypedDict):
+    one: int
+    other: ReadOnly[int]
+
+def accepts_mapping(m: Mapping[str, object]): ...
+def accepts_mutable_mapping(mm: MutableMapping[str, object]): ...
+def accepts_dict(d: Dict[str, object]): ...
+
+x: TP
+accepts_mapping(x)
+accepts_mutable_mapping(x)  # E: Argument 1 to "accepts_mutable_mapping" has incompatible type "TP"; expected "MutableMapping[str, object]"
+accepts_dict(x)  # E: Argument 1 to "accepts_dict" has incompatible type "TP"; expected "Dict[str, object]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyAndNotRequired]
+from typing import ReadOnly, TypedDict, NotRequired
+
+class TP(TypedDict):
+    one: ReadOnly[NotRequired[int]]
+    two: NotRequired[ReadOnly[str]]
+
+x: TP
+reveal_type(x)  # N: Revealed type is "TypedDict('__main__.TP', {'one'?=: builtins.int, 'two'?=: builtins.str})"
+reveal_type(x.get("one"))  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(x.get("two"))  # N: Revealed type is "Union[builtins.str, None]"
+x["one"] = 1  # E: ReadOnly TypedDict key "one" TypedDict is mutated
+x["two"] = "a"  # E: ReadOnly TypedDict key "two" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictsWithReadOnly]
+from typing import TypeVar, Callable, TypedDict, ReadOnly
+XY = TypedDict('XY', {'x': ReadOnly[int], 'y': int})
+YZ = TypedDict('YZ', {'y': int, 'z': ReadOnly[int]})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: XY, y: YZ) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'=: builtins.int, 'y': builtins.int, 'z'=: builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyUnpack]
+from typing_extensions import TypedDict, Unpack, ReadOnly
+
+class TD(TypedDict):
+    x: ReadOnly[int]
+    y: str
+
+def func(**kwargs: Unpack[TD]):
+    kwargs["x"] = 1  # E: ReadOnly TypedDict key "x" TypedDict is mutated
+    kwargs["y" ] = "a"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testIncorrectTypedDictSpecialFormsUsage]
+from typing import ReadOnly, TypedDict, NotRequired, Required
+
+x: ReadOnly[int]     # E: ReadOnly[] can be only used in a TypedDict definition
+y: Required[int]     # E: Required[] can be only used in a TypedDict definition
+z: NotRequired[int]  # E: NotRequired[] can be only used in a TypedDict definition
+
+class TP(TypedDict):
+    a: ReadOnly[ReadOnly[int]]              # E: "ReadOnly[]" type cannot be nested
+    b: ReadOnly[NotRequired[ReadOnly[str]]] # E: "ReadOnly[]" type cannot be nested
+    c: NotRequired[Required[int]]           # E: "Required[]" type cannot be nested
+    d: Required[NotRequired[int]]           # E: "NotRequired[]" type cannot be nested
+    e: Required[ReadOnly[NotRequired[int]]] # E: "NotRequired[]" type cannot be nested
+    f: ReadOnly[ReadOnly[ReadOnly[int]]]    # E: "ReadOnly[]" type cannot be nested
+    g: Required[Required[int]]              # E: "Required[]" type cannot be nested
+    h: NotRequired[NotRequired[int]]        # E: "NotRequired[]" type cannot be nested
+
+    j: NotRequired[ReadOnly[Required[ReadOnly[int]]]]  # E: "Required[]" type cannot be nested \
+                                                       # E: "ReadOnly[]" type cannot be nested
+
+    k: ReadOnly  # E: "ReadOnly[]" must have exactly one type argument
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

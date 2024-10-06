@@ -36,9 +36,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.8'
+          python-version: '3.12'
       - name: Install tox
-        run: pip install --upgrade 'setuptools!=50' tox==4.11.0
+        run: pip install tox==4.11.0
       - name: Setup tox environment
         run: tox run -e ${{ env.TOXENV }} --notest
       - name: Test

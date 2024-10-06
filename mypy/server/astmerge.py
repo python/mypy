@@ -507,8 +507,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         typ.fallback.accept(self)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> None:
-        if t.node is not None:
-            t.node.accept(self)
+        pass
 
     def visit_literal_type(self, typ: LiteralType) -> None:
         typ.fallback.accept(self)

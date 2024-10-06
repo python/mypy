@@ -1,13 +1,12 @@
 import sys
 from abc import abstractmethod
 from types import MappingProxyType
-from typing import (  # noqa: Y022,Y038,Y057
+from typing import (  # noqa: Y022,Y038
     AbstractSet as Set,
     AsyncGenerator as AsyncGenerator,
     AsyncIterable as AsyncIterable,
     AsyncIterator as AsyncIterator,
     Awaitable as Awaitable,
-    ByteString as ByteString,
     Callable as Callable,
     Collection as Collection,
     Container as Container,
@@ -59,8 +58,12 @@ __all__ = [
     "ValuesView",
     "Sequence",
     "MutableSequence",
-    "ByteString",
 ]
+if sys.version_info < (3, 14):
+    from typing import ByteString as ByteString  # noqa: Y057
+
+    __all__ += ["ByteString"]
+
 if sys.version_info >= (3, 12):
     __all__ += ["Buffer"]
 
@@ -70,6 +73,8 @@ _VT_co = TypeVar("_VT_co", covariant=True)  # Value type covariant containers.
 @final
 class dict_keys(KeysView[_KT_co], Generic[_KT_co, _VT_co]):  # undocumented
     def __eq__(self, value: object, /) -> bool: ...
+    if sys.version_info >= (3, 13):
+        def isdisjoint(self, other: Iterable[_KT_co], /) -> bool: ...
     if sys.version_info >= (3, 10):
         @property
         def mapping(self) -> MappingProxyType[_KT_co, _VT_co]: ...
@@ -83,6 +88,8 @@ class dict_values(ValuesView[_VT_co], Generic[_KT_co, _VT_co]):  # undocumented
 @final
 class dict_items(ItemsView[_KT_co, _VT_co]):  # undocumented
     def __eq__(self, value: object, /) -> bool: ...
+    if sys.version_info >= (3, 13):
+        def isdisjoint(self, other: Iterable[tuple[_KT_co, _VT_co]], /) -> bool: ...
     if sys.version_info >= (3, 10):
         @property
         def mapping(self) -> MappingProxyType[_KT_co, _VT_co]: ...

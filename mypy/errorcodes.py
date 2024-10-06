@@ -185,6 +185,9 @@ UNREACHABLE: Final = ErrorCode(
 ANNOTATION_UNCHECKED = ErrorCode(
     "annotation-unchecked", "Notify about type annotations in unchecked functions", "General"
 )
+TYPEDDICT_READONLY_MUTATED = ErrorCode(
+    "typeddict-readonly-mutated", "TypedDict's ReadOnly key is mutated", "General"
+)
 POSSIBLY_UNDEFINED: Final[ErrorCode] = ErrorCode(
     "possibly-undefined",
     "Warn about variables that are defined only in some execution paths",
@@ -272,6 +275,14 @@ del error_codes[FILE.code]
 
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final[ErrorCode] = ErrorCode("misc", "Miscellaneous other checks", "General")
+
+OVERLOAD_CANNOT_MATCH: Final[ErrorCode] = ErrorCode(
+    "overload-cannot-match",
+    "Warn if an @overload signature can never be matched",
+    "General",
+    sub_code_of=MISC,
+)
+
 
 OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
     "overload-overlap",

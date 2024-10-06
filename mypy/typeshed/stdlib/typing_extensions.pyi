@@ -261,7 +261,7 @@ OrderedDict = _Alias()
 def get_type_hints(
     obj: Callable[..., Any],
     globalns: dict[str, Any] | None = None,
-    localns: dict[str, Any] | None = None,
+    localns: Mapping[str, Any] | None = None,
     include_extras: bool = False,
 ) -> dict[str, Any]: ...
 def get_args(tp: Any) -> tuple[Any, ...]: ...
@@ -403,6 +403,7 @@ else:
         # It's writable on types, but not on instances of TypeAliasType.
         @property
         def __module__(self) -> str | None: ...  # type: ignore[override]
+        # Returns typing._GenericAlias, which isn't stubbed.
         def __getitem__(self, parameters: Any) -> Any: ...
         if sys.version_info >= (3, 10):
             def __or__(self, right: Any) -> _SpecialForm: ...

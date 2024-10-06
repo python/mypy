@@ -540,10 +540,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_top_level(node)
         else:
             self.recurse_into_functions = True
-            if isinstance(node, LambdaExpr):
-                self.expr_checker.accept(node)
-            else:
-                self.accept(node)
+            with self.binder.top_frame_context():
+                if isinstance(node, LambdaExpr):
+                    self.expr_checker.accept(node)
+                else:
+                    self.accept(node)
 
     def check_top_level(self, node: MypyFile) -> None:
         """Check only the top-level of a module, skipping function definitions."""
@@ -682,6 +683,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         inner_type = get_proper_type(inner_type)
         outer_type: CallableType | None = None
         if inner_type is not None and not isinstance(inner_type, AnyType):
+            if isinstance(inner_type, TypeVarLikeType):
+                inner_type = get_proper_type(inner_type.upper_bound)
             if isinstance(inner_type, TypeType):
                 if isinstance(inner_type.item, Instance):
                     inner_type = expand_type_by_instance(
@@ -2984,7 +2987,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.annotation_in_unchecked_function(context=s)
 
     def check_type_alias_rvalue(self, s: AssignmentStmt) -> None:
-        alias_type = self.expr_checker.accept(s.rvalue)
+        with self.msg.filter_errors():
+            alias_type = self.expr_checker.accept(s.rvalue)
         self.store_type(s.lvalues[-1], alias_type)
 
     def check_assignment(
@@ -5334,7 +5338,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         del type_map[expr]
 
     def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
-        self.expr_checker.accept(o.value)
+        with self.msg.filter_errors():
+            self.expr_checker.accept(o.value)
 
     def make_fake_typeinfo(
         self,
@@ -5669,7 +5674,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
         )
 
-    def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
+    def check_for_truthy_type(self, t: Type, expr: Expression) -> None:
+        """
+        Check if a type can have a truthy value.
+
+        Used in checks like::
+
+            if x: # <---
+
+            not x  # <---
+        """
         if not state.strict_optional:
             return  # if everything can be None, all bets are off
 
@@ -5993,7 +6007,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         coerce_only_in_literal_context = True
 
                         expr_types = [operand_types[i] for i in expr_indices]
-                        should_narrow_by_identity = all(map(has_no_custom_eq_checks, expr_types))
+                        should_narrow_by_identity = all(
+                            map(has_no_custom_eq_checks, expr_types)
+                        ) and not is_ambiguous_mix_of_enums(expr_types)
 
                     if_map: TypeMap = {}
                     else_map: TypeMap = {}
@@ -6158,7 +6174,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if in_boolean_context:
             # We don't check `:=` values in expressions like `(a := A())`,
             # because they produce two error messages.
-            self._check_for_truthy_type(original_vartype, node)
+            self.check_for_truthy_type(original_vartype, node)
         vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
 
         if_type = true_only(vartype)
@@ -8636,3 +8652,47 @@ class VarAssignVisitor(TraverserVisitor):
             self.lvalue = True
             p.capture.accept(self)
             self.lvalue = False
+
+
+def is_ambiguous_mix_of_enums(types: list[Type]) -> bool:
+    """Do types have IntEnum/StrEnum types that are potentially overlapping with other types?
+
+    If True, we shouldn't attempt type narrowing based on enum values, as it gets
+    too ambiguous.
+
+    For example, return True if there's an 'int' type together with an IntEnum literal.
+    However, IntEnum together with a literal of the same IntEnum type is not ambiguous.
+    """
+    # We need these things for this to be ambiguous:
+    #  (1) an IntEnum or StrEnum type
+    #  (2) either a different IntEnum/StrEnum type or a non-enum type ("<other>")
+    #
+    # It would be slightly more correct to calculate this separately for IntEnum and
+    # StrEnum related types, as an IntEnum can't be confused with a StrEnum.
+    return len(_ambiguous_enum_variants(types)) > 1
+
+
+def _ambiguous_enum_variants(types: list[Type]) -> set[str]:
+    result = set()
+    for t in types:
+        t = get_proper_type(t)
+        if isinstance(t, UnionType):
+            result.update(_ambiguous_enum_variants(t.items))
+        elif isinstance(t, Instance):
+            if t.last_known_value:
+                result.update(_ambiguous_enum_variants([t.last_known_value]))
+            elif t.type.is_enum and any(
+                base.fullname in ("enum.IntEnum", "enum.StrEnum") for base in t.type.mro
+            ):
+                result.add(t.type.fullname)
+            elif not t.type.is_enum:
+                # These might compare equal to IntEnum/StrEnum types (e.g. Decimal), so
+                # let's be conservative
+                result.add("<other>")
+        elif isinstance(t, LiteralType):
+            result.update(_ambiguous_enum_variants([t.fallback]))
+        elif isinstance(t, NoneType):
+            pass
+        else:
+            result.add("<other>")
+    return result
