@@ -2041,7 +2041,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             # Point errors at the 'def' line (important for backward compatibility
             # of type ignores).
-            
+
             # Reference to issue: https://github.com/python/mypy/issues/17857.
             # TODO: Verify the function of the overload type parallelly from the return type.
             if not isinstance(defn, Decorator):
