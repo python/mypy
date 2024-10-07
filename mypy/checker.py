@@ -2041,6 +2041,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             # Point errors at the 'def' line (important for backward compatibility
             # of type ignores).
+            
+            # Reference to issue: https://github.com/python/mypy/issues/17857.
+            # TODO: Verify the function of the overload type parallelly from the return type.
             if not isinstance(defn, Decorator):
                 context = defn
             else:
@@ -2102,7 +2105,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
                 if original_node and is_property(original_node):
                     original_type = get_property_type(original_type)
-
             if is_property(defn):
                 inner: FunctionLike | None
                 if isinstance(typ, FunctionLike):
