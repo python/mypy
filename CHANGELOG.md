@@ -164,7 +164,8 @@ For more information, refer to the
 Mypy documentation now uses modern syntax variants and imports in many examples. Some
 examples no longer work on Python 3.8, which is the earliest Python version that mypy supports.
 
-Notably, `Iterable` and other protocols/ABCs are imported from `collections.abc`:
+Notably, `Iterable` and other protocols/ABCs are imported from `collections.abc` instead of
+`typing`:
 ```python
 from collections.abc import Iterable, Callable
 ```
