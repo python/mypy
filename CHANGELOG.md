@@ -14,9 +14,31 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 ### Support Python 3.12 Syntax for Generics (PEP 695)
 
-Support for the new type parameter syntax introduced in 3.12 is now enabled by default,
+Support for the new type parameter syntax introduced in Python 3.12 is now enabled by default,
 documented, and no longer experimental. It was available through a feature flag in
 mypy 1.11 as an experimental feature.
+
+This example demonstrates the new syntax:
+
+```python
+# Generic function
+def f[T](x: T) -> T: ...
+
+reveal_type(f(1))  # Revealed type is 'int'
+
+# Generic class
+class C[T]:
+    def __init__(self, x: T) -> None:
+       self.x = x
+
+c = C('a')
+reveal_type(c.x)  # Revealed type is 'str'
+
+# Type alias
+type A[T] = C[list[T]]
+```
+
+For more information, refer to the [documentation](https://mypy.readthedocs.io/en/latest/generics.html).
 
 These improvements are included:
 
@@ -35,14 +57,14 @@ These improvements are included:
 
 ### Basic Support for Python 3.13
 
-This release adds compiled binaries for Python 3.13 and partial support for Python 3.13
-features. Mypyc also now supports Python 3.13.
+This release adds partial support for Python 3.13 features and compiled binaries for
+Python 3.13. Mypyc now also supports Python 3.13.
 
-These features are supported:
+In particular, these features are supported:
  * Various new stdlib features and changes (through typeshed stub improvements)
  * `typing.ReadOnly` (see below for more)
- * `typing.TypeIs` (support was added in mypy 1.10)
- * Type parameter defaults when using the legacy syntax ([PEP 695](https://peps.python.org/pep-0696/))
+ * `typing.TypeIs` (added in mypy 1.10, [PEP 742](https://peps.python.org/pep-0742/))
+ * Type parameter defaults when using the legacy syntax ([PEP 696](https://peps.python.org/pep-0696/))
 
 These features are not supported yet:
  * `warnings.deprecated` ([PEP 702](https://peps.python.org/pep-0702/))
@@ -75,8 +97,11 @@ Mypy now always tries to infer a union type for a conditional expression. This r
 more precise inferred types and lets mypy detect more issues.
 
 Notably, if one of the operands has type `Any`, the type of a conditional expression is
-now `<type> | Any`. Previously the inferred type was just `Any`. Example where this is
-relevant:
+now `<type> | Any`. Previously the inferred type was just `Any`. The new type essentially
+indicates that the value can be of type `<type>`, and potentially of some (unknown) type.
+Most operations performed on the result must also be valid for `<type>`.
+
+Example where this is relevant:
 
 ```python
 from typing import Any
@@ -89,14 +114,32 @@ def func(a: Any, b: bool) -> None:
 
 This feature was contributed by Ivan Levkivskyi (PR [17427](https://github.com/python/mypy/pull/17427)).
 
-### ReadOnly Support for TypedDict
+### ReadOnly Support for TypedDict (PEP 705)
 
- * Add `ReadOnly` support for TypedDicts (sobolevn, PR [17644](https://github.com/python/mypy/pull/17644))
+You can now use `typing.ReadOnly` to specity TypedDict items as
+read-only ([PEP 705](https://peps.python.org/pep-0705/)):
+
+```python
+from typing import TypedDict
+
+# Or "from typing ..." on Python 3.13
+from typing_extensions import ReadOnly
+
+class TD(TypedDict):
+    a: int
+    b: ReadOnly[int]
+
+d: TD = {"a": 1, "b": 2}
+d["a"] = 3  # OK
+d["b"] = 5  # Error: "b" is ReadOnly
+```
+
+This feature was contributed by Nikita Sobolev (PR [17644](https://github.com/python/mypy/pull/17644)).
 
 ### Python 3.8 End of Life Approaching
 
 We are planning to drop support for Python 3.8 in the next mypy feature release or the
-one after that. Python 3.8 reaches end of life in Octoboer 2024.
+one after that. Python 3.8 reaches end of life in October 2024.
 
 ### Planned Changes to Defaults
 
@@ -121,6 +164,16 @@ For more information, refer to the
 Mypy documentation now uses modern syntax variants and imports in many examples. Some
 examples no longer work on Python 3.8, which is the earliest Python version that mypy supports.
 
+Notably, `Iterable` and other protocols/ABCs are imported from `collections.abc`:
+```python
+from collections.abc import Iterable, Callable
+```
+
+Examples also avoid the upper-case aliases to built-in types: `list[str]` is used instead
+of `List[str]`. The `X | Y` union type syntax introduced in Python 3.10 is also now prevalent.
+
+List of documentation updates:
+
  * Document `--output=json` CLI option (Edgar Ramírez Mondragón, PR [17611](https://github.com/python/mypy/pull/17611))
  * Update various references to deprecated type aliases in docs (Jukka Lehtosalo, PR [17829](https://github.com/python/mypy/pull/17829))
  * Make "X | Y" union syntax more prominent in documentation (Jukka Lehtosalo, PR [17835](https://github.com/python/mypy/pull/17835))
@@ -128,6 +181,21 @@ examples no longer work on Python 3.8, which is the earliest Python version that
  * Make changelog visible in mypy documentation (quinn-sasha, PR [17742](https://github.com/python/mypy/pull/17742))
  * List all incomplete features in `--enable-incomplete-feature` docs (sobolevn, PR [17633](https://github.com/python/mypy/pull/17633))
  * Remove the explicit setting of a pygments theme (Pradyun Gedam, PR [17571](https://github.com/python/mypy/pull/17571))
+
+### Experimental Inline TypedDict Syntax
+
+Mypy now supports a non-standard, experimental syntax for defining anonymous TypedDicts.
+Example:
+
+```python
+def func(n: str, y: int) -> {"name": str, "year": int}:
+    return {"name": n, "year": y}
+```
+
+The feature is disabled by default. Use `--enable-incomplete-feature=InlineTypedDict` to
+enable it. *We might remove this feature in a future release.*
+
+This feature was contributed by Ivan Levkivskyi (PR [17457](https://github.com/python/mypy/pull/17457)).
 
 ### Stubgen Improvements
 
@@ -169,7 +237,6 @@ examples no longer work on Python 3.8, which is the earliest Python version that
  * Fix crash on a callable attribute with single unpack (Ivan Levkivskyi, PR [17641](https://github.com/python/mypy/pull/17641))
  * Fix mismatched signature between checker plugin API and implementation (bzoracler, PR [17343](https://github.com/python/mypy/pull/17343))
  * Indexing a type also produces a GenericAlias (Shantanu, PR [17546](https://github.com/python/mypy/pull/17546))
- * Experimental: allow inline/anonymous TypedDicts (Ivan Levkivskyi, PR [17457](https://github.com/python/mypy/pull/17457))
  * Fix crash on self-type in callable protocol (Ivan Levkivskyi, PR [17499](https://github.com/python/mypy/pull/17499))
  * Fix crash on NamedTuple with method and error in function (Ivan Levkivskyi, PR [17498](https://github.com/python/mypy/pull/17498))
  * Add `__replace__` for dataclasses in 3.13 (Max Muoto, PR [17469](https://github.com/python/mypy/pull/17469))
