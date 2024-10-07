@@ -914,6 +914,23 @@ s4.py:2: error: Incompatible return value type (got "int", expected "str")
 s3.py:2: error: Incompatible return value type (got "List[int]", expected "int")
 s1.py:2: error: Incompatible return value type (got "int", expected "str")
 
+[case testShadowFileWithPretty]
+# cmd: mypy a.py --pretty --shadow-file a.py b.py
+[file a.py]
+b: bytes
+[file b.py]
+a: int = ""
+b: bytes = 1
+[out]
+a.py:1: error: Incompatible types in assignment (expression has type "str",
+variable has type "int")
+    a: int = ""
+             ^~
+a.py:2: error: Incompatible types in assignment (expression has type "int",
+variable has type "bytes")
+    b: bytes = 1
+               ^
+
 [case testConfigWarnUnusedSection1]
 # cmd: mypy foo.py quux.py spam/eggs.py
 [file mypy.ini]
