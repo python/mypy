@@ -2503,3 +2503,29 @@ class C:
 def test_final_attribute() -> None:
     assert C.A == -1
     assert C.a == [-1]
+
+[case testClassWithFinalAttribute]
+from typing import final
+
+@final
+class C:
+    def a(self) -> int:
+        return 1
+
+def test_class_final_attribute() -> None:
+    assert C().a() == 1
+
+[case testClassWithFinalAttributeInherited]
+from typing import final
+
+class B:
+    def a(self) -> int:
+        return 2
+
+@final
+class C(B):
+    def a(self) -> int:
+        return 1
+
+def test_class_final_attribute_inherited() -> None:
+    assert C().a() == 1
