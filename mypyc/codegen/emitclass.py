@@ -380,9 +380,7 @@ def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     seen_attrs: set[tuple[str, RType]] = set()
     lines: list[str] = []
-    lines += ["typedef struct {", "PyObject_HEAD"]
-    if not cl.is_final_class:
-        lines.append("CPyVTableItem *vtable;")
+    lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__") and emitter.use_vectorcall():
         lines.append("vectorcallfunc vectorcall;")
     bitmap_attrs = []
