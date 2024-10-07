@@ -537,6 +537,12 @@ potentially problematic or redundant in some way.
 
         This limitation will be removed in future releases of mypy.
 
+.. option:: --report-deprecated-as-error
+
+    By default, mypy emits notes if your code imports or uses deprecated
+    features.    This flag converts such notes to errors, causing mypy to
+    eventually finish with a non-zero exit code.  Features are considered
+    deprecated when decorated with ``warnings.deprecated``.
 
 .. _miscellaneous-strictness-flags:
 
