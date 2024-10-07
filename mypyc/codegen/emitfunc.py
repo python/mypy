@@ -73,6 +73,7 @@ from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.ir.rtypes import (
     RArray,
     RStruct,
+    RInstance,
     RTuple,
     RType,
     is_int32_rprimitive,
@@ -537,6 +538,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def emit_method_call(self, dest: str, op_obj: Value, name: str, op_args: list[Value]) -> None:
         obj = self.reg(op_obj)
         rtype = op_obj.type
+        assert isinstance(rtype, RInstance)
         class_ir = rtype.class_ir
         method = rtype.class_ir.get_method(name)
         assert method is not None
