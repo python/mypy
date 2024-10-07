@@ -209,7 +209,7 @@ This feature was contributed by Ivan Levkivskyi (PR [17457](https://github.com/p
  * Stubgen add `--version` (sobolevn, PR [17662](https://github.com/python/mypy/pull/17662))
  * Fix `stubgen --no-analysis/--parse-only` docs (sobolevn, PR [17632](https://github.com/python/mypy/pull/17632))
  * Include keyword only args when generating signatures in stubgenc (Eric Mark Martin, PR [17448](https://github.com/python/mypy/pull/17448))
- * Add Literal support for docstrings (Michael Carlstrom, PR [17441](https://github.com/python/mypy/pull/17441))
+ * Add support for detecting `Literal` types when extracting types from docstrings (Michael Carlstrom, PR [17441](https://github.com/python/mypy/pull/17441))
  * Use `Generator` type var defaults (Sebastian Rittau, PR [17670](https://github.com/python/mypy/pull/17670))
 
 ### Stubtest Improvements
