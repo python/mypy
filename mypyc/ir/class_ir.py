@@ -407,6 +407,7 @@ class ClassIR:
         ir.is_abstract = data["is_abstract"]
         ir.is_ext_class = data["is_ext_class"]
         ir.is_augmented = data["is_augmented"]
+        ir.is_final_class = data["is_final_class"]
         ir.inherits_python = data["inherits_python"]
         ir.has_dict = data["has_dict"]
         ir.allow_interpreted_subclasses = data["allow_interpreted_subclasses"]
