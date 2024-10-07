@@ -175,7 +175,9 @@ def ast3_parse(
                 else (
                     s[:-1]
                     if is_defective_version
-                    and hasattr(tokenize, "FSTRING_MIDDLE") #technically redundant as all the defective versions have this, but we'd like to appease the typechecker here
+                    and hasattr(
+                        tokenize, "FSTRING_MIDDLE"
+                    )  # technically redundant as all the defective versions have this, but we'd like to appease the typechecker here
                     and t == tokenize.FSTRING_MIDDLE
                     and s.startswith("\\")
                     and s.endswith("{")
