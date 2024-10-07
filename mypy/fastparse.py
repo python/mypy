@@ -175,15 +175,15 @@ def ast3_parse(
                 else (
                     s[:-1]
                     if is_defective_version
-                    and hasattr(
-                        tokenize, "FSTRING_MIDDLE"
-                    )  # technically redundant as all the defective versions have this, but we'd like to appease the typechecker here
+                    # Technically redundant hasattr check as all the defective versions are versions that have this attribute, but we'd like to appease the typechecker here:
+                    and hasattr(tokenize, "FSTRING_MIDDLE")
                     and t == tokenize.FSTRING_MIDDLE
                     and s.startswith("\\")
                     and s.endswith("{")
                     else s
                 )
             ),
+            *_ #this improves whitespace roundtripping (possibly always making it perfect, for this usecase?)
         )
         for t, s, *_ in tokens
     )
