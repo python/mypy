@@ -372,6 +372,32 @@ items`` check is actually valid. If that is the case, it is
 recommended to annotate ``items`` as ``Collection[int]`` instead of
 ``Iterable[int]``.
 
+.. _code-optional-non-truthy:
+
+Check that expression doesn't conflate None with other false expressions [optional-non-truthy]
+-----------------------------------------------------------------------------
+
+Warn when the type of an expression in a boolean context is optional
+(union with `None`) and also has other types that are boolean-like
+(implement ``__bool__`` or ``__len__``), such as `int`, `str` or `list`.
+
+In this case, the `if` block is likely to to be intending to just
+guard the `None` case, but falsey values like `0`, `""` or `[]` will
+behave the same as `None`. Instead `... is None` or `... is not None`
+if one is wanting to only guard `None`, or `bool(...)` if the falsey
+values should indeed behave like `None`.
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code optional-non-truthy ..."
+
+    foo: None | int = 0
+    # Error: FIXME
+    if foo:
+        ... # executes when foo is an int != 0
+    else:
+        ... # executes when foo is None or 0
+
 .. _code-ignore-without-code:
 
 Check that ``# type: ignore`` include an error code [ignore-without-code]

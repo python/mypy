@@ -5728,6 +5728,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             self.fail(message_registry.TYPE_ALWAYS_TRUE.format(format_expr_type()), expr)
 
+    def check_for_optional_non_truthy_type(self, t: Type, expr: Expression) -> None:
+        if not isinstance(t, UnionType):
+            return  # not a Optional or Union at all
+
+        item_types = get_proper_types(t.items)
+        without_nones = [t for t in item_types if not isinstance(t, NoneType)]
+        any_none = len(without_nones) < len(item_types)
+        if not any_none:
+            self.fail(message_registry.OPTIONAL_WITH_NON_TRUTHY.format("not any_none"), expr)
+            return  # no None in it
+
+        non_truthy = [t for t in without_nones if not self._is_truthy_type(t)]
+        if not non_truthy:
+            return  # all the other types are just 'normal' types, not collections or ints, etc.
+
+        self.fail(message_registry.OPTIONAL_WITH_NON_TRUTHY.format("x"), expr)
+
     def find_type_equals_check(
         self, node: ComparisonExpr, expr_indices: list[int]
     ) -> tuple[TypeMap, TypeMap]:
@@ -6174,7 +6191,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if in_boolean_context:
             # We don't check `:=` values in expressions like `(a := A())`,
             # because they produce two error messages.
+            # FIXME: make this a single call again
             self.check_for_truthy_type(original_vartype, node)
+            self.check_for_optional_non_truthy_type(original_vartype, node)
         vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
 
         if_type = true_only(vartype)
