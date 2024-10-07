@@ -167,8 +167,22 @@ def ast3_parse(
     is_defective_version = (3, 12, 3) <= sys.version_info[:3] <= (3, 12, 7)
     # Could the workaround ever come back to bite us? I confess I don't know enough about FSTRING_MIDDLE to say no for certain, even though I have tried to examine all relevant cases.
     source = tokenize.untokenize(
-        (t, re.sub(r"#\s*mypy:\s*ignore(?![-_])", "# type: ignore", s) if t == tokenize.COMMENT else s+'{' if is_defective_version and t == tokenize.FSTRING_MIDDLE and s.startswith('\\') and s.endswith('{') else s)
-            for t, s, *_ in tokens
+        (
+            t,
+            (
+                re.sub(r"#\s*mypy:\s*ignore(?![-_])", "# type: ignore", s)
+                if t == tokenize.COMMENT
+                else (
+                    s + "{"
+                    if is_defective_version
+                    and t == tokenize.FSTRING_MIDDLE
+                    and s.startswith("\\")
+                    and s.endswith("{")
+                    else s
+                )
+            ),
+        )
+        for t, s, *_ in tokens
     )
     return p()
 
