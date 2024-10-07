@@ -1891,9 +1891,6 @@ class LowLevelIRBuilder:
         if desc.c_function_name:
             # TODO: Generate PrimitiveOps here and transform them into CallC
             # ops only later in the lowering pass
-            print(
-                f"primitive_op: {desc.name} {desc.c_function_name} {desc.is_pure} -> {result_type}"
-            )
             c_desc = CFunctionDescription(
                 desc.name,
                 desc.arg_types,
