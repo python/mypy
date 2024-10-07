@@ -93,14 +93,19 @@ List of changes:
 
 ### Inferring Unions for Conditional Expressions
 
-Mypy now always tries to infer a union type for a conditional expression. This results in
-more precise inferred types and lets mypy detect more issues.
+Mypy now always tries to infer a union type for a conditional expression if left and right
+operand types are different. This results in more precise inferred types and lets mypy detect
+more issues. Example:
+
+```python
+s = "foo" if cond() else 1
+# Type of "s" is now "str | int" (it used to be "object")
+```
 
 Notably, if one of the operands has type `Any`, the type of a conditional expression is
 now `<type> | Any`. Previously the inferred type was just `Any`. The new type essentially
 indicates that the value can be of type `<type>`, and potentially of some (unknown) type.
 Most operations performed on the result must also be valid for `<type>`.
-
 Example where this is relevant:
 
 ```python
