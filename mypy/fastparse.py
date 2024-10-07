@@ -183,7 +183,7 @@ def ast3_parse(
                     else s
                 )
             ),
-            *_ #this improves whitespace roundtripping (possibly always making it perfect, for this usecase?)
+            *_,  # this improves whitespace roundtripping (possibly always making it perfect, for this usecase?)
         )
         for t, s, *_ in tokens
     )
