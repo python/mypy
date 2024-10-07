@@ -2838,6 +2838,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
     def visit_import_from(self, node: ImportFrom) -> None:
+        for name, _ in node.names:
+            if (sym := self.globals.get(name)) is not None:
+                self.warn_deprecated(sym.node, node)
         self.check_import(node)
 
     def visit_import_all(self, node: ImportAll) -> None:
@@ -2926,6 +2929,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
+
+        if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
+            for lvalue in s.lvalues:
+                if (
+                    isinstance(lvalue, NameExpr)
+                    and isinstance(var := lvalue.node, Var)
+                    and isinstance(instance := get_proper_type(var.type), Instance)
+                ):
+                    self.check_deprecated(instance.type, s)
+
         # Avoid type checking type aliases in stubs to avoid false
         # positives about modern type syntax available in stubs such
         # as X | Y.
@@ -4671,6 +4684,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if inplace:
             # There is __ifoo__, treat as x = x.__ifoo__(y)
             rvalue_type, method_type = self.expr_checker.check_op(method, lvalue_type, s.rvalue, s)
+            if isinstance(inst := get_proper_type(lvalue_type), Instance) and isinstance(
+                defn := inst.type.get_method(method), OverloadedFuncDef
+            ):
+                for item in defn.items:
+                    if (
+                        isinstance(item, Decorator)
+                        and isinstance(typ := item.func.type, CallableType)
+                        and (bind_self(typ) == method_type)
+                    ):
+                        self.warn_deprecated(item.func, s)
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
         else:
@@ -7534,6 +7557,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
         return self.expr_checker.accept(node, type_context=type_context)
+
+    def check_deprecated(self, node: SymbolNode | None, context: Context) -> None:
+        """Warn if deprecated and not directly imported with a `from` statement."""
+        if isinstance(node, Decorator):
+            node = node.func
+        if isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
+            node.deprecated is not None
+        ):
+            for imp in self.tree.imports:
+                if isinstance(imp, ImportFrom) and any(node.name == n[0] for n in imp.names):
+                    break
+            else:
+                self.warn_deprecated(node, context)
+
+    def warn_deprecated(self, node: SymbolNode | None, context: Context) -> None:
+        """Warn if deprecated."""
+        if isinstance(node, Decorator):
+            node = node.func
+        if isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
+            (deprecated := node.deprecated) is not None
+        ):
+            warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
+            warn(deprecated, context, code=codes.DEPRECATED)
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):

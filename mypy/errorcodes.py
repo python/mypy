@@ -304,5 +304,11 @@ NARROWED_TYPE_NOT_SUBTYPE: Final[ErrorCode] = ErrorCode(
     "General",
 )
 
+DEPRECATED: Final = ErrorCode(
+    "deprecated",
+    "Warn when importing or using deprecated (overloaded) functions, methods or classes",
+    "General",
+)
+
 # This copy will not include any error codes defined later in the plugins.
 mypy_error_codes = error_codes.copy()
