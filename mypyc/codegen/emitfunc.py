@@ -72,8 +72,8 @@ from mypyc.ir.ops import (
 from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.ir.rtypes import (
     RArray,
-    RStruct,
     RInstance,
+    RStruct,
     RTuple,
     RType,
     is_int32_rprimitive,
