@@ -2504,7 +2504,7 @@ def test_final_attribute() -> None:
     assert C.A == -1
     assert C.a == [-1]
 
-[case testClassWithFinalAttribute]
+[case testClassWithFinalTypingAttribute]
 from typing import final
 
 @final
@@ -2515,7 +2515,7 @@ class C:
 def test_class_final_attribute() -> None:
     assert C().a() == 1
 
-[case testClassWithFinalAttributeInherited]
+[case testClassWithFinalTypingAttributeInherited]
 from typing import final
 
 class B:
