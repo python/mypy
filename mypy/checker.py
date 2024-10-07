@@ -4581,6 +4581,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         s.expr, return_type, allow_none_return=allow_none_func_call
                     )
                 )
+                # Treat NotImplemented as having type Any, consistent with its
+                # definition in typeshed prior to python/typeshed#4222.
+                if (
+                    isinstance(typ, Instance)
+                    and typ.type.fullname == "builtins._NotImplementedType"
+                ):
+                    typ = AnyType(TypeOfAny.special_form)
 
                 if defn.is_async_generator:
                     self.fail(message_registry.RETURN_IN_ASYNC_GENERATOR, s)
