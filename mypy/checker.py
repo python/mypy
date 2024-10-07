@@ -4746,6 +4746,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
 
+        if isinstance(typ, Instance) and typ.type.fullname == "builtins._NotImplementedType":
+            self.fail(
+                message_registry.INVALID_EXCEPTION.with_additional_msg(
+                    '; did you mean "NotImplementedError"?'
+                ),
+                s,
+            )
+
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
         # Our enclosing frame will get the result if the try/except falls through.
