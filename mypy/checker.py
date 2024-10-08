@@ -216,7 +216,6 @@ from mypy.types import (
     UnpackType,
     find_unpack_in_list,
     flatten_nested_unions,
-    flatten_nested_tuples,
     get_proper_type,
     get_proper_types,
     is_literal_type,
@@ -2937,7 +2936,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     isinstance(lvalue, NameExpr)
                     and isinstance(var := lvalue.node, Var)
                 ):
-                    self.search_deprecated(var.type, s)
+                    self.search_deprecated(var.type, s, set())
 
         # Avoid type checking type aliases in stubs to avoid false
         # positives about modern type syntax available in stubs such
@@ -7581,17 +7580,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
             warn(deprecated, context, code=codes.DEPRECATED)
 
-    def search_deprecated(self, typ, s: AssignmentStmt) -> None:
-        if isinstance(typ := get_proper_type(typ), Instance):
-            self.check_deprecated(typ.type, s)
-            for arg in typ.args:
-                self.search_deprecated(arg, s)
-        elif isinstance(typ, UnionType):
-            for subtype in flatten_nested_unions([typ]):
-                self.search_deprecated(subtype, s)
-        elif isinstance(typ, TupleType):
-            for subtype in flatten_types(typ):
-                self.search_deprecated(subtype, s)
+    def search_deprecated(self, typ: Type | None, s: AssignmentStmt, visited: set[Type]) -> None:
+
+        if typ not in visited:
+            visited.add(typ)
+            if isinstance(typ := get_proper_type(typ), Instance):
+                    self.check_deprecated(typ.type, s)
+                    for arg in typ.args:
+                        self.search_deprecated(arg, s, visited)
+            elif isinstance(typ, (UnionType, TupleType)):
+                for item in typ.items:
+                     self.search_deprecated(item, s, visited)
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
