@@ -6750,3 +6750,21 @@ def foo(x: object) -> str: ...
 def bar(x: int) -> int: ...
 @overload
 def bar(x: Any) -> str: ...
+
+[case testOverloadOnInvalidTypeArgument]
+from typing import TypeVar, Self, Generic, overload
+
+class C: pass
+
+T = TypeVar("T", bound=C)
+
+class D(Generic[T]):
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    def f(Self, x): ...
+
+a: D[str]  # E: Type argument "str" of "D" must be a subtype of "C"
+reveal_type(a.f(1))  # N: Revealed type is "builtins.int"
+reveal_type(a.f("x"))  # N: Revealed type is "builtins.str"
