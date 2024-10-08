@@ -14,9 +14,31 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 ### Support Python 3.12 Syntax for Generics (PEP 695)
 
-Support for the new type parameter syntax introduced in 3.12 is now enabled by default,
+Support for the new type parameter syntax introduced in Python 3.12 is now enabled by default,
 documented, and no longer experimental. It was available through a feature flag in
 mypy 1.11 as an experimental feature.
+
+This example demonstrates the new syntax:
+
+```python
+# Generic function
+def f[T](x: T) -> T: ...
+
+reveal_type(f(1))  # Revealed type is 'int'
+
+# Generic class
+class C[T]:
+    def __init__(self, x: T) -> None:
+       self.x = x
+
+c = C('a')
+reveal_type(c.x)  # Revealed type is 'str'
+
+# Type alias
+type A[T] = C[list[T]]
+```
+
+For more information, refer to the [documentation](https://mypy.readthedocs.io/en/latest/generics.html).
 
 These improvements are included:
 
@@ -35,14 +57,14 @@ These improvements are included:
 
 ### Basic Support for Python 3.13
 
-This release adds compiled binaries for Python 3.13 and partial support for Python 3.13
-features. Mypyc also now supports Python 3.13.
+This release adds partial support for Python 3.13 features and compiled binaries for
+Python 3.13. Mypyc now also supports Python 3.13.
 
-These features are supported:
+In particular, these features are supported:
  * Various new stdlib features and changes (through typeshed stub improvements)
  * `typing.ReadOnly` (see below for more)
- * `typing.TypeIs` (support was added in mypy 1.10)
- * Type parameter defaults when using the legacy syntax ([PEP 695](https://peps.python.org/pep-0696/))
+ * `typing.TypeIs` (added in mypy 1.10, [PEP 742](https://peps.python.org/pep-0742/))
+ * Type parameter defaults when using the legacy syntax ([PEP 696](https://peps.python.org/pep-0696/))
 
 These features are not supported yet:
  * `warnings.deprecated` ([PEP 702](https://peps.python.org/pep-0702/))
@@ -71,12 +93,20 @@ List of changes:
 
 ### Inferring Unions for Conditional Expressions
 
-Mypy now always tries to infer a union type for a conditional expression. This results in
-more precise inferred types and lets mypy detect more issues.
+Mypy now always tries to infer a union type for a conditional expression if left and right
+operand types are different. This results in more precise inferred types and lets mypy detect
+more issues. Example:
+
+```python
+s = "foo" if cond() else 1
+# Type of "s" is now "str | int" (it used to be "object")
+```
 
 Notably, if one of the operands has type `Any`, the type of a conditional expression is
-now `<type> | Any`. Previously the inferred type was just `Any`. Example where this is
-relevant:
+now `<type> | Any`. Previously the inferred type was just `Any`. The new type essentially
+indicates that the value can be of type `<type>`, and potentially of some (unknown) type.
+Most operations performed on the result must also be valid for `<type>`.
+Example where this is relevant:
 
 ```python
 from typing import Any
@@ -89,14 +119,32 @@ def func(a: Any, b: bool) -> None:
 
 This feature was contributed by Ivan Levkivskyi (PR [17427](https://github.com/python/mypy/pull/17427)).
 
-### ReadOnly Support for TypedDict
+### ReadOnly Support for TypedDict (PEP 705)
 
- * Add `ReadOnly` support for TypedDicts (sobolevn, PR [17644](https://github.com/python/mypy/pull/17644))
+You can now use `typing.ReadOnly` to specity TypedDict items as
+read-only ([PEP 705](https://peps.python.org/pep-0705/)):
+
+```python
+from typing import TypedDict
+
+# Or "from typing ..." on Python 3.13
+from typing_extensions import ReadOnly
+
+class TD(TypedDict):
+    a: int
+    b: ReadOnly[int]
+
+d: TD = {"a": 1, "b": 2}
+d["a"] = 3  # OK
+d["b"] = 5  # Error: "b" is ReadOnly
+```
+
+This feature was contributed by Nikita Sobolev (PR [17644](https://github.com/python/mypy/pull/17644)).
 
 ### Python 3.8 End of Life Approaching
 
 We are planning to drop support for Python 3.8 in the next mypy feature release or the
-one after that. Python 3.8 reaches end of life in Octoboer 2024.
+one after that. Python 3.8 reaches end of life in October 2024.
 
 ### Planned Changes to Defaults
 
@@ -121,6 +169,17 @@ For more information, refer to the
 Mypy documentation now uses modern syntax variants and imports in many examples. Some
 examples no longer work on Python 3.8, which is the earliest Python version that mypy supports.
 
+Notably, `Iterable` and other protocols/ABCs are imported from `collections.abc` instead of
+`typing`:
+```python
+from collections.abc import Iterable, Callable
+```
+
+Examples also avoid the upper-case aliases to built-in types: `list[str]` is used instead
+of `List[str]`. The `X | Y` union type syntax introduced in Python 3.10 is also now prevalent.
+
+List of documentation updates:
+
  * Document `--output=json` CLI option (Edgar Ramírez Mondragón, PR [17611](https://github.com/python/mypy/pull/17611))
  * Update various references to deprecated type aliases in docs (Jukka Lehtosalo, PR [17829](https://github.com/python/mypy/pull/17829))
  * Make "X | Y" union syntax more prominent in documentation (Jukka Lehtosalo, PR [17835](https://github.com/python/mypy/pull/17835))
@@ -129,13 +188,28 @@ examples no longer work on Python 3.8, which is the earliest Python version that
  * List all incomplete features in `--enable-incomplete-feature` docs (sobolevn, PR [17633](https://github.com/python/mypy/pull/17633))
  * Remove the explicit setting of a pygments theme (Pradyun Gedam, PR [17571](https://github.com/python/mypy/pull/17571))
 
+### Experimental Inline TypedDict Syntax
+
+Mypy now supports a non-standard, experimental syntax for defining anonymous TypedDicts.
+Example:
+
+```python
+def func(n: str, y: int) -> {"name": str, "year": int}:
+    return {"name": n, "year": y}
+```
+
+The feature is disabled by default. Use `--enable-incomplete-feature=InlineTypedDict` to
+enable it. *We might remove this feature in a future release.*
+
+This feature was contributed by Ivan Levkivskyi (PR [17457](https://github.com/python/mypy/pull/17457)).
+
 ### Stubgen Improvements
 
  * Fix crash on literal class-level keywords (sobolevn, PR [17663](https://github.com/python/mypy/pull/17663))
  * Stubgen add `--version` (sobolevn, PR [17662](https://github.com/python/mypy/pull/17662))
  * Fix `stubgen --no-analysis/--parse-only` docs (sobolevn, PR [17632](https://github.com/python/mypy/pull/17632))
  * Include keyword only args when generating signatures in stubgenc (Eric Mark Martin, PR [17448](https://github.com/python/mypy/pull/17448))
- * Add Literal support for docstrings (Michael Carlstrom, PR [17441](https://github.com/python/mypy/pull/17441))
+ * Add support for detecting `Literal` types when extracting types from docstrings (Michael Carlstrom, PR [17441](https://github.com/python/mypy/pull/17441))
  * Use `Generator` type var defaults (Sebastian Rittau, PR [17670](https://github.com/python/mypy/pull/17670))
 
 ### Stubtest Improvements
@@ -152,7 +226,7 @@ examples no longer work on Python 3.8, which is the earliest Python version that
  * Fix narrowing of IntEnum and StrEnum types (Jukka Lehtosalo, PR [17874](https://github.com/python/mypy/pull/17874))
  * Filter overload items based on self type during type inference (Jukka Lehtosalo, PR [17873](https://github.com/python/mypy/pull/17873))
  * Enable negative narrowing of union TypeVar upper bounds (Brian Schubert, PR [17850](https://github.com/python/mypy/pull/17850))
- * Fix get_member_expr_fullname returning strings with embedded "None" (Brian Schubert, PR [17848](https://github.com/python/mypy/pull/17848))
+ * Fix issue with member expression formatting (Brian Schubert, PR [17848](https://github.com/python/mypy/pull/17848))
  * Avoid type size explosion when expanding types (Jukka Lehtosalo, PR [17842](https://github.com/python/mypy/pull/17842))
  * Fix negative narrowing of tuples in match statement (Brian Schubert, PR [17817](https://github.com/python/mypy/pull/17817))
  * Narrow falsey str/bytes/int to literal type (Brian Schubert, PR [17818](https://github.com/python/mypy/pull/17818))
@@ -163,13 +237,12 @@ examples no longer work on Python 3.8, which is the earliest Python version that
  * Added error code for overlapping function signatures (Katrina Connors, PR [17597](https://github.com/python/mypy/pull/17597))
  * Check for `truthy-bool` in `not ...` unary expressions (sobolevn, PR [17773](https://github.com/python/mypy/pull/17773))
  * Add missing lines-covered and lines-valid attributes (Soubhik Kumar Mitra, PR [17738](https://github.com/python/mypy/pull/17738))
- * Fix another crash scenario on recursive tuple types (Ivan Levkivskyi, PR [17708](https://github.com/python/mypy/pull/17708))
+ * Fix another crash scenario with recursive tuple types (Ivan Levkivskyi, PR [17708](https://github.com/python/mypy/pull/17708))
  * Resolve TypeVar upper bounds in `functools.partial` (Shantanu, PR [17660](https://github.com/python/mypy/pull/17660))
  * Always reset binder when checking deferred nodes (Ivan Levkivskyi, PR [17643](https://github.com/python/mypy/pull/17643))
  * Fix crash on a callable attribute with single unpack (Ivan Levkivskyi, PR [17641](https://github.com/python/mypy/pull/17641))
  * Fix mismatched signature between checker plugin API and implementation (bzoracler, PR [17343](https://github.com/python/mypy/pull/17343))
  * Indexing a type also produces a GenericAlias (Shantanu, PR [17546](https://github.com/python/mypy/pull/17546))
- * Experimental: allow inline/anonymous TypedDicts (Ivan Levkivskyi, PR [17457](https://github.com/python/mypy/pull/17457))
  * Fix crash on self-type in callable protocol (Ivan Levkivskyi, PR [17499](https://github.com/python/mypy/pull/17499))
  * Fix crash on NamedTuple with method and error in function (Ivan Levkivskyi, PR [17498](https://github.com/python/mypy/pull/17498))
  * Add `__replace__` for dataclasses in 3.13 (Max Muoto, PR [17469](https://github.com/python/mypy/pull/17469))
@@ -185,7 +258,33 @@ Please see [git log](https://github.com/python/typeshed/commits/main?after=91a58
 ### Acknowledgements
 Thanks to all mypy contributors who contributed to this release:
 
-- TODO
+- Ali Hamdan
+- Anders Kaseorg
+- Bénédikt Tran
+- Brian Schubert
+- bzoracler
+- Danny Yang
+- Edgar Ramírez Mondragón
+- Eric Mark Martin
+- InSync
+- Ivan Levkivskyi
+- Jordandev678
+- Katrina Connors
+- Kirill Podoprigora
+- Marc Mueller
+- Max Muoto
+- Max Murin
+- Michael Carlstrom
+- Michael I Chen
+- Pradyun Gedam
+- quinn-sasha
+- Raphael Krupinski
+- Sebastian Rittau
+- Shantanu
+- sobolevn
+- Soubhik Kumar Mitra
+- Stanislav Terliakov
+- wyattscarpenter
 
 I’d also like to thank my employer, Dropbox, for supporting mypy development.
 
