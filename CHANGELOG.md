@@ -258,7 +258,33 @@ Please see [git log](https://github.com/python/typeshed/commits/main?after=91a58
 ### Acknowledgements
 Thanks to all mypy contributors who contributed to this release:
 
-- TODO
+- Ali Hamdan
+- Anders Kaseorg
+- Bénédikt Tran
+- Brian Schubert
+- bzoracler
+- Danny Yang
+- Edgar Ramírez Mondragón
+- Eric Mark Martin
+- InSync
+- Ivan Levkivskyi
+- Jordandev678
+- Katrina Connors
+- Kirill Podoprigora
+- Marc Mueller
+- Max Muoto
+- Max Murin
+- Michael Carlstrom
+- Michael I Chen
+- Pradyun Gedam
+- quinn-sasha
+- Raphael Krupinski
+- Sebastian Rittau
+- Shantanu
+- sobolevn
+- Soubhik Kumar Mitra
+- Stanislav Terliakov
+- wyattscarpenter
 
 I’d also like to thank my employer, Dropbox, for supporting mypy development.
 
