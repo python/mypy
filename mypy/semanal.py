@@ -6409,35 +6409,43 @@ class SemanticAnalyzer(
         #       we might keep the module level only lookup for thing like 'builtins.int').
         assert "." in fullname
 
-        module, name = fullname.rsplit(".", maxsplit=1)
+        splitted_modules = fullname.rsplit(".")
+        names = []
 
-        # The reason for this is that we want to be able to handle cases such as importlib.machinery
-        if module not in self.modules:
-            # Check if there's nested module A.B.C
-            splitted = fullname.rsplit(".")
-            module, names = splitted[0], splitted[1:]
-            # If module still not in modules, return None
-            if module not in self.modules:
-                return None
-            filenode = self.modules[module]
-            result = filenode.names.get(names[0])
+        while splitted_modules and ".".join(splitted_modules) not in self.modules:
+            '''
+            Try to find the module in the modules dictionary.
 
-            if result is None and self.is_incomplete_namespace(module):
-                # TODO: More explicit handling of incomplete refs?
-                self.record_incomplete_ref()
+            If the module is not found, pop the last element of the splitted list and append it to the names list.
 
-            for part in names[1:]:
-                if result is not None and isinstance(result.node, TypeInfo):
-                    result = result.node.names.get(part)
-                else:
-                    return None
-            return result
+            This is to find the longest prefix of the module name that is in the modules dictionary.
+            '''
+            names.append(splitted_modules.pop())
 
+        if not splitted_modules or not names:
+            '''
+            If no module or name is found, return None.
+            '''
+            return None
+
+        '''
+        Reverse the names list to get the correct order of names.
+        '''
+        names.reverse()
+
+        module = ".".join(splitted_modules)
         filenode = self.modules[module]
-        result = filenode.names.get(name)
+        result = filenode.names.get(names[0])
+
         if result is None and self.is_incomplete_namespace(module):
             # TODO: More explicit handling of incomplete refs?
             self.record_incomplete_ref()
+
+        for part in names[1:]:
+            if result is not None and isinstance(result.node, TypeInfo):
+                result = result.node.names.get(part)
+            else:
+                return None
         return result
 
     def object_type(self) -> Instance:

@@ -1933,3 +1933,19 @@ class Z:
 
 a = Z.A()
 v = a.f
+
+[case testPEP695MultipleNestedGenericClass5]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from a.b.c import d
+x: d.D.E.F.G[int]
+x.g('a') # E: Argument 1 to "g" of "G" has incompatible type "str"; expected "int"
+reveal_type(x)  # N: Revealed type is "a.b.c.d.D.E.F.G[builtins.int]"
+reveal_type(d.D.E.F.d)  # N: Revealed type is "a.b.c.d.D.E.F.G[builtins.str]"
+
+[file a/b/c/d.py]
+class D:
+    class E:
+        class F:
+            class G[Q]:
+                def g(self, x: Q): ...
+            d: G[str]
