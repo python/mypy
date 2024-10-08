@@ -5729,6 +5729,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.fail(message_registry.TYPE_ALWAYS_TRUE.format(format_expr_type()), expr)
 
     def check_for_optional_non_truthy_type(self, t: Type, expr: Expression) -> None:
+        t = get_proper_type(t)
         if not isinstance(t, UnionType):
             return  # not a Optional or Union at all
 
