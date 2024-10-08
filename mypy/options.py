@@ -75,8 +75,8 @@ UNPACK: Final = "Unpack"
 PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
 NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
 INLINE_TYPEDDICT: Final = "InlineTypedDict"
-INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, NEW_GENERIC_SYNTAX, INLINE_TYPEDDICT))
-COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT))
+COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK, NEW_GENERIC_SYNTAX))
 
 
 class Options:
@@ -172,6 +172,9 @@ class Options:
         # Warn about returning objects of type Any when the function is
         # declared with a precise type
         self.warn_return_any = False
+
+        # Report importing or using deprecated features as errors instead of notes.
+        self.report_deprecated_as_error = False
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
@@ -432,6 +435,16 @@ class Options:
 
         # Enabling an error code always overrides disabling
         self.disabled_error_codes -= self.enabled_error_codes
+
+    def process_incomplete_features(
+        self, *, error_callback: Callable[[str], Any], warning_callback: Callable[[str], Any]
+    ) -> None:
+        # Validate incomplete features.
+        for feature in self.enable_incomplete_feature:
+            if feature not in INCOMPLETE_FEATURES | COMPLETE_FEATURES:
+                error_callback(f"Unknown incomplete feature: {feature}")
+            if feature in COMPLETE_FEATURES:
+                warning_callback(f"Warning: {feature} is already enabled by default")
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.

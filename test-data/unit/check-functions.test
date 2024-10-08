@@ -1428,6 +1428,20 @@ else:
                                     # N: Redefinition: \
                                     # N:     def f(x: int = ...) -> None
 
+[case testIncompatibleConditionalFunctionDefinition4]
+from typing import Any, Union, TypeVar
+T1 = TypeVar('T1')
+T2 = TypeVar('T2', bound=Union[int, str])
+x = None # type: Any
+if x:
+    def f(x: T1) -> T1: pass
+else:
+    def f(x: T2) -> T2: pass # E: All conditional function variants must have identical signatures \
+                             # N: Original: \
+                             # N:     def [T1] f(x: T1) -> T1 \
+                             # N: Redefinition: \
+                             # N:     def [T2: Union[int, str]] f(x: T2) -> T2
+
 [case testConditionalFunctionDefinitionUsingDecorator1]
 from typing import Callable
 
@@ -3408,4 +3422,41 @@ for factory in (
 ):
     reveal_type(factory)  # N: Revealed type is "def () -> Union[builtins.str, None]"
     var = factory()
+[builtins fixtures/tuple.pyi]
+
+[case testLambdaInDeferredDecoratorNoCrash]
+def foo(x):
+    pass
+
+class Bar:
+    def baz(self, x):
+        pass
+
+class Qux(Bar):
+    @foo(lambda x: None)
+    def baz(self, x) -> None:
+        pass
+[builtins fixtures/tuple.pyi]
+
+[case testGeneratorInDeferredDecoratorNoCrash]
+from typing import Protocol, TypeVar
+
+T = TypeVar("T", covariant=True)
+
+class SupportsNext(Protocol[T]):
+    def __next__(self) -> T: ...
+
+def next(i: SupportsNext[T]) -> T: ...
+
+def foo(x):
+    pass
+
+class Bar:
+    def baz(self, x):
+        pass
+
+class Qux(Bar):
+    @next(f for f in [foo])
+    def baz(self, x) -> None:
+        pass
 [builtins fixtures/tuple.pyi]

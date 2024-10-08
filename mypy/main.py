@@ -23,7 +23,7 @@ from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
-from mypy.options import COMPLETE_FEATURES, INCOMPLETE_FEATURES, BuildType, Options
+from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
 
@@ -799,6 +799,13 @@ def process_options(
         help="Warn about statements or expressions inferred to be unreachable",
         group=lint_group,
     )
+    add_invertible_flag(
+        "--report-deprecated-as-error",
+        default=False,
+        strict_flag=False,
+        help="Report importing or using deprecated features as errors instead of notes",
+        group=lint_group,
+    )
 
     # Note: this group is intentionally added here even though we don't add
     # --strict to this group near the end.
@@ -1336,13 +1343,7 @@ def process_options(
     validate_package_allow_list(options.untyped_calls_exclude)
 
     options.process_error_codes(error_callback=parser.error)
-
-    # Validate incomplete features.
-    for feature in options.enable_incomplete_feature:
-        if feature not in INCOMPLETE_FEATURES | COMPLETE_FEATURES:
-            parser.error(f"Unknown incomplete feature: {feature}")
-        if feature in COMPLETE_FEATURES:
-            print(f"Warning: {feature} is already enabled by default")
+    options.process_incomplete_features(error_callback=parser.error, warning_callback=print)
 
     # Compute absolute path for custom typeshed (if present).
     if options.custom_typeshed_dir is not None:

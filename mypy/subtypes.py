@@ -875,6 +875,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, TypedDictType):
+            if left == right:
+                return True  # Fast path
             if not left.names_are_wider_than(right):
                 return False
             for name, l, r in left.zip(right):
@@ -900,6 +902,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 #       don't want to have to change subtyping after 'del' support
                 #       lands so here we are anticipating that change.
                 if (name in left.required_keys) != (name in right.required_keys):
+                    return False
+                # Readonly fields check:
+                #
+                # A = TypedDict('A', {'x': ReadOnly[int]})
+                # B = TypedDict('A', {'x': int})
+                # def reset_x(b: B) -> None:
+                #     b['x'] = 0
+                #
+                # So, `A` cannot be a subtype of `B`, while `B` can be a subtype of `A`,
+                # because you can use `B` everywhere you use `A`, but not the other way around.
+                if name in left.readonly_keys and name not in right.readonly_keys:
                     return False
             # (NOTE: Fallbacks don't matter.)
             return True
@@ -1918,6 +1931,8 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
                 if isinstance(get_proper_type(item), UnionType) or not covers_type(item, s)
             ]
         return UnionType.make_union(new_items)
+    elif isinstance(p_t, TypeVarType):
+        return p_t.copy_modified(upper_bound=restrict_subtype_away(p_t.upper_bound, s))
     elif covers_type(t, s):
         return UninhabitedType()
     else:
@@ -2014,19 +2029,36 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
         tvar = info.defn.type_vars[i]
         self_type = fill_typevars(info)
         for member in all_non_object_members(info):
-            if member in ("__init__", "__new__"):
+            # __mypy-replace is an implementation detail of the dataclass plugin
+            if member in ("__init__", "__new__", "__mypy-replace"):
                 continue
-            node = info[member].node
-            if isinstance(node, Var) and node.type is None:
-                tv.variance = VARIANCE_NOT_READY
-                return False
+
             if isinstance(self_type, TupleType):
                 self_type = mypy.typeops.tuple_fallback(self_type)
-
             flags = get_member_flags(member, self_type)
-            typ = find_member(member, self_type, self_type)
             settable = IS_SETTABLE in flags
+
+            node = info[member].node
+            if isinstance(node, Var):
+                if node.type is None:
+                    tv.variance = VARIANCE_NOT_READY
+                    return False
+                if has_underscore_prefix(member):
+                    # Special case to avoid false positives (and to pass conformance tests)
+                    settable = False
+
+            typ = find_member(member, self_type, self_type)
             if typ:
+                # It's okay for a method in a generic class with a contravariant type
+                # variable to return a generic instance of the class, if it doesn't involve
+                # variance (i.e. values of type variables are propagated). Our normal rules
+                # would disallow this. Replace such return types with 'Any' to allow this.
+                #
+                # This could probably be more lenient (e.g. allow self type be nested, don't
+                # require all type arguments to be identical to self_type), but this will
+                # hopefully cover the vast majority of such cases, including Self.
+                typ = erase_return_self_types(typ, self_type)
+
                 typ2 = expand_type(typ, {tvar.id: object_type})
                 if not is_subtype(typ, typ2):
                     co = False
@@ -2034,6 +2066,15 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
                     contra = False
                     if settable:
                         co = False
+
+        # Infer variance from base classes, in case they have explicit variances
+        for base in info.bases:
+            base2 = expand_type(base, {tvar.id: object_type})
+            if not is_subtype(base, base2):
+                co = False
+            if not is_subtype(base2, base):
+                contra = False
+
         if co:
             v = COVARIANT
         elif contra:
@@ -2046,6 +2087,10 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
     return True
 
 
+def has_underscore_prefix(name: str) -> bool:
+    return name.startswith("_") and not (name.startswith("__") and name.endswith("__"))
+
+
 def infer_class_variances(info: TypeInfo) -> bool:
     if not info.defn.type_args:
         return True
@@ -2056,3 +2101,20 @@ def infer_class_variances(info: TypeInfo) -> bool:
             if not infer_variance(info, i):
                 success = False
     return success
+
+
+def erase_return_self_types(typ: Type, self_type: Instance) -> Type:
+    """If a typ is function-like and returns self_type, replace return type with Any."""
+    proper_type = get_proper_type(typ)
+    if isinstance(proper_type, CallableType):
+        ret = get_proper_type(proper_type.ret_type)
+        if isinstance(ret, Instance) and ret == self_type:
+            return proper_type.copy_modified(ret_type=AnyType(TypeOfAny.implementation_artifact))
+    elif isinstance(proper_type, Overloaded):
+        return Overloaded(
+            [
+                cast(CallableType, erase_return_self_types(it, self_type))
+                for it in proper_type.items
+            ]
+        )
+    return typ

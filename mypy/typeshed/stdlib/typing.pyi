@@ -2,7 +2,7 @@
 # ruff: noqa: F811
 # TODO: The collections import is required, otherwise mypy crashes.
 # https://github.com/python/mypy/issues/16744
-import collections  # noqa: F401  # pyright: ignore
+import collections  # noqa: F401  # pyright: ignore[reportUnusedImport]
 import sys
 import typing_extensions
 from _collections_abc import dict_items, dict_keys, dict_values
@@ -540,7 +540,7 @@ class AsyncIterator(AsyncIterable[_T_co], Protocol[_T_co]):
     def __aiter__(self) -> AsyncIterator[_T_co]: ...
 
 class AsyncGenerator(AsyncIterator[_YieldT_co], Generic[_YieldT_co, _SendT_contra]):
-    def __anext__(self) -> Awaitable[_YieldT_co]: ...
+    def __anext__(self) -> Coroutine[Any, Any, _YieldT_co]: ...
     @abstractmethod
     def asend(self, value: _SendT_contra, /) -> Coroutine[Any, Any, _YieldT_co]: ...
     @overload
@@ -800,16 +800,10 @@ class IO(Iterator[AnyStr]):
     def writable(self) -> bool: ...
     @abstractmethod
     @overload
-    def write(self: IO[str], s: str, /) -> int: ...
-    @abstractmethod
-    @overload
     def write(self: IO[bytes], s: ReadableBuffer, /) -> int: ...
     @abstractmethod
     @overload
     def write(self, s: AnyStr, /) -> int: ...
-    @abstractmethod
-    @overload
-    def writelines(self: IO[str], lines: Iterable[str], /) -> None: ...
     @abstractmethod
     @overload
     def writelines(self: IO[bytes], lines: Iterable[ReadableBuffer], /) -> None: ...
@@ -846,7 +840,8 @@ class TextIO(IO[str]):
     @abstractmethod
     def __enter__(self) -> TextIO: ...
 
-ByteString: typing_extensions.TypeAlias = bytes | bytearray | memoryview
+if sys.version_info < (3, 14):
+    ByteString: typing_extensions.TypeAlias = bytes | bytearray | memoryview
 
 # Functions
 
@@ -866,13 +861,13 @@ if sys.version_info >= (3, 9):
     def get_type_hints(
         obj: _get_type_hints_obj_allowed_types,
         globalns: dict[str, Any] | None = None,
-        localns: dict[str, Any] | None = None,
+        localns: Mapping[str, Any] | None = None,
         include_extras: bool = False,
     ) -> dict[str, Any]: ...
 
 else:
     def get_type_hints(
-        obj: _get_type_hints_obj_allowed_types, globalns: dict[str, Any] | None = None, localns: dict[str, Any] | None = None
+        obj: _get_type_hints_obj_allowed_types, globalns: dict[str, Any] | None = None, localns: Mapping[str, Any] | None = None
     ) -> dict[str, Any]: ...
 
 def get_args(tp: Any) -> tuple[Any, ...]: ...
@@ -1000,13 +995,13 @@ class ForwardRef:
             "that references a PEP 695 type parameter. It will be disallowed in Python 3.15."
         )
         def _evaluate(
-            self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None, *, recursive_guard: frozenset[str]
+            self, globalns: dict[str, Any] | None, localns: Mapping[str, Any] | None, *, recursive_guard: frozenset[str]
         ) -> Any | None: ...
         @overload
         def _evaluate(
             self,
             globalns: dict[str, Any] | None,
-            localns: dict[str, Any] | None,
+            localns: Mapping[str, Any] | None,
             type_params: tuple[TypeVar | ParamSpec | TypeVarTuple, ...],
             *,
             recursive_guard: frozenset[str],
@@ -1015,17 +1010,17 @@ class ForwardRef:
         def _evaluate(
             self,
             globalns: dict[str, Any] | None,
-            localns: dict[str, Any] | None,
+            localns: Mapping[str, Any] | None,
             type_params: tuple[TypeVar | ParamSpec | TypeVarTuple, ...] | None = None,
             *,
             recursive_guard: frozenset[str],
         ) -> Any | None: ...
     elif sys.version_info >= (3, 9):
         def _evaluate(
-            self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None, recursive_guard: frozenset[str]
+            self, globalns: dict[str, Any] | None, localns: Mapping[str, Any] | None, recursive_guard: frozenset[str]
         ) -> Any | None: ...
     else:
-        def _evaluate(self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None) -> Any | None: ...
+        def _evaluate(self, globalns: dict[str, Any] | None, localns: Mapping[str, Any] | None) -> Any | None: ...
 
     def __eq__(self, other: object) -> bool: ...
     def __hash__(self) -> int: ...
