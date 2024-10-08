@@ -216,7 +216,6 @@ from mypy.types import (
     UnpackType,
     find_unpack_in_list,
     flatten_nested_unions,
-    flatten_nested_tuples,
     get_proper_type,
     get_proper_types,
     is_literal_type,
@@ -2933,10 +2932,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if s.unanalyzed_type is not None:
             for lvalue in s.lvalues:
-                if (
-                    isinstance(lvalue, NameExpr)
-                    and isinstance(var := lvalue.node, Var)
-                ):
+                if isinstance(lvalue, NameExpr) and isinstance(var := lvalue.node, Var):
                     self.search_deprecated(var.type, s)
 
         # Avoid type checking type aliases in stubs to avoid false
