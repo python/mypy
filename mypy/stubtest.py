@@ -133,7 +133,7 @@ class Error:
     def is_positional_only_related(self) -> bool:
         """Whether or not the error is for something being (or not being) positional-only."""
         # TODO: This is hacky, use error codes or something more resilient
-        return "leading double underscore" in self.message
+        return "should be positional" in self.message
 
     def get_description(self, concise: bool = False) -> str:
         """Returns a description of the error.
@@ -909,7 +909,7 @@ def _verify_signature(
         ):
             yield (
                 f'stub argument "{stub_arg.variable.name}" should be positional-only '
-                f'(rename with a leading double underscore, i.e. "__{runtime_arg.name}")'
+                f'(add "/", e.g. "{runtime_arg.name}, /")'
             )
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
@@ -919,7 +919,7 @@ def _verify_signature(
         ):
             yield (
                 f'stub argument "{stub_arg.variable.name}" should be positional or keyword '
-                "(remove leading double underscore)"
+                "(remove \"/\")"
             )
 
     # Check unmatched positional args
