@@ -919,7 +919,7 @@ def _verify_signature(
         ):
             yield (
                 f'stub argument "{stub_arg.variable.name}" should be positional or keyword '
-                "(remove \"/\")"
+                '(remove "/")'
             )
 
     # Check unmatched positional args
