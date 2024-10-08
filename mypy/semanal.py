@@ -6413,24 +6413,24 @@ class SemanticAnalyzer(
         names = []
 
         while splitted_modules and ".".join(splitted_modules) not in self.modules:
-            '''
+            """
             Try to find the module in the modules dictionary.
 
             If the module is not found, pop the last element of the splitted list and append it to the names list.
 
             This is to find the longest prefix of the module name that is in the modules dictionary.
-            '''
+            """
             names.append(splitted_modules.pop())
 
         if not splitted_modules or not names:
-            '''
+            """
             If no module or name is found, return None.
-            '''
+            """
             return None
 
-        '''
+        """
         Reverse the names list to get the correct order of names.
-        '''
+        """
         names.reverse()
 
         module = ".".join(splitted_modules)
