@@ -16,84 +16,36 @@ import itertools
 import re
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, Sequence, cast
+from typing import (Any, Callable, Collection, Final, Iterable, Iterator, List,
+                    Sequence, cast)
 
 import mypy.typeops
-from mypy import errorcodes as codes, message_registry
+from mypy import errorcodes as codes
+from mypy import message_registry
 from mypy.erasetype import erase_type
 from mypy.errorcodes import ErrorCode
 from mypy.errors import ErrorInfo, Errors, ErrorWatcher
-from mypy.nodes import (
-    ARG_NAMED,
-    ARG_NAMED_OPT,
-    ARG_OPT,
-    ARG_POS,
-    ARG_STAR,
-    ARG_STAR2,
-    CONTRAVARIANT,
-    COVARIANT,
-    SYMBOL_FUNCBASE_TYPES,
-    ArgKind,
-    CallExpr,
-    ClassDef,
-    Context,
-    Expression,
-    FuncDef,
-    IndexExpr,
-    MypyFile,
-    NameExpr,
-    ReturnStmt,
-    StrExpr,
-    SymbolNode,
-    SymbolTable,
-    TypeInfo,
-    Var,
-    reverse_builtin_aliases,
-)
+from mypy.nodes import (ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR,
+                        ARG_STAR2, CONTRAVARIANT, COVARIANT,
+                        SYMBOL_FUNCBASE_TYPES, ArgKind, CallExpr, ClassDef,
+                        Context, Expression, FuncDef, IndexExpr, MypyFile,
+                        NameExpr, ReturnStmt, StrExpr, SymbolNode, SymbolTable,
+                        TypeInfo, Var, reverse_builtin_aliases)
 from mypy.operators import op_methods, op_methods_to_symbols
 from mypy.options import Options
-from mypy.subtypes import (
-    IS_CLASS_OR_STATIC,
-    IS_CLASSVAR,
-    IS_SETTABLE,
-    IS_VAR,
-    find_member,
-    get_member_flags,
-    is_same_type,
-    is_subtype,
-)
+from mypy.subtypes import (IS_CLASS_OR_STATIC, IS_CLASSVAR, IS_SETTABLE,
+                           IS_VAR, find_member, get_member_flags, is_same_type,
+                           is_subtype)
 from mypy.typeops import separate_union_literals
-from mypy.types import (
-    AnyType,
-    CallableType,
-    DeletedType,
-    FunctionLike,
-    Instance,
-    LiteralType,
-    NoneType,
-    Overloaded,
-    Parameters,
-    ParamSpecType,
-    PartialType,
-    ProperType,
-    TupleType,
-    Type,
-    TypeAliasType,
-    TypedDictType,
-    TypeOfAny,
-    TypeStrVisitor,
-    TypeType,
-    TypeVarLikeType,
-    TypeVarTupleType,
-    TypeVarType,
-    UnboundType,
-    UninhabitedType,
-    UnionType,
-    UnpackType,
-    flatten_nested_unions,
-    get_proper_type,
-    get_proper_types,
-)
+from mypy.types import (AnyType, CallableType, DeletedType, FunctionLike,
+                        Instance, LiteralType, NoneType, Overloaded,
+                        Parameters, ParamSpecType, PartialType, ProperType,
+                        TupleType, Type, TypeAliasType, TypedDictType,
+                        TypeOfAny, TypeStrVisitor, TypeType, TypeVarLikeType,
+                        TypeVarTupleType, TypeVarType, UnboundType,
+                        UninhabitedType, UnionType, UnpackType,
+                        flatten_nested_unions, get_proper_type,
+                        get_proper_types)
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.util import plural_s, unmangle
 
@@ -831,12 +783,6 @@ class MessageBuilder:
                     if isinstance(arg_type, Instance) and isinstance(type, Instance):
                         notes = append_invariance_notes(notes, arg_type, type)
                         notes = append_numbers_notes(notes, arg_type, type)
-                    if isinstance(arg_type, CallableType) and isinstance(type, Instance):
-                        if type.type.is_protocol and "__call__" in type.type.protocol_members:
-                            call = find_member("__call__", type, arg_type, is_operator=True)
-                            assert call is not None
-                            notes.append(self.note_call_message(type, arg_type))
-
             object_type = get_proper_type(object_type)
             if isinstance(object_type, TypedDictType):
                 code = codes.TYPEDDICT_ITEM
@@ -855,6 +801,7 @@ class MessageBuilder:
         context: Context,
         code: ErrorCode | None,
     ) -> None:
+
         if self.prefer_simple_messages():
             return
         if isinstance(
@@ -2043,12 +1990,9 @@ class MessageBuilder:
     def note_call(
         self, subtype: Type, call: Type, context: Context, *, code: ErrorCode | None
     ) -> None:
-        self.note(self.note_call_message(subtype, call), context, code=code)
-
-    def note_call_message(self, subtype: Type, call: Type) -> str:
-        return '"{}.__call__" has type {}'.format(
+        self.note('"{}.__call__" has type {}'.format(
             format_type_bare(subtype, self.options), format_type(call, self.options, verbosity=1)
-        )
+        ),context, code=code)
 
     def unreachable_statement(self, context: Context) -> None:
         self.fail("Statement is unreachable", context, code=codes.UNREACHABLE)
@@ -2159,6 +2103,15 @@ class MessageBuilder:
                 skip = ["__call__"]
         if subtype.extra_attrs and subtype.extra_attrs.mod_name:
             is_module = True
+
+        #show signature of call for supertype
+        call = find_member("__call__",supertype,supertype)
+        if call:
+            self.note_call(
+               supertype,call,context,code=code
+            )
+
+
 
         # Report missing members
         missing = get_missing_protocol_members(subtype, supertype, skip=skip)
