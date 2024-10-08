@@ -375,7 +375,7 @@ recommended to annotate ``items`` as ``Collection[int]`` instead of
 .. _code-optional-non-truthy:
 
 Check that expression doesn't conflate None with other false expressions [optional-non-truthy]
------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
 
 Warn when the type of an expression in a boolean context is optional
 (union with `None`) and also has other types that are boolean-like
