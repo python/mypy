@@ -690,6 +690,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     inner_type = expand_type_by_instance(
                         type_object_type(inner_type.item.type, self.named_type), inner_type.item
                     )
+                if isinstance(inner_type, CallableType):
+                    inner_type.from_type_type = True
+
             if isinstance(inner_type, CallableType):
                 outer_type = inner_type
             elif isinstance(inner_type, Instance):
