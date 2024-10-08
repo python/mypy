@@ -686,7 +686,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(inner_type, TypeVarLikeType):
                 inner_type = get_proper_type(inner_type.upper_bound)
             if isinstance(inner_type, TypeType):
-                inner_type = self.expr_checker.analyze_type_type_callee(inner_type.item, ctx)
+                inner_type = get_proper_type(
+                    self.expr_checker.analyze_type_type_callee(inner_type.item, ctx)
+                )
 
             if isinstance(inner_type, CallableType):
                 outer_type = inner_type
