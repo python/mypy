@@ -219,7 +219,9 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sym
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname) != name_prefix:
                 # This is a cross-reference to a node defined in another module.
-                result[name] = ("CrossRef", common)
+                # Include the node kind (FuncDef, Decorator, TypeInfo, ...), so that we will
+                # reprocess when a *new* node is created instead of merging an existing one.
+                result[name] = ("CrossRef", common, type(node).__name__)
             else:
                 result[name] = snapshot_definition(node, common)
     return result
@@ -254,6 +256,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             signature,
             is_trivial_body,
             dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
+            node.deprecated if isinstance(node, FuncDef) else None,
         )
     elif isinstance(node, Var):
         return ("Var", common, snapshot_optional_type(node.type), node.is_final)

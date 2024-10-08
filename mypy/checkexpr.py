@@ -126,6 +126,7 @@ from mypy.typeanal import (
     validate_instance,
 )
 from mypy.typeops import (
+    bind_self,
     callable_type,
     custom_special_method,
     erase_to_union_or_bound,
@@ -354,7 +355,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ref_expr(e)
-        return self.narrow_type_from_binder(e, result)
+        narrowed = self.narrow_type_from_binder(e, result)
+        self.chk.check_deprecated(e.node, e)
+        return narrowed
 
     def analyze_ref_expr(self, e: RefExpr, lvalue: bool = False) -> Type:
         result: Type | None = None
@@ -1479,6 +1482,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             object_type=object_type,
         )
         proper_callee = get_proper_type(callee_type)
+        if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, OverloadedFuncDef):
+            for item in e.callee.node.items:
+                if isinstance(item, Decorator) and (item.func.type == callee_type):
+                    self.chk.check_deprecated(item.func, e)
         if isinstance(e.callee, RefExpr) and isinstance(proper_callee, CallableType):
             # Cache it for find_isinstance_check()
             if proper_callee.type_guard is not None:
@@ -3267,7 +3274,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Visit member expression (of form e.id)."""
         self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ordinary_member_access(e, is_lvalue)
-        return self.narrow_type_from_binder(e, result)
+        narrowed = self.narrow_type_from_binder(e, result)
+        self.chk.warn_deprecated(e.node, e)
+        return narrowed
 
     def analyze_ordinary_member_access(self, e: MemberExpr, is_lvalue: bool) -> Type:
         """Analyse member expression or member lvalue."""
@@ -3956,7 +3965,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # This is the case even if the __add__ method is completely missing and the __radd__
             # method is defined.
 
-            variants_raw = [(left_op, left_type, right_expr)]
+            variants_raw = [(op_name, left_op, left_type, right_expr)]
         elif (
             is_subtype(right_type, left_type)
             and isinstance(left_type, Instance)
@@ -3977,19 +3986,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # As a special case, the alt_promote check makes sure that we don't use the
             # __radd__ method of int if the LHS is a native int type.
 
-            variants_raw = [(right_op, right_type, left_expr), (left_op, left_type, right_expr)]
+            variants_raw = [
+                (rev_op_name, right_op, right_type, left_expr),
+                (op_name, left_op, left_type, right_expr),
+            ]
         else:
             # In all other cases, we do the usual thing and call __add__ first and
             # __radd__ second when doing "A() + B()".
 
-            variants_raw = [(left_op, left_type, right_expr), (right_op, right_type, left_expr)]
+            variants_raw = [
+                (op_name, left_op, left_type, right_expr),
+                (rev_op_name, right_op, right_type, left_expr),
+            ]
 
         # STEP 3:
         # We now filter out all non-existent operators. The 'variants' list contains
         # all operator methods that are actually present, in the order that Python
         # attempts to invoke them.
 
-        variants = [(op, obj, arg) for (op, obj, arg) in variants_raw if op is not None]
+        variants = [(na, op, obj, arg) for (na, op, obj, arg) in variants_raw if op is not None]
 
         # STEP 4:
         # We now try invoking each one. If an operation succeeds, end early and return
@@ -3998,13 +4013,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         errors = []
         results = []
-        for method, obj, arg in variants:
+        for name, method, obj, arg in variants:
             with self.msg.filter_errors(save_filtered_errors=True) as local_errors:
                 result = self.check_method_call(op_name, obj, method, [arg], [ARG_POS], context)
             if local_errors.has_new_errors():
                 errors.append(local_errors.filtered_errors())
                 results.append(result)
             else:
+                if isinstance(obj, Instance) and isinstance(
+                    defn := obj.type.get_method(name), OverloadedFuncDef
+                ):
+                    for item in defn.items:
+                        if (
+                            isinstance(item, Decorator)
+                            and isinstance(typ := item.func.type, CallableType)
+                            and bind_self(typ) == result[1]
+                        ):
+                            self.chk.check_deprecated(item.func, context)
                 return result
 
         # We finish invoking above operators and no early return happens. Therefore,

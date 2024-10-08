@@ -4137,3 +4137,91 @@ class P(Protocol):
 
 class C(P): ...
 C(0)  # OK
+
+[case testTypeVarValueConstraintAgainstGenericProtocol]
+from typing import TypeVar, Generic, Protocol, overload
+
+T_contra = TypeVar("T_contra", contravariant=True)
+AnyStr = TypeVar("AnyStr", str, bytes)
+
+class SupportsWrite(Protocol[T_contra]):
+    def write(self, s: T_contra, /) -> None: ...
+
+class Buffer: ...
+
+class IO(Generic[AnyStr]):
+    @overload
+    def write(self: IO[bytes], s: Buffer, /) -> None: ...
+    @overload
+    def write(self, s: AnyStr, /) -> None: ...
+    def write(self, s): ...
+
+def foo(fdst: SupportsWrite[AnyStr]) -> None: ...
+
+x: IO[str]
+foo(x)
+
+[case testTypeVarValueConstraintAgainstGenericProtocol2]
+from typing import Generic, Protocol, TypeVar, overload
+
+AnyStr = TypeVar("AnyStr", str, bytes)
+T_co = TypeVar("T_co", covariant=True)
+T_contra = TypeVar("T_contra", contravariant=True)
+
+class SupportsRead(Generic[T_co]):
+    def read(self) -> T_co: ...
+
+class SupportsWrite(Protocol[T_contra]):
+    def write(self, s: T_contra) -> object: ...
+
+def copyfileobj(fsrc: SupportsRead[AnyStr], fdst: SupportsWrite[AnyStr]) -> None: ...
+
+class WriteToMe(Generic[AnyStr]):
+    @overload
+    def write(self: WriteToMe[str], s: str) -> int: ...
+    @overload
+    def write(self: WriteToMe[bytes], s: bytes) -> int: ...
+    def write(self, s): ...
+
+class WriteToMeOrReadFromMe(WriteToMe[AnyStr], SupportsRead[AnyStr]): ...
+
+copyfileobj(WriteToMeOrReadFromMe[bytes](), WriteToMe[bytes]())
+
+[case testOverloadedMethodWithExplictSelfTypes]
+from typing import Generic, overload, Protocol, TypeVar, Union
+
+AnyStr = TypeVar("AnyStr", str, bytes)
+T_co = TypeVar("T_co", covariant=True)
+T_contra = TypeVar("T_contra", contravariant=True)
+
+class SupportsRead(Protocol[T_co]):
+    def read(self) -> T_co: ...
+
+class SupportsWrite(Protocol[T_contra]):
+    def write(self, s: T_contra) -> int: ...
+
+class Input(Generic[AnyStr]):
+    def read(self) -> AnyStr: ...
+
+class Output(Generic[AnyStr]):
+    @overload
+    def write(self: Output[str], s: str) -> int: ...
+    @overload
+    def write(self: Output[bytes], s: bytes) -> int: ...
+    def write(self, s: Union[str, bytes]) -> int: ...
+
+def f(src: SupportsRead[AnyStr], dst: SupportsWrite[AnyStr]) -> None: ...
+
+def g1(a: Input[bytes], b: Output[bytes]) -> None:
+    f(a, b)
+
+def g2(a: Input[bytes], b: Output[bytes]) -> None:
+    f(a, b)
+
+def g3(a: Input[str], b: Output[bytes]) -> None:
+    f(a, b)  # E: Cannot infer type argument 1 of "f"
+
+def g4(a: Input[bytes], b: Output[str]) -> None:
+    f(a, b)  # E: Cannot infer type argument 1 of "f"
+
+[builtins fixtures/tuple.pyi]
