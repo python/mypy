@@ -7577,7 +7577,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
             warn(deprecated, context, code=codes.DEPRECATED)
 
-    def search_deprecated(self, typ: Type | None, s: AssignmentStmt, visited: set[Type]) -> None:
+    def search_deprecated(
+        self, typ: Type | None, s: AssignmentStmt, visited: set[Type | None]
+    ) -> None:
 
         if typ not in visited:
             visited.add(typ)
