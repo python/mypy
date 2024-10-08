@@ -579,3 +579,17 @@ def f2() -> None:
     partial_cls = partial(A)  # E: Cannot instantiate abstract class "A" with abstract attribute "method"
     partial_cls()  # E: Cannot instantiate abstract class "A" with abstract attribute "method"
 [builtins fixtures/tuple.pyi]
+
+
+[case testFunctoolsPartialSelfType]
+from functools import partial
+from typing_extensions import Self
+
+class A:
+    def __init__(self, ts: float, msg: str) -> None: ...
+
+    @classmethod
+    def from_msg(cls, msg: str) -> Self:
+        factory = partial(cls, ts=0)
+        return factory(msg=msg)
+[builtins fixtures/tuple.pyi]
