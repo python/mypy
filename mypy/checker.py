@@ -2932,10 +2932,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if s.unanalyzed_type is not None:
             for lvalue in s.lvalues:
-                if (
-                    isinstance(lvalue, NameExpr)
-                    and isinstance(var := lvalue.node, Var)
-                ):
+                if isinstance(lvalue, NameExpr) and isinstance(var := lvalue.node, Var):
                     self.search_deprecated(var.type, s, set())
 
         # Avoid type checking type aliases in stubs to avoid false
