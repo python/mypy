@@ -396,7 +396,7 @@ or rewrite the function to be slightly more verbose:
 TypeIs
 ------
 
-Mypy supports TypeIs (:pep:`754`).
+Mypy supports TypeIs (:pep:`742`).
 
 A `TypeIs narrowing function <https://typing.readthedocs.io/en/latest/spec/narrowing.html#typeis>`_
 allows you to define custom type checks that can narrow the type of a variable
@@ -447,10 +447,6 @@ Key points:
 
 TypeIs vs TypeGuard
 ~~~~~~~~~~~~~~~~~~~
-
-While both TypeIs and TypeGuard allow you to define custom type narrowing
-functions, they differ in important ways:
-
 
 While both TypeIs and TypeGuard allow you to define custom type narrowing
 functions, they differ in important ways:
@@ -518,7 +514,7 @@ The type narrowing applies only to the first argument.
 
     def process(x: Any) -> None:
         if is_instance_of(x, int):
-            reveal_type(x)  # Revealed type is 'int' or any int subclass
+            reveal_type(x)  # Revealed type is 'int'
             print(x + 1)  # ok
         else:
             reveal_type(x)  # Revealed type is 'Any'
