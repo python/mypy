@@ -7582,12 +7582,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if typ not in visited:
             visited.add(typ)
             if isinstance(typ := get_proper_type(typ), Instance):
-                    self.check_deprecated(typ.type, s)
-                    for arg in typ.args:
-                        self.search_deprecated(arg, s, visited)
+                self.check_deprecated(typ.type, s)
+                for arg in typ.args:
+                    self.search_deprecated(arg, s, visited)
             elif isinstance(typ, (UnionType, TupleType)):
                 for item in typ.items:
-                     self.search_deprecated(item, s, visited)
+                    self.search_deprecated(item, s, visited)
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
