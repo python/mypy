@@ -13,6 +13,6 @@ class dict: pass
 
 class _NotImplementedType(Any):
     __call__: NotImplemented  # type: ignore
-NotImplemented = _NotImplementedType()
+NotImplemented: _NotImplementedType
 
 class BaseException: pass
