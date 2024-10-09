@@ -56,7 +56,7 @@ Examples of locations:
 * 'mod.Cls' represents each method in class 'mod.Cls' + the top-level of the
   module 'mod'. (To simplify the implementation, there is no location that only
   includes the body of a class without the entire surrounding module top level.)
-* Trigger '<...>' as a location is an indirect way of referring to to all
+* Trigger '<...>' as a location is an indirect way of referring to all
   locations triggered by the trigger. These indirect locations keep the
   dependency map smaller and easier to manage.
 

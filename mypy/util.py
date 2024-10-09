@@ -196,7 +196,7 @@ def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> tuple
     A typical result looks like this:
         ...some_variable = function_to_call(one_arg, other_arg) or...
 
-    Return the trimmed string and the column offset to to adjust error location.
+    Return the trimmed string and the column offset to adjust error location.
     """
     if max_len < 2 * min_width + 1:
         # In case the window is too tiny it is better to still show something.
