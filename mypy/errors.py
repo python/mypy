@@ -922,12 +922,8 @@ class Errors:
         self.flushed_files.add(path)
         source_lines = None
         if self.options.pretty and self.read_source:
-            """
-            Find shadow file mapping and read source lines if a
-            shadow file exists for the given path.
-
-            If shadow file mapping is not found, read source lines
-            """
+            # Find shadow file mapping and read source lines if a shadow file exists for the given path.
+            # If shadow file mapping is not found, read source lines
             mapped_path = self.find_shadow_file_mapping(path)
             if mapped_path:
                 source_lines = self.read_source(mapped_path)
