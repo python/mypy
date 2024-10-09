@@ -246,7 +246,7 @@ You can use ``typing.ReadOnly``, introduced in Python 3.13, or
 
     from typing import TypedDict
 
-    # Or "from typing ..." on Python 3.13
+    # Or "from typing ..." on Python 3.13+
     from typing_extensions import ReadOnly
 
     class Movie(TypedDict):
