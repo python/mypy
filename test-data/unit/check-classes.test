@@ -3515,7 +3515,8 @@ def process(cls: Type[Union[BasicUser, ProUser]]):
     obj = cls()
     cls.bar(obj)
     cls.mro()  # Defined in class type
-    cls.error  # E: Item "type" of "Union[Type[BasicUser], Type[ProUser]]" has no attribute "error"
+    cls.error  # E: Item "type" of "Union[Type[BasicUser], Type[ProUser]]" has no attribute "error" \
+               # N: You can use 'if hasattr( cls, 'error'):' to guard against missing attribute error
 [builtins fixtures/classmethod.pyi]
 [out]
 
