@@ -11,9 +11,11 @@ import importlib
 import inspect
 import keyword
 import os.path
+import sys
 from types import FunctionType, ModuleType
 from typing import Any, Callable, Mapping
 
+import mypy.util
 from mypy.fastparse import parse_type_comment
 from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
@@ -651,21 +653,35 @@ class InspectionStubGenerator(BaseStubGenerator):
 
     def _indent_docstring(self, docstring: str) -> str:
         """Fix indentation of docstring extracted from pybind11 or other binding generators."""
-        lines = docstring.splitlines(keepends=True)
-        indent = self._indent + "    "
-        if len(lines) > 1:
-            if not all(line.startswith(indent) or not line.strip() for line in lines):
-                # if the docstring is not indented, then indent all but the first line
-                for i, line in enumerate(lines[1:]):
-                    if line.strip():
-                        lines[i + 1] = indent + line
-        # if there's a trailing newline, add a final line to visually indent the quoted docstring
-        if lines[-1].endswith("\n"):
-            if len(lines) > 1:
-                lines.append(indent)
-            else:
-                lines[-1] = lines[-1][:-1]
-        return "".join(lines)
+        # this follows inspect.cleandoc except it only changes the margins.
+        # it won't remove empty lines at the start or end.
+        # nor remove whitespace at the start of the first line.
+        # essentially it should do as little to the docstring as possible.
+
+        lines = docstring.expandtabs().split("\n")
+
+        # Find minimum indentation of any non-blank lines after first line.
+        margin = sys.maxsize
+        for line in lines[1:]:
+            content = len(line.lstrip(" "))
+            if content:
+                indent = len(line) - content
+                margin = min(margin, indent)
+
+        doc_indent = self._indent + "    "
+        # Remove margin and set it to indent.
+        if margin < sys.maxsize:
+            for i in range(1, len(lines)):
+                # dedent the line
+                line = lines[i][margin:]
+                # if the line after dedent was not empty, prepend our indent
+                if line:
+                    line = doc_indent + line
+                lines[i] = line
+        if lines[-1] == "":
+            #  if the last line was empty, indent it so the triple end quote is in a good spot.
+            lines[-1] = doc_indent + lines[-1]
+        return "\n".join(lines)
 
     def _fix_iter(
         self, ctx: FunctionContext, inferred: list[FunctionSig], output: list[str]
@@ -809,6 +825,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.indent()
 
         class_info = ClassInfo(class_name, "", getattr(cls, "__doc__", None), cls)
+        docstring = class_info.docstring if self._include_docstrings else None
 
         for attr, value in items:
             # use unevaluated descriptors when dealing with property inspection
@@ -857,13 +874,18 @@ class InspectionStubGenerator(BaseStubGenerator):
 
         self.dedent()
 
+        if docstring:
+            docstring = self._indent_docstring(docstring)
+
         bases = self.get_base_types(cls)
         if bases:
             bases_str = "(%s)" % ", ".join(bases)
         else:
             bases_str = ""
-        if types or static_properties or rw_properties or methods or ro_properties:
+        if types or static_properties or rw_properties or methods or ro_properties or docstring:
             output.append(f"{self._indent}class {class_name}{bases_str}:")
+            if docstring:
+                output.append(f"{self._indent}    {mypy.util.quote_docstring(docstring)}")
             for line in types:
                 if (
                     output
