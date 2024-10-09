@@ -98,6 +98,10 @@ def deserialize_type(data: JsonDict | str, ctx: DeserMaps) -> RType:
             return RVoid()
         else:
             assert False, f"Can't find class {data}"
+    elif data[".class"] == "RInstanceValue":
+        class_ = deserialize_type(data["class"], ctx)
+        assert isinstance(class_, RInstance)
+        return RInstanceValue(class_.class_ir)
     elif data[".class"] == "RTuple":
         return RTuple.deserialize(data, ctx)
     elif data[".class"] == "RUnion":
@@ -114,6 +118,10 @@ class RTypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_rinstance(self, typ: RInstance) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_rinstance_value(self, typ: RInstanceValue) -> T:
         raise NotImplementedError
 
     @abstractmethod
@@ -574,6 +582,9 @@ class TupleNameVisitor(RTypeVisitor[str]):
     def visit_rinstance(self, t: RInstance) -> str:
         return "O"
 
+    def visit_rinstance_value(self, typ: RInstanceValue) -> T:
+        return "O"
+
     def visit_runion(self, t: RUnion) -> str:
         return "O"
 
@@ -798,7 +809,7 @@ class RStruct(RType):
 class RInstance(RType):
     """Instance of user-defined class (compiled to C extension class).
 
-    The runtime representation is 'PyObject *', and these are always
+    The runtime representation is typically 'PyObject *', and these are
     boxed and thus reference-counted.
 
     These support fast method calls and fast attribute access using
@@ -849,6 +860,40 @@ class RInstance(RType):
 
     def serialize(self) -> str:
         return self.name
+
+
+class RInstanceValue(RInstance):
+    """
+    Fixed-length unboxed Value Type.
+
+    These are used to represent unboxed values of RInstance which match
+    the Value Type constraints.
+    """
+
+    is_unboxed = True
+    is_refcounted = False
+
+    def __init__(self, class_ir: ClassIR) -> None:
+        super().__init__(class_ir)
+        self._ctype = self.class_ir.struct_name2()
+
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
+        return visitor.visit_rinstance_value(self)
+
+    def attr_type(self, name: str) -> RType:
+        return self.class_ir.attr_type(name)
+
+    def __repr__(self) -> str:
+        return "<RInstanceValue %s>" % self.name
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RInstanceValue) and other.name == self.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
+    def serialize(self) -> JsonDict:
+        return {".class": "RInstanceValue", "class": super().serialize()}
 
 
 class RUnion(RType):

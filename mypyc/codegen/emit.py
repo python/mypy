@@ -23,6 +23,7 @@ from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.ops import BasicBlock, Value
 from mypyc.ir.rtypes import (
     RInstance,
+    RInstanceValue,
     RPrimitive,
     RTuple,
     RType,
@@ -322,6 +323,8 @@ class Emitter:
             return rtype.c_undefined
         elif isinstance(rtype, RTuple):
             return self.tuple_undefined_value(rtype)
+        elif isinstance(rtype, RInstanceValue):
+            return self.rinstance_value_undefined_value(rtype)
         assert False, rtype
 
     def c_error_value(self, rtype: RType) -> str:
@@ -427,6 +430,8 @@ class Emitter:
             return self.tuple_undefined_check_cond(
                 rtype, value, self.c_error_value, compare, check_exception=False
             )
+        elif isinstance(rtype, RInstanceValue):
+            return f"{value}.vtable {compare} NULL"
         else:
             return f"{value} {compare} {self.c_error_value(rtype)}"
 
@@ -468,6 +473,10 @@ class Emitter:
         """Undefined tuple value suitable in an expression."""
         return f"({rtuple.struct_name}) {self.c_initializer_undefined_value(rtuple)}"
 
+    def rinstance_value_undefined_value(self, rinstance_value: RInstanceValue) -> str:
+        """Undefined value for an unboxed instance."""
+        return f"(({rinstance_value.struct_name(self.names)}){self.c_initializer_undefined_value(rinstance_value)})"
+
     def c_initializer_undefined_value(self, rtype: RType) -> str:
         """Undefined value represented in a form suitable for variable initialization."""
         if isinstance(rtype, RTuple):
@@ -477,6 +486,8 @@ class Emitter:
                 return f"{{ {int_rprimitive.c_undefined} }}"
             items = ", ".join([self.c_initializer_undefined_value(t) for t in rtype.types])
             return f"{{ {items} }}"
+        elif isinstance(rtype, RInstanceValue):
+            return "{0}"
         else:
             return self.c_undefined_value(rtype)
 
@@ -987,7 +998,17 @@ class Emitter:
             self.emit_line("}")
             if optional:
                 self.emit_line("}")
+        elif isinstance(typ, RInstanceValue):
+            if declare_dest:
+                self.emit_line(f"{self.ctype(typ)} {dest};")
+            if optional:
+                self.emit_line(f"if ({src} == NULL) {{")
+                self.emit_line(f"{dest} = {self.c_error_value(typ)};")
+                self.emit_line("} else {")
 
+            self.emit_line(f"{dest} = *({self.ctype(typ)} *){src};")
+            if optional:
+                self.emit_line("}")
         else:
             assert False, "Unboxing not implemented: %s" % typ
 
@@ -1041,6 +1062,24 @@ class Emitter:
                     inner_name = self.temp_name()
                     self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
                     self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
+        elif isinstance(typ, RInstanceValue):
+            cl = typ.class_ir
+            generate_full = not cl.is_trait and not cl.builtin_base
+            assert generate_full, "Only full classes can be boxed"  # only those have setup method
+            name_prefix = cl.name_prefix(self.names)
+            setup_name = f"{name_prefix}_setup"
+            py_type_struct = self.type_struct_name(cl)
+            temp_dest = self.temp_name()
+            self.emit_line(
+                f"{self.ctype_spaced(typ)}*{temp_dest} = ({self.ctype_spaced(typ)}*){setup_name}({py_type_struct});"
+            )
+            self.emit_line(f"if (unlikely({temp_dest} == NULL))")
+            self.emit_line("    CPyError_OutOfMemory();")
+            for attr, attr_type in cl.attributes.items():
+                attr_name = self.attr(attr)
+                self.emit_line(f"{temp_dest}->{attr_name} = {src}.{attr_name};", ann="box")
+
+            self.emit_line(f"{declaration}{dest} = (PyObject *){temp_dest};")
         else:
             assert not typ.is_unboxed
             # Type is boxed -- trivially just assign.
@@ -1054,6 +1093,8 @@ class Emitter:
             else:
                 cond = self.tuple_undefined_check_cond(rtype, value, self.c_error_value, "==")
                 self.emit_line(f"if ({cond}) {{")
+        elif isinstance(rtype, RInstanceValue):
+            self.emit_line(f"if ({value}.vtable == NULL) {{")
         elif rtype.error_overlap:
             # The error value is also valid as a normal value, so we need to also check
             # for a raised exception.

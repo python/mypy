@@ -17,11 +17,12 @@ non-locals is via an instance of an environment class. Example:
 
 from __future__ import annotations
 
-from mypy.nodes import Argument, FuncDef, SymbolNode, Var
-from mypyc.common import BITMAP_BITS, ENV_ATTR_NAME, SELF_NAME, bitmap_name
+from mypy.nodes import Argument, FuncDef, SymbolNode
+from mypyc.common import BITMAP_BITS, ENV_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FuncSignature
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
-from mypyc.ir.rtypes import RInstance, bitmap_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import RInstance, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
 from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
@@ -45,18 +46,18 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     env_class = ClassIR(
         f"{builder.fn_info.namespaced_name()}_env", builder.module_name, is_generated=True
     )
-    env_class.attributes[SELF_NAME] = RInstance(env_class)
+    env_class.attributes[SELF_NAME] = env_class.rtype
     if builder.fn_info.is_nested:
         # If the function is nested, its environment class must contain an environment
         # attribute pointing to its encapsulating functions' environment class.
-        env_class.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
+        env_class.attributes[ENV_ATTR_NAME] = builder.fn_infos[-2].env_class.rtype
     env_class.mro = [env_class]
     builder.fn_info.env_class = env_class
     builder.classes.append(env_class)
     return env_class
 
 
-def finalize_env_class(builder: IRBuilder) -> None:
+def finalize_env_class(builder: IRBuilder, sig: FuncSignature) -> None:
     """Generate, instantiate, and set up the environment of an environment class."""
     instantiate_env_class(builder)
 
@@ -64,9 +65,9 @@ def finalize_env_class(builder: IRBuilder) -> None:
     # that were previously added to the environment with references to the function's
     # environment class.
     if builder.fn_info.is_nested:
-        add_args_to_env(builder, local=False, base=builder.fn_info.callable_class)
+        add_args_to_env(builder, sig, local=False, base=builder.fn_info.callable_class)
     else:
-        add_args_to_env(builder, local=False, base=builder.fn_info)
+        add_args_to_env(builder, sig, local=False, base=builder.fn_info)
 
 
 def instantiate_env_class(builder: IRBuilder) -> Value:
@@ -91,7 +92,7 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
     return curr_env_reg
 
 
-def load_env_registers(builder: IRBuilder) -> None:
+def load_env_registers(builder: IRBuilder, sig: FuncSignature) -> None:
     """Load the registers for the current FuncItem being visited.
 
     Adds the arguments of the FuncItem to the environment. If the
@@ -99,7 +100,7 @@ def load_env_registers(builder: IRBuilder) -> None:
     loads all of the outer environments of the FuncItem into registers
     so that they can be used when accessing free variables.
     """
-    add_args_to_env(builder, local=True)
+    add_args_to_env(builder, sig, local=True)
 
     fn_info = builder.fn_info
     fitem = fn_info.fitem
@@ -170,25 +171,21 @@ def num_bitmap_args(builder: IRBuilder, args: list[Argument]) -> int:
 
 def add_args_to_env(
     builder: IRBuilder,
+    sig: FuncSignature,
     local: bool = True,
     base: FuncInfo | ImplicitClass | None = None,
     reassign: bool = True,
 ) -> None:
     fn_info = builder.fn_info
-    args = fn_info.fitem.arguments
-    nb = num_bitmap_args(builder, args)
     if local:
-        for arg in args:
-            rtype = builder.type_to_rtype(arg.variable.type)
-            builder.add_local_reg(arg.variable, rtype, is_arg=True)
-        for i in reversed(range(nb)):
-            builder.add_local_reg(Var(bitmap_name(i)), bitmap_rprimitive, is_arg=True)
+        for sarg, farg in zip(sig.args, fn_info.fitem.arguments):
+            assert sarg.name == farg.variable.name
+            builder.add_local_reg(farg.variable, sarg.type, is_arg=True)
     else:
-        for arg in args:
-            if is_free_variable(builder, arg.variable) or fn_info.is_generator:
-                rtype = builder.type_to_rtype(arg.variable.type)
+        for sarg, farg in zip(sig.args, fn_info.fitem.arguments):
+            if is_free_variable(builder, farg.variable) or fn_info.is_generator:
                 assert base is not None, "base cannot be None for adding nonlocal args"
-                builder.add_var_to_env_class(arg.variable, rtype, base, reassign=reassign)
+                builder.add_var_to_env_class(farg.variable, sarg.type, base, reassign=reassign)
 
 
 def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: ImplicitClass) -> None:

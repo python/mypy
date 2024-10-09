@@ -294,7 +294,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         # Declare setup method that allocates and initializes an object. type is the
         # type of the class being initialized, which could be another class if there
         # is an interpreted subclass.
-        emitter.emit_line(f"static PyObject *{setup_name}(PyTypeObject *type);")
+        emitter.context.declarations[setup_name] = HeaderDeclaration(
+            f"PyObject *{setup_name}(PyTypeObject *type);", needs_export=True
+        )
+
         assert cl.ctor is not None
         emitter.emit_line(native_function_header(cl.ctor, emitter) + ";")
 
@@ -394,6 +397,7 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
                         if attr not in bitmap_attrs:
                             lines.append(f"{BITMAP_TYPE} {attr};")
                             bitmap_attrs.append(attr)
+
             for attr, rtype in base.attributes.items():
                 if (attr, rtype) not in seen_attrs:
                     lines.append(f"{emitter.ctype_spaced(rtype)}{emitter.attr(attr)};")
@@ -555,7 +559,7 @@ def generate_setup_for_class(
     emitter: Emitter,
 ) -> None:
     """Generate a native function that allocates an instance of a class."""
-    emitter.emit_line("static PyObject *")
+    emitter.emit_line("PyObject *")
     emitter.emit_line(f"{func_name}(PyTypeObject *type)")
     emitter.emit_line("{")
     emitter.emit_line(f"{cl.struct_name(emitter.names)} *self;")
@@ -586,7 +590,7 @@ def generate_setup_for_class(
 
             # We don't need to set this field to NULL since tp_alloc() already
             # zero-initializes `self`.
-            if value != "NULL":
+            if value not in ("NULL", "0"):
                 emitter.emit_line(rf"self->{emitter.attr(attr)} = {value};")
 
     # Initialize attributes to default values, if necessary
@@ -615,10 +619,15 @@ def generate_constructor_for_class(
     """Generate a native function that allocates and initializes an instance of a class."""
     emitter.emit_line(f"{native_function_header(fn, emitter)}")
     emitter.emit_line("{")
-    emitter.emit_line(f"PyObject *self = {setup_name}({emitter.type_struct_name(cl)});")
-    emitter.emit_line("if (self == NULL)")
-    emitter.emit_line("    return NULL;")
-    args = ", ".join(["self"] + [REG_PREFIX + arg.name for arg in fn.sig.args])
+    if cl.is_value_type:
+        emitter.emit_line(f"{cl.struct_name(emitter.names)} self = {{0}};")
+        emitter.emit_line(f"self.vtable = {vtable_name};")
+        args = ", ".join(["(PyObject*)&self"] + [REG_PREFIX + arg.name for arg in fn.sig.args])
+    else:
+        emitter.emit_line(f"PyObject *self = {setup_name}({emitter.type_struct_name(cl)});")
+        emitter.emit_line("if (self == NULL)")
+        emitter.emit_line("    return NULL;")
+        args = ", ".join(["self"] + [REG_PREFIX + arg.name for arg in fn.sig.args])
     if init_fn is not None:
         emitter.emit_line(
             "char res = {}{}{}({});".format(
@@ -629,8 +638,12 @@ def generate_constructor_for_class(
             )
         )
         emitter.emit_line("if (res == 2) {")
-        emitter.emit_line("Py_DECREF(self);")
-        emitter.emit_line("return NULL;")
+        if cl.is_value_type:
+            emitter.emit_line("self.vtable = NULL;")
+            emitter.emit_line("return self;")
+        else:
+            emitter.emit_line("Py_DECREF(self);")
+            emitter.emit_line("return NULL;")
         emitter.emit_line("}")
 
     # If there is a nontrivial ctor that we didn't define, invoke it via tp_init
@@ -638,8 +651,12 @@ def generate_constructor_for_class(
         emitter.emit_line(f"int res = {emitter.type_struct_name(cl)}->tp_init({args});")
 
         emitter.emit_line("if (res < 0) {")
-        emitter.emit_line("Py_DECREF(self);")
-        emitter.emit_line("return NULL;")
+        if cl.is_value_type:
+            emitter.emit_line("self.vtable = NULL;")
+            emitter.emit_line("return self;")
+        else:
+            emitter.emit_line("Py_DECREF(self);")
+            emitter.emit_line("return NULL;")
         emitter.emit_line("}")
 
     emitter.emit_line("return self;")

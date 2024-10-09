@@ -81,6 +81,26 @@ def dataclass_type(cdef: ClassDef) -> str | None:
     return None
 
 
+def is_immutable(cdef: ClassDef) -> bool:
+    """Check if a class is immutable by checking if all its variables are marked as Final."""
+    for v in cdef.info.names.values():
+        if (
+            isinstance(v.node, Var)
+            and not v.node.is_classvar
+            and v.node.name not in ("__slots__", "__deletable__")
+        ):
+            if not v.node.is_final or v.node.is_settable_property:
+                return False
+
+    return True
+
+
+def is_value_type(cdef: ClassDef) -> bool:
+    val = get_mypyc_attrs(cdef).get("value_type", False)
+    assert isinstance(val, bool)
+    return val is True
+
+
 def get_mypyc_attr_literal(e: Expression) -> Any:
     """Convert an expression from a mypyc_attr decorator to a value.
 

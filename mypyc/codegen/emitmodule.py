@@ -63,6 +63,7 @@ from mypyc.transform.flag_elimination import do_flag_elimination
 from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.uninit import insert_uninit_checks
+from mypyc.transform.value_type_init import patch_value_type_init_methods
 
 # All of the modules being compiled are divided into "groups". A group
 # is a set of modules that are placed into the same shared library.
@@ -231,6 +232,8 @@ def compile_scc_to_ir(
 
     for module in modules.values():
         for fn in module.functions:
+            # Patch init methods for Value Types
+            patch_value_type_init_methods(fn, compiler_options)
             # Insert uninit checks.
             insert_uninit_checks(fn)
             # Insert exception handling.

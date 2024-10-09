@@ -71,17 +71,32 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.ir.rtypes import (
+    PyObject,
     RArray,
     RInstance,
+    RInstanceValue,
     RStruct,
     RTuple,
     RType,
+    c_pyssize_t_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
     is_pointer_rprimitive,
     is_tagged,
 )
+
+
+def struct_type(class_ir: ClassIR, emitter: Emitter) -> RStruct:
+    """Return the struct type for this instance type."""
+    python_fields: list[tuple[str, RType]] = [
+        ("head", PyObject),
+        ("vtable", c_pyssize_t_rprimitive),
+    ]
+    class_fields = list(class_ir.attributes.items())
+    attr_names = [emitter.attr(name) for name, _ in python_fields + class_fields]
+    attr_types = [rtype for _, rtype in python_fields + class_fields]
+    return RStruct(class_ir.struct_name(emitter.names), attr_names, attr_types)
 
 
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
@@ -229,6 +244,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 cond = self.emitter.tuple_undefined_check_cond(
                     typ, self.reg(op.value), self.c_error_value, compare
                 )
+            elif isinstance(typ, RInstanceValue):
+                cond = f"{self.reg(op.value)}.vtable {compare} NULL"
             else:
                 cond = f"{self.reg(op.value)} {compare} {self.c_error_value(typ)}"
         else:
@@ -352,7 +369,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if op.class_type.class_ir.is_trait:
                 assert not decl_cl.is_trait
                 cast = f"({decl_cl.struct_name(self.emitter.names)} *)"
-            return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
+
+            if op.obj.type.is_unboxed:
+                return f"{obj}.{self.emitter.attr(op.attr)}"
+            else:
+                return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
 
     def visit_get_attr(self, op: GetAttr) -> None:
         dest = self.reg(op)
@@ -383,8 +404,18 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
-            self.emitter.emit_line(f"{dest} = {attr_expr};")
             always_defined = cl.is_always_defined(op.attr)
+            # This steals the reference to src, so we don't need to increment the arg
+            if isinstance(attr_rtype, RInstance) and attr_rtype.class_ir.is_value_type:
+                # special case for value types, it is unboxed in the struct
+                struct_name = attr_rtype.class_ir.struct_name(self.names)
+                temp = self.emitter.temp_name()
+                self.emitter.emit_line(f"{struct_name} {temp} = {attr_expr};")
+                self.emitter.emit_line(f"{dest} = (PyObject *)&{temp};")
+                always_defined = True
+            else:
+                self.emitter.emit_line(f"{dest} = {attr_expr};")
+
             merged_branch = None
             if not always_defined:
                 self.emitter.emit_undefined_attr_check(
@@ -481,7 +512,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.emitter.emit_attr_bitmap_set(src, obj, attr_rtype, cl, op.attr)
 
             # This steals the reference to src, so we don't need to increment the arg
-            self.emitter.emit_line(f"{attr_expr} = {src};")
+            if isinstance(attr_rtype, RInstance) and attr_rtype.class_ir.is_value_type:
+                # special case for value types, it is unboxed in the struct
+                struct_name = attr_rtype.class_ir.struct_name(self.names)
+                self.emitter.emit_line(f"{attr_expr} = *({struct_name} *)({src});")
+            else:
+                self.emitter.emit_line(f"{attr_expr} = {src};")
             if op.error_kind == ERR_FALSE:
                 self.emitter.emit_line(f"{dest} = 1;")
 

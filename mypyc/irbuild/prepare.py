@@ -50,14 +50,16 @@ from mypyc.ir.func_ir import (
     RuntimeArg,
 )
 from mypyc.ir.ops import DeserMaps
-from mypyc.ir.rtypes import RInstance, RType, dict_rprimitive, none_rprimitive, tuple_rprimitive
+from mypyc.ir.rtypes import RType, dict_rprimitive, none_rprimitive, tuple_rprimitive
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def,
     get_mypyc_attrs,
     is_dataclass,
     is_extension_class,
+    is_immutable,
     is_trait,
+    is_value_type,
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
@@ -86,6 +88,8 @@ def build_type_map(
             is_trait(cdef),
             is_abstract=cdef.info.is_abstract,
             is_final_class=cdef.info.is_final,
+            is_immutable=is_immutable(cdef),
+            is_value_type=is_value_type(cdef),
         )
         class_ir.is_ext_class = is_extension_class(cdef)
         if class_ir.is_ext_class:
@@ -414,7 +418,7 @@ def add_property_methods_for_attribute_if_needed(
 def add_getter_declaration(
     ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str
 ) -> None:
-    self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
+    self_arg = RuntimeArg("self", ir.rtype, pos_only=True)
     sig = FuncSignature([self_arg], attr_rtype)
     decl = FuncDecl(attr_name, ir.name, module_name, sig, FUNC_NORMAL)
     decl.is_prop_getter = True
@@ -426,7 +430,7 @@ def add_getter_declaration(
 def add_setter_declaration(
     ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str
 ) -> None:
-    self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
+    self_arg = RuntimeArg("self", ir.rtype, pos_only=True)
     value_arg = RuntimeArg("value", attr_rtype, pos_only=True)
     sig = FuncSignature([self_arg, value_arg], none_rprimitive)
     setter_name = PROPSET_PREFIX + attr_name
@@ -461,7 +465,7 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
             )
 
         last_arg = len(init_sig.args) - init_sig.num_bitmap_args
-        ctor_sig = FuncSignature(init_sig.args[1:last_arg], RInstance(ir))
+        ctor_sig = FuncSignature(init_sig.args[1:last_arg], ir.rtype)
         ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
         mapper.func_to_decl[cdef.info] = ir.ctor
 

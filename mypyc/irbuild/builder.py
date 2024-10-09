@@ -1181,7 +1181,7 @@ class IRBuilder:
         self.class_ir_stack.append(class_ir)
         self.ret_types[-1] = ret_type
         if self_type is None:
-            self_type = RInstance(class_ir)
+            self_type = class_ir.rtype
         self.add_argument(SELF_NAME, self_type)
         try:
             yield
@@ -1239,7 +1239,7 @@ class IRBuilder:
 
         This is only useful if using enter() instead of enter_method().
         """
-        return self.add_local_reg(Var(SELF_NAME), RInstance(cls), is_arg=True)
+        return self.add_local_reg(Var(SELF_NAME), cls.rtype, is_arg=True)
 
     def add_target(self, symbol: SymbolNode, target: SymbolTarget) -> SymbolTarget:
         self.symtables[-1][symbol] = target
