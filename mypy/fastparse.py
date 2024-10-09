@@ -240,6 +240,29 @@ def parse(
             strip_function_bodies=strip_function_bodies,
             path=fnam,
         ).visit(ast)
+
+    except RecursionError as e:
+        # For very complex expressions it is possible to hit recursion limit
+        # before reaching a leaf node.
+        # Should reject at top level instead at bottom, since bottom would already
+        # be at the threshold of the recursion limit, and may fail again later.
+        # E.G. x1+x2+x3+...+xn -> BinOp(left=BinOp(left=BinOp(left=...
+        try:
+            # But to prove that is the cause of this particular recursion error,
+            # try to walk the tree using builtin visitor
+            ast3.NodeVisitor().visit(ast)
+        except RecursionError:
+            errors.report(
+                -1, -1, "Source expression too complex to parse", blocker=False, code=codes.MISC
+            )
+
+            tree = MypyFile([], [], False, {})
+
+        else:
+            # re-raise original recursion error if it *can* be unparsed,
+            # maybe this is some other issue that shouldn't be silenced/misdirected
+            raise e
+
     except SyntaxError as e:
         # alias to please mypyc
         is_py38_or_earlier = sys.version_info < (3, 9)
@@ -414,6 +437,7 @@ class ASTConverter:
             method = "visit_" + node.__class__.__name__
             visitor = getattr(self, method)
             self.visitor_cache[typeobj] = visitor
+
         return visitor(node)
 
     def set_line(self, node: N, n: AstNode) -> N:
