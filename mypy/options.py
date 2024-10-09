@@ -50,6 +50,7 @@ PER_MODULE_OPTIONS: Final = {
     "mypyc",
     "strict_concatenate",
     "strict_equality",
+    "strict_bool",
     "strict_optional",
     "warn_no_return",
     "warn_return_any",
@@ -211,6 +212,10 @@ class Options:
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
+
+        # Prohibit to treat `bool` as `int` in subtyping contexts.
+        # This makes `def a(b: int): ...; a(True)` an error.
+        self.strict_bool = False
 
         # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
