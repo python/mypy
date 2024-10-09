@@ -131,18 +131,17 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     if isinstance(get_proper_type(ctx.arg_types[0][0]), Overloaded):
         # TODO: handle overloads, just fall back to whatever the non-plugin code does
         return ctx.default_return_type
-    callee = ctx.arg_types[0][0]
-    if isinstance(callee_proper := get_proper_type(callee), UnionType):
-        return UnionType.make_union(
-            [handle_partial_with_callee(ctx, item) for item in callee_proper.items]
-        )
-    else:
-        return handle_partial_with_callee(ctx, callee)
+    return handle_partial_with_callee(ctx, callee=ctx.arg_types[0][0])
 
 
 def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -> Type:
     if not isinstance(ctx.api, mypy.checker.TypeChecker):  # use internals
         return ctx.default_return_type
+
+    if isinstance(callee_proper := get_proper_type(callee), UnionType):
+        return UnionType.make_union(
+            [handle_partial_with_callee(ctx, item) for item in callee_proper.items]
+        )
 
     fn_type = ctx.api.extract_callable_type(callee, ctx=ctx.default_return_type)
     if fn_type is None:
