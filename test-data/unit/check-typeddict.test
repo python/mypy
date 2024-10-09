@@ -3988,3 +3988,44 @@ class TP(TypedDict):
     k: ReadOnly  # E: "ReadOnly[]" must have exactly one type argument
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyCovariant]
+from typing import ReadOnly, TypedDict, Union
+
+class A(TypedDict):
+    a: ReadOnly[Union[int, str]]
+
+class A2(TypedDict):
+    a: ReadOnly[int]
+
+class B(TypedDict):
+    a: int
+
+class B2(TypedDict):
+    a: Union[int, str]
+
+class B3(TypedDict):
+    a: int
+
+def fa(a: A) -> None: ...
+def fa2(a: A2) -> None: ...
+
+b: B = {"a": 1}
+fa(b)
+fa2(b)
+b2: B2 = {"a": 1}
+fa(b2)
+fa2(b2)  # E: Argument 1 to "fa2" has incompatible type "B2"; expected "A2"
+
+class C(TypedDict):
+    a: ReadOnly[Union[int, str]]
+    b: Union[str, bytes]
+
+class D(TypedDict):
+    a: int
+    b: str
+
+d: D = {"a": 1, "b": "x"}
+c: C = d  # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
