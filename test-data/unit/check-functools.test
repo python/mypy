@@ -557,3 +557,39 @@ def bar(f: S) -> S:
     g = functools.partial(f, "foo")
     return f
 [builtins fixtures/primitives.pyi]
+
+
+[case testFunctoolsPartialAbstractType]
+# flags: --python-version 3.9
+from abc import ABC, abstractmethod
+from functools import partial
+
+class A(ABC):
+    def __init__(self) -> None: ...
+    @abstractmethod
+    def method(self) -> None: ...
+
+def f1(cls: type[A]) -> None:
+    cls()
+    partial_cls = partial(cls)
+    partial_cls()
+
+def f2() -> None:
+    A()  # E: Cannot instantiate abstract class "A" with abstract attribute "method"
+    partial_cls = partial(A)  # E: Cannot instantiate abstract class "A" with abstract attribute "method"
+    partial_cls()  # E: Cannot instantiate abstract class "A" with abstract attribute "method"
+[builtins fixtures/tuple.pyi]
+
+
+[case testFunctoolsPartialSelfType]
+from functools import partial
+from typing_extensions import Self
+
+class A:
+    def __init__(self, ts: float, msg: str) -> None: ...
+
+    @classmethod
+    def from_msg(cls, msg: str) -> Self:
+        factory = partial(cls, ts=0)
+        return factory(msg=msg)
+[builtins fixtures/tuple.pyi]

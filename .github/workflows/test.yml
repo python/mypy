@@ -71,8 +71,8 @@ jobs:
           tox_extra_args: "-n 4"
           test_mypyc: true
 
-        - name: Test suite with py313-dev-ubuntu, mypyc-compiled
-          python: '3.13-dev'
+        - name: Test suite with py313-ubuntu, mypyc-compiled
+          python: '3.13'
           arch: x64
           os: ubuntu-latest
           toxenv: py

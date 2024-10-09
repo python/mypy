@@ -1078,14 +1078,6 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
     """
     typ = get_proper_type(typ)
     if isinstance(typ, Instance):
-        if (
-            typ.type.is_enum
-            and name in ("__eq__", "__ne__")
-            and any(base.fullname in ("enum.IntEnum", "enum.StrEnum") for base in typ.type.mro)
-        ):
-            # IntEnum and StrEnum values have non-straightfoward equality, so treat them
-            # as if they had custom __eq__ and __ne__
-            return True
         method = typ.type.get(name)
         if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
             if method.node.info:

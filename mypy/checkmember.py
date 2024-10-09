@@ -316,9 +316,12 @@ def analyze_instance_member_access(
 
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
-            first_item = method.items[0]
-            assert isinstance(first_item, Decorator)
-            return analyze_var(name, first_item.var, typ, info, mx)
+            getter = method.items[0]
+            assert isinstance(getter, Decorator)
+            if mx.is_lvalue and (len(items := method.items) > 1):
+                mx.chk.warn_deprecated(items[1], mx.context)
+            return analyze_var(name, getter.var, typ, info, mx)
+
         if mx.is_lvalue:
             mx.msg.cant_assign_to_method(mx.context)
         if not isinstance(method, OverloadedFuncDef):
@@ -493,6 +496,8 @@ def analyze_member_var_access(
     # It was not a method. Try looking up a variable.
     v = lookup_member_var_or_accessor(info, name, mx.is_lvalue)
 
+    mx.chk.warn_deprecated(v, mx.context)
+
     vv = v
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
@@ -572,7 +577,11 @@ def analyze_member_var_access(
                     if hook:
                         result = hook(
                             AttributeContext(
-                                get_proper_type(mx.original_type), result, mx.context, mx.chk
+                                get_proper_type(mx.original_type),
+                                result,
+                                mx.is_lvalue,
+                                mx.context,
+                                mx.chk,
                             )
                         )
                     return result
@@ -829,7 +838,9 @@ def analyze_var(
         result = analyze_descriptor_access(result, mx)
     if hook:
         result = hook(
-            AttributeContext(get_proper_type(mx.original_type), result, mx.context, mx.chk)
+            AttributeContext(
+                get_proper_type(mx.original_type), result, mx.is_lvalue, mx.context, mx.chk
+            )
         )
     return result
 
@@ -1004,6 +1015,8 @@ def analyze_class_attribute_access(
         # on the class object itself rather than the instance.
         return None
 
+    mx.chk.warn_deprecated(node.node, mx.context)
+
     is_decorated = isinstance(node.node, Decorator)
     is_method = is_decorated or isinstance(node.node, FuncBase)
     if mx.is_lvalue:
@@ -1148,7 +1161,9 @@ def apply_class_attr_hook(
 ) -> Type | None:
     if hook:
         result = hook(
-            AttributeContext(get_proper_type(mx.original_type), result, mx.context, mx.chk)
+            AttributeContext(
+                get_proper_type(mx.original_type), result, mx.is_lvalue, mx.context, mx.chk
+            )
         )
     return result
 
