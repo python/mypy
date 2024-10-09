@@ -573,6 +573,11 @@ def process_options(
         help="Silently ignore imports of missing modules",
     )
     imports_group.add_argument(
+        "--enable-installed-packages",
+        action="store_true",
+        help="Typecheck modules without stubs or py.typed marker",
+    )
+    imports_group.add_argument(
         "--follow-imports",
         choices=["normal", "silent", "skip", "error"],
         default="normal",
