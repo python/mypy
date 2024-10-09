@@ -686,10 +686,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(inner_type, TypeVarLikeType):
                 inner_type = get_proper_type(inner_type.upper_bound)
             if isinstance(inner_type, TypeType):
-                if isinstance(inner_type.item, Instance):
-                    inner_type = expand_type_by_instance(
-                        type_object_type(inner_type.item.type, self.named_type), inner_type.item
-                    )
+                inner_type = get_proper_type(
+                    self.expr_checker.analyze_type_type_callee(inner_type.item, ctx)
+                )
+
             if isinstance(inner_type, CallableType):
                 outer_type = inner_type
             elif isinstance(inner_type, Instance):
@@ -4581,6 +4581,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         s.expr, return_type, allow_none_return=allow_none_func_call
                     )
                 )
+                # Treat NotImplemented as having type Any, consistent with its
+                # definition in typeshed prior to python/typeshed#4222.
+                if (
+                    isinstance(typ, Instance)
+                    and typ.type.fullname == "builtins._NotImplementedType"
+                ):
+                    typ = AnyType(TypeOfAny.special_form)
 
                 if defn.is_async_generator:
                     self.fail(message_registry.RETURN_IN_ASYNC_GENERATOR, s)
@@ -4745,6 +4752,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(typ, FunctionLike):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
+
+        if isinstance(typ, Instance) and typ.type.fullname == "builtins._NotImplementedType":
+            self.fail(
+                message_registry.INVALID_EXCEPTION.with_additional_msg(
+                    '; did you mean "NotImplementedError"?'
+                ),
+                s,
+            )
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""

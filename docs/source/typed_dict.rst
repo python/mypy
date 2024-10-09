@@ -236,6 +236,46 @@ another ``TypedDict`` if all required keys in the other ``TypedDict`` are requir
 first ``TypedDict``, and all non-required keys of the other ``TypedDict`` are also non-required keys
 in the first ``TypedDict``.
 
+Read-only items
+---------------
+
+You can use ``typing.ReadOnly``, introduced in Python 3.13, or
+``typing_extensions.ReadOnly`` to mark TypedDict items as read-only (:pep:`705`):
+
+.. code-block:: python
+
+    from typing import TypedDict
+
+    # Or "from typing ..." on Python 3.13+
+    from typing_extensions import ReadOnly
+
+    class Movie(TypedDict):
+        name: ReadOnly[str]
+        num_watched: int
+
+    m: Movie = {"name": "Jaws", "num_watched": 1}
+    m["name"] = "The Godfather"  # Error: "name" is read-only
+    m["num_watched"] += 1  # OK
+
+A TypedDict with a mutable item can be assigned to a TypedDict
+with a corresponding read-only item, and the type of the item can
+vary :ref:`covariantly <variance-of-generics>`:
+
+.. code-block:: python
+
+    class Entry(TypedDict):
+        name: ReadOnly[str | None]
+        year: ReadOnly[int]
+
+    class Movie(TypedDict):
+        name: str
+        year: int
+
+    def process_entry(i: Entry) -> None: ...
+
+    m: Movie = {"name": "Jaws", "year": 1975}
+    process_entry(m)  # OK
+
 Unions of TypedDicts
 --------------------
 
