@@ -1413,7 +1413,11 @@ def process_options(
                 fail(f"Package name '{p}' cannot have a slash in it.", stderr, options)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail(f"Can't find package '{p}'", stderr, options)
+                fail(
+                    f"Can't find package '{p}'. This can happen when py.typed is missing. See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
+                    stderr,
+                    options,
+                )
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
