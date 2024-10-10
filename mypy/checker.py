@@ -160,7 +160,6 @@ from mypy.subtypes import (
 )
 from mypy.traverser import TraverserVisitor, all_return_statements, has_return_statement
 from mypy.treetransform import TransformVisitor
-from mypy.type_visitor import TypeVisitor
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type, make_optional_type
 from mypy.typeops import (
     bind_self,
@@ -290,94 +289,24 @@ class PartialTypeScope(NamedTuple):
     is_local: bool
 
 
-class InstanceDeprecatedVisitor(TypeVisitor[None]):
+class InstanceDeprecatedVisitor(TypeTraverserVisitor):
     """Visitor that recursively checks for deprecations in nested instances."""
 
     def __init__(self, typechecker: TypeChecker, context: Context) -> None:
         self.typechecker = typechecker
         self.context = context
-        self.visited: set[Type] = set()
-
-    def _already_visited(self, t: Type, /) -> bool:
-        if t in self.visited:
-            return True
-        self.visited.add(t)
-        return False
-
-    def visit_any(self, t: AnyType) -> None:
-        pass
-
-    def visit_callable_type(self, t: CallableType) -> None:
-        if not self._already_visited(t):
-            for arg_type in t.arg_types:
-                arg_type.accept(self)
-            t.ret_type.accept(self)
-
-    def visit_deleted_type(self, t: DeletedType) -> None:
-        pass
-
-    def visit_erased_type(self, t: ErasedType) -> None:
-        pass
+        self.seen_aliases: set[TypeAliasType] = set()
 
     def visit_instance(self, t: Instance) -> None:
-        if not self._already_visited(t):
-            self.typechecker.check_deprecated(t.type, self.context)
-            for arg in t.args:
-                arg.accept(self)
-
-    def visit_literal_type(self, t: LiteralType) -> None:
-        pass
-
-    def visit_none_type(self, t: NoneType) -> None:
-        pass
-
-    def visit_overloaded(self, t: Overloaded) -> None:
-        pass
-
-    def visit_param_spec(self, t: ParamSpecType) -> None:
-        pass
-
-    def visit_parameters(self, t: Parameters) -> None:
-        pass
-
-    def visit_partial_type(self, t: PartialType) -> None:
-        pass
-
-    def visit_tuple_type(self, t: TupleType) -> None:
-        if not self._already_visited(t):
-            for item in t.items:
-                item.accept(self)
+        super().visit_instance(t)
+        self.typechecker.check_deprecated(t.type, self.context)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
-        if not self._already_visited(t):
+        super().visit_type_alias_type(t)
+        if t not in self.seen_aliases:
+            self.seen_aliases.add(t)
             if ((alias := t.alias) is not None) and ((target := alias.target) is not None):
                 target.accept(self)
-
-    def visit_type_type(self, t: TypeType) -> None:
-        pass
-
-    def visit_type_var(self, t: TypeVarType) -> None:
-        pass
-
-    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
-        pass
-
-    def visit_typeddict_type(self, t: TypedDictType) -> None:
-        pass
-
-    def visit_unbound_type(self, t: UnboundType) -> None:
-        pass
-
-    def visit_uninhabited_type(self, t: UninhabitedType) -> None:
-        pass
-
-    def visit_union_type(self, t: UnionType) -> None:
-        if not self._already_visited(t):
-            for item in t.items:
-                item.accept(self)
-
-    def visit_unpack_type(self, t: UnpackType) -> None:
-        pass
 
 
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
