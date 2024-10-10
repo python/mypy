@@ -44,7 +44,7 @@ platformdirs==3.11.0
     #   virtualenv
 pluggy==1.4.0
     # via pytest
-pre-commit==4.0.1
+pre-commit==3.5.0
     # via -r test-requirements.in
 psutil==5.9.6
     # via -r test-requirements.in
