@@ -8,22 +8,30 @@ attrs==23.1.0
     # via -r test-requirements.in
 black==24.3.0
     # via -r test-requirements.in
+cfgv==3.4.0
+    # via pre-commit
 click==8.1.7
     # via black
 coverage==7.3.2
     # via pytest-cov
+distlib==0.3.9
+    # via virtualenv
 execnet==2.0.2
     # via pytest-xdist
 filelock==3.12.4
-    # via -r test-requirements.in
+    # via
+    #   -r test-requirements.in
+    #   virtualenv
+identify==2.6.1
+    # via pre-commit
 iniconfig==2.0.0
     # via pytest
-lxml==4.9.2 ; (python_version < "3.11" or sys_platform != "win32") and python_version < "3.12"
-    # via -r test-requirements.in
 mypy-extensions==1.0.0
     # via
     #   -r mypy-requirements.txt
     #   black
+nodeenv==1.9.1
+    # via pre-commit
 packaging==23.2
     # via
     #   black
@@ -31,9 +39,13 @@ packaging==23.2
 pathspec==0.11.2
     # via black
 platformdirs==3.11.0
-    # via black
+    # via
+    #   black
+    #   virtualenv
 pluggy==1.4.0
     # via pytest
+pre-commit==4.0.1
+    # via -r test-requirements.in
 psutil==5.9.6
     # via -r test-requirements.in
 pytest==8.1.1
@@ -45,6 +57,8 @@ pytest-cov==4.1.0
     # via -r test-requirements.in
 pytest-xdist==3.3.1
     # via -r test-requirements.in
+pyyaml==6.0.2
+    # via pre-commit
 ruff==0.2.0
     # via -r test-requirements.in
 tomli==2.0.1
@@ -55,6 +69,8 @@ types-setuptools==68.2.0.0
     # via -r build-requirements.txt
 typing-extensions==4.12.2
     # via -r mypy-requirements.txt
+virtualenv==20.26.6
+    # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==70.0.0
