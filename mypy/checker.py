@@ -196,6 +196,8 @@ from mypy.types import (
     LiteralType,
     NoneType,
     Overloaded,
+    Parameters,
+    ParamSpecType,
     PartialType,
     ProperType,
     TupleType,
@@ -224,6 +226,7 @@ from mypy.types import (
 from mypy.types_utils import is_overlapping_none, remove_optional, store_argument_type, strip_type
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars, fill_typevars_with_any, has_no_typevars
+from mypy.type_visitor import TypeVisitor
 from mypy.util import is_dunder, is_sunder
 from mypy.visitor import NodeVisitor
 
@@ -285,6 +288,83 @@ class PartialTypeScope(NamedTuple):
     map: dict[Var, Context]
     is_function: bool
     is_local: bool
+
+
+class InstanceDeprecatedVisitor(TypeVisitor[None]):
+    """Visitor that recursively checks for deprecations in nested instances."""
+
+    def __init__(self, typechecker: TypeChecker, context: Context) -> None:
+        self.typechecker = typechecker
+        self.context = context
+
+    def visit_any(self, t: AnyType) -> None:
+        pass
+
+    def visit_callable_type(self, t: CallableType) -> None:
+        for arg_type in t.arg_types:
+            arg_type.accept(self)
+        t.ret_type.accept(self)
+
+    def visit_deleted_type(self, t: DeletedType) -> None:
+        pass
+
+    def visit_erased_type(self, t: ErasedType) -> None:
+        pass
+
+    def visit_instance(self, t: Instance) -> None:
+        self.typechecker.check_deprecated(t.type, self.context)
+        for arg in t.args:
+            arg.accept(self)
+
+    def visit_literal_type(self, t: LiteralType) -> None:
+        pass
+
+    def visit_none_type(self, t: NoneType) -> None:
+        pass
+
+    def visit_overloaded(self, t: Overloaded) -> None:
+        pass
+
+    def visit_param_spec(self, t: ParamSpecType) -> None:
+        pass
+
+    def visit_parameters(self, t: Parameters) -> None:
+        pass
+
+    def visit_partial_type(self, t: PartialType) -> None:
+        pass
+
+    def visit_tuple_type(self, t: TupleType) -> None:
+        for item in t.items:
+            item.accept(self)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> None:
+        t.alias.target.accept(self)
+
+    def visit_type_type(self, t: TypeType) -> None:
+        pass
+
+    def visit_type_var(self, t: TypeVarType) -> None:
+        pass
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
+        pass
+
+    def visit_typeddict_type(self, t: TypedDictType) -> None:
+        pass
+
+    def visit_unbound_type(self, t: UnboundType) -> None:
+        pass
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> None:
+        pass
+
+    def visit_union_type(self, t: UnionType) -> None:
+        for item in t.items:
+            item.accept(self)
+
+    def visit_unpack_type(self, t: UnpackType) -> None:
+        pass
 
 
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
@@ -2932,8 +3012,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if s.unanalyzed_type is not None:
             for lvalue in s.lvalues:
-                if isinstance(lvalue, NameExpr) and isinstance(var := lvalue.node, Var):
-                    self.search_deprecated(var.type, s, set())
+                if (
+                    isinstance(lvalue, NameExpr)
+                    and isinstance(var := lvalue.node, Var)
+                    and (var.type is not None)
+                ):
+                    var.type.accept(InstanceDeprecatedVisitor(typechecker=self, context=s))
 
         # Avoid type checking type aliases in stubs to avoid false
         # positives about modern type syntax available in stubs such
@@ -7576,20 +7660,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         ):
             warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
             warn(deprecated, context, code=codes.DEPRECATED)
-
-    def search_deprecated(
-        self, typ: Type | None, s: AssignmentStmt, visited: set[Type | None]
-    ) -> None:
-
-        if typ not in visited:
-            visited.add(typ)
-            if isinstance(typ := get_proper_type(typ), Instance):
-                self.check_deprecated(typ.type, s)
-                for arg in typ.args:
-                    self.search_deprecated(arg, s, visited)
-            elif isinstance(typ, (UnionType, TupleType)):
-                for item in typ.items:
-                    self.search_deprecated(item, s, visited)
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
