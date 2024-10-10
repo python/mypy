@@ -160,6 +160,7 @@ from mypy.subtypes import (
 )
 from mypy.traverser import TraverserVisitor, all_return_statements, has_return_statement
 from mypy.treetransform import TransformVisitor
+from mypy.type_visitor import TypeVisitor
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type, make_optional_type
 from mypy.typeops import (
     bind_self,
@@ -226,7 +227,6 @@ from mypy.types import (
 from mypy.types_utils import is_overlapping_none, remove_optional, store_argument_type, strip_type
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars, fill_typevars_with_any, has_no_typevars
-from mypy.type_visitor import TypeVisitor
 from mypy.util import is_dunder, is_sunder
 from mypy.visitor import NodeVisitor
 
