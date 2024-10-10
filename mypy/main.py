@@ -25,10 +25,10 @@ from mypy.fscache import FileSystemCache
 from mypy.modulefinder import (
     BuildSource,
     FindModuleCache,
+    ModuleNotFoundReason,
     SearchPaths,
     get_search_dirs,
     mypy_path,
-    ModuleNotFoundReason,
 )
 from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
