@@ -287,6 +287,26 @@ class PartialTypeScope(NamedTuple):
     is_local: bool
 
 
+class InstanceDeprecatedVisitor(TypeTraverserVisitor):
+    """Visitor that recursively checks for deprecations in nested instances."""
+
+    def __init__(self, typechecker: TypeChecker, context: Context) -> None:
+        self.typechecker = typechecker
+        self.context = context
+        self.seen_aliases: set[TypeAliasType] = set()
+
+    def visit_instance(self, t: Instance) -> None:
+        super().visit_instance(t)
+        self.typechecker.check_deprecated(t.type, self.context)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> None:
+        super().visit_type_alias_type(t)
+        if t not in self.seen_aliases:
+            self.seen_aliases.add(t)
+            if ((alias := t.alias) is not None) and ((target := alias.target) is not None):
+                target.accept(self)
+
+
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     """Mypy type checker.
 
@@ -2930,14 +2950,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
 
-        if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
+        if s.unanalyzed_type is not None:
             for lvalue in s.lvalues:
                 if (
                     isinstance(lvalue, NameExpr)
                     and isinstance(var := lvalue.node, Var)
-                    and isinstance(instance := get_proper_type(var.type), Instance)
+                    and (var.type is not None)
                 ):
-                    self.check_deprecated(instance.type, s)
+                    var.type.accept(InstanceDeprecatedVisitor(typechecker=self, context=s))
 
         # Avoid type checking type aliases in stubs to avoid false
         # positives about modern type syntax available in stubs such
