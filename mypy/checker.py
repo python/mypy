@@ -196,8 +196,6 @@ from mypy.types import (
     LiteralType,
     NoneType,
     Overloaded,
-    Parameters,
-    ParamSpecType,
     PartialType,
     ProperType,
     TupleType,
