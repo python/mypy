@@ -141,8 +141,11 @@ x8: List[Optional[Tuple[Union[List[C], int]]]]  # N: class __main__.C is depreca
 x9: Callable[[int], C]  # N: class __main__.C is deprecated: use C2 instead
 x10: Callable[[int, C, int], int]  # N: class __main__.C is deprecated: use C2 instead
 
-A: TypeAlias = Optional[C]  # ToDo
-x11: A  # N: class __main__.C is deprecated: use C2 instead
+A1: TypeAlias = Optional[C]  # ToDo
+x11: A1  # N: class __main__.C is deprecated: use C2 instead
+
+A2: TypeAlias = List[Union[A2, C]]  # ToDo
+x12: A2  # N: class __main__.C is deprecated: use C2 instead
 
 [builtins fixtures/tuple.pyi]
 

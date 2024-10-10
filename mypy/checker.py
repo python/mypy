@@ -296,14 +296,22 @@ class InstanceDeprecatedVisitor(TypeVisitor[None]):
     def __init__(self, typechecker: TypeChecker, context: Context) -> None:
         self.typechecker = typechecker
         self.context = context
+        self.visited: set[Type] = set()
+
+    def _already_visited(self, t: Type, /) -> bool:
+        if t in self.visited:
+            return True
+        self.visited.add(t)
+        return False
 
     def visit_any(self, t: AnyType) -> None:
         pass
 
     def visit_callable_type(self, t: CallableType) -> None:
-        for arg_type in t.arg_types:
-            arg_type.accept(self)
-        t.ret_type.accept(self)
+        if not self._already_visited(t):
+            for arg_type in t.arg_types:
+                arg_type.accept(self)
+            t.ret_type.accept(self)
 
     def visit_deleted_type(self, t: DeletedType) -> None:
         pass
@@ -312,9 +320,10 @@ class InstanceDeprecatedVisitor(TypeVisitor[None]):
         pass
 
     def visit_instance(self, t: Instance) -> None:
-        self.typechecker.check_deprecated(t.type, self.context)
-        for arg in t.args:
-            arg.accept(self)
+        if not self._already_visited(t):
+            self.typechecker.check_deprecated(t.type, self.context)
+            for arg in t.args:
+                arg.accept(self)
 
     def visit_literal_type(self, t: LiteralType) -> None:
         pass
@@ -335,11 +344,14 @@ class InstanceDeprecatedVisitor(TypeVisitor[None]):
         pass
 
     def visit_tuple_type(self, t: TupleType) -> None:
-        for item in t.items:
-            item.accept(self)
+        if not self._already_visited(t):
+            for item in t.items:
+                item.accept(self)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
-        t.alias.target.accept(self)
+        if not self._already_visited(t):
+            if ((alias := t.alias) is not None) and ((target := alias.target) is not None):
+                target.accept(self)
 
     def visit_type_type(self, t: TypeType) -> None:
         pass
@@ -360,8 +372,9 @@ class InstanceDeprecatedVisitor(TypeVisitor[None]):
         pass
 
     def visit_union_type(self, t: UnionType) -> None:
-        for item in t.items:
-            item.accept(self)
+        if not self._already_visited(t):
+            for item in t.items:
+                item.accept(self)
 
     def visit_unpack_type(self, t: UnpackType) -> None:
         pass
