@@ -942,6 +942,80 @@ def func(var: Iterable[str]) -> None:
 
     not var  # E: "var" has type "Iterable[str]" which can always be true in boolean context. Consider using "Collection[str]" instead.  [truthy-iterable]
 
+[case testOptionalNonTruthy]
+# flags: --enable-error-code optional-non-truthy
+from __future__ import annotations
+
+from typing import TypeVar
+
+class Truthy: pass
+class Truthy2: pass
+
+class NonTruthy:
+    def __bool__(self) -> bool: return False
+
+def no_error_direct(var: None | Truthy) -> None:
+    if var:
+        ...
+
+    not var
+
+OnlyTruthy = TypeVar("OnlyTruthy", Truthy, Truthy2)
+
+def no_error_typevar(var: None | OnlyTruthy) -> None:
+    if var:
+        ...
+
+    not var
+
+def error_int(var: None | int) -> None:
+    if var:  # E: FIXME x  [optional-non-truthy]
+        ...
+
+    not var  # E: FIXME x  [optional-non-truthy]
+
+def error_bool(var: None | bool) -> None:
+    if var:  # E: FIXME x  [optional-non-truthy]
+        ...
+
+    not var  # E: FIXME x  [optional-non-truthy]
+
+def error_list(var: None | list[Truthy]) -> None:
+    if var:  # E: FIXME x  [optional-non-truthy]
+        ...
+
+    not var  # E: FIXME x  [optional-non-truthy]
+
+def error_user_defined(var: None | NonTruthy) -> None:
+    if var:  # E: FIXME x  [optional-non-truthy]
+        ...
+
+    not var  # E: FIXME x  [optional-non-truthy]
+
+def error_union(var: None | int | Truthy | NonTruthy) -> None:
+    if var:  # E: FIXME x  [optional-non-truthy]
+        ...
+
+    not var  # E: FIXME x  [optional-non-truthy]
+
+Unconstrained = TypeVar("Unconstrained")
+
+def error_unconstrained_var(var: None | Unconstrained) -> None:
+    if var:  # E: FIXME x  [optional-non-truthy]
+        ...
+
+    not var  # E: FIXME x  [optional-non-truthy]
+
+Constrained = TypeVar("Constrained", str, int, Truthy, NonTruthy)
+
+def error_constrained_var(var: None | Constrained) -> None:
+    if var:  # E: FIXME x  [optional-non-truthy]
+        ...
+
+    not var  # E: FIXME x  [optional-non-truthy]
+
+[builtins fixtures/list.pyi]
+
 [case testNoOverloadImplementation]
 from typing import overload
 
