@@ -1423,7 +1423,7 @@ def process_options(
                 reason = cache.find_module(p)
                 if reason is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     fail(
-                        f"package '{p}' is skipping due to missing py.typed marker. See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
+                        f"Package '{p}' cannot be type checked due to missing py.typed marker. See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
                         stderr,
                         options,
                     )
