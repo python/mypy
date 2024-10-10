@@ -389,3 +389,169 @@ or rewrite the function to be slightly more verbose:
         elif b is not None:
             return b
         return C()
+
+
+.. _typeis:
+
+TypeIs
+------
+
+Mypy supports TypeIs (:pep:`742`).
+
+A `TypeIs narrowing function <https://typing.readthedocs.io/en/latest/spec/narrowing.html#typeis>`_
+allows you to define custom type checks that can narrow the type of a variable
+in `both the if and else <https://docs.python.org/3.13/library/typing.html#typing.TypeIs>_`
+branches of a conditional, similar to how the built-in isinstance() function works.
+
+TypeIs is new in Python 3.13 — for use in older Python versions, use the backport
+from `typing_extensions <https://typing-extensions.readthedocs.io/en/latest/>_`
+
+Consider the following example using TypeIs:
+
+.. code-block:: python
+
+    from typing import TypeIs
+
+    def is_str(x: object) -> TypeIs[str]:
+        return isinstance(x, str)
+
+    def process(x: int | str) -> None:
+        if is_str(x):
+            reveal_type(x)  # Revealed type is 'str'
+            print(x.upper())  # Valid: x is str
+        else:
+            reveal_type(x)  # Revealed type is 'int'
+            print(x + 1)  # Valid: x is int
+
+In this example, the function is_str is a type narrowing function
+that returns TypeIs[str]. When used in an if statement, x is narrowed
+to str in the if branch and to int in the else branch.
+
+Key points:
+
+
+- The function must accept at least one positional argument.
+
+- The return type is annotated as ``TypeIs[T]``, where ``T`` is the type you
+  want to narrow to.
+
+- The function must return a ``bool`` value.
+
+- In the ``if`` branch (when the function returns ``True``), the type of the
+  argument is narrowed to the intersection of its original type and ``T``.
+
+- In the ``else`` branch (when the function returns ``False``), the type of
+  the argument is narrowed to the intersection of its original type and the
+  complement of ``T``.
+
+
+TypeIs vs TypeGuard
+~~~~~~~~~~~~~~~~~~~
+
+While both TypeIs and TypeGuard allow you to define custom type narrowing
+functions, they differ in important ways:
+
+- **Type narrowing behavior**: TypeIs narrows the type in both the if and else branches,
+  whereas TypeGuard narrows only in the if branch.
+
+- **Compatibility requirement**: TypeIs requires that the narrowed type T be
+  compatible with the input type of the function. TypeGuard does not have this restriction.
+
+- **Type inference**: With TypeIs, the type checker may infer a more precise type by
+  combining existing type information with T.
+
+Here's an example demonstrating the behavior with TypeGuard:
+
+.. code-block:: python
+
+    from typing import TypeGuard, reveal_type
+
+    def is_str(x: object) -> TypeGuard[str]:
+        return isinstance(x, str)
+
+    def process(x: int | str) -> None:
+        if is_str(x):
+            reveal_type(x)  # Revealed type is "builtins.str"
+            print(x.upper())  # ok: x is str
+        else:
+            reveal_type(x)  # Revealed type is "Union[builtins.int, builtins.str]"
+            print(x + 1)  # ERROR: Unsupported operand types for + ("str" and "int")  [operator]
+
+Generic TypeIs
+~~~~~~~~~~~~~~
+
+``TypeIs`` functions can also work with generic types:
+
+.. code-block:: python
+
+    from typing import TypeVar, TypeIs
+
+    T = TypeVar('T')
+
+    def is_two_element_tuple(val: tuple[T, ...]) -> TypeIs[tuple[T, T]]:
+        return len(val) == 2
+
+    def process(names: tuple[str, ...]) -> None:
+        if is_two_element_tuple(names):
+            reveal_type(names)  # Revealed type is 'tuple[str, str]'
+        else:
+            reveal_type(names)  # Revealed type is 'tuple[str, ...]'
+
+
+TypeIs with Additional Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TypeIs functions can accept additional parameters beyond the first.
+The type narrowing applies only to the first argument.
+
+.. code-block:: python
+
+    from typing import Any, TypeVar, reveal_type, TypeIs
+
+    T = TypeVar('T')
+
+    def is_instance_of(val: Any, typ: type[T]) -> TypeIs[T]:
+        return isinstance(val, typ)
+
+    def process(x: Any) -> None:
+        if is_instance_of(x, int):
+            reveal_type(x)  # Revealed type is 'int'
+            print(x + 1)  # ok
+        else:
+            reveal_type(x)  # Revealed type is 'Any'
+
+TypeIs in Methods
+~~~~~~~~~~~~~~~~~
+
+A method can also serve as a ``TypeIs`` function. Note that in instance or
+class methods, the type narrowing applies to the second parameter
+(after ``self`` or ``cls``).
+
+.. code-block:: python
+
+    class Validator:
+        def is_valid(self, instance: object) -> TypeIs[str]:
+            return isinstance(instance, str)
+
+        def process(self, to_validate: object) -> None:
+            if Validator().is_valid(to_validate):
+                reveal_type(to_validate)  # Revealed type is 'str'
+                print(to_validate.upper())  # ok: to_validate is str
+
+
+Assignment Expressions with TypeIs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can use the assignment expression operator ``:=`` with ``TypeIs`` to create a new variable and narrow its type simultaneously.
+
+.. code-block:: python
+
+    from typing import TypeIs, reveal_type
+
+    def is_float(x: object) -> TypeIs[float]:
+        return isinstance(x, float)
+
+    def main(a: object) -> None:
+        if is_float(x := a):
+            reveal_type(x)  # Revealed type is 'float'
+            # x is narrowed to float in this block
+            print(x + 1.0)

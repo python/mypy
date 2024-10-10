@@ -892,15 +892,20 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return False
             for name, l, r in left.zip(right):
                 # TODO: should we pass on the full subtype_context here and below?
-                if self.proper_subtype:
-                    check = is_same_type(l, r)
+                right_readonly = name in right.readonly_keys
+                if not right_readonly:
+                    if self.proper_subtype:
+                        check = is_same_type(l, r)
+                    else:
+                        check = is_equivalent(
+                            l,
+                            r,
+                            ignore_type_params=self.subtype_context.ignore_type_params,
+                            options=self.options,
+                        )
                 else:
-                    check = is_equivalent(
-                        l,
-                        r,
-                        ignore_type_params=self.subtype_context.ignore_type_params,
-                        options=self.options,
-                    )
+                    # Read-only items behave covariantly
+                    check = self._is_subtype(l, r)
                 if not check:
                     return False
                 # Non-required key is not compatible with a required key since
@@ -917,7 +922,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # Readonly fields check:
                 #
                 # A = TypedDict('A', {'x': ReadOnly[int]})
-                # B = TypedDict('A', {'x': int})
+                # B = TypedDict('B', {'x': int})
                 # def reset_x(b: B) -> None:
                 #     b['x'] = 0
                 #
