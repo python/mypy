@@ -1873,3 +1873,79 @@ d1: Multi[int, str] = Multi[float, str]()  # E: Incompatible types in assignment
 d2: Multi[float, str] = Multi[int, str]()  # E: Incompatible types in assignment (expression has type "Multi[int, str]", variable has type "Multi[float, str]")
 d3: Multi[str, int] = Multi[str, float]()
 d4: Multi[str, float] = Multi[str, int]()  # E: Incompatible types in assignment (expression has type "Multi[str, int]", variable has type "Multi[str, float]")
+
+[case testPEP695MultipleNestedGenericClass1]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class A:
+    class B:
+        class C:
+            class D[Q]:
+                def g(self, x: Q): ...
+            d: D[str]
+
+x: A.B.C.D[int]
+x.g('a') # E: Argument 1 to "g" of "D" has incompatible type "str"; expected "int"
+reveal_type(x)  # N: Revealed type is "__main__.A.B.C.D[builtins.int]"
+reveal_type(A.B.C.d)  # N: Revealed type is "__main__.A.B.C.D[builtins.str]"
+
+[case testPEP695MultipleNestedGenericClass2]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class A:
+    class B:
+        def m(self) -> None:
+            class C[T]:
+                def f(self) -> T: ...
+            x: C[int]
+            reveal_type(x.f())  # N: Revealed type is "builtins.int"
+            self.a = C[str]()
+
+reveal_type(A().B().a) # N: Revealed type is "__main__.C@5[builtins.str]"
+
+[case testPEP695MultipleNestedGenericClass3]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class A:
+    class C[T]:
+        def f(self) -> T: ...
+        class D[S]:
+            x: T  # E: Name "T" is not defined
+            def g(self) -> S: ...
+
+a: A.C[int]
+reveal_type(a.f())  # N: Revealed type is "builtins.int"
+b: A.C.D[str]
+reveal_type(b.g())  # N: Revealed type is "builtins.str"
+
+class B:
+    class E[T]:
+        class F[T]:  # E: "T" already defined as a type parameter
+            x: T
+
+c: B.E.F[int]
+
+[case testPEP695MultipleNestedGenericClass4]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class Z:
+    class A:
+        class B[T]:
+            def __get__(self, instance: Z.A, owner: type[Z.A]) -> T:
+                return None  # E: Incompatible return value type (got "None", expected "T")
+        f = B[int]()
+
+a = Z.A()
+v = a.f
+
+[case testPEP695MultipleNestedGenericClass5]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from a.b.c import d
+x: d.D.E.F.G[int]
+x.g('a') # E: Argument 1 to "g" of "G" has incompatible type "str"; expected "int"
+reveal_type(x)  # N: Revealed type is "a.b.c.d.D.E.F.G[builtins.int]"
+reveal_type(d.D.E.F.d)  # N: Revealed type is "a.b.c.d.D.E.F.G[builtins.str]"
+
+[file a/b/c/d.py]
+class D:
+    class E:
+        class F:
+            class G[Q]:
+                def g(self, x: Q): ...
+            d: G[str]

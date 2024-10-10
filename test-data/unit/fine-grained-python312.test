@@ -95,3 +95,23 @@ def f(x: int) -> None: pass
 [out]
 ==
 main:7: error: Missing positional argument "x" in call to "f"
+
+[case testPEP695MultipleNestedGenericClassMethodUpdated]
+from a import f
+
+class A:
+    class C:
+        class D[T]:
+            x: T
+            def m(self) -> T:
+                f()
+                return self.x
+
+[file a.py]
+def f() -> None: pass
+
+[file a.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+main:8: error: Missing positional argument "x" in call to "f"
