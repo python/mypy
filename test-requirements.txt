@@ -26,6 +26,8 @@ identify==2.6.1
     # via pre-commit
 iniconfig==2.0.0
     # via pytest
+lxml==4.9.2 ; (python_version < "3.11" or sys_platform != "win32") and python_version < "3.12"
+    # via -r test-requirements.in
 mypy-extensions==1.0.0
     # via
     #   -r mypy-requirements.txt
