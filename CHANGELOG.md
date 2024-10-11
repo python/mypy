@@ -187,6 +187,8 @@ List of documentation updates:
  * Make changelog visible in mypy documentation (quinn-sasha, PR [17742](https://github.com/python/mypy/pull/17742))
  * List all incomplete features in `--enable-incomplete-feature` docs (sobolevn, PR [17633](https://github.com/python/mypy/pull/17633))
  * Remove the explicit setting of a pygments theme (Pradyun Gedam, PR [17571](https://github.com/python/mypy/pull/17571))
+ * Document ReadOnly with TypedDict (Jukka Lehtosalo, PR [17905](https://github.com/python/mypy/pull/17905))
+ * Document TypeIs (Chelsea Durazo, PR [17821](https://github.com/python/mypy/pull/17821))
 
 ### Experimental Inline TypedDict Syntax
 
@@ -250,6 +252,9 @@ This feature was contributed by Ivan Levkivskyi (PR [17457](https://github.com/p
  * Fix typechecking for async generators (Danny Yang, PR [17452](https://github.com/python/mypy/pull/17452))
  * Fix strict optional handling in attrs plugin (Ivan Levkivskyi, PR [17451](https://github.com/python/mypy/pull/17451))
  * Allow mixing ParamSpec and TypeVarTuple in Generic (Ivan Levkivskyi, PR [17450](https://github.com/python/mypy/pull/17450))
+ * Improvements to `functools.partial` of types (Shantanu, PR [17898](https://github.com/python/mypy/pull/17898))
+ * Make ReadOnly TypedDict items covariant (Jukka Lehtosalo, PR [17904](https://github.com/python/mypy/pull/17904))
+ * Fix union callees with `functools.partial` (Jukka Lehtosalo, PR [17903](https://github.com/python/mypy/pull/17903))
 
 ### Typeshed Updates
 
@@ -263,6 +268,7 @@ Thanks to all mypy contributors who contributed to this release:
 - Bénédikt Tran
 - Brian Schubert
 - bzoracler
+- Chelsea Durazo
 - Danny Yang
 - Edgar Ramírez Mondragón
 - Eric Mark Martin
