@@ -146,10 +146,8 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                 continue
             with builder.catch_errors(stmt.line):
                 cls_builder.add_method(get_func_def(stmt))
-        elif (
-            isinstance(stmt, PassStmt)
-            or (isinstance(stmt, ExpressionStmt)
-            and isinstance(stmt.expr, EllipsisExpr))
+        elif isinstance(stmt, PassStmt) or (
+            isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
         ):
             continue
         elif isinstance(stmt, AssignmentStmt):
