@@ -213,7 +213,8 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
         ],
         ret_type=ret_type,
         variables=[
-            tv for tv in fn_type.variables
+            tv
+            for tv in fn_type.variables
             # Keep TypeVarTuple/ParamSpec to avoid spurious errors on empty args.
             if tv.id in can_infer_ids or not isinstance(tv, TypeVarType)
         ],
