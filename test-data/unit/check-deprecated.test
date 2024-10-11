@@ -102,7 +102,8 @@ def h() -> None: ...
 
 [case testDeprecatedClass]
 
-from typing_extensions import deprecated
+from typing import Callable, List, Optional, Tuple, Union
+from typing_extensions import deprecated, TypeAlias, TypeVar
 
 @deprecated("use C2 instead")
 class C: ...
@@ -114,9 +115,39 @@ C.missing()  # N: class __main__.C is deprecated: use C2 instead \
 C.__init__(c)  # N: class __main__.C is deprecated: use C2 instead
 C(1)  # N: class __main__.C is deprecated: use C2 instead \
       # E: Too many arguments for "C"
+
 D = C  # N: class __main__.C is deprecated: use C2 instead
 D()
 t = (C, C, D)  # N: class __main__.C is deprecated: use C2 instead
+
+u1: Union[C, int] = 1  # N: class __main__.C is deprecated: use C2 instead
+u1 = 1
+u2 = 1  # type: Union[C, int]  # N: class __main__.C is deprecated: use C2 instead
+u2 = 1
+
+c1 = c2 = C()  # N: class __main__.C is deprecated: use C2 instead
+i, c3 = 1, C()  # N: class __main__.C is deprecated: use C2 instead
+
+class E: ...
+
+x1: Optional[C]  # N: class __main__.C is deprecated: use C2 instead
+x2: Union[D, C, E]  # N: class __main__.C is deprecated: use C2 instead
+x3: Union[D, Optional[C], E]  # N: class __main__.C is deprecated: use C2 instead
+x4: Tuple[D, C, E]  # N: class __main__.C is deprecated: use C2 instead
+x5: Tuple[Tuple[D, C], E]  # N: class __main__.C is deprecated: use C2 instead
+x6: List[C]  # N: class __main__.C is deprecated: use C2 instead
+x7: List[List[C]]  # N: class __main__.C is deprecated: use C2 instead
+x8: List[Optional[Tuple[Union[List[C], int]]]]  # N: class __main__.C is deprecated: use C2 instead
+x9: Callable[[int], C]  # N: class __main__.C is deprecated: use C2 instead
+x10: Callable[[int, C, int], int]  # N: class __main__.C is deprecated: use C2 instead
+
+T = TypeVar("T")
+A1: TypeAlias = Optional[C]  # ToDo
+x11: A1
+A2: TypeAlias = List[Union[A2, C]]  # ToDo
+x12: A2
+A3: TypeAlias = List[Optional[T]]
+x13: A3[C]  # N: class __main__.C is deprecated: use C2 instead
 
 [builtins fixtures/tuple.pyi]
 
