@@ -293,18 +293,10 @@ class InstanceDeprecatedVisitor(TypeTraverserVisitor):
     def __init__(self, typechecker: TypeChecker, context: Context) -> None:
         self.typechecker = typechecker
         self.context = context
-        self.seen_aliases: set[TypeAliasType] = set()
 
     def visit_instance(self, t: Instance) -> None:
         super().visit_instance(t)
         self.typechecker.check_deprecated(t.type, self.context)
-
-    def visit_type_alias_type(self, t: TypeAliasType) -> None:
-        super().visit_type_alias_type(t)
-        if t not in self.seen_aliases:
-            self.seen_aliases.add(t)
-            if ((alias := t.alias) is not None) and ((target := alias.target) is not None):
-                target.accept(self)
 
 
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
