@@ -18,6 +18,26 @@ True
 <native.Empty object
 True
 
+[case testEmptyClassEllipsis]
+class Empty: ...
+
+def f(e: Empty) -> Empty:
+    return e
+[file driver.py]
+from native import Empty, f
+
+print(isinstance(Empty, type))
+print(Empty)
+print(str(Empty())[:20])
+
+e = Empty()
+print(f(e) is e)
+[out]
+True
+<class 'native.Empty'>
+<native.Empty object
+True
+
 [case testClassWithFields]
 class C:
     x: int
