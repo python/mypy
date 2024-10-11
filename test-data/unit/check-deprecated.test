@@ -152,6 +152,63 @@ x13: A3[C]  # N: class __main__.C is deprecated: use C2 instead
 [builtins fixtures/tuple.pyi]
 
 
+[case testDeprecatedInstanceInFunctionDefinition]
+
+from typing import Generic, List, Optional, TypeVar
+from typing_extensions import deprecated
+
+@deprecated("use C2 instead")
+class C: ...
+
+def f1(c: C) -> None:  # N: class __main__.C is deprecated: use C2 instead
+    def g1() -> None: ...
+
+def f2(c: List[Optional[C]]) -> None:  # N: class __main__.C is deprecated: use C2 instead
+    def g2() -> None: ...
+
+def f3() -> C:  # N: class __main__.C is deprecated: use C2 instead
+    def g3() -> None: ...
+    return C()  # N: class __main__.C is deprecated: use C2 instead
+
+def f4() -> List[Optional[C]]:  # N: class __main__.C is deprecated: use C2 instead
+    def g4() -> None: ...
+    return []
+
+def f5() -> None:
+    def g5(c: C) -> None: ...  # N: class __main__.C is deprecated: use C2 instead
+
+def f6() -> None:
+    def g6() -> C: ...  # N: class __main__.C is deprecated: use C2 instead
+
+
+@deprecated("use D2 instead")
+class D:
+
+    def f1(self, c: C) -> None:  # N: class __main__.C is deprecated: use C2 instead
+        def g1() -> None: ...
+
+    def f2(self, c: List[Optional[C]]) -> None:  # N: class __main__.C is deprecated: use C2 instead
+        def g2() -> None: ...
+
+    def f3(self) -> None:
+        def g3(c: C) -> None: ...  # N: class __main__.C is deprecated: use C2 instead
+
+    def f4(self) -> None:
+        def g4() -> C: ...  # N: class __main__.C is deprecated: use C2 instead
+
+T = TypeVar("T")
+
+@deprecated("use E2 instead")
+class E(Generic[T]):
+
+    def f1(self: E[C]) -> None: ...  # N: class __main__.C is deprecated: use C2 instead
+    def f2(self, e: E[C]) -> None: ...  # N: class __main__.C is deprecated: use C2 instead
+    def f3(self) -> E[C]: ...  # N: class __main__.C is deprecated: use C2 instead
+
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedClassDifferentModule]
 
 import m

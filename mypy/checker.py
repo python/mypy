@@ -290,12 +290,17 @@ class PartialTypeScope(NamedTuple):
 class InstanceDeprecatedVisitor(TypeTraverserVisitor):
     """Visitor that recursively checks for deprecations in nested instances."""
 
-    def __init__(self, typechecker: TypeChecker, context: Context) -> None:
+    def __init__(
+        self, typechecker: TypeChecker, context: Context, ignore: TypeInfo | None = None
+    ) -> None:
         self.typechecker = typechecker
         self.context = context
+        self.ignore = ignore
 
     def visit_instance(self, t: Instance) -> None:
         super().visit_instance(t)
+        if self.ignore and (t.type.fullname == self.ignore.fullname):
+            return
         self.typechecker.check_deprecated(t.type, self.context)
 
 
@@ -1056,6 +1061,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         with self.tscope.function_scope(defn):
             self._visit_func_def(defn)
+        if (typ := defn.type) is not None:
+            typ.accept(
+                InstanceDeprecatedVisitor(typechecker=self, context=defn, ignore=defn.info)
+            )
 
     def _visit_func_def(self, defn: FuncDef) -> None:
         """Type check a function definition."""
