@@ -49,13 +49,15 @@ ReporterClasses: _TypeAlias = Dict[
 
 reporter_classes: Final[ReporterClasses] = {}
 
-'''
-Report Object that used in BuildManager. 
-init: 
-    param: 
-        data_dir: a data directory to show 
-        report_dirs: a dictionary that show list of report directors 
-'''
+"""
+Report Object that used in BuildManager.
+init:
+    param:
+        data_dir: a data directory to show
+        report_dirs: a dictionary that show list of report directors
+"""
+
+
 class Reports:
     def __init__(self, data_dir: str, report_dirs: dict[str, str]) -> None:
         self.data_dir = data_dir
