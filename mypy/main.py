@@ -109,6 +109,7 @@ def main(
             fscache.flush()
             print()
             res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+            print(res , messages , blockers)
         show_messages(messages, stderr, formatter, options)
 
     if MEM_PROFILE:
