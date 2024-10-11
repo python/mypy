@@ -1062,9 +1062,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         with self.tscope.function_scope(defn):
             self._visit_func_def(defn)
         if (typ := defn.type) is not None:
-            typ.accept(
-                InstanceDeprecatedVisitor(typechecker=self, context=defn, ignore=defn.info)
-            )
+            typ.accept(InstanceDeprecatedVisitor(typechecker=self, context=defn, ignore=defn.info))
 
     def _visit_func_def(self, defn: FuncDef) -> None:
         """Type check a function definition."""
