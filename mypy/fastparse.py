@@ -92,7 +92,7 @@ from mypy.nodes import (
     YieldFromExpr,
     check_arg_names,
 )
-from mypy.options import NEW_GENERIC_SYNTAX, Options
+from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -965,19 +965,7 @@ class ASTConverter:
                 return_type = AnyType(TypeOfAny.from_error)
         else:
             if sys.version_info >= (3, 12) and n.type_params:
-                if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
-                    explicit_type_params = self.translate_type_params(n.type_params)
-                else:
-                    self.fail(
-                        ErrorMessage(
-                            "PEP 695 generics are not yet supported. "
-                            "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
-                            code=codes.VALID_TYPE,
-                        ),
-                        n.type_params[0].lineno,
-                        n.type_params[0].col_offset,
-                        blocker=False,
-                    )
+                explicit_type_params = self.translate_type_params(n.type_params)
 
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(
@@ -1157,19 +1145,7 @@ class ASTConverter:
         explicit_type_params: list[TypeParam] | None = None
 
         if sys.version_info >= (3, 12) and n.type_params:
-            if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
-                explicit_type_params = self.translate_type_params(n.type_params)
-            else:
-                self.fail(
-                    ErrorMessage(
-                        "PEP 695 generics are not yet supported. "
-                        "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
-                        code=codes.VALID_TYPE,
-                    ),
-                    n.type_params[0].lineno,
-                    n.type_params[0].col_offset,
-                    blocker=False,
-                )
+            explicit_type_params = self.translate_type_params(n.type_params)
 
         cdef = ClassDef(
             n.name,
@@ -1222,6 +1198,13 @@ class ASTConverter:
         for p in type_params:
             bound = None
             values: list[Type] = []
+            if sys.version_info >= (3, 13) and p.default_value is not None:
+                self.fail(
+                    message_registry.TYPE_PARAM_DEFAULT_NOT_SUPPORTED,
+                    p.lineno,
+                    p.col_offset,
+                    blocker=False,
+                )
             if isinstance(p, ast_ParamSpec):  # type: ignore[misc]
                 explicit_type_params.append(TypeParam(p.name, PARAM_SPEC_KIND, None, []))
             elif isinstance(p, ast_TypeVarTuple):  # type: ignore[misc]
@@ -1843,31 +1826,17 @@ class ASTConverter:
     # TypeAlias(identifier name, type_param* type_params, expr value)
     def visit_TypeAlias(self, n: ast_TypeAlias) -> TypeAliasStmt | AssignmentStmt:
         node: TypeAliasStmt | AssignmentStmt
-        if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
-            type_params = self.translate_type_params(n.type_params)
-            self.validate_type_alias(n)
-            value = self.visit(n.value)
-            # Since the value is evaluated lazily, wrap the value inside a lambda.
-            # This helps mypyc.
-            ret = ReturnStmt(value)
-            self.set_line(ret, n.value)
-            value_func = LambdaExpr(body=Block([ret]))
-            self.set_line(value_func, n.value)
-            node = TypeAliasStmt(self.visit_Name(n.name), type_params, value_func)
-            return self.set_line(node, n)
-        else:
-            self.fail(
-                ErrorMessage(
-                    "PEP 695 type aliases are not yet supported. "
-                    "Use --enable-incomplete-feature=NewGenericSyntax for experimental support",
-                    code=codes.VALID_TYPE,
-                ),
-                n.lineno,
-                n.col_offset,
-                blocker=False,
-            )
-            node = AssignmentStmt([NameExpr(n.name.id)], self.visit(n.value))
-            return self.set_line(node, n)
+        type_params = self.translate_type_params(n.type_params)
+        self.validate_type_alias(n)
+        value = self.visit(n.value)
+        # Since the value is evaluated lazily, wrap the value inside a lambda.
+        # This helps mypyc.
+        ret = ReturnStmt(value)
+        self.set_line(ret, n.value)
+        value_func = LambdaExpr(body=Block([ret]))
+        self.set_line(value_func, n.value)
+        node = TypeAliasStmt(self.visit_Name(n.name), type_params, value_func)
+        return self.set_line(node, n)
 
 
 class TypeConverter:
@@ -2168,7 +2137,7 @@ class TypeConverter:
                     continue
                 return self.invalid_type(n)
             items[item_name.value] = self.visit(value)
-        result = TypedDictType(items, set(), _dummy_fallback, n.lineno, n.col_offset)
+        result = TypedDictType(items, set(), set(), _dummy_fallback, n.lineno, n.col_offset)
         result.extra_items_from = extra_items_from
         return result
 

@@ -588,8 +588,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         if has_yield_expression(o) or has_yield_from_expression(o):
             generator_name = self.add_name("collections.abc.Generator")
             yield_name = "None"
-            send_name = "None"
-            return_name = "None"
+            send_name: str | None = None
+            return_name: str | None = None
             if has_yield_from_expression(o):
                 yield_name = send_name = self.add_name("_typeshed.Incomplete")
             else:
@@ -600,7 +600,14 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                         send_name = self.add_name("_typeshed.Incomplete")
             if has_return_statement(o):
                 return_name = self.add_name("_typeshed.Incomplete")
-            return f"{generator_name}[{yield_name}, {send_name}, {return_name}]"
+            if return_name is not None:
+                if send_name is None:
+                    send_name = "None"
+                return f"{generator_name}[{yield_name}, {send_name}, {return_name}]"
+            elif send_name is not None:
+                return f"{generator_name}[{yield_name}, {send_name}]"
+            else:
+                return f"{generator_name}[{yield_name}]"
         if not has_return_statement(o) and o.abstract_status == NOT_ABSTRACT:
             return "None"
         return None

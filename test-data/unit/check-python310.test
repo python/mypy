@@ -1424,6 +1424,7 @@ def f(value: Literal[1] | Literal[2]) -> int:
 
 [case testMatchSequencePatternNegativeNarrowing]
 from typing import Union, Sequence, Tuple
+from typing_extensions import Literal
 
 m1: Sequence[int | str]
 
@@ -1448,6 +1449,31 @@ match m3:
         reveal_type(m3)  # N: Revealed type is "Tuple[Literal[1]]"
     case r2:
         reveal_type(m3)  # N: Revealed type is "Tuple[Union[builtins.int, builtins.str]]"
+
+m4: Tuple[Literal[1], int]
+
+match m4:
+    case (1, 5):
+        reveal_type(m4)  # N: Revealed type is "Tuple[Literal[1], Literal[5]]"
+    case (1, 6):
+        reveal_type(m4)  # N: Revealed type is "Tuple[Literal[1], Literal[6]]"
+    case _:
+        reveal_type(m4)  # N: Revealed type is "Tuple[Literal[1], builtins.int]"
+
+m5: Tuple[Literal[1, 2], Literal["a", "b"]]
+
+match m5:
+    case (1, str()):
+        reveal_type(m5)  # N: Revealed type is "Tuple[Literal[1], Union[Literal['a'], Literal['b']]]"
+    case _:
+        reveal_type(m5)  # N: Revealed type is "Tuple[Literal[2], Union[Literal['a'], Literal['b']]]"
+
+match m5:
+    case (1, "a"):
+        reveal_type(m5)  # N: Revealed type is "Tuple[Literal[1], Literal['a']]"
+    case _:
+        reveal_type(m5)  # N: Revealed type is "Tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
+
 [builtins fixtures/tuple.pyi]
 
 [case testMatchEnumSingleChoice]

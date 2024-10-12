@@ -1534,7 +1534,7 @@ __main__.C.get_by_team_and_id
 __main__.Optional
 
 [case testPEP695TypeAlias]
-# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+# flags: --python-version=3.12
 from typing_extensions import TypeAlias, TypeAliasType
 type A = int
 type B = str
@@ -1546,7 +1546,7 @@ G = TypeAliasType("G", int)
 type H = int
 
 [file next.py]
-# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+# flags: --python-version=3.12
 from typing_extensions import TypeAlias, TypeAliasType
 type A = str
 type B = str
@@ -1568,7 +1568,7 @@ __main__.G
 __main__.H
 
 [case testPEP695TypeAlias2]
-# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+# flags: --python-version=3.12
 type A[T: int] = list[T]
 type B[T: int] = list[T]
 type C[T: (int, str)] = list[T]
@@ -1577,7 +1577,7 @@ type E[T: int] = list[T]
 type F[T: (int, str)] = list[T]
 
 [file next.py]
-# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+# flags: --python-version=3.12
 type A[T] = list[T]
 type B[T: str] = list[T]
 type C[T: (int, None)] = list[T]
@@ -1592,13 +1592,13 @@ __main__.C
 __main__.D
 
 [case testPEP695GenericFunction]
-# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+# flags: --python-version=3.12
 def f[T](x: T) -> T:
     return x
 def g[T](x: T, y: T) -> T:
     return x
 [file next.py]
-# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+# flags: --python-version=3.12
 def f[T](x: T) -> T:
     return x
 def g[T, S](x: T, y: S) -> S:
@@ -1607,7 +1607,7 @@ def g[T, S](x: T, y: S) -> S:
 __main__.g
 
 [case testPEP695GenericClass]
-# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+# flags: --python-version=3.12
 class C[T]:
     pass
 class D[T]:
@@ -1617,7 +1617,7 @@ class E[T]:
 class F[T]:
     def f(self, x: object) -> T: ...
 [file next.py]
-# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+# flags: --python-version=3.12
 class C[T]:
     pass
 class D[T: int]:

@@ -215,6 +215,7 @@ class PolyTranslator(TypeTranslator):
         bound_tvars: frozenset[TypeVarLikeType] = frozenset(),
         seen_aliases: frozenset[TypeInfo] = frozenset(),
     ) -> None:
+        super().__init__()
         self.poly_tvars = set(poly_tvars)
         # This is a simplified version of TypeVarScope used during semantic analysis.
         self.bound_tvars = bound_tvars

@@ -75,8 +75,8 @@ UNPACK: Final = "Unpack"
 PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
 NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
 INLINE_TYPEDDICT: Final = "InlineTypedDict"
-INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, NEW_GENERIC_SYNTAX, INLINE_TYPEDDICT))
-COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT))
+COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK, NEW_GENERIC_SYNTAX))
 
 
 class Options:
@@ -172,6 +172,9 @@ class Options:
         # Warn about returning objects of type Any when the function is
         # declared with a precise type
         self.warn_return_any = False
+
+        # Report importing or using deprecated features as errors instead of notes.
+        self.report_deprecated_as_error = False
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
