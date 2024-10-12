@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import configparser
 import glob as fileglob
+import locale
 import os
 import re
 import sys
@@ -268,7 +269,7 @@ def parse_config_file(
                 parser: MutableMapping[str, Any] = destructure_overrides(toml_data)
                 config_types = toml_config_types
             else:
-                config_parser.read(config_file)
+                config_parser.read(config_file, encoding=locale.getpreferredencoding(False))
                 parser = config_parser
                 config_types = ini_config_types
         except (tomllib.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:

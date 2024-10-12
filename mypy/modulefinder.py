@@ -8,6 +8,7 @@ from __future__ import annotations
 import ast
 import collections
 import functools
+import locale
 import os
 import re
 import subprocess
@@ -848,7 +849,7 @@ def load_stdlib_py_versions(custom_typeshed_dir: str | None) -> StdlibVersions:
 
     versions_path = os.path.join(stdlib_dir, "VERSIONS")
     assert os.path.isfile(versions_path), (custom_typeshed_dir, versions_path, __file__)
-    with open(versions_path) as f:
+    with open(versions_path, encoding=locale.getpreferredencoding(False)) as f:
         for line in f:
             line = line.split("#")[0].strip()
             if line == "":

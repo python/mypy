@@ -11,6 +11,7 @@ We provide two implementations.
 from __future__ import annotations
 
 import binascii
+import locale
 import os
 import time
 from abc import abstractmethod
@@ -92,7 +93,9 @@ class FilesystemMetadataStore(MetadataStore):
         if not self.cache_dir_prefix:
             raise FileNotFoundError()
 
-        with open(os.path.join(self.cache_dir_prefix, name)) as f:
+        with open(
+            os.path.join(self.cache_dir_prefix, name), encoding=locale.getpreferredencoding(False)
+        ) as f:
             return f.read()
 
     def write(self, name: str, data: str, mtime: float | None = None) -> bool:
@@ -105,7 +108,7 @@ class FilesystemMetadataStore(MetadataStore):
         tmp_filename = path + "." + random_string()
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(tmp_filename, "w") as f:
+            with open(tmp_filename, "w", encoding=locale.getpreferredencoding(False)) as f:
                 f.write(data)
             os.replace(tmp_filename, path)
             if mtime is not None:

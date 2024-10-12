@@ -18,6 +18,7 @@ import contextlib
 import errno
 import gc
 import json
+import locale
 import os
 import platform
 import re
@@ -1188,7 +1189,7 @@ def add_catch_all_gitignore(target_dir: str) -> None:
     """
     gitignore = os.path.join(target_dir, ".gitignore")
     try:
-        with open(gitignore, "x") as f:
+        with open(gitignore, "x", encoding=locale.getpreferredencoding(False)) as f:
             print("# Automatically created by mypy", file=f)
             print("*", file=f)
     except FileExistsError:
@@ -1202,7 +1203,7 @@ def exclude_from_backups(target_dir: str) -> None:
     """
     cachedir_tag = os.path.join(target_dir, "CACHEDIR.TAG")
     try:
-        with open(cachedir_tag, "x") as f:
+        with open(cachedir_tag, "x", encoding=locale.getpreferredencoding(False)) as f:
             f.write(
                 """Signature: 8a477f597d28d172789f06886806bc55
 # This file is a cache directory tag automatically created by mypy.
@@ -3531,7 +3532,7 @@ def record_missing_stub_packages(cache_dir: str, missing_stub_packages: set[str]
     """
     fnam = missing_stubs_file(cache_dir)
     if missing_stub_packages:
-        with open(fnam, "w") as f:
+        with open(fnam, "w", encoding=locale.getpreferredencoding(False)) as f:
             for pkg in sorted(missing_stub_packages):
                 f.write(f"{pkg}\n")
     else:
