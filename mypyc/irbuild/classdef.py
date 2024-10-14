@@ -63,12 +63,7 @@ from mypyc.irbuild.function import (
     handle_non_ext_method,
     load_type,
 )
-from mypyc.irbuild.util import (
-    dataclass_type,
-    get_func_def,
-    is_constant,
-    is_dataclass_decorator,
-)
+from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import (
     iter_op,
