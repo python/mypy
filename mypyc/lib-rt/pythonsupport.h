@@ -402,45 +402,15 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     PyObject_CallMethodObjArgs((self), (name), (arg), NULL)
 #endif
 
-#if CPY_3_13_FEATURES
-
-// These are copied from genobject.c in Python 3.13
-
-/* Returns a borrowed reference */
-static inline PyCodeObject *
-_PyGen_GetCode(PyGenObject *gen) {
-    _PyInterpreterFrame *frame = (_PyInterpreterFrame *)(gen->gi_iframe);
-    return _PyFrame_GetCode(frame);
-}
-
-static int
-gen_is_coroutine(PyObject *o)
-{
-    if (PyGen_CheckExact(o)) {
-        PyCodeObject *code = _PyGen_GetCode((PyGenObject*)o);
-        if (code->co_flags & CO_ITERABLE_COROUTINE) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-#elif CPY_3_12_FEATURES
+#if CPY_3_12_FEATURES
 
 // These are copied from genobject.c in Python 3.12
 
-/* Returns a borrowed reference */
-static inline PyCodeObject *
-_PyGen_GetCode(PyGenObject *gen) {
-    _PyInterpreterFrame *frame = (_PyInterpreterFrame *)(gen->gi_iframe);
-    return frame->f_code;
-}
-
 static int
 gen_is_coroutine(PyObject *o)
 {
     if (PyGen_CheckExact(o)) {
-        PyCodeObject *code = _PyGen_GetCode((PyGenObject*)o);
+        PyCodeObject *code = PyGen_GetCode((PyGenObject*)o);
         if (code->co_flags & CO_ITERABLE_COROUTINE) {
             return 1;
         }
