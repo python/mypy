@@ -362,10 +362,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         attr_rtype, decl_cl = cl.attr_details(op.attr)
         prefer_method = cl.is_trait and attr_rtype.error_overlap
         if cl.get_method(op.attr, prefer_method=prefer_method):
+            # Properties are essentially methods, so use vtable access for them.
             if cl.is_method_final(op.attr):
                 self.emit_method_call(f"{dest} = ", op.obj, op.attr, [])
             else:
-                # Properties are essentially methods, so use vtable access for them.
                 version = "_TRAIT" if cl.is_trait else ""
                 self.emit_line(
                     "%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */"

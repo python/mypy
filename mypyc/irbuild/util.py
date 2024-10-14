@@ -27,16 +27,14 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
+from mypy.semanal import refers_to_fullname
+from mypy.types import FINAL_DECORATOR_NAMES
 
 DATACLASS_DECORATORS = {"dataclasses.dataclass", "attr.s", "attr.attrs"}
 
 
 def is_final_decorator(d: Expression) -> bool:
-    return isinstance(d, RefExpr) and d.fullname == "typing.final"
-
-
-def is_final_class(cdef: ClassDef) -> bool:
-    return any(is_final_decorator(d) for d in cdef.decorators)
+    return refers_to_fullname(d, FINAL_DECORATOR_NAMES)
 
 
 def is_trait_decorator(d: Expression) -> bool:

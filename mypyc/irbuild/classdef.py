@@ -68,7 +68,6 @@ from mypyc.irbuild.util import (
     get_func_def,
     is_constant,
     is_dataclass_decorator,
-    is_final_class,
 )
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import (
@@ -300,7 +299,6 @@ class ExtClassBuilder(ClassBuilder):
             self.builder.init_final_static(lvalue, value, self.cdef.name)
 
     def finalize(self, ir: ClassIR) -> None:
-        ir.is_final_class = is_final_class(self.cdef)
         attrs_with_defaults, default_assignments = find_attr_initializers(
             self.builder, self.cdef, self.skip_attr_default
         )
