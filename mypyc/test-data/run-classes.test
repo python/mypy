@@ -2504,7 +2504,7 @@ def test_final_attribute() -> None:
     assert C.A == -1
     assert C.a == [-1]
 
-[case testClassWithFinalTypingAttribute]
+[case testClassWithFinalDecorator]
 from typing import final
 
 @final
@@ -2515,7 +2515,28 @@ class C:
 def test_class_final_attribute() -> None:
     assert C().a() == 1
 
-[case testClassWithFinalTypingAttributeInherited]
+
+[case testClassWithFinalDecoratorCtor]
+from typing import final
+
+@final
+class C:
+    def __init__(self) -> None:
+        self.a = 1
+
+    def b(self) -> int:
+        return 2
+
+    @property
+    def c(self) -> int:
+        return 3
+
+def test_class_final_attribute() -> None:
+    assert C().a == 1
+    assert C().b() == 2
+    assert C().c == 3
+
+[case testClassWithFinalDecoratorInheritedWithProperties]
 from typing import final
 
 class B:
