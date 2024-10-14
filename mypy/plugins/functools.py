@@ -10,6 +10,7 @@ import mypy.semanal
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, CallExpr, FuncItem, Var
 from mypy.plugins.common import add_method_to_class
+from mypy.typeops import get_all_type_vars
 from mypy.types import (
     AnyType,
     CallableType,
@@ -17,6 +18,7 @@ from mypy.types import (
     Overloaded,
     Type,
     TypeOfAny,
+    TypeVarType,
     UnboundType,
     UnionType,
     get_proper_type,
@@ -164,21 +166,6 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
         ctx.api.type_context[-1] = None
         wrapped_return = False
 
-    defaulted = fn_type.copy_modified(
-        arg_kinds=[
-            (
-                ArgKind.ARG_OPT
-                if k == ArgKind.ARG_POS
-                else (ArgKind.ARG_NAMED_OPT if k == ArgKind.ARG_NAMED else k)
-            )
-            for k in fn_type.arg_kinds
-        ],
-        ret_type=ret_type,
-    )
-    if defaulted.line < 0:
-        # Make up a line number if we don't have one
-        defaulted.set_line(ctx.default_return_type)
-
     # Flatten actual to formal mapping, since this is what check_call() expects.
     actual_args = []
     actual_arg_kinds = []
@@ -198,6 +185,43 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
             actual_arg_kinds.append(ctx.arg_kinds[i][j])
             actual_arg_names.append(ctx.arg_names[i][j])
             actual_types.append(ctx.arg_types[i][j])
+
+    formal_to_actual = map_actuals_to_formals(
+        actual_kinds=actual_arg_kinds,
+        actual_names=actual_arg_names,
+        formal_kinds=fn_type.arg_kinds,
+        formal_names=fn_type.arg_names,
+        actual_arg_type=lambda i: actual_types[i],
+    )
+
+    # We need to remove any type variables that appear only in formals that have
+    # no actuals, to avoid eagerly binding them in check_call() below.
+    can_infer_ids = set()
+    for i, arg_type in enumerate(fn_type.arg_types):
+        if not formal_to_actual[i]:
+            continue
+        can_infer_ids.update({tv.id for tv in get_all_type_vars(arg_type)})
+
+    defaulted = fn_type.copy_modified(
+        arg_kinds=[
+            (
+                ArgKind.ARG_OPT
+                if k == ArgKind.ARG_POS
+                else (ArgKind.ARG_NAMED_OPT if k == ArgKind.ARG_NAMED else k)
+            )
+            for k in fn_type.arg_kinds
+        ],
+        ret_type=ret_type,
+        variables=[
+            tv
+            for tv in fn_type.variables
+            # Keep TypeVarTuple/ParamSpec to avoid spurious errors on empty args.
+            if tv.id in can_infer_ids or not isinstance(tv, TypeVarType)
+        ],
+    )
+    if defaulted.line < 0:
+        # Make up a line number if we don't have one
+        defaulted.set_line(ctx.default_return_type)
 
     # Create a valid context for various ad-hoc inspections in check_call().
     call_expr = CallExpr(
@@ -230,14 +254,6 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
         if not isinstance(ret_type, Instance) or ret_type.type.fullname != PARTIAL:
             return ctx.default_return_type
         bound = bound.copy_modified(ret_type=ret_type.args[0])
-
-    formal_to_actual = map_actuals_to_formals(
-        actual_kinds=actual_arg_kinds,
-        actual_names=actual_arg_names,
-        formal_kinds=fn_type.arg_kinds,
-        formal_names=fn_type.arg_names,
-        actual_arg_type=lambda i: actual_types[i],
-    )
 
     partial_kinds = []
     partial_types = []
