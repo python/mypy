@@ -66,8 +66,10 @@ ignore = [
   "E2",    # conflicts with black
   "E402",  # module level import not at top of file
   "E501",  # conflicts with black
+  "E721",  # Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
   "E731",  # Do not assign a `lambda` expression, use a `def`
   "E741",  # Ambiguous variable name
+  "UP031", # Use format specifiers instead of percent format
   "UP032", # 'f-string always preferable to format' is controversial
   "C416",  # There are a few cases where it's nice to have names for the dict items
 ]

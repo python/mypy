@@ -45,7 +45,7 @@ pytest-cov==4.1.0
     # via -r test-requirements.in
 pytest-xdist==3.3.1
     # via -r test-requirements.in
-ruff==0.2.0
+ruff==0.6.9
     # via -r test-requirements.in
 tomli==2.0.1
     # via -r test-requirements.in
