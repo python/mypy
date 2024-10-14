@@ -324,7 +324,7 @@ class CacheMeta(NamedTuple):
     hash: str
     dependencies: list[str]  # names of imported modules
     data_mtime: int  # mtime of data_json
-    data_json: str  # path of <id>.data.json
+    data_json: str  # path of <id>.data.json.gz
     suppressed: list[str]  # dependencies that weren't imported
     options: dict[str, object] | None  # build options
     # dep_prios and dep_lines are in parallel with dependencies + suppressed
@@ -352,7 +352,7 @@ def cache_meta_from_dict(meta: dict[str, Any], data_json: str) -> CacheMeta:
 
     Args:
       meta: JSON metadata read from the metadata cache file
-      data_json: Path to the .data.json file containing the AST trees
+      data_json: Path to the .data.json.gz file containing the AST trees
     """
     sentinel: Any = None  # Values to be validated by the caller
     return CacheMeta(
@@ -916,9 +916,9 @@ def deps_to_json(x: dict[str, set[str]]) -> str:
 
 
 # File for storing metadata about all the fine-grained dependency caches
-DEPS_META_FILE: Final = "@deps.meta.json"
+DEPS_META_FILE: Final = "@deps.meta.json.gz"
 # File for storing fine-grained dependencies that didn't a parent in the build
-DEPS_ROOT_FILE: Final = "@root.deps.json"
+DEPS_ROOT_FILE: Final = "@root.deps.json.gz"
 
 # The name of the fake module used to store fine-grained dependencies that
 # have no other place to go.
@@ -933,8 +933,8 @@ def write_deps_cache(
     Serialize fine-grained dependencies map for fine grained mode.
 
     Dependencies on some module 'm' is stored in the dependency cache
-    file m.deps.json.  This entails some spooky action at a distance:
-    if module 'n' depends on 'm', that produces entries in m.deps.json.
+    file m.deps.json.gz.  This entails some spooky action at a distance:
+    if module 'n' depends on 'm', that produces entries in m.deps.json.gz.
     When there is a dependency on a module that does not exist in the
     build, it is stored with its first existing parent module. If no
     such module exists, it is stored with the fake module FAKE_ROOT_MODULE.
@@ -1043,7 +1043,7 @@ def generate_deps_for_cache(manager: BuildManager, graph: Graph) -> dict[str, di
     return rdeps
 
 
-PLUGIN_SNAPSHOT_FILE: Final = "@plugins_snapshot.json"
+PLUGIN_SNAPSHOT_FILE: Final = "@plugins_snapshot.json.gz"
 
 
 def write_plugins_snapshot(manager: BuildManager) -> None:
@@ -1254,8 +1254,8 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
 
     deps_json = None
     if options.cache_fine_grained:
-        deps_json = prefix + ".deps.json"
-    return (prefix + ".meta.json", prefix + ".data.json", deps_json)
+        deps_json = prefix + ".deps.json.gz"
+    return (prefix + ".meta.json.gz", prefix + ".data.json.gz", deps_json)
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | None:
@@ -3562,7 +3562,7 @@ def write_undocumented_ref_info(
         return
 
     _, data_file, _ = get_cache_names(state.id, state.xpath, options)
-    ref_info_file = ".".join(data_file.split(".")[:-2]) + ".refs.json"
+    ref_info_file = ".".join(data_file.split(".")[:-3]) + ".refs.json.gz"
     assert not ref_info_file.startswith(".")
 
     deps_json = get_undocumented_ref_info_json(state.tree, type_map)
