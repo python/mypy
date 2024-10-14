@@ -6,7 +6,7 @@
 #
 attrs==23.1.0
     # via -r test-requirements.in
-black==24.3.0
+black==24.8.0
     # via -r test-requirements.in
 cfgv==3.4.0
     # via pre-commit
@@ -61,7 +61,7 @@ pytest-xdist==3.3.1
     # via -r test-requirements.in
 pyyaml==6.0.2
     # via pre-commit
-ruff==0.2.0
+ruff==0.6.9
     # via -r test-requirements.in
 tomli==2.0.1
     # via -r test-requirements.in
