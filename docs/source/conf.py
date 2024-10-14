@@ -107,6 +107,12 @@ exclude_patterns = []
 # a list of builtin themes.
 html_theme = "furo"
 
+html_theme_options = {
+    "source_repository": "https://github.com/python/mypy",
+    "source_branch": "master",
+    "source_directory": "docs/source",
+}
+
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
