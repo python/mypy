@@ -247,7 +247,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
 #endif
         if (!skip) {
             if (i < nargs && i < max) {
-                current_arg = PyTuple_GET_ITEM(args, i);
+                current_arg = Py_NewRef(PyTuple_GET_ITEM(args, i));
             }
             else if (nkwargs && i >= pos) {
                 int res = PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg);
@@ -265,6 +265,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             if (current_arg) {
                 PyObject **p = va_arg(*p_va, PyObject **);
                 *p = current_arg;
+                Py_DECREF(current_arg);
                 format++;
                 continue;
             }
@@ -371,7 +372,10 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         /* make sure there are no arguments given by name and position */
         for (i = pos; i < bound_pos_args && i < len; i++) {
             int res = PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg);
-            if (unlikely(res == 0)) {
+            if (res == 1) {
+                Py_DECREF(current_arg);
+            }
+            else if (unlikely(res == 0)) {
                 /* arg present in tuple and in dict */
                 PyErr_Format(PyExc_TypeError,
                              "argument for %.200s%s given by name ('%s') "
