@@ -736,8 +736,8 @@ class BuildManager:
         shadow_file = self.shadow_equivalence_map.get(path)
         return shadow_file if shadow_file else path
 
-    def get_stat(self, path: str) -> os.stat_result:
-        return self.fscache.stat(self.maybe_swap_for_shadow_path(path))
+    def get_stat(self, path: str) -> os.stat_result | None:
+        return self.fscache.stat_or_none(self.maybe_swap_for_shadow_path(path))
 
     def getmtime(self, path: str) -> int:
         """Return a file's mtime; but 0 in bazel mode.
@@ -1394,9 +1394,9 @@ def validate_meta(
     if bazel:
         # Normalize path under bazel to make sure it isn't absolute
         path = normpath(path, manager.options)
-    try:
-        st = manager.get_stat(path)
-    except OSError:
+
+    st = manager.get_stat(path)
+    if st is None:
         return None
     if not stat.S_ISDIR(st.st_mode) and not stat.S_ISREG(st.st_mode):
         manager.log(f"Metadata abandoned for {id}: file or directory {path} does not exist")
@@ -1572,10 +1572,9 @@ def write_cache(
     plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
 
     # Obtain and set up metadata
-    try:
-        st = manager.get_stat(path)
-    except OSError as err:
-        manager.log(f"Cannot get stat for {path}: {err}")
+    st = manager.get_stat(path)
+    if st is None:
+        manager.log(f"Cannot get stat for {path}")
         # Remove apparently-invalid cache files.
         # (This is purely an optimization.)
         for filename in [data_json, meta_json]:

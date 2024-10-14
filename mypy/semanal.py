@@ -6461,18 +6461,46 @@ class SemanticAnalyzer(
         Note that this can't be used for names nested in class namespaces.
         """
         # TODO: unify/clean-up/simplify lookup methods, see #4157.
-        # TODO: support nested classes (but consider performance impact,
-        #       we might keep the module level only lookup for thing like 'builtins.int').
-        assert "." in fullname
         module, name = fullname.rsplit(".", maxsplit=1)
-        if module not in self.modules:
-            return None
-        filenode = self.modules[module]
-        result = filenode.names.get(name)
-        if result is None and self.is_incomplete_namespace(module):
-            # TODO: More explicit handling of incomplete refs?
-            self.record_incomplete_ref()
-        return result
+
+        if module in self.modules:
+            # If the module exists, look up the name in the module.
+            # This is the common case.
+            filenode = self.modules[module]
+            result = filenode.names.get(name)
+            if result is None and self.is_incomplete_namespace(module):
+                # TODO: More explicit handling of incomplete refs?
+                self.record_incomplete_ref()
+            return result
+        else:
+            # Else, try to find the longest prefix of the module name that is in the modules dictionary.
+            splitted_modules = fullname.split(".")
+            names = []
+
+            while splitted_modules and ".".join(splitted_modules) not in self.modules:
+                names.append(splitted_modules.pop())
+
+            if not splitted_modules or not names:
+                # If no module or name is found, return None.
+                return None
+
+            # Reverse the names list to get the correct order of names.
+            names.reverse()
+
+            module = ".".join(splitted_modules)
+            filenode = self.modules[module]
+            result = filenode.names.get(names[0])
+
+            if result is None and self.is_incomplete_namespace(module):
+                # TODO: More explicit handling of incomplete refs?
+                self.record_incomplete_ref()
+
+            for part in names[1:]:
+                if result is not None and isinstance(result.node, TypeInfo):
+                    result = result.node.names.get(part)
+                else:
+                    return None
+            return result
 
     def object_type(self) -> Instance:
         return self.named_type("builtins.object")

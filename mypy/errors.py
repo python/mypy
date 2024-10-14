@@ -922,8 +922,24 @@ class Errors:
         self.flushed_files.add(path)
         source_lines = None
         if self.options.pretty and self.read_source:
-            source_lines = self.read_source(path)
+            # Find shadow file mapping and read source lines if a shadow file exists for the given path.
+            # If shadow file mapping is not found, read source lines
+            mapped_path = self.find_shadow_file_mapping(path)
+            if mapped_path:
+                source_lines = self.read_source(mapped_path)
+            else:
+                source_lines = self.read_source(path)
         return self.format_messages(error_tuples, source_lines)
+
+    def find_shadow_file_mapping(self, path: str) -> str | None:
+        """Return the shadow file path for a given source file path or None."""
+        if self.options.shadow_file is None:
+            return None
+
+        for i in self.options.shadow_file:
+            if i[0] == path:
+                return i[1]
+        return None
 
     def new_messages(self) -> list[str]:
         """Return a string list of new error messages.
