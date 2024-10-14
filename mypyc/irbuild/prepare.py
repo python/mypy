@@ -81,7 +81,11 @@ def build_type_map(
     # references even if there are import cycles.
     for module, cdef in classes:
         class_ir = ClassIR(
-            cdef.name, module.fullname, is_trait(cdef), is_abstract=cdef.info.is_abstract
+            cdef.name,
+            module.fullname,
+            is_trait(cdef),
+            is_abstract=cdef.info.is_abstract,
+            is_final_class=cdef.info.is_final,
         )
         class_ir.is_ext_class = is_extension_class(cdef)
         if class_ir.is_ext_class:

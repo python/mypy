@@ -571,6 +571,7 @@ def generate_setup_for_class(
         emitter.emit_line("}")
     else:
         emitter.emit_line(f"self->vtable = {vtable_name};")
+
     for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
         field = emitter.bitmap_field(i)
         emitter.emit_line(f"self->{field} = 0;")
