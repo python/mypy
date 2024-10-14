@@ -67,7 +67,7 @@ tomli==2.0.1
     # via -r test-requirements.in
 types-psutil==5.9.5.17
     # via -r build-requirements.txt
-types-setuptools==68.2.0.0
+types-setuptools==75.1.0.20241014
     # via -r build-requirements.txt
 typing-extensions==4.12.2
     # via -r mypy-requirements.txt
@@ -75,5 +75,5 @@ virtualenv==20.26.6
     # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==70.0.0
+setuptools==75.1.0
     # via -r test-requirements.in
