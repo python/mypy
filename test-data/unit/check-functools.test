@@ -575,7 +575,6 @@ def bar(f: S) -> S:
     return f
 [builtins fixtures/primitives.pyi]
 
-
 [case testFunctoolsPartialAbstractType]
 # flags: --python-version 3.9
 from abc import ABC, abstractmethod
@@ -597,7 +596,6 @@ def f2() -> None:
     partial_cls()  # E: Cannot instantiate abstract class "A" with abstract attribute "method"
 [builtins fixtures/tuple.pyi]
 
-
 [case testFunctoolsPartialSelfType]
 from functools import partial
 from typing_extensions import Self
@@ -609,4 +607,33 @@ class A:
     def from_msg(cls, msg: str) -> Self:
         factory = partial(cls, ts=0)
         return factory(msg=msg)
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialTypeVarValues]
+from functools import partial
+from typing import TypeVar
+
+T = TypeVar("T", int, str)
+
+def f(x: int, y: T) -> T:
+    return y
+
+def g(x: T, y: int) -> T:
+    return x
+
+def h(x: T, y: T) -> T:
+    return x
+
+fp = partial(f, 1)
+reveal_type(fp(1))  # N: Revealed type is "builtins.int"
+reveal_type(fp("a"))  # N: Revealed type is "builtins.str"
+fp(object())  # E: Value of type variable "T" of "f" cannot be "object"
+
+gp = partial(g, 1)
+reveal_type(gp(1))  # N: Revealed type is "builtins.int"
+gp("a")  # E: Argument 1 to "g" has incompatible type "str"; expected "int"
+
+hp = partial(h, 1)
+reveal_type(hp(1))  # N: Revealed type is "builtins.int"
+hp("a")  # E: Argument 1 to "h" has incompatible type "str"; expected "int"
 [builtins fixtures/tuple.pyi]

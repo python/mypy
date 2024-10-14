@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import AbstractSet, Iterable, NamedTuple
 
 from mypy.fscache import FileSystemCache
@@ -56,8 +57,7 @@ class FileSystemWatcher:
                 del self._file_data[path]
         self._paths -= set(paths)
 
-    def _update(self, path: str) -> None:
-        st = self.fs.stat(path)
+    def _update(self, path: str, st: os.stat_result) -> None:
         hash_digest = self.fs.hash_digest(path)
         self._file_data[path] = FileData(st.st_mtime, st.st_size, hash_digest)
 
@@ -65,9 +65,8 @@ class FileSystemWatcher:
         changed = set()
         for path in paths:
             old = self._file_data[path]
-            try:
-                st = self.fs.stat(path)
-            except FileNotFoundError:
+            st = self.fs.stat_or_none(path)
+            if st is None:
                 if old is not None:
                     # File was deleted.
                     changed.add(path)
@@ -76,13 +75,13 @@ class FileSystemWatcher:
                 if old is None:
                     # File is new.
                     changed.add(path)
-                    self._update(path)
+                    self._update(path, st)
                 # Round mtimes down, to match the mtimes we write to meta files
                 elif st.st_size != old.st_size or int(st.st_mtime) != int(old.st_mtime):
                     # Only look for changes if size or mtime has changed as an
                     # optimization, since calculating hash is expensive.
                     new_hash = self.fs.hash_digest(path)
-                    self._update(path)
+                    self._update(path, st)
                     if st.st_size != old.st_size or new_hash != old.hash:
                         # Changed file.
                         changed.add(path)

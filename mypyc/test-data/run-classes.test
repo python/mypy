@@ -3,8 +3,13 @@ class Empty: pass
 
 def f(e: Empty) -> Empty:
     return e
+
+class EmptyEllipsis: ...
+
+def g(e: EmptyEllipsis) -> EmptyEllipsis:
+    return e
 [file driver.py]
-from native import Empty, f
+from native import Empty, EmptyEllipsis, f, g
 
 print(isinstance(Empty, type))
 print(Empty)
@@ -12,10 +17,21 @@ print(str(Empty())[:20])
 
 e = Empty()
 print(f(e) is e)
+
+print(isinstance(EmptyEllipsis, type))
+print(EmptyEllipsis)
+print(str(EmptyEllipsis())[:28])
+
+e2 = EmptyEllipsis()
+print(g(e2) is e2)
 [out]
 True
 <class 'native.Empty'>
 <native.Empty object
+True
+True
+<class 'native.EmptyEllipsis'>
+<native.EmptyEllipsis object
 True
 
 [case testClassWithFields]
@@ -2503,3 +2519,78 @@ class C:
 def test_final_attribute() -> None:
     assert C.A == -1
     assert C.a == [-1]
+
+[case testClassWithFinalDecorator]
+from typing import final
+
+@final
+class C:
+    def a(self) -> int:
+        return 1
+
+def test_class_final_attribute() -> None:
+    assert C().a() == 1
+
+
+[case testClassWithFinalDecoratorCtor]
+from typing import final
+
+@final
+class C:
+    def __init__(self) -> None:
+        self.a = 1
+
+    def b(self) -> int:
+        return 2
+
+    @property
+    def c(self) -> int:
+        return 3
+
+def test_class_final_attribute() -> None:
+    assert C().a == 1
+    assert C().b() == 2
+    assert C().c == 3
+
+[case testClassWithFinalDecoratorInheritedWithProperties]
+from typing import final
+
+class B:
+    def a(self) -> int:
+        return 2
+
+    @property
+    def b(self) -> int:
+        return self.a() + 2
+
+    @property
+    def c(self) -> int:
+        return 3
+
+def test_class_final_attribute_basic() -> None:
+    assert B().a() == 2
+    assert B().b == 4
+    assert B().c == 3
+
+@final
+class C(B):
+    def a(self) -> int:
+        return 1
+
+    @property
+    def b(self) -> int:
+        return self.a() + 1
+
+def fn(cl: B) -> int:
+    return cl.a()
+
+def test_class_final_attribute_inherited() -> None:
+    assert C().a() == 1
+    assert fn(C()) == 1
+    assert B().a() == 2
+    assert fn(B()) == 2
+
+    assert B().b == 4
+    assert C().b == 2
+    assert B().c == 3
+    assert C().c == 3
