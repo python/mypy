@@ -12,7 +12,7 @@ cfgv==3.4.0
     # via pre-commit
 click==8.1.7
     # via black
-coverage==7.6.3
+coverage==7.6.1
     # via pytest-cov
 distlib==0.3.9
     # via virtualenv
