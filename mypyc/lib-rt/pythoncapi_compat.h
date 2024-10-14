@@ -1537,7 +1537,7 @@ static inline int PyUnicode_Equal(PyObject *str1, PyObject *str2)
     }
 
 #if PY_VERSION_HEX >= 0x030d0000 && !defined(PYPY_VERSION)
-    extern int _PyUnicode_Equal(PyObject *str1, PyObject *str2);
+    PyAPI_FUNC(int) _PyUnicode_Equal(PyObject *str1, PyObject *str2);
 
     return _PyUnicode_Equal(str1, str2);
 #elif PY_VERSION_HEX >= 0x03060000 && !defined(PYPY_VERSION)
@@ -1564,7 +1564,7 @@ static inline PyObject* PyBytes_Join(PyObject *sep, PyObject *iterable)
 static inline Py_hash_t Py_HashBuffer(const void *ptr, Py_ssize_t len)
 {
 #if PY_VERSION_HEX >= 0x03000000 && !defined(PYPY_VERSION)
-    extern Py_hash_t _Py_HashBytes(const void *src, Py_ssize_t len);
+    PyAPI_FUNC(Py_hash_t) _Py_HashBytes(const void *src, Py_ssize_t len);
 
     return _Py_HashBytes(ptr, len);
 #else
