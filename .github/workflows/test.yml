@@ -128,8 +128,8 @@ jobs:
     name: ${{ matrix.name }}
     env:
       TOX_SKIP_MISSING_INTERPRETERS: False
-      # Rich (pip)
-      FORCE_COLOR: 1
+      # Rich (pip) -- Disable color for windows + pytest
+      FORCE_COLOR: ${{ !(startsWith(matrix.os, 'windows-') && startsWith(matrix.toxenv, 'py')) && 1 || 0 }}
       # Tox
       PY_COLORS: 1
       # Mypy (see https://github.com/python/mypy/issues/7771)
