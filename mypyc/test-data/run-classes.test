@@ -3,28 +3,13 @@ class Empty: pass
 
 def f(e: Empty) -> Empty:
     return e
-[file driver.py]
-from native import Empty, f
 
-print(isinstance(Empty, type))
-print(Empty)
-print(str(Empty())[:20])
+class EmptyEllipsis: ...
 
-e = Empty()
-print(f(e) is e)
-[out]
-True
-<class 'native.Empty'>
-<native.Empty object
-True
-
-[case testEmptyClassEllipsis]
-class Empty: ...
-
-def f(e: Empty) -> Empty:
+def g(e: EmptyEllipsis) -> EmptyEllipsis:
     return e
 [file driver.py]
-from native import Empty, f
+from native import Empty, EmptyEllipsis, f, g
 
 print(isinstance(Empty, type))
 print(Empty)
@@ -32,10 +17,21 @@ print(str(Empty())[:20])
 
 e = Empty()
 print(f(e) is e)
+
+print(isinstance(EmptyEllipsis, type))
+print(EmptyEllipsis)
+print(str(EmptyEllipsis())[:28])
+
+e2 = EmptyEllipsis()
+print(g(e2) is e2)
 [out]
 True
 <class 'native.Empty'>
 <native.Empty object
+True
+True
+<class 'native.EmptyEllipsis'>
+<native.EmptyEllipsis object
 True
 
 [case testClassWithFields]
