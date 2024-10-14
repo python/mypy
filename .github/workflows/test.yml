@@ -128,8 +128,8 @@ jobs:
     name: ${{ matrix.name }}
     env:
       TOX_SKIP_MISSING_INTERPRETERS: False
-      # Rich (pip)
-      FORCE_COLOR: 1
+      # Rich (pip) -- Disable color for windows + pytest
+      FORCE_COLOR: ${{ !(startsWith(matrix.os, 'windows-') && startsWith(matrix.toxenv, 'py')) && 1 || 0 }}
       # Tox
       PY_COLORS: 1
       # Mypy (see https://github.com/python/mypy/issues/7771)
@@ -183,7 +183,7 @@ jobs:
         echo debug build; python -c 'import sysconfig; print(bool(sysconfig.get_config_var("Py_DEBUG")))'
         echo os.cpu_count; python -c 'import os; print(os.cpu_count())'
         echo os.sched_getaffinity; python -c 'import os; print(len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
-        pip install setuptools==75.1.0 tox==4.11.0
+        pip install setuptools==75.1.0 tox==4.21.2
 
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
@@ -243,7 +243,7 @@ jobs:
           default: 3.11.1
           command: python -c "import platform; print(f'{platform.architecture()=} {platform.machine()=}');"
       - name: Install tox
-        run: pip install setuptools==75.1.0 tox==4.11.0
+        run: pip install setuptools==75.1.0 tox==4.21.2
       - name: Setup tox environment
         run: tox run -e py --notest
       - name: Test
