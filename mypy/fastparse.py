@@ -2033,7 +2033,7 @@ class TypeConverter:
         if (
             isinstance(typ, RawExpressionType)
             # Use type() because we do not want to allow bools.
-            and type(typ.literal_value) is int  # noqa: E721
+            and type(typ.literal_value) is int
         ):
             if isinstance(n.op, USub):
                 typ.literal_value *= -1

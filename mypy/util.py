@@ -15,9 +15,8 @@ from typing import IO, Callable, Container, Final, Iterable, Sequence, Sized, Ty
 from typing_extensions import Literal
 
 try:
-    import curses
-
     import _curses  # noqa: F401
+    import curses
 
     CURSES_ENABLED = True
 except ImportError:
