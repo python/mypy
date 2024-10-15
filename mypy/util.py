@@ -888,7 +888,9 @@ def json_dumps(obj: object, debug: bool = False) -> bytes:
         if debug:
             return orjson.dumps(obj, option=orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
         else:
-            return orjson.dumps(obj)  # type: ignore[no-any-return]
+            # TODO: If we don't sort keys here, testIncrementalInternalScramble fails
+            # We should document exactly what is going on there
+            return orjson.dumps(obj, option=orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
 
     if debug:
         return json.dumps(obj, indent=2, sort_keys=True).encode("utf-8")
