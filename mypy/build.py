@@ -664,7 +664,7 @@ class BuildManager:
         for module in CORE_BUILTIN_MODULES:
             if options.use_builtins_fixtures:
                 continue
-            path = self.find_module_cache.find_module(module)
+            path = self.find_module_cache.find_module(module, fast_path=True)
             if not isinstance(path, str):
                 raise CompileError(
                     [f"Failed to find builtin module {module}, perhaps typeshed is broken?"]
@@ -2725,7 +2725,9 @@ def exist_added_packages(suppressed: list[str], manager: BuildManager, options: 
 
 def find_module_simple(id: str, manager: BuildManager) -> str | None:
     """Find a filesystem path for module `id` or `None` if not found."""
-    x = find_module_with_reason(id, manager)
+    t0 = time.time()
+    x = manager.find_module_cache.find_module(id, fast_path=True)
+    manager.add_stats(find_module_time=time.time() - t0, find_module_calls=1)
     if isinstance(x, ModuleNotFoundReason):
         return None
     return x
@@ -2734,7 +2736,7 @@ def find_module_simple(id: str, manager: BuildManager) -> str | None:
 def find_module_with_reason(id: str, manager: BuildManager) -> ModuleSearchResult:
     """Find a filesystem path for module `id` or the reason it can't be found."""
     t0 = time.time()
-    x = manager.find_module_cache.find_module(id)
+    x = manager.find_module_cache.find_module(id, fast_path=False)
     manager.add_stats(find_module_time=time.time() - t0, find_module_calls=1)
     return x
 
