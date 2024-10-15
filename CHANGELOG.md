@@ -503,6 +503,15 @@ Mypyc now supports the new syntax for generics introduced in Python 3.12 (see ab
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=6dda799d8ad1d89e0f8aad7ac41d2d34bd838ace+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
+### Mypy 1.11.1
+ * Fix `RawExpressionType.accept` crash with `--cache-fine-grained` (Anders Kaseorg, PR [17588](https://github.com/python/mypy/pull/17588))
+ * Fix PEP 604 isinstance caching (Shantanu, PR [17563](https://github.com/python/mypy/pull/17563))
+ * Fix `typing.TypeAliasType` being undefined on python < 3.12 (Nikita Sobolev, PR [17558](https://github.com/python/mypy/pull/17558))
+ * Fix `types.GenericAlias` lookup crash (Shantanu, PR [17543](https://github.com/python/mypy/pull/17543))
+
+### Mypy 1.11.2
+ * Alternative fix for a union-like literal string (Ivan Levkivskyi, PR [17639](https://github.com/python/mypy/pull/17639))
+ * Unwrap `TypedDict` item types before storing (Ivan Levkivskyi, PR [17640](https://github.com/python/mypy/pull/17640))
 
 ### Acknowledgements
 Thanks to all mypy contributors who contributed to this release:
