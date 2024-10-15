@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import io
 import os
-import pathlib
 import re
 import shutil
 import sys
@@ -411,9 +410,11 @@ def replace_object_state(
             pass
 
 
-def is_sub_path(path1: str, path2: str) -> bool:
-    """Given two paths, return if path1 is a sub-path of path2."""
-    return pathlib.Path(path2) in pathlib.Path(path1).parents
+def is_sub_path(path: str, dir: str) -> bool:
+    """Given two paths, return if path is a sub-path of dir."""
+    if not dir.endswith(os.sep):
+        dir += os.sep
+    return path.startswith(dir)
 
 
 if sys.platform == "linux" or sys.platform == "darwin":
