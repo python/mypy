@@ -95,6 +95,7 @@ from mypy.stats import dump_type_stats
 from mypy.stubinfo import legacy_bundled_packages, non_bundled_packages, stub_distribution_name
 from mypy.types import Type
 from mypy.typestate import reset_global_state, type_state
+from mypy.util import json_dumps, json_loads
 from mypy.version import __version__
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -858,7 +859,7 @@ class BuildManager:
         t0 = time.time()
         if id in self.fg_deps_meta:
             # TODO: Assert deps file wasn't changed.
-            deps = json.loads(self.metastore.read(self.fg_deps_meta[id]["path"]))
+            deps = json_loads(self.metastore.read(self.fg_deps_meta[id]["path"]))
         else:
             deps = {}
         val = {k: set(v) for k, v in deps.items()}
@@ -911,8 +912,8 @@ class BuildManager:
         return self.stats
 
 
-def deps_to_json(x: dict[str, set[str]]) -> str:
-    return json.dumps({k: list(v) for k, v in x.items()}, separators=(",", ":"))
+def deps_to_json(x: dict[str, set[str]]) -> bytes:
+    return json_dumps({k: list(v) for k, v in x.items()})
 
 
 # File for storing metadata about all the fine-grained dependency caches
@@ -980,7 +981,7 @@ def write_deps_cache(
 
     meta = {"snapshot": meta_snapshot, "deps_meta": fg_deps_meta}
 
-    if not metastore.write(DEPS_META_FILE, json.dumps(meta, separators=(",", ":"))):
+    if not metastore.write(DEPS_META_FILE, json_dumps(meta)):
         manager.log(f"Error writing fine-grained deps meta JSON file {DEPS_META_FILE}")
         error = True
 
@@ -1048,7 +1049,7 @@ PLUGIN_SNAPSHOT_FILE: Final = "@plugins_snapshot.json"
 
 def write_plugins_snapshot(manager: BuildManager) -> None:
     """Write snapshot of versions and hashes of currently active plugins."""
-    snapshot = json.dumps(manager.plugins_snapshot, separators=(",", ":"))
+    snapshot = json_dumps(manager.plugins_snapshot)
     if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, snapshot):
         manager.errors.set_file(_cache_dir_prefix(manager.options), None, manager.options)
         manager.errors.report(0, 0, "Error writing plugins snapshot", blocker=True)
@@ -1079,8 +1080,8 @@ def read_quickstart_file(
         # just ignore it.
         raw_quickstart: dict[str, Any] = {}
         try:
-            with open(options.quickstart_file) as f:
-                raw_quickstart = json.load(f)
+            with open(options.quickstart_file, "rb") as f:
+                raw_quickstart = json_loads(f.read())
 
             quickstart = {}
             for file, (x, y, z) in raw_quickstart.items():
@@ -1148,10 +1149,10 @@ def _load_json_file(
     manager.add_stats(metastore_read_time=time.time() - t0)
     # Only bother to compute the log message if we are logging it, since it could be big
     if manager.verbosity() >= 2:
-        manager.trace(log_success + data.rstrip())
+        manager.trace(log_success + data.rstrip().decode())
     try:
         t1 = time.time()
-        result = json.loads(data)
+        result = json_loads(data)
         manager.add_stats(data_json_load_time=time.time() - t1)
     except json.JSONDecodeError:
         manager.errors.set_file(file, None, manager.options)
@@ -1343,8 +1344,8 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
     # So that plugins can return data with tuples in it without
     # things silently always invalidating modules, we round-trip
     # the config data. This isn't beautiful.
-    plugin_data = json.loads(
-        json.dumps(manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True)))
+    plugin_data = json_loads(
+        json_dumps(manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True)))
     )
     if m.plugin_data != plugin_data:
         manager.log(f"Metadata abandoned for {id}: plugin configuration differs")
@@ -1478,10 +1479,7 @@ def validate_meta(
                 "ignore_all": meta.ignore_all,
                 "plugin_data": meta.plugin_data,
             }
-            if manager.options.debug_cache:
-                meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
-            else:
-                meta_str = json.dumps(meta_dict, separators=(",", ":"))
+            meta_bytes = json_dumps(meta_dict, manager.options.debug_cache)
             meta_json, _, _ = get_cache_names(id, path, manager.options)
             manager.log(
                 "Updating mtime for {}: file {}, meta {}, mtime {}".format(
@@ -1489,7 +1487,7 @@ def validate_meta(
                 )
             )
             t1 = time.time()
-            manager.metastore.write(meta_json, meta_str)  # Ignore errors, just an optimization.
+            manager.metastore.write(meta_json, meta_bytes)  # Ignore errors, just an optimization.
             manager.add_stats(validate_update_time=time.time() - t1, validate_munging_time=t1 - t0)
             return meta
 
@@ -1505,13 +1503,6 @@ def compute_hash(text: str) -> str:
     # note in
     # https://docs.python.org/3/reference/datamodel.html#object.__hash__.
     return hash_digest(text.encode("utf-8"))
-
-
-def json_dumps(obj: Any, debug_cache: bool) -> str:
-    if debug_cache:
-        return json.dumps(obj, indent=2, sort_keys=True)
-    else:
-        return json.dumps(obj, sort_keys=True, separators=(",", ":"))
 
 
 def write_cache(
@@ -1566,8 +1557,8 @@ def write_cache(
 
     # Serialize data and analyze interface
     data = tree.serialize()
-    data_str = json_dumps(data, manager.options.debug_cache)
-    interface_hash = compute_hash(data_str)
+    data_bytes = json_dumps(data, manager.options.debug_cache)
+    interface_hash = hash_digest(data_bytes)
 
     plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
 
@@ -1591,7 +1582,7 @@ def write_cache(
         manager.trace(f"Interface for {id} is unchanged")
     else:
         manager.trace(f"Interface for {id} has changed")
-        if not metastore.write(data_json, data_str):
+        if not metastore.write(data_json, data_bytes):
             # Most likely the error is the replace() call
             # (see https://github.com/python/mypy/issues/3215).
             manager.log(f"Error writing data JSON file {data_json}")
@@ -3566,4 +3557,4 @@ def write_undocumented_ref_info(
     assert not ref_info_file.startswith(".")
 
     deps_json = get_undocumented_ref_info_json(state.tree, type_map)
-    metastore.write(ref_info_file, json.dumps(deps_json, separators=(",", ":")))
+    metastore.write(ref_info_file, json_dumps(deps_json))

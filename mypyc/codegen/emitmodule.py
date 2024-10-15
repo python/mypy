@@ -24,7 +24,7 @@ from mypy.fscache import FileSystemCache
 from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
-from mypy.util import hash_digest
+from mypy.util import hash_digest, json_dumps
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
 from mypyc.codegen.emitclass import generate_class, generate_class_type_decl
@@ -154,7 +154,7 @@ class MypycPlugin(Plugin):
         ir_data = json.loads(ir_json)
 
         # Check that the IR cache matches the metadata cache
-        if compute_hash(meta_json) != ir_data["meta_hash"]:
+        if hash_digest(meta_json) != ir_data["meta_hash"]:
             return None
 
         # Check that all of the source files are present and as
@@ -369,11 +369,11 @@ def write_cache(
         newpath = get_state_ir_cache_name(st)
         ir_data = {
             "ir": module.serialize(),
-            "meta_hash": compute_hash(meta_data),
+            "meta_hash": hash_digest(meta_data),
             "src_hashes": hashes[group_map[id]],
         }
 
-        result.manager.metastore.write(newpath, json.dumps(ir_data, separators=(",", ":")))
+        result.manager.metastore.write(newpath, json_dumps(ir_data))
 
     result.manager.metastore.commit()
 
