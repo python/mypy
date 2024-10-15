@@ -201,19 +201,33 @@ def class_callable(
     orig_self_type = get_proper_type(orig_self_type)
     default_ret_type = fill_typevars(info)
     explicit_type = init_ret_type if is_new else orig_self_type
-    if (
-        isinstance(explicit_type, (Instance, TupleType, UninhabitedType))
-        # We have to skip protocols, because it can be a subtype of a return type
-        # by accident. Like `Hashable` is a subtype of `object`. See #11799
-        and isinstance(default_ret_type, Instance)
-        and not default_ret_type.type.is_protocol
-        # Only use the declared return type from __new__ or declared self in __init__
-        # if it is actually returning a subtype of what we would return otherwise.
-        and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
-    ):
-        ret_type: Type = explicit_type
-    else:
-        ret_type = default_ret_type
+
+    ret_type: Type = default_ret_type
+    from_type_type = init_type.from_type_type
+    if isinstance(explicit_type, (Instance, TupleType, UninhabitedType)):
+        if is_new:
+            # For a long time, mypy didn't truly believe annotations on __new__
+            # This has led to some proliferation of code that depends on this, namely
+            # annotations on __new__ that hardcode the class in the return type.
+            # This can then cause problems for subclasses. Preserve the old behaviour in
+            # this case (although we should probably change it at some point)
+            # See testValueTypeWithNewInParentClass
+            # Also see testSelfTypeInGenericClassUsedFromAnotherGenericClass1
+            if not is_subtype(
+                default_ret_type, explicit_type, ignore_type_params=True
+            ) or is_subtype(explicit_type, default_ret_type, ignore_type_params=True):
+                ret_type = explicit_type
+                from_type_type = True
+        elif (
+            # We have to skip protocols, because it can be a subtype of a return type
+            # by accident. Like `Hashable` is a subtype of `object`. See #11799
+            isinstance(default_ret_type, Instance)
+            and not default_ret_type.type.is_protocol
+            # Only use the declared return type from declared self in __init__
+            # if it is actually returning a subtype of what we would return otherwise.
+            and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
+        ):
+            ret_type = explicit_type
 
     callable_type = init_type.copy_modified(
         ret_type=ret_type,
@@ -221,6 +235,7 @@ def class_callable(
         name=None,
         variables=variables,
         special_sig=special_sig,
+        from_type_type=from_type_type,
     )
     c = callable_type.with_name(info.name)
     return c
