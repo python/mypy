@@ -557,7 +557,7 @@ class FindModuleCache:
             return ModuleNotFoundReason.NOT_FOUND
 
     def find_modules_recursive(self, module: str) -> list[BuildSource]:
-        module_path = self.find_module(module)
+        module_path = self.find_module(module, fast_path=True)
         if isinstance(module_path, ModuleNotFoundReason):
             return []
         sources = [BuildSource(module_path, module, None)]
