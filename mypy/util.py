@@ -534,9 +534,7 @@ def hash_digest(data: bytes) -> str:
     accidental collision, but we don't really care about any of the
     cryptographic properties.
     """
-    # Once we drop Python 3.5 support, we should consider using
-    # blake2b, which is faster.
-    return hashlib.sha256(data).hexdigest()
+    return hashlib.sha1(data).hexdigest()
 
 
 def parse_gray_color(cup: bytes) -> str:
