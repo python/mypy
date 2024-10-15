@@ -418,6 +418,7 @@ def is_sub_path(path1: str, path2: str) -> bool:
 
 
 if sys.platform == "linux" or sys.platform == "darwin":
+
     def os_path_join(path: str, b: str) -> str:
         # Based off of os.path.join, but simplified to str-only, 2 args and mypyc can compile it.
         if b.startswith("/") or not path:
@@ -426,7 +427,9 @@ if sys.platform == "linux" or sys.platform == "darwin":
             return path + b
         else:
             return path + "/" + b
+
 else:
+
     def os_path_join(a: str, p: str) -> str:
         return os.path.join(a, p)
 
