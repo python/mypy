@@ -92,7 +92,7 @@ from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
-from mypy.stubinfo import legacy_bundled_packages, non_bundled_packages, stub_distribution_name
+from mypy.stubinfo import is_module_from_legacy_bundled_package, stub_distribution_name
 from mypy.types import Type
 from mypy.typestate import reset_global_state, type_state
 from mypy.util import json_dumps, json_loads
@@ -2658,17 +2658,13 @@ def find_module_and_diagnose(
 
         ignore_missing_imports = options.ignore_missing_imports
 
-        id_components = id.split(".")
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
         # otherwise updating mypy can silently result in new false
         # negatives. (Unless there are stubs but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
         if (
-            any(
-                ".".join(id_components[:i]) in legacy_bundled_packages
-                for i in range(len(id_components), 0, -1)
-            )
+            is_module_from_legacy_bundled_package(id)
             and global_ignore_missing_imports
             and not options.ignore_missing_imports_per_module
             and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
@@ -2789,18 +2785,15 @@ def module_not_found(
             code = codes.IMPORT
         errors.report(line, 0, msg.format(module=target), code=code)
 
-        components = target.split(".")
-        for i in range(len(components), 0, -1):
-            module = ".".join(components[:i])
-            if module in legacy_bundled_packages or module in non_bundled_packages:
-                break
-
+        dist = stub_distribution_name(target)
         for note in notes:
             if "{stub_dist}" in note:
-                note = note.format(stub_dist=stub_distribution_name(module))
+                assert dist is not None
+                note = note.format(stub_dist=dist)
             errors.report(line, 0, note, severity="note", only_once=True, code=code)
         if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            manager.missing_stub_packages.add(stub_distribution_name(module))
+            assert dist is not None
+            manager.missing_stub_packages.add(dist)
     errors.set_import_context(save_import_context)
 
 
