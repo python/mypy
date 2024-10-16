@@ -895,7 +895,8 @@ def json_dumps(obj: object, debug: bool = False) -> bytes:
     if debug:
         return json.dumps(obj, indent=2, sort_keys=True).encode("utf-8")
     else:
-        return json.dumps(obj, separators=(",", ":")).encode("utf-8")
+        # See above for sort_keys comment
+        return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
 def json_loads(data: bytes) -> Any:
