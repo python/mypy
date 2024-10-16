@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import os
 import pathlib
 import re
@@ -11,8 +12,14 @@ import shutil
 import sys
 import time
 from importlib import resources as importlib_resources
-from typing import IO, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
+from typing import IO, Any, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
 from typing_extensions import Literal
+
+orjson: Any
+try:
+    import orjson  # type: ignore[import-not-found, no-redef, unused-ignore]
+except ImportError:
+    orjson = None
 
 try:
     import _curses  # noqa: F401
@@ -888,3 +895,25 @@ def quote_docstring(docstr: str) -> str:
         return f"''{docstr_repr}''"
     else:
         return f'""{docstr_repr}""'
+
+
+def json_dumps(obj: object, debug: bool = False) -> bytes:
+    if orjson is not None:
+        if debug:
+            return orjson.dumps(obj, option=orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
+        else:
+            # TODO: If we don't sort keys here, testIncrementalInternalScramble fails
+            # We should document exactly what is going on there
+            return orjson.dumps(obj, option=orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
+
+    if debug:
+        return json.dumps(obj, indent=2, sort_keys=True).encode("utf-8")
+    else:
+        # See above for sort_keys comment
+        return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def json_loads(data: bytes) -> Any:
+    if orjson is not None:
+        return orjson.loads(data)
+    return json.loads(data)
