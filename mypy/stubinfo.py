@@ -1,22 +1,48 @@
 from __future__ import annotations
 
 
-def is_legacy_bundled_package(prefix: str) -> bool:
-    return prefix in legacy_bundled_packages
+def legacy_bundled_dist_from_module(module: str) -> str | None:
+    components = module.split(".")
+    level = legacy_bundled_packages
+    for component in components:
+        if (next_level := level.get(component)) is None:
+            return None
+        if isinstance(next_level, str):
+            return next_level
+        level = next_level
+    return None
+
+
+def typeshed_dist_from_module(module: str) -> str | None:
+    components = module.split(".")
+    level = non_bundled_packages
+    for component in components:
+        if (next_level := level.get(component)) is None:
+            return None
+        if isinstance(next_level, str):
+            return next_level
+        level = next_level
+    return None
 
 
 def approved_stub_package_exists(prefix: str) -> bool:
-    return is_legacy_bundled_package(prefix) or prefix in non_bundled_packages
+    if legacy_bundled_dist_from_module(prefix) is not None:
+        return True
+    if typeshed_dist_from_module(prefix) is not None:
+        return True
+    return False
 
 
-def stub_distribution_name(prefix: str) -> str:
-    return legacy_bundled_packages.get(prefix) or non_bundled_packages[prefix]
+def stub_distribution_name(module: str) -> str | None:
+    return legacy_bundled_dist_from_module(module) or typeshed_dist_from_module(module)
 
+
+NestedPackageDict = dict[str, "str | NestedPackageDict"]
 
 # Stubs for these third-party packages used to be shipped with mypy.
 #
 # Map package name to PyPI stub distribution name.
-legacy_bundled_packages = {
+legacy_bundled_packages: NestedPackageDict = {
     "aiofiles": "types-aiofiles",
     "bleach": "types-bleach",
     "boto": "types-boto",
@@ -32,7 +58,7 @@ legacy_bundled_packages = {
     "docutils": "types-docutils",
     "first": "types-first",
     "gflags": "types-python-gflags",
-    "google.protobuf": "types-protobuf",
+    "google": {"protobuf": "types-protobuf"},
     "markdown": "types-Markdown",
     "mock": "types-mock",
     "OpenSSL": "types-pyOpenSSL",
@@ -72,14 +98,14 @@ legacy_bundled_packages = {
 #   pika:       typeshed's stubs are on PyPI as types-pika-ts.
 #               types-pika already exists on PyPI, and is more complete in many ways,
 #               but is a non-typeshed stubs package.
-non_bundled_packages = {
+non_bundled_packages: NestedPackageDict = {
     "MySQLdb": "types-mysqlclient",
     "PIL": "types-Pillow",
     "PyInstaller": "types-pyinstaller",
     "Xlib": "types-python-xlib",
     "aws_xray_sdk": "types-aws-xray-sdk",
     "babel": "types-babel",
-    "backports.ssl_match_hostname": "types-backports.ssl_match_hostname",
+    "backports": {"ssl_match_hostname": "types-backports.ssl_match_hostname"},
     "braintree": "types-braintree",
     "bs4": "types-beautifulsoup4",
     "bugbear": "types-flake8-bugbear",
@@ -107,7 +133,7 @@ non_bundled_packages = {
     "flask_migrate": "types-Flask-Migrate",
     "fpdf": "types-fpdf2",
     "gdb": "types-gdb",
-    "google.cloud.ndb": "types-google-cloud-ndb",
+    "google": {"cloud": {"ndb": "types-google-cloud-ndb"}},
     "hdbcli": "types-hdbcli",
     "html5lib": "types-html5lib",
     "httplib2": "types-httplib2",
@@ -123,7 +149,7 @@ non_bundled_packages = {
     "oauthlib": "types-oauthlib",
     "openpyxl": "types-openpyxl",
     "opentracing": "types-opentracing",
-    "paho.mqtt": "types-paho-mqtt",
+    "paho": {"mqtt": "types-paho-mqtt"},
     "parsimonious": "types-parsimonious",
     "passlib": "types-passlib",
     "passpy": "types-passpy",
