@@ -33,14 +33,14 @@ class MetadataStore:
         """
 
     @abstractmethod
-    def read(self, name: str) -> str:
+    def read(self, name: str) -> bytes:
         """Read the contents of a metadata entry.
 
         Raises FileNotFound if the entry does not exist.
         """
 
     @abstractmethod
-    def write(self, name: str, data: str, mtime: float | None = None) -> bool:
+    def write(self, name: str, data: bytes, mtime: float | None = None) -> bool:
         """Write a metadata entry.
 
         If mtime is specified, set it as the mtime of the entry. Otherwise,
@@ -86,16 +86,16 @@ class FilesystemMetadataStore(MetadataStore):
 
         return int(os.path.getmtime(os.path.join(self.cache_dir_prefix, name)))
 
-    def read(self, name: str) -> str:
+    def read(self, name: str) -> bytes:
         assert os.path.normpath(name) != os.path.abspath(name), "Don't use absolute paths!"
 
         if not self.cache_dir_prefix:
             raise FileNotFoundError()
 
-        with open(os.path.join(self.cache_dir_prefix, name)) as f:
+        with open(os.path.join(self.cache_dir_prefix, name), "rb") as f:
             return f.read()
 
-    def write(self, name: str, data: str, mtime: float | None = None) -> bool:
+    def write(self, name: str, data: bytes, mtime: float | None = None) -> bool:
         assert os.path.normpath(name) != os.path.abspath(name), "Don't use absolute paths!"
 
         if not self.cache_dir_prefix:
@@ -105,7 +105,7 @@ class FilesystemMetadataStore(MetadataStore):
         tmp_filename = path + "." + random_string()
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(tmp_filename, "w") as f:
+            with open(tmp_filename, "wb") as f:
                 f.write(data)
             os.replace(tmp_filename, path)
             if mtime is not None:
@@ -135,15 +135,13 @@ class FilesystemMetadataStore(MetadataStore):
 
 
 SCHEMA = """
-CREATE TABLE IF NOT EXISTS files (
+CREATE TABLE IF NOT EXISTS files2 (
     path TEXT UNIQUE NOT NULL,
     mtime REAL,
-    data TEXT
+    data BLOB
 );
-CREATE INDEX IF NOT EXISTS path_idx on files(path);
+CREATE INDEX IF NOT EXISTS path_idx on files2(path);
 """
-# No migrations yet
-MIGRATIONS: list[str] = []
 
 
 def connect_db(db_file: str) -> sqlite3.Connection:
@@ -151,11 +149,6 @@ def connect_db(db_file: str) -> sqlite3.Connection:
 
     db = sqlite3.dbapi2.connect(db_file)
     db.executescript(SCHEMA)
-    for migr in MIGRATIONS:
-        try:
-            db.executescript(migr)
-        except sqlite3.OperationalError:
-            pass
     return db
 
 
@@ -176,7 +169,7 @@ class SqliteMetadataStore(MetadataStore):
         if not self.db:
             raise FileNotFoundError()
 
-        cur = self.db.execute(f"SELECT {field} FROM files WHERE path = ?", (name,))
+        cur = self.db.execute(f"SELECT {field} FROM files2 WHERE path = ?", (name,))
         results = cur.fetchall()
         if not results:
             raise FileNotFoundError()
@@ -188,12 +181,12 @@ class SqliteMetadataStore(MetadataStore):
         assert isinstance(mtime, float)
         return mtime
 
-    def read(self, name: str) -> str:
+    def read(self, name: str) -> bytes:
         data = self._query(name, "data")
-        assert isinstance(data, str)
+        assert isinstance(data, bytes)
         return data
 
-    def write(self, name: str, data: str, mtime: float | None = None) -> bool:
+    def write(self, name: str, data: bytes, mtime: float | None = None) -> bool:
         import sqlite3
 
         if not self.db:
@@ -202,7 +195,7 @@ class SqliteMetadataStore(MetadataStore):
             if mtime is None:
                 mtime = time.time()
             self.db.execute(
-                "INSERT OR REPLACE INTO files(path, mtime, data) VALUES(?, ?, ?)",
+                "INSERT OR REPLACE INTO files2(path, mtime, data) VALUES(?, ?, ?)",
                 (name, mtime, data),
             )
         except sqlite3.OperationalError:
@@ -213,7 +206,7 @@ class SqliteMetadataStore(MetadataStore):
         if not self.db:
             raise FileNotFoundError()
 
-        self.db.execute("DELETE FROM files WHERE path = ?", (name,))
+        self.db.execute("DELETE FROM files2 WHERE path = ?", (name,))
 
     def commit(self) -> None:
         if self.db:
@@ -221,5 +214,5 @@ class SqliteMetadataStore(MetadataStore):
 
     def list_all(self) -> Iterable[str]:
         if self.db:
-            for row in self.db.execute("SELECT path FROM files"):
+            for row in self.db.execute("SELECT path FROM files2"):
                 yield row[0]
