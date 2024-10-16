@@ -24,6 +24,9 @@ class TestStubInfo(unittest.TestCase):
         assert approved_stub_package_exists("google.cloud.ndb")
         assert approved_stub_package_exists("google.cloud.ndb.submodule")
         assert not approved_stub_package_exists("google.cloud.unknown")
+        assert approved_stub_package_exists("google.protobuf")
+        assert approved_stub_package_exists("google.protobuf.submodule")
+        assert not approved_stub_package_exists("google")
 
     def test_stub_distribution_name(self) -> None:
         assert stub_distribution_name("foobar_asdf") is None
@@ -32,6 +35,9 @@ class TestStubInfo(unittest.TestCase):
         assert stub_distribution_name("google.cloud.ndb") == "types-google-cloud-ndb"
         assert stub_distribution_name("google.cloud.ndb.submodule") == "types-google-cloud-ndb"
         assert stub_distribution_name("google.cloud.unknown") is None
+        assert stub_distribution_name("google.protobuf") == "types-protobuf"
+        assert stub_distribution_name("google.protobuf.submodule") == "types-protobuf"
+        assert stub_distribution_name("google") is None
 
     def test_period_in_top_level(self) -> None:
         for packages in (non_bundled_packages_flat, legacy_bundled_packages):
