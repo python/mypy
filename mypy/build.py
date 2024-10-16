@@ -92,7 +92,7 @@ from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
-from mypy.stubinfo import legacy_bundled_dist_from_module, stub_distribution_name
+from mypy.stubinfo import is_module_from_legacy_bundled_package, stub_distribution_name
 from mypy.types import Type
 from mypy.typestate import reset_global_state, type_state
 from mypy.version import __version__
@@ -2673,7 +2673,7 @@ def find_module_and_diagnose(
         # negatives. (Unless there are stubs but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
         if (
-            legacy_bundled_dist_from_module(id) is not None
+            is_module_from_legacy_bundled_package(id)
             and global_ignore_missing_imports
             and not options.ignore_missing_imports_per_module
             and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED

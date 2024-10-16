@@ -3,19 +3,37 @@ from __future__ import annotations
 import unittest
 
 from mypy.stubinfo import (
-    legacy_bundled_dist_from_module,
+    approved_stub_package_exists,
+    is_module_from_legacy_bundled_package,
     legacy_bundled_packages,
-    non_bundled_packages,
+    non_bundled_packages_flat,
+    stub_distribution_name,
 )
 
 
 class TestStubInfo(unittest.TestCase):
     def test_is_legacy_bundled_packages(self) -> None:
-        assert legacy_bundled_dist_from_module("foobar_asdf") is None
-        assert legacy_bundled_dist_from_module("pycurl") == "types-pycurl"
-        assert legacy_bundled_dist_from_module("dataclasses") == "types-dataclasses"
+        assert not is_module_from_legacy_bundled_package("foobar_asdf")
+        assert is_module_from_legacy_bundled_package("pycurl")
+        assert is_module_from_legacy_bundled_package("dataclasses")
+
+    def test_approved_stub_package_exists(self) -> None:
+        assert not approved_stub_package_exists("foobar_asdf")
+        assert approved_stub_package_exists("pycurl")
+        assert approved_stub_package_exists("babel")
+        assert approved_stub_package_exists("google.cloud.ndb")
+        assert approved_stub_package_exists("google.cloud.ndb.submodule")
+        assert not approved_stub_package_exists("google.cloud.unknown")
+
+    def test_stub_distribution_name(self) -> None:
+        assert stub_distribution_name("foobar_asdf") is None
+        assert stub_distribution_name("pycurl") == "types-pycurl"
+        assert stub_distribution_name("babel") == "types-babel"
+        assert stub_distribution_name("google.cloud.ndb") == "types-google-cloud-ndb"
+        assert stub_distribution_name("google.cloud.ndb.submodule") == "types-google-cloud-ndb"
+        assert stub_distribution_name("google.cloud.unknown") is None
 
     def test_period_in_top_level(self) -> None:
-        for packages in (non_bundled_packages, legacy_bundled_packages):
+        for packages in (non_bundled_packages_flat, legacy_bundled_packages):
             for top_level_module in packages:
                 assert "." not in top_level_module

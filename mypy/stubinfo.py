@@ -1,50 +1,53 @@
 from __future__ import annotations
 
-from typing import Dict
+
+def is_module_from_legacy_bundled_package(module: str) -> bool:
+    top_level = module.split(".")[0]
+    return top_level in legacy_bundled_packages
 
 
-def legacy_bundled_dist_from_module(module: str) -> str | None:
+def approved_stub_package_exists(module: str) -> bool:
     components = module.split(".")
-    level = legacy_bundled_packages
-    for component in components:
-        if (next_level := level.get(component)) is None:
-            return None
-        if isinstance(next_level, str):
-            return next_level
-        level = next_level
-    return None
-
-
-def typeshed_dist_from_module(module: str) -> str | None:
-    components = module.split(".")
-    level = non_bundled_packages
-    for component in components:
-        if (next_level := level.get(component)) is None:
-            return None
-        if isinstance(next_level, str):
-            return next_level
-        level = next_level
-    return None
-
-
-def approved_stub_package_exists(prefix: str) -> bool:
-    if legacy_bundled_dist_from_module(prefix) is not None:
+    top_level = components[0]
+    if top_level in legacy_bundled_packages:
         return True
-    if typeshed_dist_from_module(prefix) is not None:
+    if top_level in non_bundled_packages_flat:
         return True
+    if top_level in non_bundled_packages_namespace:
+        namespace = non_bundled_packages_namespace[top_level]
+        for i in range(len(components), 0, -1):
+            module = ".".join(components[:i])
+            if module in namespace:
+                return True
     return False
 
 
 def stub_distribution_name(module: str) -> str | None:
-    return legacy_bundled_dist_from_module(module) or typeshed_dist_from_module(module)
+    components = module.split(".")
+    top_level = components[0]
 
+    dist = legacy_bundled_packages.get(top_level)
+    if dist:
+        return dist
+    dist = non_bundled_packages_flat.get(top_level)
+    if dist:
+        return dist
 
-NestedPackageDict = Dict[str, "str | NestedPackageDict"]
+    if top_level in non_bundled_packages_namespace:
+        namespace = non_bundled_packages_namespace[top_level]
+        for i in range(len(components), 0, -1):
+            module = ".".join(components[:i])
+            dist = namespace.get(module)
+            if dist:
+                return dist
+
+    return None
+
 
 # Stubs for these third-party packages used to be shipped with mypy.
 #
 # Map package name to PyPI stub distribution name.
-legacy_bundled_packages: NestedPackageDict = {
+legacy_bundled_packages: dict[str, str] = {
     "aiofiles": "types-aiofiles",
     "bleach": "types-bleach",
     "boto": "types-boto",
@@ -60,7 +63,6 @@ legacy_bundled_packages: NestedPackageDict = {
     "docutils": "types-docutils",
     "first": "types-first",
     "gflags": "types-python-gflags",
-    "google": {"protobuf": "types-protobuf"},
     "markdown": "types-Markdown",
     "mock": "types-mock",
     "OpenSSL": "types-pyOpenSSL",
@@ -94,20 +96,17 @@ legacy_bundled_packages: NestedPackageDict = {
 # include packages that have a release that includes PEP 561 type
 # information.
 #
-# Package name can have one or two components ('a' or 'a.b').
-#
 # Note that these packages are omitted for now:
 #   pika:       typeshed's stubs are on PyPI as types-pika-ts.
 #               types-pika already exists on PyPI, and is more complete in many ways,
 #               but is a non-typeshed stubs package.
-non_bundled_packages: NestedPackageDict = {
+non_bundled_packages_flat: dict[str, str] = {
     "MySQLdb": "types-mysqlclient",
     "PIL": "types-Pillow",
     "PyInstaller": "types-pyinstaller",
     "Xlib": "types-python-xlib",
     "aws_xray_sdk": "types-aws-xray-sdk",
     "babel": "types-babel",
-    "backports": {"ssl_match_hostname": "types-backports.ssl_match_hostname"},
     "braintree": "types-braintree",
     "bs4": "types-beautifulsoup4",
     "bugbear": "types-flake8-bugbear",
@@ -135,7 +134,6 @@ non_bundled_packages: NestedPackageDict = {
     "flask_migrate": "types-Flask-Migrate",
     "fpdf": "types-fpdf2",
     "gdb": "types-gdb",
-    "google": {"cloud": {"ndb": "types-google-cloud-ndb"}},
     "hdbcli": "types-hdbcli",
     "html5lib": "types-html5lib",
     "httplib2": "types-httplib2",
@@ -151,7 +149,6 @@ non_bundled_packages: NestedPackageDict = {
     "oauthlib": "types-oauthlib",
     "openpyxl": "types-openpyxl",
     "opentracing": "types-opentracing",
-    "paho": {"mqtt": "types-paho-mqtt"},
     "parsimonious": "types-parsimonious",
     "passlib": "types-passlib",
     "passpy": "types-passpy",
@@ -198,4 +195,11 @@ non_bundled_packages: NestedPackageDict = {
     # for additions here
     "pandas": "pandas-stubs",  # https://github.com/pandas-dev/pandas-stubs
     "lxml": "lxml-stubs",  # https://github.com/lxml/lxml-stubs
+}
+
+
+non_bundled_packages_namespace: dict[str, dict[str, str]] = {
+    "backports": {"backports.ssl_match_hostname": "types-backports.ssl_match_hostname"},
+    "google": {"google.cloud.ndb": "types-google-cloud-ndb", "google.protobuf": "types-protobuf"},
+    "paho": {"paho.mqtt": "types-paho-mqtt"},
 }
