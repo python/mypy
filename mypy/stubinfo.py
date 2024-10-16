@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Dict
+
 
 def legacy_bundled_dist_from_module(module: str) -> str | None:
     components = module.split(".")
@@ -37,7 +39,7 @@ def stub_distribution_name(module: str) -> str | None:
     return legacy_bundled_dist_from_module(module) or typeshed_dist_from_module(module)
 
 
-NestedPackageDict = dict[str, "str | NestedPackageDict"]
+NestedPackageDict = Dict[str, "str | NestedPackageDict"]
 
 # Stubs for these third-party packages used to be shipped with mypy.
 #
