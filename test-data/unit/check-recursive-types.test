@@ -1006,3 +1006,11 @@ ta: Tuple[A]
 p: Proto
 p = ta
 [builtins fixtures/tuple.pyi]
+
+[case testRecursiveAliasesWithAnyUnimported]
+# flags: --disallow-any-unimported
+from typing import Callable
+from bogus import Foo  # type: ignore
+
+A = Callable[[Foo, "B"], Foo]  # E: Type alias target becomes "Callable[[Any, B], Any]" due to an unfollowed import
+B = Callable[[Foo, A], Foo]  # E: Type alias target becomes "Callable[[Any, A], Any]" due to an unfollowed import
