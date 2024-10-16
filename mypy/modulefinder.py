@@ -669,11 +669,13 @@ def mypy_path() -> list[str]:
 def default_lib_path(
     data_dir: str, pyversion: tuple[int, int], custom_typeshed_dir: str | None
 ) -> list[str]:
-    """Return default standard library search paths."""
+    """Return default standard library search paths. Guaranteed to be normalised."""
+
+    data_dir = os.path.abspath(data_dir)
     path: list[str] = []
 
     if custom_typeshed_dir:
-        custom_typeshed_dir = os.path.normcase(custom_typeshed_dir)
+        custom_typeshed_dir = os.path.abspath(custom_typeshed_dir)
         typeshed_dir = os.path.join(custom_typeshed_dir, "stdlib")
         mypy_extensions_dir = os.path.join(custom_typeshed_dir, "stubs", "mypy-extensions")
         versions_file = os.path.join(typeshed_dir, "VERSIONS")
@@ -713,7 +715,7 @@ def default_lib_path(
 
 @functools.lru_cache(maxsize=None)
 def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]]:
-    """Find package directories for given python.
+    """Find package directories for given python. Guaranteed to return absolute paths.
 
     This runs a subprocess call, which generates a list of the directories in sys.path.
     To avoid repeatedly calling a subprocess (which can be slow!) we
@@ -775,6 +777,7 @@ def compute_search_paths(
         root_dir = os.getenv("MYPY_TEST_PREFIX", None)
         if not root_dir:
             root_dir = os.path.dirname(os.path.dirname(__file__))
+        root_dir = os.path.abspath(root_dir)
         lib_path.appendleft(os.path.join(root_dir, "test-data", "unit", "lib-stub"))
     # alt_lib_path is used by some tests to bypass the normal lib_path mechanics.
     # If we don't have one, grab directories of source files.
@@ -831,6 +834,7 @@ def compute_search_paths(
     return SearchPaths(
         python_path=tuple(reversed(python_path)),
         mypy_path=tuple(mypypath),
+        # package_path and typeshed_path must be normalised and absolute via os.path.abspath
         package_path=tuple(sys_path + site_packages),
         typeshed_path=tuple(lib_path),
     )

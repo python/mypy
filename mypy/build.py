@@ -59,7 +59,7 @@ from mypy.util import (
     get_mypy_comments,
     hash_digest,
     is_stub_package_file,
-    is_sub_path,
+    is_sub_path_normabs,
     is_typeshed_file,
     module_prefix,
     read_py_file,
@@ -3544,10 +3544,9 @@ def is_silent_import_module(manager: BuildManager, path: str) -> bool:
     if manager.options.no_silence_site_packages:
         return False
     # Silence errors in site-package dirs and typeshed
-    return any(
-        is_sub_path(path, dir)
-        for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path
-    )
+    if any(is_sub_path_normabs(path, dir) for dir in manager.search_paths.package_path):
+        return True
+    return any(is_sub_path_normabs(path, dir) for dir in manager.search_paths.typeshed_path)
 
 
 def write_undocumented_ref_info(
