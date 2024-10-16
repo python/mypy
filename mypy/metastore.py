@@ -169,7 +169,7 @@ class SqliteMetadataStore(MetadataStore):
         if not self.db:
             raise FileNotFoundError()
 
-        cur = self.db.execute(f"SELECT {field} FROM files WHERE path = ?", (name,))
+        cur = self.db.execute(f"SELECT {field} FROM files2 WHERE path = ?", (name,))
         results = cur.fetchall()
         if not results:
             raise FileNotFoundError()
