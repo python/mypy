@@ -243,8 +243,8 @@ def is_enum_overlapping_union(x: ProperType, y: ProperType) -> bool:
         and x.type.is_enum
         and isinstance(y, UnionType)
         and any(
-            isinstance(p, LiteralType) and x.type == p.fallback.type
-            for p in (get_proper_type(z) for z in y.relevant_items())
+            isinstance(p := get_proper_type(z), LiteralType) and x.type == p.fallback.type
+            for z in y.relevant_items()
         )
     )
 
