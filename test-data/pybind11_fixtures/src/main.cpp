@@ -228,8 +228,8 @@ void bind_demo(py::module& m) {
 
   // Classes
   py::class_<Point> pyPoint(m, "Point");
-  py::enum_<Point::LengthUnit> pyLengthUnit(pyPoint, "LengthUnit");
-  py::enum_<Point::AngleUnit> pyAngleUnit(pyPoint, "AngleUnit");
+  py::enum_<Point::LengthUnit> pyLengthUnit(pyPoint, "LengthUnit", "Describes the length measurement units.");
+  py::enum_<Point::AngleUnit> pyAngleUnit(pyPoint, "AngleUnit", "Describes the angle measurement units.");
 
   pyPoint
     .def(py::init<>())
