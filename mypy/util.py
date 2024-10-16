@@ -414,7 +414,14 @@ def is_sub_path(path: str, dir: str) -> bool:
     """Given two paths, return if path is a sub-path of dir."""
     if not dir.endswith(os.sep):
         dir += os.sep
-    return path.startswith(dir)
+    ret = path.startswith(dir)
+
+    import pathlib
+
+    if ret != (pathlib.Path(dir) in pathlib.Path(path).parents):
+        raise AssertionError(f"mismatch for {path!r} and {dir!r}")
+
+    return ret
 
 
 if sys.platform == "linux" or sys.platform == "darwin":
