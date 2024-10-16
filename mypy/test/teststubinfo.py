@@ -14,6 +14,7 @@ from mypy.stubinfo import (
 class TestStubInfo(unittest.TestCase):
     def test_is_legacy_bundled_packages(self) -> None:
         assert not is_module_from_legacy_bundled_package("foobar_asdf")
+        assert not is_module_from_legacy_bundled_package("PIL")
         assert is_module_from_legacy_bundled_package("pycurl")
         assert is_module_from_legacy_bundled_package("dataclasses")
 
