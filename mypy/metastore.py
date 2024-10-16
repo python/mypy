@@ -131,7 +131,7 @@ class FilesystemMetadataStore(MetadataStore):
         for dir, _, files in os.walk(self.cache_dir_prefix):
             dir = os.path.relpath(dir, self.cache_dir_prefix)
             for file in files:
-                yield os.path.join(dir, file)
+                yield os.path.normpath(os.path.join(dir, file))
 
 
 SCHEMA = """
