@@ -87,6 +87,7 @@ class MemberContext:
 
     def __init__(
         self,
+        *,
         is_lvalue: bool,
         is_super: bool,
         is_operator: bool,
@@ -126,16 +127,16 @@ class MemberContext:
         original_type: Type | None = None,
     ) -> MemberContext:
         mx = MemberContext(
-            self.is_lvalue,
-            self.is_super,
-            self.is_operator,
-            self.original_type,
-            self.context,
-            self.msg,
-            self.chk,
-            self.self_type,
-            self.module_symbol_table,
-            self.no_deferral,
+            is_lvalue=self.is_lvalue,
+            is_super=self.is_super,
+            is_operator=self.is_operator,
+            original_type=self.original_type,
+            context=self.context,
+            msg=self.msg,
+            chk=self.chk,
+            self_type=self.self_type,
+            module_symbol_table=self.module_symbol_table,
+            no_deferral=self.no_deferral,
         )
         if messages is not None:
             mx.msg = messages
@@ -152,11 +153,11 @@ def analyze_member_access(
     name: str,
     typ: Type,
     context: Context,
+    *,
     is_lvalue: bool,
     is_super: bool,
     is_operator: bool,
     msg: MessageBuilder,
-    *,
     original_type: Type,
     chk: mypy.checker.TypeChecker,
     override_info: TypeInfo | None = None,
@@ -190,12 +191,12 @@ def analyze_member_access(
     are not available via the type object directly)
     """
     mx = MemberContext(
-        is_lvalue,
-        is_super,
-        is_operator,
-        original_type,
-        context,
-        msg,
+        is_lvalue=is_lvalue,
+        is_super=is_super,
+        is_operator=is_operator,
+        original_type=original_type,
+        context=context,
+        msg=msg,
         chk=chk,
         self_type=self_type,
         module_symbol_table=module_symbol_table,
