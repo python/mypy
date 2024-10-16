@@ -673,6 +673,7 @@ def default_lib_path(
     path: list[str] = []
 
     if custom_typeshed_dir:
+        custom_typeshed_dir = os.path.normcase(custom_typeshed_dir)
         typeshed_dir = os.path.join(custom_typeshed_dir, "stdlib")
         mypy_extensions_dir = os.path.join(custom_typeshed_dir, "stubs", "mypy-extensions")
         versions_file = os.path.join(typeshed_dir, "VERSIONS")
