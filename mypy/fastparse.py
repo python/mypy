@@ -1198,6 +1198,13 @@ class ASTConverter:
         for p in type_params:
             bound = None
             values: list[Type] = []
+            if sys.version_info >= (3, 13) and p.default_value is not None:
+                self.fail(
+                    message_registry.TYPE_PARAM_DEFAULT_NOT_SUPPORTED,
+                    p.lineno,
+                    p.col_offset,
+                    blocker=False,
+                )
             if isinstance(p, ast_ParamSpec):  # type: ignore[misc]
                 explicit_type_params.append(TypeParam(p.name, PARAM_SPEC_KIND, None, []))
             elif isinstance(p, ast_TypeVarTuple):  # type: ignore[misc]
@@ -2026,7 +2033,7 @@ class TypeConverter:
         if (
             isinstance(typ, RawExpressionType)
             # Use type() because we do not want to allow bools.
-            and type(typ.literal_value) is int  # noqa: E721
+            and type(typ.literal_value) is int
         ):
             if isinstance(n.op, USub):
                 typ.literal_value *= -1
@@ -2130,7 +2137,7 @@ class TypeConverter:
                     continue
                 return self.invalid_type(n)
             items[item_name.value] = self.visit(value)
-        result = TypedDictType(items, set(), _dummy_fallback, n.lineno, n.col_offset)
+        result = TypedDictType(items, set(), set(), _dummy_fallback, n.lineno, n.col_offset)
         result.extra_items_from = extra_items_from
         return result
 

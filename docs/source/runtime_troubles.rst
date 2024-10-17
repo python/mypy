@@ -21,8 +21,9 @@ problems you may encounter.
 String literal types and type comments
 --------------------------------------
 
-Mypy allows you to add type annotations using ``# type:`` type comments.
-For example:
+Mypy lets you add type annotations using the (now deprecated) ``# type:``
+type comment syntax. These were required with Python versions older than 3.6,
+since they didn't support type annotations on variables. Example:
 
 .. code-block:: python
 
@@ -319,8 +320,8 @@ notes at :ref:`future annotations import<future-annotations>`.
 Using X | Y syntax for Unions
 -----------------------------
 
-Starting with Python 3.10 (:pep:`604`), you can spell union types as ``x: int |
-str``, instead of ``x: typing.Union[int, str]``.
+Starting with Python 3.10 (:pep:`604`), you can spell union types as
+``x: int | str``, instead of ``x: typing.Union[int, str]``.
 
 There is limited support for using this syntax in Python 3.7 and later as well:
 if you use ``from __future__ import annotations``, mypy will understand this

@@ -70,15 +70,15 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
-
-        - name: Test suit with py313-dev-ubuntu, mypyc-compiled
-          python: '3.13-dev'
+        - name: Test suite with py313-ubuntu, mypyc-compiled
+          python: '3.13'
           arch: x64
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
-        # - name: Test suit with py314-dev-ubuntu
+
+        # - name: Test suite with py314-dev-ubuntu
         #   python: '3.14-dev'
         #   arch: x64
         #   os: ubuntu-latest
@@ -94,13 +94,16 @@ jobs:
           os: macos-13
           toxenv: py
           tox_extra_args: "-n 3 mypyc/test/test_run.py mypyc/test/test_external.py"
-        - name: mypyc runtime tests with py38-debug-build-ubuntu
-          python: '3.8.17'
-          arch: x64
-          os: ubuntu-latest
-          toxenv: py
-          tox_extra_args: "-n 4 mypyc/test/test_run.py mypyc/test/test_external.py"
-          debug_build: true
+        # This is broken. See
+        # - https://github.com/python/mypy/issues/17819
+        # - https://github.com/python/mypy/pull/17822
+        # - name: mypyc runtime tests with py38-debug-build-ubuntu
+        #   python: '3.8.17'
+        #   arch: x64
+        #   os: ubuntu-latest
+        #   toxenv: py
+        #   tox_extra_args: "-n 4 mypyc/test/test_run.py mypyc/test/test_external.py"
+        #   debug_build: true
 
         - name: Type check our own code (py38-ubuntu)
           python: '3.8'
@@ -125,8 +128,8 @@ jobs:
     name: ${{ matrix.name }}
     env:
       TOX_SKIP_MISSING_INTERPRETERS: False
-      # Rich (pip)
-      FORCE_COLOR: 1
+      # Rich (pip) -- Disable color for windows + pytest
+      FORCE_COLOR: ${{ !(startsWith(matrix.os, 'windows-') && startsWith(matrix.toxenv, 'py')) && 1 || 0 }}
       # Tox
       PY_COLORS: 1
       # Mypy (see https://github.com/python/mypy/issues/7771)
@@ -148,17 +151,17 @@ jobs:
         ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
         # TODO: does this do anything? env vars aren't passed to the next step right
         source $VENV/bin/activate
-    - name: Latest Dev build
+    - name: Latest dev build
       if: ${{ endsWith(matrix.python, '-dev') }}
       run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential gdb lcov libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncurses5-dev \
-            libreadline6-dev libsqlite3-dev libssl-dev lzma lzma-dev tk-dev uuid-dev zlib1g-dev
           git clone --depth 1 https://github.com/python/cpython.git /tmp/cpython --branch $( echo ${{ matrix.python }} | sed 's/-dev//' )
           cd /tmp/cpython
           echo git rev-parse HEAD; git rev-parse HEAD
           git show --no-patch
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential gdb lcov libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncurses5-dev \
+            libreadline6-dev libsqlite3-dev libssl-dev lzma lzma-dev tk-dev uuid-dev zlib1g-dev
           ./configure --prefix=/opt/pythondev
           make -j$(nproc)
           sudo make install
@@ -180,7 +183,7 @@ jobs:
         echo debug build; python -c 'import sysconfig; print(bool(sysconfig.get_config_var("Py_DEBUG")))'
         echo os.cpu_count; python -c 'import os; print(os.cpu_count())'
         echo os.sched_getaffinity; python -c 'import os; print(len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
-        pip install setuptools==68.2.2 tox==4.11.0
+        pip install setuptools==75.1.0 tox==4.21.2
 
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
@@ -190,7 +193,7 @@ jobs:
 
     - name: Setup tox environment
       run: |
-        tox run -e ${{ matrix.toxenv }} --notes
+        tox run -e ${{ matrix.toxenv }} --notest
     - name: Test
       run: tox run -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
       continue-on-error: ${{ matrix.allow_failure == 'true' }}
@@ -240,7 +243,7 @@ jobs:
           default: 3.11.1
           command: python -c "import platform; print(f'{platform.architecture()=} {platform.machine()=}');"
       - name: Install tox
-        run: pip install setuptools==68.2.2 tox==4.11.0
+        run: pip install setuptools==75.1.0 tox==4.21.2
       - name: Setup tox environment
         run: tox run -e py --notest
       - name: Test

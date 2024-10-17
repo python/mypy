@@ -22,7 +22,14 @@ from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
-from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
+from mypy.modulefinder import (
+    BuildSource,
+    FindModuleCache,
+    ModuleNotFoundReason,
+    SearchPaths,
+    get_search_dirs,
+    mypy_path,
+)
 from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
@@ -799,6 +806,13 @@ def process_options(
         help="Warn about statements or expressions inferred to be unreachable",
         group=lint_group,
     )
+    add_invertible_flag(
+        "--report-deprecated-as-error",
+        default=False,
+        strict_flag=False,
+        help="Report importing or using deprecated features as errors instead of notes",
+        group=lint_group,
+    )
 
     # Note: this group is intentionally added here even though we don't add
     # --strict to this group near the end.
@@ -1406,7 +1420,15 @@ def process_options(
                 fail(f"Package name '{p}' cannot have a slash in it.", stderr, options)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail(f"Can't find package '{p}'", stderr, options)
+                reason = cache.find_module(p)
+                if reason is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
+                    fail(
+                        f"Package '{p}' cannot be type checked due to missing py.typed marker. See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
+                        stderr,
+                        options,
+                    )
+                else:
+                    fail(f"Can't find package '{p}'", stderr, options)
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
@@ -1457,7 +1479,7 @@ def process_package_roots(
                 root = ""
         package_root.append(root)
     options.package_root = package_root
-    # Pass the package root on the the filesystem cache.
+    # Pass the package root on the filesystem cache.
     fscache.set_package_root(package_root)
 
 

@@ -231,6 +231,44 @@ incorrect control flow or conditional checks that are accidentally always true o
         # Error: Statement is unreachable  [unreachable]
         print('unreachable')
 
+.. _code-deprecated:
+
+Check that imported or used feature is deprecated [deprecated]
+--------------------------------------------------------------
+
+By default, mypy generates a note if your code imports a deprecated feature explicitly with a
+``from mod import depr`` statement or uses a deprecated feature imported otherwise or defined
+locally.  Features are considered deprecated when decorated with ``warnings.deprecated``, as
+specified in `PEP 702 <https://peps.python.org/pep-0702>`_.  You can silence single notes via
+``# type: ignore[deprecated]`` or turn off this check completely via ``--disable-error-code=deprecated``.
+Use the :option:`--report-deprecated-as-error <mypy --report-deprecated-as-error>` option for
+more strictness, which turns all such notes into errors.
+
+.. note::
+
+    The ``warnings`` module provides the ``@deprecated`` decorator since Python 3.13.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+Examples:
+
+.. code-block:: python
+
+    # mypy: report-deprecated-as-error
+
+    # Error: abc.abstractproperty is deprecated: Deprecated, use 'property' with 'abstractmethod' instead
+    from abc import abstractproperty
+
+    from typing_extensions import deprecated
+
+    @deprecated("use new_function")
+    def old_function() -> None:
+        print("I am old")
+
+    # Error: __main__.old_function is deprecated: use new_function
+    old_function()
+    old_function()  # type: ignore[deprecated]
+
+
 .. _code-redundant-expr:
 
 Check that expression is redundant [redundant-expr]
@@ -270,7 +308,7 @@ example:
 
     # mypy: enable-error-code="possibly-undefined"
 
-    from typing import Iterable
+    from collections.abc import Iterable
 
     def test(values: Iterable[int], flag: bool) -> None:
         if flag:
@@ -318,7 +356,7 @@ Example:
 
 .. code-block:: python
 
-    from typing import Iterable
+    from collections.abc import Iterable
 
     def transform(items: Iterable[int]) -> list[int]:
         # Error: "items" has type "Iterable[int]" which can always be true in boolean context. Consider using "Collection[int]" instead.  [truthy-iterable]

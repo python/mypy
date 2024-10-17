@@ -287,6 +287,18 @@ class PartialTypeScope(NamedTuple):
     is_local: bool
 
 
+class InstanceDeprecatedVisitor(TypeTraverserVisitor):
+    """Visitor that recursively checks for deprecations in nested instances."""
+
+    def __init__(self, typechecker: TypeChecker, context: Context) -> None:
+        self.typechecker = typechecker
+        self.context = context
+
+    def visit_instance(self, t: Instance) -> None:
+        super().visit_instance(t)
+        self.typechecker.check_deprecated(t.type, self.context)
+
+
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     """Mypy type checker.
 
@@ -686,10 +698,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(inner_type, TypeVarLikeType):
                 inner_type = get_proper_type(inner_type.upper_bound)
             if isinstance(inner_type, TypeType):
-                if isinstance(inner_type.item, Instance):
-                    inner_type = expand_type_by_instance(
-                        type_object_type(inner_type.item.type, self.named_type), inner_type.item
-                    )
+                inner_type = get_proper_type(
+                    self.expr_checker.analyze_type_type_callee(inner_type.item, ctx)
+                )
+
             if isinstance(inner_type, CallableType):
                 outer_type = inner_type
             elif isinstance(inner_type, Instance):
@@ -2838,6 +2850,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
     def visit_import_from(self, node: ImportFrom) -> None:
+        for name, _ in node.names:
+            if (sym := self.globals.get(name)) is not None:
+                self.warn_deprecated(sym.node, node)
         self.check_import(node)
 
     def visit_import_all(self, node: ImportAll) -> None:
@@ -2926,6 +2941,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
+
+        if s.unanalyzed_type is not None:
+            for lvalue in s.lvalues:
+                if (
+                    isinstance(lvalue, NameExpr)
+                    and isinstance(var := lvalue.node, Var)
+                    and (var.type is not None)
+                ):
+                    var.type.accept(InstanceDeprecatedVisitor(typechecker=self, context=s))
+
         # Avoid type checking type aliases in stubs to avoid false
         # positives about modern type syntax available in stubs such
         # as X | Y.
@@ -4568,6 +4593,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         s.expr, return_type, allow_none_return=allow_none_func_call
                     )
                 )
+                # Treat NotImplemented as having type Any, consistent with its
+                # definition in typeshed prior to python/typeshed#4222.
+                if (
+                    isinstance(typ, Instance)
+                    and typ.type.fullname == "builtins._NotImplementedType"
+                ):
+                    typ = AnyType(TypeOfAny.special_form)
 
                 if defn.is_async_generator:
                     self.fail(message_registry.RETURN_IN_ASYNC_GENERATOR, s)
@@ -4671,6 +4703,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if inplace:
             # There is __ifoo__, treat as x = x.__ifoo__(y)
             rvalue_type, method_type = self.expr_checker.check_op(method, lvalue_type, s.rvalue, s)
+            if isinstance(inst := get_proper_type(lvalue_type), Instance) and isinstance(
+                defn := inst.type.get_method(method), OverloadedFuncDef
+            ):
+                for item in defn.items:
+                    if (
+                        isinstance(item, Decorator)
+                        and isinstance(typ := item.func.type, CallableType)
+                        and (bind_self(typ) == method_type)
+                    ):
+                        self.warn_deprecated(item.func, s)
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
         else:
@@ -4722,6 +4764,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(typ, FunctionLike):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
+
+        if isinstance(typ, Instance) and typ.type.fullname == "builtins._NotImplementedType":
+            self.fail(
+                message_registry.INVALID_EXCEPTION.with_additional_msg(
+                    '; did you mean "NotImplementedError"?'
+                ),
+                s,
+            )
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
@@ -5525,7 +5575,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(typ, TypeVarType):
             # We could do better probably?
-            # Refine the the type variable's bound as our type in the case that
+            # Refine the type variable's bound as our type in the case that
             # callable() is true. This unfortunately loses the information that
             # the type is a type variable in that branch.
             # This matches what is done for isinstance, but it may be possible to
@@ -5984,7 +6034,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         coerce_only_in_literal_context = True
 
                         expr_types = [operand_types[i] for i in expr_indices]
-                        should_narrow_by_identity = all(map(has_no_custom_eq_checks, expr_types))
+                        should_narrow_by_identity = all(
+                            map(has_no_custom_eq_checks, expr_types)
+                        ) and not is_ambiguous_mix_of_enums(expr_types)
 
                     if_map: TypeMap = {}
                     else_map: TypeMap = {}
@@ -6023,16 +6075,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if_map, else_map = {}, {}
 
                     if left_index in narrowable_operand_index_to_hash:
-                        collection_item_type = get_proper_type(builtin_item_type(iterable_type))
-                        # Narrow if the collection is a subtype
-                        if (
-                            collection_item_type is not None
-                            and collection_item_type != item_type
-                            and is_subtype(collection_item_type, item_type)
-                        ):
-                            if_map[operands[left_index]] = collection_item_type
-                        # Try and narrow away 'None'
-                        elif is_overlapping_none(item_type):
+                        # We only try and narrow away 'None' for now
+                        if is_overlapping_none(item_type):
+                            collection_item_type = get_proper_type(
+                                builtin_item_type(iterable_type)
+                            )
                             if (
                                 collection_item_type is not None
                                 and not is_overlapping_none(collection_item_type)
@@ -7523,10 +7570,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 name,
                 typ,
                 TempNode(AnyType(TypeOfAny.special_form)),
-                False,
-                False,
-                False,
-                self.msg,
+                is_lvalue=False,
+                is_super=False,
+                is_operator=False,
+                msg=self.msg,
                 original_type=typ,
                 chk=self,
                 # This is not a real attribute lookup so don't mess with deferring nodes.
@@ -7537,6 +7584,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
         return self.expr_checker.accept(node, type_context=type_context)
+
+    def check_deprecated(self, node: SymbolNode | None, context: Context) -> None:
+        """Warn if deprecated and not directly imported with a `from` statement."""
+        if isinstance(node, Decorator):
+            node = node.func
+        if isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
+            node.deprecated is not None
+        ):
+            for imp in self.tree.imports:
+                if isinstance(imp, ImportFrom) and any(node.name == n[0] for n in imp.names):
+                    break
+            else:
+                self.warn_deprecated(node, context)
+
+    def warn_deprecated(self, node: SymbolNode | None, context: Context) -> None:
+        """Warn if deprecated."""
+        if isinstance(node, Decorator):
+            node = node.func
+        if isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
+            (deprecated := node.deprecated) is not None
+        ):
+            warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
+            warn(deprecated, context, code=codes.DEPRECATED)
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
@@ -8609,3 +8679,47 @@ class VarAssignVisitor(TraverserVisitor):
             self.lvalue = True
             p.capture.accept(self)
             self.lvalue = False
+
+
+def is_ambiguous_mix_of_enums(types: list[Type]) -> bool:
+    """Do types have IntEnum/StrEnum types that are potentially overlapping with other types?
+
+    If True, we shouldn't attempt type narrowing based on enum values, as it gets
+    too ambiguous.
+
+    For example, return True if there's an 'int' type together with an IntEnum literal.
+    However, IntEnum together with a literal of the same IntEnum type is not ambiguous.
+    """
+    # We need these things for this to be ambiguous:
+    #  (1) an IntEnum or StrEnum type
+    #  (2) either a different IntEnum/StrEnum type or a non-enum type ("<other>")
+    #
+    # It would be slightly more correct to calculate this separately for IntEnum and
+    # StrEnum related types, as an IntEnum can't be confused with a StrEnum.
+    return len(_ambiguous_enum_variants(types)) > 1
+
+
+def _ambiguous_enum_variants(types: list[Type]) -> set[str]:
+    result = set()
+    for t in types:
+        t = get_proper_type(t)
+        if isinstance(t, UnionType):
+            result.update(_ambiguous_enum_variants(t.items))
+        elif isinstance(t, Instance):
+            if t.last_known_value:
+                result.update(_ambiguous_enum_variants([t.last_known_value]))
+            elif t.type.is_enum and any(
+                base.fullname in ("enum.IntEnum", "enum.StrEnum") for base in t.type.mro
+            ):
+                result.add(t.type.fullname)
+            elif not t.type.is_enum:
+                # These might compare equal to IntEnum/StrEnum types (e.g. Decimal), so
+                # let's be conservative
+                result.add("<other>")
+        elif isinstance(t, LiteralType):
+            result.update(_ambiguous_enum_variants([t.fallback]))
+        elif isinstance(t, NoneType):
+            pass
+        else:
+            result.add("<other>")
+    return result

@@ -363,20 +363,20 @@ Extended Callable types
    This feature is deprecated.  You can use
    :ref:`callback protocols <callback_protocols>` as a replacement.
 
-As an experimental mypy extension, you can specify :py:data:`~typing.Callable` types
+As an experimental mypy extension, you can specify :py:class:`~collections.abc.Callable` types
 that support keyword arguments, optional arguments, and more.  When
-you specify the arguments of a :py:data:`~typing.Callable`, you can choose to supply just
+you specify the arguments of a :py:class:`~collections.abc.Callable`, you can choose to supply just
 the type of a nameless positional argument, or an "argument specifier"
 representing a more complicated form of argument.  This allows one to
 more closely emulate the full range of possibilities given by the
 ``def`` statement in Python.
 
 As an example, here's a complicated function definition and the
-corresponding :py:data:`~typing.Callable`:
+corresponding :py:class:`~collections.abc.Callable`:
 
 .. code-block:: python
 
-   from typing import Callable
+   from collections.abc import Callable
    from mypy_extensions import (Arg, DefaultArg, NamedArg,
                                 DefaultNamedArg, VarArg, KwArg)
 
@@ -449,7 +449,7 @@ purpose:
 In all cases, the ``type`` argument defaults to ``Any``, and if the
 ``name`` argument is omitted the argument has no name (the name is
 required for ``NamedArg`` and ``DefaultNamedArg``).  A basic
-:py:data:`~typing.Callable` such as
+:py:class:`~collections.abc.Callable` such as
 
 .. code-block:: python
 
@@ -461,7 +461,7 @@ is equivalent to the following:
 
    MyFunc = Callable[[Arg(int), Arg(str), Arg(int)], float]
 
-A :py:data:`~typing.Callable` with unspecified argument types, such as
+A :py:class:`~collections.abc.Callable` with unspecified argument types, such as
 
 .. code-block:: python
 
