@@ -1452,7 +1452,7 @@ else:
 [builtins fixtures/isinstancelist.pyi]
 
 
-[case testNarrowingIsRegualType]
+[case testNarrowingIsNonFinalType]
 from typing import Type, Union
 
 class Mark: ...
