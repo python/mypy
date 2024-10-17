@@ -82,15 +82,16 @@ def dataclass_type(cdef: ClassDef) -> str | None:
 
 
 def is_immutable(cdef: ClassDef) -> bool:
-    """Check if a class is immutable by checking if all its variables are marked as Final."""
-    for v in cdef.info.names.values():
-        if (
-            isinstance(v.node, Var)
-            and not v.node.is_classvar
-            and v.node.name not in ("__slots__", "__deletable__")
-        ):
-            if not v.node.is_final or v.node.is_settable_property:
-                return False
+    """Check if a class is immutable by checking if all its attributes are marked as Final."""
+    for c in cdef.info.mro:
+        for v in c.names.values():
+            if (
+                isinstance(v.node, Var)
+                and not v.node.is_classvar
+                and v.node.name not in ("__slots__", "__deletable__")
+            ):
+                if not v.node.is_final or v.node.is_settable_property:
+                    return False
 
     return True
 

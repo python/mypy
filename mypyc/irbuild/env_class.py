@@ -17,12 +17,12 @@ non-locals is via an instance of an environment class. Example:
 
 from __future__ import annotations
 
-from mypy.nodes import Argument, FuncDef, SymbolNode
-from mypyc.common import BITMAP_BITS, ENV_ATTR_NAME, SELF_NAME
+from mypy.nodes import Argument, FuncDef, SymbolNode, Var
+from mypyc.common import BITMAP_BITS, ENV_ATTR_NAME, SELF_NAME, bitmap_name
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncSignature
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
-from mypyc.ir.rtypes import RInstance, object_rprimitive
+from mypyc.ir.rtypes import RInstance, object_rprimitive, bitmap_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
 from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
@@ -177,15 +177,20 @@ def add_args_to_env(
     reassign: bool = True,
 ) -> None:
     fn_info = builder.fn_info
+    args = fn_info.fitem.arguments
+    nb = num_bitmap_args(builder, args)
     if local:
-        for sarg, farg in zip(sig.args, fn_info.fitem.arguments):
-            assert sarg.name == farg.variable.name
-            builder.add_local_reg(farg.variable, sarg.type, is_arg=True)
+        for arg in args:
+            rtype = builder.type_to_rtype(arg.variable.type)
+            builder.add_local_reg(arg.variable, rtype, is_arg=True)
+        for i in reversed(range(nb)):
+            builder.add_local_reg(Var(bitmap_name(i)), bitmap_rprimitive, is_arg=True)
     else:
-        for sarg, farg in zip(sig.args, fn_info.fitem.arguments):
-            if is_free_variable(builder, farg.variable) or fn_info.is_generator:
+        for arg in args:
+            if is_free_variable(builder, arg.variable) or fn_info.is_generator:
+                rtype = builder.type_to_rtype(arg.variable.type)
                 assert base is not None, "base cannot be None for adding nonlocal args"
-                builder.add_var_to_env_class(farg.variable, sarg.type, base, reassign=reassign)
+                builder.add_var_to_env_class(arg.variable, rtype, base, reassign=reassign)
 
 
 def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: ImplicitClass) -> None:

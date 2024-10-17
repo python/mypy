@@ -94,7 +94,6 @@ class ClassIR:
         is_abstract: bool = False,
         is_ext_class: bool = True,
         is_final_class: bool = False,
-        is_immutable: bool = False,
         is_value_type: bool = False,
     ) -> None:
         self.name = name
@@ -104,7 +103,8 @@ class ClassIR:
         self.is_abstract = is_abstract
         self.is_ext_class = is_ext_class
         self.is_final_class = is_final_class
-        self.is_immutable = is_immutable
+        # A value type is a class that can be passed by value instead of by reference.
+        self.is_value_type = is_value_type
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
@@ -117,8 +117,6 @@ class ClassIR:
         # Does this class need getseters to be generated for its attributes? (getseters are also
         # added if is_generated is False)
         self.needs_getseters = False
-        # A value type is a class that can be passed by value instead of by reference.
-        self.is_value_type = self.is_ext_class and self.is_immutable and not self.has_dict and is_value_type
         # Is this class declared as serializable (supports copy.copy
         # and pickle) using @mypyc_attr(serializable=True)?
         #
@@ -136,8 +134,6 @@ class ClassIR:
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
         self.builtin_base: str | None = None
-        # The RType for instances of this class
-        self.rtype = RInstanceValue(self) if self.is_value_type else RInstance(self)
         # Default empty constructor
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], self.rtype))
         # Attributes defined in the class (not inherited)
@@ -209,10 +205,13 @@ class ClassIR:
             "name={self.name}, module_name={self.module_name}, "
             "is_trait={self.is_trait}, is_generated={self.is_generated}, "
             "is_abstract={self.is_abstract}, is_ext_class={self.is_ext_class}, "
-            "is_final_class={self.is_final_class}, is_immutable={self.is_immutable}, "
-            "is_value_type={self.is_value_type}"
+            "is_final_class={self.is_final_class}, is_value_type={self.is_value_type}"
             ")".format(self=self)
         )
+
+    @property
+    def rtype(self) -> RType:
+        return RInstanceValue(self) if self.is_value_type else RInstance(self)
 
     @property
     def fullname(self) -> str:
@@ -228,6 +227,13 @@ class ClassIR:
         assert self.vtable is not None, "vtable not computed yet"
         assert name in self.vtable, f"{self.name!r} has no attribute {name!r}"
         return self.vtable[name]
+
+    def all_attributes(self) -> dict[str, RType]:
+        """Return all attributes, including inherited ones. Not including properties."""
+        result = {}
+        for ir in reversed(self.mro):
+            result.update(ir.attributes)
+        return result
 
     def attr_details(self, name: str) -> tuple[RType, ClassIR]:
         for ir in self.mro:
@@ -366,7 +372,6 @@ class ClassIR:
             "is_generated": self.is_generated,
             "is_augmented": self.is_augmented,
             "is_final_class": self.is_final_class,
-            "is_immutable": self.is_immutable,
             "is_value_type": self.is_value_type,
             "inherits_python": self.inherits_python,
             "has_dict": self.has_dict,
@@ -424,7 +429,6 @@ class ClassIR:
         ir.is_ext_class = data["is_ext_class"]
         ir.is_augmented = data["is_augmented"]
         ir.is_final_class = data["is_final_class"]
-        ir.is_immutable = data["is_immutable"]
         ir.is_value_type = data["is_value_type"]
         ir.inherits_python = data["inherits_python"]
         ir.has_dict = data["has_dict"]

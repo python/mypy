@@ -361,14 +361,22 @@ class Emitter:
             return "bitmap"
         return f"bitmap{n + 1}"
 
-    def attr_bitmap_expr(self, obj: str, cl: ClassIR, index: int) -> str:
-        """Return reference to the attribute definedness bitmap."""
-        cast = f"({cl.struct_name(self.names)} *)"
+    def attr_bitmap_expr(self, obj: str, cl: RInstance, index: int) -> str:
+        """
+        Return reference to the attribute definedness bitmap.
+
+        If a_ref is True, assume object's type is a reference.
+        Otherwise, the object type is indicated by the class IR.
+        """
         attr = self.bitmap_field(index)
-        return f"({cast}{obj})->{attr}"
+        if cl.is_unboxed:
+            return f"{obj}.{attr}"
+        else:
+            cast = f"({cl.struct_name(self.names)} *)"
+            return f"({cast}{obj})->{attr}"
 
     def emit_attr_bitmap_set(
-        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str
+        self, value: str, obj: str, rtype: RType, cl: RInstance, attr: str
     ) -> None:
         """Mark an attribute as defined in the attribute bitmap.
 
@@ -377,7 +385,7 @@ class Emitter:
         """
         self._emit_attr_bitmap_update(value, obj, rtype, cl, attr, clear=False)
 
-    def emit_attr_bitmap_clear(self, obj: str, rtype: RType, cl: ClassIR, attr: str) -> None:
+    def emit_attr_bitmap_clear(self, obj: str, rtype: RType, cl: RInstance, attr: str) -> None:
         """Mark an attribute as undefined in the attribute bitmap.
 
         Unlike emit_attr_bitmap_set, clear unconditionally.
@@ -385,12 +393,12 @@ class Emitter:
         self._emit_attr_bitmap_update("", obj, rtype, cl, attr, clear=True)
 
     def _emit_attr_bitmap_update(
-        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str, clear: bool
+        self, value: str, obj: str, rtype: RType, cl: RInstance, attr: str, clear: bool
     ) -> None:
         if value:
             check = self.error_value_check(rtype, value, "==")
             self.emit_line(f"if (unlikely({check})) {{")
-        index = cl.bitmap_attrs.index(attr)
+        index = cl.class_ir.bitmap_attrs.index(attr)
         mask = 1 << (index & (BITMAP_BITS - 1))
         bitmap = self.attr_bitmap_expr(obj, cl, index)
         if clear:
@@ -410,7 +418,7 @@ class Emitter:
         compare: str,
         obj: str,
         attr: str,
-        cl: ClassIR,
+        cl: RInstance,
         *,
         unlikely: bool = False,
     ) -> None:
@@ -418,11 +426,11 @@ class Emitter:
         if unlikely:
             check = f"unlikely({check})"
         if rtype.error_overlap:
-            index = cl.bitmap_attrs.index(attr)
+            index = cl.class_ir.bitmap_attrs.index(attr)
+            attr_expr = self.attr_bitmap_expr(obj, cl, index)
             bit = 1 << (index & (BITMAP_BITS - 1))
-            attr = self.bitmap_field(index)
-            obj_expr = f"({cl.struct_name(self.names)} *){obj}"
-            check = f"{check} && !(({obj_expr})->{attr} & {bit})"
+            check = f"{check} && !({attr_expr} & {bit})"
+
         self.emit_line(f"if ({check}) {{")
 
     def error_value_check(self, rtype: RType, value: str, compare: str) -> str:
@@ -500,6 +508,8 @@ class Emitter:
                 # XXX other types might eventually need similar behavior
                 if isinstance(typ, RTuple):
                     dependencies.add(typ.struct_name)
+                if isinstance(typ, RInstanceValue):
+                    dependencies.add(typ.struct_name(self.names))
 
             self.context.declarations[tuple_type.struct_name] = HeaderDeclaration(
                 self.tuple_c_declaration(tuple_type), dependencies=dependencies, is_type=True
@@ -1075,7 +1085,7 @@ class Emitter:
             )
             self.emit_line(f"if (unlikely({temp_dest} == NULL))")
             self.emit_line("    CPyError_OutOfMemory();")
-            for attr, attr_type in cl.attributes.items():
+            for attr, attr_type in cl.all_attributes().items():
                 attr_name = self.attr(attr)
                 self.emit_line(f"{temp_dest}->{attr_name} = {src}.{attr_name};", ann="box")
 

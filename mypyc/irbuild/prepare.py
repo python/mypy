@@ -57,9 +57,8 @@ from mypyc.irbuild.util import (
     get_mypyc_attrs,
     is_dataclass,
     is_extension_class,
-    is_immutable,
     is_trait,
-    is_value_type,
+    is_value_type, is_immutable,
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
@@ -88,10 +87,14 @@ def build_type_map(
             is_trait(cdef),
             is_abstract=cdef.info.is_abstract,
             is_final_class=cdef.info.is_final,
-            is_immutable=is_immutable(cdef),
+            is_ext_class=is_extension_class(cdef),
             is_value_type=is_value_type(cdef),
         )
-        class_ir.is_ext_class = is_extension_class(cdef)
+
+        if class_ir.is_value_type and (not is_immutable(cdef) or not cdef.info.is_final):
+            # Because the value type have semantic differences we can not just ignore it
+            errors.error("Value types must be immutable and final", module.path, cdef.line)
+
         if class_ir.is_ext_class:
             class_ir.deletable = cdef.info.deletable_attributes.copy()
         # If global optimizations are disabled, turn of tracking of class children

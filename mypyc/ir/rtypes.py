@@ -99,9 +99,7 @@ def deserialize_type(data: JsonDict | str, ctx: DeserMaps) -> RType:
         else:
             assert False, f"Can't find class {data}"
     elif data[".class"] == "RInstanceValue":
-        class_ = deserialize_type(data["class"], ctx)
-        assert isinstance(class_, RInstance)
-        return RInstanceValue(class_.class_ir)
+        return RInstanceValue.deserialize(data, ctx)
     elif data[".class"] == "RTuple":
         return RTuple.deserialize(data, ctx)
     elif data[".class"] == "RUnion":
@@ -853,7 +851,11 @@ class RInstance(RType):
         return "<RInstance %s>" % self.name
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, RInstance) and other.name == self.name
+        return (
+            isinstance(other, RInstance)
+            and not isinstance(other, RInstanceValue)
+            and other.name == self.name
+        )
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -880,9 +882,6 @@ class RInstanceValue(RInstance):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rinstance_value(self)
 
-    def attr_type(self, name: str) -> RType:
-        return self.class_ir.attr_type(name)
-
     def __repr__(self) -> str:
         return "<RInstanceValue %s>" % self.name
 
@@ -893,7 +892,13 @@ class RInstanceValue(RInstance):
         return hash(self.name)
 
     def serialize(self) -> JsonDict:
-        return {".class": "RInstanceValue", "class": super().serialize()}
+        return {".class": "RInstanceValue", "cls": super().serialize()}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RInstanceValue:
+        dt = deserialize_type(data["cls"], ctx)
+        assert isinstance(dt, RInstance)
+        return RInstanceValue(dt.class_ir)
 
 
 class RUnion(RType):
