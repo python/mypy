@@ -1080,6 +1080,11 @@ class Emitter:
             )
             self.emit_line(f"if (unlikely({temp_dest} == NULL))")
             self.emit_line("    CPyError_OutOfMemory();")
+            if cl.bitmap_attrs:
+                n_fields = (len(cl.bitmap_attrs) - 1) // BITMAP_BITS + 1
+                for i in range(n_fields):
+                    attr_name = self.bitmap_field(i * BITMAP_BITS)
+                    self.emit_line(f"{temp_dest}->{attr_name} = {src}.{attr_name};", ann="box")
             for attr, attr_type in cl.all_attributes().items():
                 attr_name = self.attr(attr)
                 self.emit_line(f"{temp_dest}->{attr_name} = {src}.{attr_name};", ann="box")
