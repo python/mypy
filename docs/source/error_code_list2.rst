@@ -5,8 +5,8 @@ Error codes for optional checks
 
 This section documents various errors codes that mypy generates only
 if you enable certain options. See :ref:`error-codes` for general
-documentation about error codes. :ref:`error-code-list` documents
-error codes that are enabled by default.
+documentation about error codes and their configuration.
+:ref:`error-code-list` documents error codes that are enabled by default.
 
 .. note::
 
@@ -231,6 +231,44 @@ incorrect control flow or conditional checks that are accidentally always true o
         # Error: Statement is unreachable  [unreachable]
         print('unreachable')
 
+.. _code-deprecated:
+
+Check that imported or used feature is deprecated [deprecated]
+--------------------------------------------------------------
+
+By default, mypy generates a note if your code imports a deprecated feature explicitly with a
+``from mod import depr`` statement or uses a deprecated feature imported otherwise or defined
+locally.  Features are considered deprecated when decorated with ``warnings.deprecated``, as
+specified in `PEP 702 <https://peps.python.org/pep-0702>`_.  You can silence single notes via
+``# type: ignore[deprecated]`` or turn off this check completely via ``--disable-error-code=deprecated``.
+Use the :option:`--report-deprecated-as-error <mypy --report-deprecated-as-error>` option for
+more strictness, which turns all such notes into errors.
+
+.. note::
+
+    The ``warnings`` module provides the ``@deprecated`` decorator since Python 3.13.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+Examples:
+
+.. code-block:: python
+
+    # mypy: report-deprecated-as-error
+
+    # Error: abc.abstractproperty is deprecated: Deprecated, use 'property' with 'abstractmethod' instead
+    from abc import abstractproperty
+
+    from typing_extensions import deprecated
+
+    @deprecated("use new_function")
+    def old_function() -> None:
+        print("I am old")
+
+    # Error: __main__.old_function is deprecated: use new_function
+    old_function()
+    old_function()  # type: ignore[deprecated]
+
+
 .. _code-redundant-expr:
 
 Check that expression is redundant [redundant-expr]
@@ -241,7 +279,7 @@ mypy generates an error if it thinks that an expression is redundant.
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code redundant-expr ..."
+    # mypy: enable-error-code="redundant-expr"
 
     def example(x: int) -> None:
         # Error: Left operand of "and" is always true  [redundant-expr]
@@ -268,9 +306,9 @@ example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code possibly-undefined ..."
+    # mypy: enable-error-code="possibly-undefined"
 
-    from typing import Iterable
+    from collections.abc import Iterable
 
     def test(values: Iterable[int], flag: bool) -> None:
         if flag:
@@ -297,7 +335,7 @@ Using an iterable value in a boolean context has a separate error code
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code truthy-bool ..."
+    # mypy: enable-error-code="truthy-bool"
 
     class Foo:
         pass
@@ -318,7 +356,7 @@ Example:
 
 .. code-block:: python
 
-    from typing import Iterable
+    from collections.abc import Iterable
 
     def transform(items: Iterable[int]) -> list[int]:
         # Error: "items" has type "Iterable[int]" which can always be true in boolean context. Consider using "Collection[int]" instead.  [truthy-iterable]
@@ -347,7 +385,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code ignore-without-code ..."
+    # mypy: enable-error-code="ignore-without-code"
 
     class Foo:
         def __init__(self, name: str) -> None:
@@ -378,7 +416,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code unused-awaitable ..."
+    # mypy: enable-error-code="unused-awaitable"
 
     import asyncio
 
@@ -389,7 +427,7 @@ Example:
         #        Are you missing an await?
         asyncio.create_task(f())
 
-You can assign the value to a temporary, otherwise unused to variable to
+You can assign the value to a temporary, otherwise unused variable to
 silence the error:
 
 .. code-block:: python
@@ -442,3 +480,132 @@ Example:
         # The following will not generate an error on either
         # Python 3.8, or Python 3.9
         42 + "testing..."  # type: ignore
+
+.. _code-explicit-override:
+
+Check that ``@override`` is used when overriding a base class method [explicit-override]
+----------------------------------------------------------------------------------------
+
+If you use :option:`--enable-error-code explicit-override <mypy --enable-error-code>`
+mypy generates an error if you override a base class method without using the
+``@override`` decorator. An error will not be emitted for overrides of ``__init__``
+or ``__new__``. See `PEP 698 <https://peps.python.org/pep-0698/#strict-enforcement-per-project>`_.
+
+.. note::
+
+    Starting with Python 3.12, the ``@override`` decorator can be imported from ``typing``.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+Example:
+
+.. code-block:: python
+
+    # mypy: enable-error-code="explicit-override"
+
+    from typing import override
+
+    class Parent:
+        def f(self, x: int) -> None:
+            pass
+
+        def g(self, y: int) -> None:
+            pass
+
+
+    class Child(Parent):
+        def f(self, x: int) -> None:  # Error: Missing @override decorator
+            pass
+
+        @override
+        def g(self, y: int) -> None:
+            pass
+
+.. _code-mutable-override:
+
+Check that overrides of mutable attributes are safe [mutable-override]
+----------------------------------------------------------------------
+
+`mutable-override` will enable the check for unsafe overrides of mutable attributes.
+For historical reasons, and because this is a relatively common pattern in Python,
+this check is not enabled by default. The example below is unsafe, and will be
+flagged when this error code is enabled:
+
+.. code-block:: python
+
+    from typing import Any
+
+    class C:
+        x: float
+        y: float
+        z: float
+
+    class D(C):
+        x: int  # Error: Covariant override of a mutable attribute
+                # (base class "C" defined the type as "float",
+                # expression has type "int")  [mutable-override]
+        y: float  # OK
+        z: Any  # OK
+
+    def f(c: C) -> None:
+        c.x = 1.1
+    d = D()
+    f(d)
+    d.x >> 1  # This will crash at runtime, because d.x is now float, not an int
+
+.. _code-unimported-reveal:
+
+Check that ``reveal_type`` is imported from typing or typing_extensions [unimported-reveal]
+-------------------------------------------------------------------------------------------
+
+Mypy used to have ``reveal_type`` as a special builtin
+that only existed during type-checking.
+In runtime it fails with expected ``NameError``,
+which can cause real problem in production, hidden from mypy.
+
+But, in Python3.11 :py:func:`typing.reveal_type` was added.
+``typing_extensions`` ported this helper to all supported Python versions.
+
+Now users can actually import ``reveal_type`` to make the runtime code safe.
+
+.. note::
+
+    Starting with Python 3.11, the ``reveal_type`` function can be imported from ``typing``.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+.. code-block:: python
+
+    # mypy: enable-error-code="unimported-reveal"
+
+    x = 1
+    reveal_type(x)  # Note: Revealed type is "builtins.int" \
+                    # Error: Name "reveal_type" is not defined
+
+Correct usage:
+
+.. code-block:: python
+
+    # mypy: enable-error-code="unimported-reveal"
+    from typing import reveal_type   # or `typing_extensions`
+
+    x = 1
+    # This won't raise an error:
+    reveal_type(x)  # Note: Revealed type is "builtins.int"
+
+When this code is enabled, using ``reveal_locals`` is always an error,
+because there's no way one can import it.
+
+.. _code-narrowed-type-not-subtype:
+
+Check that ``TypeIs`` narrows types [narrowed-type-not-subtype]
+---------------------------------------------------------------
+
+:pep:`742` requires that when ``TypeIs`` is used, the narrowed
+type must be a subtype of the original type::
+
+    from typing_extensions import TypeIs
+
+    def f(x: int) -> TypeIs[str]:  # Error, str is not a subtype of int
+        ...
+
+    def g(x: object) -> TypeIs[str]:  # OK
+        ...

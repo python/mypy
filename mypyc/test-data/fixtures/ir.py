@@ -7,12 +7,12 @@ from typing import (
     overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol
 )
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 T_co = TypeVar('T_co', covariant=True)
 T_contra = TypeVar('T_contra', contravariant=True)
-S = TypeVar('S')
-K = TypeVar('K') # for keys in mapping
-V = TypeVar('V') # for values in mapping
+_S = TypeVar('_S')
+_K = TypeVar('_K') # for keys in mapping
+_V = TypeVar('_V') # for values in mapping
 
 class __SupportsAbs(Protocol[T_co]):
     def __abs__(self) -> T_co: pass
@@ -45,6 +45,7 @@ class object:
 
 class type:
     def __init__(self, o: object) -> None: ...
+    def __or__(self, o: object) -> Any: ...
     __name__ : str
     __annotations__: Dict[str, Any]
 
@@ -199,76 +200,76 @@ class tuple(Generic[T_co], Sequence[T_co], Iterable[T_co]):
 
 class function: pass
 
-class list(Generic[T], Sequence[T], Iterable[T]):
-    def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
+class list(Generic[_T], Sequence[_T], Iterable[_T]):
+    def __init__(self, i: Optional[Iterable[_T]] = None) -> None: pass
     @overload
-    def __getitem__(self, i: int) -> T: ...
+    def __getitem__(self, i: int) -> _T: ...
     @overload
-    def __getitem__(self, s: slice) -> List[T]: ...
-    def __setitem__(self, i: int, o: T) -> None: pass
+    def __getitem__(self, s: slice) -> List[_T]: ...
+    def __setitem__(self, i: int, o: _T) -> None: pass
     def __delitem__(self, i: int) -> None: pass
-    def __mul__(self, i: int) -> List[T]: pass
-    def __rmul__(self, i: int) -> List[T]: pass
-    def __iter__(self) -> Iterator[T]: pass
+    def __mul__(self, i: int) -> List[_T]: pass
+    def __rmul__(self, i: int) -> List[_T]: pass
+    def __iter__(self) -> Iterator[_T]: pass
     def __len__(self) -> int: pass
     def __contains__(self, item: object) -> int: ...
-    def __add__(self, x: List[T]) -> List[T]: ...
-    def append(self, x: T) -> None: pass
-    def pop(self, i: int = -1) -> T: pass
-    def count(self, T) -> int: pass
-    def extend(self, l: Iterable[T]) -> None: pass
-    def insert(self, i: int, x: T) -> None: pass
+    def __add__(self, x: List[_T]) -> List[_T]: ...
+    def append(self, x: _T) -> None: pass
+    def pop(self, i: int = -1) -> _T: pass
+    def count(self, _T) -> int: pass
+    def extend(self, l: Iterable[_T]) -> None: pass
+    def insert(self, i: int, x: _T) -> None: pass
     def sort(self) -> None: pass
     def reverse(self) -> None: pass
-    def remove(self, o: T) -> None: pass
-    def index(self, o: T) -> int: pass
+    def remove(self, o: _T) -> None: pass
+    def index(self, o: _T) -> int: pass
 
-class dict(Mapping[K, V]):
+class dict(Mapping[_K, _V]):
     @overload
-    def __init__(self, **kwargs: K) -> None: ...
+    def __init__(self, **kwargs: _K) -> None: ...
     @overload
-    def __init__(self, map: Mapping[K, V], **kwargs: V) -> None: ...
+    def __init__(self, map: Mapping[_K, _V], **kwargs: _V) -> None: ...
     @overload
-    def __init__(self, iterable: Iterable[Tuple[K, V]], **kwargs: V) -> None: ...
-    def __getitem__(self, key: K) -> V: pass
-    def __setitem__(self, k: K, v: V) -> None: pass
-    def __delitem__(self, k: K) -> None: pass
+    def __init__(self, iterable: Iterable[Tuple[_K, _V]], **kwargs: _V) -> None: ...
+    def __getitem__(self, key: _K) -> _V: pass
+    def __setitem__(self, k: _K, v: _V) -> None: pass
+    def __delitem__(self, k: _K) -> None: pass
     def __contains__(self, item: object) -> int: pass
-    def __iter__(self) -> Iterator[K]: pass
+    def __iter__(self) -> Iterator[_K]: pass
     def __len__(self) -> int: pass
     @overload
-    def update(self, __m: Mapping[K, V], **kwargs: V) -> None: pass
+    def update(self, __m: Mapping[_K, _V], **kwargs: _V) -> None: pass
     @overload
-    def update(self, __m: Iterable[Tuple[K, V]], **kwargs: V) -> None: ...
+    def update(self, __m: Iterable[Tuple[_K, _V]], **kwargs: _V) -> None: ...
     @overload
-    def update(self, **kwargs: V) -> None: ...
-    def pop(self, x: int) -> K: pass
-    def keys(self) -> Iterable[K]: pass
-    def values(self) -> Iterable[V]: pass
-    def items(self) -> Iterable[Tuple[K, V]]: pass
+    def update(self, **kwargs: _V) -> None: ...
+    def pop(self, x: int) -> _K: pass
+    def keys(self) -> Iterable[_K]: pass
+    def values(self) -> Iterable[_V]: pass
+    def items(self) -> Iterable[Tuple[_K, _V]]: pass
     def clear(self) -> None: pass
-    def copy(self) -> Dict[K, V]: pass
-    def setdefault(self, key: K, val: V = ...) -> V: pass
+    def copy(self) -> Dict[_K, _V]: pass
+    def setdefault(self, key: _K, val: _V = ...) -> _V: pass
 
-class set(Generic[T]):
-    def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
-    def __iter__(self) -> Iterator[T]: pass
+class set(Generic[_T]):
+    def __init__(self, i: Optional[Iterable[_T]] = None) -> None: pass
+    def __iter__(self) -> Iterator[_T]: pass
     def __len__(self) -> int: pass
-    def add(self, x: T) -> None: pass
-    def remove(self, x: T) -> None: pass
-    def discard(self, x: T) -> None: pass
+    def add(self, x: _T) -> None: pass
+    def remove(self, x: _T) -> None: pass
+    def discard(self, x: _T) -> None: pass
     def clear(self) -> None: pass
-    def pop(self) -> T: pass
-    def update(self, x: Iterable[S]) -> None: pass
-    def __or__(self, s: Union[Set[S], FrozenSet[S]]) -> Set[Union[T, S]]: ...
-    def __xor__(self, s: Union[Set[S], FrozenSet[S]]) -> Set[Union[T, S]]: ...
+    def pop(self) -> _T: pass
+    def update(self, x: Iterable[_S]) -> None: pass
+    def __or__(self, s: Union[Set[_S], FrozenSet[_S]]) -> Set[Union[_T, _S]]: ...
+    def __xor__(self, s: Union[Set[_S], FrozenSet[_S]]) -> Set[Union[_T, _S]]: ...
 
-class frozenset(Generic[T]):
-    def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
-    def __iter__(self) -> Iterator[T]: pass
+class frozenset(Generic[_T]):
+    def __init__(self, i: Optional[Iterable[_T]] = None) -> None: pass
+    def __iter__(self) -> Iterator[_T]: pass
     def __len__(self) -> int: pass
-    def __or__(self, s: Union[Set[S], FrozenSet[S]]) -> FrozenSet[Union[T, S]]: ...
-    def __xor__(self, s: Union[Set[S], FrozenSet[S]]) -> FrozenSet[Union[T, S]]: ...
+    def __or__(self, s: Union[Set[_S], FrozenSet[_S]]) -> FrozenSet[Union[_T, _S]]: ...
+    def __xor__(self, s: Union[Set[_S], FrozenSet[_S]]) -> FrozenSet[Union[_T, _S]]: ...
 
 class slice: pass
 
@@ -323,31 +324,31 @@ class OverflowError(ArithmeticError): pass
 
 class GeneratorExit(BaseException): pass
 
-def any(i: Iterable[T]) -> bool: pass
-def all(i: Iterable[T]) -> bool: pass
-def sum(i: Iterable[T]) -> int: pass
-def reversed(object: Sequence[T]) -> Iterator[T]: ...
+def any(i: Iterable[_T]) -> bool: pass
+def all(i: Iterable[_T]) -> bool: pass
+def sum(i: Iterable[_T]) -> int: pass
+def reversed(object: Sequence[_T]) -> Iterator[_T]: ...
 def id(o: object) -> int: pass
 # This type is obviously wrong but the test stubs don't have Sized anymore
 def len(o: object) -> int: pass
 def print(*object) -> None: pass
 def isinstance(x: object, t: object) -> bool: pass
-def iter(i: Iterable[T]) -> Iterator[T]: pass
+def iter(i: Iterable[_T]) -> Iterator[_T]: pass
 @overload
-def next(i: Iterator[T]) -> T: pass
+def next(i: Iterator[_T]) -> _T: pass
 @overload
-def next(i: Iterator[T], default: T) -> T: pass
+def next(i: Iterator[_T], default: _T) -> _T: pass
 def hash(o: object) -> int: ...
 def globals() -> Dict[str, Any]: ...
 def getattr(obj: object, name: str, default: Any = None) -> Any: ...
 def setattr(obj: object, name: str, value: Any) -> None: ...
-def enumerate(x: Iterable[T]) -> Iterator[Tuple[int, T]]: ...
+def enumerate(x: Iterable[_T]) -> Iterator[Tuple[int, _T]]: ...
 @overload
-def zip(x: Iterable[T], y: Iterable[S]) -> Iterator[Tuple[T, S]]: ...
+def zip(x: Iterable[_T], y: Iterable[_S]) -> Iterator[Tuple[_T, _S]]: ...
 @overload
-def zip(x: Iterable[T], y: Iterable[S], z: Iterable[V]) -> Iterator[Tuple[T, S, V]]: ...
+def zip(x: Iterable[_T], y: Iterable[_S], z: Iterable[_V]) -> Iterator[Tuple[_T, _S, _V]]: ...
 def eval(e: str) -> Any: ...
-def abs(x: __SupportsAbs[T]) -> T: ...
+def abs(x: __SupportsAbs[_T]) -> _T: ...
 @overload
 def divmod(x: __SupportsDivMod[T_contra, T_co], y: T_contra) -> T_co: ...
 @overload
@@ -359,8 +360,8 @@ def pow(base: __SupportsPow3NoneOnly[T_contra, T_co], exp: T_contra, mod: None =
 @overload
 def pow(base: __SupportsPow3[T_contra, _M, T_co], exp: T_contra, mod: _M) -> T_co: ...
 def exit() -> None: ...
-def min(x: T, y: T) -> T: ...
-def max(x: T, y: T) -> T: ...
+def min(x: _T, y: _T) -> _T: ...
+def max(x: _T, y: _T) -> _T: ...
 def repr(o: object) -> str: ...
 def ascii(o: object) -> str: ...
 def ord(o: object) -> int: ...

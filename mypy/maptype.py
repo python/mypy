@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from mypy.expandtype import expand_type
+from mypy.expandtype import expand_type_by_instance
 from mypy.nodes import TypeInfo
-from mypy.types import AnyType, Instance, TupleType, Type, TypeOfAny, TypeVarId, has_type_vars
+from mypy.types import AnyType, Instance, TupleType, TypeOfAny, has_type_vars
 
 
 def map_instance_to_supertype(instance: Instance, superclass: TypeInfo) -> Instance:
@@ -25,13 +25,15 @@ def map_instance_to_supertype(instance: Instance, superclass: TypeInfo) -> Insta
             if not alias._is_recursive:
                 # Unfortunately we can't support this for generic recursive tuples.
                 # If we skip this special casing we will fall back to tuple[Any, ...].
-                env = instance_to_type_environment(instance)
-                tuple_type = expand_type(instance.type.tuple_type, env)
+                tuple_type = expand_type_by_instance(instance.type.tuple_type, instance)
                 if isinstance(tuple_type, TupleType):
                     # Make the import here to avoid cyclic imports.
                     import mypy.typeops
 
                     return mypy.typeops.tuple_fallback(tuple_type)
+                elif isinstance(tuple_type, Instance):
+                    # This can happen after normalizing variadic tuples.
+                    return tuple_type
 
     if not superclass.type_vars:
         # Fast path: `superclass` has no type variables to map to.
@@ -91,8 +93,7 @@ def map_instance_to_direct_supertypes(instance: Instance, supertype: TypeInfo) -
 
     for b in typ.bases:
         if b.type == supertype:
-            env = instance_to_type_environment(instance)
-            t = expand_type(b, env)
+            t = expand_type_by_instance(b, instance)
             assert isinstance(t, Instance)
             result.append(t)
 
@@ -103,16 +104,3 @@ def map_instance_to_direct_supertypes(instance: Instance, supertype: TypeInfo) -
         # type arguments implicitly.
         any_type = AnyType(TypeOfAny.unannotated)
         return [Instance(supertype, [any_type] * len(supertype.type_vars))]
-
-
-def instance_to_type_environment(instance: Instance) -> dict[TypeVarId, Type]:
-    """Given an Instance, produce the resulting type environment for type
-    variables bound by the Instance's class definition.
-
-    An Instance is a type application of a class (a TypeInfo) to its
-    required number of type arguments.  So this environment consists
-    of the class's type variables mapped to the Instance's actual
-    arguments.  The type variables are mapped by their `id`.
-
-    """
-    return {binder.id: arg for binder, arg in zip(instance.type.defn.type_vars, instance.args)}

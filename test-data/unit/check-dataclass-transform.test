@@ -22,7 +22,6 @@ Person('Jonh', 21, None)  # E: Too many arguments for "Person"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassTransformIsFoundInTypingExtensions]
-# flags: --python-version 3.7
 from typing import Type
 from typing_extensions import dataclass_transform
 
@@ -506,7 +505,7 @@ class FunctionModel:
         integer_: tuple
 
 FunctionModel(string_="abc", integer_=1)
-FunctionModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "FunctionModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+FunctionModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "FunctionModel" has incompatible type "Tuple[Never, ...]"; expected "int"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
@@ -529,7 +528,7 @@ class FunctionModel:
         integer_: int
 
 FunctionModel(string_="abc", integer_=1)
-FunctionModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "FunctionModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+FunctionModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "FunctionModel" has incompatible type "Tuple[Never, ...]"; expected "int"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
@@ -552,7 +551,7 @@ class BaseClassModel(ModelBase):
         integer_: tuple
 
 BaseClassModel(string_="abc", integer_=1)
-BaseClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "BaseClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+BaseClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "BaseClassModel" has incompatible type "Tuple[Never, ...]"; expected "int"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
@@ -574,7 +573,7 @@ class BaseClassModel(ModelBase):
         integer_: int
 
 BaseClassModel(string_="abc", integer_=1)
-BaseClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "BaseClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+BaseClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "BaseClassModel" has incompatible type "Tuple[Never, ...]"; expected "int"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
@@ -599,7 +598,7 @@ class MetaClassModel(ModelBaseWithMeta):
         integer_: tuple
 
 MetaClassModel(string_="abc", integer_=1)
-MetaClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "MetaClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+MetaClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "MetaClassModel" has incompatible type "Tuple[Never, ...]"; expected "int"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
@@ -624,7 +623,7 @@ class MetaClassModel(ModelBaseWithMeta):
         integer_: int
 
 MetaClassModel(string_="abc", integer_=1)
-MetaClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "MetaClassModel" has incompatible type "Tuple[<nothing>, ...]"; expected "int"
+MetaClassModel(string_="abc", integer_=tuple())  # E: Argument "integer_" to "MetaClassModel" has incompatible type "Tuple[Never, ...]"; expected "int"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
@@ -853,7 +852,7 @@ class Person:
     name: str
 
 p = Person('John')
-y = replace(p, name='Bob')  # E: Argument 1 to "replace" has incompatible type "Person"; expected a dataclass
+y = replace(p, name='Bob')
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]

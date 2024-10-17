@@ -159,18 +159,18 @@ def plugin(version): return Dummy
 [case testDaemonRunRestartGlobs]
 -- Ensure dmypy is not restarted if the configuration doesn't change and it contains globs
 -- Note: Backslash path separator in output is replaced with forward slash so the same test succeeds on Windows as well
-$ dmypy run -- foo --follow-imports=error --python-version=3.6
+$ dmypy run -- foo --follow-imports=error
 Daemon started
 foo/lol.py:1: error: Name "fail" is not defined
 Found 1 error in 1 file (checked 3 source files)
 == Return code: 1
-$ dmypy run -- foo --follow-imports=error --python-version=3.6
+$ dmypy run -- foo --follow-imports=error
 foo/lol.py:1: error: Name "fail" is not defined
 Found 1 error in 1 file (checked 3 source files)
 == Return code: 1
 $ {python} -c "print('[mypy]')" >mypy.ini
 $ {python} -c "print('ignore_errors=True')" >>mypy.ini
-$ dmypy run -- foo --follow-imports=error --python-version=3.6
+$ dmypy run -- foo --follow-imports=error
 Restarting: configuration changed
 Daemon stopped
 Daemon started
@@ -264,7 +264,7 @@ $ dmypy stop
 Daemon stopped
 
 [case testDaemonWarningSuccessExitCode-posix]
-$ dmypy run -- foo.py --follow-imports=error
+$ dmypy run -- foo.py --follow-imports=error --python-version=3.11
 Daemon started
 foo.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
 Success: no issues found in 1 source file
@@ -282,13 +282,13 @@ def foo():
 [case testDaemonQuickstart]
 $ {python} -c "print('x=1')" >foo.py
 $ {python} -c "print('x=1')" >bar.py
-$ mypy --local-partial-types --cache-fine-grained --follow-imports=error --no-sqlite-cache --python-version=3.6 -- foo.py bar.py
+$ mypy --local-partial-types --cache-fine-grained --follow-imports=error --no-sqlite-cache --python-version=3.11 -- foo.py bar.py
 Success: no issues found in 2 source files
-$ {python} -c "import shutil; shutil.copy('.mypy_cache/3.6/bar.meta.json', 'asdf.json')"
+$ {python} -c "import shutil; shutil.copy('.mypy_cache/3.11/bar.meta.json', 'asdf.json')"
 -- update bar's timestamp but don't change the file
 $ {python} -c "import time;time.sleep(1)"
 $ {python} -c "print('x=1')" >bar.py
-$ dmypy run -- foo.py bar.py --follow-imports=error --use-fine-grained-cache --no-sqlite-cache --python-version=3.6
+$ dmypy run -- foo.py bar.py --follow-imports=error --use-fine-grained-cache --no-sqlite-cache --python-version=3.11
 Daemon started
 Success: no issues found in 2 source files
 $ dmypy status --fswatcher-dump-file test.json
@@ -296,11 +296,11 @@ Daemon is up and running
 $ dmypy stop
 Daemon stopped
 -- copy the original bar cache file back so that the mtime mismatches
-$ {python} -c "import shutil; shutil.copy('asdf.json', '.mypy_cache/3.6/bar.meta.json')"
+$ {python} -c "import shutil; shutil.copy('asdf.json', '.mypy_cache/3.11/bar.meta.json')"
 -- sleep guarantees timestamp changes
 $ {python} -c "import time;time.sleep(1)"
 $ {python} -c "print('lol')" >foo.py
-$ dmypy run --log-file=log -- foo.py bar.py --follow-imports=error --use-fine-grained-cache --no-sqlite-cache --python-version=3.6 --quickstart-file test.json
+$ dmypy run --log-file=log -- foo.py bar.py --follow-imports=error --use-fine-grained-cache --no-sqlite-cache --python-version=3.11 --quickstart-file test.json
 Daemon started
 foo.py:1: error: Name "lol" is not defined
 Found 1 error in 1 file (checked 2 source files)
@@ -309,7 +309,7 @@ Found 1 error in 1 file (checked 2 source files)
 $ {python} -c "import sys; sys.stdout.write(open('log').read())"
 -- make sure the meta file didn't get updated. we use this as an imperfect proxy for
 -- whether the source file got rehashed, which we don't want it to have been.
-$ {python} -c "x = open('.mypy_cache/3.6/bar.meta.json').read(); y = open('asdf.json').read(); assert x == y"
+$ {python} -c "x = open('.mypy_cache/3.11/bar.meta.json').read(); y = open('asdf.json').read(); assert x == y"
 
 [case testDaemonSuggest]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
@@ -360,6 +360,33 @@ def bar() -> None:
     x = foo('abc')  # type: str
     foo(arg='xyz')
 
+[case testDaemonInspectCheck]
+$ dmypy start
+Daemon started
+$ dmypy check foo.py
+Success: no issues found in 1 source file
+$ dmypy check foo.py --export-types
+Success: no issues found in 1 source file
+$ dmypy inspect foo.py:1:1
+"int"
+[file foo.py]
+x = 1
+
+[case testDaemonInspectRun]
+$ dmypy run test1.py
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy run test2.py
+Success: no issues found in 1 source file
+$ dmypy run test1.py --export-types
+Success: no issues found in 1 source file
+$ dmypy inspect test1.py:1:1
+"int"
+[file test1.py]
+a: int
+[file test2.py]
+a: str
+
 [case testDaemonGetType]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.8
 Daemon started
@@ -372,6 +399,9 @@ foo.py:3: error: Incompatible types in assignment (expression has type "str", va
 $ dmypy inspect foo:1
 Format should be file:line:column[:end_line:end_column]
 == Return code: 2
+$ dmypy inspect foo:1:2:3
+Source file is not a Python file
+== Return code: 2
 $ dmypy inspect foo.py:1:2:a:b
 invalid literal for int() with base 10: 'a'
 == Return code: 2
@@ -379,7 +409,7 @@ $ dmypy inspect foo.pyc:1:1:2:2
 Source file is not a Python file
 == Return code: 2
 $ dmypy inspect bar/baz.py:1:1:2:2
-Unknown module: baz
+Unknown module: bar/baz.py
 == Return code: 1
 $ dmypy inspect foo.py:3:1:1:1
 "end_line" must not be before "line"
@@ -434,7 +464,7 @@ $ dmypy inspect foo.pyc:1:2
 Source file is not a Python file
 == Return code: 2
 $ dmypy inspect bar/baz.py:1:2
-Unknown module: baz
+Unknown module: bar/baz.py
 == Return code: 1
 $ dmypy inspect foo.py:7:5 --include-span
 7:5:7:5 -> "int"
@@ -571,3 +601,17 @@ class A:
     x: int
 class B:
     x: int
+
+[case testDaemonInspectSelectCorrectFile]
+$ dmypy run test.py --export-types
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy inspect demo/test.py:1:1
+"int"
+$ dmypy inspect test.py:1:1
+"str"
+[file test.py]
+b: str
+from demo.test import a
+[file demo/test.py]
+a: int

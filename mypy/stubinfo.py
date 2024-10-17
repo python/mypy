@@ -1,24 +1,53 @@
 from __future__ import annotations
 
 
-def is_legacy_bundled_package(prefix: str) -> bool:
-    return prefix in legacy_bundled_packages
+def is_module_from_legacy_bundled_package(module: str) -> bool:
+    top_level = module.split(".", 1)[0]
+    return top_level in legacy_bundled_packages
 
 
-def approved_stub_package_exists(prefix: str) -> bool:
-    return is_legacy_bundled_package(prefix) or prefix in non_bundled_packages
+def approved_stub_package_exists(module: str) -> bool:
+    top_level = module.split(".", 1)[0]
+    if top_level in legacy_bundled_packages:
+        return True
+    if top_level in non_bundled_packages_flat:
+        return True
+    if top_level in non_bundled_packages_namespace:
+        namespace = non_bundled_packages_namespace[top_level]
+        components = module.split(".")
+        for i in range(len(components), 0, -1):
+            module = ".".join(components[:i])
+            if module in namespace:
+                return True
+    return False
 
 
-def stub_package_name(prefix: str) -> str:
-    return legacy_bundled_packages.get(prefix) or non_bundled_packages[prefix]
+def stub_distribution_name(module: str) -> str | None:
+    top_level = module.split(".", 1)[0]
+
+    dist = legacy_bundled_packages.get(top_level)
+    if dist:
+        return dist
+    dist = non_bundled_packages_flat.get(top_level)
+    if dist:
+        return dist
+
+    if top_level in non_bundled_packages_namespace:
+        namespace = non_bundled_packages_namespace[top_level]
+        components = module.split(".")
+        for i in range(len(components), 0, -1):
+            module = ".".join(components[:i])
+            dist = namespace.get(module)
+            if dist:
+                return dist
+
+    return None
 
 
 # Stubs for these third-party packages used to be shipped with mypy.
 #
 # Map package name to PyPI stub distribution name.
-#
-# Package name can have one or two components ('a' or 'a.b').
-legacy_bundled_packages = {
+legacy_bundled_packages: dict[str, str] = {
     "aiofiles": "types-aiofiles",
     "bleach": "types-bleach",
     "boto": "types-boto",
@@ -28,17 +57,13 @@ legacy_bundled_packages = {
     "croniter": "types-croniter",
     "dataclasses": "types-dataclasses",
     "dateparser": "types-dateparser",
-    "datetimerange": "types-DateTimeRange",
     "dateutil": "types-python-dateutil",
     "decorator": "types-decorator",
     "deprecated": "types-Deprecated",
     "docutils": "types-docutils",
     "first": "types-first",
-    "geoip2": "types-geoip2",
     "gflags": "types-python-gflags",
-    "google.protobuf": "types-protobuf",
     "markdown": "types-Markdown",
-    "maxminddb": "types-maxminddb",
     "mock": "types-mock",
     "OpenSSL": "types-pyOpenSSL",
     "paramiko": "types-paramiko",
@@ -71,22 +96,17 @@ legacy_bundled_packages = {
 # include packages that have a release that includes PEP 561 type
 # information.
 #
-# Package name can have one or two components ('a' or 'a.b').
-#
 # Note that these packages are omitted for now:
 #   pika:       typeshed's stubs are on PyPI as types-pika-ts.
 #               types-pika already exists on PyPI, and is more complete in many ways,
 #               but is a non-typeshed stubs package.
-non_bundled_packages = {
+non_bundled_packages_flat: dict[str, str] = {
     "MySQLdb": "types-mysqlclient",
     "PIL": "types-Pillow",
     "PyInstaller": "types-pyinstaller",
     "Xlib": "types-python-xlib",
-    "annoy": "types-annoy",
-    "appdirs": "types-appdirs",
     "aws_xray_sdk": "types-aws-xray-sdk",
     "babel": "types-babel",
-    "backports.ssl_match_hostname": "types-backports.ssl_match_hostname",
     "braintree": "types-braintree",
     "bs4": "types-beautifulsoup4",
     "bugbear": "types-flake8-bugbear",
@@ -98,7 +118,6 @@ non_bundled_packages = {
     "consolemenu": "types-console-menu",
     "crontab": "types-python-crontab",
     "d3dshot": "types-D3DShot",
-    "dj_database_url": "types-dj-database-url",
     "dockerfile_parse": "types-dockerfile-parse",
     "docopt": "types-docopt",
     "editdistance": "types-editdistance",
@@ -113,10 +132,8 @@ non_bundled_packages = {
     "flake8_typing_imports": "types-flake8-typing-imports",
     "flask_cors": "types-Flask-Cors",
     "flask_migrate": "types-Flask-Migrate",
-    "flask_sqlalchemy": "types-Flask-SQLAlchemy",
     "fpdf": "types-fpdf2",
     "gdb": "types-gdb",
-    "google.cloud": "types-google-cloud-ndb",
     "hdbcli": "types-hdbcli",
     "html5lib": "types-html5lib",
     "httplib2": "types-httplib2",
@@ -132,7 +149,6 @@ non_bundled_packages = {
     "oauthlib": "types-oauthlib",
     "openpyxl": "types-openpyxl",
     "opentracing": "types-opentracing",
-    "paho.mqtt": "types-paho-mqtt",
     "parsimonious": "types-parsimonious",
     "passlib": "types-passlib",
     "passpy": "types-passpy",
@@ -164,7 +180,6 @@ non_bundled_packages = {
     "tree_sitter": "types-tree-sitter",
     "tree_sitter_languages": "types-tree-sitter-languages",
     "ttkthemes": "types-ttkthemes",
-    "urllib3": "types-urllib3",
     "vobject": "types-vobject",
     "whatthepatch": "types-whatthepatch",
     "win32": "types-pywin32",
@@ -174,11 +189,17 @@ non_bundled_packages = {
     "win32comext": "types-pywin32",
     "win32gui": "types-pywin32",
     "xmltodict": "types-xmltodict",
-    "xxhash": "types-xxhash",
     "zxcvbn": "types-zxcvbn",
     # Stub packages that are not from typeshed
     # Since these can be installed automatically via --install-types, we have a high trust bar
     # for additions here
     "pandas": "pandas-stubs",  # https://github.com/pandas-dev/pandas-stubs
     "lxml": "lxml-stubs",  # https://github.com/lxml/lxml-stubs
+}
+
+
+non_bundled_packages_namespace: dict[str, dict[str, str]] = {
+    "backports": {"backports.ssl_match_hostname": "types-backports.ssl_match_hostname"},
+    "google": {"google.cloud.ndb": "types-google-cloud-ndb", "google.protobuf": "types-protobuf"},
+    "paho": {"paho.mqtt": "types-paho-mqtt"},
 }

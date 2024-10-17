@@ -127,12 +127,22 @@ alter the default behavior:
     unwanted side effects, such as the running of tests. Stubgen tries to skip test
     modules even without this option, but this does not always work.
 
-.. option:: --parse-only
+.. option:: --no-analysis
 
     Don't perform semantic analysis of source files. This may generate
     worse stubs -- in particular, some module, class, and function aliases may
     be represented as variables with the ``Any`` type. This is generally only
-    useful if semantic analysis causes a critical mypy error.
+    useful if semantic analysis causes a critical mypy error.  Does not apply to
+    C extension modules.  Incompatible with :option:`--inspect-mode`.
+
+.. option:: --inspect-mode
+
+    Import and inspect modules instead of parsing source code. This is the default
+    behavior for C modules and pyc-only packages.  The flag is useful to force
+    inspection for pure Python modules that make use of dynamically generated
+    members that would otherwise be omitted when using the default behavior of
+    code parsing.  Implies :option:`--no-analysis` as analysis requires source
+    code.
 
 .. option:: --doc-dir PATH
 
@@ -162,6 +172,11 @@ Additional flags
     Don't export all names imported from other modules within the same package.
     Instead, only export imported names that are not referenced in the module
     that contains the import.
+
+.. option:: --include-docstrings
+
+    Include docstrings in stubs. This will add docstrings to Python function and
+    classes stubs and to C extension function stubs.
 
 .. option:: --search-path PATH
 

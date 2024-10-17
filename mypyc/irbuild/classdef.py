@@ -7,10 +7,12 @@ from abc import abstractmethod
 from typing import Callable, Final
 
 from mypy.nodes import (
+    TYPE_VAR_TUPLE_KIND,
     AssignmentStmt,
     CallExpr,
     ClassDef,
     Decorator,
+    EllipsisExpr,
     ExpressionStmt,
     FuncDef,
     Lvalue,
@@ -22,6 +24,7 @@ from mypy.nodes import (
     StrExpr,
     TempNode,
     TypeInfo,
+    TypeParam,
     is_class_var,
 )
 from mypy.types import ENUM_REMOVED_PROPS, Instance, UnboundType, get_proper_type
@@ -53,7 +56,7 @@ from mypyc.ir.rtypes import (
     is_optional_type,
     object_rprimitive,
 )
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, create_type_params
 from mypyc.irbuild.function import (
     gen_property_getter_ir,
     gen_property_setter_ir,
@@ -63,9 +66,16 @@ from mypyc.irbuild.function import (
 )
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
-from mypyc.primitives.generic_ops import py_hasattr_op, py_setattr_op
+from mypyc.primitives.generic_ops import (
+    iter_op,
+    next_op,
+    py_get_item_op,
+    py_hasattr_op,
+    py_setattr_op,
+)
 from mypyc.primitives.misc_ops import (
     dataclass_sleight_of_hand,
+    import_op,
     not_implemented_op,
     py_calc_meta_op,
     pytype_from_template_op,
@@ -136,7 +146,9 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                 continue
             with builder.catch_errors(stmt.line):
                 cls_builder.add_method(get_func_def(stmt))
-        elif isinstance(stmt, PassStmt):
+        elif isinstance(stmt, PassStmt) or (
+            isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
+        ):
             continue
         elif isinstance(stmt, AssignmentStmt):
             if len(stmt.lvalues) != 1:
@@ -405,8 +417,14 @@ class AttrsClassBuilder(DataClassBuilder):
 def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     # OK AND NOW THE FUN PART
     base_exprs = cdef.base_type_exprs + cdef.removed_base_type_exprs
-    if base_exprs:
-        bases = [builder.accept(x) for x in base_exprs]
+    new_style_type_args = cdef.type_args
+    if new_style_type_args:
+        bases = [make_generic_base_class(builder, cdef.fullname, new_style_type_args, cdef.line)]
+    else:
+        bases = []
+
+    if base_exprs or new_style_type_args:
+        bases.extend([builder.accept(x) for x in base_exprs])
         tp_bases = builder.new_tuple(bases, cdef.line)
     else:
         tp_bases = builder.add(LoadErrorValue(object_rprimitive, is_borrowed=True))
@@ -451,6 +469,30 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     )
 
     return tp
+
+
+def make_generic_base_class(
+    builder: IRBuilder, fullname: str, type_args: list[TypeParam], line: int
+) -> Value:
+    """Construct Generic[...] base class object for a new-style generic class (Python 3.12)."""
+    mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
+    tvs = create_type_params(builder, mod, type_args, line)
+    args = []
+    for tv, type_param in zip(tvs, type_args):
+        if type_param.kind == TYPE_VAR_TUPLE_KIND:
+            # Evaluate *Ts for a TypeVarTuple
+            it = builder.call_c(iter_op, [tv], line)
+            tv = builder.call_c(next_op, [it], line)
+        args.append(tv)
+
+    gent = builder.py_get_attr(mod, "Generic", line)
+    if len(args) == 1:
+        arg = args[0]
+    else:
+        arg = builder.new_tuple(args, line)
+
+    base = builder.call_c(py_get_item_op, [gent, arg], line)
+    return base
 
 
 # Mypy uses these internally as base classes of TypedDict classes. These are

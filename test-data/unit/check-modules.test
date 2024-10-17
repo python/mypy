@@ -567,7 +567,6 @@ x = 1
 x = 1
 
 [case testAssignToFuncDefViaImport]
-# flags: --strict-optional
 
 # Errors differ with the new analyzer. (Old analyzer gave error on the
 # input, which is maybe better, but no error about f, which seems
@@ -1819,6 +1818,8 @@ m = n  # E: Cannot assign multiple modules to name "m" without explicit "types.M
 from stub import Iterable  # E: Module "stub" does not explicitly export attribute "Iterable"
 from stub import D  # E: Module "stub" does not explicitly export attribute "D"
 from stub import C
+from stub import foo
+from stub import bar  # E: Module "stub" does not explicitly export attribute "bar"
 
 c = C()
 reveal_type(c.x)  # N: Revealed type is "builtins.int"
@@ -1829,12 +1830,18 @@ reveal_type(it)  # N: Revealed type is "typing.Iterable[builtins.int]"
 from typing import Iterable
 from substub import C as C
 from substub import C as D
+from package import foo as foo
+import package.bar as bar
 
 def fun(x: Iterable[str]) -> Iterable[int]: pass
 
 [file substub.pyi]
 class C:
     x: int
+
+[file package/foo.pyi]
+
+[file package/bar.pyi]
 
 [builtins fixtures/module.pyi]
 
@@ -1863,7 +1870,8 @@ import stub
 
 reveal_type(stub.y)  # N: Revealed type is "builtins.int"
 reveal_type(stub.z)  # E: Module "stub" does not explicitly export attribute "z" \
-                     # N: Revealed type is "Any"
+                     # N: Revealed type is "builtins.int"
+
 
 [file stub.pyi]
 from substub import y as y
@@ -2067,19 +2075,7 @@ def __getattr__(name): ...
 
 [builtins fixtures/module.pyi]
 
-[case testModuleLevelGetattrNotStub36]
-# flags: --python-version 3.6
-import has_getattr
-reveal_type(has_getattr.any_attribute)  # E: Module has no attribute "any_attribute" \
-                                        # N: Revealed type is "Any"
-[file has_getattr.py]
-def __getattr__(name) -> str: ...
-
-[builtins fixtures/module.pyi]
-
-[case testModuleLevelGetattrNotStub37]
-# flags: --python-version 3.7
-
+[case testModuleLevelGetattrNotStub]
 import has_getattr
 reveal_type(has_getattr.any_attribute)  # N: Revealed type is "builtins.str"
 
@@ -2111,19 +2107,7 @@ def __getattr__(name: str) -> int: ...
 
 [builtins fixtures/module.pyi]
 
-[case testModuleLevelGetattrImportFromNotStub36]
-# flags: --python-version 3.6
-from non_stub import name  # E: Module "non_stub" has no attribute "name"
-reveal_type(name)  # N: Revealed type is "Any"
-
-[file non_stub.py]
-from typing import Any
-def __getattr__(name: str) -> Any: ...
-
-[builtins fixtures/module.pyi]
-
-[case testModuleLevelGetattrImportFromNotStub37]
-# flags: --python-version 3.7
+[case testModuleLevelGetattrImportFromNotStub]
 from non_stub import name
 reveal_type(name)  # N: Revealed type is "Any"
 
@@ -2158,7 +2142,6 @@ def __getattr__(name: str) -> int: ...
 
 
 [case testModuleLevelGetattrAssignedGood]
-# flags: --python-version 3.7
 import non_stub
 reveal_type(non_stub.name)  # N: Revealed type is "builtins.int"
 
@@ -2169,7 +2152,6 @@ def make_getattr_good() -> Callable[[str], int]: ...
 __getattr__ = make_getattr_good()  # OK
 
 [case testModuleLevelGetattrAssignedBad]
-# flags: --python-version 3.7
 import non_stub
 reveal_type(non_stub.name)
 
@@ -2181,10 +2163,9 @@ __getattr__ = make_getattr_bad()
 
 [out]
 tmp/non_stub.py:4: error: Invalid signature "Callable[[], int]" for "__getattr__"
-main:3: note: Revealed type is "builtins.int"
+main:2: note: Revealed type is "builtins.int"
 
 [case testModuleLevelGetattrImportedGood]
-# flags: --python-version 3.7
 import non_stub
 reveal_type(non_stub.name)  # N: Revealed type is "builtins.int"
 
@@ -2195,7 +2176,6 @@ from has_getattr import __getattr__
 def __getattr__(name: str) -> int: ...
 
 [case testModuleLevelGetattrImportedBad]
-# flags: --python-version 3.7
 import non_stub
 reveal_type(non_stub.name)
 
@@ -2207,7 +2187,7 @@ def __getattr__() -> int: ...
 
 [out]
 tmp/has_getattr.py:1: error: Invalid signature "Callable[[], int]" for "__getattr__"
-main:3: note: Revealed type is "builtins.int"
+main:2: note: Revealed type is "builtins.int"
 
 [builtins fixtures/module.pyi]
 
@@ -3143,26 +3123,28 @@ import google.cloud
 from google.cloud import x
 
 [case testErrorFromGoogleCloud]
-import google.cloud
+import google.cloud  # E: Cannot find implementation or library stub for module named "google.cloud" \
+                     # E: Cannot find implementation or library stub for module named "google"
 from google.cloud import x
-import google.non_existent
+import google.non_existent  # E: Cannot find implementation or library stub for module named "google.non_existent"
 from google.non_existent import x
-[out]
-main:1: error: Library stubs not installed for "google.cloud"
-main:1: note: Hint: "python3 -m pip install types-google-cloud-ndb"
-main:1: note: (or run "mypy --install-types" to install all missing stub packages)
-main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named "google"
-main:3: error: Cannot find implementation or library stub for module named "google.non_existent"
+
+import google.cloud.ndb  # E: Library stubs not installed for "google.cloud.ndb" \
+                         # N: Hint: "python3 -m pip install types-google-cloud-ndb" \
+                         # N: (or run "mypy --install-types" to install all missing stub packages) \
+                         # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+from google.cloud import ndb
 
 [case testMissingSubmoduleOfInstalledStubPackage]
 import bleach.xyz
 from bleach.abc import fgh
 [file bleach/__init__.pyi]
 [out]
-main:1: error: Cannot find implementation or library stub for module named "bleach.xyz"
+main:1: error: Library stubs not installed for "bleach.xyz"
+main:1: note: Hint: "python3 -m pip install types-bleach"
+main:1: note: (or run "mypy --install-types" to install all missing stub packages)
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:2: error: Cannot find implementation or library stub for module named "bleach.abc"
+main:2: error: Library stubs not installed for "bleach.abc"
 
 [case testMissingSubmoduleOfInstalledStubPackageIgnored]
 # flags: --ignore-missing-imports
@@ -3213,7 +3195,7 @@ from test1 import aaaa  # E: Module "test1" has no attribute "aaaa"
 import b
 [file a.py]
 class Foo:
-    def frobnicate(self, x, *args, **kwargs): pass
+    def frobnicate(self, x: str, *args, **kwargs): pass
 [file b.py]
 from a import Foo
 class Bar(Foo):
@@ -3221,21 +3203,21 @@ class Bar(Foo):
 [file b.py.2]
 from a import Foo
 class Bar(Foo):
-    def frobnicate(self, *args) -> None: pass
+    def frobnicate(self, *args: int) -> None: pass
 [file b.py.3]
 from a import Foo
 class Bar(Foo):
-    def frobnicate(self, *args) -> None: pass # type: ignore[override] # I know
+    def frobnicate(self, *args: int) -> None: pass # type: ignore[override] # I know
 [builtins fixtures/dict.pyi]
 [out1]
 tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
 tmp/b.py:3: note:      Superclass:
-tmp/b.py:3: note:          def frobnicate(self, x: Any, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:          def frobnicate(self, x: str, *args: Any, **kwargs: Any) -> Any
 tmp/b.py:3: note:      Subclass:
 tmp/b.py:3: note:          def frobnicate(self) -> None
 [out2]
 tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
 tmp/b.py:3: note:      Superclass:
-tmp/b.py:3: note:          def frobnicate(self, x: Any, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:          def frobnicate(self, x: str, *args: Any, **kwargs: Any) -> Any
 tmp/b.py:3: note:      Subclass:
-tmp/b.py:3: note:          def frobnicate(self, *args: Any) -> None
+tmp/b.py:3: note:          def frobnicate(self, *args: int) -> None

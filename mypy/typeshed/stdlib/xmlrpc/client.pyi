@@ -1,14 +1,13 @@
 import gzip
 import http.client
-import sys
 import time
 from _typeshed import ReadableBuffer, SizedBuffer, SupportsRead, SupportsWrite
 from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime
 from io import BytesIO
 from types import TracebackType
-from typing import Any, Protocol, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import Any, Final, Literal, Protocol, overload
+from typing_extensions import Self, TypeAlias
 
 class _SupportsTimeTuple(Protocol):
     def timetuple(self) -> time.struct_time: ...
@@ -35,22 +34,22 @@ _HostType: TypeAlias = tuple[str, dict[str, str]] | str
 
 def escape(s: str) -> str: ...  # undocumented
 
-MAXINT: int  # undocumented
-MININT: int  # undocumented
+MAXINT: Final[int]  # undocumented
+MININT: Final[int]  # undocumented
 
-PARSE_ERROR: int  # undocumented
-SERVER_ERROR: int  # undocumented
-APPLICATION_ERROR: int  # undocumented
-SYSTEM_ERROR: int  # undocumented
-TRANSPORT_ERROR: int  # undocumented
+PARSE_ERROR: Final[int]  # undocumented
+SERVER_ERROR: Final[int]  # undocumented
+APPLICATION_ERROR: Final[int]  # undocumented
+SYSTEM_ERROR: Final[int]  # undocumented
+TRANSPORT_ERROR: Final[int]  # undocumented
 
-NOT_WELLFORMED_ERROR: int  # undocumented
-UNSUPPORTED_ENCODING: int  # undocumented
-INVALID_ENCODING_CHAR: int  # undocumented
-INVALID_XMLRPC: int  # undocumented
-METHOD_NOT_FOUND: int  # undocumented
-INVALID_METHOD_PARAMS: int  # undocumented
-INTERNAL_ERROR: int  # undocumented
+NOT_WELLFORMED_ERROR: Final[int]  # undocumented
+UNSUPPORTED_ENCODING: Final[int]  # undocumented
+INVALID_ENCODING_CHAR: Final[int]  # undocumented
+INVALID_XMLRPC: Final[int]  # undocumented
+METHOD_NOT_FOUND: Final[int]  # undocumented
+INVALID_METHOD_PARAMS: Final[int]  # undocumented
+INTERNAL_ERROR: Final[int]  # undocumented
 
 class Error(Exception): ...
 
@@ -99,7 +98,7 @@ class Binary:
 
 def _binary(data: ReadableBuffer) -> Binary: ...  # undocumented
 
-WRAPPERS: tuple[type[DateTime], type[Binary]]  # undocumented
+WRAPPERS: Final[tuple[type[DateTime], type[Binary]]]  # undocumented
 
 class ExpatParser:  # undocumented
     def __init__(self, target: Unmarshaller) -> None: ...
@@ -201,7 +200,7 @@ def dumps(
     allow_none: bool = False,
 ) -> str: ...
 def loads(
-    data: str, use_datetime: bool = False, use_builtin_types: bool = False
+    data: str | ReadableBuffer, use_datetime: bool = False, use_builtin_types: bool = False
 ) -> tuple[tuple[_Marshallable, ...], str | None]: ...
 def gzip_encode(data: ReadableBuffer) -> bytes: ...  # undocumented
 def gzip_decode(data: ReadableBuffer, max_decode: int = 20971520) -> bytes: ...  # undocumented
@@ -228,13 +227,9 @@ class Transport:
     _headers: list[tuple[str, str]]
     _extra_headers: list[tuple[str, str]]
 
-    if sys.version_info >= (3, 8):
-        def __init__(
-            self, use_datetime: bool = False, use_builtin_types: bool = False, *, headers: Iterable[tuple[str, str]] = ()
-        ) -> None: ...
-    else:
-        def __init__(self, use_datetime: bool = False, use_builtin_types: bool = False) -> None: ...
-
+    def __init__(
+        self, use_datetime: bool = False, use_builtin_types: bool = False, *, headers: Iterable[tuple[str, str]] = ()
+    ) -> None: ...
     def request(
         self, host: _HostType, handler: str, request_body: SizedBuffer, verbose: bool = False
     ) -> tuple[_Marshallable, ...]: ...
@@ -253,20 +248,14 @@ class Transport:
     def parse_response(self, response: http.client.HTTPResponse) -> tuple[_Marshallable, ...]: ...
 
 class SafeTransport(Transport):
-    if sys.version_info >= (3, 8):
-        def __init__(
-            self,
-            use_datetime: bool = False,
-            use_builtin_types: bool = False,
-            *,
-            headers: Iterable[tuple[str, str]] = (),
-            context: Any | None = None,
-        ) -> None: ...
-    else:
-        def __init__(
-            self, use_datetime: bool = False, use_builtin_types: bool = False, *, context: Any | None = None
-        ) -> None: ...
-
+    def __init__(
+        self,
+        use_datetime: bool = False,
+        use_builtin_types: bool = False,
+        *,
+        headers: Iterable[tuple[str, str]] = (),
+        context: Any | None = None,
+    ) -> None: ...
     def make_connection(self, host: _HostType) -> http.client.HTTPSConnection: ...
 
 class ServerProxy:
@@ -277,34 +266,19 @@ class ServerProxy:
     __verbose: bool
     __allow_none: bool
 
-    if sys.version_info >= (3, 8):
-        def __init__(
-            self,
-            uri: str,
-            transport: Transport | None = None,
-            encoding: str | None = None,
-            verbose: bool = False,
-            allow_none: bool = False,
-            use_datetime: bool = False,
-            use_builtin_types: bool = False,
-            *,
-            headers: Iterable[tuple[str, str]] = (),
-            context: Any | None = None,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            uri: str,
-            transport: Transport | None = None,
-            encoding: str | None = None,
-            verbose: bool = False,
-            allow_none: bool = False,
-            use_datetime: bool = False,
-            use_builtin_types: bool = False,
-            *,
-            context: Any | None = None,
-        ) -> None: ...
-
+    def __init__(
+        self,
+        uri: str,
+        transport: Transport | None = None,
+        encoding: str | None = None,
+        verbose: bool = False,
+        allow_none: bool = False,
+        use_datetime: bool = False,
+        use_builtin_types: bool = False,
+        *,
+        headers: Iterable[tuple[str, str]] = (),
+        context: Any | None = None,
+    ) -> None: ...
     def __getattr__(self, name: str) -> _Method: ...
     @overload
     def __call__(self, attr: Literal["close"]) -> Callable[[], None]: ...

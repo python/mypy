@@ -3,15 +3,9 @@ import sys
 from _typeshed import StrOrBytesPath
 from asyncio import events, protocols, streams, transports
 from collections.abc import Callable, Collection
-from typing import IO, Any
-from typing_extensions import Literal, TypeAlias
+from typing import IO, Any, Literal
 
 __all__ = ("create_subprocess_exec", "create_subprocess_shell")
-
-if sys.version_info >= (3, 8):
-    _ExecArg: TypeAlias = StrOrBytesPath
-else:
-    _ExecArg: TypeAlias = str | bytes
 
 PIPE: int
 STDOUT: int
@@ -54,7 +48,7 @@ if sys.version_info >= (3, 11):
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
-        text: Literal[False, None] = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
@@ -74,20 +68,20 @@ if sys.version_info >= (3, 11):
         pipesize: int = -1,
     ) -> Process: ...
     async def create_subprocess_exec(
-        program: _ExecArg,
-        *args: _ExecArg,
+        program: StrOrBytesPath,
+        *args: StrOrBytesPath,
         stdin: int | IO[Any] | None = None,
         stdout: int | IO[Any] | None = None,
         stderr: int | IO[Any] | None = None,
         limit: int = 65536,
-        # These parameters are forced to these values by BaseEventLoop.subprocess_shell
+        # These parameters are forced to these values by BaseEventLoop.subprocess_exec
         universal_newlines: Literal[False] = False,
-        shell: Literal[True] = True,
+        shell: Literal[False] = False,
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
-        text: bool | None = None,
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
         close_fds: bool = True,
@@ -120,7 +114,7 @@ elif sys.version_info >= (3, 10):
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
-        text: Literal[False, None] = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
@@ -139,20 +133,20 @@ elif sys.version_info >= (3, 10):
         pipesize: int = -1,
     ) -> Process: ...
     async def create_subprocess_exec(
-        program: _ExecArg,
-        *args: _ExecArg,
+        program: StrOrBytesPath,
+        *args: StrOrBytesPath,
         stdin: int | IO[Any] | None = None,
         stdout: int | IO[Any] | None = None,
         stderr: int | IO[Any] | None = None,
         limit: int = 65536,
-        # These parameters are forced to these values by BaseEventLoop.subprocess_shell
+        # These parameters are forced to these values by BaseEventLoop.subprocess_exec
         universal_newlines: Literal[False] = False,
-        shell: Literal[True] = True,
+        shell: Literal[False] = False,
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
-        text: bool | None = None,
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
         close_fds: bool = True,
@@ -185,7 +179,7 @@ else:  # >= 3.9
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
-        text: Literal[False, None] = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
@@ -203,21 +197,21 @@ else:  # >= 3.9
         umask: int = -1,
     ) -> Process: ...
     async def create_subprocess_exec(
-        program: _ExecArg,
-        *args: _ExecArg,
+        program: StrOrBytesPath,
+        *args: StrOrBytesPath,
         stdin: int | IO[Any] | None = None,
         stdout: int | IO[Any] | None = None,
         stderr: int | IO[Any] | None = None,
         loop: events.AbstractEventLoop | None = None,
         limit: int = 65536,
-        # These parameters are forced to these values by BaseEventLoop.subprocess_shell
+        # These parameters are forced to these values by BaseEventLoop.subprocess_exec
         universal_newlines: Literal[False] = False,
-        shell: Literal[True] = True,
+        shell: Literal[False] = False,
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
-        text: bool | None = None,
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
         close_fds: bool = True,

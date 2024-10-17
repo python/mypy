@@ -12,7 +12,7 @@ feature you added. If you added a new `check-*.test` file, it will be autodiscov
 Add the test in this format anywhere in the file:
 
     [case testNewSyntaxBasics]
-    # flags: --python-version 3.6
+    # flags: --python-version 3.10
     x: int
     x = 5
     y: int = 5

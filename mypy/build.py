@@ -8,6 +8,7 @@ file.  The individual passes are implemented in separate modules.
 
 The function build() is the main interface to this module.
 """
+
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
 from __future__ import annotations
@@ -43,6 +44,7 @@ from typing_extensions import TypeAlias as _TypeAlias, TypedDict
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
+from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
@@ -55,10 +57,9 @@ from mypy.util import (
     DecodeError,
     decode_python_encoding,
     get_mypy_comments,
-    get_top_two_prefixes,
     hash_digest,
     is_stub_package_file,
-    is_sub_path,
+    is_sub_path_normabs,
     is_typeshed_file,
     module_prefix,
     read_py_file,
@@ -91,14 +92,10 @@ from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
-from mypy.stubinfo import (
-    is_legacy_bundled_package,
-    legacy_bundled_packages,
-    non_bundled_packages,
-    stub_package_name,
-)
+from mypy.stubinfo import is_module_from_legacy_bundled_package, stub_distribution_name
 from mypy.types import Type
 from mypy.typestate import reset_global_state, type_state
+from mypy.util import json_dumps, json_loads
 from mypy.version import __version__
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -151,7 +148,7 @@ def build(
     sources: list[BuildSource],
     options: Options,
     alt_lib_path: str | None = None,
-    flush_errors: Callable[[list[str], bool], None] | None = None,
+    flush_errors: Callable[[str | None, list[str], bool], None] | None = None,
     fscache: FileSystemCache | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
@@ -183,7 +180,9 @@ def build(
     # fields for callers that want the traditional API.
     messages = []
 
-    def default_flush_errors(new_messages: list[str], is_serious: bool) -> None:
+    def default_flush_errors(
+        filename: str | None, new_messages: list[str], is_serious: bool
+    ) -> None:
         messages.extend(new_messages)
 
     flush_errors = flush_errors or default_flush_errors
@@ -203,7 +202,7 @@ def build(
         # Patch it up to contain either none or all none of the messages,
         # depending on whether we are flushing errors.
         serious = not e.use_stdout
-        flush_errors(e.messages, serious)
+        flush_errors(None, e.messages, serious)
         e.messages = messages
         raise
 
@@ -212,7 +211,7 @@ def _build(
     sources: list[BuildSource],
     options: Options,
     alt_lib_path: str | None,
-    flush_errors: Callable[[list[str], bool], None],
+    flush_errors: Callable[[str | None, list[str], bool], None],
     fscache: FileSystemCache | None,
     stdout: TextIO,
     stderr: TextIO,
@@ -256,12 +255,14 @@ def _build(
         plugin=plugin,
         plugins_snapshot=snapshot,
         errors=errors,
+        error_formatter=None if options.output is None else OUTPUT_CHOICES.get(options.output),
         flush_errors=flush_errors,
         fscache=fscache,
         stdout=stdout,
         stderr=stderr,
     )
-    manager.trace(repr(options))
+    if manager.verbosity() >= 2:
+        manager.trace(repr(options))
 
     reset_global_state()
     try:
@@ -605,10 +606,11 @@ class BuildManager:
         plugin: Plugin,
         plugins_snapshot: dict[str, str],
         errors: Errors,
-        flush_errors: Callable[[list[str], bool], None],
+        flush_errors: Callable[[str | None, list[str], bool], None],
         fscache: FileSystemCache,
         stdout: TextIO,
         stderr: TextIO,
+        error_formatter: ErrorFormatter | None = None,
     ) -> None:
         self.stats: dict[str, Any] = {}  # Values are ints or floats
         self.stdout = stdout
@@ -617,6 +619,7 @@ class BuildManager:
         self.data_dir = data_dir
         self.errors = errors
         self.errors.set_ignore_prefix(ignore_prefix)
+        self.error_formatter = error_formatter
         self.search_paths = search_paths
         self.source_set = source_set
         self.reports = reports
@@ -662,7 +665,7 @@ class BuildManager:
         for module in CORE_BUILTIN_MODULES:
             if options.use_builtins_fixtures:
                 continue
-            path = self.find_module_cache.find_module(module)
+            path = self.find_module_cache.find_module(module, fast_path=True)
             if not isinstance(path, str):
                 raise CompileError(
                     [f"Failed to find builtin module {module}, perhaps typeshed is broken?"]
@@ -685,9 +688,7 @@ class BuildManager:
         # for efficient lookup
         self.shadow_map: dict[str, str] = {}
         if self.options.shadow_file is not None:
-            self.shadow_map = {
-                source_file: shadow_file for (source_file, shadow_file) in self.options.shadow_file
-            }
+            self.shadow_map = dict(self.options.shadow_file)
         # a mapping from each file being typechecked to its possible shadow file
         self.shadow_equivalence_map: dict[str, str | None] = {}
         self.plugin = plugin
@@ -736,8 +737,8 @@ class BuildManager:
         shadow_file = self.shadow_equivalence_map.get(path)
         return shadow_file if shadow_file else path
 
-    def get_stat(self, path: str) -> os.stat_result:
-        return self.fscache.stat(self.maybe_swap_for_shadow_path(path))
+    def get_stat(self, path: str) -> os.stat_result | None:
+        return self.fscache.stat_or_none(self.maybe_swap_for_shadow_path(path))
 
     def getmtime(self, path: str) -> int:
         """Return a file's mtime; but 0 in bazel mode.
@@ -858,7 +859,7 @@ class BuildManager:
         t0 = time.time()
         if id in self.fg_deps_meta:
             # TODO: Assert deps file wasn't changed.
-            deps = json.loads(self.metastore.read(self.fg_deps_meta[id]["path"]))
+            deps = json_loads(self.metastore.read(self.fg_deps_meta[id]["path"]))
         else:
             deps = {}
         val = {k: set(v) for k, v in deps.items()}
@@ -911,8 +912,8 @@ class BuildManager:
         return self.stats
 
 
-def deps_to_json(x: dict[str, set[str]]) -> str:
-    return json.dumps({k: list(v) for k, v in x.items()}, separators=(",", ":"))
+def deps_to_json(x: dict[str, set[str]]) -> bytes:
+    return json_dumps({k: list(v) for k, v in x.items()})
 
 
 # File for storing metadata about all the fine-grained dependency caches
@@ -980,7 +981,7 @@ def write_deps_cache(
 
     meta = {"snapshot": meta_snapshot, "deps_meta": fg_deps_meta}
 
-    if not metastore.write(DEPS_META_FILE, json.dumps(meta, separators=(",", ":"))):
+    if not metastore.write(DEPS_META_FILE, json_dumps(meta)):
         manager.log(f"Error writing fine-grained deps meta JSON file {DEPS_META_FILE}")
         error = True
 
@@ -1048,7 +1049,7 @@ PLUGIN_SNAPSHOT_FILE: Final = "@plugins_snapshot.json"
 
 def write_plugins_snapshot(manager: BuildManager) -> None:
     """Write snapshot of versions and hashes of currently active plugins."""
-    snapshot = json.dumps(manager.plugins_snapshot, separators=(",", ":"))
+    snapshot = json_dumps(manager.plugins_snapshot)
     if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, snapshot):
         manager.errors.set_file(_cache_dir_prefix(manager.options), None, manager.options)
         manager.errors.report(0, 0, "Error writing plugins snapshot", blocker=True)
@@ -1079,8 +1080,8 @@ def read_quickstart_file(
         # just ignore it.
         raw_quickstart: dict[str, Any] = {}
         try:
-            with open(options.quickstart_file) as f:
-                raw_quickstart = json.load(f)
+            with open(options.quickstart_file, "rb") as f:
+                raw_quickstart = json_loads(f.read())
 
             quickstart = {}
             for file, (x, y, z) in raw_quickstart.items():
@@ -1123,7 +1124,7 @@ def read_deps_cache(manager: BuildManager, graph: Graph) -> dict[str, FgDepMeta]
     module_deps_metas = deps_meta["deps_meta"]
     assert isinstance(module_deps_metas, dict)
     if not manager.options.skip_cache_mtime_checks:
-        for id, meta in module_deps_metas.items():
+        for meta in module_deps_metas.values():
             try:
                 matched = manager.getmtime(meta["path"]) == meta["mtime"]
             except FileNotFoundError:
@@ -1148,10 +1149,10 @@ def _load_json_file(
     manager.add_stats(metastore_read_time=time.time() - t0)
     # Only bother to compute the log message if we are logging it, since it could be big
     if manager.verbosity() >= 2:
-        manager.trace(log_success + data.rstrip())
+        manager.trace(log_success + data.rstrip().decode())
     try:
         t1 = time.time()
-        result = json.loads(data)
+        result = json_loads(data)
         manager.add_stats(data_json_load_time=time.time() - t1)
     except json.JSONDecodeError:
         manager.errors.set_file(file, None, manager.options)
@@ -1343,8 +1344,8 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
     # So that plugins can return data with tuples in it without
     # things silently always invalidating modules, we round-trip
     # the config data. This isn't beautiful.
-    plugin_data = json.loads(
-        json.dumps(manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True)))
+    plugin_data = json_loads(
+        json_dumps(manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True)))
     )
     if m.plugin_data != plugin_data:
         manager.log(f"Metadata abandoned for {id}: plugin configuration differs")
@@ -1394,9 +1395,9 @@ def validate_meta(
     if bazel:
         # Normalize path under bazel to make sure it isn't absolute
         path = normpath(path, manager.options)
-    try:
-        st = manager.get_stat(path)
-    except OSError:
+
+    st = manager.get_stat(path)
+    if st is None:
         return None
     if not stat.S_ISDIR(st.st_mode) and not stat.S_ISREG(st.st_mode):
         manager.log(f"Metadata abandoned for {id}: file or directory {path} does not exist")
@@ -1478,10 +1479,7 @@ def validate_meta(
                 "ignore_all": meta.ignore_all,
                 "plugin_data": meta.plugin_data,
             }
-            if manager.options.debug_cache:
-                meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
-            else:
-                meta_str = json.dumps(meta_dict, separators=(",", ":"))
+            meta_bytes = json_dumps(meta_dict, manager.options.debug_cache)
             meta_json, _, _ = get_cache_names(id, path, manager.options)
             manager.log(
                 "Updating mtime for {}: file {}, meta {}, mtime {}".format(
@@ -1489,7 +1487,7 @@ def validate_meta(
                 )
             )
             t1 = time.time()
-            manager.metastore.write(meta_json, meta_str)  # Ignore errors, just an optimization.
+            manager.metastore.write(meta_json, meta_bytes)  # Ignore errors, just an optimization.
             manager.add_stats(validate_update_time=time.time() - t1, validate_munging_time=t1 - t0)
             return meta
 
@@ -1505,13 +1503,6 @@ def compute_hash(text: str) -> str:
     # note in
     # https://docs.python.org/3/reference/datamodel.html#object.__hash__.
     return hash_digest(text.encode("utf-8"))
-
-
-def json_dumps(obj: Any, debug_cache: bool) -> str:
-    if debug_cache:
-        return json.dumps(obj, indent=2, sort_keys=True)
-    else:
-        return json.dumps(obj, sort_keys=True, separators=(",", ":"))
 
 
 def write_cache(
@@ -1566,16 +1557,15 @@ def write_cache(
 
     # Serialize data and analyze interface
     data = tree.serialize()
-    data_str = json_dumps(data, manager.options.debug_cache)
-    interface_hash = compute_hash(data_str)
+    data_bytes = json_dumps(data, manager.options.debug_cache)
+    interface_hash = hash_digest(data_bytes)
 
     plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
 
     # Obtain and set up metadata
-    try:
-        st = manager.get_stat(path)
-    except OSError as err:
-        manager.log(f"Cannot get stat for {path}: {err}")
+    st = manager.get_stat(path)
+    if st is None:
+        manager.log(f"Cannot get stat for {path}")
         # Remove apparently-invalid cache files.
         # (This is purely an optimization.)
         for filename in [data_json, meta_json]:
@@ -1592,7 +1582,7 @@ def write_cache(
         manager.trace(f"Interface for {id} is unchanged")
     else:
         manager.trace(f"Interface for {id} has changed")
-        if not metastore.write(data_json, data_str):
+        if not metastore.write(data_json, data_bytes):
             # Most likely the error is the replace() call
             # (see https://github.com/python/mypy/issues/3215).
             manager.log(f"Error writing data JSON file {data_json}")
@@ -1997,7 +1987,7 @@ class State:
                 raise ModuleNotFound
 
             # Parse the file (and then some) to get the dependencies.
-            self.parse_file()
+            self.parse_file(temporary=temporary)
             self.compute_dependencies()
 
     @property
@@ -2096,7 +2086,7 @@ class State:
             self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
         )
         if data is None:
-            return None
+            return
 
         t0 = time.time()
         # TODO: Assert data file wasn't changed.
@@ -2115,7 +2105,7 @@ class State:
 
     # Methods for processing modules from source code.
 
-    def parse_file(self) -> None:
+    def parse_file(self, *, temporary: bool = False) -> None:
         """Parse file and run first pass of semantic analysis.
 
         Everything done here is local to the file. Don't depend on imported
@@ -2177,8 +2167,8 @@ class State:
                     self.id,
                     self.xpath,
                     source,
-                    self.ignore_all or self.options.ignore_errors,
-                    self.options,
+                    ignore_errors=self.ignore_all or self.options.ignore_errors,
+                    options=self.options,
                 )
 
             else:
@@ -2200,12 +2190,14 @@ class State:
         else:
             self.early_errors = manager.ast_cache[self.id][1]
 
-        modules[self.id] = self.tree
+        if not temporary:
+            modules[self.id] = self.tree
 
         if not cached:
             self.semantic_analysis_pass1()
 
-        self.check_blockers()
+        if not temporary:
+            self.check_blockers()
 
         manager.ast_cache[self.id] = (self.tree, self.early_errors)
 
@@ -2665,14 +2657,14 @@ def find_module_and_diagnose(
         # search path or the module has not been installed.
 
         ignore_missing_imports = options.ignore_missing_imports
-        top_level, second_level = get_top_two_prefixes(id)
+
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
         # otherwise updating mypy can silently result in new false
         # negatives. (Unless there are stubs but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
         if (
-            (is_legacy_bundled_package(top_level) or is_legacy_bundled_package(second_level))
+            is_module_from_legacy_bundled_package(id)
             and global_ignore_missing_imports
             and not options.ignore_missing_imports_per_module
             and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
@@ -2720,7 +2712,9 @@ def exist_added_packages(suppressed: list[str], manager: BuildManager, options: 
 
 def find_module_simple(id: str, manager: BuildManager) -> str | None:
     """Find a filesystem path for module `id` or `None` if not found."""
-    x = find_module_with_reason(id, manager)
+    t0 = time.time()
+    x = manager.find_module_cache.find_module(id, fast_path=True)
+    manager.add_stats(find_module_time=time.time() - t0, find_module_calls=1)
     if isinstance(x, ModuleNotFoundReason):
         return None
     return x
@@ -2729,7 +2723,7 @@ def find_module_simple(id: str, manager: BuildManager) -> str | None:
 def find_module_with_reason(id: str, manager: BuildManager) -> ModuleSearchResult:
     """Find a filesystem path for module `id` or the reason it can't be found."""
     t0 = time.time()
-    x = manager.find_module_cache.find_module(id)
+    x = manager.find_module_cache.find_module(id, fast_path=False)
     manager.add_stats(find_module_time=time.time() - t0, find_module_calls=1)
     return x
 
@@ -2780,16 +2774,26 @@ def module_not_found(
     else:
         daemon = manager.options.fine_grained_incremental
         msg, notes = reason.error_message_templates(daemon)
-        errors.report(line, 0, msg.format(module=target), code=codes.IMPORT)
-        top_level, second_level = get_top_two_prefixes(target)
-        if second_level in legacy_bundled_packages or second_level in non_bundled_packages:
-            top_level = second_level
+        if reason == ModuleNotFoundReason.NOT_FOUND:
+            code = codes.IMPORT_NOT_FOUND
+        elif (
+            reason == ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
+            or reason == ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
+        ):
+            code = codes.IMPORT_UNTYPED
+        else:
+            code = codes.IMPORT
+        errors.report(line, 0, msg.format(module=target), code=code)
+
+        dist = stub_distribution_name(target)
         for note in notes:
             if "{stub_dist}" in note:
-                note = note.format(stub_dist=stub_package_name(top_level))
-            errors.report(line, 0, note, severity="note", only_once=True, code=codes.IMPORT)
+                assert dist is not None
+                note = note.format(stub_dist=dist)
+            errors.report(line, 0, note, severity="note", only_once=True, code=code)
         if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            manager.missing_stub_packages.add(stub_package_name(top_level))
+            assert dist is not None
+            manager.missing_stub_packages.add(dist)
     errors.set_import_context(save_import_context)
 
 
@@ -2835,10 +2839,14 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: S
 def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None:
     """Output useful configuration information to LOG and TRACE"""
 
+    config_file = manager.options.config_file
+    if config_file:
+        config_file = os.path.abspath(config_file)
+
     manager.log()
     configuration_vars = [
         ("Mypy Version", __version__),
-        ("Config File", (manager.options.config_file or "Default")),
+        ("Config File", (config_file or "Default")),
         ("Configured Executable", manager.options.python_executable or "None"),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
@@ -3013,7 +3021,7 @@ def dump_graph(graph: Graph, stdout: TextIO | None = None) -> None:
             if state.path:
                 try:
                     size = os.path.getsize(state.path)
-                except os.error:
+                except OSError:
                     pass
             node.sizes[mod] = size
             for dep in state.dependencies:
@@ -3367,7 +3375,7 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
     strongly_connected_components() below for a reference.
     """
     if len(ascc) == 1:
-        return [s for s in ascc]
+        return list(ascc)
     pri_spread = set()
     for id in ascc:
         state = graph[id]
@@ -3444,7 +3452,11 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
+        if graph[id].xpath not in manager.errors.ignored_files:
+            errors = manager.errors.file_messages(
+                graph[id].xpath, formatter=manager.error_formatter
+            )
+            manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 
@@ -3516,10 +3528,9 @@ def is_silent_import_module(manager: BuildManager, path: str) -> bool:
     if manager.options.no_silence_site_packages:
         return False
     # Silence errors in site-package dirs and typeshed
-    return any(
-        is_sub_path(path, dir)
-        for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path
-    )
+    if any(is_sub_path_normabs(path, dir) for dir in manager.search_paths.package_path):
+        return True
+    return any(is_sub_path_normabs(path, dir) for dir in manager.search_paths.typeshed_path)
 
 
 def write_undocumented_ref_info(
@@ -3540,4 +3551,4 @@ def write_undocumented_ref_info(
     assert not ref_info_file.startswith(".")
 
     deps_json = get_undocumented_ref_info_json(state.tree, type_map)
-    metastore.write(ref_info_file, json.dumps(deps_json, separators=(",", ":")))
+    metastore.write(ref_info_file, json_dumps(deps_json))

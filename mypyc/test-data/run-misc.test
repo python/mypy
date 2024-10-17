@@ -968,7 +968,10 @@ print(z)
 [case testCheckVersion]
 import sys
 
-if sys.version_info[:2] == (3, 12):
+if sys.version_info[:2] == (3, 13):
+    def version() -> int:
+        return 13
+elif sys.version_info[:2] == (3, 12):
     def version() -> int:
         return 12
 elif sys.version_info[:2] == (3, 11):
@@ -1097,8 +1100,10 @@ B = sys.platform == 'x' and sys.foobar
 C = sys.platform == 'x' and f(a, -b, 'y') > [c + e, g(y=2)]
 C = sys.platform == 'x' and cast(a, b[c])
 C = sys.platform == 'x' and (lambda x: y + x)
-# TODO: This still doesn't work
-# C = sys.platform == 'x' and (x for y in z)
+C = sys.platform == 'x' and (x for y in z)
+C = sys.platform == 'x' and [x for y in z]
+C = sys.platform == 'x' and {x: x for y in z}
+C = sys.platform == 'x' and {x for y in z}
 
 assert not A
 assert not B
@@ -1108,29 +1113,14 @@ assert not C
 # make the initial import fail
 assert False
 
-class C:
-    def __init__(self):
-        self.x = 1
-        self.y = 2
-def test() -> None:
-    a = C()
 [file driver.py]
 # load native, cause PyInit to be run, create the module but don't finish initializing the globals
-try:
-    import native
-except:
-    pass
-try:
-    # try accessing those globals that were never properly initialized
-    import native
-    native.test()
-# should fail with AssertionError due to `assert False` in other function
-except AssertionError:
-    pass
-
-[case testRepeatedUnderscoreFunctions]
-def _(arg): pass
-def _(arg): pass
+for _ in range(2):
+    try:
+        import native
+        raise RuntimeError('exception expected')
+    except AssertionError:
+        pass
 
 [case testUnderscoreFunctionsInMethods]
 

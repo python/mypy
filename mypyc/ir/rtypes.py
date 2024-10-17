@@ -23,8 +23,8 @@ RTypes.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
-from typing_extensions import Final, TypeGuard
+from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeVar
+from typing_extensions import TypeGuard
 
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
 from mypyc.namegen import NameGenerator
@@ -64,7 +64,7 @@ class RType:
 
     @abstractmethod
     def accept(self, visitor: RTypeVisitor[T]) -> T:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def short_name(self) -> str:
         return short_name(self.name)

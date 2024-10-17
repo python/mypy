@@ -240,14 +240,14 @@ class CheckerPluginInterface:
 
     @abstractmethod
     def fail(
-        self, msg: str | ErrorMessage, ctx: Context, *, code: ErrorCode | None = None
+        self, msg: str | ErrorMessage, ctx: Context, /, *, code: ErrorCode | None = None
     ) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
     @abstractmethod
     def named_generic_type(self, name: str, args: list[Type]) -> Instance:
-        """Construct an instance of a builtin type with given type arguments."""
+        """Construct an instance of a generic type with given type arguments."""
         raise NotImplementedError
 
     @abstractmethod
@@ -328,7 +328,6 @@ class SemanticAnalyzerPluginInterface:
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
         report_invalid_types: bool = True,
-        third_pass: bool = False,
     ) -> Type | None:
         """Analyze an unbound type.
 
@@ -496,6 +495,7 @@ class MethodContext(NamedTuple):
 class AttributeContext(NamedTuple):
     type: ProperType  # Type of object with attribute
     default_attr_type: Type  # Original attribute type
+    is_lvalue: bool  # Whether the attribute is the target of an assignment
     context: Context  # Relevant location context (e.g. for error messages)
     api: CheckerPluginInterface
 

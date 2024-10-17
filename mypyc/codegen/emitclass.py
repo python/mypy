@@ -18,7 +18,7 @@ from mypyc.codegen.emitwrapper import (
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
 )
-from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX, use_fastcall
+from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
 from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
@@ -213,11 +213,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
 
-    fields: dict[str, str] = {}
-    fields["tp_name"] = f'"{name}"'
+    fields: dict[str, str] = {"tp_name": f'"{name}"'}
 
     generate_full = not cl.is_trait and not cl.builtin_base
-    needs_getseters = cl.needs_getseters or not cl.is_generated
+    needs_getseters = cl.needs_getseters or not cl.is_generated or cl.has_dict
 
     if not cl.builtin_base:
         fields["tp_new"] = new_name
@@ -571,6 +570,7 @@ def generate_setup_for_class(
         emitter.emit_line("}")
     else:
         emitter.emit_line(f"self->vtable = {vtable_name};")
+
     for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
         field = emitter.bitmap_field(i)
         emitter.emit_line(f"self->{field} = 0;")
@@ -734,7 +734,7 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_visit(f"self->{emitter.attr(attr)}", rtype)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("_PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
+        emitter.emit_line("PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -757,7 +757,7 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("_PyObject_ClearManagedDict((PyObject *)self);")
+        emitter.emit_line("PyObject_ClearManagedDict((PyObject *)self);")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -794,11 +794,7 @@ def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
             continue
         emitter.emit_line(f'{{"{fn.name}",')
         emitter.emit_line(f" (PyCFunction){PREFIX}{fn.cname(emitter.names)},")
-        if use_fastcall(emitter.capi_version):
-            flags = ["METH_FASTCALL"]
-        else:
-            flags = ["METH_VARARGS"]
-        flags.append("METH_KEYWORDS")
+        flags = ["METH_FASTCALL", "METH_KEYWORDS"]
         if fn.decl.kind == FUNC_STATICMETHOD:
             flags.append("METH_STATIC")
         elif fn.decl.kind == FUNC_CLASSMETHOD:
@@ -889,6 +885,9 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
             emitter.emit_line("NULL, NULL},")
         else:
             emitter.emit_line("NULL, NULL, NULL},")
+
+    if cl.has_dict:
+        emitter.emit_line('{"__dict__", PyObject_GenericGetDict, PyObject_GenericSetDict},')
 
     emitter.emit_line("{NULL}  /* Sentinel */")
     emitter.emit_line("};")

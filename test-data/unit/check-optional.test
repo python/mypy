@@ -53,14 +53,14 @@ x = None  # type:  Optional[int]
 if x:
   reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
-  reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
+  reveal_type(x)  # N: Revealed type is "Union[Literal[0], None]"
 [builtins fixtures/bool.pyi]
 
 [case testIfNotCases]
 from typing import Optional
 x = None  # type:  Optional[int]
 if not x:
-  reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
+  reveal_type(x)  # N: Revealed type is "Union[Literal[0], None]"
 else:
   reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/bool.pyi]
@@ -109,13 +109,13 @@ reveal_type(z2)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
 from typing import Optional
 x = None  # type: Optional[str]
 y1 = x and 'b'
-reveal_type(y1)  # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(y1)  # N: Revealed type is "Union[Literal[''], None, builtins.str]"
 y2 = x and 1  # x could be '', so...
-reveal_type(y2)  # N: Revealed type is "Union[builtins.str, None, builtins.int]"
+reveal_type(y2)  # N: Revealed type is "Union[Literal[''], None, builtins.int]"
 z1 = 'b' and x
 reveal_type(z1)  # N: Revealed type is "Union[builtins.str, None]"
 z2 = int() and x
-reveal_type(z2)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+reveal_type(z2)  # N: Revealed type is "Union[Literal[0], builtins.str, None]"
 
 [case testLambdaReturningNone]
 f = lambda: None
@@ -361,9 +361,9 @@ def f() -> None:
 def g(x: Optional[int]) -> int:
   pass
 
-x = f()  # E: "f" does not return a value
-f() + 1  # E: "f" does not return a value
-g(f())  # E: "f" does not return a value
+x = f()  # E: "f" does not return a value (it only ever returns None)
+f() + 1  # E: "f" does not return a value (it only ever returns None)
+g(f())  # E: "f" does not return a value (it only ever returns None)
 
 [case testEmptyReturn]
 def f() -> None:
@@ -395,7 +395,7 @@ def lookup_field(name, obj):
         attr = None
 
 [case testTernaryWithNone]
-reveal_type(None if bool() else 0)  # N: Revealed type is "Union[Literal[0]?, None]"
+reveal_type(None if bool() else 0)  # N: Revealed type is "Union[None, Literal[0]?]"
 [builtins fixtures/bool.pyi]
 
 [case testListWithNone]

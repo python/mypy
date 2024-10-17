@@ -136,7 +136,7 @@ purpose. Example:
 .. note::
 
    Usually it's a better idea to use ``Sequence[T]`` instead of ``tuple[T, ...]``, as
-   :py:class:`~typing.Sequence` is also compatible with lists and other non-tuple sequences.
+   :py:class:`~collections.abc.Sequence` is also compatible with lists and other non-tuple sequences.
 
 .. note::
 
@@ -155,7 +155,7 @@ and returns ``Rt`` is ``Callable[[A1, ..., An], Rt]``. Example:
 
 .. code-block:: python
 
-   from typing import Callable
+   from collections.abc import Callable
 
    def twice(i: int, next: Callable[[int], int]) -> int:
        return next(next(i))
@@ -164,6 +164,11 @@ and returns ``Rt`` is ``Callable[[A1, ..., An], Rt]``. Example:
        return i + 1
 
    print(twice(3, add))   # 5
+
+.. note::
+
+    Import :py:data:`Callable[...] <typing.Callable>` from ``typing`` instead
+    of ``collections.abc`` if you use Python 3.8 or earlier.
 
 You can only have positional arguments, and only ones without default
 values, in callable types. These cover the vast majority of uses of
@@ -178,7 +183,7 @@ Any)`` function signature. Example:
 
 .. code-block:: python
 
-   from typing import Callable
+   from collections.abc import Callable
 
    def arbitrary_call(f: Callable[..., int]) -> int:
        return f('x') + f(y=2)  # OK
@@ -205,7 +210,7 @@ Callables can also be used against type objects, matching their
 
 .. code-block:: python
 
-    from typing import Callable
+    from collections.abc import Callable
 
     class C:
         def __init__(self, app: str) -> None:
@@ -223,6 +228,7 @@ instance of ``C`` or the type of ``C`` itself. This also works with
 
 
 .. _union-types:
+.. _alternative_union_syntax:
 
 Union types
 ***********
@@ -231,8 +237,8 @@ Python functions often accept values of two or more different
 types. You can use :ref:`overloading <function-overloading>` to
 represent this, but union types are often more convenient.
 
-Use the ``Union[T1, ..., Tn]`` type constructor to construct a union
-type. For example, if an argument has type ``Union[int, str]``, both
+Use ``T1 | ... | Tn`` to construct a union
+type. For example, if an argument has type ``int | str``, both
 integers and strings are valid argument values.
 
 You can use an :py:func:`isinstance` check to narrow down a union type to a
@@ -240,9 +246,7 @@ more specific type:
 
 .. code-block:: python
 
-   from typing import Union
-
-   def f(x: Union[int, str]) -> None:
+   def f(x: int | str) -> None:
        x + 1     # Error: str + int is not valid
        if isinstance(x, int):
            # Here type of x is int.
@@ -264,20 +268,38 @@ more specific type:
     since the caller may have to use :py:func:`isinstance` before doing anything
     interesting with the value.
 
+Python 3.9 and older only partially support this syntax. Instead, you can
+use the legacy ``Union[T1, ..., Tn]`` type constructor. Example:
+
+.. code-block:: python
+
+   from typing import Union
+
+   def f(x: Union[int, str]) -> None:
+       ...
+
+It is also possible to use the new syntax with versions of Python where it
+isn't supported by the runtime with some limitations, if you use
+``from __future__ import annotations`` (see :ref:`runtime_troubles`):
+
+.. code-block:: python
+
+   from __future__ import annotations
+
+   def f(x: int | str) -> None:   # OK on Python 3.7 and later
+       ...
+
 .. _strict_optional:
 
 Optional types and the None type
 ********************************
 
-You can use the :py:data:`~typing.Optional` type modifier to define a type variant
-that allows ``None``, such as ``Optional[int]`` (``Optional[X]`` is
-the preferred shorthand for ``Union[X, None]``):
+You can use ``T | None`` to define a type variant that allows ``None`` values,
+such as ``int | None``. This is called an *optional type*:
 
 .. code-block:: python
 
-   from typing import Optional
-
-   def strlen(s: str) -> Optional[int]:
+   def strlen(s: str) -> int | None:
        if not s:
            return None  # OK
        return len(s)
@@ -287,12 +309,23 @@ the preferred shorthand for ``Union[X, None]``):
            return None  # Error: None not compatible with int
        return len(s)
 
-Most operations will not be allowed on unguarded ``None`` or :py:data:`~typing.Optional`
-values:
+To support Python 3.9 and earlier, you can use the :py:data:`~typing.Optional`
+type modifier instead, such as ``Optional[int]`` (``Optional[X]`` is
+the preferred shorthand for ``Union[X, None]``):
 
 .. code-block:: python
 
-   def my_inc(x: Optional[int]) -> int:
+   from typing import Optional
+
+   def strlen(s: str) -> Optional[int]:
+       ...
+
+Most operations will not be allowed on unguarded ``None`` or *optional* values
+(values with an optional type):
+
+.. code-block:: python
+
+   def my_inc(x: int | None) -> int:
        return x + 1  # Error: Cannot add None and int
 
 Instead, an explicit ``None`` check is required. Mypy has
@@ -302,7 +335,7 @@ recognizes ``is None`` checks:
 
 .. code-block:: python
 
-   def my_inc(x: Optional[int]) -> int:
+   def my_inc(x: int | None) -> int:
        if x is None:
            return 0
        else:
@@ -318,7 +351,7 @@ Other supported checks for guarding against a ``None`` value include
 
 .. code-block:: python
 
-   def concat(x: Optional[str], y: Optional[str]) -> Optional[str]:
+   def concat(x: str | None, y: str | None) -> str | None:
        if x is not None and y is not None:
            # Both x and y are not None here
            return x + y
@@ -335,7 +368,7 @@ will complain about the possible ``None`` value. You can use
 .. code-block:: python
 
    class Resource:
-       path: Optional[str] = None
+       path: str | None = None
 
        def initialize(self, path: str) -> None:
            self.path = path
@@ -358,7 +391,7 @@ This is why you need to annotate an attribute in cases like the class
 .. code-block:: python
 
     class Resource:
-        path: Optional[str] = None
+        path: str | None = None
         ...
 
 This also works for attributes defined within methods:
@@ -367,10 +400,11 @@ This also works for attributes defined within methods:
 
     class Counter:
         def __init__(self) -> None:
-            self.count: Optional[int] = None
+            self.count: int | None = None
 
-This is not a problem when using variable annotations, since no initial
-value is needed:
+Often it's easier to not use any initial value for an attribute.
+This way you don't need to use an optional type and can avoid ``assert ... is not None``
+checks. No initial value is needed if you annotate an attribute in the class body:
 
 .. code-block:: python
 
@@ -385,13 +419,13 @@ the right thing without an annotation:
 .. code-block:: python
 
    def f(i: int) -> None:
-       n = None  # Inferred type Optional[int] because of the assignment below
+       n = None  # Inferred type 'int | None' because of the assignment below
        if i > 0:
             n = i
        ...
 
 Sometimes you may get the error "Cannot determine type of <something>". In this
-case you should add an explicit ``Optional[...]`` annotation (or type comment).
+case you should add an explicit ``... | None`` annotation.
 
 .. note::
 
@@ -409,112 +443,31 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
 
 .. note::
 
-    ``Optional[...]`` *does not* mean a function argument with a default value.
-    It simply means that ``None`` is a valid value for the argument. This is
-    a common confusion because ``None`` is a common default value for arguments.
-
-.. _alternative_union_syntax:
-
-X | Y syntax for Unions
------------------------
-
-:pep:`604` introduced an alternative way for spelling union types. In Python
-3.10 and later, you can write ``Union[int, str]`` as ``int | str``. It is
-possible to use this syntax in versions of Python where it isn't supported by
-the runtime with some limitations (see :ref:`runtime_troubles`).
-
-.. code-block:: python
-
-    t1: int | str  # equivalent to Union[int, str]
-
-    t2: int | None  # equivalent to Optional[int]
-
-.. _no_strict_optional:
-
-Disabling strict optional checking
-**********************************
-
-Mypy also has an option to treat ``None`` as a valid value for every
-type (in case you know Java, it's useful to think of it as similar to
-the Java ``null``). In this mode ``None`` is also valid for primitive
-types such as ``int`` and ``float``, and :py:data:`~typing.Optional` types are
-not required.
-
-The mode is enabled through the :option:`--no-strict-optional <mypy --no-strict-optional>` command-line
-option. In mypy versions before 0.600 this was the default mode. You
-can enable this option explicitly for backward compatibility with
-earlier mypy versions, in case you don't want to introduce optional
-types to your codebase yet.
-
-It will cause mypy to silently accept some buggy code, such as
-this example -- it's not recommended if you can avoid it:
-
-.. code-block:: python
-
-   def inc(x: int) -> int:
-       return x + 1
-
-   x = inc(None)  # No error reported by mypy if strict optional mode disabled!
-
-However, making code "optional clean" can take some work! You can also use
-:ref:`the mypy configuration file <config-file>` to migrate your code
-to strict optional checking one file at a time, since there exists
-the per-module flag
-:confval:`strict_optional` to control strict optional mode.
-
-Often it's still useful to document whether a variable can be
-``None``. For example, this function accepts a ``None`` argument,
-but it's not obvious from its signature:
-
-.. code-block:: python
-
-    def greeting(name: str) -> str:
-        if name:
-            return f'Hello, {name}'
-        else:
-            return 'Hello, stranger'
-
-    print(greeting('Python'))  # Okay!
-    print(greeting(None))      # Also okay!
-
-You can still use :py:data:`Optional[t] <typing.Optional>` to document that ``None`` is a
-valid argument type, even if strict ``None`` checking is not
-enabled:
-
-.. code-block:: python
-
-    from typing import Optional
-
-    def greeting(name: Optional[str]) -> str:
-        if name:
-            return f'Hello, {name}'
-        else:
-            return 'Hello, stranger'
-
-Mypy treats this as semantically equivalent to the previous example
-if strict optional checking is disabled, since ``None`` is implicitly
-valid for any type, but it's much more
-useful for a programmer who is reading the code. This also makes
-it easier to migrate to strict ``None`` checking in the future.
+    The type ``Optional[T]`` *does not* mean a function parameter with a default value.
+    It simply means that ``None`` is a valid argument value. This is
+    a common confusion because ``None`` is a common default value for parameters,
+    and parameters with default values are sometimes called *optional* parameters
+    (or arguments).
 
 .. _type-aliases:
 
 Type aliases
 ************
 
-In certain situations, type names may end up being long and painful to type:
+In certain situations, type names may end up being long and painful to type,
+especially if they are used frequently:
 
 .. code-block:: python
 
-   def f() -> Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]:
+   def f() -> list[dict[tuple[int, str], set[int]]] | tuple[str, list[str]]:
        ...
 
 When cases like this arise, you can define a type alias by simply
-assigning the type to a variable:
+assigning the type to a variable (this is an *implicit type alias*):
 
 .. code-block:: python
 
-   AliasType = Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]
+   AliasType = list[dict[tuple[int, str], set[int]]] | tuple[str, list[str]]
 
    # Now we can use AliasType in place of the full name:
 
@@ -527,8 +480,18 @@ assigning the type to a variable:
     another type -- it's equivalent to the target type except for
     :ref:`generic aliases <generic-type-aliases>`.
 
-Since Mypy 0.930 you can also use *explicit type aliases*, which were
-introduced in :pep:`613`.
+Python 3.12 introduced the ``type`` statement for defining *explicit type aliases*.
+Explicit type aliases are unambiguous and can also improve readability by
+making the intent clear:
+
+.. code-block:: python
+
+   type AliasType = list[dict[tuple[int, str], set[int]]] | tuple[str, list[str]]
+
+   # Now we can use AliasType in place of the full name:
+
+   def f() -> AliasType:
+       ...
 
 There can be confusion about exactly when an assignment defines an implicit type alias --
 for example, when the alias contains forward references, invalid types, or violates some other
@@ -537,14 +500,23 @@ distinction between an unannotated variable and a type alias is implicit,
 ambiguous or incorrect type alias declarations default to defining
 a normal variable instead of a type alias.
 
-Explicit type aliases are unambiguous and can also improve readability by
-making the intent clear:
+Aliases defined using the ``type`` statement have these properties, which
+distinguish them from implicit type aliases:
+
+* The definition may contain forward references without having to use string
+  literal escaping, since it is evaluated lazily.
+* The alias can be used in type annotations, type arguments, and casts, but
+  it can't be used in contexts which require a class object. For example, it's
+  not valid as a base class and it can't be used to construct instances.
+
+There is also use an older syntax for defining explicit type aliases, which was
+introduced in Python 3.10 (:pep:`613`):
 
 .. code-block:: python
 
    from typing import TypeAlias  # "from typing_extensions" in Python 3.9 and earlier
 
-   AliasType: TypeAlias = Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]
+   AliasType: TypeAlias = list[dict[tuple[int, str], set[int]]] | tuple[str, list[str]]
 
 .. _named-tuples:
 
@@ -672,14 +644,21 @@ doesn't see that the ``buyer`` variable has type ``ProUser``:
    buyer.pay()  # Rejected, not a method on User
 
 However, using the ``type[C]`` syntax and a type variable with an upper bound (see
-:ref:`type-variable-upper-bound`) we can do better:
+:ref:`type-variable-upper-bound`) we can do better (Python 3.12 syntax):
+
+.. code-block:: python
+
+   def new_user[U: User](user_class: type[U]) -> U:
+       # Same implementation as before
+
+Here is the example using the legacy syntax (Python 3.11 and earlier):
 
 .. code-block:: python
 
    U = TypeVar('U', bound=User)
 
    def new_user(user_class: type[U]) -> U:
-       # Same  implementation as before
+       # Same implementation as before
 
 Now mypy will infer the correct type of the result when we call
 ``new_user()`` with a specific subclass of ``User``:

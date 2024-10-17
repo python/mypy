@@ -46,21 +46,18 @@ define dataclasses. For example:
     UnorderedPoint(1, 2) < UnorderedPoint(3, 4)  # Error: Unsupported operand types
 
 Dataclasses can be generic and can be used in any other way a normal
-class can be used:
+class can be used (Python 3.12 syntax):
 
 .. code-block:: python
 
     from dataclasses import dataclass
-    from typing import Generic, TypeVar
-
-    T = TypeVar('T')
 
     @dataclass
-    class BoxedData(Generic[T]):
+    class BoxedData[T]:
         data: T
         label: str
 
-    def unbox(bd: BoxedData[T]) -> T:
+    def unbox[T](bd: BoxedData[T]) -> T:
         ...
 
     val = unbox(BoxedData(42, "<important>"))  # OK, inferred type is int
@@ -71,12 +68,12 @@ and :pep:`557`.
 Caveats/Known Issues
 ====================
 
-Some functions in the :py:mod:`dataclasses` module, such as :py:func:`~dataclasses.replace` and :py:func:`~dataclasses.asdict`,
+Some functions in the :py:mod:`dataclasses` module, such as :py:func:`~dataclasses.asdict`,
 have imprecise (too permissive) types. This will be fixed in future releases.
 
 Mypy does not yet recognize aliases of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`, and will
-probably never recognize dynamically computed decorators. The following examples
-do **not** work:
+probably never recognize dynamically computed decorators. The following example
+does **not** work:
 
 .. code-block:: python
 
@@ -94,16 +91,36 @@ do **not** work:
       """
       attribute: int
 
-    @dataclass_wrapper
-    class DynamicallyDecorated:
-      """
-      Mypy doesn't recognize this as a dataclass because it is decorated by a
-      function returning `dataclass` rather than by `dataclass` itself.
-      """
-      attribute: int
-
     AliasDecorated(attribute=1) # error: Unexpected keyword argument
-    DynamicallyDecorated(attribute=1) # error: Unexpected keyword argument
+
+
+To have Mypy recognize a wrapper of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`
+as a dataclass decorator, consider using the :py:func:`~typing.dataclass_transform`
+decorator (example uses Python 3.12 syntax):
+
+.. code-block:: python
+
+    from dataclasses import dataclass, Field
+    from typing import dataclass_transform
+
+    @dataclass_transform(field_specifiers=(Field,))
+    def my_dataclass[T](cls: type[T]) -> type[T]:
+        ...
+        return dataclass(cls)
+
+
+Data Class Transforms
+*********************
+
+Mypy supports the :py:func:`~typing.dataclass_transform` decorator as described in
+`PEP 681 <https://www.python.org/dev/peps/pep-0681/#the-dataclass-transform-decorator>`_.
+
+.. note::
+
+    Pragmatically, mypy will assume such classes have the internal attribute :code:`__dataclass_fields__`
+    (even though they might lack it in runtime) and will assume functions such as :py:func:`dataclasses.is_dataclass`
+    and :py:func:`dataclasses.fields` treat them as if they were dataclasses
+    (even though they may fail at runtime).
 
 .. _attrs_package:
 
@@ -346,20 +363,20 @@ Extended Callable types
    This feature is deprecated.  You can use
    :ref:`callback protocols <callback_protocols>` as a replacement.
 
-As an experimental mypy extension, you can specify :py:data:`~typing.Callable` types
+As an experimental mypy extension, you can specify :py:class:`~collections.abc.Callable` types
 that support keyword arguments, optional arguments, and more.  When
-you specify the arguments of a :py:data:`~typing.Callable`, you can choose to supply just
+you specify the arguments of a :py:class:`~collections.abc.Callable`, you can choose to supply just
 the type of a nameless positional argument, or an "argument specifier"
 representing a more complicated form of argument.  This allows one to
 more closely emulate the full range of possibilities given by the
 ``def`` statement in Python.
 
 As an example, here's a complicated function definition and the
-corresponding :py:data:`~typing.Callable`:
+corresponding :py:class:`~collections.abc.Callable`:
 
 .. code-block:: python
 
-   from typing import Callable
+   from collections.abc import Callable
    from mypy_extensions import (Arg, DefaultArg, NamedArg,
                                 DefaultNamedArg, VarArg, KwArg)
 
@@ -432,7 +449,7 @@ purpose:
 In all cases, the ``type`` argument defaults to ``Any``, and if the
 ``name`` argument is omitted the argument has no name (the name is
 required for ``NamedArg`` and ``DefaultNamedArg``).  A basic
-:py:data:`~typing.Callable` such as
+:py:class:`~collections.abc.Callable` such as
 
 .. code-block:: python
 
@@ -444,7 +461,7 @@ is equivalent to the following:
 
    MyFunc = Callable[[Arg(int), Arg(str), Arg(int)], float]
 
-A :py:data:`~typing.Callable` with unspecified argument types, such as
+A :py:class:`~collections.abc.Callable` with unspecified argument types, such as
 
 .. code-block:: python
 

@@ -45,10 +45,9 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
 
       import sys
 
-      def do_stuff():
-          # type: () -> None:
-          if sys.python_version < (3,):
-              import xyz  # Only available in Python 2
+      def do_stuff() -> None:
+          if sys.version_info >= (3, 10):
+              import xyz  # Only available in Python 3.10+
               xyz.whatever()
           ...
 

@@ -935,7 +935,6 @@ if int():
     b = D2()
 
 [case testConstructorJoinsWithCustomMetaclass]
-# flags: --strict-optional
 from typing import TypeVar
 import abc
 
@@ -1163,7 +1162,7 @@ def test() -> None:
             reveal_type(x)  # N: Revealed type is "T`-1"
             reveal_type(x.returns_int())  # N: Revealed type is "builtins.int"
             return foo
-    reveal_type(Foo.bar)  # N: Revealed type is "def [T <: __main__.Foo@5] (self: __main__.Foo@5, foo: T`-1) -> T`-1"
+    reveal_type(Foo.bar)  # N: Revealed type is "def [T <: __main__.Foo@5] (self: __main__.Foo@5, foo: T`1) -> T`1"
 
 [case testGenericClassWithInvalidTypevarUseWithinFunction]
 from typing import TypeVar
@@ -1629,7 +1628,6 @@ a = A()
 reveal_type(a.f)  # N: Revealed type is "__main__.D"
 
 [case testAccessingDescriptorFromClass]
-# flags: --strict-optional
 from d import D, Base
 class A(Base):
     f = D()
@@ -1647,7 +1645,6 @@ class D:
 [builtins fixtures/bool.pyi]
 
 [case testAccessingDescriptorFromClassWrongBase]
-# flags: --strict-optional
 from d import D, Base
 class A:
     f = D()
@@ -1664,13 +1661,13 @@ class D:
     def __get__(self, inst: Base, own: Type[Base]) -> str: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: error: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "Type[Base]"
-main:5: note: Revealed type is "d.D"
-main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
-main:6: note: Possible overload variants:
-main:6: note:     def __get__(self, inst: None, own: Type[Base]) -> D
-main:6: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
-main:6: note: Revealed type is "Any"
+main:4: error: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "Type[Base]"
+main:4: note: Revealed type is "d.D"
+main:5: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
+main:5: note: Possible overload variants:
+main:5: note:     def __get__(self, inst: None, own: Type[Base]) -> D
+main:5: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
+main:5: note: Revealed type is "Any"
 
 [case testAccessingGenericNonDataDescriptor]
 from typing import TypeVar, Type, Generic, Any
@@ -1702,7 +1699,6 @@ a.g = ''
 a.g = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAccessingGenericDescriptorFromClass]
-# flags: --strict-optional
 from d import D
 class A:
     f = D(10)  # type: D[A, int]
@@ -1724,7 +1720,6 @@ class D(Generic[T, V]):
 [builtins fixtures/bool.pyi]
 
 [case testAccessingGenericDescriptorFromInferredClass]
-# flags: --strict-optional
 from typing import Type
 from d import D
 class A:
@@ -1745,11 +1740,10 @@ class D(Generic[T, V]):
     def __get__(self, inst: T, own: Type[T]) -> V: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:8: note: Revealed type is "d.D[__main__.A, builtins.int]"
-main:9: note: Revealed type is "d.D[__main__.A, builtins.str]"
+main:7: note: Revealed type is "d.D[__main__.A, builtins.int]"
+main:8: note: Revealed type is "d.D[__main__.A, builtins.str]"
 
 [case testAccessingGenericDescriptorFromClassBadOverload]
-# flags: --strict-optional
 from d import D
 class A:
     f = D(10)  # type: D[A, int]
@@ -1766,11 +1760,11 @@ class D(Generic[T, V]):
     def __get__(self, inst: T, own: Type[T]) -> V: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
-main:5: note: Possible overload variants:
-main:5: note:     def __get__(self, inst: None, own: None) -> D[A, int]
-main:5: note:     def __get__(self, inst: A, own: Type[A]) -> int
-main:5: note: Revealed type is "Any"
+main:4: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
+main:4: note: Possible overload variants:
+main:4: note:     def __get__(self, inst: None, own: None) -> D[A, int]
+main:4: note:     def __get__(self, inst: A, own: Type[A]) -> int
+main:4: note: Revealed type is "Any"
 
 [case testAccessingNonDataDescriptorSubclass]
 from typing import Any
@@ -1955,6 +1949,41 @@ class B:
 
 def foo(x: Union[A, B]) -> None:
     reveal_type(x.attr)  # N: Revealed type is "builtins.str"
+
+[case testDescriptorGetUnionRestricted]
+from typing import Any, Union
+
+class getter:
+    def __get__(self, instance: X1, owner: Any) -> str: ...
+
+class X1:
+    prop = getter()
+
+class X2:
+    prop: str
+
+def foo(x: Union[X1, X2]) -> None:
+    reveal_type(x.prop)  # N: Revealed type is "builtins.str"
+
+[case testDescriptorGetUnionType]
+from typing import Any, Union, Type, overload
+
+class getter:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> getter: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance, owner):
+        ...
+
+class X1:
+    prop = getter()
+class X2:
+    prop = getter()
+
+def foo(x: Type[Union[X1, X2]]) -> None:
+    reveal_type(x.prop)  # N: Revealed type is "__main__.getter"
+
 
 -- _promote decorators
 -- -------------------
@@ -2398,10 +2427,10 @@ class B:
 [builtins fixtures/tuple.pyi]
 
 [case testReverseOperatorTypeVar1]
-from typing import TypeVar, Any
+from typing import TypeVar
 T = TypeVar("T", bound='Real')
 class Real:
-    def __add__(self, other: Any) -> str: ...
+    def __add__(self, other: object) -> str: ...
 class Fraction(Real):
     def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
 
@@ -2436,7 +2465,7 @@ reveal_type(Real() + Fraction())      # N: Revealed type is "__main__.Real"
 reveal_type(Fraction() + Fraction())  # N: Revealed type is "builtins.str"
 
 [case testReverseOperatorTypeVar3]
-from typing import TypeVar, Any
+from typing import TypeVar
 T = TypeVar("T", bound='Real')
 class Real:
     def __add__(self, other: FractionChild) -> str: ...
@@ -2672,14 +2701,12 @@ class X:
 [out]
 tmp/foo.pyi:6: error: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely overlapping
 
-[case testUnsafeOverlappingWithLineNo]
+[case testUnsafeOverlappingNotWithAny]
 from typing import TypeVar
 class Real:
     def __add__(self, other) -> str: ...
 class Fraction(Real):
     def __radd__(self, other: Real) -> Real: ...
-[out]
-main:5: error: Signatures of "__radd__" of "Fraction" and "__add__" of "Real" are unsafely overlapping
 
 [case testOverlappingNormalAndInplaceOperatorMethod]
 import typing
@@ -3437,7 +3464,7 @@ def foo(arg: Type[Any]):
 from typing import Type, Any
 def foo(arg: Type[Any]):
     reveal_type(arg.__str__)  # N: Revealed type is "def () -> builtins.str"
-    reveal_type(arg.mro())  # N: Revealed type is "builtins.list[builtins.type[Any]]"
+    reveal_type(arg.mro())  # N: Revealed type is "builtins.list[builtins.type]"
 [builtins fixtures/type.pyi]
 [out]
 
@@ -4013,10 +4040,16 @@ def f(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 o
 @overload
 def f(a: object) -> str: pass
 
+# Note: plain type is equivalent to Type[Any] so no error here
 @overload
-def g(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def g(a: Type[User]) -> int: pass
 @overload
 def g(a: type) -> str: pass
+
+@overload
+def h(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def h(a: Type[object]) -> str: pass
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -4757,12 +4790,15 @@ def g(x: Type[S]) -> str:
     return reveal_type(x * 0)  # N: Revealed type is "builtins.str"
 
 [case testMetaclassGetitem]
+import types
+
 class M(type):
     def __getitem__(self, key) -> int: return 1
 
 class A(metaclass=M): pass
 
 reveal_type(A[M])  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
 
 [case testMetaclassSelfType]
 from typing import TypeVar, Type
@@ -5008,12 +5044,13 @@ class A(Tuple[int, str]): pass
 -- -----------------------
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
-N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition)
-n: N
-reveal_type(n) # N: Revealed type is "Tuple[Any, fallback=__main__.N]"
+def test() -> None:
+    N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition) \
+                                    # N: Recursive types are not allowed at function scope
+    n: N
+    reveal_type(n) # N: Revealed type is "Tuple[Any, fallback=__main__.N@4]"
 [builtins fixtures/tuple.pyi]
 
 [case testCrashOnSelfRecursiveTypedDictVar]
@@ -5038,18 +5075,20 @@ lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
-# flags: --disable-recursive-aliases
 from mypy_extensions import TypedDict
 
-class N(TypedDict):
-    x: N # E: Cannot resolve name "N" (possible cyclic definition)
-class M(TypedDict):
-    x: M # E: Cannot resolve name "M" (possible cyclic definition)
+def test() -> None:
+    class N(TypedDict):
+        x: N  # E: Cannot resolve name "N" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
+    class M(TypedDict):
+        x: M  # E: Cannot resolve name "M" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
 
-n: N
-m: M
-lst = [n, m]
-reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
+    n: N
+    m: M
+    lst = [n, m]
+    reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCrashInForwardRefToNamedTupleWithIsinstance]
@@ -6484,7 +6523,6 @@ def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [out]
 
 [case testOptionalDescriptorsBinder]
-# flags: --strict-optional
 from typing import Type, TypeVar, Optional
 T = TypeVar('T')
 
@@ -6698,7 +6736,6 @@ class C(Generic[T]):
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceTypeSubclass]
-# flags: --strict-optional
 from typing import Type, Optional
 class Base: ...
 class One(Base):
@@ -7725,10 +7762,14 @@ class D:
     def __new__(cls) -> NoReturn: ...
     def __init__(self) -> NoReturn: ...
 
-reveal_type(A())  # N: Revealed type is "<nothing>"
-reveal_type(B())  # N: Revealed type is "<nothing>"
-reveal_type(C())  # N: Revealed type is "<nothing>"
-reveal_type(D())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(A())  # N: Revealed type is "Never"
+if object():
+    reveal_type(B())  # N: Revealed type is "Never"
+if object():
+    reveal_type(C())  # N: Revealed type is "Never"
+if object():
+    reveal_type(D())  # N: Revealed type is "Never"
 
 [case testOverloadedNewAndInitNoReturn]
 from typing import NoReturn, overload
@@ -7767,13 +7808,20 @@ class D:
     def __init__(self, a: int) -> None: ...
     def __init__(self, a: int = ...) -> None: ...
 
-reveal_type(A())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(A())  # N: Revealed type is "Never"
 reveal_type(A(1))  # N: Revealed type is "__main__.A"
-reveal_type(B())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(B())  # N: Revealed type is "Never"
 reveal_type(B(1))  # N: Revealed type is "__main__.B"
-reveal_type(C())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(C())  # N: Revealed type is "Never"
 reveal_type(C(1))  # N: Revealed type is "__main__.C"
-reveal_type(D())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(D())  # N: Revealed type is "Never"
 reveal_type(D(1))  # N: Revealed type is "__main__.D"
 
 [case testClassScopeImportWithWrapperAndError]
@@ -7998,3 +8046,11 @@ f5(1)  # E: Argument 1 to "f5" has incompatible type "int"; expected "Integral" 
        # N: Types from "numbers" aren't supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+[case testImplicitClassScopedNames]
+class C:
+    reveal_type(__module__)  # N: Revealed type is "builtins.str"
+    reveal_type(__qualname__)  # N: Revealed type is "builtins.str"
+    def f(self) -> None:
+        __module__  # E: Name "__module__" is not defined
+        __qualname__  # E: Name "__qualname__" is not defined

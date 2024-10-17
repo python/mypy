@@ -291,6 +291,8 @@ def process_top_level_function(
         deferred, incomplete, progress = semantic_analyze_target(
             target, module, state, node, active_type, final_iteration, patches
         )
+        if not incomplete:
+            state.manager.incomplete_namespaces.discard(module)
         if final_iteration:
             assert not deferred, "Must not defer during final iteration"
         if not progress:
@@ -380,7 +382,8 @@ def check_type_arguments(graph: Graph, scc: list[str], errors: Errors) -> None:
         analyzer = TypeArgumentAnalyzer(
             errors,
             state.options,
-            is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+            state.tree.is_typeshed_file(state.options),
+            state.manager.semantic_analyzer.named_type,
         )
         with state.wrap_context():
             with mypy.state.state.strict_optional_set(state.options.strict_optional):
@@ -399,6 +402,7 @@ def check_type_arguments_in_targets(
         errors,
         state.options,
         is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+        state.manager.semantic_analyzer.named_type,
     )
     with state.wrap_context():
         with mypy.state.state.strict_optional_set(state.options.strict_optional):

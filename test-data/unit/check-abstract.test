@@ -198,6 +198,24 @@ x: Type[B]
 f(x)  # OK
 [out]
 
+[case testAbstractTypeInADict]
+from typing import Dict, Type
+from abc import abstractmethod
+
+class Class:
+    @abstractmethod
+    def method(self) -> None:
+        pass
+
+my_dict_init: Dict[int, Type[Class]] = {0: Class}  # E: Only concrete class can be given where "Tuple[int, Type[Class]]" is expected
+
+class Child(Class):
+    def method(self) -> None: ...
+
+other_dict_init: Dict[int, Type[Class]] = {0: Child}  # ok
+[builtins fixtures/dict.pyi]
+[out]
+
 [case testInstantiationAbstractsInTypeForAliases]
 from typing import Type
 from abc import abstractmethod
@@ -223,7 +241,7 @@ f(GoodAlias)
 
 [case testInstantiationAbstractsInTypeForVariables]
 # flags: --no-strict-optional
-from typing import Type
+from typing import Type, overload
 from abc import abstractmethod
 
 class A:
@@ -251,6 +269,15 @@ if int():
     var_old = B # E: Can only assign concrete classes to a variable of type "Type[A]"
 if int():
     var_old = C # OK
+
+class D(A):
+    @overload
+    def __new__(cls, a) -> "D": ...
+    @overload
+    def __new__(cls) -> "D": ...
+    def __new__(cls, a=None) -> "D": ...
+if int():
+    var = D # E: Can only assign concrete classes to a variable of type "Type[A]"
 [out]
 
 [case testInstantiationAbstractsInTypeForClassMethods]
@@ -869,9 +896,9 @@ class A(metaclass=ABCMeta):
 class B(A):
     @property
     def x(self) -> int:
-        return super().x.y # E: "int" has no attribute "y"
+        return super().x.y  # E: Call to abstract method "x" of "A" with trivial body via super() is unsafe \
+                            # E: "int" has no attribute "y"
 [builtins fixtures/property.pyi]
-[out]
 
 [case testSuperWithReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -1107,7 +1134,6 @@ b.y = 1
 -- -----------------------------------------------
 
 [case testEmptyBodyProhibitedFunction]
-# flags: --strict-optional
 from typing import overload, Union
 
 def func1(x: str) -> int: pass  # E: Missing return statement
@@ -1130,7 +1156,6 @@ def func5(x: Union[int, str]) -> Union[int, str]:  # E: Missing return statement
     """Some function."""
 
 [case testEmptyBodyProhibitedMethodNonAbstract]
-# flags: --strict-optional
 from typing import overload, Union
 
 class A:
@@ -1165,7 +1190,6 @@ class C:
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyProhibitedPropertyNonAbstract]
-# flags: --strict-optional
 class A:
     @property
     def x(self) -> int: ...  # E: Missing return statement
@@ -1194,7 +1218,6 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testEmptyBodyNoteABCMeta]
-# flags: --strict-optional
 from abc import ABC
 
 class A(ABC):
@@ -1203,7 +1226,6 @@ class A(ABC):
         ...
 
 [case testEmptyBodyAllowedFunctionStub]
-# flags: --strict-optional
 import stub
 [file stub.pyi]
 from typing import overload, Union
@@ -1214,7 +1236,6 @@ def func3(x: str) -> int:
     """Some function."""
 
 [case testEmptyBodyAllowedMethodNonAbstractStub]
-# flags: --strict-optional
 import stub
 [file stub.pyi]
 from typing import overload, Union
@@ -1236,7 +1257,6 @@ class B:
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyAllowedPropertyNonAbstractStub]
-# flags: --strict-optional
 import stub
 [file stub.pyi]
 class A:
@@ -1267,7 +1287,6 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testEmptyBodyAllowedMethodAbstract]
-# flags: --strict-optional
 from typing import overload, Union
 from abc import abstractmethod
 
@@ -1315,7 +1334,6 @@ class C:
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyAllowedPropertyAbstract]
-# flags: --strict-optional
 from abc import abstractmethod
 class A:
     @property
@@ -1354,7 +1372,6 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testEmptyBodyImplicitlyAbstractProtocol]
-# flags: --strict-optional
 from typing import Protocol, overload, Union
 
 class P1(Protocol):
@@ -1395,7 +1412,6 @@ C3()
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyImplicitlyAbstractProtocolProperty]
-# flags: --strict-optional
 from typing import Protocol
 
 class P1(Protocol):
@@ -1425,7 +1441,6 @@ C2()
 [builtins fixtures/property.pyi]
 
 [case testEmptyBodyImplicitlyAbstractProtocolStub]
-# flags: --strict-optional
 from stub import P1, P2, P3, P4
 
 class B1(P1): ...
@@ -1461,7 +1476,6 @@ class P4(Protocol):
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyUnsafeAbstractSuper]
-# flags: --strict-optional
 from stub import StubProto, StubAbstract
 from typing import Protocol
 from abc import abstractmethod
@@ -1510,7 +1524,6 @@ class StubAbstract:
     def meth(self) -> int: ...
 
 [case testEmptyBodyUnsafeAbstractSuperProperty]
-# flags: --strict-optional
 from stub import StubProto, StubAbstract
 from typing import Protocol
 from abc import abstractmethod
@@ -1568,7 +1581,6 @@ class StubAbstract:
 [builtins fixtures/property.pyi]
 
 [case testEmptyBodyUnsafeAbstractSuperOverloads]
-# flags: --strict-optional
 from stub import StubProto
 from typing import Protocol, overload, Union
 
@@ -1647,13 +1659,12 @@ class Abstract:
 
 class SubProto(Proto):
     def meth(self) -> int:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe
 class SubAbstract(Abstract):
     def meth(self) -> int:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Abstract" with trivial body via super() is unsafe
 
 [case testEmptyBodyNoSuperWarningOptionalReturn]
-# flags: --strict-optional
 from typing import Protocol, Optional
 from abc import abstractmethod
 
@@ -1665,13 +1676,12 @@ class Abstract:
 
 class SubProto(Proto):
     def meth(self) -> Optional[int]:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe
 class SubAbstract(Abstract):
     def meth(self) -> Optional[int]:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Abstract" with trivial body via super() is unsafe
 
 [case testEmptyBodyTypeCheckingOnly]
-# flags: --strict-optional
 from typing import TYPE_CHECKING
 
 class C:

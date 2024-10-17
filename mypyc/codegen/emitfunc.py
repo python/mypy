@@ -6,7 +6,14 @@ from typing import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
-from mypyc.common import MODULE_PREFIX, NATIVE_PREFIX, REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX
+from mypyc.common import (
+    MODULE_PREFIX,
+    NATIVE_PREFIX,
+    REG_PREFIX,
+    STATIC_PREFIX,
+    TYPE_PREFIX,
+    TYPE_VAR_PREFIX,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (
@@ -14,6 +21,7 @@ from mypyc.ir.ops import (
     NAMESPACE_MODULE,
     NAMESPACE_STATIC,
     NAMESPACE_TYPE,
+    NAMESPACE_TYPE_VAR,
     Assign,
     AssignMulti,
     BasicBlock,
@@ -47,6 +55,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     Return,
@@ -55,6 +64,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -62,6 +72,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.ir.rtypes import (
     RArray,
+    RInstance,
     RStruct,
     RTuple,
     RType,
@@ -260,7 +271,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             for i, item in enumerate(op.items):
                 self.emit_line(f"{dest}.f{i} = {self.reg(item)};")
-        self.emit_inc_ref(dest, tuple_type)
 
     def visit_assign(self, op: Assign) -> None:
         dest = self.reg(op.dest)
@@ -353,20 +363,23 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         prefer_method = cl.is_trait and attr_rtype.error_overlap
         if cl.get_method(op.attr, prefer_method=prefer_method):
             # Properties are essentially methods, so use vtable access for them.
-            version = "_TRAIT" if cl.is_trait else ""
-            self.emit_line(
-                "%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */"
-                % (
-                    dest,
-                    version,
-                    obj,
-                    self.emitter.type_struct_name(rtype.class_ir),
-                    rtype.getter_index(op.attr),
-                    rtype.struct_name(self.names),
-                    self.ctype(rtype.attr_type(op.attr)),
-                    op.attr,
+            if cl.is_method_final(op.attr):
+                self.emit_method_call(f"{dest} = ", op.obj, op.attr, [])
+            else:
+                version = "_TRAIT" if cl.is_trait else ""
+                self.emit_line(
+                    "%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */"
+                    % (
+                        dest,
+                        version,
+                        obj,
+                        self.emitter.type_struct_name(rtype.class_ir),
+                        rtype.getter_index(op.attr),
+                        rtype.struct_name(self.names),
+                        self.ctype(rtype.attr_type(op.attr)),
+                        op.attr,
+                    )
                 )
-            )
         else:
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
@@ -476,6 +489,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         NAMESPACE_STATIC: STATIC_PREFIX,
         NAMESPACE_TYPE: TYPE_PREFIX,
         NAMESPACE_MODULE: MODULE_PREFIX,
+        NAMESPACE_TYPE_VAR: TYPE_VAR_PREFIX,
     }
 
     def visit_load_static(self, op: LoadStatic) -> None:
@@ -499,7 +513,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         src = self.reg(op.src)
         self.emit_line(f"{dest} = {src}.f{op.index};")
-        self.emit_inc_ref(dest, op.type)
+        if not op.is_borrowed:
+            self.emit_inc_ref(dest, op.type)
 
     def get_dest_assign(self, dest: Value) -> str:
         if not dest.is_void:
@@ -518,11 +533,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_method_call(self, op: MethodCall) -> None:
         """Call native method."""
         dest = self.get_dest_assign(op)
-        obj = self.reg(op.obj)
+        self.emit_method_call(dest, op.obj, op.method, op.args)
 
-        rtype = op.receiver_type
+    def emit_method_call(self, dest: str, op_obj: Value, name: str, op_args: list[Value]) -> None:
+        obj = self.reg(op_obj)
+        rtype = op_obj.type
+        assert isinstance(rtype, RInstance)
         class_ir = rtype.class_ir
-        name = op.method
         method = rtype.class_ir.get_method(name)
         assert method is not None
 
@@ -534,11 +551,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         obj_args = (
             []
             if method.decl.kind == FUNC_STATICMETHOD
-            else [f"(PyObject *)Py_TYPE({obj})"]
-            if method.decl.kind == FUNC_CLASSMETHOD
-            else [obj]
+            else [f"(PyObject *)Py_TYPE({obj})"] if method.decl.kind == FUNC_CLASSMETHOD else [obj]
         )
-        args = ", ".join(obj_args + [self.reg(arg) for arg in op.args])
+        args = ", ".join(obj_args + [self.reg(arg) for arg in op_args])
         mtype = native_function_type(method, self.emitter)
         version = "_TRAIT" if rtype.class_ir.is_trait else ""
         if is_direct:
@@ -558,7 +573,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     rtype.struct_name(self.names),
                     mtype,
                     args,
-                    op.method,
+                    name,
                 )
             )
 
@@ -629,6 +644,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             dest = self.get_dest_assign(op)
         args = ", ".join(self.reg(arg) for arg in op.args)
         self.emitter.emit_line(f"{dest}{op.function_name}({args});")
+
+    def visit_primitive_op(self, op: PrimitiveOp) -> None:
+        raise RuntimeError(
+            f"unexpected PrimitiveOp {op.desc.name}: they must be lowered before codegen"
+        )
 
     def visit_truncate(self, op: Truncate) -> None:
         dest = self.reg(op)
@@ -745,6 +765,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_keep_alive(self, op: KeepAlive) -> None:
         # This is a no-op.
         pass
+
+    def visit_unborrow(self, op: Unborrow) -> None:
+        # This is a no-op that propagates the source value.
+        dest = self.reg(op)
+        src = self.reg(op.src)
+        self.emit_line(f"{dest} = {src};")
 
     # Helpers
 

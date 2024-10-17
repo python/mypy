@@ -2,8 +2,8 @@ import sys
 from _typeshed import ReadableBuffer, StrOrBytesPath
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from types import TracebackType
-from typing import IO, Any, AnyStr, Generic, TypeVar, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, AnyStr, Final, Generic, Literal, TypeVar, overload
+from typing_extensions import Self, TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -64,12 +64,7 @@ if sys.platform == "win32":
 #    reveal_type(e.cmd)  # Any, but morally is _CMD
 _FILE: TypeAlias = None | int | IO[Any]
 _InputString: TypeAlias = ReadableBuffer | str
-if sys.version_info >= (3, 8):
-    _CMD: TypeAlias = StrOrBytesPath | Sequence[StrOrBytesPath]
-else:
-    # Python 3.7 doesn't support _CMD being a single PathLike.
-    # See: https://bugs.python.org/issue31961
-    _CMD: TypeAlias = str | bytes | Sequence[StrOrBytesPath]
+_CMD: TypeAlias = StrOrBytesPath | Sequence[StrOrBytesPath]
 if sys.platform == "win32":
     _ENV: TypeAlias = Mapping[str, str]
 else:
@@ -79,9 +74,8 @@ _T = TypeVar("_T")
 
 # These two are private but documented
 if sys.version_info >= (3, 11):
-    _USE_VFORK: bool
-if sys.version_info >= (3, 8):
-    _USE_POSIX_SPAWN: bool
+    _USE_VFORK: Final[bool]
+_USE_POSIX_SPAWN: Final[bool]
 
 class CompletedProcess(Generic[_T]):
     # morally: _CMD
@@ -94,7 +88,7 @@ class CompletedProcess(Generic[_T]):
     def __init__(self, args: _CMD, returncode: int, stdout: _T | None = None, stderr: _T | None = None) -> None: ...
     def check_returncode(self) -> None: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 if sys.version_info >= (3, 11):
     # 3.11 adds "process_group" argument
@@ -248,7 +242,7 @@ if sys.version_info >= (3, 11):
         shell: bool = False,
         cwd: StrOrBytesPath | None = None,
         env: _ENV | None = None,
-        universal_newlines: Literal[False, None] = None,
+        universal_newlines: Literal[False] | None = None,
         startupinfo: Any = None,
         creationflags: int = 0,
         restore_signals: bool = True,
@@ -260,7 +254,7 @@ if sys.version_info >= (3, 11):
         encoding: None = None,
         errors: None = None,
         input: ReadableBuffer | None = None,
-        text: Literal[None, False] = None,
+        text: Literal[False] | None = None,
         timeout: float | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -452,7 +446,7 @@ elif sys.version_info >= (3, 10):
         shell: bool = False,
         cwd: StrOrBytesPath | None = None,
         env: _ENV | None = None,
-        universal_newlines: Literal[False, None] = None,
+        universal_newlines: Literal[False] | None = None,
         startupinfo: Any = None,
         creationflags: int = 0,
         restore_signals: bool = True,
@@ -464,7 +458,7 @@ elif sys.version_info >= (3, 10):
         encoding: None = None,
         errors: None = None,
         input: ReadableBuffer | None = None,
-        text: Literal[None, False] = None,
+        text: Literal[False] | None = None,
         timeout: float | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -650,7 +644,7 @@ elif sys.version_info >= (3, 9):
         shell: bool = False,
         cwd: StrOrBytesPath | None = None,
         env: _ENV | None = None,
-        universal_newlines: Literal[False, None] = None,
+        universal_newlines: Literal[False] | None = None,
         startupinfo: Any = None,
         creationflags: int = 0,
         restore_signals: bool = True,
@@ -662,7 +656,7 @@ elif sys.version_info >= (3, 9):
         encoding: None = None,
         errors: None = None,
         input: ReadableBuffer | None = None,
-        text: Literal[None, False] = None,
+        text: Literal[False] | None = None,
         timeout: float | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -829,7 +823,7 @@ else:
         shell: bool = False,
         cwd: StrOrBytesPath | None = None,
         env: _ENV | None = None,
-        universal_newlines: Literal[False, None] = None,
+        universal_newlines: Literal[False] | None = None,
         startupinfo: Any = None,
         creationflags: int = 0,
         restore_signals: bool = True,
@@ -841,7 +835,7 @@ else:
         encoding: None = None,
         errors: None = None,
         input: ReadableBuffer | None = None,
-        text: Literal[None, False] = None,
+        text: Literal[False] | None = None,
         timeout: float | None = None,
     ) -> CompletedProcess[bytes]: ...
     @overload
@@ -895,6 +889,7 @@ if sys.version_info >= (3, 11):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
+        encoding: str | None = None,
         timeout: float | None = None,
         text: bool | None = None,
         user: str | int | None = None,
@@ -926,6 +921,7 @@ elif sys.version_info >= (3, 10):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
+        encoding: str | None = None,
         timeout: float | None = None,
         text: bool | None = None,
         user: str | int | None = None,
@@ -956,6 +952,7 @@ elif sys.version_info >= (3, 9):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
+        encoding: str | None = None,
         timeout: float | None = None,
         text: bool | None = None,
         user: str | int | None = None,
@@ -984,6 +981,7 @@ else:
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
+        encoding: str | None = None,
         timeout: float | None = None,
         text: bool | None = None,
     ) -> int: ...
@@ -1011,6 +1009,7 @@ if sys.version_info >= (3, 11):
         pass_fds: Collection[int] = ...,
         timeout: float | None = ...,
         *,
+        encoding: str | None = None,
         text: bool | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -1042,6 +1041,7 @@ elif sys.version_info >= (3, 10):
         pass_fds: Collection[int] = ...,
         timeout: float | None = ...,
         *,
+        encoding: str | None = None,
         text: bool | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -1072,6 +1072,7 @@ elif sys.version_info >= (3, 9):
         pass_fds: Collection[int] = ...,
         timeout: float | None = ...,
         *,
+        encoding: str | None = None,
         text: bool | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -1100,6 +1101,7 @@ else:
         pass_fds: Collection[int] = ...,
         timeout: float | None = ...,
         *,
+        encoding: str | None = None,
         text: bool | None = None,
     ) -> int: ...
 
@@ -1242,7 +1244,7 @@ if sys.version_info >= (3, 11):
         shell: bool = False,
         cwd: StrOrBytesPath | None = None,
         env: _ENV | None = None,
-        universal_newlines: Literal[False, None] = None,
+        universal_newlines: Literal[False] | None = None,
         startupinfo: Any = None,
         creationflags: int = 0,
         restore_signals: bool = True,
@@ -1253,7 +1255,7 @@ if sys.version_info >= (3, 11):
         input: _InputString | None = ...,
         encoding: None = None,
         errors: None = None,
-        text: Literal[None, False] = None,
+        text: Literal[False] | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -1428,7 +1430,7 @@ elif sys.version_info >= (3, 10):
         shell: bool = False,
         cwd: StrOrBytesPath | None = None,
         env: _ENV | None = None,
-        universal_newlines: Literal[False, None] = None,
+        universal_newlines: Literal[False] | None = None,
         startupinfo: Any = None,
         creationflags: int = 0,
         restore_signals: bool = True,
@@ -1439,7 +1441,7 @@ elif sys.version_info >= (3, 10):
         input: _InputString | None = ...,
         encoding: None = None,
         errors: None = None,
-        text: Literal[None, False] = None,
+        text: Literal[False] | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -1608,7 +1610,7 @@ elif sys.version_info >= (3, 9):
         shell: bool = False,
         cwd: StrOrBytesPath | None = None,
         env: _ENV | None = None,
-        universal_newlines: Literal[False, None] = None,
+        universal_newlines: Literal[False] | None = None,
         startupinfo: Any = None,
         creationflags: int = 0,
         restore_signals: bool = True,
@@ -1619,7 +1621,7 @@ elif sys.version_info >= (3, 9):
         input: _InputString | None = ...,
         encoding: None = None,
         errors: None = None,
-        text: Literal[None, False] = None,
+        text: Literal[False] | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -1769,7 +1771,7 @@ else:
         shell: bool = False,
         cwd: StrOrBytesPath | None = None,
         env: _ENV | None = None,
-        universal_newlines: Literal[False, None] = None,
+        universal_newlines: Literal[False] | None = None,
         startupinfo: Any = None,
         creationflags: int = 0,
         restore_signals: bool = True,
@@ -1780,7 +1782,7 @@ else:
         input: _InputString | None = ...,
         encoding: None = None,
         errors: None = None,
-        text: Literal[None, False] = None,
+        text: Literal[False] | None = None,
     ) -> bytes: ...
     @overload
     def check_output(
@@ -1808,9 +1810,9 @@ else:
         text: bool | None = None,
     ) -> Any: ...  # morally: -> str | bytes
 
-PIPE: int
-STDOUT: int
-DEVNULL: int
+PIPE: Final[int]
+STDOUT: Final[int]
+DEVNULL: Final[int]
 
 class SubprocessError(Exception): ...
 
@@ -1990,14 +1992,14 @@ class Popen(Generic[AnyStr]):
             shell: bool = False,
             cwd: StrOrBytesPath | None = None,
             env: _ENV | None = None,
-            universal_newlines: Literal[False, None] = None,
+            universal_newlines: Literal[False] | None = None,
             startupinfo: Any | None = None,
             creationflags: int = 0,
             restore_signals: bool = True,
             start_new_session: bool = False,
             pass_fds: Collection[int] = (),
             *,
-            text: Literal[None, False] = None,
+            text: Literal[False] | None = None,
             encoding: None = None,
             errors: None = None,
             user: str | int | None = None,
@@ -2175,14 +2177,14 @@ class Popen(Generic[AnyStr]):
             shell: bool = False,
             cwd: StrOrBytesPath | None = None,
             env: _ENV | None = None,
-            universal_newlines: Literal[False, None] = None,
+            universal_newlines: Literal[False] | None = None,
             startupinfo: Any | None = None,
             creationflags: int = 0,
             restore_signals: bool = True,
             start_new_session: bool = False,
             pass_fds: Collection[int] = (),
             *,
-            text: Literal[None, False] = None,
+            text: Literal[False] | None = None,
             encoding: None = None,
             errors: None = None,
             user: str | int | None = None,
@@ -2354,14 +2356,14 @@ class Popen(Generic[AnyStr]):
             shell: bool = False,
             cwd: StrOrBytesPath | None = None,
             env: _ENV | None = None,
-            universal_newlines: Literal[False, None] = None,
+            universal_newlines: Literal[False] | None = None,
             startupinfo: Any | None = None,
             creationflags: int = 0,
             restore_signals: bool = True,
             start_new_session: bool = False,
             pass_fds: Collection[int] = (),
             *,
-            text: Literal[None, False] = None,
+            text: Literal[False] | None = None,
             encoding: None = None,
             errors: None = None,
             user: str | int | None = None,
@@ -2514,14 +2516,14 @@ class Popen(Generic[AnyStr]):
             shell: bool = False,
             cwd: StrOrBytesPath | None = None,
             env: _ENV | None = None,
-            universal_newlines: Literal[False, None] = None,
+            universal_newlines: Literal[False] | None = None,
             startupinfo: Any | None = None,
             creationflags: int = 0,
             restore_signals: bool = True,
             start_new_session: bool = False,
             pass_fds: Collection[int] = (),
             *,
-            text: Literal[None, False] = None,
+            text: Literal[False] | None = None,
             encoding: None = None,
             errors: None = None,
         ) -> None: ...
@@ -2564,25 +2566,27 @@ class Popen(Generic[AnyStr]):
     def __exit__(
         self, exc_type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None: ...
+    def __del__(self) -> None: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 # The result really is always a str.
 if sys.version_info >= (3, 11):
-    def getstatusoutput(cmd: str | bytes, *, encoding: str | None = None, errors: str | None = None) -> tuple[int, str]: ...
-    def getoutput(cmd: str | bytes, *, encoding: str | None = None, errors: str | None = None) -> str: ...
+    def getstatusoutput(cmd: _CMD, *, encoding: str | None = None, errors: str | None = None) -> tuple[int, str]: ...
+    def getoutput(cmd: _CMD, *, encoding: str | None = None, errors: str | None = None) -> str: ...
 
 else:
-    def getstatusoutput(cmd: str | bytes) -> tuple[int, str]: ...
-    def getoutput(cmd: str | bytes) -> str: ...
+    def getstatusoutput(cmd: _CMD) -> tuple[int, str]: ...
+    def getoutput(cmd: _CMD) -> str: ...
 
-if sys.version_info >= (3, 8):
-    def list2cmdline(seq: Iterable[StrOrBytesPath]) -> str: ...  # undocumented
-
-else:
-    def list2cmdline(seq: Iterable[str]) -> str: ...  # undocumented
+def list2cmdline(seq: Iterable[StrOrBytesPath]) -> str: ...  # undocumented
 
 if sys.platform == "win32":
+    if sys.version_info >= (3, 13):
+        from _winapi import STARTF_FORCEOFFFEEDBACK, STARTF_FORCEONFEEDBACK
+
+        __all__ += ["STARTF_FORCEOFFFEEDBACK", "STARTF_FORCEONFEEDBACK"]
+
     class STARTUPINFO:
         def __init__(
             self,
@@ -2600,6 +2604,8 @@ if sys.platform == "win32":
         hStdError: Any | None
         wShowWindow: int
         lpAttributeList: Mapping[str, Any]
+        def copy(self) -> STARTUPINFO: ...
+
     from _winapi import (
         ABOVE_NORMAL_PRIORITY_CLASS as ABOVE_NORMAL_PRIORITY_CLASS,
         BELOW_NORMAL_PRIORITY_CLASS as BELOW_NORMAL_PRIORITY_CLASS,

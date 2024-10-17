@@ -296,7 +296,7 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 [file mypy.ini]
 \[mypy]
 \[mypy-*]
-python_version = 3.4
+python_version = 3.11
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
 == Return code: 0
@@ -592,7 +592,7 @@ main.py:1: error: Cannot find implementation or library stub for module named "a
 \[tool.mypy]
 python_version = 3.10
 [out]
-pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.4 or higher). You may need to put quotes around your Python version
+pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.8 or higher). You may need to put quotes around your Python version
 == Return code: 0
 
 [case testPythonVersionTooOld10]
@@ -604,13 +604,13 @@ python_version = 1.0
 mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 3)
 == Return code: 0
 
-[case testPythonVersionTooOld33]
+[case testPythonVersionTooOld37]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.3
+python_version = 3.7
 [out]
-mypy.ini: [mypy]: python_version: Python 3.3 is not supported (must be 3.4 or higher)
+mypy.ini: [mypy]: python_version: Python 3.7 is not supported (must be 3.8 or higher)
 == Return code: 0
 
 [case testPythonVersionTooNew40]
@@ -633,18 +633,18 @@ usage: mypy [-h] [-v] [-V] [more options; see below]
 mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to mypy<0.980 if you need to check Python 2 code.
 == Return code: 2
 
-[case testPythonVersionAccepted34]
+[case testPythonVersionAccepted38]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.4
+python_version = 3.8
 [out]
 
-[case testPythonVersionAccepted36]
+[case testPythonVersionAccepted311]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.6
+python_version = 3.11
 [out]
 
 -- This should be a dumping ground for tests of plugins that are sensitive to
@@ -676,11 +676,11 @@ int_pow.py:10: note: Revealed type is "builtins.int"
 int_pow.py:11: note: Revealed type is "Any"
 == Return code: 0
 
-[case testDisallowAnyGenericsBuiltinCollections]
+[case testDisallowAnyGenericsBuiltinCollectionsPre39]
 # cmd: mypy m.py
 [file mypy.ini]
 \[mypy]
-python_version=3.6
+python_version = 3.8
 \[mypy-m]
 disallow_any_generics = True
 
@@ -913,6 +913,23 @@ def foo() -> str:
 s4.py:2: error: Incompatible return value type (got "int", expected "str")
 s3.py:2: error: Incompatible return value type (got "List[int]", expected "int")
 s1.py:2: error: Incompatible return value type (got "int", expected "str")
+
+[case testShadowFileWithPretty]
+# cmd: mypy a.py --pretty --shadow-file a.py b.py
+[file a.py]
+b: bytes
+[file b.py]
+a: int = ""
+b: bytes = 1
+[out]
+a.py:1: error: Incompatible types in assignment (expression has type "str",
+variable has type "int")
+    a: int = ""
+             ^~
+a.py:2: error: Incompatible types in assignment (expression has type "int",
+variable has type "bytes")
+    b: bytes = 1
+               ^
 
 [case testConfigWarnUnusedSection1]
 # cmd: mypy foo.py quux.py spam/eggs.py
@@ -1421,14 +1438,6 @@ b \d+
 b\.c \d+
 .*
 
-[case testCmdlineEnableIncompleteFeatures]
-# cmd: mypy --enable-incomplete-features a.py
-[file a.py]
-pass
-[out]
-Warning: --enable-incomplete-features is deprecated, use --enable-incomplete-feature=FEATURE instead
-== Return code: 0
-
 [case testShadowTypingModuleEarlyLoad]
 # cmd: mypy dir
 [file dir/__init__.py]
@@ -1472,12 +1481,12 @@ note: A user-defined top-level module with name "typing" is not supported
 Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
 == Return code: 2
 
-[case testRecursiveAliasesFlagDeprecated]
-# cmd: mypy --enable-recursive-aliases a.py
+[case testNewTypeInferenceFlagDeprecated]
+# cmd: mypy --new-type-inference a.py
 [file a.py]
 pass
 [out]
-Warning: --enable-recursive-aliases is deprecated; recursive types are enabled by default
+Warning: --new-type-inference flag is deprecated; new type inference algorithm is already enabled by default
 == Return code: 0
 
 [case testNotesOnlyResultInExitSuccess]
@@ -1585,3 +1594,13 @@ disable_error_code =
 always_true =
   MY_VAR,
 [out]
+
+[case testTypeVarTupleUnpackEnabled]
+# cmd: mypy --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack a.py
+[file a.py]
+from typing_extensions import TypeVarTuple
+Ts = TypeVarTuple("Ts")
+[out]
+Warning: TypeVarTuple is already enabled by default
+Warning: Unpack is already enabled by default
+== Return code: 0

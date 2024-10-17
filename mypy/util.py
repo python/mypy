@@ -4,20 +4,25 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import os
-import pathlib
 import re
 import shutil
 import sys
 import time
 from importlib import resources as importlib_resources
-from typing import IO, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
+from typing import IO, Any, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
 from typing_extensions import Literal
 
+orjson: Any
 try:
-    import curses
+    import orjson  # type: ignore[import-not-found, no-redef, unused-ignore]
+except ImportError:
+    orjson = None
 
+try:
     import _curses  # noqa: F401
+    import curses
 
     CURSES_ENABLED = True
 except ImportError:
@@ -234,50 +239,91 @@ def get_mypy_comments(source: str) -> list[tuple[int, str]]:
     return results
 
 
-PASS_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="0" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
-  </testcase>
-</testsuite>
+JUNIT_HEADER_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
+<testsuite errors="{errors}" failures="{failures}" name="mypy" skips="0" tests="{tests}" time="{time:.3f}">
 """
 
-FAIL_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+JUNIT_TESTCASE_FAIL_TEMPLATE: Final = """  <testcase classname="mypy" file="{filename}" line="1" name="{name}" time="{time:.3f}">
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
-</testsuite>
 """
 
-ERROR_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+JUNIT_ERROR_TEMPLATE: Final = """  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <error message="mypy produced errors">{text}</error>
   </testcase>
-</testsuite>
 """
+
+JUNIT_TESTCASE_PASS_TEMPLATE: Final = """  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+  </testcase>
+"""
+
+JUNIT_FOOTER: Final = """</testsuite>
+"""
+
+
+def _generate_junit_contents(
+    dt: float,
+    serious: bool,
+    messages_by_file: dict[str | None, list[str]],
+    version: str,
+    platform: str,
+) -> str:
+    from xml.sax.saxutils import escape
+
+    if serious:
+        failures = 0
+        errors = len(messages_by_file)
+    else:
+        failures = len(messages_by_file)
+        errors = 0
+
+    xml = JUNIT_HEADER_TEMPLATE.format(
+        errors=errors,
+        failures=failures,
+        time=dt,
+        # If there are no messages, we still write one "test" indicating success.
+        tests=len(messages_by_file) or 1,
+    )
+
+    if not messages_by_file:
+        xml += JUNIT_TESTCASE_PASS_TEMPLATE.format(time=dt, ver=version, platform=platform)
+    else:
+        for filename, messages in messages_by_file.items():
+            if filename is not None:
+                xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
+                    text=escape("\n".join(messages)),
+                    filename=filename,
+                    time=dt,
+                    name="mypy-py{ver}-{platform} {filename}".format(
+                        ver=version, platform=platform, filename=filename
+                    ),
+                )
+            else:
+                xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
+                    text=escape("\n".join(messages)),
+                    filename="mypy",
+                    time=dt,
+                    name=f"mypy-py{version}-{platform}",
+                )
+
+    xml += JUNIT_FOOTER
+
+    return xml
 
 
 def write_junit_xml(
-    dt: float, serious: bool, messages: list[str], path: str, version: str, platform: str
+    dt: float,
+    serious: bool,
+    messages_by_file: dict[str | None, list[str]],
+    path: str,
+    version: str,
+    platform: str,
 ) -> None:
-    from xml.sax.saxutils import escape
+    xml = _generate_junit_contents(dt, serious, messages_by_file, version, platform)
 
-    if not messages and not serious:
-        xml = PASS_TEMPLATE.format(time=dt, ver=version, platform=platform)
-    elif not serious:
-        xml = FAIL_TEMPLATE.format(
-            text=escape("\n".join(messages)), time=dt, ver=version, platform=platform
-        )
-    else:
-        xml = ERROR_TEMPLATE.format(
-            text=escape("\n".join(messages)), time=dt, ver=version, platform=platform
-        )
-
-    # checks for a directory structure in path and creates folders if needed
+    # creates folders if needed
     xml_dirs = os.path.dirname(os.path.abspath(path))
-    if not os.path.isdir(xml_dirs):
-        os.makedirs(xml_dirs)
+    os.makedirs(xml_dirs, exist_ok=True)
 
     with open(path, "wb") as f:
         f.write(xml.encode("utf-8"))
@@ -306,17 +352,6 @@ class IdMapper:
 def get_prefix(fullname: str) -> str:
     """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
     return fullname.rsplit(".", 1)[0]
-
-
-def get_top_two_prefixes(fullname: str) -> tuple[str, str]:
-    """Return one and two component prefixes of a fully qualified name.
-
-    Given 'a.b.c.d', return ('a', 'a.b').
-
-    If fullname has only one component, return (fullname, fullname).
-    """
-    components = fullname.split(".", 3)
-    return components[0], ".".join(components[:2])
 
 
 def correct_relative_import(
@@ -382,9 +417,43 @@ def replace_object_state(
             pass
 
 
-def is_sub_path(path1: str, path2: str) -> bool:
-    """Given two paths, return if path1 is a sub-path of path2."""
-    return pathlib.Path(path2) in pathlib.Path(path1).parents
+def is_sub_path_normabs(path: str, dir: str) -> bool:
+    """Given two paths, return if path is a sub-path of dir.
+
+    Moral equivalent of: Path(dir) in Path(path).parents
+
+    Similar to the pathlib version:
+    - Treats paths case-sensitively
+    - Does not fully handle unnormalised paths (e.g. paths with "..")
+    - Does not handle a mix of absolute and relative paths
+    Unlike the pathlib version:
+    - Fast
+    - On Windows, assumes input has been slash normalised
+    - Handles even fewer unnormalised paths (e.g. paths with "." and "//")
+
+    As a result, callers should ensure that inputs have had os.path.abspath called on them
+    (note that os.path.abspath will normalise)
+    """
+    if not dir.endswith(os.sep):
+        dir += os.sep
+    return path.startswith(dir)
+
+
+if sys.platform == "linux" or sys.platform == "darwin":
+
+    def os_path_join(path: str, b: str) -> str:
+        # Based off of os.path.join, but simplified to str-only, 2 args and mypyc can compile it.
+        if b.startswith("/") or not path:
+            return b
+        elif path.endswith("/"):
+            return path + b
+        else:
+            return path + "/" + b
+
+else:
+
+    def os_path_join(a: str, p: str) -> str:
+        return os.path.join(a, p)
 
 
 def hard_exit(status: int = 0) -> None:
@@ -421,7 +490,7 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 8):
+    if sys.version_info[:2] < (3, 8):  # noqa: UP036
         sys.exit(
             "Running {name} with Python 3.7 or lower is not supported; "
             "please upgrade to 3.8 or newer".format(name=program)
@@ -505,9 +574,7 @@ def hash_digest(data: bytes) -> str:
     accidental collision, but we don't really care about any of the
     cryptographic properties.
     """
-    # Once we drop Python 3.5 support, we should consider using
-    # blake2b, which is faster.
-    return hashlib.sha256(data).hexdigest()
+    return hashlib.sha1(data).hexdigest()
 
 
 def parse_gray_color(cup: bytes) -> str:
@@ -533,8 +600,12 @@ class FancyFormatter:
     This currently only works on Linux and Mac.
     """
 
-    def __init__(self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool) -> None:
+    def __init__(
+        self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool, hide_success: bool = False
+    ) -> None:
         self.hide_error_codes = hide_error_codes
+        self.hide_success = hide_success
+
         # Check if we are in a human-facing terminal on a supported platform.
         if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
             self.dummy_term = True
@@ -763,6 +834,9 @@ class FancyFormatter:
         n_sources is total number of files passed directly on command line,
         i.e. excluding stubs and followed imports.
         """
+        if self.hide_success:
+            return ""
+
         msg = f"Success: no issues found in {n_sources} source file{plural_s(n_sources)}"
         if not use_color:
             return msg
@@ -820,3 +894,42 @@ def plural_s(s: int | Sized) -> str:
         return "s"
     else:
         return ""
+
+
+def quote_docstring(docstr: str) -> str:
+    """Returns docstring correctly encapsulated in a single or double quoted form."""
+    # Uses repr to get hint on the correct quotes and escape everything properly.
+    # Creating multiline string for prettier output.
+    docstr_repr = "\n".join(re.split(r"(?<=[^\\])\\n", repr(docstr)))
+
+    if docstr_repr.startswith("'"):
+        # Enforce double quotes when it's safe to do so.
+        # That is when double quotes are not in the string
+        # or when it doesn't end with a single quote.
+        if '"' not in docstr_repr[1:-1] and docstr_repr[-2] != "'":
+            return f'"""{docstr_repr[1:-1]}"""'
+        return f"''{docstr_repr}''"
+    else:
+        return f'""{docstr_repr}""'
+
+
+def json_dumps(obj: object, debug: bool = False) -> bytes:
+    if orjson is not None:
+        if debug:
+            return orjson.dumps(obj, option=orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
+        else:
+            # TODO: If we don't sort keys here, testIncrementalInternalScramble fails
+            # We should document exactly what is going on there
+            return orjson.dumps(obj, option=orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
+
+    if debug:
+        return json.dumps(obj, indent=2, sort_keys=True).encode("utf-8")
+    else:
+        # See above for sort_keys comment
+        return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def json_loads(data: bytes) -> Any:
+    if orjson is not None:
+        return orjson.loads(data)
+    return json.loads(data)

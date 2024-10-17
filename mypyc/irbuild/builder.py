@@ -10,6 +10,7 @@ AST node type to code that actually does the bulk of the work. For
 example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -23,6 +24,9 @@ from mypy.nodes import (
     ARG_POS,
     GDEF,
     LDEF,
+    PARAM_SPEC_KIND,
+    TYPE_VAR_KIND,
+    TYPE_VAR_TUPLE_KIND,
     ArgKind,
     CallExpr,
     Decorator,
@@ -43,6 +47,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeAlias,
     TypeInfo,
+    TypeParam,
     UnaryExpr,
     Var,
 )
@@ -59,7 +64,7 @@ from mypy.types import (
     UnionType,
     get_proper_type,
 )
-from mypy.util import split_target
+from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypyc.common import BITMAP_BITS, SELF_NAME, TEMP_ATTR_NAME
 from mypyc.crash import catch_errors
@@ -68,6 +73,7 @@ from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import INVALID_FUNC_DEF, FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
+    NAMESPACE_TYPE_VAR,
     Assign,
     BasicBlock,
     Branch,
@@ -159,12 +165,15 @@ class IRBuilder:
         options: CompilerOptions,
         singledispatch_impls: dict[FuncDef, list[RegisterImplInfo]],
     ) -> None:
-        self.builder = LowLevelIRBuilder(current_module, errors, mapper, options)
+        self.builder = LowLevelIRBuilder(errors, options)
         self.builders = [self.builder]
         self.symtables: list[dict[SymbolNode, SymbolTarget]] = [{}]
         self.runtime_args: list[list[RuntimeArg]] = [[]]
         self.function_name_stack: list[str] = []
         self.class_ir_stack: list[ClassIR] = []
+        # Keep track of whether the next statement in a block is reachable
+        # or not, separately for each block nesting level
+        self.block_reachable_stack: list[bool] = [True]
 
         self.current_module = current_module
         self.mapper = mapper
@@ -172,8 +181,10 @@ class IRBuilder:
         self.graph = graph
         self.ret_types: list[RType] = []
         self.functions: list[FuncIR] = []
+        self.function_names: set[tuple[str | None, str]] = set()
         self.classes: list[ClassIR] = []
         self.final_names: list[tuple[str, RType]] = []
+        self.type_var_names: list[str] = []
         self.callable_class_names: set[str] = set()
         self.options = options
 
@@ -227,12 +238,10 @@ class IRBuilder:
         self.builder.set_module(module_name, module_path)
 
     @overload
-    def accept(self, node: Expression, *, can_borrow: bool = False) -> Value:
-        ...
+    def accept(self, node: Expression, *, can_borrow: bool = False) -> Value: ...
 
     @overload
-    def accept(self, node: Statement) -> None:
-        ...
+    def accept(self, node: Statement) -> None: ...
 
     def accept(self, node: Statement | Expression, *, can_borrow: bool = False) -> Value | None:
         """Transform an expression or a statement.
@@ -375,9 +384,6 @@ class IRBuilder:
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.builder.int_op(type, lhs, rhs, op, line)
 
-    def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
-        return self.builder.compare_tagged(lhs, rhs, op, line)
-
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tuples(lhs, rhs, op, line)
 
@@ -502,6 +508,11 @@ class IRBuilder:
         # Currently the stack always has at least two items: dummy and top-level.
         return len(self.fn_infos) <= 2
 
+    def top_level_fn_info(self) -> FuncInfo | None:
+        if self.non_function_scope():
+            return None
+        return self.fn_infos[2]
+
     def init_final_static(
         self,
         lvalue: Lvalue,
@@ -534,6 +545,21 @@ class IRBuilder:
             module,
             line=line,
             error_msg=f'value for final name "{error_name}" was not set',
+        )
+
+    def init_type_var(self, value: Value, name: str, line: int) -> None:
+        unique_name = name + "___" + str(line)
+        self.type_var_names.append(unique_name)
+        self.add(InitStatic(value, unique_name, self.module_name, namespace=NAMESPACE_TYPE_VAR))
+
+    def load_type_var(self, name: str, line: int) -> Value:
+        return self.add(
+            LoadStatic(
+                object_rprimitive,
+                name + "___" + str(line),
+                self.module_name,
+                namespace=NAMESPACE_TYPE_VAR,
+            )
         )
 
     def load_literal_value(self, val: int | str | bytes | float | complex | bool) -> Value:
@@ -1015,7 +1041,7 @@ class IRBuilder:
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
             return self.load_literal_value(final_var.final_value)
-        elif native:
+        elif native and module_prefix(self.graph, fullname):
             return self.load_final_static(fullname, self.mapper.type_to_rtype(typ), line, name)
         else:
             return None
@@ -1103,9 +1129,7 @@ class IRBuilder:
     def enter(self, fn_info: FuncInfo | str = "") -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
-        self.builder = LowLevelIRBuilder(
-            self.current_module, self.errors, self.mapper, self.options
-        )
+        self.builder = LowLevelIRBuilder(self.errors, self.options)
         self.builder.set_module(self.module_name, self.module_path)
         self.builders.append(self.builder)
         self.symtables.append({})
@@ -1238,14 +1262,15 @@ class IRBuilder:
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
-        self.fn_info.env_class.attributes[var.name] = rtype
-        attr_target = AssignmentTargetAttr(base.curr_env_reg, var.name)
+        name = remangle_redefinition_name(var.name)
+        self.fn_info.env_class.attributes[name] = rtype
+        attr_target = AssignmentTargetAttr(base.curr_env_reg, name)
 
         if reassign:
             # Read the local definition of the variable, and set the corresponding attribute of
             # the environment class' variable to be that value.
             reg = self.read(self.lookup(var), self.fn_info.fitem.line)
-            self.add(SetAttr(base.curr_env_reg, var.name, reg, self.fn_info.fitem.line))
+            self.add(SetAttr(base.curr_env_reg, name, reg, self.fn_info.fitem.line))
 
         # Override the local definition of the variable to instead point at the variable in
         # the environment class.
@@ -1297,6 +1322,14 @@ class IRBuilder:
             and not obj_rtype.class_ir.get_method(expr.name)
         )
 
+    def mark_block_unreachable(self) -> None:
+        """Mark statements in the innermost block being processed as unreachable.
+
+        This should be called after a statement that unconditionally leaves the
+        block, such as 'break' or 'return'.
+        """
+        self.block_reachable_stack[-1] = False
+
     # Lacks a good type because there wasn't a reasonable type in 3.5 :(
     def catch_errors(self, line: int) -> Any:
         return catch_errors(self.module_path, line)
@@ -1309,6 +1342,14 @@ class IRBuilder:
 
     def note(self, msg: str, line: int) -> None:
         self.errors.note(msg, self.module_path, line)
+
+    def add_function(self, func_ir: FuncIR, line: int) -> None:
+        name = (func_ir.class_name, func_ir.name)
+        if name in self.function_names:
+            self.error(f'Duplicate definition of "{name[1]}" not supported by mypyc', line)
+            return
+        self.function_names.add(name)
+        self.functions.append(func_ir)
 
 
 def gen_arg_defaults(builder: IRBuilder) -> None:
@@ -1372,3 +1413,45 @@ def get_call_target_fullname(ref: RefExpr) -> str:
         if isinstance(target, Instance):
             return target.type.fullname
     return ref.fullname
+
+
+def create_type_params(
+    builder: IRBuilder, typing_mod: Value, type_args: list[TypeParam], line: int
+) -> list[Value]:
+    """Create objects representing various kinds of Python 3.12 type parameters.
+
+    The "typing_mod" argument is the "_typing" module object. The type objects
+    are looked up from it.
+
+    The returned list has one item for each "type_args" item, in the same order.
+    Each item is either a TypeVar, TypeVarTuple or ParamSpec instance.
+    """
+    tvs = []
+    type_var_imported: Value | None = None
+    for type_param in type_args:
+        if type_param.kind == TYPE_VAR_KIND:
+            if type_var_imported:
+                # Reuse previously imported value as a minor optimization
+                tvt = type_var_imported
+            else:
+                tvt = builder.py_get_attr(typing_mod, "TypeVar", line)
+                type_var_imported = tvt
+        elif type_param.kind == TYPE_VAR_TUPLE_KIND:
+            tvt = builder.py_get_attr(typing_mod, "TypeVarTuple", line)
+        else:
+            assert type_param.kind == PARAM_SPEC_KIND
+            tvt = builder.py_get_attr(typing_mod, "ParamSpec", line)
+        if type_param.kind != TYPE_VAR_TUPLE_KIND:
+            # To match runtime semantics, pass infer_variance=True
+            tv = builder.py_call(
+                tvt,
+                [builder.load_str(type_param.name), builder.true()],
+                line,
+                arg_kinds=[ARG_POS, ARG_NAMED],
+                arg_names=[None, "infer_variance"],
+            )
+        else:
+            tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
+        builder.init_type_var(tv, type_param.name, line)
+        tvs.append(tv)
+    return tvs

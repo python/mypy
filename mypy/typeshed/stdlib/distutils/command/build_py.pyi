@@ -1,13 +1,13 @@
-from typing import Any
+from typing import Any, ClassVar, Literal
 
 from ..cmd import Command
 from ..util import Mixin2to3 as Mixin2to3
 
 class build_py(Command):
     description: str
-    user_options: Any
-    boolean_options: Any
-    negative_opt: Any
+    user_options: ClassVar[list[tuple[str, str | None, str]]]
+    boolean_options: ClassVar[list[str]]
+    negative_opt: ClassVar[dict[str, str]]
     build_lib: Any
     py_modules: Any
     package: Any
@@ -32,7 +32,7 @@ class build_py(Command):
     def find_all_modules(self): ...
     def get_source_files(self): ...
     def get_module_outfile(self, build_dir, package, module): ...
-    def get_outputs(self, include_bytecode: int = 1): ...
+    def get_outputs(self, include_bytecode: bool | Literal[0, 1] = 1): ...
     def build_module(self, module, module_file, package): ...
     def build_modules(self) -> None: ...
     def build_packages(self) -> None: ...

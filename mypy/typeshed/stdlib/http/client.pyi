@@ -3,7 +3,7 @@ import io
 import ssl
 import sys
 import types
-from _typeshed import ReadableBuffer, SupportsRead, WriteableBuffer
+from _typeshed import ReadableBuffer, SupportsRead, SupportsReadline, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from socket import socket
 from typing import Any, BinaryIO, TypeVar, overload
@@ -33,6 +33,8 @@ __all__ = [
 
 _DataType: TypeAlias = SupportsRead[bytes] | Iterable[ReadableBuffer] | ReadableBuffer
 _T = TypeVar("_T")
+_MessageT = TypeVar("_MessageT", bound=email.message.Message)
+_HeaderValue: TypeAlias = ReadableBuffer | str | int
 
 HTTP_PORT: int
 HTTPS_PORT: int
@@ -97,10 +99,13 @@ NETWORK_AUTHENTICATION_REQUIRED: int
 
 responses: dict[int, str]
 
-class HTTPMessage(email.message.Message):
+class HTTPMessage(email.message.Message[str, str]):
     def getallmatchingheaders(self, name: str) -> list[str]: ...  # undocumented
 
-def parse_headers(fp: io.BufferedIOBase, _class: Callable[[], email.message.Message] = ...) -> HTTPMessage: ...
+@overload
+def parse_headers(fp: SupportsReadline[bytes], _class: Callable[[], _MessageT]) -> _MessageT: ...
+@overload
+def parse_headers(fp: SupportsReadline[bytes]) -> HTTPMessage: ...
 
 class HTTPResponse(io.BufferedIOBase, BinaryIO):  # type: ignore[misc]  # incompatible method definitions in the base classes
     msg: HTTPMessage
@@ -115,6 +120,10 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):  # type: ignore[misc]  # incomp
     chunk_left: int | None
     length: int | None
     will_close: bool
+    # url is set on instances of the class in urllib.request.AbstractHTTPHandler.do_open
+    # to match urllib.response.addinfourl's interface.
+    # It's not set in HTTPResponse.__init__ or any other method on the class
+    url: str
     def __init__(self, sock: socket, debuglevel: int = 0, method: str | None = None, url: str | None = None) -> None: ...
     def peek(self, n: int = -1) -> bytes: ...
     def read(self, amt: int | None = None) -> bytes: ...
@@ -159,17 +168,20 @@ class HTTPConnection:
         method: str,
         url: str,
         body: _DataType | str | None = None,
-        headers: Mapping[str, str] = {},
+        headers: Mapping[str, _HeaderValue] = {},
         *,
         encode_chunked: bool = False,
     ) -> None: ...
     def getresponse(self) -> HTTPResponse: ...
     def set_debuglevel(self, level: int) -> None: ...
+    if sys.version_info >= (3, 12):
+        def get_proxy_response_headers(self) -> HTTPMessage | None: ...
+
     def set_tunnel(self, host: str, port: int | None = None, headers: Mapping[str, str] | None = None) -> None: ...
     def connect(self) -> None: ...
     def close(self) -> None: ...
     def putrequest(self, method: str, url: str, skip_host: bool = False, skip_accept_encoding: bool = False) -> None: ...
-    def putheader(self, header: str, *argument: str) -> None: ...
+    def putheader(self, header: str | bytes, *values: _HeaderValue) -> None: ...
     def endheaders(self, message_body: _DataType | None = None, *, encode_chunked: bool = False) -> None: ...
     def send(self, data: _DataType | str) -> None: ...
 
@@ -180,7 +192,7 @@ class HTTPSConnection(HTTPConnection):
         def __init__(
             self,
             host: str,
-            port: str | None = None,
+            port: int | None = None,
             *,
             timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,

@@ -4,8 +4,7 @@ from ctypes import _CData, _SimpleCData, c_char
 from multiprocessing.context import BaseContext
 from multiprocessing.synchronize import _LockLike
 from types import TracebackType
-from typing import Any, Generic, Protocol, TypeVar, overload
-from typing_extensions import Literal
+from typing import Any, Generic, Literal, Protocol, TypeVar, overload
 
 __all__ = ["RawValue", "RawArray", "Value", "Array", "copy", "synchronized"]
 
@@ -40,12 +39,20 @@ def Array(
 ) -> _CT: ...
 @overload
 def Array(
-    typecode_or_type: type[_CT],
+    typecode_or_type: type[c_char],
     size_or_initializer: int | Sequence[Any],
     *,
     lock: Literal[True] | _LockLike = True,
     ctx: BaseContext | None = None,
-) -> SynchronizedArray[_CT]: ...
+) -> SynchronizedString: ...
+@overload
+def Array(
+    typecode_or_type: type[_SimpleCData[_T]],
+    size_or_initializer: int | Sequence[Any],
+    *,
+    lock: Literal[True] | _LockLike = True,
+    ctx: BaseContext | None = None,
+) -> SynchronizedArray[_T]: ...
 @overload
 def Array(
     typecode_or_type: str,
@@ -68,12 +75,14 @@ def synchronized(obj: _SimpleCData[_T], lock: _LockLike | None = None, ctx: Any 
 @overload
 def synchronized(obj: ctypes.Array[c_char], lock: _LockLike | None = None, ctx: Any | None = None) -> SynchronizedString: ...
 @overload
-def synchronized(obj: ctypes.Array[_CT], lock: _LockLike | None = None, ctx: Any | None = None) -> SynchronizedArray[_CT]: ...
+def synchronized(
+    obj: ctypes.Array[_SimpleCData[_T]], lock: _LockLike | None = None, ctx: Any | None = None
+) -> SynchronizedArray[_T]: ...
 @overload
 def synchronized(obj: _CT, lock: _LockLike | None = None, ctx: Any | None = None) -> SynchronizedBase[_CT]: ...
 
 class _AcquireFunc(Protocol):
-    def __call__(self, block: bool = ..., timeout: float | None = ...) -> bool: ...
+    def __call__(self, block: bool = ..., timeout: float | None = ..., /) -> bool: ...
 
 class SynchronizedBase(Generic[_CT]):
     acquire: _AcquireFunc
@@ -84,19 +93,36 @@ class SynchronizedBase(Generic[_CT]):
     def get_lock(self) -> _LockLike: ...
     def __enter__(self) -> bool: ...
     def __exit__(
-        self, __exc_type: type[BaseException] | None, __exc_val: BaseException | None, __exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None, /
     ) -> None: ...
 
 class Synchronized(SynchronizedBase[_SimpleCData[_T]], Generic[_T]):
     value: _T
 
-class SynchronizedArray(SynchronizedBase[ctypes.Array[_CT]], Generic[_CT]):
+class SynchronizedArray(SynchronizedBase[ctypes.Array[_SimpleCData[_T]]], Generic[_T]):
     def __len__(self) -> int: ...
-    def __getitem__(self, i: int) -> _CT: ...
-    def __setitem__(self, i: int, value: _CT) -> None: ...
-    def __getslice__(self, start: int, stop: int) -> list[_CT]: ...
-    def __setslice__(self, start: int, stop: int, values: Iterable[_CT]) -> None: ...
+    @overload
+    def __getitem__(self, i: slice) -> list[_T]: ...
+    @overload
+    def __getitem__(self, i: int) -> _T: ...
+    @overload
+    def __setitem__(self, i: slice, value: Iterable[_T]) -> None: ...
+    @overload
+    def __setitem__(self, i: int, value: _T) -> None: ...
+    def __getslice__(self, start: int, stop: int) -> list[_T]: ...
+    def __setslice__(self, start: int, stop: int, values: Iterable[_T]) -> None: ...
 
-class SynchronizedString(SynchronizedArray[c_char]):
+class SynchronizedString(SynchronizedArray[bytes]):
+    @overload  # type: ignore[override]
+    def __getitem__(self, i: slice) -> bytes: ...
+    @overload
+    def __getitem__(self, i: int) -> bytes: ...
+    @overload  # type: ignore[override]
+    def __setitem__(self, i: slice, value: bytes) -> None: ...
+    @overload
+    def __setitem__(self, i: int, value: bytes) -> None: ...
+    def __getslice__(self, start: int, stop: int) -> bytes: ...  # type: ignore[override]
+    def __setslice__(self, start: int, stop: int, values: bytes) -> None: ...  # type: ignore[override]
+
     value: bytes
     raw: bytes

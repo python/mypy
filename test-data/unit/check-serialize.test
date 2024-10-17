@@ -740,7 +740,6 @@ main:4: note: Revealed type is "def (x: builtins.int) -> Tuple[builtins.int, fal
 --
 
 [case testSerializeOptionalType]
-# flags: --strict-optional
 import a
 [file a.py]
 import b

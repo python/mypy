@@ -1,4 +1,6 @@
-from typing import Any
+from _typeshed import Unused
+from collections.abc import Callable
+from typing import Any, ClassVar
 
 from ..cmd import Command
 
@@ -6,9 +8,9 @@ def show_compilers() -> None: ...
 
 class build(Command):
     description: str
-    user_options: Any
-    boolean_options: Any
-    help_options: Any
+    user_options: ClassVar[list[tuple[str, str | None, str]]]
+    boolean_options: ClassVar[list[str]]
+    help_options: ClassVar[list[tuple[str, str | None, str, Callable[[], Unused]]]]
     build_base: str
     build_purelib: Any
     build_platlib: Any
@@ -28,4 +30,5 @@ class build(Command):
     def has_c_libraries(self): ...
     def has_ext_modules(self): ...
     def has_scripts(self): ...
-    sub_commands: Any
+    # Any to work around variance issues
+    sub_commands: ClassVar[list[tuple[str, Callable[[Any], bool] | None]]]

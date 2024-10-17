@@ -65,7 +65,6 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
         join = posixpath.join
 
     out_section_missing = case.suite.required_out_section
-    normalize_output = True
 
     files: list[tuple[str, str]] = []  # path and contents
     output_files: list[tuple[str, str | Pattern[str]]] = []  # output path and contents
@@ -156,8 +155,6 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
 
             version_check = True
             for arg in args:
-                if arg == "skip-path-normalization":
-                    normalize_output = False
                 if arg.startswith("version"):
                     compare_op = arg[7:9]
                     if compare_op not in {">=", "=="}:
@@ -185,7 +182,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                         version_check = sys.version_info[: len(version)] == version
             if version_check:
                 tmp_output = [expand_variables(line) for line in item.data]
-                if os.path.sep == "\\" and normalize_output:
+                if os.path.sep == "\\" and case.normalize_output:
                     tmp_output = [fix_win_path(line) for line in tmp_output]
                 if item.id == "out" or item.id == "out1":
                     output = tmp_output
@@ -239,7 +236,6 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     case.expected_rechecked_modules = rechecked_modules
     case.deleted_paths = deleted_paths
     case.triggered = triggered or []
-    case.normalize_output = normalize_output
     case.expected_fine_grained_targets = targets
     case.test_modules = test_modules
 
@@ -269,7 +265,7 @@ class DataDrivenTestCase(pytest.Item):
 
     # Whether or not we should normalize the output to standardize things like
     # forward vs backward slashes in file paths for Windows vs Linux.
-    normalize_output = True
+    normalize_output: bool
 
     # Extra attributes used by some tests.
     last_line: int
@@ -281,10 +277,12 @@ class DataDrivenTestCase(pytest.Item):
         self,
         parent: DataSuiteCollector,
         suite: DataSuite,
+        *,
         file: str,
         name: str,
         writescache: bool,
         only_when: str,
+        normalize_output: bool,
         platform: str | None,
         skip: bool,
         xfail: bool,
@@ -296,6 +294,7 @@ class DataDrivenTestCase(pytest.Item):
         self.file = file
         self.writescache = writescache
         self.only_when = only_when
+        self.normalize_output = normalize_output
         if (platform == "windows" and sys.platform != "win32") or (
             platform == "posix" and sys.platform == "win32"
         ):
@@ -621,11 +620,13 @@ def pytest_addoption(parser: Any) -> None:
     )
 
 
-def pytest_configure(config: pytest.Config) -> None:
-    if config.getoption("--update-data") and config.getoption("--numprocesses", default=1) > 1:
-        raise pytest.UsageError(
-            "--update-data incompatible with parallelized tests; re-run with -n 1"
-        )
+@pytest.hookimpl(tryfirst=True)
+def pytest_cmdline_main(config: pytest.Config) -> None:
+    if config.getoption("--collectonly"):
+        return
+    # --update-data is not compatible with parallelized tests, disable parallelization
+    if config.getoption("--update-data"):
+        config.option.numprocesses = 0
 
 
 # This function name is special to pytest.  See
@@ -641,9 +642,7 @@ def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | N
             # Non-None result means this obj is a test case.
             # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
-            return DataSuiteCollector.from_parent(  # type: ignore[no-untyped-call]
-                parent=collector, name=name
-            )
+            return DataSuiteCollector.from_parent(parent=collector, name=name)
     return None
 
 
@@ -651,6 +650,7 @@ _case_name_pattern = re.compile(
     r"(?P<name>[a-zA-Z_0-9]+)"
     r"(?P<writescache>-writescache)?"
     r"(?P<only_when>-only_when_cache|-only_when_nocache)?"
+    r"(?P<skip_path_normalization>-skip_path_normalization)?"
     r"(-(?P<platform>posix|windows))?"
     r"(?P<skip>-skip)?"
     r"(?P<xfail>-xfail)?"
@@ -694,6 +694,7 @@ def split_test_cases(
             platform=m.group("platform"),
             skip=bool(m.group("skip")),
             xfail=bool(m.group("xfail")),
+            normalize_output=not m.group("skip_path_normalization"),
             data=data,
             line=line_no,
         )

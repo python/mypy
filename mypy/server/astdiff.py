@@ -74,6 +74,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.semanal_shared import find_dataclass_transform_spec
+from mypy.state import state
 from mypy.types import (
     AnyType,
     CallableType,
@@ -218,7 +219,9 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sym
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname) != name_prefix:
                 # This is a cross-reference to a node defined in another module.
-                result[name] = ("CrossRef", common)
+                # Include the node kind (FuncDef, Decorator, TypeInfo, ...), so that we will
+                # reprocess when a *new* node is created instead of merging an existing one.
+                result[name] = ("CrossRef", common, type(node).__name__)
             else:
                 result[name] = snapshot_definition(node, common)
     return result
@@ -253,6 +256,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             signature,
             is_trivial_body,
             dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
+            node.deprecated if isinstance(node, FuncDef) else None,
         )
     elif isinstance(node, Var):
         return ("Var", common, snapshot_optional_type(node.type), node.is_final)
@@ -377,11 +381,20 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return snapshot_simple_type(typ)
 
     def visit_instance(self, typ: Instance) -> SnapshotItem:
+        extra_attrs: SnapshotItem
+        if typ.extra_attrs:
+            extra_attrs = (
+                tuple(sorted((k, v.accept(self)) for k, v in typ.extra_attrs.attrs.items())),
+                tuple(typ.extra_attrs.immutable),
+            )
+        else:
+            extra_attrs = ()
         return (
             "Instance",
             encode_optional_str(typ.type.fullname),
             snapshot_types(typ.args),
             ("None",) if typ.last_known_value is None else snapshot_type(typ.last_known_value),
+            extra_attrs,
         )
 
     def visit_type_var(self, typ: TypeVarType) -> SnapshotItem:
@@ -456,7 +469,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 tv = v.copy_modified(id=tid)
             tvs.append(tv)
             tvmap[v.id] = tv
-        return expand_type(typ, tvmap).copy_modified(variables=tvs)
+        with state.strict_optional_set(True):
+            return expand_type(typ, tvmap).copy_modified(variables=tvs)
 
     def visit_tuple_type(self, typ: TupleType) -> SnapshotItem:
         return ("TupleType", snapshot_types(typ.items))
@@ -464,7 +478,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
     def visit_typeddict_type(self, typ: TypedDictType) -> SnapshotItem:
         items = tuple((key, snapshot_type(item_type)) for key, item_type in typ.items.items())
         required = tuple(sorted(typ.required_keys))
-        return ("TypedDictType", items, required)
+        readonly = tuple(sorted(typ.readonly_keys))
+        return ("TypedDictType", items, required, readonly)
 
     def visit_literal_type(self, typ: LiteralType) -> SnapshotItem:
         return ("LiteralType", snapshot_type(typ.fallback), typ.value)

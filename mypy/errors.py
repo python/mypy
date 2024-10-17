@@ -8,7 +8,8 @@ from typing import Callable, Final, Iterable, NoReturn, Optional, TextIO, Tuple,
 from typing_extensions import Literal, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
-from mypy.errorcodes import IMPORT, ErrorCode
+from mypy.error_formatter import ErrorFormatter
+from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode, mypy_error_codes
 from mypy.message_registry import ErrorMessage
 from mypy.options import Options
 from mypy.scope import Scope
@@ -19,7 +20,7 @@ T = TypeVar("T")
 
 # Show error codes for some note-level messages (these usually appear alone
 # and not as a comment for a previous error-level message).
-SHOW_NOTE_CODES: Final = {codes.ANNOTATION_UNCHECKED}
+SHOW_NOTE_CODES: Final = {codes.ANNOTATION_UNCHECKED, codes.DEPRECATED}
 
 # Do not add notes with links to error code docs to errors with these codes.
 # We can tweak this set as we get more experience about what is helpful and what is not.
@@ -170,7 +171,7 @@ class ErrorWatcher:
         *,
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
         save_filtered_errors: bool = False,
-    ):
+    ) -> None:
         self.errors = errors
         self._has_new_errors = False
         self._filter = filter_errors
@@ -193,6 +194,9 @@ class ErrorWatcher:
         Return True to filter out the error, preventing it from being seen by other
         ErrorWatcher further down the stack and from being recorded by Errors
         """
+        if info.code == codes.DEPRECATED:
+            return False
+
         self._has_new_errors = True
         if isinstance(self._filter, bool):
             should_filter = self._filter
@@ -469,7 +473,7 @@ class Errors:
         self.error_info_map[file].append(info)
         if info.blocker:
             self.has_blockers.add(file)
-        if info.code is IMPORT:
+        if info.code in (IMPORT, IMPORT_UNTYPED, IMPORT_NOT_FOUND):
             self.seen_import_error = True
 
     def _filter_error(self, file: str, info: ErrorInfo) -> bool:
@@ -510,7 +514,11 @@ class Errors:
             if info.message in self.only_once_messages:
                 return
             self.only_once_messages.add(info.message)
-        if self.seen_import_error and info.code is not IMPORT and self.has_many_errors():
+        if (
+            self.seen_import_error
+            and info.code not in (IMPORT, IMPORT_UNTYPED, IMPORT_NOT_FOUND)
+            and self.has_many_errors()
+        ):
             # Missing stubs can easily cause thousands of errors about
             # Any types, especially when upgrading to mypy 0.900,
             # which no longer bundles third-party library stubs. Avoid
@@ -556,6 +564,7 @@ class Errors:
             and not self.options.hide_error_codes
             and info.code is not None
             and info.code not in HIDE_LINK_CODES
+            and info.code.code in mypy_error_codes
         ):
             message = f"See {BASE_RTD_URL}-{info.code.code} for more info"
             if message in self.only_once_messages:
@@ -797,7 +806,7 @@ class Errors:
 
     def is_errors_for_file(self, file: str) -> bool:
         """Are there any errors for the given file?"""
-        return file in self.error_info_map
+        return file in self.error_info_map and file not in self.ignored_files
 
     def prefer_simple_messages(self) -> bool:
         """Should we generate simple/fast error messages?
@@ -829,7 +838,7 @@ class Errors:
         )
 
     def format_messages(
-        self, error_info: list[ErrorInfo], source_lines: list[str] | None
+        self, error_tuples: list[ErrorTuple], source_lines: list[str] | None
     ) -> list[str]:
         """Return a string list that represents the error messages.
 
@@ -838,9 +847,6 @@ class Errors:
         severity 'error').
         """
         a: list[str] = []
-        error_info = [info for info in error_info if not info.hidden]
-        errors = self.render_messages(self.sort_messages(error_info))
-        errors = self.remove_duplicates(errors)
         for (
             file,
             line,
@@ -851,7 +857,7 @@ class Errors:
             message,
             allow_dups,
             code,
-        ) in errors:
+        ) in error_tuples:
             s = ""
             if file is not None:
                 if self.options.show_column_numbers and line >= 0 and column >= 0:
@@ -896,19 +902,44 @@ class Errors:
                     a.append(" " * (DEFAULT_SOURCE_OFFSET + column) + marker)
         return a
 
-    def file_messages(self, path: str) -> list[str]:
+    def file_messages(self, path: str, formatter: ErrorFormatter | None = None) -> list[str]:
         """Return a string list of new error messages from a given file.
 
         Use a form suitable for displaying to the user.
         """
         if path not in self.error_info_map:
             return []
+
+        error_info = self.error_info_map[path]
+        error_info = [info for info in error_info if not info.hidden]
+        error_tuples = self.render_messages(self.sort_messages(error_info))
+        error_tuples = self.remove_duplicates(error_tuples)
+
+        if formatter is not None:
+            errors = create_errors(error_tuples)
+            return [formatter.report_error(err) for err in errors]
+
         self.flushed_files.add(path)
         source_lines = None
-        if self.options.pretty:
-            assert self.read_source
-            source_lines = self.read_source(path)
-        return self.format_messages(self.error_info_map[path], source_lines)
+        if self.options.pretty and self.read_source:
+            # Find shadow file mapping and read source lines if a shadow file exists for the given path.
+            # If shadow file mapping is not found, read source lines
+            mapped_path = self.find_shadow_file_mapping(path)
+            if mapped_path:
+                source_lines = self.read_source(mapped_path)
+            else:
+                source_lines = self.read_source(path)
+        return self.format_messages(error_tuples, source_lines)
+
+    def find_shadow_file_mapping(self, path: str) -> str | None:
+        """Return the shadow file path for a given source file path or None."""
+        if self.options.shadow_file is None:
+            return None
+
+        for i in self.options.shadow_file:
+            if i[0] == path:
+                return i[1]
+        return None
 
     def new_messages(self) -> list[str]:
         """Return a string list of new error messages.
@@ -1274,3 +1305,56 @@ def report_internal_error(
     # Exit.  The caller has nothing more to say.
     # We use exit code 2 to signal that this is no ordinary error.
     raise SystemExit(2)
+
+
+class MypyError:
+    def __init__(
+        self,
+        file_path: str,
+        line: int,
+        column: int,
+        message: str,
+        errorcode: ErrorCode | None,
+        severity: Literal["error", "note"],
+    ) -> None:
+        self.file_path = file_path
+        self.line = line
+        self.column = column
+        self.message = message
+        self.errorcode = errorcode
+        self.severity = severity
+        self.hints: list[str] = []
+
+
+# (file_path, line, column)
+_ErrorLocation = Tuple[str, int, int]
+
+
+def create_errors(error_tuples: list[ErrorTuple]) -> list[MypyError]:
+    errors: list[MypyError] = []
+    latest_error_at_location: dict[_ErrorLocation, MypyError] = {}
+
+    for error_tuple in error_tuples:
+        file_path, line, column, _, _, severity, message, _, errorcode = error_tuple
+        if file_path is None:
+            continue
+
+        assert severity in ("error", "note")
+        if severity == "note":
+            error_location = (file_path, line, column)
+            error = latest_error_at_location.get(error_location)
+            if error is None:
+                # This is purely a note, with no error correlated to it
+                error = MypyError(file_path, line, column, message, errorcode, severity="note")
+                errors.append(error)
+                continue
+
+            error.hints.append(message)
+
+        else:
+            error = MypyError(file_path, line, column, message, errorcode, severity="error")
+            errors.append(error)
+            error_location = (file_path, line, column)
+            latest_error_at_location[error_location] = error
+
+    return errors

@@ -7,16 +7,17 @@ from collections.abc import Callable
 from logging import FileHandler, Handler, LogRecord
 from re import Pattern
 from socket import SocketKind, socket
-from typing import Any, ClassVar, Protocol, TypeVar
+from threading import Thread
+from typing import Any, ClassVar, Final, Protocol, TypeVar
 
 _T = TypeVar("_T")
 
-DEFAULT_TCP_LOGGING_PORT: int
-DEFAULT_UDP_LOGGING_PORT: int
-DEFAULT_HTTP_LOGGING_PORT: int
-DEFAULT_SOAP_LOGGING_PORT: int
-SYSLOG_UDP_PORT: int
-SYSLOG_TCP_PORT: int
+DEFAULT_TCP_LOGGING_PORT: Final[int]
+DEFAULT_UDP_LOGGING_PORT: Final[int]
+DEFAULT_HTTP_LOGGING_PORT: Final[int]
+DEFAULT_SOAP_LOGGING_PORT: Final[int]
+SYSLOG_UDP_PORT: Final[int]
+SYSLOG_TCP_PORT: Final[int]
 
 class WatchedFileHandler(FileHandler):
     dev: int  # undocumented
@@ -45,7 +46,7 @@ class BaseRotatingHandler(FileHandler):
     def rotate(self, source: str, dest: str) -> None: ...
 
 class RotatingFileHandler(BaseRotatingHandler):
-    maxBytes: str  # undocumented
+    maxBytes: int  # undocumented
     backupCount: int  # undocumented
     if sys.version_info >= (3, 9):
         def __init__(
@@ -252,7 +253,7 @@ class HTTPHandler(Handler):
 
 class _QueueLike(Protocol[_T]):
     def get(self) -> _T: ...
-    def put_nowait(self, __item: _T) -> None: ...
+    def put_nowait(self, item: _T, /) -> None: ...
 
 class QueueHandler(Handler):
     queue: _QueueLike[Any]
@@ -264,6 +265,7 @@ class QueueListener:
     handlers: tuple[Handler, ...]  # undocumented
     respect_handler_level: bool  # undocumented
     queue: _QueueLike[Any]  # undocumented
+    _thread: Thread | None  # undocumented
     def __init__(self, queue: _QueueLike[Any], *handlers: Handler, respect_handler_level: bool = False) -> None: ...
     def dequeue(self, block: bool) -> LogRecord: ...
     def prepare(self, record: LogRecord) -> Any: ...
