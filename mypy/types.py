@@ -1841,7 +1841,6 @@ class CallableType(FunctionLike):
         # (this is used for error messages)
         "imprecise_arg_kinds",
         "unpack_kwargs",  # Was an Unpack[...] with **kwargs used to define this callable?
-        "param_spec_parts_bound",  # Hack for functools.partial: allow early binding
     )
 
     def __init__(
@@ -1868,7 +1867,6 @@ class CallableType(FunctionLike):
         from_concatenate: bool = False,
         imprecise_arg_kinds: bool = False,
         unpack_kwargs: bool = False,
-        param_spec_parts_bound: tuple[bool, bool] = (False, False),
     ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
@@ -1895,7 +1893,6 @@ class CallableType(FunctionLike):
         self.from_type_type = from_type_type
         self.from_concatenate = from_concatenate
         self.imprecise_arg_kinds = imprecise_arg_kinds
-        self.param_spec_parts_bound = param_spec_parts_bound
         if not bound_args:
             bound_args = ()
         self.bound_args = bound_args
@@ -1942,7 +1939,6 @@ class CallableType(FunctionLike):
         from_concatenate: Bogus[bool] = _dummy,
         imprecise_arg_kinds: Bogus[bool] = _dummy,
         unpack_kwargs: Bogus[bool] = _dummy,
-        param_spec_parts_bound: Bogus[tuple[bool, bool]] = _dummy,
     ) -> CT:
         modified = CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
@@ -1974,11 +1970,6 @@ class CallableType(FunctionLike):
                 else self.imprecise_arg_kinds
             ),
             unpack_kwargs=unpack_kwargs if unpack_kwargs is not _dummy else self.unpack_kwargs,
-            param_spec_parts_bound=(
-                param_spec_parts_bound
-                if param_spec_parts_bound is not _dummy
-                else self.param_spec_parts_bound
-            ),
         )
         # Optimization: Only NewTypes are supported as subtypes since
         # the class is effectively final, so we can use a cast safely.

@@ -202,6 +202,7 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
             continue
         can_infer_ids.update({tv.id for tv in get_all_type_vars(arg_type)})
 
+    # special_sig="partial" allows omission of args/kwargs typed with ParamSpec
     defaulted = fn_type.copy_modified(
         arg_kinds=[
             (
@@ -297,14 +298,17 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
         arg_kinds=partial_kinds,
         arg_names=partial_names,
         ret_type=ret_type,
-        param_spec_parts_bound=(
-            ArgKind.ARG_STAR in actual_arg_kinds,
-            ArgKind.ARG_STAR2 in actual_arg_kinds,
-        ),
+        special_sig="partial",
     )
 
     ret = ctx.api.named_generic_type(PARTIAL, [ret_type])
     ret = ret.copy_with_extra_attr("__mypy_partial", partially_applied)
+    if partially_applied.param_spec():
+        ret = ret.copy_with_extra_attr(
+            "__mypy_partial_paramspec_args_bound", ArgKind.ARG_STAR in actual_arg_kinds
+        ).copy_with_extra_attr(
+            "__mypy_partial_paramspec_kwargs_bound", ArgKind.ARG_STAR2 in actual_arg_kinds
+        )
     return ret
 
 
@@ -319,7 +323,8 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
     ):
         return ctx.default_return_type
 
-    partial_type = ctx.type.extra_attrs.attrs["__mypy_partial"]
+    extra_attrs = ctx.type.extra_attrs.attrs
+    partial_type = extra_attrs["__mypy_partial"]
     if len(ctx.arg_types) != 2:  # *args, **kwargs
         return ctx.default_return_type
 
@@ -337,11 +342,24 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
             actual_arg_kinds.append(ctx.arg_kinds[i][j])
             actual_arg_names.append(ctx.arg_names[i][j])
 
-    result = ctx.api.expr_checker.check_call(
+    result, _ = ctx.api.expr_checker.check_call(
         callee=partial_type,
         args=actual_args,
         arg_kinds=actual_arg_kinds,
         arg_names=actual_arg_names,
         context=ctx.context,
     )
-    return result[0]
+    args_bound = extra_attrs.get("__mypy_partial_paramspec_args_bound")
+    kwargs_bound = extra_attrs.get("__mypy_partial_paramspec_kwargs_bound")
+    if args_bound is None or kwargs_bound is None:
+        return result
+    # ensure *args: P.args
+    if not args_bound and ArgKind.ARG_STAR not in actual_arg_kinds:
+        ctx.api.expr_checker.msg.too_few_arguments(partial_type, ctx.context, actual_arg_names)
+    elif args_bound and ArgKind.ARG_STAR in actual_arg_kinds:
+        ctx.api.expr_checker.msg.too_many_arguments(partial_type, ctx.context)
+    # ensure **kwargs: P.kwargs
+    if not kwargs_bound and ArgKind.ARG_STAR2 not in actual_arg_kinds:
+        ctx.api.expr_checker.msg.too_few_arguments(partial_type, ctx.context, actual_arg_names)
+
+    return result

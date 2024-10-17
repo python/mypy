@@ -2356,27 +2356,28 @@ def run(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwarg
 
 def run2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, **kwargs)
+    p = [""]
+    func2(1, *p)  # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
+    func2(1, 2, *p)  # E: Argument 2 has incompatible type "int"; expected "P.args" \
+                     # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
     return func2(1, *args)
 
 def run3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, 1, *args)
+    d = {"":""}
+    func2(**d)  # E: Argument 1 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
     return func2(**kwargs)
 
 def run_bad(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, *args)  # E: Argument 1 has incompatible type "*P.args"; expected "int"
-    return func2(1, **kwargs)  # E: Too many arguments \
-                               # E: Argument 1 has incompatible type "int"; expected "P.args"
+    return func2(1, **kwargs)  # E: Argument 1 has incompatible type "int"; expected "P.args"
 
 def run_bad2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, 1, *args)
-    return func2(1, **kwargs)  # E: Too many arguments \
-                               # E: Argument 1 has incompatible type "int"; expected "P.args"
+    return func2(1, **kwargs)  # E: Argument 1 has incompatible type "int"; expected "P.args"
 
 def run_bad3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, 1, *args)
-    return func2(1, **kwargs)  # E: Too many arguments \
-                               # E: Argument 1 has incompatible type "int"; expected "P.args"
-
-
+    return func2(1, **kwargs)  # E: Argument 1 has incompatible type "int"; expected "P.args"
 
 [builtins fixtures/paramspec.pyi]
