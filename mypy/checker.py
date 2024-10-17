@@ -316,8 +316,8 @@ class InstanceDeprecatedVisitor(MixedTraverserVisitor):
         super().visit_instance(t)
         if t.type and not (
             isinstance(defn := self.context, FuncDef)
-            and defn.info and
-            (defn.info.fullname == t.type.fullname)
+            and defn.info
+            and (defn.info.fullname == t.type.fullname)
         ):
             self.typechecker.check_deprecated(node=t.type, context=t)
 
