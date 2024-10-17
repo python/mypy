@@ -1764,7 +1764,7 @@ class B(A):
     x = 1  # E: Cannot override writable attribute "x" with a final one
 
 class A1(Enum):
-    x: int = 1
+    x: int = 1  # E: Type annotations are not allowed for enum members
 class B1(A1):  # E: Cannot extend enum with existing members: "A1"
     pass
 
@@ -2185,3 +2185,24 @@ reveal_type(A.y.value)  # N: Revealed type is "Literal[2]?"
 def some_a(a: A):
     reveal_type(a.value)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
 [builtins fixtures/dict.pyi]
+
+
+[case testErrorOnAnnotatedMember]
+from enum import Enum
+
+class Medal(Enum):
+    gold: int = 1  # E: Type annotations are not allowed for enum members
+    silver: str = 2  # E: Type annotations are not allowed for enum members \
+                     # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    bronze = 3
+
+
+[case testEnumMemberWithPlaceholder]
+from enum import Enum
+
+class Pet(Enum):
+    CAT = ...
+    DOG: str = ...  # E: Type annotations are not allowed for enum members \
+                    # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "str")
+
+[file test.pyi]

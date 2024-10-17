@@ -270,8 +270,8 @@ from enum import Enum
 
 class TestEnum(Enum):
     _order_ = "a b"
-    a : int = 1
-    b : int = 2
+    a = 1
+    b = 2
 
     @classmethod
     def test(cls) -> int:
