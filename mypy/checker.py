@@ -5376,9 +5376,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         del type_map[expr]
 
     def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
-        sym = self.lookup_qualified(o.name.fullname)
-        if isinstance(sym.node, TypeAlias):
-            self.check_typevar_defaults(sym.node.alias_tvars)
+        if o.alias_node:
+            self.check_typevar_defaults(o.alias_node.alias_tvars)
 
         with self.msg.filter_errors():
             self.expr_checker.accept(o.value)

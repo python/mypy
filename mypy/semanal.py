@@ -5535,6 +5535,7 @@ class SemanticAnalyzer(
                 eager=eager,
                 python_3_12_type_alias=True,
             )
+            s.alias_node = alias_node
 
             if (
                 existing
