@@ -150,8 +150,9 @@ def check_value_type(
 ) -> None:
     if not is_immutable(cdef) or not cdef.info.is_final:
         module = module_by_fullname.get(cdef.info.module_name)
+        path = module.path if module else ""
         # Because the value type have semantic differences we can not just ignore it
-        errors.error("Value types must be immutable and final", module.path, cdef.line)
+        errors.error("Value types must be immutable and final", path, cdef.line)
 
     for mtd_name in (
         "__iter__",
