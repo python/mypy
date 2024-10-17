@@ -1218,20 +1218,12 @@ class StubtestMiscUnit(unittest.TestCase):
         )
 
     def test_config_file_strict(self) -> None:
-        config_file = (
-            "[mypy]\n"
-            "strict = True\n"
-        )
+        config_file = "[mypy]\n" "strict = True\n"
         output = run_stubtest(stub="", runtime="", options=[], config_file=config_file)
         assert output == (
             "note: warn_unused_configs = True [global]\n"
             "note: warn_unused_ignores = True [global]\n"
         )
-        config_file = (
-            "[mypy-test_module.*]\n"
-            "strict = True\n"
-        )
+        config_file = "[mypy-test_module.*]\n" "strict = True\n"
         output = run_stubtest(stub="", runtime="", options=[], config_file=config_file)
-        assert output == (
-            "note: warn_unused_ignores = True [test_module.*]\n"
-        )
+        assert output == ("note: warn_unused_ignores = True [test_module.*]\n")

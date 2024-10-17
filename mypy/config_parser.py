@@ -177,11 +177,13 @@ toml_config_types.update(
 )
 
 
-def parse_config_file(options: Options,
-                      strict_flag_assignments: Sequence[Tuple[str, object]],
-                      filename: Optional[str],
-                      stdout: Optional[TextIO] = None,
-                      stderr: Optional[TextIO] = None) -> None:
+def parse_config_file(
+    options: Options,
+    strict_flag_assignments: Sequence[Tuple[str, object]],
+    filename: Optional[str],
+    stdout: Optional[TextIO] = None,
+    stderr: Optional[TextIO] = None,
+) -> None:
     """Parse a config file into an Options object.
 
     Errors are written to stderr but are not fatal.
@@ -233,7 +235,7 @@ def parse_config_file(options: Options,
     def set_strict_flags(updates: Dict[str, object]) -> None:
         updates.update(strict_flag_assignments)
 
-    if 'mypy' not in parser:
+    if "mypy" not in parser:
         if filename or file_read not in defaults.SHARED_CONFIG_FILES:
             print(f"{file_read}: No [mypy] section in config file", file=stderr)
     else:
@@ -255,7 +257,8 @@ def parse_config_file(options: Options,
         if name.startswith("mypy-"):
             prefix = get_prefix(file_read, name)
             updates, report_dirs = parse_section(
-                prefix, options, set_strict_flags_section, section, config_types, stderr)
+                prefix, options, set_strict_flags_section, section, config_types, stderr
+            )
             if report_dirs:
                 print(
                     "%sPer-module sections should not specify reports (%s)"
@@ -385,12 +388,14 @@ def destructure_overrides(toml_data: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def parse_section(prefix: str, template: Options,
-                  set_strict_flags: Callable[[Dict[str, object]], None],
-                  section: Mapping[str, Any],
-                  config_types: Dict[str, Any],
-                  stderr: TextIO = sys.stderr
-                  ) -> Tuple[Dict[str, object], Dict[str, str]]:
+def parse_section(
+    prefix: str,
+    template: Options,
+    set_strict_flags: Callable[[Dict[str, object]], None],
+    section: Mapping[str, Any],
+    config_types: Dict[str, Any],
+    stderr: TextIO = sys.stderr,
+) -> Tuple[Dict[str, object], Dict[str, str]]:
     """Parse one section of a config file.
 
     Returns a dict of option values encountered, and a dict of report directories.

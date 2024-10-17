@@ -150,7 +150,7 @@ class FineGrainedSuite(DataSuite):
             options.follow_imports = "error"
 
         for name, _ in testcase.files:
-            if 'mypy.ini' in name or 'pyproject.toml' in name:
+            if "mypy.ini" in name or "pyproject.toml" in name:
                 parse_config_file(options, [], name)
                 break
 
