@@ -782,7 +782,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "deco_line",
         "is_trivial_body",
         "is_mypy_only",
-        # Present only when a function is decorated with @typing.datasclass_transform or similar
+        # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
         "docstring",
         "deprecated",
