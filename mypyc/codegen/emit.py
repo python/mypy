@@ -362,12 +362,7 @@ class Emitter:
         return f"bitmap{n + 1}"
 
     def attr_bitmap_expr(self, obj: str, cl: RInstance, index: int) -> str:
-        """
-        Return reference to the attribute definedness bitmap.
-
-        If a_ref is True, assume object's type is a reference.
-        Otherwise, the object type is indicated by the class IR.
-        """
+        """Return reference to the attribute definedness bitmap."""
         attr = self.bitmap_field(index)
         if cl.is_unboxed:
             return f"{obj}.{attr}"

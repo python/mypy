@@ -807,7 +807,7 @@ class RStruct(RType):
 class RInstance(RType):
     """Instance of user-defined class (compiled to C extension class).
 
-    The runtime representation is typically 'PyObject *', and these are
+    The runtime representation is 'PyObject *', and these are always
     boxed and thus reference-counted.
 
     These support fast method calls and fast attribute access using
