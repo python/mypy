@@ -192,3 +192,74 @@ def test_value_type_in_tuple() -> None:
     assert l[0] != A(1, 2)
     assert l[0].x == 1
     assert l[1] == "test"
+
+[case testValueTypeInDictAndDunders]
+from typing import Dict, final, Final
+from mypy_extensions import mypyc_attr, i32
+
+@final
+@mypyc_attr(value_type=True)
+class A:
+    def __init__(self, x: i32, y: i32) -> None:
+        self.x: Final = x
+
+    def __hash__(self) -> int:
+        return hash(self.x)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, A):
+            return NotImplemented
+        return self.x == other.x
+
+    def __len__(self) -> int:
+        return 1
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, A):
+            return NotImplemented
+        return self.x < other.x
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, A):
+            return NotImplemented
+        return self.x > other.x
+
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, A):
+            return NotImplemented
+        return self.x <= other.x
+
+    def __ge__(self, other: object) -> bool:
+        if not isinstance(other, A):
+            return NotImplemented
+        return self.x >= other.x
+
+    def __contains__(self, item: object) -> bool:
+        return isinstance(item, i32) and item == self.x
+
+def test_value_type_in_key() -> None:
+    a = A(1, 2)
+    d = {a: 1}
+    assert d[A(1,5)] == 1
+
+def test_value_type_in_val() -> None:
+    a = A(1, 2)
+    d = {1: a}
+    assert d[1].x == 1
+
+def test_len() -> None:
+    assert len(A(1, 2)) == 1
+
+def test_cmp() -> None:
+    a = A(1, 2)
+    b = A(2, 3)
+    assert a < b
+    assert a <= b
+    assert b > a
+    assert b >= a
+    assert not a > b
+    assert not a >= b
+    assert not b < a
+    assert not b <= a
+    assert 1 in a
+    assert 2 not in a

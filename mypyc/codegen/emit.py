@@ -1083,6 +1083,8 @@ class Emitter:
             for attr, attr_type in cl.all_attributes().items():
                 attr_name = self.attr(attr)
                 self.emit_line(f"{temp_dest}->{attr_name} = {src}.{attr_name};", ann="box")
+                if attr_type.is_refcounted:
+                    self.emit_inc_ref(temp_dest, attr_type)
 
             self.emit_line(f"{declaration}{dest} = (PyObject *){temp_dest};")
         else:

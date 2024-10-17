@@ -131,6 +131,16 @@ def make_format_string(func_name: str | None, groups: dict[ArgKind, list[Runtime
     return format
 
 
+def unbox_value_if_required(src: str, dest: str, dest_type: RType, emitter: Emitter) -> bool:
+    """Declares a new dest variable and unbox if needed. Assumes src is boxed."""
+    if dest_type.is_unboxed:
+        emitter.emit_unbox(src, dest, dest_type, declare_dest=True)
+        return True
+    else:
+        emitter.emit_line(f"{emitter.ctype_spaced(dest_type)}{dest} = {src};")
+        return False
+
+
 def generate_wrapper_function(
     fn: FuncIR, emitter: Emitter, source_path: str, module_name: str
 ) -> None:
@@ -548,8 +558,9 @@ def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __hash__ methods."""
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
     emitter.emit_line(f"static Py_ssize_t {name}(PyObject *self) {{")
+    unbox_value_if_required("self", "obj_self", fn.args[0].type, emitter)
     emitter.emit_line(
-        "{}retval = {}{}{}(self);".format(
+        "{}retval = {}{}{}(obj_self);".format(
             emitter.ctype_spaced(fn.ret_type),
             emitter.get_group_prefix(fn.decl),
             NATIVE_PREFIX,
@@ -575,8 +586,9 @@ def generate_len_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __len__ methods."""
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
     emitter.emit_line(f"static Py_ssize_t {name}(PyObject *self) {{")
+    unbox_value_if_required("self", "obj_self", fn.args[0].type, emitter)
     emitter.emit_line(
-        "{}retval = {}{}{}(self);".format(
+        "{}retval = {}{}{}(obj_self);".format(
             emitter.ctype_spaced(fn.ret_type),
             emitter.get_group_prefix(fn.decl),
             NATIVE_PREFIX,
@@ -600,8 +612,9 @@ def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __bool__ methods."""
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
     emitter.emit_line(f"static int {name}(PyObject *self) {{")
+    unbox_value_if_required("self", "obj_self", fn.args[0].type, emitter)
     emitter.emit_line(
-        "{}val = {}{}(self);".format(
+        "{}val = {}{}(obj_self);".format(
             emitter.ctype_spaced(fn.ret_type), NATIVE_PREFIX, fn.cname(emitter.names)
         )
     )
@@ -722,8 +735,9 @@ def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
     emitter.emit_line(f"static int {name}(PyObject *self, PyObject *obj_item) {{")
     generate_arg_check("item", fn.args[1].type, emitter, ReturnHandler("-1"))
+    unbox_value_if_required("self", "obj_self", fn.args[0].type, emitter)
     emitter.emit_line(
-        "{}val = {}{}(self, arg_item);".format(
+        "{}val = {}{}(obj_self, arg_item);".format(
             emitter.ctype_spaced(fn.ret_type), NATIVE_PREFIX, fn.cname(emitter.names)
         )
     )
