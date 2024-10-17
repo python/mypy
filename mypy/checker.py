@@ -4727,8 +4727,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_assert_stmt(self, s: AssertStmt) -> None:
         # Disable comparison overlap checks on assert statements to prevent false positives
         with self.msg.filter_errors(
-                filter_errors=lambda name, info: info.code == codes.COMPARISON_OVERLAP,
-            ):
+            filter_errors=lambda name, info: info.code == codes.COMPARISON_OVERLAP
+        ):
             self.expr_checker.accept(s.expr)
 
         if isinstance(s.expr, TupleExpr) and len(s.expr.items) > 0:
