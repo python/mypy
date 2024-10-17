@@ -79,6 +79,8 @@ def build_type_map(
         module_classes = [node for node in module.defs if isinstance(node, ClassDef)]
         classes.extend([(module, cdef) for cdef in module_classes])
 
+    module_by_fullname = {module.fullname: module for module in modules}
+
     # Collect all class mappings so that we can bind arbitrary class name
     # references even if there are import cycles.
     for module, cdef in classes:
@@ -92,9 +94,8 @@ def build_type_map(
             is_value_type=is_value_type(cdef),
         )
 
-        if class_ir.is_value_type and (not is_immutable(cdef) or not cdef.info.is_final):
-            # Because the value type have semantic differences we can not just ignore it
-            errors.error("Value types must be immutable and final", module.path, cdef.line)
+        if class_ir.is_value_type:
+            check_value_type(cdef, errors, module_by_fullname)
 
         if class_ir.is_ext_class:
             class_ir.deletable = cdef.info.deletable_attributes.copy()
@@ -142,6 +143,33 @@ def build_type_map(
                             module.path,
                             node.line,
                         )
+
+
+def check_value_type(
+    cdef: ClassDef, errors: Errors, module_by_fullname: dict[str, MypyFile]
+) -> None:
+    if not is_immutable(cdef) or not cdef.info.is_final:
+        module = module_by_fullname.get(cdef.info.module_name)
+        # Because the value type have semantic differences we can not just ignore it
+        errors.error("Value types must be immutable and final", module.path, cdef.line)
+
+    for mtd_name in (
+        "__iter__",
+        "__next__",
+        "__enter__",
+        "__exit__",
+        "__getitem__",
+        "__setitem__",
+        "__delitem__",
+    ):
+        mtd = cdef.info.get_method(mtd_name)
+        if mtd is not None:
+            module = module_by_fullname.get(mtd.info.module_name)
+            errors.error(
+                f"Value types must not define method '{mtd_name}'",
+                module.path if module else "",
+                mtd.line,
+            )
 
 
 def is_from_module(node: SymbolNode, module: MypyFile) -> bool:

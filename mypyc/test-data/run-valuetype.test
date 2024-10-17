@@ -237,6 +237,15 @@ class A:
     def __contains__(self, item: object) -> bool:
         return isinstance(item, i32) and item == self.x
 
+    def __bool__(self) -> bool:
+        return self.x != 0
+
+    def __str__(self) -> str:
+        return f"A({self.x})"
+
+    def __repr__(self) -> str:
+        return f"A({self.x})"
+
 def test_value_type_in_key() -> None:
     a = A(1, 2)
     d = {a: 1}
@@ -246,9 +255,33 @@ def test_value_type_in_val() -> None:
     a = A(1, 2)
     d = {1: a}
     assert d[1].x == 1
+    assert d[1] == A(1, 2)
+
+def test_value_type_in_set() -> None:
+    a = A(1, 2)
+    s = {a}
+    assert A(1, 2) in s
+
+def test_hash() -> None:
+    a = A(1, 2)
+    assert hash(a) == hash(1)
+
+def test_eq() -> None:
+    assert A(1, 2) == A(1, 2)
+    assert A(1, 2) != A(2, 3)
+    assert A(1, 2) != 1
+    assert 1 != A(1, 2)
+
+def test_bool() -> None:
+    assert bool(A(1, 2))
+    assert not bool(A(0, 2))
 
 def test_len() -> None:
     assert len(A(1, 2)) == 1
+
+def test_str() -> None:
+    assert str(A(1, 2)) == "A(1)"
+    assert repr(A(1, 2)) == "A(1)"
 
 def test_cmp() -> None:
     a = A(1, 2)
@@ -263,3 +296,24 @@ def test_cmp() -> None:
     assert not b <= a
     assert 1 in a
     assert 2 not in a
+
+[case testValueTypeLifetime]
+from typing import final, Final, NamedTuple
+from mypy_extensions import mypyc_attr
+
+class A(NamedTuple):
+    n: str
+
+@final
+@mypyc_attr(value_type=True)
+class B:
+    def __init__(self, a: A) -> None:
+        self.a: Final = a
+
+def f() -> B:
+    # A instance is created in the function scope
+    # should be keep alive after the function returns
+    return B(A(n="test"))
+
+def test_value_type_lifetime() -> None:
+    assert f().a.n == "test"

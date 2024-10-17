@@ -17,6 +17,7 @@ from mypyc.codegen.emitwrapper import (
     generate_len_wrapper,
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
+    generate_str_wrapper,
 )
 from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR, VTableEntries
@@ -44,8 +45,8 @@ SlotTable = Mapping[str, Tuple[str, SlotGenerator]]
 SLOT_DEFS: SlotTable = {
     "__init__": ("tp_init", lambda c, t, e: generate_init_for_class(c, t, e)),
     "__call__": ("tp_call", lambda c, t, e: generate_call_wrapper(c, t, e)),
-    "__str__": ("tp_str", native_slot),
-    "__repr__": ("tp_repr", native_slot),
+    "__str__": ("tp_str", generate_str_wrapper),
+    "__repr__": ("tp_repr", generate_str_wrapper),
     "__next__": ("tp_iternext", native_slot),
     "__iter__": ("tp_iter", native_slot),
     "__hash__": ("tp_hash", generate_hash_wrapper),

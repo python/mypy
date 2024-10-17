@@ -300,9 +300,6 @@ class ClassIR:
     def struct_name2(self) -> str:
         return f"{exported_name(self.fullname)}Object"
 
-    def struct_data_name(self) -> str:
-        return f"{exported_name(self.fullname)}Data"
-
     def get_method_and_class(
         self, name: str, *, prefer_method: bool = False
     ) -> tuple[FuncIR, ClassIR] | None:

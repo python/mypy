@@ -554,6 +554,20 @@ def generate_get_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
+def generate_str_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for native __str__ and __repr__ methods."""
+    name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
+    emitter.emit_line(f"static PyObject* {name}(PyObject *self) {{")
+    unbox_value_if_required("self", "obj_self", fn.args[0].type, emitter)
+    emitter.emit_line(
+        "return {}{}{}(obj_self);".format(
+            emitter.get_group_prefix(fn.decl), NATIVE_PREFIX, fn.cname(emitter.names)
+        )
+    )
+    emitter.emit_line("}")
+    return name
+
+
 def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __hash__ methods."""
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
