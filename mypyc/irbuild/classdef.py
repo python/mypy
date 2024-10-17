@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+import typing_extensions
 from abc import abstractmethod
 from typing import Callable, Final
-
-import typing_extensions
 
 from mypy.nodes import (
     TYPE_VAR_TUPLE_KIND,

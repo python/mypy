@@ -22,7 +22,7 @@ from mypyc.common import BITMAP_BITS, ENV_ATTR_NAME, SELF_NAME, bitmap_name
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncSignature
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
-from mypyc.ir.rtypes import RInstance, object_rprimitive, bitmap_rprimitive
+from mypyc.ir.rtypes import RInstance, bitmap_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
 from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr

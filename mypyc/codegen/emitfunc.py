@@ -15,7 +15,14 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values, FUNC_NORMAL
+from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_NORMAL,
+    FUNC_STATICMETHOD,
+    FuncDecl,
+    FuncIR,
+    all_values,
+)
 from mypyc.ir.ops import (
     ERR_FALSE,
     NAMESPACE_MODULE,

@@ -21,7 +21,7 @@ from mypyc.codegen.emitwrapper import (
 from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
-from mypyc.ir.rtypes import RTuple, RType, object_rprimitive, RInstanceValue, RInstance
+from mypyc.ir.rtypes import RInstance, RInstanceValue, RTuple, RType, object_rprimitive
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
 
