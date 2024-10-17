@@ -304,11 +304,13 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
     ret = ctx.api.named_generic_type(PARTIAL, [ret_type])
     ret = ret.copy_with_extra_attr("__mypy_partial", partially_applied)
     if partially_applied.param_spec():
-        ret = ret.copy_with_extra_attr(
-            "__mypy_partial_paramspec_args_bound", ArgKind.ARG_STAR in actual_arg_kinds
-        ).copy_with_extra_attr(
-            "__mypy_partial_paramspec_kwargs_bound", ArgKind.ARG_STAR2 in actual_arg_kinds
-        )
+        assert ret.extra_attrs is not None  # copy_with_extra_attr above ensures this
+        attrs = ret.extra_attrs.copy()
+        if ArgKind.ARG_STAR in actual_arg_kinds:
+            attrs.immutable.add("__mypy_partial_paramspec_args_bound")
+        if ArgKind.ARG_STAR2 in actual_arg_kinds:
+            attrs.immutable.add("__mypy_partial_paramspec_kwargs_bound")
+        ret.extra_attrs = attrs
     return ret
 
 
@@ -323,8 +325,8 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
     ):
         return ctx.default_return_type
 
-    extra_attrs = ctx.type.extra_attrs.attrs
-    partial_type = extra_attrs["__mypy_partial"]
+    extra_attrs = ctx.type.extra_attrs
+    partial_type = get_proper_type(extra_attrs.attrs["__mypy_partial"])
     if len(ctx.arg_types) != 2:  # *args, **kwargs
         return ctx.default_return_type
 
@@ -349,10 +351,11 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
         arg_names=actual_arg_names,
         context=ctx.context,
     )
-    args_bound = extra_attrs.get("__mypy_partial_paramspec_args_bound")
-    kwargs_bound = extra_attrs.get("__mypy_partial_paramspec_kwargs_bound")
-    if args_bound is None or kwargs_bound is None:
+    if not isinstance(partial_type, CallableType) or partial_type.param_spec() is None:
         return result
+
+    args_bound = "__mypy_partial_paramspec_args_bound" in extra_attrs.immutable
+    kwargs_bound = "__mypy_partial_paramspec_kwargs_bound" in extra_attrs.immutable
     # ensure *args: P.args
     if not args_bound and ArgKind.ARG_STAR not in actual_arg_kinds:
         ctx.api.expr_checker.msg.too_few_arguments(partial_type, ctx.context, actual_arg_names)
