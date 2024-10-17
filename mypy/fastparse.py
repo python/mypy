@@ -1196,9 +1196,9 @@ class ASTConverter:
     def translate_type_params(self, type_params: list[Any]) -> list[TypeParam]:
         explicit_type_params = []
         for p in type_params:
-            bound = None
+            bound: Type | None = None
             values: list[Type] = []
-            default = None
+            default: Type | None = None
             if sys.version_info >= (3, 13):
                 default = TypeConverter(self.errors, line=p.lineno).visit(p.default_value)
             if isinstance(p, ast_ParamSpec):  # type: ignore[misc]
