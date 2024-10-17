@@ -3805,6 +3805,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             is_operator=True,
             msg=self.msg,
             original_type=original_type,
+            self_type=base_type,
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
         )
