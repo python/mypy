@@ -1,10 +1,10 @@
-from typing import Iterable, List, MutableSequence, TypeVar, overload
+from _typeshed import Self
+from typing import Iterable, MutableSequence, TypeVar, overload
 
 _T = TypeVar("_T")
-_S = TypeVar("_S")
 
 class UserList(MutableSequence[_T]):
-    data: List[_T]
+    data: list[_T]
     def insert(self, index: int, object: _T) -> None: ...
     @overload
     def __setitem__(self, i: int, o: _T) -> None: ...
@@ -15,5 +15,5 @@ class UserList(MutableSequence[_T]):
     @overload
     def __getitem__(self, i: int) -> _T: ...
     @overload
-    def __getitem__(self: _S, s: slice) -> _S: ...
+    def __getitem__(self: Self, s: slice) -> Self: ...
     def sort(self) -> None: ...

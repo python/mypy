@@ -33,7 +33,7 @@ PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl)
 
 PyObject *CPyIter_Next(PyObject *iter)
 {
-    return (*iter->ob_type->tp_iternext)(iter);
+    return (*Py_TYPE(iter)->tp_iternext)(iter);
 }
 
 PyObject *CPyNumber_Power(PyObject *base, PyObject *index)

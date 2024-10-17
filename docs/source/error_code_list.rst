@@ -679,6 +679,43 @@ implementation.
    def func(value):
        pass  # actual implementation
 
+Check that coroutine return value is used [unused-coroutine]
+------------------------------------------------------------
+
+Mypy ensures that return values of async def functions are not
+ignored, as this is usually a programming error, as the coroutine
+won't be executed at the call site.
+
+.. code-block:: python
+
+   async def f() -> None:
+       ...
+
+   async def g() -> None:
+       f()  # Error: missing await
+       await f()  # OK
+
+You can work around this error by assigning the result to a temporary,
+otherwise unused variable:
+
+.. code-block:: python
+
+       _ = f()  # No error
+
+Check types in assert_type [assert-type]
+----------------------------------------
+
+The inferred type for an expression passed to ``assert_type`` must match
+the provided type.
+
+.. code-block:: python
+
+   from typing_extensions import assert_type
+
+   assert_type([1], list[int])  # OK
+
+   assert_type([1], list[str])  # Error
+
 Report syntax errors [syntax]
 -----------------------------
 

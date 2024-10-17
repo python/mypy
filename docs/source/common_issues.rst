@@ -607,7 +607,7 @@ method signature.  E.g.:
 
 The third line elicits an error because mypy sees the argument type
 ``bytes`` as a reference to the method by that name.  Other than
-renaming the method, a work-around is to use an alias:
+renaming the method, a workaround is to use an alias:
 
 .. code-block:: python
 

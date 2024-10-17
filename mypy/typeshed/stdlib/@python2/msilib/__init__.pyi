@@ -1,6 +1,6 @@
 import sys
 from types import ModuleType
-from typing import Any, Container, Dict, Iterable, List, Sequence, Set, Tuple, Type
+from typing import Any, Container, Iterable, Sequence
 from typing_extensions import Literal
 
 if sys.platform == "win32":
@@ -21,22 +21,25 @@ if sys.platform == "win32":
     type_nullable: Literal[0x1000]
     type_key: Literal[0x2000]
     knownbits: Literal[0x3FFF]
+
     class Table:
 
         name: str
-        fields: List[Tuple[int, str, int]]
+        fields: list[tuple[int, str, int]]
         def __init__(self, name: str) -> None: ...
         def add_field(self, index: int, name: str, type: int) -> None: ...
         def sql(self) -> str: ...
         def create(self, db: _Database) -> None: ...
+
     class _Unspecified: ...
+
     def change_sequence(
-        seq: Sequence[Tuple[str, str | None, int]],
+        seq: Sequence[tuple[str, str | None, int]],
         action: str,
-        seqno: int | Type[_Unspecified] = ...,
-        cond: str | Type[_Unspecified] = ...,
+        seqno: int | type[_Unspecified] = ...,
+        cond: str | type[_Unspecified] = ...,
     ) -> None: ...
-    def add_data(db: _Database, table: str, values: Iterable[Tuple[Any, ...]]) -> None: ...
+    def add_data(db: _Database, table: str, values: Iterable[tuple[Any, ...]]) -> None: ...
     def add_stream(db: _Database, name: str, path: str) -> None: ...
     def init_database(
         name: str, schema: ModuleType, ProductName: str, ProductCode: str, ProductVersion: str, Manufacturer: str
@@ -44,17 +47,19 @@ if sys.platform == "win32":
     def add_tables(db: _Database, module: ModuleType) -> None: ...
     def make_id(str: str) -> str: ...
     def gen_uuid() -> str: ...
+
     class CAB:
 
         name: str
-        files: List[Tuple[str, str]]
-        filenames: Set[str]
+        files: list[tuple[str, str]]
+        filenames: set[str]
         index: int
         def __init__(self, name: str) -> None: ...
         def gen_id(self, file: str) -> str: ...
-        def append(self, full: str, file: str, logical: str) -> Tuple[int, str]: ...
+        def append(self, full: str, file: str, logical: str) -> tuple[int, str]: ...
         def commit(self, db: _Database) -> None: ...
-    _directories: Set[str]
+    _directories: set[str]
+
     class Directory:
 
         db: _Database
@@ -63,9 +68,9 @@ if sys.platform == "win32":
         physical: str
         logical: str
         component: str | None
-        short_names: Set[str]
-        ids: Set[str]
-        keyfiles: Dict[str, str]
+        short_names: set[str]
+        ids: set[str]
+        keyfiles: dict[str, str]
         componentflags: int | None
         absolute: str
         def __init__(
@@ -88,13 +93,14 @@ if sys.platform == "win32":
         ) -> None: ...
         def make_short(self, file: str) -> str: ...
         def add_file(self, file: str, src: str | None = ..., version: str | None = ..., language: str | None = ...) -> str: ...
-        def glob(self, pattern: str, exclude: Container[str] | None = ...) -> List[str]: ...
+        def glob(self, pattern: str, exclude: Container[str] | None = ...) -> list[str]: ...
         def remove_pyc(self) -> None: ...
+
     class Binary:
 
         name: str
         def __init__(self, fname: str) -> None: ...
-        def __repr__(self) -> str: ...
+
     class Feature:
 
         id: str
@@ -111,6 +117,7 @@ if sys.platform == "win32":
             attributes: int = ...,
         ) -> None: ...
         def set_current(self) -> None: ...
+
     class Control:
 
         dlg: Dialog
@@ -119,12 +126,14 @@ if sys.platform == "win32":
         def event(self, event: str, argument: str, condition: str = ..., ordering: int | None = ...) -> None: ...
         def mapping(self, event: str, attribute: str) -> None: ...
         def condition(self, action: str, condition: str) -> None: ...
+
     class RadioButtonGroup(Control):
 
         property: str
         index: int
         def __init__(self, dlg: Dialog, name: str, property: str) -> None: ...
         def add(self, name: str, x: int, y: int, w: int, h: int, text: str, value: str | None = ...) -> None: ...
+
     class Dialog:
 
         db: _Database

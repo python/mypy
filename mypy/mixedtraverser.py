@@ -1,7 +1,7 @@
 from typing import Optional
 
 from mypy.nodes import (
-    Var, FuncItem, ClassDef, AssignmentStmt, ForStmt, WithStmt,
+    AssertTypeExpr, Var, FuncItem, ClassDef, AssignmentStmt, ForStmt, WithStmt,
     CastExpr, TypeApplication, TypeAliasExpr, TypeVarExpr, TypedDictExpr, NamedTupleExpr,
     PromoteExpr, NewTypeExpr
 )
@@ -77,6 +77,10 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
 
     def visit_cast_expr(self, o: CastExpr) -> None:
         super().visit_cast_expr(o)
+        o.type.accept(self)
+
+    def visit_assert_type_expr(self, o: AssertTypeExpr) -> None:
+        super().visit_assert_type_expr(o)
         o.type.accept(self)
 
     def visit_type_application(self, o: TypeApplication) -> None:

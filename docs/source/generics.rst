@@ -295,8 +295,8 @@ In this way, for example, you can typecheck chaining of setter methods:
            self.width = w
            return self
 
-   circle = Circle().set_scale(0.5).set_radius(2.7)  # type: Circle
-   square = Square().set_scale(0.5).set_width(3.2)  # type: Square
+   circle: Circle = Circle().set_scale(0.5).set_radius(2.7)
+   square: Square = Square().set_scale(0.5).set_width(3.2)
 
 Without using generic ``self``, the last two lines could not be type-checked properly.
 
@@ -310,7 +310,7 @@ For class methods, you can also define generic ``cls``, using :py:class:`Type[T]
    T = TypeVar('T', bound='Friend')
 
    class Friend:
-       other = None  # type: Friend
+       other: "Friend" = None
 
        @classmethod
        def make_pair(cls: Type[T]) -> tuple[T, T]:

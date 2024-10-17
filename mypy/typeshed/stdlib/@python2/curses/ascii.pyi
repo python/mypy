@@ -1,4 +1,4 @@
-from typing import List, TypeVar
+from typing import TypeVar
 
 _CharT = TypeVar("_CharT", str, int)
 
@@ -39,7 +39,7 @@ US: int
 SP: int
 DEL: int
 
-controlnames: List[int]
+controlnames: list[int]
 
 def isalnum(c: str | int) -> bool: ...
 def isalpha(c: str | int) -> bool: ...

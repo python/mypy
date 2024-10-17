@@ -205,7 +205,7 @@ will continue to be of type ``Any``.
 1.  To suppress a *single* missing import error, add a ``# type: ignore`` at the end of the
     line containing the import.
 
-2.  To suppress *all* missing import imports errors from a single library, add
+2.  To suppress *all* missing import errors from a single library, add
     a section to your :ref:`mypy config file <config-file>` for that library setting
     :confval:`ignore_missing_imports` to True. For example, suppose your codebase
     makes heavy use of an (untyped) library named ``foobar``. You can silence
@@ -322,7 +322,7 @@ this error, try:
 In some rare cases, you may get the "Cannot find implementation or library
 stub for module" error even when the module is installed in your system.
 This can happen when the module is both missing type hints and is installed
-on your system in a unconventional way.
+on your system in an unconventional way.
 
 In this case, follow the steps above on how to handle
 :ref:`missing type hints in third party libraries <missing-type-hints-for-third-party-library>`.
@@ -515,6 +515,7 @@ In particular, if a Python file and a stub file are both present in the
 same directory on the search path, only the stub file is used.
 (However, if the files are in different directories, the one found
 in the earlier directory is used.)
+
 
 Other advice and best practices
 *******************************

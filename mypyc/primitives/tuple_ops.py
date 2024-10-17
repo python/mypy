@@ -9,8 +9,13 @@ from mypyc.ir.rtypes import (
     tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive,
     c_pyssize_t_rprimitive, bit_rprimitive
 )
-from mypyc.primitives.registry import method_op, function_op, custom_op
+from mypyc.primitives.registry import load_address_op, method_op, function_op, custom_op
 
+# Get the 'builtins.tuple' type object.
+load_address_op(
+    name='builtins.tuple',
+    type=object_rprimitive,
+    src='PyTuple_Type')
 
 # tuple[index] (for an int index)
 tuple_get_item_op = method_op(

@@ -319,36 +319,6 @@ class A: pass
 class B: pass
 [builtins fixtures/tuple.pyi]
 
-[case testMultipleAssignmentWithSquareBracketTuplesPython2]
-# flags: --python-version 2.7 --no-strict-optional
-from typing import Tuple
-
-def avoid_confusing_test_parser():
-    # type: () -> None
-    t1 = None # type: Tuple[A, B]
-    t2 = None # type: Tuple[A, B, A]
-    [a, b] = None, None # type: Tuple[A, B]
-    [a1, b1] = None, None # type: Tuple[A, B]
-
-    reveal_type(a1)  # N: Revealed type is "__main__.A"
-    reveal_type(b1)  # N: Revealed type is "__main__.B"
-
-    if int():
-        [a, a] = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-        [b, b] = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-        [a, b, b] = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-
-        [a, b] = t1
-        [a, b, a1] = t2
-
-        [a2, b2] = t1
-        reveal_type(a2)  # N: Revealed type is "__main__.A"
-        reveal_type(b2)  # N: Revealed type is "__main__.B"
-
-class A: pass
-class B: pass
-[builtins fixtures/tuple.pyi]
-
 [case testMultipleAssignmentWithInvalidNumberOfValues]
 from typing import Tuple
 t1 = None # type: Tuple[A, A, A]
@@ -674,9 +644,9 @@ c1, *c2 = c
 d1, *d2 = d
 e1, *e2 = e
 
-reveal_type(a2)  # N: Revealed type is "builtins.list[builtins.int*]"
-reveal_type(b2)  # N: Revealed type is "builtins.list[builtins.int*]"
-reveal_type(c2)  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(a2)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(b2)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(c2)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(d2)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(e2)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/tuple.pyi]
@@ -985,15 +955,15 @@ reveal_type(b)  # N: Revealed type is "Tuple[builtins.int, builtins.int, builtin
 [case testTupleWithStarExpr2]
 a = [1]
 b = (0, *a)
-reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.int*, ...]"
+reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr3]
 a = ['']
 b = (0, *a)
-reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.object*, ...]"
+reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
 c = (*a, '')
-reveal_type(c)  # N: Revealed type is "builtins.tuple[builtins.str*, ...]"
+reveal_type(c)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr4]
@@ -1132,8 +1102,8 @@ reveal_type(empty if int() else vartup)  # N: Revealed type is "builtins.tuple[_
 reveal_type(vartup if int() else empty)  # N: Revealed type is "builtins.tuple[__main__.A, ...]"
 
 lst = None  # type: List[A]
-reveal_type(empty if int() else lst)  # N: Revealed type is "typing.Sequence[__main__.A*]"
-reveal_type(lst if int() else empty)  # N: Revealed type is "typing.Sequence[__main__.A*]"
+reveal_type(empty if int() else lst)  # N: Revealed type is "typing.Sequence[__main__.A]"
+reveal_type(lst if int() else empty)  # N: Revealed type is "typing.Sequence[__main__.A]"
 
 [builtins fixtures/tuple.pyi]
 [out]
@@ -1277,7 +1247,7 @@ def f(x: Base[T]) -> T: pass
 class DT(Tuple[str, str], Base[int]):
     pass
 
-reveal_type(f(DT())) # N: Revealed type is "builtins.int*"
+reveal_type(f(DT())) # N: Revealed type is "builtins.int"
 
 [builtins fixtures/tuple.pyi]
 [out]
@@ -1364,10 +1334,10 @@ from typing import Union, Tuple, List
 
 tup: Union[Tuple[int, str], List[int]]
 reveal_type(tup[0])  # N: Revealed type is "builtins.int"
-reveal_type(tup[1])  # N: Revealed type is "Union[builtins.str, builtins.int*]"
+reveal_type(tup[1])  # N: Revealed type is "Union[builtins.str, builtins.int]"
 reveal_type(tup[2])  # E: Tuple index out of range \
-                     # N: Revealed type is "Union[Any, builtins.int*]"
-reveal_type(tup[:])  # N: Revealed type is "Union[Tuple[builtins.int, builtins.str], builtins.list[builtins.int*]]"
+                     # N: Revealed type is "Union[Any, builtins.int]"
+reveal_type(tup[:])  # N: Revealed type is "Union[Tuple[builtins.int, builtins.str], builtins.list[builtins.int]]"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1433,24 +1403,24 @@ reveal_type(z) # N: Revealed type is "builtins.int"
 points2 = [1,2]
 x2, y2, z2= *points2, "test"
 
-reveal_type(x2) # N: Revealed type is "builtins.int*"
-reveal_type(y2) # N: Revealed type is "builtins.int*"
+reveal_type(x2) # N: Revealed type is "builtins.int"
+reveal_type(y2) # N: Revealed type is "builtins.int"
 reveal_type(z2) # N: Revealed type is "builtins.str"
 
 x3, x4, y3, y4, z3 = *points, *points2, "test"
 
 reveal_type(x3) # N: Revealed type is "builtins.int"
 reveal_type(x4) # N: Revealed type is "builtins.str"
-reveal_type(y3) # N: Revealed type is "builtins.int*"
-reveal_type(y4) # N: Revealed type is "builtins.int*"
+reveal_type(y3) # N: Revealed type is "builtins.int"
+reveal_type(y4) # N: Revealed type is "builtins.int"
 reveal_type(z3) # N: Revealed type is "builtins.str"
 
 x5, x6, y5, y6, z4 = *points2, *points2, "test"
 
-reveal_type(x5) # N: Revealed type is "builtins.int*"
-reveal_type(x6) # N: Revealed type is "builtins.int*"
-reveal_type(y5) # N: Revealed type is "builtins.int*"
-reveal_type(y6) # N: Revealed type is "builtins.int*"
+reveal_type(x5) # N: Revealed type is "builtins.int"
+reveal_type(x6) # N: Revealed type is "builtins.int"
+reveal_type(y5) # N: Revealed type is "builtins.int"
+reveal_type(y6) # N: Revealed type is "builtins.int"
 reveal_type(z4) # N: Revealed type is "builtins.str"
 
 points3 = ["test1", "test2"]
@@ -1462,10 +1432,6 @@ x9, y9, x10, y10, z5 = *points2, 1, *points2 # E: Contiguous iterable with same 
 [case testAssignEmptyPy36]
 # flags: --python-version 3.6
 () = []
-
-[case testAssignEmptyPy27]
-# flags: --python-version 2.7
-() = []  # E: can't assign to ()
 
 [case testAssignEmptyBogus]
 () = 1  # E: "int" object is not iterable
@@ -1481,7 +1447,7 @@ t3 = ('', 1) * 2
 reveal_type(t3)  # N: Revealed type is "Tuple[builtins.str, builtins.int, builtins.str, builtins.int]"
 def f() -> Tuple[str, ...]:
     return ('', )
-reveal_type(f() * 2)  # N: Revealed type is "builtins.tuple[builtins.str*, ...]"
+reveal_type(f() * 2)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testMultiplyTupleByIntegerLiteralReverse]
@@ -1494,7 +1460,7 @@ t3 = 2 * ('', 1)
 reveal_type(t3)  # N: Revealed type is "Tuple[builtins.str, builtins.int, builtins.str, builtins.int]"
 def f() -> Tuple[str, ...]:
     return ('', )
-reveal_type(2 * f())  # N: Revealed type is "builtins.tuple[builtins.str*, ...]"
+reveal_type(2 * f())  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testSingleUndefinedTypeAndTuple]

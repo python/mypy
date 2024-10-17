@@ -1,7 +1,7 @@
 import sys
-from typing import IO, Union
+from typing import IO
 
-_FD = Union[int, IO[str]]
+_FD = int | IO[str]
 
 if sys.platform != "win32":
     # XXX: Undocumented integer constants

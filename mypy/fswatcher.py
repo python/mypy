@@ -4,9 +4,10 @@ from mypy.fscache import FileSystemCache
 from typing import AbstractSet, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 
-FileData = NamedTuple('FileData', [('st_mtime', float),
-                                   ('st_size', int),
-                                   ('hash', str)])
+class FileData(NamedTuple):
+    st_mtime: float
+    st_size: int
+    hash: str
 
 
 class FileSystemWatcher:

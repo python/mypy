@@ -172,6 +172,8 @@ assert test_isinstance_int_and_not_bool(True) == False
 assert test_isinstance_int_and_not_bool(1) == True
 
 [case testIntOps]
+from typing import Any
+
 def check_and(x: int, y: int) -> None:
     # eval() can be trusted to calculate expected result
     expected = eval('{} & {}'.format(x, y))
@@ -427,6 +429,22 @@ def test_constant_fold() -> None:
     assert n63 == -(1 << 63)
     n64 = -(1 << 64) + int()
     assert n64 == -(1 << 64)
+
+def div_by_2(x: int) -> int:
+    return x // 2
+
+def div_by_3(x: int) -> int:
+    return x // 3
+
+def div_by_4(x: int) -> int:
+    return x // 4
+
+def test_floor_divide_by_literal() -> None:
+    for i in range(-100, 100):
+        i_boxed: Any = i
+        assert div_by_2(i) == i_boxed // int('2')
+        assert div_by_3(i) == i_boxed // int('3')
+        assert div_by_4(i) == i_boxed // int('4')
 
 [case testIntMinMax]
 def test_int_min_max() -> None:

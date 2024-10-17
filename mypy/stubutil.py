@@ -54,10 +54,10 @@ def walk_packages(inspect: ModuleInspect,
     """
     for package_name in packages:
         if package_name in NOT_IMPORTABLE_MODULES:
-            print('%s: Skipped (blacklisted)' % package_name)
+            print(f'{package_name}: Skipped (blacklisted)')
             continue
         if verbose:
-            print('Trying to import %r for runtime introspection' % package_name)
+            print(f'Trying to import {package_name!r} for runtime introspection')
         try:
             prop = inspect.get_package_properties(package_name)
         except InspectError:
@@ -66,11 +66,9 @@ def walk_packages(inspect: ModuleInspect,
         yield prop.name
         if prop.is_c_module:
             # Recursively iterate through the subpackages
-            for submodule in walk_packages(inspect, prop.subpackages, verbose):
-                yield submodule
+            yield from walk_packages(inspect, prop.subpackages, verbose)
         else:
-            for submodule in prop.subpackages:
-                yield submodule
+            yield from prop.subpackages
 
 
 def find_module_path_and_all_py2(module: str,
@@ -83,7 +81,7 @@ def find_module_path_and_all_py2(module: str,
 
     Raise CantImport if the module can't be imported, or exit if it's a C extension module.
     """
-    cmd_template = '{interpreter} -c "%s"'.format(interpreter=interpreter)
+    cmd_template = f'{interpreter} -c "%s"'
     code = ("import importlib, json; mod = importlib.import_module('%s'); "
             "print(mod.__file__); print(json.dumps(getattr(mod, '__all__', None)))") % module
     try:
@@ -146,7 +144,7 @@ def find_module_path_and_all_py3(inspect: ModuleInspect,
 
     # TODO: Support custom interpreters.
     if verbose:
-        print('Trying to import %r for runtime introspection' % module)
+        print(f'Trying to import {module!r} for runtime introspection')
     try:
         mod = inspect.get_package_properties(module)
     except InspectError as e:
@@ -168,7 +166,7 @@ def generate_guarded(mod: str, target: str,
     Optionally report success.
     """
     if verbose:
-        print('Processing %s' % mod)
+        print(f'Processing {mod}')
     try:
         yield
     except Exception as e:
@@ -179,7 +177,7 @@ def generate_guarded(mod: str, target: str,
             print("Stub generation failed for", mod, file=sys.stderr)
     else:
         if verbose:
-            print('Created %s' % target)
+            print(f'Created {target}')
 
 
 PY2_MODULES = {'cStringIO', 'urlparse', 'collections.UserDict'}
@@ -188,7 +186,7 @@ PY2_MODULES = {'cStringIO', 'urlparse', 'collections.UserDict'}
 def report_missing(mod: str, message: Optional[str] = '', traceback: str = '') -> None:
     if message:
         message = ' with error: ' + message
-    print('{}: Failed to import, skipping{}'.format(mod, message))
+    print(f'{mod}: Failed to import, skipping{message}')
     m = re.search(r"ModuleNotFoundError: No module named '([^']*)'", traceback)
     if m:
         missing_module = m.group(1)
@@ -202,8 +200,8 @@ def fail_missing(mod: str, reason: ModuleNotFoundReason) -> None:
     elif reason is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
         clarification = "(module likely exists, but is not PEP 561 compatible)"
     else:
-        clarification = "(unknown reason '{}')".format(reason)
-    raise SystemExit("Can't find module '{}' {}".format(mod, clarification))
+        clarification = f"(unknown reason '{reason}')"
+    raise SystemExit(f"Can't find module '{mod}' {clarification}")
 
 
 @overload

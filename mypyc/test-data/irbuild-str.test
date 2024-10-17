@@ -14,14 +14,14 @@ def do_split(s, sep, max_split):
     sep :: union[str, None]
     max_split :: union[int, None]
     r0, r1, r2 :: object
-    r3, r4 :: bit
-    r5 :: object
-    r6, r7 :: bit
-    r8 :: str
-    r9 :: int
-    r10 :: list
-    r11 :: str
-    r12, r13 :: list
+    r3 :: bit
+    r4 :: object
+    r5 :: bit
+    r6 :: str
+    r7 :: int
+    r8 :: list
+    r9 :: str
+    r10, r11 :: list
 L0:
     if is_error(sep) goto L1 else goto L2
 L1:
@@ -33,28 +33,27 @@ L3:
     r1 = box(None, 1)
     max_split = r1
 L4:
-    r2 = box(None, 1)
-    r3 = sep == r2
-    r4 = r3 ^ 1
-    if r4 goto L5 else goto L9 :: bool
+    r2 = load_address _Py_NoneStruct
+    r3 = sep != r2
+    if r3 goto L5 else goto L9 :: bool
 L5:
-    r5 = box(None, 1)
-    r6 = max_split == r5
-    r7 = r6 ^ 1
-    if r7 goto L6 else goto L7 :: bool
+    r4 = load_address _Py_NoneStruct
+    r5 = max_split != r4
+    if r5 goto L6 else goto L7 :: bool
 L6:
-    r8 = cast(str, sep)
-    r9 = unbox(int, max_split)
-    r10 = CPyStr_Split(s, r8, r9)
-    return r10
+    r6 = cast(str, sep)
+    r7 = unbox(int, max_split)
+    r8 = CPyStr_Split(s, r6, r7)
+    return r8
 L7:
-    r11 = cast(str, sep)
-    r12 = PyUnicode_Split(s, r11, -1)
-    return r12
+    r9 = cast(str, sep)
+    r10 = PyUnicode_Split(s, r9, -1)
+    return r10
 L8:
 L9:
-    r13 = PyUnicode_Split(s, 0, -1)
-    return r13
+    r11 = PyUnicode_Split(s, 0, -1)
+    return r11
+
 
 [case testStrEquality]
 def eq(x: str, y: str) -> bool:
@@ -106,39 +105,38 @@ L3:
 [case testStrReplace]
 from typing import Optional
 
-def do_replace(s: str, old_substr: str, new_substr: str, max_count: Optional[int] = None) -> str: 
-    if max_count is not None: 
-        return s.replace(old_substr, new_substr, max_count) 
-    else: 
-        return s.replace(old_substr, new_substr) 
+def do_replace(s: str, old_substr: str, new_substr: str, max_count: Optional[int] = None) -> str:
+    if max_count is not None:
+        return s.replace(old_substr, new_substr, max_count)
+    else:
+        return s.replace(old_substr, new_substr)
 [out]
-def do_replace(s, old_substr, new_substr, max_count): 
-    s, old_substr, new_substr :: str 
-    max_count :: union[int, None] 
-    r0, r1 :: object 
-    r2, r3 :: bit 
-    r4 :: int 
-    r5, r6 :: str 
-L0: 
-    if is_error(max_count) goto L1 else goto L2 
-L1: 
-    r0 = box(None, 1) 
-    max_count = r0 
-L2: 
-    r1 = box(None, 1) 
-    r2 = max_count == r1 
-    r3 = r2 ^ 1 
-    if r3 goto L3 else goto L4 :: bool 
-L3: 
-    r4 = unbox(int, max_count) 
-    r5 = CPyStr_Replace(s, old_substr, new_substr, r4) 
-    return r5 
-L4: 
-    r6 = PyUnicode_Replace(s, old_substr, new_substr, -1) 
-    return r6 
-L5: 
-    unreachable 
-    
+def do_replace(s, old_substr, new_substr, max_count):
+    s, old_substr, new_substr :: str
+    max_count :: union[int, None]
+    r0, r1 :: object
+    r2 :: bit
+    r3 :: int
+    r4, r5 :: str
+L0:
+    if is_error(max_count) goto L1 else goto L2
+L1:
+    r0 = box(None, 1)
+    max_count = r0
+L2:
+    r1 = load_address _Py_NoneStruct
+    r2 = max_count != r1
+    if r2 goto L3 else goto L4 :: bool
+L3:
+    r3 = unbox(int, max_count)
+    r4 = CPyStr_Replace(s, old_substr, new_substr, r3)
+    return r4
+L4:
+    r5 = PyUnicode_Replace(s, old_substr, new_substr, -1)
+    return r5
+L5:
+    unreachable
+
 [case testStrToBool]
 def is_true(x: str) -> bool:
     if x:
@@ -314,4 +312,3 @@ L0:
     r4 = 'backslashreplace'
     r5 = CPy_Encode(s, r3, r4)
     return 1
-

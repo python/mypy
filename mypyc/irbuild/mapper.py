@@ -2,7 +2,7 @@
 
 from typing import Dict, Optional
 
-from mypy.nodes import FuncDef, TypeInfo, SymbolNode, ArgKind, ARG_STAR, ARG_STAR2
+from mypy.nodes import FuncDef, TypeInfo, SymbolNode, RefExpr, ArgKind, ARG_STAR, ARG_STAR2, GDEF
 from mypy.types import (
     Instance, Type, CallableType, LiteralType, TypedDictType, UnboundType, PartialType,
     UninhabitedType, Overloaded, UnionType, TypeType, AnyType, NoneTyp, TupleType, TypeVarType,
@@ -160,3 +160,17 @@ class Mapper:
         if fdef.name in ('__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__'):
             ret = object_rprimitive
         return FuncSignature(args, ret)
+
+    def is_native_module(self, module: str) -> bool:
+        """Is the given module one compiled by mypyc?"""
+        return module in self.group_map
+
+    def is_native_ref_expr(self, expr: RefExpr) -> bool:
+        if expr.node is None:
+            return False
+        if '.' in expr.node.fullname:
+            return self.is_native_module(expr.node.fullname.rpartition('.')[0])
+        return True
+
+    def is_native_module_ref_expr(self, expr: RefExpr) -> bool:
+        return self.is_native_ref_expr(expr) and expr.kind == GDEF

@@ -47,8 +47,7 @@ class ASTDiffSuite(DataSuite):
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(testcase.file,
-                                                  testcase.line))
+            f'Invalid output ({testcase.file}, line {testcase.line})')
 
     def build(self, source: str,
               options: Options) -> Tuple[List[str], Optional[Dict[str, MypyFile]]]:

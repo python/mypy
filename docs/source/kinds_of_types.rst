@@ -347,23 +347,13 @@ This also works for attributes defined within methods:
         def __init__(self) -> None:
             self.count: Optional[int] = None
 
-As a special case, you can use a non-optional type when initializing an
-attribute to ``None`` inside a class body *and* using a type comment,
-since when using a type comment, an initializer is syntactically required,
-and ``None`` is used as a dummy, placeholder initializer:
+This is not a problem when using variable annotations, since no initial
+value is needed:
 
 .. code-block:: python
 
    class Container:
-       items = None  # type: list[str]  # OK (only with type comment)
-
-This is not a problem when using variable annotations, since no initializer
-is needed:
-
-.. code-block:: python
-
-   class Container:
-       items: list[str]  # No initializer
+       items: list[str]  # No initial value
 
 Mypy generally uses the first assignment to a variable to
 infer the type of the variable. However, if you assign both a ``None``
@@ -391,8 +381,9 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
 
    The Python interpreter internally uses the name ``NoneType`` for
    the type of ``None``, but ``None`` is always used in type
-   annotations. The latter is shorter and reads better. (Besides,
-   ``NoneType`` is not even defined in the standard library.)
+   annotations. The latter is shorter and reads better. (``NoneType``
+   is available as :py:data:`types.NoneType` on Python 3.10+, but is
+   not exposed at all on earlier versions of Python.)
 
 .. note::
 
@@ -419,9 +410,6 @@ the runtime with some limitations (see :ref:`runtime_troubles`).
     t1: int | str  # equivalent to Union[int, str]
 
     t2: int | None  # equivalent to Optional[int]
-
-    # Usable in type comments
-    t3 = 42  # type: int | str
 
 .. _no_strict_optional:
 
@@ -614,10 +602,11 @@ The type of class objects
 <484#the-type-of-class-objects>`.)
 
 Sometimes you want to talk about class objects that inherit from a
-given class.  This can be spelled as :py:class:`Type[C] <typing.Type>` where ``C`` is a
+given class.  This can be spelled as ``type[C]`` (or, on Python 3.8 and lower,
+:py:class:`typing.Type[C] <typing.Type>`) where ``C`` is a
 class.  In other words, when ``C`` is the name of a class, using ``C``
 to annotate an argument declares that the argument is an instance of
-``C`` (or of a subclass of ``C``), but using :py:class:`Type[C] <typing.Type>` as an
+``C`` (or of a subclass of ``C``), but using ``type[C]`` as an
 argument annotation declares that the argument is a class object
 deriving from ``C`` (or ``C`` itself).
 
@@ -648,7 +637,7 @@ you pass it the right class object:
        # (Here we could write the user object to a database)
        return user
 
-How would we annotate this function?  Without :py:class:`~typing.Type` the best we
+How would we annotate this function?  Without the ability to parameterize ``type``, the best we
 could do would be:
 
 .. code-block:: python
@@ -664,14 +653,14 @@ doesn't see that the ``buyer`` variable has type ``ProUser``:
    buyer = new_user(ProUser)
    buyer.pay()  # Rejected, not a method on User
 
-However, using :py:class:`~typing.Type` and a type variable with an upper bound (see
+However, using the ``type[C]`` syntax and a type variable with an upper bound (see
 :ref:`type-variable-upper-bound`) we can do better:
 
 .. code-block:: python
 
    U = TypeVar('U', bound=User)
 
-   def new_user(user_class: Type[U]) -> U:
+   def new_user(user_class: type[U]) -> U:
        # Same  implementation as before
 
 Now mypy will infer the correct type of the result when we call
@@ -684,12 +673,12 @@ Now mypy will infer the correct type of the result when we call
 
 .. note::
 
-   The value corresponding to :py:class:`Type[C] <typing.Type>` must be an actual class
+   The value corresponding to ``type[C]`` must be an actual class
    object that's a subtype of ``C``.  Its constructor must be
    compatible with the constructor of ``C``.  If ``C`` is a type
    variable, its upper bound must be a class object.
 
-For more details about ``Type[]`` see :pep:`PEP 484: The type of
+For more details about ``type[]`` and :py:class:`typing.Type[] <typing.Type>`, see :pep:`PEP 484: The type of
 class objects <484#the-type-of-class-objects>`.
 
 .. _text-and-anystr:

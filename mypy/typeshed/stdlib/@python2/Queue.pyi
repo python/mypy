@@ -1,4 +1,5 @@
-from typing import Any, Deque, Generic, TypeVar
+from collections import deque
+from typing import Any, Generic, TypeVar
 
 _T = TypeVar("_T")
 
@@ -12,7 +13,7 @@ class Queue(Generic[_T]):
     not_full: Any
     all_tasks_done: Any
     unfinished_tasks: Any
-    queue: Deque[Any]  # undocumented
+    queue: deque[Any]  # undocumented
     def __init__(self, maxsize: int = ...) -> None: ...
     def task_done(self) -> None: ...
     def join(self) -> None: ...

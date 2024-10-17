@@ -1,9 +1,8 @@
 import sys
-from typing import List, Optional, Tuple
 
 if sys.platform == "win32":
 
-    _SequenceType = List[Tuple[str, Optional[str], int]]
+    _SequenceType = list[tuple[str, str | None, int]]
 
     AdminExecuteSequence: _SequenceType
     AdminUISequence: _SequenceType
@@ -11,4 +10,4 @@ if sys.platform == "win32":
     InstallExecuteSequence: _SequenceType
     InstallUISequence: _SequenceType
 
-    tables: List[str]
+    tables: list[str]

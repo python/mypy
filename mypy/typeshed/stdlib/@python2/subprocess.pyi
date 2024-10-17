@@ -1,9 +1,9 @@
-from typing import IO, Any, Callable, Generic, Mapping, Optional, Sequence, Text, Tuple, TypeVar, Union
+from typing import IO, Any, Callable, Generic, Mapping, Sequence, Text, TypeVar
 
-_FILE = Union[None, int, IO[Any]]
-_TXT = Union[bytes, Text]
-_CMD = Union[_TXT, Sequence[_TXT]]
-_ENV = Union[Mapping[bytes, _TXT], Mapping[Text, _TXT]]
+_FILE = None | int | IO[Any]
+_TXT = bytes | Text
+_CMD = _TXT | Sequence[_TXT]
+_ENV = Mapping[bytes, _TXT] | Mapping[Text, _TXT]
 
 # Same args as Popen.__init__
 def call(
@@ -96,7 +96,7 @@ class Popen(Generic[_T]):
     def poll(self) -> int | None: ...
     def wait(self) -> int: ...
     # morally: -> Tuple[Optional[bytes], Optional[bytes]]
-    def communicate(self, input: _TXT | None = ...) -> Tuple[bytes, bytes]: ...
+    def communicate(self, input: _TXT | None = ...) -> tuple[bytes, bytes]: ...
     def send_signal(self, signal: int) -> None: ...
     def terminate(self) -> None: ...
     def kill(self) -> None: ...

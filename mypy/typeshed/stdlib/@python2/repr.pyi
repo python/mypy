@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any
 
 class Repr:
     maxarray: int
@@ -27,7 +27,7 @@ class Repr:
     def repr_str(self, x, level: complex) -> str: ...
     def repr_tuple(self, x, level: complex) -> str: ...
 
-def _possibly_sorted(x) -> List[Any]: ...
+def _possibly_sorted(x) -> list[Any]: ...
 
 aRepr: Repr
 

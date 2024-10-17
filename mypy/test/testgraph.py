@@ -29,7 +29,7 @@ class GraphSuite(Suite):
     def test_scc(self) -> None:
         vertices = {"A", "B", "C", "D"}
         edges: Dict[str, List[str]] = {"A": ["B", "C"], "B": ["C"], "C": ["B", "D"], "D": []}
-        sccs = set(frozenset(x) for x in strongly_connected_components(vertices, edges))
+        sccs = {frozenset(x) for x in strongly_connected_components(vertices, edges)}
         assert_equal(sccs,
                      {frozenset({'A'}),
                       frozenset({'B', 'C'}),

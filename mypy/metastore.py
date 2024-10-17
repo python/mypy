@@ -95,7 +95,7 @@ class FilesystemMetadataStore(MetadataStore):
         if not self.cache_dir_prefix:
             raise FileNotFoundError()
 
-        with open(os.path.join(self.cache_dir_prefix, name), 'r') as f:
+        with open(os.path.join(self.cache_dir_prefix, name)) as f:
             return f.read()
 
     def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
@@ -179,7 +179,7 @@ class SqliteMetadataStore(MetadataStore):
         if not self.db:
             raise FileNotFoundError()
 
-        cur = self.db.execute('SELECT {} FROM files WHERE path = ?'.format(field), (name,))
+        cur = self.db.execute(f'SELECT {field} FROM files WHERE path = ?', (name,))
         results = cur.fetchall()
         if not results:
             raise FileNotFoundError()

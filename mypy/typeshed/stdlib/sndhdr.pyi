@@ -1,6 +1,8 @@
 from _typeshed import StrOrBytesPath
 from typing import NamedTuple
 
+__all__ = ["what", "whathdr"]
+
 class SndHeaders(NamedTuple):
     filetype: str
     framerate: int

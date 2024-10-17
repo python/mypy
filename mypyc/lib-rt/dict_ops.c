@@ -139,8 +139,8 @@ int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff) {
     if (ret < 0) {
         if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
             PyErr_Format(PyExc_TypeError,
-                    "'%.200s' object is not a mapping",
-                    stuff->ob_type->tp_name);
+                         "'%.200s' object is not a mapping",
+                         Py_TYPE(stuff)->tp_name);
         }
     }
     return ret;

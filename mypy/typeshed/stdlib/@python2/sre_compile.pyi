@@ -12,10 +12,10 @@ from sre_constants import (
     SRE_INFO_PREFIX as SRE_INFO_PREFIX,
 )
 from sre_parse import SubPattern
-from typing import Any, List, Pattern, Tuple, Type
+from typing import Any, Pattern
 
 MAXCODE: int
-STRING_TYPES: Tuple[Type[str], Type[unicode]]
+STRING_TYPES: tuple[type[str], type[unicode]]
 _IsStringType = int
 
 def isstring(obj: Any) -> _IsStringType: ...

@@ -1,7 +1,7 @@
 from Queue import Queue
-from typing import Any, List, Tuple
+from typing import Any
 
-families: List[None]
+families: list[None]
 
 class Connection(object):
     _in: Any
@@ -22,4 +22,4 @@ class Listener(object):
     def close(self) -> None: ...
 
 def Client(address) -> Connection: ...
-def Pipe(duplex=...) -> Tuple[Connection, Connection]: ...
+def Pipe(duplex=...) -> tuple[Connection, Connection]: ...

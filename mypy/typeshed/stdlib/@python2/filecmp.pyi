@@ -1,11 +1,11 @@
-from typing import AnyStr, Callable, Dict, Generic, Iterable, List, Sequence, Text, Tuple
+from typing import AnyStr, Callable, Generic, Iterable, Sequence, Text
 
-DEFAULT_IGNORES: List[str]
+DEFAULT_IGNORES: list[str]
 
 def cmp(f1: bytes | Text, f2: bytes | Text, shallow: int | bool = ...) -> bool: ...
 def cmpfiles(
     a: AnyStr, b: AnyStr, common: Iterable[AnyStr], shallow: int | bool = ...
-) -> Tuple[List[AnyStr], List[AnyStr], List[AnyStr]]: ...
+) -> tuple[list[AnyStr], list[AnyStr], list[AnyStr]]: ...
 
 class dircmp(Generic[AnyStr]):
     def __init__(
@@ -16,22 +16,22 @@ class dircmp(Generic[AnyStr]):
     hide: Sequence[AnyStr]
     ignore: Sequence[AnyStr]
     # These properties are created at runtime by __getattr__
-    subdirs: Dict[AnyStr, dircmp[AnyStr]]
-    same_files: List[AnyStr]
-    diff_files: List[AnyStr]
-    funny_files: List[AnyStr]
-    common_dirs: List[AnyStr]
-    common_files: List[AnyStr]
-    common_funny: List[AnyStr]
-    common: List[AnyStr]
-    left_only: List[AnyStr]
-    right_only: List[AnyStr]
-    left_list: List[AnyStr]
-    right_list: List[AnyStr]
+    subdirs: dict[AnyStr, dircmp[AnyStr]]
+    same_files: list[AnyStr]
+    diff_files: list[AnyStr]
+    funny_files: list[AnyStr]
+    common_dirs: list[AnyStr]
+    common_files: list[AnyStr]
+    common_funny: list[AnyStr]
+    common: list[AnyStr]
+    left_only: list[AnyStr]
+    right_only: list[AnyStr]
+    left_list: list[AnyStr]
+    right_list: list[AnyStr]
     def report(self) -> None: ...
     def report_partial_closure(self) -> None: ...
     def report_full_closure(self) -> None: ...
-    methodmap: Dict[str, Callable[[], None]]
+    methodmap: dict[str, Callable[[], None]]
     def phase0(self) -> None: ...
     def phase1(self) -> None: ...
     def phase2(self) -> None: ...

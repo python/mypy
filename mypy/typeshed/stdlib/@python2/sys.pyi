@@ -1,9 +1,9 @@
 from types import ClassType, FrameType, TracebackType
-from typing import IO, Any, Callable, Dict, List, NoReturn, Text, Tuple, Type, Union
+from typing import IO, Any, Callable, NoReturn, Text, Union
 
 # The following type alias are stub-only and do not exist during runtime
-_ExcInfo = Tuple[Type[BaseException], BaseException, TracebackType]
-_OptExcInfo = Union[_ExcInfo, Tuple[None, None, None]]
+_ExcInfo = tuple[type[BaseException], BaseException, TracebackType]
+_OptExcInfo = Union[_ExcInfo, tuple[None, None, None]]
 
 class _flags:
     bytes_warning: int
@@ -36,17 +36,17 @@ class _float_info:
     radix: int
     rounds: int
 
-class _version_info(Tuple[int, int, int, str, int]):
+class _version_info(tuple[int, int, int, str, int]):
     major: int
     minor: int
     micro: int
     releaselevel: str
     serial: int
 
-_mercurial: Tuple[str, str, str]
+_mercurial: tuple[str, str, str]
 api_version: int
-argv: List[str]
-builtin_module_names: Tuple[str, ...]
+argv: list[str]
+builtin_module_names: tuple[str, ...]
 byteorder: str
 copyright: str
 dont_write_bytecode: bool
@@ -59,8 +59,8 @@ long_info: object
 maxint: int
 maxsize: int
 maxunicode: int
-modules: Dict[str, Any]
-path: List[str]
+modules: dict[str, Any]
+path: list[str]
 platform: str
 prefix: str
 py3kwarning: bool
@@ -70,7 +70,7 @@ __stdout__: IO[str]
 stderr: IO[str]
 stdin: IO[str]
 stdout: IO[str]
-subversion: Tuple[str, str, str]
+subversion: tuple[str, str, str]
 version: str
 warnoptions: object
 float_info: _float_info
@@ -81,11 +81,11 @@ last_type: type
 last_value: BaseException
 last_traceback: TracebackType
 # TODO precise types
-meta_path: List[Any]
-path_hooks: List[Any]
-path_importer_cache: Dict[str, Any]
+meta_path: list[Any]
+path_hooks: list[Any]
+path_importer_cache: dict[str, Any]
 displayhook: Callable[[object], Any]
-excepthook: Callable[[Type[BaseException], BaseException, TracebackType], Any]
+excepthook: Callable[[type[BaseException], BaseException, TracebackType], Any]
 exc_type: type | None
 exc_value: BaseException | ClassType
 exc_traceback: TracebackType
@@ -103,7 +103,7 @@ class _WindowsVersionType:
 
 def getwindowsversion() -> _WindowsVersionType: ...
 def _clear_type_cache() -> None: ...
-def _current_frames() -> Dict[int, FrameType]: ...
+def _current_frames() -> dict[int, FrameType]: ...
 def _getframe(depth: int = ...) -> FrameType: ...
 def call_tracing(fn: Any, args: Any) -> Any: ...
 def __displayhook__(value: object) -> None: ...

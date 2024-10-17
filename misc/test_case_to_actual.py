@@ -62,7 +62,7 @@ def main() -> None:
         return
 
     test_file_path, root_path = sys.argv[1], sys.argv[2]
-    with open(test_file_path, 'r') as stream:
+    with open(test_file_path) as stream:
         chunks = produce_chunks(iter(stream))
         write_tree(root_path, chunks)
 

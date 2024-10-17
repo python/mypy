@@ -1,12 +1,12 @@
-from typing import IO, Any, BinaryIO, NoReturn, Text, Tuple, Union
+from typing import IO, Any, BinaryIO, NoReturn, Text
 
-_File = Union[Text, IO[bytes]]
+_File = Text | IO[bytes]
 
 class Error(Exception): ...
 
 WAVE_FORMAT_PCM: int
 
-_wave_params = Tuple[int, int, int, int, str, str]
+_wave_params = tuple[int, int, int, int, str, str]
 
 class Wave_read:
     def __init__(self, f: _File) -> None: ...

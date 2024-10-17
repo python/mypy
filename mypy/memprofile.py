@@ -33,23 +33,23 @@ def collect_memory_stats() -> Tuple[Dict[str, int],
         n = type(obj).__name__
         if hasattr(obj, '__dict__'):
             # Keep track of which class a particular __dict__ is associated with.
-            inferred[id(obj.__dict__)] = '%s (__dict__)' % n
+            inferred[id(obj.__dict__)] = f'{n} (__dict__)'
         if isinstance(obj, (Node, Type)):  # type: ignore
             if hasattr(obj, '__dict__'):
                 for x in obj.__dict__.values():
                     if isinstance(x, list):
                         # Keep track of which node a list is associated with.
-                        inferred[id(x)] = '%s (list)' % n
+                        inferred[id(x)] = f'{n} (list)'
                     if isinstance(x, tuple):
                         # Keep track of which node a list is associated with.
-                        inferred[id(x)] = '%s (tuple)' % n
+                        inferred[id(x)] = f'{n} (tuple)'
 
             for k in get_class_descriptors(type(obj)):
                 x = getattr(obj, k, None)
                 if isinstance(x, list):
-                    inferred[id(x)] = '%s (list)' % n
+                    inferred[id(x)] = f'{n} (list)'
                 if isinstance(x, tuple):
-                    inferred[id(x)] = '%s (tuple)' % n
+                    inferred[id(x)] = f'{n} (tuple)'
 
     freqs: Dict[str, int] = {}
     memuse: Dict[str, int] = {}
@@ -94,7 +94,7 @@ def find_recursive_objects(objs: List[object]) -> None:
     We use this since gc.get_objects() does not return objects without pointers
     in them such as strings.
     """
-    seen = set(id(o) for o in objs)
+    seen = {id(o) for o in objs}
 
     def visit(o: object) -> None:
         if id(o) not in seen:

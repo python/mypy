@@ -3,7 +3,7 @@
 from mypyc.ir.rtypes import (
     RType, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor, RUnion, RStruct, RArray,
     is_bool_rprimitive, is_int_rprimitive, is_tuple_rprimitive, is_short_int_rprimitive,
-    is_object_rprimitive, is_bit_rprimitive
+    is_object_rprimitive, is_bit_rprimitive, is_tagged, is_fixed_width_rtype
 )
 
 
@@ -43,12 +43,15 @@ class SubtypeVisitor(RTypeVisitor[bool]):
     def visit_rprimitive(self, left: RPrimitive) -> bool:
         right = self.right
         if is_bool_rprimitive(left):
-            if is_int_rprimitive(right):
+            if is_tagged(right) or is_fixed_width_rtype(right):
                 return True
         elif is_bit_rprimitive(left):
-            if is_bool_rprimitive(right) or is_int_rprimitive(right):
+            if is_bool_rprimitive(right) or is_tagged(right) or is_fixed_width_rtype(right):
                 return True
         elif is_short_int_rprimitive(left):
+            if is_int_rprimitive(right):
+                return True
+        elif is_fixed_width_rtype(left):
             if is_int_rprimitive(right):
                 return True
         return left is right

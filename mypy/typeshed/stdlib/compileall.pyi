@@ -5,6 +5,8 @@ from typing import Any, Protocol
 if sys.version_info >= (3, 7):
     from py_compile import PycInvalidationMode
 
+__all__ = ["compile_dir", "compile_file", "compile_path"]
+
 class _SupportsSearch(Protocol):
     def search(self, string: str) -> Any: ...
 

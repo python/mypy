@@ -66,7 +66,7 @@ def main():
     start_col = int(start_col_str)
     end_line = int(end_line_str)
     end_col = int(end_col_str)
-    with open(filename, 'r') as f:
+    with open(filename) as f:
         lines = f.readlines()
         lines[end_line - 1] = update_line(lines[end_line - 1], REVEAL_TYPE_END, end_col)  # insert after end_col
         lines[start_line - 1] = update_line(lines[start_line - 1], REVEAL_TYPE_START, start_col)

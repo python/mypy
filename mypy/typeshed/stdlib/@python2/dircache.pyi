@@ -1,7 +1,7 @@
-from typing import List, MutableSequence, Text
+from typing import MutableSequence, Text
 
 def reset() -> None: ...
-def listdir(path: Text) -> List[str]: ...
+def listdir(path: Text) -> list[str]: ...
 
 opendir = listdir
 

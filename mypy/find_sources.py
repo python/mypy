@@ -38,7 +38,7 @@ def create_source_list(paths: Sequence[str], options: Options,
             sub_sources = finder.find_sources_in_dir(path)
             if not sub_sources and not allow_empty_dir:
                 raise InvalidSourceList(
-                    "There are no .py[i] files in directory '{}'".format(path)
+                    f"There are no .py[i] files in directory '{path}'"
                 )
             sources.extend(sub_sources)
         else:
@@ -160,7 +160,7 @@ class SourceFinder:
     def crawl_up_dir(self, dir: str) -> Tuple[str, str]:
         return self._crawl_up_helper(dir) or ("", dir)
 
-    @functools.lru_cache()
+    @functools.lru_cache()  # noqa: B019
     def _crawl_up_helper(self, dir: str) -> Optional[Tuple[str, str]]:
         """Given a directory, maybe returns module and base directory.
 
@@ -185,7 +185,7 @@ class SourceFinder:
             if not name.isidentifier():
                 # in most cases the directory name is invalid, we'll just stop crawling upwards
                 # but if there's an __init__.py in the directory, something is messed up
-                raise InvalidSourceList("{} is not a valid Python package name".format(name))
+                raise InvalidSourceList(f"{name} is not a valid Python package name")
             # we're definitely a package, so we always return a non-None value
             mod_prefix, base_dir = self.crawl_up_dir(parent)
             return module_join(mod_prefix, name), base_dir

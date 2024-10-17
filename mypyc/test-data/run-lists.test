@@ -379,8 +379,33 @@ def test() -> None:
     source_str = "abcd"
     f = list("str:" + x for x in source_str)
     assert f == ["str:a", "str:b", "str:c", "str:d"]
+
 [case testNextBug]
 from typing import List, Optional
 
 def test(x: List[int]) -> None:
     res = next((i for i in x), None)
+
+[case testListGetItemWithBorrow]
+from typing import List
+
+class D:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class C:
+    def __init__(self, d: D) -> None:
+        self.d = d
+
+def test_index_with_literal() -> None:
+    d1 = D(1)
+    d2 = D(2)
+    a = [C(d1), C(d2)]
+    d = a[0].d
+    assert d is d1
+    d = a[1].d
+    assert d is d2
+    d = a[-1].d
+    assert d is d2
+    d = a[-2].d
+    assert d is d1

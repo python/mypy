@@ -1,15 +1,15 @@
-from typing import Dict, List, Sequence
+from typing import Sequence
 
 cmp_op: Sequence[str]
-hasconst: List[int]
-hasname: List[int]
-hasjrel: List[int]
-hasjabs: List[int]
-haslocal: List[int]
-hascompare: List[int]
-hasfree: List[int]
-opname: List[str]
+hasconst: list[int]
+hasname: list[int]
+hasjrel: list[int]
+hasjabs: list[int]
+haslocal: list[int]
+hascompare: list[int]
+hasfree: list[int]
+opname: list[str]
 
-opmap: Dict[str, int]
+opmap: dict[str, int]
 HAVE_ARGUMENT: int
 EXTENDED_ARG: int

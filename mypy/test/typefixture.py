@@ -9,7 +9,7 @@ from mypy.semanal_shared import set_callable_name
 from mypy.types import (
     Type, AnyType, NoneType, Instance, CallableType, TypeVarType, TypeType,
     UninhabitedType, TypeOfAny, TypeAliasType, UnionType, LiteralType,
-    TypeVarLikeType
+    TypeVarLikeType, TypeVarTupleType
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, FuncDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
@@ -34,6 +34,9 @@ class TypeFixture:
                           variance: int) -> TypeVarType:
             return TypeVarType(name, name, id, values, upper_bound, variance)
 
+        def make_type_var_tuple(name: str, id: int, upper_bound: Type) -> TypeVarTupleType:
+            return TypeVarTupleType(name, name, id, upper_bound)
+
         self.t = make_type_var('T', 1, [], self.o, variance)     # T`1 (type variable)
         self.tf = make_type_var('T', -1, [], self.o, variance)   # T`-1 (type variable)
         self.tf2 = make_type_var('T', -2, [], self.o, variance)  # T`-2 (type variable)
@@ -41,6 +44,10 @@ class TypeFixture:
         self.s1 = make_type_var('S', 1, [], self.o, variance)    # S`1 (type variable)
         self.sf = make_type_var('S', -2, [], self.o, variance)   # S`-2 (type variable)
         self.sf1 = make_type_var('S', -1, [], self.o, variance)  # S`-1 (type variable)
+
+        self.ts = make_type_var_tuple('Ts', 1, self.o)       # Ts`1 (type var tuple)
+        self.ss = make_type_var_tuple('Ss', 2, self.o)       # Ss`2 (type var tuple)
+        self.us = make_type_var_tuple('Us', 3, self.o)       # Us`3 (type var tuple)
 
         # Simple types
         self.anyt = AnyType(TypeOfAny.special_form)
@@ -65,6 +72,7 @@ class TypeFixture:
                                               variances=[COVARIANT])   # class tuple
         self.type_typei = self.make_type_info('builtins.type')         # class type
         self.bool_type_info = self.make_type_info('builtins.bool')
+        self.str_type_info = self.make_type_info('builtins.str')
         self.functioni = self.make_type_info('builtins.function')  # function TODO
         self.ai = self.make_type_info('A', mro=[self.oi])              # class A
         self.bi = self.make_type_info('B', mro=[self.ai, self.oi])     # class B(A)
@@ -100,6 +108,10 @@ class TypeFixture:
                                         typevars=['S'],
                                         variances=[variance],
                                         bases=[Instance(self.gi, [self.s1])])
+
+        self.gvi = self.make_type_info('GV', mro=[self.oi],
+                                       typevars=['Ts'],
+                                       typevar_tuple_index=0)
         # list[T]
         self.std_listi = self.make_type_info('builtins.list', mro=[self.oi],
                                              typevars=['T'],
@@ -109,6 +121,7 @@ class TypeFixture:
         self.std_tuple = Instance(self.std_tuplei, [self.anyt])        # tuple
         self.type_type = Instance(self.type_typei, [])        # type
         self.function = Instance(self.functioni, [])  # function TODO
+        self.str_type = Instance(self.str_type_info, [])
         self.a = Instance(self.ai, [])          # A
         self.b = Instance(self.bi, [])          # B
         self.c = Instance(self.ci, [])          # C
@@ -162,6 +175,13 @@ class TypeFixture:
         self.lit2_inst = Instance(self.ai, [], last_known_value=self.lit2)
         self.lit3_inst = Instance(self.di, [], last_known_value=self.lit3)
         self.lit4_inst = Instance(self.ai, [], last_known_value=self.lit4)
+
+        self.lit_str1 = LiteralType("x", self.str_type)
+        self.lit_str2 = LiteralType("y", self.str_type)
+        self.lit_str3 = LiteralType("z", self.str_type)
+        self.lit_str1_inst = Instance(self.str_type_info, [], last_known_value=self.lit_str1)
+        self.lit_str2_inst = Instance(self.str_type_info, [], last_known_value=self.lit_str2)
+        self.lit_str3_inst = Instance(self.str_type_info, [], last_known_value=self.lit_str3)
 
         self.type_a = TypeType.make_normalized(self.a)
         self.type_b = TypeType.make_normalized(self.b)
@@ -224,6 +244,7 @@ class TypeFixture:
                        mro: Optional[List[TypeInfo]] = None,
                        bases: Optional[List[Instance]] = None,
                        typevars: Optional[List[str]] = None,
+                       typevar_tuple_index: Optional[int] = None,
                        variances: Optional[List[int]] = None) -> TypeInfo:
         """Make a TypeInfo suitable for use in unit tests."""
 
@@ -239,11 +260,14 @@ class TypeFixture:
         if typevars:
             v: List[TypeVarLikeType] = []
             for id, n in enumerate(typevars, 1):
-                if variances:
-                    variance = variances[id - 1]
+                if typevar_tuple_index is not None and id-1 == typevar_tuple_index:
+                    v.append(TypeVarTupleType(n, n, id, self.o))
                 else:
-                    variance = COVARIANT
-                v.append(TypeVarType(n, n, id, [], self.o, variance=variance))
+                    if variances:
+                        variance = variances[id - 1]
+                    else:
+                        variance = COVARIANT
+                    v.append(TypeVarType(n, n, id, [], self.o, variance=variance))
             class_def.type_vars = v
 
         info = TypeInfo(SymbolTable(), class_def, module_name)

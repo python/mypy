@@ -43,7 +43,7 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     Return a ClassIR representing an environment for a function
     containing a nested function.
     """
-    env_class = ClassIR('{}_env'.format(builder.fn_info.namespaced_name()),
+    env_class = ClassIR(f'{builder.fn_info.namespaced_name()}_env',
                         builder.module_name, is_generated=True)
     env_class.attributes[SELF_NAME] = RInstance(env_class)
     if builder.fn_info.is_nested:
@@ -122,7 +122,7 @@ def load_outer_env(builder: IRBuilder,
     Returns the register where the environment class was loaded.
     """
     env = builder.add(GetAttr(base, ENV_ATTR_NAME, builder.fn_info.fitem.line))
-    assert isinstance(env.type, RInstance), '{} must be of type RInstance'.format(env)
+    assert isinstance(env.type, RInstance), f'{env} must be of type RInstance'
 
     for symbol, target in outer_env.items():
         env.type.class_ir.attributes[symbol.name] = target.type

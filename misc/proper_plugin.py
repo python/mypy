@@ -1,6 +1,6 @@
 from mypy.plugin import Plugin, FunctionContext
 from mypy.types import (
-    Type, Instance, CallableType, UnionType, get_proper_type, ProperType,
+    FunctionLike, Type, Instance, CallableType, UnionType, get_proper_type, ProperType,
     get_proper_types, TupleType, NoneTyp, AnyType
 )
 from mypy.nodes import TypeInfo
@@ -52,7 +52,7 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
 
 def is_special_target(right: ProperType) -> bool:
     """Whitelist some special cases for use in isinstance() with improper types."""
-    if isinstance(right, CallableType) and right.is_type_obj():
+    if isinstance(right, FunctionLike) and right.is_type_obj():
         if right.type_object().fullname == 'builtins.tuple':
             # Used with Union[Type, Tuple[Type, ...]].
             return True

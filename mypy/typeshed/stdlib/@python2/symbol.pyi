@@ -1,5 +1,3 @@
-from typing import Dict
-
 single_input: int
 file_input: int
 eval_input: int
@@ -86,4 +84,4 @@ testlist1: int
 encoding_decl: int
 yield_expr: int
 
-sym_name: Dict[int, str]
+sym_name: dict[int, str]

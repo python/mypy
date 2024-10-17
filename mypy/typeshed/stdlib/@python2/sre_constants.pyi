@@ -1,4 +1,4 @@
-from typing import Dict, List, TypeVar
+from typing import TypeVar
 
 MAGIC: int
 MAXREPEAT: int
@@ -72,14 +72,14 @@ CATEGORY_UNI_NOT_LINEBREAK: str
 
 _T = TypeVar("_T")
 
-def makedict(list: List[_T]) -> Dict[_T, int]: ...
+def makedict(list: list[_T]) -> dict[_T, int]: ...
 
-OP_IGNORE: Dict[str, str]
-AT_MULTILINE: Dict[str, str]
-AT_LOCALE: Dict[str, str]
-AT_UNICODE: Dict[str, str]
-CH_LOCALE: Dict[str, str]
-CH_UNICODE: Dict[str, str]
+OP_IGNORE: dict[str, str]
+AT_MULTILINE: dict[str, str]
+AT_LOCALE: dict[str, str]
+AT_UNICODE: dict[str, str]
+CH_LOCALE: dict[str, str]
+CH_UNICODE: dict[str, str]
 SRE_FLAG_TEMPLATE: int
 SRE_FLAG_IGNORECASE: int
 SRE_FLAG_LOCALE: int

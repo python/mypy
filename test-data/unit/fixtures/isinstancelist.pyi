@@ -10,8 +10,11 @@ class type:
     def __init__(self, x) -> None: pass
 
 class function: pass
-class ellipsis: pass
 class classmethod: pass
+
+class ellipsis: pass
+EllipsisType = ellipsis
+Ellipsis = ellipsis()
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass

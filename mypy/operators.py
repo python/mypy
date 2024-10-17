@@ -51,7 +51,7 @@ ops_with_inplace_method: Final = {
     ">>",
 }
 
-inplace_operator_methods: Final = set("__i" + op_methods[op][2:] for op in ops_with_inplace_method)
+inplace_operator_methods: Final = {"__i" + op_methods[op][2:] for op in ops_with_inplace_method}
 
 reverse_op_methods: Final = {
     '__add__': '__radd__',
@@ -99,7 +99,7 @@ op_methods_that_shortcut: Final = {
     '__rshift__',
 }
 
-normal_from_reverse_op: Final = dict((m, n) for n, m in reverse_op_methods.items())
+normal_from_reverse_op: Final = {m: n for n, m in reverse_op_methods.items()}
 reverse_op_method_set: Final = set(reverse_op_methods.values())
 
 unary_op_methods: Final = {

@@ -15,15 +15,15 @@ def apply_all(func: Any, directory: str, extension: str,
             to_extension: str='', exclude: Tuple[str]=('',),
             recursive: bool=True, debug: bool=False) -> None:
     excluded = [x+extension for x in exclude] if exclude else []
-    for p, d, files in os.walk(os.path.join(base_path,directory)):
+    for p, d, files in os.walk(os.path.join(base_path, directory)):
         for f in files:
-            if "{}".format(f) in excluded:
+            if f in excluded:
                 continue
-            inner_path = os.path.join(p,f)
+            inner_path = os.path.join(p, f)
             if not inner_path.endswith(extension):
                 continue
             if to_extension:
-                new_path = "{}{}".format(inner_path[:-len(extension)],to_extension)
+                new_path = f"{inner_path[:-len(extension)]}{to_extension}"
                 func(inner_path,new_path)
             else:
                 func(inner_path)
@@ -91,9 +91,9 @@ def main(action: str, directory: str, extension: str, to_extension: str,
 
     rec = "[Recursively] " if not_recursive else ''
     if not extension.startswith('.'):
-        extension = ".{}".format(extension)
+        extension = f".{extension}"
     if not to_extension.startswith('.'):
-        to_extension = ".{}".format(to_extension)
+        to_extension = f".{to_extension}"
     if directory.endswith('/'):
         directory = directory[:-1]
     if action == 'cp':

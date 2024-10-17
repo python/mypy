@@ -27,25 +27,25 @@ class ArgSuite(Suite):
         base = ['file.py']  # dummy file
 
         # test inference given one (infer the other)
-        matching_version = base + ['--python-version={}'.format(sys_ver_str)]
+        matching_version = base + [f'--python-version={sys_ver_str}']
         _, options = process_options(matching_version)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable == sys.executable
 
-        matching_version = base + ['--python-executable={}'.format(sys.executable)]
+        matching_version = base + [f'--python-executable={sys.executable}']
         _, options = process_options(matching_version)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable == sys.executable
 
         # test inference given both
-        matching_version = base + ['--python-version={}'.format(sys_ver_str),
-                                   '--python-executable={}'.format(sys.executable)]
+        matching_version = base + [f'--python-version={sys_ver_str}',
+                                   f'--python-executable={sys.executable}']
         _, options = process_options(matching_version)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable == sys.executable
 
         # test that --no-site-packages will disable executable inference
-        matching_version = base + ['--python-version={}'.format(sys_ver_str),
+        matching_version = base + [f'--python-version={sys_ver_str}',
                                    '--no-site-packages']
         _, options = process_options(matching_version)
         assert options.python_version == sys.version_info[:2]

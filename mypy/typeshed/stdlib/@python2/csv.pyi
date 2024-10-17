@@ -16,20 +16,8 @@ from _csv import (
     unregister_dialect as unregister_dialect,
     writer as writer,
 )
-from typing import (
-    Any,
-    Dict as _DictReadMapping,
-    Generic,
-    Iterable,
-    Iterator,
-    List,
-    Mapping,
-    Sequence,
-    Text,
-    Type,
-    TypeVar,
-    overload,
-)
+from builtins import dict as _DictReadMapping
+from typing import Any, Generic, Iterable, Iterator, Mapping, Sequence, Text, TypeVar, overload
 
 _T = TypeVar("_T")
 
@@ -96,7 +84,7 @@ class DictWriter(Generic[_T]):
     def writerows(self, rowdicts: Iterable[Mapping[_T, Any]]) -> None: ...
 
 class Sniffer(object):
-    preferred: List[str]
+    preferred: list[str]
     def __init__(self) -> None: ...
-    def sniff(self, sample: str, delimiters: str | None = ...) -> Type[Dialect]: ...
+    def sniff(self, sample: str, delimiters: str | None = ...) -> type[Dialect]: ...
     def has_header(self, sample: str) -> bool: ...

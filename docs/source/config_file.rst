@@ -201,7 +201,7 @@ section of the command line docs.
 
     A regular expression that matches file names, directory names and paths
     which mypy should ignore while recursively discovering files to check.
-    Use forward slashes on all platforms.
+    Use forward slashes (``/``) as directory separators on all platforms.
 
     .. code-block:: ini
 
@@ -237,7 +237,7 @@ section of the command line docs.
 
           [tool.mypy]
           exclude = [
-              "^one\.py$",  # TOML's double-quoted strings require escaping backslashes
+              "^one\\.py$",  # TOML's double-quoted strings require escaping backslashes
               'two\.pyi$',  # but TOML's single-quoted strings do not
               '^three\.',
           ]
@@ -648,6 +648,14 @@ section of the command line docs.
 
     Allows disabling one or multiple error codes globally.
 
+.. confval:: enable_error_code
+
+    :type: comma-separated list of strings
+
+    Allows enabling one or multiple error codes globally.
+
+    Note: This option will override disabled error codes from the disable_error_code option.
+
 .. confval:: implicit_reexport
 
     :type: boolean
@@ -667,6 +675,13 @@ section of the command line docs.
        # This will also re-export bar
        from foo import bar
        __all__ = ['bar']
+
+.. confval:: strict_concatenate
+
+    :type: boolean
+    :default: False
+
+    Make arguments prepended via ``Concatenate`` be truly positional-only.
 
 .. confval:: strict_equality
 

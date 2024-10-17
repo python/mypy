@@ -1,4 +1,12 @@
-from typing import Any, Callable, NoReturn
+import sys
+from collections.abc import Callable
+from types import TracebackType
+from typing import Any, NoReturn
+
+__all__ = ["error", "start_new_thread", "exit", "get_ident", "allocate_lock", "interrupt_main", "LockType"]
+
+if sys.version_info >= (3, 7):
+    __all__ += ["RLock"]
 
 TIMEOUT_MAX: int
 error = RuntimeError
@@ -14,8 +22,12 @@ class LockType:
     def __init__(self) -> None: ...
     def acquire(self, waitflag: bool | None = ..., timeout: int = ...) -> bool: ...
     def __enter__(self, waitflag: bool | None = ..., timeout: int = ...) -> bool: ...
-    def __exit__(self, typ: Any, val: Any, tb: Any) -> None: ...
+    def __exit__(self, typ: type[BaseException] | None, val: BaseException | None, tb: TracebackType | None) -> None: ...
     def release(self) -> bool: ...
     def locked(self) -> bool: ...
+
+if sys.version_info >= (3, 7):
+    class RLock(LockType):
+        def release(self) -> None: ...  # type: ignore[override]
 
 def interrupt_main() -> None: ...

@@ -1,10 +1,11 @@
-from typing import Any, Callable, Deque, TypeVar
+from collections import deque
+from typing import Any, Callable, TypeVar
 
 _T = TypeVar("_T")
 
 class mutex:
     locked: bool
-    queue: Deque[Any]
+    queue: deque[Any]
     def __init__(self) -> None: ...
     def test(self) -> bool: ...
     def testandset(self) -> bool: ...

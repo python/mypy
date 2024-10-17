@@ -189,7 +189,7 @@ class ConditionalTypeBinder:
 
         frames = [f for f in frames if not f.unreachable]
         changed = False
-        keys = set(key for f in frames for key in f.types)
+        keys = {key for f in frames for key in f.types}
 
         for key in keys:
             current_value = self._get(key)

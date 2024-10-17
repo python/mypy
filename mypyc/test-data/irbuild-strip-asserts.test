@@ -7,6 +7,7 @@ def g():
 def g():
     r0, x :: object
 L0:
-    r0 = box(short_int, 6)
+    r0 = object 3
     x = r0
     return x
+

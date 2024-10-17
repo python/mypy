@@ -140,7 +140,6 @@ method_op(
     arg_types=[dict_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPyDict_SetDefaultWithNone',
-    is_borrowed=True,
     error_kind=ERR_MAGIC)
 
 # dict.setdefault(key, empty tuple/list/set)

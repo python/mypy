@@ -60,6 +60,7 @@ CFunctionDescription = NamedTuple(
                               ('extra_int_constants', List[Tuple[int, RType]]),
                               ('priority', int)])
 
+
 # A description for C load operations including LoadGlobal and LoadAddress
 LoadAddressDescription = NamedTuple(
     'LoadAddressDescription',     [('name', str),

@@ -20,11 +20,11 @@ from mypy.nodes import TypeInfo
 from mypy.subtypes import is_equivalent
 from mypy.semanal_enum import ENUM_BASES
 
-ENUM_NAME_ACCESS: Final = {"{}.name".format(prefix) for prefix in ENUM_BASES} | {
-    "{}._name_".format(prefix) for prefix in ENUM_BASES
+ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
+    f"{prefix}._name_" for prefix in ENUM_BASES
 }
-ENUM_VALUE_ACCESS: Final = {"{}.value".format(prefix) for prefix in ENUM_BASES} | {
-    "{}._value_".format(prefix) for prefix in ENUM_BASES
+ENUM_VALUE_ACCESS: Final = {f"{prefix}.value" for prefix in ENUM_BASES} | {
+    f"{prefix}._value_" for prefix in ENUM_BASES
 }
 
 
@@ -75,8 +75,8 @@ def _infer_value_type_with_auto_fallback(
     """
     if proper_type is None:
         return None
-    if not ((isinstance(proper_type, Instance) and
-            proper_type.type.fullname == 'enum.auto')):
+    if not (isinstance(proper_type, Instance) and
+            proper_type.type.fullname == 'enum.auto'):
         return proper_type
     assert isinstance(ctx.type, Instance), 'An incorrect ctx.type was passed.'
     info = ctx.type.type

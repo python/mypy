@@ -17,105 +17,41 @@ from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     update_testcase_output, parse_options,
     assert_target_equivalence, check_test_output_files, perform_file_operations,
+    find_test_files,
 )
 from mypy.errors import CompileError
 from mypy.semanal_main import core_modules
 
+try:
+    import lxml  # type: ignore
+except ImportError:
+    lxml = None
+
+import pytest
 
 # List of files that contain test case descriptions.
-typecheck_files = [
-    'check-basic.test',
-    'check-union-or-syntax.test',
-    'check-callable.test',
-    'check-classes.test',
-    'check-statements.test',
-    'check-generics.test',
-    'check-dynamic-typing.test',
-    'check-inference.test',
-    'check-inference-context.test',
-    'check-kwargs.test',
-    'check-overloading.test',
-    'check-type-checks.test',
-    'check-abstract.test',
-    'check-multiple-inheritance.test',
-    'check-super.test',
-    'check-modules.test',
-    'check-typevar-values.test',
-    'check-unsupported.test',
-    'check-unreachable-code.test',
-    'check-unions.test',
-    'check-isinstance.test',
-    'check-lists.test',
-    'check-namedtuple.test',
-    'check-narrowing.test',
-    'check-typeddict.test',
-    'check-type-aliases.test',
-    'check-ignore.test',
-    'check-type-promotion.test',
-    'check-semanal-error.test',
-    'check-flags.test',
-    'check-incremental.test',
-    'check-serialize.test',
-    'check-bound.test',
-    'check-optional.test',
-    'check-fastparse.test',
-    'check-warnings.test',
-    'check-async-await.test',
-    'check-newtype.test',
-    'check-class-namedtuple.test',
-    'check-selftype.test',
-    'check-python2.test',
-    'check-columns.test',
-    'check-functions.test',
-    'check-tuples.test',
-    'check-expressions.test',
-    'check-generic-subtyping.test',
-    'check-varargs.test',
-    'check-newsyntax.test',
-    'check-protocols.test',
-    'check-underscores.test',
-    'check-classvar.test',
-    'check-enum.test',
-    'check-incomplete-fixture.test',
-    'check-custom-plugin.test',
-    'check-default-plugin.test',
-    'check-attr.test',
-    'check-ctypes.test',
-    'check-dataclasses.test',
-    'check-final.test',
-    'check-redefine.test',
-    'check-literal.test',
-    'check-newsemanal.test',
-    'check-inline-config.test',
-    'check-reports.test',
-    'check-errorcodes.test',
-    'check-annotated.test',
-    'check-parameter-specification.test',
-    'check-generic-alias.test',
-    'check-typeguard.test',
-    'check-functools.test',
-    'check-singledispatch.test',
-    'check-slots.test',
-    'check-formatting.test',
-]
+# Includes all check-* files with the .test extension in the test-data/unit directory
+typecheck_files = find_test_files(pattern="check-*.test")
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
-if sys.version_info >= (3, 8):
-    typecheck_files.append('check-python38.test')
-if sys.version_info >= (3, 9):
-    typecheck_files.append('check-python39.test')
-if sys.version_info >= (3, 10):
-    typecheck_files.append('check-python310.test')
+if sys.version_info < (3, 8):
+    typecheck_files.remove('check-python38.test')
+if sys.version_info < (3, 9):
+    typecheck_files.remove('check-python39.test')
+if sys.version_info < (3, 10):
+    typecheck_files.remove('check-python310.test')
 
 # Special tests for platforms with case-insensitive filesystems.
-if sys.platform in ('darwin', 'win32'):
-    typecheck_files.extend(['check-modules-case.test'])
+if sys.platform not in ('darwin', 'win32'):
+    typecheck_files.remove('check-modules-case.test')
 
 
 class TypeCheckSuite(DataSuite):
     files = typecheck_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if lxml is None and os.path.basename(testcase.file) == 'check-reports.test':
+            pytest.skip("Cannot import lxml. Is it installed?")
         incremental = ('incremental' in testcase.name.lower()
                        or 'incremental' in testcase.file
                        or 'serialize' in testcase.file)
@@ -164,6 +100,7 @@ class TypeCheckSuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
+        options.enable_incomplete_features = True
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.
@@ -292,10 +229,7 @@ class TypeCheckSuite(DataSuite):
         return hits
 
     def find_module_files(self, manager: build.BuildManager) -> Dict[str, str]:
-        modules = {}
-        for id, module in manager.modules.items():
-            modules[id] = module.path
-        return modules
+        return {id: module.path for id, module in manager.modules.items()}
 
     def find_missing_cache_files(self, modules: Dict[str, str],
                                  manager: build.BuildManager) -> Set[str]:
@@ -326,7 +260,7 @@ class TypeCheckSuite(DataSuite):
         """
         m = re.search('# cmd: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
         if incremental_step > 1:
-            alt_regex = '# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step)
+            alt_regex = f'# cmd{incremental_step}: mypy -m ([a-zA-Z0-9_. ]+)$'
             alt_m = re.search(alt_regex, program_text, flags=re.MULTILINE)
             if alt_m is not None:
                 # Optionally return a different command if in a later step
@@ -344,7 +278,7 @@ class TypeCheckSuite(DataSuite):
             cache = FindModuleCache(search_paths, fscache=None, options=None)
             for module_name in module_names.split(' '):
                 path = cache.find_module(module_name)
-                assert isinstance(path, str), "Can't find ad hoc case file: %s" % module_name
+                assert isinstance(path, str), f"Can't find ad hoc case file: {module_name}"
                 with open(path, encoding='utf8') as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))

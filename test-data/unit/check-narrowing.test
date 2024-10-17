@@ -894,7 +894,7 @@ else:
     reveal_type(y)   # N: Revealed type is "__main__.Custom"
 
 # No contamination here
-if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Union[Literal[1], Literal[2], None]", right operand type: "Default")
+if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Optional[Literal[1, 2]]", right operand type: "Default")
     reveal_type(x)   # E: Statement is unreachable
     reveal_type(z)
 else:

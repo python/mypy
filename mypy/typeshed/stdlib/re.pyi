@@ -1,7 +1,11 @@
 import enum
+import sre_compile
 import sys
+from _typeshed import ReadableBuffer
+from collections.abc import Callable, Iterator
 from sre_constants import error as error
-from typing import Any, AnyStr, Callable, Iterator, Union, overload
+from typing import Any, AnyStr, overload
+from typing_extensions import TypeAlias
 
 # ----- re variables and constants -----
 if sys.version_info >= (3, 7):
@@ -9,24 +13,62 @@ if sys.version_info >= (3, 7):
 else:
     from typing import Match, Pattern
 
+__all__ = [
+    "match",
+    "fullmatch",
+    "search",
+    "sub",
+    "subn",
+    "split",
+    "findall",
+    "finditer",
+    "compile",
+    "purge",
+    "template",
+    "escape",
+    "error",
+    "A",
+    "I",
+    "L",
+    "M",
+    "S",
+    "X",
+    "U",
+    "ASCII",
+    "IGNORECASE",
+    "LOCALE",
+    "MULTILINE",
+    "DOTALL",
+    "VERBOSE",
+    "UNICODE",
+]
+
+if sys.version_info >= (3, 7):
+    __all__ += ["Match", "Pattern"]
+
+if sys.version_info >= (3, 11):
+    __all__ += ["NOFLAG", "RegexFlag"]
+
 class RegexFlag(enum.IntFlag):
-    A: int
-    ASCII: int
-    DEBUG: int
-    I: int
-    IGNORECASE: int
-    L: int
-    LOCALE: int
-    M: int
-    MULTILINE: int
-    S: int
-    DOTALL: int
-    X: int
-    VERBOSE: int
-    U: int
-    UNICODE: int
-    T: int
-    TEMPLATE: int
+    A = sre_compile.SRE_FLAG_ASCII
+    ASCII = A
+    DEBUG = sre_compile.SRE_FLAG_DEBUG
+    I = sre_compile.SRE_FLAG_IGNORECASE
+    IGNORECASE = I
+    L = sre_compile.SRE_FLAG_LOCALE
+    LOCALE = L
+    M = sre_compile.SRE_FLAG_MULTILINE
+    MULTILINE = M
+    S = sre_compile.SRE_FLAG_DOTALL
+    DOTALL = S
+    X = sre_compile.SRE_FLAG_VERBOSE
+    VERBOSE = X
+    U = sre_compile.SRE_FLAG_UNICODE
+    UNICODE = U
+    T = sre_compile.SRE_FLAG_TEMPLATE
+    TEMPLATE = T
+    if sys.version_info >= (3, 11):
+        NOFLAG: int
 
 A = RegexFlag.A
 ASCII = RegexFlag.ASCII
@@ -45,73 +87,75 @@ U = RegexFlag.U
 UNICODE = RegexFlag.UNICODE
 T = RegexFlag.T
 TEMPLATE = RegexFlag.TEMPLATE
-_FlagsType = Union[int, RegexFlag]
+if sys.version_info >= (3, 11):
+    NOFLAG = RegexFlag.NOFLAG
+_FlagsType: TypeAlias = int | RegexFlag
 
 if sys.version_info < (3, 7):
     # undocumented
     _pattern_type: type
 
+# Type-wise the compile() overloads are unnecessary, they could also be modeled using
+# unions in the parameter types. However mypy has a bug regarding TypeVar
+# constraints (https://github.com/python/mypy/issues/11880),
+# which limits us here because AnyStr is a constrained TypeVar.
+
+# pattern arguments do *not* accept arbitrary buffers such as bytearray,
+# because the pattern must be hashable.
 @overload
 def compile(pattern: AnyStr, flags: _FlagsType = ...) -> Pattern[AnyStr]: ...
 @overload
 def compile(pattern: Pattern[AnyStr], flags: _FlagsType = ...) -> Pattern[AnyStr]: ...
 @overload
-def search(pattern: AnyStr, string: AnyStr, flags: _FlagsType = ...) -> Match[AnyStr] | None: ...
+def search(pattern: str | Pattern[str], string: str, flags: _FlagsType = ...) -> Match[str] | None: ...
 @overload
-def search(pattern: Pattern[AnyStr], string: AnyStr, flags: _FlagsType = ...) -> Match[AnyStr] | None: ...
+def search(pattern: bytes | Pattern[bytes], string: ReadableBuffer, flags: _FlagsType = ...) -> Match[bytes] | None: ...
 @overload
-def match(pattern: AnyStr, string: AnyStr, flags: _FlagsType = ...) -> Match[AnyStr] | None: ...
+def match(pattern: str | Pattern[str], string: str, flags: _FlagsType = ...) -> Match[str] | None: ...
 @overload
-def match(pattern: Pattern[AnyStr], string: AnyStr, flags: _FlagsType = ...) -> Match[AnyStr] | None: ...
-
-# New in Python 3.4
+def match(pattern: bytes | Pattern[bytes], string: ReadableBuffer, flags: _FlagsType = ...) -> Match[bytes] | None: ...
 @overload
-def fullmatch(pattern: AnyStr, string: AnyStr, flags: _FlagsType = ...) -> Match[AnyStr] | None: ...
+def fullmatch(pattern: str | Pattern[str], string: str, flags: _FlagsType = ...) -> Match[str] | None: ...
 @overload
-def fullmatch(pattern: Pattern[AnyStr], string: AnyStr, flags: _FlagsType = ...) -> Match[AnyStr] | None: ...
+def fullmatch(pattern: bytes | Pattern[bytes], string: ReadableBuffer, flags: _FlagsType = ...) -> Match[bytes] | None: ...
 @overload
-def split(pattern: AnyStr, string: AnyStr, maxsplit: int = ..., flags: _FlagsType = ...) -> list[AnyStr | Any]: ...
+def split(pattern: str | Pattern[str], string: str, maxsplit: int = ..., flags: _FlagsType = ...) -> list[str | Any]: ...
 @overload
-def split(pattern: Pattern[AnyStr], string: AnyStr, maxsplit: int = ..., flags: _FlagsType = ...) -> list[AnyStr | Any]: ...
+def split(
+    pattern: bytes | Pattern[bytes], string: ReadableBuffer, maxsplit: int = ..., flags: _FlagsType = ...
+) -> list[bytes | Any]: ...
 @overload
-def findall(pattern: AnyStr, string: AnyStr, flags: _FlagsType = ...) -> list[Any]: ...
+def findall(pattern: str | Pattern[str], string: str, flags: _FlagsType = ...) -> list[Any]: ...
 @overload
-def findall(pattern: Pattern[AnyStr], string: AnyStr, flags: _FlagsType = ...) -> list[Any]: ...
-
-# Return an iterator yielding match objects over all non-overlapping matches
-# for the RE pattern in string. The string is scanned left-to-right, and
-# matches are returned in the order found. Empty matches are included in the
-# result unless they touch the beginning of another match.
+def findall(pattern: bytes | Pattern[bytes], string: ReadableBuffer, flags: _FlagsType = ...) -> list[Any]: ...
 @overload
-def finditer(pattern: AnyStr, string: AnyStr, flags: _FlagsType = ...) -> Iterator[Match[AnyStr]]: ...
+def finditer(pattern: str | Pattern[str], string: str, flags: _FlagsType = ...) -> Iterator[Match[str]]: ...
 @overload
-def finditer(pattern: Pattern[AnyStr], string: AnyStr, flags: _FlagsType = ...) -> Iterator[Match[AnyStr]]: ...
-@overload
-def sub(pattern: AnyStr, repl: AnyStr, string: AnyStr, count: int = ..., flags: _FlagsType = ...) -> AnyStr: ...
+def finditer(pattern: bytes | Pattern[bytes], string: ReadableBuffer, flags: _FlagsType = ...) -> Iterator[Match[bytes]]: ...
 @overload
 def sub(
-    pattern: AnyStr, repl: Callable[[Match[AnyStr]], AnyStr], string: AnyStr, count: int = ..., flags: _FlagsType = ...
-) -> AnyStr: ...
-@overload
-def sub(pattern: Pattern[AnyStr], repl: AnyStr, string: AnyStr, count: int = ..., flags: _FlagsType = ...) -> AnyStr: ...
+    pattern: str | Pattern[str], repl: str | Callable[[Match[str]], str], string: str, count: int = ..., flags: _FlagsType = ...
+) -> str: ...
 @overload
 def sub(
-    pattern: Pattern[AnyStr], repl: Callable[[Match[AnyStr]], AnyStr], string: AnyStr, count: int = ..., flags: _FlagsType = ...
-) -> AnyStr: ...
-@overload
-def subn(pattern: AnyStr, repl: AnyStr, string: AnyStr, count: int = ..., flags: _FlagsType = ...) -> tuple[AnyStr, int]: ...
-@overload
-def subn(
-    pattern: AnyStr, repl: Callable[[Match[AnyStr]], AnyStr], string: AnyStr, count: int = ..., flags: _FlagsType = ...
-) -> tuple[AnyStr, int]: ...
+    pattern: bytes | Pattern[bytes],
+    repl: ReadableBuffer | Callable[[Match[bytes]], ReadableBuffer],
+    string: ReadableBuffer,
+    count: int = ...,
+    flags: _FlagsType = ...,
+) -> bytes: ...
 @overload
 def subn(
-    pattern: Pattern[AnyStr], repl: AnyStr, string: AnyStr, count: int = ..., flags: _FlagsType = ...
-) -> tuple[AnyStr, int]: ...
+    pattern: str | Pattern[str], repl: str | Callable[[Match[str]], str], string: str, count: int = ..., flags: _FlagsType = ...
+) -> tuple[str, int]: ...
 @overload
 def subn(
-    pattern: Pattern[AnyStr], repl: Callable[[Match[AnyStr]], AnyStr], string: AnyStr, count: int = ..., flags: _FlagsType = ...
-) -> tuple[AnyStr, int]: ...
+    pattern: bytes | Pattern[bytes],
+    repl: ReadableBuffer | Callable[[Match[bytes]], ReadableBuffer],
+    string: ReadableBuffer,
+    count: int = ...,
+    flags: _FlagsType = ...,
+) -> tuple[bytes, int]: ...
 def escape(pattern: AnyStr) -> AnyStr: ...
 def purge() -> None: ...
 def template(pattern: AnyStr | Pattern[AnyStr], flags: _FlagsType = ...) -> Pattern[AnyStr]: ...

@@ -126,4 +126,30 @@ reveal_type(Child().f)  # N: Revealed type is "builtins.str"
 reveal_type(Child().g)  # N: Revealed type is "builtins.int"
 Child().f = "Hello World"
 Child().g = "invalid"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[file functools.pyi]
+import sys
+from typing import TypeVar, Generic
+_T = TypeVar('_T')
+class cached_property(Generic[_T]): ...
 [builtins fixtures/property.pyi]
+
+[case testTotalOrderingWithForwardReference]
+from typing import Generic, Any, TypeVar
+import functools
+
+T = TypeVar("T", bound="C")
+
+@functools.total_ordering
+class D(Generic[T]):
+    def __lt__(self, other: Any) -> bool:
+        ...
+
+class C:
+    pass
+
+def f(d: D[C]) -> None:
+    reveal_type(d.__gt__)  # N: Revealed type is "def (other: Any) -> builtins.bool"
+
+d: D[int]  # E: Type argument "int" of "D" must be a subtype of "C"
+[builtins fixtures/ops.pyi]
+[builtins fixtures/dict.pyi]

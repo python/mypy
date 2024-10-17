@@ -1,6 +1,6 @@
-from typing import Any
+import sys
 
-version: Any
+version: str
 
 class ErrorHandler:
     def error(self, exception): ...
@@ -30,17 +30,25 @@ class DTDHandler:
 class EntityResolver:
     def resolveEntity(self, publicId, systemId): ...
 
-feature_namespaces: Any
-feature_namespace_prefixes: Any
-feature_string_interning: Any
-feature_validation: Any
-feature_external_ges: Any
-feature_external_pes: Any
-all_features: Any
-property_lexical_handler: Any
-property_declaration_handler: Any
-property_dom_node: Any
-property_xml_string: Any
-property_encoding: Any
-property_interning_dict: Any
-all_properties: Any
+feature_namespaces: str
+feature_namespace_prefixes: str
+feature_string_interning: str
+feature_validation: str
+feature_external_ges: str
+feature_external_pes: str
+all_features: list[str]
+property_lexical_handler: str
+property_declaration_handler: str
+property_dom_node: str
+property_xml_string: str
+property_encoding: str
+property_interning_dict: str
+all_properties: list[str]
+
+if sys.version_info >= (3, 10):
+    class LexicalHandler:
+        def comment(self, content: str) -> object: ...
+        def startDTD(self, name: str, public_id: str | None, system_id: str | None) -> object: ...
+        def endDTD(self) -> object: ...
+        def startCDATA(self) -> object: ...
+        def endCDATA(self) -> object: ...

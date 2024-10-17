@@ -1,8 +1,95 @@
 import sys
 from _typeshed import StrOrBytesPath
 from builtins import open as _builtin_open
-from token import *  # noqa: F403
-from typing import Any, Callable, Generator, Iterable, NamedTuple, Pattern, Sequence, TextIO, Union
+from collections.abc import Callable, Generator, Iterable, Sequence
+from token import *
+from typing import Any, NamedTuple, Pattern, TextIO
+from typing_extensions import TypeAlias
+
+__all__ = [
+    "AMPER",
+    "AMPEREQUAL",
+    "AT",
+    "ATEQUAL",
+    "CIRCUMFLEX",
+    "CIRCUMFLEXEQUAL",
+    "COLON",
+    "COMMA",
+    "COMMENT",
+    "DEDENT",
+    "DOT",
+    "DOUBLESLASH",
+    "DOUBLESLASHEQUAL",
+    "DOUBLESTAR",
+    "DOUBLESTAREQUAL",
+    "ELLIPSIS",
+    "ENCODING",
+    "ENDMARKER",
+    "EQEQUAL",
+    "EQUAL",
+    "ERRORTOKEN",
+    "GREATER",
+    "GREATEREQUAL",
+    "INDENT",
+    "ISEOF",
+    "ISNONTERMINAL",
+    "ISTERMINAL",
+    "LBRACE",
+    "LEFTSHIFT",
+    "LEFTSHIFTEQUAL",
+    "LESS",
+    "LESSEQUAL",
+    "LPAR",
+    "LSQB",
+    "MINEQUAL",
+    "MINUS",
+    "NAME",
+    "NEWLINE",
+    "NL",
+    "NOTEQUAL",
+    "NT_OFFSET",
+    "NUMBER",
+    "N_TOKENS",
+    "OP",
+    "PERCENT",
+    "PERCENTEQUAL",
+    "PLUS",
+    "PLUSEQUAL",
+    "RARROW",
+    "RBRACE",
+    "RIGHTSHIFT",
+    "RIGHTSHIFTEQUAL",
+    "RPAR",
+    "RSQB",
+    "SEMI",
+    "SLASH",
+    "SLASHEQUAL",
+    "STAR",
+    "STAREQUAL",
+    "STRING",
+    "TILDE",
+    "TokenInfo",
+    "VBAR",
+    "VBAREQUAL",
+    "detect_encoding",
+    "tok_name",
+    "tokenize",
+    "untokenize",
+]
+
+if sys.version_info < (3, 7) or sys.version_info >= (3, 8):
+    __all__ += ["ASYNC", "AWAIT"]
+
+if sys.version_info >= (3, 8):
+    __all__ += ["COLONEQUAL", "generate_tokens", "TYPE_COMMENT", "TYPE_IGNORE"]
+
+if sys.version_info >= (3, 10):
+    __all__ += ["SOFT_KEYWORD"]
+
+if sys.version_info >= (3, 8):
+    from token import EXACT_TOKEN_TYPES as EXACT_TOKEN_TYPES
+else:
+    EXACT_TOKEN_TYPES: dict[str, int]
 
 if sys.version_info < (3, 7):
     COMMENT: int
@@ -12,7 +99,7 @@ if sys.version_info < (3, 7):
 cookie_re: Pattern[str]
 blank_re: Pattern[bytes]
 
-_Position = tuple[int, int]
+_Position: TypeAlias = tuple[int, int]
 
 class _TokenInfo(NamedTuple):
     type: int
@@ -26,7 +113,7 @@ class TokenInfo(_TokenInfo):
     def exact_type(self) -> int: ...
 
 # Backwards compatible tokens can be sequences of a shorter length too
-_Token = Union[TokenInfo, Sequence[Union[int, str, _Position]]]
+_Token: TypeAlias = TokenInfo | Sequence[int | str | _Position]
 
 class TokenError(Exception): ...
 class StopTokenizing(Exception): ...  # undocumented

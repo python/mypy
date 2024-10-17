@@ -127,7 +127,7 @@ class NewTypeAnalyzer:
             # Give a better error message than generic "Name already defined".
             if (existing and
                     not isinstance(existing.node, PlaceholderNode) and not s.rvalue.analyzed):
-                self.fail('Cannot redefine "%s" as a NewType' % name, s)
+                self.fail(f'Cannot redefine "{name}" as a NewType', s)
 
             # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
             # overwritten later with a fully complete NewTypeExpr if there are no other

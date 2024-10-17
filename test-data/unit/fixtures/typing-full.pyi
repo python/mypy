@@ -11,6 +11,7 @@ from abc import abstractmethod, ABCMeta
 class GenericMeta(type): pass
 
 def cast(t, o): ...
+def assert_type(o, t): ...
 overload = 0
 Any = 0
 Union = 0

@@ -27,7 +27,6 @@ first argument:
 Finally, it knows that __init__() is supposed to return None.
 """
 
-from __future__ import print_function
 
 import os
 import re
@@ -90,7 +89,7 @@ class FixAnnotate(BaseFix):
         # Insert '# type: {annot}' comment.
         # For reference, see lib2to3/fixes/fix_tuple_params.py in stdlib.
         if len(children) >= 2 and children[1].type == token.INDENT:
-            children[1].prefix = '%s# type: %s\n%s' % (children[1].value, annot, children[1].prefix)
+            children[1].prefix = '{}# type: {}\n{}'.format(children[1].value, annot, children[1].prefix)
             children[1].changed()
             if FixAnnotate.counter is not None:
                 FixAnnotate.counter -= 1

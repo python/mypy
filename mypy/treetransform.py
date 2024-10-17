@@ -6,7 +6,7 @@ Subclass TransformVisitor to perform non-trivial transformations.
 from typing import List, Dict, cast, Optional, Iterable
 
 from mypy.nodes import (
-    MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
+    AssertTypeExpr, MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
     OverloadedFuncDef, ClassDef, Decorator, Block, Var,
     OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
     RaiseStmt, AssertStmt, DelStmt, BreakStmt, ContinueStmt,
@@ -20,7 +20,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, AssignmentExpr,
-    OverloadPart, EnumCallExpr, REVEAL_TYPE, GDEF
+    OverloadPart, EnumCallExpr, REVEAL_TYPE, GDEF, TypeVarTupleExpr
 )
 from mypy.types import Type, FunctionLike, ProperType
 from mypy.traverser import TraverserVisitor
@@ -407,6 +407,9 @@ class TransformVisitor(NodeVisitor[Node]):
         return CastExpr(self.expr(node.expr),
                         self.type(node.type))
 
+    def visit_assert_type_expr(self, node: AssertTypeExpr) -> AssertTypeExpr:
+        return AssertTypeExpr(self.expr(node.expr), self.type(node.type))
+
     def visit_reveal_expr(self, node: RevealExpr) -> RevealExpr:
         if node.kind == REVEAL_TYPE:
             assert node.expr is not None
@@ -509,6 +512,11 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_paramspec_expr(self, node: ParamSpecExpr) -> ParamSpecExpr:
         return ParamSpecExpr(
+            node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
+        )
+
+    def visit_type_var_tuple_expr(self, node: TypeVarTupleExpr) -> TypeVarTupleExpr:
+        return TypeVarTupleExpr(
             node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
         )
 

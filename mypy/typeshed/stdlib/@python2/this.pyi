@@ -1,4 +1,2 @@
-from typing import Dict
-
 s: str
-d: Dict[str, str]
+d: dict[str, str]

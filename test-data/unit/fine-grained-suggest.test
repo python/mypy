@@ -221,19 +221,6 @@ Foo('lol')
 (str) -> None
 ==
 
-[case testSuggestTryText]
-# flags: --py2
-# suggest: --try-text foo.foo
-[file foo.py]
-def foo(s):
-    return s
-[file bar.py]
-from foo import foo
-foo('lol')
-[out]
-(Text) -> Text
-==
-
 [case testSuggestInferMethod1]
 # flags: --strict-optional
 # suggest: --no-any foo.Foo.foo

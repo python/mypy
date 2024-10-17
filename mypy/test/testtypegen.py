@@ -63,10 +63,9 @@ class TypeExportSuite(DataSuite):
                                              str(n) + str(map[n]))):
                 ts = str(map[key]).replace('*', '')  # Remove erased tags
                 ts = ts.replace('__main__.', '')
-                a.append('{}({}) : {}'.format(short_type(key), key.line, ts))
+                a.append(f'{short_type(key)}({key.line}) : {ts}')
         except CompileError as e:
             a = e.messages
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid type checker output ({}, line {})'.format(testcase.file,
-                                                               testcase.line))
+            f'Invalid type checker output ({testcase.file}, line {testcase.line})')

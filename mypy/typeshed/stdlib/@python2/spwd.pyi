@@ -1,5 +1,5 @@
 import sys
-from typing import List, NamedTuple
+from typing import NamedTuple
 
 if sys.platform != "win32":
     class struct_spwd(NamedTuple):
@@ -12,5 +12,5 @@ if sys.platform != "win32":
         sp_inact: int
         sp_expire: int
         sp_flag: int
-    def getspall() -> List[struct_spwd]: ...
+    def getspall() -> list[struct_spwd]: ...
     def getspnam(name: str) -> struct_spwd: ...

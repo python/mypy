@@ -1,5 +1,8 @@
 from _typeshed import StrPath
-from typing import Any, BinaryIO, Callable, Protocol, overload
+from collections.abc import Callable
+from typing import Any, BinaryIO, Protocol, overload
+
+__all__ = ["what"]
 
 class _ReadableBinary(Protocol):
     def tell(self) -> int: ...

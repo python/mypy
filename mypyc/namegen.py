@@ -73,7 +73,7 @@ class NameGenerator:
             module_prefix = module + '.'
         else:
             module_prefix = ''
-        actual = exported_name('{}{}'.format(module_prefix, partial_name))
+        actual = exported_name(f'{module_prefix}{partial_name}')
         self.translations[module, partial_name] = actual
         return actual
 

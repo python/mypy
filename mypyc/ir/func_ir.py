@@ -31,7 +31,7 @@ class RuntimeArg:
         return self.kind.is_optional()
 
     def __repr__(self) -> str:
-        return 'RuntimeArg(name=%s, type=%s, optional=%r, pos_only=%r)' % (
+        return 'RuntimeArg(name={}, type={}, optional={!r}, pos_only={!r})'.format(
             self.name, self.type, self.optional, self.pos_only)
 
     def serialize(self) -> JsonDict:
@@ -58,7 +58,7 @@ class FuncSignature:
         self.ret_type = ret_type
 
     def __repr__(self) -> str:
-        return 'FuncSignature(args=%r, ret=%r)' % (self.args, self.ret_type)
+        return f'FuncSignature(args={self.args!r}, ret={self.ret_type!r})'
 
     def serialize(self) -> JsonDict:
         return {'args': [t.serialize() for t in self.args], 'ret_type': self.ret_type.serialize()}
@@ -234,9 +234,9 @@ class FuncIR:
 
     def __repr__(self) -> str:
         if self.class_name:
-            return '<FuncIR {}.{}>'.format(self.class_name, self.name)
+            return f'<FuncIR {self.class_name}.{self.name}>'
         else:
-            return '<FuncIR {}>'.format(self.name)
+            return f'<FuncIR {self.name}>'
 
     def serialize(self) -> JsonDict:
         # We don't include blocks in the serialized version

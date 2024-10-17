@@ -1,23 +1,27 @@
 import sys
-from _typeshed import StrOrBytesPath
-from os import PathLike
-from typing import Any, AnyStr, Callable, Generic, Iterable, Sequence
+from _typeshed import GenericPath, StrOrBytesPath
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any, AnyStr, Generic
+from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
-DEFAULT_IGNORES: list[str]
+__all__ = ["clear_cache", "cmp", "dircmp", "cmpfiles", "DEFAULT_IGNORES"]
 
-def cmp(f1: StrOrBytesPath, f2: StrOrBytesPath, shallow: int | bool = ...) -> bool: ...
+DEFAULT_IGNORES: list[str]
+BUFSIZE: Literal[8192]
+
+def cmp(f1: StrOrBytesPath, f2: StrOrBytesPath, shallow: bool | Literal[0, 1] = ...) -> bool: ...
 def cmpfiles(
-    a: AnyStr | PathLike[AnyStr], b: AnyStr | PathLike[AnyStr], common: Iterable[AnyStr], shallow: int | bool = ...
+    a: GenericPath[AnyStr], b: GenericPath[AnyStr], common: Iterable[GenericPath[AnyStr]], shallow: bool | Literal[0, 1] = ...
 ) -> tuple[list[AnyStr], list[AnyStr], list[AnyStr]]: ...
 
 class dircmp(Generic[AnyStr]):
     def __init__(
         self,
-        a: AnyStr | PathLike[AnyStr],
-        b: AnyStr | PathLike[AnyStr],
+        a: GenericPath[AnyStr],
+        b: GenericPath[AnyStr],
         ignore: Sequence[AnyStr] | None = ...,
         hide: Sequence[AnyStr] | None = ...,
     ) -> None: ...

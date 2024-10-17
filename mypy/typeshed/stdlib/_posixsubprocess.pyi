@@ -1,5 +1,5 @@
 import sys
-from typing import Callable, Sequence
+from collections.abc import Callable, Sequence
 
 if sys.platform != "win32":
     def cloexec_pipe() -> tuple[int, int]: ...

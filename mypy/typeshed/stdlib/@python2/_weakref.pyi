@@ -1,4 +1,4 @@
-from typing import Any, Callable, Generic, List, TypeVar, overload
+from typing import Any, Callable, Generic, TypeVar, overload
 
 _C = TypeVar("_C", bound=Callable[..., Any])
 _T = TypeVar("_T")
@@ -17,7 +17,7 @@ class ReferenceType(Generic[_T]):
 ref = ReferenceType
 
 def getweakrefcount(__object: Any) -> int: ...
-def getweakrefs(object: Any) -> List[Any]: ...
+def getweakrefs(object: Any) -> list[Any]: ...
 @overload
 def proxy(object: _C, callback: Callable[[_C], Any] | None = ...) -> CallableProxyType[_C]: ...
 

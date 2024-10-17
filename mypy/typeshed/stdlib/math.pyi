@@ -1,12 +1,13 @@
 import sys
 from _typeshed import SupportsTrunc
-from typing import Iterable, SupportsFloat, Union, overload
-from typing_extensions import SupportsIndex
+from collections.abc import Iterable
+from typing import SupportsFloat, overload
+from typing_extensions import SupportsIndex, TypeAlias
 
 if sys.version_info >= (3, 8):
-    _SupportsFloatOrIndex = Union[SupportsFloat, SupportsIndex]
+    _SupportsFloatOrIndex: TypeAlias = SupportsFloat | SupportsIndex
 else:
-    _SupportsFloatOrIndex = SupportsFloat
+    _SupportsFloatOrIndex: TypeAlias = SupportsFloat
 
 e: float
 pi: float
@@ -41,6 +42,10 @@ if sys.version_info >= (3, 8):
 def erf(__x: _SupportsFloatOrIndex) -> float: ...
 def erfc(__x: _SupportsFloatOrIndex) -> float: ...
 def exp(__x: _SupportsFloatOrIndex) -> float: ...
+
+if sys.version_info >= (3, 11):
+    def exp2(__x: _SupportsFloatOrIndex) -> float: ...
+
 def expm1(__x: _SupportsFloatOrIndex) -> float: ...
 def fabs(__x: _SupportsFloatOrIndex) -> float: ...
 

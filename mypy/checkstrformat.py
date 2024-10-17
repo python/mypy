@@ -17,6 +17,7 @@ from typing import (
 )
 from typing_extensions import Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 
+from mypy.errors import Errors
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType,
     LiteralType, get_proper_types
@@ -316,7 +317,7 @@ class StringFormatterChecker:
         assert len(replacements) == len(specs)
         for spec, repl in zip(specs, replacements):
             repl = self.apply_field_accessors(spec, repl, ctx=call)
-            actual_type = repl.type if isinstance(repl, TempNode) else self.chk.type_map.get(repl)
+            actual_type = repl.type if isinstance(repl, TempNode) else self.chk.lookup_type(repl)
             assert actual_type is not None
 
             # Special case custom formatting.
@@ -369,7 +370,7 @@ class StringFormatterChecker:
         if spec.conv_type == 'c':
             if isinstance(repl, (StrExpr, BytesExpr)) and len(repl.value) != 1:
                 self.msg.requires_int_or_char(call, format_call=True)
-            c_typ = get_proper_type(self.chk.type_map[repl])
+            c_typ = get_proper_type(self.chk.lookup_type(repl))
             if isinstance(c_typ, Instance) and c_typ.last_known_value:
                 c_typ = c_typ.last_known_value
             if isinstance(c_typ, LiteralType) and isinstance(c_typ.value, str):
@@ -441,7 +442,7 @@ class StringFormatterChecker:
 
         # Fall back to *args when present in call.
         star_arg = star_args[0]
-        varargs_type = get_proper_type(self.chk.type_map[star_arg])
+        varargs_type = get_proper_type(self.chk.lookup_type(star_arg))
         if (not isinstance(varargs_type, Instance) or not
                 varargs_type.type.has_base('typing.Sequence')):
             # Error should be already reported.
@@ -464,7 +465,7 @@ class StringFormatterChecker:
         if not star_args_2:
             return None
         star_arg_2 = star_args_2[0]
-        kwargs_type = get_proper_type(self.chk.type_map[star_arg_2])
+        kwargs_type = get_proper_type(self.chk.lookup_type(star_arg_2))
         if (not isinstance(kwargs_type, Instance) or not
                 kwargs_type.type.has_base('typing.Mapping')):
             # Error should be already reported.
@@ -512,14 +513,13 @@ class StringFormatterChecker:
             return repl
         assert spec.field
 
-        # This is a bit of a dirty trick, but it looks like this is the simplest way.
-        temp_errors = self.msg.clean_copy().errors
+        temp_errors = Errors()
         dummy = DUMMY_FIELD_NAME + spec.field[len(spec.key):]
         temp_ast: Node = parse(
             dummy, fnam="<format>", module=None, options=self.chk.options, errors=temp_errors
         )
         if temp_errors.is_errors():
-            self.msg.fail('Syntax error in format specifier "{}"'.format(spec.field),
+            self.msg.fail(f'Syntax error in format specifier "{spec.field}"',
                           ctx, code=codes.STRING_FORMATTING)
             return TempNode(AnyType(TypeOfAny.from_error))
 
@@ -718,7 +718,7 @@ class StringFormatterChecker:
                 self.chk.check_subtype(rep_type, expected_type, replacements,
                                        message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
                                        'expression has type',
-                                       'placeholder with key \'%s\' has type' % specifier.key,
+                                       f'placeholder with key \'{specifier.key}\' has type',
                                        code=codes.STRING_FORMATTING)
                 if specifier.conv_type == 's':
                     self.check_s_special_cases(expr, rep_type, expr)

@@ -1,12 +1,12 @@
 import types
 import unittest
-from typing import Any, Callable, Dict, List, NamedTuple, Tuple, Type
+from typing import Any, Callable, NamedTuple
 
 class TestResults(NamedTuple):
     failed: int
     attempted: int
 
-OPTIONFLAGS_BY_NAME: Dict[str, int]
+OPTIONFLAGS_BY_NAME: dict[str, int]
 
 def register_optionflag(name: str) -> int: ...
 
@@ -34,7 +34,7 @@ class Example:
     exc_msg: str | None
     lineno: int
     indent: int
-    options: Dict[int, bool]
+    options: dict[int, bool]
     def __init__(
         self,
         source: str,
@@ -42,21 +42,21 @@ class Example:
         exc_msg: str | None = ...,
         lineno: int = ...,
         indent: int = ...,
-        options: Dict[int, bool] | None = ...,
+        options: dict[int, bool] | None = ...,
     ) -> None: ...
     def __hash__(self) -> int: ...
 
 class DocTest:
-    examples: List[Example]
-    globs: Dict[str, Any]
+    examples: list[Example]
+    globs: dict[str, Any]
     name: str
     filename: str | None
     lineno: int | None
     docstring: str | None
     def __init__(
         self,
-        examples: List[Example],
-        globs: Dict[str, Any],
+        examples: list[Example],
+        globs: dict[str, Any],
         name: str,
         filename: str | None,
         lineno: int | None,
@@ -66,9 +66,9 @@ class DocTest:
     def __lt__(self, other: DocTest) -> bool: ...
 
 class DocTestParser:
-    def parse(self, string: str, name: str = ...) -> List[str | Example]: ...
-    def get_doctest(self, string: str, globs: Dict[str, Any], name: str, filename: str | None, lineno: int | None) -> DocTest: ...
-    def get_examples(self, string: str, name: str = ...) -> List[Example]: ...
+    def parse(self, string: str, name: str = ...) -> list[str | Example]: ...
+    def get_doctest(self, string: str, globs: dict[str, Any], name: str, filename: str | None, lineno: int | None) -> DocTest: ...
+    def get_examples(self, string: str, name: str = ...) -> list[Example]: ...
 
 class DocTestFinder:
     def __init__(
@@ -79,12 +79,12 @@ class DocTestFinder:
         obj: object,
         name: str | None = ...,
         module: None | bool | types.ModuleType = ...,
-        globs: Dict[str, Any] | None = ...,
-        extraglobs: Dict[str, Any] | None = ...,
-    ) -> List[DocTest]: ...
+        globs: dict[str, Any] | None = ...,
+        extraglobs: dict[str, Any] | None = ...,
+    ) -> list[DocTest]: ...
 
 _Out = Callable[[str], Any]
-_ExcInfo = Tuple[Type[BaseException], BaseException, types.TracebackType]
+_ExcInfo = tuple[type[BaseException], BaseException, types.TracebackType]
 
 class DocTestRunner:
     DIVIDER: str
@@ -127,11 +127,11 @@ master: DocTestRunner | None
 def testmod(
     m: types.ModuleType | None = ...,
     name: str | None = ...,
-    globs: Dict[str, Any] | None = ...,
+    globs: dict[str, Any] | None = ...,
     verbose: bool | None = ...,
     report: bool = ...,
     optionflags: int = ...,
-    extraglobs: Dict[str, Any] | None = ...,
+    extraglobs: dict[str, Any] | None = ...,
     raise_on_error: bool = ...,
     exclude_empty: bool = ...,
 ) -> TestResults: ...
@@ -140,17 +140,17 @@ def testfile(
     module_relative: bool = ...,
     name: str | None = ...,
     package: None | str | types.ModuleType = ...,
-    globs: Dict[str, Any] | None = ...,
+    globs: dict[str, Any] | None = ...,
     verbose: bool | None = ...,
     report: bool = ...,
     optionflags: int = ...,
-    extraglobs: Dict[str, Any] | None = ...,
+    extraglobs: dict[str, Any] | None = ...,
     raise_on_error: bool = ...,
     parser: DocTestParser = ...,
     encoding: str | None = ...,
 ) -> TestResults: ...
 def run_docstring_examples(
-    f: object, globs: Dict[str, Any], verbose: bool = ..., name: str = ..., compileflags: int | None = ..., optionflags: int = ...
+    f: object, globs: dict[str, Any], verbose: bool = ..., name: str = ..., compileflags: int | None = ..., optionflags: int = ...
 ) -> None: ...
 def set_unittest_reportflags(flags: int) -> int: ...
 
@@ -182,8 +182,8 @@ _DocTestSuite = unittest.TestSuite
 
 def DocTestSuite(
     module: None | str | types.ModuleType = ...,
-    globs: Dict[str, Any] | None = ...,
-    extraglobs: Dict[str, Any] | None = ...,
+    globs: dict[str, Any] | None = ...,
+    extraglobs: dict[str, Any] | None = ...,
     test_finder: DocTestFinder | None = ...,
     **options: Any,
 ) -> _DocTestSuite: ...
@@ -196,7 +196,7 @@ def DocFileTest(
     path: str,
     module_relative: bool = ...,
     package: None | str | types.ModuleType = ...,
-    globs: Dict[str, Any] | None = ...,
+    globs: dict[str, Any] | None = ...,
     parser: DocTestParser = ...,
     encoding: str | None = ...,
     **options: Any,
@@ -204,6 +204,6 @@ def DocFileTest(
 def DocFileSuite(*paths: str, **kw: Any) -> _DocTestSuite: ...
 def script_from_examples(s: str) -> str: ...
 def testsource(module: None | str | types.ModuleType, name: str) -> str: ...
-def debug_src(src: str, pm: bool = ..., globs: Dict[str, Any] | None = ...) -> None: ...
-def debug_script(src: str, pm: bool = ..., globs: Dict[str, Any] | None = ...) -> None: ...
+def debug_src(src: str, pm: bool = ..., globs: dict[str, Any] | None = ...) -> None: ...
+def debug_script(src: str, pm: bool = ..., globs: dict[str, Any] | None = ...) -> None: ...
 def debug(module: None | str | types.ModuleType, name: str, pm: bool = ...) -> None: ...

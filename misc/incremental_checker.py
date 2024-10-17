@@ -92,10 +92,10 @@ def ensure_environment_is_ready(mypy_path: str, temp_repo_path: str, mypy_cache_
 
 
 def initialize_repo(repo_url: str, temp_repo_path: str, branch: str) -> None:
-    print("Cloning repo {0} to {1}".format(repo_url, temp_repo_path))
+    print(f"Cloning repo {repo_url} to {temp_repo_path}")
     execute(["git", "clone", repo_url, temp_repo_path])
     if branch is not None:
-        print("Checking out branch {}".format(branch))
+        print(f"Checking out branch {branch}")
         execute(["git", "-C", temp_repo_path, "checkout", branch])
 
 
@@ -110,13 +110,13 @@ def get_commits(repo_folder_path: str, commit_range: str) -> List[Tuple[str, str
 
 
 def get_commits_starting_at(repo_folder_path: str, start_commit: str) -> List[Tuple[str, str]]:
-    print("Fetching commits starting at {0}".format(start_commit))
-    return get_commits(repo_folder_path, '{0}^..HEAD'.format(start_commit))
+    print(f"Fetching commits starting at {start_commit}")
+    return get_commits(repo_folder_path, f'{start_commit}^..HEAD')
 
 
 def get_nth_commit(repo_folder_path: str, n: int) -> Tuple[str, str]:
-    print("Fetching last {} commits (or all, if there are fewer commits than n)".format(n))
-    return get_commits(repo_folder_path, '-{}'.format(n))[0]
+    print(f"Fetching last {n} commits (or all, if there are fewer commits than n)")
+    return get_commits(repo_folder_path, f'-{n}')[0]
 
 
 def run_mypy(target_file_path: Optional[str],
@@ -187,7 +187,7 @@ def stop_daemon() -> None:
 
 def load_cache(incremental_cache_path: str = CACHE_PATH) -> JsonDict:
     if os.path.exists(incremental_cache_path):
-        with open(incremental_cache_path, 'r') as stream:
+        with open(incremental_cache_path) as stream:
             return json.load(stream)
     else:
         return {}
@@ -213,17 +213,17 @@ def set_expected(commits: List[Tuple[str, str]],
     skip evaluating that commit and move on to the next."""
     for commit_id, message in commits:
         if commit_id in cache:
-            print('Skipping commit (already cached): {0}: "{1}"'.format(commit_id, message))
+            print(f'Skipping commit (already cached): {commit_id}: "{message}"')
         else:
-            print('Caching expected output for commit {0}: "{1}"'.format(commit_id, message))
+            print(f'Caching expected output for commit {commit_id}: "{message}"')
             execute(["git", "-C", temp_repo_path, "checkout", commit_id])
             runtime, output, stats = run_mypy(target_file_path, mypy_cache_path, mypy_script,
                                               incremental=False)
             cache[commit_id] = {'runtime': runtime, 'output': output}
             if output == "":
-                print("    Clean output ({:.3f} sec)".format(runtime))
+                print(f"    Clean output ({runtime:.3f} sec)")
             else:
-                print("    Output ({:.3f} sec)".format(runtime))
+                print(f"    Output ({runtime:.3f} sec)")
                 print_offset(output, 8)
     print()
 
@@ -246,7 +246,7 @@ def test_incremental(commits: List[Tuple[str, str]],
     commits = [commits[0]] + commits
     overall_stats = {}  # type: Dict[str, float]
     for commit_id, message in commits:
-        print('Now testing commit {0}: "{1}"'.format(commit_id, message))
+        print(f'Now testing commit {commit_id}: "{message}"')
         execute(["git", "-C", temp_repo_path, "checkout", commit_id])
         runtime, output, stats = run_mypy(target_file_path, mypy_cache_path, mypy_script,
                                           incremental=True, daemon=daemon)
@@ -255,18 +255,18 @@ def test_incremental(commits: List[Tuple[str, str]],
         expected_output = cache[commit_id]['output']  # type: str
         if output != expected_output:
             print("    Output does not match expected result!")
-            print("    Expected output ({:.3f} sec):".format(expected_runtime))
+            print(f"    Expected output ({expected_runtime:.3f} sec):")
             print_offset(expected_output, 8)
-            print("    Actual output: ({:.3f} sec):".format(runtime))
+            print(f"    Actual output: ({runtime:.3f} sec):")
             print_offset(output, 8)
             if exit_on_error:
                 break
         else:
             print("    Output matches expected result!")
-            print("    Incremental: {:.3f} sec".format(runtime))
-            print("    Original:    {:.3f} sec".format(expected_runtime))
+            print(f"    Incremental: {runtime:.3f} sec")
+            print(f"    Original:    {expected_runtime:.3f} sec")
             if relevant_stats:
-                print("    Stats:       {}".format(relevant_stats))
+                print(f"    Stats:       {relevant_stats}")
     if overall_stats:
         print("Overall stats:", overall_stats)
 
@@ -324,7 +324,7 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
     elif range_type == "commit":
         start_commit = range_start
     else:
-        raise RuntimeError("Invalid option: {}".format(range_type))
+        raise RuntimeError(f"Invalid option: {range_type}")
     commits = get_commits_starting_at(temp_repo_path, start_commit)
     if params.limit:
         commits = commits[:params.limit]
@@ -419,10 +419,10 @@ def main() -> None:
     # The path to store the mypy incremental mode cache data
     mypy_cache_path = os.path.abspath(os.path.join(mypy_path, "misc", ".mypy_cache"))
 
-    print("Assuming mypy is located at {0}".format(mypy_path))
-    print("Temp repo will be cloned at {0}".format(temp_repo_path))
-    print("Testing file/dir located at {0}".format(target_file_path))
-    print("Using cache data located at {0}".format(incremental_cache_path))
+    print(f"Assuming mypy is located at {mypy_path}")
+    print(f"Temp repo will be cloned at {temp_repo_path}")
+    print(f"Testing file/dir located at {target_file_path}")
+    print(f"Using cache data located at {incremental_cache_path}")
     print()
 
     test_repo(params.repo_url, temp_repo_path, target_file_path,

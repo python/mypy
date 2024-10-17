@@ -38,6 +38,6 @@ def alive(pid: int) -> bool:
 def kill(pid: int) -> None:
     """Kill the process."""
     if sys.platform == 'win32':
-        subprocess.check_output("taskkill /pid {pid} /f /t".format(pid=pid))
+        subprocess.check_output(f"taskkill /pid {pid} /f /t")
     else:
         os.kill(pid, signal.SIGKILL)

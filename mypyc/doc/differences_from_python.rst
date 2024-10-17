@@ -171,6 +171,43 @@ Examples of early and late binding::
         var = x  # Module-level variable
         lib.func()  # Accessing library that is not compiled
 
+Pickling and copying objects
+----------------------------
+
+Mypyc tries to enforce that instances native classes are properly
+initialized by calling ``__init__`` implicitly when constructing
+objects, even if objects are constructed through ``pickle``,
+``copy.copy`` or ``copy.deepcopy``, for example.
+
+If a native class doesn't support calling ``__init__`` without arguments,
+you can't pickle or copy instances of the class. Use the
+``mypy_extensions.mypyc_attr`` class decorator to override this behavior
+and enable pickling through the ``serializable`` flag::
+
+    from mypy_extensions import mypyc_attr
+    import pickle
+
+    @mypyc_attr(serializable=True)
+    class Cls:
+        def __init__(self, n: int) -> None:
+            self.n = n
+
+    data = pickle.dumps(Cls(5))
+    obj = pickle.loads(data)  # OK
+
+Additional notes:
+
+* All subclasses inherit the ``serializable`` flag.
+* If a class has the ``allow_interpreted_subclasses`` attribute, it
+  implicitly supports serialization.
+* Enabling serialization may slow down attribute access, since compiled
+  code has to be always prepared to raise ``AttributeError`` in case an
+  attribute is not defined at runtime.
+* If you try to pickle an object without setting the ``serializable``
+  flag, you'll get a ``TypeError`` about missing arguments to
+  ``__init__``.
+
+
 Monkey patching
 ---------------
 

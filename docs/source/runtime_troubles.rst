@@ -254,7 +254,7 @@ sections, these can be dealt with by using :ref:`typing.TYPE_CHECKING
 
    from typing import TYPE_CHECKING
    if TYPE_CHECKING:
-       from _typeshed import SupportsLessThan
+       from _typeshed import SupportsRichComparison
 
 .. _generic-builtins:
 

@@ -344,8 +344,8 @@ class C(Generic[X]):
         self.x = x  # type: X
 ci: C[int]
 cs: C[str]
-reveal_type(ci.x) # N: Revealed type is "builtins.int*"
-reveal_type(cs.x) # N: Revealed type is "builtins.str*"
+reveal_type(ci.x) # N: Revealed type is "builtins.int"
+reveal_type(cs.x) # N: Revealed type is "builtins.str"
 
 [case testAttributeInGenericTypeWithTypevarValuesUsingInference1]
 from typing import TypeVar, Generic
@@ -659,7 +659,7 @@ T = TypeVar("T", bound=Union[Data, Dict[str, str]])
 
 
 def f(data: T) -> None:
-    reveal_type(data["x"]) # N: Revealed type is "Union[builtins.int, builtins.str*]"
+    reveal_type(data["x"]) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
@@ -688,7 +688,7 @@ T = TypeVar("T", bound="Indexable")
 
 class Indexable:
     def __init__(self, index: str) -> None:
-        self.index = index 
+        self.index = index
 
     def __getitem__(self: T, index: str) -> T:
         return self._new_instance(index)

@@ -95,6 +95,49 @@ class Sub(NT):
     pass
 assert f(Sub(3, 2)) == 3
 
+-- Ref: https://github.com/mypyc/mypyc/issues/924
+[case testNamedTupleClassSyntax]
+from typing import Dict, List, NamedTuple, Optional, Tuple, Union
+
+class ClassIR: pass
+
+class FuncIR: pass
+
+StealsDescription = Union[bool, List[bool]]
+
+class Record(NamedTuple):
+    st_mtime: float
+    st_size: int
+    is_borrowed: bool
+    hash: str
+    python_path: Tuple[str, ...]
+    type: 'ClassIR'
+    method: FuncIR
+    shadow_method: Optional[FuncIR]
+    classes: Dict[str, 'ClassIR']
+    steals: StealsDescription
+    ordering: Optional[List[int]]
+    extra_int_constants: List[Tuple[int]]
+
+[file driver.py]
+from typing import Optional
+from native import ClassIR, FuncIR, Record
+
+assert Record.__annotations__ == {
+    'st_mtime': float,
+    'st_size': int,
+    'is_borrowed': bool,
+    'hash': str,
+    'python_path': tuple,
+    'type': ClassIR,
+    'method': FuncIR,
+    'shadow_method': type,
+    'classes': dict,
+    'steals': type,
+    'ordering': type,
+    'extra_int_constants': list,
+}, Record.__annotations__
+
 [case testTupleOps]
 from typing import Tuple, List, Any, Optional
 from typing_extensions import Final

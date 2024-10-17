@@ -21,6 +21,7 @@ class Pattern(Node):
 
 
 class AsPattern(Pattern):
+    """The pattern <pattern> as <name>"""
     # The python ast, and therefore also our ast merges capture, wildcard and as patterns into one
     # for easier handling.
     # If pattern is None this is a capture pattern. If name and pattern are both none this is a
@@ -39,6 +40,7 @@ class AsPattern(Pattern):
 
 
 class OrPattern(Pattern):
+    """The pattern <pattern> | <pattern> | ..."""
     patterns: List[Pattern]
 
     def __init__(self, patterns: List[Pattern]) -> None:
@@ -50,6 +52,7 @@ class OrPattern(Pattern):
 
 
 class ValuePattern(Pattern):
+    """The pattern x.y (or x.y.z, ...)"""
     expr: Expression
 
     def __init__(self, expr: Expression):
@@ -73,6 +76,7 @@ class SingletonPattern(Pattern):
 
 
 class SequencePattern(Pattern):
+    """The pattern [<pattern>, ...]"""
     patterns: List[Pattern]
 
     def __init__(self, patterns: List[Pattern]):
@@ -114,6 +118,7 @@ class MappingPattern(Pattern):
 
 
 class ClassPattern(Pattern):
+    """The pattern Cls(...)"""
     class_ref: RefExpr
     positionals: List[Pattern]
     keyword_keys: List[str]

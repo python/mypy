@@ -8,8 +8,8 @@ BOUND = 'object'
 
 def prelude(limit: int, bound: str) -> None:
     print('from typing import Callable, Iterable, Iterator, Tuple, TypeVar, overload')
-    print('Ts = TypeVar(\'Ts\', bound={bound})'.format(bound=bound))
-    print('R = TypeVar(\'R\')')
+    print(f"Ts = TypeVar('Ts', bound={bound})")
+    print("R = TypeVar('R')")
     for i in range(LIMIT):
         print('T{i} = TypeVar(\'T{i}\', bound={bound})'.format(i=i+1, bound=bound))
 
@@ -19,8 +19,8 @@ def expand_template(template: str,
                     limit: int = LIMIT) -> None:
     print()
     for i in range(lower, limit):
-        tvs = ', '.join('T{i}'.format(i=j+1) for j in range(i))
-        args = ', '.join(arg_template.format(i=j+1, Ts='T{}'.format(j+1))
+        tvs = ', '.join(f'T{j+1}' for j in range(i))
+        args = ', '.join(arg_template.format(i=j+1, Ts=f'T{j+1}')
                          for j in range(i))
         print('@overload')
         s = template.format(Ts=tvs, argsTs=args)
@@ -49,6 +49,6 @@ def main():
     expand_template('def make_check({argsTs}) -> Callable[[{Ts}], bool]: ...')
     expand_template('def my_map(f: Callable[[{Ts}], R], {argsTs}) -> Iterator[R]: ...',
                     'arg{i}: Iterable[{Ts}]')
-                    
+
 
 main()

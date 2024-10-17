@@ -1,14 +1,25 @@
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
+from typing_extensions import final
 
+@final
 class make_encoder:
-    sort_keys: Any
-    skipkeys: Any
-    key_separator: Any
-    indent: Any
-    markers: Any
-    default: Any
-    encoder: Any
-    item_separator: Any
+    @property
+    def sort_keys(self) -> bool: ...
+    @property
+    def skipkeys(self) -> bool: ...
+    @property
+    def key_separator(self) -> str: ...
+    @property
+    def indent(self) -> int | None: ...
+    @property
+    def markers(self) -> dict[int, Any] | None: ...
+    @property
+    def default(self) -> Callable[[Any], Any]: ...
+    @property
+    def encoder(self) -> Callable[[str], str]: ...
+    @property
+    def item_separator(self) -> str: ...
     def __init__(
         self,
         markers: dict[int, Any] | None,
@@ -23,6 +34,7 @@ class make_encoder:
     ) -> None: ...
     def __call__(self, obj: object, _current_indent_level: int) -> Any: ...
 
+@final
 class make_scanner:
     object_hook: Any
     object_pairs_hook: Any

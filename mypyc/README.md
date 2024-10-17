@@ -67,7 +67,7 @@ First clone the mypy git repository:
 
 Optionally create a virtualenv (recommended):
 
-    $ virtualenv -p python3 <directory>
+    $ python3 -m venv <directory>
     $ source <directory>/bin/activate
 
 Then install the dependencies:

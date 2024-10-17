@@ -3,14 +3,14 @@ from distutils.ccompiler import CCompiler
 from distutils.core import Command as Command
 from distutils.errors import DistutilsExecError as DistutilsExecError
 from distutils.sysconfig import customize_compiler as customize_compiler
-from typing import Dict, List, Pattern, Sequence, Tuple
+from typing import Pattern, Sequence
 
-LANG_EXT: Dict[str, str]
+LANG_EXT: dict[str, str]
 
 class config(Command):
     description: str = ...
     # Tuple is full name, short name, description
-    user_options: Sequence[Tuple[str, str | None, str]] = ...
+    user_options: Sequence[tuple[str, str | None, str]] = ...
     compiler: str | CCompiler | None = ...
     cc: str | None = ...
     include_dirs: Sequence[str] | None = ...
@@ -74,7 +74,7 @@ class config(Command):
         library_dirs: Sequence[str] | None = ...,
         headers: Sequence[str] | None = ...,
         include_dirs: Sequence[str] | None = ...,
-        other_libraries: List[str] = ...,
+        other_libraries: list[str] = ...,
     ) -> bool: ...
     def check_header(
         self, header: str, include_dirs: Sequence[str] | None = ..., library_dirs: Sequence[str] | None = ..., lang: str = ...

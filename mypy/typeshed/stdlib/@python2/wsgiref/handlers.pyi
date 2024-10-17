@@ -1,17 +1,17 @@
 from abc import abstractmethod
 from types import TracebackType
-from typing import IO, Callable, List, MutableMapping, Optional, Text, Tuple, Type
+from typing import IO, Callable, MutableMapping, Optional, Text
 
 from .headers import Headers
 from .types import ErrorStream, InputStream, StartResponse, WSGIApplication, WSGIEnvironment
 from .util import FileWrapper
 
-_exc_info = Tuple[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]]
+_exc_info = tuple[Optional[type[BaseException]], Optional[BaseException], Optional[TracebackType]]
 
 def format_date_time(timestamp: float | None) -> str: ...  # undocumented
 
 class BaseHandler:
-    wsgi_version: Tuple[int, int]  # undocumented
+    wsgi_version: tuple[int, int]  # undocumented
     wsgi_multithread: bool
     wsgi_multiprocess: bool
     wsgi_run_once: bool
@@ -22,12 +22,12 @@ class BaseHandler:
 
     os_environ: MutableMapping[str, str]
 
-    wsgi_file_wrapper: Type[FileWrapper] | None
-    headers_class: Type[Headers]  # undocumented
+    wsgi_file_wrapper: type[FileWrapper] | None
+    headers_class: type[Headers]  # undocumented
 
     traceback_limit: int | None
     error_status: str
-    error_headers: List[Tuple[Text, Text]]
+    error_headers: list[tuple[Text, Text]]
     error_body: bytes
     def run(self, application: WSGIApplication) -> None: ...
     def setup_environ(self) -> None: ...
@@ -36,7 +36,7 @@ class BaseHandler:
     def set_content_length(self) -> None: ...
     def cleanup_headers(self) -> None: ...
     def start_response(
-        self, status: Text, headers: List[Tuple[Text, Text]], exc_info: _exc_info | None = ...
+        self, status: Text, headers: list[tuple[Text, Text]], exc_info: _exc_info | None = ...
     ) -> Callable[[bytes], None]: ...
     def send_preamble(self) -> None: ...
     def write(self, data: bytes) -> None: ...
@@ -48,7 +48,7 @@ class BaseHandler:
     def client_is_modern(self) -> bool: ...
     def log_exception(self, exc_info: _exc_info) -> None: ...
     def handle_error(self) -> None: ...
-    def error_output(self, environ: WSGIEnvironment, start_response: StartResponse) -> List[bytes]: ...
+    def error_output(self, environ: WSGIEnvironment, start_response: StartResponse) -> list[bytes]: ...
     @abstractmethod
     def _write(self, data: bytes) -> None: ...
     @abstractmethod

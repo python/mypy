@@ -27,7 +27,7 @@ from mypy.test.data import (
 )
 from mypy.test.helpers import (
     assert_string_arrays_equal, parse_options, assert_module_equivalence,
-    assert_target_equivalence, perform_file_operations,
+    assert_target_equivalence, perform_file_operations, find_test_files,
 )
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_util import DEFAULT_STATUS_FILE
@@ -42,15 +42,9 @@ CHECK_CONSISTENCY = False
 
 
 class FineGrainedSuite(DataSuite):
-    files = [
-        'fine-grained.test',
-        'fine-grained-cycles.test',
-        'fine-grained-blockers.test',
-        'fine-grained-modules.test',
-        'fine-grained-follow-imports.test',
-        'fine-grained-suggest.test',
-        'fine-grained-attr.test',
-    ]
+    files = find_test_files(
+        pattern="fine-grained*.test", exclude=["fine-grained-cache-incremental.test"]
+    )
 
     # Whether to use the fine-grained cache in the testing. This is overridden
     # by a trivial subclass to produce a suite that uses the cache.
@@ -130,15 +124,13 @@ class FineGrainedSuite(DataSuite):
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(
-                testcase.file, testcase.line))
+            f'Invalid output ({testcase.file}, line {testcase.line})')
 
         if testcase.triggered:
             assert_string_arrays_equal(
                 testcase.triggered,
                 self.format_triggered(all_triggered),
-                'Invalid active triggers ({}, line {})'.format(testcase.file,
-                                                               testcase.line))
+                f'Invalid active triggers ({testcase.file}, line {testcase.line})')
 
     def get_options(self,
                     source: str,
@@ -278,7 +270,7 @@ class FineGrainedSuite(DataSuite):
 
         """
         m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
-        regex = '# cmd{}: mypy ([a-zA-Z0-9_./ ]+)$'.format(incremental_step)
+        regex = f'# cmd{incremental_step}: mypy ([a-zA-Z0-9_./ ]+)$'
         alt_m = re.search(regex, program_text, flags=re.MULTILINE)
         if alt_m is not None:
             # Optionally return a different command if in a later step
@@ -328,7 +320,7 @@ class FineGrainedSuite(DataSuite):
     def get_suggest(self, program_text: str,
                     incremental_step: int) -> List[Tuple[str, str]]:
         step_bit = '1?' if incremental_step == 1 else str(incremental_step)
-        regex = '# suggest{}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$'.format(step_bit)
+        regex = f'# suggest{step_bit}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$'
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 

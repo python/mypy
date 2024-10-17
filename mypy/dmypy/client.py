@@ -14,6 +14,7 @@ import time
 import traceback
 
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple, List
+from typing_extensions import NoReturn
 
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
@@ -161,7 +162,7 @@ def main(argv: List[str]) -> None:
             sys.exit(2)
 
 
-def fail(msg: str) -> None:
+def fail(msg: str) -> NoReturn:
     print(msg, file=sys.stderr)
     sys.exit(2)
 
@@ -272,7 +273,7 @@ def do_run(args: argparse.Namespace) -> None:
     response = request(args.status_file, 'run', version=__version__, args=args.flags)
     # If the daemon signals that a restart is necessary, do it
     if 'restart' in response:
-        print('Restarting: {}'.format(response['restart']))
+        print(f"Restarting: {response['restart']}")
         restart_server(args, allow_sources=True)
         response = request(args.status_file, 'run', version=__version__, args=args.flags)
 
@@ -299,7 +300,7 @@ def do_status(args: argparse.Namespace) -> None:
     if args.verbose or 'error' in response:
         show_stats(response)
     if 'error' in response:
-        fail("Daemon is stuck; consider %s kill" % sys.argv[0])
+        fail(f"Daemon is stuck; consider {sys.argv[0]} kill")
     print("Daemon is up and running")
 
 
@@ -310,7 +311,7 @@ def do_stop(args: argparse.Namespace) -> None:
     response = request(args.status_file, 'stop', timeout=5)
     if 'error' in response:
         show_stats(response)
-        fail("Daemon is stuck; consider %s kill" % sys.argv[0])
+        fail(f"Daemon is stuck; consider {sys.argv[0]} kill")
     else:
         print("Daemon stopped")
 
@@ -388,7 +389,7 @@ def check_output(response: Dict[str, Any], verbose: bool,
     try:
         out, err, status_code = response['out'], response['err'], response['status']
     except KeyError:
-        fail("Response: %s" % str(response))
+        fail(f"Response: {str(response)}")
     sys.stdout.write(out)
     sys.stdout.flush()
     sys.stderr.write(err)

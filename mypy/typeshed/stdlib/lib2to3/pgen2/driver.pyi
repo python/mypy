@@ -1,8 +1,11 @@
 from _typeshed import StrPath
+from collections.abc import Iterable
 from lib2to3.pgen2.grammar import Grammar
 from lib2to3.pytree import _NL, _Convert
 from logging import Logger
-from typing import IO, Any, Iterable
+from typing import IO, Any
+
+__all__ = ["Driver", "load_grammar"]
 
 class Driver:
     grammar: Grammar
