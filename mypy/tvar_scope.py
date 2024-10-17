@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Union
+from __future__ import annotations
 
 from mypy.nodes import (
     ParamSpecExpr,
@@ -15,6 +15,26 @@ from mypy.types import (
     TypeVarTupleType,
     TypeVarType,
 )
+from mypy.typetraverser import TypeTraverserVisitor
+
+
+class TypeVarLikeNamespaceSetter(TypeTraverserVisitor):
+    """Set namespace for all TypeVarLikeTypes types."""
+
+    def __init__(self, namespace: str) -> None:
+        self.namespace = namespace
+
+    def visit_type_var(self, t: TypeVarType) -> None:
+        t.id.namespace = self.namespace
+        super().visit_type_var(t)
+
+    def visit_param_spec(self, t: ParamSpecType) -> None:
+        t.id.namespace = self.namespace
+        return super().visit_param_spec(t)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
+        t.id.namespace = self.namespace
+        super().visit_type_var_tuple(t)
 
 
 class TypeVarLikeScope:
@@ -25,9 +45,9 @@ class TypeVarLikeScope:
 
     def __init__(
         self,
-        parent: "Optional[TypeVarLikeScope]" = None,
+        parent: TypeVarLikeScope | None = None,
         is_class_scope: bool = False,
-        prohibited: "Optional[TypeVarLikeScope]" = None,
+        prohibited: TypeVarLikeScope | None = None,
         namespace: str = "",
     ) -> None:
         """Initializer for TypeVarLikeScope
@@ -38,7 +58,7 @@ class TypeVarLikeScope:
           prohibited: Type variables that aren't strictly in scope exactly,
                       but can't be bound because they're part of an outer class's scope.
         """
-        self.scope: Dict[str, TypeVarLikeType] = {}
+        self.scope: dict[str, TypeVarLikeType] = {}
         self.parent = parent
         self.func_id = 0
         self.class_id = 0
@@ -49,9 +69,9 @@ class TypeVarLikeScope:
             self.func_id = parent.func_id
             self.class_id = parent.class_id
 
-    def get_function_scope(self) -> "Optional[TypeVarLikeScope]":
+    def get_function_scope(self) -> TypeVarLikeScope | None:
         """Get the nearest parent that's a function scope, not a class scope"""
-        it: Optional[TypeVarLikeScope] = self
+        it: TypeVarLikeScope | None = self
         while it is not None and it.is_class_scope:
             it = it.parent
         return it
@@ -65,51 +85,60 @@ class TypeVarLikeScope:
             return False
         return True
 
-    def method_frame(self) -> "TypeVarLikeScope":
+    def method_frame(self, namespace: str) -> TypeVarLikeScope:
         """A new scope frame for binding a method"""
-        return TypeVarLikeScope(self, False, None)
+        return TypeVarLikeScope(self, False, None, namespace=namespace)
 
-    def class_frame(self, namespace: str) -> "TypeVarLikeScope":
+    def class_frame(self, namespace: str) -> TypeVarLikeScope:
         """A new scope frame for binding a class. Prohibits *this* class's tvars"""
         return TypeVarLikeScope(self.get_function_scope(), True, self, namespace=namespace)
+
+    def new_unique_func_id(self) -> TypeVarId:
+        """Used by plugin-like code that needs to make synthetic generic functions."""
+        self.func_id -= 1
+        return TypeVarId(self.func_id)
 
     def bind_new(self, name: str, tvar_expr: TypeVarLikeExpr) -> TypeVarLikeType:
         if self.is_class_scope:
             self.class_id += 1
             i = self.class_id
-            namespace = self.namespace
         else:
             self.func_id -= 1
             i = self.func_id
-            # TODO: Consider also using namespaces for functions
-            namespace = ""
+        namespace = self.namespace
+        tvar_expr.default.accept(TypeVarLikeNamespaceSetter(namespace))
+
         if isinstance(tvar_expr, TypeVarExpr):
             tvar_def: TypeVarLikeType = TypeVarType(
-                name,
-                tvar_expr.fullname,
-                TypeVarId(i, namespace=namespace),
+                name=name,
+                fullname=tvar_expr.fullname,
+                id=TypeVarId(i, namespace=namespace),
                 values=tvar_expr.values,
                 upper_bound=tvar_expr.upper_bound,
+                default=tvar_expr.default,
                 variance=tvar_expr.variance,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
             )
         elif isinstance(tvar_expr, ParamSpecExpr):
             tvar_def = ParamSpecType(
-                name,
-                tvar_expr.fullname,
-                i,
+                name=name,
+                fullname=tvar_expr.fullname,
+                id=TypeVarId(i, namespace=namespace),
                 flavor=ParamSpecFlavor.BARE,
                 upper_bound=tvar_expr.upper_bound,
+                default=tvar_expr.default,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
             )
         elif isinstance(tvar_expr, TypeVarTupleExpr):
             tvar_def = TypeVarTupleType(
-                name,
-                tvar_expr.fullname,
-                i,
+                name=name,
+                fullname=tvar_expr.fullname,
+                id=TypeVarId(i, namespace=namespace),
                 upper_bound=tvar_expr.upper_bound,
+                tuple_fallback=tvar_expr.tuple_fallback,
+                default=tvar_expr.default,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
             )
@@ -121,9 +150,9 @@ class TypeVarLikeScope:
     def bind_existing(self, tvar_def: TypeVarLikeType) -> None:
         self.scope[tvar_def.fullname] = tvar_def
 
-    def get_binding(self, item: Union[str, SymbolTableNode]) -> Optional[TypeVarLikeType]:
+    def get_binding(self, item: str | SymbolTableNode) -> TypeVarLikeType | None:
         fullname = item.fullname if isinstance(item, SymbolTableNode) else item
-        assert fullname is not None
+        assert fullname
         if fullname in self.scope:
             return self.scope[fullname]
         elif self.parent is not None:

@@ -52,8 +52,8 @@ precise type signature for this function using ``Literal[...]`` and overloads:
 
     The examples in this page import ``Literal`` as well as ``Final`` and
     ``TypedDict`` from the ``typing`` module. These types were added to
-    ``typing`` in Python 3.8, but are also available for use in Python 2.7
-    and 3.4 - 3.7 via the ``typing_extensions`` package.
+    ``typing`` in Python 3.8, but are also available for use in Python
+    3.4 - 3.7 via the ``typing_extensions`` package.
 
 Parameterizing Literals
 ***********************
@@ -70,7 +70,7 @@ complex types involving literals a little more convenient.
 
 Literal types may also contain ``None``. Mypy will treat ``Literal[None]`` as being
 equivalent to just ``None``. This means that ``Literal[4, None]``,
-``Union[Literal[4], None]``, and ``Optional[Literal[4]]`` are all equivalent.
+``Literal[4] | None``, and ``Optional[Literal[4]]`` are all equivalent.
 
 Literals may also contain aliases to other literal types. For example, the
 following program is legal:
@@ -264,19 +264,15 @@ use the same technique with regular objects, tuples, or namedtuples.
 Similarly, tags do not need to be specifically str Literals: they can be any type
 you can normally narrow within ``if`` statements and the like. For example, you
 could have your tags be int or Enum Literals or even regular classes you narrow
-using ``isinstance()``:
+using ``isinstance()`` (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from typing import Generic, TypeVar, Union
-
-    T = TypeVar('T')
-
-    class Wrapper(Generic[T]):
+    class Wrapper[T]:
         def __init__(self, inner: T) -> None:
             self.inner = inner
 
-    def process(w: Union[Wrapper[int], Wrapper[str]]) -> None:
+    def process(w: Wrapper[int] | Wrapper[str]) -> None:
         # Doing `if isinstance(w, Wrapper[int])` does not work: isinstance requires
         # that the second argument always be an *erased* type, with no generics.
         # This is because generics are a typing-only concept and do not exist at
@@ -329,12 +325,9 @@ perform an exhaustiveness check, you need to update your code to use an
 .. code-block:: python
 
   from typing import Literal, NoReturn
+  from typing_extensions import assert_never
 
   PossibleValues = Literal['one', 'two']
-
-  def assert_never(value: NoReturn) -> NoReturn:
-      # This also works at runtime as well
-      assert False, f'This code should never be reached, got: {value}'
 
   def validate(x: PossibleValues) -> bool:
       if x == 'one':
@@ -443,10 +436,7 @@ Let's start with a definition:
 
   from enum import Enum
   from typing import NoReturn
-
-  def assert_never(value: NoReturn) -> NoReturn:
-      # This also works in runtime as well:
-      assert False, 'This code should never be reached, got: {0}'.format(value)
+  from typing_extensions import assert_never
 
   class Direction(Enum):
       up = 'up'
@@ -495,13 +485,13 @@ the same way Python's runtime does:
     ...     right = 'right'
     Traceback (most recent call last):
       ...
-    TypeError: Other: cannot extend enumeration 'Some'
+    TypeError: AllDirection: cannot extend enumeration 'Direction'
 
   Mypy also catches this error:
 
   .. code-block:: python
 
-    class AllDirection(Direction):  # E: Cannot inherit from final class "Some"
+    class AllDirection(Direction):  # E: Cannot inherit from final class "Direction"
         left = 'left'
         right = 'right'
 

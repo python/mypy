@@ -325,3 +325,12 @@ class Good(A[int, str]):
     x = 42
 reveal_type(Good.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/classmethod.pyi]
+
+[case testSuggestClassVarOnTooFewArgumentsMethod]
+from typing import Callable
+
+class C:
+    foo: Callable[[C], int]
+c:C
+c.foo()  # E: Too few arguments \
+         # N: "foo" is considered instance variable, to make it class variable use ClassVar[...]

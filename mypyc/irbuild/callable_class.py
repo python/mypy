@@ -4,7 +4,7 @@ The class defines __call__ for calling the function and allows access to
 non-local variables defined in outer scopes.
 """
 
-from typing import List
+from __future__ import annotations
 
 from mypyc.common import ENV_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
@@ -17,7 +17,7 @@ from mypyc.primitives.misc_ops import method_new_op
 
 
 def setup_callable_class(builder: IRBuilder) -> None:
-    """Generate an (incomplete) callable class representing function.
+    """Generate an (incomplete) callable class representing a function.
 
     This can be a nested function or a function within a non-extension
     class.  Also set up the 'self' variable for that class.
@@ -80,8 +80,8 @@ def setup_callable_class(builder: IRBuilder) -> None:
 
 def add_call_to_callable_class(
     builder: IRBuilder,
-    args: List[Register],
-    blocks: List[BasicBlock],
+    args: list[Register],
+    blocks: list[BasicBlock],
     sig: FuncSignature,
     fn_info: FuncInfo,
 ) -> FuncIR:
@@ -92,7 +92,10 @@ def add_call_to_callable_class(
     given callable class, used to represent that function.
     """
     # Since we create a method, we also add a 'self' parameter.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),) + sig.args, sig.ret_type)
+    nargs = len(sig.args) - sig.num_bitmap_args
+    sig = FuncSignature(
+        (RuntimeArg(SELF_NAME, object_rprimitive),) + sig.args[:nargs], sig.ret_type
+    )
     call_fn_decl = FuncDecl("__call__", fn_info.callable_class.ir.name, builder.module_name, sig)
     call_fn_ir = FuncIR(
         call_fn_decl, args, blocks, fn_info.fitem.line, traceback_name=fn_info.fitem.name

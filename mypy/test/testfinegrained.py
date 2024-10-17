@@ -12,9 +12,13 @@ can test interactions with the lib_path that is built implicitly based
 on specified sources.
 """
 
+from __future__ import annotations
+
 import os
 import re
-from typing import Any, Dict, List, Tuple, Union, cast
+import sys
+import unittest
+from typing import Any
 
 import pytest
 
@@ -27,6 +31,7 @@ from mypy.find_sources import create_source_list
 from mypy.modulefinder import BuildSource
 from mypy.options import Options
 from mypy.server.mergecheck import check_consistency
+from mypy.server.update import sort_messages_preserving_file_order
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, DeleteFile, UpdateFile
 from mypy.test.helpers import (
@@ -65,7 +70,6 @@ class FineGrainedSuite(DataSuite):
         else:
             if testcase.only_when == "-only_when_cache":
                 return True
-
         return False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
@@ -79,6 +83,9 @@ class FineGrainedSuite(DataSuite):
             f.write(main_src)
 
         options = self.get_options(main_src, testcase, build_cache=False)
+        if options.python_version > sys.version_info:
+            pytest.skip("Test case requires a newer Python version")
+
         build_options = self.get_options(main_src, testcase, build_cache=True)
         server = Server(options, DEFAULT_STATUS_FILE)
 
@@ -96,6 +103,7 @@ class FineGrainedSuite(DataSuite):
 
         assert testcase.tmpdir
         a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
+        a.extend(self.maybe_inspect(step, server, main_src))
 
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -145,6 +153,9 @@ class FineGrainedSuite(DataSuite):
         options.use_fine_grained_cache = self.use_cache and not build_cache
         options.cache_fine_grained = self.use_cache
         options.local_partial_types = True
+        options.export_types = "inspect" in testcase.file
+        # Treat empty bodies safely for these test cases.
+        options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
         if re.search("flags:.*--follow-imports", source) is None:
             # Override the default for follow_imports
             options.follow_imports = "error"
@@ -156,19 +167,20 @@ class FineGrainedSuite(DataSuite):
 
         return options
 
-    def run_check(self, server: Server, sources: List[BuildSource]) -> List[str]:
-        response = server.check(sources, is_tty=False, terminal_width=-1)
-        out = cast(str, response["out"] or response["err"])
+    def run_check(self, server: Server, sources: list[BuildSource]) -> list[str]:
+        response = server.check(sources, export_types=False, is_tty=False, terminal_width=-1)
+        out = response["out"] or response["err"]
+        assert isinstance(out, str)
         return out.splitlines()
 
-    def build(self, options: Options, sources: List[BuildSource]) -> List[str]:
+    def build(self, options: Options, sources: list[BuildSource]) -> list[str]:
         try:
             result = build.build(sources=sources, options=options)
         except CompileError as e:
             return e.messages
         return result.errors
 
-    def format_triggered(self, triggered: List[List[str]]) -> List[str]:
+    def format_triggered(self, triggered: list[list[str]]) -> list[str]:
         result = []
         for n, triggers in enumerate(triggered):
             filtered = [trigger for trigger in triggers if not trigger.endswith("__>")]
@@ -187,7 +199,7 @@ class FineGrainedSuite(DataSuite):
 
     def perform_step(
         self,
-        operations: List[Union[UpdateFile, DeleteFile]],
+        operations: list[UpdateFile | DeleteFile],
         server: Server,
         options: Options,
         build_options: Options,
@@ -195,7 +207,7 @@ class FineGrainedSuite(DataSuite):
         main_src: str,
         step: int,
         num_regular_incremental_steps: int,
-    ) -> Tuple[List[str], List[List[str]]]:
+    ) -> tuple[list[str], list[list[str]]]:
         """Perform one fine-grained incremental build step (after some file updates/deletions).
 
         Return (mypy output, triggered targets).
@@ -208,9 +220,9 @@ class FineGrainedSuite(DataSuite):
         else:
             new_messages = self.run_check(server, sources)
 
-        updated: List[str] = []
-        changed: List[str] = []
-        targets: List[str] = []
+        updated: list[str] = []
+        changed: list[str] = []
+        targets: list[str] = []
         triggered = []
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -238,12 +250,13 @@ class FineGrainedSuite(DataSuite):
         a = new_messages
         assert testcase.tmpdir
         a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
+        a.extend(self.maybe_inspect(step, server, main_src))
 
         return a, triggered
 
     def parse_sources(
         self, program_text: str, incremental_step: int, options: Options
-    ) -> List[BuildSource]:
+    ) -> list[BuildSource]:
         """Return target BuildSources for a test case.
 
         Normally, the unit tests will check all files included in the test
@@ -279,49 +292,151 @@ class FineGrainedSuite(DataSuite):
             # when there aren't any .py files in an increment
             return [base] + create_source_list([test_temp_dir], options, allow_empty_dir=True)
 
-    def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> List[str]:
-        output: List[str] = []
+    def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> list[str]:
+        output: list[str] = []
         targets = self.get_suggest(src, step)
         for flags, target in targets:
             json = "--json" in flags
             callsites = "--callsites" in flags
             no_any = "--no-any" in flags
             no_errors = "--no-errors" in flags
-            try_text = "--try-text" in flags
             m = re.match("--flex-any=([0-9.]+)", flags)
             flex_any = float(m.group(1)) if m else None
             m = re.match(r"--use-fixme=(\w+)", flags)
             use_fixme = m.group(1) if m else None
             m = re.match("--max-guesses=([0-9]+)", flags)
             max_guesses = int(m.group(1)) if m else None
-            res = cast(
-                Dict[str, Any],
-                server.cmd_suggest(
-                    target.strip(),
-                    json=json,
-                    no_any=no_any,
-                    no_errors=no_errors,
-                    try_text=try_text,
-                    flex_any=flex_any,
-                    use_fixme=use_fixme,
-                    callsites=callsites,
-                    max_guesses=max_guesses,
-                ),
+            res: dict[str, Any] = server.cmd_suggest(
+                target.strip(),
+                json=json,
+                no_any=no_any,
+                no_errors=no_errors,
+                flex_any=flex_any,
+                use_fixme=use_fixme,
+                callsites=callsites,
+                max_guesses=max_guesses,
             )
             val = res["error"] if "error" in res else res["out"] + res["err"]
             if json:
                 # JSON contains already escaped \ on Windows, so requires a bit of care.
                 val = val.replace("\\\\", "\\")
                 val = val.replace(os.path.realpath(tmp_dir) + os.path.sep, "")
+                val = val.replace(os.path.abspath(tmp_dir) + os.path.sep, "")
             output.extend(val.strip().split("\n"))
         return normalize_messages(output)
 
-    def get_suggest(self, program_text: str, incremental_step: int) -> List[Tuple[str, str]]:
+    def maybe_inspect(self, step: int, server: Server, src: str) -> list[str]:
+        output: list[str] = []
+        targets = self.get_inspect(src, step)
+        for flags, location in targets:
+            m = re.match(r"--show=(\w+)", flags)
+            show = m.group(1) if m else "type"
+            verbosity = 0
+            if "-v" in flags:
+                verbosity = 1
+            if "-vv" in flags:
+                verbosity = 2
+            m = re.match(r"--limit=([0-9]+)", flags)
+            limit = int(m.group(1)) if m else 0
+            include_span = "--include-span" in flags
+            include_kind = "--include-kind" in flags
+            include_object_attrs = "--include-object-attrs" in flags
+            union_attrs = "--union-attrs" in flags
+            force_reload = "--force-reload" in flags
+            res: dict[str, Any] = server.cmd_inspect(
+                show,
+                location,
+                verbosity=verbosity,
+                limit=limit,
+                include_span=include_span,
+                include_kind=include_kind,
+                include_object_attrs=include_object_attrs,
+                union_attrs=union_attrs,
+                force_reload=force_reload,
+            )
+            val = res["error"] if "error" in res else res["out"] + res["err"]
+            output.extend(val.strip().split("\n"))
+        return output
+
+    def get_suggest(self, program_text: str, incremental_step: int) -> list[tuple[str, str]]:
         step_bit = "1?" if incremental_step == 1 else str(incremental_step)
         regex = f"# suggest{step_bit}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$"
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 
+    def get_inspect(self, program_text: str, incremental_step: int) -> list[tuple[str, str]]:
+        step_bit = "1?" if incremental_step == 1 else str(incremental_step)
+        regex = f"# inspect{step_bit}: (--[a-zA-Z0-9_\\-=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$"
+        m = re.findall(regex, program_text, flags=re.MULTILINE)
+        return m
 
-def normalize_messages(messages: List[str]) -> List[str]:
+
+def normalize_messages(messages: list[str]) -> list[str]:
     return [re.sub("^tmp" + re.escape(os.sep), "", message) for message in messages]
+
+
+class TestMessageSorting(unittest.TestCase):
+    def test_simple_sorting(self) -> None:
+        msgs = ['x.py:1: error: "int" not callable', 'foo/y.py:123: note: "X" not defined']
+        old_msgs = ['foo/y.py:12: note: "Y" not defined', 'x.py:8: error: "str" not callable']
+        assert sort_messages_preserving_file_order(msgs, old_msgs) == list(reversed(msgs))
+        assert sort_messages_preserving_file_order(list(reversed(msgs)), old_msgs) == list(
+            reversed(msgs)
+        )
+
+    def test_long_form_sorting(self) -> None:
+        # Multi-line errors should be sorted together and not split.
+        msg1 = [
+            'x.py:1: error: "int" not callable',
+            "and message continues (x: y)",
+            "    1()",
+            "    ^~~",
+        ]
+        msg2 = [
+            'foo/y.py: In function "f":',
+            'foo/y.py:123: note: "X" not defined',
+            "and again message continues",
+        ]
+        old_msgs = ['foo/y.py:12: note: "Y" not defined', 'x.py:8: error: "str" not callable']
+        assert sort_messages_preserving_file_order(msg1 + msg2, old_msgs) == msg2 + msg1
+        assert sort_messages_preserving_file_order(msg2 + msg1, old_msgs) == msg2 + msg1
+
+    def test_mypy_error_prefix(self) -> None:
+        # Some errors don't have a file and start with "mypy: ". These
+        # shouldn't be sorted together with file-specific errors.
+        msg1 = 'x.py:1: error: "int" not callable'
+        msg2 = 'foo/y:123: note: "X" not defined'
+        msg3 = "mypy: Error not associated with a file"
+        old_msgs = [
+            "mypy: Something wrong",
+            'foo/y:12: note: "Y" not defined',
+            'x.py:8: error: "str" not callable',
+        ]
+        assert sort_messages_preserving_file_order([msg1, msg2, msg3], old_msgs) == [
+            msg2,
+            msg1,
+            msg3,
+        ]
+        assert sort_messages_preserving_file_order([msg3, msg2, msg1], old_msgs) == [
+            msg2,
+            msg1,
+            msg3,
+        ]
+
+    def test_new_file_at_the_end(self) -> None:
+        msg1 = 'x.py:1: error: "int" not callable'
+        msg2 = 'foo/y.py:123: note: "X" not defined'
+        new1 = "ab.py:3: error: Problem: error"
+        new2 = "aaa:3: error: Bad"
+        old_msgs = ['foo/y.py:12: note: "Y" not defined', 'x.py:8: error: "str" not callable']
+        assert sort_messages_preserving_file_order([msg1, msg2, new1], old_msgs) == [
+            msg2,
+            msg1,
+            new1,
+        ]
+        assert sort_messages_preserving_file_order([new1, msg1, msg2, new2], old_msgs) == [
+            msg2,
+            msg1,
+            new1,
+            new2,
+        ]

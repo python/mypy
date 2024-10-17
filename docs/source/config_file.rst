@@ -3,17 +3,26 @@
 The mypy configuration file
 ===========================
 
-Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``pyproject.toml``,
-then ``setup.cfg`` in the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
-``~/.config/mypy/config``, and finally ``.mypy.ini`` in the user home directory
-if none of them are found; the :option:`--config-file <mypy --config-file>` command-line flag can be used
-to read a different file instead (see :ref:`config-file-flag`).
+Mypy is very configurable. This is most useful when introducing typing to
+an existing codebase. See :ref:`existing-code` for concrete advice for
+that situation.
+
+Mypy supports reading configuration settings from a file with the following precedence order:
+
+    1. ``./mypy.ini``
+    2. ``./.mypy.ini``
+    3. ``./pyproject.toml``
+    4. ``./setup.cfg``
+    5. ``$XDG_CONFIG_HOME/mypy/config``
+    6. ``~/.config/mypy/config``
+    7. ``~/.mypy.ini``
 
 It is important to understand that there is no merging of configuration
-files, as it would lead to ambiguity.  The :option:`--config-file <mypy --config-file>` flag
-has the highest precedence and must be correct; otherwise mypy will report
-an error and exit.  Without command line option, mypy will look for configuration files in the above mentioned order.
+files, as it would lead to ambiguity. The :option:`--config-file <mypy --config-file>`
+command-line flag has the highest precedence and
+must be correct; otherwise mypy will report an error and exit. Without the
+command line option, mypy will look for configuration files in the
+precedence order above.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
@@ -103,8 +112,8 @@ their name or by (when applicable) swapping their prefix from
 ``disallow`` to ``allow`` (and vice versa).
 
 
-Examples
-********
+Example ``mypy.ini``
+********************
 
 Here is an example of a ``mypy.ini`` file. To use this config file, place it at the root
 of your repo and run mypy.
@@ -114,7 +123,6 @@ of your repo and run mypy.
     # Global options:
 
     [mypy]
-    python_version = 2.7
     warn_return_any = True
     warn_unused_configs = True
 
@@ -129,16 +137,13 @@ of your repo and run mypy.
     [mypy-somelibrary]
     ignore_missing_imports = True
 
-This config file specifies three global options in the ``[mypy]`` section. These three
+This config file specifies two global options in the ``[mypy]`` section. These two
 options will:
 
-1.  Type-check your entire project assuming it will be run using Python 2.7.
-    (This is equivalent to using the :option:`--python-version 2.7 <mypy --python-version>` or :option:`-2 <mypy -2>` flag).
-
-2.  Report an error whenever a function returns a value that is inferred
+1.  Report an error whenever a function returns a value that is inferred
     to have type ``Any``.
 
-3.  Report any config options that are unused by mypy. (This will help us catch typos
+2.  Report any config options that are unused by mypy. (This will help us catch typos
     when making changes to our config file).
 
 Next, this module specifies three per-module options. The first two options change how mypy
@@ -195,6 +200,28 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
+.. confval:: modules
+
+    :type: comma-separated list of strings
+
+    A comma-separated list of packages which should be checked by mypy if none are given on the command
+    line. Mypy *will not* recursively type check any submodules of the provided
+    module.
+
+    This option may only be set in the global section (``[mypy]``).
+
+
+.. confval:: packages
+
+    :type: comma-separated list of strings
+
+    A comma-separated list of packages which should be checked by mypy if none are given on the command
+    line.  Mypy *will* recursively type check any submodules of the provided
+    package. This flag is identical to :confval:`modules` apart from this
+    behavior.
+
+    This option may only be set in the global section (``[mypy]``).
+
 .. confval:: exclude
 
     :type: regular expression
@@ -215,10 +242,8 @@ section of the command line docs.
     Crafting a single regular expression that excludes multiple files while remaining
     human-readable can be a challenge. The above example demonstrates one approach.
     ``(?x)`` enables the ``VERBOSE`` flag for the subsequent regular expression, which
-    `ignores most whitespace and supports comments`__. The above is equivalent to:
-    ``(^one\.py$|two\.pyi$|^three\.)``.
-
-    .. __: https://docs.python.org/3/library/re.html#re.X
+    :py:data:`ignores most whitespace and supports comments <re.VERBOSE>`.
+    The above is equivalent to: ``(^one\.py$|two\.pyi$|^three\.)``.
 
     For more details, see :option:`--exclude <mypy --exclude>`.
 
@@ -258,10 +283,11 @@ section of the command line docs.
 .. confval:: namespace_packages
 
     :type: boolean
-    :default: False
+    :default: True
 
     Enables :pep:`420` style namespace packages.  See the
-    corresponding flag :option:`--namespace-packages <mypy --namespace-packages>` for more information.
+    corresponding flag :option:`--no-namespace-packages <mypy --no-namespace-packages>`
+    for more information.
 
     This option may only be set in the global section (``[mypy]``).
 
@@ -273,7 +299,7 @@ section of the command line docs.
     This flag tells mypy that top-level packages will be based in either the
     current directory, or a member of the ``MYPYPATH`` environment variable or
     :confval:`mypy_path` config option. This option is only useful in
-    conjunction with :confval:`namespace_packages`. See :ref:`Mapping file
+    the absence of `__init__.py`. See :ref:`Mapping file
     paths to modules <mapping-paths-to-modules>` for details.
 
     This option may only be set in the global section (``[mypy]``).
@@ -342,7 +368,7 @@ section of the command line docs.
 
 .. confval:: no_site_packages
 
-    :type: bool
+    :type: boolean
     :default: False
 
     Disables using type information in installed packages (see :pep:`561`).
@@ -466,7 +492,38 @@ section of the command line docs.
     :default: False
 
     Disallows calling functions without type annotations from functions with type
-    annotations.
+    annotations. Note that when used in per-module options, it enables/disables
+    this check **inside** the module(s) specified, not for functions that come
+    from that module(s), for example config like this:
+
+    .. code-block:: ini
+
+        [mypy]
+        disallow_untyped_calls = True
+
+        [mypy-some.library.*]
+        disallow_untyped_calls = False
+
+    will disable this check inside ``some.library``, not for your code that
+    imports ``some.library``. If you want to selectively disable this check for
+    all your code that imports ``some.library`` you should instead use
+    :confval:`untyped_calls_exclude`, for example:
+
+    .. code-block:: ini
+
+        [mypy]
+        disallow_untyped_calls = True
+        untyped_calls_exclude = some.library
+
+.. confval:: untyped_calls_exclude
+
+    :type: comma-separated list of strings
+
+    Selectively excludes functions and methods defined in specific packages,
+    modules, and classes from action of :confval:`disallow_untyped_calls`.
+    This also applies to all submodules of packages (i.e. everything inside
+    a given prefix). Note, this option does not support per-file configuration,
+    the exclusions list is defined globally for all your code.
 
 .. confval:: disallow_untyped_defs
 
@@ -474,14 +531,19 @@ section of the command line docs.
     :default: False
 
     Disallows defining functions without type annotations or with incomplete type
-    annotations.
+    annotations (a superset of :confval:`disallow_incomplete_defs`).
+
+    For example, it would report an error for :code:`def f(a, b)` and :code:`def f(a: int, b)`.
 
 .. confval:: disallow_incomplete_defs
 
     :type: boolean
     :default: False
 
-    Disallows defining functions with incomplete type annotations.
+    Disallows defining functions with incomplete type annotations, while still
+    allowing entirely unannotated definitions.
+
+    For example, it would report an error for :code:`def f(a: int, b)` but not :code:`def f(a, b)`.
 
 .. confval:: check_untyped_defs
 
@@ -507,23 +569,30 @@ None and Optional handling
 For more information, see the :ref:`None and Optional handling <none-and-optional-handling>`
 section of the command line docs.
 
-.. confval:: no_implicit_optional
+.. confval:: implicit_optional
 
     :type: boolean
     :default: False
 
-    Changes the treatment of arguments with a default value of ``None`` by not implicitly
-    making their type :py:data:`~typing.Optional`.
+    Causes mypy to treat parameters with a ``None``
+    default value as having an implicit optional type (``T | None``).
+
+    **Note:** This was True by default in mypy versions 0.980 and earlier.
 
 .. confval:: strict_optional
 
     :type: boolean
     :default: True
 
-    Enables or disables strict Optional checks. If False, mypy treats ``None``
+    Effectively disables checking of optional
+    types and ``None`` values. With this option, mypy doesn't
+    generally check the use of ``None`` values -- it is treated
     as compatible with every type.
 
-    **Note:** This was False by default in mypy versions earlier than 0.600.
+    .. warning::
+
+        ``strict_optional = false`` is evil. Avoid using it and definitely do
+        not use it without understanding what it does.
 
 
 Configuring warnings
@@ -577,14 +646,6 @@ Suppressing errors
 
 Note: these configuration options are available in the config file only. There is
 no analog available via the command line options.
-
-.. confval:: show_none_errors
-
-    :type: boolean
-    :default: True
-
-    Shows errors related to strict ``None`` checking, if the global :confval:`strict_optional`
-    flag is enabled.
 
 .. confval:: ignore_errors
 
@@ -726,12 +787,19 @@ These options may only be set in the global section (``[mypy]``).
 
     Shows column numbers in error messages.
 
-.. confval:: show_error_codes
+.. confval:: show_error_code_links
 
     :type: boolean
     :default: False
 
-    Shows error codes in error messages. See :ref:`error-codes` for more information.
+    Shows documentation link to corresponding error code.
+
+.. confval:: hide_error_codes
+
+    :type: boolean
+    :default: False
+
+    Hides error codes in error messages. See :ref:`error-codes` for more information.
 
 .. confval:: pretty
 
@@ -762,6 +830,22 @@ These options may only be set in the global section (``[mypy]``).
 
     Show absolute paths to files.
 
+.. confval:: force_uppercase_builtins
+
+    :type: boolean
+    :default: False
+
+    Always use ``List`` instead of ``list`` in error messages,
+    even on Python 3.9+.
+
+.. confval:: force_union_syntax
+
+    :type: boolean
+    :default: False
+
+    Always use ``Union[]`` and ``Optional[]`` for union types
+    in error messages (instead of the ``|`` operator),
+    even on Python 3.10+.
 
 Incremental mode
 ****************
@@ -862,9 +946,16 @@ These options may only be set in the global section (``[mypy]``).
 
     :type: string
 
-    Specifies an alternative directory to look for stubs instead of the
-    default ``typeshed`` directory. User home directory and environment
-    variables will be expanded.
+    This specifies the directory where mypy looks for standard library typeshed
+    stubs, instead of the typeshed that ships with mypy.  This is
+    primarily intended to make it easier to test typeshed changes before
+    submitting them upstream, but also allows you to use a forked version of
+    typeshed.
+
+    User home directory and environment variables will be expanded.
+
+    Note that this doesn't affect third-party library stubs. To test third-party stubs,
+    for example try ``MYPYPATH=stubs/six mypy ...``.
 
 .. confval:: warn_incomplete_stub
 
@@ -880,6 +971,12 @@ Report generation
 
 If these options are set, mypy will generate a report in the specified
 format into the specified directory.
+
+.. warning::
+
+  Generating reports disables incremental mode and can significantly slow down
+  your workflow. It is recommended to enable reporting only for specific runs
+  (e.g. in CI).
 
 .. confval:: any_exprs_report
 

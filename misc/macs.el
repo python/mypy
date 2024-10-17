@@ -11,7 +11,7 @@
           (thereline (line-number-at-pos there))
           (therecol (save-excursion (goto-char there) (current-column))))
       (shell-command
-       (format "cd ~/src/mypy; python3 ./scripts/find_type.py %s %s %s %s %s python3 -m mypy -i mypy"
+       (format "cd ~/src/mypy; python3 ./misc/find_type.py %s %s %s %s %s python3 -m mypy -i mypy"
                filename hereline herecol thereline therecol)
        )
       )

@@ -3,9 +3,9 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
-from typing import List, Optional, Tuple, Union, cast
+from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final, cast
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -25,8 +25,8 @@ from mypy.nodes import (
     SymbolTableNode,
     TupleExpr,
     TypeInfo,
-    UnicodeExpr,
     Var,
+    is_StrExpr_list,
 )
 from mypy.options import Options
 from mypy.semanal_shared import SemanticAnalyzerInterface
@@ -81,7 +81,7 @@ class EnumCallAnalyzer:
 
     def check_enum_call(
         self, node: Expression, var_name: str, is_func_scope: bool
-    ) -> Optional[TypeInfo]:
+    ) -> TypeInfo | None:
         """Check if a call defines an Enum.
 
         Example:
@@ -103,26 +103,36 @@ class EnumCallAnalyzer:
         fullname = callee.fullname
         if fullname not in ENUM_BASES:
             return None
-        items, values, ok = self.parse_enum_call_args(call, fullname.split(".")[-1])
+
+        new_class_name, items, values, ok = self.parse_enum_call_args(
+            call, fullname.split(".")[-1]
+        )
         if not ok:
             # Error. Construct dummy return value.
-            info = self.build_enum_call_typeinfo(var_name, [], fullname, node.line)
+            name = var_name
+            if is_func_scope:
+                name += "@" + str(call.line)
+            info = self.build_enum_call_typeinfo(name, [], fullname, node.line)
         else:
-            name = cast(Union[StrExpr, UnicodeExpr], call.args[0]).value
+            if new_class_name != var_name:
+                msg = f'String argument 1 "{new_class_name}" to {fullname}(...) does not match variable name "{var_name}"'
+                self.fail(msg, call)
+
+            name = cast(StrExpr, call.args[0]).value
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.
                 name += "@" + str(call.line)
             info = self.build_enum_call_typeinfo(name, items, fullname, call.line)
-            # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
-            if name != var_name or is_func_scope:
-                self.api.add_symbol_skip_local(name, info)
+        # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
+        if name != var_name or is_func_scope:
+            self.api.add_symbol_skip_local(name, info)
         call.analyzed = EnumCallExpr(info, items, values)
-        call.analyzed.set_line(call.line, call.column)
+        call.analyzed.set_line(call)
         info.line = node.line
         return info
 
     def build_enum_call_typeinfo(
-        self, name: str, items: List[str], fullname: str, line: int
+        self, name: str, items: list[str], fullname: str, line: int
     ) -> TypeInfo:
         base = self.api.named_type_or_none(fullname)
         assert base is not None
@@ -139,13 +149,13 @@ class EnumCallAnalyzer:
 
     def parse_enum_call_args(
         self, call: CallExpr, class_name: str
-    ) -> Tuple[List[str], List[Optional[Expression]], bool]:
+    ) -> tuple[str, list[str], list[Expression | None], bool]:
         """Parse arguments of an Enum call.
 
         Return a tuple of fields, values, was there an error.
         """
         args = call.args
-        if not all([arg_kind in [ARG_POS, ARG_NAMED] for arg_kind in call.arg_kinds]):
+        if not all(arg_kind in [ARG_POS, ARG_NAMED] for arg_kind in call.arg_kinds):
             return self.fail_enum_call_arg(f"Unexpected arguments to {class_name}()", call)
         if len(args) < 2:
             return self.fail_enum_call_arg(f"Too few arguments for {class_name}()", call)
@@ -165,32 +175,32 @@ class EnumCallAnalyzer:
             value = args[0]
         if names is None:
             names = args[1]
-        if not isinstance(value, (StrExpr, UnicodeExpr)):
+        if not isinstance(value, StrExpr):
             return self.fail_enum_call_arg(
                 f"{class_name}() expects a string literal as the first argument", call
             )
+        new_class_name = value.value
+
         items = []
-        values: List[Optional[Expression]] = []
-        if isinstance(names, (StrExpr, UnicodeExpr)):
+        values: list[Expression | None] = []
+        if isinstance(names, StrExpr):
             fields = names.value
             for field in fields.replace(",", " ").split():
                 items.append(field)
         elif isinstance(names, (TupleExpr, ListExpr)):
             seq_items = names.items
-            if all(isinstance(seq_item, (StrExpr, UnicodeExpr)) for seq_item in seq_items):
-                items = [
-                    cast(Union[StrExpr, UnicodeExpr], seq_item).value for seq_item in seq_items
-                ]
+            if is_StrExpr_list(seq_items):
+                items = [seq_item.value for seq_item in seq_items]
             elif all(
                 isinstance(seq_item, (TupleExpr, ListExpr))
                 and len(seq_item.items) == 2
-                and isinstance(seq_item.items[0], (StrExpr, UnicodeExpr))
+                and isinstance(seq_item.items[0], StrExpr)
                 for seq_item in seq_items
             ):
                 for seq_item in seq_items:
                     assert isinstance(seq_item, (TupleExpr, ListExpr))
                     name, value = seq_item.items
-                    assert isinstance(name, (StrExpr, UnicodeExpr))
+                    assert isinstance(name, StrExpr)
                     items.append(name.value)
                     values.append(value)
             else:
@@ -200,7 +210,7 @@ class EnumCallAnalyzer:
                 )
         elif isinstance(names, DictExpr):
             for key, value in names.items:
-                if not isinstance(key, (StrExpr, UnicodeExpr)):
+                if not isinstance(key, StrExpr):
                     return self.fail_enum_call_arg(
                         f"{class_name}() with dict literal requires string literals", call
                     )
@@ -222,29 +232,29 @@ class EnumCallAnalyzer:
                     items.append(field)
             else:
                 return self.fail_enum_call_arg(
-                    "%s() expects a string, tuple, list or dict literal as the second argument"
+                    "Second argument of %s() must be string, tuple, list or dict literal for mypy to determine Enum members"
                     % class_name,
                     call,
                 )
         else:
             # TODO: Allow dict(x=1, y=2) as a substitute for {'x': 1, 'y': 2}?
             return self.fail_enum_call_arg(
-                "%s() expects a string, tuple, list or dict literal as the second argument"
+                "Second argument of %s() must be string, tuple, list or dict literal for mypy to determine Enum members"
                 % class_name,
                 call,
             )
-        if len(items) == 0:
+        if not items:
             return self.fail_enum_call_arg(f"{class_name}() needs at least one item", call)
         if not values:
             values = [None] * len(items)
         assert len(items) == len(values)
-        return items, values, True
+        return new_class_name, items, values, True
 
     def fail_enum_call_arg(
         self, message: str, context: Context
-    ) -> Tuple[List[str], List[Optional[Expression]], bool]:
+    ) -> tuple[str, list[str], list[Expression | None], bool]:
         self.fail(message, context)
-        return [], [], False
+        return "", [], [], False
 
     # Helpers
 

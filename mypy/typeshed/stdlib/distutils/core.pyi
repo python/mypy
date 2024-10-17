@@ -1,8 +1,16 @@
+from _typeshed import StrOrBytesPath
 from collections.abc import Mapping
 from distutils.cmd import Command as Command
 from distutils.dist import Distribution as Distribution
 from distutils.extension import Extension as Extension
-from typing import Any
+from typing import Any, Final, Literal
+
+USAGE: Final[str]
+
+def gen_usage(script_name: StrOrBytesPath) -> str: ...
+
+setup_keywords: tuple[str, ...]
+extension_keywords: tuple[str, ...]
 
 def setup(
     *,
@@ -37,7 +45,7 @@ def setup(
     command_packages: list[str] = ...,
     command_options: Mapping[str, Mapping[str, tuple[Any, Any]]] = ...,
     package_data: Mapping[str, list[str]] = ...,
-    include_package_data: bool = ...,
+    include_package_data: bool | Literal[0, 1] = ...,
     libraries: list[str] = ...,
     headers: list[str] = ...,
     ext_package: str = ...,
@@ -45,5 +53,5 @@ def setup(
     password: str = ...,
     fullname: str = ...,
     **attrs: Any,
-) -> None: ...
-def run_setup(script_name: str, script_args: list[str] | None = ..., stop_after: str = ...) -> Distribution: ...
+) -> Distribution: ...
+def run_setup(script_name: str, script_args: list[str] | None = None, stop_after: str = "run") -> Distribution: ...

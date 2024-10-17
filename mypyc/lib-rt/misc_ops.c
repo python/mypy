@@ -3,6 +3,7 @@
 // These are registered in mypyc.primitives.misc_ops.
 
 #include <Python.h>
+#include <patchlevel.h>
 #include "CPy.h"
 
 PyObject *CPy_GetCoro(PyObject *obj)
@@ -130,6 +131,52 @@ static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     return matches;
 }
 
+#if CPY_3_13_FEATURES
+
+// Adapted from CPython 3.13.0b3
+/* Determine the most derived metatype. */
+PyObject *CPy_CalculateMetaclass(PyObject *metatype, PyObject *bases)
+{
+    Py_ssize_t i, nbases;
+    PyTypeObject *winner;
+    PyObject *tmp;
+    PyTypeObject *tmptype;
+
+    /* Determine the proper metatype to deal with this,
+       and check for metatype conflicts while we're at it.
+       Note that if some other metatype wins to contract,
+       it's possible that its instances are not types. */
+
+    nbases = PyTuple_GET_SIZE(bases);
+    winner = (PyTypeObject *)metatype;
+    for (i = 0; i < nbases; i++) {
+        tmp = PyTuple_GET_ITEM(bases, i);
+        tmptype = Py_TYPE(tmp);
+        if (PyType_IsSubtype(winner, tmptype))
+            continue;
+        if (PyType_IsSubtype(tmptype, winner)) {
+            winner = tmptype;
+            continue;
+        }
+        /* else: */
+        PyErr_SetString(PyExc_TypeError,
+                        "metaclass conflict: "
+                        "the metaclass of a derived class "
+                        "must be a (non-strict) subclass "
+                        "of the metaclasses of all its bases");
+        return NULL;
+    }
+    return (PyObject *)winner;
+}
+
+#else
+
+PyObject *CPy_CalculateMetaclass(PyObject *metatype, PyObject *bases) {
+    return (PyObject *)_PyType_CalculateMetaclass((PyTypeObject *)metatype, bases);
+}
+
+#endif
+
 // Create a heap type based on a template non-heap type.
 // This is super hacky and maybe we should suck it up and use PyType_FromSpec instead.
 // We allow bases to be NULL to represent just inheriting from object.
@@ -162,7 +209,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
         // Find the appropriate metaclass from our base classes. We
         // care about this because Generic uses a metaclass prior to
         // Python 3.7.
-        metaclass = _PyType_CalculateMetaclass(metaclass, bases);
+        metaclass = (PyTypeObject *)CPy_CalculateMetaclass((PyObject *)metaclass, bases);
         if (!metaclass)
             goto error;
 
@@ -175,42 +222,6 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     name = PyUnicode_FromString(template_->tp_name);
     if (!name)
         goto error;
-
-    // If there is a metaclass other than type, we would like to call
-    // its __new__ function. Unfortunately there doesn't seem to be a
-    // good way to mix a C extension class and creating it via a
-    // metaclass. We need to do it anyways, though, in order to
-    // support subclassing Generic[T] prior to Python 3.7.
-    //
-    // We solve this with a kind of atrocious hack: create a parallel
-    // class using the metaclass, determine the bases of the real
-    // class by pulling them out of the parallel class, creating the
-    // real class, and then merging its dict back into the original
-    // class. There are lots of cases where this won't really work,
-    // but for the case of GenericMeta setting a bunch of properties
-    // on the class we should be fine.
-    if (metaclass != &PyType_Type) {
-        assert(bases && "non-type metaclasses require non-NULL bases");
-
-        PyObject *ns = PyDict_New();
-        if (!ns)
-            goto error;
-
-        if (bases != orig_bases) {
-            if (PyDict_SetItemString(ns, "__orig_bases__", orig_bases) < 0)
-                goto error;
-        }
-
-        dummy_class = (PyTypeObject *)PyObject_CallFunctionObjArgs(
-            (PyObject *)metaclass, name, bases, ns, NULL);
-        Py_DECREF(ns);
-        if (!dummy_class)
-            goto error;
-
-        Py_DECREF(bases);
-        bases = dummy_class->tp_bases;
-        Py_INCREF(bases);
-    }
 
     // Allocate the type and then copy the main stuff in.
     t = (PyHeapTypeObject*)PyType_GenericAlloc(&PyType_Type, 0);
@@ -285,6 +296,11 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     Py_XDECREF(dummy_class);
 
+#if PY_MINOR_VERSION == 11
+    // This is a hack. Python 3.11 doesn't include good public APIs to work with managed
+    // dicts, which are the default for heap types. So we try to opt-out until Python 3.12.
+    t->ht_type.tp_flags &= ~Py_TPFLAGS_MANAGED_DICT;
+#endif
     return (PyObject *)t;
 
 error:
@@ -529,7 +545,8 @@ int CPyStatics_Initialize(PyObject **statics,
                           const char * const *ints,
                           const double *floats,
                           const double *complex_numbers,
-                          const int *tuples) {
+                          const int *tuples,
+                          const int *frozensets) {
     PyObject **result = statics;
     // Start with some hard-coded values
     *result++ = Py_None;
@@ -629,6 +646,24 @@ int CPyStatics_Initialize(PyObject **statics,
             *result++ = obj;
         }
     }
+    if (frozensets) {
+        int num = *frozensets++;
+        while (num-- > 0) {
+            int num_items = *frozensets++;
+            PyObject *obj = PyFrozenSet_New(NULL);
+            if (obj == NULL) {
+                return -1;
+            }
+            for (int i = 0; i < num_items; i++) {
+                PyObject *item = statics[*frozensets++];
+                Py_INCREF(item);
+                if (PySet_Add(obj, item) == -1) {
+                    return -1;
+                }
+            }
+            *result++ = obj;
+        }
+    }
     return 0;
 }
 
@@ -644,9 +679,62 @@ CPy_Super(PyObject *builtins, PyObject *self) {
     return result;
 }
 
+static bool import_single(PyObject *mod_id, PyObject **mod_static,
+                          PyObject *globals_id, PyObject *globals_name, PyObject *globals) {
+    if (*mod_static == Py_None) {
+        CPyModule *mod = PyImport_Import(mod_id);
+        if (mod == NULL) {
+            return false;
+        }
+        *mod_static = mod;
+    }
+
+    PyObject *mod_dict = PyImport_GetModuleDict();
+    CPyModule *globals_mod = CPyDict_GetItem(mod_dict, globals_id);
+    if (globals_mod == NULL) {
+        return false;
+    }
+    int ret = CPyDict_SetItem(globals, globals_name, globals_mod);
+    Py_DECREF(globals_mod);
+    if (ret < 0) {
+        return false;
+    }
+
+    return true;
+}
+
+// Table-driven import helper. See transform_import() in irbuild for the details.
+bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *globals,
+                          PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines) {
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(modules); i++) {
+        PyObject *module = PyTuple_GET_ITEM(modules, i);
+        PyObject *mod_id = PyTuple_GET_ITEM(module, 0);
+        PyObject *globals_id = PyTuple_GET_ITEM(module, 1);
+        PyObject *globals_name = PyTuple_GET_ITEM(module, 2);
+
+        if (!import_single(mod_id, statics[i], globals_id, globals_name, globals)) {
+            assert(PyErr_Occurred() && "error indicator should be set on bad import!");
+            PyObject *typ, *val, *tb;
+            PyErr_Fetch(&typ, &val, &tb);
+            const char *path = PyUnicode_AsUTF8(tb_path);
+            if (path == NULL) {
+                path = "<unable to display>";
+            }
+            const char *function = PyUnicode_AsUTF8(tb_function);
+            if (function == NULL) {
+                function = "<unable to display>";
+            }
+            PyErr_Restore(typ, val, tb);
+            CPy_AddTraceback(path, function, tb_lines[i], globals);
+            return false;
+        }
+    }
+    return true;
+}
+
 // This helper function is a simplification of cpython/ceval.c/import_from()
-PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
-                               PyObject *import_name, PyObject *as_name) {
+static PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
+                                      PyObject *import_name, PyObject *as_name) {
     // check if the imported module has an attribute by that name
     PyObject *x = PyObject_GetAttr(module, import_name);
     if (x == NULL) {
@@ -675,6 +763,31 @@ fail:
     Py_DECREF(package_path);
     Py_DECREF(errmsg);
     return NULL;
+}
+
+PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
+                                   PyObject *globals) {
+    PyObject *mod = PyImport_ImportModuleLevelObject(mod_id, globals, 0, names, 0);
+    if (mod == NULL) {
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(names); i++) {
+        PyObject *name = PyTuple_GET_ITEM(names, i);
+        PyObject *as_name = PyTuple_GET_ITEM(as_names, i);
+        PyObject *obj = CPyImport_ImportFrom(mod, mod_id, name, as_name);
+        if (obj == NULL) {
+            Py_DECREF(mod);
+            return NULL;
+        }
+        int ret = CPyDict_SetItem(globals, as_name, obj);
+        Py_DECREF(obj);
+        if (ret < 0) {
+            Py_DECREF(mod);
+            return NULL;
+        }
+    }
+    return mod;
 }
 
 // From CPython
@@ -783,3 +896,124 @@ fail:
     return NULL;
 
 }
+
+// Adapated from ceval.c GET_AITER
+PyObject *CPy_GetAIter(PyObject *obj)
+{
+    unaryfunc getter = NULL;
+    PyTypeObject *type = Py_TYPE(obj);
+
+    if (type->tp_as_async != NULL) {
+        getter = type->tp_as_async->am_aiter;
+    }
+
+    if (getter == NULL) {
+        PyErr_Format(PyExc_TypeError,
+                     "'async for' requires an object with "
+                     "__aiter__ method, got %.100s",
+                     type->tp_name);
+        Py_DECREF(obj);
+        return NULL;
+    }
+
+    PyObject *iter = (*getter)(obj);
+    if (!iter) {
+        return NULL;
+    }
+
+    if (Py_TYPE(iter)->tp_as_async == NULL ||
+        Py_TYPE(iter)->tp_as_async->am_anext == NULL) {
+
+        PyErr_Format(PyExc_TypeError,
+                     "'async for' received an object from __aiter__ "
+                     "that does not implement __anext__: %.100s",
+                     Py_TYPE(iter)->tp_name);
+        Py_DECREF(iter);
+        return NULL;
+    }
+
+    return iter;
+}
+
+// Adapated from ceval.c GET_ANEXT
+PyObject *CPy_GetANext(PyObject *aiter)
+{
+    unaryfunc getter = NULL;
+    PyObject *next_iter = NULL;
+    PyObject *awaitable = NULL;
+    PyTypeObject *type = Py_TYPE(aiter);
+
+    if (PyAsyncGen_CheckExact(aiter)) {
+        awaitable = type->tp_as_async->am_anext(aiter);
+        if (awaitable == NULL) {
+            goto error;
+        }
+    } else {
+        if (type->tp_as_async != NULL){
+            getter = type->tp_as_async->am_anext;
+        }
+
+        if (getter != NULL) {
+            next_iter = (*getter)(aiter);
+            if (next_iter == NULL) {
+                goto error;
+            }
+        }
+        else {
+            PyErr_Format(PyExc_TypeError,
+                         "'async for' requires an iterator with "
+                         "__anext__ method, got %.100s",
+                         type->tp_name);
+            goto error;
+        }
+
+        awaitable = CPyCoro_GetAwaitableIter(next_iter);
+        if (awaitable == NULL) {
+            _PyErr_FormatFromCause(
+                PyExc_TypeError,
+                "'async for' received an invalid object "
+                "from __anext__: %.100s",
+                Py_TYPE(next_iter)->tp_name);
+
+            Py_DECREF(next_iter);
+            goto error;
+        } else {
+            Py_DECREF(next_iter);
+        }
+    }
+
+    return awaitable;
+error:
+    return NULL;
+}
+
+#ifdef CPY_3_12_FEATURES
+
+// Copied from Python 3.12.3, since this struct is internal to CPython. It defines
+// the structure of typing.TypeAliasType objects. We need it since compute_value is
+// not part of the public API, and we need to set it to match Python runtime semantics.
+//
+// IMPORTANT: This needs to be kept in sync with CPython!
+typedef struct {
+    PyObject_HEAD
+    PyObject *name;
+    PyObject *type_params;
+    PyObject *compute_value;
+    PyObject *value;
+    PyObject *module;
+} typealiasobject;
+
+void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value) {
+    typealiasobject *obj = (typealiasobject *)alias;
+    if (obj->value != NULL) {
+        Py_DECREF(obj->value);
+    }
+    obj->value = NULL;
+    Py_INCREF(compute_value);
+    if (obj->compute_value != NULL) {
+        Py_DECREF(obj->compute_value);
+    }
+    obj->compute_value = compute_value;
+}
+
+#endif

@@ -1,41 +1,44 @@
 """Utility functions with no non-trivial dependencies."""
 
+from __future__ import annotations
+
 import hashlib
 import io
+import json
 import os
-import pathlib
 import re
 import shutil
-import subprocess
 import sys
 import time
-from typing import (
-    IO,
-    Callable,
-    Container,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Sized,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from importlib import resources as importlib_resources
+from typing import IO, Any, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
+from typing_extensions import Literal
 
-from typing_extensions import Final, Literal, Type
+orjson: Any
+try:
+    import orjson  # type: ignore[import-not-found, no-redef, unused-ignore]
+except ImportError:
+    orjson = None
 
 try:
+    import _curses  # noqa: F401
     import curses
-
-    import _curses  # noqa
 
     CURSES_ENABLED = True
 except ImportError:
     CURSES_ENABLED = False
 
 T = TypeVar("T")
+
+if sys.version_info >= (3, 9):
+    TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
+else:
+    with importlib_resources.path(
+        "mypy",  # mypy-c doesn't support __package__
+        "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
+    ) as _resource:
+        TYPESHED_DIR = str(_resource.parent / "typeshed")
+
 
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
@@ -52,13 +55,6 @@ MINIMUM_WIDTH: Final = 20
 # supported, but are either going out of support, or make up only a few % of the market.
 MINIMUM_WINDOWS_MAJOR_VT100: Final = 10
 MINIMUM_WINDOWS_BUILD_VT100: Final = 10586
-
-default_python2_interpreter: Final = [
-    "python2",
-    "python",
-    "/usr/bin/python",
-    "C:\\Python27\\python.exe",
-]
 
 SPECIAL_DUNDERS: Final = frozenset(
     ("__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__")
@@ -81,7 +77,7 @@ def is_sunder(name: str) -> bool:
     return not is_dunder(name) and name.startswith("_") and name.endswith("_")
 
 
-def split_module_names(mod_name: str) -> List[str]:
+def split_module_names(mod_name: str) -> list[str]:
     """Return the module and all parent module names.
 
     So, if `mod_name` is 'a.b.c', this function will return
@@ -94,15 +90,15 @@ def split_module_names(mod_name: str) -> List[str]:
     return out
 
 
-def module_prefix(modules: Iterable[str], target: str) -> Optional[str]:
+def module_prefix(modules: Iterable[str], target: str) -> str | None:
     result = split_target(modules, target)
     if result is None:
         return None
     return result[0]
 
 
-def split_target(modules: Iterable[str], target: str) -> Optional[Tuple[str, str]]:
-    remaining: List[str] = []
+def split_target(modules: Iterable[str], target: str) -> tuple[str, str] | None:
+    remaining: list[str] = []
     while True:
         if target in modules:
             return target, ".".join(remaining)
@@ -124,7 +120,7 @@ def short_type(obj: object) -> str:
     return t.split(".")[-1].rstrip("'>")
 
 
-def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, int]:
+def find_python_encoding(text: bytes) -> tuple[str, int]:
     """PEP-263 for detecting Python file encoding"""
     result = ENCODING_RE.match(text)
     if result:
@@ -135,7 +131,7 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
             encoding = "latin-1"
         return encoding, line
     else:
-        default_encoding = "utf8" if pyversion[0] >= 3 else "ascii"
+        default_encoding = "utf8"
         return default_encoding, -1
 
 
@@ -160,7 +156,7 @@ class DecodeError(Exception):
     """
 
 
-def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
+def decode_python_encoding(source: bytes) -> str:
     """Read the Python file with while obeying PEP-263 encoding detection.
 
     Returns the source as a string.
@@ -171,7 +167,7 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
         source = source[3:]
     else:
         # look at first two lines and check if PEP-263 coding is present
-        encoding, _ = find_python_encoding(source, pyversion)
+        encoding, _ = find_python_encoding(source)
 
     try:
         source_text = source.decode(encoding)
@@ -180,9 +176,7 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     return source_text
 
 
-def read_py_file(
-    path: str, read: Callable[[str], bytes], pyversion: Tuple[int, int]
-) -> Optional[List[str]]:
+def read_py_file(path: str, read: Callable[[str], bytes]) -> list[str] | None:
     """Try reading a Python file as list of source lines.
 
     Return None if something goes wrong.
@@ -193,13 +187,13 @@ def read_py_file(
         return None
     else:
         try:
-            source_lines = decode_python_encoding(source, pyversion).splitlines()
+            source_lines = decode_python_encoding(source).splitlines()
         except DecodeError:
             return None
         return source_lines
 
 
-def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> Tuple[str, int]:
+def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> tuple[str, int]:
     """Trim a line of source code to fit into max_len.
 
     Show 'min_width' characters on each side of 'col' (an error location). If either
@@ -231,7 +225,7 @@ def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> Tuple
     return "..." + line[-max_len:], len(line) - max_len - 3
 
 
-def get_mypy_comments(source: str) -> List[Tuple[int, str]]:
+def get_mypy_comments(source: str) -> list[tuple[int, str]]:
     PREFIX = "# mypy: "
     # Don't bother splitting up the lines unless we know it is useful
     if PREFIX not in source:
@@ -245,70 +239,91 @@ def get_mypy_comments(source: str) -> List[Tuple[int, str]]:
     return results
 
 
-_python2_interpreter: Optional[str] = None
-
-
-def try_find_python2_interpreter() -> Optional[str]:
-    global _python2_interpreter
-    if _python2_interpreter:
-        return _python2_interpreter
-    for interpreter in default_python2_interpreter:
-        try:
-            retcode = subprocess.Popen(
-                [interpreter, "-c", "import sys, typing; assert sys.version_info[:2] == (2, 7)"]
-            ).wait()
-            if not retcode:
-                _python2_interpreter = interpreter
-                return interpreter
-        except OSError:
-            pass
-    return None
-
-
-PASS_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="0" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
-  </testcase>
-</testsuite>
+JUNIT_HEADER_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
+<testsuite errors="{errors}" failures="{failures}" name="mypy" skips="0" tests="{tests}" time="{time:.3f}">
 """
 
-FAIL_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+JUNIT_TESTCASE_FAIL_TEMPLATE: Final = """  <testcase classname="mypy" file="{filename}" line="1" name="{name}" time="{time:.3f}">
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
-</testsuite>
 """
 
-ERROR_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+JUNIT_ERROR_TEMPLATE: Final = """  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <error message="mypy produced errors">{text}</error>
   </testcase>
-</testsuite>
 """
+
+JUNIT_TESTCASE_PASS_TEMPLATE: Final = """  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+  </testcase>
+"""
+
+JUNIT_FOOTER: Final = """</testsuite>
+"""
+
+
+def _generate_junit_contents(
+    dt: float,
+    serious: bool,
+    messages_by_file: dict[str | None, list[str]],
+    version: str,
+    platform: str,
+) -> str:
+    from xml.sax.saxutils import escape
+
+    if serious:
+        failures = 0
+        errors = len(messages_by_file)
+    else:
+        failures = len(messages_by_file)
+        errors = 0
+
+    xml = JUNIT_HEADER_TEMPLATE.format(
+        errors=errors,
+        failures=failures,
+        time=dt,
+        # If there are no messages, we still write one "test" indicating success.
+        tests=len(messages_by_file) or 1,
+    )
+
+    if not messages_by_file:
+        xml += JUNIT_TESTCASE_PASS_TEMPLATE.format(time=dt, ver=version, platform=platform)
+    else:
+        for filename, messages in messages_by_file.items():
+            if filename is not None:
+                xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
+                    text=escape("\n".join(messages)),
+                    filename=filename,
+                    time=dt,
+                    name="mypy-py{ver}-{platform} {filename}".format(
+                        ver=version, platform=platform, filename=filename
+                    ),
+                )
+            else:
+                xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
+                    text=escape("\n".join(messages)),
+                    filename="mypy",
+                    time=dt,
+                    name=f"mypy-py{version}-{platform}",
+                )
+
+    xml += JUNIT_FOOTER
+
+    return xml
 
 
 def write_junit_xml(
-    dt: float, serious: bool, messages: List[str], path: str, version: str, platform: str
+    dt: float,
+    serious: bool,
+    messages_by_file: dict[str | None, list[str]],
+    path: str,
+    version: str,
+    platform: str,
 ) -> None:
-    from xml.sax.saxutils import escape
+    xml = _generate_junit_contents(dt, serious, messages_by_file, version, platform)
 
-    if not messages and not serious:
-        xml = PASS_TEMPLATE.format(time=dt, ver=version, platform=platform)
-    elif not serious:
-        xml = FAIL_TEMPLATE.format(
-            text=escape("\n".join(messages)), time=dt, ver=version, platform=platform
-        )
-    else:
-        xml = ERROR_TEMPLATE.format(
-            text=escape("\n".join(messages)), time=dt, ver=version, platform=platform
-        )
-
-    # checks for a directory structure in path and creates folders if needed
+    # creates folders if needed
     xml_dirs = os.path.dirname(os.path.abspath(path))
-    if not os.path.isdir(xml_dirs):
-        os.makedirs(xml_dirs)
+    os.makedirs(xml_dirs, exist_ok=True)
 
     with open(path, "wb") as f:
         f.write(xml.encode("utf-8"))
@@ -324,7 +339,7 @@ class IdMapper:
     """
 
     def __init__(self) -> None:
-        self.id_map: Dict[object, int] = {}
+        self.id_map: dict[object, int] = {}
         self.next_id = 0
 
     def id(self, o: object) -> int:
@@ -339,20 +354,9 @@ def get_prefix(fullname: str) -> str:
     return fullname.rsplit(".", 1)[0]
 
 
-def get_top_two_prefixes(fullname: str) -> Tuple[str, str]:
-    """Return one and two component prefixes of a fully qualified name.
-
-    Given 'a.b.c.d', return ('a', 'a.b').
-
-    If fullname has only one component, return (fullname, fullname).
-    """
-    components = fullname.split(".", 3)
-    return components[0], ".".join(components[:2])
-
-
 def correct_relative_import(
     cur_mod_id: str, relative: int, target: str, is_cur_package_init_file: bool
-) -> Tuple[str, bool]:
+) -> tuple[str, bool]:
     if relative == 0:
         return target, True
     parts = cur_mod_id.split(".")
@@ -365,10 +369,10 @@ def correct_relative_import(
     return cur_mod_id + (("." + target) if target else ""), ok
 
 
-fields_cache: Final[Dict[Type[object], List[str]]] = {}
+fields_cache: Final[dict[type[object], list[str]]] = {}
 
 
-def get_class_descriptors(cls: "Type[object]") -> Sequence[str]:
+def get_class_descriptors(cls: type[object]) -> Sequence[str]:
     import inspect  # Lazy import for minor startup speed win
 
     # Maintain a cache of type -> attributes defined by descriptors in the class
@@ -381,7 +385,9 @@ def get_class_descriptors(cls: "Type[object]") -> Sequence[str]:
     return fields_cache[cls]
 
 
-def replace_object_state(new: object, old: object, copy_dict: bool = False) -> None:
+def replace_object_state(
+    new: object, old: object, copy_dict: bool = False, skip_slots: tuple[str, ...] = ()
+) -> None:
     """Copy state of old node to the new node.
 
     This handles cases where there is __dict__ and/or attribute descriptors
@@ -396,6 +402,8 @@ def replace_object_state(new: object, old: object, copy_dict: bool = False) -> N
             new.__dict__ = old.__dict__
 
     for attr in get_class_descriptors(old.__class__):
+        if attr in skip_slots:
+            continue
         try:
             if hasattr(old, attr):
                 setattr(new, attr, getattr(old, attr))
@@ -409,9 +417,43 @@ def replace_object_state(new: object, old: object, copy_dict: bool = False) -> N
             pass
 
 
-def is_sub_path(path1: str, path2: str) -> bool:
-    """Given two paths, return if path1 is a sub-path of path2."""
-    return pathlib.Path(path2) in pathlib.Path(path1).parents
+def is_sub_path_normabs(path: str, dir: str) -> bool:
+    """Given two paths, return if path is a sub-path of dir.
+
+    Moral equivalent of: Path(dir) in Path(path).parents
+
+    Similar to the pathlib version:
+    - Treats paths case-sensitively
+    - Does not fully handle unnormalised paths (e.g. paths with "..")
+    - Does not handle a mix of absolute and relative paths
+    Unlike the pathlib version:
+    - Fast
+    - On Windows, assumes input has been slash normalised
+    - Handles even fewer unnormalised paths (e.g. paths with "." and "//")
+
+    As a result, callers should ensure that inputs have had os.path.abspath called on them
+    (note that os.path.abspath will normalise)
+    """
+    if not dir.endswith(os.sep):
+        dir += os.sep
+    return path.startswith(dir)
+
+
+if sys.platform == "linux" or sys.platform == "darwin":
+
+    def os_path_join(path: str, b: str) -> str:
+        # Based off of os.path.join, but simplified to str-only, 2 args and mypyc can compile it.
+        if b.startswith("/") or not path:
+            return b
+        elif path.endswith("/"):
+            return path + b
+        else:
+            return path + "/" + b
+
+else:
+
+    def os_path_join(a: str, p: str) -> str:
+        return os.path.join(a, p)
 
 
 def hard_exit(status: int = 0) -> None:
@@ -448,14 +490,14 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 6):
+    if sys.version_info[:2] < (3, 8):  # noqa: UP036
         sys.exit(
-            "Running {name} with Python 3.5 or lower is not supported; "
-            "please upgrade to 3.6 or newer".format(name=program)
+            "Running {name} with Python 3.7 or lower is not supported; "
+            "please upgrade to 3.8 or newer".format(name=program)
         )
 
 
-def count_stats(messages: List[str]) -> Tuple[int, int, int]:
+def count_stats(messages: list[str]) -> tuple[int, int, int]:
     """Count total number of errors, notes and error_files in message list."""
     errors = [e for e in messages if ": error:" in e]
     error_files = {e.split(":")[0] for e in errors}
@@ -463,10 +505,10 @@ def count_stats(messages: List[str]) -> Tuple[int, int, int]:
     return len(errors), len(notes), len(error_files)
 
 
-def split_words(msg: str) -> List[str]:
+def split_words(msg: str) -> list[str]:
     """Split line of text into words (but not within quoted groups)."""
     next_word = ""
-    res: List[str] = []
+    res: list[str] = []
     allow_break = True
     for c in msg:
         if c == " " and allow_break:
@@ -510,7 +552,7 @@ def soft_wrap(msg: str, max_len: int, first_offset: int, num_indent: int = 0) ->
     """
     words = split_words(msg)
     next_line = words.pop(0)
-    lines: List[str] = []
+    lines: list[str] = []
     while words:
         next_word = words.pop(0)
         max_line_len = max_len - num_indent if lines else max_len - first_offset
@@ -532,9 +574,7 @@ def hash_digest(data: bytes) -> str:
     accidental collision, but we don't really care about any of the
     cryptographic properties.
     """
-    # Once we drop Python 3.5 support, we should consider using
-    # blake2b, which is faster.
-    return hashlib.sha256(data).hexdigest()
+    return hashlib.sha1(data).hexdigest()
 
 
 def parse_gray_color(cup: bytes) -> str:
@@ -542,8 +582,16 @@ def parse_gray_color(cup: bytes) -> str:
     if sys.platform == "win32":
         assert False, "curses is not available on Windows"
     set_color = "".join([cup[:-1].decode(), "m"])
-    gray = curses.tparm(set_color.encode("utf-8"), 1, 89).decode()
+    gray = curses.tparm(set_color.encode("utf-8"), 1, 9).decode()
     return gray
+
+
+def should_force_color() -> bool:
+    env_var = os.getenv("MYPY_FORCE_COLOR", os.getenv("FORCE_COLOR", "0"))
+    try:
+        return bool(int(env_var))
+    except ValueError:
+        return bool(env_var)
 
 
 class FancyFormatter:
@@ -552,18 +600,23 @@ class FancyFormatter:
     This currently only works on Linux and Mac.
     """
 
-    def __init__(self, f_out: IO[str], f_err: IO[str], show_error_codes: bool) -> None:
-        self.show_error_codes = show_error_codes
+    def __init__(
+        self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool, hide_success: bool = False
+    ) -> None:
+        self.hide_error_codes = hide_error_codes
+        self.hide_success = hide_success
+
         # Check if we are in a human-facing terminal on a supported platform.
-        if sys.platform not in ("linux", "darwin", "win32"):
+        if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
             self.dummy_term = True
             return
-        force_color = int(os.getenv("MYPY_FORCE_COLOR", "0"))
-        if not force_color and (not f_out.isatty() or not f_err.isatty()):
+        if not should_force_color() and (not f_out.isatty() or not f_err.isatty()):
             self.dummy_term = True
             return
         if sys.platform == "win32":
             self.dummy_term = not self.initialize_win_colors()
+        elif sys.platform == "emscripten":
+            self.dummy_term = not self.initialize_vt100_colors()
         else:
             self.dummy_term = not self.initialize_unix_colors()
         if not self.dummy_term:
@@ -574,6 +627,20 @@ class FancyFormatter:
                 "yellow": self.YELLOW,
                 "none": "",
             }
+
+    def initialize_vt100_colors(self) -> bool:
+        """Return True if initialization was successful and we can use colors, False otherwise"""
+        # Windows and Emscripten can both use ANSI/VT100 escape sequences for color
+        assert sys.platform in ("win32", "emscripten")
+        self.BOLD = "\033[1m"
+        self.UNDER = "\033[4m"
+        self.BLUE = "\033[94m"
+        self.GREEN = "\033[92m"
+        self.RED = "\033[91m"
+        self.YELLOW = "\033[93m"
+        self.NORMAL = "\033[0m"
+        self.DIM = "\033[2m"
+        return True
 
     def initialize_win_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
@@ -601,14 +668,7 @@ class FancyFormatter:
                 | ENABLE_WRAP_AT_EOL_OUTPUT
                 | ENABLE_VIRTUAL_TERMINAL_PROCESSING,
             )
-            self.BOLD = "\033[1m"
-            self.UNDER = "\033[4m"
-            self.BLUE = "\033[94m"
-            self.GREEN = "\033[92m"
-            self.RED = "\033[91m"
-            self.YELLOW = "\033[93m"
-            self.NORMAL = "\033[0m"
-            self.DIM = "\033[2m"
+            self.initialize_vt100_colors()
             return True
         return False
 
@@ -671,8 +731,8 @@ class FancyFormatter:
         return start + self.colors[color] + text + self.NORMAL
 
     def fit_in_terminal(
-        self, messages: List[str], fixed_terminal_width: Optional[int] = None
-    ) -> List[str]:
+        self, messages: list[str], fixed_terminal_width: int | None = None
+    ) -> list[str]:
         """Improve readability by wrapping error messages and trimming source code."""
         width = fixed_terminal_width or get_terminal_width()
         new_messages = messages.copy()
@@ -711,7 +771,7 @@ class FancyFormatter:
         """Colorize an output line by highlighting the status and error code."""
         if ": error:" in error:
             loc, msg = error.split("error:", maxsplit=1)
-            if not self.show_error_codes:
+            if self.hide_error_codes:
                 return (
                     loc + self.style("error:", "red", bold=True) + self.highlight_quote_groups(msg)
                 )
@@ -774,6 +834,9 @@ class FancyFormatter:
         n_sources is total number of files passed directly on command line,
         i.e. excluding stubs and followed imports.
         """
+        if self.hide_success:
+            return ""
+
         msg = f"Success: no issues found in {n_sources} source file{plural_s(n_sources)}"
         if not use_color:
             return msg
@@ -799,34 +862,74 @@ class FancyFormatter:
         return self.style(msg, "red", bold=True)
 
 
-def is_typeshed_file(file: str) -> bool:
-    # gross, but no other clear way to tell
-    return "typeshed" in os.path.abspath(file).split(os.sep)
+def is_typeshed_file(typeshed_dir: str | None, file: str) -> bool:
+    typeshed_dir = typeshed_dir if typeshed_dir is not None else TYPESHED_DIR
+    try:
+        return os.path.commonpath((typeshed_dir, os.path.abspath(file))) == typeshed_dir
+    except ValueError:  # Different drives on Windows
+        return False
 
 
 def is_stub_package_file(file: str) -> bool:
     # Use hacky heuristics to check whether file is part of a PEP 561 stub package.
     if not file.endswith(".pyi"):
         return False
-    return any(component.endswith("-stubs") for component in os.path.abspath(file).split(os.sep))
+    return any(component.endswith("-stubs") for component in os.path.split(os.path.abspath(file)))
 
 
-def unnamed_function(name: Optional[str]) -> bool:
+def unnamed_function(name: str | None) -> bool:
     return name is not None and name == "_"
 
 
-# TODO: replace with uses of perf_counter_ns when support for py3.6 is dropped
-# (or when mypy properly handles alternate definitions based on python version check
-time_ref = time.perf_counter
+time_ref = time.perf_counter_ns
 
 
-def time_spent_us(t0: float) -> int:
-    return int((time.perf_counter() - t0) * 1e6)
+def time_spent_us(t0: int) -> int:
+    return int((time.perf_counter_ns() - t0) / 1000)
 
 
-def plural_s(s: Union[int, Sized]) -> str:
+def plural_s(s: int | Sized) -> str:
     count = s if isinstance(s, int) else len(s)
-    if count > 1:
+    if count != 1:
         return "s"
     else:
         return ""
+
+
+def quote_docstring(docstr: str) -> str:
+    """Returns docstring correctly encapsulated in a single or double quoted form."""
+    # Uses repr to get hint on the correct quotes and escape everything properly.
+    # Creating multiline string for prettier output.
+    docstr_repr = "\n".join(re.split(r"(?<=[^\\])\\n", repr(docstr)))
+
+    if docstr_repr.startswith("'"):
+        # Enforce double quotes when it's safe to do so.
+        # That is when double quotes are not in the string
+        # or when it doesn't end with a single quote.
+        if '"' not in docstr_repr[1:-1] and docstr_repr[-2] != "'":
+            return f'"""{docstr_repr[1:-1]}"""'
+        return f"''{docstr_repr}''"
+    else:
+        return f'""{docstr_repr}""'
+
+
+def json_dumps(obj: object, debug: bool = False) -> bytes:
+    if orjson is not None:
+        if debug:
+            return orjson.dumps(obj, option=orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
+        else:
+            # TODO: If we don't sort keys here, testIncrementalInternalScramble fails
+            # We should document exactly what is going on there
+            return orjson.dumps(obj, option=orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
+
+    if debug:
+        return json.dumps(obj, indent=2, sort_keys=True).encode("utf-8")
+    else:
+        # See above for sort_keys comment
+        return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def json_loads(data: bytes) -> Any:
+    if orjson is not None:
+        return orjson.loads(data)
+    return json.loads(data)

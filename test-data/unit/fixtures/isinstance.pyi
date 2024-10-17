@@ -7,6 +7,7 @@ class object:
 
 class type:
     def __init__(self, x) -> None: pass
+    def __or__(self, other: type) -> type: pass
 
 class tuple(Generic[T]): pass
 
@@ -14,6 +15,7 @@ class function: pass
 
 def isinstance(x: object, t: Union[Type[object], Tuple[Type[object], ...]]) -> bool: pass
 def issubclass(x: object, t: Union[Type[object], Tuple[Type[object], ...]]) -> bool: pass
+def hasattr(x: object, name: str) -> bool: pass
 
 class int:
     def __add__(self, other: 'int') -> 'int': pass
@@ -24,3 +26,5 @@ class str:
 class ellipsis: pass
 
 NotImplemented = cast(Any, None)
+
+class dict: pass

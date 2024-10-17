@@ -5,51 +5,41 @@ labels: "bug"
 ---
 
 <!--
-  If you're new to mypy and you're not sure whether what you're experiencing is a mypy bug, please see the "Question and Help" form
-  instead.
-  Please also consider:
+If you're not sure whether what you're experiencing is a mypy bug, please see the "Question and Help" form instead.
+Please consider:
 
-  - checking our common issues page: https://mypy.readthedocs.io/en/stable/common_issues.html
-  - searching our issue tracker: https://github.com/python/mypy/issues to see if
-    it's already been reported
-  - asking on gitter chat: https://gitter.im/python/typing
+- checking our common issues page: https://mypy.readthedocs.io/en/stable/common_issues.html
+- searching our issue tracker: https://github.com/python/mypy/issues to see if it's already been reported
+- asking on gitter chat: https://gitter.im/python/typing
 -->
 
 **Bug Report**
 
 <!--
-Note: If the problem you are reporting is about a specific library function, then the typeshed tracker is better suited
-for this report: https://github.com/python/typeshed/issues
+If you're reporting a problem with a specific library function, the typeshed tracker is better suited for this report: https://github.com/python/typeshed/issues
+
+If the project you encountered the issue in is open source, please provide a link to the project.
 -->
 
 (A clear and concise description of what the bug is.)
 
 **To Reproduce**
 
-(Write your steps here:)
-
-1. Step 1...
-2. Step 2...
-3. Step 3...
+```python
+# Ideally, a small sample program that demonstrates the problem.
+# Or even better, a reproducible playground link https://mypy-play.net/ (use the "Gist" button)
+```
 
 **Expected Behavior**
 
 <!--
-  How did you expect your project to behave?
-  It’s fine if you’re not sure your understanding is correct.
-  Write down what you thought would happen. If you just expected no errors, you can delete this section.
+How did you expect mypy to behave? It’s fine if you’re not sure your understanding is correct.
+Write down what you thought would happen. If you expected no errors, delete this section.
 -->
-
-(Write what you thought would happen.)
 
 **Actual Behavior**
 
-<!--
-  Did something go wrong?
-  Is something broken, or not behaving as you expected?
--->
-
-(Write what happened.)
+<!-- What went wrong? Paste mypy's output. -->
 
 **Your Environment**
 
@@ -59,9 +49,5 @@ for this report: https://github.com/python/typeshed/issues
 - Mypy command-line flags:
 - Mypy configuration options from `mypy.ini` (and other config files):
 - Python version used:
-- Operating system and version:
 
-<!--
-You can freely edit this text, please remove all the lines
-you believe are unnecessary.
--->
+<!-- You can freely edit this text, please remove all the lines you believe are unnecessary. -->

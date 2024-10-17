@@ -1,9 +1,9 @@
 """Utilities for pretty-printing IR in a human-readable form."""
 
-from collections import defaultdict
-from typing import Any, Dict, List, Sequence, Tuple, Union
+from __future__ import annotations
 
-from typing_extensions import Final
+from collections import defaultdict
+from typing import Any, Final, Sequence, Union
 
 from mypyc.common import short_name
 from mypyc.ir.func_ir import FuncIR, all_values_full
@@ -22,6 +22,10 @@ from mypyc.ir.ops import (
     ControlOp,
     DecRef,
     Extend,
+    Float,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -39,6 +43,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     Return,
@@ -47,6 +52,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -59,7 +65,7 @@ ErrorSource = Union[BasicBlock, Op]
 class IRPrettyPrintVisitor(OpVisitor[str]):
     """Internal visitor that pretty-prints ops."""
 
-    def __init__(self, names: Dict[Value, str]) -> None:
+    def __init__(self, names: dict[Value, str]) -> None:
         # This should contain a name for all values that are shown as
         # registers in the output. This is not just for Register
         # instances -- all Ops that produce values need (generated) names.
@@ -105,7 +111,18 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         # it explicit that this is a Python object.
         if isinstance(op.value, int):
             prefix = "object "
-        return self.format("%r = %s%s", op, prefix, repr(op.value))
+
+        rvalue = repr(op.value)
+        if isinstance(op.value, frozenset):
+            # We need to generate a string representation that won't vary
+            # run-to-run because sets are unordered, otherwise we may get
+            # spurious irbuild test failures.
+            #
+            # Sorting by the item's string representation is a bit of a
+            # hack, but it's stable and won't cause TypeErrors.
+            formatted_items = [repr(i) for i in sorted(op.value, key=str)]
+            rvalue = "frozenset({" + ", ".join(formatted_items) + "})"
+        return self.format("%r = %s%s", op, prefix, rvalue)
 
     def visit_get_attr(self, op: GetAttr) -> str:
         return self.format("%r = %s%r.%s", op, self.borrow_prefix(op), op.obj, op.attr)
@@ -118,6 +135,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_set_attr(self, op: SetAttr) -> str:
         if op.is_init:
             assert op.error_kind == ERR_NEVER
+        if op.error_kind == ERR_NEVER:
             # Initialization and direct struct access can never fail
             return self.format("%r.%s = %r", op.obj, op.attr, op.src)
         else:
@@ -137,7 +155,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%s = %r :: %s", name, op.value, op.namespace)
 
     def visit_tuple_get(self, op: TupleGet) -> str:
-        return self.format("%r = %r[%d]", op, op.src, op.index)
+        return self.format("%r = %s%r[%d]", op, self.borrow_prefix(op), op.src, op.index)
 
     def visit_tuple_set(self, op: TupleSet) -> str:
         item_str = ", ".join(self.format("%r", item) for item in op.items)
@@ -200,6 +218,25 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         else:
             return self.format("%r = %s(%s)", op, op.function_name, args_str)
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> str:
+        args = []
+        arg_index = 0
+        type_arg_index = 0
+        for arg_type in zip(op.desc.arg_types):
+            if arg_type:
+                args.append(self.format("%r", op.args[arg_index]))
+                arg_index += 1
+            else:
+                assert op.type_args
+                args.append(self.format("%r", op.type_args[type_arg_index]))
+                type_arg_index += 1
+
+        args_str = ", ".join(args)
+        if op.is_void:
+            return self.format("%s %s", op.desc.name, args_str)
+        else:
+            return self.format("%r = %s %s", op, op.desc.name, args_str)
+
     def visit_truncate(self, op: Truncate) -> str:
         return self.format("%r = truncate %r: %t to %t", op, op.src, op.src_type, op.type)
 
@@ -228,6 +265,15 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             "%r = %r %s %r%s", op, op.lhs, ComparisonOp.op_str[op.op], op.rhs, sign_format
         )
 
+    def visit_float_op(self, op: FloatOp) -> str:
+        return self.format("%r = %r %s %r", op, op.lhs, FloatOp.op_str[op.op], op.rhs)
+
+    def visit_float_neg(self, op: FloatNeg) -> str:
+        return self.format("%r = -%r", op, op.src)
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> str:
+        return self.format("%r = %r %s %r", op, op.lhs, op.op_str[op.op], op.rhs)
+
     def visit_load_mem(self, op: LoadMem) -> str:
         return self.format("%r = load_mem %r :: %t*", op, op.src, op.type)
 
@@ -240,11 +286,25 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_load_address(self, op: LoadAddress) -> str:
         if isinstance(op.src, Register):
             return self.format("%r = load_address %r", op, op.src)
+        elif isinstance(op.src, LoadStatic):
+            name = op.src.identifier
+            if op.src.module_name is not None:
+                name = f"{op.src.module_name}.{name}"
+            return self.format("%r = load_address %s :: %s", op, name, op.src.namespace)
         else:
             return self.format("%r = load_address %s", op, op.src)
 
     def visit_keep_alive(self, op: KeepAlive) -> str:
-        return self.format("keep_alive %s" % ", ".join(self.format("%r", v) for v in op.src))
+        if op.steal:
+            steal = "steal "
+        else:
+            steal = ""
+        return self.format(
+            "keep_alive {}{}".format(steal, ", ".join(self.format("%r", v) for v in op.src))
+        )
+
+    def visit_unborrow(self, op: Unborrow) -> str:
+        return self.format("%r = unborrow %r", op, op.src)
 
     # Helpers
 
@@ -276,6 +336,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                     assert isinstance(arg, Value)
                     if isinstance(arg, Integer):
                         result.append(str(arg.value))
+                    elif isinstance(arg, Float):
+                        result.append(repr(arg.value))
                     else:
                         result.append(self.names[arg])
                 elif typespec == "d":
@@ -303,7 +365,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return "".join(result)
 
 
-def format_registers(func_ir: FuncIR, names: Dict[Value, str]) -> List[str]:
+def format_registers(func_ir: FuncIR, names: dict[Value, str]) -> list[str]:
     result = []
     i = 0
     regs = all_values_full(func_ir.arg_regs, func_ir.blocks)
@@ -319,16 +381,16 @@ def format_registers(func_ir: FuncIR, names: Dict[Value, str]) -> List[str]:
 
 
 def format_blocks(
-    blocks: List[BasicBlock],
-    names: Dict[Value, str],
-    source_to_error: Dict[ErrorSource, List[str]],
-) -> List[str]:
+    blocks: list[BasicBlock],
+    names: dict[Value, str],
+    source_to_error: dict[ErrorSource, list[str]],
+) -> list[str]:
     """Format a list of IR basic blocks into a human-readable form."""
     # First label all of the blocks
     for i, block in enumerate(blocks):
         block.label = i
 
-    handler_map: Dict[BasicBlock, List[BasicBlock]] = {}
+    handler_map: dict[BasicBlock, list[BasicBlock]] = {}
     for b in blocks:
         if b.error_handler:
             handler_map.setdefault(b.error_handler, []).append(b)
@@ -369,7 +431,7 @@ def format_blocks(
     return lines
 
 
-def format_func(fn: FuncIR, errors: Sequence[Tuple[ErrorSource, str]] = ()) -> List[str]:
+def format_func(fn: FuncIR, errors: Sequence[tuple[ErrorSource, str]] = ()) -> list[str]:
     lines = []
     cls_prefix = fn.class_name + "." if fn.class_name else ""
     lines.append(
@@ -388,7 +450,7 @@ def format_func(fn: FuncIR, errors: Sequence[Tuple[ErrorSource, str]] = ()) -> L
     return lines
 
 
-def format_modules(modules: ModuleIRs) -> List[str]:
+def format_modules(modules: ModuleIRs) -> list[str]:
     ops = []
     for module in modules.values():
         for fn in module.functions:
@@ -397,13 +459,13 @@ def format_modules(modules: ModuleIRs) -> List[str]:
     return ops
 
 
-def generate_names_for_ir(args: List[Register], blocks: List[BasicBlock]) -> Dict[Value, str]:
+def generate_names_for_ir(args: list[Register], blocks: list[BasicBlock]) -> dict[Value, str]:
     """Generate unique names for IR values.
 
     Give names such as 'r5' to temp values in IR which are useful when
     pretty-printing or generating C. Ensure generated names are unique.
     """
-    names: Dict[Value, str] = {}
+    names: dict[Value, str] = {}
     used_names = set()
 
     temp_index = 0
@@ -432,7 +494,7 @@ def generate_names_for_ir(args: List[Register], blocks: List[BasicBlock]) -> Dic
                     continue
                 if isinstance(value, Register) and value.name:
                     name = value.name
-                elif isinstance(value, Integer):
+                elif isinstance(value, (Integer, Float)):
                     continue
                 else:
                     name = "r%d" % temp_index

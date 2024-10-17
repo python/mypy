@@ -1,15 +1,15 @@
 """Type checker test cases"""
 
+from __future__ import annotations
+
 import os
 import re
 import sys
-from typing import Dict, List, Set, Tuple
 
 from mypy import build
 from mypy.build import Graph
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
-from mypy.semanal_main import core_modules
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 from mypy.test.helpers import (
@@ -21,13 +21,14 @@ from mypy.test.helpers import (
     normalize_error_messages,
     parse_options,
     perform_file_operations,
-    update_testcase_output,
 )
+from mypy.test.update_data import update_testcase_output
 
 try:
-    import lxml  # type: ignore
+    import lxml  # type: ignore[import-untyped]
 except ImportError:
     lxml = None
+
 
 import pytest
 
@@ -35,13 +36,17 @@ import pytest
 # Includes all check-* files with the .test extension in the test-data/unit directory
 typecheck_files = find_test_files(pattern="check-*.test")
 
-# Tests that use Python 3.8-only AST features (like expression-scoped ignores):
-if sys.version_info < (3, 8):
-    typecheck_files.remove("check-python38.test")
+# Tests that use Python version specific features:
 if sys.version_info < (3, 9):
     typecheck_files.remove("check-python39.test")
 if sys.version_info < (3, 10):
     typecheck_files.remove("check-python310.test")
+if sys.version_info < (3, 11):
+    typecheck_files.remove("check-python311.test")
+if sys.version_info < (3, 12):
+    typecheck_files.remove("check-python312.test")
+if sys.version_info < (3, 13):
+    typecheck_files.remove("check-python313.test")
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform not in ("darwin", "win32"):
@@ -81,12 +86,27 @@ class TypeCheckSuite(DataSuite):
         else:
             self.run_case_once(testcase)
 
+    def _sort_output_if_needed(self, testcase: DataDrivenTestCase, a: list[str]) -> None:
+        idx = testcase.output_inline_start
+        if not testcase.files or idx == len(testcase.output):
+            return
+
+        def _filename(_msg: str) -> str:
+            return _msg.partition(":")[0]
+
+        file_weights = {file: idx for idx, file in enumerate(_filename(msg) for msg in a)}
+        testcase.output[idx:] = sorted(
+            testcase.output[idx:], key=lambda msg: file_weights.get(_filename(msg), -1)
+        )
+
     def run_case_once(
         self,
         testcase: DataDrivenTestCase,
-        operations: List[FileOperation] = [],
+        operations: list[FileOperation] | None = None,
         incremental_step: int = 0,
     ) -> None:
+        if operations is None:
+            operations = []
         original_program_text = "\n".join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 
@@ -109,16 +129,19 @@ class TypeCheckSuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
-        options.enable_incomplete_features = True
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.
-        if "optional" in testcase.file:
-            options.strict_optional = True
         if "columns" in testcase.file:
             options.show_column_numbers = True
         if "errorcodes" in testcase.file:
-            options.show_error_codes = True
+            options.hide_error_codes = False
+        if "abstract" not in testcase.file:
+            options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
+        if "lowercase" not in testcase.file:
+            options.force_uppercase_builtins = True
+        if "union-error" not in testcase.file:
+            options.force_union_syntax = True
 
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases
@@ -153,24 +176,24 @@ class TypeCheckSuite(DataSuite):
             a = normalize_error_messages(a)
 
         # Make sure error messages match
-        if incremental_step == 0:
-            # Not incremental
-            msg = "Unexpected type checker output ({}, line {})"
+        if incremental_step < 2:
+            if incremental_step == 1:
+                msg = "Unexpected type checker output in incremental, run 1 ({}, line {})"
+            else:
+                assert incremental_step == 0
+                msg = "Unexpected type checker output ({}, line {})"
+            self._sort_output_if_needed(testcase, a)
             output = testcase.output
-        elif incremental_step == 1:
-            msg = "Unexpected type checker output in incremental, run 1 ({}, line {})"
-            output = testcase.output
-        elif incremental_step > 1:
+        else:
             msg = (
-                "Unexpected type checker output in incremental, run {}".format(incremental_step)
+                f"Unexpected type checker output in incremental, run {incremental_step}"
                 + " ({}, line {})"
             )
             output = testcase.output2.get(incremental_step, [])
-        else:
-            raise AssertionError()
 
         if output != a and testcase.config.getoption("--update-data", False):
-            update_testcase_output(testcase, a)
+            update_testcase_output(testcase, a, incremental_step=incremental_step)
+
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if res:
@@ -181,12 +204,10 @@ class TypeCheckSuite(DataSuite):
             if incremental_step:
                 name += str(incremental_step + 1)
             expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
-            actual = res.manager.processed_targets
-            # Skip the initial builtin cycle.
             actual = [
-                t
-                for t in actual
-                if not any(t.startswith(mod) for mod in core_modules + ["mypy_extensions"])
+                target
+                for module, target in res.manager.processed_targets
+                if module in testcase.test_modules
             ]
             if expected is not None:
                 assert_target_equivalence(name, expected, actual)
@@ -208,8 +229,8 @@ class TypeCheckSuite(DataSuite):
 
     def verify_cache(
         self,
-        module_data: List[Tuple[str, str, str]],
-        a: List[str],
+        module_data: list[tuple[str, str, str]],
+        a: list[str],
         manager: build.BuildManager,
         graph: Graph,
     ) -> None:
@@ -227,14 +248,14 @@ class TypeCheckSuite(DataSuite):
         # just notes attached to other errors.
         assert error_paths or not busted_paths, "Some modules reported error despite no errors"
         if not missing_paths == busted_paths:
-            raise AssertionError("cache data discrepancy %s != %s" % (missing_paths, busted_paths))
+            raise AssertionError(f"cache data discrepancy {missing_paths} != {busted_paths}")
         assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
         cachedir_tag = os.path.join(manager.options.cache_dir, "CACHEDIR.TAG")
         assert os.path.isfile(cachedir_tag)
         with open(cachedir_tag) as f:
             assert f.read().startswith("Signature: 8a477f597d28d172789f06886806bc55")
 
-    def find_error_message_paths(self, a: List[str]) -> Set[str]:
+    def find_error_message_paths(self, a: list[str]) -> set[str]:
         hits = set()
         for line in a:
             m = re.match(r"([^\s:]+):(\d+:)?(\d+:)? (error|warning|note):", line)
@@ -243,12 +264,12 @@ class TypeCheckSuite(DataSuite):
                 hits.add(p)
         return hits
 
-    def find_module_files(self, manager: build.BuildManager) -> Dict[str, str]:
+    def find_module_files(self, manager: build.BuildManager) -> dict[str, str]:
         return {id: module.path for id, module in manager.modules.items()}
 
     def find_missing_cache_files(
-        self, modules: Dict[str, str], manager: build.BuildManager
-    ) -> Set[str]:
+        self, modules: dict[str, str], manager: build.BuildManager
+    ) -> set[str]:
         ignore_errors = True
         missing = {}
         for id, path in modules.items():
@@ -259,7 +280,7 @@ class TypeCheckSuite(DataSuite):
 
     def parse_module(
         self, program_text: str, incremental_step: int = 0
-    ) -> List[Tuple[str, str, str]]:
+    ) -> list[tuple[str, str, str]]:
         """Return the module and program names for a test case.
 
         Normally, the unit tests will parse the default ('__main__')

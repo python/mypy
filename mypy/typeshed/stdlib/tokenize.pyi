@@ -1,9 +1,10 @@
 import sys
-from _typeshed import StrOrBytesPath
-from builtins import open as _builtin_open
+from _typeshed import FileDescriptorOrPath
 from collections.abc import Callable, Generator, Iterable, Sequence
+from re import Pattern
 from token import *
-from typing import Any, NamedTuple, Pattern, TextIO
+from token import EXACT_TOKEN_TYPES as EXACT_TOKEN_TYPES
+from typing import Any, NamedTuple, TextIO
 from typing_extensions import TypeAlias
 
 __all__ = [
@@ -14,6 +15,7 @@ __all__ = [
     "CIRCUMFLEX",
     "CIRCUMFLEXEQUAL",
     "COLON",
+    "COLONEQUAL",
     "COMMA",
     "COMMENT",
     "DEDENT",
@@ -68,33 +70,28 @@ __all__ = [
     "STAREQUAL",
     "STRING",
     "TILDE",
+    "TYPE_COMMENT",
+    "TYPE_IGNORE",
     "TokenInfo",
     "VBAR",
     "VBAREQUAL",
     "detect_encoding",
+    "generate_tokens",
     "tok_name",
     "tokenize",
     "untokenize",
 ]
-
-if sys.version_info < (3, 7) or sys.version_info >= (3, 8):
+if sys.version_info < (3, 13):
     __all__ += ["ASYNC", "AWAIT"]
-
-if sys.version_info >= (3, 8):
-    __all__ += ["COLONEQUAL", "generate_tokens", "TYPE_COMMENT", "TYPE_IGNORE"]
 
 if sys.version_info >= (3, 10):
     __all__ += ["SOFT_KEYWORD"]
 
-if sys.version_info >= (3, 8):
-    from token import EXACT_TOKEN_TYPES as EXACT_TOKEN_TYPES
-else:
-    EXACT_TOKEN_TYPES: dict[str, int]
+if sys.version_info >= (3, 12):
+    __all__ += ["EXCLAMATION", "FSTRING_END", "FSTRING_MIDDLE", "FSTRING_START"]
 
-if sys.version_info < (3, 7):
-    COMMENT: int
-    NL: int
-    ENCODING: int
+if sys.version_info >= (3, 13):
+    __all__ += ["TokenError", "open"]
 
 cookie_re: Pattern[str]
 blank_re: Pattern[bytes]
@@ -116,25 +113,28 @@ class TokenInfo(_TokenInfo):
 _Token: TypeAlias = TokenInfo | Sequence[int | str | _Position]
 
 class TokenError(Exception): ...
-class StopTokenizing(Exception): ...  # undocumented
+
+if sys.version_info < (3, 13):
+    class StopTokenizing(Exception): ...  # undocumented
 
 class Untokenizer:
     tokens: list[str]
     prev_row: int
     prev_col: int
     encoding: str | None
-    def __init__(self) -> None: ...
     def add_whitespace(self, start: _Position) -> None: ...
     def untokenize(self, iterable: Iterable[_Token]) -> str: ...
     def compat(self, token: Sequence[int | str], iterable: Iterable[_Token]) -> None: ...
+    if sys.version_info >= (3, 12):
+        def escape_brackets(self, token: str) -> str: ...
 
 # the docstring says "returns bytes" but is incorrect --
 # if the ENCODING token is missing, it skips the encode
 def untokenize(iterable: Iterable[_Token]) -> Any: ...
-def detect_encoding(readline: Callable[[], bytes]) -> tuple[str, Sequence[bytes]]: ...
-def tokenize(readline: Callable[[], bytes]) -> Generator[TokenInfo, None, None]: ...
+def detect_encoding(readline: Callable[[], bytes | bytearray]) -> tuple[str, Sequence[bytes]]: ...
+def tokenize(readline: Callable[[], bytes | bytearray]) -> Generator[TokenInfo, None, None]: ...
 def generate_tokens(readline: Callable[[], str]) -> Generator[TokenInfo, None, None]: ...  # undocumented
-def open(filename: StrOrBytesPath | int) -> TextIO: ...
+def open(filename: FileDescriptorOrPath) -> TextIO: ...
 def group(*choices: str) -> str: ...  # undocumented
 def any(*choices: str) -> str: ...  # undocumented
 def maybe(*choices: str) -> str: ...  # undocumented
@@ -166,10 +166,6 @@ Single3: str  # undocumented
 Double3: str  # undocumented
 Triple: str  # undocumented
 String: str  # undocumented
-
-if sys.version_info < (3, 7):
-    Operator: str  # undocumented
-    Bracket: str  # undocumented
 
 Special: str  # undocumented
 Funny: str  # undocumented

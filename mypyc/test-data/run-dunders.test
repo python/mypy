@@ -332,6 +332,13 @@ class C:
     def __float__(self) -> float:
         return float(self.x + 4)
 
+    def __pos__(self) -> int:
+        return self.x + 5
+
+    def __abs__(self) -> int:
+        return abs(self.x) + 6
+
+
 def test_unary_dunders_generic() -> None:
     a: Any = C(10)
 
@@ -339,6 +346,8 @@ def test_unary_dunders_generic() -> None:
     assert ~a == 12
     assert int(a) == 13
     assert float(a) == 14.0
+    assert +a == 15
+    assert abs(a) == 16
 
 def test_unary_dunders_native() -> None:
     c = C(10)
@@ -347,6 +356,8 @@ def test_unary_dunders_native() -> None:
     assert ~c == 12
     assert int(c) == 13
     assert float(c) == 14.0
+    assert +c == 15
+    assert abs(c) == 16
 
 [case testDundersBinarySimple]
 from typing import Any
@@ -391,6 +402,12 @@ class C:
     def __floordiv__(self, y: int) -> int:
         return self.x + y + 30
 
+    def __divmod__(self, y: int) -> int:
+        return self.x + y + 40
+
+    def __pow__(self, y: int) -> int:
+        return self.x + y + 50
+
 def test_generic() -> None:
     a: Any = C()
     assert a + 3 == 8
@@ -406,11 +423,15 @@ def test_generic() -> None:
     assert a @ 3 == 18
     assert a / 2 == 27
     assert a // 2 == 37
+    assert divmod(a, 2) == 47
+    assert a ** 2 == 57
 
 def test_native() -> None:
     c = C()
     assert c + 3 == 8
     assert c - 3 == 2
+    assert divmod(c, 3) == 48
+    assert c ** 3 == 58
 
 def test_error() -> None:
     a: Any = C()
@@ -424,6 +445,12 @@ def test_error() -> None:
         a - 'x'
     except TypeError as e:
         assert str(e) == "unsupported operand type(s) for -: 'C' and 'str'"
+    else:
+        assert False
+    try:
+        a ** 'x'
+    except TypeError as e:
+        assert str(e) == "unsupported operand type(s) for **: 'C' and 'str'"
     else:
         assert False
 
@@ -446,12 +473,20 @@ class C:
     def __rsub__(self, y: int) -> int:
         return self.x - y - 1
 
+    def __pow__(self, y: int) -> int:
+        return self.x**y
+
+    def __rpow__(self, y: int) -> int:
+        return self.x**y + 1
+
 def test_generic() -> None:
     a: Any = C()
     assert a + 3 == 8
     assert 4 + a == 10
     assert a - 3 == 2
     assert 4 - a == 0
+    assert a**3 == 125
+    assert 4**a == 626
 
 def test_native() -> None:
     c = C()
@@ -459,6 +494,8 @@ def test_native() -> None:
     assert 4 + c == 10
     assert c - 3 == 2
     assert 4 - c == 0
+    assert c**3 == 125
+    assert 4**c == 626
 
 def test_errors() -> None:
     a: Any = C()
@@ -481,20 +518,37 @@ def test_errors() -> None:
                           'must be str, not C')
     else:
         assert False
+    try:
+        'x' ** a
+    except TypeError as e:
+        assert str(e) == "unsupported operand type(s) for ** or pow(): 'str' and 'C'"
+    else:
+        assert False
+
 
 class F:
     def __add__(self, x: int) -> int:
         return 5
 
+    def __pow__(self, x: int) -> int:
+        return -5
+
 class G:
     def __add__(self, x: int) -> int:
         return 33
 
+    def __pow__(self, x: int) -> int:
+        return -33
+
     def __radd__(self, x: F) -> int:
         return 6
 
+    def __rpow__(self, x: F) -> int:
+        return -6
+
 def test_type_mismatch_fall_back_to_reverse() -> None:
     assert F() + G() == 6
+    assert F()**G() == -6
 
 [case testDundersBinaryNotImplemented]
 from typing import Any, Union
@@ -702,6 +756,10 @@ class C:
         self.x += y + 5
         return self
 
+    def __ipow__(self, y: int, __mod_throwaway: None = None) -> C:
+        self.x **= y
+        return self
+
 def test_generic_1() -> None:
     c: Any = C()
     c += 3
@@ -716,6 +774,8 @@ def test_generic_1() -> None:
     assert c.x == 16
     c //= 4
     assert c.x == 40
+    c **= 2
+    assert c.x == 1600
 
 def test_generic_2() -> None:
     c: Any = C()
@@ -740,6 +800,8 @@ def test_native() -> None:
     assert c.x == 3
     c *= 3
     assert c.x == 9
+    c **= 2
+    assert c.x == 81
 
 def test_error() -> None:
     c: Any = C()
@@ -796,3 +858,88 @@ def test_dunder_min() -> None:
     assert max(y2, x2).val == 'xxx'
     assert min(y2, z2).val == 'zzz'
     assert max(x2, z2).val == 'zzz'
+
+
+[case testDundersPowerSpecial]
+import sys
+from typing import Any, Optional
+from testutil import assertRaises
+
+class Forward:
+    def __pow__(self, exp: int, mod: Optional[int] = None) -> int:
+        if mod is None:
+            return 2**exp
+        else:
+            return 2**exp % mod
+
+class ForwardModRequired:
+    def __pow__(self, exp: int, mod: int) -> int:
+        return 2**exp % mod
+
+class ForwardNotImplemented:
+    def __pow__(self, exp: int, mod: Optional[object] = None) -> Any:
+        return NotImplemented
+
+class Reverse:
+    def __rpow__(self, exp: int) -> int:
+        return 2**exp + 1
+
+class Both:
+    def __pow__(self, exp: int, mod: Optional[int] = None) -> int:
+        if mod is None:
+            return 2**exp
+        else:
+            return 2**exp % mod
+
+    def __rpow__(self, exp: int) -> int:
+        return 2**exp + 1
+
+class Child(ForwardNotImplemented):
+    def __rpow__(self, exp: object) -> int:
+        return 50
+
+class Inplace:
+    value = 2
+
+    def __ipow__(self, exp: int, mod: Optional[int] = None) -> "Inplace":
+        self.value **= exp - (mod or 0)
+        return self
+
+def test_native() -> None:
+    f = Forward()
+    assert f**3 == 8
+    assert pow(f, 3) == 8
+    assert pow(f, 3, 3) == 2
+    assert pow(ForwardModRequired(), 3, 3) == 2
+    b = Both()
+    assert b**3 == 8
+    assert 3**b == 9
+    assert pow(b, 3) == 8
+    assert pow(b, 3, 3) == 2
+    i = Inplace()
+    i **= 2
+    assert i.value == 4
+
+def test_errors() -> None:
+    if sys.version_info[0] >= 3 and sys.version_info[1] >= 10:
+        op = "** or pow()"
+    else:
+        op = "pow()"
+
+    f = Forward()
+    with assertRaises(TypeError, f"unsupported operand type(s) for {op}: 'Forward', 'int', 'str'"):
+        pow(f, 3, "x")  # type: ignore
+    with assertRaises(TypeError, "unsupported operand type(s) for **: 'Forward' and 'str'"):
+        f**"x"  # type: ignore
+    r = Reverse()
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'str' and 'Reverse'"):
+        "x"**r  # type: ignore
+    with assertRaises(TypeError, f"unsupported operand type(s) for {op}: 'int', 'Reverse', 'int'"):
+        # Ternary pow() does not fallback to __rpow__ if LHS's __pow__ returns NotImplemented.
+        pow(3, r, 3)  # type: ignore
+    with assertRaises(TypeError, f"unsupported operand type(s) for {op}: 'ForwardNotImplemented', 'Child', 'int'"):
+        # Ternary pow() does not try RHS's __rpow__ first when it's a subclass and redefines
+        # __rpow__ unlike other ops.
+        pow(ForwardNotImplemented(), Child(), 3)  # type: ignore
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'ForwardModRequired' and 'int'"):
+        ForwardModRequired()**3  # type: ignore

@@ -1,5 +1,6 @@
 # Builtins stub used to support *args, **kwargs.
 
+import _typeshed
 from typing import TypeVar, Generic, Iterable, Sequence, Tuple, Dict, Any, overload, Mapping
 
 Tco = TypeVar('Tco', covariant=True)
@@ -26,6 +27,7 @@ class list(Sequence[T], Generic[T]): pass
 
 class int:
     def __eq__(self, o: object) -> bool: pass
+class float: pass
 class str: pass
 class bytes: pass
 class bool: pass

@@ -1,6 +1,6 @@
 """Simple type inference for decorated functions during semantic analysis."""
 
-from typing import Optional
+from __future__ import annotations
 
 from mypy.nodes import ARG_POS, CallExpr, Decorator, Expression, FuncDef, RefExpr, Var
 from mypy.semanal_shared import SemanticAnalyzerInterface
@@ -80,7 +80,7 @@ def is_identity_signature(sig: Type) -> bool:
     return False
 
 
-def calculate_return_type(expr: Expression) -> Optional[ProperType]:
+def calculate_return_type(expr: Expression) -> ProperType | None:
     """Return the return type if we can calculate it.
 
     This only uses information available during semantic analysis so this
@@ -104,7 +104,7 @@ def calculate_return_type(expr: Expression) -> Optional[ProperType]:
     return None
 
 
-def find_fixed_callable_return(expr: Expression) -> Optional[CallableType]:
+def find_fixed_callable_return(expr: Expression) -> CallableType | None:
     """Return the return type, if expression refers to a callable that returns a callable.
 
     But only do this if the return type has no type variables. Return None otherwise.

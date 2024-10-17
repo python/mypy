@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import unittest
-from typing import List
 
 from mypyc.ir.ops import Assign, BasicBlock, Integer, IntOp, Op, Register, Unreachable
 from mypyc.ir.pprint import generate_names_for_ir
@@ -10,7 +11,7 @@ def register(name: str) -> Register:
     return Register(int_rprimitive, "foo", is_arg=True)
 
 
-def make_block(ops: List[Op]) -> BasicBlock:
+def make_block(ops: list[Op]) -> BasicBlock:
     block = BasicBlock()
     block.ops.extend(ops)
     return block

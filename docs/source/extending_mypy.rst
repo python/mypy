@@ -155,25 +155,11 @@ When analyzing this code, mypy will call ``get_type_analyze_hook("lib.Vector")``
 so the plugin can return some valid type for each variable.
 
 **get_function_hook()** is used to adjust the return type of a function call.
-This is a good choice if the return type of some function depends on *values*
-of some arguments that can't be expressed using literal types (for example
-a function may return an ``int`` for positive arguments and a ``float`` for
-negative arguments). This hook will be also called for instantiation of classes.
-For example:
+This hook will be also called for instantiation of classes.
+This is a good choice if the return type is too complex
+to be expressed by regular python typing.
 
-.. code-block:: python
-
-   from contextlib import contextmanager
-   from typing import TypeVar, Callable
-
-   T = TypeVar('T')
-
-   @contextmanager  # built-in plugin can infer a precise type here
-   def stopwatch(timer: Callable[[], T]) -> Iterator[T]:
-       ...
-       yield timer()
-
-**get_function_signature_hook** is used to adjust the signature of a function.
+**get_function_signature_hook()** is used to adjust the signature of a function.
 
 **get_method_hook()** is the same as ``get_function_hook()`` but for methods
 instead of module level functions.
@@ -193,7 +179,7 @@ mypy will call ``get_method_signature_hook("ctypes.Array.__setitem__")``
 so that the plugin can mimic the :py:mod:`ctypes` auto-convert behavior.
 
 **get_attribute_hook()** overrides instance member field lookups and property
-access (not assignments, and not method calls). This hook is only called for
+access (not method calls). This hook is only called for
 fields which already exist on the class. *Exception:* if :py:meth:`__getattr__ <object.__getattr__>` or
 :py:meth:`__getattribute__ <object.__getattribute__>` is a method on the class, the hook is called for all
 fields which do not refer to methods.
@@ -252,30 +238,11 @@ should be used to report to mypy any relevant configuration data,
 so that mypy knows to recheck the module if the configuration changes.
 The hooks should return data encodable as JSON.
 
-Notes about the semantic analyzer
-*********************************
+Useful tools
+************
 
-Mypy 0.710 introduced a new semantic analyzer, and the old semantic
-analyzer was removed in mypy 0.730. Support for the new semantic analyzer
-required some changes to existing plugins. Here is a short summary of the
-most important changes:
+Mypy ships ``mypy.plugins.proper_plugin`` plugin which can be useful
+for plugin authors, since it finds missing ``get_proper_type()`` calls,
+which is a pretty common mistake.
 
-* The order of processing AST nodes is different. Code outside
-  functions is processed first, and functions and methods are
-  processed afterwards.
-
-* Each AST node can be processed multiple times to resolve forward
-  references.  The same plugin hook may be called multiple times, so
-  they need to be idempotent.
-
-* The ``anal_type()`` API method returns ``None`` if some part of
-  the type is not available yet due to forward references, for example.
-
-* When looking up symbols, you may encounter *placeholder nodes* that
-  are used for names that haven't been fully processed yet. You'll
-  generally want to request another semantic analysis iteration by
-  *deferring* in that case.
-
-See the docstring at the top of
-`mypy/plugin.py <https://github.com/python/mypy/blob/master/mypy/plugin.py>`_
-for more details.
+It is recommended to enable it is a part of your plugin's CI.

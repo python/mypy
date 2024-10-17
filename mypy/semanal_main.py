@@ -24,18 +24,20 @@ deferral if they can't be satisfied. Initially every module in the SCC
 will be incomplete.
 """
 
-from typing import Callable, List, Optional, Tuple, Union
+from __future__ import annotations
 
-from typing_extensions import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
+from contextlib import nullcontext
+from typing import TYPE_CHECKING, Callable, Final, List, Optional, Tuple, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.state
-from mypy.backports import nullcontext
 from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import Errors
 from mypy.nodes import Decorator, FuncDef, MypyFile, OverloadedFuncDef, TypeInfo, Var
 from mypy.options import Options
 from mypy.plugin import ClassDefContext
+from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.semanal import (
     SemanticAnalyzer,
     apply_semantic_analyzer_patches,
@@ -48,6 +50,7 @@ from mypy.semanal_classprop import (
     check_protocol_status,
 )
 from mypy.semanal_infer import infer_decorator_signature_if_simple
+from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.server.aststrip import SavedAttributes
 from mypy.util import is_typeshed_file
@@ -65,10 +68,17 @@ MAX_ITERATIONS: Final = 20
 
 # Number of passes over core modules before going on to the rest of the builtin SCC.
 CORE_WARMUP: Final = 2
-core_modules: Final = ["typing", "builtins", "abc", "collections"]
+core_modules: Final = [
+    "typing",
+    "_collections_abc",
+    "builtins",
+    "abc",
+    "collections",
+    "collections.abc",
+]
 
 
-def semantic_analysis_for_scc(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def semantic_analysis_for_scc(graph: Graph, scc: list[str], errors: Errors) -> None:
     """Perform semantic analysis for all modules in a SCC (import cycle).
 
     Assume that reachability analysis has already been performed.
@@ -96,7 +106,7 @@ def semantic_analysis_for_scc(graph: "Graph", scc: List[str], errors: Errors) ->
         cleanup_builtin_scc(graph["builtins"])
 
 
-def cleanup_builtin_scc(state: "State") -> None:
+def cleanup_builtin_scc(state: State) -> None:
     """Remove imported names from builtins namespace.
 
     This way names imported from typing in builtins.pyi aren't available
@@ -109,10 +119,7 @@ def cleanup_builtin_scc(state: "State") -> None:
 
 
 def semantic_analysis_for_targets(
-    state: "State",
-    nodes: List[FineGrainedDeferredNode],
-    graph: "Graph",
-    saved_attrs: SavedAttributes,
+    state: State, nodes: list[FineGrainedDeferredNode], graph: Graph, saved_attrs: SavedAttributes
 ) -> None:
     """Semantically analyze only selected nodes in a given module.
 
@@ -167,7 +174,7 @@ def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
             info.names[name] = sym
 
 
-def process_top_levels(graph: "Graph", scc: List[str], patches: Patches) -> None:
+def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
     # Process top levels until everything has been bound.
 
     # Reverse order of the scc so the first modules in the original list will be
@@ -183,7 +190,7 @@ def process_top_levels(graph: "Graph", scc: List[str], patches: Patches) -> None
     # Initially all namespaces in the SCC are incomplete (well they are empty).
     state.manager.incomplete_namespaces.update(scc)
 
-    worklist = scc[:]
+    worklist = scc.copy()
     # HACK: process core stuff first. This is mostly needed to support defining
     # named tuples in builtin SCC.
     if all(m in worklist for m in core_modules):
@@ -204,14 +211,14 @@ def process_top_levels(graph: "Graph", scc: List[str], patches: Patches) -> None
         if final_iteration:
             # Give up. It's impossible to bind all names.
             state.manager.incomplete_namespaces.clear()
-        all_deferred: List[str] = []
+        all_deferred: list[str] = []
         any_progress = False
         while worklist:
             next_id = worklist.pop()
             state = graph[next_id]
             assert state.tree is not None
             deferred, incomplete, progress = semantic_analyze_target(
-                next_id, state, state.tree, None, final_iteration, patches
+                next_id, next_id, state, state.tree, None, final_iteration, patches
             )
             all_deferred += deferred
             any_progress = any_progress or progress
@@ -225,7 +232,7 @@ def process_top_levels(graph: "Graph", scc: List[str], patches: Patches) -> None
         final_iteration = not any_progress
 
 
-def process_functions(graph: "Graph", scc: List[str], patches: Patches) -> None:
+def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
     # Process functions.
     for module in scc:
         tree = graph[module].tree
@@ -248,12 +255,12 @@ def process_functions(graph: "Graph", scc: List[str], patches: Patches) -> None:
 
 
 def process_top_level_function(
-    analyzer: "SemanticAnalyzer",
-    state: "State",
+    analyzer: SemanticAnalyzer,
+    state: State,
     module: str,
     target: str,
-    node: Union[FuncDef, OverloadedFuncDef, Decorator],
-    active_type: Optional[TypeInfo],
+    node: FuncDef | OverloadedFuncDef | Decorator,
+    active_type: TypeInfo | None,
     patches: Patches,
 ) -> None:
     """Analyze single top-level function or method.
@@ -282,8 +289,10 @@ def process_top_level_function(
             # OK, this is one last pass, now missing names will be reported.
             analyzer.incomplete_namespaces.discard(module)
         deferred, incomplete, progress = semantic_analyze_target(
-            target, state, node, active_type, final_iteration, patches
+            target, module, state, node, active_type, final_iteration, patches
         )
+        if not incomplete:
+            state.manager.incomplete_namespaces.discard(module)
         if final_iteration:
             assert not deferred, "Must not defer during final iteration"
         if not progress:
@@ -295,12 +304,14 @@ def process_top_level_function(
     analyzer.saved_locals.clear()
 
 
-TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]
+TargetInfo: _TypeAlias = Tuple[
+    str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+]
 
 
-def get_all_leaf_targets(file: MypyFile) -> List[TargetInfo]:
+def get_all_leaf_targets(file: MypyFile) -> list[TargetInfo]:
     """Return all leaf targets in a symbol table (module-level and methods)."""
-    result: List[TargetInfo] = []
+    result: list[TargetInfo] = []
     for fullname, node, active_type in file.local_definitions():
         if isinstance(node.node, (FuncDef, OverloadedFuncDef, Decorator)):
             result.append((fullname, node.node, active_type))
@@ -309,12 +320,13 @@ def get_all_leaf_targets(file: MypyFile) -> List[TargetInfo]:
 
 def semantic_analyze_target(
     target: str,
-    state: "State",
-    node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator],
-    active_type: Optional[TypeInfo],
+    module: str,
+    state: State,
+    node: MypyFile | FuncDef | OverloadedFuncDef | Decorator,
+    active_type: TypeInfo | None,
     final_iteration: bool,
     patches: Patches,
-) -> Tuple[List[str], bool, bool]:
+) -> tuple[list[str], bool, bool]:
     """Semantically analyze a single target.
 
     Return tuple with these items:
@@ -322,7 +334,7 @@ def semantic_analyze_target(
     - was some definition incomplete (need to run another pass)
     - were any new names defined (or placeholders replaced)
     """
-    state.manager.processed_targets.append(target)
+    state.manager.processed_targets.append((module, target))
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.semantic_analyzer
@@ -363,29 +375,39 @@ def semantic_analyze_target(
         return [], analyzer.incomplete, analyzer.progress
 
 
-def check_type_arguments(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def check_type_arguments(graph: Graph, scc: list[str], errors: Errors) -> None:
     for module in scc:
         state = graph[module]
         assert state.tree
-        analyzer = TypeArgumentAnalyzer(errors, state.options, is_typeshed_file(state.path or ""))
+        analyzer = TypeArgumentAnalyzer(
+            errors,
+            state.options,
+            state.tree.is_typeshed_file(state.options),
+            state.manager.semantic_analyzer.named_type,
+        )
         with state.wrap_context():
             with mypy.state.state.strict_optional_set(state.options.strict_optional):
                 state.tree.accept(analyzer)
 
 
 def check_type_arguments_in_targets(
-    targets: List[FineGrainedDeferredNode], state: "State", errors: Errors
+    targets: list[FineGrainedDeferredNode], state: State, errors: Errors
 ) -> None:
     """Check type arguments against type variable bounds and restrictions.
 
     This mirrors the logic in check_type_arguments() except that we process only
     some targets. This is used in fine grained incremental mode.
     """
-    analyzer = TypeArgumentAnalyzer(errors, state.options, is_typeshed_file(state.path or ""))
+    analyzer = TypeArgumentAnalyzer(
+        errors,
+        state.options,
+        is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+        state.manager.semantic_analyzer.named_type,
+    )
     with state.wrap_context():
         with mypy.state.state.strict_optional_set(state.options.strict_optional):
             for target in targets:
-                func: Optional[Union[FuncDef, OverloadedFuncDef]] = None
+                func: FuncDef | OverloadedFuncDef | None = None
                 if isinstance(target.node, (FuncDef, OverloadedFuncDef)):
                     func = target.node
                 saved = (state.id, target.active_typeinfo, func)  # module, class, function
@@ -394,7 +416,7 @@ def check_type_arguments_in_targets(
                     target.node.accept(analyzer)
 
 
-def apply_class_plugin_hooks(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def apply_class_plugin_hooks(graph: Graph, scc: list[str], errors: Errors) -> None:
     """Apply class plugin hooks within a SCC.
 
     We run these after to the main semantic analysis so that the hooks
@@ -442,15 +464,33 @@ def apply_hooks_to_class(
     ok = True
     for decorator in defn.decorators:
         with self.file_context(file_node, options, info):
+            hook = None
+
             decorator_name = self.get_fullname_for_hook(decorator)
             if decorator_name:
                 hook = self.plugin.get_class_decorator_hook_2(decorator_name)
-                if hook:
-                    ok = ok and hook(ClassDefContext(defn, decorator, self))
+            # Special case: if the decorator is itself decorated with
+            # typing.dataclass_transform, apply the hook for the dataclasses plugin
+            # TODO: remove special casing here
+            if hook is None and find_dataclass_transform_spec(decorator):
+                hook = dataclasses_plugin.dataclass_class_maker_callback
+
+            if hook:
+                ok = ok and hook(ClassDefContext(defn, decorator, self))
+
+    # Check if the class definition itself triggers a dataclass transform (via a parent class/
+    # metaclass)
+    spec = find_dataclass_transform_spec(info)
+    if spec is not None:
+        with self.file_context(file_node, options, info):
+            # We can't use the normal hook because reason = defn, and ClassDefContext only accepts
+            # an Expression for reason
+            ok = ok and dataclasses_plugin.DataclassTransformer(defn, defn, spec, self).transform()
+
     return ok
 
 
-def calculate_class_properties(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def calculate_class_properties(graph: Graph, scc: list[str], errors: Errors) -> None:
     builtins = graph["builtins"].tree
     assert builtins
     for module in scc:
@@ -468,6 +508,6 @@ def calculate_class_properties(graph: "Graph", scc: List[str], errors: Errors) -
                     )
 
 
-def check_blockers(graph: "Graph", scc: List[str]) -> None:
+def check_blockers(graph: Graph, scc: list[str]) -> None:
     for module in scc:
         graph[module].check_blockers()

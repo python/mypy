@@ -5,6 +5,10 @@
 #include <Python.h>
 #include "CPy.h"
 
+#ifndef Py_TPFLAGS_SEQUENCE
+#define Py_TPFLAGS_SEQUENCE (1 << 5)
+#endif
+
 PyObject *CPyList_Build(Py_ssize_t len, ...) {
     Py_ssize_t i;
 
@@ -252,7 +256,10 @@ int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value)
 }
 
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2) {
-    return _PyList_Extend((PyListObject *)o1, o2);
+    if (PyList_Extend(o1, o2) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 // Return -2 or error, -1 if not found, or index of first match otherwise.
@@ -324,4 +331,8 @@ PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
         return PyList_GetSlice(obj, startn, endn);
     }
     return CPyObject_GetSlice(obj, start, end);
+}
+
+int CPySequence_Check(PyObject *obj) {
+    return Py_TYPE(obj)->tp_flags & Py_TPFLAGS_SEQUENCE;
 }

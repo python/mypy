@@ -1,0 +1,175 @@
+[case testTryStarSimple]
+try:
+    pass
+except* Exception as e:
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[builtins.Exception]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarMultiple]
+try:
+    pass
+except* Exception as e:
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[builtins.Exception]"
+except* RuntimeError as e:
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[builtins.RuntimeError]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarBase]
+try:
+    pass
+except* BaseException as e:
+    reveal_type(e)  # N: Revealed type is "builtins.BaseExceptionGroup[builtins.BaseException]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarTuple]
+class Custom(Exception): ...
+
+try:
+    pass
+except* (RuntimeError, Custom) as e:
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[Union[builtins.RuntimeError, __main__.Custom]]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarInvalidType]
+class Bad: ...
+try:
+    pass
+except* (RuntimeError, Bad) as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[Any]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarGroupInvalid]
+try:
+    pass
+except* ExceptionGroup as e:  # E: Exception type in except* cannot derive from BaseExceptionGroup
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[Any]"
+[builtins fixtures/exception.pyi]
+
+[case testTryStarGroupInvalidTuple]
+try:
+    pass
+except* (RuntimeError, ExceptionGroup) as e:  # E: Exception type in except* cannot derive from BaseExceptionGroup
+    reveal_type(e)  # N: Revealed type is "builtins.ExceptionGroup[Union[builtins.RuntimeError, Any]]"
+[builtins fixtures/exception.pyi]
+
+[case testBasicTypeVarTupleGeneric]
+from typing import Generic, TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+class Variadic(Generic[Unpack[Ts]]):
+    ...
+
+variadic: Variadic[int, str]
+reveal_type(variadic)  # N: Revealed type is "__main__.Variadic[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testAsyncGeneratorWithinComprehension]
+# flags: --python-version 3.11
+from typing import Any, Generator, List
+
+async def asynciter(iterable):
+    for x in iterable:
+        yield x
+
+async def coro() -> Generator[List[Any], None, None]:
+    return ([i async for i in asynciter([0,j])] for j in [3, 5])
+reveal_type(coro)  # N: Revealed type is "def () -> typing.Coroutine[Any, Any, typing.Generator[builtins.list[Any], None, None]]"
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testTypeVarTupleNewSyntaxAnnotations]
+Ints = tuple[int, int, int]
+x: tuple[str, *Ints]
+reveal_type(x)  # N: Revealed type is "Tuple[builtins.str, builtins.int, builtins.int, builtins.int]"
+y: tuple[int, *tuple[int, ...]]
+reveal_type(y)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleNewSyntaxGenerics]
+from typing import Generic, TypeVar, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+class C(Generic[T, *Ts]):
+    attr: tuple[int, *Ts, str]
+
+    def test(self) -> None:
+        reveal_type(self.attr)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`2], builtins.str]"
+        self.attr = ci  # E: Incompatible types in assignment (expression has type "C[*Tuple[int, ...]]", variable has type "Tuple[int, *Ts, str]")
+    def meth(self, *args: *Ts) -> T: ...
+
+ci: C[*tuple[int, ...]]
+reveal_type(ci)  # N: Revealed type is "__main__.C[Unpack[builtins.tuple[builtins.int, ...]]]"
+reveal_type(ci.meth)  # N: Revealed type is "def (*args: builtins.int) -> builtins.int"
+c3: C[str, str, str]
+reveal_type(c3)  # N: Revealed type is "__main__.C[builtins.str, builtins.str, builtins.str]"
+
+A = C[int, *Ts]
+B = tuple[str, *tuple[str, str], str]
+z: A[*B]
+reveal_type(z)  # N: Revealed type is "__main__.C[builtins.int, builtins.str, builtins.str, builtins.str, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleNewSyntaxCallables]
+from typing import Generic, overload, TypeVar
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+class MyClass(Generic[T1, T2]):
+    @overload
+    def __init__(self: MyClass[None, None]) -> None: ...
+
+    @overload
+    def __init__(self: MyClass[T1, None], *types: *tuple[type[T1]]) -> None: ...
+
+    @overload
+    def __init__(self: MyClass[T1, T2], *types: *tuple[type[T1], type[T2]]) -> None: ...
+
+    def __init__(self: MyClass[T1, T2], *types: *tuple[type, ...]) -> None:
+        pass
+
+myclass = MyClass()
+reveal_type(myclass)  # N: Revealed type is "__main__.MyClass[None, None]"
+myclass1 = MyClass(float)
+reveal_type(myclass1)  # N: Revealed type is "__main__.MyClass[builtins.float, None]"
+myclass2 = MyClass(float, float)
+reveal_type(myclass2)  # N: Revealed type is "__main__.MyClass[builtins.float, builtins.float]"
+myclass3 = MyClass(float, float, float)  # E: No overload variant of "MyClass" matches argument types "Type[float]", "Type[float]", "Type[float]" \
+                                         # N: Possible overload variants: \
+                                         # N:     def [T1, T2] __init__(self) -> MyClass[None, None] \
+                                         # N:     def [T1, T2] __init__(self, Type[T1], /) -> MyClass[T1, None] \
+                                         # N:     def [T1, T2] __init__(Type[T1], Type[T2], /) -> MyClass[T1, T2]
+reveal_type(myclass3)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testUnpackNewSyntaxInvalidCallableAlias]
+from typing import Any, Callable, List, Tuple, TypeVar, Unpack
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")  # E: Name "TypeVarTuple" is not defined
+
+def good(*x: int) -> int: ...
+def bad(*x: int, y: int) -> int: ...
+
+Alias1 = Callable[[*Ts], int]  # E: Variable "__main__.Ts" is not valid as a type \
+                               # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+x1: Alias1[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(x1)  # N: Revealed type is "def (*Any) -> builtins.int"
+x1 = good
+x1 = bad  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), NamedArg(int, 'y')], int]", variable has type "Callable[[VarArg(Any)], int]")
+
+Alias2 = Callable[[*T], int]  # E: "T" cannot be unpacked (must be tuple or TypeVarTuple)
+x2: Alias2[int]
+reveal_type(x2)  # N: Revealed type is "def (*Any) -> builtins.int"
+
+Unknown = Any
+Alias3 = Callable[[*Unknown], int]
+x3: Alias3[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(x3)  # N: Revealed type is "def (*Any) -> builtins.int"
+
+IntList = List[int]
+Alias4 = Callable[[*IntList], int]  # E: "List[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+x4: Alias4[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(x4)  # N: Revealed type is "def (*Any) -> builtins.int"
+[builtins fixtures/tuple.pyi]

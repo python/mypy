@@ -1,34 +1,31 @@
-from __future__ import print_function
+from __future__ import annotations
 
-"""Utilities to find the site and prefix information of a Python executable, which may be Python 2.
+"""Utilities to find the site and prefix information of a Python executable.
 
-This file MUST remain compatible with Python 2. Since we cannot make any assumptions about the
-Python being executed, this module should not use *any* dependencies outside of the standard
-library found in Python 2. This file is run each mypy run, so it should be kept as fast as
-possible.
+This file MUST remain compatible with all Python 3.8+ versions. Since we cannot make any
+assumptions about the Python being executed, this module should not use *any* dependencies outside
+of the standard library found in Python 3.8. This file is run each mypy run, so it should be kept
+as fast as possible.
 """
-import os
-import site
 import sys
-import sysconfig
-
-MYPY = False
-if MYPY:
-    from typing import List, Tuple
 
 if __name__ == "__main__":
     # HACK: We don't want to pick up mypy.types as the top-level types
     #       module. This could happen if this file is run as a script.
-    #       This workaround fixes it.
-    old_sys_path = sys.path
-    sys.path = sys.path[1:]
-    import types  # noqa
+    #       This workaround fixes this for Python versions before 3.11.
+    if sys.version_info < (3, 11):
+        old_sys_path = sys.path
+        sys.path = sys.path[1:]
+        import types  # noqa: F401
 
-    sys.path = old_sys_path
+        sys.path = old_sys_path
+
+import os
+import site
+import sysconfig
 
 
-def getsitepackages():
-    # type: () -> List[str]
+def getsitepackages() -> list[str]:
     res = []
     if hasattr(site, "getsitepackages"):
         res.extend(site.getsitepackages())
@@ -36,24 +33,21 @@ def getsitepackages():
         if hasattr(site, "getusersitepackages") and site.ENABLE_USER_SITE:
             res.insert(0, site.getusersitepackages())
     else:
-        from distutils.sysconfig import get_python_lib
-
-        res = [get_python_lib()]
+        res = [sysconfig.get_paths()["purelib"]]
     return res
 
 
-def getsyspath():
-    # type: () -> List[str]
+def getsyspath() -> list[str]:
     # Do not include things from the standard library
     # because those should come from typeshed.
     stdlib_zip = os.path.join(
         sys.base_exec_prefix,
         getattr(sys, "platlibdir", "lib"),
-        "python{}{}.zip".format(sys.version_info.major, sys.version_info.minor),
+        f"python{sys.version_info.major}{sys.version_info.minor}.zip",
     )
     stdlib = sysconfig.get_path("stdlib")
     stdlib_ext = os.path.join(stdlib, "lib-dynload")
-    excludes = set([stdlib_zip, stdlib, stdlib_ext])
+    excludes = {stdlib_zip, stdlib, stdlib_ext}
 
     # Drop the first entry of sys.path
     # - If pyinfo.py is executed as a script (in a subprocess), this is the directory
@@ -72,12 +66,12 @@ def getsyspath():
     return [p for p in abs_sys_path if p not in excludes]
 
 
-def getsearchdirs():
-    # type: () -> Tuple[List[str], List[str]]
+def getsearchdirs() -> tuple[list[str], list[str]]:
     return (getsyspath(), getsitepackages())
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
     if sys.argv[-1] == "getsearchdirs":
         print(repr(getsearchdirs()))
     else:

@@ -1,10 +1,11 @@
 import enum
 import sys
 import types
+from _typeshed import DataclassInstance
 from builtins import type as Type  # alias to avoid name clashes with fields named "type"
 from collections.abc import Callable, Iterable, Mapping
-from typing import Any, Generic, Protocol, TypeVar, overload
-from typing_extensions import Literal
+from typing import Any, Generic, Literal, Protocol, TypeVar, overload
+from typing_extensions import Never, TypeAlias, TypeIs
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -30,6 +31,8 @@ __all__ = [
 if sys.version_info >= (3, 10):
     __all__ += ["KW_ONLY"]
 
+_DataclassT = TypeVar("_DataclassT", bound=DataclassInstance)
+
 # define _MISSING_TYPE as an enum within the type stubs,
 # even though that is not really its type at runtime
 # this allows us to use Literal[_MISSING_TYPE.MISSING]
@@ -44,62 +47,59 @@ if sys.version_info >= (3, 10):
     class KW_ONLY: ...
 
 @overload
-def asdict(obj: Any) -> dict[str, Any]: ...
+def asdict(obj: DataclassInstance) -> dict[str, Any]: ...
 @overload
-def asdict(obj: Any, *, dict_factory: Callable[[list[tuple[str, Any]]], _T]) -> _T: ...
+def asdict(obj: DataclassInstance, *, dict_factory: Callable[[list[tuple[str, Any]]], _T]) -> _T: ...
 @overload
-def astuple(obj: Any) -> tuple[Any, ...]: ...
+def astuple(obj: DataclassInstance) -> tuple[Any, ...]: ...
 @overload
-def astuple(obj: Any, *, tuple_factory: Callable[[list[Any]], _T]) -> _T: ...
-
-if sys.version_info >= (3, 8):
-    # cls argument is now positional-only
-    @overload
-    def dataclass(__cls: type[_T]) -> type[_T]: ...
-    @overload
-    def dataclass(__cls: None) -> Callable[[type[_T]], type[_T]]: ...
-
-else:
-    @overload
-    def dataclass(_cls: type[_T]) -> type[_T]: ...
-    @overload
-    def dataclass(_cls: None) -> Callable[[type[_T]], type[_T]]: ...
+def astuple(obj: DataclassInstance, *, tuple_factory: Callable[[list[Any]], _T]) -> _T: ...
+@overload
+def dataclass(cls: None, /) -> Callable[[type[_T]], type[_T]]: ...
+@overload
+def dataclass(cls: type[_T], /) -> type[_T]: ...
 
 if sys.version_info >= (3, 11):
     @overload
     def dataclass(
         *,
-        init: bool = ...,
-        repr: bool = ...,
-        eq: bool = ...,
-        order: bool = ...,
-        unsafe_hash: bool = ...,
-        frozen: bool = ...,
-        match_args: bool = ...,
-        kw_only: bool = ...,
-        slots: bool = ...,
-        weakref_slot: bool = ...,
+        init: bool = True,
+        repr: bool = True,
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+        frozen: bool = False,
+        match_args: bool = True,
+        kw_only: bool = False,
+        slots: bool = False,
+        weakref_slot: bool = False,
     ) -> Callable[[type[_T]], type[_T]]: ...
 
 elif sys.version_info >= (3, 10):
     @overload
     def dataclass(
         *,
-        init: bool = ...,
-        repr: bool = ...,
-        eq: bool = ...,
-        order: bool = ...,
-        unsafe_hash: bool = ...,
-        frozen: bool = ...,
-        match_args: bool = ...,
-        kw_only: bool = ...,
-        slots: bool = ...,
+        init: bool = True,
+        repr: bool = True,
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+        frozen: bool = False,
+        match_args: bool = True,
+        kw_only: bool = False,
+        slots: bool = False,
     ) -> Callable[[type[_T]], type[_T]]: ...
 
 else:
     @overload
     def dataclass(
-        *, init: bool = ..., repr: bool = ..., eq: bool = ..., order: bool = ..., unsafe_hash: bool = ..., frozen: bool = ...
+        *,
+        init: bool = True,
+        repr: bool = True,
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+        frozen: bool = False,
     ) -> Callable[[type[_T]], type[_T]]: ...
 
 # See https://github.com/python/mypy/issues/10750
@@ -108,7 +108,7 @@ class _DefaultFactory(Protocol[_T_co]):
 
 class Field(Generic[_T]):
     name: str
-    type: Type[_T]
+    type: Type[_T] | str | Any
     default: _T | Literal[_MISSING_TYPE.MISSING]
     default_factory: _DefaultFactory[_T] | Literal[_MISSING_TYPE.MISSING]
     repr: bool
@@ -143,7 +143,7 @@ class Field(Generic[_T]):
 
     def __set_name__(self, owner: Type[Any], name: str) -> None: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 # NOTE: Actual return type is 'Field[_T]', but we want to help type checkers
 # to understand the magic that happens at runtime.
@@ -152,32 +152,32 @@ if sys.version_info >= (3, 10):
     def field(
         *,
         default: _T,
-        init: bool = ...,
-        repr: bool = ...,
-        hash: bool | None = ...,
-        compare: bool = ...,
-        metadata: Mapping[Any, Any] | None = ...,
+        init: bool = True,
+        repr: bool = True,
+        hash: bool | None = None,
+        compare: bool = True,
+        metadata: Mapping[Any, Any] | None = None,
         kw_only: bool = ...,
     ) -> _T: ...
     @overload
     def field(
         *,
         default_factory: Callable[[], _T],
-        init: bool = ...,
-        repr: bool = ...,
-        hash: bool | None = ...,
-        compare: bool = ...,
-        metadata: Mapping[Any, Any] | None = ...,
+        init: bool = True,
+        repr: bool = True,
+        hash: bool | None = None,
+        compare: bool = True,
+        metadata: Mapping[Any, Any] | None = None,
         kw_only: bool = ...,
     ) -> _T: ...
     @overload
     def field(
         *,
-        init: bool = ...,
-        repr: bool = ...,
-        hash: bool | None = ...,
-        compare: bool = ...,
-        metadata: Mapping[Any, Any] | None = ...,
+        init: bool = True,
+        repr: bool = True,
+        hash: bool | None = None,
+        compare: bool = True,
+        metadata: Mapping[Any, Any] | None = None,
         kw_only: bool = ...,
     ) -> Any: ...
 
@@ -186,96 +186,131 @@ else:
     def field(
         *,
         default: _T,
-        init: bool = ...,
-        repr: bool = ...,
-        hash: bool | None = ...,
-        compare: bool = ...,
-        metadata: Mapping[Any, Any] | None = ...,
+        init: bool = True,
+        repr: bool = True,
+        hash: bool | None = None,
+        compare: bool = True,
+        metadata: Mapping[Any, Any] | None = None,
     ) -> _T: ...
     @overload
     def field(
         *,
         default_factory: Callable[[], _T],
-        init: bool = ...,
-        repr: bool = ...,
-        hash: bool | None = ...,
-        compare: bool = ...,
-        metadata: Mapping[Any, Any] | None = ...,
+        init: bool = True,
+        repr: bool = True,
+        hash: bool | None = None,
+        compare: bool = True,
+        metadata: Mapping[Any, Any] | None = None,
     ) -> _T: ...
     @overload
     def field(
         *,
-        init: bool = ...,
-        repr: bool = ...,
-        hash: bool | None = ...,
-        compare: bool = ...,
-        metadata: Mapping[Any, Any] | None = ...,
+        init: bool = True,
+        repr: bool = True,
+        hash: bool | None = None,
+        compare: bool = True,
+        metadata: Mapping[Any, Any] | None = None,
     ) -> Any: ...
 
-def fields(class_or_instance: Any) -> tuple[Field[Any], ...]: ...
-def is_dataclass(obj: Any) -> bool: ...
+def fields(class_or_instance: DataclassInstance | type[DataclassInstance]) -> tuple[Field[Any], ...]: ...
+
+# HACK: `obj: Never` typing matches if object argument is using `Any` type.
+@overload
+def is_dataclass(obj: Never) -> TypeIs[DataclassInstance | type[DataclassInstance]]: ...  # type: ignore[narrowed-type-not-subtype]  # pyright: ignore[reportGeneralTypeIssues]
+@overload
+def is_dataclass(obj: type) -> TypeIs[type[DataclassInstance]]: ...
+@overload
+def is_dataclass(obj: object) -> TypeIs[DataclassInstance | type[DataclassInstance]]: ...
 
 class FrozenInstanceError(AttributeError): ...
 
-class InitVar(Generic[_T]):
+if sys.version_info >= (3, 9):
+    _InitVarMeta: TypeAlias = type
+else:
+    class _InitVarMeta(type):
+        # Not used, instead `InitVar.__class_getitem__` is called.
+        # pyright (not unreasonably) thinks this is an invalid use of InitVar.
+        def __getitem__(self, params: Any) -> InitVar[Any]: ...  # pyright: ignore[reportInvalidTypeForm]
+
+class InitVar(Generic[_T], metaclass=_InitVarMeta):
     type: Type[_T]
     def __init__(self, type: Type[_T]) -> None: ...
     if sys.version_info >= (3, 9):
         @overload
-        def __class_getitem__(cls, type: Type[_T]) -> InitVar[_T]: ...
+        def __class_getitem__(cls, type: Type[_T]) -> InitVar[_T]: ...  # pyright: ignore[reportInvalidTypeForm]
         @overload
-        def __class_getitem__(cls, type: Any) -> InitVar[Any]: ...
+        def __class_getitem__(cls, type: Any) -> InitVar[Any]: ...  # pyright: ignore[reportInvalidTypeForm]
 
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 12):
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
         *,
-        bases: tuple[type, ...] = ...,
-        namespace: dict[str, Any] | None = ...,
-        init: bool = ...,
-        repr: bool = ...,
-        eq: bool = ...,
-        order: bool = ...,
-        unsafe_hash: bool = ...,
-        frozen: bool = ...,
-        match_args: bool = ...,
-        kw_only: bool = ...,
-        slots: bool = ...,
-        weakref_slot: bool = ...,
+        bases: tuple[type, ...] = (),
+        namespace: dict[str, Any] | None = None,
+        init: bool = True,
+        repr: bool = True,
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+        frozen: bool = False,
+        match_args: bool = True,
+        kw_only: bool = False,
+        slots: bool = False,
+        weakref_slot: bool = False,
+        module: str | None = None,
+    ) -> type: ...
+
+elif sys.version_info >= (3, 11):
+    def make_dataclass(
+        cls_name: str,
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
+        *,
+        bases: tuple[type, ...] = (),
+        namespace: dict[str, Any] | None = None,
+        init: bool = True,
+        repr: bool = True,
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+        frozen: bool = False,
+        match_args: bool = True,
+        kw_only: bool = False,
+        slots: bool = False,
+        weakref_slot: bool = False,
     ) -> type: ...
 
 elif sys.version_info >= (3, 10):
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
         *,
-        bases: tuple[type, ...] = ...,
-        namespace: dict[str, Any] | None = ...,
-        init: bool = ...,
-        repr: bool = ...,
-        eq: bool = ...,
-        order: bool = ...,
-        unsafe_hash: bool = ...,
-        frozen: bool = ...,
-        match_args: bool = ...,
-        kw_only: bool = ...,
-        slots: bool = ...,
+        bases: tuple[type, ...] = (),
+        namespace: dict[str, Any] | None = None,
+        init: bool = True,
+        repr: bool = True,
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+        frozen: bool = False,
+        match_args: bool = True,
+        kw_only: bool = False,
+        slots: bool = False,
     ) -> type: ...
 
 else:
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
         *,
-        bases: tuple[type, ...] = ...,
-        namespace: dict[str, Any] | None = ...,
-        init: bool = ...,
-        repr: bool = ...,
-        eq: bool = ...,
-        order: bool = ...,
-        unsafe_hash: bool = ...,
-        frozen: bool = ...,
+        bases: tuple[type, ...] = (),
+        namespace: dict[str, Any] | None = None,
+        init: bool = True,
+        repr: bool = True,
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+        frozen: bool = False,
     ) -> type: ...
 
-def replace(__obj: _T, **changes: Any) -> _T: ...
+def replace(obj: _DataclassT, /, **changes: Any) -> _DataclassT: ...

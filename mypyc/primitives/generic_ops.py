@@ -9,6 +9,8 @@ will take precedence. If your specialized op doesn't seem to be used,
 check that the priorities are configured properly.
 """
 
+from __future__ import annotations
+
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bool_rprimitive,
@@ -73,6 +75,17 @@ for op, funcname in [
         priority=0,
     )
 
+
+function_op(
+    name="builtins.divmod",
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PyNumber_Divmod",
+    error_kind=ERR_MAGIC,
+    priority=0,
+)
+
+
 for op, funcname in [
     ("+=", "PyNumber_InPlaceAdd"),
     ("-=", "PyNumber_InPlaceSubtract"),
@@ -96,14 +109,25 @@ for op, funcname in [
         priority=0,
     )
 
-binary_op(
-    name="**",
-    arg_types=[object_rprimitive, object_rprimitive],
-    return_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    c_function_name="CPyNumber_Power",
-    priority=0,
-)
+for op, c_function in (("**", "CPyNumber_Power"), ("**=", "CPyNumber_InPlacePower")):
+    binary_op(
+        name=op,
+        arg_types=[object_rprimitive, object_rprimitive],
+        return_type=object_rprimitive,
+        error_kind=ERR_MAGIC,
+        c_function_name=c_function,
+        priority=0,
+    )
+
+for arg_count, c_function in ((2, "CPyNumber_Power"), (3, "PyNumber_Power")):
+    function_op(
+        name="builtins.pow",
+        arg_types=[object_rprimitive] * arg_count,
+        return_type=object_rprimitive,
+        error_kind=ERR_MAGIC,
+        c_function_name=c_function,
+        priority=0,
+    )
 
 binary_op(
     name="in",
@@ -143,8 +167,18 @@ unary_op(
     priority=0,
 )
 
+# abs(obj)
+function_op(
+    name="builtins.abs",
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PyNumber_Absolute",
+    error_kind=ERR_MAGIC,
+    priority=0,
+)
+
 # obj1[obj2]
-method_op(
+py_get_item_op = method_op(
     name="__getitem__",
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
@@ -331,4 +365,20 @@ next_raw_op = custom_op(
     return_type=object_rprimitive,
     c_function_name="CPyIter_Next",
     error_kind=ERR_NEVER,
+)
+
+# this would be aiter(obj) if it existed
+aiter_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_GetAIter",
+    error_kind=ERR_MAGIC,
+)
+
+# this would be anext(obj) if it existed
+anext_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_GetANext",
+    error_kind=ERR_MAGIC,
 )

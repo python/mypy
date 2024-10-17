@@ -1,13 +1,23 @@
-def mkpath(name: str, mode: int = ..., verbose: int = ..., dry_run: int = ...) -> list[str]: ...
-def create_tree(base_dir: str, files: list[str], mode: int = ..., verbose: int = ..., dry_run: int = ...) -> None: ...
+from _typeshed import StrOrBytesPath, StrPath
+from collections.abc import Iterable
+from typing import Literal
+
+def mkpath(name: str, mode: int = 0o777, verbose: bool | Literal[0, 1] = 1, dry_run: bool | Literal[0, 1] = 0) -> list[str]: ...
+def create_tree(
+    base_dir: StrPath,
+    files: Iterable[StrPath],
+    mode: int = 0o777,
+    verbose: bool | Literal[0, 1] = 1,
+    dry_run: bool | Literal[0, 1] = 0,
+) -> None: ...
 def copy_tree(
-    src: str,
+    src: StrPath,
     dst: str,
-    preserve_mode: int = ...,
-    preserve_times: int = ...,
-    preserve_symlinks: int = ...,
-    update: int = ...,
-    verbose: int = ...,
-    dry_run: int = ...,
+    preserve_mode: bool | Literal[0, 1] = 1,
+    preserve_times: bool | Literal[0, 1] = 1,
+    preserve_symlinks: bool | Literal[0, 1] = 0,
+    update: bool | Literal[0, 1] = 0,
+    verbose: bool | Literal[0, 1] = 1,
+    dry_run: bool | Literal[0, 1] = 0,
 ) -> list[str]: ...
-def remove_tree(directory: str, verbose: int = ..., dry_run: int = ...) -> None: ...
+def remove_tree(directory: StrOrBytesPath, verbose: bool | Literal[0, 1] = 1, dry_run: bool | Literal[0, 1] = 0) -> None: ...

@@ -15,8 +15,8 @@ Type                   Description
 ``int``                integer
 ``float``              floating point number
 ``bool``               boolean value (subclass of ``int``)
-``str``                string (unicode in Python 3)
-``bytes``              8-bit string
+``str``                text, sequence of unicode codepoints
+``bytes``              8-bit string, sequence of byte values
 ``object``             an arbitrary object (``object`` is the common base class)
 ====================== ===============================
 

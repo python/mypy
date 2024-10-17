@@ -1,14 +1,14 @@
-from typing import Any
+from typing import Any, ClassVar, Final
 
 from ..cmd import Command
 
-PYTHON_SOURCE_EXTENSION: str
+PYTHON_SOURCE_EXTENSION: Final = ".py"
 
 class install_lib(Command):
     description: str
-    user_options: Any
-    boolean_options: Any
-    negative_opt: Any
+    user_options: ClassVar[list[tuple[str, str | None, str]]]
+    boolean_options: ClassVar[list[str]]
+    negative_opt: ClassVar[dict[str, str]]
     install_dir: Any
     build_dir: Any
     force: int

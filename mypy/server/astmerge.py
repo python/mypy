@@ -45,7 +45,9 @@ Discussion of some notable special cases:
 See the main entry point merge_asts for more details.
 """
 
-from typing import Dict, List, Optional, TypeVar, cast
+from __future__ import annotations
+
+from typing import TypeVar, cast
 
 from mypy.nodes import (
     MDEF,
@@ -71,7 +73,6 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     TypeAlias,
-    TypeAliasExpr,
     TypedDictExpr,
     TypeInfo,
     Var,
@@ -93,7 +94,6 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
-    StarType,
     SyntheticTypeVisitor,
     TupleType,
     Type,
@@ -108,7 +108,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.util import get_prefix, replace_object_state
 
 
@@ -145,7 +145,7 @@ def merge_asts(
 
 def replacement_map_from_symbol_table(
     old: SymbolTable, new: SymbolTable, prefix: str
-) -> Dict[SymbolNode, SymbolNode]:
+) -> dict[SymbolNode, SymbolNode]:
     """Create a new-to-old object identity map by comparing two symbol table revisions.
 
     Both symbol tables must refer to revisions of the same module id. The symbol tables
@@ -153,14 +153,14 @@ def replacement_map_from_symbol_table(
     the given module prefix. Don't recurse into other modules accessible through the symbol
     table.
     """
-    replacements: Dict[SymbolNode, SymbolNode] = {}
+    replacements: dict[SymbolNode, SymbolNode] = {}
     for name, node in old.items():
         if name in new and (
             node.kind == MDEF or node.node and get_prefix(node.node.fullname) == prefix
         ):
             new_node = new[name]
             if (
-                type(new_node.node) == type(node.node)  # noqa
+                type(new_node.node) == type(node.node)
                 and new_node.node
                 and node.node
                 and new_node.node.fullname == node.node.fullname
@@ -172,11 +172,13 @@ def replacement_map_from_symbol_table(
                         node.node.names, new_node.node.names, prefix
                     )
                     replacements.update(type_repl)
+                    if node.node.special_alias and new_node.node.special_alias:
+                        replacements[new_node.node.special_alias] = node.node.special_alias
     return replacements
 
 
 def replace_nodes_in_ast(
-    node: SymbolNode, replacements: Dict[SymbolNode, SymbolNode]
+    node: SymbolNode, replacements: dict[SymbolNode, SymbolNode]
 ) -> SymbolNode:
     """Replace all references to replacement map keys within an AST node, recursively.
 
@@ -200,7 +202,7 @@ class NodeReplaceVisitor(TraverserVisitor):
     replace all references to the old identities.
     """
 
-    def __init__(self, replacements: Dict[SymbolNode, SymbolNode]) -> None:
+    def __init__(self, replacements: dict[SymbolNode, SymbolNode]) -> None:
         self.replacements = replacements
 
     def visit_mypy_file(self, node: MypyFile) -> None:
@@ -209,8 +211,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_mypy_file(node)
 
     def visit_block(self, node: Block) -> None:
-        super().visit_block(node)
         node.body = self.replace_statements(node.body)
+        super().visit_block(node)
 
     def visit_func_def(self, node: FuncDef) -> None:
         node = self.fixup(node)
@@ -247,6 +249,15 @@ class NodeReplaceVisitor(TraverserVisitor):
         for value in tv.values:
             self.fixup_type(value)
         self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
+
+    def process_param_spec_def(self, tv: ParamSpecType) -> None:
+        self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
+
+    def process_type_var_tuple_def(self, tv: TypeVarTupleType) -> None:
+        self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         self.fixup_type(node.type)
@@ -314,10 +325,6 @@ class NodeReplaceVisitor(TraverserVisitor):
         self.process_synthetic_type_info(node.info)
         super().visit_enum_call_expr(node)
 
-    def visit_type_alias_expr(self, node: TypeAliasExpr) -> None:
-        self.fixup_type(node.type)
-        super().visit_type_alias_expr(node)
-
     # Others
 
     def visit_var(self, node: Var) -> None:
@@ -327,6 +334,8 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_type_alias(self, node: TypeAlias) -> None:
         self.fixup_type(node.target)
+        for v in node.alias_tvars:
+            self.fixup_type(v)
         super().visit_type_alias(node)
 
     # Helpers
@@ -334,7 +343,13 @@ class NodeReplaceVisitor(TraverserVisitor):
     def fixup(self, node: SN) -> SN:
         if node in self.replacements:
             new = self.replacements[node]
-            replace_object_state(new, node)
+            skip_slots: tuple[str, ...] = ()
+            if isinstance(node, TypeInfo) and isinstance(new, TypeInfo):
+                # Special case: special_alias is not exposed in symbol tables, but may appear
+                # in external types (e.g. named tuples), so we need to update it manually.
+                skip_slots = ("special_alias",)
+                replace_object_state(new.special_alias, node.special_alias)
+            replace_object_state(new, node, skip_slots=skip_slots)
             return cast(SN, new)
         return node
 
@@ -347,15 +362,16 @@ class NodeReplaceVisitor(TraverserVisitor):
         if node in self.replacements:
             # The subclass relationships may change, so reset all caches relevant to the
             # old MRO.
-            new = cast(TypeInfo, self.replacements[node])
-            TypeState.reset_all_subtype_caches_for(new)
+            new = self.replacements[node]
+            assert isinstance(new, TypeInfo)
+            type_state.reset_all_subtype_caches_for(new)
         return self.fixup(node)
 
-    def fixup_type(self, typ: Optional[Type]) -> None:
+    def fixup_type(self, typ: Type | None) -> None:
         if typ is not None:
             typ.accept(TypeReplaceVisitor(self.replacements))
 
-    def process_type_info(self, info: Optional[TypeInfo]) -> None:
+    def process_type_info(self, info: TypeInfo | None) -> None:
         if info is None:
             return
         self.fixup_type(info.declared_metaclass)
@@ -364,6 +380,8 @@ class NodeReplaceVisitor(TraverserVisitor):
             self.fixup_type(target)
         self.fixup_type(info.tuple_type)
         self.fixup_type(info.typeddict_type)
+        if info.special_alias:
+            self.fixup_type(info.special_alias.target)
         info.defn.info = self.fixup(info)
         replace_nodes_in_symbol_table(info.names, self.replacements)
         for i, item in enumerate(info.mro):
@@ -376,11 +394,11 @@ class NodeReplaceVisitor(TraverserVisitor):
         # have bodies in the AST so we need to iterate over their symbol
         # tables separately, unlike normal classes.
         self.process_type_info(info)
-        for name, node in info.names.items():
+        for node in info.names.values():
             if node.node:
                 node.node.accept(self)
 
-    def replace_statements(self, nodes: List[Statement]) -> List[Statement]:
+    def replace_statements(self, nodes: list[Statement]) -> list[Statement]:
         result = []
         for node in nodes:
             if isinstance(node, SymbolNode):
@@ -397,7 +415,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     NodeReplaceVisitor.process_base_func.
     """
 
-    def __init__(self, replacements: Dict[SymbolNode, SymbolNode]) -> None:
+    def __init__(self, replacements: dict[SymbolNode, SymbolNode]) -> None:
         self.replacements = replacements
 
     def visit_instance(self, typ: Instance) -> None:
@@ -444,13 +462,13 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_erased_type(self, t: ErasedType) -> None:
         # This type should exist only temporarily during type inference
-        raise RuntimeError
+        raise RuntimeError("Cannot handle erased type")
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
 
     def visit_partial_type(self, typ: PartialType) -> None:
-        raise RuntimeError
+        raise RuntimeError("Cannot handle partial type")
 
     def visit_tuple_type(self, typ: TupleType) -> None:
         for item in typ.items:
@@ -464,14 +482,17 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_type_var(self, typ: TypeVarType) -> None:
         typ.upper_bound.accept(self)
+        typ.default.accept(self)
         for value in typ.values:
             value.accept(self)
 
     def visit_param_spec(self, typ: ParamSpecType) -> None:
-        pass
+        typ.upper_bound.accept(self)
+        typ.default.accept(self)
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> None:
         typ.upper_bound.accept(self)
+        typ.default.accept(self)
 
     def visit_unpack_type(self, typ: UnpackType) -> None:
         typ.type.accept(self)
@@ -505,9 +526,6 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_ellipsis_type(self, typ: EllipsisType) -> None:
         pass
 
-    def visit_star_type(self, typ: StarType) -> None:
-        typ.type.accept(self)
-
     def visit_uninhabited_type(self, typ: UninhabitedType) -> None:
         pass
 
@@ -529,14 +547,15 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
 
 def replace_nodes_in_symbol_table(
-    symbols: SymbolTable, replacements: Dict[SymbolNode, SymbolNode]
+    symbols: SymbolTable, replacements: dict[SymbolNode, SymbolNode]
 ) -> None:
-    for name, node in symbols.items():
+    for node in symbols.values():
         if node.node:
             if node.node in replacements:
                 new = replacements[node.node]
                 old = node.node
-                replace_object_state(new, old)
+                # Needed for TypeInfo, see comment in fixup() above.
+                replace_object_state(new, old, skip_slots=("special_alias",))
                 node.node = new
             if isinstance(node.node, (Var, TypeAlias)):
                 # Handle them here just in case these aren't exposed through the AST.

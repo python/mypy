@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Iterable
 
 from mypy_extensions import trait
@@ -18,7 +20,6 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
-    StarType,
     SyntheticTypeVisitor,
     TupleType,
     Type,
@@ -60,16 +61,16 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         # Note that type variable values and upper bound aren't treated as
         # components, since they are components of the type variable
         # definition. We want to traverse everything just once.
-        pass
+        t.default.accept(self)
 
     def visit_param_spec(self, t: ParamSpecType) -> None:
-        pass
+        t.default.accept(self)
 
     def visit_parameters(self, t: Parameters) -> None:
         self.traverse_types(t.arg_types)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
-        pass
+        t.default.accept(self)
 
     def visit_literal_type(self, t: LiteralType) -> None:
         t.fallback.accept(self)
@@ -84,6 +85,12 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         self.traverse_types(t.arg_types)
         t.ret_type.accept(self)
         t.fallback.accept(self)
+
+        if t.type_guard is not None:
+            t.type_guard.accept(self)
+
+        if t.type_is is not None:
+            t.type_is.accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> None:
         self.traverse_types(t.items)
@@ -113,9 +120,6 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
     def visit_type_list(self, t: TypeList) -> None:
         self.traverse_types(t.items)
 
-    def visit_star_type(self, t: StarType) -> None:
-        t.type.accept(self)
-
     def visit_ellipsis_type(self, t: EllipsisType) -> None:
         pass
 
@@ -129,6 +133,9 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         pass
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
+        # TODO: sometimes we want to traverse target as well
+        # We need to find a way to indicate explicitly the intent,
+        # maybe make this method abstract (like for TypeTranslator)?
         self.traverse_types(t.args)
 
     def visit_unpack_type(self, t: UnpackType) -> None:

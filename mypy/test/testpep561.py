@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 import os
 import re
 import subprocess
 import sys
 import tempfile
 from contextlib import contextmanager
-from subprocess import PIPE
-from typing import Iterator, List, Tuple
+from typing import Iterator
 
 import filelock
 
@@ -27,14 +28,14 @@ class PEP561Suite(DataSuite):
 
 
 @contextmanager
-def virtualenv(python_executable: str = sys.executable) -> Iterator[Tuple[str, str]]:
+def virtualenv(python_executable: str = sys.executable) -> Iterator[tuple[str, str]]:
     """Context manager that creates a virtualenv in a temporary directory
 
     Returns the path to the created Python executable
     """
     with tempfile.TemporaryDirectory() as venv_dir:
         proc = subprocess.run(
-            [python_executable, "-m", "venv", venv_dir], cwd=os.getcwd(), stdout=PIPE, stderr=PIPE
+            [python_executable, "-m", "venv", venv_dir], cwd=os.getcwd(), capture_output=True
         )
         if proc.returncode != 0:
             err = proc.stdout.decode("utf-8") + proc.stderr.decode("utf-8")
@@ -45,23 +46,39 @@ def virtualenv(python_executable: str = sys.executable) -> Iterator[Tuple[str, s
             yield venv_dir, os.path.abspath(os.path.join(venv_dir, "bin", "python"))
 
 
+def upgrade_pip(python_executable: str) -> None:
+    """Install pip>=21.3.1. Required for editable installs with PEP 660."""
+    if (
+        sys.version_info >= (3, 11)
+        or (3, 10, 3) <= sys.version_info < (3, 11)
+        or (3, 9, 11) <= sys.version_info < (3, 10)
+        or (3, 8, 13) <= sys.version_info < (3, 9)
+    ):
+        # Skip for more recent Python releases which come with pip>=21.3.1
+        # out of the box - for performance reasons.
+        return
+
+    install_cmd = [python_executable, "-m", "pip", "install", "pip>=21.3.1"]
+    try:
+        with filelock.FileLock(pip_lock, timeout=pip_timeout):
+            proc = subprocess.run(install_cmd, capture_output=True, env=os.environ)
+    except filelock.Timeout as err:
+        raise Exception(f"Failed to acquire {pip_lock}") from err
+    if proc.returncode != 0:
+        raise Exception(proc.stdout.decode("utf-8") + proc.stderr.decode("utf-8"))
+
+
 def install_package(
-    pkg: str, python_executable: str = sys.executable, use_pip: bool = True, editable: bool = False
+    pkg: str, python_executable: str = sys.executable, editable: bool = False
 ) -> None:
     """Install a package from test-data/packages/pkg/"""
     working_dir = os.path.join(package_path, pkg)
     with tempfile.TemporaryDirectory() as dir:
-        if use_pip:
-            install_cmd = [python_executable, "-m", "pip", "install"]
-            if editable:
-                install_cmd.append("-e")
-            install_cmd.append(".")
-        else:
-            install_cmd = [python_executable, "setup.py"]
-            if editable:
-                install_cmd.append("develop")
-            else:
-                install_cmd.append("install")
+        install_cmd = [python_executable, "-m", "pip", "install"]
+        if editable:
+            install_cmd.append("-e")
+        install_cmd.append(".")
+
         # Note that newer versions of pip (21.3+) don't
         # follow this env variable, but this is for compatibility
         env = {"PIP_BUILD": dir}
@@ -69,11 +86,9 @@ def install_package(
         env.update(os.environ)
         try:
             with filelock.FileLock(pip_lock, timeout=pip_timeout):
-                proc = subprocess.run(
-                    install_cmd, cwd=working_dir, stdout=PIPE, stderr=PIPE, env=env
-                )
+                proc = subprocess.run(install_cmd, cwd=working_dir, capture_output=True, env=env)
         except filelock.Timeout as err:
-            raise Exception("Failed to acquire {}".format(pip_lock)) from err
+            raise Exception(f"Failed to acquire {pip_lock}") from err
     if proc.returncode != 0:
         raise Exception(proc.stdout.decode("utf-8") + proc.stderr.decode("utf-8"))
 
@@ -86,18 +101,20 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
     assert python is not None, "Should be impossible"
     pkgs, pip_args = parse_pkgs(testcase.input[0])
     mypy_args = parse_mypy_args(testcase.input[1])
-    use_pip = True
     editable = False
     for arg in pip_args:
-        if arg == "no-pip":
-            use_pip = False
-        elif arg == "editable":
+        if arg == "editable":
             editable = True
-    assert pkgs != [], "No packages to install for PEP 561 test?"
+        else:
+            raise ValueError(f"Unknown pip argument: {arg}")
+    assert pkgs, "No packages to install for PEP 561 test?"
     with virtualenv(python) as venv:
         venv_dir, python_executable = venv
+        if editable:
+            # Editable installs with PEP 660 require pip>=21.3
+            upgrade_pip(python_executable)
         for pkg in pkgs:
-            install_package(pkg, python_executable, use_pip, editable)
+            install_package(pkg, python_executable, editable)
 
         cmd_line = list(mypy_args)
         has_program = not ("-p" in cmd_line or "--package" in cmd_line)
@@ -108,13 +125,13 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
                     f.write(f"{s}\n")
             cmd_line.append(program)
 
-        cmd_line.extend(["--no-error-summary"])
+        cmd_line.extend(["--no-error-summary", "--hide-error-codes"])
         if python_executable != sys.executable:
             cmd_line.append(f"--python-executable={python_executable}")
 
         steps = testcase.find_steps()
         if steps != [[]]:
-            steps = [[]] + steps  # type: ignore[operator,assignment]
+            steps = [[]] + steps
 
         for i, operations in enumerate(steps):
             perform_file_operations(operations)
@@ -137,14 +154,14 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
             assert_string_arrays_equal(
                 expected,
                 output,
-                "Invalid output ({}, line {}){}".format(testcase.file, testcase.line, iter_count),
+                f"Invalid output ({testcase.file}, line {testcase.line}){iter_count}",
             )
 
         if has_program:
             os.remove(program)
 
 
-def parse_pkgs(comment: str) -> Tuple[List[str], List[str]]:
+def parse_pkgs(comment: str) -> tuple[list[str], list[str]]:
     if not comment.startswith("# pkgs:"):
         return ([], [])
     else:
@@ -152,7 +169,7 @@ def parse_pkgs(comment: str) -> Tuple[List[str], List[str]]:
         return ([pkg.strip() for pkg in pkgs_str.split(",")], [arg.strip() for arg in args])
 
 
-def parse_mypy_args(line: str) -> List[str]:
+def parse_mypy_args(line: str) -> list[str]:
     m = re.match("# flags: (.*)$", line)
     if not m:
         return []  # No args; mypy will spit out an error.

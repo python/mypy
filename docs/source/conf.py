@@ -12,6 +12,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+from __future__ import annotations
+
 import os
 import sys
 
@@ -33,7 +35,7 @@ from mypy.version import __version__ as mypy_version
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.intersphinx"]
+extensions = ["sphinx.ext.intersphinx", "docs.source.html_builder", "myst_parser"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -90,7 +92,7 @@ exclude_patterns = []
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = "sphinx"
+# pygments_style = "sphinx"
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
@@ -104,6 +106,12 @@ pygments_style = "sphinx"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 html_theme = "furo"
+
+html_theme_options = {
+    "source_repository": "https://github.com/python/mypy",
+    "source_branch": "master",
+    "source_directory": "docs/source",
+}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -264,9 +272,8 @@ rst_prolog = ".. |...| unicode:: U+2026   .. ellipsis\n"
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
-    "six": ("https://six.readthedocs.io", None),
-    "attrs": ("http://www.attrs.org/en/stable", None),
-    "cython": ("http://docs.cython.org/en/latest", None),
+    "attrs": ("https://www.attrs.org/en/stable/", None),
+    "cython": ("https://docs.cython.org/en/latest", None),
     "monkeytype": ("https://monkeytype.readthedocs.io/en/latest", None),
     "setuptools": ("https://setuptools.readthedocs.io/en/latest", None),
 }

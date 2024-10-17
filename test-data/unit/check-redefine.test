@@ -270,14 +270,17 @@ def f() -> None:
 from typing import TypeVar
 def f() -> None:
     x = TypeVar('x')
-    x = 1  # E: Invalid assignment target
-    reveal_type(x) # N: Revealed type is "builtins.int"
+    x = 1  # E: Invalid assignment target \
+           # E: Incompatible types in assignment (expression has type "int", variable has type "TypeVar")
+    reveal_type(x) # N: Revealed type is "typing.TypeVar"
     y = 1
     # NOTE: '"int" not callable' is due to test stubs
     y = TypeVar('y')  # E: Cannot redefine "y" as a type variable \
-                      # E: "int" not callable
+                      # E: Incompatible types in assignment (expression has type "TypeVar", variable has type "int")
     def h(a: y) -> y: return a # E: Variable "y" is not valid as a type \
                                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testCannotRedefineVarAsModule]
 # flags: --allow-redefinition
@@ -285,7 +288,7 @@ def f() -> None:
     import typing as m
     m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Module)
     n = 1
-    import typing as n # E: Name "n" already defined on line 5
+    import typing as n  # E: Incompatible import of "n" (imported name has type Module, local name has type "int")
 [builtins fixtures/module.pyi]
 
 [case testRedefineLocalWithTypeAnnotation]

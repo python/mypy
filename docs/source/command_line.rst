@@ -96,6 +96,10 @@ Optional arguments
 
     Show program's version number and exit.
 
+.. option:: -O FORMAT, --output FORMAT {json}
+
+    Set a custom output format.
+
 .. _config-file-flag:
 
 Config file
@@ -129,30 +133,12 @@ Import discovery
 The following flags customize how exactly mypy discovers and follows
 imports.
 
-.. option:: --namespace-packages
-
-    This flag enables import discovery to use namespace packages (see
-    :pep:`420`).  In particular, this allows discovery of imported
-    packages that don't have an ``__init__.py`` (or ``__init__.pyi``)
-    file.
-
-    Namespace packages are found (using the PEP 420 rules, which
-    prefers "classic" packages over namespace packages) along the
-    module search path -- this is primarily set from the source files
-    passed on the command line, the ``MYPYPATH`` environment variable,
-    and the :confval:`mypy_path` config option.
-
-    This flag affects how mypy finds modules and packages explicitly passed on
-    the command line. It also affects how mypy determines fully qualified module
-    names for files passed on the command line. See :ref:`Mapping file paths to
-    modules <mapping-paths-to-modules>` for details.
-
 .. option:: --explicit-package-bases
 
     This flag tells mypy that top-level packages will be based in either the
     current directory, or a member of the ``MYPYPATH`` environment variable or
-    :confval:`mypy_path` config option. This option is only useful in
-    conjunction with :option:`--namespace-packages`. See :ref:`Mapping file
+    :confval:`mypy_path` config option. This option is only useful
+    in the absence of `__init__.py`. See :ref:`Mapping file
     paths to modules <mapping-paths-to-modules>` for details.
 
 .. option:: --ignore-missing-imports
@@ -236,6 +222,18 @@ imports.
     setting the :option:`--fast-module-lookup` option.
 
 
+.. option:: --no-namespace-packages
+
+    This flag disables import discovery of namespace packages (see :pep:`420`).
+    In particular, this prevents discovery of packages that don't have an
+    ``__init__.py`` (or ``__init__.pyi``) file.
+
+    This flag affects how mypy finds modules and packages explicitly passed on
+    the command line. It also affects how mypy determines fully qualified module
+    names for files passed on the command line. See :ref:`Mapping file paths to
+    modules <mapping-paths-to-modules>` for details.
+
+
 .. _platform-configuration:
 
 Platform configuration
@@ -251,22 +249,12 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 
     This flag will make mypy type check your code as if it were
     run under Python version X.Y. Without this option, mypy will default to using
-    whatever version of Python is running mypy. Note that the :option:`-2` and
-    :option:`--py2` flags are aliases for :option:`--python-version 2.7 <--python-version>`.
+    whatever version of Python is running mypy.
 
     This flag will attempt to find a Python executable of the corresponding
     version to search for :pep:`561` compliant packages. If you'd like to
     disable this, use the :option:`--no-site-packages` flag (see
     :ref:`import-discovery` for more details).
-
-.. option:: -2, --py2
-
-    Equivalent to running :option:`--python-version 2.7 <--python-version>`.
-
-    .. note::
-
-        To check Python 2 code with mypy, you'll need to install mypy with
-        ``pip install 'mypy[python2]'``.
 
 .. option:: --platform PLATFORM
 
@@ -366,15 +354,48 @@ definitions or calls.
     This flag reports an error whenever a function with type annotations
     calls a function defined without annotations.
 
+.. option:: --untyped-calls-exclude
+
+    This flag allows to selectively disable :option:`--disallow-untyped-calls`
+    for functions and methods defined in specific packages, modules, or classes.
+    Note that each exclude entry acts as a prefix. For example (assuming there
+    are no type annotations for ``third_party_lib`` available):
+
+    .. code-block:: python
+
+        # mypy --disallow-untyped-calls
+        #      --untyped-calls-exclude=third_party_lib.module_a
+        #      --untyped-calls-exclude=foo.A
+        from third_party_lib.module_a import some_func
+        from third_party_lib.module_b import other_func
+        import foo
+
+        some_func()  # OK, function comes from module `third_party_lib.module_a`
+        other_func()  # E: Call to untyped function "other_func" in typed context
+
+        foo.A().meth()  # OK, method was defined in class `foo.A`
+        foo.B().meth()  # E: Call to untyped function "meth" in typed context
+
+        # file foo.py
+        class A:
+            def meth(self): pass
+        class B:
+            def meth(self): pass
+
 .. option:: --disallow-untyped-defs
 
     This flag reports an error whenever it encounters a function definition
-    without type annotations.
+    without type annotations or with incomplete type annotations.
+    (a superset of :option:`--disallow-incomplete-defs`).
+
+    For example, it would report an error for :code:`def f(a, b)` and :code:`def f(a: int, b)`.
 
 .. option:: --disallow-incomplete-defs
 
     This flag reports an error whenever it encounters a partly annotated
-    function definition.
+    function definition, while still allowing entirely unannotated definitions.
+
+    For example, it would report an error for :code:`def f(a: int, b)` but not :code:`def f(a, b)`.
 
 .. option:: --check-untyped-defs
 
@@ -398,42 +419,38 @@ None and Optional handling
 **************************
 
 The following flags adjust how mypy handles values of type ``None``.
-For more details, see :ref:`no_strict_optional`.
 
-.. _no-implicit-optional:
+.. _implicit-optional:
 
-.. option:: --no-implicit-optional
+.. option:: --implicit-optional
 
-    This flag causes mypy to stop treating arguments with a ``None``
-    default value as having an implicit :py:data:`~typing.Optional` type.
+    This flag causes mypy to treat parameters with a ``None``
+    default value as having an implicit optional type (``T | None``).
 
-    For example, by default mypy will assume that the ``x`` parameter
-    is of type ``Optional[int]`` in the code snippet below since
-    the default parameter is ``None``:
+    For example, if this flag is set, mypy would assume that the ``x``
+    parameter is actually of type ``int | None`` in the code snippet below,
+    since the default parameter is ``None``:
 
     .. code-block:: python
 
         def foo(x: int = None) -> None:
             print(x)
 
-    If this flag is set, the above snippet will no longer type check:
-    we must now explicitly indicate that the type is ``Optional[int]``:
+    **Note:** This was disabled by default starting in mypy 0.980.
 
-    .. code-block:: python
-
-        def foo(x: Optional[int] = None) -> None:
-            print(x)
+.. _no_strict_optional:
 
 .. option:: --no-strict-optional
 
-    This flag disables strict checking of :py:data:`~typing.Optional`
+    This flag effectively disables checking of optional
     types and ``None`` values. With this option, mypy doesn't
-    generally check the use of ``None`` values -- they are valid
-    everywhere. See :ref:`no_strict_optional` for more about this feature.
+    generally check the use of ``None`` values -- it is treated
+    as compatible with every type.
 
-    **Note:** Strict optional checking was enabled by default starting in
-    mypy 0.600, and in previous versions it had to be explicitly enabled
-    using ``--strict-optional`` (which is still accepted).
+    .. warning::
+
+        ``--no-strict-optional`` is evil. Avoid using it and definitely do
+        not use it without understanding what it does.
 
 
 .. _configuring-warnings:
@@ -470,9 +487,10 @@ potentially problematic or redundant in some way.
     are when:
 
     -   The function has a ``None`` or ``Any`` return type
-    -   The function has an empty body or a body that is just
-        ellipsis (``...``). Empty functions are often used for
-        abstract methods.
+    -   The function has an empty body and is marked as an abstract method,
+        is in a protocol class, or is in a stub file
+    -  The execution path can never return; for example, if an exception
+        is always raised
 
     Passing in :option:`--no-warn-no-return` will disable these error
     messages in all cases.
@@ -519,6 +537,12 @@ potentially problematic or redundant in some way.
 
         This limitation will be removed in future releases of mypy.
 
+.. option:: --report-deprecated-as-error
+
+    By default, mypy emits notes if your code imports or uses deprecated
+    features.    This flag converts such notes to errors, causing mypy to
+    eventually finish with a non-zero exit code.  Features are considered
+    deprecated when decorated with ``warnings.deprecated``.
 
 .. _miscellaneous-strictness-flags:
 
@@ -561,26 +585,24 @@ of the above sections.
 .. option:: --local-partial-types
 
     In mypy, the most common cases for partial types are variables initialized using ``None``,
-    but without explicit ``Optional`` annotations. By default, mypy won't check partial types
+    but without explicit ``X | None`` annotations. By default, mypy won't check partial types
     spanning module top level or class top level. This flag changes the behavior to only allow
     partial types at local level, therefore it disallows inferring variable type for ``None``
     from two assignments in different scopes. For example:
 
     .. code-block:: python
 
-        from typing import Optional
-
         a = None  # Need type annotation here if using --local-partial-types
-        b: Optional[int] = None
+        b: int | None = None
 
         class Foo:
             bar = None  # Need type annotation here if using --local-partial-types
-            baz: Optional[int] = None
+            baz: int | None = None
 
             def __init__(self) -> None:
                 self.bar = 1
 
-        reveal_type(Foo().bar)  # Union[int, None] without --local-partial-types
+        reveal_type(Foo().bar)  # 'int | None' without --local-partial-types
 
     Note: this option is always implicitly enabled in mypy daemon and will become
     enabled by default for mypy in a future release.
@@ -616,17 +638,43 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import Text
-
        items: list[int]
        if 'some string' in items:  # Error: non-overlapping container check!
            ...
 
-       text: Text
+       text: str
        if text != b'other bytes':  # Error: non-overlapping equality check!
            ...
 
        assert text is not None  # OK, check against None is allowed as a special case.
+
+.. option:: --extra-checks
+
+    This flag enables additional checks that are technically correct but may be
+    impractical in real code. In particular, it prohibits partial overlap in
+    ``TypedDict`` updates, and makes arguments prepended via ``Concatenate``
+    positional-only. For example:
+
+    .. code-block:: python
+
+       from typing import TypedDict
+
+       class Foo(TypedDict):
+           a: int
+
+       class Bar(TypedDict):
+           a: int
+           b: int
+
+       def test(foo: Foo, bar: Bar) -> None:
+           # This is technically unsafe since foo can have a subtype of Foo at
+           # runtime, where type of key "b" is incompatible with int, see below
+           bar.update(foo)
+
+       class Bad(Foo):
+           b: str
+       bad: Bad = {"a": 0, "b": "no"}
+       test(bad, bar)
 
 .. option:: --strict
 
@@ -705,6 +753,17 @@ in error messages.
 
         main.py:12:9: error: Unsupported operand types for / ("int" and "str")
 
+.. option:: --show-error-code-links
+
+    This flag will also display a link to error code documentation, anchored to the error code reported by mypy.
+    The corresponding error code will be highlighted within the documentation page.
+    If we enable this flag, the error message now looks like this::
+
+        main.py:3: error: Unsupported operand types for - ("int" and "str")  [operator]
+        main.py:3: note: See 'https://mypy.rtfd.io/en/stable/_refs.html#code-operator' for more info
+
+
+
 .. option:: --show-error-end
 
     This flag will make mypy show not just that start position where
@@ -713,9 +772,9 @@ in error messages.
     ``file:line:column:end_line:end_column``. This option implies
     ``--show-column-numbers``.
 
-.. option:: --show-error-codes
+.. option:: --hide-error-codes
 
-    This flag will add an error code ``[<code>]`` to error messages. The error
+    This flag will hide the error code ``[<code>]`` from error messages. By default, the error
     code is shown after each error message::
 
         prog.py:1: error: "str" has no attribute "trim"  [attr-defined]
@@ -747,7 +806,18 @@ in error messages.
     disable reporting most additional errors. The limit only applies
     if it seems likely that most of the remaining errors will not be
     useful or they may be overly noisy. If ``N`` is negative, there is
-    no limit. The default limit is 200.
+    no limit. The default limit is -1.
+
+.. option:: --force-uppercase-builtins
+
+    Always use ``List`` instead of ``list`` in error messages,
+    even on Python 3.9+.
+
+.. option:: --force-union-syntax
+
+    Always use ``Union[]`` and ``Optional[]`` for union types
+    in error messages (instead of the ``|`` operator),
+    even on Python 3.10+.
 
 
 .. _incremental:
@@ -840,7 +910,8 @@ in developing or debugging mypy internals.
     submitting them upstream, but also allows you to use a forked version of
     typeshed.
 
-    Note that this doesn't affect third-party library stubs.
+    Note that this doesn't affect third-party library stubs. To test third-party stubs,
+    for example try ``MYPYPATH=stubs/six mypy ...``.
 
 .. _warn-incomplete-stub:
 
@@ -938,6 +1009,66 @@ format into the specified directory.
     To generate this report, you must either manually install the `lxml`_
     library or specify mypy installation with the setuptools extra
     ``mypy[reports]``.
+
+
+Enabling incomplete/experimental features
+*****************************************
+
+.. option:: --enable-incomplete-feature {PreciseTupleTypes, InlineTypedDict}
+
+    Some features may require several mypy releases to implement, for example
+    due to their complexity, potential for backwards incompatibility, or
+    ambiguous semantics that would benefit from feedback from the community.
+    You can enable such features for early preview using this flag. Note that
+    it is not guaranteed that all features will be ultimately enabled by
+    default. In *rare cases* we may decide to not go ahead with certain
+    features.
+
+List of currently incomplete/experimental features:
+
+* ``PreciseTupleTypes``: this feature will infer more precise tuple types in
+  various scenarios. Before variadic types were added to the Python type system
+  by :pep:`646`, it was impossible to express a type like "a tuple with
+  at least two integers". The best type available was ``tuple[int, ...]``.
+  Therefore, mypy applied very lenient checking for variable-length tuples.
+  Now this type can be expressed as ``tuple[int, int, *tuple[int, ...]]``.
+  For such more precise types (when explicitly *defined* by a user) mypy,
+  for example, warns about unsafe index access, and generally handles them
+  in a type-safe manner. However, to avoid problems in existing code, mypy
+  does not *infer* these precise types when it technically can. Here are
+  notable examples where ``PreciseTupleTypes`` infers more precise types:
+
+  .. code-block:: python
+
+     numbers: tuple[int, ...]
+
+     more_numbers = (1, *numbers, 1)
+     reveal_type(more_numbers)
+     # Without PreciseTupleTypes: tuple[int, ...]
+     # With PreciseTupleTypes: tuple[int, *tuple[int, ...], int]
+
+     other_numbers = (1, 1) + numbers
+     reveal_type(other_numbers)
+     # Without PreciseTupleTypes: tuple[int, ...]
+     # With PreciseTupleTypes: tuple[int, int, *tuple[int, ...]]
+
+     if len(numbers) > 2:
+         reveal_type(numbers)
+         # Without PreciseTupleTypes: tuple[int, ...]
+         # With PreciseTupleTypes: tuple[int, int, int, *tuple[int, ...]]
+     else:
+         reveal_type(numbers)
+         # Without PreciseTupleTypes: tuple[int, ...]
+         # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
+
+* ``InlineTypedDict``: this feature enables non-standard syntax for inline
+  :ref:`TypedDicts <typeddict>`, for example:
+
+  .. code-block:: python
+
+     def test_values() -> {"int": int, "str": str}:
+         return {"int": 42, "str": "test"}
+
 
 Miscellaneous
 *************

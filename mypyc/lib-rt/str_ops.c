@@ -117,7 +117,11 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
             PyObject *item = va_arg(args, PyObject *);
             Py_ssize_t itemlen = PyUnicode_GET_LENGTH(item);
             if (itemlen != 0) {
+#if CPY_3_13_FEATURES
+                PyUnicode_CopyCharacters(res, res_offset, item, 0, itemlen);
+#else
                 _PyUnicode_FastCopyCharacters(res, res_offset, item, 0, itemlen);
+#endif
                 res_offset += itemlen;
             }
         }
@@ -188,7 +192,7 @@ PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     return CPyObject_GetSlice(obj, start, end);
 }
 
-/* Check if the given string is true (i.e. it's length isn't zero) */
+/* Check if the given string is true (i.e. its length isn't zero) */
 bool CPyStr_IsTrue(PyObject *obj) {
     Py_ssize_t length = PyUnicode_GET_LENGTH(obj);
     return length != 0;

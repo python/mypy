@@ -25,27 +25,6 @@ Defining a metaclass
     class A(metaclass=M):
         pass
 
-In Python 2, the syntax for defining a metaclass is different:
-
-.. code-block:: python
-
-    class A(object):
-        __metaclass__ = M
-
-Mypy also supports using :py:func:`six.with_metaclass` and :py:func:`@six.add_metaclass <six.add_metaclass>`
-to define metaclass in a portable way:
-
-.. code-block:: python
-
-    import six
-
-    class A(six.with_metaclass(M)):
-        pass
-
-    @six.add_metaclass(M)
-    class C(object):
-        pass
-
 .. _examples:
 
 Metaclass usage example
@@ -55,13 +34,12 @@ Mypy supports the lookup of attributes in the metaclass:
 
 .. code-block:: python
 
-    from typing import Type, TypeVar, ClassVar
-    T = TypeVar('T')
+    from typing import ClassVar, Self
 
     class M(type):
         count: ClassVar[int] = 0
 
-        def make(cls: Type[T]) -> T:
+        def make(cls) -> Self:
             M.count += 1
             return cls()
 
@@ -76,6 +54,9 @@ Mypy supports the lookup of attributes in the metaclass:
 
     b: B = B.make()  # metaclasses are inherited
     print(B.count + " objects were created")  # Error: Unsupported operand types for + ("int" and "str")
+
+.. note::
+    In Python 3.10 and earlier, ``Self`` is available in ``typing_extensions``.
 
 .. _limitations:
 
@@ -93,12 +74,15 @@ so it's better not to combine metaclasses and class hierarchies:
     class A1(metaclass=M1): pass
     class A2(metaclass=M2): pass
 
-    class B1(A1, metaclass=M2): pass  # Mypy Error: Inconsistent metaclass structure for "B1"
+    class B1(A1, metaclass=M2): pass  # Mypy Error: metaclass conflict
     # At runtime the above definition raises an exception
     # TypeError: metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 
-    # Same runtime error as in B1, but mypy does not catch it yet
-    class B12(A1, A2): pass
+    class B12(A1, A2): pass  # Mypy Error: metaclass conflict
+
+    # This can be solved via a common metaclass subtype:
+    class CorrectMeta(M1, M2): pass
+    class B2(A1, A2, metaclass=CorrectMeta): pass  # OK, runtime is also OK
 
 * Mypy does not understand dynamically-computed metaclasses,
   such as ``class A(metaclass=f()): ...``

@@ -1,5 +1,4 @@
 import sys
-
 from _operator import *
 
 __all__ = [
@@ -61,6 +60,9 @@ __all__ = [
 
 if sys.version_info >= (3, 11):
     __all__ += ["call"]
+
+if sys.version_info >= (3, 14):
+    __all__ += ["is_none", "is_not_none"]
 
 __lt__ = lt
 __le__ = le

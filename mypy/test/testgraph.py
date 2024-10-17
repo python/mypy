@@ -1,19 +1,14 @@
 """Test cases for graph processing code in build.py."""
 
-import sys
-from typing import AbstractSet, Dict, List, Set
+from __future__ import annotations
 
-from mypy.build import (
-    BuildManager,
-    BuildSourceSet,
-    State,
-    order_ascc,
-    sorted_components,
-    strongly_connected_components,
-    topsort,
-)
+import sys
+from typing import AbstractSet
+
+from mypy.build import BuildManager, BuildSourceSet, State, order_ascc, sorted_components
 from mypy.errors import Errors
 from mypy.fscache import FileSystemCache
+from mypy.graph_utils import strongly_connected_components, topsort
 from mypy.modulefinder import SearchPaths
 from mypy.options import Options
 from mypy.plugin import Plugin
@@ -28,19 +23,20 @@ class GraphSuite(Suite):
         b = frozenset({"B"})
         c = frozenset({"C"})
         d = frozenset({"D"})
-        data: Dict[AbstractSet[str], Set[AbstractSet[str]]] = {a: {b, c}, b: {d}, c: {d}}
+        data: dict[AbstractSet[str], set[AbstractSet[str]]] = {a: {b, c}, b: {d}, c: {d}}
         res = list(topsort(data))
         assert_equal(res, [{d}, {b, c}, {a}])
 
     def test_scc(self) -> None:
         vertices = {"A", "B", "C", "D"}
-        edges: Dict[str, List[str]] = {"A": ["B", "C"], "B": ["C"], "C": ["B", "D"], "D": []}
+        edges: dict[str, list[str]] = {"A": ["B", "C"], "B": ["C"], "C": ["B", "D"], "D": []}
         sccs = {frozenset(x) for x in strongly_connected_components(vertices, edges)}
         assert_equal(sccs, {frozenset({"A"}), frozenset({"B", "C"}), frozenset({"D"})})
 
     def _make_manager(self) -> BuildManager:
-        errors = Errors()
         options = Options()
+        options.use_builtins_fixtures = True
+        errors = Errors(options)
         fscache = FileSystemCache()
         search_paths = SearchPaths((), (), (), ())
         manager = BuildManager(
@@ -54,7 +50,7 @@ class GraphSuite(Suite):
             plugin=Plugin(options),
             plugins_snapshot={},
             errors=errors,
-            flush_errors=lambda msgs, serious: None,
+            flush_errors=lambda filename, msgs, serious: None,
             fscache=fscache,
             stdout=sys.stdout,
             stderr=sys.stderr,

@@ -8,6 +8,7 @@ __all__ = [
     "CIRCUMFLEX",
     "CIRCUMFLEXEQUAL",
     "COLON",
+    "COLONEQUAL",
     "COMMA",
     "DEDENT",
     "DOT",
@@ -59,22 +60,23 @@ __all__ = [
     "STAREQUAL",
     "STRING",
     "TILDE",
+    "TYPE_COMMENT",
+    "TYPE_IGNORE",
     "VBAR",
     "VBAREQUAL",
     "tok_name",
+    "ENCODING",
+    "NL",
+    "COMMENT",
 ]
-
-if sys.version_info < (3, 7) or sys.version_info >= (3, 8):
+if sys.version_info < (3, 13):
     __all__ += ["ASYNC", "AWAIT"]
-
-if sys.version_info >= (3, 7):
-    __all__ += ["ENCODING", "NL", "COMMENT"]
-
-if sys.version_info >= (3, 8):
-    __all__ += ["COLONEQUAL", "TYPE_COMMENT", "TYPE_IGNORE"]
 
 if sys.version_info >= (3, 10):
     __all__ += ["SOFT_KEYWORD"]
+
+if sys.version_info >= (3, 12):
+    __all__ += ["EXCLAMATION", "FSTRING_END", "FSTRING_MIDDLE", "FSTRING_START"]
 
 ENDMARKER: int
 NAME: int
@@ -129,8 +131,7 @@ AT: int
 RARROW: int
 ELLIPSIS: int
 ATEQUAL: int
-if sys.version_info < (3, 7) or sys.version_info >= (3, 8):
-    # These were removed in Python 3.7 but added back in Python 3.8
+if sys.version_info < (3, 13):
     AWAIT: int
     ASYNC: int
 OP: int
@@ -138,17 +139,21 @@ ERRORTOKEN: int
 N_TOKENS: int
 NT_OFFSET: int
 tok_name: dict[int, str]
-if sys.version_info >= (3, 7):
-    COMMENT: int
-    NL: int
-    ENCODING: int
-if sys.version_info >= (3, 8):
-    TYPE_COMMENT: int
-    TYPE_IGNORE: int
-    COLONEQUAL: int
-    EXACT_TOKEN_TYPES: dict[str, int]
+COMMENT: int
+NL: int
+ENCODING: int
+TYPE_COMMENT: int
+TYPE_IGNORE: int
+COLONEQUAL: int
+EXACT_TOKEN_TYPES: dict[str, int]
 if sys.version_info >= (3, 10):
     SOFT_KEYWORD: int
+
+if sys.version_info >= (3, 12):
+    EXCLAMATION: int
+    FSTRING_END: int
+    FSTRING_MIDDLE: int
+    FSTRING_START: int
 
 def ISTERMINAL(x: int) -> bool: ...
 def ISNONTERMINAL(x: int) -> bool: ...

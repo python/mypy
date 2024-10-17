@@ -1,9 +1,11 @@
-from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
+from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final, NamedTuple, Sequence, TypeVar, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.messages import format_type
 from mypy.nodes import ARG_POS, Argument, Block, ClassDef, Context, SymbolTable, TypeInfo, Var
+from mypy.options import Options
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
 from mypy.plugins.common import add_method_to_class
 from mypy.subtypes import is_subtype
@@ -37,16 +39,16 @@ SINGLEDISPATCH_REGISTER_METHOD: Final = f"{SINGLEDISPATCH_TYPE}.register"
 SINGLEDISPATCH_CALLABLE_CALL_METHOD: Final = f"{SINGLEDISPATCH_TYPE}.__call__"
 
 
-def get_singledispatch_info(typ: Instance) -> Optional[SingledispatchTypeVars]:
+def get_singledispatch_info(typ: Instance) -> SingledispatchTypeVars | None:
     if len(typ.args) == 2:
-        return SingledispatchTypeVars(*typ.args)  # type: ignore
+        return SingledispatchTypeVars(*typ.args)  # type: ignore[arg-type]
     return None
 
 
 T = TypeVar("T")
 
 
-def get_first_arg(args: List[List[T]]) -> Optional[T]:
+def get_first_arg(args: list[list[T]]) -> T | None:
     """Get the element that corresponds to the first argument passed to the function"""
     if args and args[0]:
         return args[0][0]
@@ -75,10 +77,10 @@ def make_fake_register_class_instance(
     return Instance(info, type_args)
 
 
-PluginContext = Union[FunctionContext, MethodContext]
+PluginContext: _TypeAlias = Union[FunctionContext, MethodContext]
 
 
-def fail(ctx: PluginContext, msg: str, context: Optional[Context]) -> None:
+def fail(ctx: PluginContext, msg: str, context: Context | None) -> None:
     """Emit an error message.
 
     This tries to emit an error message at the location specified by `context`, falling back to the
@@ -98,7 +100,6 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
     """Called for functools.singledispatch"""
     func_type = get_proper_type(get_first_arg(ctx.arg_types))
     if isinstance(func_type, CallableType):
-
         if len(func_type.arg_kinds) < 1:
             fail(
                 ctx, "Singledispatch function requires at least one argument", func_type.definition
@@ -142,7 +143,7 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
         return register_callable
     elif isinstance(first_arg_type, CallableType):
         # TODO: do more checking for registered functions
-        register_function(ctx, ctx.type, first_arg_type)
+        register_function(ctx, ctx.type, first_arg_type, ctx.api.options)
         # The typeshed stubs for register say that the function returned is Callable[..., T], even
         # though the function returned is the same as the one passed in. We return the type of the
         # function so that mypy can properly type check cases where the registered function is used
@@ -157,7 +158,8 @@ def register_function(
     ctx: PluginContext,
     singledispatch_obj: Instance,
     func: Type,
-    register_arg: Optional[Type] = None,
+    options: Options,
+    register_arg: Type | None = None,
 ) -> None:
     """Register a function"""
 
@@ -178,11 +180,10 @@ def register_function(
 
     fallback_dispatch_type = fallback.arg_types[0]
     if not is_subtype(dispatch_type, fallback_dispatch_type):
-
         fail(
             ctx,
             "Dispatch type {} must be subtype of fallback function first argument {}".format(
-                format_type(dispatch_type), format_type(fallback_dispatch_type)
+                format_type(dispatch_type, options), format_type(fallback_dispatch_type, options)
             ),
             func.definition,
         )
@@ -190,7 +191,7 @@ def register_function(
     return
 
 
-def get_dispatch_type(func: CallableType, register_arg: Optional[Type]) -> Optional[Type]:
+def get_dispatch_type(func: CallableType, register_arg: Type | None) -> Type | None:
     if register_arg is not None:
         return register_arg
     if func.arg_types:
@@ -202,10 +203,12 @@ def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> 
     """Called on the function after passing a type to register"""
     register_callable = ctx.type
     if isinstance(register_callable, Instance):
-        type_args = RegisterCallableInfo(*register_callable.args)  # type: ignore
+        type_args = RegisterCallableInfo(*register_callable.args)  # type: ignore[arg-type]
         func = get_first_arg(ctx.arg_types)
         if func is not None:
-            register_function(ctx, type_args.singledispatch_obj, func, type_args.register_type)
+            register_function(
+                ctx, type_args.singledispatch_obj, func, ctx.api.options, type_args.register_type
+            )
             # see call to register_function in the callback for register
             return func
     return ctx.default_return_type

@@ -147,6 +147,23 @@ a :py:data:`~typing.ClassVar` annotation, but this might not do what you'd expec
 In this case the type of the attribute will be implicitly ``Any``.
 This behavior will change in the future, since it's surprising.
 
+An explicit :py:data:`~typing.ClassVar` may be particularly handy to distinguish
+between class and instance variables with callable types. For example:
+
+.. code-block:: python
+
+   from collections.abc import Callable
+   from typing import ClassVar
+
+   class A:
+       foo: Callable[[int], None]
+       bar: ClassVar[Callable[[A, int], None]]
+       bad: Callable[[A], None]
+
+   A().foo(42)  # OK
+   A().bar(42)  # OK
+   A().bad()  # Error: Too few arguments
+
 .. note::
    A :py:data:`~typing.ClassVar` type parameter cannot include type variables:
    ``ClassVar[T]`` and ``ClassVar[list[T]]``
@@ -192,6 +209,38 @@ override has a compatible signature:
    subtype such as ``list[int]``. Similarly, you can vary argument types
    **contravariantly** -- subclasses can have more general argument types.
 
+In order to ensure that your code remains correct when renaming methods,
+it can be helpful to explicitly mark a method as overriding a base
+method. This can be done with the ``@override`` decorator. ``@override``
+can be imported from ``typing`` starting with Python 3.12 or from
+``typing_extensions`` for use with older Python versions. If the base
+method is then renamed while the overriding method is not, mypy will
+show an error:
+
+.. code-block:: python
+
+   from typing import override
+
+   class Base:
+       def f(self, x: int) -> None:
+           ...
+       def g_renamed(self, y: str) -> None:
+           ...
+
+   class Derived1(Base):
+       @override
+       def f(self, x: int) -> None:   # OK
+           ...
+
+       @override
+       def g(self, y: str) -> None:   # Error: no corresponding base method found
+           ...
+
+.. note::
+
+   Use :ref:`--enable-error-code explicit-override <code-explicit-override>` to require
+   that method overrides use the ``@override`` decorator. Emit an error if it is missing.
+
 You can also override a statically typed method with a dynamically
 typed one. This allows dynamically typed code to override methods
 defined in library classes without worrying about their type
@@ -215,7 +264,7 @@ effect at runtime:
 Abstract base classes and multiple inheritance
 **********************************************
 
-Mypy supports Python :doc:`abstract base classes <library/abc>` (ABCs). Abstract classes
+Mypy supports Python :doc:`abstract base classes <python:library/abc>` (ABCs). Abstract classes
 have at least one abstract method or property that must be implemented
 by any *concrete* (non-abstract) subclass. You can define abstract base
 classes using the :py:class:`abc.ABCMeta` metaclass and the :py:func:`@abc.abstractmethod <abc.abstractmethod>`
@@ -243,11 +292,6 @@ function decorator. Example:
 
    x = Animal()  # Error: 'Animal' is abstract due to 'eat' and 'can_walk'
    y = Cat()     # OK
-
-.. note::
-
-   In Python 2.7 you have to use :py:func:`@abc.abstractproperty <abc.abstractproperty>` to define
-   an abstract property.
 
 Note that mypy performs checking for unimplemented abstract methods
 even if you omit the :py:class:`~abc.ABCMeta` metaclass. This can be useful if the
@@ -297,6 +341,26 @@ however:
    in this case, but any attempt to construct an instance will be
    flagged as an error.
 
+Mypy allows you to omit the body for an abstract method, but if you do so,
+it is unsafe to call such method via ``super()``. For example:
+
+.. code-block:: python
+
+   from abc import abstractmethod
+   class Base:
+       @abstractmethod
+       def foo(self) -> int: pass
+       @abstractmethod
+       def bar(self) -> int:
+           return 0
+   class Sub(Base):
+       def foo(self) -> int:
+           return super().foo() + 1  # error: Call to abstract method "foo" of "Base"
+                                     # with trivial body via super() is unsafe
+       @abstractmethod
+       def bar(self) -> int:
+           return super().bar() + 1  # This is OK however.
+
 A class can inherit any number of classes, both abstract and
 concrete. As with normal overrides, a dynamically typed method can
 override or implement a statically typed method defined in any base
@@ -308,8 +372,7 @@ property or an instance variable.
 Slots
 *****
 
-When a class has explicitly defined
-`__slots__ <https://docs.python.org/3/reference/datamodel.html#slots>`_,
+When a class has explicitly defined :std:term:`__slots__`,
 mypy will check that all attributes assigned to are members of ``__slots__``:
 
 .. code-block:: python

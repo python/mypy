@@ -1,5 +1,6 @@
 """Tests for mypy incremental error output."""
-from typing import List
+
+from __future__ import annotations
 
 from mypy import build
 from mypy.errors import CompileError
@@ -25,10 +26,11 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
     """
     options = Options()
     options.show_traceback = True
+    options.hide_error_codes = True
 
-    logged_messages: List[str] = []
+    logged_messages: list[str] = []
 
-    def flush_errors(msgs: List[str], serious: bool) -> None:
+    def flush_errors(filename: str | None, msgs: list[str], serious: bool) -> None:
         if msgs:
             logged_messages.append("==== Errors flushed ====")
             logged_messages.extend(msgs)
@@ -40,7 +42,5 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
         assert e.messages == []
 
     assert_string_arrays_equal(
-        testcase.output,
-        logged_messages,
-        "Invalid output ({}, line {})".format(testcase.file, testcase.line),
+        testcase.output, logged_messages, f"Invalid output ({testcase.file}, line {testcase.line})"
     )

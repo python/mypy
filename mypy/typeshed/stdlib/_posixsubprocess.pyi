@@ -1,24 +1,33 @@
 import sys
+from _typeshed import StrOrBytesPath
 from collections.abc import Callable, Sequence
+from typing import SupportsIndex
 
 if sys.platform != "win32":
     def cloexec_pipe() -> tuple[int, int]: ...
     def fork_exec(
-        args: Sequence[str],
+        args: Sequence[StrOrBytesPath] | None,
         executable_list: Sequence[bytes],
         close_fds: bool,
-        fds_to_keep: Sequence[int],
+        pass_fds: tuple[int, ...],
         cwd: str,
-        env_list: Sequence[bytes],
+        env: Sequence[bytes] | None,
         p2cread: int,
         p2cwrite: int,
-        c2pred: int,
+        c2pread: int,
         c2pwrite: int,
         errread: int,
         errwrite: int,
         errpipe_read: int,
         errpipe_write: int,
         restore_signals: int,
-        start_new_session: int,
+        call_setsid: int,
+        pgid_to_set: int,
+        gid: SupportsIndex | None,
+        extra_groups: list[int] | None,
+        uid: SupportsIndex | None,
+        child_umask: int,
         preexec_fn: Callable[[], None],
+        allow_vfork: bool,
+        /,
     ) -> int: ...

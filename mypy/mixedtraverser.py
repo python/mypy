@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 from mypy.nodes import (
     AssertTypeExpr,
@@ -25,6 +25,9 @@ from mypy.typetraverser import TypeTraverserVisitor
 class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
     """Recursive traversal of both Node and Type objects."""
 
+    def __init__(self) -> None:
+        self.in_type_alias_expr = False
+
     # Symbol nodes
 
     def visit_var(self, var: Var) -> None:
@@ -45,7 +48,9 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
 
     def visit_type_alias_expr(self, o: TypeAliasExpr) -> None:
         super().visit_type_alias_expr(o)
-        o.type.accept(self)
+        self.in_type_alias_expr = True
+        o.node.target.accept(self)
+        self.in_type_alias_expr = False
 
     def visit_type_var_expr(self, o: TypeVarExpr) -> None:
         super().visit_type_var_expr(o)
@@ -102,6 +107,6 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
 
     # Helpers
 
-    def visit_optional_type(self, t: Optional[Type]) -> None:
+    def visit_optional_type(self, t: Type | None) -> None:
         if t:
             t.accept(self)

@@ -21,15 +21,14 @@ from _csv import (
     unregister_dialect as unregister_dialect,
     writer as writer,
 )
-from _typeshed import Self, SupportsWrite
-from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
-from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Literal
 
-if sys.version_info >= (3, 8):
-    from builtins import dict as _DictReadMapping
-else:
-    from collections import OrderedDict as _DictReadMapping
+if sys.version_info >= (3, 12):
+    from _csv import QUOTE_NOTNULL as QUOTE_NOTNULL, QUOTE_STRINGS as QUOTE_STRINGS
+
+from _typeshed import SupportsWrite
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
+from typing import Any, Generic, Literal, TypeVar, overload
+from typing_extensions import Self
 
 if sys.version_info >= (3, 12):
     from types import GenericAlias
@@ -41,7 +40,6 @@ __all__ = [
     "QUOTE_NONE",
     "Error",
     "Dialect",
-    "__doc__",
     "excel",
     "excel_tab",
     "field_size_limit",
@@ -52,37 +50,25 @@ __all__ = [
     "list_dialects",
     "Sniffer",
     "unregister_dialect",
-    "__version__",
     "DictReader",
     "DictWriter",
     "unix_dialect",
 ]
+if sys.version_info >= (3, 12):
+    __all__ += ["QUOTE_STRINGS", "QUOTE_NOTNULL"]
+if sys.version_info < (3, 13):
+    __all__ += ["__doc__", "__version__"]
 
 _T = TypeVar("_T")
 
-class excel(Dialect):
-    delimiter: str
-    quotechar: str
-    doublequote: bool
-    skipinitialspace: bool
-    lineterminator: str
-    quoting: _QuotingType
+class excel(Dialect): ...
+class excel_tab(excel): ...
+class unix_dialect(Dialect): ...
 
-class excel_tab(excel):
-    delimiter: str
-
-class unix_dialect(Dialect):
-    delimiter: str
-    quotechar: str
-    doublequote: bool
-    skipinitialspace: bool
-    lineterminator: str
-    quoting: _QuotingType
-
-class DictReader(Generic[_T], Iterator[_DictReadMapping[_T | Any, str | Any]]):
+class DictReader(Iterator[dict[_T | Any, str | Any]], Generic[_T]):
     fieldnames: Sequence[_T] | None
-    restkey: str | None
-    restval: str | None
+    restkey: _T | None
+    restval: str | Any | None
     reader: _reader
     dialect: _DialectLike
     line_num: int
@@ -91,41 +77,41 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T | Any, str | Any]]):
         self,
         f: Iterable[str],
         fieldnames: Sequence[_T],
-        restkey: str | None = ...,
-        restval: str | None = ...,
-        dialect: _DialectLike = ...,
+        restkey: _T | None = None,
+        restval: str | Any | None = None,
+        dialect: _DialectLike = "excel",
         *,
-        delimiter: str = ...,
-        quotechar: str | None = ...,
-        escapechar: str | None = ...,
-        doublequote: bool = ...,
-        skipinitialspace: bool = ...,
-        lineterminator: str = ...,
-        quoting: _QuotingType = ...,
-        strict: bool = ...,
+        delimiter: str = ",",
+        quotechar: str | None = '"',
+        escapechar: str | None = None,
+        doublequote: bool = True,
+        skipinitialspace: bool = False,
+        lineterminator: str = "\r\n",
+        quoting: _QuotingType = 0,
+        strict: bool = False,
     ) -> None: ...
     @overload
     def __init__(
         self: DictReader[str],
         f: Iterable[str],
-        fieldnames: Sequence[str] | None = ...,
-        restkey: str | None = ...,
-        restval: str | None = ...,
-        dialect: _DialectLike = ...,
+        fieldnames: Sequence[str] | None = None,
+        restkey: str | None = None,
+        restval: str | None = None,
+        dialect: _DialectLike = "excel",
         *,
-        delimiter: str = ...,
-        quotechar: str | None = ...,
-        escapechar: str | None = ...,
-        doublequote: bool = ...,
-        skipinitialspace: bool = ...,
-        lineterminator: str = ...,
-        quoting: _QuotingType = ...,
-        strict: bool = ...,
+        delimiter: str = ",",
+        quotechar: str | None = '"',
+        escapechar: str | None = None,
+        doublequote: bool = True,
+        skipinitialspace: bool = False,
+        lineterminator: str = "\r\n",
+        quoting: _QuotingType = 0,
+        strict: bool = False,
     ) -> None: ...
-    def __iter__(self: Self) -> Self: ...
-    def __next__(self) -> _DictReadMapping[_T | Any, str | Any]: ...
+    def __iter__(self) -> Self: ...
+    def __next__(self) -> dict[_T | Any, str | Any]: ...
     if sys.version_info >= (3, 12):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 class DictWriter(Generic[_T]):
     fieldnames: Collection[_T]
@@ -136,31 +122,26 @@ class DictWriter(Generic[_T]):
         self,
         f: SupportsWrite[str],
         fieldnames: Collection[_T],
-        restval: Any | None = ...,
-        extrasaction: Literal["raise", "ignore"] = ...,
-        dialect: _DialectLike = ...,
+        restval: Any | None = "",
+        extrasaction: Literal["raise", "ignore"] = "raise",
+        dialect: _DialectLike = "excel",
         *,
-        delimiter: str = ...,
-        quotechar: str | None = ...,
-        escapechar: str | None = ...,
-        doublequote: bool = ...,
-        skipinitialspace: bool = ...,
-        lineterminator: str = ...,
-        quoting: _QuotingType = ...,
-        strict: bool = ...,
+        delimiter: str = ",",
+        quotechar: str | None = '"',
+        escapechar: str | None = None,
+        doublequote: bool = True,
+        skipinitialspace: bool = False,
+        lineterminator: str = "\r\n",
+        quoting: _QuotingType = 0,
+        strict: bool = False,
     ) -> None: ...
-    if sys.version_info >= (3, 8):
-        def writeheader(self) -> Any: ...
-    else:
-        def writeheader(self) -> None: ...
-
+    def writeheader(self) -> Any: ...
     def writerow(self, rowdict: Mapping[_T, Any]) -> Any: ...
     def writerows(self, rowdicts: Iterable[Mapping[_T, Any]]) -> None: ...
     if sys.version_info >= (3, 12):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 class Sniffer:
     preferred: list[str]
-    def __init__(self) -> None: ...
-    def sniff(self, sample: str, delimiters: str | None = ...) -> type[Dialect]: ...
+    def sniff(self, sample: str, delimiters: str | None = None) -> type[Dialect]: ...
     def has_header(self, sample: str) -> bool: ...

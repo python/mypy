@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 from mypyc.ir.rtypes import (
@@ -53,8 +55,8 @@ class TestStruct(unittest.TestCase):
             "b:<RPrimitive builtins.object>}>"
         )
         r1 = RStruct("Bar", ["c"], [int32_rprimitive])
-        assert str(r1) == "Bar{c:int32}"
-        assert repr(r1) == "<RStruct Bar{c:<RPrimitive int32>}>"
+        assert str(r1) == "Bar{c:i32}"
+        assert repr(r1) == "<RStruct Bar{c:<RPrimitive i32>}>"
         r2 = RStruct("Baz", [], [])
         assert str(r2) == "Baz{}"
         assert repr(r2) == "<RStruct Baz{}>"

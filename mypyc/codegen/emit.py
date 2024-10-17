@@ -1,14 +1,16 @@
 """Utilities for emitting C code."""
 
+from __future__ import annotations
+
+import pprint
 import sys
-from typing import Callable, Dict, List, Optional, Set, Tuple, Union
+import textwrap
+from typing import Callable, Final
 
-from typing_extensions import Final
-
-from mypy.backports import OrderedDict
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
     ATTR_PREFIX,
+    BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     NATIVE_PREFIX,
     REG_PREFIX,
@@ -32,6 +34,7 @@ from mypyc.ir.rtypes import (
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -44,6 +47,7 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive,
     is_str_rprimitive,
     is_tuple_rprimitive,
+    is_uint8_rprimitive,
     object_rprimitive,
     optional_value_type,
 )
@@ -73,10 +77,10 @@ class HeaderDeclaration:
 
     def __init__(
         self,
-        decl: Union[str, List[str]],
-        defn: Optional[List[str]] = None,
+        decl: str | list[str],
+        defn: list[str] | None = None,
         *,
-        dependencies: Optional[Set[str]] = None,
+        dependencies: set[str] | None = None,
         is_type: bool = False,
         needs_export: bool = False,
     ) -> None:
@@ -93,8 +97,8 @@ class EmitterContext:
     def __init__(
         self,
         names: NameGenerator,
-        group_name: Optional[str] = None,
-        group_map: Optional[Dict[str, Optional[str]]] = None,
+        group_name: str | None = None,
+        group_map: dict[str, str | None] | None = None,
     ) -> None:
         """Setup shared emitter state.
 
@@ -108,7 +112,7 @@ class EmitterContext:
         self.group_name = group_name
         self.group_map = group_map or {}
         # Groups that this group depends on
-        self.group_deps: Set[str] = set()
+        self.group_deps: set[str] = set()
 
         # The map below is used for generating declarations and
         # definitions at the top of the C file. The main idea is that they can
@@ -117,7 +121,7 @@ class EmitterContext:
         # A map of a C identifier to whatever the C identifier declares. Currently this is
         # used for declaring structs and the key corresponds to the name of the struct.
         # The declaration contains the body of the struct.
-        self.declarations: Dict[str, HeaderDeclaration] = OrderedDict()
+        self.declarations: dict[str, HeaderDeclaration] = {}
 
         self.literals = Literals()
 
@@ -141,7 +145,7 @@ class TracebackAndGotoHandler(ErrorHandler):
     """Add traceback item and goto label on error."""
 
     def __init__(
-        self, label: str, source_path: str, module_name: str, traceback_entry: Tuple[str, int]
+        self, label: str, source_path: str, module_name: str, traceback_entry: tuple[str, int]
     ) -> None:
         self.label = label
         self.source_path = source_path
@@ -162,14 +166,14 @@ class Emitter:
     def __init__(
         self,
         context: EmitterContext,
-        value_names: Optional[Dict[Value, str]] = None,
-        capi_version: Optional[Tuple[int, int]] = None,
+        value_names: dict[Value, str] | None = None,
+        capi_version: tuple[int, int] | None = None,
     ) -> None:
         self.context = context
         self.capi_version = capi_version or sys.version_info[:2]
         self.names = context.names
         self.value_names = value_names or {}
-        self.fragments: List[str] = []
+        self.fragments: list[str] = []
         self._indent = 0
 
     # Low-level operations
@@ -190,10 +194,31 @@ class Emitter:
     def attr(self, name: str) -> str:
         return ATTR_PREFIX + name
 
-    def emit_line(self, line: str = "") -> None:
+    def object_annotation(self, obj: object, line: str) -> str:
+        """Build a C comment with an object's string represention.
+
+        If the comment exceeds the line length limit, it's wrapped into a
+        multiline string (with the extra lines indented to be aligned with
+        the first line's comment).
+
+        If it contains illegal characters, an empty string is returned."""
+        line_width = self._indent + len(line)
+        formatted = pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
+        if any(x in formatted for x in ("/*", "*/", "\0")):
+            return ""
+
+        if "\n" in formatted:
+            first_line, rest = formatted.split("\n", maxsplit=1)
+            comment_continued = textwrap.indent(rest, (line_width + 3) * " ")
+            return f" /* {first_line}\n{comment_continued} */"
+        else:
+            return f" /* {formatted} */"
+
+    def emit_line(self, line: str = "", *, ann: object = None) -> None:
         if line.startswith("}"):
             self.dedent()
-        self.fragments.append(self._indent * " " + line + "\n")
+        comment = self.object_annotation(ann, line) if ann is not None else ""
+        self.fragments.append(self._indent * " " + line + comment + "\n")
         if line.endswith("{"):
             self.indent()
 
@@ -201,15 +226,18 @@ class Emitter:
         for line in lines:
             self.emit_line(line)
 
-    def emit_label(self, label: Union[BasicBlock, str]) -> None:
+    def emit_label(self, label: BasicBlock | str) -> None:
         if isinstance(label, str):
             text = label
         else:
+            if label.label == 0 or not label.referenced:
+                return
+
             text = self.label(label)
         # Extra semicolon prevents an error when the next line declares a tempvar
         self.fragments.append(f"{text}: ;\n")
 
-    def emit_from_emitter(self, emitter: "Emitter") -> None:
+    def emit_from_emitter(self, emitter: Emitter) -> None:
         self.fragments.extend(emitter.fragments)
 
     def emit_printf(self, fmt: str, *args: str) -> None:
@@ -251,12 +279,12 @@ class Emitter:
         else:
             return ""
 
-    def get_group_prefix(self, obj: Union[ClassIR, FuncDecl]) -> str:
+    def get_group_prefix(self, obj: ClassIR | FuncDecl) -> str:
         """Get the group prefix for an object."""
         # See docs above
         return self.get_module_group_prefix(obj.module_name)
 
-    def static_name(self, id: str, module: Optional[str], prefix: str = STATIC_PREFIX) -> str:
+    def static_name(self, id: str, module: str | None, prefix: str = STATIC_PREFIX) -> str:
         """Create name of a C static variable.
 
         These are used for literals and imported modules, among other
@@ -302,7 +330,7 @@ class Emitter:
     def native_function_name(self, fn: FuncDecl) -> str:
         return f"{NATIVE_PREFIX}{fn.cname(self.names)}"
 
-    def tuple_c_declaration(self, rtuple: RTuple) -> List[str]:
+    def tuple_c_declaration(self, rtuple: RTuple) -> list[str]:
         result = [
             f"#ifndef MYPYC_DECLARED_{rtuple.struct_name}",
             f"#define MYPYC_DECLARED_{rtuple.struct_name}",
@@ -318,32 +346,89 @@ class Emitter:
                 result.append(f"{self.ctype_spaced(typ)}f{i};")
                 i += 1
         result.append(f"}} {rtuple.struct_name};")
-        values = self.tuple_undefined_value_helper(rtuple)
-        result.append(
-            "static {} {} = {{ {} }};".format(
-                self.ctype(rtuple), self.tuple_undefined_value(rtuple), "".join(values)
-            )
-        )
         result.append("#endif")
         result.append("")
 
         return result
 
+    def bitmap_field(self, index: int) -> str:
+        """Return C field name used for attribute bitmap."""
+        n = index // BITMAP_BITS
+        if n == 0:
+            return "bitmap"
+        return f"bitmap{n + 1}"
+
+    def attr_bitmap_expr(self, obj: str, cl: ClassIR, index: int) -> str:
+        """Return reference to the attribute definedness bitmap."""
+        cast = f"({cl.struct_name(self.names)} *)"
+        attr = self.bitmap_field(index)
+        return f"({cast}{obj})->{attr}"
+
+    def emit_attr_bitmap_set(
+        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str
+    ) -> None:
+        """Mark an attribute as defined in the attribute bitmap.
+
+        Assumes that the attribute is tracked in the bitmap (only some attributes
+        use the bitmap). If 'value' is not equal to the error value, do nothing.
+        """
+        self._emit_attr_bitmap_update(value, obj, rtype, cl, attr, clear=False)
+
+    def emit_attr_bitmap_clear(self, obj: str, rtype: RType, cl: ClassIR, attr: str) -> None:
+        """Mark an attribute as undefined in the attribute bitmap.
+
+        Unlike emit_attr_bitmap_set, clear unconditionally.
+        """
+        self._emit_attr_bitmap_update("", obj, rtype, cl, attr, clear=True)
+
+    def _emit_attr_bitmap_update(
+        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str, clear: bool
+    ) -> None:
+        if value:
+            check = self.error_value_check(rtype, value, "==")
+            self.emit_line(f"if (unlikely({check})) {{")
+        index = cl.bitmap_attrs.index(attr)
+        mask = 1 << (index & (BITMAP_BITS - 1))
+        bitmap = self.attr_bitmap_expr(obj, cl, index)
+        if clear:
+            self.emit_line(f"{bitmap} &= ~{mask};")
+        else:
+            self.emit_line(f"{bitmap} |= {mask};")
+        if value:
+            self.emit_line("}")
+
     def use_vectorcall(self) -> bool:
         return use_vectorcall(self.capi_version)
 
     def emit_undefined_attr_check(
-        self, rtype: RType, attr_expr: str, compare: str, unlikely: bool = False
+        self,
+        rtype: RType,
+        attr_expr: str,
+        compare: str,
+        obj: str,
+        attr: str,
+        cl: ClassIR,
+        *,
+        unlikely: bool = False,
     ) -> None:
+        check = self.error_value_check(rtype, attr_expr, compare)
+        if unlikely:
+            check = f"unlikely({check})"
+        if rtype.error_overlap:
+            index = cl.bitmap_attrs.index(attr)
+            bit = 1 << (index & (BITMAP_BITS - 1))
+            attr = self.bitmap_field(index)
+            obj_expr = f"({cl.struct_name(self.names)} *){obj}"
+            check = f"{check} && !(({obj_expr})->{attr} & {bit})"
+        self.emit_line(f"if ({check}) {{")
+
+    def error_value_check(self, rtype: RType, value: str, compare: str) -> str:
         if isinstance(rtype, RTuple):
-            check = "({})".format(
-                self.tuple_undefined_check_cond(rtype, attr_expr, self.c_undefined_value, compare)
+            return self.tuple_undefined_check_cond(
+                rtype, value, self.c_error_value, compare, check_exception=False
             )
         else:
-            check = "({} {} {})".format(attr_expr, compare, self.c_undefined_value(rtype))
-        if unlikely:
-            check = f"(unlikely{check})"
-        self.emit_line(f"if {check} {{")
+            return f"{value} {compare} {self.c_error_value(rtype)}"
 
     def tuple_undefined_check_cond(
         self,
@@ -351,38 +436,49 @@ class Emitter:
         tuple_expr_in_c: str,
         c_type_compare_val: Callable[[RType], str],
         compare: str,
+        *,
+        check_exception: bool = True,
     ) -> str:
         if len(rtuple.types) == 0:
             # empty tuple
             return "{}.empty_struct_error_flag {} {}".format(
                 tuple_expr_in_c, compare, c_type_compare_val(int_rprimitive)
             )
-        item_type = rtuple.types[0]
+        if rtuple.error_overlap:
+            i = 0
+            item_type = rtuple.types[0]
+        else:
+            for i, typ in enumerate(rtuple.types):
+                if not typ.error_overlap:
+                    item_type = rtuple.types[i]
+                    break
+            else:
+                assert False, "not expecting tuple with error overlap"
         if isinstance(item_type, RTuple):
             return self.tuple_undefined_check_cond(
-                item_type, tuple_expr_in_c + ".f0", c_type_compare_val, compare
+                item_type, tuple_expr_in_c + f".f{i}", c_type_compare_val, compare
             )
         else:
-            return "{}.f0 {} {}".format(tuple_expr_in_c, compare, c_type_compare_val(item_type))
+            check = f"{tuple_expr_in_c}.f{i} {compare} {c_type_compare_val(item_type)}"
+            if rtuple.error_overlap and check_exception:
+                check += " && PyErr_Occurred()"
+            return check
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
-        return "tuple_undefined_" + rtuple.unique_id
+        """Undefined tuple value suitable in an expression."""
+        return f"({rtuple.struct_name}) {self.c_initializer_undefined_value(rtuple)}"
 
-    def tuple_undefined_value_helper(self, rtuple: RTuple) -> List[str]:
-        res = []
-        # see tuple_c_declaration()
-        if len(rtuple.types) == 0:
-            return [self.c_undefined_value(int_rprimitive)]
-        for item in rtuple.types:
-            if not isinstance(item, RTuple):
-                res.append(self.c_undefined_value(item))
-            else:
-                sub_list = self.tuple_undefined_value_helper(item)
-                res.append("{ ")
-                res.extend(sub_list)
-                res.append(" }")
-            res.append(", ")
-        return res[:-1]
+    def c_initializer_undefined_value(self, rtype: RType) -> str:
+        """Undefined value represented in a form suitable for variable initialization."""
+        if isinstance(rtype, RTuple):
+            if not rtype.types:
+                # Empty tuples contain a flag so that they can still indicate
+                # error values.
+                return f"{{ {int_rprimitive.c_undefined} }}"
+            items = ", ".join([self.c_initializer_undefined_value(t) for t in rtype.types])
+            return f"{{ {items} }}"
+        else:
+            return self.c_undefined_value(rtype)
 
     # Higher-level operations
 
@@ -460,10 +556,10 @@ class Emitter:
         typ: RType,
         *,
         declare_dest: bool = False,
-        error: Optional[ErrorHandler] = None,
+        error: ErrorHandler | None = None,
         raise_exception: bool = True,
         optional: bool = False,
-        src_type: Optional[RType] = None,
+        src_type: RType | None = None,
         likely: bool = True,
     ) -> None:
         """Emit code for casting a value of given type.
@@ -590,7 +686,7 @@ class Emitter:
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check, optional)
-            self.emit_lines(f"    {dest} = {src};".format(dest, src), "else {")
+            self.emit_lines(f"    {dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
         elif is_none_rprimitive(typ):
@@ -631,7 +727,7 @@ class Emitter:
                 )
                 self.emit_line("goto %s;" % error.label)
                 return
-            self.emit_line('CPy_TypeError("{}", {}); '.format(self.pretty_name(typ), src))
+            self.emit_line(f'CPy_TypeError("{self.pretty_name(typ)}", {src}); ')
         if isinstance(error, AssignHandler):
             self.emit_line("%s = NULL;" % dest)
         elif isinstance(error, GotoHandler):
@@ -652,7 +748,7 @@ class Emitter:
         declare_dest: bool,
         error: ErrorHandler,
         optional: bool,
-        src_type: Optional[RType],
+        src_type: RType | None,
         raise_exception: bool,
     ) -> None:
         """Emit cast to a union type.
@@ -689,7 +785,7 @@ class Emitter:
         typ: RTuple,
         declare_dest: bool,
         error: ErrorHandler,
-        src_type: Optional[RType],
+        src_type: RType | None,
     ) -> None:
         """Emit cast to a tuple type.
 
@@ -740,7 +836,7 @@ class Emitter:
         typ: RType,
         *,
         declare_dest: bool = False,
-        error: Optional[ErrorHandler] = None,
+        error: ErrorHandler | None = None,
         raise_exception: bool = True,
         optional: bool = False,
         borrow: bool = False,
@@ -805,18 +901,43 @@ class Emitter:
             self.emit_line(f"    {dest} = 1;")
         elif is_int64_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
             if declare_dest:
                 self.emit_line(f"int64_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt64({src});")
-            # TODO: Handle 'optional'
-            # TODO: Handle 'failure'
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
         elif is_int32_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
             if declare_dest:
-                self.emit_line("int32_t {};".format(dest))
-            self.emit_line("{} = CPyLong_AsInt32({});".format(dest, src))
-            # TODO: Handle 'optional'
-            # TODO: Handle 'failure'
+                self.emit_line(f"int32_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsInt32({src});")
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_int16_rprimitive(typ):
+            # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
+            if declare_dest:
+                self.emit_line(f"int16_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsInt16({src});")
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_uint8_rprimitive(typ):
+            # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
+            if declare_dest:
+                self.emit_line(f"uint8_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsUInt8({src});")
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_float_rprimitive(typ):
+            assert not optional  # Not supported for overlapping error values
+            if declare_dest:
+                self.emit_line(f"double {dest};")
+            # TODO: Don't use __float__ and __index__
+            self.emit_line(f"{dest} = PyFloat_AsDouble({src});")
+            self.emit_lines(f"if ({dest} == -1.0 && PyErr_Occurred()) {{", failure, "}")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             if declare_dest:
@@ -901,10 +1022,12 @@ class Emitter:
             self.emit_lines(f"{declaration}{dest} = Py_None;")
             if not can_borrow:
                 self.emit_inc_ref(dest, object_rprimitive)
-        elif is_int32_rprimitive(typ):
+        elif is_int32_rprimitive(typ) or is_int16_rprimitive(typ) or is_uint8_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLong({src});")
         elif is_int64_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLongLong({src});")
+        elif is_float_rprimitive(typ):
+            self.emit_line(f"{declaration}{dest} = PyFloat_FromDouble({src});")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")
@@ -925,14 +1048,18 @@ class Emitter:
 
     def emit_error_check(self, value: str, rtype: RType, failure: str) -> None:
         """Emit code for checking a native function return value for uncaught exception."""
-        if not isinstance(rtype, RTuple):
-            self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
-        else:
+        if isinstance(rtype, RTuple):
             if len(rtype.types) == 0:
                 return  # empty tuples can't fail.
             else:
                 cond = self.tuple_undefined_check_cond(rtype, value, self.c_error_value, "==")
                 self.emit_line(f"if ({cond}) {{")
+        elif rtype.error_overlap:
+            # The error value is also valid as a normal value, so we need to also check
+            # for a raised exception.
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)} && PyErr_Occurred()) {{")
+        else:
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
         self.emit_lines(failure, "}")
 
     def emit_gc_visit(self, target: str, rtype: RType) -> None:
@@ -982,7 +1109,7 @@ class Emitter:
             assert False, "emit_gc_clear() not implemented for %s" % repr(rtype)
 
     def emit_traceback(
-        self, source_path: str, module_name: str, traceback_entry: Tuple[str, int]
+        self, source_path: str, module_name: str, traceback_entry: tuple[str, int]
     ) -> None:
         return self._emit_traceback("CPy_AddTraceback", source_path, module_name, traceback_entry)
 
@@ -990,7 +1117,7 @@ class Emitter:
         self,
         source_path: str,
         module_name: str,
-        traceback_entry: Tuple[str, int],
+        traceback_entry: tuple[str, int],
         *,
         typ: RType,
         src: str,
@@ -1006,7 +1133,7 @@ class Emitter:
         func: str,
         source_path: str,
         module_name: str,
-        traceback_entry: Tuple[str, int],
+        traceback_entry: tuple[str, int],
         type_str: str = "",
         src: str = "",
     ) -> None:
@@ -1025,3 +1152,42 @@ class Emitter:
         self.emit_line(line)
         if DEBUG_ERRORS:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
+    def emit_unbox_failure_with_overlapping_error_value(
+        self, dest: str, typ: RType, failure: str
+    ) -> None:
+        self.emit_line(f"if ({dest} == {self.c_error_value(typ)} && PyErr_Occurred()) {{")
+        self.emit_line(failure)
+        self.emit_line("}")
+
+
+def c_array_initializer(components: list[str], *, indented: bool = False) -> str:
+    """Construct an initializer for a C array variable.
+
+    Components are C expressions valid in an initializer.
+
+    For example, if components are ["1", "2"], the result
+    would be "{1, 2}", which can be used like this:
+
+        int a[] = {1, 2};
+
+    If the result is long, split it into multiple lines.
+    """
+    indent = " " * 4 if indented else ""
+    res = []
+    current: list[str] = []
+    cur_len = 0
+    for c in components:
+        if not current or cur_len + 2 + len(indent) + len(c) < 70:
+            current.append(c)
+            cur_len += len(c) + 2
+        else:
+            res.append(indent + ", ".join(current))
+            current = [c]
+            cur_len = len(c)
+    if not res:
+        # Result fits on a single line
+        return "{%s}" % ", ".join(current)
+    # Multi-line result
+    res.append(indent + ", ".join(current))
+    return "{\n    " + ",\n    ".join(res) + "\n" + indent + "}"

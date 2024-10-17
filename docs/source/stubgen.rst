@@ -127,12 +127,22 @@ alter the default behavior:
     unwanted side effects, such as the running of tests. Stubgen tries to skip test
     modules even without this option, but this does not always work.
 
-.. option:: --parse-only
+.. option:: --no-analysis
 
     Don't perform semantic analysis of source files. This may generate
     worse stubs -- in particular, some module, class, and function aliases may
     be represented as variables with the ``Any`` type. This is generally only
-    useful if semantic analysis causes a critical mypy error.
+    useful if semantic analysis causes a critical mypy error.  Does not apply to
+    C extension modules.  Incompatible with :option:`--inspect-mode`.
+
+.. option:: --inspect-mode
+
+    Import and inspect modules instead of parsing source code. This is the default
+    behavior for C modules and pyc-only packages.  The flag is useful to force
+    inspection for pure Python modules that make use of dynamically generated
+    members that would otherwise be omitted when using the default behavior of
+    code parsing.  Implies :option:`--no-analysis` as analysis requires source
+    code.
 
 .. option:: --doc-dir PATH
 
@@ -146,10 +156,6 @@ Additional flags
 .. option:: -h, --help
 
     Show help message and exit.
-
-.. option:: --py2
-
-    Run stubgen in Python 2 mode (the default is Python 3 mode).
 
 .. option:: --ignore-errors
 
@@ -167,17 +173,15 @@ Additional flags
     Instead, only export imported names that are not referenced in the module
     that contains the import.
 
+.. option:: --include-docstrings
+
+    Include docstrings in stubs. This will add docstrings to Python function and
+    classes stubs and to C extension function stubs.
+
 .. option:: --search-path PATH
 
     Specify module search directories, separated by colons (only used if
     :option:`--no-import` is given).
-
-.. option:: --python-executable PATH
-
-    Use Python interpreter at ``PATH`` for importing modules and runtime
-    introspection. This has no effect with :option:`--no-import`, and this only works
-    in Python 2 mode. In Python 3 mode the Python interpreter used to run stubgen
-    will always be used.
 
 .. option:: -o PATH, --output PATH
 

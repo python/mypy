@@ -1,6 +1,9 @@
 """Watch parts of the file system for changes."""
 
-from typing import AbstractSet, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
+from __future__ import annotations
+
+import os
+from typing import AbstractSet, Iterable, NamedTuple
 
 from mypy.fscache import FileSystemCache
 
@@ -31,10 +34,10 @@ class FileSystemWatcher:
 
     def __init__(self, fs: FileSystemCache) -> None:
         self.fs = fs
-        self._paths: Set[str] = set()
-        self._file_data: Dict[str, Optional[FileData]] = {}
+        self._paths: set[str] = set()
+        self._file_data: dict[str, FileData | None] = {}
 
-    def dump_file_data(self) -> Dict[str, Tuple[float, int, str]]:
+    def dump_file_data(self) -> dict[str, tuple[float, int, str]]:
         return {k: v for k, v in self._file_data.items() if v is not None}
 
     def set_file_data(self, path: str, data: FileData) -> None:
@@ -54,8 +57,7 @@ class FileSystemWatcher:
                 del self._file_data[path]
         self._paths -= set(paths)
 
-    def _update(self, path: str) -> None:
-        st = self.fs.stat(path)
+    def _update(self, path: str, st: os.stat_result) -> None:
         hash_digest = self.fs.hash_digest(path)
         self._file_data[path] = FileData(st.st_mtime, st.st_size, hash_digest)
 
@@ -63,9 +65,8 @@ class FileSystemWatcher:
         changed = set()
         for path in paths:
             old = self._file_data[path]
-            try:
-                st = self.fs.stat(path)
-            except FileNotFoundError:
+            st = self.fs.stat_or_none(path)
+            if st is None:
                 if old is not None:
                     # File was deleted.
                     changed.add(path)
@@ -74,13 +75,13 @@ class FileSystemWatcher:
                 if old is None:
                     # File is new.
                     changed.add(path)
-                    self._update(path)
+                    self._update(path, st)
                 # Round mtimes down, to match the mtimes we write to meta files
                 elif st.st_size != old.st_size or int(st.st_mtime) != int(old.st_mtime):
                     # Only look for changes if size or mtime has changed as an
                     # optimization, since calculating hash is expensive.
                     new_hash = self.fs.hash_digest(path)
-                    self._update(path)
+                    self._update(path, st)
                     if st.st_size != old.st_size or new_hash != old.hash:
                         # Changed file.
                         changed.add(path)
@@ -90,7 +91,7 @@ class FileSystemWatcher:
         """Return paths that have changes since the last call, in the watched set."""
         return self._find_changed(self._paths)
 
-    def update_changed(self, remove: List[str], update: List[str]) -> AbstractSet[str]:
+    def update_changed(self, remove: list[str], update: list[str]) -> AbstractSet[str]:
         """Alternative to find_changed() given explicit changes.
 
         This only calls self.fs.stat() on added or updated files, not

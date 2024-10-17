@@ -5,7 +5,7 @@
 
 from typing import Iterable, TypeVar, Generic
 
-T = TypeVar('T')
+T = TypeVar('T', covariant=True)
 
 class object:
     def __init__(self): pass
@@ -18,3 +18,4 @@ class function: pass
 # We need int for indexing tuples.
 class int: pass
 class str: pass # For convenience
+class dict: pass

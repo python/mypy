@@ -5,7 +5,7 @@ def g():
 MypyFile:1(
   FuncDef:1(
     g
-    Block:1(
+    Block:2(
       ReturnStmt:2(
         LambdaExpr:2(
           Args(
@@ -52,7 +52,7 @@ def g():
 MypyFile:1(
   FuncDef:1(
     g
-    Block:1(
+    Block:2(
       ReturnStmt:2(
         LambdaExpr:2(
           Block:2(

@@ -4,6 +4,8 @@ Note: Varying-length tuples are represented as boxed Python tuple
 objects, i.e. tuple_rprimitive (RPrimitive), not RTuple.
 """
 
+from __future__ import annotations
+
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC
 from mypyc.ir.rtypes import (
     bit_rprimitive,

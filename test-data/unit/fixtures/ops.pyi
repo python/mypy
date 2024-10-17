@@ -24,16 +24,12 @@ class tuple(Sequence[Tco]):
 
 class function: pass
 
-class bool: pass
-
 class str:
     def __init__(self, x: 'int') -> None: pass
     def __add__(self, x: 'str') -> 'str': pass
     def __eq__(self, x: object) -> bool: pass
     def startswith(self, x: 'str') -> bool: pass
     def strip(self) -> 'str': pass
-
-class unicode: pass
 
 class int:
     def __add__(self, x: 'int') -> 'int': pass
@@ -56,6 +52,8 @@ class int:
     def __gt__(self, x: 'int') -> bool: pass
     def __ge__(self, x: 'int') -> bool: pass
 
+class bool(int): pass
+
 class float:
     def __add__(self, x: 'float') -> 'float': pass
     def __radd__(self, x: 'float') -> 'float': pass
@@ -74,3 +72,5 @@ def __print(a1: object = None, a2: object = None, a3: object = None,
             a4: object = None) -> None: pass
 
 class ellipsis: pass
+
+class dict: pass

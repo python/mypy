@@ -61,9 +61,9 @@ The analysis runs after IR building as a separate pass. Since we only
 run this on __init__ methods, this analysis pass will be fairly quick.
 """
 
-from typing import List, Set, Tuple
+from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final, Set, Tuple
 
 from mypyc.analysis.dataflow import (
     CFG,
@@ -97,7 +97,7 @@ from mypyc.ir.rtypes import RInstance
 dump_always_defined: Final = False
 
 
-def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
+def analyze_always_defined_attrs(class_irs: list[ClassIR]) -> None:
     """Find always defined attributes all classes of a compilation unit.
 
     Also tag attribute initialization ops to not decref the previous
@@ -108,7 +108,7 @@ def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
 
     This is the main entry point.
     """
-    seen: Set[ClassIR] = set()
+    seen: set[ClassIR] = set()
 
     # First pass: only look at target class and classes in MRO
     for cl in class_irs:
@@ -119,8 +119,13 @@ def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
     for cl in class_irs:
         update_always_defined_attrs_using_subclasses(cl, seen)
 
+    # Final pass: detect attributes that need to use a bitmap to track definedness
+    seen = set()
+    for cl in class_irs:
+        detect_undefined_bitmap(cl, seen)
 
-def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> None:
+
+def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: set[ClassIR]) -> None:
     if cl in seen:
         return
 
@@ -152,7 +157,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
     maybe_defined = analyze_maybe_defined_attrs_in_init(
         m.blocks, self_reg, cl.attrs_with_defaults, cfg
     )
-    all_attrs: Set[str] = set()
+    all_attrs: set[str] = set()
     for base in cl.mro:
         all_attrs.update(base.attributes)
     maybe_undefined = analyze_maybe_undefined_attrs_in_init(
@@ -184,13 +189,13 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
 
 
 def find_always_defined_attributes(
-    blocks: List[BasicBlock],
+    blocks: list[BasicBlock],
     self_reg: Register,
-    all_attrs: Set[str],
+    all_attrs: set[str],
     maybe_defined: AnalysisResult[str],
     maybe_undefined: AnalysisResult[str],
     dirty: AnalysisResult[None],
-) -> Set[str]:
+) -> set[str]:
     """Find attributes that are always initialized in some basic blocks.
 
     The analysis results are expected to be up-to-date for the blocks.
@@ -234,13 +239,13 @@ def find_always_defined_attributes(
 
 
 def find_sometimes_defined_attributes(
-    blocks: List[BasicBlock],
+    blocks: list[BasicBlock],
     self_reg: Register,
     maybe_defined: AnalysisResult[str],
     dirty: AnalysisResult[None],
-) -> Set[str]:
+) -> set[str]:
     """Find attributes that are sometimes initialized in some basic blocks."""
-    attrs: Set[str] = set()
+    attrs: set[str] = set()
     for block in blocks:
         for i, op in enumerate(block.ops):
             # Only look at possibly defined attributes at exits.
@@ -256,7 +261,7 @@ def find_sometimes_defined_attributes(
 
 
 def mark_attr_initialiation_ops(
-    blocks: List[BasicBlock],
+    blocks: list[BasicBlock],
     self_reg: Register,
     maybe_defined: AnalysisResult[str],
     dirty: AnalysisResult[None],
@@ -277,7 +282,7 @@ def mark_attr_initialiation_ops(
 GenAndKill = Tuple[Set[str], Set[str]]
 
 
-def attributes_initialized_by_init_call(op: Call) -> Set[str]:
+def attributes_initialized_by_init_call(op: Call) -> set[str]:
     """Calculate attributes that are always initialized by a super().__init__ call."""
     self_type = op.fn.sig.args[0].type
     assert isinstance(self_type, RInstance)
@@ -285,7 +290,7 @@ def attributes_initialized_by_init_call(op: Call) -> Set[str]:
     return {a for base in cl.mro for a in base.attributes if base.is_always_defined(a)}
 
 
-def attributes_maybe_initialized_by_init_call(op: Call) -> Set[str]:
+def attributes_maybe_initialized_by_init_call(op: Call) -> set[str]:
     """Calculate attributes that may be initialized by a super().__init__ call."""
     self_type = op.fn.sig.args[0].type
     assert isinstance(self_type, RInstance)
@@ -303,34 +308,34 @@ class AttributeMaybeDefinedVisitor(BaseAnalysisVisitor[str]):
     def __init__(self, self_reg: Register) -> None:
         self.self_reg = self_reg
 
-    def visit_branch(self, op: Branch) -> Tuple[Set[str], Set[str]]:
+    def visit_branch(self, op: Branch) -> tuple[set[str], set[str]]:
         return set(), set()
 
-    def visit_return(self, op: Return) -> Tuple[Set[str], Set[str]]:
+    def visit_return(self, op: Return) -> tuple[set[str], set[str]]:
         return set(), set()
 
-    def visit_unreachable(self, op: Unreachable) -> Tuple[Set[str], Set[str]]:
+    def visit_unreachable(self, op: Unreachable) -> tuple[set[str], set[str]]:
         return set(), set()
 
-    def visit_register_op(self, op: RegisterOp) -> Tuple[Set[str], Set[str]]:
+    def visit_register_op(self, op: RegisterOp) -> tuple[set[str], set[str]]:
         if isinstance(op, SetAttr) and op.obj is self.self_reg:
             return {op.attr}, set()
         if isinstance(op, Call) and op.fn.class_name and op.fn.name == "__init__":
             return attributes_maybe_initialized_by_init_call(op), set()
         return set(), set()
 
-    def visit_assign(self, op: Assign) -> Tuple[Set[str], Set[str]]:
+    def visit_assign(self, op: Assign) -> tuple[set[str], set[str]]:
         return set(), set()
 
-    def visit_assign_multi(self, op: AssignMulti) -> Tuple[Set[str], Set[str]]:
+    def visit_assign_multi(self, op: AssignMulti) -> tuple[set[str], set[str]]:
         return set(), set()
 
-    def visit_set_mem(self, op: SetMem) -> Tuple[Set[str], Set[str]]:
+    def visit_set_mem(self, op: SetMem) -> tuple[set[str], set[str]]:
         return set(), set()
 
 
 def analyze_maybe_defined_attrs_in_init(
-    blocks: List[BasicBlock], self_reg: Register, attrs_with_defaults: Set[str], cfg: CFG
+    blocks: list[BasicBlock], self_reg: Register, attrs_with_defaults: set[str], cfg: CFG
 ) -> AnalysisResult[str]:
     return run_analysis(
         blocks=blocks,
@@ -352,34 +357,34 @@ class AttributeMaybeUndefinedVisitor(BaseAnalysisVisitor[str]):
     def __init__(self, self_reg: Register) -> None:
         self.self_reg = self_reg
 
-    def visit_branch(self, op: Branch) -> Tuple[Set[str], Set[str]]:
+    def visit_branch(self, op: Branch) -> tuple[set[str], set[str]]:
         return set(), set()
 
-    def visit_return(self, op: Return) -> Tuple[Set[str], Set[str]]:
+    def visit_return(self, op: Return) -> tuple[set[str], set[str]]:
         return set(), set()
 
-    def visit_unreachable(self, op: Unreachable) -> Tuple[Set[str], Set[str]]:
+    def visit_unreachable(self, op: Unreachable) -> tuple[set[str], set[str]]:
         return set(), set()
 
-    def visit_register_op(self, op: RegisterOp) -> Tuple[Set[str], Set[str]]:
+    def visit_register_op(self, op: RegisterOp) -> tuple[set[str], set[str]]:
         if isinstance(op, SetAttr) and op.obj is self.self_reg:
             return set(), {op.attr}
         if isinstance(op, Call) and op.fn.class_name and op.fn.name == "__init__":
             return set(), attributes_initialized_by_init_call(op)
         return set(), set()
 
-    def visit_assign(self, op: Assign) -> Tuple[Set[str], Set[str]]:
+    def visit_assign(self, op: Assign) -> tuple[set[str], set[str]]:
         return set(), set()
 
-    def visit_assign_multi(self, op: AssignMulti) -> Tuple[Set[str], Set[str]]:
+    def visit_assign_multi(self, op: AssignMulti) -> tuple[set[str], set[str]]:
         return set(), set()
 
-    def visit_set_mem(self, op: SetMem) -> Tuple[Set[str], Set[str]]:
+    def visit_set_mem(self, op: SetMem) -> tuple[set[str], set[str]]:
         return set(), set()
 
 
 def analyze_maybe_undefined_attrs_in_init(
-    blocks: List[BasicBlock], self_reg: Register, initial_undefined: Set[str], cfg: CFG
+    blocks: list[BasicBlock], self_reg: Register, initial_undefined: set[str], cfg: CFG
 ) -> AnalysisResult[str]:
     return run_analysis(
         blocks=blocks,
@@ -391,7 +396,7 @@ def analyze_maybe_undefined_attrs_in_init(
     )
 
 
-def update_always_defined_attrs_using_subclasses(cl: ClassIR, seen: Set[ClassIR]) -> None:
+def update_always_defined_attrs_using_subclasses(cl: ClassIR, seen: set[ClassIR]) -> None:
     """Remove attributes not defined in all subclasses from always defined attrs."""
     if cl in seen:
         return
@@ -406,3 +411,26 @@ def update_always_defined_attrs_using_subclasses(cl: ClassIR, seen: Set[ClassIR]
                 removed.add(attr)
     cl._always_initialized_attrs -= removed
     seen.add(cl)
+
+
+def detect_undefined_bitmap(cl: ClassIR, seen: set[ClassIR]) -> None:
+    if cl.is_trait:
+        return
+
+    if cl in seen:
+        return
+    seen.add(cl)
+    for base in cl.base_mro[1:]:
+        detect_undefined_bitmap(cl, seen)
+
+    if len(cl.base_mro) > 1:
+        cl.bitmap_attrs.extend(cl.base_mro[1].bitmap_attrs)
+    for n, t in cl.attributes.items():
+        if t.error_overlap and not cl.is_always_defined(n):
+            cl.bitmap_attrs.append(n)
+
+    for base in cl.mro[1:]:
+        if base.is_trait:
+            for n, t in base.attributes.items():
+                if t.error_overlap and not cl.is_always_defined(n) and n not in cl.bitmap_attrs:
+                    cl.bitmap_attrs.append(n)

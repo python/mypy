@@ -6,7 +6,7 @@ What's this?
 
 This directory contains the source code for Mypy documentation (under `source/`)
 and build scripts. The documentation uses Sphinx and reStructuredText. We use
-`sphinx-rtd-theme` as the documentation theme.
+`furo` as the documentation theme.
 
 Building the documentation
 --------------------------
@@ -15,13 +15,13 @@ Install Sphinx and other dependencies (i.e. theme) needed for the documentation.
 From the `docs` directory, use `pip`:
 
 ```
-$ pip install -r requirements-docs.txt
+pip install -r requirements-docs.txt
 ```
 
 Build the documentation like this:
 
 ```
-$ make html
+make html
 ```
 
 The built documentation will be placed in the `docs/build` directory. Open
@@ -33,13 +33,13 @@ Helpful documentation build commands
 Clean the documentation build:
 
 ```
-$ make clean
+make clean
 ```
 
 Test and check the links found in the documentation:
 
 ```
-$ make linkcheck
+make linkcheck
 ```
 
 Documentation on Read The Docs

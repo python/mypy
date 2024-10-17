@@ -220,29 +220,24 @@ def f() -> None: pass
 yield  # type: ignore  # E: "yield" outside function
 
 [case testIgnoreWholeModule1]
-# flags: --warn-unused-ignores
-# type: ignore
-IGNORE # type: ignore  # E: Unused "type: ignore" comment
-
-[case testIgnoreWholeModule2]
 # type: ignore
 if True:
     IGNORE
 
-[case testIgnoreWholeModule3]
+[case testIgnoreWholeModule2]
 # type: ignore
 @d
 class C: ...
 IGNORE
 
-[case testIgnoreWholeModule4]
+[case testIgnoreWholeModule3]
 # type: ignore
 @d
 
 def f(): ...
 IGNORE
 
-[case testIgnoreWholeModule5]
+[case testIgnoreWholeModule4]
 # type: ignore
 import MISSING
 
@@ -262,3 +257,36 @@ ERROR # E: Name "ERROR" is not defined
 
 def f(): ...
 ERROR # E: Name "ERROR" is not defined
+
+[case testIgnoreInsideFunctionDoesntAffectWhole]
+# flags: --disallow-untyped-defs
+
+def f():  # E: Function is missing a return type annotation
+    42 + 'no way'  # type: ignore
+    return 0
+
+[case testIgnoreInsideClassDoesntAffectWhole]
+import six
+class M(type): pass
+
+@six.add_metaclass(M)
+class CD(six.with_metaclass(M)):  # E: Multiple metaclass definitions
+    42 + 'no way'  # type: ignore
+
+[builtins fixtures/tuple.pyi]
+
+[case testUnusedIgnoreTryExcept]
+# flags: --warn-unused-ignores
+try:
+    import foo  # type: ignore  # E: Unused "type: ignore" comment
+    import bar  # type: ignore[import]  # E: Unused "type: ignore" comment
+    import foobar  # type: ignore[unused-ignore]
+    import barfoo  # type: ignore[import,unused-ignore]
+    import missing  # type: ignore[import,unused-ignore]
+except Exception:
+    pass
+[file foo.py]
+[file bar.py]
+[file foobar.py]
+[file barfoo.py]
+[builtins fixtures/exception.pyi]

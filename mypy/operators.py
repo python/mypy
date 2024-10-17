@@ -1,6 +1,8 @@
 """Information about Python operators"""
 
-from typing_extensions import Final
+from __future__ import annotations
+
+from typing import Final
 
 # Map from binary operator id to related method name (in Python 3).
 op_methods: Final = {
@@ -28,9 +30,7 @@ op_methods: Final = {
 }
 
 op_methods_to_symbols: Final = {v: k for (k, v) in op_methods.items()}
-op_methods_to_symbols["__div__"] = "/"
 
-comparison_fallback_method: Final = "__cmp__"
 ops_falling_back_to_cmp: Final = {"__ne__", "__eq__", "__lt__", "__le__", "__gt__", "__ge__"}
 
 
@@ -84,7 +84,6 @@ op_methods_that_shortcut: Final = {
     "__add__",
     "__sub__",
     "__mul__",
-    "__div__",
     "__truediv__",
     "__mod__",
     "__divmod__",
@@ -102,3 +101,26 @@ normal_from_reverse_op: Final = {m: n for n, m in reverse_op_methods.items()}
 reverse_op_method_set: Final = set(reverse_op_methods.values())
 
 unary_op_methods: Final = {"-": "__neg__", "+": "__pos__", "~": "__invert__"}
+
+int_op_to_method: Final = {
+    "==": int.__eq__,
+    "is": int.__eq__,
+    "<": int.__lt__,
+    "<=": int.__le__,
+    "!=": int.__ne__,
+    "is not": int.__ne__,
+    ">": int.__gt__,
+    ">=": int.__ge__,
+}
+
+flip_ops: Final = {"<": ">", "<=": ">=", ">": "<", ">=": "<="}
+neg_ops: Final = {
+    "==": "!=",
+    "!=": "==",
+    "is": "is not",
+    "is not": "is",
+    "<": ">=",
+    "<=": ">",
+    ">": "<=",
+    ">=": "<",
+}

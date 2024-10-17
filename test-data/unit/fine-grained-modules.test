@@ -38,8 +38,8 @@ def f(x: int) -> None: pass
 ==
 a.py:2: error: Incompatible return value type (got "int", expected "str")
 ==
-b.py:2: error: Too many arguments for "f"
 a.py:2: error: Incompatible return value type (got "int", expected "str")
+b.py:2: error: Too many arguments for "f"
 ==
 
 [case testAddFileFixesError]
@@ -837,9 +837,7 @@ p.a.f(1)
 [file p/__init__.py]
 [file p/a.py]
 def f(x: str) -> None: pass
-[delete p/__init__.py.2]
-[delete p/a.py.2]
-def f(x: str) -> None: pass
+[delete p.2]
 [out]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
@@ -1279,12 +1277,12 @@ a.py:2: error: Too many arguments for "foo"
 
 [case testAddModuleAfterCache3-only_when_cache]
 # cmd: mypy main a.py
-# cmd2: mypy main a.py b.py c.py d.py e.py f.py g.py h.py
-# cmd3: mypy main a.py b.py c.py d.py e.py f.py g.py h.py
+# cmd2: mypy main a.py b.py c.py d.py e.py f.py g.py h.py i.py j.py
+# cmd3: mypy main a.py b.py c.py d.py e.py f.py g.py h.py i.py j.py
 # flags: --ignore-missing-imports --follow-imports=skip
 import a
 [file a.py]
-import b, c, d, e, f, g, h
+import b, c, d, e, f, g, h, i, j
 b.foo(10)
 [file b.py.2]
 def foo() -> None: pass
@@ -1294,6 +1292,8 @@ def foo() -> None: pass
 [file f.py.2]
 [file g.py.2]
 [file h.py.2]
+[file i.py.2]
+[file j.py.2]
 
 -- No files should be stale or reprocessed in the first step since the large number
 -- of missing files will force build to give up on cache loading.
@@ -1806,7 +1806,7 @@ import b
 [file b.py]
 [file c.py]
 x = 1
-[file b.py]
+[file b.py.2]
 1+'x'
 [file c.py.2]
 x = '2'
@@ -2192,17 +2192,55 @@ x = 'x'
 [case testLibraryStubsNotInstalled]
 import a
 [file a.py]
-import waitress
+import requests
 [file a.py.2]
 # nothing
 [file a.py.3]
-import requests
+import jack
 [out]
-a.py:1: error: Library stubs not installed for "waitress" (or incompatible with Python 3.6)
-a.py:1: note: Hint: "python3 -m pip install types-waitress"
-a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-==
-==
-a.py:1: error: Library stubs not installed for "requests" (or incompatible with Python 3.6)
+a.py:1: error: Library stubs not installed for "requests"
 a.py:1: note: Hint: "python3 -m pip install types-requests"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+==
+==
+a.py:1: error: Library stubs not installed for "jack"
+a.py:1: note: Hint: "python3 -m pip install types-JACK-Client"
+a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testIgnoreErrorsFromTypeshed]
+# flags: --custom-typeshed-dir tmp/ts --follow-imports=normal
+# cmd1: mypy a.py
+# cmd2: mypy a.py
+
+[file a.py]
+import foobar
+
+[file ts/stdlib/abc.pyi]
+[file ts/stdlib/builtins.pyi]
+class object: pass
+class str: pass
+class ellipsis: pass
+[file ts/stdlib/sys.pyi]
+[file ts/stdlib/types.pyi]
+[file ts/stdlib/typing.pyi]
+def cast(x): ...
+[file ts/stdlib/typing_extensions.pyi]
+[file ts/stdlib/VERSIONS]
+[file ts/stubs/mypy_extensions/mypy_extensions.pyi]
+
+[file ts/stdlib/foobar.pyi.2]
+# We report no errors from typeshed. It would be better to test ignoring
+# errors from PEP 561 packages, but it's harder to test and uses the
+# same code paths, so we are using typeshed instead.
+import baz
+import zar
+undefined
+
+[file ts/stdlib/baz.pyi.2]
+import whatever
+undefined
+
+[out]
+a.py:1: error: Cannot find implementation or library stub for module named "foobar"
+a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+==

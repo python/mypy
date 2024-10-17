@@ -1,8 +1,8 @@
 """Check for duplicate AST nodes after merge."""
 
-from typing import Dict, List, Tuple
+from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 from mypy.nodes import Decorator, FakeInfo, FuncDef, SymbolNode, Var
 from mypy.server.objgraph import get_path, get_reachable_graph
@@ -20,7 +20,7 @@ def check_consistency(o: object) -> None:
     reachable = list(seen.values())
     syms = [x for x in reachable if isinstance(x, SymbolNode)]
 
-    m: Dict[str, SymbolNode] = {}
+    m: dict[str, SymbolNode] = {}
     for sym in syms:
         if isinstance(sym, FakeInfo):
             continue
@@ -51,9 +51,7 @@ def check_consistency(o: object) -> None:
         path2 = get_path(sym2, seen, parents)
 
         if fn in m:
-            print(
-                "\nDuplicate {!r} nodes with fullname {!r} found:".format(type(sym).__name__, fn)
-            )
+            print(f"\nDuplicate {type(sym).__name__!r} nodes with fullname {fn!r} found:")
             print("[1] %d: %s" % (id(sym1), path_to_str(path1)))
             print("[2] %d: %s" % (id(sym2), path_to_str(path2)))
 
@@ -67,7 +65,7 @@ def check_consistency(o: object) -> None:
         assert sym.fullname not in m
 
 
-def path_to_str(path: List[Tuple[object, object]]) -> str:
+def path_to_str(path: list[tuple[object, object]]) -> str:
     result = "<root>"
     for attr, obj in path:
         t = type(obj).__name__

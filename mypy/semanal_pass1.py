@@ -1,5 +1,7 @@
 """Block/import reachability analysis."""
 
+from __future__ import annotations
+
 from mypy.nodes import (
     AssertStmt,
     AssignmentStmt,
@@ -43,10 +45,9 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
 
       import sys
 
-      def do_stuff():
-          # type: () -> None:
-          if sys.python_version < (3,):
-              import xyz  # Only available in Python 2
+      def do_stuff() -> None:
+          if sys.version_info >= (3, 10):
+              import xyz  # Only available in Python 3.10+
               xyz.whatever()
           ...
 
@@ -55,12 +56,12 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
     """
 
     def visit_file(self, file: MypyFile, fnam: str, mod_id: str, options: Options) -> None:
-        self.pyversion = options.python_version
         self.platform = options.platform
         self.cur_mod_id = mod_id
         self.cur_mod_node = file
         self.options = options
         self.is_global_scope = True
+        self.skipped_lines: set[int] = set()
 
         for i, defn in enumerate(file.defs):
             defn.accept(self)
@@ -68,8 +69,14 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
                 # We've encountered an assert that's always false,
                 # e.g. assert sys.platform == 'lol'.  Truncate the
                 # list of statements.  This mutates file.defs too.
+                if i < len(file.defs) - 1:
+                    next_def, last = file.defs[i + 1], file.defs[-1]
+                    if last.end_line is not None:
+                        # We are on a Python version recent enough to support end lines.
+                        self.skipped_lines |= set(range(next_def.line, last.end_line + 1))
                 del file.defs[i + 1 :]
                 break
+        file.skipped_lines = self.skipped_lines
 
     def visit_func_def(self, node: FuncDef) -> None:
         old_global_scope = self.is_global_scope
@@ -117,6 +124,9 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
+            if b.end_line is not None:
+                # We are on a Python version recent enough to support end lines.
+                self.skipped_lines |= set(range(b.line, b.end_line + 1))
             return
         super().visit_block(b)
 

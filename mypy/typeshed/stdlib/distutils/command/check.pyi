@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, ClassVar, Final, Literal
 from typing_extensions import TypeAlias
 
 from ..cmd import Command
@@ -6,6 +6,8 @@ from ..cmd import Command
 _Reporter: TypeAlias = Any  # really docutils.utils.Reporter
 
 # Only defined if docutils is installed.
+# Depends on a third-party stub. Since distutils is deprecated anyway,
+# it's easier to just suppress the "any subclassing" error.
 class SilentReporter(_Reporter):
     messages: Any
     def __init__(
@@ -14,18 +16,18 @@ class SilentReporter(_Reporter):
         report_level,
         halt_level,
         stream: Any | None = ...,
-        debug: int = ...,
+        debug: bool | Literal[0, 1] = 0,
         encoding: str = ...,
         error_handler: str = ...,
     ) -> None: ...
     def system_message(self, level, message, *children, **kwargs): ...
 
-HAS_DOCUTILS: bool
+HAS_DOCUTILS: Final[bool]
 
 class check(Command):
     description: str
-    user_options: Any
-    boolean_options: Any
+    user_options: ClassVar[list[tuple[str, str, str]]]
+    boolean_options: ClassVar[list[str]]
     restructuredtext: int
     metadata: int
     strict: int

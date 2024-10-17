@@ -1,6 +1,6 @@
 """Maintain a mapping from mypy concepts to IR/compiled concepts."""
 
-from typing import Dict, Optional
+from __future__ import annotations
 
 from mypy.nodes import ARG_STAR, ARG_STAR2, GDEF, ArgKind, FuncDef, RefExpr, SymbolNode, TypeInfo
 from mypy.types import (
@@ -15,10 +15,11 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeType,
-    TypeVarType,
+    TypeVarLikeType,
     UnboundType,
     UninhabitedType,
     UnionType,
+    find_unpack_in_list,
     get_proper_type,
 )
 from mypyc.ir.class_ir import ClassIR
@@ -32,6 +33,9 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     dict_rprimitive,
     float_rprimitive,
+    int16_rprimitive,
+    int32_rprimitive,
+    int64_rprimitive,
     int_rprimitive,
     list_rprimitive,
     none_rprimitive,
@@ -40,6 +44,7 @@ from mypyc.ir.rtypes import (
     set_rprimitive,
     str_rprimitive,
     tuple_rprimitive,
+    uint8_rprimitive,
 )
 
 
@@ -53,12 +58,12 @@ class Mapper:
     compilation groups.
     """
 
-    def __init__(self, group_map: Dict[str, Optional[str]]) -> None:
+    def __init__(self, group_map: dict[str, str | None]) -> None:
         self.group_map = group_map
-        self.type_to_ir: Dict[TypeInfo, ClassIR] = {}
-        self.func_to_decl: Dict[SymbolNode, FuncDecl] = {}
+        self.type_to_ir: dict[TypeInfo, ClassIR] = {}
+        self.func_to_decl: dict[SymbolNode, FuncDecl] = {}
 
-    def type_to_rtype(self, typ: Optional[Type]) -> RType:
+    def type_to_rtype(self, typ: Type | None) -> RType:
         if typ is None:
             return object_rprimitive
 
@@ -96,12 +101,23 @@ class Mapper:
                     return RUnion([inst, object_rprimitive])
                 else:
                     return inst
+            elif typ.type.fullname == "mypy_extensions.i64":
+                return int64_rprimitive
+            elif typ.type.fullname == "mypy_extensions.i32":
+                return int32_rprimitive
+            elif typ.type.fullname == "mypy_extensions.i16":
+                return int16_rprimitive
+            elif typ.type.fullname == "mypy_extensions.u8":
+                return uint8_rprimitive
             else:
                 return object_rprimitive
         elif isinstance(typ, TupleType):
             # Use our unboxed tuples for raw tuples but fall back to
-            # being boxed for NamedTuple.
-            if typ.partial_fallback.type.fullname == "builtins.tuple":
+            # being boxed for NamedTuple or for variadic tuples.
+            if (
+                typ.partial_fallback.type.fullname == "builtins.tuple"
+                and find_unpack_in_list(typ.items) is None
+            ):
                 return RTuple([self.type_to_rtype(t) for t in typ.items])
             else:
                 return tuple_rprimitive
@@ -110,12 +126,12 @@ class Mapper:
         elif isinstance(typ, NoneTyp):
             return none_rprimitive
         elif isinstance(typ, UnionType):
-            return RUnion([self.type_to_rtype(item) for item in typ.items])
+            return RUnion.make_simplified_union([self.type_to_rtype(item) for item in typ.items])
         elif isinstance(typ, AnyType):
             return object_rprimitive
         elif isinstance(typ, TypeType):
             return object_rprimitive
-        elif isinstance(typ, TypeVarType):
+        elif isinstance(typ, TypeVarLikeType):
             # Erase type variable to upper bound.
             # TODO: Erase to union if object has value restriction?
             return self.type_to_rtype(typ.upper_bound)
@@ -154,7 +170,7 @@ class Mapper:
             ret = self.type_to_rtype(fdef.type.ret_type)
         else:
             # Handle unannotated functions
-            arg_types = [object_rprimitive for arg in fdef.arguments]
+            arg_types = [object_rprimitive for _ in fdef.arguments]
             arg_pos_onlys = [arg.pos_only for arg in fdef.arguments]
             # We at least know the return type for __init__ methods will be None.
             is_init_method = fdef.name == "__init__" and bool(fdef.info)

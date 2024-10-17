@@ -1,5 +1,6 @@
 """Utilities for checking that internal ir is valid and consistent."""
-from typing import List, Set, Tuple, Union
+
+from __future__ import annotations
 
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR
 from mypyc.ir.ops import (
@@ -16,6 +17,9 @@ from mypyc.ir.ops import (
     ControlOp,
     DecRef,
     Extend,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -33,6 +37,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     Return,
@@ -41,8 +46,10 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
+    Value,
 )
 from mypyc.ir.pprint import format_func
 from mypyc.ir.rtypes import (
@@ -54,6 +61,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     dict_rprimitive,
     int_rprimitive,
+    is_float_rprimitive,
     is_object_rprimitive,
     list_rprimitive,
     range_rprimitive,
@@ -64,7 +72,7 @@ from mypyc.ir.rtypes import (
 
 
 class FnError:
-    def __init__(self, source: Union[Op, BasicBlock], desc: str) -> None:
+    def __init__(self, source: Op | BasicBlock, desc: str) -> None:
         self.source = source
         self.desc = desc
 
@@ -77,7 +85,7 @@ class FnError:
         return f"FnError(source={self.source}, desc={self.desc})"
 
 
-def check_func_ir(fn: FuncIR) -> List[FnError]:
+def check_func_ir(fn: FuncIR) -> list[FnError]:
     """Applies validations to a given function ir and returns a list of errors found."""
     errors = []
 
@@ -121,15 +129,19 @@ def assert_func_ir_valid(fn: FuncIR) -> None:
         )
 
 
-def check_op_sources_valid(fn: FuncIR) -> List[FnError]:
+def check_op_sources_valid(fn: FuncIR) -> list[FnError]:
     errors = []
-    valid_ops: Set[Op] = set()
-    valid_registers: Set[Register] = set()
+    valid_ops: set[Op] = set()
+    valid_registers: set[Register] = set()
 
     for block in fn.blocks:
         valid_ops.update(block.ops)
 
-        valid_registers.update([op.dest for op in block.ops if isinstance(op, BaseAssign)])
+        for op in block.ops:
+            if isinstance(op, BaseAssign):
+                valid_registers.add(op.dest)
+            elif isinstance(op, LoadAddress) and isinstance(op.src, Register):
+                valid_registers.add(op.src)
 
     valid_registers.update(fn.arg_regs)
 
@@ -150,7 +162,7 @@ def check_op_sources_valid(fn: FuncIR) -> List[FnError]:
                     if source not in valid_registers:
                         errors.append(
                             FnError(
-                                source=op, desc=f"Invalid op reference to register {source.name}"
+                                source=op, desc=f"Invalid op reference to register {source.name!r}"
                             )
                         )
 
@@ -197,7 +209,7 @@ def can_coerce_to(src: RType, dest: RType) -> bool:
 class OpChecker(OpVisitor[None]):
     def __init__(self, parent_fn: FuncIR) -> None:
         self.parent_fn = parent_fn
-        self.errors: List[FnError] = []
+        self.errors: list[FnError] = []
 
     def fail(self, source: Op, desc: str) -> None:
         self.errors.append(FnError(source=source, desc=desc))
@@ -212,6 +224,18 @@ class OpChecker(OpVisitor[None]):
             self.fail(
                 source=op, desc=f"Cannot coerce source type {src.name} to dest type {dest.name}"
             )
+
+    def check_compatibility(self, op: Op, t: RType, s: RType) -> None:
+        if not can_coerce_to(t, s) or not can_coerce_to(s, t):
+            self.fail(source=op, desc=f"{t.name} and {s.name} are not compatible")
+
+    def expect_float(self, op: Op, v: Value) -> None:
+        if not is_float_rprimitive(v.type):
+            self.fail(op, f"Float expected (actual type is {v.type})")
+
+    def expect_non_float(self, op: Op, v: Value) -> None:
+        if is_float_rprimitive(v.type):
+            self.fail(op, "Float not expected")
 
     def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
@@ -241,12 +265,21 @@ class OpChecker(OpVisitor[None]):
         # has an error value.
         pass
 
-    def check_tuple_items_valid_literals(self, op: LoadLiteral, t: Tuple[object, ...]) -> None:
+    def check_tuple_items_valid_literals(self, op: LoadLiteral, t: tuple[object, ...]) -> None:
         for x in t:
             if x is not None and not isinstance(x, (str, bytes, bool, int, float, complex, tuple)):
                 self.fail(op, f"Invalid type for item of tuple literal: {type(x)})")
             if isinstance(x, tuple):
                 self.check_tuple_items_valid_literals(op, x)
+
+    def check_frozenset_items_valid_literals(self, op: LoadLiteral, s: frozenset[object]) -> None:
+        for x in s:
+            if x is None or isinstance(x, (str, bytes, bool, int, float, complex)):
+                pass
+            elif isinstance(x, tuple):
+                self.check_tuple_items_valid_literals(op, x)
+            else:
+                self.fail(op, f"Invalid type for item of frozenset literal: {type(x)})")
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
         expected_type = None
@@ -267,6 +300,11 @@ class OpChecker(OpVisitor[None]):
         elif isinstance(op.value, tuple):
             expected_type = "builtins.tuple"
             self.check_tuple_items_valid_literals(op, op.value)
+        elif isinstance(op.value, frozenset):
+            # There's no frozenset_rprimitive type since it'd be pretty useless so we just pretend
+            # it's a set (when it's really a frozenset).
+            expected_type = "builtins.set"
+            self.check_frozenset_items_valid_literals(op, op.value)
 
         assert expected_type is not None, "Missed a case for LoadLiteral check"
 
@@ -344,6 +382,9 @@ class OpChecker(OpVisitor[None]):
     def visit_call_c(self, op: CallC) -> None:
         pass
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> None:
+        pass
+
     def visit_truncate(self, op: Truncate) -> None:
         pass
 
@@ -354,10 +395,24 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_int_op(self, op: IntOp) -> None:
-        pass
+        self.expect_non_float(op, op.lhs)
+        self.expect_non_float(op, op.rhs)
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
-        pass
+        self.check_compatibility(op, op.lhs.type, op.rhs.type)
+        self.expect_non_float(op, op.lhs)
+        self.expect_non_float(op, op.rhs)
+
+    def visit_float_op(self, op: FloatOp) -> None:
+        self.expect_float(op, op.lhs)
+        self.expect_float(op, op.rhs)
+
+    def visit_float_neg(self, op: FloatNeg) -> None:
+        self.expect_float(op, op.src)
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> None:
+        self.expect_float(op, op.lhs)
+        self.expect_float(op, op.rhs)
 
     def visit_load_mem(self, op: LoadMem) -> None:
         pass
@@ -372,4 +427,7 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_keep_alive(self, op: KeepAlive) -> None:
+        pass
+
+    def visit_unborrow(self, op: Unborrow) -> None:
         pass

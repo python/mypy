@@ -1,8 +1,9 @@
 """Semantic analyzer test cases"""
 
-import os.path
+from __future__ import annotations
+
 import sys
-from typing import Dict, List
+from typing import Dict
 
 from mypy import build
 from mypy.defaults import PYTHON3_VERSION
@@ -44,7 +45,7 @@ def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Opti
     options.semantic_analysis_only = True
     options.show_traceback = True
     options.python_version = PYTHON3_VERSION
-    options.enable_incomplete_features = True
+    options.force_uppercase_builtins = True
     return options
 
 
@@ -75,27 +76,9 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
             raise CompileError(a)
         # Include string representations of the source files in the actual
         # output.
-        for fnam in sorted(result.files.keys()):
-            f = result.files[fnam]
-            # Omit the builtins module and files with a special marker in the
-            # path.
-            # TODO the test is not reliable
-            if (
-                not f.path.endswith(
-                    (
-                        os.sep + "builtins.pyi",
-                        "typing.pyi",
-                        "mypy_extensions.pyi",
-                        "typing_extensions.pyi",
-                        "abc.pyi",
-                        "collections.pyi",
-                        "sys.pyi",
-                    )
-                )
-                and not os.path.basename(f.path).startswith("_")
-                and not os.path.splitext(os.path.basename(f.path))[0].endswith("_")
-            ):
-                a += str(f).split("\n")
+        for module in sorted(result.files.keys()):
+            if module in testcase.test_modules:
+                a += result.files[module].str_with_options(options).split("\n")
     except CompileError as e:
         a = e.messages
     if testcase.normalize_output:
@@ -130,7 +113,6 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
             alt_lib_path=test_temp_dir,
         )
         a = res.errors
-        assert a, f"No errors reported in {testcase.file}, line {testcase.line}"
     except CompileError as e:
         # Verify that there was a compile error and that the error messages
         # are equivalent.
@@ -163,10 +145,10 @@ class SemAnalSymtableSuite(DataSuite):
             a = result.errors
             if a:
                 raise CompileError(a)
-            for f in sorted(result.files.keys()):
-                if f not in ("builtins", "typing", "abc"):
-                    a.append(f"{f}:")
-                    for s in str(result.files[f].names).split("\n"):
+            for module in sorted(result.files.keys()):
+                if module in testcase.test_modules:
+                    a.append(f"{module}:")
+                    for s in str(result.files[module].names).split("\n"):
                         a.append("  " + s)
         except CompileError as e:
             a = e.messages
@@ -198,11 +180,13 @@ class SemAnalTypeInfoSuite(DataSuite):
 
             # Collect all TypeInfos in top-level modules.
             typeinfos = TypeInfoMap()
-            for f in result.files.values():
-                for n in f.names.values():
-                    if isinstance(n.node, TypeInfo):
-                        assert n.fullname is not None
-                        typeinfos[n.fullname] = n.node
+            for module, file in result.files.items():
+                if module in testcase.test_modules:
+                    for n in file.names.values():
+                        if isinstance(n.node, TypeInfo):
+                            assert n.fullname
+                            if any(n.fullname.startswith(m + ".") for m in testcase.test_modules):
+                                typeinfos[n.fullname] = n.node
 
             # The output is the symbol table converted into a string.
             a = str(typeinfos).split("\n")
@@ -217,14 +201,9 @@ class SemAnalTypeInfoSuite(DataSuite):
 
 class TypeInfoMap(Dict[str, TypeInfo]):
     def __str__(self) -> str:
-        a: List[str] = ["TypeInfoMap("]
+        a: list[str] = ["TypeInfoMap("]
         for x, y in sorted(self.items()):
-            if isinstance(x, str) and (
-                not x.startswith("builtins.")
-                and not x.startswith("typing.")
-                and not x.startswith("abc.")
-            ):
-                ti = ("\n" + "  ").join(str(y).split("\n"))
-                a.append(f"  {x} : {ti}")
+            ti = ("\n" + "  ").join(str(y).split("\n"))
+            a.append(f"  {x} : {ti}")
         a[-1] += ")"
         return "\n".join(a)

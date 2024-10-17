@@ -28,9 +28,10 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
+from __future__ import annotations
+
 import os
 import stat
-from typing import Dict, List, Set
 
 from mypy_extensions import mypyc_attr
 
@@ -42,43 +43,40 @@ class FileSystemCache:
     def __init__(self) -> None:
         # The package root is not flushed with the caches.
         # It is set by set_package_root() below.
-        self.package_root: List[str] = []
+        self.package_root: list[str] = []
         self.flush()
 
-    def set_package_root(self, package_root: List[str]) -> None:
+    def set_package_root(self, package_root: list[str]) -> None:
         self.package_root = package_root
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
-        self.stat_cache: Dict[str, os.stat_result] = {}
-        self.stat_error_cache: Dict[str, OSError] = {}
-        self.listdir_cache: Dict[str, List[str]] = {}
-        self.listdir_error_cache: Dict[str, OSError] = {}
-        self.isfile_case_cache: Dict[str, bool] = {}
-        self.exists_case_cache: Dict[str, bool] = {}
-        self.read_cache: Dict[str, bytes] = {}
-        self.read_error_cache: Dict[str, Exception] = {}
-        self.hash_cache: Dict[str, str] = {}
-        self.fake_package_cache: Set[str] = set()
+        self.stat_or_none_cache: dict[str, os.stat_result | None] = {}
 
-    def stat(self, path: str) -> os.stat_result:
-        if path in self.stat_cache:
-            return self.stat_cache[path]
-        if path in self.stat_error_cache:
-            raise copy_os_error(self.stat_error_cache[path])
+        self.listdir_cache: dict[str, list[str]] = {}
+        self.listdir_error_cache: dict[str, OSError] = {}
+        self.isfile_case_cache: dict[str, bool] = {}
+        self.exists_case_cache: dict[str, bool] = {}
+        self.read_cache: dict[str, bytes] = {}
+        self.read_error_cache: dict[str, Exception] = {}
+        self.hash_cache: dict[str, str] = {}
+        self.fake_package_cache: set[str] = set()
+
+    def stat_or_none(self, path: str) -> os.stat_result | None:
+        if path in self.stat_or_none_cache:
+            return self.stat_or_none_cache[path]
+
+        st = None
         try:
             st = os.stat(path)
-        except OSError as err:
+        except OSError:
             if self.init_under_package_root(path):
                 try:
-                    return self._fake_init(path)
+                    st = self._fake_init(path)
                 except OSError:
                     pass
-            # Take a copy to get rid of associated traceback and frame objects.
-            # Just assigning to __traceback__ doesn't free them.
-            self.stat_error_cache[path] = copy_os_error(err)
-            raise err
-        self.stat_cache[path] = st
+
+        self.stat_or_none_cache[path] = st
         return st
 
     def init_under_package_root(self, path: str) -> bool:
@@ -111,9 +109,9 @@ class FileSystemCache:
         if not os.path.basename(dirname).isidentifier():
             # Can't put an __init__.py in a place that's not an identifier
             return False
-        try:
-            st = self.stat(dirname)
-        except OSError:
+
+        st = self.stat_or_none(dirname)
+        if st is None:
             return False
         else:
             if not stat.S_ISDIR(st.st_mode):
@@ -144,20 +142,19 @@ class FileSystemCache:
         assert basename == "__init__.py", path
         assert not os.path.exists(path), path  # Not cached!
         dirname = os.path.normpath(dirname)
-        st = self.stat(dirname)  # May raise OSError
+        st = os.stat(dirname)  # May raise OSError
         # Get stat result as a list so we can modify it.
-        seq: List[float] = list(st)
+        seq: list[float] = list(st)
         seq[stat.ST_MODE] = stat.S_IFREG | 0o444
         seq[stat.ST_INO] = 1
         seq[stat.ST_NLINK] = 1
         seq[stat.ST_SIZE] = 0
         st = os.stat_result(seq)
-        self.stat_cache[path] = st
         # Make listdir() and read() also pretend this file exists.
         self.fake_package_cache.add(dirname)
         return st
 
-    def listdir(self, path: str) -> List[str]:
+    def listdir(self, path: str) -> list[str]:
         path = os.path.normpath(path)
         if path in self.listdir_cache:
             res = self.listdir_cache[path]
@@ -180,9 +177,8 @@ class FileSystemCache:
         return results
 
     def isfile(self, path: str) -> bool:
-        try:
-            st = self.stat(path)
-        except OSError:
+        st = self.stat_or_none(path)
+        if st is None:
             return False
         return stat.S_ISREG(st.st_mode)
 
@@ -247,18 +243,14 @@ class FileSystemCache:
         return res
 
     def isdir(self, path: str) -> bool:
-        try:
-            st = self.stat(path)
-        except OSError:
+        st = self.stat_or_none(path)
+        if st is None:
             return False
         return stat.S_ISDIR(st.st_mode)
 
     def exists(self, path: str) -> bool:
-        try:
-            self.stat(path)
-        except FileNotFoundError:
-            return False
-        return True
+        st = self.stat_or_none(path)
+        return st is not None
 
     def read(self, path: str) -> bytes:
         if path in self.read_cache:
@@ -268,7 +260,7 @@ class FileSystemCache:
 
         # Need to stat first so that the contents of file are from no
         # earlier instant than the mtime reported by self.stat().
-        self.stat(path)
+        self.stat_or_none(path)
 
         dirname, basename = os.path.split(path)
         dirname = os.path.normpath(dirname)
@@ -293,8 +285,10 @@ class FileSystemCache:
         return self.hash_cache[path]
 
     def samefile(self, f1: str, f2: str) -> bool:
-        s1 = self.stat(f1)
-        s2 = self.stat(f2)
+        s1 = self.stat_or_none(f1)
+        s2 = self.stat_or_none(f2)
+        if s1 is None or s2 is None:
+            return False
         return os.path.samestat(s1, s2)
 
 

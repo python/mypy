@@ -20,10 +20,11 @@ mypyc.irbuild.mapper.Mapper.type_to_rtype converts mypy Types to mypyc
 RTypes.
 """
 
-from abc import abstractmethod
-from typing import Dict, Generic, List, Optional, Tuple, TypeVar, Union
+from __future__ import annotations
 
-from typing_extensions import TYPE_CHECKING, ClassVar, Final
+from abc import abstractmethod
+from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeVar
+from typing_extensions import TypeGuard
 
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
 from mypyc.namegen import NameGenerator
@@ -62,8 +63,8 @@ class RType:
     error_overlap = False
 
     @abstractmethod
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
-        raise NotImplementedError
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
+        raise NotImplementedError()
 
     def short_name(self) -> str:
         return short_name(self.name)
@@ -74,11 +75,11 @@ class RType:
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__
 
-    def serialize(self) -> Union[JsonDict, str]:
+    def serialize(self) -> JsonDict | str:
         raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
 
 
-def deserialize_type(data: Union[JsonDict, str], ctx: "DeserMaps") -> "RType":
+def deserialize_type(data: JsonDict | str, ctx: DeserMaps) -> RType:
     """Deserialize a JSON-serialized RType.
 
     Arguments:
@@ -108,31 +109,31 @@ class RTypeVisitor(Generic[T]):
     """Generic visitor over RTypes (uses the visitor design pattern)."""
 
     @abstractmethod
-    def visit_rprimitive(self, typ: "RPrimitive") -> T:
+    def visit_rprimitive(self, typ: RPrimitive) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rinstance(self, typ: "RInstance") -> T:
+    def visit_rinstance(self, typ: RInstance) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_runion(self, typ: "RUnion") -> T:
+    def visit_runion(self, typ: RUnion) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rtuple(self, typ: "RTuple") -> T:
+    def visit_rtuple(self, typ: RTuple) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rstruct(self, typ: "RStruct") -> T:
+    def visit_rstruct(self, typ: RStruct) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rarray(self, typ: "RArray") -> T:
+    def visit_rarray(self, typ: RArray) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rvoid(self, typ: "RVoid") -> T:
+    def visit_rvoid(self, typ: RVoid) -> T:
         raise NotImplementedError
 
 
@@ -147,7 +148,7 @@ class RVoid(RType):
     name = "void"
     ctype = "void"
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rvoid(self)
 
     def serialize(self) -> str:
@@ -179,7 +180,7 @@ class RPrimitive(RType):
     """
 
     # Map from primitive names to primitive types and is used by deserialization
-    primitive_map: ClassVar[Dict[str, "RPrimitive"]] = {}
+    primitive_map: ClassVar[dict[str, RPrimitive]] = {}
 
     def __init__(
         self,
@@ -205,13 +206,12 @@ class RPrimitive(RType):
         self.error_overlap = error_overlap
         if ctype == "CPyTagged":
             self.c_undefined = "CPY_INT_TAG"
-        elif ctype in ("int32_t", "int64_t"):
+        elif ctype in ("int16_t", "int32_t", "int64_t"):
             # This is basically an arbitrary value that is pretty
             # unlikely to overlap with a real value.
             self.c_undefined = "-113"
-        elif ctype in ("CPyPtr", "uint32_t", "uint64_t"):
-            # TODO: For low-level integers, we need to invent an overlapping
-            #       error value, similar to int64_t above.
+        elif ctype == "CPyPtr":
+            # TODO: Invent an overlapping error value?
             self.c_undefined = "0"
         elif ctype == "PyObject *":
             # Boxed types use the null pointer as the error value.
@@ -220,10 +220,14 @@ class RPrimitive(RType):
             self.c_undefined = "2"
         elif ctype in ("PyObject **", "void *"):
             self.c_undefined = "NULL"
+        elif ctype == "double":
+            self.c_undefined = "-113.0"
+        elif ctype in ("uint8_t", "uint16_t", "uint32_t", "uint64_t"):
+            self.c_undefined = "239"  # An arbitrary number
         else:
             assert False, "Unrecognized ctype: %r" % ctype
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rprimitive(self)
 
     def serialize(self) -> str:
@@ -287,8 +291,18 @@ short_int_rprimitive: Final = RPrimitive(
 
 # Low level integer types (correspond to C integer types)
 
+int16_rprimitive: Final = RPrimitive(
+    "i16",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=True,
+    ctype="int16_t",
+    size=2,
+    error_overlap=True,
+)
 int32_rprimitive: Final = RPrimitive(
-    "int32",
+    "i32",
     is_unboxed=True,
     is_refcounted=False,
     is_native_int=True,
@@ -298,7 +312,7 @@ int32_rprimitive: Final = RPrimitive(
     error_overlap=True,
 )
 int64_rprimitive: Final = RPrimitive(
-    "int64",
+    "i64",
     is_unboxed=True,
     is_refcounted=False,
     is_native_int=True,
@@ -307,23 +321,49 @@ int64_rprimitive: Final = RPrimitive(
     size=8,
     error_overlap=True,
 )
+uint8_rprimitive: Final = RPrimitive(
+    "u8",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=False,
+    ctype="uint8_t",
+    size=1,
+    error_overlap=True,
+)
+
+# The following unsigned native int types (u16, u32, u64) are not
+# exposed to the user. They are for internal use within mypyc only.
+
+u16_rprimitive: Final = RPrimitive(
+    "u16",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=False,
+    ctype="uint16_t",
+    size=2,
+    error_overlap=True,
+)
 uint32_rprimitive: Final = RPrimitive(
-    "uint32",
+    "u32",
     is_unboxed=True,
     is_refcounted=False,
     is_native_int=True,
     is_signed=False,
     ctype="uint32_t",
     size=4,
+    error_overlap=True,
 )
 uint64_rprimitive: Final = RPrimitive(
-    "uint64",
+    "u64",
     is_unboxed=True,
     is_refcounted=False,
     is_native_int=True,
     is_signed=False,
     ctype="uint64_t",
     size=8,
+    error_overlap=True,
 )
 
 # The C 'int' type
@@ -360,9 +400,19 @@ c_pointer_rprimitive: Final = RPrimitive(
     "c_ptr", is_unboxed=False, is_refcounted=False, ctype="void *"
 )
 
+# The type corresponding to mypyc.common.BITMAP_TYPE
+bitmap_rprimitive: Final = uint32_rprimitive
+
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
-float_rprimitive: Final = RPrimitive("builtins.float", is_unboxed=False, is_refcounted=True)
+float_rprimitive: Final = RPrimitive(
+    "builtins.float",
+    is_unboxed=True,
+    is_refcounted=False,
+    ctype="double",
+    size=8,
+    error_overlap=True,
+)
 
 # An unboxed Python bool value. This actually has three possible values
 # (0 -> False, 1 -> True, 2 -> error). If you only need True/False, use
@@ -419,7 +469,11 @@ def is_short_int_rprimitive(rtype: RType) -> bool:
     return rtype is short_int_rprimitive
 
 
-def is_int32_rprimitive(rtype: RType) -> bool:
+def is_int16_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return rtype is int16_rprimitive
+
+
+def is_int32_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is int32_rprimitive or (
         rtype is c_pyssize_t_rprimitive and rtype._ctype == "int32_t"
     )
@@ -431,8 +485,17 @@ def is_int64_rprimitive(rtype: RType) -> bool:
     )
 
 
-def is_fixed_width_rtype(rtype: RType) -> bool:
-    return is_int32_rprimitive(rtype) or is_int64_rprimitive(rtype)
+def is_fixed_width_rtype(rtype: RType) -> TypeGuard[RPrimitive]:
+    return (
+        is_int64_rprimitive(rtype)
+        or is_int32_rprimitive(rtype)
+        or is_int16_rprimitive(rtype)
+        or is_uint8_rprimitive(rtype)
+    )
+
+
+def is_uint8_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return rtype is uint8_rprimitive
 
 
 def is_uint32_rprimitive(rtype: RType) -> bool:
@@ -508,13 +571,13 @@ def is_sequence_rprimitive(rtype: RType) -> bool:
 class TupleNameVisitor(RTypeVisitor[str]):
     """Produce a tuple name based on the concrete representations of types."""
 
-    def visit_rinstance(self, t: "RInstance") -> str:
+    def visit_rinstance(self, t: RInstance) -> str:
         return "O"
 
-    def visit_runion(self, t: "RUnion") -> str:
+    def visit_runion(self, t: RUnion) -> str:
         return "O"
 
-    def visit_rprimitive(self, t: "RPrimitive") -> str:
+    def visit_rprimitive(self, t: RPrimitive) -> str:
         if t._ctype == "CPyTagged":
             return "I"
         elif t._ctype == "char":
@@ -523,20 +586,26 @@ class TupleNameVisitor(RTypeVisitor[str]):
             return "8"  # "8 byte integer"
         elif t._ctype == "int32_t":
             return "4"  # "4 byte integer"
+        elif t._ctype == "int16_t":
+            return "2"  # "2 byte integer"
+        elif t._ctype == "uint8_t":
+            return "U1"  # "1 byte unsigned integer"
+        elif t._ctype == "double":
+            return "F"
         assert not t.is_unboxed, f"{t} unexpected unboxed type"
         return "O"
 
-    def visit_rtuple(self, t: "RTuple") -> str:
+    def visit_rtuple(self, t: RTuple) -> str:
         parts = [elem.accept(self) for elem in t.types]
         return "T{}{}".format(len(parts), "".join(parts))
 
-    def visit_rstruct(self, t: "RStruct") -> str:
+    def visit_rstruct(self, t: RStruct) -> str:
         assert False, "RStruct not supported in tuple"
 
-    def visit_rarray(self, t: "RArray") -> str:
+    def visit_rarray(self, t: RArray) -> str:
         assert False, "RArray not supported in tuple"
 
-    def visit_rvoid(self, t: "RVoid") -> str:
+    def visit_rvoid(self, t: RVoid) -> str:
         assert False, "rvoid in tuple?"
 
 
@@ -557,7 +626,7 @@ class RTuple(RType):
 
     is_unboxed = True
 
-    def __init__(self, types: List[RType]) -> None:
+    def __init__(self, types: list[RType]) -> None:
         self.name = "tuple"
         self.types = tuple(types)
         self.is_refcounted = any(t.is_refcounted for t in self.types)
@@ -568,8 +637,9 @@ class RTuple(RType):
         # Nominally the max c length is 31 chars, but I'm not honestly worried about this.
         self.struct_name = f"tuple_{self.unique_id}"
         self._ctype = f"{self.struct_name}"
+        self.error_overlap = all(t.error_overlap for t in self.types) and bool(self.types)
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rtuple(self)
 
     def __str__(self) -> str:
@@ -589,7 +659,7 @@ class RTuple(RType):
         return {".class": "RTuple", "types": types}
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: "DeserMaps") -> "RTuple":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RTuple:
         types = [deserialize_type(t, ctx) for t in data["types"]]
         return RTuple(types)
 
@@ -648,7 +718,7 @@ def compute_rtype_size(typ: RType) -> int:
         assert False, "invalid rtype for computing size"
 
 
-def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int]:
+def compute_aligned_offsets_and_size(types: list[RType]) -> tuple[list[int], int]:
     """Compute offsets and total size of a list of types after alignment
 
     Note that the types argument are types of values that are stored
@@ -679,7 +749,7 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
 class RStruct(RType):
     """C struct type"""
 
-    def __init__(self, name: str, names: List[str], types: List[RType]) -> None:
+    def __init__(self, name: str, names: list[str], types: list[RType]) -> None:
         self.name = name
         self.names = names
         self.types = types
@@ -690,7 +760,7 @@ class RStruct(RType):
         self.offsets, self.size = compute_aligned_offsets_and_size(types)
         self._ctype = name
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rstruct(self)
 
     def __str__(self) -> str:
@@ -721,7 +791,7 @@ class RStruct(RType):
         assert False
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: "DeserMaps") -> "RStruct":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RStruct:
         assert False
 
 
@@ -743,14 +813,14 @@ class RInstance(RType):
 
     is_unboxed = False
 
-    def __init__(self, class_ir: "ClassIR") -> None:
+    def __init__(self, class_ir: ClassIR) -> None:
         # name is used for formatting the name in messages and debug output
         # so we want the fullname for precision.
         self.name = class_ir.fullname
         self.class_ir = class_ir
         self._ctype = "PyObject *"
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rinstance(self)
 
     def struct_name(self, names: NameGenerator) -> str:
@@ -786,13 +856,31 @@ class RUnion(RType):
 
     is_unboxed = False
 
-    def __init__(self, items: List[RType]) -> None:
+    def __init__(self, items: list[RType]) -> None:
         self.name = "union"
         self.items = items
         self.items_set = frozenset(items)
         self._ctype = "PyObject *"
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    @staticmethod
+    def make_simplified_union(items: list[RType]) -> RType:
+        """Return a normalized union that covers the given items.
+
+        Flatten nested unions and remove duplicate items.
+
+        Overlapping items are *not* simplified. For example,
+        [object, str] will not be simplified.
+        """
+        items = flatten_nested_unions(items)
+        assert items
+
+        unique_items = dict.fromkeys(items)
+        if len(unique_items) > 1:
+            return RUnion(list(unique_items))
+        else:
+            return next(iter(unique_items))
+
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_runion(self)
 
     def __repr__(self) -> str:
@@ -813,12 +901,25 @@ class RUnion(RType):
         return {".class": "RUnion", "types": types}
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: "DeserMaps") -> "RUnion":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RUnion:
         types = [deserialize_type(t, ctx) for t in data["types"]]
         return RUnion(types)
 
 
-def optional_value_type(rtype: RType) -> Optional[RType]:
+def flatten_nested_unions(types: list[RType]) -> list[RType]:
+    if not any(isinstance(t, RUnion) for t in types):
+        return types  # Fast path
+
+    flat_items: list[RType] = []
+    for t in types:
+        if isinstance(t, RUnion):
+            flat_items.extend(flatten_nested_unions(t.items))
+        else:
+            flat_items.append(t)
+    return flat_items
+
+
+def optional_value_type(rtype: RType) -> RType | None:
     """If rtype is the union of none_rprimitive and another type X, return X.
 
     Otherwise return None.
@@ -849,7 +950,7 @@ class RArray(RType):
         self.length = length
         self.is_refcounted = False
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rarray(self)
 
     def __str__(self) -> str:
@@ -872,7 +973,7 @@ class RArray(RType):
         assert False
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: "DeserMaps") -> "RArray":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RArray:
         assert False
 
 
@@ -923,3 +1024,15 @@ PyListObject = RStruct(
     names=["ob_base", "ob_item", "allocated"],
     types=[PyVarObject, pointer_rprimitive, c_pyssize_t_rprimitive],
 )
+
+
+def check_native_int_range(rtype: RPrimitive, n: int) -> bool:
+    """Is n within the range of a native, fixed-width int type?
+
+    Assume the type is a fixed-width int type.
+    """
+    if not rtype.is_signed:
+        return 0 <= n < (1 << (8 * rtype.size))
+    else:
+        limit = 1 << (rtype.size * 8 - 1)
+        return -limit <= n < limit

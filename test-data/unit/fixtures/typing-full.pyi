@@ -10,27 +10,37 @@ from abc import abstractmethod, ABCMeta
 
 class GenericMeta(type): pass
 
+class _SpecialForm:
+    def __getitem__(self, index: Any) -> Any: ...
+    def __or__(self, other): ...
+    def __ror__(self, other): ...
+class TypeVar:
+    def __init__(self, name, *args, bound=None): ...
+    def __or__(self, other): ...
+class ParamSpec: ...
+class TypeVarTuple: ...
+
 def cast(t, o): ...
 def assert_type(o, t): ...
 overload = 0
-Any = 0
-Union = 0
+Any = object()
 Optional = 0
-TypeVar = 0
 Generic = 0
 Protocol = 0
 Tuple = 0
-Callable = 0
 _promote = 0
-NamedTuple = 0
 Type = 0
 no_type_check = 0
 ClassVar = 0
 Final = 0
-Literal = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
+Self = 0
+Unpack = 0
+Callable: _SpecialForm
+Union: _SpecialForm
+Literal: _SpecialForm
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -38,6 +48,10 @@ T_contra = TypeVar('T_contra', contravariant=True)
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
+
+def final(x: T) -> T: ...
+
+class NamedTuple(tuple[Any, ...]): ...
 
 # Note: definitions below are different from typeshed, variances are declared
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?
@@ -135,6 +149,7 @@ class MutableSequence(Sequence[T]):
     def __setitem__(self, n: Any, o: T) -> None: pass
 
 class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
+    def keys(self) -> Iterable[T]: pass  # Approximate return type
     def __getitem__(self, key: T) -> T_co: pass
     @overload
     def get(self, k: T) -> Optional[T_co]: pass
@@ -159,8 +174,8 @@ class SupportsAbs(Protocol[T_co]):
 def runtime_checkable(cls: T) -> T:
     return cls
 
-class ContextManager(Generic[T]):
-    def __enter__(self) -> T: pass
+class ContextManager(Generic[T_co]):
+    def __enter__(self) -> T_co: pass
     # Use Any because not all the precise types are in the fixtures.
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Any: pass
 
@@ -178,3 +193,29 @@ class _TypedDict(Mapping[str, object]):
     def pop(self, k: NoReturn, default: T = ...) -> object: ...
     def update(self: T, __m: T) -> None: ...
     def __delitem__(self, k: NoReturn) -> None: ...
+
+def dataclass_transform(
+    *,
+    eq_default: bool = ...,
+    order_default: bool = ...,
+    kw_only_default: bool = ...,
+    field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+    **kwargs: Any,
+) -> Callable[[T], T]: ...
+def override(__arg: T) -> T: ...
+
+# Was added in 3.11
+def reveal_type(__obj: T) -> T: ...
+
+# Only exists in type checking time:
+def type_check_only(__func_or_class: T) -> T: ...
+
+# Was added in 3.12
+@final
+class TypeAliasType:
+    def __init__(
+        self, name: str, value: Any, *, type_params: Tuple[Union[TypeVar, ParamSpec, TypeVarTuple], ...] = ()
+    ) -> None: ...
+
+    def __or__(self, other: Any) -> Any: ...
+    def __ror__(self, other: Any) -> Any: ...

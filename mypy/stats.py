@@ -1,12 +1,11 @@
 """Utilities for calculating and reporting statistics about types."""
 
+from __future__ import annotations
+
 import os
-import typing
 from collections import Counter
 from contextlib import contextmanager
-from typing import Dict, Iterator, List, Optional, Union, cast
-
-from typing_extensions import Final
+from typing import Final, Iterator
 
 from mypy import nodes
 from mypy.argmap import map_formals_to_actuals
@@ -40,7 +39,6 @@ from mypy.nodes import (
     StrExpr,
     TypeApplication,
     UnaryExpr,
-    UnicodeExpr,
     YieldFromExpr,
 )
 from mypy.traverser import TraverserVisitor
@@ -74,8 +72,8 @@ class StatisticsVisitor(TraverserVisitor):
         self,
         inferred: bool,
         filename: str,
-        modules: Dict[str, MypyFile],
-        typemap: Optional[Dict[Expression, Type]] = None,
+        modules: dict[str, MypyFile],
+        typemap: dict[Expression, Type] | None = None,
         all_nodes: bool = False,
         visit_untyped_defs: bool = True,
     ) -> None:
@@ -100,10 +98,10 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line = -1
 
-        self.line_map: Dict[int, int] = {}
+        self.line_map: dict[int, int] = {}
 
-        self.type_of_any_counter: typing.Counter[int] = Counter()
-        self.any_line_map: Dict[int, List[AnyType]] = {}
+        self.type_of_any_counter: Counter[int] = Counter()
+        self.any_line_map: dict[int, list[AnyType]] = {}
 
         # For each scope (top level/function), whether the scope was type checked
         # (annotated function).
@@ -111,7 +109,7 @@ class StatisticsVisitor(TraverserVisitor):
         # TODO: Handle --check-untyped-defs
         self.checked_scopes = [True]
 
-        self.output: List[str] = []
+        self.output: list[str] = []
 
         TraverserVisitor.__init__(self)
 
@@ -126,7 +124,7 @@ class StatisticsVisitor(TraverserVisitor):
     def visit_import_all(self, imp: ImportAll) -> None:
         self.process_import(imp)
 
-    def process_import(self, imp: Union[ImportFrom, ImportAll]) -> None:
+    def process_import(self, imp: ImportFrom | ImportAll) -> None:
         import_id, ok = correct_relative_import(
             self.cur_mod_id, imp.relative, imp.id, self.cur_mod_node.is_package_init_file()
         )
@@ -150,15 +148,17 @@ class StatisticsVisitor(TraverserVisitor):
                 if o in o.expanded:
                     print(
                         "{}:{}: ERROR: cycle in function expansion; skipping".format(
-                            self.filename, o.get_line()
+                            self.filename, o.line
                         )
                     )
                     return
                 for defn in o.expanded:
-                    self.visit_func_def(cast(FuncDef, defn))
+                    assert isinstance(defn, FuncDef)
+                    self.visit_func_def(defn)
             else:
                 if o.type:
-                    sig = cast(CallableType, o.type)
+                    assert isinstance(o.type, CallableType)
+                    sig = o.type
                     arg_types = sig.arg_types
                     if sig.arg_names and sig.arg_names[0] == "self" and not self.inferred:
                         arg_types = arg_types[1:]
@@ -203,7 +203,11 @@ class StatisticsVisitor(TraverserVisitor):
             # Type variable definition -- not a real assignment.
             return
         if o.type:
+            # If there is an explicit type, don't visit the l.h.s. as an expression
+            # to avoid double-counting and mishandling special forms.
             self.type(o.type)
+            o.rvalue.accept(self)
+            return
         elif self.inferred and not self.all_nodes:
             # if self.all_nodes is set, lvalues will be visited later
             for lvalue in o.lvalues:
@@ -218,7 +222,7 @@ class StatisticsVisitor(TraverserVisitor):
         super().visit_assignment_stmt(o)
 
     def visit_expression_stmt(self, o: ExpressionStmt) -> None:
-        if isinstance(o.expr, (StrExpr, UnicodeExpr, BytesExpr)):
+        if isinstance(o.expr, (StrExpr, BytesExpr)):
             # Docstring
             self.record_line(o.line, TYPE_EMPTY)
         else:
@@ -317,9 +321,6 @@ class StatisticsVisitor(TraverserVisitor):
     def visit_str_expr(self, o: StrExpr) -> None:
         self.record_precise_if_checked_scope(o)
 
-    def visit_unicode_expr(self, o: UnicodeExpr) -> None:
-        self.record_precise_if_checked_scope(o)
-
     def visit_bytes_expr(self, o: BytesExpr) -> None:
         self.record_precise_if_checked_scope(o)
 
@@ -352,7 +353,7 @@ class StatisticsVisitor(TraverserVisitor):
             kind = TYPE_ANY
         self.record_line(node.line, kind)
 
-    def type(self, t: Optional[Type]) -> None:
+    def type(self, t: Type | None) -> None:
         t = get_proper_type(t)
 
         if not t:
@@ -418,9 +419,9 @@ class StatisticsVisitor(TraverserVisitor):
 def dump_type_stats(
     tree: MypyFile,
     path: str,
-    modules: Dict[str, MypyFile],
+    modules: dict[str, MypyFile],
     inferred: bool = False,
-    typemap: Optional[Dict[Expression, Type]] = None,
+    typemap: dict[Expression, Type] | None = None,
 ) -> None:
     if is_special_module(path):
         return
@@ -478,11 +479,6 @@ def is_generic(t: Type) -> bool:
 def is_complex(t: Type) -> bool:
     t = get_proper_type(t)
     return is_generic(t) or isinstance(t, (FunctionLike, TupleType, TypeVarType))
-
-
-def ensure_dir_exists(dir: str) -> None:
-    if not os.path.exists(dir):
-        os.makedirs(dir)
 
 
 def is_special_form_any(t: AnyType) -> bool:

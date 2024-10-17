@@ -852,8 +852,6 @@ class I: pass
 <mod.I.__new__> -> a
 <mod.I> -> <m.P>, a, mod.I
 <mod> -> a
-<sys.platform> -> sys
-<sys.version_info> -> sys
 
 [case testAliasDepsClassInFunction]
 from mod import I

@@ -3,7 +3,9 @@
 mypyc.irbuild.builder and mypyc.irbuild.main are closely related.
 """
 
-from typing_extensions import NoReturn
+from __future__ import annotations
+
+from typing import NoReturn
 
 from mypy.nodes import (
     AssertStmt,
@@ -11,7 +13,6 @@ from mypy.nodes import (
     AssignmentExpr,
     AssignmentStmt,
     AwaitExpr,
-    BackquoteExpr,
     Block,
     BreakStmt,
     BytesExpr,
@@ -28,7 +29,6 @@ from mypy.nodes import (
     DictionaryComprehension,
     EllipsisExpr,
     EnumCallExpr,
-    ExecStmt,
     ExpressionStmt,
     FloatExpr,
     ForStmt,
@@ -56,7 +56,6 @@ from mypy.nodes import (
     OverloadedFuncDef,
     ParamSpecExpr,
     PassStmt,
-    PrintStmt,
     PromoteExpr,
     RaiseStmt,
     ReturnStmt,
@@ -71,12 +70,12 @@ from mypy.nodes import (
     TryStmt,
     TupleExpr,
     TypeAliasExpr,
+    TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     Var,
     WhileStmt,
     WithStmt,
@@ -114,17 +113,15 @@ from mypyc.irbuild.expression import (
     transform_unary_expr,
 )
 from mypyc.irbuild.function import (
-    transform_await_expr,
     transform_decorator,
     transform_func_def,
     transform_lambda_expr,
     transform_overloaded_func_def,
-    transform_yield_expr,
-    transform_yield_from_expr,
 )
 from mypyc.irbuild.statement import (
     transform_assert_stmt,
     transform_assignment_stmt,
+    transform_await_expr,
     transform_block,
     transform_break_stmt,
     transform_continue_stmt,
@@ -135,12 +132,16 @@ from mypyc.irbuild.statement import (
     transform_import,
     transform_import_all,
     transform_import_from,
+    transform_match_stmt,
     transform_operator_assignment_stmt,
     transform_raise_stmt,
     transform_return_stmt,
     transform_try_stmt,
+    transform_type_alias_stmt,
     transform_while_stmt,
     transform_with_stmt,
+    transform_yield_expr,
+    transform_yield_from_expr,
 )
 
 
@@ -195,6 +196,7 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
         transform_return_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
         transform_assignment_stmt(self.builder, stmt)
@@ -213,12 +215,15 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_break_stmt(self, stmt: BreakStmt) -> None:
         transform_break_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_continue_stmt(self, stmt: ContinueStmt) -> None:
         transform_continue_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_raise_stmt(self, stmt: RaiseStmt) -> None:
         transform_raise_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_try_stmt(self, stmt: TryStmt) -> None:
         transform_try_stmt(self.builder, stmt)
@@ -244,7 +249,10 @@ class IRBuilderVisitor(IRVisitor):
         pass
 
     def visit_match_stmt(self, stmt: MatchStmt) -> None:
-        self.bail("Match statements are not yet supported", stmt.line)
+        transform_match_stmt(self.builder, stmt)
+
+    def visit_type_alias_stmt(self, stmt: TypeAliasStmt) -> None:
+        transform_type_alias_stmt(self.builder, stmt)
 
     # Expressions
 
@@ -334,20 +342,6 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_assignment_expr(self, o: AssignmentExpr) -> Value:
         return transform_assignment_expr(self.builder, o)
-
-    # Unimplemented constructs that shouldn't come up because they are py2 only
-
-    def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_exec_stmt(self, o: ExecStmt) -> None:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_print_stmt(self, o: PrintStmt) -> None:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_unicode_expr(self, o: UnicodeExpr) -> Value:
-        self.bail("Python 2 features are unsupported", o.line)
 
     # Constructs that shouldn't ever show up
 

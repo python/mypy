@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import os
 import shutil
 import tempfile
 import unittest
-from typing import List, Optional, Set, Tuple
 
 import pytest
 
@@ -13,7 +14,7 @@ from mypy.options import Options
 
 
 class FakeFSCache(FileSystemCache):
-    def __init__(self, files: Set[str]) -> None:
+    def __init__(self, files: set[str]) -> None:
         self.files = {os.path.abspath(f) for f in files}
 
     def isfile(self, file: str) -> bool:
@@ -24,7 +25,7 @@ class FakeFSCache(FileSystemCache):
             dir += os.sep
         return any(f.startswith(dir) for f in self.files)
 
-    def listdir(self, dir: str) -> List[str]:
+    def listdir(self, dir: str) -> list[str]:
         if not dir.endswith(os.sep):
             dir += os.sep
         return list({f[len(dir) :].split(os.sep)[0] for f in self.files if f.startswith(dir)})
@@ -39,25 +40,25 @@ def normalise_path(path: str) -> str:
     return path
 
 
-def normalise_build_source_list(sources: List[BuildSource]) -> List[Tuple[str, Optional[str]]]:
+def normalise_build_source_list(sources: list[BuildSource]) -> list[tuple[str, str | None]]:
     return sorted(
         (s.module, (normalise_path(s.base_dir) if s.base_dir is not None else None))
         for s in sources
     )
 
 
-def crawl(finder: SourceFinder, f: str) -> Tuple[str, str]:
+def crawl(finder: SourceFinder, f: str) -> tuple[str, str]:
     module, base_dir = finder.crawl_up(f)
     return module, normalise_path(base_dir)
 
 
-def find_sources_in_dir(finder: SourceFinder, f: str) -> List[Tuple[str, Optional[str]]]:
+def find_sources_in_dir(finder: SourceFinder, f: str) -> list[tuple[str, str | None]]:
     return normalise_build_source_list(finder.find_sources_in_dir(os.path.abspath(f)))
 
 
 def find_sources(
-    paths: List[str], options: Options, fscache: FileSystemCache
-) -> List[Tuple[str, Optional[str]]]:
+    paths: list[str], options: Options, fscache: FileSystemCache
+) -> list[tuple[str, str | None]]:
     paths = [os.path.abspath(p) for p in paths]
     return normalise_build_source_list(create_source_list(paths, options, fscache))
 
@@ -355,7 +356,8 @@ class SourceFinderSuite(unittest.TestCase):
             "/kg",
             "/g.py",
             "/bc",
-            "/xxx/pkg/a2/b/f.py" "xxx/pkg/a2/b/f.py",
+            "/xxx/pkg/a2/b/f.py",
+            "xxx/pkg/a2/b/f.py",
         ]
         big_exclude2 = ["|".join(big_exclude1)]
         for big_exclude in [big_exclude1, big_exclude2]:

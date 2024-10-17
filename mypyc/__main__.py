@@ -10,6 +10,8 @@ This is just a thin wrapper that generates a setup.py file that uses
 mypycify, suitable for prototyping and testing.
 """
 
+from __future__ import annotations
+
 import os
 import os.path
 import subprocess

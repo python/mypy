@@ -4,6 +4,8 @@ The transform inserts needed reference count increment/decrement
 operations to IR.
 """
 
+from __future__ import annotations
+
 import os.path
 
 from mypy.errors import CompileError

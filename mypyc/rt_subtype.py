@@ -13,6 +13,8 @@ particular place and runtime subtyping is used to determine whether a
 coercion is necessary first.
 """
 
+from __future__ import annotations
+
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
@@ -49,7 +51,7 @@ class RTSubtypeVisitor(RTypeVisitor[bool]):
         return is_subtype(left, self.right)
 
     def visit_runion(self, left: RUnion) -> bool:
-        return is_subtype(left, self.right)
+        return not self.right.is_unboxed and is_subtype(left, self.right)
 
     def visit_rprimitive(self, left: RPrimitive) -> bool:
         if is_short_int_rprimitive(left) and is_int_rprimitive(self.right):

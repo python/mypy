@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 import os
 
 from mypy import git
 
 # Base version.
-# - Release versions have the form "0.NNN".
-# - Dev versions have the form "0.NNN+dev" (PLUS sign to conform to PEP 440).
-# - For 1.0 we'll switch back to 1.2.3 form.
-__version__ = "0.980+dev"
+# - Release versions have the form "1.2.3".
+# - Dev versions have the form "1.2.3+dev" (PLUS sign to conform to PEP 440).
+# - Before 1.0 we had the form "0.NNN".
+__version__ = "1.13.0+dev"
 base_version = __version__
 
 mypy_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))

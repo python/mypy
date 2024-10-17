@@ -4,6 +4,8 @@ This manages a daemon process which keeps useful state in memory
 rather than having to read it back from disk on each run.
 """
 
+from __future__ import annotations
+
 import argparse
 import base64
 import json
@@ -12,14 +14,12 @@ import pickle
 import sys
 import time
 import traceback
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
-
-from typing_extensions import NoReturn
+from typing import Any, Callable, Mapping, NoReturn
 
 from mypy.dmypy_os import alive, kill
-from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
+from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive, send
 from mypy.ipc import IPCClient, IPCException
-from mypy.util import check_python_version, get_terminal_width
+from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__
 
 # Argument parser.  Subparsers are tied to action functions by the
@@ -83,6 +83,11 @@ p.add_argument("-q", "--quiet", action="store_true", help=argparse.SUPPRESS)  # 
 p.add_argument("--junit-xml", help="Write junit.xml to the given file")
 p.add_argument("--perf-stats-file", help="write performance information to the given file")
 p.add_argument("files", metavar="FILE", nargs="+", help="File (or directory) to check")
+p.add_argument(
+    "--export-types",
+    action="store_true",
+    help="Store types of all expressions in a shared location (useful for inspections)",
+)
 
 run_parser = p = subparsers.add_parser(
     "run",
@@ -96,6 +101,11 @@ p.add_argument(
     "--timeout", metavar="TIMEOUT", type=int, help="Server shutdown timeout (in seconds)"
 )
 p.add_argument("--log-file", metavar="FILE", type=str, help="Direct daemon stdout/stderr to FILE")
+p.add_argument(
+    "--export-types",
+    action="store_true",
+    help="Store types of all expressions in a shared location (useful for inspections)",
+)
 p.add_argument(
     "flags",
     metavar="ARG",
@@ -113,6 +123,11 @@ p.add_argument("-v", "--verbose", action="store_true", help="Print detailed stat
 p.add_argument("-q", "--quiet", action="store_true", help=argparse.SUPPRESS)  # Deprecated
 p.add_argument("--junit-xml", help="Write junit.xml to the given file")
 p.add_argument("--perf-stats-file", help="write performance information to the given file")
+p.add_argument(
+    "--export-types",
+    action="store_true",
+    help="Store types of all expressions in a shared location (useful for inspections)",
+)
 p.add_argument(
     "--update",
     metavar="FILE",
@@ -147,9 +162,6 @@ p.add_argument(
     help="Allow anys in types if they go above a certain score (scores are from 0-1)",
 )
 p.add_argument(
-    "--try-text", action="store_true", help="Try using unicode wherever str is inferred"
-)
-p.add_argument(
     "--callsites", action="store_true", help="Find callsites instead of suggesting a type"
 )
 p.add_argument(
@@ -164,12 +176,75 @@ p.add_argument(
     help="Set the maximum number of types to try for a function (default 64)",
 )
 
+inspect_parser = p = subparsers.add_parser(
+    "inspect", help="Locate and statically inspect expression(s)"
+)
+p.add_argument(
+    "location",
+    metavar="LOCATION",
+    type=str,
+    help="Location specified as path/to/file.py:line:column[:end_line:end_column]."
+    " If position is given (i.e. only line and column), this will return all"
+    " enclosing expressions",
+)
+p.add_argument(
+    "--show",
+    metavar="INSPECTION",
+    type=str,
+    default="type",
+    choices=["type", "attrs", "definition"],
+    help="What kind of inspection to run",
+)
+p.add_argument(
+    "--verbose",
+    "-v",
+    action="count",
+    default=0,
+    help="Increase verbosity of the type string representation (can be repeated)",
+)
+p.add_argument(
+    "--limit",
+    metavar="NUM",
+    type=int,
+    default=0,
+    help="Return at most NUM innermost expressions (if position is given); 0 means no limit",
+)
+p.add_argument(
+    "--include-span",
+    action="store_true",
+    help="Prepend each inspection result with the span of corresponding expression"
+    ' (e.g. 1:2:3:4:"int")',
+)
+p.add_argument(
+    "--include-kind",
+    action="store_true",
+    help="Prepend each inspection result with the kind of corresponding expression"
+    ' (e.g. NameExpr:"int")',
+)
+p.add_argument(
+    "--include-object-attrs",
+    action="store_true",
+    help='Include attributes of "object" in "attrs" inspection',
+)
+p.add_argument(
+    "--union-attrs",
+    action="store_true",
+    help="Include attributes valid for some of possible expression types"
+    " (by default an intersection is returned)",
+)
+p.add_argument(
+    "--force-reload",
+    action="store_true",
+    help="Re-parse and re-type-check file before inspection (may be slow)",
+)
+
 hang_parser = p = subparsers.add_parser("hang", help="Hang for 100 seconds")
 
 daemon_parser = p = subparsers.add_parser("daemon", help="Run daemon in foreground")
 p.add_argument(
     "--timeout", metavar="TIMEOUT", type=int, help="Server shutdown timeout (in seconds)"
 )
+p.add_argument("--log-file", metavar="FILE", type=str, help="Direct daemon stdout/stderr to FILE")
 p.add_argument(
     "flags", metavar="FLAG", nargs="*", type=str, help="Regular mypy flags (precede with --)"
 )
@@ -188,10 +263,8 @@ class BadStatus(Exception):
     - Process whose pid is in the status file does not exist
     """
 
-    pass
 
-
-def main(argv: List[str]) -> None:
+def main(argv: list[str]) -> None:
     """The code is top-down."""
     check_python_version("dmypy")
     args = parser.parse_args(argv)
@@ -321,12 +394,24 @@ def do_run(args: argparse.Namespace) -> None:
         # Bad or missing status file or dead process; good to start.
         start_server(args, allow_sources=True)
     t0 = time.time()
-    response = request(args.status_file, "run", version=__version__, args=args.flags)
+    response = request(
+        args.status_file,
+        "run",
+        version=__version__,
+        args=args.flags,
+        export_types=args.export_types,
+    )
     # If the daemon signals that a restart is necessary, do it
     if "restart" in response:
         print(f"Restarting: {response['restart']}")
         restart_server(args, allow_sources=True)
-        response = request(args.status_file, "run", version=__version__, args=args.flags)
+        response = request(
+            args.status_file,
+            "run",
+            version=__version__,
+            args=args.flags,
+            export_types=args.export_types,
+        )
 
     t1 = time.time()
     response["roundtrip_time"] = t1 - t0
@@ -383,7 +468,7 @@ def do_kill(args: argparse.Namespace) -> None:
 def do_check(args: argparse.Namespace) -> None:
     """Ask the daemon to check a list of files."""
     t0 = time.time()
-    response = request(args.status_file, "check", files=args.files)
+    response = request(args.status_file, "check", files=args.files, export_types=args.export_types)
     t1 = time.time()
     response["roundtrip_time"] = t1 - t0
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
@@ -406,9 +491,15 @@ def do_recheck(args: argparse.Namespace) -> None:
     """
     t0 = time.time()
     if args.remove is not None or args.update is not None:
-        response = request(args.status_file, "recheck", remove=args.remove, update=args.update)
+        response = request(
+            args.status_file,
+            "recheck",
+            export_types=args.export_types,
+            remove=args.remove,
+            update=args.update,
+        )
     else:
-        response = request(args.status_file, "recheck")
+        response = request(args.status_file, "recheck", export_types=args.export_types)
     t1 = time.time()
     response["roundtrip_time"] = t1 - t0
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
@@ -430,18 +521,33 @@ def do_suggest(args: argparse.Namespace) -> None:
         no_errors=args.no_errors,
         no_any=args.no_any,
         flex_any=args.flex_any,
-        try_text=args.try_text,
         use_fixme=args.use_fixme,
         max_guesses=args.max_guesses,
     )
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 
+@action(inspect_parser)
+def do_inspect(args: argparse.Namespace) -> None:
+    """Ask daemon to print the type of an expression."""
+    response = request(
+        args.status_file,
+        "inspect",
+        show=args.show,
+        location=args.location,
+        verbosity=args.verbose,
+        limit=args.limit,
+        include_span=args.include_span,
+        include_kind=args.include_kind,
+        include_object_attrs=args.include_object_attrs,
+        union_attrs=args.union_attrs,
+        force_reload=args.force_reload,
+    )
+    check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
+
+
 def check_output(
-    response: Dict[str, Any],
-    verbose: bool,
-    junit_xml: Optional[str],
-    perf_stats_file: Optional[str],
+    response: dict[str, Any], verbose: bool, junit_xml: str | None, perf_stats_file: str | None
 ) -> None:
     """Print the output from a check or recheck command.
 
@@ -456,6 +562,7 @@ def check_output(
     sys.stdout.write(out)
     sys.stdout.flush()
     sys.stderr.write(err)
+    sys.stderr.flush()
     if verbose:
         show_stats(response)
     if junit_xml:
@@ -466,7 +573,7 @@ def check_output(
         write_junit_xml(
             response["roundtrip_time"],
             bool(err),
-            messages,
+            {None: messages} if messages else {},
             junit_xml,
             response["python_version"],
             response["platform"],
@@ -482,13 +589,14 @@ def check_output(
 
 def show_stats(response: Mapping[str, object]) -> None:
     for key, value in sorted(response.items()):
-        if key not in ("out", "err"):
-            print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
-        else:
+        if key in ("out", "err", "stdout", "stderr"):
+            # Special case text output to display just 40 characters of text
             value = repr(value)[1:-1]
             if len(value) > 50:
-                value = value[:40] + " ..."
+                value = f"{value[:40]} ... {len(value)-40} more characters"
             print("%-24s: %s" % (key, value))
+            continue
+        print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
 
 
 @action(hang_parser)
@@ -503,21 +611,22 @@ def do_daemon(args: argparse.Namespace) -> None:
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import Server, process_start_options
 
+    if args.log_file:
+        sys.stdout = sys.stderr = open(args.log_file, "a", buffering=1)
+        fd = sys.stdout.fileno()
+        os.dup2(fd, 2)
+        os.dup2(fd, 1)
+
     if args.options_data:
         from mypy.options import Options
 
-        options_dict, timeout, log_file = pickle.loads(base64.b64decode(args.options_data))
+        options_dict = pickle.loads(base64.b64decode(args.options_data))
         options_obj = Options()
         options = options_obj.apply_changes(options_dict)
-        if log_file:
-            sys.stdout = sys.stderr = open(log_file, "a", buffering=1)
-            fd = sys.stdout.fileno()
-            os.dup2(fd, 2)
-            os.dup2(fd, 1)
     else:
         options = process_start_options(args.flags, allow_sources=False)
-        timeout = args.timeout
-    Server(options, args.status_file, timeout=timeout).serve()
+
+    Server(options, args.status_file, timeout=args.timeout).serve()
 
 
 @action(help_parser)
@@ -530,8 +639,8 @@ def do_help(args: argparse.Namespace) -> None:
 
 
 def request(
-    status_file: str, command: str, *, timeout: Optional[int] = None, **kwds: object
-) -> Dict[str, Any]:
+    status_file: str, command: str, *, timeout: int | None = None, **kwds: object
+) -> dict[str, Any]:
     """Send a request to the daemon.
 
     Return the JSON dict with the response.
@@ -543,27 +652,39 @@ def request(
     raised OSError.  This covers cases such as connection refused or
     closed prematurely as well as invalid JSON received.
     """
-    response: Dict[str, str] = {}
+    response: dict[str, str] = {}
     args = dict(kwds)
     args["command"] = command
     # Tell the server whether this request was initiated from a human-facing terminal,
     # so that it can format the type checking output accordingly.
-    args["is_tty"] = sys.stdout.isatty() or int(os.getenv("MYPY_FORCE_COLOR", "0")) > 0
+    args["is_tty"] = sys.stdout.isatty() or should_force_color()
     args["terminal_width"] = get_terminal_width()
-    bdata = json.dumps(args).encode("utf8")
     _, name = get_status(status_file)
     try:
         with IPCClient(name, timeout) as client:
-            client.write(bdata)
-            response = receive(client)
+            send(client, args)
+
+            final = False
+            while not final:
+                response = receive(client)
+                final = bool(response.pop("final", False))
+                # Display debugging output written to stdout/stderr in the server process for convenience.
+                # This should not be confused with "out" and "err" fields in the response.
+                # Those fields hold the output of the "check" command, and are handled in check_output().
+                stdout = response.pop("stdout", None)
+                if stdout:
+                    sys.stdout.write(stdout)
+                stderr = response.pop("stderr", None)
+                if stderr:
+                    sys.stderr.write(stderr)
     except (OSError, IPCException) as err:
         return {"error": str(err)}
     # TODO: Other errors, e.g. ValueError, UnicodeError
-    else:
-        return response
+
+    return response
 
 
-def get_status(status_file: str) -> Tuple[int, str]:
+def get_status(status_file: str) -> tuple[int, str]:
     """Read status file and check if the process is alive.
 
     Return (pid, connection_name) on success.
@@ -574,7 +695,7 @@ def get_status(status_file: str) -> Tuple[int, str]:
     return check_status(data)
 
 
-def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
+def check_status(data: dict[str, Any]) -> tuple[int, str]:
     """Check if the process is alive.
 
     Return (pid, connection_name) on success.
@@ -596,7 +717,7 @@ def check_status(data: Dict[str, Any]) -> Tuple[int, str]:
     return pid, connection_name
 
 
-def read_status(status_file: str) -> Dict[str, object]:
+def read_status(status_file: str) -> dict[str, object]:
     """Read status file.
 
     Raise BadStatus if the status file doesn't exist or contains

@@ -1,4 +1,7 @@
 """Mypy type checker command line tool."""
+
+from __future__ import annotations
+
 import os
 import sys
 import traceback
@@ -9,7 +12,7 @@ from mypy.util import FancyFormatter
 
 def console_entry() -> None:
     try:
-        main(None, sys.stdout, sys.stderr)
+        main()
         sys.stdout.flush()
         sys.stderr.flush()
     except BrokenPipeError:

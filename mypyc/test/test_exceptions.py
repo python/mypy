@@ -3,6 +3,8 @@
 The transform inserts exception handling branch operations to IR.
 """
 
+from __future__ import annotations
+
 import os.path
 
 from mypy.errors import CompileError

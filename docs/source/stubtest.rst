@@ -41,6 +41,10 @@ stubs and implementation or to check for stub completeness. It's used to
 test Python's official collection of library stubs,
 `typeshed <https://github.com/python/typeshed>`_.
 
+.. warning::
+
+    stubtest will import and execute Python code from the packages it checks.
+
 Example
 *******
 
@@ -65,14 +69,14 @@ Here's a quick example of what stubtest can do:
     error: library.foo is inconsistent, runtime argument "x" has a default value but stub argument does not
     Stub: at line 3
     def (x: builtins.int)
-    Runtime: at line 3 in file ~/library.py
+    Runtime: in file ~/library.py:3
     def (x=None)
 
     error: library.x variable differs from runtime type Literal['hello, stubtest']
     Stub: at line 1
     builtins.int
     Runtime:
-    hello, stubtest
+    'hello, stubtest'
 
 
 Usage
@@ -81,12 +85,19 @@ Usage
 Running stubtest can be as simple as ``stubtest module_to_check``.
 Run :option:`stubtest --help` for a quick summary of options.
 
-Subtest must be able to import the code to be checked, so make sure that mypy
+Stubtest must be able to import the code to be checked, so make sure that mypy
 is installed in the same environment as the library to be tested. In some
 cases, setting ``PYTHONPATH`` can help stubtest find the code to import.
 
 Similarly, stubtest must be able to find the stubs to be checked. Stubtest
-respects the ``MYPYPATH`` environment variable.
+respects the ``MYPYPATH`` environment variable -- consider using this if you
+receive a complaint along the lines of "failed to find stubs".
+
+Note that stubtest requires mypy to be able to analyse stubs. If mypy is unable
+to analyse stubs, you may get an error on the lines of "not checking stubs due
+to mypy build errors". In this case, you will need to mitigate those errors
+before stubtest will run. Despite potential overlap in errors here, stubtest is
+not intended as a substitute for running mypy directly.
 
 If you wish to ignore some of stubtest's complaints, stubtest supports a
 pretty handy allowlist system.
@@ -111,13 +122,28 @@ The rest of this section documents the command line interface of stubtest.
     allowlists. Allowlists can be created with --generate-allowlist. Allowlists
     support regular expressions.
 
+    The presence of an entry in the allowlist means stubtest will not generate
+    any errors for the corresponding definition.
+
 .. option:: --generate-allowlist
 
     Print an allowlist (to stdout) to be used with --allowlist
 
+    When introducing stubtest to an existing project, this is an easy way to
+    silence all existing errors.
+
 .. option:: --ignore-unused-allowlist
 
     Ignore unused allowlist entries
+
+    Without this option enabled, the default is for stubtest to complain if an
+    allowlist entry is not necessary for stubtest to pass successfully.
+
+    Note if an allowlist entry is a regex that matches the empty string,
+    stubtest will never consider it unused. For example, to get
+    `--ignore-unused-allowlist` behaviour for a single allowlist entry like
+    ``foo.bar`` you could add an allowlist entry ``(foo\.bar)?``.
+    This can be useful when an error only occurs on a specific platform.
 
 .. option:: --mypy-config-file FILE
 

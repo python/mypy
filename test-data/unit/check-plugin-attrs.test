@@ -1,0 +1,2497 @@
+[case testAttrsSimple_no_empty]
+import attr
+@attr.s
+class A:
+    a = attr.ib()
+    _b = attr.ib()
+    c = attr.ib(18)
+    _d = attr.ib(validator=None, default=18)
+    E = 18
+
+    def foo(self):
+        return self.a
+reveal_type(A)  # N: Revealed type is "def (a: Any, b: Any, c: Any =, d: Any =) -> __main__.A"
+A(1, [2])
+A(1, [2], '3', 4)
+A(1, 2, 3, 4)
+A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+[builtins fixtures/list.pyi]
+
+[case testAttrsAnnotated]
+import attr
+from typing import List, ClassVar
+@attr.s
+class A:
+    a: int = attr.ib()
+    _b: List[int] = attr.ib()
+    c: str = attr.ib('18')
+    _d: int = attr.ib(validator=None, default=18)
+    E = 7
+    F: ClassVar[int] = 22
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
+A(1, [2])
+A(1, [2], '3', 4)
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+[builtins fixtures/list.pyi]
+
+[case testAttrsTypeComments]
+import attr
+from typing import List, ClassVar
+@attr.s
+class A:
+    a = attr.ib()   # type: int
+    _b = attr.ib()  # type: List[int]
+    c = attr.ib('18') # type: str
+    _d = attr.ib(validator=None, default=18) # type: int
+    E = 7
+    F: ClassVar[int] = 22
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
+A(1, [2])
+A(1, [2], '3', 4)
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+[builtins fixtures/list.pyi]
+
+[case testAttrsAutoAttribs]
+import attr
+from typing import List, ClassVar
+@attr.s(auto_attribs=True)
+class A:
+    a: int
+    _b: List[int]
+    c: str = '18'
+    _d: int = attr.ib(validator=None, default=18)
+    E = 7
+    F: ClassVar[int] = 22
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
+A(1, [2])
+A(1, [2], '3', 4)
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+[builtins fixtures/list.pyi]
+
+[case testAttrsUntypedNoUntypedDefs]
+# flags: --disallow-untyped-defs
+import attr
+@attr.s
+class A:
+    a = attr.ib()  # E: Need type annotation for "a"
+    _b = attr.ib()  # E: Need type annotation for "_b"
+    c = attr.ib(18)  # E: Need type annotation for "c"
+    _d = attr.ib(validator=None, default=18)   # E: Need type annotation for "_d"
+    E = 18
+[builtins fixtures/bool.pyi]
+
+[case testAttrsWrongReturnValue]
+import attr
+@attr.s
+class A:
+    x: int = attr.ib(8)
+    def foo(self) -> str:
+        return self.x  # E: Incompatible return value type (got "int", expected "str")
+@attr.s
+class B:
+    x = attr.ib(8)  # type: int
+    def foo(self) -> str:
+        return self.x  # E: Incompatible return value type (got "int", expected "str")
+@attr.dataclass
+class C:
+    x: int = 8
+    def foo(self) -> str:
+        return self.x  # E: Incompatible return value type (got "int", expected "str")
+@attr.s
+class D:
+    x = attr.ib(8, type=int)
+    def foo(self) -> str:
+        return self.x  # E: Incompatible return value type (got "int", expected "str")
+[builtins fixtures/bool.pyi]
+
+[case testAttrsSeriousNames]
+from attr import attrib, attrs
+from typing import List
+@attrs(init=True)
+class A:
+    a = attrib()
+    _b: List[int] = attrib()
+    c = attrib(18)
+    _d = attrib(validator=None, default=18)
+    CLASS_VAR = 18
+reveal_type(A)  # N: Revealed type is "def (a: Any, b: builtins.list[builtins.int], c: Any =, d: Any =) -> __main__.A"
+A(1, [2])
+A(1, [2], '3', 4)
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]"
+A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
+[builtins fixtures/list.pyi]
+
+[case testAttrsDefaultErrors]
+import attr
+@attr.s
+class A:
+    x = attr.ib(default=17)
+    y = attr.ib()  # E: Non-default attributes not allowed after default attributes.
+@attr.s(auto_attribs=True)
+class B:
+    x: int = 17
+    y: int # E: Non-default attributes not allowed after default attributes.
+@attr.s(auto_attribs=True)
+class C:
+    x: int = attr.ib(default=17)
+    y: int # E: Non-default attributes not allowed after default attributes.
+@attr.s
+class D:
+    x = attr.ib()
+    y = attr.ib() # E: Non-default attributes not allowed after default attributes.
+
+    @x.default
+    def foo(self):
+        return 17
+[builtins fixtures/bool.pyi]
+
+[case testAttrsNotBooleans]
+import attr
+x = True
+@attr.s(cmp=x)  # E: "cmp" argument must be a True, False, or None literal
+class A:
+    a = attr.ib(init=x)  # E: "init" argument must be a True or False literal
+[builtins fixtures/bool.pyi]
+
+[case testAttrsInitFalse]
+from attr import attrib, attrs
+@attrs(auto_attribs=True, init=False)
+class A:
+    a: int
+    _b: int
+    c: int = 18
+    _d: int = attrib(validator=None, default=18)
+reveal_type(A)  # N: Revealed type is "def () -> __main__.A"
+A()
+A(1, [2])  # E: Too many arguments for "A"
+A(1, [2], '3', 4)  # E: Too many arguments for "A"
+[builtins fixtures/list.pyi]
+
+[case testAttrsInitAttribFalse]
+from attr import attrib, attrs
+@attrs
+class A:
+    a = attrib(init=False)
+    b = attrib()
+reveal_type(A)  # N: Revealed type is "def (b: Any) -> __main__.A"
+[builtins fixtures/bool.pyi]
+
+[case testAttrsCmpTrue]
+from attr import attrib, attrs
+@attrs(auto_attribs=True)
+class A:
+    a: int
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> __main__.A"
+reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`3, other: _AT`3) -> builtins.bool"
+reveal_type(A.__le__)  # N: Revealed type is "def [_AT] (self: _AT`4, other: _AT`4) -> builtins.bool"
+reveal_type(A.__gt__)  # N: Revealed type is "def [_AT] (self: _AT`5, other: _AT`5) -> builtins.bool"
+reveal_type(A.__ge__)  # N: Revealed type is "def [_AT] (self: _AT`6, other: _AT`6) -> builtins.bool"
+
+A(1) < A(2)
+A(1) <= A(2)
+A(1) > A(2)
+A(1) >= A(2)
+A(1) == A(2)
+A(1) != A(2)
+
+A(1) < 1  # E: Unsupported operand types for < ("A" and "int")
+A(1) <= 1  # E: Unsupported operand types for <= ("A" and "int")
+A(1) > 1  # E: Unsupported operand types for > ("A" and "int")
+A(1) >= 1  # E: Unsupported operand types for >= ("A" and "int")
+A(1) == 1
+A(1) != 1
+
+1 < A(1)  # E: Unsupported operand types for > ("A" and "int")
+1 <= A(1)  # E: Unsupported operand types for >= ("A" and "int")
+1 > A(1)  # E: Unsupported operand types for < ("A" and "int")
+1 >= A(1)  # E: Unsupported operand types for <= ("A" and "int")
+1 == A(1)
+1 != A(1)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsEqFalse]
+from attr import attrib, attrs
+@attrs(auto_attribs=True, eq=False)
+class A:
+    a: int
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> __main__.A"
+reveal_type(A.__eq__)  # N: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
+reveal_type(A.__ne__)  # N: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
+
+A(1) < A(2)  # E: Unsupported left operand type for < ("A")
+A(1) <= A(2)  # E: Unsupported left operand type for <= ("A")
+A(1) > A(2)  # E: Unsupported left operand type for > ("A")
+A(1) >= A(2)  # E: Unsupported left operand type for >= ("A")
+A(1) == A(2)
+A(1) != A(2)
+
+A(1) < 1  # E: Unsupported left operand type for < ("A")
+A(1) <= 1  # E: Unsupported left operand type for <= ("A")
+A(1) > 1  # E: Unsupported left operand type for > ("A")
+A(1) >= 1  # E: Unsupported left operand type for >= ("A")
+A(1) == 1
+A(1) != 1
+
+1 < A(1)  # E: Unsupported left operand type for < ("int")
+1 <= A(1)  # E: Unsupported left operand type for <= ("int")
+1 > A(1)  # E: Unsupported left operand type for > ("int")
+1 >= A(1)  # E: Unsupported left operand type for >= ("int")
+1 == A(1)
+1 != A(1)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsOrderFalse]
+from attr import attrib, attrs
+@attrs(auto_attribs=True, order=False)
+class A:
+    a: int
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> __main__.A"
+
+A(1) < A(2)  # E: Unsupported left operand type for < ("A")
+A(1) <= A(2)  # E: Unsupported left operand type for <= ("A")
+A(1) > A(2)  # E: Unsupported left operand type for > ("A")
+A(1) >= A(2)  # E: Unsupported left operand type for >= ("A")
+A(1) == A(2)
+A(1) != A(2)
+
+A(1) < 1  # E: Unsupported left operand type for < ("A")
+A(1) <= 1  # E: Unsupported left operand type for <= ("A")
+A(1) > 1  # E: Unsupported left operand type for > ("A")
+A(1) >= 1  # E: Unsupported left operand type for >= ("A")
+A(1) == 1
+A(1) != 1
+
+1 < A(1)  # E: Unsupported left operand type for < ("int")
+1 <= A(1)  # E: Unsupported left operand type for <= ("int")
+1 > A(1)  # E: Unsupported left operand type for > ("int")
+1 >= A(1)  # E: Unsupported left operand type for >= ("int")
+1 == A(1)
+1 != A(1)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsCmpEqOrderValues]
+from attr import attrib, attrs
+@attrs(cmp=True)
+class DeprecatedTrue:
+   ...
+
+@attrs(cmp=False)
+class DeprecatedFalse:
+   ...
+
+@attrs(cmp=False, eq=True)  # E: Don't mix "cmp" with "eq" and "order"
+class Mixed:
+   ...
+
+@attrs(order=True, eq=False)  # E: eq must be True if order is True
+class Confused:
+   ...
+[builtins fixtures/plugin_attrs.pyi]
+
+
+[case testAttrsInheritance]
+import attr
+@attr.s
+class A:
+    a: int = attr.ib()
+@attr.s
+class B:
+    b: str = attr.ib()
+@attr.s
+class C(A, B):
+    c: bool = attr.ib()
+reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: builtins.str, c: builtins.bool) -> __main__.C"
+[builtins fixtures/bool.pyi]
+
+[case testAttrsNestedInClasses]
+import attr
+@attr.s
+class C:
+    y = attr.ib()
+    @attr.s
+    class D:
+        x: int = attr.ib()
+reveal_type(C)  # N: Revealed type is "def (y: Any) -> __main__.C"
+reveal_type(C.D)  # N: Revealed type is "def (x: builtins.int) -> __main__.C.D"
+[builtins fixtures/bool.pyi]
+
+[case testAttrsInheritanceOverride]
+import attr
+
+@attr.s
+class A:
+    a: int = attr.ib()
+    x: int = attr.ib()
+
+@attr.s
+class B(A):
+    b: str = attr.ib()
+    x: int = attr.ib(default=22)
+
+@attr.s
+class C(B):
+    c: bool = attr.ib()  # No error here because the x below overwrites the x above.
+    x: int = attr.ib()
+
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int, x: builtins.int) -> __main__.A"
+reveal_type(B)  # N: Revealed type is "def (a: builtins.int, b: builtins.str, x: builtins.int =) -> __main__.B"
+reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: builtins.str, c: builtins.bool, x: builtins.int) -> __main__.C"
+[builtins fixtures/bool.pyi]
+
+[case testAttrsTypeEquals]
+import attr
+
+@attr.s
+class A:
+    a = attr.ib(type=int)
+    b = attr.ib(18, type=int)
+reveal_type(A) # N: Revealed type is "def (a: builtins.int, b: builtins.int =) -> __main__.A"
+[builtins fixtures/bool.pyi]
+
+[case testAttrsFrozen]
+import attr
+
+@attr.s(frozen=True)
+class A:
+    a = attr.ib()
+
+a = A(5)
+a.a = 16  # E: Property "a" defined in "A" is read-only
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsNextGenFrozen]
+from attr import frozen, field
+
+@frozen
+class A:
+    a = field()
+
+a = A(5)
+a.a = 16  # E: Property "a" defined in "A" is read-only
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsNextGenDetect]
+from attr import define, field
+
+@define
+class A:
+    a = field()
+
+@define
+class B:
+    a: int
+
+@define
+class C:
+    a: int = field()
+    b = field()
+
+@define
+class D:
+    a: int
+    b = field()
+
+reveal_type(A)  # N: Revealed type is "def (a: Any) -> __main__.A"
+reveal_type(B)  # N: Revealed type is "def (a: builtins.int) -> __main__.B"
+reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: Any) -> __main__.C"
+reveal_type(D)  # N: Revealed type is "def (b: Any) -> __main__.D"
+
+[builtins fixtures/bool.pyi]
+
+[case testAttrsOldPackage]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    a: int = attr.ib()
+    b: bool
+
+@attr.s(auto_attribs=True, frozen=True)
+class B:
+    a: bool
+    b: int
+
+@attr.s
+class C:
+    a = attr.ib(type=int)
+
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.bool) -> __main__.A"
+reveal_type(B)  # N: Revealed type is "def (a: builtins.bool, b: builtins.int) -> __main__.B"
+reveal_type(C)  # N: Revealed type is "def (a: builtins.int) -> __main__.C"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsDataClass]
+import attr
+from typing import List, ClassVar
+@attr.dataclass
+class A:
+    a: int
+    _b: List[str]
+    c: str = '18'
+    _d: int = attr.ib(validator=None, default=18)
+    E = 7
+    F: ClassVar[int] = 22
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.str], c: builtins.str =, d: builtins.int =) -> __main__.A"
+A(1, ['2'])
+[builtins fixtures/list.pyi]
+
+[case testAttrsTypeAlias]
+from typing import List
+import attr
+Alias = List[int]
+@attr.s(auto_attribs=True)
+class A:
+    Alias2 = List[str]
+    x: Alias
+    y: Alias2 = attr.ib()
+reveal_type(A) # N: Revealed type is "def (x: builtins.list[builtins.int], y: builtins.list[builtins.str]) -> __main__.A"
+[builtins fixtures/list.pyi]
+
+[case testAttrsGeneric]
+from typing import TypeVar, Generic, List
+import attr
+T = TypeVar('T')
+@attr.s(auto_attribs=True)
+class A(Generic[T]):
+    x: List[T]
+    y: T = attr.ib()
+    def foo(self) -> List[T]:
+        return [self.y]
+    def bar(self) -> T:
+        return self.x[0]
+    def problem(self) -> T:
+        return self.x  # E: Incompatible return value type (got "List[T]", expected "T")
+reveal_type(A) # N: Revealed type is "def [T] (x: builtins.list[T`1], y: T`1) -> __main__.A[T`1]"
+a = A([1], 2)
+reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
+reveal_type(a.x)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(a.y)  # N: Revealed type is "builtins.int"
+
+A(['str'], 7)  # E: Cannot infer type argument 1 of "A"
+A([1], '2')  # E: Cannot infer type argument 1 of "A"
+
+[builtins fixtures/list.pyi]
+
+[case testAttrsGenericWithConverter]
+from typing import TypeVar, Generic, List, Iterable, Iterator, Callable
+import attr
+T = TypeVar('T')
+
+def int_gen() -> Iterator[int]:
+    yield 1
+
+def list_converter(x: Iterable[T]) -> List[T]:
+    return list(x)
+
+@attr.s(auto_attribs=True)
+class A(Generic[T]):
+    x: List[T] = attr.ib(converter=list_converter)
+    y: T = attr.ib()
+    def foo(self) -> List[T]:
+        return [self.y]
+    def bar(self) -> T:
+        return self.x[0]
+    def problem(self) -> T:
+        return self.x  # E: Incompatible return value type (got "List[T]", expected "T")
+reveal_type(A) # N: Revealed type is "def [T] (x: typing.Iterable[T`1], y: T`1) -> __main__.A[T`1]"
+a1 = A([1], 2)
+reveal_type(a1)  # N: Revealed type is "__main__.A[builtins.int]"
+reveal_type(a1.x)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(a1.y)  # N: Revealed type is "builtins.int"
+
+a2 = A(int_gen(), 2)
+reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+reveal_type(a2.x)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(a2.y)  # N: Revealed type is "builtins.int"
+
+
+def get_int() -> int:
+    return 1
+
+class Other(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+
+@attr.s(auto_attribs=True)
+class B(Generic[T]):
+    x: Other[Callable[..., T]] = attr.ib(converter=Other[Callable[..., T]])
+
+b1 = B(get_int)
+reveal_type(b1)  # N: Revealed type is "__main__.B[builtins.int]"
+reveal_type(b1.x)  # N: Revealed type is "__main__.Other[def (*Any, **Any) -> builtins.int]"
+
+[builtins fixtures/list.pyi]
+
+
+[case testAttrsUntypedGenericInheritance]
+from typing import Generic, TypeVar
+import attr
+
+T = TypeVar("T")
+
+@attr.s(auto_attribs=True)
+class Base(Generic[T]):
+    attr: T
+
+@attr.s(auto_attribs=True)
+class Sub(Base):
+    pass
+
+sub = Sub(attr=1)
+reveal_type(sub)  # N: Revealed type is "__main__.Sub"
+reveal_type(sub.attr)  # N: Revealed type is "Any"
+
+[builtins fixtures/bool.pyi]
+
+
+[case testAttrsGenericInheritance]
+from typing import Generic, TypeVar
+import attr
+
+S = TypeVar("S")
+T = TypeVar("T")
+
+@attr.s(auto_attribs=True)
+class Base(Generic[T]):
+    attr: T
+
+@attr.s(auto_attribs=True)
+class Sub(Base[S]):
+    pass
+
+sub_int = Sub[int](attr=1)
+reveal_type(sub_int)  # N: Revealed type is "__main__.Sub[builtins.int]"
+reveal_type(sub_int.attr)  # N: Revealed type is "builtins.int"
+
+sub_str = Sub[str](attr='ok')
+reveal_type(sub_str)  # N: Revealed type is "__main__.Sub[builtins.str]"
+reveal_type(sub_str.attr)  # N: Revealed type is "builtins.str"
+
+[builtins fixtures/bool.pyi]
+
+
+[case testAttrsGenericInheritance2]
+from typing import Generic, TypeVar
+import attr
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+
+@attr.s(auto_attribs=True)
+class Base(Generic[T1, T2, T3]):
+    one: T1
+    two: T2
+    three: T3
+
+@attr.s(auto_attribs=True)
+class Sub(Base[int, str, float]):
+    pass
+
+sub = Sub(one=1, two='ok', three=3.14)
+reveal_type(sub)  # N: Revealed type is "__main__.Sub"
+reveal_type(sub.one)  # N: Revealed type is "builtins.int"
+reveal_type(sub.two)  # N: Revealed type is "builtins.str"
+reveal_type(sub.three)  # N: Revealed type is "builtins.float"
+
+[builtins fixtures/bool.pyi]
+
+
+[case testAttrsGenericInheritance3]
+import attr
+from typing import Any, Callable, Generic, TypeVar, List
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+@attr.s(auto_attribs=True)
+class Parent(Generic[T]):
+    f: Callable[[T], Any]
+
+@attr.s(auto_attribs=True)
+class Child(Parent[T]): ...
+
+class A: ...
+def func(obj: A) -> bool: ...
+
+reveal_type(Child[A](func).f)  # N: Revealed type is "def (__main__.A) -> Any"
+
+@attr.s(auto_attribs=True)
+class Parent2(Generic[T]):
+    a: List[T]
+
+@attr.s(auto_attribs=True)
+class Child2(Generic[T, S], Parent2[S]):
+    b: List[T]
+
+reveal_type(Child2([A()], [1]).a)  # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(Child2[int, A]([A()], [1]).b)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testAttrsMultiGenericInheritance]
+from typing import Generic, TypeVar
+import attr
+
+T = TypeVar("T")
+
+@attr.s(auto_attribs=True, eq=False)
+class Base(Generic[T]):
+    base_attr: T
+
+S = TypeVar("S")
+
+@attr.s(auto_attribs=True, eq=False)
+class Middle(Base[int], Generic[S]):
+    middle_attr: S
+
+@attr.s(auto_attribs=True, eq=False)
+class Sub(Middle[str]):
+    pass
+
+sub = Sub(base_attr=1, middle_attr='ok')
+reveal_type(sub)  # N: Revealed type is "__main__.Sub"
+reveal_type(sub.base_attr)  # N: Revealed type is "builtins.int"
+reveal_type(sub.middle_attr)  # N: Revealed type is "builtins.str"
+
+[builtins fixtures/bool.pyi]
+
+
+[case testAttrsGenericClassmethod]
+from typing import TypeVar, Generic, Optional
+import attr
+T = TypeVar('T')
+@attr.s(auto_attribs=True)
+class A(Generic[T]):
+    x: Optional[T]
+    @classmethod
+    def clsmeth(cls) -> None:
+       reveal_type(cls)  # N: Revealed type is "Type[__main__.A[T`1]]"
+
+[builtins fixtures/classmethod.pyi]
+
+[case testAttrsForwardReference]
+# flags: --no-strict-optional
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    parent: 'B'
+
+@attr.s(auto_attribs=True)
+class B:
+    parent: A
+
+reveal_type(A) # N: Revealed type is "def (parent: __main__.B) -> __main__.A"
+reveal_type(B) # N: Revealed type is "def (parent: __main__.A) -> __main__.B"
+A(B(None))
+[builtins fixtures/list.pyi]
+
+[case testAttrsForwardReferenceInClass]
+# flags: --no-strict-optional
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    parent: A.B
+
+    @attr.s(auto_attribs=True)
+    class B:
+        parent: A
+
+reveal_type(A) # N: Revealed type is "def (parent: __main__.A.B) -> __main__.A"
+reveal_type(A.B) # N: Revealed type is "def (parent: __main__.A) -> __main__.A.B"
+A(A.B(None))
+[builtins fixtures/list.pyi]
+
+[case testAttrsImporting]
+from helper import A
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.str) -> helper.A"
+[file helper.py]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+   a: int
+   b: str = attr.ib()
+[builtins fixtures/list.pyi]
+
+[case testAttrsOtherMethods]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    a: int
+    b: str = attr.ib()
+    @classmethod
+    def new(cls) -> A:
+       reveal_type(cls)  # N: Revealed type is "Type[__main__.A]"
+       return cls(6, 'hello')
+    @classmethod
+    def bad(cls) -> A:
+        return cls(17)  # E: Missing positional argument "b" in call to "A"
+    def foo(self) -> int:
+       return self.a
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.str) -> __main__.A"
+a = A.new()
+reveal_type(a.foo) # N: Revealed type is "def () -> builtins.int"
+[builtins fixtures/classmethod.pyi]
+
+[case testAttrsOtherOverloads]
+import attr
+from typing import overload, Union
+
+@attr.s
+class A:
+    a = attr.ib()
+    b = attr.ib(default=3)
+
+    @classmethod
+    def other(cls) -> str:
+        return "..."
+
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x: Union[int, str]) -> Union[int, str]:
+        reveal_type(cls)            # N: Revealed type is "Type[__main__.A]"
+        reveal_type(cls.other())    # N: Revealed type is "builtins.str"
+        return x
+
+reveal_type(A.foo(3))      # N: Revealed type is "builtins.int"
+reveal_type(A.foo("foo"))  # N: Revealed type is "builtins.str"
+
+[builtins fixtures/classmethod.pyi]
+
+[case testAttrsDefaultDecorator]
+import attr
+@attr.s
+class C(object):
+    x: int = attr.ib(default=1)
+    y: int = attr.ib()
+    @y.default
+    def name_does_not_matter(self):
+        return self.x + 1
+C()
+[builtins fixtures/list.pyi]
+
+[case testAttrsValidatorDecorator]
+import attr
+@attr.s
+class C(object):
+    x = attr.ib()
+    @x.validator
+    def check(self, attribute, value):
+        if value > 42:
+            raise ValueError("x must be smaller or equal to 42")
+C(42)
+C(43)
+[builtins fixtures/exception.pyi]
+
+[case testAttrsLocalVariablesInClassMethod]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    a: int
+    b: int = attr.ib()
+    @classmethod
+    def new(cls, foo: int) -> A:
+       a = foo
+       b = a
+       return cls(a, b)
+[builtins fixtures/classmethod.pyi]
+
+[case testAttrsUnionForward]
+import attr
+from typing import Union, List
+
+@attr.s(auto_attribs=True)
+class A:
+    frob: List['AOrB']
+
+class B:
+   pass
+
+AOrB = Union[A, B]
+
+reveal_type(A)  # N: Revealed type is "def (frob: builtins.list[Union[__main__.A, __main__.B]]) -> __main__.A"
+reveal_type(B)  # N: Revealed type is "def () -> __main__.B"
+
+A([B()])
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingConvert]
+import attr
+
+def convert(s:int) -> str:
+    return 'hello'
+
+@attr.s
+class C:
+    x: str = attr.ib(convert=convert)  # E: convert is deprecated, use converter
+
+# Because of the convert the __init__ takes an int, but the variable is a str.
+reveal_type(C)  # N: Revealed type is "def (x: builtins.int) -> __main__.C"
+reveal_type(C(15).x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingConverter]
+import attr
+import helper
+
+def converter2(s:int) -> str:
+    return 'hello'
+
+@attr.s
+class C:
+    x: str = attr.ib(converter=helper.converter)
+    y: str = attr.ib(converter=converter2)
+
+# Because of the converter the __init__ takes an int, but the variable is a str.
+reveal_type(C)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> __main__.C"
+reveal_type(C(15, 16).x)  # N: Revealed type is "builtins.str"
+[file helper.py]
+def converter(s:int) -> str:
+    return 'hello'
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingConvertAndConverter]
+import attr
+
+def converter(s:int) -> str:
+    return 'hello'
+
+@attr.s
+class C:
+    x: str = attr.ib(converter=converter, convert=converter)  # E: Can't pass both "convert" and "converter".
+
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingBadConverter]
+# flags: --no-strict-optional
+import attr
+from typing import overload
+@overload
+def bad_overloaded_converter(x: int, y: int) -> int:
+    ...
+@overload
+def bad_overloaded_converter(x: str, y: str) -> str:
+    ...
+def bad_overloaded_converter(x, y=7):
+    return x
+def bad_converter() -> str:
+    return ''
+@attr.dataclass
+class A:
+    bad: str = attr.ib(converter=bad_converter)
+    bad_overloaded: int = attr.ib(converter=bad_overloaded_converter)
+reveal_type(A)
+[out]
+main:16: error: Cannot determine __init__ type from converter
+main:16: error: Argument "converter" has incompatible type "Callable[[], str]"; expected "Callable[[Any], str]"
+main:17: error: Cannot determine __init__ type from converter
+main:17: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
+main:18: note: Revealed type is "def (bad: Any, bad_overloaded: Any) -> __main__.A"
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingBadConverterReprocess]
+# flags: --no-strict-optional
+import attr
+from typing import overload
+forward: 'A'
+@overload
+def bad_overloaded_converter(x: int, y: int) -> int:
+    ...
+@overload
+def bad_overloaded_converter(x: str, y: str) -> str:
+    ...
+def bad_overloaded_converter(x, y=7):
+    return x
+def bad_converter() -> str:
+    return ''
+@attr.dataclass
+class A:
+    bad: str = attr.ib(converter=bad_converter)
+    bad_overloaded: int = attr.ib(converter=bad_overloaded_converter)
+reveal_type(A)
+[out]
+main:17: error: Cannot determine __init__ type from converter
+main:17: error: Argument "converter" has incompatible type "Callable[[], str]"; expected "Callable[[Any], str]"
+main:18: error: Cannot determine __init__ type from converter
+main:18: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
+main:19: note: Revealed type is "def (bad: Any, bad_overloaded: Any) -> __main__.A"
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingUnsupportedConverter]
+import attr
+class Thing:
+    def do_it(self, int) -> str:
+        ...
+thing = Thing()
+def factory(default: int):
+   ...
+@attr.s
+class C:
+    x: str = attr.ib(converter=thing.do_it)  # E: Unsupported converter, only named functions, types and lambdas are currently supported
+    y: str = attr.ib(converter=lambda x: x)
+    z: str = attr.ib(converter=factory(8))   # E: Unsupported converter, only named functions, types and lambdas are currently supported
+reveal_type(C)  # N: Revealed type is "def (x: Any, y: Any, z: Any) -> __main__.C"
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingConverterAndSubclass]
+import attr
+
+def converter(s:int) -> str:
+    return 'hello'
+
+@attr.s
+class C:
+    x: str = attr.ib(converter=converter)
+
+@attr.s
+class A(C):
+    pass
+
+# Because of the convert the __init__ takes an int, but the variable is a str.
+reveal_type(A)  # N: Revealed type is "def (x: builtins.int) -> __main__.A"
+reveal_type(A(15).x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingConverterWithTypes]
+from typing import overload
+import attr
+
+@attr.dataclass
+class A:
+    x: str
+
+@attr.s
+class C:
+    x: complex = attr.ib(converter=complex)
+    y: int = attr.ib(converter=int)
+    z: A = attr.ib(converter=A)
+
+o = C("1", "2", "3")
+o = C(1, 2, "3")
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsCmpWithSubclasses]
+import attr
+@attr.s
+class A: pass
+@attr.s
+class B: pass
+@attr.s
+class C(A, B): pass
+@attr.s
+class D(A): pass
+
+reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`5, other: _AT`5) -> builtins.bool"
+reveal_type(B.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`6, other: _AT`6) -> builtins.bool"
+reveal_type(C.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`7, other: _AT`7) -> builtins.bool"
+reveal_type(D.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`8, other: _AT`8) -> builtins.bool"
+
+A() < A()
+B() < B()
+A() < B() # E: Unsupported operand types for < ("A" and "B")
+
+C() > A()
+C() > B()
+C() > C()
+C() > D() # E: Unsupported operand types for > ("C" and "D")
+
+D() >= A()
+D() >= B()  # E: Unsupported operand types for >= ("D" and "B")
+D() >= C()  # E: Unsupported operand types for >= ("D" and "C")
+D() >= D()
+
+A() <= 1  # E: Unsupported operand types for <= ("A" and "int")
+B() <= 1  # E: Unsupported operand types for <= ("B" and "int")
+C() <= 1  # E: Unsupported operand types for <= ("C" and "int")
+D() <= 1  # E: Unsupported operand types for <= ("D" and "int")
+
+[builtins fixtures/list.pyi]
+
+[case testAttrsComplexSuperclass]
+import attr
+@attr.s
+class C:
+    x: int = attr.ib(default=1)
+    y: int = attr.ib()
+    @y.default
+    def name_does_not_matter(self):
+        return self.x + 1
+@attr.s
+class A(C):
+    z: int = attr.ib(default=18)
+reveal_type(C)  # N: Revealed type is "def (x: builtins.int =, y: builtins.int =) -> __main__.C"
+reveal_type(A)  # N: Revealed type is "def (x: builtins.int =, y: builtins.int =, z: builtins.int =) -> __main__.A"
+[builtins fixtures/list.pyi]
+
+[case testAttrsMultiAssign]
+import attr
+@attr.s
+class A:
+   x, y, z = attr.ib(), attr.ib(type=int), attr.ib(default=17)
+reveal_type(A) # N: Revealed type is "def (x: Any, y: builtins.int, z: Any =) -> __main__.A"
+[builtins fixtures/list.pyi]
+
+[case testAttrsMultiAssign2]
+import attr
+@attr.s
+class A:
+   x = y = z = attr.ib()  # E: Too many names for one attribute
+[builtins fixtures/list.pyi]
+
+[case testAttrsPrivateInit]
+import attr
+@attr.s
+class C(object):
+    _x = attr.ib(init=False, default=42)
+C()
+C(_x=42)  # E: Unexpected keyword argument "_x" for "C"
+[builtins fixtures/list.pyi]
+
+[case testAttrsAliasForInit]
+from attrs import define, field
+
+@define
+class C1:
+    _x: int = field(alias="x1")
+
+c1 = C1(x1=42)
+reveal_type(c1._x)  # N: Revealed type is "builtins.int"
+c1.x1  # E: "C1" has no attribute "x1"
+C1(_x=42)  # E: Unexpected keyword argument "_x" for "C1"
+
+alias = "x2"
+@define
+class C2:
+    _x: int = field(alias=alias)  # E: "alias" argument to attrs field must be a string literal
+
+@define
+class C3:
+    _x: int = field(alias="_x")
+
+c3 = C3(_x=1)
+reveal_type(c3._x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsAutoMustBeAll]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+   a: int
+   b = 17
+   # The following forms are not allowed with auto_attribs=True
+   c = attr.ib()  # E: Need type annotation for "c"
+   d, e = attr.ib(), attr.ib() # E: Need type annotation for "d" # E: Need type annotation for "e"
+   f = g = attr.ib()  # E: Need type annotation for "f" # E: Need type annotation for "g"
+[builtins fixtures/bool.pyi]
+
+[case testAttrsRepeatedName]
+import attr
+@attr.s
+class A:
+   a = attr.ib(default=8)
+   b = attr.ib()
+   a = attr.ib()
+reveal_type(A)  # N: Revealed type is "def (b: Any, a: Any) -> __main__.A"
+@attr.s
+class B:
+   a: int = attr.ib(default=8)
+   b: int = attr.ib()
+   a: int = attr.ib()  # E: Name "a" already defined on line 10
+reveal_type(B)  # N: Revealed type is "def (b: builtins.int, a: builtins.int) -> __main__.B"
+@attr.s(auto_attribs=True)
+class C:
+   a: int = 8
+   b: int
+   a: int = attr.ib()  # E: Name "a" already defined on line 16
+reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: builtins.int) -> __main__.C"
+[builtins fixtures/bool.pyi]
+
+[case testAttrsFrozenSubclass]
+import attr
+
+@attr.dataclass
+class NonFrozenBase:
+    a: int
+
+@attr.dataclass(frozen=True)
+class FrozenBase:
+    a: int
+
+@attr.dataclass(frozen=True)
+class FrozenNonFrozen(NonFrozenBase):
+    b: int
+
+@attr.dataclass(frozen=True)
+class FrozenFrozen(FrozenBase):
+    b: int
+
+@attr.dataclass
+class NonFrozenFrozen(FrozenBase):
+    b: int
+
+# Make sure these are untouched
+non_frozen_base = NonFrozenBase(1)
+non_frozen_base.a = 17
+frozen_base = FrozenBase(1)
+frozen_base.a = 17  # E: Property "a" defined in "FrozenBase" is read-only
+
+a = FrozenNonFrozen(1, 2)
+a.a = 17  # E: Property "a" defined in "FrozenNonFrozen" is read-only
+a.b = 17  # E: Property "b" defined in "FrozenNonFrozen" is read-only
+
+b = FrozenFrozen(1, 2)
+b.a = 17  # E: Property "a" defined in "FrozenFrozen" is read-only
+b.b = 17  # E: Property "b" defined in "FrozenFrozen" is read-only
+
+c = NonFrozenFrozen(1, 2)
+c.a = 17  # E: Property "a" defined in "NonFrozenFrozen" is read-only
+c.b = 17  # E: Property "b" defined in "NonFrozenFrozen" is read-only
+
+[builtins fixtures/plugin_attrs.pyi]
+[case testAttrsCallableAttributes]
+from typing import Callable
+import attr
+def blah(a: int, b: int) -> bool:
+    return True
+
+@attr.s(auto_attribs=True)
+class F:
+    _cb: Callable[[int, int], bool] = blah
+    def foo(self) -> bool:
+        return self._cb(5, 6)
+
+@attr.s
+class G:
+    _cb: Callable[[int, int], bool] = attr.ib(blah)
+    def foo(self) -> bool:
+        return self._cb(5, 6)
+
+@attr.s(auto_attribs=True, frozen=True)
+class FFrozen(F):
+    def bar(self) -> bool:
+        return self._cb(5, 6)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsWithFactory]
+from typing import List
+import attr
+def my_factory() -> int:
+    return 7
+@attr.s
+class A:
+    x: List[int] = attr.ib(factory=list)
+    y: int = attr.ib(factory=my_factory)
+A()
+[builtins fixtures/list.pyi]
+
+[case testAttrsFactoryAndDefault]
+import attr
+@attr.s
+class A:
+    x: int = attr.ib(factory=int, default=7)  # E: Can't pass both "default" and "factory".
+[builtins fixtures/bool.pyi]
+
+[case testAttrsFactoryBadReturn]
+# flags: --new-type-inference
+import attr
+def my_factory() -> int:
+    return 7
+@attr.s
+class A:
+    x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "int")
+    y: str = attr.ib(factory=my_factory) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[builtins fixtures/list.pyi]
+
+[case testAttrsDefaultAndInit]
+import attr
+
+@attr.s
+class C:
+   a = attr.ib(init=False, default=42)
+   b = attr.ib()  # Ok because previous attribute is init=False
+   c = attr.ib(default=44)
+   d = attr.ib(init=False)  # Ok because this attribute is init=False
+   e = attr.ib()  # E: Non-default attributes not allowed after default attributes.
+
+[builtins fixtures/bool.pyi]
+
+[case testAttrsOptionalConverter]
+import attr
+from attr.converters import optional
+from typing import Optional
+
+def converter(s:int) -> str:
+    return 'hello'
+
+
+@attr.s
+class A:
+    y: Optional[int] = attr.ib(converter=optional(int))
+    z: Optional[str] = attr.ib(converter=optional(converter))
+
+
+A(None, None)
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsOptionalConverterNewPackage]
+import attrs
+from attrs.converters import optional
+from typing import Optional
+
+def converter(s:int) -> str:
+    return 'hello'
+
+
+@attrs.define
+class A:
+    y: Optional[int] = attrs.field(converter=optional(int))
+    z: Optional[str] = attrs.field(converter=optional(converter))
+
+
+A(None, None)
+
+[builtins fixtures/plugin_attrs.pyi]
+
+
+[case testAttrsTypeVarNoCollision]
+from typing import TypeVar, Generic
+import attr
+
+T = TypeVar("T", bytes, str)
+
+# Make sure the generated __le__ (and friends) don't use T for their arguments.
+@attr.s(auto_attribs=True)
+class A(Generic[T]):
+    v: T
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsKwOnlyAttrib]
+import attr
+@attr.s
+class A:
+    a = attr.ib(kw_only=True)
+A()  # E: Missing named argument "a" for "A"
+A(15) # E: Too many positional arguments for "A"
+A(a=15)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsKwOnlyClass]
+import attr
+@attr.s(kw_only=True, auto_attribs=True)
+class A:
+    a: int
+    b: bool
+A()  # E: Missing named argument "a" for "A" # E: Missing named argument "b" for "A"
+A(b=True, a=15)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsKwOnlyClassNoInit]
+import attr
+@attr.s(kw_only=True)
+class B:
+    a = attr.ib(init=False)
+    b = attr.ib()
+B(b=True)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsKwOnlyWithDefault]
+import attr
+@attr.s
+class C:
+    a = attr.ib(0)
+    b = attr.ib(kw_only=True)
+    c = attr.ib(16, kw_only=True)
+C(b=17)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsKwOnlyClassWithMixedDefaults]
+import attr
+@attr.s(kw_only=True)
+class D:
+    a = attr.ib(10)
+    b = attr.ib()
+    c = attr.ib(15)
+D(b=17)
+[builtins fixtures/plugin_attrs.pyi]
+
+
+[case testAttrsKwOnlySubclass]
+import attr
+@attr.s
+class A2:
+     a = attr.ib(default=0)
+@attr.s
+class B2(A2):
+    b = attr.ib(kw_only=True)
+B2(b=1)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsNonKwOnlyAfterKwOnly]
+import attr
+@attr.s(kw_only=True)
+class A:
+     a = attr.ib(default=0)
+@attr.s
+class B(A):
+    b = attr.ib()
+@attr.s
+class C:
+    a = attr.ib(kw_only=True)
+    b = attr.ib(15)
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsDisallowUntypedWorksForward]
+# flags: --disallow-untyped-defs
+import attr
+from typing import List
+
+@attr.s
+class B:
+    x: C = attr.ib()
+
+class C(List[C]):
+    pass
+
+reveal_type(B)  # N: Revealed type is "def (x: __main__.C) -> __main__.B"
+[builtins fixtures/list.pyi]
+
+[case testDisallowUntypedWorksForwardBad]
+# flags: --disallow-untyped-defs
+import attr
+
+@attr.s
+class B:
+    x = attr.ib()  # E: Need type annotation for "x"
+
+reveal_type(B)  # N: Revealed type is "def (x: Any) -> __main__.B"
+[builtins fixtures/list.pyi]
+
+[case testAttrsDefaultDecoratorDeferred]
+defer: Yes
+
+import attr
+@attr.s
+class C(object):
+    x: int = attr.ib(default=1)
+    y: int = attr.ib()
+    @y.default
+    def inc(self):
+        return self.x + 1
+
+class Yes: ...
+[builtins fixtures/list.pyi]
+
+[case testAttrsValidatorDecoratorDeferred]
+defer: Yes
+
+import attr
+@attr.s
+class C(object):
+    x = attr.ib()
+    @x.validator
+    def check(self, attribute, value):
+        if value > 42:
+            raise ValueError("x must be smaller or equal to 42")
+C(42)
+C(43)
+
+class Yes: ...
+[builtins fixtures/exception.pyi]
+
+[case testTypeInAttrUndefined]
+import attr
+
+@attr.s
+class C:
+    total = attr.ib(type=Bad)  # E: Name "Bad" is not defined
+[builtins fixtures/bool.pyi]
+
+[case testTypeInAttrForwardInRuntime]
+import attr
+
+@attr.s
+class C:
+    total = attr.ib(type=Forward)
+
+reveal_type(C.total)  # N: Revealed type is "__main__.Forward"
+C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "Forward"
+class Forward: ...
+[builtins fixtures/bool.pyi]
+
+[case testDefaultInAttrForward]
+import attr
+
+@attr.s
+class C:
+    total = attr.ib(default=func())
+
+def func() -> int: ...
+
+C()
+C(1)
+C(1, 2)  # E: Too many arguments for "C"
+[builtins fixtures/bool.pyi]
+
+[case testTypeInAttrUndefinedFrozen]
+import attr
+
+@attr.s(frozen=True)
+class C:
+    total = attr.ib(type=Bad)  # E: Name "Bad" is not defined
+
+C(0).total = 1  # E: Property "total" defined in "C" is read-only
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testTypeInAttrDeferredStar]
+import lib
+[file lib.py]
+import attr
+MYPY = False
+if MYPY:  # Force deferral
+    from other import *
+
+@attr.s
+class C:
+    total = attr.ib(type=int)
+
+C()  # E: Missing positional argument "total" in call to "C"
+C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+[file other.py]
+import lib
+[builtins fixtures/bool.pyi]
+
+[case testAttrsDefaultsMroOtherFile]
+import a
+
+[file a.py]
+import attr
+from b import A1, A2
+
+@attr.s
+class Asdf(A1, A2):  # E: Non-default attributes not allowed after default attributes.
+    pass
+
+[file b.py]
+import attr
+
+@attr.s
+class A1:
+    a: str = attr.ib('test')
+
+@attr.s
+class A2:
+    b: int = attr.ib()
+
+[builtins fixtures/list.pyi]
+
+[case testAttrsInheritanceNoAnnotation]
+import attr
+
+@attr.s
+class A:
+    foo = attr.ib()  # type: int
+
+x = 0
+@attr.s
+class B(A):
+    foo = x
+
+reveal_type(B)  # N: Revealed type is "def (foo: builtins.int) -> __main__.B"
+[builtins fixtures/bool.pyi]
+
+[case testAttrsClassHasMagicAttribute]
+import attr
+
+@attr.s
+class A:
+    b: int = attr.ib()
+    c: str = attr.ib()
+
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
+reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
+reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[builtins.int]"
+A.__attrs_attrs__.x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsBareClassHasMagicAttribute]
+import attr
+
+@attr.s
+class A:
+    b = attr.ib()
+    c = attr.ib()
+
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[Any], attr.Attribute[Any], fallback=__main__.A.____main___A_AttrsAttributes__]"
+reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[Any]"
+reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[Any]"
+A.__attrs_attrs__.x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsNGClassHasMagicAttribute]
+import attr
+
+@attr.define
+class A:
+    b: int
+    c: str
+
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
+reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
+reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[builtins.int]"
+A.__attrs_attrs__.x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsMagicAttributeProtocol]
+import attr
+from typing import Any, Protocol, Type, ClassVar
+
+class AttrsInstance(Protocol):
+    __attrs_attrs__: ClassVar[Any]
+
+@attr.define
+class A:
+    b: int
+    c: str
+
+def takes_attrs_cls(cls: Type[AttrsInstance]) -> None:
+    pass
+
+def takes_attrs_instance(inst: AttrsInstance) -> None:
+    pass
+
+takes_attrs_cls(A)
+takes_attrs_instance(A(1, ""))
+
+takes_attrs_cls(A(1, ""))  # E: Argument 1 to "takes_attrs_cls" has incompatible type "A"; expected "Type[AttrsInstance]"
+takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "Type[A]"; expected "AttrsInstance" # N: ClassVar protocol member AttrsInstance.__attrs_attrs__ can never be matched by a class object
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsFields]
+import attr
+from attrs import fields as f  # Common usage.
+
+@attr.define
+class A:
+    b: int
+    c: str
+
+reveal_type(f(A))  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
+reveal_type(f(A)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
+reveal_type(f(A).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
+f(A).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
+
+for ff in f(A):
+    reveal_type(ff)  # N: Revealed type is "attr.Attribute[Any]"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsGenericFields]
+from typing import TypeVar
+
+import attr
+from attrs import fields
+
+@attr.define
+class A:
+    b: int
+    c: str
+
+TA = TypeVar('TA', bound=A)
+
+def f(t: TA) -> None:
+    reveal_type(fields(t))  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
+    reveal_type(fields(t)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
+    reveal_type(fields(t).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
+    fields(t).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
+
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testNonattrsFields]
+from typing import Any, cast, Type
+from attrs import fields, has
+
+class A:
+    b: int
+    c: str
+
+if has(A):
+    fields(A)
+else:
+    fields(A)  # E: Argument 1 to "fields" has incompatible type "Type[A]"; expected "Type[AttrsInstance]"
+fields(None)  # E: Argument 1 to "fields" has incompatible type "None"; expected "Type[AttrsInstance]"
+fields(cast(Any, 42))
+fields(cast(Type[Any], 43))
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsInitMethodAlwaysGenerates]
+from typing import Tuple
+import attr
+
+@attr.define(init=False)
+class A:
+    b: int
+    c: str
+    def __init__(self, bc: Tuple[int, str]) -> None:
+        b, c = bc
+        self.__attrs_init__(b, c)
+
+reveal_type(A)  # N: Revealed type is "def (bc: Tuple[builtins.int, builtins.str]) -> __main__.A"
+reveal_type(A.__init__)  # N: Revealed type is "def (self: __main__.A, bc: Tuple[builtins.int, builtins.str])"
+reveal_type(A.__attrs_init__)  # N: Revealed type is "def (self: __main__.A, b: builtins.int, c: builtins.str)"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsClassWithSlots]
+import attr
+
+@attr.define
+class Define:
+    b: int = attr.ib()
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.Define"
+
+
+@attr.define(slots=False)
+class DefineSlotsFalse:
+    b: int = attr.ib()
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2
+
+
+@attr.s(slots=True)
+class A:
+    b: int = attr.ib()
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
+
+@attr.dataclass(slots=True)
+class B:
+    __slots__ = ()  # would be replaced
+    b: int
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.B"
+
+@attr.dataclass(slots=False)
+class C:
+    __slots__ = ()  # would not be replaced
+    b: int
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.C"
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.C"
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsClassWithSlotsDerivedFromNonSlots]
+import attrs
+
+class A:
+    pass
+
+@attrs.define(slots=True)
+class B(A):
+    x: int
+
+    def __attrs_post_init__(self) -> None:
+        self.y = 42
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testRuntimeSlotsAttr]
+from attr import dataclass
+
+@dataclass(slots=True)
+class Some:
+    x: int
+    y: str
+    z: bool
+
+reveal_type(Some.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.str]"
+
+@dataclass(slots=True)
+class Other:
+    x: int
+    y: str
+
+reveal_type(Other.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+
+
+@dataclass
+class NoSlots:
+    x: int
+    y: str
+
+NoSlots.__slots__  # E: "Type[NoSlots]" has no attribute "__slots__"
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsWithMatchArgs]
+# flags: --python-version 3.10
+import attr
+
+@attr.s(match_args=True, auto_attribs=True)
+class ToMatch:
+    x: int
+    y: int
+    # Not included:
+    z: int = attr.field(kw_only=True)
+    i: int = attr.field(init=False)
+
+reveal_type(ToMatch(x=1, y=2, z=3).__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsWithMatchArgsDefaultCase]
+# flags: --python-version 3.10
+import attr
+
+@attr.s(auto_attribs=True)
+class ToMatch1:
+    x: int
+    y: int
+
+t1: ToMatch1
+reveal_type(t1.__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+
+@attr.define
+class ToMatch2:
+    x: int
+    y: int
+
+t2: ToMatch2
+reveal_type(t2.__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsWithMatchArgsOverrideExisting]
+# flags: --python-version 3.10
+import attr
+from typing import Final
+
+@attr.s(match_args=True, auto_attribs=True)
+class ToMatch:
+    __match_args__: Final = ('a', 'b')
+    x: int
+    y: int
+
+# It works the same way runtime does:
+reveal_type(ToMatch(x=1, y=2).__match_args__)  # N: Revealed type is "Tuple[Literal['a']?, Literal['b']?]"
+
+@attr.s(auto_attribs=True)
+class WithoutMatch:
+    __match_args__: Final = ('a', 'b')
+    x: int
+    y: int
+
+reveal_type(WithoutMatch(x=1, y=2).__match_args__)  # N: Revealed type is "Tuple[Literal['a']?, Literal['b']?]"
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsWithMatchArgsOldVersion]
+# flags: --python-version 3.9
+import attr
+
+@attr.s(match_args=True)
+class NoMatchArgs:
+    ...
+
+n: NoMatchArgs
+
+reveal_type(n.__match_args__)  # E: "NoMatchArgs" has no attribute "__match_args__" \
+                               # N: Revealed type is "Any"
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsMultipleInheritance]
+# flags: --python-version 3.10
+import attr
+
+@attr.s
+class A:
+    x = attr.ib(type=int)
+
+@attr.s
+class B:
+    y = attr.ib(type=int)
+
+class AB(A, B):
+    pass
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsForwardReferenceInTypeVarBound]
+from typing import TypeVar, Generic
+import attr
+
+T = TypeVar("T", bound="C")
+
+@attr.define
+class D(Generic[T]):
+    x: int
+
+class C:
+    pass
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testComplexTypeInAttrIb]
+import a
+
+[file a.py]
+import attr
+import b
+from typing import Callable
+
+@attr.s
+class C:
+    a = attr.ib(type=Lst[int])
+    # Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
+    # and a consequence of Callable etc. being set to an int in the test stub.
+    b = attr.ib(type=Callable[[], C])
+[file b.py]
+import attr
+import a
+from typing import List as Lst, Optional
+
+@attr.s
+class D:
+    a = attr.ib(type=Lst[int])
+    b = attr.ib(type=Optional[int])
+[builtins fixtures/list.pyi]
+[out]
+tmp/b.py:8: error: Value of type "int" is not indexable
+tmp/a.py:7: error: Name "Lst" is not defined
+tmp/a.py:10: error: Value of type "int" is not indexable
+
+[case testAttrsGenericInheritanceSpecialCase1]
+import attr
+from typing import Generic, TypeVar, List
+
+T = TypeVar("T")
+
+@attr.define
+class Parent(Generic[T]):
+    x: List[T]
+
+@attr.define
+class Child1(Parent["Child2"]): ...
+
+@attr.define
+class Child2(Parent["Child1"]): ...
+
+def f(c: Child2) -> None:
+    reveal_type(Child1([c]).x)  # N: Revealed type is "builtins.list[__main__.Child2]"
+
+def g(c: Child1) -> None:
+    reveal_type(Child2([c]).x)  # N: Revealed type is "builtins.list[__main__.Child1]"
+[builtins fixtures/list.pyi]
+
+[case testAttrsGenericInheritanceSpecialCase2]
+import attr
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+# A subclass might be analyzed before base in import cycles.  They are
+# defined here in reversed order to simulate this.
+
+@attr.define
+class Child1(Parent["Child2"]):
+    x: int
+
+@attr.define
+class Child2(Parent["Child1"]):
+    y: int
+
+@attr.define
+class Parent(Generic[T]):
+    key: str
+
+Child1(x=1, key='')
+Child2(y=1, key='')
+[builtins fixtures/list.pyi]
+
+[case testAttrsUnsupportedConverterWithDisallowUntypedDefs]
+# flags: --disallow-untyped-defs
+import attr
+from typing import Mapping, Any, Union
+
+def default_if_none(factory: Any) -> Any: pass
+
+@attr.s(slots=True, frozen=True)
+class C:
+    name: Union[str, None] = attr.ib(default=None)
+    options: Mapping[str, Mapping[str, Any]] = attr.ib(
+        default=None, converter=default_if_none(factory=dict) \
+        # E: Unsupported converter, only named functions, types and lambdas are currently supported
+    )
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsUnannotatedConverter]
+import attr
+
+def foo(value):
+    return value.split()
+
+@attr.s
+class Bar:
+    field = attr.ib(default=None, converter=foo)
+
+reveal_type(Bar)  # N: Revealed type is "def (field: Any =) -> __main__.Bar"
+bar = Bar("Hello")
+reveal_type(bar.field)  # N: Revealed type is "Any"
+
+[builtins fixtures/tuple.pyi]
+
+[case testAttrsLambdaConverter]
+import attr
+
+@attr.s
+class Bar:
+    name: str = attr.ib(converter=lambda s: s.lower())
+
+reveal_type(Bar)  # N: Revealed type is "def (name: Any) -> __main__.Bar"
+bar = Bar("Hello")
+reveal_type(bar.name)  # N: Revealed type is "builtins.str"
+
+[builtins fixtures/tuple.pyi]
+
+[case testAttrsNestedClass]
+from typing import List
+import attr
+
+@attr.s
+class C:
+    @attr.s
+    class D:
+        pass
+    x = attr.ib(type=List[D])
+
+c = C(x=[C.D()])
+reveal_type(c.x)  # N: Revealed type is "builtins.list[__main__.C.D]"
+[builtins fixtures/list.pyi]
+
+[case testRedefinitionInFrozenClassNoCrash]
+import attr
+
+@attr.s
+class MyData:
+    is_foo: bool = attr.ib()
+
+    @staticmethod  # E: Name "is_foo" already defined on line 5
+    def is_foo(string: str) -> bool: ...
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideWithPropertyInFrozenClassNoCrash]
+from attrs import frozen
+
+@frozen(kw_only=True)
+class Base:
+    name: str
+
+@frozen(kw_only=True)
+class Sub(Base):
+    first_name: str
+    last_name: str
+
+    @property
+    def name(self) -> str: ...
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testOverrideWithPropertyInFrozenClassChecked]
+from attrs import frozen
+
+@frozen(kw_only=True)
+class Base:
+    name: str
+
+@frozen(kw_only=True)
+class Sub(Base):
+    first_name: str
+    last_name: str
+
+    @property
+    def name(self) -> int: ...  # E: Signature of "name" incompatible with supertype "Base" \
+                                # N:      Superclass: \
+                                # N:          str \
+                                # N:      Subclass: \
+                                # N:          int
+
+# This matches runtime semantics
+reveal_type(Sub)  # N: Revealed type is "def (*, name: builtins.str, first_name: builtins.str, last_name: builtins.str) -> __main__.Sub"
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testFinalInstanceAttribute]
+from attrs import define
+from typing import Final
+
+@define
+class C:
+    a: Final[int]
+
+reveal_type(C) # N: Revealed type is "def (a: builtins.int) -> __main__.C"
+
+C(1).a = 2 # E: Cannot assign to final attribute "a"
+
+[builtins fixtures/property.pyi]
+
+[case testFinalInstanceAttributeInheritance]
+from attrs import define
+from typing import Final
+
+@define
+class C:
+    a: Final[int]
+
+@define
+class D(C):
+    b: Final[str]
+
+reveal_type(D) # N: Revealed type is "def (a: builtins.int, b: builtins.str) -> __main__.D"
+
+D(1, "").a = 2 # E: Cannot assign to final attribute "a"
+D(1, "").b = "2" # E: Cannot assign to final attribute "b"
+
+[builtins fixtures/property.pyi]
+
+[case testEvolve]
+import attr
+
+class Base:
+    pass
+
+class Derived(Base):
+    pass
+
+class Other:
+    pass
+
+@attr.s(auto_attribs=True)
+class C:
+    name: str
+    b: Base
+
+c = C(name='foo', b=Derived())
+c = attr.evolve(c)
+c = attr.evolve(c, name='foo')
+c = attr.evolve(c, 'foo')  # E: Too many positional arguments for "evolve" of "C"
+c = attr.evolve(c, b=Derived())
+c = attr.evolve(c, b=Base())
+c = attr.evolve(c, b=Other())  # E: Argument "b" to "evolve" of "C" has incompatible type "Other"; expected "Base"
+c = attr.evolve(c, name=42)  # E: Argument "name" to "evolve" of "C" has incompatible type "int"; expected "str"
+c = attr.evolve(c, foobar=42)  # E: Unexpected keyword argument "foobar" for "evolve" of "C"
+
+# test passing instance as 'inst' kw
+c = attr.evolve(inst=c, name='foo')
+c = attr.evolve(not_inst=c, name='foo')  # E: Missing positional argument "inst" in call to "evolve"
+
+# test determining type of first argument's expression from something that's not NameExpr
+def f() -> C:
+    return c
+
+c = attr.evolve(f(), name='foo')
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testEvolveFromNonAttrs]
+import attr
+
+attr.evolve(42, name='foo')  # E: Argument 1 to "evolve" has incompatible type "int"; expected an attrs class
+attr.evolve(None, name='foo')  # E: Argument 1 to "evolve" has incompatible type "None"; expected an attrs class
+[case testEvolveFromAny]
+from typing import Any
+import attr
+
+any: Any = 42
+ret = attr.evolve(any, name='foo')
+reveal_type(ret)  # N: Revealed type is "Any"
+
+[typing fixtures/typing-medium.pyi]
+
+[case testEvolveGeneric]
+import attrs
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+@attrs.define
+class A(Generic[T]):
+    x: T
+
+
+a = A(x=42)
+reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
+a2 = attrs.evolve(a, x=42)
+reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+a2 = attrs.evolve(a, x='42')  # E: Argument "x" to "evolve" of "A[int]" has incompatible type "str"; expected "int"
+reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testEvolveUnion]
+# flags: --python-version 3.10
+from typing import Generic, TypeVar
+import attrs
+
+T = TypeVar('T')
+
+
+@attrs.define
+class A(Generic[T]):
+    x: T  # exercises meet(T=int, int) = int
+    y: bool  # exercises meet(bool, int) = bool
+    z: str  # exercises meet(str, bytes) = Never
+    w: dict  # exercises meet(dict, Never) = Never
+
+
+@attrs.define
+class B:
+    x: int
+    y: bool
+    z: bytes
+
+
+a_or_b: A[int] | B
+a2 = attrs.evolve(a_or_b, x=42, y=True)
+a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')  # E: Argument "z" to "evolve" of "Union[A[int], B]" has incompatible type "str"; expected "Never"
+a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected "Never"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testEvolveUnionOfTypeVar]
+# flags: --python-version 3.10
+import attrs
+from typing import TypeVar
+
+@attrs.define
+class A:
+    x: int
+    y: int
+    z: str
+    w: dict
+
+
+class B:
+    pass
+
+TA = TypeVar('TA', bound=A)
+TB = TypeVar('TB', bound=B)
+
+def f(b_or_t: TA | TB | int) -> None:
+    a2 = attrs.evolve(b_or_t)  # E: Argument 1 to "evolve" has type "Union[TA, TB, int]" whose item "TB" is not bound to an attrs class \
+                               # E: Argument 1 to "evolve" has incompatible type "Union[TA, TB, int]" whose item "int" is not an attrs class
+
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testEvolveTypeVarBound]
+import attrs
+from typing import TypeVar
+
+@attrs.define
+class A:
+    x: int
+
+@attrs.define
+class B(A):
+    pass
+
+TA = TypeVar('TA', bound=A)
+
+def f(t: TA) -> TA:
+    t2 = attrs.evolve(t, x=42)
+    reveal_type(t2)  # N: Revealed type is "TA`-1"
+    t3 = attrs.evolve(t, x='42')  # E: Argument "x" to "evolve" of "TA" has incompatible type "str"; expected "int"
+    return t2
+
+f(A(x=42))
+f(B(x=42))
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testEvolveTypeVarBoundNonAttrs]
+import attrs
+from typing import Union, TypeVar
+
+TInt = TypeVar('TInt', bound=int)
+TAny = TypeVar('TAny')
+TNone = TypeVar('TNone', bound=None)
+TUnion = TypeVar('TUnion', bound=Union[str, int])
+
+def f(t: TInt) -> None:
+    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has a variable type "TInt" not bound to an attrs class
+
+def g(t: TAny) -> None:
+    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has a variable type "TAny" not bound to an attrs class
+
+def h(t: TNone) -> None:
+    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has a variable type "TNone" not bound to an attrs class
+
+def x(t: TUnion) -> None:
+    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has incompatible type "TUnion" whose item "str" is not an attrs class \
+                               # E: Argument 1 to "evolve" has incompatible type "TUnion" whose item "int" is not an attrs class
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testEvolveTypeVarConstrained]
+import attrs
+from typing import TypeVar
+
+@attrs.define
+class A:
+    x: int
+
+@attrs.define
+class B:
+    x: str  # conflicting with A.x
+
+T = TypeVar('T', A, B)
+
+def f(t: T) -> T:
+    t2 = attrs.evolve(t, x=42)  # E: Argument "x" to "evolve" of "B" has incompatible type "int"; expected "str"
+    reveal_type(t2)  # N: Revealed type is "__main__.A"  # N: Revealed type is "__main__.B"
+    t2 = attrs.evolve(t, x='42')  # E: Argument "x" to "evolve" of "A" has incompatible type "str"; expected "int"
+    return t2
+
+f(A(x=42))
+f(B(x='42'))
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testEvolveVariants]
+from typing import Any
+import attr
+import attrs
+
+
+@attr.s(auto_attribs=True)
+class C:
+    name: str
+
+c = C(name='foo')
+
+c = attr.assoc(c, name='test')
+c = attr.assoc(c, name=42)  # E: Argument "name" to "assoc" of "C" has incompatible type "int"; expected "str"
+
+c = attrs.evolve(c, name='test')
+c = attrs.evolve(c, name=42)  # E: Argument "name" to "evolve" of "C" has incompatible type "int"; expected "str"
+
+c = attrs.assoc(c, name='test')
+c = attrs.assoc(c, name=42)  # E: Argument "name" to "assoc" of "C" has incompatible type "int"; expected "str"
+
+[builtins fixtures/plugin_attrs.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testFrozenInheritFromGeneric]
+from typing import Generic, TypeVar
+from attrs import field, frozen
+
+T = TypeVar('T')
+
+def f(s: str) -> int:
+    ...
+
+@frozen
+class A(Generic[T]):
+    x: T
+    y: int = field(converter=f)
+
+@frozen
+class B(A[int]):
+    pass
+
+b = B(42, 'spam')
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
+reveal_type(b.y)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testDefaultHashability]
+from attrs import define
+
+@define
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testFrozenHashability]
+from attrs import frozen
+
+@frozen
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testManualHashHashability]
+from attrs import define
+
+@define(hash=True)
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testManualUnsafeHashHashability]
+from attrs import define
+
+@define(unsafe_hash=True)
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testSubclassingHashability]
+from attrs import define
+
+@define(unsafe_hash=True)
+class A:
+    a: int
+
+@define
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testManualOwnHashability]
+from attrs import define, frozen
+
+@define
+class A:
+    a: int
+    def __hash__(self) -> int:
+        ...
+
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: __main__.A) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testSubclassDefaultLosesHashability]
+from attrs import define, frozen
+
+@define
+class A:
+    a: int
+    def __hash__(self) -> int:
+        ...
+
+@define
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testSubclassEqFalseKeepsHashability]
+from attrs import define, frozen
+
+@define
+class A:
+    a: int
+    def __hash__(self) -> int:
+        ...
+
+@define(eq=False)
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "def (self: __main__.A) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testSubclassingFrozenHashability]
+from attrs import define, frozen
+
+@define
+class A:
+    a: int
+
+@frozen
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testSubclassingFrozenHashOffHashability]
+from attrs import define, frozen
+
+@define
+class A:
+    a: int
+    def __hash__(self) -> int:
+        ...
+
+@frozen(unsafe_hash=False)
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testUnsafeHashPrecedence]
+from attrs import define, frozen
+
+@define(unsafe_hash=True, hash=False)
+class A:
+    pass
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+@define(unsafe_hash=False, hash=True)
+class B:
+    pass
+reveal_type(B.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsStrictOptionalSetProperly]
+from typing import Generic, Optional, TypeVar
+
+import attr
+
+T = TypeVar("T")
+
+@attr.mutable()
+class Parent(Generic[T]):
+    run_type: Optional[int] = None
+
+@attr.mutable()
+class Child(Parent[float]):
+    pass
+
+Parent(run_type = None)
+c = Child(run_type = None)
+reveal_type(c.run_type)  # N: Revealed type is "Union[builtins.int, None]"
+[builtins fixtures/plugin_attrs.pyi]

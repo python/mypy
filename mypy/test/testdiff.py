@@ -1,10 +1,13 @@
 """Test cases for AST diff (used for fine-grained incremental checking)"""
 
+from __future__ import annotations
+
 import os
-from typing import Dict, List, Optional, Tuple
+import sys
+
+import pytest
 
 from mypy import build
-from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource
 from mypy.nodes import MypyFile
@@ -23,6 +26,8 @@ class ASTDiffSuite(DataSuite):
         files_dict = dict(testcase.files)
         second_src = files_dict["tmp/next.py"]
         options = parse_options(first_src, testcase, 1)
+        if options.python_version > sys.version_info:
+            pytest.skip("Test case requires a newer Python version")
 
         messages1, files1 = self.build(first_src, options)
         messages2, files2 = self.build(second_src, options)
@@ -34,9 +39,9 @@ class ASTDiffSuite(DataSuite):
             a.append("== next ==")
             a.extend(messages2)
 
-        assert files1 is not None and files2 is not None, (
-            "cases where CompileError" " occurred should not be run"
-        )
+        assert (
+            files1 is not None and files2 is not None
+        ), "cases where CompileError occurred should not be run"
         prefix = "__main__"
         snapshot1 = snapshot_symbol_table(prefix, files1["__main__"].names)
         snapshot2 = snapshot_symbol_table(prefix, files2["__main__"].names)
@@ -48,13 +53,11 @@ class ASTDiffSuite(DataSuite):
             testcase.output, a, f"Invalid output ({testcase.file}, line {testcase.line})"
         )
 
-    def build(
-        self, source: str, options: Options
-    ) -> Tuple[List[str], Optional[Dict[str, MypyFile]]]:
+    def build(self, source: str, options: Options) -> tuple[list[str], dict[str, MypyFile] | None]:
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull
-        options.python_version = PYTHON3_VERSION
+        options.allow_empty_bodies = True
         try:
             result = build.build(
                 sources=[BuildSource("main", None, source)],

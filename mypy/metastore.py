@@ -8,13 +8,13 @@ We provide two implementations.
    on OS X.
 """
 
+from __future__ import annotations
+
 import binascii
 import os
 import time
 from abc import abstractmethod
-from typing import Any, Iterable, List, Optional
-
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
     # We avoid importing sqlite3 unless we are using it so we can mostly work
@@ -31,18 +31,16 @@ class MetadataStore:
 
         Raises FileNotFound if the entry does not exist.
         """
-        pass
 
     @abstractmethod
-    def read(self, name: str) -> str:
+    def read(self, name: str) -> bytes:
         """Read the contents of a metadata entry.
 
         Raises FileNotFound if the entry does not exist.
         """
-        pass
 
     @abstractmethod
-    def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
+    def write(self, name: str, data: bytes, mtime: float | None = None) -> bool:
         """Write a metadata entry.
 
         If mtime is specified, set it as the mtime of the entry. Otherwise,
@@ -54,7 +52,6 @@ class MetadataStore:
     @abstractmethod
     def remove(self, name: str) -> None:
         """Delete a metadata entry"""
-        pass
 
     @abstractmethod
     def commit(self) -> None:
@@ -64,11 +61,9 @@ class MetadataStore:
         there is no guarantee that changes are not made until it is
         called.
         """
-        pass
 
     @abstractmethod
-    def list_all(self) -> Iterable[str]:
-        ...
+    def list_all(self) -> Iterable[str]: ...
 
 
 def random_string() -> str:
@@ -91,16 +86,16 @@ class FilesystemMetadataStore(MetadataStore):
 
         return int(os.path.getmtime(os.path.join(self.cache_dir_prefix, name)))
 
-    def read(self, name: str) -> str:
+    def read(self, name: str) -> bytes:
         assert os.path.normpath(name) != os.path.abspath(name), "Don't use absolute paths!"
 
         if not self.cache_dir_prefix:
             raise FileNotFoundError()
 
-        with open(os.path.join(self.cache_dir_prefix, name)) as f:
+        with open(os.path.join(self.cache_dir_prefix, name), "rb") as f:
             return f.read()
 
-    def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
+    def write(self, name: str, data: bytes, mtime: float | None = None) -> bool:
         assert os.path.normpath(name) != os.path.abspath(name), "Don't use absolute paths!"
 
         if not self.cache_dir_prefix:
@@ -110,13 +105,13 @@ class FilesystemMetadataStore(MetadataStore):
         tmp_filename = path + "." + random_string()
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(tmp_filename, "w") as f:
+            with open(tmp_filename, "wb") as f:
                 f.write(data)
             os.replace(tmp_filename, path)
             if mtime is not None:
                 os.utime(path, times=(mtime, mtime))
 
-        except os.error:
+        except OSError:
             return False
         return True
 
@@ -136,31 +131,24 @@ class FilesystemMetadataStore(MetadataStore):
         for dir, _, files in os.walk(self.cache_dir_prefix):
             dir = os.path.relpath(dir, self.cache_dir_prefix)
             for file in files:
-                yield os.path.join(dir, file)
+                yield os.path.normpath(os.path.join(dir, file))
 
 
 SCHEMA = """
-CREATE TABLE IF NOT EXISTS files (
+CREATE TABLE IF NOT EXISTS files2 (
     path TEXT UNIQUE NOT NULL,
     mtime REAL,
-    data TEXT
+    data BLOB
 );
-CREATE INDEX IF NOT EXISTS path_idx on files(path);
+CREATE INDEX IF NOT EXISTS path_idx on files2(path);
 """
-# No migrations yet
-MIGRATIONS: List[str] = []
 
 
-def connect_db(db_file: str) -> "sqlite3.Connection":
+def connect_db(db_file: str) -> sqlite3.Connection:
     import sqlite3.dbapi2
 
     db = sqlite3.dbapi2.connect(db_file)
     db.executescript(SCHEMA)
-    for migr in MIGRATIONS:
-        try:
-            db.executescript(migr)
-        except sqlite3.OperationalError:
-            pass
     return db
 
 
@@ -181,7 +169,7 @@ class SqliteMetadataStore(MetadataStore):
         if not self.db:
             raise FileNotFoundError()
 
-        cur = self.db.execute(f"SELECT {field} FROM files WHERE path = ?", (name,))
+        cur = self.db.execute(f"SELECT {field} FROM files2 WHERE path = ?", (name,))
         results = cur.fetchall()
         if not results:
             raise FileNotFoundError()
@@ -189,12 +177,16 @@ class SqliteMetadataStore(MetadataStore):
         return results[0][0]
 
     def getmtime(self, name: str) -> float:
-        return self._query(name, "mtime")
+        mtime = self._query(name, "mtime")
+        assert isinstance(mtime, float)
+        return mtime
 
-    def read(self, name: str) -> str:
-        return self._query(name, "data")
+    def read(self, name: str) -> bytes:
+        data = self._query(name, "data")
+        assert isinstance(data, bytes)
+        return data
 
-    def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
+    def write(self, name: str, data: bytes, mtime: float | None = None) -> bool:
         import sqlite3
 
         if not self.db:
@@ -203,7 +195,7 @@ class SqliteMetadataStore(MetadataStore):
             if mtime is None:
                 mtime = time.time()
             self.db.execute(
-                "INSERT OR REPLACE INTO files(path, mtime, data) VALUES(?, ?, ?)",
+                "INSERT OR REPLACE INTO files2(path, mtime, data) VALUES(?, ?, ?)",
                 (name, mtime, data),
             )
         except sqlite3.OperationalError:
@@ -214,7 +206,7 @@ class SqliteMetadataStore(MetadataStore):
         if not self.db:
             raise FileNotFoundError()
 
-        self.db.execute("DELETE FROM files WHERE path = ?", (name,))
+        self.db.execute("DELETE FROM files2 WHERE path = ?", (name,))
 
     def commit(self) -> None:
         if self.db:
@@ -222,5 +214,5 @@ class SqliteMetadataStore(MetadataStore):
 
     def list_all(self) -> Iterable[str]:
         if self.db:
-            for row in self.db.execute("SELECT path FROM files"):
+            for row in self.db.execute("SELECT path FROM files2"):
                 yield row[0]

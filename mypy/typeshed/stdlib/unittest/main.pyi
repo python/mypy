@@ -5,13 +5,14 @@ import unittest.result
 import unittest.suite
 from collections.abc import Iterable
 from types import ModuleType
-from typing import Any, Protocol
+from typing import Any, Final, Protocol
+from typing_extensions import deprecated
 
-MAIN_EXAMPLES: str
-MODULE_EXAMPLES: str
+MAIN_EXAMPLES: Final[str]
+MODULE_EXAMPLES: Final[str]
 
 class _TestRunner(Protocol):
-    def run(self, test: unittest.suite.TestSuite | unittest.case.TestCase) -> unittest.result.TestResult: ...
+    def run(self, test: unittest.suite.TestSuite | unittest.case.TestCase, /) -> unittest.result.TestResult: ...
 
 # not really documented
 class TestProgram:
@@ -23,32 +24,50 @@ class TestProgram:
     buffer: bool | None
     progName: str | None
     warnings: str | None
-
-    if sys.version_info >= (3, 7):
-        testNamePatterns: list[str] | None
-    def __init__(
-        self,
-        module: None | str | ModuleType = ...,
-        defaultTest: str | Iterable[str] | None = ...,
-        argv: list[str] | None = ...,
-        testRunner: type[_TestRunner] | _TestRunner | None = ...,
-        testLoader: unittest.loader.TestLoader = ...,
-        exit: bool = ...,
-        verbosity: int = ...,
-        failfast: bool | None = ...,
-        catchbreak: bool | None = ...,
-        buffer: bool | None = ...,
-        warnings: str | None = ...,
-        *,
-        tb_locals: bool = ...,
-    ) -> None: ...
-    def usageExit(self, msg: Any = ...) -> None: ...
-    def parseArgs(self, argv: list[str]) -> None: ...
-    if sys.version_info >= (3, 7):
-        def createTests(self, from_discovery: bool = ..., Loader: unittest.loader.TestLoader | None = ...) -> None: ...
+    testNamePatterns: list[str] | None
+    if sys.version_info >= (3, 12):
+        durations: unittest.result._DurationsType | None
+        def __init__(
+            self,
+            module: None | str | ModuleType = "__main__",
+            defaultTest: str | Iterable[str] | None = None,
+            argv: list[str] | None = None,
+            testRunner: type[_TestRunner] | _TestRunner | None = None,
+            testLoader: unittest.loader.TestLoader = ...,
+            exit: bool = True,
+            verbosity: int = 1,
+            failfast: bool | None = None,
+            catchbreak: bool | None = None,
+            buffer: bool | None = None,
+            warnings: str | None = None,
+            *,
+            tb_locals: bool = False,
+            durations: unittest.result._DurationsType | None = None,
+        ) -> None: ...
     else:
-        def createTests(self) -> None: ...
+        def __init__(
+            self,
+            module: None | str | ModuleType = "__main__",
+            defaultTest: str | Iterable[str] | None = None,
+            argv: list[str] | None = None,
+            testRunner: type[_TestRunner] | _TestRunner | None = None,
+            testLoader: unittest.loader.TestLoader = ...,
+            exit: bool = True,
+            verbosity: int = 1,
+            failfast: bool | None = None,
+            catchbreak: bool | None = None,
+            buffer: bool | None = None,
+            warnings: str | None = None,
+            *,
+            tb_locals: bool = False,
+        ) -> None: ...
 
+    if sys.version_info < (3, 13):
+        @deprecated("Deprecated in Python 3.11; removal scheduled for Python 3.13")
+        def usageExit(self, msg: Any = None) -> None: ...
+
+    def parseArgs(self, argv: list[str]) -> None: ...
+    def createTests(self, from_discovery: bool = False, Loader: unittest.loader.TestLoader | None = None) -> None: ...
     def runTests(self) -> None: ...  # undocumented
 
 main = TestProgram

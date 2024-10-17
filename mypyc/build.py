@@ -18,14 +18,14 @@ to know at import-time whether it is using distutils or setuputils. We
 hackily decide based on whether setuptools has been imported already.
 """
 
+from __future__ import annotations
+
 import hashlib
 import os.path
 import re
 import sys
 import time
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
-
-from typing_extensions import TYPE_CHECKING, NoReturn, Type
+from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, Union, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -40,30 +40,46 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-if TYPE_CHECKING:
-    from distutils.core import Extension  # noqa
-
 try:
     # Import setuptools so that it monkey-patch overrides distutils
-    import setuptools  # type: ignore  # noqa
+    import setuptools
 except ImportError:
+    pass
+
+if TYPE_CHECKING:
     if sys.version_info >= (3, 12):
-        # Raise on Python 3.12, since distutils will go away forever
-        raise
-from distutils import ccompiler, sysconfig
+        from setuptools import Extension
+    else:
+        from distutils.core import Extension as _distutils_Extension
+        from typing_extensions import TypeAlias
+
+        from setuptools import Extension as _setuptools_Extension
+
+        Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
+
+if sys.version_info >= (3, 12):
+    # From setuptools' monkeypatch
+    from distutils import ccompiler, sysconfig  # type: ignore[import-not-found]
+else:
+    from distutils import ccompiler, sysconfig
 
 
-def get_extension() -> Type["Extension"]:
+def get_extension() -> type[Extension]:
     # We can work with either setuptools or distutils, and pick setuptools
     # if it has been imported.
     use_setuptools = "setuptools" in sys.modules
+    extension_class: type[Extension]
 
-    if not use_setuptools:
-        from distutils.core import Extension
+    if sys.version_info < (3, 12) and not use_setuptools:
+        import distutils.core
+
+        extension_class = distutils.core.Extension
     else:
-        from setuptools import Extension  # type: ignore  # noqa
+        if not use_setuptools:
+            sys.exit("error: setuptools not installed")
+        extension_class = setuptools.Extension
 
-    return Extension
+    return extension_class
 
 
 def setup_mypycify_vars() -> None:
@@ -85,12 +101,28 @@ def fail(message: str) -> NoReturn:
     sys.exit(message)
 
 
+def emit_messages(options: Options, messages: list[str], dt: float, serious: bool = False) -> None:
+    # ... you know, just in case.
+    if options.junit_xml:
+        py_version = f"{options.python_version[0]}_{options.python_version[1]}"
+        write_junit_xml(
+            dt,
+            serious,
+            {None: messages} if messages else {},
+            options.junit_xml,
+            py_version,
+            options.platform,
+        )
+    if messages:
+        print("\n".join(messages))
+
+
 def get_mypy_config(
-    mypy_options: List[str],
-    only_compile_paths: Optional[Iterable[str]],
+    mypy_options: list[str],
+    only_compile_paths: Iterable[str] | None,
     compiler_options: CompilerOptions,
-    fscache: Optional[FileSystemCache],
-) -> Tuple[List[BuildSource], List[BuildSource], Options]:
+    fscache: FileSystemCache | None,
+) -> tuple[list[BuildSource], list[BuildSource], Options]:
     """Construct mypy BuildSources and Options from file and options lists"""
     all_sources, options = process_options(mypy_options, fscache=fscache)
     if only_compile_paths is not None:
@@ -159,7 +191,7 @@ def generate_c_extension_shim(
     return cpath
 
 
-def group_name(modules: List[str]) -> str:
+def group_name(modules: list[str]) -> str:
     """Produce a probably unique name for a group from a list of module names."""
     if len(modules) == 1:
         return modules[0]
@@ -175,12 +207,12 @@ def include_dir() -> str:
 
 
 def generate_c(
-    sources: List[BuildSource],
+    sources: list[BuildSource],
     options: Options,
     groups: emitmodule.Groups,
     fscache: FileSystemCache,
     compiler_options: CompilerOptions,
-) -> Tuple[List[List[Tuple[str, str]]], str]:
+) -> tuple[list[list[tuple[str, str]]], str]:
     """Drive the actual core compilation step.
 
     The groups argument describes how modules are assigned to C
@@ -191,58 +223,46 @@ def generate_c(
     """
     t0 = time.time()
 
-    # Do the actual work now
-    serious = False
-    result = None
     try:
         result = emitmodule.parse_and_typecheck(
             sources, options, compiler_options, groups, fscache
         )
-        messages = result.errors
     except CompileError as e:
-        messages = e.messages
-        if not e.use_stdout:
-            serious = True
+        emit_messages(options, e.messages, time.time() - t0, serious=(not e.use_stdout))
+        sys.exit(1)
 
     t1 = time.time()
+    if result.errors:
+        emit_messages(options, result.errors, t1 - t0)
+        sys.exit(1)
+
     if compiler_options.verbose:
         print(f"Parsed and typechecked in {t1 - t0:.3f}s")
 
-    if not messages and result:
-        errors = Errors()
-        modules, ctext = emitmodule.compile_modules_to_c(
-            result, compiler_options=compiler_options, errors=errors, groups=groups
-        )
-
-        if errors.num_errors:
-            messages.extend(errors.new_messages())
-
+    errors = Errors(options)
+    modules, ctext = emitmodule.compile_modules_to_c(
+        result, compiler_options=compiler_options, errors=errors, groups=groups
+    )
     t2 = time.time()
+    emit_messages(options, errors.new_messages(), t2 - t1)
+    if errors.num_errors:
+        # No need to stop the build if only warnings were emitted.
+        sys.exit(1)
+
     if compiler_options.verbose:
         print(f"Compiled to C in {t2 - t1:.3f}s")
-
-    # ... you know, just in case.
-    if options.junit_xml:
-        py_version = "{}_{}".format(options.python_version[0], options.python_version[1])
-        write_junit_xml(
-            t2 - t0, serious, messages, options.junit_xml, py_version, options.platform
-        )
-
-    if messages:
-        print("\n".join(messages))
-        sys.exit(1)
 
     return ctext, "\n".join(format_modules(modules))
 
 
 def build_using_shared_lib(
-    sources: List[BuildSource],
+    sources: list[BuildSource],
     group_name: str,
-    cfiles: List[str],
-    deps: List[str],
+    cfiles: list[str],
+    deps: list[str],
     build_dir: str,
-    extra_compile_args: List[str],
-) -> List["Extension"]:
+    extra_compile_args: list[str],
+) -> list[Extension]:
     """Produce the list of extension modules when a shared library is needed.
 
     This creates one shared library extension module that all of the
@@ -284,8 +304,8 @@ def build_using_shared_lib(
 
 
 def build_single_module(
-    sources: List[BuildSource], cfiles: List[str], extra_compile_args: List[str]
-) -> List["Extension"]:
+    sources: list[BuildSource], cfiles: list[str], extra_compile_args: list[str]
+) -> list[Extension]:
     """Produce the list of extension modules for a standalone extension.
 
     This contains just one module, since there is no need for a shared module.
@@ -312,7 +332,7 @@ def write_file(path: str, contents: str) -> None:
     encoded_contents = contents.encode("utf-8")
     try:
         with open(path, "rb") as f:
-            old_contents: Optional[bytes] = f.read()
+            old_contents: bytes | None = f.read()
     except OSError:
         old_contents = None
     if old_contents != encoded_contents:
@@ -329,8 +349,8 @@ def write_file(path: str, contents: str) -> None:
 
 
 def construct_groups(
-    sources: List[BuildSource],
-    separate: Union[bool, List[Tuple[List[str], Optional[str]]]],
+    sources: list[BuildSource],
+    separate: bool | list[tuple[list[str], str | None]],
     use_shared_lib: bool,
 ) -> emitmodule.Groups:
     """Compute Groups given the input source list and separate configs.
@@ -367,7 +387,7 @@ def construct_groups(
     return groups
 
 
-def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
+def get_header_deps(cfiles: list[tuple[str, str]]) -> list[str]:
     """Find all the headers used by a group of cfiles.
 
     We do this by just regexping the source, which is a bit simpler than
@@ -376,7 +396,7 @@ def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
     Arguments:
         cfiles: A list of (file name, file contents) pairs.
     """
-    headers: Set[str] = set()
+    headers: set[str] = set()
     for _, contents in cfiles:
         headers.update(re.findall(r'#include "(.*)"', contents))
 
@@ -384,14 +404,14 @@ def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
 
 
 def mypyc_build(
-    paths: List[str],
+    paths: list[str],
     compiler_options: CompilerOptions,
     *,
-    separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
-    only_compile_paths: Optional[Iterable[str]] = None,
-    skip_cgen_input: Optional[Any] = None,
+    separate: bool | list[tuple[list[str], str | None]] = False,
+    only_compile_paths: Iterable[str] | None = None,
+    skip_cgen_input: Any | None = None,
     always_use_shared_lib: bool = False,
-) -> Tuple[emitmodule.Groups, List[Tuple[List[str], List[str]]]]:
+) -> tuple[emitmodule.Groups, list[tuple[list[str], list[str]]]]:
     """Do the front and middle end of mypyc building, producing and writing out C source."""
     fscache = FileSystemCache()
     mypyc_sources, all_sources, options = get_mypy_config(
@@ -422,7 +442,7 @@ def mypyc_build(
 
     # Write out the generated C and collect the files for each group
     # Should this be here??
-    group_cfilenames: List[Tuple[List[str], List[str]]] = []
+    group_cfilenames: list[tuple[list[str], list[str]]] = []
     for cfiles in group_cfiles:
         cfilenames = []
         for cfile, ctext in cfiles:
@@ -438,19 +458,19 @@ def mypyc_build(
 
 
 def mypycify(
-    paths: List[str],
+    paths: list[str],
     *,
-    only_compile_paths: Optional[Iterable[str]] = None,
+    only_compile_paths: Iterable[str] | None = None,
     verbose: bool = False,
     opt_level: str = "3",
     debug_level: str = "1",
     strip_asserts: bool = False,
     multi_file: bool = False,
-    separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
-    skip_cgen_input: Optional[Any] = None,
-    target_dir: Optional[str] = None,
-    include_runtime_files: Optional[bool] = None,
-) -> List["Extension"]:
+    separate: bool | list[tuple[list[str], str | None]] = False,
+    skip_cgen_input: Any | None = None,
+    target_dir: str | None = None,
+    include_runtime_files: bool | None = None,
+) -> list[Extension]:
     """Main entry point to building using mypyc.
 
     This produces a list of Extension objects that should be passed as the
@@ -521,7 +541,7 @@ def mypycify(
 
     build_dir = compiler_options.target_dir
 
-    cflags: List[str] = []
+    cflags: list[str] = []
     if compiler.compiler_type == "unix":
         cflags += [
             f"-O{opt_level}",
@@ -533,10 +553,12 @@ def mypycify(
             "-Wno-unused-variable",
             "-Wno-unused-command-line-argument",
             "-Wno-unknown-warning-option",
+            "-Wno-unused-but-set-variable",
+            "-Wno-ignored-optimization-argument",
+            # Disables C Preprocessor (cpp) warnings
+            # See https://github.com/mypyc/mypyc/issues/956
+            "-Wno-cpp",
         ]
-        if "gcc" in compiler.compiler[0] or "gnu-cc" in compiler.compiler[0]:
-            # This flag is needed for gcc but does not exist on clang.
-            cflags += ["-Wno-unused-but-set-variable"]
     elif compiler.compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
         if opt_level == "0":

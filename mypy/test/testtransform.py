@@ -1,6 +1,6 @@
 """Identity AST transform test cases"""
 
-import os.path
+from __future__ import annotations
 
 from mypy import build
 from mypy.errors import CompileError
@@ -37,8 +37,8 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
         options = parse_options(src, testcase, 1)
         options.use_builtins_fixtures = True
         options.semantic_analysis_only = True
-        options.enable_incomplete_features = True
         options.show_traceback = True
+        options.force_uppercase_builtins = True
         result = build.build(
             sources=[BuildSource("main", None, src)], options=options, alt_lib_path=test_temp_dir
         )
@@ -47,29 +47,12 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
             raise CompileError(a)
         # Include string representations of the source files in the actual
         # output.
-        for fnam in sorted(result.files.keys()):
-            f = result.files[fnam]
-
-            # Omit the builtins module and files with a special marker in the
-            # path.
-            # TODO the test is not reliable
-            if (
-                not f.path.endswith(
-                    (
-                        os.sep + "builtins.pyi",
-                        "typing_extensions.pyi",
-                        "typing.pyi",
-                        "abc.pyi",
-                        "sys.pyi",
-                    )
-                )
-                and not os.path.basename(f.path).startswith("_")
-                and not os.path.splitext(os.path.basename(f.path))[0].endswith("_")
-            ):
+        for module in sorted(result.files.keys()):
+            if module in testcase.test_modules:
                 t = TypeAssertTransformVisitor()
                 t.test_only = True
-                f = t.mypyfile(f)
-                a += str(f).split("\n")
+                file = t.mypyfile(result.files[module])
+                a += file.str_with_options(options).split("\n")
     except CompileError as e:
         a = e.messages
     if testcase.normalize_output:

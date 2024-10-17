@@ -1,7 +1,7 @@
-import unittest
-from typing import List, Optional
+from __future__ import annotations
 
-from mypy.backports import OrderedDict
+import unittest
+
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
@@ -9,6 +9,7 @@ from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
+    ERR_NEVER,
     Assign,
     AssignMulti,
     BasicBlock,
@@ -75,7 +76,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     """Test generation of fragments of C from individual IR ops."""
 
     def setUp(self) -> None:
-        self.registers: List[Register] = []
+        self.registers: list[Register] = []
 
         def add_local(name: str, rtype: RType) -> Register:
             reg = Register(rtype, name)
@@ -85,7 +86,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.n = add_local("n", int_rprimitive)
         self.m = add_local("m", int_rprimitive)
         self.k = add_local("k", int_rprimitive)
-        self.l = add_local("l", list_rprimitive)  # noqa
+        self.l = add_local("l", list_rprimitive)
         self.ll = add_local("ll", list_rprimitive)
         self.o = add_local("o", object_rprimitive)
         self.o2 = add_local("o2", object_rprimitive)
@@ -103,7 +104,13 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             "tt", RTuple([RTuple([int_rprimitive, bool_rprimitive]), bool_rprimitive])
         )
         ir = ClassIR("A", "mod")
-        ir.attributes = OrderedDict([("x", bool_rprimitive), ("y", int_rprimitive)])
+        ir.attributes = {
+            "x": bool_rprimitive,
+            "y": int_rprimitive,
+            "i1": int64_rprimitive,
+            "i2": int32_rprimitive,
+        }
+        ir.bitmap_attrs = ["i1", "i2"]
         compute_vtable(ir)
         ir.mro = [ir]
         self.r = add_local("r", RInstance(ir))
@@ -397,6 +404,16 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             skip_next=True,
         )
 
+    def test_get_attr_with_bitmap(self) -> None:
+        self.assert_emit(
+            GetAttr(self.r, "i1", 1),
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_i1;
+               if (unlikely(cpy_r_r0 == -113) && !(((mod___AObject *)cpy_r_r)->bitmap & 1)) {
+                   PyErr_SetString(PyExc_AttributeError, "attribute 'i1' of 'A' undefined");
+               }
+            """,
+        )
+
     def test_set_attr(self) -> None:
         self.assert_emit(
             SetAttr(self.r, "y", self.m, 1),
@@ -412,6 +429,62 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             SetAttr(self.r, "x", self.b, 1),
             """((mod___AObject *)cpy_r_r)->_x = cpy_r_b;
+               cpy_r_r0 = 1;
+            """,
+        )
+
+    def test_set_attr_no_error(self) -> None:
+        op = SetAttr(self.r, "y", self.m, 1)
+        op.error_kind = ERR_NEVER
+        self.assert_emit(
+            op,
+            """if (((mod___AObject *)cpy_r_r)->_y != CPY_INT_TAG) {
+                   CPyTagged_DECREF(((mod___AObject *)cpy_r_r)->_y);
+               }
+               ((mod___AObject *)cpy_r_r)->_y = cpy_r_m;
+            """,
+        )
+
+    def test_set_attr_non_refcounted_no_error(self) -> None:
+        op = SetAttr(self.r, "x", self.b, 1)
+        op.error_kind = ERR_NEVER
+        self.assert_emit(
+            op,
+            """((mod___AObject *)cpy_r_r)->_x = cpy_r_b;
+            """,
+        )
+
+    def test_set_attr_with_bitmap(self) -> None:
+        # For some rtypes the error value overlaps a valid value, so we need
+        # to use a separate bitmap to track defined attributes.
+        self.assert_emit(
+            SetAttr(self.r, "i1", self.i64, 1),
+            """if (unlikely(cpy_r_i64 == -113)) {
+                   ((mod___AObject *)cpy_r_r)->bitmap |= 1;
+               }
+               ((mod___AObject *)cpy_r_r)->_i1 = cpy_r_i64;
+               cpy_r_r0 = 1;
+            """,
+        )
+        self.assert_emit(
+            SetAttr(self.r, "i2", self.i32, 1),
+            """if (unlikely(cpy_r_i32 == -113)) {
+                   ((mod___AObject *)cpy_r_r)->bitmap |= 2;
+               }
+               ((mod___AObject *)cpy_r_r)->_i2 = cpy_r_i32;
+               cpy_r_r0 = 1;
+            """,
+        )
+
+    def test_set_attr_init_with_bitmap(self) -> None:
+        op = SetAttr(self.r, "i1", self.i64, 1)
+        op.is_init = True
+        self.assert_emit(
+            op,
+            """if (unlikely(cpy_r_i64 == -113)) {
+                   ((mod___AObject *)cpy_r_r)->bitmap |= 1;
+               }
+               ((mod___AObject *)cpy_r_r)->_i1 = cpy_r_i64;
                cpy_r_r0 = 1;
             """,
         )
@@ -735,10 +808,10 @@ else {
         self,
         op: Op,
         expected: str,
-        next_block: Optional[BasicBlock] = None,
+        next_block: BasicBlock | None = None,
         *,
         rare: bool = False,
-        next_branch: Optional[Branch] = None,
+        next_branch: Branch | None = None,
         skip_next: bool = False,
     ) -> None:
         block = BasicBlock(0)
@@ -768,7 +841,9 @@ else {
         else:
             expected_lines = expected.rstrip().split("\n")
         expected_lines = [line.strip(" ") for line in expected_lines]
-        assert_string_arrays_equal(expected_lines, actual_lines, msg="Generated code unexpected")
+        assert_string_arrays_equal(
+            expected_lines, actual_lines, msg="Generated code unexpected", traceback=True
+        )
         if skip_next:
             assert visitor.op_index == 1
         else:
@@ -786,6 +861,8 @@ else {
                     args = [left, right]
                     if desc.ordering is not None:
                         args = [args[i] for i in desc.ordering]
+                    # This only supports primitives that map to C calls
+                    assert desc.c_function_name is not None
                     self.assert_emit(
                         CallC(
                             desc.c_function_name,
@@ -821,12 +898,7 @@ class TestGenerateFunction(unittest.TestCase):
         generate_native_function(fn, emitter, "prog.py", "prog")
         result = emitter.fragments
         assert_string_arrays_equal(
-            [
-                "CPyTagged CPyDef_myfunc(CPyTagged cpy_r_arg) {\n",
-                "CPyL0: ;\n",
-                "    return cpy_r_arg;\n",
-                "}\n",
-            ],
+            ["CPyTagged CPyDef_myfunc(CPyTagged cpy_r_arg) {\n", "    return cpy_r_arg;\n", "}\n"],
             result,
             msg="Generated code invalid",
         )
@@ -849,7 +921,6 @@ class TestGenerateFunction(unittest.TestCase):
             [
                 "PyObject *CPyDef_myfunc(CPyTagged cpy_r_arg) {\n",
                 "    CPyTagged cpy_r_r0;\n",
-                "CPyL0: ;\n",
                 "    cpy_r_r0 = 10;\n",
                 "    CPy_Unreachable();\n",
                 "}\n",

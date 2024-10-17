@@ -1,5 +1,7 @@
 """Test cases for building an C extension and running it."""
 
+from __future__ import annotations
+
 import ast
 import contextlib
 import glob
@@ -8,7 +10,8 @@ import re
 import shutil
 import subprocess
 import sys
-from typing import Any, Iterator, List, cast
+import time
+from typing import Any, Iterator
 
 from mypy import build
 from mypy.errors import CompileError
@@ -32,10 +35,16 @@ from mypyc.test.testutil import (
 )
 
 files = [
+    "run-async.test",
     "run-misc.test",
     "run-functions.test",
     "run-integers.test",
+    "run-i64.test",
+    "run-i32.test",
+    "run-i16.test",
+    "run-u8.test",
     "run-floats.test",
+    "run-math.test",
     "run-bools.test",
     "run-strings.test",
     "run-bytes.test",
@@ -56,12 +65,14 @@ files = [
     "run-dunders.test",
     "run-singledispatch.test",
     "run-attrs.test",
+    "run-python37.test",
+    "run-python38.test",
 ]
 
-if sys.version_info >= (3, 7):
-    files.append("run-python37.test")
-if sys.version_info >= (3, 8):
-    files.append("run-python38.test")
+if sys.version_info >= (3, 10):
+    files.append("run-match.test")
+if sys.version_info >= (3, 12):
+    files.append("run-python312.test")
 
 setup_format = """\
 from setuptools import setup
@@ -76,7 +87,7 @@ setup(name='test_run_output',
 WORKDIR = "build"
 
 
-def run_setup(script_name: str, script_args: List[str]) -> bool:
+def run_setup(script_name: str, script_args: list[str]) -> bool:
     """Run a setup script in a somewhat controlled environment.
 
     This is adapted from code in distutils and our goal here is that is
@@ -100,15 +111,13 @@ def run_setup(script_name: str, script_args: List[str]) -> bool:
         finally:
             sys.argv = save_argv
     except SystemExit as e:
-        # typeshed reports code as being an int but that is wrong
-        code = cast(Any, e).code
         # distutils converts KeyboardInterrupt into a SystemExit with
         # "interrupted" as the argument. Convert it back so that
         # pytest will exit instead of just failing the test.
-        if code == "interrupted":
+        if e.code == "interrupted":
             raise KeyboardInterrupt from e
 
-        return code == 0 or code is None
+        return e.code == 0 or e.code is None
 
     return True
 
@@ -135,9 +144,9 @@ class TestRun(MypycDataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # setup.py wants to be run from the root directory of the package, which we accommodate
         # by chdiring into tmp/
-        with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase), (
-            chdir_manager("tmp")
-        ):
+        with use_custom_builtins(
+            os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase
+        ), chdir_manager("tmp"):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
@@ -165,6 +174,10 @@ class TestRun(MypycDataSuite):
             # new by distutils, shift the mtime of all of the
             # generated artifacts back by a second.
             fudge_dir_mtimes(WORKDIR, -1)
+            # On some OS, changing the mtime doesn't work reliably. As
+            # a workaround, sleep.
+            # TODO: Figure out a better approach, since this slows down tests.
+            time.sleep(1.0)
 
             step += 1
             with chdir_manager(".."):
@@ -181,6 +194,7 @@ class TestRun(MypycDataSuite):
         options.python_version = sys.version_info[:2]
         options.export_types = True
         options.preserve_asts = True
+        options.allow_empty_bodies = True
         options.incremental = self.separate
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
@@ -226,7 +240,7 @@ class TestRun(MypycDataSuite):
                 groups=groups,
                 alt_lib_path=".",
             )
-            errors = Errors()
+            errors = Errors(options)
             ir, cfiles = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )
@@ -239,7 +253,7 @@ class TestRun(MypycDataSuite):
             assert False, "Compile error"
 
         # Check that serialization works on this IR. (Only on the first
-        # step because the the returned ir only includes updated code.)
+        # step because the returned ir only includes updated code.)
         if incremental_step == 1:
             check_serialization_roundtrip(ir)
 
@@ -296,6 +310,9 @@ class TestRun(MypycDataSuite):
             stderr=subprocess.STDOUT,
             env=env,
         )
+        if sys.version_info >= (3, 12):
+            # TODO: testDecorators1 hangs on 3.12, remove this once fixed
+            proc.wait(timeout=30)
         output = proc.communicate()[0].decode("utf8")
         outlines = output.splitlines()
 

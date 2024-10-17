@@ -5,32 +5,50 @@ for better efficiency.  Each for loop generator class below deals one
 such special case.
 """
 
-from typing import Callable, List, Optional, Tuple, Union
+from __future__ import annotations
 
-from typing_extensions import ClassVar, Type
+from typing import Callable, ClassVar
 
 from mypy.nodes import (
     ARG_POS,
     CallExpr,
+    DictionaryComprehension,
     Expression,
     GeneratorExpr,
     Lvalue,
     MemberExpr,
+    NameExpr,
     RefExpr,
+    SetExpr,
     TupleExpr,
     TypeAlias,
 )
-from mypyc.ir.ops import BasicBlock, Branch, Integer, IntOp, Register, TupleGet, TupleSet, Value
+from mypyc.ir.ops import (
+    BasicBlock,
+    Branch,
+    Integer,
+    IntOp,
+    LoadAddress,
+    LoadMem,
+    RaiseStandardError,
+    Register,
+    TupleGet,
+    TupleSet,
+    Value,
+)
 from mypyc.ir.rtypes import (
     RTuple,
     RType,
+    bool_rprimitive,
     int_rprimitive,
     is_dict_rprimitive,
+    is_fixed_width_rtype,
     is_list_rprimitive,
     is_sequence_rprimitive,
     is_short_int_rprimitive,
     is_str_rprimitive,
     is_tuple_rprimitive,
+    pointer_rprimitive,
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
@@ -45,8 +63,9 @@ from mypyc.primitives.dict_ops import (
     dict_value_iter_op,
 )
 from mypyc.primitives.exc_ops import no_err_occurred_op
-from mypyc.primitives.generic_ops import iter_op, next_op
+from mypyc.primitives.generic_ops import aiter_op, anext_op, iter_op, next_op
 from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, new_list_set_item_op
+from mypyc.primitives.misc_ops import stop_async_iteration_op
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.set_ops import set_add_op
 
@@ -58,7 +77,8 @@ def for_loop_helper(
     index: Lvalue,
     expr: Expression,
     body_insts: GenFunc,
-    else_insts: Optional[GenFunc],
+    else_insts: GenFunc | None,
+    is_async: bool,
     line: int,
 ) -> None:
     """Generate IR for a loop.
@@ -81,7 +101,9 @@ def for_loop_helper(
     # Determine where we want to exit, if our condition check fails.
     normal_loop_exit = else_block if else_insts is not None else exit_block
 
-    for_gen = make_for_loop_generator(builder, index, expr, body_block, normal_loop_exit, line)
+    for_gen = make_for_loop_generator(
+        builder, index, expr, body_block, normal_loop_exit, line, is_async=is_async
+    )
 
     builder.push_loop_stack(step_block, exit_block)
     condition_block = BasicBlock()
@@ -166,7 +188,7 @@ def sequence_from_generator_preallocate_helper(
     gen: GeneratorExpr,
     empty_op_llbuilder: Callable[[Value, int], Value],
     set_item_op: CFunctionDescription,
-) -> Optional[Value]:
+) -> Value | None:
     """Generate a new tuple or list from a simple generator expression.
 
     Currently we only optimize for simplest generator expression, which means that
@@ -210,6 +232,9 @@ def sequence_from_generator_preallocate_helper(
 
 
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
+    if raise_error_if_contains_unreachable_names(builder, gen):
+        return builder.none()
+
     # Try simplest list comprehension, otherwise fall back to general one
     val = sequence_from_generator_preallocate_helper(
         builder,
@@ -220,32 +245,56 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
     if val is not None:
         return val
 
-    list_ops = builder.new_list_op([], gen.line)
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+    list_ops = builder.maybe_spill(builder.new_list_op([], gen.line))
+
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.call_c(list_append_op, [list_ops, e], gen.line)
+        builder.call_c(list_append_op, [builder.read(list_ops), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
-    return list_ops
+    return builder.read(list_ops)
+
+
+def raise_error_if_contains_unreachable_names(
+    builder: IRBuilder, gen: GeneratorExpr | DictionaryComprehension
+) -> bool:
+    """Raise a runtime error and return True if generator contains unreachable names.
+
+    False is returned if the generator can be safely transformed without crashing.
+    (It may still be unreachable!)
+    """
+    if any(isinstance(s, NameExpr) and s.node is None for s in gen.indices):
+        error = RaiseStandardError(
+            RaiseStandardError.RUNTIME_ERROR,
+            "mypyc internal error: should be unreachable",
+            gen.line,
+        )
+        builder.add(error)
+        return True
+
+    return False
 
 
 def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
-    set_ops = builder.new_set_op([], gen.line)
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+    if raise_error_if_contains_unreachable_names(builder, gen):
+        return builder.none()
+
+    set_ops = builder.maybe_spill(builder.new_set_op([], gen.line))
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.call_c(set_add_op, [set_ops, e], gen.line)
+        builder.call_c(set_add_op, [builder.read(set_ops), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
-    return set_ops
+    return builder.read(set_ops)
 
 
 def comprehension_helper(
     builder: IRBuilder,
-    loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
+    loop_params: list[tuple[Lvalue, Expression, list[Expression], bool]],
     gen_inner_stmts: Callable[[], None],
     line: int,
 ) -> None:
@@ -260,20 +309,26 @@ def comprehension_helper(
         gen_inner_stmts: function to generate the IR for the body of the innermost loop
     """
 
-    def handle_loop(loop_params: List[Tuple[Lvalue, Expression, List[Expression]]]) -> None:
+    def handle_loop(loop_params: list[tuple[Lvalue, Expression, list[Expression], bool]]) -> None:
         """Generate IR for a loop.
 
         Given a list of (index, expression, [conditions]) tuples, generate IR
         for the nested loops the list defines.
         """
-        index, expr, conds = loop_params[0]
+        index, expr, conds, is_async = loop_params[0]
         for_loop_helper(
-            builder, index, expr, lambda: loop_contents(conds, loop_params[1:]), None, line
+            builder,
+            index,
+            expr,
+            lambda: loop_contents(conds, loop_params[1:]),
+            None,
+            is_async=is_async,
+            line=line,
         )
 
     def loop_contents(
-        conds: List[Expression],
-        remaining_loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
+        conds: list[Expression],
+        remaining_loop_params: list[tuple[Lvalue, Expression, list[Expression], bool]],
     ) -> None:
         """Generate the body of the loop.
 
@@ -319,12 +374,22 @@ def make_for_loop_generator(
     body_block: BasicBlock,
     loop_exit: BasicBlock,
     line: int,
+    is_async: bool = False,
     nested: bool = False,
-) -> "ForGenerator":
+) -> ForGenerator:
     """Return helper object for generating a for loop over an iterable.
 
     If "nested" is True, this is a nested iterator such as "e" in "enumerate(e)".
     """
+
+    # Do an async loop if needed. async is always generic
+    if is_async:
+        expr_reg = builder.accept(expr)
+        async_obj = ForAsyncIterable(builder, index, body_block, loop_exit, line, nested)
+        item_type = builder._analyze_iterable_item_type(expr)
+        item_rtype = builder.type_to_rtype(item_type)
+        async_obj.init(expr_reg, item_rtype)
+        return async_obj
 
     rtyp = builder.node_type(expr)
     if is_sequence_rprimitive(rtyp):
@@ -420,7 +485,7 @@ def make_for_loop_generator(
         rtype = builder.node_type(expr.callee.expr)
         if is_dict_rprimitive(rtype) and expr.callee.name in ("keys", "values", "items"):
             expr_reg = builder.accept(expr.callee.expr)
-            for_dict_type: Optional[Type[ForGenerator]] = None
+            for_dict_type: type[ForGenerator] | None = None
             if expr.callee.name == "keys":
                 target_type = builder.get_dict_key_type(expr.callee.expr)
                 for_dict_type = ForDictionaryKeys
@@ -434,12 +499,22 @@ def make_for_loop_generator(
             for_dict_gen.init(expr_reg, target_type)
             return for_dict_gen
 
+    iterable_expr_reg: Value | None = None
+    if isinstance(expr, SetExpr):
+        # Special case "for x in <set literal>".
+        from mypyc.irbuild.expression import precompute_set_literal
+
+        set_literal = precompute_set_literal(builder, expr)
+        if set_literal is not None:
+            iterable_expr_reg = set_literal
+
     # Default to a generic for loop.
-    expr_reg = builder.accept(expr)
+    if iterable_expr_reg is None:
+        iterable_expr_reg = builder.accept(expr)
     for_obj = ForIterable(builder, index, body_block, loop_exit, line, nested)
     item_type = builder._analyze_iterable_item_type(expr)
     item_rtype = builder.type_to_rtype(item_type)
-    for_obj.init(expr_reg, item_rtype)
+    for_obj.init(iterable_expr_reg, item_rtype)
     return for_obj
 
 
@@ -494,13 +569,13 @@ class ForGenerator:
     def gen_cleanup(self) -> None:
         """Generate post-loop cleanup (if needed)."""
 
-    def load_len(self, expr: Union[Value, AssignmentTarget]) -> Value:
+    def load_len(self, expr: Value | AssignmentTarget) -> Value:
         """A helper to get collection length, used by several subclasses."""
         return self.builder.builder.builtin_len(self.builder.read(expr, self.line), self.line)
 
 
 class ForIterable(ForGenerator):
-    """Generate IR for a for loop over an arbitrary iterable (the normal case)."""
+    """Generate IR for a for loop over an arbitrary iterable (the general case)."""
 
     def need_cleanup(self) -> bool:
         # Create a new cleanup block for when the loop is finished.
@@ -546,6 +621,70 @@ class ForIterable(ForGenerator):
         # True. If no_err_occurred_op returns False, then the exception will be
         # propagated using the ERR_FALSE flag.
         self.builder.call_c(no_err_occurred_op, [], self.line)
+
+
+class ForAsyncIterable(ForGenerator):
+    """Generate IR for an async for loop."""
+
+    def init(self, expr_reg: Value, target_type: RType) -> None:
+        # Define targets to contain the expression, along with the
+        # iterator that will be used for the for-loop. We are inside
+        # of a generator function, so we will spill these into
+        # environment class.
+        builder = self.builder
+        iter_reg = builder.call_c(aiter_op, [expr_reg], self.line)
+        builder.maybe_spill(expr_reg)
+        self.iter_target = builder.maybe_spill(iter_reg)
+        self.target_type = target_type
+        self.stop_reg = Register(bool_rprimitive)
+
+    def gen_condition(self) -> None:
+        # This does the test and fetches the next value
+        # try:
+        #     TARGET = await type(iter).__anext__(iter)
+        #     stop = False
+        # except StopAsyncIteration:
+        #     stop = True
+        #
+        # What a pain.
+        # There are optimizations available here if we punch through some abstractions.
+
+        from mypyc.irbuild.statement import emit_await, transform_try_except
+
+        builder = self.builder
+        line = self.line
+
+        def except_match() -> Value:
+            addr = builder.add(LoadAddress(pointer_rprimitive, stop_async_iteration_op.src, line))
+            return builder.add(LoadMem(stop_async_iteration_op.type, addr))
+
+        def try_body() -> None:
+            awaitable = builder.call_c(anext_op, [builder.read(self.iter_target)], line)
+            self.next_reg = emit_await(builder, awaitable, line)
+            builder.assign(self.stop_reg, builder.false(), -1)
+
+        def except_body() -> None:
+            builder.assign(self.stop_reg, builder.true(), line)
+
+        transform_try_except(
+            builder, try_body, [((except_match, line), None, except_body)], None, line
+        )
+
+        builder.add(Branch(self.stop_reg, self.loop_exit, self.body_block, Branch.BOOL))
+
+    def begin_body(self) -> None:
+        # Assign the value obtained from await __anext__ to the
+        # lvalue so that it can be referenced by code in the body of the loop.
+        builder = self.builder
+        line = self.line
+        # We unbox here so that iterating with tuple unpacking generates a tuple based
+        # unpack instead of an iterator based one.
+        next_reg = builder.coerce(self.next_reg, self.target_type, line)
+        builder.assign(builder.get_assignment_target(self.index), next_reg, line)
+
+    def gen_step(self) -> None:
+        # Nothing to do here, since we get the next item as part of gen_condition().
+        pass
 
 
 def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> Value:
@@ -789,16 +928,16 @@ class ForRange(ForGenerator):
         self.step = step
         self.end_target = builder.maybe_spill(end_reg)
         if is_short_int_rprimitive(start_reg.type) and is_short_int_rprimitive(end_reg.type):
-            index_type = short_int_rprimitive
+            index_type: RType = short_int_rprimitive
+        elif is_fixed_width_rtype(end_reg.type):
+            index_type = end_reg.type
         else:
             index_type = int_rprimitive
         index_reg = Register(index_type)
         builder.assign(index_reg, start_reg, -1)
         self.index_reg = builder.maybe_spill_assignable(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.
-        self.index_target: Union[Register, AssignmentTarget] = builder.get_assignment_target(
-            self.index
-        )
+        self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
         builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
 
     def gen_condition(self) -> None:
@@ -845,9 +984,7 @@ class ForInfiniteCounter(ForGenerator):
         # initialize this register along with the loop index to 0.
         zero = Integer(0)
         self.index_reg = builder.maybe_spill_assignable(zero)
-        self.index_target: Union[Register, AssignmentTarget] = builder.get_assignment_target(
-            self.index
-        )
+        self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
         builder.assign(self.index_target, zero, self.line)
 
     def gen_step(self) -> None:
@@ -907,12 +1044,12 @@ class ForZip(ForGenerator):
         # redundant cleanup block, but that's okay.
         return True
 
-    def init(self, indexes: List[Lvalue], exprs: List[Expression]) -> None:
+    def init(self, indexes: list[Lvalue], exprs: list[Expression]) -> None:
         assert len(indexes) == len(exprs)
         # Condition check will require multiple basic blocks, since there will be
         # multiple conditions to check.
         self.cond_blocks = [BasicBlock() for _ in range(len(indexes) - 1)] + [self.body_block]
-        self.gens: List[ForGenerator] = []
+        self.gens: list[ForGenerator] = []
         for index, expr, next_block in zip(indexes, exprs, self.cond_blocks):
             gen = make_for_loop_generator(
                 self.builder, index, expr, next_block, self.loop_exit, self.line, nested=True

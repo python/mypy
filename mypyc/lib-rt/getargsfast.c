@@ -18,9 +18,6 @@
 #include <Python.h>
 #include "CPy.h"
 
-/* None of this is supported on Python 3.6 or earlier */
-#if PY_VERSION_HEX >= 0x03070000
-
 #define PARSER_INITED(parser) ((parser)->kwtuple != NULL)
 
 /* Forward */
@@ -274,7 +271,7 @@ find_keyword(PyObject *kwnames, PyObject *const *kwstack, PyObject *key)
     for (i = 0; i < nkwargs; i++) {
         PyObject *kwname = PyTuple_GET_ITEM(kwnames, i);
         assert(PyUnicode_Check(kwname));
-        if (_PyUnicode_EQ(kwname, key)) {
+        if (PyUnicode_Equal(kwname, key)) {
             return kwstack[i];
         }
     }
@@ -570,5 +567,3 @@ skipitem_fast(const char **p_format, va_list *p_va)
 
     *p_format = format;
 }
-
-#endif

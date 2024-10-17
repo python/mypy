@@ -1,4 +1,6 @@
-from typing import List, Set, Tuple
+from __future__ import annotations
+
+from typing import Set, Tuple
 
 from mypyc.analysis.dataflow import CFG, MAYBE_ANALYSIS, AnalysisResult, run_analysis
 from mypyc.ir.ops import (
@@ -12,6 +14,9 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     Extend,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -26,6 +31,7 @@ from mypyc.ir.ops import (
     LoadStatic,
     MethodCall,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     RegisterOp,
@@ -35,6 +41,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
 )
@@ -143,6 +150,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
     def visit_call_c(self, op: CallC) -> GenAndKill:
         return self.check_register_op(op)
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> GenAndKill:
+        return self.check_register_op(op)
+
     def visit_truncate(self, op: Truncate) -> GenAndKill:
         return CLEAN
 
@@ -158,6 +168,15 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
     def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill:
         return CLEAN
 
+    def visit_float_op(self, op: FloatOp) -> GenAndKill:
+        return CLEAN
+
+    def visit_float_neg(self, op: FloatNeg) -> GenAndKill:
+        return CLEAN
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> GenAndKill:
+        return CLEAN
+
     def visit_load_mem(self, op: LoadMem) -> GenAndKill:
         return CLEAN
 
@@ -170,6 +189,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
     def visit_keep_alive(self, op: KeepAlive) -> GenAndKill:
         return CLEAN
 
+    def visit_unborrow(self, op: Unborrow) -> GenAndKill:
+        return CLEAN
+
     def check_register_op(self, op: RegisterOp) -> GenAndKill:
         if any(src is self.self_reg for src in op.sources()):
             return DIRTY
@@ -177,7 +199,7 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
 
 
 def analyze_self_leaks(
-    blocks: List[BasicBlock], self_reg: Register, cfg: CFG
+    blocks: list[BasicBlock], self_reg: Register, cfg: CFG
 ) -> AnalysisResult[None]:
     return run_analysis(
         blocks=blocks,

@@ -1,12 +1,17 @@
 """Translate an Expression to a Type value."""
 
-from typing import Optional
+from __future__ import annotations
+
+from typing import Callable
 
 from mypy.fastparse import parse_type_string
 from mypy.nodes import (
+    MISSING_FALLBACK,
     BytesExpr,
     CallExpr,
     ComplexExpr,
+    Context,
+    DictExpr,
     EllipsisExpr,
     Expression,
     FloatExpr,
@@ -17,10 +22,11 @@ from mypy.nodes import (
     NameExpr,
     OpExpr,
     RefExpr,
+    StarExpr,
     StrExpr,
+    SymbolTableNode,
     TupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     get_member_expr_fullname,
 )
 from mypy.options import Options
@@ -29,13 +35,16 @@ from mypy.types import (
     AnyType,
     CallableArgument,
     EllipsisType,
+    Instance,
     ProperType,
     RawExpressionType,
     Type,
+    TypedDictType,
     TypeList,
     TypeOfAny,
     UnboundType,
     UnionType,
+    UnpackType,
 )
 
 
@@ -43,12 +52,10 @@ class TypeTranslationError(Exception):
     """Exception raised when an expression is not valid as a type."""
 
 
-def _extract_argument_name(expr: Expression) -> Optional[str]:
+def _extract_argument_name(expr: Expression) -> str | None:
     if isinstance(expr, NameExpr) and expr.name == "None":
         return None
     elif isinstance(expr, StrExpr):
-        return expr.value
-    elif isinstance(expr, UnicodeExpr):
         return expr.value
     else:
         raise TypeTranslationError()
@@ -56,21 +63,28 @@ def _extract_argument_name(expr: Expression) -> Optional[str]:
 
 def expr_to_unanalyzed_type(
     expr: Expression,
-    options: Optional[Options] = None,
+    options: Options,
     allow_new_syntax: bool = False,
-    _parent: Optional[Expression] = None,
+    _parent: Expression | None = None,
+    allow_unpack: bool = False,
+    lookup_qualified: Callable[[str, Context], SymbolTableNode | None] | None = None,
 ) -> ProperType:
     """Translate an expression to the corresponding type.
 
     The result is not semantically analyzed. It can be UnboundType or TypeList.
     Raise TypeTranslationError if the expression cannot represent a type.
 
+    If lookup_qualified is not provided, the expression is expected to be semantically
+    analyzed.
+
     If allow_new_syntax is True, allow all type syntax independent of the target
     Python version (used in stubs).
+
+    # TODO: a lot of code here is duplicated in fastparse.py, refactor this.
     """
     # The `parent` parameter is used in recursive calls to provide context for
     # understanding whether an CallableArgument is ok.
-    name: Optional[str] = None
+    name: str | None = None
     if isinstance(expr, NameExpr):
         name = expr.name
         if name == "True":
@@ -95,16 +109,26 @@ def expr_to_unanalyzed_type(
             else:
                 args = [expr.index]
 
-            if isinstance(expr.base, RefExpr) and expr.base.fullname in ANNOTATED_TYPE_NAMES:
-                # TODO: this is not the optimal solution as we are basically getting rid
-                # of the Annotation definition and only returning the type information,
-                # losing all the annotations.
+            if isinstance(expr.base, RefExpr):
+                # Check if the type is Annotated[...]. For this we need the fullname,
+                # which must be looked up if the expression hasn't been semantically analyzed.
+                base_fullname = None
+                if lookup_qualified is not None:
+                    sym = lookup_qualified(base.name, expr)
+                    if sym and sym.node:
+                        base_fullname = sym.node.fullname
+                else:
+                    base_fullname = expr.base.fullname
 
-                return expr_to_unanalyzed_type(args[0], options, allow_new_syntax, expr)
-            else:
-                base.args = tuple(
-                    expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr) for arg in args
-                )
+                if base_fullname is not None and base_fullname in ANNOTATED_TYPE_NAMES:
+                    # TODO: this is not the optimal solution as we are basically getting rid
+                    # of the Annotation definition and only returning the type information,
+                    # losing all the annotations.
+                    return expr_to_unanalyzed_type(args[0], options, allow_new_syntax, expr)
+            base.args = tuple(
+                expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr, allow_unpack=True)
+                for arg in args
+            )
             if not base.args:
                 base.empty_tuple_index = True
             return base
@@ -113,13 +137,14 @@ def expr_to_unanalyzed_type(
     elif (
         isinstance(expr, OpExpr)
         and expr.op == "|"
-        and ((options and options.python_version >= (3, 10)) or allow_new_syntax)
+        and ((options.python_version >= (3, 10)) or allow_new_syntax)
     ):
         return UnionType(
             [
                 expr_to_unanalyzed_type(expr.left, options, allow_new_syntax),
                 expr_to_unanalyzed_type(expr.right, options, allow_new_syntax),
-            ]
+            ],
+            uses_pep604_syntax=True,
         )
     elif isinstance(expr, CallExpr) and isinstance(_parent, ListExpr):
         c = expr.callee
@@ -166,32 +191,26 @@ def expr_to_unanalyzed_type(
         return CallableArgument(typ, name, arg_const, expr.line, expr.column)
     elif isinstance(expr, ListExpr):
         return TypeList(
-            [expr_to_unanalyzed_type(t, options, allow_new_syntax, expr) for t in expr.items],
+            [
+                expr_to_unanalyzed_type(t, options, allow_new_syntax, expr, allow_unpack=True)
+                for t in expr.items
+            ],
             line=expr.line,
             column=expr.column,
         )
     elif isinstance(expr, StrExpr):
-        return parse_type_string(
-            expr.value,
-            "builtins.str",
-            expr.line,
-            expr.column,
-            assume_str_is_unicode=expr.from_python_3,
-        )
+        return parse_type_string(expr.value, "builtins.str", expr.line, expr.column)
     elif isinstance(expr, BytesExpr):
-        return parse_type_string(
-            expr.value, "builtins.bytes", expr.line, expr.column, assume_str_is_unicode=False
-        )
-    elif isinstance(expr, UnicodeExpr):
-        return parse_type_string(
-            expr.value, "builtins.unicode", expr.line, expr.column, assume_str_is_unicode=True
-        )
+        return parse_type_string(expr.value, "builtins.bytes", expr.line, expr.column)
     elif isinstance(expr, UnaryExpr):
         typ = expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax)
         if isinstance(typ, RawExpressionType):
-            if isinstance(typ.literal_value, int) and expr.op == "-":
-                typ.literal_value *= -1
-                return typ
+            if isinstance(typ.literal_value, int):
+                if expr.op == "-":
+                    typ.literal_value *= -1
+                    return typ
+                elif expr.op == "+":
+                    return typ
         raise TypeTranslationError()
     elif isinstance(expr, IntExpr):
         return RawExpressionType(expr.value, "builtins.int", line=expr.line, column=expr.column)
@@ -204,5 +223,30 @@ def expr_to_unanalyzed_type(
         return RawExpressionType(None, "builtins.complex", line=expr.line, column=expr.column)
     elif isinstance(expr, EllipsisExpr):
         return EllipsisType(expr.line)
+    elif allow_unpack and isinstance(expr, StarExpr):
+        return UnpackType(
+            expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax), from_star_syntax=True
+        )
+    elif isinstance(expr, DictExpr):
+        if not expr.items:
+            raise TypeTranslationError()
+        items: dict[str, Type] = {}
+        extra_items_from = []
+        for item_name, value in expr.items:
+            if not isinstance(item_name, StrExpr):
+                if item_name is None:
+                    extra_items_from.append(
+                        expr_to_unanalyzed_type(value, options, allow_new_syntax, expr)
+                    )
+                    continue
+                raise TypeTranslationError()
+            items[item_name.value] = expr_to_unanalyzed_type(
+                value, options, allow_new_syntax, expr
+            )
+        result = TypedDictType(
+            items, set(), set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
+        )
+        result.extra_items_from = extra_items_from
+        return result
     else:
         raise TypeTranslationError()

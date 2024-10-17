@@ -1,8 +1,9 @@
 """Code generation for native classes and related wrappers."""
 
-from typing import Callable, Dict, List, Mapping, Optional, Set, Tuple
+from __future__ import annotations
 
-from mypy.backports import OrderedDict
+from typing import Callable, Mapping, Tuple
+
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
@@ -12,11 +13,12 @@ from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper,
     generate_get_wrapper,
     generate_hash_wrapper,
+    generate_ipow_wrapper,
     generate_len_wrapper,
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
 )
-from mypyc.common import NATIVE_PREFIX, PREFIX, REG_PREFIX, use_fastcall
+from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
 from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
@@ -60,11 +62,15 @@ AS_MAPPING_SLOT_DEFS: SlotTable = {
 AS_SEQUENCE_SLOT_DEFS: SlotTable = {"__contains__": ("sq_contains", generate_contains_wrapper)}
 
 AS_NUMBER_SLOT_DEFS: SlotTable = {
+    # Unary operations.
     "__bool__": ("nb_bool", generate_bool_wrapper),
-    "__neg__": ("nb_negative", generate_dunder_wrapper),
-    "__invert__": ("nb_invert", generate_dunder_wrapper),
     "__int__": ("nb_int", generate_dunder_wrapper),
     "__float__": ("nb_float", generate_dunder_wrapper),
+    "__neg__": ("nb_negative", generate_dunder_wrapper),
+    "__pos__": ("nb_positive", generate_dunder_wrapper),
+    "__abs__": ("nb_absolute", generate_dunder_wrapper),
+    "__invert__": ("nb_invert", generate_dunder_wrapper),
+    # Binary operations.
     "__add__": ("nb_add", generate_bin_op_wrapper),
     "__radd__": ("nb_add", generate_bin_op_wrapper),
     "__sub__": ("nb_subtract", generate_bin_op_wrapper),
@@ -77,6 +83,8 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__rtruediv__": ("nb_true_divide", generate_bin_op_wrapper),
     "__floordiv__": ("nb_floor_divide", generate_bin_op_wrapper),
     "__rfloordiv__": ("nb_floor_divide", generate_bin_op_wrapper),
+    "__divmod__": ("nb_divmod", generate_bin_op_wrapper),
+    "__rdivmod__": ("nb_divmod", generate_bin_op_wrapper),
     "__lshift__": ("nb_lshift", generate_bin_op_wrapper),
     "__rlshift__": ("nb_lshift", generate_bin_op_wrapper),
     "__rshift__": ("nb_rshift", generate_bin_op_wrapper),
@@ -89,6 +97,7 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__rxor__": ("nb_xor", generate_bin_op_wrapper),
     "__matmul__": ("nb_matrix_multiply", generate_bin_op_wrapper),
     "__rmatmul__": ("nb_matrix_multiply", generate_bin_op_wrapper),
+    # In-place binary operations.
     "__iadd__": ("nb_inplace_add", generate_dunder_wrapper),
     "__isub__": ("nb_inplace_subtract", generate_dunder_wrapper),
     "__imul__": ("nb_inplace_multiply", generate_dunder_wrapper),
@@ -101,6 +110,11 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__ior__": ("nb_inplace_or", generate_dunder_wrapper),
     "__ixor__": ("nb_inplace_xor", generate_dunder_wrapper),
     "__imatmul__": ("nb_inplace_matrix_multiply", generate_dunder_wrapper),
+    # Ternary operations. (yes, really)
+    # These are special cased in generate_bin_op_wrapper().
+    "__pow__": ("nb_power", generate_bin_op_wrapper),
+    "__rpow__": ("nb_power", generate_bin_op_wrapper),
+    "__ipow__": ("nb_inplace_power", generate_ipow_wrapper),
 }
 
 AS_ASYNC_SLOT_DEFS: SlotTable = {
@@ -140,9 +154,9 @@ def slot_key(attr: str) -> str:
     return attr
 
 
-def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
-    fields: Dict[str, str] = OrderedDict()
-    generated: Dict[str, str] = {}
+def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    generated: dict[str, str] = {}
     # Sort for determinism on Python 3.5
     for name, (slot, generator) in sorted(table.items(), key=lambda x: slot_key(x[0])):
         method_cls = cl.get_method_and_class(name)
@@ -199,11 +213,11 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
 
-    fields: Dict[str, str] = OrderedDict()
+    fields: dict[str, str] = {}
     fields["tp_name"] = f'"{name}"'
 
     generate_full = not cl.is_trait and not cl.builtin_base
-    needs_getseters = cl.needs_getseters or not cl.is_generated
+    needs_getseters = cl.needs_getseters or not cl.is_generated or cl.has_dict
 
     if not cl.builtin_base:
         fields["tp_new"] = new_name
@@ -256,7 +270,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     # that isn't what we want.
 
     # XXX: there is no reason for the __weakref__ stuff to be mixed up with __dict__
-    if cl.has_dict:
+    if cl.has_dict and not has_managed_dict(cl, emitter):
         # __dict__ lives right after the struct and __weakref__ lives right after that
         # TODO: They should get members in the struct instead of doing this nonsense.
         weak_offset = f"{base_size} + sizeof(PyObject *)"
@@ -270,8 +284,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
         fields["tp_members"] = members_name
         fields["tp_basicsize"] = f"{base_size} + 2*sizeof(PyObject *)"
-        fields["tp_dictoffset"] = base_size
-        fields["tp_weaklistoffset"] = weak_offset
+        if emitter.capi_version < (3, 12):
+            fields["tp_dictoffset"] = base_size
+            fields["tp_weaklistoffset"] = weak_offset
     else:
         fields["tp_basicsize"] = base_size
 
@@ -295,7 +310,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
 
         if cl.allow_interpreted_subclasses:
-            shadow_vtable_name: Optional[str] = generate_vtables(
+            shadow_vtable_name: str | None = generate_vtables(
                 cl, vtable_setup_name + "_shadow", vtable_name + "_shadow", emitter, shadow=True
             )
             emit_line()
@@ -325,8 +340,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         flags.append("_Py_TPFLAGS_HAVE_VECTORCALL")
         if not fields.get("tp_vectorcall"):
             # This is just a placeholder to please CPython. It will be
-            # overriden during setup.
+            # overridden during setup.
             fields["tp_call"] = "PyVectorcall_Call"
+    if has_managed_dict(cl, emitter):
+        flags.append("Py_TPFLAGS_MANAGED_DICT")
     fields["tp_flags"] = " | ".join(flags)
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
@@ -361,16 +378,25 @@ def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 
 
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
-    seen_attrs: Set[Tuple[str, RType]] = set()
-    lines: List[str] = []
+    seen_attrs: set[tuple[str, RType]] = set()
+    lines: list[str] = []
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__") and emitter.use_vectorcall():
         lines.append("vectorcallfunc vectorcall;")
+    bitmap_attrs = []
     for base in reversed(cl.base_mro):
         if not base.is_trait:
+            if base.bitmap_attrs:
+                # Do we need another attribute bitmap field?
+                if emitter.bitmap_field(len(base.bitmap_attrs) - 1) not in bitmap_attrs:
+                    for i in range(0, len(base.bitmap_attrs), BITMAP_BITS):
+                        attr = emitter.bitmap_field(i)
+                        if attr not in bitmap_attrs:
+                            lines.append(f"{BITMAP_TYPE} {attr};")
+                            bitmap_attrs.append(attr)
             for attr, rtype in base.attributes.items():
                 if (attr, rtype) not in seen_attrs:
-                    lines.append("{}{};".format(emitter.ctype_spaced(rtype), emitter.attr(attr)))
+                    lines.append(f"{emitter.ctype_spaced(rtype)}{emitter.attr(attr)};")
                     seen_attrs.add((attr, rtype))
 
                     if isinstance(rtype, RTuple):
@@ -436,7 +462,7 @@ def generate_vtables(
     for trait, vtable in base.trait_vtables.items():
         # Trait methods entry (vtable index -> method implementation).
         emitter.emit_line(
-            "static CPyVTableItem {}[{}];".format(trait_vtable_name(trait), max(1, len(vtable)))
+            f"static CPyVTableItem {trait_vtable_name(trait)}[{max(1, len(vtable))}];"
         )
         # Trait attributes entry (attribute number in trait -> offset in actual struct).
         emitter.emit_line(
@@ -475,9 +501,7 @@ def generate_offset_table(
     """Generate attribute offset row of a trait vtable."""
     emitter.emit_line(f"size_t {trait_offset_table_name}_scratch[] = {{")
     for attr in trait.attributes:
-        emitter.emit_line(
-            "offsetof({}, {}),".format(cl.struct_name(emitter.names), emitter.attr(attr))
-        )
+        emitter.emit_line(f"offsetof({cl.struct_name(emitter.names)}, {emitter.attr(attr)}),")
     if not trait.attributes:
         # This is for msvc.
         emitter.emit_line("0")
@@ -491,7 +515,7 @@ def generate_vtable(
     entries: VTableEntries,
     vtable_name: str,
     emitter: Emitter,
-    subtables: List[Tuple[ClassIR, str, str]],
+    subtables: list[tuple[ClassIR, str, str]],
     shadow: bool,
 ) -> None:
     emitter.emit_line(f"CPyVTableItem {vtable_name}_scratch[] = {{")
@@ -525,9 +549,9 @@ def generate_vtable(
 def generate_setup_for_class(
     cl: ClassIR,
     func_name: str,
-    defaults_fn: Optional[FuncIR],
+    defaults_fn: FuncIR | None,
     vtable_name: str,
-    shadow_vtable_name: Optional[str],
+    shadow_vtable_name: str | None,
     emitter: Emitter,
 ) -> None:
     """Generate a native function that allocates an instance of a class."""
@@ -535,9 +559,7 @@ def generate_setup_for_class(
     emitter.emit_line(f"{func_name}(PyTypeObject *type)")
     emitter.emit_line("{")
     emitter.emit_line(f"{cl.struct_name(emitter.names)} *self;")
-    emitter.emit_line(
-        "self = ({struct} *)type->tp_alloc(type, 0);".format(struct=cl.struct_name(emitter.names))
-    )
+    emitter.emit_line(f"self = ({cl.struct_name(emitter.names)} *)type->tp_alloc(type, 0);")
     emitter.emit_line("if (self == NULL)")
     emitter.emit_line("    return NULL;")
 
@@ -550,15 +572,22 @@ def generate_setup_for_class(
     else:
         emitter.emit_line(f"self->vtable = {vtable_name};")
 
+    for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
+        field = emitter.bitmap_field(i)
+        emitter.emit_line(f"self->{field} = 0;")
+
     if cl.has_method("__call__") and emitter.use_vectorcall():
         name = cl.method_decl("__call__").cname(emitter.names)
         emitter.emit_line(f"self->vectorcall = {PREFIX}{name};")
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
-            emitter.emit_line(
-                r"self->{} = {};".format(emitter.attr(attr), emitter.c_undefined_value(rtype))
-            )
+            value = emitter.c_undefined_value(rtype)
+
+            # We don't need to set this field to NULL since tp_alloc() already
+            # zero-initializes `self`.
+            if value != "NULL":
+                emitter.emit_line(rf"self->{emitter.attr(attr)} = {value};")
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
@@ -578,7 +607,7 @@ def generate_setup_for_class(
 def generate_constructor_for_class(
     cl: ClassIR,
     fn: FuncDecl,
-    init_fn: Optional[FuncIR],
+    init_fn: FuncIR | None,
     setup_name: str,
     vtable_name: str,
     emitter: Emitter,
@@ -606,7 +635,7 @@ def generate_constructor_for_class(
 
     # If there is a nontrivial ctor that we didn't define, invoke it via tp_init
     elif len(fn.sig.args) > 1:
-        emitter.emit_line("int res = {}->tp_init({});".format(emitter.type_struct_name(cl), args))
+        emitter.emit_line(f"int res = {emitter.type_struct_name(cl)}->tp_init({args});")
 
         emitter.emit_line("if (res < 0) {")
         emitter.emit_line("Py_DECREF(self);")
@@ -647,7 +676,7 @@ def generate_new_for_class(
     func_name: str,
     vtable_name: str,
     setup_name: str,
-    init_fn: Optional[FuncIR],
+    init_fn: FuncIR | None,
     emitter: Emitter,
 ) -> None:
     emitter.emit_line("static PyObject *")
@@ -699,20 +728,22 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
     """Emit function that performs cycle GC traversal of an instance."""
     emitter.emit_line("static int")
     emitter.emit_line(
-        "{}({} *self, visitproc visit, void *arg)".format(func_name, cl.struct_name(emitter.names))
+        f"{func_name}({cl.struct_name(emitter.names)} *self, visitproc visit, void *arg)"
     )
     emitter.emit_line("{")
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_visit(f"self->{emitter.attr(attr)}", rtype)
-    if cl.has_dict:
+    if has_managed_dict(cl, emitter):
+        emitter.emit_line("PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
+    elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
         emitter.emit_gc_visit(
-            "*((PyObject **)((char *)self + sizeof({})))".format(struct_name), object_rprimitive
+            f"*((PyObject **)((char *)self + sizeof({struct_name})))", object_rprimitive
         )
         emitter.emit_gc_visit(
-            "*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))".format(struct_name),
+            f"*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({struct_name})))",
             object_rprimitive,
         )
     emitter.emit_line("return 0;")
@@ -726,14 +757,16 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
-    if cl.has_dict:
+    if has_managed_dict(cl, emitter):
+        emitter.emit_line("PyObject_ClearManagedDict((PyObject *)self);")
+    elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
         emitter.emit_gc_clear(
-            "*((PyObject **)((char *)self + sizeof({})))".format(struct_name), object_rprimitive
+            f"*((PyObject **)((char *)self + sizeof({struct_name})))", object_rprimitive
         )
         emitter.emit_gc_clear(
-            "*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))".format(struct_name),
+            f"*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({struct_name})))",
             object_rprimitive,
         )
     emitter.emit_line("return 0;")
@@ -762,11 +795,7 @@ def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
             continue
         emitter.emit_line(f'{{"{fn.name}",')
         emitter.emit_line(f" (PyCFunction){PREFIX}{fn.cname(emitter.names)},")
-        if use_fastcall(emitter.capi_version):
-            flags = ["METH_FASTCALL"]
-        else:
-            flags = ["METH_VARARGS"]
-        flags.append("METH_KEYWORDS")
+        flags = ["METH_FASTCALL", "METH_KEYWORDS"]
         if fn.decl.kind == FUNC_STATICMETHOD:
             flags.append("METH_STATIC")
         elif fn.decl.kind == FUNC_CLASSMETHOD:
@@ -786,8 +815,8 @@ def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
 
 
 def generate_side_table_for_class(
-    cl: ClassIR, name: str, type: str, slots: Dict[str, str], emitter: Emitter
-) -> Optional[str]:
+    cl: ClassIR, name: str, type: str, slots: dict[str, str], emitter: Emitter
+) -> str | None:
     name = f"{cl.name_prefix(emitter.names)}_{name}"
     emitter.emit_line(f"static {type} {name} = {{")
     for field, value in slots.items():
@@ -812,7 +841,10 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
                 )
             )
 
-    for prop in cl.properties:
+    for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         # Generate getter declaration
         emitter.emit_line("static PyObject *")
         emitter.emit_line(
@@ -822,7 +854,7 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
         )
 
         # Generate property setter declaration if a setter exists
-        if cl.properties[prop][1]:
+        if setter:
             emitter.emit_line("static int")
             emitter.emit_line(
                 "{}({} *self, PyObject *value, void *closure);".format(
@@ -842,16 +874,21 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
                 )
             )
             emitter.emit_line(" NULL, NULL},")
-    for prop in cl.properties:
+    for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         emitter.emit_line(f'{{"{prop}",')
         emitter.emit_line(f" (getter){getter_name(cl, prop, emitter.names)},")
 
-        setter = cl.properties[prop][1]
         if setter:
             emitter.emit_line(f" (setter){setter_name(cl, prop, emitter.names)},")
             emitter.emit_line("NULL, NULL},")
         else:
             emitter.emit_line("NULL, NULL, NULL},")
+
+    if cl.has_dict:
+        emitter.emit_line('{"__dict__", PyObject_GenericGetDict, PyObject_GenericSetDict},')
 
     emitter.emit_line("{NULL}  /* Sentinel */")
     emitter.emit_line("};")
@@ -866,6 +903,9 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
             if i < len(cl.attributes) - 1:
                 emitter.emit_line("")
     for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         rtype = getter.sig.ret_type
         emitter.emit_line("")
         generate_readonly_getter(cl, prop, rtype, getter, emitter)
@@ -892,9 +932,9 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
 
     if not always_defined:
-        emitter.emit_undefined_attr_check(rtype, attr_expr, "==", unlikely=True)
+        emitter.emit_undefined_attr_check(rtype, attr_expr, "==", "self", attr, cl, unlikely=True)
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr), repr(cl.name)))
+        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
         emitter.emit_line("return NULL;")
         emitter.emit_line("}")
     emitter.emit_inc_ref(f"self->{attr_field}", rtype)
@@ -918,7 +958,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("if (value == NULL) {")
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
         emitter.emit_line(
-            '    "{} object attribute {} cannot be deleted");'.format(repr(cl.name), repr(attr))
+            f'    "{repr(cl.name)} object attribute {repr(attr)} cannot be deleted");'
         )
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
@@ -931,8 +971,8 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if rtype.is_refcounted:
         attr_expr = f"self->{attr_field}"
         if not always_defined:
-            emitter.emit_undefined_attr_check(rtype, attr_expr, "!=")
-        emitter.emit_dec_ref("self->{}".format(attr_field), rtype)
+            emitter.emit_undefined_attr_check(rtype, attr_expr, "!=", "self", attr, cl)
+        emitter.emit_dec_ref(f"self->{attr_field}", rtype)
         if not always_defined:
             emitter.emit_line("}")
 
@@ -948,11 +988,14 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_lines("if (!tmp)", "    return -1;")
     emitter.emit_inc_ref("tmp", rtype)
     emitter.emit_line(f"self->{attr_field} = tmp;")
+    if rtype.error_overlap and not always_defined:
+        emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
+
     if deletable:
         emitter.emit_line("} else")
-        emitter.emit_line(
-            "    self->{} = {};".format(attr_field, emitter.c_undefined_value(rtype))
-        )
+        emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
+        if rtype.error_overlap:
+            emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
@@ -973,11 +1016,12 @@ def generate_readonly_getter(
                 emitter.ctype_spaced(rtype), NATIVE_PREFIX, func_ir.cname(emitter.names)
             )
         )
+        emitter.emit_error_check("retval", rtype, "return NULL;")
         emitter.emit_box("retval", "retbox", rtype, declare_dest=True)
         emitter.emit_line("return retbox;")
     else:
         emitter.emit_line(
-            "return {}{}((PyObject *) self);".format(NATIVE_PREFIX, func_ir.cname(emitter.names))
+            f"return {NATIVE_PREFIX}{func_ir.cname(emitter.names)}((PyObject *) self);"
         )
     emitter.emit_line("}")
 
@@ -985,7 +1029,6 @@ def generate_readonly_getter(
 def generate_property_setter(
     cl: ClassIR, attr: str, arg_type: RType, func_ir: FuncIR, emitter: Emitter
 ) -> None:
-
     emitter.emit_line("static int")
     emitter.emit_line(
         "{}({} *self, PyObject *value, void *closure)".format(
@@ -996,11 +1039,23 @@ def generate_property_setter(
     if arg_type.is_unboxed:
         emitter.emit_unbox("value", "tmp", arg_type, error=ReturnHandler("-1"), declare_dest=True)
         emitter.emit_line(
-            "{}{}((PyObject *) self, tmp);".format(NATIVE_PREFIX, func_ir.cname(emitter.names))
+            f"{NATIVE_PREFIX}{func_ir.cname(emitter.names)}((PyObject *) self, tmp);"
         )
     else:
         emitter.emit_line(
-            "{}{}((PyObject *) self, value);".format(NATIVE_PREFIX, func_ir.cname(emitter.names))
+            f"{NATIVE_PREFIX}{func_ir.cname(emitter.names)}((PyObject *) self, value);"
         )
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
+
+
+def has_managed_dict(cl: ClassIR, emitter: Emitter) -> bool:
+    """Should the class get the Py_TPFLAGS_MANAGED_DICT flag?"""
+    # On 3.11 and earlier the flag doesn't exist and we use
+    # tp_dictoffset instead.  If a class inherits from Exception, the
+    # flag conflicts with tp_dictoffset set in the base class.
+    return (
+        emitter.capi_version >= (3, 12)
+        and cl.has_dict
+        and cl.builtin_base != "PyBaseExceptionObject"
+    )

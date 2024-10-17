@@ -1,21 +1,25 @@
-# This only exists in 3.11+. See VERSIONS.
-
-from _typeshed import Self
-from collections.abc import Coroutine, Generator
+import sys
 from contextvars import Context
 from types import TracebackType
 from typing import Any, TypeVar
+from typing_extensions import Self
 
+from . import _CoroutineLike
+from .events import AbstractEventLoop
 from .tasks import Task
 
-__all__ = ["TaskGroup"]
+if sys.version_info >= (3, 12):
+    __all__ = ("TaskGroup",)
+else:
+    __all__ = ["TaskGroup"]
 
 _T = TypeVar("_T")
 
 class TaskGroup:
-    def __init__(self) -> None: ...
-    async def __aenter__(self: Self) -> Self: ...
+    _loop: AbstractEventLoop | None
+    _tasks: set[Task[Any]]
+
+    async def __aenter__(self) -> Self: ...
     async def __aexit__(self, et: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> None: ...
-    def create_task(
-        self, coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T], *, name: str | None = ..., context: Context | None = ...
-    ) -> Task[_T]: ...
+    def create_task(self, coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None) -> Task[_T]: ...
+    def _on_task_done(self, task: Task[object]) -> None: ...

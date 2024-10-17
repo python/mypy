@@ -1,10 +1,9 @@
-import sys
-from _typeshed import Self
 from collections.abc import Iterable, Iterator
 from email.errors import HeaderParseError, MessageDefect
 from email.policy import Policy
-from typing import Any, Pattern
-from typing_extensions import Final
+from re import Pattern
+from typing import Any, Final
+from typing_extensions import Self
 
 WSP: Final[set[str]]
 CFWS_LEADER: Final[set[str]]
@@ -17,11 +16,14 @@ TOKEN_ENDS: Final[set[str]]
 ASPECIALS: Final[set[str]]
 ATTRIBUTE_ENDS: Final[set[str]]
 EXTENDED_ATTRIBUTE_ENDS: Final[set[str]]
+# Added in Python 3.8.20, 3.9.20, 3.10.15, 3.11.10, 3.12.5
+NLSET: Final[set[str]]
+# Added in Python 3.8.20, 3.9.20, 3.10.15, 3.11.10, 3.12.5
+SPECIALSNL: Final[set[str]]
 
 def quote_string(value: Any) -> str: ...
 
-if sys.version_info >= (3, 7):
-    rfc2047_matcher: Pattern[str]
+rfc2047_matcher: Pattern[str]
 
 class TokenList(list[TokenList | Terminal]):
     token_type: str | None
@@ -39,14 +41,10 @@ class TokenList(list[TokenList | Terminal]):
     @property
     def comments(self) -> list[str]: ...
     def fold(self, *, policy: Policy) -> str: ...
-    def pprint(self, indent: str = ...) -> None: ...
-    def ppstr(self, indent: str = ...) -> str: ...
+    def pprint(self, indent: str = "") -> None: ...
+    def ppstr(self, indent: str = "") -> str: ...
 
-class WhiteSpaceTokenList(TokenList):
-    @property
-    def value(self) -> str: ...
-    @property
-    def comments(self) -> list[str]: ...
+class WhiteSpaceTokenList(TokenList): ...
 
 class UnstructuredTokenList(TokenList):
     token_type: str
@@ -84,16 +82,12 @@ class QuotedString(TokenList):
 
 class BareQuotedString(QuotedString):
     token_type: str
-    @property
-    def value(self) -> str: ...
 
 class Comment(WhiteSpaceTokenList):
     token_type: str
     def quote(self, value: Any) -> str: ...
     @property
     def content(self) -> str: ...
-    @property
-    def comments(self) -> list[str]: ...
 
 class AddressList(TokenList):
     token_type: str
@@ -204,10 +198,9 @@ class DotAtomText(TokenList):
     token_type: str
     as_ew_allowed: bool
 
-if sys.version_info >= (3, 8):
-    class NoFoldLiteral(TokenList):
-        token_type: str
-        as_ew_allowed: bool
+class NoFoldLiteral(TokenList):
+    token_type: str
+    as_ew_allowed: bool
 
 class AddrSpec(TokenList):
     token_type: str
@@ -217,8 +210,6 @@ class AddrSpec(TokenList):
     @property
     def domain(self) -> str: ...
     @property
-    def value(self) -> str: ...
-    @property
     def addr_spec(self) -> str: ...
 
 class ObsLocalPart(TokenList):
@@ -227,17 +218,12 @@ class ObsLocalPart(TokenList):
 
 class DisplayName(Phrase):
     token_type: str
-    ew_combine_allowed: bool
     @property
     def display_name(self) -> str: ...
-    @property
-    def value(self) -> str: ...
 
 class LocalPart(TokenList):
     token_type: str
     as_ew_allowed: bool
-    @property
-    def value(self) -> str: ...
     @property
     def local_part(self) -> str: ...
 
@@ -312,17 +298,16 @@ class HeaderLabel(TokenList):
     token_type: str
     as_ew_allowed: bool
 
-if sys.version_info >= (3, 8):
-    class MsgID(TokenList):
-        token_type: str
-        as_ew_allowed: bool
-        def fold(self, policy: Policy) -> str: ...
+class MsgID(TokenList):
+    token_type: str
+    as_ew_allowed: bool
+    def fold(self, policy: Policy) -> str: ...
 
-    class MessageID(MsgID):
-        token_type: str
+class MessageID(MsgID):
+    token_type: str
 
-    class InvalidMessageID(MessageID):
-        token_type: str
+class InvalidMessageID(MessageID):
+    token_type: str
 
 class Header(TokenList):
     token_type: str
@@ -333,7 +318,7 @@ class Terminal(str):
     syntactic_break: bool
     token_type: str
     defects: list[MessageDefect]
-    def __new__(cls: type[Self], value: str, token_type: str) -> Self: ...
+    def __new__(cls, value: str, token_type: str) -> Self: ...
     def pprint(self) -> None: ...
     @property
     def all_defects(self) -> list[MessageDefect]: ...
@@ -352,10 +337,7 @@ class ValueTerminal(Terminal):
     def value(self) -> ValueTerminal: ...
     def startswith_fws(self) -> bool: ...
 
-class EWWhiteSpaceTerminal(WhiteSpaceTerminal):
-    @property
-    def value(self) -> str: ...
-
+class EWWhiteSpaceTerminal(WhiteSpaceTerminal): ...
 class _InvalidEwError(HeaderParseError): ...
 
 DOT: Final[ValueTerminal]
@@ -394,12 +376,9 @@ def get_group_list(value: str) -> tuple[GroupList, str]: ...
 def get_group(value: str) -> tuple[Group, str]: ...
 def get_address(value: str) -> tuple[Address, str]: ...
 def get_address_list(value: str) -> tuple[AddressList, str]: ...
-
-if sys.version_info >= (3, 8):
-    def get_no_fold_literal(value: str) -> tuple[NoFoldLiteral, str]: ...
-    def get_msg_id(value: str) -> tuple[MsgID, str]: ...
-    def parse_message_id(value: str) -> MessageID: ...
-
+def get_no_fold_literal(value: str) -> tuple[NoFoldLiteral, str]: ...
+def get_msg_id(value: str) -> tuple[MsgID, str]: ...
+def parse_message_id(value: str) -> MessageID: ...
 def parse_mime_version(value: str) -> MIMEVersion: ...
 def get_invalid_parameter(value: str) -> tuple[InvalidParameter, str]: ...
 def get_ttext(value: str) -> tuple[ValueTerminal, str]: ...

@@ -1,5 +1,7 @@
 """Primitive bytes ops."""
 
+from __future__ import annotations
+
 from mypyc.ir.ops import ERR_MAGIC
 from mypyc.ir.rtypes import (
     RUnion,

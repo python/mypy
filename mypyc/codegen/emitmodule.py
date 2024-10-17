@@ -3,11 +3,12 @@
 # FIXME: Basically nothing in this file operates on the level of a
 # single module and it should be renamed.
 
+from __future__ import annotations
+
 import json
 import os
-from typing import Dict, Iterable, List, Optional, Set, Tuple, TypeVar
+from typing import Iterable, List, Optional, Tuple, TypeVar
 
-from mypy.backports import OrderedDict
 from mypy.build import (
     BuildResult,
     BuildSource,
@@ -23,9 +24,9 @@ from mypy.fscache import FileSystemCache
 from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
-from mypy.util import hash_digest
+from mypy.util import hash_digest, json_dumps
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration
+from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
 from mypyc.codegen.emitclass import generate_class, generate_class_type_decl
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitwrapper import (
@@ -40,9 +41,9 @@ from mypyc.common import (
     PREFIX,
     RUNTIME_C_FILES,
     TOP_LEVEL_NAME,
+    TYPE_VAR_PREFIX,
     shared_lib_name,
     short_id_from_name,
-    use_fastcall,
     use_vectorcall,
 )
 from mypyc.errors import Errors
@@ -50,13 +51,16 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
-from mypyc.ir.rtypes import RTuple, RType
+from mypyc.ir.rtypes import RType
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
+from mypyc.transform.copy_propagation import do_copy_propagation
 from mypyc.transform.exceptions import insert_exception_handling
+from mypyc.transform.flag_elimination import do_flag_elimination
+from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.uninit import insert_uninit_checks
 
@@ -111,7 +115,7 @@ class MypycPlugin(Plugin):
         self, options: Options, compiler_options: CompilerOptions, groups: Groups
     ) -> None:
         super().__init__(options)
-        self.group_map: Dict[str, Tuple[Optional[str], List[str]]] = {}
+        self.group_map: dict[str, tuple[str | None, list[str]]] = {}
         for sources, name in groups:
             modules = sorted(source.module for source in sources)
             for id in modules:
@@ -120,9 +124,7 @@ class MypycPlugin(Plugin):
         self.compiler_options = compiler_options
         self.metastore = create_metastore(options)
 
-    def report_config_data(
-        self, ctx: ReportConfigContext
-    ) -> Optional[Tuple[Optional[str], List[str]]]:
+    def report_config_data(self, ctx: ReportConfigContext) -> tuple[str | None, list[str]] | None:
         # The config data we report is the group map entry for the module.
         # If the data is being used to check validity, we do additional checks
         # that the IR cache exists and matches the metadata cache and all
@@ -152,7 +154,7 @@ class MypycPlugin(Plugin):
         ir_data = json.loads(ir_json)
 
         # Check that the IR cache matches the metadata cache
-        if compute_hash(meta_json) != ir_data["meta_hash"]:
+        if hash_digest(meta_json) != ir_data["meta_hash"]:
             return None
 
         # Check that all of the source files are present and as
@@ -171,18 +173,18 @@ class MypycPlugin(Plugin):
 
         return self.group_map[id]
 
-    def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
+    def get_additional_deps(self, file: MypyFile) -> list[tuple[int, str, int]]:
         # Report dependency on modules in the module's group
         return [(10, id, -1) for id in self.group_map.get(file.fullname, (None, []))[1]]
 
 
 def parse_and_typecheck(
-    sources: List[BuildSource],
+    sources: list[BuildSource],
     options: Options,
     compiler_options: CompilerOptions,
     groups: Groups,
-    fscache: Optional[FileSystemCache] = None,
-    alt_lib_path: Optional[str] = None,
+    fscache: FileSystemCache | None = None,
+    alt_lib_path: str | None = None,
 ) -> BuildResult:
     assert options.strict_optional, "strict_optional must be turned on"
     result = build(
@@ -198,7 +200,7 @@ def parse_and_typecheck(
 
 
 def compile_scc_to_ir(
-    scc: List[MypyFile],
+    scc: list[MypyFile],
     result: BuildResult,
     mapper: Mapper,
     compiler_options: CompilerOptions,
@@ -227,18 +229,19 @@ def compile_scc_to_ir(
     if errors.num_errors > 0:
         return modules
 
-    # Insert uninit checks.
     for module in modules.values():
         for fn in module.functions:
+            # Insert uninit checks.
             insert_uninit_checks(fn)
-    # Insert exception handling.
-    for module in modules.values():
-        for fn in module.functions:
+            # Insert exception handling.
             insert_exception_handling(fn)
-    # Insert refcount handling.
-    for module in modules.values():
-        for fn in module.functions:
+            # Insert refcount handling.
             insert_ref_count_opcodes(fn)
+            # Switch to lower abstraction level IR.
+            lower_ir(fn, compiler_options)
+            # Perform optimizations.
+            do_copy_propagation(fn, compiler_options)
+            do_flag_elimination(fn, compiler_options)
 
     return modules
 
@@ -279,7 +282,7 @@ def compile_ir_to_c(
     result: BuildResult,
     mapper: Mapper,
     compiler_options: CompilerOptions,
-) -> Dict[Optional[str], List[Tuple[str, str]]]:
+) -> dict[str | None, list[tuple[str, str]]]:
     """Compile a collection of ModuleIRs to C source text.
 
     Returns a dictionary mapping group names to a list of (file name,
@@ -295,13 +298,13 @@ def compile_ir_to_c(
 
     # Generate C code for each compilation group. Each group will be
     # compiled into a separate extension module.
-    ctext: Dict[Optional[str], List[Tuple[str, str]]] = {}
+    ctext: dict[str | None, list[tuple[str, str]]] = {}
     for group_sources, group_name in groups:
-        group_modules = [
-            (source.module, modules[source.module])
+        group_modules = {
+            source.module: modules[source.module]
             for source in group_sources
             if source.module in modules
-        ]
+        }
         if not group_modules:
             ctext[group_name] = []
             continue
@@ -325,8 +328,8 @@ def get_state_ir_cache_name(state: State) -> str:
 def write_cache(
     modules: ModuleIRs,
     result: BuildResult,
-    group_map: Dict[str, Optional[str]],
-    ctext: Dict[Optional[str], List[Tuple[str, str]]],
+    group_map: dict[str, str | None],
+    ctext: dict[str | None, list[tuple[str, str]]],
 ) -> None:
     """Write out the cache information for modules.
 
@@ -366,17 +369,17 @@ def write_cache(
         newpath = get_state_ir_cache_name(st)
         ir_data = {
             "ir": module.serialize(),
-            "meta_hash": compute_hash(meta_data),
+            "meta_hash": hash_digest(meta_data),
             "src_hashes": hashes[group_map[id]],
         }
 
-        result.manager.metastore.write(newpath, json.dumps(ir_data))
+        result.manager.metastore.write(newpath, json_dumps(ir_data))
 
     result.manager.metastore.commit()
 
 
 def load_scc_from_cache(
-    scc: List[MypyFile], result: BuildResult, mapper: Mapper, ctx: DeserMaps
+    scc: list[MypyFile], result: BuildResult, mapper: Mapper, ctx: DeserMaps
 ) -> ModuleIRs:
     """Load IR for an SCC of modules from the cache.
 
@@ -395,7 +398,7 @@ def load_scc_from_cache(
 
 def compile_modules_to_c(
     result: BuildResult, compiler_options: CompilerOptions, errors: Errors, groups: Groups
-) -> Tuple[ModuleIRs, List[FileContents]]:
+) -> tuple[ModuleIRs, list[FileContents]]:
     """Compile Python module(s) to the source of Python C extension modules.
 
     This generates the source code for the "shared library" module
@@ -410,7 +413,6 @@ def compile_modules_to_c(
         compiler_options: The compilation options
         errors: Where to report any errors encountered
         groups: The groups that we are compiling. See documentation of Groups type above.
-        ops: Optionally, where to dump stringified ops for debugging.
 
     Returns the IR of the modules and a list containing the generated files for each group.
     """
@@ -420,13 +422,16 @@ def compile_modules_to_c(
 
     # Sometimes when we call back into mypy, there might be errors.
     # We don't want to crash when that happens.
-    result.manager.errors.set_file("<mypyc>", module=None, scope=None)
+    result.manager.errors.set_file(
+        "<mypyc>", module=None, scope=None, options=result.manager.options
+    )
 
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
-    ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
+    if errors.num_errors > 0:
+        return {}, []
 
-    if errors.num_errors == 0:
-        write_cache(modules, result, group_map, ctext)
+    ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
+    write_cache(modules, result, group_map, ctext)
 
     return modules, [ctext[name] for _, name in groups]
 
@@ -465,10 +470,10 @@ def group_dir(group_name: str) -> str:
 class GroupGenerator:
     def __init__(
         self,
-        modules: List[Tuple[str, ModuleIR]],
-        source_paths: Dict[str, str],
-        group_name: Optional[str],
-        group_map: Dict[str, Optional[str]],
+        modules: dict[str, ModuleIR],
+        source_paths: dict[str, str],
+        group_name: str | None,
+        group_map: dict[str, str | None],
         names: NameGenerator,
         compiler_options: CompilerOptions,
     ) -> None:
@@ -493,7 +498,7 @@ class GroupGenerator:
         self.names = names
         # Initializations of globals to simple values that we can't
         # do statically because the windows loader is bad.
-        self.simple_inits: List[Tuple[str, str]] = []
+        self.simple_inits: list[tuple[str, str]] = []
         self.group_name = group_name
         self.use_shared_lib = group_name is not None
         self.compiler_options = compiler_options
@@ -507,12 +512,12 @@ class GroupGenerator:
     def short_group_suffix(self) -> str:
         return "_" + exported_name(self.group_name.split(".")[-1]) if self.group_name else ""
 
-    def generate_c_for_modules(self) -> List[Tuple[str, str]]:
+    def generate_c_for_modules(self) -> list[tuple[str, str]]:
         file_contents = []
         multi_file = self.use_shared_lib and self.multi_file
 
         # Collect all literal refs in IR.
-        for _, module in self.modules:
+        for module in self.modules.values():
             for fn in module.functions:
                 collect_literals(fn, self.context.literals)
 
@@ -528,7 +533,7 @@ class GroupGenerator:
 
         self.generate_literal_tables()
 
-        for module_name, module in self.modules:
+        for module_name, module in self.modules.items():
             if multi_file:
                 emitter = Emitter(self.context)
                 emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
@@ -582,10 +587,11 @@ class GroupGenerator:
         declarations.emit_line("int CPyGlobalsInit(void);")
         declarations.emit_line()
 
-        for module_name, module in self.modules:
+        for module_name, module in self.modules.items():
             self.declare_finals(module_name, module.final_names, declarations)
             for cl in module.classes:
                 generate_class_type_decl(cl, emitter, ext_declarations, declarations)
+            self.declare_type_vars(module_name, module.type_var_names, declarations)
             for fn in module.functions:
                 generate_function_declaration(fn, declarations)
 
@@ -669,6 +675,9 @@ class GroupGenerator:
         # Descriptions of tuple literals
         init_tuple = c_array_initializer(literals.encoded_tuple_values())
         self.declare_global("const int []", "CPyLit_Tuple", initializer=init_tuple)
+        # Descriptions of frozenset literals
+        init_frozenset = c_array_initializer(literals.encoded_frozenset_values())
+        self.declare_global("const int []", "CPyLit_FrozenSet", initializer=init_frozenset)
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -787,7 +796,7 @@ class GroupGenerator:
             "",
         )
 
-        for mod, _ in self.modules:
+        for mod in self.modules:
             name = exported_name(mod)
             emitter.emit_lines(
                 f"extern PyObject *CPyInit_{name}(void);",
@@ -839,7 +848,7 @@ class GroupGenerator:
         for symbol, fixup in self.simple_inits:
             emitter.emit_line(f"{symbol} = {fixup};")
 
-        values = "CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex, CPyLit_Tuple"
+        values = "CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex, CPyLit_Tuple, CPyLit_FrozenSet"
         emitter.emit_lines(
             f"if (CPyStatics_Initialize(CPyStatics, {values}) < 0) {{", "return -1;", "}"
         )
@@ -912,7 +921,7 @@ class GroupGenerator:
             "    goto fail;",
         )
         emitter.emit_line(
-            'modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(module_static)
+            f'modname = PyObject_GetAttrString((PyObject *){module_static}, "__name__");'
         )
 
         module_globals = emitter.static_name("globals", module_name)
@@ -923,7 +932,7 @@ class GroupGenerator:
         )
 
         # HACK: Manually instantiate generated classes here
-        type_structs: List[str] = []
+        type_structs: list[str] = []
         for cl in module.classes:
             type_struct = emitter.type_struct_name(cl)
             type_structs.append(type_struct)
@@ -966,7 +975,7 @@ class GroupGenerator:
                 )
                 break
 
-    def toposort_declarations(self) -> List[HeaderDeclaration]:
+    def toposort_declarations(self) -> list[HeaderDeclaration]:
         """Topologically sort the declaration dict by dependencies.
 
         Declarations can require other declarations to come prior in C (such as declaring structs).
@@ -976,7 +985,7 @@ class GroupGenerator:
         This runs in O(V + E).
         """
         result = []
-        marked_declarations: Dict[str, MarkedDeclaration] = OrderedDict()
+        marked_declarations: dict[str, MarkedDeclaration] = {}
         for k, v in self.context.declarations.items():
             marked_declarations[k] = MarkedDeclaration(v, False)
 
@@ -991,13 +1000,13 @@ class GroupGenerator:
             result.append(decl.declaration)
             decl.mark = True
 
-        for name, marked_declaration in marked_declarations.items():
+        for name in marked_declarations:
             _toposort_visit(name)
 
         return result
 
     def declare_global(
-        self, type_spaced: str, name: str, *, initializer: Optional[str] = None
+        self, type_spaced: str, name: str, *, initializer: str | None = None
     ) -> None:
         if "[" not in type_spaced:
             base = f"{type_spaced}{name}"
@@ -1020,12 +1029,13 @@ class GroupGenerator:
         return emitter.static_name(module_name + "_internal", None, prefix=MODULE_PREFIX)
 
     def declare_module(self, module_name: str, emitter: Emitter) -> None:
-        # We declare two globals for each module:
+        # We declare two globals for each compiled module:
         # one used internally in the implementation of module init to cache results
         # and prevent infinite recursion in import cycles, and one used
         # by other modules to refer to it.
-        internal_static_name = self.module_internal_static_name(module_name, emitter)
-        self.declare_global("CPyModule *", internal_static_name, initializer="NULL")
+        if module_name in self.modules:
+            internal_static_name = self.module_internal_static_name(module_name, emitter)
+            self.declare_global("CPyModule *", internal_static_name, initializer="NULL")
         static_name = emitter.static_name(module_name, None, prefix=MODULE_PREFIX)
         self.declare_global("CPyModule *", static_name)
         self.simple_inits.append((static_name, "Py_None"))
@@ -1035,7 +1045,7 @@ class GroupGenerator:
             self.declare_module(imp, emitter)
 
     def declare_finals(
-        self, module: str, final_names: Iterable[Tuple[str, RType]], emitter: Emitter
+        self, module: str, final_names: Iterable[tuple[str, RType]], emitter: Emitter
     ) -> None:
         for name, typ in final_names:
             static_name = emitter.static_name(name, module)
@@ -1048,22 +1058,27 @@ class GroupGenerator:
     def final_definition(self, module: str, name: str, typ: RType, emitter: Emitter) -> str:
         static_name = emitter.static_name(name, module)
         # Here we rely on the fact that undefined value and error value are always the same
-        if isinstance(typ, RTuple):
-            # We need to inline because initializer must be static
-            undefined = "{{ {} }}".format("".join(emitter.tuple_undefined_value_helper(typ)))
-        else:
-            undefined = emitter.c_undefined_value(typ)
+        undefined = emitter.c_initializer_undefined_value(typ)
         return f"{emitter.ctype_spaced(typ)}{static_name} = {undefined};"
 
     def declare_static_pyobject(self, identifier: str, emitter: Emitter) -> None:
         symbol = emitter.static_name(identifier, None)
         self.declare_global("PyObject *", symbol)
 
+    def declare_type_vars(self, module: str, type_var_names: list[str], emitter: Emitter) -> None:
+        for name in type_var_names:
+            static_name = emitter.static_name(name, module, prefix=TYPE_VAR_PREFIX)
+            emitter.context.declarations[static_name] = HeaderDeclaration(
+                f"PyObject *{static_name};",
+                [f"PyObject *{static_name} = NULL;"],
+                needs_export=False,
+            )
 
-def sort_classes(classes: List[Tuple[str, ClassIR]]) -> List[Tuple[str, ClassIR]]:
+
+def sort_classes(classes: list[tuple[str, ClassIR]]) -> list[tuple[str, ClassIR]]:
     mod_name = {ir: name for name, ir in classes}
     irs = [ir for _, ir in classes]
-    deps: Dict[ClassIR, Set[ClassIR]] = OrderedDict()
+    deps: dict[ClassIR, set[ClassIR]] = {}
     for ir in irs:
         if ir not in deps:
             deps[ir] = set()
@@ -1077,13 +1092,13 @@ def sort_classes(classes: List[Tuple[str, ClassIR]]) -> List[Tuple[str, ClassIR]
 T = TypeVar("T")
 
 
-def toposort(deps: Dict[T, Set[T]]) -> List[T]:
+def toposort(deps: dict[T, set[T]]) -> list[T]:
     """Topologically sort a dict from item to dependencies.
 
     This runs in O(V + E).
     """
     result = []
-    visited: Set[T] = set()
+    visited: set[T] = set()
 
     def visit(item: T) -> None:
         if item in visited:
@@ -1101,14 +1116,14 @@ def toposort(deps: Dict[T, Set[T]]) -> List[T]:
     return result
 
 
-def is_fastcall_supported(fn: FuncIR, capi_version: Tuple[int, int]) -> bool:
+def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
     if fn.class_name is not None:
         if fn.name == "__call__":
             # We can use vectorcalls (PEP 590) when supported
             return use_vectorcall(capi_version)
         # TODO: Support fastcall for __init__.
-        return use_fastcall(capi_version) and fn.name != "__init__"
-    return use_fastcall(capi_version)
+        return fn.name != "__init__"
+    return True
 
 
 def collect_literals(fn: FuncIR, literals: Literals) -> None:
@@ -1123,38 +1138,7 @@ def collect_literals(fn: FuncIR, literals: Literals) -> None:
                 literals.record_literal(op.value)
 
 
-def c_array_initializer(components: List[str]) -> str:
-    """Construct an initializer for a C array variable.
-
-    Components are C expressions valid in an initializer.
-
-    For example, if components are ["1", "2"], the result
-    would be "{1, 2}", which can be used like this:
-
-        int a[] = {1, 2};
-
-    If the result is long, split it into multiple lines.
-    """
-    res = []
-    current: List[str] = []
-    cur_len = 0
-    for c in components:
-        if not current or cur_len + 2 + len(c) < 70:
-            current.append(c)
-            cur_len += len(c) + 2
-        else:
-            res.append(", ".join(current))
-            current = [c]
-            cur_len = len(c)
-    if not res:
-        # Result fits on a single line
-        return "{%s}" % ", ".join(current)
-    # Multi-line result
-    res.append(", ".join(current))
-    return "{\n    " + ",\n    ".join(res) + "\n}"
-
-
-def c_string_array_initializer(components: List[bytes]) -> str:
+def c_string_array_initializer(components: list[bytes]) -> str:
     result = []
     result.append("{\n")
     for s in components:

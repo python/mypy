@@ -11,14 +11,12 @@ The visitors are all re-exported from mypy.types and that is how
 other modules refer to them.
 """
 
+from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Any, Callable, Generic, Iterable, List, Optional, Sequence, Set, TypeVar, cast
+from typing import Any, Callable, Final, Generic, Iterable, Sequence, TypeVar, cast
 
 from mypy_extensions import mypyc_attr, trait
-
-from mypy.backports import OrderedDict
-
-T = TypeVar("T")
 
 from mypy.types import (
     AnyType,
@@ -36,7 +34,6 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
-    StarType,
     TupleType,
     Type,
     TypeAliasType,
@@ -52,6 +49,8 @@ from mypy.types import (
     UnpackType,
     get_proper_type,
 )
+
+T = TypeVar("T")
 
 
 @trait
@@ -152,11 +151,8 @@ class TypeVisitor(Generic[T]):
 class SyntheticTypeVisitor(TypeVisitor[T]):
     """A TypeVisitor that also knows how to visit synthetic AST constructs.
 
-    Not just real types."""
-
-    @abstractmethod
-    def visit_star_type(self, t: StarType) -> T:
-        pass
+    Not just real types.
+    """
 
     @abstractmethod
     def visit_type_list(self, t: TypeList) -> T:
@@ -185,7 +181,25 @@ class TypeTranslator(TypeVisitor[Type]):
 
     Subclass this and override some methods to implement a non-trivial
     transformation.
+
+    We cache the results of certain translations to avoid
+    massively expanding the sizes of types.
     """
+
+    def __init__(self, cache: dict[Type, Type] | None = None) -> None:
+        # For deduplication of results
+        self.cache = cache
+
+    def get_cached(self, t: Type) -> Type | None:
+        if self.cache is None:
+            return None
+        return self.cache.get(t)
+
+    def set_cached(self, orig: Type, new: Type) -> None:
+        if self.cache is None:
+            # Minor optimization: construct lazily
+            self.cache = {}
+        self.cache[orig] = new
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -206,10 +220,10 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        last_known_value: Optional[LiteralType] = None
+        last_known_value: LiteralType | None = None
         if t.last_known_value is not None:
             raw_last_known_value = t.last_known_value.accept(self)
-            assert isinstance(raw_last_known_value, LiteralType)  # type: ignore
+            assert isinstance(raw_last_known_value, LiteralType)  # type: ignore[misc]
             last_known_value = raw_last_known_value
         return Instance(
             typ=t.type,
@@ -217,6 +231,7 @@ class TypeTranslator(TypeVisitor[Type]):
             line=t.line,
             column=t.column,
             last_known_value=last_known_value,
+            extra_attrs=t.extra_attrs,
         )
 
     def visit_type_var(self, t: TypeVarType) -> Type:
@@ -254,27 +269,45 @@ class TypeTranslator(TypeVisitor[Type]):
         )
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        items = OrderedDict(
-            [(item_name, item_type.accept(self)) for (item_name, item_type) in t.items.items()]
-        )
-        return TypedDictType(
+        # Use cache to avoid O(n**2) or worse expansion of types during translation
+        if cached := self.get_cached(t):
+            return cached
+        items = {item_name: item_type.accept(self) for (item_name, item_type) in t.items.items()}
+        result = TypedDictType(
             items,
             t.required_keys,
+            t.readonly_keys,
             # TODO: This appears to be unsafe.
             cast(Any, t.fallback.accept(self)),
             t.line,
             t.column,
         )
+        self.set_cached(t, result)
+        return result
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         fallback = t.fallback.accept(self)
-        assert isinstance(fallback, Instance)  # type: ignore
+        assert isinstance(fallback, Instance)  # type: ignore[misc]
         return LiteralType(value=t.value, fallback=fallback, line=t.line, column=t.column)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        return UnionType(self.translate_types(t.items), t.line, t.column)
+        # Use cache to avoid O(n**2) or worse expansion of types during translation
+        # (only for large unions, since caching adds overhead)
+        use_cache = len(t.items) > 3
+        if use_cache and (cached := self.get_cached(t)):
+            return cached
 
-    def translate_types(self, types: Iterable[Type]) -> List[Type]:
+        result = UnionType(
+            self.translate_types(t.items),
+            t.line,
+            t.column,
+            uses_pep604_syntax=t.uses_pep604_syntax,
+        )
+        if use_cache:
+            self.set_cached(t, result)
+        return result
+
+    def translate_types(self, types: Iterable[Type]) -> list[Type]:
         return [t.accept(self) for t in types]
 
     def translate_variables(
@@ -283,10 +316,10 @@ class TypeTranslator(TypeVisitor[Type]):
         return variables
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        items: List[CallableType] = []
+        items: list[CallableType] = []
         for item in t.items:
             new = item.accept(self)
-            assert isinstance(new, CallableType)  # type: ignore
+            assert isinstance(new, CallableType)  # type: ignore[misc]
             items.append(new)
         return Overloaded(items=items)
 
@@ -316,11 +349,15 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     # TODO: check that we don't have existing violations of this rule.
     """
 
-    def __init__(self, strategy: Callable[[Iterable[T]], T]) -> None:
+    def __init__(self, strategy: Callable[[list[T]], T]) -> None:
         self.strategy = strategy
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
-        self.seen_aliases: Set[TypeAliasType] = set()
+        self.seen_aliases: set[TypeAliasType] = set()
+        # By default, we eagerly expand type aliases, and query also types in the
+        # alias target. In most cases this is a desired behavior, but we may want
+        # to skip targets in some cases (e.g. when collecting type variables).
+        self.skip_alias_target = False
 
     def visit_unbound_type(self, t: UnboundType) -> T:
         return self.query_types(t.args)
@@ -347,13 +384,13 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.strategy([])
 
     def visit_type_var(self, t: TypeVarType) -> T:
-        return self.query_types([t.upper_bound] + t.values)
+        return self.query_types([t.upper_bound, t.default] + t.values)
 
     def visit_param_spec(self, t: ParamSpecType) -> T:
-        return self.strategy([])
+        return self.query_types([t.upper_bound, t.default, t.prefix])
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> T:
-        return self.strategy([])
+        return self.query_types([t.upper_bound, t.default])
 
     def visit_unpack_type(self, t: UnpackType) -> T:
         return self.query_types([t.type])
@@ -383,9 +420,6 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_literal_type(self, t: LiteralType) -> T:
         return self.strategy([])
 
-    def visit_star_type(self, t: StarType) -> T:
-        return t.type.accept(self)
-
     def visit_union_type(self, t: UnionType) -> T:
         return self.query_types(t.items)
 
@@ -402,22 +436,168 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
+        # Skip type aliases already visited types to avoid infinite recursion.
+        # TODO: Ideally we should fire subvisitors here (or use caching) if we care
+        #       about duplicates.
+        if t in self.seen_aliases:
+            return self.strategy([])
+        self.seen_aliases.add(t)
+        if self.skip_alias_target:
+            return self.query_types(t.args)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: Iterable[Type]) -> T:
-        """Perform a query for a list of types.
+        """Perform a query for a list of types using the strategy to combine the results."""
+        return self.strategy([t.accept(self) for t in types])
 
-        Use the strategy to combine the results.
-        Skip type aliases already visited types to avoid infinite recursion.
+
+# Return True if at least one type component returns True
+ANY_STRATEGY: Final = 0
+# Return True if no type component returns False
+ALL_STRATEGY: Final = 1
+
+
+class BoolTypeQuery(SyntheticTypeVisitor[bool]):
+    """Visitor for performing recursive queries of types with a bool result.
+
+    Use TypeQuery if you need non-bool results.
+
+    'strategy' is used to combine results for a series of types. It must
+    be ANY_STRATEGY or ALL_STRATEGY.
+
+    Note: This visitor keeps an internal state (tracks type aliases to avoid
+    recursion), so it should *never* be re-used for querying different types
+    unless you call reset() first.
+    """
+
+    def __init__(self, strategy: int) -> None:
+        self.strategy = strategy
+        if strategy == ANY_STRATEGY:
+            self.default = False
+        else:
+            assert strategy == ALL_STRATEGY
+            self.default = True
+        # Keep track of the type aliases already visited. This is needed to avoid
+        # infinite recursion on types like A = Union[int, List[A]]. An empty set is
+        # represented as None as a micro-optimization.
+        self.seen_aliases: set[TypeAliasType] | None = None
+        # By default, we eagerly expand type aliases, and query also types in the
+        # alias target. In most cases this is a desired behavior, but we may want
+        # to skip targets in some cases (e.g. when collecting type variables).
+        self.skip_alias_target = False
+
+    def reset(self) -> None:
+        """Clear mutable state (but preserve strategy).
+
+        This *must* be called if you want to reuse the visitor.
         """
-        res: List[T] = []
-        for t in types:
-            if isinstance(t, TypeAliasType):
-                # Avoid infinite recursion for recursive type aliases.
-                # TODO: Ideally we should fire subvisitors here (or use caching) if we care
-                #       about duplicates.
-                if t in self.seen_aliases:
-                    continue
-                self.seen_aliases.add(t)
-            res.append(t.accept(self))
-        return self.strategy(res)
+        self.seen_aliases = None
+
+    def visit_unbound_type(self, t: UnboundType) -> bool:
+        return self.query_types(t.args)
+
+    def visit_type_list(self, t: TypeList) -> bool:
+        return self.query_types(t.items)
+
+    def visit_callable_argument(self, t: CallableArgument) -> bool:
+        return t.typ.accept(self)
+
+    def visit_any(self, t: AnyType) -> bool:
+        return self.default
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
+        return self.default
+
+    def visit_none_type(self, t: NoneType) -> bool:
+        return self.default
+
+    def visit_erased_type(self, t: ErasedType) -> bool:
+        return self.default
+
+    def visit_deleted_type(self, t: DeletedType) -> bool:
+        return self.default
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        return self.query_types([t.upper_bound, t.default] + t.values)
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        return self.query_types([t.upper_bound, t.default])
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        return self.query_types([t.upper_bound, t.default])
+
+    def visit_unpack_type(self, t: UnpackType) -> bool:
+        return self.query_types([t.type])
+
+    def visit_parameters(self, t: Parameters) -> bool:
+        return self.query_types(t.arg_types)
+
+    def visit_partial_type(self, t: PartialType) -> bool:
+        return self.default
+
+    def visit_instance(self, t: Instance) -> bool:
+        return self.query_types(t.args)
+
+    def visit_callable_type(self, t: CallableType) -> bool:
+        # FIX generics
+        # Avoid allocating any objects here as an optimization.
+        args = self.query_types(t.arg_types)
+        ret = t.ret_type.accept(self)
+        if self.strategy == ANY_STRATEGY:
+            return args or ret
+        else:
+            return args and ret
+
+    def visit_tuple_type(self, t: TupleType) -> bool:
+        return self.query_types(t.items)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> bool:
+        return self.query_types(list(t.items.values()))
+
+    def visit_raw_expression_type(self, t: RawExpressionType) -> bool:
+        return self.default
+
+    def visit_literal_type(self, t: LiteralType) -> bool:
+        return self.default
+
+    def visit_union_type(self, t: UnionType) -> bool:
+        return self.query_types(t.items)
+
+    def visit_overloaded(self, t: Overloaded) -> bool:
+        return self.query_types(t.items)  # type: ignore[arg-type]
+
+    def visit_type_type(self, t: TypeType) -> bool:
+        return t.item.accept(self)
+
+    def visit_ellipsis_type(self, t: EllipsisType) -> bool:
+        return self.default
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> bool:
+        return self.query_types(t.args)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> bool:
+        # Skip type aliases already visited types to avoid infinite recursion.
+        # TODO: Ideally we should fire subvisitors here (or use caching) if we care
+        #       about duplicates.
+        if self.seen_aliases is None:
+            self.seen_aliases = set()
+        elif t in self.seen_aliases:
+            return self.default
+        self.seen_aliases.add(t)
+        if self.skip_alias_target:
+            return self.query_types(t.args)
+        return get_proper_type(t).accept(self)
+
+    def query_types(self, types: list[Type] | tuple[Type, ...]) -> bool:
+        """Perform a query for a sequence of types using the strategy to combine the results."""
+        # Special-case for lists and tuples to allow mypyc to produce better code.
+        if isinstance(types, list):
+            if self.strategy == ANY_STRATEGY:
+                return any(t.accept(self) for t in types)
+            else:
+                return all(t.accept(self) for t in types)
+        else:
+            if self.strategy == ANY_STRATEGY:
+                return any(t.accept(self) for t in types)
+            else:
+                return all(t.accept(self) for t in types)

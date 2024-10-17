@@ -5,6 +5,10 @@
 #include <Python.h>
 #include "CPy.h"
 
+#ifndef Py_TPFLAGS_MAPPING
+#define Py_TPFLAGS_MAPPING (1 << 6)
+#endif
+
 // Dict subclasses like defaultdict override things in interesting
 // ways, so we don't want to just directly use the dict methods. Not
 // sure if it is actually worth doing all this stuff, but it saves
@@ -74,7 +78,11 @@ PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value) {
         return ret;
     }
     _Py_IDENTIFIER(setdefault);
-    return _PyObject_CallMethodIdObjArgs(dict, &PyId_setdefault, key, value, NULL);
+    PyObject *name = _PyUnicode_FromId(&PyId_setdefault); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    return PyObject_CallMethodObjArgs(dict, name, key, value, NULL);
 }
 
 PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
@@ -85,7 +93,7 @@ PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
                                               int data_type) {
     PyObject *res = CPyDict_GetItem(dict, key);
     if (!res) {
-        // CPyDict_GetItem() would generates an PyExc_KeyError
+        // CPyDict_GetItem() would generates a PyExc_KeyError
         // when key is not found.
         PyErr_Clear();
 
@@ -129,7 +137,11 @@ static inline int CPy_ObjectToStatus(PyObject *obj) {
 
 static int CPyDict_UpdateGeneral(PyObject *dict, PyObject *stuff) {
     _Py_IDENTIFIER(update);
-    PyObject *res = _PyObject_CallMethodIdOneArg(dict, &PyId_update, stuff);
+    PyObject *name = _PyUnicode_FromId(&PyId_update); /* borrowed */
+    if (name == NULL) {
+        return -1;
+    }
+    PyObject *res = PyObject_CallMethodOneArg(dict, name, stuff);
     return CPy_ObjectToStatus(res);
 }
 
@@ -226,12 +238,11 @@ PyObject *CPyDict_Keys(PyObject *dict) {
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 
@@ -246,12 +257,11 @@ PyObject *CPyDict_Values(PyObject *dict) {
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 
@@ -266,12 +276,11 @@ PyObject *CPyDict_Items(PyObject *dict) {
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 
@@ -435,4 +444,8 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
     Py_INCREF(ret.f2);
     Py_INCREF(ret.f3);
     return ret;
+}
+
+int CPyMapping_Check(PyObject *obj) {
+    return Py_TYPE(obj)->tp_flags & Py_TPFLAGS_MAPPING;
 }

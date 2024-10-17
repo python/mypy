@@ -5,12 +5,13 @@ These are special because they run multiple shell commands.
 This also includes some unit tests.
 """
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
-from typing import List, Tuple
 
 from mypy.dmypy_server import filter_out_missing_top_level_packages
 from mypy.fscache import FileSystemCache
@@ -54,7 +55,7 @@ def test_daemon(testcase: DataDrivenTestCase) -> None:
         )
 
 
-def parse_script(input: List[str]) -> List[List[str]]:
+def parse_script(input: list[str]) -> list[list[str]]:
     """Parse testcase.input into steps.
 
     Each command starts with a line starting with '$'.
@@ -62,7 +63,7 @@ def parse_script(input: List[str]) -> List[List[str]]:
     The remaining lines are expected output.
     """
     steps = []
-    step: List[str] = []
+    step: list[str] = []
     for line in input:
         if line.startswith("$"):
             if step:
@@ -75,7 +76,9 @@ def parse_script(input: List[str]) -> List[List[str]]:
     return steps
 
 
-def run_cmd(input: str) -> Tuple[int, str]:
+def run_cmd(input: str) -> tuple[int, str]:
+    if input[1:].startswith("mypy run --") and "--show-error-codes" not in input:
+        input += " --hide-error-codes"
     if input.startswith("dmypy "):
         input = sys.executable + " -m mypy." + input
     if input.startswith("mypy "):
@@ -84,12 +87,7 @@ def run_cmd(input: str) -> Tuple[int, str]:
     env["PYTHONPATH"] = PREFIX
     try:
         output = subprocess.check_output(
-            input,
-            shell=True,
-            stderr=subprocess.STDOUT,
-            universal_newlines=True,
-            cwd=test_temp_dir,
-            env=env,
+            input, shell=True, stderr=subprocess.STDOUT, text=True, cwd=test_temp_dir, env=env
         )
         return 0, output
     except subprocess.CalledProcessError as err:
@@ -106,9 +104,9 @@ class DaemonUtilitySuite(unittest.TestCase):
             self.make_file(td, "base/c.pyi")
             self.make_file(td, "base/missing.txt")
             self.make_file(td, "typeshed/d.pyi")
-            self.make_file(td, "typeshed/@python2/e")
+            self.make_file(td, "typeshed/@python2/e")  # outdated
             self.make_file(td, "pkg1/f-stubs")
-            self.make_file(td, "pkg2/g-python2-stubs")
+            self.make_file(td, "pkg2/g-python2-stubs")  # outdated
             self.make_file(td, "mpath/sub/long_name/")
 
             def makepath(p: str) -> str:
@@ -124,7 +122,7 @@ class DaemonUtilitySuite(unittest.TestCase):
             res = filter_out_missing_top_level_packages(
                 {"a", "b", "c", "d", "e", "f", "g", "long_name", "ff", "missing"}, search, fscache
             )
-            assert res == {"a", "b", "c", "d", "e", "f", "g", "long_name"}
+            assert res == {"a", "b", "c", "d", "f", "long_name"}
 
     def make_file(self, base: str, path: str) -> None:
         fullpath = os.path.join(base, path)

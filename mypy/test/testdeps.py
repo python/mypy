@@ -1,10 +1,12 @@
 """Test cases for generating node-level dependencies (for fine-grained incremental checking)"""
 
-import os
-from collections import defaultdict
-from typing import Dict, List, Optional, Set, Tuple
+from __future__ import annotations
 
-from typing_extensions import DefaultDict
+import os
+import sys
+from collections import defaultdict
+
+import pytest
 
 from mypy import build
 from mypy.errors import CompileError
@@ -16,7 +18,7 @@ from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, find_test_files, parse_options
 from mypy.types import Type
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 
 # Only dependencies in these modules are dumped
 dumped_modules = ["__main__", "pkg", "pkg.mod"]
@@ -29,35 +31,31 @@ class GetDependenciesSuite(DataSuite):
         src = "\n".join(testcase.input)
         dump_all = "# __dump_all__" in src
         options = parse_options(src, testcase, incremental_step=1)
+        if options.python_version > sys.version_info:
+            pytest.skip("Test case requires a newer Python version")
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull
         options.export_types = True
         options.preserve_asts = True
+        options.allow_empty_bodies = True
         messages, files, type_map = self.build(src, options)
         a = messages
         if files is None or type_map is None:
             if not a:
                 a = ["Unknown compile error (likely syntax error in test case or fixture)"]
         else:
-            deps: DefaultDict[str, Set[str]] = defaultdict(set)
-            for module in files:
-                if (
-                    module in dumped_modules
-                    or dump_all
-                    and module
-                    not in ("abc", "typing", "mypy_extensions", "typing_extensions", "enum")
-                ):
-                    new_deps = get_dependencies(
-                        files[module], type_map, options.python_version, options
-                    )
+            deps: defaultdict[str, set[str]] = defaultdict(set)
+            for module, file in files.items():
+                if (module in dumped_modules or dump_all) and (module in testcase.test_modules):
+                    new_deps = get_dependencies(file, type_map, options.python_version, options)
                     for source in new_deps:
                         deps[source].update(new_deps[source])
 
-            TypeState.add_all_protocol_deps(deps)
+            type_state.add_all_protocol_deps(deps)
 
             for source, targets in sorted(deps.items()):
-                if source.startswith(("<enum", "<typing", "<mypy")):
+                if source.startswith(("<enum", "<typing", "<mypy", "<_typeshed.")):
                     # Remove noise.
                     continue
                 line = f"{source} -> {', '.join(sorted(targets))}"
@@ -71,7 +69,7 @@ class GetDependenciesSuite(DataSuite):
 
     def build(
         self, source: str, options: Options
-    ) -> Tuple[List[str], Optional[Dict[str, MypyFile]], Optional[Dict[Expression, Type]]]:
+    ) -> tuple[list[str], dict[str, MypyFile] | None, dict[Expression, Type] | None]:
         try:
             result = build.build(
                 sources=[BuildSource("main", None, source)],

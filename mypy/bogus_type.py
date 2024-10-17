@@ -10,6 +10,8 @@ in places where efficient access to properties is not important.
 For those cases some other technique should be used.
 """
 
+from __future__ import annotations
+
 from typing import Any, TypeVar
 
 from mypy_extensions import FlexibleAlias

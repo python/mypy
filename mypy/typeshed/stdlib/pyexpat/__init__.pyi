@@ -1,11 +1,10 @@
-import pyexpat.errors as errors
-import pyexpat.model as model
-from _typeshed import SupportsRead
+from _typeshed import ReadableBuffer, SupportsRead
 from collections.abc import Callable
-from typing import Any
-from typing_extensions import TypeAlias, final
+from pyexpat import errors as errors, model as model
+from typing import Any, Final, final
+from typing_extensions import TypeAlias
 
-EXPAT_VERSION: str  # undocumented
+EXPAT_VERSION: Final[str]  # undocumented
 version_info: tuple[int, int, int]  # undocumented
 native_encoding: str  # undocumented
 features: list[tuple[str, int]]  # undocumented
@@ -16,23 +15,24 @@ class ExpatError(Exception):
     offset: int
 
 error = ExpatError
-
-XML_PARAM_ENTITY_PARSING_NEVER: int
-XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE: int
-XML_PARAM_ENTITY_PARSING_ALWAYS: int
+XML_PARAM_ENTITY_PARSING_NEVER: Final = 0
+XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE: Final = 1
+XML_PARAM_ENTITY_PARSING_ALWAYS: Final = 2
 
 _Model: TypeAlias = tuple[int, int, str | None, tuple[Any, ...]]
 
 @final
 class XMLParserType:
-    def Parse(self, __data: str | bytes, __isfinal: bool = ...) -> int: ...
-    def ParseFile(self, __file: SupportsRead[bytes]) -> int: ...
-    def SetBase(self, __base: str) -> None: ...
+    def Parse(self, data: str | ReadableBuffer, isfinal: bool = False, /) -> int: ...
+    def ParseFile(self, file: SupportsRead[bytes], /) -> int: ...
+    def SetBase(self, base: str, /) -> None: ...
     def GetBase(self) -> str | None: ...
     def GetInputContext(self) -> bytes | None: ...
-    def ExternalEntityParserCreate(self, __context: str | None, __encoding: str = ...) -> XMLParserType: ...
-    def SetParamEntityParsing(self, __flag: int) -> int: ...
-    def UseForeignDTD(self, __flag: bool = ...) -> None: ...
+    def ExternalEntityParserCreate(self, context: str | None, encoding: str = ..., /) -> XMLParserType: ...
+    def SetParamEntityParsing(self, flag: int, /) -> int: ...
+    def UseForeignDTD(self, flag: bool = True, /) -> None: ...
+    def GetReparseDeferralEnabled(self) -> bool: ...
+    def SetReparseDeferralEnabled(self, enabled: bool, /) -> None: ...
     @property
     def intern(self) -> dict[str, str]: ...
     buffer_size: int
@@ -53,9 +53,12 @@ class XMLParserType:
     EndDoctypeDeclHandler: Callable[[], Any] | None
     ElementDeclHandler: Callable[[str, _Model], Any] | None
     AttlistDeclHandler: Callable[[str, str, str, str | None, bool], Any] | None
-    StartElementHandler: Callable[[str, dict[str, str]], Any] | Callable[[str, list[str]], Any] | Callable[
-        [str, dict[str, str], list[str]], Any
-    ] | None
+    StartElementHandler: (
+        Callable[[str, dict[str, str]], Any]
+        | Callable[[str, list[str]], Any]
+        | Callable[[str, dict[str, str], list[str]], Any]
+        | None
+    )
     EndElementHandler: Callable[[str], Any] | None
     ProcessingInstructionHandler: Callable[[str, str], Any] | None
     CharacterDataHandler: Callable[[str], Any] | None
@@ -73,9 +76,9 @@ class XMLParserType:
     ExternalEntityRefHandler: Callable[[str, str | None, str | None, str | None], int] | None
     SkippedEntityHandler: Callable[[str, bool], Any] | None
 
-def ErrorString(__code: int) -> str: ...
+def ErrorString(code: int, /) -> str: ...
 
 # intern is undocumented
 def ParserCreate(
-    encoding: str | None = ..., namespace_separator: str | None = ..., intern: dict[str, Any] | None = ...
+    encoding: str | None = None, namespace_separator: str | None = None, intern: dict[str, Any] | None = None
 ) -> XMLParserType: ...

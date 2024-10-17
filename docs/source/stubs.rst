@@ -3,12 +3,15 @@
 Stub files
 ==========
 
+A *stub file* is a file containing a skeleton of the public interface
+of that Python module, including classes, variables, functions -- and
+most importantly, their types.
+
 Mypy uses stub files stored in the
 `typeshed <https://github.com/python/typeshed>`_ repository to determine
 the types of standard library and third-party library functions, classes,
 and other definitions. You can also create your own stubs that will be
-used to type check your code. The basic properties of stubs were introduced
-back in :ref:`stubs-intro`.
+used to type check your code.
 
 Creating a stub
 ***************
@@ -62,7 +65,7 @@ in your programs and stub files.
 Stub file syntax
 ****************
 
-Stub files are written in normal Python 3 syntax, but generally
+Stub files are written in normal Python syntax, but generally
 leaving out runtime logic like variable initializers, function bodies,
 and default arguments.
 
@@ -90,12 +93,6 @@ stub file as three dots:
     :ref:`callable types <callable-types>` and :ref:`tuple types
     <tuple-types>`.
 
-.. note::
-
-    It is always legal to use Python 3 syntax in stub files, even when
-    writing Python 2 code. The example above is a valid stub file
-    for both Python 2 and 3.
-
 Using stub file syntax at runtime
 *********************************
 
@@ -117,7 +114,7 @@ For example:
 
 .. code-block:: python
 
-    from typing_extensions import Protocol
+    from typing import Protocol
 
     class Resource(Protocol):
         def ok_1(self, foo: list[str] = ...) -> None: ...
@@ -133,10 +130,3 @@ For example:
         # type "ellipsis", argument has type "list[str]")
         def not_ok(self, foo: list[str] = ...) -> None:
             print(foo)
-
-.. note::
-
-    Ellipsis expressions are legal syntax in Python 3 only. This means
-    it is not possible to elide default arguments in Python 2 code.
-    You can still elide function bodies in Python 2 by using either
-    the ``pass`` statement or by throwing a :py:exc:`NotImplementedError`.

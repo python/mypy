@@ -1,5 +1,7 @@
 """Primitive set (and frozenset) ops."""
 
+from __future__ import annotations
+
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC
 from mypyc.ir.rtypes import (
     bit_rprimitive,
@@ -52,7 +54,7 @@ function_op(
 )
 
 # item in set
-binary_op(
+set_in_op = binary_op(
     name="in",
     arg_types=[object_rprimitive, set_rprimitive],
     return_type=c_int_rprimitive,

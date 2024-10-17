@@ -1,0 +1,269 @@
+[case testInspectTypeBasic]
+# inspect2: --include-kind tmp/foo.py:10:13
+# inspect2: --show=type --include-kind tmp/foo.py:10:13
+# inspect2: --include-span -vv tmp/foo.py:12:5
+# inspect2: --include-span --include-kind tmp/foo.py:12:5:12:9
+import foo
+[file foo.py]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, x: T) -> None: ...
+    x: T
+
+def foo(arg: C[T]) -> T:
+    return arg.x
+
+foo(C(42))
+[out]
+==
+NameExpr -> "C[T]"
+MemberExpr -> "T"
+NameExpr -> "C[T]"
+MemberExpr -> "T"
+12:5:12:5 -> "Type[foo.C[Any]]"
+12:5:12:9 -> "foo.C[builtins.int]"
+12:1:12:10 -> "builtins.int"
+CallExpr:12:5:12:9 -> "C[int]"
+
+[case testInspectAttrsBasic]
+# inspect2: --show=attrs tmp/foo.py:6:1
+# inspect2: --show=attrs tmp/foo.py:7:1
+# inspect2: --show=attrs tmp/foo.py:10:1
+# inspect2: --show=attrs --include-object-attrs  tmp/foo.py:10:1
+import foo
+[file foo.py]
+from bar import Meta
+class C(metaclass=Meta):
+    x: int
+    def meth(self) -> None: ...
+
+c: C
+C
+
+def foo() -> int: ...
+foo
+[file bar.py]
+class Meta(type):
+    y: int
+[out]
+==
+{"C": ["meth", "x"]}
+{"C": ["meth", "x"], "Meta": ["y"], "type": ["__init__"]}
+{"function": ["__name__"]}
+{"function": ["__name__"], "object": ["__init__"]}
+
+[case testInspectDefBasic]
+# inspect2: --show=definition tmp/foo.py:5:5
+# inspect2: --show=definition --include-kind tmp/foo.py:6:3
+# inspect2: --show=definition --include-span tmp/foo.py:7:5
+# inspect2: --show=definition tmp/foo.py:8:1:8:4
+# inspect2: --show=definition tmp/foo.py:8:6:8:8
+# inspect2: --show=definition tmp/foo.py:9:3
+import foo
+[file foo.py]
+from bar import var, test, A
+from baz import foo
+
+a: A
+a.meth()
+a.x
+A.B.y
+test(var)
+foo
+[file bar.py]
+class A:
+    x: int
+    @classmethod
+    def meth(cls) -> None: ...
+    class B:
+        y: int
+
+var = 42
+def test(x: int) -> None: ...
+[file baz.py]
+from typing import overload, Union
+
+@overload
+def foo(x: int) -> None: ...
+@overload
+def foo(x: str) -> None: ...
+def foo(x: Union[int, str]) -> None:
+    pass
+[builtins fixtures/classmethod.pyi]
+[out]
+==
+tmp/bar.py:4:0:meth
+MemberExpr -> tmp/bar.py:2:5:x
+7:1:7:5 -> tmp/bar.py:6:9:y
+tmp/bar.py:9:1:test
+tmp/bar.py:8:1:var
+tmp/baz.py:3:2:foo
+
+[case testInspectFallbackAttributes]
+# inspect2: --show=attrs --include-object-attrs tmp/foo.py:5:1
+# inspect2: --show=attrs tmp/foo.py:8:1
+# inspect2: --show=attrs --include-kind tmp/foo.py:10:1
+# inspect2: --show=attrs --include-kind --include-object-attrs tmp/foo.py:10:1
+import foo
+[file foo.py]
+class B: ...
+class C(B):
+    x: int
+c: C
+c  # line 5
+
+t = 42, "foo"
+t  # line 8
+
+None
+[builtins fixtures/args.pyi]
+[out]
+==
+{"C": ["x"], "object": ["__eq__", "__init__", "__ne__"]}
+{"Iterable": ["__iter__"]}
+NameExpr -> {}
+NameExpr -> {"object": ["__eq__", "__init__", "__ne__"]}
+
+[case testInspectTypeVarBoundAttrs]
+# inspect2: --show=attrs tmp/foo.py:8:13
+import foo
+[file foo.py]
+from typing import TypeVar
+
+class C:
+    x: int
+
+T = TypeVar('T', bound=C)
+def foo(arg: T) -> T:
+    return arg
+[out]
+==
+{"C": ["x"]}
+
+[case testInspectTypeVarValuesAttrs]
+# inspect2: --show=attrs --force-reload tmp/foo.py:13:13
+# inspect2: --show=attrs --force-reload --union-attrs tmp/foo.py:13:13
+# inspect2: --show=attrs tmp/foo.py:16:5
+# inspect2: --show=attrs --union-attrs tmp/foo.py:16:5
+import foo
+[file foo.py]
+from typing import TypeVar, Generic
+
+class A:
+    x: int
+    z: int
+
+class B:
+    y: int
+    z: int
+
+T = TypeVar('T', A, B)
+def foo(arg: T) -> T:
+    return arg
+
+class C(Generic[T]):
+    x: T
+[out]
+==
+{"A": ["z"], "B": ["z"]}
+{"A": ["x", "z"], "B": ["y", "z"]}
+{"A": ["z"], "B": ["z"]}
+{"A": ["x", "z"], "B": ["y", "z"]}
+
+[case testInspectTypeVarBoundDef]
+# inspect2: --show=definition tmp/foo.py:9:13
+# inspect2: --show=definition tmp/foo.py:8:9
+import foo
+[file foo.py]
+from typing import TypeVar
+
+class C:
+    x: int
+
+T = TypeVar('T', bound=C)
+def foo(arg: T) -> T:
+    arg.x
+    return arg
+[out]
+==
+tmp/foo.py:7:9:arg
+tmp/foo.py:4:5:x
+
+[case testInspectTypeVarValuesDef]
+# inspect2: --show=definition --force-reload tmp/foo.py:13:9
+# inspect2: --show=definition --force-reload tmp/foo.py:14:13
+# inspect2: --show=definition tmp/foo.py:18:7
+import foo
+[file foo.py]
+from typing import TypeVar, Generic
+
+class A:
+    x: int
+    z: int
+
+class B:
+    y: int
+    z: int
+
+T = TypeVar('T', A, B)
+def foo(arg: T) -> T:
+    arg.z
+    return arg
+
+class C(Generic[T]):
+    x: T
+    x.z
+[out]
+==
+tmp/foo.py:5:5:z, tmp/foo.py:9:5:z
+tmp/foo.py:12:9:arg
+tmp/foo.py:5:5:z, tmp/foo.py:9:5:z
+
+[case testInspectModuleAttrs]
+# inspect2: --show=attrs tmp/foo.py:2:1
+import foo
+[file foo.py]
+from pack import bar
+bar
+[file pack/__init__.py]
+[file pack/bar.py]
+x: int
+def bar() -> None: ...
+class C: ...
+[builtins fixtures/module.pyi]
+[out]
+==
+{"<pack.bar>": ["C", "__annotations__", "__doc__", "__file__", "__name__", "__package__", "__spec__", "bar", "x"], "ModuleType": ["__file__", "__getattr__"]}
+
+[case testInspectModuleDef]
+# inspect2: --show=definition --include-kind tmp/foo.py:2:1
+import foo
+[file foo.py]
+from pack import bar
+bar.x
+[file pack/__init__.py]
+[file pack/bar.py]
+pass
+if True:
+    x: int
+[out]
+==
+NameExpr -> tmp/pack/bar.py:1:1:bar
+MemberExpr -> tmp/pack/bar.py:3:5:x
+
+[case testInspectFunctionArgDef]
+# inspect2: --show=definition --include-span tmp/foo.py:4:13
+# TODO: for now all arguments have line/column set to function definition.
+import foo
+[file foo.py]
+def foo(arg: int) -> int:
+    pass
+    pass
+    return arg
+
+[out]
+==
+4:12:4:14 -> tmp/foo.py:1:9:arg

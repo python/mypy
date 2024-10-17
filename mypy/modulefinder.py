@@ -3,6 +3,8 @@
 This builds on fscache.py; find_sources.py builds on top of this.
 """
 
+from __future__ import annotations
+
 import ast
 import collections
 import functools
@@ -11,31 +13,24 @@ import re
 import subprocess
 import sys
 from enum import Enum, unique
-
-from mypy.errors import CompileError
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
-
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
-
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Dict, Final, List, NamedTuple, Optional, Tuple, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import pyinfo
+from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
 from mypy.nodes import MypyFile
 from mypy.options import Options
-from mypy.stubinfo import is_legacy_bundled_package
+from mypy.stubinfo import approved_stub_package_exists
+from mypy.util import os_path_join
 
 
 # Paths to be searched in find_module().
 class SearchPaths(NamedTuple):
-    python_path: Tuple[str, ...]  # where user code is found
-    mypy_path: Tuple[str, ...]  # from $MYPYPATH or config variable
-    package_path: Tuple[str, ...]  # from get_site_packages_dirs()
-    typeshed_path: Tuple[str, ...]  # paths in typeshed
+    python_path: tuple[str, ...]  # where user code is found
+    mypy_path: tuple[str, ...]  # from $MYPYPATH or config variable
+    package_path: tuple[str, ...]  # from get_site_packages_dirs()
+    typeshed_path: tuple[str, ...]  # paths in typeshed
 
 
 # Package dirs are a two-tuple of path to search and whether to verify the module
@@ -46,8 +41,6 @@ PackageDirs = List[OnePackageDir]
 StdlibVersions: _TypeAlias = Dict[str, Tuple[Tuple[int, int], Optional[Tuple[int, int]]]]
 
 PYTHON_EXTENSIONS: Final = [".pyi", ".py"]
-
-PYTHON2_STUB_DIR: Final = "@python2"
 
 
 # TODO: Consider adding more reasons here?
@@ -72,7 +65,7 @@ class ModuleNotFoundReason(Enum):
     # Stub PyPI package (typically types-pkgname) known to exist but not installed.
     APPROVED_STUBS_NOT_INSTALLED = 3
 
-    def error_message_templates(self, daemon: bool) -> Tuple[str, List[str]]:
+    def error_message_templates(self, daemon: bool) -> tuple[str, list[str]]:
         doc_link = "See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports"
         if self is ModuleNotFoundReason.NOT_FOUND:
             msg = 'Cannot find implementation or library stub for module named "{module}"'
@@ -90,9 +83,7 @@ class ModuleNotFoundReason(Enum):
             )
             notes = [doc_link]
         elif self is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            msg = (
-                'Library stubs not installed for "{module}" (or incompatible with Python {pyver})'
-            )
+            msg = 'Library stubs not installed for "{module}"'
             notes = ['Hint: "python3 -m pip install {stub_dist}"']
             if not daemon:
                 notes.append(
@@ -114,29 +105,33 @@ class BuildSource:
 
     def __init__(
         self,
-        path: Optional[str],
-        module: Optional[str],
-        text: Optional[str] = None,
-        base_dir: Optional[str] = None,
+        path: str | None,
+        module: str | None,
+        text: str | None = None,
+        base_dir: str | None = None,
+        followed: bool = False,
     ) -> None:
         self.path = path  # File where it's found (e.g. 'xxx/yyy/foo/bar.py')
         self.module = module or "__main__"  # Module name (e.g. 'foo.bar')
         self.text = text  # Source code, if initially supplied, else None
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
+        self.followed = followed  # Was this found by following imports?
 
     def __repr__(self) -> str:
-        return "BuildSource(path={!r}, module={!r}, has_text={}, base_dir={!r})".format(
-            self.path, self.module, self.text is not None, self.base_dir
+        return (
+            "BuildSource(path={!r}, module={!r}, has_text={}, base_dir={!r}, followed={})".format(
+                self.path, self.module, self.text is not None, self.base_dir, self.followed
+            )
         )
 
 
 class BuildSourceSet:
     """Helper to efficiently test a file's membership in a set of build sources."""
 
-    def __init__(self, sources: List[BuildSource]) -> None:
+    def __init__(self, sources: list[BuildSource]) -> None:
         self.source_text_present = False
-        self.source_modules = {}  # type: Dict[str, str]
-        self.source_paths = set()  # type: Set[str]
+        self.source_modules: dict[str, str] = {}
+        self.source_paths: set[str] = set()
 
         for source in sources:
             if source.text is not None:
@@ -147,14 +142,11 @@ class BuildSourceSet:
                 self.source_modules[source.module] = source.path or ""
 
     def is_source(self, file: MypyFile) -> bool:
-        if file.path and file.path in self.source_paths:
-            return True
-        elif file._fullname in self.source_modules:
-            return True
-        elif self.source_text_present:
-            return True
-        else:
-            return False
+        return (
+            (file.path and file.path in self.source_paths)
+            or file._fullname in self.source_modules
+            or self.source_text_present
+        )
 
 
 class FindModuleCache:
@@ -171,20 +163,20 @@ class FindModuleCache:
     def __init__(
         self,
         search_paths: SearchPaths,
-        fscache: Optional[FileSystemCache],
-        options: Optional[Options],
-        stdlib_py_versions: Optional[StdlibVersions] = None,
-        source_set: Optional[BuildSourceSet] = None,
+        fscache: FileSystemCache | None,
+        options: Options | None,
+        stdlib_py_versions: StdlibVersions | None = None,
+        source_set: BuildSourceSet | None = None,
     ) -> None:
         self.search_paths = search_paths
         self.source_set = source_set
         self.fscache = fscache or FileSystemCache()
         # Cache for get_toplevel_possibilities:
         # search_paths -> (toplevel_id -> list(package_dirs))
-        self.initial_components: Dict[Tuple[str, ...], Dict[str, List[str]]] = {}
+        self.initial_components: dict[tuple[str, ...], dict[str, list[str]]] = {}
         # Cache find_module: id -> result
-        self.results: Dict[str, ModuleSearchResult] = {}
-        self.ns_ancestors: Dict[str, str] = {}
+        self.results: dict[str, ModuleSearchResult] = {}
+        self.ns_ancestors: dict[str, str] = {}
         self.options = options
         custom_typeshed_dir = None
         if options:
@@ -192,14 +184,13 @@ class FindModuleCache:
         self.stdlib_py_versions = stdlib_py_versions or load_stdlib_py_versions(
             custom_typeshed_dir
         )
-        self.python_major_ver = 3 if options is None else options.python_version[0]
 
     def clear(self) -> None:
         self.results.clear()
         self.initial_components.clear()
         self.ns_ancestors.clear()
 
-    def find_module_via_source_set(self, id: str) -> Optional[ModuleSearchResult]:
+    def find_module_via_source_set(self, id: str) -> ModuleSearchResult | None:
         """Fast path to find modules by looking through the input sources
 
         This is only used when --fast-module-lookup is passed on the command line."""
@@ -215,7 +206,7 @@ class FindModuleCache:
             d = os.path.dirname(p)
             for _ in range(id.count(".")):
                 if not any(
-                    self.fscache.isfile(os.path.join(d, "__init__" + x)) for x in PYTHON_EXTENSIONS
+                    self.fscache.isfile(os_path_join(d, "__init__" + x)) for x in PYTHON_EXTENSIONS
                 ):
                     return None
                 d = os.path.dirname(d)
@@ -248,7 +239,7 @@ class FindModuleCache:
                 return ModuleNotFoundReason.NOT_FOUND
         return None
 
-    def find_lib_path_dirs(self, id: str, lib_path: Tuple[str, ...]) -> PackageDirs:
+    def find_lib_path_dirs(self, id: str, lib_path: tuple[str, ...]) -> PackageDirs:
         """Find which elements of a lib_path have the directory a module needs to exist.
 
         This is run for the python_path, mypy_path, and typeshed_path search paths.
@@ -259,12 +250,12 @@ class FindModuleCache:
         dirs = []
         for pathitem in self.get_toplevel_possibilities(lib_path, components[0]):
             # e.g., '/usr/lib/python3.4/foo/bar'
-            dir = os.path.normpath(os.path.join(pathitem, dir_chain))
+            dir = os.path.normpath(os_path_join(pathitem, dir_chain))
             if self.fscache.isdir(dir):
                 dirs.append((dir, True))
         return dirs
 
-    def get_toplevel_possibilities(self, lib_path: Tuple[str, ...], id: str) -> List[str]:
+    def get_toplevel_possibilities(self, lib_path: tuple[str, ...], id: str) -> list[str]:
         """Find which elements of lib_path could contain a particular top-level module.
 
         In practice, almost all modules can be routed to the correct entry in
@@ -279,7 +270,7 @@ class FindModuleCache:
             return self.initial_components[lib_path].get(id, [])
 
         # Enumerate all the files in the directories on lib_path and produce the map
-        components: Dict[str, List[str]] = {}
+        components: dict[str, list[str]] = {}
         for dir in lib_path:
             try:
                 contents = self.fscache.listdir(dir)
@@ -291,9 +282,6 @@ class FindModuleCache:
             for name in contents:
                 name = os.path.splitext(name)[0]
                 components.setdefault(name, []).append(dir)
-
-        if self.python_major_ver == 2:
-            components = {id: filter_redundant_py2_dirs(dirs) for id, dirs in components.items()}
 
         self.initial_components[lib_path] = components
         return components.get(id, [])
@@ -328,13 +316,13 @@ class FindModuleCache:
         return version >= min_version and (max_version is None or version <= max_version)
 
     def _find_module_non_stub_helper(
-        self, components: List[str], pkg_dir: str
-    ) -> Union[OnePackageDir, ModuleNotFoundReason]:
+        self, components: list[str], pkg_dir: str
+    ) -> OnePackageDir | ModuleNotFoundReason:
         plausible_match = False
         dir_path = pkg_dir
         for index, component in enumerate(components):
-            dir_path = os.path.join(dir_path, component)
-            if self.fscache.isfile(os.path.join(dir_path, "py.typed")):
+            dir_path = os_path_join(dir_path, component)
+            if self.fscache.isfile(os_path_join(dir_path, "py.typed")):
                 return os.path.join(pkg_dir, *components[:-1]), index == 0
             elif not plausible_match and (
                 self.fscache.isdir(dir_path) or self.fscache.isfile(dir_path + ".py")
@@ -343,20 +331,14 @@ class FindModuleCache:
             # If this is not a directory then we can't traverse further into it
             if not self.fscache.isdir(dir_path):
                 break
-        if is_legacy_bundled_package(components[0], self.python_major_ver):
-            if len(components) == 1 or (
-                self.find_module(components[0])
-                is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-            ):
-                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-        if is_legacy_bundled_package(".".join(components[:2]), self.python_major_ver):
+        if approved_stub_package_exists(".".join(components)):
             return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         if plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
             return ModuleNotFoundReason.NOT_FOUND
 
-    def _update_ns_ancestors(self, components: List[str], match: Tuple[str, bool]) -> None:
+    def _update_ns_ancestors(self, components: list[str], match: tuple[str, bool]) -> None:
         path, verify = match
         for i in range(1, len(components)):
             pkg_id = ".".join(components[:-i])
@@ -375,9 +357,7 @@ class FindModuleCache:
             self.options,
             stdlib_py_versions=self.stdlib_py_versions,
         )
-        while any(
-            file.endswith(("__init__.py", "__init__.pyi")) for file in os.listdir(working_dir)
-        ):
+        while any(is_init_file(file) for file in os.listdir(working_dir)):
             working_dir = os.path.dirname(working_dir)
             parent_search.search_paths = SearchPaths((working_dir,), (), (), ())
             if not isinstance(parent_search._find_module(id, False), ModuleNotFoundReason):
@@ -438,15 +418,9 @@ class FindModuleCache:
         # Third-party stub/typed packages
         for pkg_dir in self.search_paths.package_path:
             stub_name = components[0] + "-stubs"
-            stub_dir = os.path.join(pkg_dir, stub_name)
-            if self.python_major_ver == 2:
-                alt_stub_name = components[0] + "-python2-stubs"
-                alt_stub_dir = os.path.join(pkg_dir, alt_stub_name)
-                if fscache.isdir(alt_stub_dir):
-                    stub_name = alt_stub_name
-                    stub_dir = alt_stub_dir
-            if fscache.isdir(stub_dir) and self._is_compatible_stub_package(stub_dir):
-                stub_typed_file = os.path.join(stub_dir, "py.typed")
+            stub_dir = os_path_join(pkg_dir, stub_name)
+            if fscache.isdir(stub_dir):
+                stub_typed_file = os_path_join(stub_dir, "py.typed")
                 stub_components = [stub_name] + components[1:]
                 path = os.path.join(pkg_dir, *stub_components[:-1])
                 if fscache.isdir(path):
@@ -456,7 +430,7 @@ class FindModuleCache:
                         # Partial here means that mypy should look at the runtime
                         # package if installed.
                         if fscache.read(stub_typed_file).decode().strip() == "partial":
-                            runtime_path = os.path.join(pkg_dir, dir_chain)
+                            runtime_path = os_path_join(pkg_dir, dir_chain)
                             third_party_inline_dirs.append((runtime_path, True))
                             # if the package is partial, we don't verify the module, as
                             # the partial stub package may not have a __init__.pyi
@@ -506,11 +480,7 @@ class FindModuleCache:
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
-                suffix = "-stubs"
-                if self.python_major_ver == 2:
-                    if os.path.isdir(base_path + "-python2-stubs"):
-                        suffix = "-python2-stubs"
-                path_stubs = base_path + suffix + sepinit + extension
+                path_stubs = base_path + "-stubs" + sepinit + extension
                 if fscache.isfile_case(path, dir_prefix):
                     has_init = True
                     if verify and not verify_module(fscache, id, path, dir_prefix):
@@ -525,7 +495,11 @@ class FindModuleCache:
 
             # In namespace mode, register a potential namespace package
             if self.options and self.options.namespace_packages:
-                if fscache.exists_case(base_path, dir_prefix) and not has_init:
+                if (
+                    not has_init
+                    and fscache.exists_case(base_path, dir_prefix)
+                    and not fscache.isfile_case(base_path, dir_prefix)
+                ):
                     near_misses.append((base_path, dir_prefix))
 
             # No package, look for module.
@@ -581,30 +555,14 @@ class FindModuleCache:
         else:
             return ModuleNotFoundReason.NOT_FOUND
 
-    def _is_compatible_stub_package(self, stub_dir: str) -> bool:
-        """Does a stub package support the target Python version?
-
-        Stub packages may contain a metadata file which specifies
-        whether the stubs are compatible with Python 2 and 3.
-        """
-        metadata_fnam = os.path.join(stub_dir, "METADATA.toml")
-        if os.path.isfile(metadata_fnam):
-            with open(metadata_fnam, "rb") as f:
-                metadata = tomllib.load(f)
-            if self.python_major_ver == 2:
-                return bool(metadata.get("python2", False))
-            else:
-                return bool(metadata.get("python3", True))
-        return True
-
-    def find_modules_recursive(self, module: str) -> List[BuildSource]:
-        module_path = self.find_module(module)
+    def find_modules_recursive(self, module: str) -> list[BuildSource]:
+        module_path = self.find_module(module, fast_path=True)
         if isinstance(module_path, ModuleNotFoundReason):
             return []
         sources = [BuildSource(module_path, module, None)]
 
         package_path = None
-        if module_path.endswith(("__init__.py", "__init__.pyi")):
+        if is_init_file(module_path):
             package_path = os.path.dirname(module_path)
         elif self.fscache.isdir(module_path):
             package_path = module_path
@@ -616,13 +574,13 @@ class FindModuleCache:
         # calls find_module, which will handle the preference between packages, pyi and py.
         # Another difference is it doesn't handle nested search paths / package roots.
 
-        seen: Set[str] = set()
+        seen: set[str] = set()
         names = sorted(self.fscache.listdir(package_path))
         for name in names:
             # Skip certain names altogether
             if name in ("__pycache__", "site-packages", "node_modules") or name.startswith("."):
                 continue
-            subpath = os.path.join(package_path, name)
+            subpath = os_path_join(package_path, name)
 
             if self.options and matches_exclude(
                 subpath, self.options.exclude, self.fscache, self.options.verbosity >= 2
@@ -632,8 +590,8 @@ class FindModuleCache:
             if self.fscache.isdir(subpath):
                 # Only recurse into packages
                 if (self.options and self.options.namespace_packages) or (
-                    self.fscache.isfile(os.path.join(subpath, "__init__.py"))
-                    or self.fscache.isfile(os.path.join(subpath, "__init__.pyi"))
+                    self.fscache.isfile(os_path_join(subpath, "__init__.py"))
+                    or self.fscache.isfile(os_path_join(subpath, "__init__.pyi"))
                 ):
                     seen.add(name)
                     sources.extend(self.find_modules_recursive(module + "." + name))
@@ -650,7 +608,7 @@ class FindModuleCache:
 
 
 def matches_exclude(
-    subpath: str, excludes: List[str], fscache: FileSystemCache, verbose: bool
+    subpath: str, excludes: list[str], fscache: FileSystemCache, verbose: bool
 ) -> bool:
     if not excludes:
         return False
@@ -667,14 +625,18 @@ def matches_exclude(
     return False
 
 
+def is_init_file(path: str) -> bool:
+    return os.path.basename(path) in ("__init__.py", "__init__.pyi")
+
+
 def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> bool:
     """Check that all packages containing id have a __init__ file."""
-    if path.endswith(("__init__.py", "__init__.pyi")):
+    if is_init_file(path):
         path = os.path.dirname(path)
     for i in range(id.count(".")):
         path = os.path.dirname(path)
         if not any(
-            fscache.isfile_case(os.path.join(path, f"__init__{extension}"), prefix)
+            fscache.isfile_case(os_path_join(path, f"__init__{extension}"), prefix)
             for extension in PYTHON_EXTENSIONS
         ):
             return False
@@ -683,20 +645,20 @@ def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> 
 
 def highest_init_level(fscache: FileSystemCache, id: str, path: str, prefix: str) -> int:
     """Compute the highest level where an __init__ file is found."""
-    if path.endswith(("__init__.py", "__init__.pyi")):
+    if is_init_file(path):
         path = os.path.dirname(path)
     level = 0
     for i in range(id.count(".")):
         path = os.path.dirname(path)
         if any(
-            fscache.isfile_case(os.path.join(path, f"__init__{extension}"), prefix)
+            fscache.isfile_case(os_path_join(path, f"__init__{extension}"), prefix)
             for extension in PYTHON_EXTENSIONS
         ):
             level = i + 1
     return level
 
 
-def mypy_path() -> List[str]:
+def mypy_path() -> list[str]:
     path_env = os.getenv("MYPYPATH")
     if not path_env:
         return []
@@ -704,12 +666,15 @@ def mypy_path() -> List[str]:
 
 
 def default_lib_path(
-    data_dir: str, pyversion: Tuple[int, int], custom_typeshed_dir: Optional[str]
-) -> List[str]:
-    """Return default standard library search paths."""
-    path: List[str] = []
+    data_dir: str, pyversion: tuple[int, int], custom_typeshed_dir: str | None
+) -> list[str]:
+    """Return default standard library search paths. Guaranteed to be normalised."""
+
+    data_dir = os.path.abspath(data_dir)
+    path: list[str] = []
 
     if custom_typeshed_dir:
+        custom_typeshed_dir = os.path.abspath(custom_typeshed_dir)
         typeshed_dir = os.path.join(custom_typeshed_dir, "stdlib")
         mypy_extensions_dir = os.path.join(custom_typeshed_dir, "stubs", "mypy-extensions")
         versions_file = os.path.join(typeshed_dir, "VERSIONS")
@@ -726,10 +691,6 @@ def default_lib_path(
             data_dir = auto
         typeshed_dir = os.path.join(data_dir, "typeshed", "stdlib")
         mypy_extensions_dir = os.path.join(data_dir, "typeshed", "stubs", "mypy-extensions")
-    if pyversion[0] == 2:
-        # Python 2 variants of certain stdlib modules are in a separate directory.
-        python2_dir = os.path.join(typeshed_dir, PYTHON2_STUB_DIR)
-        path.append(python2_dir)
     path.append(typeshed_dir)
 
     # Get mypy-extensions stubs from typeshed, since we treat it as an
@@ -752,8 +713,8 @@ def default_lib_path(
 
 
 @functools.lru_cache(maxsize=None)
-def get_search_dirs(python_executable: Optional[str]) -> Tuple[List[str], List[str]]:
-    """Find package directories for given python.
+def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]]:
+    """Find package directories for given python. Guaranteed to return absolute paths.
 
     This runs a subprocess call, which generates a list of the directories in sys.path.
     To avoid repeatedly calling a subprocess (which can be slow!) we
@@ -768,12 +729,19 @@ def get_search_dirs(python_executable: Optional[str]) -> Tuple[List[str], List[s
     else:
         # Use subprocess to get the package directory of given Python
         # executable
+        env = {**dict(os.environ), "PYTHONSAFEPATH": "1"}
         try:
             sys_path, site_packages = ast.literal_eval(
                 subprocess.check_output(
-                    [python_executable, pyinfo.__file__, "getsearchdirs"], stderr=subprocess.PIPE
+                    [python_executable, pyinfo.__file__, "getsearchdirs"],
+                    env=env,
+                    stderr=subprocess.PIPE,
                 ).decode()
             )
+        except subprocess.CalledProcessError as err:
+            print(err.stderr)
+            print(err.stdout)
+            raise
         except OSError as err:
             reason = os.strerror(err.errno)
             raise CompileError(
@@ -782,27 +750,8 @@ def get_search_dirs(python_executable: Optional[str]) -> Tuple[List[str], List[s
     return sys_path, site_packages
 
 
-def add_py2_mypypath_entries(mypypath: List[str]) -> List[str]:
-    """Add corresponding @python2 subdirectories to mypypath.
-
-    For each path entry 'x', add 'x/@python2' before 'x' if the latter is
-    a directory.
-    """
-    result = []
-    for item in mypypath:
-        python2_dir = os.path.join(item, PYTHON2_STUB_DIR)
-        if os.path.isdir(python2_dir):
-            # @python2 takes precedence, but we also look into the parent
-            # directory.
-            result.append(python2_dir)
-            result.append(item)
-        else:
-            result.append(item)
-    return result
-
-
 def compute_search_paths(
-    sources: List[BuildSource], options: Options, data_dir: str, alt_lib_path: Optional[str] = None
+    sources: list[BuildSource], options: Options, data_dir: str, alt_lib_path: str | None = None
 ) -> SearchPaths:
     """Compute the search paths as specified in PEP 561.
 
@@ -827,10 +776,11 @@ def compute_search_paths(
         root_dir = os.getenv("MYPY_TEST_PREFIX", None)
         if not root_dir:
             root_dir = os.path.dirname(os.path.dirname(__file__))
+        root_dir = os.path.abspath(root_dir)
         lib_path.appendleft(os.path.join(root_dir, "test-data", "unit", "lib-stub"))
     # alt_lib_path is used by some tests to bypass the normal lib_path mechanics.
     # If we don't have one, grab directories of source files.
-    python_path: List[str] = []
+    python_path: list[str] = []
     if not alt_lib_path:
         for source in sources:
             # Include directory of the program file in the module search path.
@@ -863,11 +813,6 @@ def compute_search_paths(
     if alt_lib_path:
         mypypath.insert(0, alt_lib_path)
 
-    # When type checking in Python 2 module, add @python2 subdirectories of
-    # path items into the search path.
-    if options.python_version[0] == 2:
-        mypypath = add_py2_mypypath_entries(mypypath)
-
     sys_path, site_packages = get_search_dirs(options.python_executable)
     # We only use site packages for this check
     for site in site_packages:
@@ -888,12 +833,13 @@ def compute_search_paths(
     return SearchPaths(
         python_path=tuple(reversed(python_path)),
         mypy_path=tuple(mypypath),
+        # package_path and typeshed_path must be normalised and absolute via os.path.abspath
         package_path=tuple(sys_path + site_packages),
         typeshed_path=tuple(lib_path),
     )
 
 
-def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]) -> StdlibVersions:
+def load_stdlib_py_versions(custom_typeshed_dir: str | None) -> StdlibVersions:
     """Return dict with minimum and maximum Python versions of stdlib modules.
 
     The contents look like
@@ -901,11 +847,11 @@ def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]) -> StdlibVersion
 
     None means there is no maximum version.
     """
-    typeshed_dir = custom_typeshed_dir or os.path.join(os.path.dirname(__file__), "typeshed")
-    stdlib_dir = os.path.join(typeshed_dir, "stdlib")
+    typeshed_dir = custom_typeshed_dir or os_path_join(os.path.dirname(__file__), "typeshed")
+    stdlib_dir = os_path_join(typeshed_dir, "stdlib")
     result = {}
 
-    versions_path = os.path.join(stdlib_dir, "VERSIONS")
+    versions_path = os_path_join(stdlib_dir, "VERSIONS")
     assert os.path.isfile(versions_path), (custom_typeshed_dir, versions_path, __file__)
     with open(versions_path) as f:
         for line in f:
@@ -919,48 +865,16 @@ def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]) -> StdlibVersion
                 parse_version(versions[1]) if len(versions) >= 2 and versions[1].strip() else None
             )
             result[module] = min_version, max_version
-
-    # Modules that are Python 2 only or have separate Python 2 stubs
-    # have stubs in @python2/ and may need an override.
-    python2_dir = os.path.join(stdlib_dir, PYTHON2_STUB_DIR)
-    try:
-        for fnam in os.listdir(python2_dir):
-            fnam = fnam.replace(".pyi", "")
-            max_version = result.get(fnam, ((2, 7), None))[1]
-            result[fnam] = (2, 7), max_version
-    except FileNotFoundError:
-        # Ignore error to support installations where Python 2 stubs aren't available.
-        pass
-
     return result
 
 
-def parse_version(version: str) -> Tuple[int, int]:
+def parse_version(version: str) -> tuple[int, int]:
     major, minor = version.strip().split(".")
     return int(major), int(minor)
 
 
-def typeshed_py_version(options: Options) -> Tuple[int, int]:
+def typeshed_py_version(options: Options) -> tuple[int, int]:
     """Return Python version used for checking whether module supports typeshed."""
-    # Typeshed no longer covers Python 3.x versions before 3.6, so 3.6 is
+    # Typeshed no longer covers Python 3.x versions before 3.8, so 3.8 is
     # the earliest we can support.
-    if options.python_version[0] >= 3:
-        return max(options.python_version, (3, 6))
-    else:
-        return options.python_version
-
-
-def filter_redundant_py2_dirs(dirs: List[str]) -> List[str]:
-    """If dirs has <dir>/@python2 followed by <dir>, filter out the latter."""
-    if len(dirs) <= 1 or not any(d.endswith(PYTHON2_STUB_DIR) for d in dirs):
-        # Fast path -- nothing to do
-        return dirs
-    seen = []
-    result = []
-    for d in dirs:
-        if d.endswith(PYTHON2_STUB_DIR):
-            seen.append(os.path.dirname(d))
-            result.append(d)
-        elif d not in seen:
-            result.append(d)
-    return result
+    return max(options.python_version, (3, 8))

@@ -1,7 +1,7 @@
-import sys
 from collections.abc import Callable, Iterable, Iterator
-from lib2to3.pgen2.token import *
 from typing_extensions import TypeAlias
+
+from .token import *
 
 __all__ = [
     "AMPER",
@@ -72,10 +72,8 @@ __all__ = [
     "tokenize",
     "generate_tokens",
     "untokenize",
+    "COLONEQUAL",
 ]
-
-if sys.version_info >= (3, 7):
-    __all__ += ["COLONEQUAL"]
 
 _Coord: TypeAlias = tuple[int, int]
 _TokenEater: TypeAlias = Callable[[int, str, _Coord, _Coord, str], object]
@@ -90,7 +88,6 @@ class Untokenizer:
     tokens: list[str]
     prev_row: int
     prev_col: int
-    def __init__(self) -> None: ...
     def add_whitespace(self, start: _Coord) -> None: ...
     def untokenize(self, iterable: Iterable[_TokenInfo]) -> str: ...
     def compat(self, token: tuple[int, str], iterable: Iterable[_TokenInfo]) -> None: ...

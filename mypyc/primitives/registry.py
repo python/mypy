@@ -35,11 +35,11 @@ to rely on them for infrequently used ops. It's impractical to have
 optimized implementations of all ops.
 """
 
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final, NamedTuple
 
-from mypyc.ir.ops import StealsDescription
+from mypyc.ir.ops import PrimitiveDescription, StealsDescription
 from mypyc.ir.rtypes import RType
 
 # Error kind for functions that return negative integer on exception. This
@@ -47,59 +47,58 @@ from mypyc.ir.rtypes import RType
 ERR_NEG_INT: Final = 10
 
 
-CFunctionDescription = NamedTuple(
-    "CFunctionDescription",
-    [
-        ("name", str),
-        ("arg_types", List[RType]),
-        ("return_type", RType),
-        ("var_arg_type", Optional[RType]),
-        ("truncated_type", Optional[RType]),
-        ("c_function_name", str),
-        ("error_kind", int),
-        ("steals", StealsDescription),
-        ("is_borrowed", bool),
-        ("ordering", Optional[List[int]]),
-        ("extra_int_constants", List[Tuple[int, RType]]),
-        ("priority", int),
-    ],
-)
+class CFunctionDescription(NamedTuple):
+    name: str
+    arg_types: list[RType]
+    return_type: RType
+    var_arg_type: RType | None
+    truncated_type: RType | None
+    c_function_name: str
+    error_kind: int
+    steals: StealsDescription
+    is_borrowed: bool
+    ordering: list[int] | None
+    extra_int_constants: list[tuple[int, RType]]
+    priority: int
+    is_pure: bool
 
 
 # A description for C load operations including LoadGlobal and LoadAddress
-LoadAddressDescription = NamedTuple(
-    "LoadAddressDescription", [("name", str), ("type", RType), ("src", str)]
-)  # name of the target to load
+class LoadAddressDescription(NamedTuple):
+    name: str
+    type: RType
+    src: str  # name of the target to load
 
 
 # CallC op for method call(such as 'str.join')
-method_call_ops: Dict[str, List[CFunctionDescription]] = {}
+method_call_ops: dict[str, list[CFunctionDescription]] = {}
 
 # CallC op for top level function call(such as 'builtins.list')
-function_ops: Dict[str, List[CFunctionDescription]] = {}
+function_ops: dict[str, list[CFunctionDescription]] = {}
 
 # CallC op for binary ops
-binary_ops: Dict[str, List[CFunctionDescription]] = {}
+binary_ops: dict[str, list[PrimitiveDescription]] = {}
 
 # CallC op for unary ops
-unary_ops: Dict[str, List[CFunctionDescription]] = {}
+unary_ops: dict[str, list[CFunctionDescription]] = {}
 
-builtin_names: Dict[str, Tuple[RType, str]] = {}
+builtin_names: dict[str, tuple[RType, str]] = {}
 
 
 def method_op(
     name: str,
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
+    is_pure: bool = False,
 ) -> CFunctionDescription:
     """Define a c function call op that replaces a method call.
 
@@ -124,7 +123,11 @@ def method_op(
         steals: description of arguments that this steals (ref count wise)
         is_borrowed: if True, returned value is borrowed (no need to decrease refcount)
         priority: if multiple ops match, the one with the highest priority is picked
+        is_pure: if True, declare that the C function has no side effects, takes immutable
+                 arguments, and never raises an exception
     """
+    if extra_int_constants is None:
+        extra_int_constants = []
     ops = method_call_ops.setdefault(name, [])
     desc = CFunctionDescription(
         name,
@@ -139,6 +142,7 @@ def method_op(
         ordering,
         extra_int_constants,
         priority,
+        is_pure=is_pure,
     )
     ops.append(desc)
     return desc
@@ -146,14 +150,14 @@ def method_op(
 
 def function_op(
     name: str,
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -168,6 +172,8 @@ def function_op(
         name: full name of the function
         arg_types: positional argument types for which this applies
     """
+    if extra_int_constants is None:
+        extra_int_constants = []
     ops = function_ops.setdefault(name, [])
     desc = CFunctionDescription(
         name,
@@ -182,6 +188,7 @@ def function_op(
         ordering,
         extra_int_constants,
         priority,
+        is_pure=False,
     )
     ops.append(desc)
     return desc
@@ -189,18 +196,19 @@ def function_op(
 
 def binary_op(
     name: str,
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
-    c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    c_function_name: str | None = None,
+    primitive_name: str | None = None,
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
-) -> CFunctionDescription:
+) -> PrimitiveDescription:
     """Define a c function call op for a binary operation.
 
     This will be automatically generated by matching against the AST.
@@ -208,41 +216,50 @@ def binary_op(
     Most arguments are similar to method_op(), but exactly two argument types
     are expected.
     """
+    assert c_function_name is not None or primitive_name is not None
+    assert not (c_function_name is not None and primitive_name is not None)
+    if extra_int_constants is None:
+        extra_int_constants = []
     ops = binary_ops.setdefault(name, [])
-    desc = CFunctionDescription(
-        name,
-        arg_types,
-        return_type,
-        var_arg_type,
-        truncated_type,
-        c_function_name,
-        error_kind,
-        steals,
-        is_borrowed,
-        ordering,
-        extra_int_constants,
-        priority,
+    desc = PrimitiveDescription(
+        name=primitive_name or name,
+        arg_types=arg_types,
+        return_type=return_type,
+        var_arg_type=var_arg_type,
+        truncated_type=truncated_type,
+        c_function_name=c_function_name,
+        error_kind=error_kind,
+        steals=steals,
+        is_borrowed=is_borrowed,
+        ordering=ordering,
+        extra_int_constants=extra_int_constants,
+        priority=priority,
+        is_pure=False,
     )
     ops.append(desc)
     return desc
 
 
 def custom_op(
-    arg_types: List[RType],
+    arg_types: list[RType],
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    var_arg_type: Optional[RType] = None,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
+    *,
+    is_pure: bool = False,
 ) -> CFunctionDescription:
     """Create a one-off CallC op that can't be automatically generated from the AST.
 
     Most arguments are similar to method_op().
     """
+    if extra_int_constants is None:
+        extra_int_constants = []
     return CFunctionDescription(
         "<custom>",
         arg_types,
@@ -256,6 +273,44 @@ def custom_op(
         ordering,
         extra_int_constants,
         0,
+        is_pure=is_pure,
+    )
+
+
+def custom_primitive_op(
+    name: str,
+    arg_types: list[RType],
+    return_type: RType,
+    error_kind: int,
+    c_function_name: str | None = None,
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] | None = None,
+    steals: StealsDescription = False,
+    is_borrowed: bool = False,
+    is_pure: bool = False,
+) -> PrimitiveDescription:
+    """Define a primitive op that can't be automatically generated based on the AST.
+
+    Most arguments are similar to method_op().
+    """
+    if extra_int_constants is None:
+        extra_int_constants = []
+    return PrimitiveDescription(
+        name=name,
+        arg_types=arg_types,
+        return_type=return_type,
+        var_arg_type=var_arg_type,
+        truncated_type=truncated_type,
+        c_function_name=c_function_name,
+        error_kind=error_kind,
+        steals=steals,
+        is_borrowed=is_borrowed,
+        ordering=ordering,
+        extra_int_constants=extra_int_constants,
+        priority=0,
+        is_pure=is_pure,
     )
 
 
@@ -265,12 +320,13 @@ def unary_op(
     return_type: RType,
     c_function_name: str,
     error_kind: int,
-    truncated_type: Optional[RType] = None,
-    ordering: Optional[List[int]] = None,
-    extra_int_constants: List[Tuple[int, RType]] = [],
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
+    is_pure: bool = False,
 ) -> CFunctionDescription:
     """Define a c function call op for an unary operation.
 
@@ -279,6 +335,8 @@ def unary_op(
     Most arguments are similar to method_op(), but exactly one argument type
     is expected.
     """
+    if extra_int_constants is None:
+        extra_int_constants = []
     ops = unary_ops.setdefault(name, [])
     desc = CFunctionDescription(
         name,
@@ -293,6 +351,7 @@ def unary_op(
         ordering,
         extra_int_constants,
         priority,
+        is_pure=is_pure,
     )
     ops.append(desc)
     return desc
@@ -304,13 +363,12 @@ def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
     return LoadAddressDescription(name, type, src)
 
 
-import mypyc.primitives.bytes_ops  # noqa
-import mypyc.primitives.dict_ops  # noqa
-import mypyc.primitives.float_ops  # noqa
-
 # Import various modules that set up global state.
-import mypyc.primitives.int_ops  # noqa
-import mypyc.primitives.list_ops  # noqa
-import mypyc.primitives.misc_ops  # noqa
-import mypyc.primitives.str_ops  # noqa
-import mypyc.primitives.tuple_ops  # noqa
+import mypyc.primitives.bytes_ops
+import mypyc.primitives.dict_ops
+import mypyc.primitives.float_ops
+import mypyc.primitives.int_ops
+import mypyc.primitives.list_ops
+import mypyc.primitives.misc_ops
+import mypyc.primitives.str_ops
+import mypyc.primitives.tuple_ops  # noqa: F401

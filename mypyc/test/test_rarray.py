@@ -1,5 +1,7 @@
 """Unit tests for RArray types."""
 
+from __future__ import annotations
+
 import unittest
 
 from mypyc.common import PLATFORM_SIZE

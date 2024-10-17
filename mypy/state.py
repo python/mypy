@@ -1,7 +1,7 @@
-from contextlib import contextmanager
-from typing import Iterator, Optional, Tuple
+from __future__ import annotations
 
-from typing_extensions import Final
+from contextlib import contextmanager
+from typing import Final, Iterator
 
 # These are global mutable state. Don't add anything here unless there's a very
 # good reason.
@@ -25,4 +25,4 @@ class StrictOptionalState:
 
 
 state: Final = StrictOptionalState(strict_optional=False)
-find_occurrences: Optional[Tuple[str, str]] = None
+find_occurrences: tuple[str, str] | None = None

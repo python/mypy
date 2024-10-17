@@ -1,6 +1,6 @@
 """Primitive str ops."""
 
-from typing import List, Tuple
+from __future__ import annotations
 
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
@@ -119,9 +119,9 @@ method_op(
 )
 
 # str.split(...)
-str_split_types: List[RType] = [str_rprimitive, str_rprimitive, int_rprimitive]
+str_split_types: list[RType] = [str_rprimitive, str_rprimitive, int_rprimitive]
 str_split_functions = ["PyUnicode_Split", "PyUnicode_Split", "CPyStr_Split"]
-str_split_constants: List[List[Tuple[int, RType]]] = [
+str_split_constants: list[list[tuple[int, RType]]] = [
     [(0, pointer_rprimitive), (-1, c_int_rprimitive)],
     [(-1, c_int_rprimitive)],
     [],

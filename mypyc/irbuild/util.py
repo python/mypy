@@ -1,6 +1,8 @@
 """Various utilities that don't depend on other modules in mypyc.irbuild."""
 
-from typing import Any, Dict, Optional, Union
+from __future__ import annotations
+
+from typing import Any
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -25,8 +27,14 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
+from mypy.semanal import refers_to_fullname
+from mypy.types import FINAL_DECORATOR_NAMES
 
 DATACLASS_DECORATORS = {"dataclasses.dataclass", "attr.s", "attr.attrs"}
+
+
+def is_final_decorator(d: Expression) -> bool:
+    return refers_to_fullname(d, FINAL_DECORATOR_NAMES)
 
 
 def is_trait_decorator(d: Expression) -> bool:
@@ -37,7 +45,7 @@ def is_trait(cdef: ClassDef) -> bool:
     return any(is_trait_decorator(d) for d in cdef.decorators) or cdef.info.is_protocol
 
 
-def dataclass_decorator_type(d: Expression) -> Optional[str]:
+def dataclass_decorator_type(d: Expression) -> str | None:
     if isinstance(d, RefExpr) and d.fullname in DATACLASS_DECORATORS:
         return d.fullname.split(".")[0]
     elif (
@@ -65,7 +73,7 @@ def is_dataclass(cdef: ClassDef) -> bool:
     return any(is_dataclass_decorator(d) for d in cdef.decorators)
 
 
-def dataclass_type(cdef: ClassDef) -> Optional[str]:
+def dataclass_type(cdef: ClassDef) -> str | None:
     for d in cdef.decorators:
         typ = dataclass_decorator_type(d)
         if typ is not None:
@@ -88,7 +96,7 @@ def get_mypyc_attr_literal(e: Expression) -> Any:
     return NotImplemented
 
 
-def get_mypyc_attr_call(d: Expression) -> Optional[CallExpr]:
+def get_mypyc_attr_call(d: Expression) -> CallExpr | None:
     """Check if an expression is a call to mypyc_attr and return it if so."""
     if (
         isinstance(d, CallExpr)
@@ -99,9 +107,9 @@ def get_mypyc_attr_call(d: Expression) -> Optional[CallExpr]:
     return None
 
 
-def get_mypyc_attrs(stmt: Union[ClassDef, Decorator]) -> Dict[str, Any]:
+def get_mypyc_attrs(stmt: ClassDef | Decorator) -> dict[str, Any]:
     """Collect all the mypyc_attr attributes on a class definition or a function."""
-    attrs: Dict[str, Any] = {}
+    attrs: dict[str, Any] = {}
     for dec in stmt.decorators:
         d = get_mypyc_attr_call(dec)
         if d:
@@ -117,7 +125,10 @@ def get_mypyc_attrs(stmt: Union[ClassDef, Decorator]) -> Dict[str, Any]:
 
 def is_extension_class(cdef: ClassDef) -> bool:
     if any(
-        not is_trait_decorator(d) and not is_dataclass_decorator(d) and not get_mypyc_attr_call(d)
+        not is_trait_decorator(d)
+        and not is_dataclass_decorator(d)
+        and not get_mypyc_attr_call(d)
+        and not is_final_decorator(d)
         for d in cdef.decorators
     ):
         return False
@@ -134,7 +145,7 @@ def is_extension_class(cdef: ClassDef) -> bool:
     return True
 
 
-def get_func_def(op: Union[FuncDef, Decorator, OverloadedFuncDef]) -> FuncDef:
+def get_func_def(op: FuncDef | Decorator | OverloadedFuncDef) -> FuncDef:
     if isinstance(op, OverloadedFuncDef):
         assert op.impl
         op = op.impl
@@ -175,3 +186,13 @@ def is_constant(e: Expression) -> bool:
             )
         )
     )
+
+
+def bytes_from_str(value: str) -> bytes:
+    """Convert a string representing bytes into actual bytes.
+
+    This is needed because the literal characters of BytesExpr (the
+    characters inside b'') are stored in BytesExpr.value, whose type is
+    'str' not 'bytes'.
+    """
+    return bytes(value, "utf8").decode("unicode-escape").encode("raw-unicode-escape")

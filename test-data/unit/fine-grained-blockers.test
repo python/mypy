@@ -50,16 +50,6 @@ a.py:1: error: invalid syntax  [syntax]
 ==
 main:3: error: Missing positional argument "x" in call to "f"  [call-arg]
     a.f()
-    ^
-==
-[out version>=3.8]
-==
-a.py:1: error: invalid syntax  [syntax]
-    def f(x: int) ->
-                    ^
-==
-main:3: error: Missing positional argument "x" in call to "f"  [call-arg]
-    a.f()
     ^~~~~
 ==
 [out version>=3.10]
@@ -317,8 +307,8 @@ a.py:1: error: invalid syntax
 ==
 a.py:1: error: invalid syntax
 ==
-b.py:3: error: Too many arguments for "f"
 a.py:3: error: Too many arguments for "g"
+b.py:3: error: Too many arguments for "f"
 
 [case testDeleteFileWithBlockingError-only_when_nocache]
 -- Different cache/no-cache tests because:
