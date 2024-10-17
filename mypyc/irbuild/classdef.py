@@ -807,7 +807,9 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
 
         # If __eq__ returns NotImplemented, then __ne__ should also
         not_implemented_block, regular_block = BasicBlock(), BasicBlock()
-        method_arg_type = cls.get_method("__eq__").args[1].type
+        eq_func_ir = cls.get_method("__eq__")
+        assert eq_func_ir is not None
+        method_arg_type = eq_func_ir.args[1].type
         rhs = builder.coerce(rhs_arg, method_arg_type, line)
         eqval = builder.add(MethodCall(builder.self(), "__eq__", [rhs], line))
         not_implemented = builder.add(

@@ -580,7 +580,7 @@ class TupleNameVisitor(RTypeVisitor[str]):
     def visit_rinstance(self, t: RInstance) -> str:
         return "O"
 
-    def visit_rinstance_value(self, typ: RInstanceValue) -> T:
+    def visit_rinstance_value(self, typ: RInstanceValue) -> str:
         return "O"
 
     def visit_runion(self, t: RUnion) -> str:
@@ -860,7 +860,7 @@ class RInstance(RType):
     def __hash__(self) -> int:
         return hash(self.name)
 
-    def serialize(self) -> str:
+    def serialize(self) -> JsonDict | str:
         return self.name
 
 
@@ -891,7 +891,7 @@ class RInstanceValue(RInstance):
     def __hash__(self) -> int:
         return hash(self.name)
 
-    def serialize(self) -> JsonDict:
+    def serialize(self) -> JsonDict | str:
         return {".class": "RInstanceValue", "cls": super().serialize()}
 
     @classmethod
