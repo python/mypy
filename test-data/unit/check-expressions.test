@@ -2388,7 +2388,7 @@ assert a == b
 
 R2 = Dict[int, R2]
 c: R2
-assert a == c  # E: Non-overlapping equality check (left operand type: "Dict[str, R]", right operand type: "Dict[int, R2]")
+assert a == c
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 

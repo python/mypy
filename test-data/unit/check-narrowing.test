@@ -727,8 +727,8 @@ def test2(switch: FlipFlopEnum) -> None:
 
     switch.mutate()
 
-    assert switch.state == State.B     # E: Non-overlapping equality check (left operand type: "Literal[State.A]", right operand type: "Literal[State.B]")
-    reveal_type(switch.state)          # E: Statement is unreachable
+    assert switch.state == State.B
+    reveal_type(switch.state)
 
 def test3(switch: FlipFlopEnum) -> None:
     # Same thing, but using 'is' comparisons. Previously mypy's behaviour differed
@@ -739,8 +739,8 @@ def test3(switch: FlipFlopEnum) -> None:
 
     switch.mutate()
 
-    assert switch.state is State.B     # E: Non-overlapping identity check (left operand type: "Literal[State.A]", right operand type: "Literal[State.B]")
-    reveal_type(switch.state)          # E: Statement is unreachable
+    assert switch.state is State.B
+    reveal_type(switch.state)
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitStrLiteral]
