@@ -14,7 +14,7 @@ from typing import Callable, Final, Optional, Sequence, Tuple
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
-from mypy.operators import op_methods
+from mypy.operators import op_methods, unary_op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypyc.common import (
     BITMAP_BITS,
@@ -167,6 +167,7 @@ from mypyc.primitives.misc_ops import (
     buf_init_item,
     fast_isinstance_op,
     none_object_op,
+    not_implemented_op,
     var_object_size,
 )
 from mypyc.primitives.registry import (
@@ -1398,10 +1399,47 @@ class LowLevelIRBuilder:
                 if base_op in float_op_to_id:
                     return self.float_op(lreg, rreg, base_op, line)
 
+        dunder_op = self.dunder_op(lreg, rreg, op, line)
+        if dunder_op:
+            return dunder_op
+
         primitive_ops_candidates = binary_ops.get(op, [])
         target = self.matching_primitive_op(primitive_ops_candidates, [lreg, rreg], line)
         assert target, "Unsupported binary operation: %s" % op
         return target
+
+    def dunder_op(self, lreg: Value, rreg: Value | None, op: str, line: int) -> Value | None:
+        """
+        Dispatch a dunder method if applicable.
+        For example for `a + b` it will use `a.__add__(b)` which can lead to higher performance
+        due to the fact that the method could be already compiled and optimized instead of going
+        all the way through `PyNumber_Add(a, b)` python api (making a jump into the python DL).
+        """
+        ltype = lreg.type
+        if not isinstance(ltype, RInstance):
+            return None
+
+        method_name = op_methods.get(op) if rreg else unary_op_methods.get(op)
+        if method_name is None:
+            return None
+
+        if not ltype.class_ir.has_method(method_name):
+            return None
+
+        decl = ltype.class_ir.method_decl(method_name)
+        if not rreg and len(decl.sig.args) != 1:
+            return None
+
+        if rreg and (len(decl.sig.args) != 2 or not is_subtype(rreg.type, decl.sig.args[1].type)):
+            return None
+
+        if rreg and is_subtype(not_implemented_op.type, decl.sig.ret_type):
+            # If the method is able to return NotImplemented, we should not optimize it.
+            # We can just let go so it will be handled through the python api.
+            return None
+
+        args = [rreg] if rreg else []
+        return self.gen_method_call(lreg, method_name, args, decl.sig.ret_type, line)
 
     def check_tagged_short_int(self, val: Value, line: int, negated: bool = False) -> Value:
         """Check if a tagged integer is a short integer.
@@ -1558,16 +1596,9 @@ class LowLevelIRBuilder:
         if isinstance(value, Float):
             return Float(-value.value, value.line)
         if isinstance(typ, RInstance):
-            if expr_op == "-":
-                method = "__neg__"
-            elif expr_op == "+":
-                method = "__pos__"
-            elif expr_op == "~":
-                method = "__invert__"
-            else:
-                method = ""
-            if method and typ.class_ir.has_method(method):
-                return self.gen_method_call(value, method, [], None, line)
+            result = self.dunder_op(value, None, expr_op, line)
+            if result is not None:
+                return result
         call_c_ops_candidates = unary_ops.get(expr_op, [])
         target = self.matching_call_c(call_c_ops_candidates, [value], line)
         assert target, "Unsupported unary operation: %s" % expr_op
