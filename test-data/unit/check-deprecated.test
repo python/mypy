@@ -142,9 +142,9 @@ x9: Callable[[int], C]  # N: class __main__.C is deprecated: use C2 instead
 x10: Callable[[int, C, int], int]  # N: class __main__.C is deprecated: use C2 instead
 
 T = TypeVar("T")
-A1: TypeAlias = Optional[C]  # ToDo
+A1: TypeAlias = Optional[C]  # N: class __main__.C is deprecated: use C2 instead
 x11: A1
-A2: TypeAlias = List[Union[A2, C]]  # ToDo
+A2: TypeAlias = List[Union[A2, C]]  # N: class __main__.C is deprecated: use C2 instead
 x12: A2
 A3: TypeAlias = List[Optional[T]]
 x13: A3[C]  # N: class __main__.C is deprecated: use C2 instead
@@ -205,7 +205,6 @@ class E(Generic[T]):
     def f2(self, e: E[C]) -> None: ...  # N: class __main__.C is deprecated: use C2 instead
     def f3(self) -> E[C]: ...  # N: class __main__.C is deprecated: use C2 instead
 
-
 [builtins fixtures/tuple.pyi]
 
 
@@ -215,7 +214,8 @@ import m
 import p.s
 import m as n
 import p.s as ps
-from m import C  # N: class m.C is deprecated: use C2 instead
+from m import B, C  # N: class m.B is deprecated: use B2 instead \
+                    # N: class m.C is deprecated: use C2 instead
 from p.s import D  # N: class p.s.D is deprecated: use D2 instead
 from k import *
 
@@ -227,8 +227,19 @@ C()
 D()
 E()  # N: class k.E is deprecated: use E2 instead
 
+x1: m.A  # N: class m.A is deprecated: use A2 instead
+x2: m.A = m.A()  # N: class m.A is deprecated: use A2 instead
+y1: B
+y2: B = B()
+
 [file m.py]
 from typing_extensions import deprecated
+
+@deprecated("use A2 instead")
+class A: ...
+
+@deprecated("use B2 instead")
+class B: ...
 
 @deprecated("use C2 instead")
 class C: ...
