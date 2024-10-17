@@ -1493,9 +1493,11 @@ class Instance(ProperType):
         type_ref = self.type.fullname
         if not self.args and not self.last_known_value:
             return type_ref
-        data: JsonDict = {".class": "Instance"}
-        data["type_ref"] = type_ref
-        data["args"] = [arg.serialize() for arg in self.args]
+        data: JsonDict = {
+            ".class": "Instance",
+            "type_ref": type_ref,
+            "args": [arg.serialize() for arg in self.args],
+        }
         if self.last_known_value is not None:
             data["last_known_value"] = self.last_known_value.serialize()
         data["extra_attrs"] = self.extra_attrs.serialize() if self.extra_attrs else None
