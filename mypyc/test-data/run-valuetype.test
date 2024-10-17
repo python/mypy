@@ -153,7 +153,7 @@ def test_value_type_nest() -> None:
     assert f.pos.y == 2
 
 [case testValueTypeInSeq]
-from typing import final, Final
+from typing import List, final, Final
 from mypy_extensions import mypyc_attr, i32
 
 @final
@@ -181,7 +181,7 @@ def test_value_type_in_list3() -> None:
     assert l[1] != A(5, 7)
 
 def test_value_type_in_list4() -> None:
-    l: list[object] = [A(1, 2), "test"]
+    l: List[object] = [A(1, 2), "test"]
     assert l[0] != A(1, 2)
     assert isinstance(l[0], A)
     assert l[0].x == 1

@@ -57,8 +57,9 @@ from mypyc.irbuild.util import (
     get_mypyc_attrs,
     is_dataclass,
     is_extension_class,
+    is_immutable,
     is_trait,
-    is_value_type, is_immutable,
+    is_value_type,
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
