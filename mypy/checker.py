@@ -56,6 +56,7 @@ from mypy.messages import (
     make_inferred_type_note,
     pretty_seq,
 )
+from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.mro import MroError, calculate_mro
 from mypy.nodes import (
     ARG_NAMED,
@@ -287,21 +288,38 @@ class PartialTypeScope(NamedTuple):
     is_local: bool
 
 
-class InstanceDeprecatedVisitor(TypeTraverserVisitor):
+class InstanceDeprecatedVisitor(MixedTraverserVisitor):
     """Visitor that recursively checks for deprecations in nested instances."""
 
-    def __init__(
-        self, typechecker: TypeChecker, context: Context, ignore: TypeInfo | None = None
-    ) -> None:
+    def __init__(self, typechecker: TypeChecker) -> None:
         self.typechecker = typechecker
-        self.context = context
-        self.ignore = ignore
+        self.context: Context | None = None
+
+    @contextmanager
+    def _set_context(self, new: Context, /) -> Iterator[None]:
+        old = self.context
+        try:
+            self.context = new
+            yield None
+        finally:
+            self.context = old
+
+    def visit_decorator(self, o: Decorator) -> None:
+        with self._set_context(o.func):
+            super().visit_decorator(o)
+
+    def visit_func(self, o: FuncItem) -> None:
+        with self._set_context(o):
+            super().visit_func(o)
 
     def visit_instance(self, t: Instance) -> None:
         super().visit_instance(t)
-        if self.ignore and (t.type.fullname == self.ignore.fullname):
-            return
-        self.typechecker.check_deprecated(t.type, self.context)
+        if t.type and not (
+            isinstance(defn := self.context, FuncDef)
+            and defn.info and
+            (defn.info.fullname == t.type.fullname)
+        ):
+            self.typechecker.check_deprecated(node=t.type, context=t)
 
 
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
@@ -498,6 +516,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 break
                         else:
                             self.accept(d)
+                    self.tree.accept(InstanceDeprecatedVisitor(typechecker=self))
 
                 assert not self.current_node_deferred
 
@@ -1061,8 +1080,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         with self.tscope.function_scope(defn):
             self._visit_func_def(defn)
-        if (typ := defn.type) is not None:
-            typ.accept(InstanceDeprecatedVisitor(typechecker=self, context=defn, ignore=defn.info))
 
     def _visit_func_def(self, defn: FuncDef) -> None:
         """Type check a function definition."""
@@ -2948,15 +2965,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-
-        if s.unanalyzed_type is not None:
-            for lvalue in s.lvalues:
-                if (
-                    isinstance(lvalue, NameExpr)
-                    and isinstance(var := lvalue.node, Var)
-                    and (var.type is not None)
-                ):
-                    var.type.accept(InstanceDeprecatedVisitor(typechecker=self, context=s))
 
         # Avoid type checking type aliases in stubs to avoid false
         # positives about modern type syntax available in stubs such
