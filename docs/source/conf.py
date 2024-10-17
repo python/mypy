@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import datetime, timezone
 
 from sphinx.application import Sphinx
 from sphinx.util.docfields import Field
@@ -52,7 +51,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "mypy"
-copyright = f"2012-{datetime.now(tz=timezone.utc).year} Jukka Lehtosalo and mypy contributors"
+copyright = "2012-%Y Jukka Lehtosalo and mypy contributors"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
