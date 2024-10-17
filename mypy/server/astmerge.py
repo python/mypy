@@ -45,29 +45,76 @@ Discussion of some notable special cases:
 See the main entry point merge_asts for more details.
 """
 
-from typing import Dict, List, cast, TypeVar, Optional
+from typing import Dict, List, Optional, TypeVar, cast
 
 from mypy.nodes import (
-    MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
-    FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
-    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
-    CastExpr, TypeAlias, AssertTypeExpr,
-    MDEF
+    MDEF,
+    AssertTypeExpr,
+    AssignmentStmt,
+    Block,
+    CallExpr,
+    CastExpr,
+    ClassDef,
+    EnumCallExpr,
+    FuncBase,
+    FuncDef,
+    LambdaExpr,
+    MemberExpr,
+    MypyFile,
+    NamedTupleExpr,
+    NameExpr,
+    NewTypeExpr,
+    OverloadedFuncDef,
+    RefExpr,
+    Statement,
+    SuperExpr,
+    SymbolNode,
+    SymbolTable,
+    TypeAlias,
+    TypeAliasExpr,
+    TypedDictExpr,
+    TypeInfo,
+    Var,
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
-    TupleType, TypeType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded, TypeVarType, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, PlaceholderType, TypeAliasType, ParamSpecType, Parameters,
-    UnpackType, TypeVarTupleType,
+    AnyType,
+    CallableArgument,
+    CallableType,
+    DeletedType,
+    EllipsisType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    PlaceholderType,
+    RawExpressionType,
+    StarType,
+    SyntheticTypeVisitor,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeList,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
 )
-from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
+from mypy.util import get_prefix, replace_object_state
 
 
-def merge_asts(old: MypyFile, old_symbols: SymbolTable,
-               new: MypyFile, new_symbols: SymbolTable) -> None:
+def merge_asts(
+    old: MypyFile, old_symbols: SymbolTable, new: MypyFile, new_symbols: SymbolTable
+) -> None:
     """Merge a new version of a module AST to a previous version.
 
     The main idea is to preserve the identities of externally visible
@@ -82,7 +129,8 @@ def merge_asts(old: MypyFile, old_symbols: SymbolTable,
     # Find the mapping from new to old node identities for all nodes
     # whose identities should be preserved.
     replacement_map = replacement_map_from_symbol_table(
-        old_symbols, new_symbols, prefix=old.fullname)
+        old_symbols, new_symbols, prefix=old.fullname
+    )
     # Also replace references to the new MypyFile node.
     replacement_map[new] = old
     # Perform replacements to everywhere within the new AST (not including symbol
@@ -96,7 +144,8 @@ def merge_asts(old: MypyFile, old_symbols: SymbolTable,
 
 
 def replacement_map_from_symbol_table(
-        old: SymbolTable, new: SymbolTable, prefix: str) -> Dict[SymbolNode, SymbolNode]:
+    old: SymbolTable, new: SymbolTable, prefix: str
+) -> Dict[SymbolNode, SymbolNode]:
     """Create a new-to-old object identity map by comparing two symbol table revisions.
 
     Both symbol tables must refer to revisions of the same module id. The symbol tables
@@ -106,25 +155,29 @@ def replacement_map_from_symbol_table(
     """
     replacements: Dict[SymbolNode, SymbolNode] = {}
     for name, node in old.items():
-        if (name in new and (node.kind == MDEF
-                             or node.node and get_prefix(node.node.fullname) == prefix)):
+        if name in new and (
+            node.kind == MDEF or node.node and get_prefix(node.node.fullname) == prefix
+        ):
             new_node = new[name]
-            if (type(new_node.node) == type(node.node)  # noqa
-                    and new_node.node and node.node and
-                    new_node.node.fullname == node.node.fullname and
-                    new_node.kind == node.kind):
+            if (
+                type(new_node.node) == type(node.node)  # noqa
+                and new_node.node
+                and node.node
+                and new_node.node.fullname == node.node.fullname
+                and new_node.kind == node.kind
+            ):
                 replacements[new_node.node] = node.node
                 if isinstance(node.node, TypeInfo) and isinstance(new_node.node, TypeInfo):
                     type_repl = replacement_map_from_symbol_table(
-                        node.node.names,
-                        new_node.node.names,
-                        prefix)
+                        node.node.names, new_node.node.names, prefix
+                    )
                     replacements.update(type_repl)
     return replacements
 
 
-def replace_nodes_in_ast(node: SymbolNode,
-                         replacements: Dict[SymbolNode, SymbolNode]) -> SymbolNode:
+def replace_nodes_in_ast(
+    node: SymbolNode, replacements: Dict[SymbolNode, SymbolNode]
+) -> SymbolNode:
     """Replace all references to replacement map keys within an AST node, recursively.
 
     Also replace the *identity* of any nodes that have replacements. Return the
@@ -136,7 +189,7 @@ def replace_nodes_in_ast(node: SymbolNode,
     return replacements.get(node, node)
 
 
-SN = TypeVar('SN', bound=SymbolNode)
+SN = TypeVar("SN", bound=SymbolNode)
 
 
 class NodeReplaceVisitor(TraverserVisitor):
@@ -475,8 +528,9 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         return node
 
 
-def replace_nodes_in_symbol_table(symbols: SymbolTable,
-                                  replacements: Dict[SymbolNode, SymbolNode]) -> None:
+def replace_nodes_in_symbol_table(
+    symbols: SymbolTable, replacements: Dict[SymbolNode, SymbolNode]
+) -> None:
     for name, node in symbols.items():
         if node.node:
             if node.node in replacements:

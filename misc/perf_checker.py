@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
-from typing import Callable, List, Tuple
-
 import os
 import shutil
 import statistics
 import subprocess
 import textwrap
 import time
+from typing import Callable, List, Tuple
 
 
 class Command:
@@ -18,7 +17,7 @@ class Command:
 
 def print_offset(text: str, indent_length: int = 4) -> None:
     print()
-    print(textwrap.indent(text, ' ' * indent_length))
+    print(textwrap.indent(text, " " * indent_length))
     print()
 
 
@@ -29,21 +28,19 @@ def delete_folder(folder_path: str) -> None:
 
 def execute(command: List[str]) -> None:
     proc = subprocess.Popen(
-        ' '.join(command),
-        stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        shell=True)
+        " ".join(command), stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True
+    )
     stdout_bytes, stderr_bytes = proc.communicate()  # type: Tuple[bytes, bytes]
-    stdout, stderr = stdout_bytes.decode('utf-8'), stderr_bytes.decode('utf-8')
+    stdout, stderr = stdout_bytes.decode("utf-8"), stderr_bytes.decode("utf-8")
     if proc.returncode != 0:
-        print('EXECUTED COMMAND:', repr(command))
-        print('RETURN CODE:', proc.returncode)
+        print("EXECUTED COMMAND:", repr(command))
+        print("RETURN CODE:", proc.returncode)
         print()
-        print('STDOUT:')
+        print("STDOUT:")
         print_offset(stdout)
-        print('STDERR:')
+        print("STDERR:")
         print_offset(stderr)
-        raise RuntimeError('Unexpected error from external tool.')
+        raise RuntimeError("Unexpected error from external tool.")
 
 
 def trial(num_trials: int, command: Command) -> List[float]:
@@ -69,25 +66,28 @@ def main() -> None:
     trials = 3
 
     print("Testing baseline")
-    baseline = trial(trials, Command(
-        lambda: None,
-        lambda: execute(["python3", "-m", "mypy", "mypy"])))
+    baseline = trial(
+        trials, Command(lambda: None, lambda: execute(["python3", "-m", "mypy", "mypy"]))
+    )
     report("Baseline", baseline)
 
     print("Testing cold cache")
-    cold_cache = trial(trials, Command(
-        lambda: delete_folder(".mypy_cache"),
-        lambda: execute(["python3", "-m", "mypy", "-i", "mypy"])))
+    cold_cache = trial(
+        trials,
+        Command(
+            lambda: delete_folder(".mypy_cache"),
+            lambda: execute(["python3", "-m", "mypy", "-i", "mypy"]),
+        ),
+    )
     report("Cold cache", cold_cache)
 
     print("Testing warm cache")
     execute(["python3", "-m", "mypy", "-i", "mypy"])
-    warm_cache = trial(trials, Command(
-        lambda: None,
-        lambda: execute(["python3", "-m", "mypy", "-i", "mypy"])))
+    warm_cache = trial(
+        trials, Command(lambda: None, lambda: execute(["python3", "-m", "mypy", "-i", "mypy"]))
+    )
     report("Warm cache", warm_cache)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

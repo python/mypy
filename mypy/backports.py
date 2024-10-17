@@ -11,8 +11,10 @@ else:
 
 
 if sys.version_info < (3, 7):
+
     @contextmanager
     def nullcontext() -> Iterator[None]:
         yield
+
 else:
     from contextlib import nullcontext as nullcontext  # noqa: F401

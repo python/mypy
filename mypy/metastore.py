@@ -11,10 +11,11 @@ We provide two implementations.
 import binascii
 import os
 import time
-
 from abc import abstractmethod
-from typing import List, Iterable, Any, Optional
+from typing import Any, Iterable, List, Optional
+
 from typing_extensions import TYPE_CHECKING
+
 if TYPE_CHECKING:
     # We avoid importing sqlite3 unless we are using it so we can mostly work
     # on semi-broken pythons that are missing it.
@@ -66,11 +67,12 @@ class MetadataStore:
         pass
 
     @abstractmethod
-    def list_all(self) -> Iterable[str]: ...
+    def list_all(self) -> Iterable[str]:
+        ...
 
 
 def random_string() -> str:
-    return binascii.hexlify(os.urandom(8)).decode('ascii')
+    return binascii.hexlify(os.urandom(8)).decode("ascii")
 
 
 class FilesystemMetadataStore(MetadataStore):
@@ -105,10 +107,10 @@ class FilesystemMetadataStore(MetadataStore):
             return False
 
         path = os.path.join(self.cache_dir_prefix, name)
-        tmp_filename = path + '.' + random_string()
+        tmp_filename = path + "." + random_string()
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(tmp_filename, 'w') as f:
+            with open(tmp_filename, "w") as f:
                 f.write(data)
             os.replace(tmp_filename, path)
             if mtime is not None:
@@ -137,19 +139,19 @@ class FilesystemMetadataStore(MetadataStore):
                 yield os.path.join(dir, file)
 
 
-SCHEMA = '''
+SCHEMA = """
 CREATE TABLE IF NOT EXISTS files (
     path TEXT UNIQUE NOT NULL,
     mtime REAL,
     data TEXT
 );
 CREATE INDEX IF NOT EXISTS path_idx on files(path);
-'''
+"""
 # No migrations yet
 MIGRATIONS: List[str] = []
 
 
-def connect_db(db_file: str) -> 'sqlite3.Connection':
+def connect_db(db_file: str) -> "sqlite3.Connection":
     import sqlite3.dbapi2
 
     db = sqlite3.dbapi2.connect(db_file)
@@ -172,14 +174,14 @@ class SqliteMetadataStore(MetadataStore):
             return
 
         os.makedirs(cache_dir_prefix, exist_ok=True)
-        self.db = connect_db(os.path.join(cache_dir_prefix, 'cache.db'))
+        self.db = connect_db(os.path.join(cache_dir_prefix, "cache.db"))
 
     def _query(self, name: str, field: str) -> Any:
         # Raises FileNotFound for consistency with the file system version
         if not self.db:
             raise FileNotFoundError()
 
-        cur = self.db.execute(f'SELECT {field} FROM files WHERE path = ?', (name,))
+        cur = self.db.execute(f"SELECT {field} FROM files WHERE path = ?", (name,))
         results = cur.fetchall()
         if not results:
             raise FileNotFoundError()
@@ -187,10 +189,10 @@ class SqliteMetadataStore(MetadataStore):
         return results[0][0]
 
     def getmtime(self, name: str) -> float:
-        return self._query(name, 'mtime')
+        return self._query(name, "mtime")
 
     def read(self, name: str) -> str:
-        return self._query(name, 'data')
+        return self._query(name, "data")
 
     def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
         import sqlite3
@@ -200,8 +202,10 @@ class SqliteMetadataStore(MetadataStore):
         try:
             if mtime is None:
                 mtime = time.time()
-            self.db.execute('INSERT OR REPLACE INTO files(path, mtime, data) VALUES(?, ?, ?)',
-                            (name, mtime, data))
+            self.db.execute(
+                "INSERT OR REPLACE INTO files(path, mtime, data) VALUES(?, ?, ?)",
+                (name, mtime, data),
+            )
         except sqlite3.OperationalError:
             return False
         return True
@@ -210,7 +214,7 @@ class SqliteMetadataStore(MetadataStore):
         if not self.db:
             raise FileNotFoundError()
 
-        self.db.execute('DELETE FROM files WHERE path = ?', (name,))
+        self.db.execute("DELETE FROM files WHERE path = ?", (name,))
 
     def commit(self) -> None:
         if self.db:
@@ -218,5 +222,5 @@ class SqliteMetadataStore(MetadataStore):
 
     def list_all(self) -> Iterable[str]:
         if self.db:
-            for row in self.db.execute('SELECT path FROM files'):
+            for row in self.db.execute("SELECT path FROM files"):
                 yield row[0]

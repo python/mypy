@@ -32,25 +32,45 @@ Notes:
 """
 
 import contextlib
-from typing import Union, Iterator, Optional, Dict, Tuple
+from typing import Dict, Iterator, Optional, Tuple, Union
 
 from mypy.backports import nullcontext
 from mypy.nodes import (
-    FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, ClassDef, AssignmentStmt,
-    ImportFrom, CallExpr, Decorator, OverloadedFuncDef, Node, TupleExpr, ListExpr,
-    SuperExpr, IndexExpr, ImportAll, ForStmt, Block, CLASSDEF_NO_INFO, TypeInfo,
-    StarExpr, Var, SymbolTableNode
+    CLASSDEF_NO_INFO,
+    AssignmentStmt,
+    Block,
+    CallExpr,
+    ClassDef,
+    Decorator,
+    ForStmt,
+    FuncDef,
+    ImportAll,
+    ImportFrom,
+    IndexExpr,
+    ListExpr,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    Node,
+    OverloadedFuncDef,
+    RefExpr,
+    StarExpr,
+    SuperExpr,
+    SymbolTableNode,
+    TupleExpr,
+    TypeInfo,
+    Var,
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
 from mypy.typestate import TypeState
 
-
 SavedAttributes = Dict[Tuple[ClassDef, str], SymbolTableNode]
 
 
-def strip_target(node: Union[MypyFile, FuncDef, OverloadedFuncDef],
-                 saved_attrs: SavedAttributes) -> None:
+def strip_target(
+    node: Union[MypyFile, FuncDef, OverloadedFuncDef], saved_attrs: SavedAttributes
+) -> None:
     """Reset a fine-grained incremental target to state before semantic analysis.
 
     All TypeInfos are killed. Therefore we need to preserve the variables
@@ -91,7 +111,7 @@ class NodeStripVisitor(TraverserVisitor):
         for name in file_node.names.copy():
             # TODO: this is a hot fix, we should delete all names,
             # see https://github.com/python/mypy/issues/6422.
-            if '@' not in name:
+            if "@" not in name:
                 del file_node.names[name]
 
     def visit_block(self, b: Block) -> None:
@@ -113,8 +133,9 @@ class NodeStripVisitor(TraverserVisitor):
         node.type_vars = []
         node.base_type_exprs.extend(node.removed_base_type_exprs)
         node.removed_base_type_exprs = []
-        node.defs.body = [s for s in node.defs.body
-                          if s not in to_delete]  # type: ignore[comparison-overlap]
+        node.defs.body = [
+            s for s in node.defs.body if s not in to_delete  # type: ignore[comparison-overlap]
+        ]
         with self.enter_class(node.info):
             super().visit_class_def(node)
         TypeState.reset_subtype_caches_for(node.info)

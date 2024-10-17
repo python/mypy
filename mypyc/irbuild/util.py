@@ -1,23 +1,36 @@
 """Various utilities that don't depend on other modules in mypyc.irbuild."""
 
-from typing import Dict, Any, Union, Optional
+from typing import Any, Dict, Optional, Union
 
 from mypy.nodes import (
-    ClassDef, FuncDef, Decorator, OverloadedFuncDef, StrExpr, CallExpr, RefExpr, Expression,
-    IntExpr, FloatExpr, Var, NameExpr, TupleExpr, UnaryExpr, BytesExpr,
-    ArgKind, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_OPT, GDEF,
+    ARG_NAMED,
+    ARG_NAMED_OPT,
+    ARG_OPT,
+    ARG_POS,
+    GDEF,
+    ArgKind,
+    BytesExpr,
+    CallExpr,
+    ClassDef,
+    Decorator,
+    Expression,
+    FloatExpr,
+    FuncDef,
+    IntExpr,
+    NameExpr,
+    OverloadedFuncDef,
+    RefExpr,
+    StrExpr,
+    TupleExpr,
+    UnaryExpr,
+    Var,
 )
 
-
-DATACLASS_DECORATORS = {
-    'dataclasses.dataclass',
-    'attr.s',
-    'attr.attrs',
-}
+DATACLASS_DECORATORS = {"dataclasses.dataclass", "attr.s", "attr.attrs"}
 
 
 def is_trait_decorator(d: Expression) -> bool:
-    return isinstance(d, RefExpr) and d.fullname == 'mypy_extensions.trait'
+    return isinstance(d, RefExpr) and d.fullname == "mypy_extensions.trait"
 
 
 def is_trait(cdef: ClassDef) -> bool:
@@ -26,17 +39,19 @@ def is_trait(cdef: ClassDef) -> bool:
 
 def dataclass_decorator_type(d: Expression) -> Optional[str]:
     if isinstance(d, RefExpr) and d.fullname in DATACLASS_DECORATORS:
-        return d.fullname.split('.')[0]
-    elif (isinstance(d, CallExpr)
-            and isinstance(d.callee, RefExpr)
-            and d.callee.fullname in DATACLASS_DECORATORS):
-        name = d.callee.fullname.split('.')[0]
-        if name == 'attr' and 'auto_attribs' in d.arg_names:
+        return d.fullname.split(".")[0]
+    elif (
+        isinstance(d, CallExpr)
+        and isinstance(d.callee, RefExpr)
+        and d.callee.fullname in DATACLASS_DECORATORS
+    ):
+        name = d.callee.fullname.split(".")[0]
+        if name == "attr" and "auto_attribs" in d.arg_names:
             # Note: the mypy attrs plugin checks that the value of auto_attribs is
             # not computed at runtime, so we don't need to perform that check here
-            auto = d.args[d.arg_names.index('auto_attribs')]
-            if isinstance(auto, NameExpr) and auto.name == 'True':
-                return 'attr-auto'
+            auto = d.args[d.arg_names.index("auto_attribs")]
+            if isinstance(auto, NameExpr) and auto.name == "True":
+                return "attr-auto"
         return name
     else:
         return None
@@ -64,11 +79,11 @@ def get_mypyc_attr_literal(e: Expression) -> Any:
     Supports a pretty limited range."""
     if isinstance(e, (StrExpr, IntExpr, FloatExpr)):
         return e.value
-    elif isinstance(e, RefExpr) and e.fullname == 'builtins.True':
+    elif isinstance(e, RefExpr) and e.fullname == "builtins.True":
         return True
-    elif isinstance(e, RefExpr) and e.fullname == 'builtins.False':
+    elif isinstance(e, RefExpr) and e.fullname == "builtins.False":
         return False
-    elif isinstance(e, RefExpr) and e.fullname == 'builtins.None':
+    elif isinstance(e, RefExpr) and e.fullname == "builtins.None":
         return None
     return NotImplemented
 
@@ -78,7 +93,7 @@ def get_mypyc_attr_call(d: Expression) -> Optional[CallExpr]:
     if (
         isinstance(d, CallExpr)
         and isinstance(d.callee, RefExpr)
-        and d.callee.fullname == 'mypy_extensions.mypyc_attr'
+        and d.callee.fullname == "mypy_extensions.mypyc_attr"
     ):
         return d
     return None
@@ -102,9 +117,7 @@ def get_mypyc_attrs(stmt: Union[ClassDef, Decorator]) -> Dict[str, Any]:
 
 def is_extension_class(cdef: ClassDef) -> bool:
     if any(
-        not is_trait_decorator(d)
-        and not is_dataclass_decorator(d)
-        and not get_mypyc_attr_call(d)
+        not is_trait_decorator(d) and not is_dataclass_decorator(d) and not get_mypyc_attr_call(d)
         for d in cdef.decorators
     ):
         return False
@@ -112,8 +125,11 @@ def is_extension_class(cdef: ClassDef) -> bool:
         return False
     if cdef.info.is_named_tuple:
         return False
-    if (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
-            'abc.ABCMeta', 'typing.TypingMeta', 'typing.GenericMeta')):
+    if cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
+        "abc.ABCMeta",
+        "typing.TypingMeta",
+        "typing.GenericMeta",
+    ):
         return False
     return True
 
@@ -146,11 +162,16 @@ def is_constant(e: Expression) -> bool:
     primitives types, None, and references to Final global
     variables.
     """
-    return (isinstance(e, (StrExpr, BytesExpr, IntExpr, FloatExpr))
-            or (isinstance(e, UnaryExpr) and e.op == '-'
-                and isinstance(e.expr, (IntExpr, FloatExpr)))
-            or (isinstance(e, TupleExpr)
-                and all(is_constant(e) for e in e.items))
-            or (isinstance(e, RefExpr) and e.kind == GDEF
-                and (e.fullname in ('builtins.True', 'builtins.False', 'builtins.None')
-                     or (isinstance(e.node, Var) and e.node.is_final))))
+    return (
+        isinstance(e, (StrExpr, BytesExpr, IntExpr, FloatExpr))
+        or (isinstance(e, UnaryExpr) and e.op == "-" and isinstance(e.expr, (IntExpr, FloatExpr)))
+        or (isinstance(e, TupleExpr) and all(is_constant(e) for e in e.items))
+        or (
+            isinstance(e, RefExpr)
+            and e.kind == GDEF
+            and (
+                e.fullname in ("builtins.True", "builtins.False", "builtins.None")
+                or (isinstance(e.node, Var) and e.node.is_final)
+            )
+        )
+    )

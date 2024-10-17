@@ -12,7 +12,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
+from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 
 
 def make_cache(input_dir: str, sqlite: bool) -> MetadataStore:
@@ -34,7 +34,7 @@ def apply_diff(cache_dir: str, diff_file: str, sqlite: bool = False) -> None:
             cache.remove(file)
         else:
             cache.write(file, data)
-            if file.endswith('.meta.json') and "@deps" not in file:
+            if file.endswith(".meta.json") and "@deps" not in file:
                 meta = json.loads(data)
                 old_deps["snapshot"][meta["id"]] = meta["hash"]
 
@@ -45,16 +45,13 @@ def apply_diff(cache_dir: str, diff_file: str, sqlite: bool = False) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument('--sqlite', action='store_true', default=False,
-                        help='Use a sqlite cache')
-    parser.add_argument('cache_dir',
-                        help="Directory for the cache")
-    parser.add_argument('diff',
-                        help="Cache diff file")
+    parser.add_argument("--sqlite", action="store_true", default=False, help="Use a sqlite cache")
+    parser.add_argument("cache_dir", help="Directory for the cache")
+    parser.add_argument("diff", help="Cache diff file")
     args = parser.parse_args()
 
     apply_diff(args.cache_dir, args.diff, args.sqlite)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

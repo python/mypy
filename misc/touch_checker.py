@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 
-from typing import Callable, List, Tuple, Optional
-
-import sys
 import glob
 import os
 import shutil
 import statistics
 import subprocess
+import sys
 import textwrap
 import time
+from typing import Callable, List, Optional, Tuple
 
 
 def print_offset(text: str, indent_length: int = 4) -> None:
     print()
-    print(textwrap.indent(text, ' ' * indent_length))
+    print(textwrap.indent(text, " " * indent_length))
     print()
 
 
@@ -25,19 +24,17 @@ def delete_folder(folder_path: str) -> None:
 
 def execute(command: List[str]) -> None:
     proc = subprocess.Popen(
-        ' '.join(command),
-        stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        shell=True)
+        " ".join(command), stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True
+    )
     stdout_bytes, stderr_bytes = proc.communicate()  # type: Tuple[bytes, bytes]
-    stdout, stderr = stdout_bytes.decode('utf-8'), stderr_bytes.decode('utf-8')
+    stdout, stderr = stdout_bytes.decode("utf-8"), stderr_bytes.decode("utf-8")
     if proc.returncode != 0:
-        print('EXECUTED COMMAND:', repr(command))
-        print('RETURN CODE:', proc.returncode)
+        print("EXECUTED COMMAND:", repr(command))
+        print("RETURN CODE:", proc.returncode)
         print()
-        print('STDOUT:')
+        print("STDOUT:")
         print_offset(stdout)
-        print('STDERR:')
+        print("STDERR:")
         print_offset(stderr)
         print()
 
@@ -57,8 +54,10 @@ def test(setup: Command, command: Command, teardown: Command) -> float:
 def make_touch_wrappers(filename: str) -> Tuple[Command, Command]:
     def setup() -> None:
         execute(["touch", filename])
+
     def teardown() -> None:
         pass
+
     return setup, teardown
 
 
@@ -69,12 +68,12 @@ def make_change_wrappers(filename: str) -> Tuple[Command, Command]:
         nonlocal copy
         with open(filename) as stream:
             copy = stream.read()
-        with open(filename, 'a') as stream:
-            stream.write('\n\nfoo = 3')
+        with open(filename, "a") as stream:
+            stream.write("\n\nfoo = 3")
 
     def teardown() -> None:
         assert copy is not None
-        with open(filename, 'w') as stream:
+        with open(filename, "w") as stream:
             stream.write(copy)
 
         # Re-run to reset cache
@@ -82,15 +81,16 @@ def make_change_wrappers(filename: str) -> Tuple[Command, Command]:
 
     return setup, teardown
 
+
 def main() -> None:
-    if len(sys.argv) != 2 or sys.argv[1] not in {'touch', 'change'}:
+    if len(sys.argv) != 2 or sys.argv[1] not in {"touch", "change"}:
         print("First argument should be 'touch' or 'change'")
         return
 
-    if sys.argv[1] == 'touch':
+    if sys.argv[1] == "touch":
         make_wrappers = make_touch_wrappers
         verb = "Touching"
-    elif sys.argv[1] == 'change':
+    elif sys.argv[1] == "change":
         make_wrappers = make_change_wrappers
         verb = "Changing"
     else:
@@ -98,22 +98,19 @@ def main() -> None:
 
     print("Setting up...")
 
-    baseline = test(
-        lambda: None,
-        lambda: execute(["python3", "-m", "mypy", "mypy"]),
-        lambda: None)
+    baseline = test(lambda: None, lambda: execute(["python3", "-m", "mypy", "mypy"]), lambda: None)
     print(f"Baseline:   {baseline}")
 
     cold = test(
         lambda: delete_folder(".mypy_cache"),
         lambda: execute(["python3", "-m", "mypy", "-i", "mypy"]),
-        lambda: None)
+        lambda: None,
+    )
     print(f"Cold cache: {cold}")
 
     warm = test(
-        lambda: None,
-        lambda: execute(["python3", "-m", "mypy", "-i", "mypy"]),
-        lambda: None)
+        lambda: None, lambda: execute(["python3", "-m", "mypy", "-i", "mypy"]), lambda: None
+    )
     print(f"Warm cache: {warm}")
 
     print()
@@ -121,12 +118,9 @@ def main() -> None:
     deltas = []
     for filename in glob.iglob("mypy/**/*.py", recursive=True):
         print(f"{verb} {filename}")
-        
+
         setup, teardown = make_wrappers(filename)
-        delta = test(
-            setup,
-            lambda: execute(["python3", "-m", "mypy", "-i", "mypy"]),
-            teardown)
+        delta = test(setup, lambda: execute(["python3", "-m", "mypy", "-i", "mypy"]), teardown)
         print(f"    Time: {delta}")
         deltas.append(delta)
     print()
@@ -146,6 +140,6 @@ def main() -> None:
     print(f"    Total:      {sum(deltas)}")
     print()
 
-if __name__ == '__main__':
-    main()
 
+if __name__ == "__main__":
+    main()

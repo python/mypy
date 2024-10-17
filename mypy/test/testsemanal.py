@@ -2,22 +2,23 @@
 
 import os.path
 import sys
-
 from typing import Dict, List
 
 from mypy import build
-from mypy.modulefinder import BuildSource
 from mypy.defaults import PYTHON3_VERSION
-from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages, testfile_pyversion, parse_options,
-    find_test_files,
-)
-from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
+from mypy.modulefinder import BuildSource
 from mypy.nodes import TypeInfo
 from mypy.options import Options
-
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
+from mypy.test.helpers import (
+    assert_string_arrays_equal,
+    find_test_files,
+    normalize_error_messages,
+    parse_options,
+    testfile_pyversion,
+)
 
 # Semantic analyzer test cases: dump parse tree
 
@@ -34,7 +35,7 @@ semanal_files = find_test_files(
 
 
 if sys.version_info < (3, 10):
-    semanal_files.remove('semanal-python310.test')
+    semanal_files.remove("semanal-python310.test")
 
 
 def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Options:
@@ -63,12 +64,12 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
     """
 
     try:
-        src = '\n'.join(testcase.input)
+        src = "\n".join(testcase.input)
         options = get_semanal_options(src, testcase)
         options.python_version = testfile_pyversion(testcase.file)
-        result = build.build(sources=[BuildSource('main', None, src)],
-                             options=options,
-                             alt_lib_path=test_temp_dir)
+        result = build.build(
+            sources=[BuildSource("main", None, src)], options=options, alt_lib_path=test_temp_dir
+        )
         a = result.errors
         if a:
             raise CompileError(a)
@@ -79,32 +80,40 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
             # Omit the builtins module and files with a special marker in the
             # path.
             # TODO the test is not reliable
-            if (not f.path.endswith((os.sep + 'builtins.pyi',
-                                     'typing.pyi',
-                                     'mypy_extensions.pyi',
-                                     'typing_extensions.pyi',
-                                     'abc.pyi',
-                                     'collections.pyi',
-                                     'sys.pyi'))
-                    and not os.path.basename(f.path).startswith('_')
-                    and not os.path.splitext(
-                        os.path.basename(f.path))[0].endswith('_')):
-                a += str(f).split('\n')
+            if (
+                not f.path.endswith(
+                    (
+                        os.sep + "builtins.pyi",
+                        "typing.pyi",
+                        "mypy_extensions.pyi",
+                        "typing_extensions.pyi",
+                        "abc.pyi",
+                        "collections.pyi",
+                        "sys.pyi",
+                    )
+                )
+                and not os.path.basename(f.path).startswith("_")
+                and not os.path.splitext(os.path.basename(f.path))[0].endswith("_")
+            ):
+                a += str(f).split("\n")
     except CompileError as e:
         a = e.messages
     if testcase.normalize_output:
         a = normalize_error_messages(a)
     assert_string_arrays_equal(
-        testcase.output, a,
-        f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')
+        testcase.output,
+        a,
+        f"Invalid semantic analyzer output ({testcase.file}, line {testcase.line})",
+    )
 
 
 # Semantic analyzer error test cases
 
+
 class SemAnalErrorSuite(DataSuite):
-    files = ['semanal-errors.test']
+    files = ["semanal-errors.test"]
     if sys.version_info >= (3, 10):
-        semanal_files.append('semanal-errors-python310.test')
+        semanal_files.append("semanal-errors-python310.test")
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal_error(testcase)
@@ -114,12 +123,14 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
     """Perform a test case."""
 
     try:
-        src = '\n'.join(testcase.input)
-        res = build.build(sources=[BuildSource('main', None, src)],
-                          options=get_semanal_options(src, testcase),
-                          alt_lib_path=test_temp_dir)
+        src = "\n".join(testcase.input)
+        res = build.build(
+            sources=[BuildSource("main", None, src)],
+            options=get_semanal_options(src, testcase),
+            alt_lib_path=test_temp_dir,
+        )
         a = res.errors
-        assert a, f'No errors reported in {testcase.file}, line {testcase.line}'
+        assert a, f"No errors reported in {testcase.file}, line {testcase.line}"
     except CompileError as e:
         # Verify that there was a compile error and that the error messages
         # are equivalent.
@@ -127,53 +138,60 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
     if testcase.normalize_output:
         a = normalize_error_messages(a)
     assert_string_arrays_equal(
-        testcase.output, a,
-        f'Invalid compiler output ({testcase.file}, line {testcase.line})')
+        testcase.output, a, f"Invalid compiler output ({testcase.file}, line {testcase.line})"
+    )
 
 
 # SymbolNode table export test cases
 
+
 class SemAnalSymtableSuite(DataSuite):
     required_out_section = True
-    files = ['semanal-symtable.test']
+    files = ["semanal-symtable.test"]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a test case."""
         try:
             # Build test case input.
-            src = '\n'.join(testcase.input)
-            result = build.build(sources=[BuildSource('main', None, src)],
-                                 options=get_semanal_options(src, testcase),
-                                 alt_lib_path=test_temp_dir)
+            src = "\n".join(testcase.input)
+            result = build.build(
+                sources=[BuildSource("main", None, src)],
+                options=get_semanal_options(src, testcase),
+                alt_lib_path=test_temp_dir,
+            )
             # The output is the symbol table converted into a string.
             a = result.errors
             if a:
                 raise CompileError(a)
             for f in sorted(result.files.keys()):
-                if f not in ('builtins', 'typing', 'abc'):
-                    a.append(f'{f}:')
-                    for s in str(result.files[f].names).split('\n'):
-                        a.append('  ' + s)
+                if f not in ("builtins", "typing", "abc"):
+                    a.append(f"{f}:")
+                    for s in str(result.files[f].names).split("\n"):
+                        a.append("  " + s)
         except CompileError as e:
             a = e.messages
         assert_string_arrays_equal(
-            testcase.output, a,
-            f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')
+            testcase.output,
+            a,
+            f"Invalid semantic analyzer output ({testcase.file}, line {testcase.line})",
+        )
 
 
 # Type info export test cases
 class SemAnalTypeInfoSuite(DataSuite):
     required_out_section = True
-    files = ['semanal-typeinfo.test']
+    files = ["semanal-typeinfo.test"]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a test case."""
         try:
             # Build test case input.
-            src = '\n'.join(testcase.input)
-            result = build.build(sources=[BuildSource('main', None, src)],
-                                 options=get_semanal_options(src, testcase),
-                                 alt_lib_path=test_temp_dir)
+            src = "\n".join(testcase.input)
+            result = build.build(
+                sources=[BuildSource("main", None, src)],
+                options=get_semanal_options(src, testcase),
+                alt_lib_path=test_temp_dir,
+            )
             a = result.errors
             if a:
                 raise CompileError(a)
@@ -187,22 +205,26 @@ class SemAnalTypeInfoSuite(DataSuite):
                         typeinfos[n.fullname] = n.node
 
             # The output is the symbol table converted into a string.
-            a = str(typeinfos).split('\n')
+            a = str(typeinfos).split("\n")
         except CompileError as e:
             a = e.messages
         assert_string_arrays_equal(
-            testcase.output, a,
-            f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')
+            testcase.output,
+            a,
+            f"Invalid semantic analyzer output ({testcase.file}, line {testcase.line})",
+        )
 
 
 class TypeInfoMap(Dict[str, TypeInfo]):
     def __str__(self) -> str:
         a: List[str] = ["TypeInfoMap("]
         for x, y in sorted(self.items()):
-            if isinstance(x, str) and (not x.startswith('builtins.') and
-                                       not x.startswith('typing.') and
-                                       not x.startswith('abc.')):
-                ti = ('\n' + '  ').join(str(y).split('\n'))
-                a.append(f'  {x} : {ti}')
-        a[-1] += ')'
-        return '\n'.join(a)
+            if isinstance(x, str) and (
+                not x.startswith("builtins.")
+                and not x.startswith("typing.")
+                and not x.startswith("abc.")
+            ):
+                ti = ("\n" + "  ").join(str(y).split("\n"))
+                a.append(f"  {x} : {ti}")
+        a[-1] += ")"
+        return "\n".join(a)

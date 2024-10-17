@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Set, Optional, Iterable
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 
 class NameGenerator:
@@ -64,16 +64,16 @@ class NameGenerator:
         """
         # TODO: Support unicode
         if partial_name is None:
-            return exported_name(self.module_map[module].rstrip('.'))
+            return exported_name(self.module_map[module].rstrip("."))
         if (module, partial_name) in self.translations:
             return self.translations[module, partial_name]
         if module in self.module_map:
             module_prefix = self.module_map[module]
         elif module:
-            module_prefix = module + '.'
+            module_prefix = module + "."
         else:
-            module_prefix = ''
-        actual = exported_name(f'{module_prefix}{partial_name}')
+            module_prefix = ""
+        actual = exported_name(f"{module_prefix}{partial_name}")
         self.translations[module, partial_name] = actual
         return actual
 
@@ -86,7 +86,7 @@ def exported_name(fullname: str) -> str:
     builds.
     """
     # TODO: Support unicode
-    return fullname.replace('___', '___3_').replace('.', '___')
+    return fullname.replace("___", "___3_").replace(".", "___")
 
 
 def make_module_translation_map(names: List[str]) -> Dict[str, str]:
@@ -106,8 +106,8 @@ def make_module_translation_map(names: List[str]) -> Dict[str, str]:
 
 
 def candidate_suffixes(fullname: str) -> List[str]:
-    components = fullname.split('.')
-    result = ['']
+    components = fullname.split(".")
+    result = [""]
     for i in range(len(components)):
-        result.append('.'.join(components[-i - 1:]) + '.')
+        result.append(".".join(components[-i - 1 :]) + ".")
     return result

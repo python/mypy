@@ -7,16 +7,9 @@ PYTHON3_VERSION: Final = (3, 6)
 PYTHON3_VERSION_MIN: Final = (3, 4)
 CACHE_DIR: Final = ".mypy_cache"
 CONFIG_FILE: Final = ["mypy.ini", ".mypy.ini"]
-PYPROJECT_CONFIG_FILES: Final = [
-    "pyproject.toml",
-]
-SHARED_CONFIG_FILES: Final = [
-    "setup.cfg",
-]
-USER_CONFIG_FILES: Final = [
-    "~/.config/mypy/config",
-    "~/.mypy.ini",
-]
+PYPROJECT_CONFIG_FILES: Final = ["pyproject.toml"]
+SHARED_CONFIG_FILES: Final = ["setup.cfg"]
+USER_CONFIG_FILES: Final = ["~/.config/mypy/config", "~/.mypy.ini"]
 if os.environ.get("XDG_CONFIG_HOME"):
     USER_CONFIG_FILES.insert(0, os.path.join(os.environ["XDG_CONFIG_HOME"], "mypy/config"))
 

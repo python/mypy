@@ -1,11 +1,13 @@
 -r mypy-requirements.txt
 -r build-requirements.txt
 attrs>=18.0
+black==22.6.0  # must match version in .pre-commit-config.yaml
 filelock>=3.3.0,<3.4.2; python_version<'3.7'
 filelock>=3.3.0; python_version>='3.7'
 flake8==3.9.2
 flake8-bugbear==22.3.20
 flake8-pyi>=20.5
+isort[colors]==5.10.1  # must match version in .pre-commit-config.yaml
 lxml>=4.4.0; python_version<'3.11'
 psutil>=4.0
 # pytest 6.2.3 does not support Python 3.10

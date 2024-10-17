@@ -3,25 +3,26 @@
 from typing import List, Optional, Tuple
 
 from mypy.nodes import FuncItem
-
-from mypyc.ir.ops import Value, BasicBlock
-from mypyc.ir.func_ir import INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import INVALID_FUNC_DEF
+from mypyc.ir.ops import BasicBlock, Value
 from mypyc.irbuild.targets import AssignmentTarget
 
 
 class FuncInfo:
     """Contains information about functions as they are generated."""
 
-    def __init__(self,
-                 fitem: FuncItem = INVALID_FUNC_DEF,
-                 name: str = '',
-                 class_name: Optional[str] = None,
-                 namespace: str = '',
-                 is_nested: bool = False,
-                 contains_nested: bool = False,
-                 is_decorated: bool = False,
-                 in_non_ext: bool = False) -> None:
+    def __init__(
+        self,
+        fitem: FuncItem = INVALID_FUNC_DEF,
+        name: str = "",
+        class_name: Optional[str] = None,
+        namespace: str = "",
+        is_nested: bool = False,
+        contains_nested: bool = False,
+        is_decorated: bool = False,
+        in_non_ext: bool = False,
+    ) -> None:
         self.fitem = fitem
         self.name = name
         self.class_name = class_name
@@ -50,7 +51,7 @@ class FuncInfo:
         # TODO: add field for ret_type: RType = none_rprimitive
 
     def namespaced_name(self) -> str:
-        return '_'.join(x for x in [self.name, self.class_name, self.ns] if x)
+        return "_".join(x for x in [self.name, self.class_name, self.ns] if x)
 
     @property
     def is_generator(self) -> bool:
@@ -61,12 +62,12 @@ class FuncInfo:
         return self.fitem.is_coroutine
 
     @property
-    def callable_class(self) -> 'ImplicitClass':
+    def callable_class(self) -> "ImplicitClass":
         assert self._callable_class is not None
         return self._callable_class
 
     @callable_class.setter
-    def callable_class(self, cls: 'ImplicitClass') -> None:
+    def callable_class(self, cls: "ImplicitClass") -> None:
         self._callable_class = cls
 
     @property
@@ -79,12 +80,12 @@ class FuncInfo:
         self._env_class = ir
 
     @property
-    def generator_class(self) -> 'GeneratorClass':
+    def generator_class(self) -> "GeneratorClass":
         assert self._generator_class is not None
         return self._generator_class
 
     @generator_class.setter
-    def generator_class(self, cls: 'GeneratorClass') -> None:
+    def generator_class(self, cls: "GeneratorClass") -> None:
         self._generator_class = cls
 
     @property

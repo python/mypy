@@ -1,11 +1,18 @@
-from typing import Union, List
-
-from mypy.nodes import TypeInfo
+from typing import List, Union
 
 from mypy.erasetype import erase_typevars
+from mypy.nodes import TypeInfo
 from mypy.types import (
-    Instance, TypeVarType, TupleType, Type, TypeOfAny, AnyType, ParamSpecType,
-    TypeVarTupleType, UnpackType, TypeVarLikeType
+    AnyType,
+    Instance,
+    ParamSpecType,
+    TupleType,
+    Type,
+    TypeOfAny,
+    TypeVarLikeType,
+    TypeVarTupleType,
+    TypeVarType,
+    UnpackType,
 )
 
 
@@ -21,17 +28,24 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
         # Change the line number
         if isinstance(tv, TypeVarType):
             tv = TypeVarType(
-                tv.name, tv.fullname, tv.id, tv.values,
-                tv.upper_bound, tv.variance, line=-1, column=-1,
+                tv.name,
+                tv.fullname,
+                tv.id,
+                tv.values,
+                tv.upper_bound,
+                tv.variance,
+                line=-1,
+                column=-1,
             )
         elif isinstance(tv, TypeVarTupleType):
-            tv = UnpackType(TypeVarTupleType(
-                tv.name, tv.fullname, tv.id, tv.upper_bound, line=-1, column=-1
-            ))
+            tv = UnpackType(
+                TypeVarTupleType(tv.name, tv.fullname, tv.id, tv.upper_bound, line=-1, column=-1)
+            )
         else:
             assert isinstance(tv, ParamSpecType)
-            tv = ParamSpecType(tv.name, tv.fullname, tv.id, tv.flavor, tv.upper_bound,
-                               line=-1, column=-1)
+            tv = ParamSpecType(
+                tv.name, tv.fullname, tv.id, tv.flavor, tv.upper_bound, line=-1, column=-1
+            )
         tvs.append(tv)
     inst = Instance(typ, tvs)
     if typ.tuple_type is None:

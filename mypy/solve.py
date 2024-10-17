@@ -1,17 +1,18 @@
 """Type inference constraint solving"""
 
-from typing import List, Dict, Optional
 from collections import defaultdict
+from typing import Dict, List, Optional
 
-from mypy.types import Type, AnyType, UninhabitedType, TypeVarId, TypeOfAny, get_proper_type
-from mypy.constraints import Constraint, SUPERTYPE_OF
+from mypy.constraints import SUPERTYPE_OF, Constraint
 from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
+from mypy.types import AnyType, Type, TypeOfAny, TypeVarId, UninhabitedType, get_proper_type
 
 
-def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
-                      strict: bool = True) -> List[Optional[Type]]:
+def solve_constraints(
+    vars: List[TypeVarId], constraints: List[Constraint], strict: bool = True
+) -> List[Optional[Type]]:
     """Solve type constraints.
 
     Return the best type(s) for type variables; each type can be None if the value of the variable

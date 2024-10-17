@@ -1,8 +1,8 @@
 """Helpers for interacting with type var tuples."""
 
-from typing import TypeVar, Optional, Tuple, Sequence
+from typing import Optional, Sequence, Tuple, TypeVar
 
-from mypy.types import Instance, UnpackType, ProperType, get_proper_type, Type
+from mypy.types import Instance, ProperType, Type, UnpackType, get_proper_type
 
 
 def find_unpack_in_list(items: Sequence[Type]) -> Optional[int]:
@@ -24,9 +24,7 @@ T = TypeVar("T")
 
 
 def split_with_prefix_and_suffix(
-    types: Tuple[T, ...],
-    prefix: int,
-    suffix: int,
+    types: Tuple[T, ...], prefix: int, suffix: int
 ) -> Tuple[Tuple[T, ...], Tuple[T, ...], Tuple[T, ...]]:
     if suffix:
         return (types[:prefix], types[prefix:-suffix], types[-suffix:])
@@ -35,14 +33,12 @@ def split_with_prefix_and_suffix(
 
 
 def split_with_instance(
-    typ: Instance
+    typ: Instance,
 ) -> Tuple[Tuple[Type, ...], Tuple[Type, ...], Tuple[Type, ...]]:
     assert typ.type.type_var_tuple_prefix is not None
     assert typ.type.type_var_tuple_suffix is not None
     return split_with_prefix_and_suffix(
-        typ.args,
-        typ.type.type_var_tuple_prefix,
-        typ.type.type_var_tuple_suffix,
+        typ.args, typ.type.type_var_tuple_prefix, typ.type.type_var_tuple_suffix
     )
 
 
