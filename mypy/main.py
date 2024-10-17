@@ -857,6 +857,14 @@ def process_options(
     )
 
     add_invertible_flag(
+        "--strict-bool",
+        default=False,
+        strict_flag=True,
+        help="Prohib to treat bool as int",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
         "--extra-checks",
         default=False,
         strict_flag=True,
