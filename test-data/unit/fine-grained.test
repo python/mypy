@@ -10220,7 +10220,7 @@ class Base(Protocol):
 main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
 [case testPrettyMessageSorting]
-# flags: --pretty
+# flags: --python-version 3.8 --pretty
 import a
 
 [file a.py]

@@ -314,6 +314,7 @@ class TestRun(MypycDataSuite):
             # TODO: testDecorators1 hangs on 3.12, remove this once fixed
             proc.wait(timeout=30)
         output = proc.communicate()[0].decode("utf8")
+        output = output.replace(f'  File "{os.getcwd()}{os.sep}', '  File "')
         outlines = output.splitlines()
 
         if testcase.config.getoption("--mypyc-showc"):
