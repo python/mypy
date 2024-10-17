@@ -1479,7 +1479,7 @@ def process_package_roots(
                 root = ""
         package_root.append(root)
     options.package_root = package_root
-    # Pass the package root on the the filesystem cache.
+    # Pass the package root on the filesystem cache.
     fscache.set_package_root(package_root)
 
 
