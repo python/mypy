@@ -4725,6 +4725,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.check_final(s)
 
     def visit_assert_stmt(self, s: AssertStmt) -> None:
+        # Disable comparison overlap checks on assert statements to prevent false positives
         with self.msg.filter_errors(
                 filter_errors=lambda name, info: info.code == codes.COMPARISON_OVERLAP,
             ):
@@ -4738,6 +4739,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if s.msg is not None:
             self.expr_checker.analyze_cond_branch(else_map, s.msg, None)
         self.push_type_map(true_map)
+
+        # Disable unreachable warning on assert statements to prevent false positives
         if not true_map:
             self.binder.suppress_unreachable_warnings()
 
