@@ -670,7 +670,7 @@ TYPE_VAR_TUPLE_KIND: Final = 2
 
 
 class TypeParam:
-    __slots__ = ("name", "kind", "upper_bound", "values")
+    __slots__ = ("name", "kind", "upper_bound", "values", "default")
 
     def __init__(
         self,
@@ -678,11 +678,13 @@ class TypeParam:
         kind: int,
         upper_bound: mypy.types.Type | None,
         values: list[mypy.types.Type],
+        default: mypy.types.Type | None,
     ) -> None:
         self.name = name
         self.kind = kind
         self.upper_bound = upper_bound
         self.values = values
+        self.default = default
 
 
 FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [

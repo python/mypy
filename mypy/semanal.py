@@ -1808,7 +1808,26 @@ class SemanticAnalyzer(
                 upper_bound = self.named_type("builtins.tuple", [self.object_type()])
             else:
                 upper_bound = self.object_type()
-        default = AnyType(TypeOfAny.from_omitted_generics)
+        if type_param.default:
+            default = self.anal_type(
+                type_param.default,
+                allow_placeholder=True,
+                allow_unbound_tvars=True,
+                report_invalid_types=False,
+                allow_param_spec_literals=type_param.kind == PARAM_SPEC_KIND,
+                allow_tuple_literal=type_param.kind == PARAM_SPEC_KIND,
+                allow_unpack=type_param.kind == TYPE_VAR_TUPLE_KIND,
+            )
+            if default is None:
+                default = PlaceholderType(None, [], context.line)
+            elif type_param.kind == TYPE_VAR_KIND:
+                default = self.check_typevar_default(default, type_param.default)
+            elif type_param.kind == PARAM_SPEC_KIND:
+                default = self.check_paramspec_default(default, type_param.default)
+            elif type_param.kind == TYPE_VAR_TUPLE_KIND:
+                default = self.check_typevartuple_default(default, type_param.default)
+        else:
+            default = AnyType(TypeOfAny.from_omitted_generics)
         if type_param.kind == TYPE_VAR_KIND:
             values = []
             if type_param.values:
@@ -4615,6 +4634,40 @@ class SemanticAnalyzer(
         self.add_symbol(name, call.analyzed, s)
         return True
 
+    def check_typevar_default(self, default: Type, context: Context) -> Type:
+        typ = get_proper_type(default)
+        if isinstance(typ, AnyType) and typ.is_from_error:
+            self.fail(
+                message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format("TypeVar", "default"), context
+            )
+        return default
+
+    def check_paramspec_default(self, default: Type, context: Context) -> Type:
+        typ = get_proper_type(default)
+        if isinstance(typ, Parameters):
+            for i, arg_type in enumerate(typ.arg_types):
+                arg_ptype = get_proper_type(arg_type)
+                if isinstance(arg_ptype, AnyType) and arg_ptype.is_from_error:
+                    self.fail(f"Argument {i} of ParamSpec default must be a type", context)
+        elif (
+            isinstance(typ, AnyType)
+            and typ.is_from_error
+            or not isinstance(typ, (AnyType, UnboundType))
+        ):
+            self.fail(
+                "The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec",
+                context,
+            )
+            default = AnyType(TypeOfAny.from_error)
+        return default
+
+    def check_typevartuple_default(self, default: Type, context: Context) -> Type:
+        typ = get_proper_type(default)
+        if not isinstance(typ, UnpackType):
+            self.fail("The default argument to TypeVarTuple must be an Unpacked tuple", context)
+            default = AnyType(TypeOfAny.from_error)
+        return default
+
     def check_typevarlike_name(self, call: CallExpr, name: str, context: Context) -> bool:
         """Checks that the name of a TypeVar or ParamSpec matches its variable."""
         name = unmangle(name)
@@ -4822,23 +4875,7 @@ class SemanticAnalyzer(
                     report_invalid_typevar_arg=False,
                 )
                 default = tv_arg or AnyType(TypeOfAny.from_error)
-                if isinstance(tv_arg, Parameters):
-                    for i, arg_type in enumerate(tv_arg.arg_types):
-                        typ = get_proper_type(arg_type)
-                        if isinstance(typ, AnyType) and typ.is_from_error:
-                            self.fail(
-                                f"Argument {i} of ParamSpec default must be a type", param_value
-                            )
-                elif (
-                    isinstance(default, AnyType)
-                    and default.is_from_error
-                    or not isinstance(default, (AnyType, UnboundType))
-                ):
-                    self.fail(
-                        "The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec",
-                        param_value,
-                    )
-                    default = AnyType(TypeOfAny.from_error)
+                default = self.check_paramspec_default(default, param_value)
             else:
                 # ParamSpec is different from a regular TypeVar:
                 # arguments are not semantically valid. But, allowed in runtime.
@@ -4899,12 +4936,7 @@ class SemanticAnalyzer(
                     allow_unpack=True,
                 )
                 default = tv_arg or AnyType(TypeOfAny.from_error)
-                if not isinstance(default, UnpackType):
-                    self.fail(
-                        "The default argument to TypeVarTuple must be an Unpacked tuple",
-                        param_value,
-                    )
-                    default = AnyType(TypeOfAny.from_error)
+                default = self.check_typevartuple_default(default, param_value)
             else:
                 self.fail(f'Unexpected keyword argument "{param_name}" for "TypeVarTuple"', s)
 
