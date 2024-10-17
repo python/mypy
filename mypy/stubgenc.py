@@ -11,6 +11,7 @@ import importlib
 import inspect
 import keyword
 import os.path
+from contextlib import suppress
 from types import FunctionType, ModuleType
 from typing import Any, Callable, Mapping
 
@@ -33,6 +34,7 @@ from mypy.stubutil import (
     ClassInfo,
     FunctionContext,
     SignatureGenerator,
+    generate_inline_generic,
     infer_method_arg_types,
     infer_method_ret_type,
 )
@@ -496,6 +498,8 @@ class InspectionStubGenerator(BaseStubGenerator):
                 "__firstlineno__",
                 "__static_attributes__",
                 "__annotate__",
+                "__orig_bases__",
+                "__parameters__",
             )
             or attr in self.IGNORED_DUNDERS
             or is_pybind_skipped_attribute(attr)  # For pickling
@@ -646,7 +650,17 @@ class InspectionStubGenerator(BaseStubGenerator):
 
         if docstring:
             docstring = self._indent_docstring(docstring)
-        output.extend(self.format_func_def(inferred, decorators=decorators, docstring=docstring))
+
+        if hasattr(obj, "__type_params__"):
+            generic = generate_inline_generic(obj.__type_params__)
+        else:
+            generic = ""
+
+        output.extend(
+            self.format_func_def(
+                inferred, decorators=decorators, docstring=docstring, generic=generic
+            )
+        )
         self._fix_iter(ctx, inferred, output)
 
     def _indent_docstring(self, docstring: str) -> str:
@@ -847,10 +861,16 @@ class InspectionStubGenerator(BaseStubGenerator):
             else:
                 attrs.append((attr, value))
 
+        inline_generic = ""
+
         for attr, value in attrs:
             if attr == "__hash__" and value is None:
                 # special case for __hash__
                 continue
+            elif attr == "__type_params__":
+                inline_generic = generate_inline_generic(value)
+                continue
+
             prop_type_name = self.strip_or_import(self.get_type_annotation(value))
             classvar = self.add_name("typing.ClassVar")
             static_properties.append(f"{self._indent}{attr}: {classvar}[{prop_type_name}] = ...")
@@ -858,12 +878,16 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.dedent()
 
         bases = self.get_base_types(cls)
+        if inline_generic != "":
+            # Removes typing.Generic form bases if it exists for python3.12 inline generics
+            with suppress(ValueError):
+                bases.remove("typing.Generic")
         if bases:
             bases_str = "(%s)" % ", ".join(bases)
         else:
             bases_str = ""
         if types or static_properties or rw_properties or methods or ro_properties:
-            output.append(f"{self._indent}class {class_name}{bases_str}:")
+            output.append(f"{self._indent}class {class_name}{inline_generic}{bases_str}:")
             for line in types:
                 if (
                     output
@@ -882,7 +906,7 @@ class InspectionStubGenerator(BaseStubGenerator):
             for line in ro_properties:
                 output.append(line)
         else:
-            output.append(f"{self._indent}class {class_name}{bases_str}: ...")
+            output.append(f"{self._indent}class {class_name}{inline_generic}{bases_str}: ...")
 
     def generate_variable_stub(self, name: str, obj: object, output: list[str]) -> None:
         """Generate stub for a single variable using runtime introspection.
