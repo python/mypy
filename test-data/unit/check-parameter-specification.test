@@ -2360,6 +2360,8 @@ def run2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwar
     func2(1, *p)  # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
     func2(1, 2, *p)  # E: Argument 2 has incompatible type "int"; expected "P.args" \
                      # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
+    func2(1, *args, *p)  # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
+    func2(1, *p, *args)  # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
     return func2(1, *args)
 
 def run3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
@@ -2379,5 +2381,6 @@ def run_bad2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.
 def run_bad3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, 1, *args)
     return func2(1, **kwargs)  # E: Argument 1 has incompatible type "int"; expected "P.args"
+
 
 [builtins fixtures/paramspec.pyi]
