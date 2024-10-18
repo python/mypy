@@ -159,7 +159,7 @@ class Mapper:
         else:
             return self.type_to_rtype(typ)
 
-    def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:
+    def fdef_to_sig(self, fdef: FuncDef, strict_dunders_typing: bool) -> FuncSignature:
         if isinstance(fdef.type, CallableType):
             arg_types = [
                 self.get_arg_rtype(typ, kind)
@@ -198,11 +198,14 @@ class Mapper:
             )
         ]
 
-        # We force certain dunder methods to return objects to support letting them
-        # return NotImplemented. It also avoids some pointless boxing and unboxing,
-        # since tp_richcompare needs an object anyways.
-        if fdef.name in ("__eq__", "__ne__", "__lt__", "__gt__", "__le__", "__ge__"):
-            ret = object_rprimitive
+        if not strict_dunders_typing:
+            # We force certain dunder methods to return objects to support letting them
+            # return NotImplemented. It also avoids some pointless boxing and unboxing,
+            # since tp_richcompare needs an object anyways.
+            # However, it also prevents some optimizations.
+            if fdef.name in ("__eq__", "__ne__", "__lt__", "__gt__", "__le__", "__ge__"):
+                ret = object_rprimitive
+
         return FuncSignature(args, ret)
 
     def is_native_module(self, module: str) -> bool:

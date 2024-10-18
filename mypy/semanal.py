@@ -4014,8 +4014,10 @@ class SemanticAnalyzer(
         # so we need to replace it with non-explicit Anys.
         res = make_any_non_explicit(res)
         if self.options.disallow_any_unimported and has_any_from_unimported_type(res):
-            self.msg.unimported_type_becomes_any("Type alias target", res, s)
-            res = make_any_non_unimported(res)
+            # Only show error message once, when the type is fully analyzed.
+            if not has_placeholder(res):
+                self.msg.unimported_type_becomes_any("Type alias target", res, s)
+                res = make_any_non_unimported(res)
         # Note: with the new (lazy) type alias representation we only need to set no_args to True
         # if the expected number of arguments is non-zero, so that aliases like `A = List` work
         # but not aliases like `A = TypeAliasType("A", List)` as these need explicit type params.
@@ -4069,6 +4071,8 @@ class SemanticAnalyzer(
                     existing.node.alias_tvars = alias_tvars
                     existing.node.no_args = no_args
                     updated = True
+                    # Invalidate recursive status cache in case it was previously set.
+                    existing.node._is_recursive = None
             else:
                 # Otherwise just replace existing placeholder with type alias.
                 existing.node = alias_node

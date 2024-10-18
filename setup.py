@@ -232,6 +232,7 @@ setup(
         "python2": "",
         "reports": "lxml",
         "install-types": "pip",
+        "faster-cache": "orjson",
     },
     python_requires=">=3.8",
     include_package_data=True,

@@ -399,8 +399,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: always do this in type_object_type by passing the original context
                 result.ret_type.line = e.line
                 result.ret_type.column = e.column
-            if isinstance(get_proper_type(self.type_context[-1]), TypeType):
-                # This is the type in a Type[] expression, so substitute type
+            if is_type_type_context(self.type_context[-1]):
+                # This is the type in a type[] expression, so substitute type
                 # variables with Any.
                 result = erasetype.erase_typevars(result)
         elif isinstance(node, MypyFile):
@@ -1504,10 +1504,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     member,
                     typ,
                     e,
-                    False,
-                    False,
-                    False,
-                    self.msg,
+                    is_lvalue=False,
+                    is_super=False,
+                    is_operator=False,
+                    msg=self.msg,
                     original_type=object_type,
                     chk=self.chk,
                     in_literal_context=self.is_literal_context(),
@@ -3302,10 +3302,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 e.name,
                 original_type,
                 e,
-                is_lvalue,
-                False,
-                False,
-                self.msg,
+                is_lvalue=is_lvalue,
+                is_super=False,
+                is_operator=False,
+                msg=self.msg,
                 original_type=original_type,
                 chk=self.chk,
                 in_literal_context=self.is_literal_context(),
@@ -3326,10 +3326,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             member,
             base_type,
             context,
-            False,
-            False,
-            False,
-            self.msg,
+            is_lvalue=False,
+            is_super=False,
+            is_operator=False,
+            msg=self.msg,
             original_type=base_type,
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
@@ -3809,11 +3809,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             method,
             base_type,
             context,
-            False,
-            False,
-            True,
-            self.msg,
+            is_lvalue=False,
+            is_super=False,
+            is_operator=True,
+            msg=self.msg,
             original_type=original_type,
+            self_type=base_type,
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
         )
@@ -6616,3 +6617,12 @@ def get_partial_instance_type(t: Type | None) -> PartialType | None:
     if t is None or not isinstance(t, PartialType) or t.type is None:
         return None
     return t
+
+
+def is_type_type_context(context: Type | None) -> bool:
+    context = get_proper_type(context)
+    if isinstance(context, TypeType):
+        return True
+    if isinstance(context, UnionType):
+        return any(is_type_type_context(item) for item in context.items)
+    return False

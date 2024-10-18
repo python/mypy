@@ -5575,7 +5575,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(typ, TypeVarType):
             # We could do better probably?
-            # Refine the the type variable's bound as our type in the case that
+            # Refine the type variable's bound as our type in the case that
             # callable() is true. This unfortunately loses the information that
             # the type is a type variable in that branch.
             # This matches what is done for isinstance, but it may be possible to
@@ -7570,10 +7570,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 name,
                 typ,
                 TempNode(AnyType(TypeOfAny.special_form)),
-                False,
-                False,
-                False,
-                self.msg,
+                is_lvalue=False,
+                is_super=False,
+                is_operator=False,
+                msg=self.msg,
                 original_type=typ,
                 chk=self,
                 # This is not a real attribute lookup so don't mess with deferring nodes.

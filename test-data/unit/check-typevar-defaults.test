@@ -717,3 +717,15 @@ def func_d3(
     reveal_type(c)  # N: Revealed type is "__main__.B[__main__.A[builtins.dict[builtins.int, builtins.float]]]"
     reveal_type(d)  # N: Revealed type is "__main__.B[builtins.int]"
 [builtins fixtures/dict.pyi]
+
+[case testTypeVarDefaultsAndTypeObjectTypeInUnion]
+from __future__ import annotations
+from typing import Generic
+from typing_extensions import TypeVar
+
+_I = TypeVar("_I", default=int)
+
+class C(Generic[_I]): pass
+
+t: type[C] | int = C
+[builtins fixtures/tuple.pyi]

@@ -4,15 +4,21 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import os
-import pathlib
 import re
 import shutil
 import sys
 import time
 from importlib import resources as importlib_resources
-from typing import IO, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
+from typing import IO, Any, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
 from typing_extensions import Literal
+
+orjson: Any
+try:
+    import orjson  # type: ignore[import-not-found, no-redef, unused-ignore]
+except ImportError:
+    orjson = None
 
 try:
     import _curses  # noqa: F401
@@ -195,7 +201,7 @@ def trim_source_line(line: str, max_len: int, col: int, min_width: int) -> tuple
     A typical result looks like this:
         ...some_variable = function_to_call(one_arg, other_arg) or...
 
-    Return the trimmed string and the column offset to to adjust error location.
+    Return the trimmed string and the column offset to adjust error location.
     """
     if max_len < 2 * min_width + 1:
         # In case the window is too tiny it is better to still show something.
@@ -411,9 +417,26 @@ def replace_object_state(
             pass
 
 
-def is_sub_path(path1: str, path2: str) -> bool:
-    """Given two paths, return if path1 is a sub-path of path2."""
-    return pathlib.Path(path2) in pathlib.Path(path1).parents
+def is_sub_path_normabs(path: str, dir: str) -> bool:
+    """Given two paths, return if path is a sub-path of dir.
+
+    Moral equivalent of: Path(dir) in Path(path).parents
+
+    Similar to the pathlib version:
+    - Treats paths case-sensitively
+    - Does not fully handle unnormalised paths (e.g. paths with "..")
+    - Does not handle a mix of absolute and relative paths
+    Unlike the pathlib version:
+    - Fast
+    - On Windows, assumes input has been slash normalised
+    - Handles even fewer unnormalised paths (e.g. paths with "." and "//")
+
+    As a result, callers should ensure that inputs have had os.path.abspath called on them
+    (note that os.path.abspath will normalise)
+    """
+    if not dir.endswith(os.sep):
+        dir += os.sep
+    return path.startswith(dir)
 
 
 if sys.platform == "linux" or sys.platform == "darwin":
@@ -888,3 +911,25 @@ def quote_docstring(docstr: str) -> str:
         return f"''{docstr_repr}''"
     else:
         return f'""{docstr_repr}""'
+
+
+def json_dumps(obj: object, debug: bool = False) -> bytes:
+    if orjson is not None:
+        if debug:
+            return orjson.dumps(obj, option=orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
+        else:
+            # TODO: If we don't sort keys here, testIncrementalInternalScramble fails
+            # We should document exactly what is going on there
+            return orjson.dumps(obj, option=orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
+
+    if debug:
+        return json.dumps(obj, indent=2, sort_keys=True).encode("utf-8")
+    else:
+        # See above for sort_keys comment
+        return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def json_loads(data: bytes) -> Any:
+    if orjson is not None:
+        return orjson.loads(data)
+    return json.loads(data)

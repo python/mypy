@@ -2160,3 +2160,19 @@ class MyProtocol(Protocol):
 
 def test() -> None: ...
 value: MyProtocol = test
+
+[case testSelfTypeUnionIter]
+from typing import Self, Iterator, Generic, TypeVar, Union
+
+T = TypeVar("T")
+
+class range(Generic[T]):
+    def __iter__(self) -> Self: ...
+    def __next__(self) -> T: ...
+
+class count:
+    def __iter__(self) -> Iterator[int]: ...
+
+def foo(x: Union[range[int], count]) -> None:
+    for item in x:
+        reveal_type(item)  # N: Revealed type is "builtins.int"

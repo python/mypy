@@ -63,6 +63,7 @@ files = [
     "run-bench.test",
     "run-mypy-sim.test",
     "run-dunders.test",
+    "run-dunders-special.test",
     "run-singledispatch.test",
     "run-attrs.test",
     "run-python37.test",
@@ -141,6 +142,7 @@ class TestRun(MypycDataSuite):
     optional_out = True
     multi_file = False
     separate = False  # If True, using separate (incremental) compilation
+    strict_dunder_typing = False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # setup.py wants to be run from the root directory of the package, which we accommodate
@@ -233,7 +235,11 @@ class TestRun(MypycDataSuite):
         groups = construct_groups(sources, separate, len(module_names) > 1)
 
         try:
-            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)
+            compiler_options = CompilerOptions(
+                multi_file=self.multi_file,
+                separate=self.separate,
+                strict_dunder_typing=self.strict_dunder_typing,
+            )
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
                 options=options,
@@ -400,6 +406,14 @@ class TestRunSeparate(TestRun):
     separate = True
     test_name_suffix = "_separate"
     files = ["run-multimodule.test", "run-mypy-sim.test"]
+
+
+class TestRunStrictDunderTyping(TestRun):
+    """Run the tests with strict dunder typing."""
+
+    strict_dunder_typing = True
+    test_name_suffix = "_dunder_typing"
+    files = ["run-dunders.test", "run-floats.test"]
 
 
 def fix_native_line_number(message: str, fnam: str, delta: int) -> str:

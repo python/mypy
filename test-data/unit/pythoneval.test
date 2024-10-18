@@ -11,56 +11,86 @@ print('hello, world')
 [out]
 hello, world
 
-[case testReversed]
+[case testMiscStdlibFeatures]
+# Various legacy tests merged together to speed up test runtimes.
+
+def f(x: object) -> None: pass
+
+# testReversed
 from typing import Reversible
-class A(Reversible):
+class R(Reversible):
     def __iter__(self): return iter('oof')
     def __reversed__(self): return iter('foo')
-print(list(reversed(range(5))))
-print(list(reversed([1,2,3])))
-print(list(reversed('abc')))
-print(list(reversed(A())))
-[out]
--- Escape bracket at line beginning
-\[4, 3, 2, 1, 0]
-\[3, 2, 1]
-\['c', 'b', 'a']
-\['f', 'o', 'o']
+f(list(reversed(range(5))))
+f(list(reversed([1,2,3])))
+f(list(reversed('abc')))
+f(list(reversed(R())))
 
-[case testIntAndFloatConversion]
+# testIntAndFloatConversion
 from typing import SupportsInt, SupportsFloat
 class A(SupportsInt):
     def __int__(self): return 5
 class B(SupportsFloat):
     def __float__(self): return 1.2
-print(int(1))
-print(int(6.2))
-print(int('3'))
-print(int(b'4'))
-print(int(A()))
-print(float(-9))
-print(float(B()))
-[out]
-1
-6
-3
-4
-5
--9.0
-1.2
+f(int(1))
+f(int(6.2))
+f(int('3'))
+f(int(b'4'))
+f(int(A()))
+f(float(-9))
+f(float(B()))
 
-[case testAbs]
+# testAbs
 from typing import SupportsAbs
-class A(SupportsAbs[float]):
+class Ab(SupportsAbs[float]):
     def __abs__(self) -> float: return 5.5
 
-print(abs(-1))
-print(abs(-1.2))
-print(abs(A()))
-[out]
-1
-1.2
-5.5
+f(abs(-1))
+f(abs(-1.2))
+f(abs(Ab()))
+
+# testRound
+from typing import SupportsRound
+class Ro(SupportsRound):
+    def __round__(self, ndigits=0): return 'x%d' % ndigits
+f(round(1.6))
+f(round(Ro()))
+f(round(Ro(), 2))
+
+# testCallMethodViaTypeObject
+list.__add__([1, 2], [3, 4])
+
+# testInheritedClassAttribute
+import typing
+class AA:
+    x = 1
+    def f(self: typing.Optional["AA"]) -> None: pass
+class BB(AA):
+    pass
+BB.f(None)
+f(BB.x)
+
+# testSpecialAttributes
+class Doc:
+    """A docstring!"""
+f(Doc().__doc__)
+f(Doc().__class__)
+
+# testFunctionAttributes
+f(ord.__class__)
+f(type(ord.__doc__ or '' + ''))
+f(ord.__name__)
+f(ord.__module__)
+
+# testModuleAttributes
+import math
+f(type(__spec__))
+f(math.__name__)
+f(math.__spec__.name)
+f(type(math.__dict__))
+f(type(math.__doc__ or ''))
+f(type(math.__spec__).__name__)
+f(math.__class__)
 
 [case testAbs2]
 n: int
@@ -72,77 +102,6 @@ abs(1.1) + 'x'  # Error
 [out]
 _program.py:4: error: Unsupported operand types for + ("int" and "str")
 _program.py:6: error: Unsupported operand types for + ("float" and "str")
-
-[case testRound]
-from typing import SupportsRound
-class A(SupportsRound):
-    def __round__(self, ndigits=0): return 'x%d' % ndigits
-print(round(1.6))
-print(round(A()))
-print(round(A(), 2))
-[out]
-2
-x0
-x2
-
-[case testCallMethodViaTypeObject]
-import typing
-print(list.__add__([1, 2], [3, 4]))
-[out]
-\[1, 2, 3, 4]
-
-[case testInheritedClassAttribute]
-import typing
-class A:
-    x = 1
-    def f(self: typing.Optional["A"]) -> None: print('f')
-class B(A):
-    pass
-B.f(None)
-print(B.x)
-[out]
-f
-1
-
-[case testModuleAttributes]
-import math
-import typing
-print(type(__spec__))
-print(math.__name__)
-print(math.__spec__.name)
-print(type(math.__dict__))
-print(type(math.__doc__ or ''))
-print(type(math.__spec__).__name__)
-print(math.__class__)
-[out]
-<class 'NoneType'>
-math
-math
-<class 'dict'>
-<class 'str'>
-ModuleSpec
-<class 'module'>
-
-[case testSpecialAttributes]
-import typing
-class A:
-    """A docstring!"""
-print(A().__doc__)
-print(A().__class__)
-[out]
-A docstring!
-<class '__main__.A'>
-
-[case testFunctionAttributes]
-import typing
-ord.__class__
-print(type(ord.__doc__ or '' + ''))
-print(ord.__name__)
-print(ord.__module__)
-[out]
-<class 'str'>
-ord
-builtins
 
 [case testTypeAttributes]
 import typing
@@ -283,7 +242,7 @@ f.write('x')
 f.write(b'x')
 f.foobar()
 [out]
-_program.py:3: error: Argument 1 to "write" of "TextIOBase" has incompatible type "bytes"; expected "str"
+_program.py:3: error: Argument 1 to "write" of "_TextIOBase" has incompatible type "bytes"; expected "str"
 _program.py:4: error: "TextIOWrapper[_WrappedBuffer]" has no attribute "foobar"
 
 [case testOpenReturnTypeInference]
@@ -293,9 +252,9 @@ reveal_type(open('x', 'rb'))
 mode = 'rb'
 reveal_type(open('x', mode))
 [out]
-_program.py:1: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
-_program.py:2: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
-_program.py:3: note: Revealed type is "io.BufferedReader"
+_program.py:1: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
+_program.py:2: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
+_program.py:3: note: Revealed type is "_io.BufferedReader"
 _program.py:5: note: Revealed type is "typing.IO[Any]"
 
 [case testOpenReturnTypeInferenceSpecialCases]
@@ -304,8 +263,8 @@ reveal_type(open(file='x', mode='rb'))
 mode = 'rb'
 reveal_type(open(mode=mode, file='r'))
 [out]
-_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is "io.BufferedReader"
-_testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is "io.BufferedReader"
+_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is "_io.BufferedReader"
+_testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is "_io.BufferedReader"
 _testOpenReturnTypeInferenceSpecialCases.py:4: note: Revealed type is "typing.IO[Any]"
 
 [case testPathOpenReturnTypeInference]
@@ -317,9 +276,9 @@ reveal_type(p.open('rb'))
 mode = 'rb'
 reveal_type(p.open(mode))
 [out]
-_program.py:3: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
-_program.py:4: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
-_program.py:5: note: Revealed type is "io.BufferedReader"
+_program.py:3: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
+_program.py:4: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
+_program.py:5: note: Revealed type is "_io.BufferedReader"
 _program.py:7: note: Revealed type is "typing.IO[Any]"
 
 [case testPathOpenReturnTypeInferenceSpecialCases]
@@ -330,8 +289,8 @@ reveal_type(p.open(errors='replace', mode='r'))
 mode = 'r'
 reveal_type(p.open(mode=mode, errors='replace'))
 [out]
-_program.py:3: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
-_program.py:4: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
+_program.py:3: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
+_program.py:4: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
 _program.py:6: note: Revealed type is "typing.IO[Any]"
 
 [case testGenericPatterns]

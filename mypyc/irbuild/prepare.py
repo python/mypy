@@ -108,9 +108,11 @@ def build_type_map(
     for module, cdef in classes:
         with catch_errors(module.path, cdef.line):
             if mapper.type_to_ir[cdef.info].is_ext_class:
-                prepare_class_def(module.path, module.fullname, cdef, errors, mapper)
+                prepare_class_def(module.path, module.fullname, cdef, errors, mapper, options)
             else:
-                prepare_non_ext_class_def(module.path, module.fullname, cdef, errors, mapper)
+                prepare_non_ext_class_def(
+                    module.path, module.fullname, cdef, errors, mapper, options
+                )
 
     # Prepare implicit attribute accessors as needed if an attribute overrides a property.
     for module, cdef in classes:
@@ -123,7 +125,7 @@ def build_type_map(
     # is conditionally defined.
     for module in modules:
         for func in get_module_func_defs(module):
-            prepare_func_def(module.fullname, None, func, mapper)
+            prepare_func_def(module.fullname, None, func, mapper, options)
             # TODO: what else?
 
     # Check for incompatible attribute definitions that were not
@@ -205,27 +207,39 @@ def get_module_func_defs(module: MypyFile) -> Iterable[FuncDef]:
 
 
 def prepare_func_def(
-    module_name: str, class_name: str | None, fdef: FuncDef, mapper: Mapper
+    module_name: str,
+    class_name: str | None,
+    fdef: FuncDef,
+    mapper: Mapper,
+    options: CompilerOptions,
 ) -> FuncDecl:
     kind = (
         FUNC_STATICMETHOD
         if fdef.is_static
         else (FUNC_CLASSMETHOD if fdef.is_class else FUNC_NORMAL)
     )
-    decl = FuncDecl(fdef.name, class_name, module_name, mapper.fdef_to_sig(fdef), kind)
+    sig = mapper.fdef_to_sig(fdef, options.strict_dunders_typing)
+    decl = FuncDecl(fdef.name, class_name, module_name, sig, kind)
     mapper.func_to_decl[fdef] = decl
     return decl
 
 
 def prepare_method_def(
-    ir: ClassIR, module_name: str, cdef: ClassDef, mapper: Mapper, node: FuncDef | Decorator
+    ir: ClassIR,
+    module_name: str,
+    cdef: ClassDef,
+    mapper: Mapper,
+    node: FuncDef | Decorator,
+    options: CompilerOptions,
 ) -> None:
     if isinstance(node, FuncDef):
-        ir.method_decls[node.name] = prepare_func_def(module_name, cdef.name, node, mapper)
+        ir.method_decls[node.name] = prepare_func_def(
+            module_name, cdef.name, node, mapper, options
+        )
     elif isinstance(node, Decorator):
         # TODO: do something about abstract methods here. Currently, they are handled just like
         # normal methods.
-        decl = prepare_func_def(module_name, cdef.name, node.func, mapper)
+        decl = prepare_func_def(module_name, cdef.name, node.func, mapper, options)
         if not node.decorators:
             ir.method_decls[node.name] = decl
         elif isinstance(node.decorators[0], MemberExpr) and node.decorators[0].name == "setter":
@@ -278,7 +292,12 @@ def can_subclass_builtin(builtin_base: str) -> bool:
 
 
 def prepare_class_def(
-    path: str, module_name: str, cdef: ClassDef, errors: Errors, mapper: Mapper
+    path: str,
+    module_name: str,
+    cdef: ClassDef,
+    errors: Errors,
+    mapper: Mapper,
+    options: CompilerOptions,
 ) -> None:
     """Populate the interface-level information in a class IR.
 
@@ -345,7 +364,7 @@ def prepare_class_def(
     ir.mro = mro
     ir.base_mro = base_mro
 
-    prepare_methods_and_attributes(cdef, ir, path, module_name, errors, mapper)
+    prepare_methods_and_attributes(cdef, ir, path, module_name, errors, mapper, options)
     prepare_init_method(cdef, ir, module_name, mapper)
 
     for base in bases:
@@ -357,7 +376,13 @@ def prepare_class_def(
 
 
 def prepare_methods_and_attributes(
-    cdef: ClassDef, ir: ClassIR, path: str, module_name: str, errors: Errors, mapper: Mapper
+    cdef: ClassDef,
+    ir: ClassIR,
+    path: str,
+    module_name: str,
+    errors: Errors,
+    mapper: Mapper,
+    options: CompilerOptions,
 ) -> None:
     """Populate attribute and method declarations."""
     info = cdef.info
@@ -379,20 +404,20 @@ def prepare_methods_and_attributes(
                     add_setter_declaration(ir, name, attr_rtype, module_name)
                 ir.attributes[name] = attr_rtype
         elif isinstance(node.node, (FuncDef, Decorator)):
-            prepare_method_def(ir, module_name, cdef, mapper, node.node)
+            prepare_method_def(ir, module_name, cdef, mapper, node.node, options)
         elif isinstance(node.node, OverloadedFuncDef):
             # Handle case for property with both a getter and a setter
             if node.node.is_property:
                 if is_valid_multipart_property_def(node.node):
                     for item in node.node.items:
-                        prepare_method_def(ir, module_name, cdef, mapper, item)
+                        prepare_method_def(ir, module_name, cdef, mapper, item, options)
                 else:
                     errors.error("Unsupported property decorator semantics", path, cdef.line)
 
             # Handle case for regular function overload
             else:
                 assert node.node.impl
-                prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
+                prepare_method_def(ir, module_name, cdef, mapper, node.node.impl, options)
 
     if ir.builtin_base:
         ir.attributes.clear()
@@ -477,7 +502,7 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
     # Set up a constructor decl
     init_node = cdef.info["__init__"].node
     if not ir.is_trait and not ir.builtin_base and isinstance(init_node, FuncDef):
-        init_sig = mapper.fdef_to_sig(init_node)
+        init_sig = mapper.fdef_to_sig(init_node, True)
 
         defining_ir = mapper.type_to_ir.get(init_node.info)
         # If there is a nontrivial __init__ that wasn't defined in an
@@ -504,24 +529,29 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
 
 
 def prepare_non_ext_class_def(
-    path: str, module_name: str, cdef: ClassDef, errors: Errors, mapper: Mapper
+    path: str,
+    module_name: str,
+    cdef: ClassDef,
+    errors: Errors,
+    mapper: Mapper,
+    options: CompilerOptions,
 ) -> None:
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 
     for node in info.names.values():
         if isinstance(node.node, (FuncDef, Decorator)):
-            prepare_method_def(ir, module_name, cdef, mapper, node.node)
+            prepare_method_def(ir, module_name, cdef, mapper, node.node, options)
         elif isinstance(node.node, OverloadedFuncDef):
             # Handle case for property with both a getter and a setter
             if node.node.is_property:
                 if not is_valid_multipart_property_def(node.node):
                     errors.error("Unsupported property decorator semantics", path, cdef.line)
                 for item in node.node.items:
-                    prepare_method_def(ir, module_name, cdef, mapper, item)
+                    prepare_method_def(ir, module_name, cdef, mapper, item, options)
             # Handle case for regular function overload
             else:
-                prepare_method_def(ir, module_name, cdef, mapper, get_func_def(node.node))
+                prepare_method_def(ir, module_name, cdef, mapper, get_func_def(node.node), options)
 
     if any(cls in mapper.type_to_ir and mapper.type_to_ir[cls].is_ext_class for cls in info.mro):
         errors.error(
