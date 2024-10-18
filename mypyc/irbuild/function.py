@@ -54,13 +54,7 @@ from mypyc.ir.ops import (
     Unreachable,
     Value,
 )
-from mypyc.ir.rtypes import (
-    RInstance,
-    bool_rprimitive,
-    dict_rprimitive,
-    int_rprimitive,
-    object_rprimitive,
-)
+from mypyc.ir.rtypes import bool_rprimitive, dict_rprimitive, int_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget, gen_arg_defaults
 from mypyc.irbuild.callable_class import (
     add_call_to_callable_class,
@@ -260,7 +254,7 @@ def gen_func_item(
 
     if builder.fn_info.is_generator:
         # Do a first-pass and generate a function that just returns a generator object.
-        gen_generator_func(builder)
+        gen_generator_func(builder, sig)
         args, _, blocks, ret_type, fn_info = builder.leave()
         func_ir, func_reg = gen_func_ir(
             builder, args, blocks, sig, fn_info, cdef, is_singledispatch
@@ -268,7 +262,7 @@ def gen_func_item(
 
         # Re-enter the FuncItem and visit the body of the function this time.
         builder.enter(fn_info)
-        setup_env_for_generator_class(builder)
+        setup_env_for_generator_class(builder, sig)
         load_outer_envs(builder, builder.fn_info.generator_class)
         top_level = builder.top_level_fn_info()
         if (
@@ -281,11 +275,11 @@ def gen_func_item(
         create_switch_for_generator_class(builder)
         add_raise_exception_blocks_to_generator_class(builder, fitem.line)
     else:
-        load_env_registers(builder)
+        load_env_registers(builder, sig)
         gen_arg_defaults(builder)
 
     if builder.fn_info.contains_nested and not builder.fn_info.is_generator:
-        finalize_env_class(builder)
+        finalize_env_class(builder, sig)
 
     builder.ret_types[-1] = sig.ret_type
 
@@ -657,7 +651,7 @@ def gen_glue_method(
 
     rt_args = list(base_sig.args)
     if target.decl.kind == FUNC_NORMAL:
-        rt_args[0] = RuntimeArg(base_sig.args[0].name, RInstance(cls))
+        rt_args[0] = RuntimeArg(base_sig.args[0].name, cls.rtype)
 
     arg_info = get_args(builder, rt_args, line)
     args, arg_kinds, arg_names = arg_info.args, arg_info.arg_kinds, arg_info.arg_names
@@ -759,7 +753,7 @@ def gen_glue_property(
     """
     builder.enter()
 
-    rt_arg = RuntimeArg(SELF_NAME, RInstance(cls))
+    rt_arg = RuntimeArg(SELF_NAME, cls.rtype)
     self_target = builder.add_self_to_env(cls)
     arg = builder.read(self_target, line)
     builder.ret_types[-1] = sig.ret_type

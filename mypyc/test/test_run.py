@@ -68,6 +68,7 @@ files = [
     "run-attrs.test",
     "run-python37.test",
     "run-python38.test",
+    "run-valuetype.test",
 ]
 
 if sys.version_info >= (3, 10):

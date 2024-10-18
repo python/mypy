@@ -1,0 +1,319 @@
+[case testValueTypeBasic]
+from typing import final, Final
+from mypy_extensions import mypyc_attr, i32
+
+@final
+@mypyc_attr(value_type=True)
+class Vector2I:
+    def __init__(self, x: i32, y: i32) -> None:
+        self.x: Final = x
+        self.y: Final = y
+
+    def __add__(self, other: "Vector2I") -> "Vector2I":
+        return Vector2I(self.x + other.x, self.y + other.y)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Vector2I):
+            return NotImplemented
+        return self.x == other.x and self.y == other.y
+
+def test_basic_value_type() -> None:
+    a = Vector2I(1, 2)
+    b = Vector2I(3, 4)
+    c = a.__add__(b)
+    assert c == Vector2I(4, 6)
+
+def test_value_type_operator_is() -> None:
+    # The 'is' operator have undefined result for value types.
+    # however it must not raise an error.
+    Vector2I(1, 2) is Vector2I(1, 2)
+
+[case testValueTypeInheritance]
+from typing import final, Final
+from mypy_extensions import mypyc_attr, i32
+
+class A:
+    def __init__(self, x: i32) -> None:
+        self.x: Final = x
+
+    def method(self) -> i32:
+        return self.x + 4
+
+    def method2(self) -> i32:
+        return self.x + 4
+
+    @property
+    def prop(self) -> i32:
+        return self.x + 4
+
+    @property
+    def prop2(self) -> i32:
+        return self.x + 4
+
+@final
+@mypyc_attr(value_type=True)
+class B(A):
+    def __init__(self, x: i32, y: i32) -> None:
+        super().__init__(x + 1)
+        self.y: Final = y
+
+    def method2(self) -> i32:
+        return self.x + 7
+
+    @property
+    def prop2(self) -> i32:
+        return self.x + 7
+
+
+def test_value_type_inheritance() -> None:
+    # Tests with inheritance overriding methods and properties
+    assert A(1).x == 1
+    assert B(1, 3).x == 2
+    assert B(1, 3).y == 3
+    assert A(1).method() == 5
+    assert A(1).method2() == 5
+    assert A(1).prop == 5
+    assert A(1).prop2 == 5
+    assert B(1, 3).method() == 6
+    assert B(1, 3).method2() == 9
+    assert B(1, 3).prop == 6
+    assert B(1, 3).prop2 == 9
+
+
+def test_value_type_inheritance_is() -> None:
+    # however it must not raise an error.
+    assert not (B(1, 3) is A(1))
+    assert not (A(1) is B(1, 3))
+    assert B(1, 3) is not A(1)
+    assert A(1) is not B(1, 3)
+
+def f(a: A) -> i32:
+    return a.x
+
+def fcast(a: object) -> i32:
+    assert isinstance(a, A)
+    return a.x
+
+def fcast2(a: object) -> i32:
+    assert isinstance(a, B)
+    return a.x
+
+def test_value_type_boxing() -> None:
+    assert f(A(1)) == 1
+    assert f(B(1, 3)) == 2
+    assert fcast(A(1)) == 1
+    assert fcast(B(1, 3)) == 2
+    assert fcast2(B(1, 3)) == 2
+
+[case testValueTypeNest]
+from typing import final, Final
+from mypy_extensions import mypyc_attr, i32
+
+@final
+@mypyc_attr(value_type=True)
+class Vector2I:
+    def __init__(self, x: i32, y: i32) -> None:
+        self.x: Final = x
+        self.y: Final = y
+
+@final
+@mypyc_attr(value_type=True)
+class Fig:
+    def __init__(self, name: str, v: Vector2I) -> None:
+        self.name: Final = name
+        self.pos: Final = v
+
+def test_value_type_nest() -> None:
+    f = Fig("fig", Vector2I(1, 2))
+    assert f.name == "fig"
+    assert f.pos.x == 1
+    assert f.pos.y == 2
+
+[case testValueTypeNest2]
+from typing import final, Final
+from mypy_extensions import mypyc_attr, i32
+
+@final
+@mypyc_attr(value_type=True)
+class Vector2I:
+    def __init__(self, x: i32, y: i32) -> None:
+        self.x: Final = x
+        self.y: Final = y
+
+# NON VALUE TYPE
+class Fig:
+    def __init__(self, name: str, v: Vector2I) -> None:
+        self.name = name
+        self.pos = v
+
+def test_value_type_nest() -> None:
+    f = Fig("fig", Vector2I(1, 2))
+    assert f.name == "fig"
+    assert f.pos.x == 1
+    assert f.pos.y == 2
+
+[case testValueTypeInSeq]
+from typing import List, final, Final
+from mypy_extensions import mypyc_attr, i32
+
+@final
+@mypyc_attr(value_type=True)
+class A:
+    def __init__(self, x: i32, y: i32) -> None:
+        self.x: Final = x
+
+def test_value_type_in_list() -> None:
+    a = A(1, 2)
+    l = [a, a]
+    assert l[0].x == 1
+    assert l[1].x == 1
+
+def test_value_type_in_list2() -> None:
+    l = [A(1, 2), A(1, 2)]
+    assert l[0].x == 1
+    assert l[1].x == 1
+
+def test_value_type_in_list3() -> None:
+    l = [A(1, 2), A(5, 7)]
+    assert l[0].x == 1
+    assert l[1].x == 5
+    assert l[0] != A(1, 2)
+    assert l[1] != A(5, 7)
+
+def test_value_type_in_list4() -> None:
+    l: List[object] = [A(1, 2), "test"]
+    assert l[0] != A(1, 2)
+    assert isinstance(l[0], A)
+    assert l[0].x == 1
+    assert l[1] == "test"
+
+def test_value_type_in_tuple() -> None:
+    l = (A(1, 2), "test")
+    assert l[0] != A(1, 2)
+    assert l[0].x == 1
+    assert l[1] == "test"
+
+[case testValueTypeInDictAndDunders]
+from typing import Dict, final, Final
+from mypy_extensions import mypyc_attr, i32
+
+@final
+@mypyc_attr(value_type=True)
+class A:
+    def __init__(self, x: i32, y: i32) -> None:
+        self.x: Final = x
+
+    def __hash__(self) -> int:
+        return hash(self.x)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, A):
+            return NotImplemented
+        return self.x == other.x
+
+    def __len__(self) -> int:
+        return 1
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, A):
+            return NotImplemented
+        return self.x < other.x
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, A):
+            return NotImplemented
+        return self.x > other.x
+
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, A):
+            return NotImplemented
+        return self.x <= other.x
+
+    def __ge__(self, other: object) -> bool:
+        if not isinstance(other, A):
+            return NotImplemented
+        return self.x >= other.x
+
+    def __contains__(self, item: object) -> bool:
+        return isinstance(item, i32) and item == self.x
+
+    def __bool__(self) -> bool:
+        return self.x != 0
+
+    def __str__(self) -> str:
+        return f"A({self.x})"
+
+    def __repr__(self) -> str:
+        return f"A({self.x})"
+
+def test_value_type_in_key() -> None:
+    a = A(1, 2)
+    d = {a: 1}
+    assert d[A(1,5)] == 1
+
+def test_value_type_in_val() -> None:
+    a = A(1, 2)
+    d = {1: a}
+    assert d[1].x == 1
+    assert d[1] == A(1, 2)
+
+def test_value_type_in_set() -> None:
+    a = A(1, 2)
+    s = {a}
+    assert A(1, 2) in s
+
+def test_hash() -> None:
+    a = A(1, 2)
+    assert hash(a) == hash(1)
+
+def test_eq() -> None:
+    assert A(1, 2) == A(1, 2)
+    assert A(1, 2) != A(2, 3)
+    assert A(1, 2) != 1
+    assert 1 != A(1, 2)
+
+def test_bool() -> None:
+    assert bool(A(1, 2))
+    assert not bool(A(0, 2))
+
+def test_len() -> None:
+    assert len(A(1, 2)) == 1
+
+def test_str() -> None:
+    assert str(A(1, 2)) == "A(1)"
+    assert repr(A(1, 2)) == "A(1)"
+
+def test_cmp() -> None:
+    a = A(1, 2)
+    b = A(2, 3)
+    assert a < b
+    assert a <= b
+    assert b > a
+    assert b >= a
+    assert not a > b
+    assert not a >= b
+    assert not b < a
+    assert not b <= a
+    assert 1 in a
+    assert 2 not in a
+
+[case testValueTypeLifetime]
+from typing import final, Final, NamedTuple
+from mypy_extensions import mypyc_attr
+
+class A(NamedTuple):
+    n: str
+
+@final
+@mypyc_attr(value_type=True)
+class B:
+    def __init__(self, a: A) -> None:
+        self.a: Final = a
+
+def f() -> B:
+    # A instance is created in the function scope
+    # should be keep alive after the function returns
+    return B(A(n="test"))
+
+def test_value_type_lifetime() -> None:
+    assert f().a.n == "test"

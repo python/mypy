@@ -30,7 +30,7 @@ from mypyc.ir.ops import (
     Unreachable,
     Value,
 )
-from mypyc.ir.rtypes import RInstance, int_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import int_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
@@ -49,11 +49,11 @@ from mypyc.primitives.exc_ops import (
 )
 
 
-def gen_generator_func(builder: IRBuilder) -> None:
+def gen_generator_func(builder: IRBuilder, sig: FuncSignature) -> None:
     setup_generator_class(builder)
-    load_env_registers(builder)
+    load_env_registers(builder, sig)
     gen_arg_defaults(builder)
-    finalize_env_class(builder)
+    finalize_env_class(builder, sig)
     builder.add(Return(instantiate_generator_class(builder)))
 
 
@@ -84,7 +84,7 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
     name = f"{builder.fn_info.namespaced_name()}_gen"
 
     generator_class_ir = ClassIR(name, builder.module_name, is_generated=True)
-    generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
+    generator_class_ir.attributes[ENV_ATTR_NAME] = builder.fn_info.env_class.rtype
     generator_class_ir.mro = [generator_class_ir]
 
     builder.classes.append(generator_class_ir)
@@ -312,7 +312,7 @@ def add_await_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
         builder.add(Return(builder.self()))
 
 
-def setup_env_for_generator_class(builder: IRBuilder) -> None:
+def setup_env_for_generator_class(builder: IRBuilder, sig: FuncSignature) -> None:
     """Populates the environment for a generator class."""
     fitem = builder.fn_info.fitem
     cls = builder.fn_info.generator_class
@@ -340,7 +340,7 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
 
     # Add arguments from the original generator function to the
     # environment of the generator class.
-    add_args_to_env(builder, local=False, base=cls, reassign=False)
+    add_args_to_env(builder, sig, local=False, base=cls, reassign=False)
 
     # Set the next label register for the generator class.
     cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)

@@ -15,7 +15,14 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
+from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_NORMAL,
+    FUNC_STATICMETHOD,
+    FuncDecl,
+    FuncIR,
+    all_values,
+)
 from mypyc.ir.ops import (
     ERR_FALSE,
     NAMESPACE_MODULE,
@@ -73,6 +80,7 @@ from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
+    RInstanceValue,
     RStruct,
     RTuple,
     RType,
@@ -229,6 +237,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 cond = self.emitter.tuple_undefined_check_cond(
                     typ, self.reg(op.value), self.c_error_value, compare
                 )
+            elif isinstance(typ, RInstanceValue):
+                cond = f"{self.reg(op.value)}.vtable {compare} NULL"
             else:
                 cond = f"{self.reg(op.value)} {compare} {self.c_error_value(typ)}"
         else:
@@ -278,7 +288,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
-            # We sometimes assign from an integer prepresentation of a pointer
+            # We sometimes assign from an integer representation of a pointer
             # to a real pointer, and C compilers insist on a cast.
             if op.src.type.is_unboxed and not op.dest.type.is_unboxed:
                 src = f"(void *){src}"
@@ -352,7 +362,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if op.class_type.class_ir.is_trait:
                 assert not decl_cl.is_trait
                 cast = f"({decl_cl.struct_name(self.emitter.names)} *)"
-            return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
+
+            if op.obj.type.is_unboxed:
+                return f"{obj}.{self.emitter.attr(op.attr)}"
+            else:
+                return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
 
     def visit_get_attr(self, op: GetAttr) -> None:
         dest = self.reg(op)
@@ -383,12 +397,14 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
-            self.emitter.emit_line(f"{dest} = {attr_expr};")
             always_defined = cl.is_always_defined(op.attr)
+            # This steals the reference to src, so we don't need to increment the arg
+            self.emitter.emit_line(f"{dest} = {attr_expr};")
+
             merged_branch = None
             if not always_defined:
                 self.emitter.emit_undefined_attr_check(
-                    attr_rtype, dest, "==", obj, op.attr, cl, unlikely=True
+                    attr_rtype, dest, "==", obj, op.attr, rtype, unlikely=True
                 )
                 branch = self.next_branch()
                 if branch is not None:
@@ -435,7 +451,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             dest = self.reg(op)
         obj = self.reg(op.obj)
         src = self.reg(op.src)
-        rtype = op.class_type
+        rtype = op.obj.type
+        assert isinstance(rtype, RInstance)
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
         if cl.get_method(op.attr):
@@ -470,7 +487,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 always_defined = cl.is_always_defined(op.attr)
                 if not always_defined:
                     self.emitter.emit_undefined_attr_check(
-                        attr_rtype, attr_expr, "!=", obj, op.attr, cl
+                        attr_rtype, attr_expr, "!=", obj, op.attr, rtype
                     )
                 self.emitter.emit_dec_ref(attr_expr, attr_rtype)
                 if not always_defined:
@@ -478,7 +495,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             elif attr_rtype.error_overlap and not cl.is_always_defined(op.attr):
                 # If there is overlap with the error value, update bitmap to mark
                 # attribute as defined.
-                self.emitter.emit_attr_bitmap_set(src, obj, attr_rtype, cl, op.attr)
+                self.emitter.emit_attr_bitmap_set(src, obj, attr_rtype, rtype, op.attr)
 
             # This steals the reference to src, so we don't need to increment the arg
             self.emitter.emit_line(f"{attr_expr} = {src};")
@@ -553,6 +570,20 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if method.decl.kind == FUNC_STATICMETHOD
             else [f"(PyObject *)Py_TYPE({obj})"] if method.decl.kind == FUNC_CLASSMETHOD else [obj]
         )
+        need_box_obj = (
+            method.decl.kind == FUNC_NORMAL
+            and rtype.is_unboxed
+            and not method.args[0].type.is_unboxed
+        )
+        obj_boxed = ""
+        if need_box_obj:
+            # for cases where obj.method(...) is called and obj is unboxed, but method
+            # expects a boxed due inheritance or trait. e.g. obj is a value type
+            # but method comes from a parent which not
+            obj_boxed = self.temp_name()
+            self.emitter.emit_box(obj, obj_boxed, rtype, declare_dest=True)
+            obj_args = [obj_boxed]
+
         args = ", ".join(obj_args + [self.reg(arg) for arg in op_args])
         mtype = native_function_type(method, self.emitter)
         version = "_TRAIT" if rtype.class_ir.is_trait else ""
@@ -576,6 +607,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     name,
                 )
             )
+
+        if need_box_obj:
+            self.emitter.emit_dec_ref(obj_boxed, RInstance(rtype.class_ir))
 
     def visit_inc_ref(self, op: IncRef) -> None:
         src = self.reg(op.src)
