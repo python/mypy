@@ -1269,19 +1269,14 @@ def process_options(
     options = Options()
     strict_option_set = False
 
-    def set_strict_flags() -> None:
-        nonlocal strict_option_set
-        strict_option_set = True
-        for dest, value in strict_flag_assignments:
-            setattr(options, dest, value)
-
     # Parse config file first, so command line can override.
-    parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
+    parse_config_file(options, strict_flag_assignments, config_file, stdout, stderr)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
     if getattr(dummy, "special-opts:strict"):
-        set_strict_flags()
+        for dest, value in strict_flag_assignments:
+            setattr(options, dest, value)
 
     # Override cache_dir if provided in the environment
     environ_cache_dir = os.getenv("MYPY_CACHE_DIR", "")
