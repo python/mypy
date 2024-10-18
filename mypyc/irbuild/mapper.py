@@ -25,7 +25,6 @@ from mypy.types import (
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.rtypes import (
-    RInstance,
     RTuple,
     RType,
     RUnion,
@@ -93,7 +92,7 @@ class Mapper:
             elif typ.type.fullname == "builtins.range":
                 return range_rprimitive
             elif typ.type in self.type_to_ir:
-                inst = RInstance(self.type_to_ir[typ.type])
+                inst = self.type_to_ir[typ.type].rtype
                 # Treat protocols as Union[protocol, object], so that we can do fast
                 # method calls in the cases where the protocol is explicitly inherited from
                 # and fall back to generic operations when it isn't.
