@@ -334,6 +334,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     scope: CheckerScope
     # Stack of function return types
     return_types: list[Type]
+    # Registry of the return types already evaluated when checking a function
+    # definition that includes constrained type variables
+    previously_expanded_return_types: list[Type]
     # Flags; true for dynamically typed functions
     dynamic_funcs: list[bool]
     # Stack of collections of variables with partial types
@@ -404,6 +407,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.binder = ConditionalTypeBinder()
         self.globals = tree.names
         self.return_types = []
+        self.previously_expanded_return_types = []
         self.dynamic_funcs = []
         self.partial_types = []
         self.partial_reported = set()
@@ -1456,9 +1460,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     ):
                         self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
 
-            self.return_types.pop()
+            self.previously_expanded_return_types.append(self.return_types.pop())
 
             self.binder = old_binder
+        self.previously_expanded_return_types.clear()
 
     def is_var_redefined_in_outer_context(self, v: Var, after_line: int) -> bool:
         """Can the variable be assigned to at module top level or outer function?
@@ -4675,7 +4680,28 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # XXX Issue a warning if condition is always False?
                 with self.binder.frame_context(can_skip=True, fall_through=2):
                     self.push_type_map(if_map)
-                    self.accept(b)
+                    # Eventually, broaden the expanded return type to avoid false
+                    # "incompatible return value type" error messages (see issue 13800).
+                    if self.return_types and (if_map is not None):
+                        original_return_type = self.return_types[-1]
+                        for typ in if_map.values():
+                            typ = get_proper_type(typ)
+                            if isinstance(typ, UnionType):
+                                typs = flatten_nested_unions(typ.items)
+                            else:
+                                typs = [typ]
+                            for typ in typs:
+                                typ = get_proper_type(typ)
+                                if isinstance(typ, Instance) and (typ.type.is_intersection):
+                                    for base in typ.type.bases:
+                                        if base in self.previously_expanded_return_types:
+                                            self.return_types[-1] = UnionType.make_union(
+                                                (self.return_types[-1], base)
+                                            )
+                        self.accept(b)
+                        self.return_types[-1] = original_return_type
+                    else:
+                        self.accept(b)
 
                 # XXX Issue a warning if condition is always True?
                 self.push_type_map(else_map)
