@@ -396,8 +396,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: always do this in type_object_type by passing the original context
                 result.ret_type.line = e.line
                 result.ret_type.column = e.column
-            if isinstance(get_proper_type(self.type_context[-1]), TypeType):
-                # This is the type in a Type[] expression, so substitute type
+            if is_type_type_context(self.type_context[-1]):
+                # This is the type in a type[] expression, so substitute type
                 # variables with Any.
                 result = erasetype.erase_typevars(result)
         elif isinstance(node, MypyFile):
@@ -6592,3 +6592,12 @@ def get_partial_instance_type(t: Type | None) -> PartialType | None:
     if t is None or not isinstance(t, PartialType) or t.type is None:
         return None
     return t
+
+
+def is_type_type_context(context: Type | None) -> bool:
+    context = get_proper_type(context)
+    if isinstance(context, TypeType):
+        return True
+    if isinstance(context, UnionType):
+        return any(is_type_type_context(item) for item in context.items)
+    return False
