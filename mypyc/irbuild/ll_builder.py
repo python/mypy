@@ -1440,6 +1440,7 @@ class LowLevelIRBuilder:
 
         if op == "in" and method_name == "__contains__":
             # contains needs to swap the r and l values
+            assert rreg, "'in' operator is binary and must have a valid right value"
             tmp = lreg
             lreg = rreg
             rreg = tmp

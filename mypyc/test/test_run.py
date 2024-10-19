@@ -413,7 +413,23 @@ class TestRunStrictDunderTyping(TestRun):
 
     strict_dunder_typing = True
     test_name_suffix = "_dunder_typing"
-    files = ["run-dunders.test", "run-floats.test"]
+    files = [
+        "run-async.test",
+        "run-bools.test",
+        "run-bytes.test",
+        "run-classes.test",
+        "run-dunders.test",
+        "run-exceptions.test",
+        "run-floats.test",
+        "run-functions.test",
+        "run-generators.test",
+        "run-i16.test",
+        "run-i32.test",
+        "run-i64.test",
+        "run-integers.test",
+        "run-lists.test",
+        "run-traits.test",
+    ] + (["run-match.test"] if sys.version_info >= (3, 10) else [])
 
 
 def fix_native_line_number(message: str, fnam: str, delta: int) -> str:

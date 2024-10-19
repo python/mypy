@@ -275,11 +275,11 @@ def gen_func_item(
         create_switch_for_generator_class(builder)
         add_raise_exception_blocks_to_generator_class(builder, fitem.line)
     else:
-        load_env_registers(builder, sig)
+        load_env_registers(builder)
         gen_arg_defaults(builder)
 
     if builder.fn_info.contains_nested and not builder.fn_info.is_generator:
-        finalize_env_class(builder, sig)
+        finalize_env_class(builder)
 
     builder.ret_types[-1] = sig.ret_type
 

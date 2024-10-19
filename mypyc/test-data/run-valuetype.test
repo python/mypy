@@ -246,6 +246,23 @@ class A:
     def __repr__(self) -> str:
         return f"A({self.x})"
 
+def test_direct_dunders() -> None:
+    a = A(1, 2)
+    assert a.__hash__() == hash(1)
+    assert a.__eq__(A(1, 2))
+    assert not a.__eq__(A(2, 3))
+    assert a.__len__() == 1
+    assert a.__lt__(A(2, 3))
+    assert a.__le__(A(2, 3))
+    assert not a.__gt__(A(2, 3))
+    assert not a.__ge__(A(2, 3))
+    assert a.__contains__(1)
+    assert not a.__contains__(2)
+    assert a.__bool__()
+    assert not A(0, 1).__bool__()
+    assert a.__str__() == "A(1)"
+    assert a.__repr__() == "A(1)"
+
 def test_value_type_in_key() -> None:
     a = A(1, 2)
     d = {a: 1}

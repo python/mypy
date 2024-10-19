@@ -51,9 +51,9 @@ from mypyc.primitives.exc_ops import (
 
 def gen_generator_func(builder: IRBuilder, sig: FuncSignature) -> None:
     setup_generator_class(builder)
-    load_env_registers(builder, sig)
+    load_env_registers(builder)
     gen_arg_defaults(builder)
-    finalize_env_class(builder, sig)
+    finalize_env_class(builder)
     builder.add(Return(instantiate_generator_class(builder)))
 
 
@@ -340,7 +340,7 @@ def setup_env_for_generator_class(builder: IRBuilder, sig: FuncSignature) -> Non
 
     # Add arguments from the original generator function to the
     # environment of the generator class.
-    add_args_to_env(builder, sig, local=False, base=cls, reassign=False)
+    add_args_to_env(builder, local=False, base=cls, reassign=False)
 
     # Set the next label register for the generator class.
     cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)
