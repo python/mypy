@@ -304,6 +304,12 @@ This feature was contributed by Ivan Levkivskyi (PR [17457](https://github.com/p
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=91a58b07cdd807b1d965e04ba85af2adab8bf924+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
+### Mypy 1.12.1
+ * Fix crash when showing partially analyzed type in error message (Ivan Levkivskyi, PR [17961](https://github.com/python/mypy/pull/17961))
+ * Fix iteration over union (when self type is involved) (Shantanu, PR [17976](https://github.com/python/mypy/pull/17976))
+ * Fix type object with type var default in union context (Jukka Lehtosalo, PR [17991](https://github.com/python/mypy/pull/17991))
+ * Revert change to `os.path` stubs affecting use of `os.PathLike[Any]` (Shantanu, PR [17995](https://github.com/python/mypy/pull/17995))
+
 ### Acknowledgements
 Thanks to all mypy contributors who contributed to this release:
 
