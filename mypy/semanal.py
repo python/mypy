@@ -2262,21 +2262,7 @@ class SemanticAnalyzer(
             # grained incremental mode.
             defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
             del base_type_exprs[i]
-        tvar_defs: list[TypeVarLikeType] = []
-        last_tvar_name_with_default: str | None = None
-        for name, tvar_expr in declared_tvars:
-            tvar_expr.default = tvar_expr.default.accept(
-                TypeVarDefaultTranslator(self, tvar_expr.name, context)
-            )
-            tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
-            if last_tvar_name_with_default is not None and not tvar_def.has_default():
-                self.msg.tvar_without_default_type(
-                    tvar_def.name, last_tvar_name_with_default, context
-                )
-                tvar_def.default = AnyType(TypeOfAny.from_error)
-            elif tvar_def.has_default():
-                last_tvar_name_with_default = tvar_def.name
-            tvar_defs.append(tvar_def)
+        tvar_defs = self.tvar_defs_from_tvars(declared_tvars, context)
         return base_type_exprs, tvar_defs, is_protocol
 
     def analyze_class_typevar_declaration(self, base: Type) -> tuple[TypeVarLikeList, bool] | None:
@@ -2376,6 +2362,26 @@ class SemanticAnalyzer(
                 base_tvars = self.find_type_var_likes(base)
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
+
+    def tvar_defs_from_tvars(
+        self, tvars: TypeVarLikeList, context: Context
+    ) -> list[TypeVarLikeType]:
+        tvar_defs: list[TypeVarLikeType] = []
+        last_tvar_name_with_default: str | None = None
+        for name, tvar_expr in tvars:
+            tvar_expr.default = tvar_expr.default.accept(
+                TypeVarDefaultTranslator(self, tvar_expr.name, context)
+            )
+            tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+            if last_tvar_name_with_default is not None and not tvar_def.has_default():
+                self.msg.tvar_without_default_type(
+                    tvar_def.name, last_tvar_name_with_default, context
+                )
+                tvar_def.default = AnyType(TypeOfAny.from_error)
+            elif tvar_def.has_default():
+                last_tvar_name_with_default = tvar_def.name
+            tvar_defs.append(tvar_def)
+        return tvar_defs
 
     def get_and_bind_all_tvars(self, type_exprs: list[Expression]) -> list[TypeVarLikeType]:
         """Return all type variable references in item type expressions.
@@ -3852,21 +3858,8 @@ class SemanticAnalyzer(
         tvar_defs: list[TypeVarLikeType] = []
         namespace = self.qualified_name(name)
         alias_type_vars = found_type_vars if declared_type_vars is None else declared_type_vars
-        last_tvar_name_with_default: str | None = None
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
-            for name, tvar_expr in alias_type_vars:
-                tvar_expr.default = tvar_expr.default.accept(
-                    TypeVarDefaultTranslator(self, tvar_expr.name, typ)
-                )
-                tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
-                if last_tvar_name_with_default is not None and not tvar_def.has_default():
-                    self.msg.tvar_without_default_type(
-                        tvar_def.name, last_tvar_name_with_default, typ
-                    )
-                    tvar_def.default = AnyType(TypeOfAny.from_error)
-                elif tvar_def.has_default():
-                    last_tvar_name_with_default = tvar_def.name
-                tvar_defs.append(tvar_def)
+            tvar_defs = self.tvar_defs_from_tvars(alias_type_vars, typ)
 
             if python_3_12_type_alias:
                 with self.allow_unbound_tvars_set():
