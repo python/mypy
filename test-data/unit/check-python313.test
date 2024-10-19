@@ -64,6 +64,34 @@ class ClassTs3[*Ts = tuple[int]]: ...  # E: The default argument to TypeVarTuple
 [builtins fixtures/tuple.pyi]
 
 [case testPEP695TypeParameterDefaultInvalid2]
+from typing import overload
+def f1[T = 2]() -> None: ...  # E: TypeVar "default" must be a type
+def f2[T = [int]]() -> None: ...  # E: Bracketed expression "[...]" is not valid as a type \
+                                  # N: Did you mean "List[...]"? \
+                                  # E: TypeVar "default" must be a type
+def f3[T: str = int](x: T) -> T: ...               # E: TypeVar default must be a subtype of the bound type
+def f4[T: list[str] = list[int]](x: T) -> T: ...   # E: TypeVar default must be a subtype of the bound type
+def f5[T: (int, str) = bytes](x: T) -> T: ...      # E: TypeVar default must be one of the constraint types
+def f6[T: (int, str) = int | str](x: T) -> T: ...  # E: TypeVar default must be one of the constraint types
+def f7[T: (float, str) = int](x: T) -> T: ...      # E: TypeVar default must be one of the constraint types
+def f8[T: str = int]() -> None: ...                # TODO check unused TypeVars
+@overload
+def f9[T: str = int](x: T) -> T: ...               # E: TypeVar default must be a subtype of the bound type
+@overload
+def f9[T: (int, str) = bytes](x: T) -> T: ...      # E: TypeVar default must be one of the constraint types
+def f9() -> None: ...  # type: ignore[misc]
+
+def g1[**P = int]() -> None: ...       # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
+def g2[**P = 2]() -> None: ...         # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
+def g3[**P = (2, int)]() -> None: ...  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
+def g4[**P = [2, int]]() -> None: ...  # E: Argument 0 of ParamSpec default must be a type
+
+def h1[*Ts = 2]() -> None: ...           # E: The default argument to TypeVarTuple must be an Unpacked tuple
+def h2[*Ts = int]() -> None: ...         # E: The default argument to TypeVarTuple must be an Unpacked tuple
+def h3[*Ts = tuple[int]]() -> None: ...  # E: The default argument to TypeVarTuple must be an Unpacked tuple
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695TypeParameterDefaultInvalid3]
 from typing import Callable
 
 type TA1[T: str = 1] = list[T]  # E: TypeVar "default" must be a type

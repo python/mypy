@@ -1159,6 +1159,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     ) -> None:
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
+        self.check_typevar_defaults(typ.variables)
         expanded = self.expand_typevars(defn, typ)
         original_typ = typ
         for item, typ in expanded:
@@ -2548,7 +2549,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # all other bases have already been checked.
             break
 
-    def check_typevar_defaults(self, tvars: list[TypeVarLikeType]) -> None:
+    def check_typevar_defaults(self, tvars: Sequence[TypeVarLikeType]) -> None:
         for tv in tvars:
             if not (isinstance(tv, TypeVarType) and tv.has_default()):
                 continue
