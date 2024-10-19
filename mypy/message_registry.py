@@ -362,8 +362,3 @@ TYPE_ALIAS_WITH_NAMED_EXPRESSION: Final = ErrorMessage(
 TYPE_ALIAS_WITH_AWAIT_EXPRESSION: Final = ErrorMessage(
     "Await expression cannot be used within a type alias", codes.SYNTAX
 )
-
-TYPE_PARAM_DEFAULT_NOT_SUPPORTED: Final = ErrorMessage(
-    "Type parameter default types not supported when using Python 3.12 type parameter syntax",
-    codes.MISC,
-)
