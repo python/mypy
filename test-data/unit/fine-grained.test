@@ -10908,7 +10908,7 @@ main:4: note: function a.f is deprecated: deprecated decorated function
 b.py:1: note: function a.f is deprecated: deprecated decorated function
 
 
-[case testDeprecatedAddClassDeprecationIndirectImport]
+[case testDeprecatedAddClassDeprecationIndirectImport1-only_when_cache]
 from b import C
 x: C
 C()
@@ -10941,6 +10941,41 @@ b.py:2: note: class a.D is deprecated: use D2 instead
 main:1: note: class a.C is deprecated: use C2 instead
 main:5: note: class a.D is deprecated: use D2 instead
 main:6: note: class a.D is deprecated: use D2 instead
+
+
+[case testDeprecatedAddClassDeprecationIndirectImport2-only_when_nocache]
+from b import C
+x: C
+C()
+import b
+y: b.D
+b.D()
+
+[file b.py]
+from a import C
+from a import D
+
+[file a.py]
+class C: ...
+class D: ...
+
+[file a.py.2]
+from typing_extensions import deprecated
+
+@deprecated("use C2 instead")
+class C: ...
+
+@deprecated("use D2 instead")
+class D: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:1: note: class a.C is deprecated: use C2 instead
+main:5: note: class a.D is deprecated: use D2 instead
+main:6: note: class a.D is deprecated: use D2 instead
+b.py:1: note: class a.C is deprecated: use C2 instead
+b.py:2: note: class a.D is deprecated: use D2 instead
 
 
 [case testDeprecatedChangeClassDeprecationIndirectImport]
@@ -10986,6 +11021,7 @@ main:1: note: class a.C is deprecated: use C2 instead
 main:5: note: class a.D is deprecated: use D2 instead
 main:6: note: class a.D is deprecated: use D2 instead
 
+
 [case testDeprecatedRemoveClassDeprecationIndirectImport]
 from b import C
 x: C
@@ -11020,7 +11056,7 @@ main:6: note: class a.D is deprecated: use D1 instead
 ==
 
 
-[case testDeprecatedAddClassDeprecationIndirectImportAlreadyDecorated]
+[case testDeprecatedAddClassDeprecationIndirectImportAlreadyDecorated1-only_when_cache]
 from b import C
 x: C
 C()
@@ -11060,3 +11096,45 @@ b.py:2: note: class a.D is deprecated: use D2 instead
 main:1: note: class a.C is deprecated: use C2 instead
 main:5: note: class a.D is deprecated: use D2 instead
 main:6: note: class a.D is deprecated: use D2 instead
+
+
+[case testDeprecatedAddClassDeprecationIndirectImportAlreadyDecorated2-only_when_nocache]
+from b import C
+x: C
+C()
+import b
+y: b.D
+b.D()
+
+[file b.py]
+from a import C
+from a import D
+
+[file a.py]
+from typing import TypeVar
+
+T = TypeVar("T")
+def dec(x: T) -> T: ...
+
+@dec
+class C: ...
+@dec
+class D: ...
+
+[file a.py.2]
+from typing_extensions import deprecated
+
+@deprecated("use C2 instead")
+class C: ...
+
+@deprecated("use D2 instead")
+class D: ...
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:1: note: class a.C is deprecated: use C2 instead
+main:5: note: class a.D is deprecated: use D2 instead
+main:6: note: class a.D is deprecated: use D2 instead
+b.py:1: note: class a.C is deprecated: use C2 instead
+b.py:2: note: class a.D is deprecated: use D2 instead
