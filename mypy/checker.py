@@ -574,6 +574,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_partial(self, node: DeferredNodeType | FineGrainedDeferredNodeType) -> None:
         if isinstance(node, MypyFile):
             self.check_top_level(node)
+            self.tree.accept(InstanceDeprecatedVisitor(typechecker=self))
         else:
             self.recurse_into_functions = True
             with self.binder.top_frame_context():
