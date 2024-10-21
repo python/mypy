@@ -3445,6 +3445,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             items=proper_left_type.items + [UnpackType(mapped)]
                         )
 
+        if e.op == "+" and (result := self.literal_expression_addition(e, left_type)):
+            return result
+
         use_reverse: UseReverse = USE_REVERSE_DEFAULT
         if e.op == "|":
             if is_named_instance(proper_left_type, "builtins.dict"):
@@ -3504,6 +3507,57 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return result
         else:
             raise RuntimeError(f"Unknown operator {e.op}")
+
+    def literal_value_from_expr(
+        self, expr: Expression, typ: Type | None = None
+    ) -> tuple[list[str | int], str] | None:
+        if isinstance(expr, StrExpr):
+            return [expr.value], "builtins.str"
+        if isinstance(expr, IntExpr):
+            return [expr.value], "builtins.int"
+        if isinstance(expr, BytesExpr):
+            return [expr.value], "builtins.bytes"
+
+        typ = typ or self.accept(expr)
+        ptype = get_proper_type(typ)
+
+        if isinstance(ptype, LiteralType) and not isinstance(ptype.value, (bool, float)):
+            return [ptype.value], ptype.fallback.type.fullname
+
+        if isinstance(ptype, UnionType):
+            fallback: str | None = None
+            values: list[str | int] = []
+            for item in ptype.items:
+                pitem = get_proper_type(item)
+                if not isinstance(pitem, LiteralType) or isinstance(pitem.value, (float, bool)):
+                    break
+                if fallback is None:
+                    fallback = pitem.fallback.type.fullname
+                if fallback != pitem.fallback.type.fullname:
+                    break
+                values.append(pitem.value)
+            else:
+                assert fallback is not None
+                return values, fallback
+        return None
+
+    def literal_expression_addition(self, e: OpExpr, left_type: Type) -> Type | None:
+        """Check if literal values can be combined with addition."""
+        assert e.op == "+"
+        if not (lvalue := self.literal_value_from_expr(e.left, left_type)):
+            return None
+        if not (rvalue := self.literal_value_from_expr(e.right)) or lvalue[1] != rvalue[1]:
+            return None
+
+        values: list[int | str] = sorted(
+            {
+                val[0] + val[1]  # type: ignore[operator]
+                for val in itertools.product(lvalue[0], rvalue[0])
+            }
+        )
+        if len(values) == 1:
+            return LiteralType(values[0], self.named_type(lvalue[1]))
+        return UnionType([LiteralType(val, self.named_type(lvalue[1])) for val in values])
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
         """Type check a comparison expression.
