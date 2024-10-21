@@ -152,6 +152,20 @@ x13: A3[C]  # N: class __main__.C is deprecated: use C2 instead
 [builtins fixtures/tuple.pyi]
 
 
+[case testDeprecatedBaseClass]
+
+from typing_extensions import deprecated
+
+@deprecated("use C2 instead")
+class C: ...
+
+class D(C): ...  # N: class __main__.C is deprecated: use C2 instead
+class E(D): ...
+class F(D, C): ...  # N: class __main__.C is deprecated: use C2 instead
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedInstanceInFunctionDefinition]
 
 from typing import Generic, List, Optional, TypeVar
