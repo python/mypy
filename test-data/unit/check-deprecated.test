@@ -166,6 +166,26 @@ class F(D, C): ...  # N: class __main__.C is deprecated: use C2 instead
 [builtins fixtures/tuple.pyi]
 
 
+[case testDeprecatedClassInTypeVar]
+
+from typing import Generic, TypeVar
+from typing_extensions import deprecated
+
+class B: ...
+@deprecated("use C2 instead")
+class C: ...
+
+T = TypeVar("T", bound=C)  # N: class __main__.C is deprecated: use C2 instead
+def f(x: T) -> T: ...
+class D(Generic[T]): ...
+
+V = TypeVar("V", B, C)  # N: class __main__.C is deprecated: use C2 instead
+def g(x: V) -> V: ...
+class E(Generic[V]): ...
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedInstanceInFunctionDefinition]
 
 from typing import Generic, List, Optional, TypeVar
