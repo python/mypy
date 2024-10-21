@@ -186,6 +186,21 @@ class E(Generic[V]): ...
 [builtins fixtures/tuple.pyi]
 
 
+[case testDeprecatedClassInCast]
+
+from typing import cast, Generic
+from typing_extensions import deprecated
+
+class B: ...
+@deprecated("use C2 instead")
+class C: ...
+
+c = C()  # N: class __main__.C is deprecated: use C2 instead
+b = cast(B, c)
+
+[builtins fixtures/tuple.pyi]
+
+
 [case testDeprecatedInstanceInFunctionDefinition]
 
 from typing import Generic, List, Optional, TypeVar
