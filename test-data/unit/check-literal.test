@@ -3021,6 +3021,7 @@ b: bytes
 
 misc_union: Literal["a", 1]
 
+reveal_type("a" + "b")  # N: Revealed type is "builtins.str"
 reveal_type(str_a + str_b)  # N: Revealed type is "Literal['ab']"
 reveal_type(str_a + "b")    # N: Revealed type is "Literal['ab']"
 reveal_type("a" + str_b)    # N: Revealed type is "Literal['ab']"
@@ -3034,6 +3035,7 @@ reveal_type(s + str_a)  # N: Revealed type is "builtins.str"
 reveal_type(str_union_1 + s)  # N: Revealed type is "builtins.str"
 reveal_type(s + str_union_1)  # N: Revealed type is "builtins.str"
 
+reveal_type(1 + 2)  # N: Revealed type is "builtins.int"
 reveal_type(int_1 + int_2)  # N: Revealed type is "Literal[3]"
 reveal_type(int_1 + 1)      # N: Revealed type is "Literal[2]"
 reveal_type(1 + int_1)      # N: Revealed type is "Literal[2]"
@@ -3047,6 +3049,7 @@ reveal_type(i + int_1)  # N: Revealed type is "builtins.int"
 reveal_type(int_union_1 + i)  # N: Revealed type is "builtins.int"
 reveal_type(i + int_union_1)  # N: Revealed type is "builtins.int"
 
+reveal_type(b"a" + b"b")  # N: Revealed type is "builtins.bytes"
 reveal_type(bytes_a + bytes_b)  # N: Revealed type is "Literal[b'ab']"
 reveal_type(bytes_a + b"b")    # N: Revealed type is "Literal[b'ab']"
 reveal_type(b"a" + bytes_b)    # N: Revealed type is "Literal[b'ab']"

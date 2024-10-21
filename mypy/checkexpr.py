@@ -3575,19 +3575,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def literal_value_from_expr(
         self, expr: Expression, typ: Type | None = None
-    ) -> tuple[list[str | int], str] | None:
+    ) -> tuple[list[str | int], str, bool] | None:
         if isinstance(expr, StrExpr):
-            return [expr.value], "builtins.str"
+            return [expr.value], "builtins.str", False
         if isinstance(expr, IntExpr):
-            return [expr.value], "builtins.int"
+            return [expr.value], "builtins.int", False
         if isinstance(expr, BytesExpr):
-            return [expr.value], "builtins.bytes"
+            return [expr.value], "builtins.bytes", False
 
         typ = typ or self.accept(expr)
         ptype = get_proper_type(typ)
 
         if isinstance(ptype, LiteralType) and not isinstance(ptype.value, (bool, float)):
-            return [ptype.value], ptype.fallback.type.fullname
+            return [ptype.value], ptype.fallback.type.fullname, True
 
         if isinstance(ptype, UnionType):
             fallback: str | None = None
@@ -3603,7 +3603,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 values.append(pitem.value)
             else:
                 assert fallback is not None
-                return values, fallback
+                return values, fallback, True
         return None
 
     def literal_expression_addition(self, e: OpExpr, left_type: Type) -> Type | None:
@@ -3611,7 +3611,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         assert e.op == "+"
         if not (lvalue := self.literal_value_from_expr(e.left, left_type)):
             return None
-        if not (rvalue := self.literal_value_from_expr(e.right)) or lvalue[1] != rvalue[1]:
+        if (
+            not (rvalue := self.literal_value_from_expr(e.right))
+            or lvalue[1] != rvalue[1]  # different fallback
+            or lvalue[2] + rvalue[2] == 0  # no LiteralType
+        ):
             return None
 
         values: list[int | str] = sorted(
