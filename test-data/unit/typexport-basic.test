@@ -142,7 +142,7 @@ class str: pass
 class list: pass
 class dict: pass
 [out]
-OpExpr(3) : Literal[3]
+OpExpr(3) : builtins.int
 OpExpr(4) : builtins.float
 OpExpr(5) : builtins.float
 OpExpr(6) : builtins.float

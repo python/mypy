@@ -912,8 +912,8 @@ test_between(1	+	1)
 tabs.py:2: error: Incompatible return value type (got "None", expected "str")
             return None
                    ^~~~
-tabs.py:4: error: Argument 1 to "test_between" has incompatible type
-"Literal[2]"; expected "str"
+tabs.py:4: error: Argument 1 to "test_between" has incompatible type "int";
+expected "str"
     test_between(1  +       1)
                  ^~~~~~~~~~~~
 
