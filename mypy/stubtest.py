@@ -348,6 +348,8 @@ def verify_mypyfile(
             # Only verify the contents of the stub's __all__
             # if the stub actually defines __all__
             yield from _verify_exported_names(object_path, stub, runtime_all_as_set)
+        else:
+            yield Error(object_path + ["__all__"], "is not present in stub", stub, runtime)
     else:
         runtime_all_as_set = None
 
