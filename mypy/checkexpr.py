@@ -717,7 +717,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def defn_returns_none(self, defn: SymbolNode | None) -> bool:
         """Check if `defn` can _only_ return None."""
         if isinstance(defn, Decorator):
-            defn = defn.func
+            defn = defn.var
         if isinstance(defn, FuncDef):
             return isinstance(defn.type, CallableType) and isinstance(
                 get_proper_type(defn.type.ret_type), NoneType
@@ -726,10 +726,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return all(self.defn_returns_none(item) for item in defn.items)
         if isinstance(defn, Var):
             typ = get_proper_type(defn.type)
-            if (
-                not defn.is_inferred
-                and isinstance(typ, CallableType)
-                and isinstance(get_proper_type(typ.ret_type), NoneType)
+            if isinstance(typ, CallableType) and isinstance(
+                get_proper_type(typ.ret_type), NoneType
             ):
                 return True
             if isinstance(typ, Instance):
