@@ -7618,9 +7618,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Warn if deprecated."""
         if isinstance(node, Decorator):
             node = node.func
-        if isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
-            (deprecated := node.deprecated) is not None
-        ) and not self.is_typeshed_stub:
+        if (
+            isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo))
+            and ((deprecated := node.deprecated) is not None)
+            and not self.is_typeshed_stub
+        ):
             warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
             warn(deprecated, context, code=codes.DEPRECATED)
 
