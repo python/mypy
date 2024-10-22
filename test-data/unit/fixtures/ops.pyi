@@ -15,6 +15,7 @@ class slice: pass
 
 class tuple(Sequence[Tco]):
     def __getitem__(self, x: int) -> Tco: pass
+    def __contains__(self, x: object) -> bool: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
     def __lt__(self, x: Tuple[Tco, ...]) -> bool: pass

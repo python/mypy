@@ -116,6 +116,7 @@ from mypy.nodes import (
     RaiseStmt,
     RefExpr,
     ReturnStmt,
+    SetExpr,
     StarExpr,
     Statement,
     StrExpr,
@@ -6090,7 +6091,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if_map, else_map = {}, {}
 
                     if left_index in narrowable_operand_index_to_hash:
-                        # We only try and narrow away 'None' for now
                         if is_overlapping_none(item_type):
                             collection_item_type = get_proper_type(
                                 builtin_item_type(iterable_type)
@@ -6105,6 +6105,58 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 and is_overlapping_erased_types(item_type, collection_item_type)
                             ):
                                 if_map[operands[left_index]] = remove_optional(item_type)
+                        else:
+                            operand = operands[right_index]
+                            options: list[LiteralType] = []
+                            is_literal = True
+
+                            iterable_type = get_proper_type(iterable_type)
+
+                            # If we are checking against a Tuple[Literal[...]] *or* we are
+                            # checking against a literal list/set/tuple expression.
+                            if isinstance(iterable_type, TupleType):
+                                for ty in iterable_type.items:
+                                    ty = get_proper_type(ty)
+                                    if (
+                                        isinstance(ty, Instance)
+                                        and ty.last_known_value is not None
+                                    ):
+                                        options.append(ty.last_known_value)
+                                    else:
+                                        is_literal = False
+                                        break
+                            elif isinstance(operand, (ListExpr, SetExpr)):
+                                # We are a literal expression!
+                                for item in operand.items:
+                                    ty = get_proper_type(self.lookup_type(item))
+                                    if (
+                                        isinstance(ty, Instance)
+                                        and ty.last_known_value is not None
+                                    ):
+                                        options.append(ty.last_known_value)
+                                    else:
+                                        is_literal = False
+                                        break
+
+                            if is_literal and len(options) > 1:
+                                if len(options) > 1:
+                                    ty = UnionType.make_union(options)
+                                else:
+                                    ty = options[0]
+
+                                yes, no = self.conditional_types_with_intersection(
+                                    item_type, [TypeRange(ty, is_upper_bound=False)], node
+                                )
+                                # Intersection calculates UninhabitedType too
+                                # aggressively -- ignore them for now
+                                if yes is not None and not isinstance(
+                                    get_proper_type(yes), UninhabitedType
+                                ):
+                                    if_map[operands[left_index]] = yes
+                                if no is not None and not isinstance(
+                                    get_proper_type(no), UninhabitedType
+                                ):
+                                    else_map[operands[left_index]] = no
 
                     if right_index in narrowable_operand_index_to_hash:
                         if_type, else_type = self.conditional_types_for_iterable(

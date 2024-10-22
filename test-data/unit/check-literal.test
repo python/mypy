@@ -2960,3 +2960,100 @@ class C(B[Literal["word"]]):
 reveal_type(C().collection)  # N: Revealed type is "builtins.list[Literal['word']]"
 reveal_type(C().word)  # N: Revealed type is "Literal['word']"
 [builtins fixtures/tuple.pyi]
+
+[case testLiteralNarrowingInExpr]
+from typing import Any
+from typing_extensions import Literal
+
+def narrow(x: int, y: str, z: Literal[1, 2, 3]):
+    if x in (1, 2, "a", "b"):
+        reveal_type(x)                       # N: Revealed type is "Union[Literal[1], Literal[2]]"
+    else:
+        reveal_type(x)                       # N: Revealed type is "builtins.int"
+    if y in ("a", "b", 1, 2):
+        reveal_type(y)                       # N: Revealed type is "Union[Literal['a'], Literal['b']]"
+    else:
+        reveal_type(y)                       # N: Revealed type is "builtins.str"
+
+class A:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+def no_narrow(a: int, b: int, c: Any, d: A):
+    if a in (1, 2, b):
+        reveal_type(a)                       # N: Revealed type is "builtins.int"
+    if c in (1,):
+        reveal_type(c)                       # N: Revealed type is "Any"
+    if d in (1, 2):
+        reveal_type(d)                       # N: Revealed type is "__main__.A"
+[builtins fixtures/ops.pyi]
+
+[case testLiteralNarrowingInStar]
+from typing_extensions import Literal
+
+def narrow(x: int):
+    y = (1, 2)
+    if x in (*y, 3):
+        # TODO: maybe see through the star-args?
+        reveal_type(x)                       # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)                       # N: Revealed type is "builtins.int"
+[builtins fixtures/ops.pyi]
+
+[case testLiteralNarrowingFloat]
+from typing_extensions import Literal
+
+def no_narrow(x: float):
+    if x in (1, 2):
+        reveal_type(x)                       # N: Revealed type is "builtins.float"
+    if x in (1.0, 2.0):
+        reveal_type(x)                       # N: Revealed type is "builtins.float"
+[builtins fixtures/ops.pyi]
+
+[case testLiteralNarrowingLiteral]
+from typing_extensions import Literal
+def union_narrow(x: Literal[1, 2, 3]):
+    if x in (1, 2):
+        reveal_type(x)                       # N: Revealed type is "Union[Literal[1], Literal[2]]"
+    else:
+        reveal_type(x)                       # N: Revealed type is "Literal[3]"
+[builtins fixtures/ops.pyi]
+
+[case testLiteralNarrowingFinal]
+from typing_extensions import Literal, Final
+
+NOT_FINAL = 2
+NOT_FINAL_TUPLE = (1, 2, "a", "b")
+
+FINAL_VALUE: Final = 1
+FINAL_TUPLE: Final = (1, 2, "a", "b")
+
+def final_narrow(x: int, y: str):
+    if x in (FINAL_VALUE, 2):
+        reveal_type(x)                       # N: Revealed type is "Union[Literal[1], Literal[2]]"
+    if y in FINAL_TUPLE:
+        reveal_type(y)                       # N: Revealed type is "Union[Literal['a'], Literal['b']]"
+
+def final_no_narrow(x: int):
+    if x in (1, NOT_FINAL):
+        reveal_type(x)                       # N: Revealed type is "builtins.int"
+    elif x in NOT_FINAL_TUPLE:
+        reveal_type(x)                       # N: Revealed type is "builtins.int"
+[builtins fixtures/ops.pyi]
+
+[case testLiteralNarrowingTuple-xfail]
+from typing import Tuple
+from typing_extensions import Literal
+
+def no_narrow(x: Tuple[int, int]):
+    if x in ((1, 2), (3, 4)):
+        reveal_type(x)                       # N: Revealed type is "Union[Tuple[Literal[1], Literal[2]], Tuple[Literal[3], Literal[4]]]"
+[builtins fixtures/ops.pyi]
+
+[case testLiteralNarrowingUnion-xfail]
+from typing import Union
+from typing_extensions import Literal
+def union_narrow(x: Union[str, int, bool, None]):
+    if x in (1, "b"):
+        reveal_type(x)                       # N: Revealed type is "Union[Literal[1], Literal["b"]]"
+[builtins fixtures/ops.pyi]
