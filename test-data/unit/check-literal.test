@@ -3006,17 +3006,17 @@ from typing_extensions import Literal
 str_a: Literal["a"]
 str_b: Literal["b"]
 str_union_1: Literal["a", "b"]
-str_union_2: Literal["c", "d"]
+str_union_2: Literal["d", "c"]
 s: str
 int_1: Literal[1]
 int_2: Literal[2]
 int_union_1: Literal[1, 2]
-int_union_2: Literal[3, 4]
+int_union_2: Literal[4, 3]
 i: int
 bytes_a: Literal[b"a"]
 bytes_b: Literal[b"b"]
 bytes_union_1: Literal[b"a", b"b"]
-bytes_union_2: Literal[b"c", b"d"]
+bytes_union_2: Literal[b"d", b"c"]
 b: bytes
 
 misc_union: Literal["a", 1]

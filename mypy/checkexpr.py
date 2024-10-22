@@ -3626,7 +3626,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         )
         if len(values) == 1:
             return LiteralType(values[0], self.named_type(lvalue[1]))
-        return UnionType([LiteralType(val, self.named_type(lvalue[1])) for val in values])
+        return make_simplified_union(
+            [LiteralType(val, self.named_type(lvalue[1])) for val in values]
+        )
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
         """Type check a comparison expression.
