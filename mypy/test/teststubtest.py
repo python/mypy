@@ -169,12 +169,14 @@ def run_stubtest_with_stderr(
     filtered_output = remove_color_code(
         output.getvalue()
         # remove cwd as it's not available from outside
-        .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
+        .replace(os.path.realpath(tmp_dir) + os.sep, "")
+        .replace(tmp_dir + os.sep, "")
     )
     filtered_outerr = remove_color_code(
         outerr.getvalue()
         # remove cwd as it's not available from outside
-        .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
+        .replace(os.path.realpath(tmp_dir) + os.sep, "")
+        .replace(tmp_dir + os.sep, "")
     )
     return filtered_output, filtered_outerr
 
@@ -2435,6 +2437,11 @@ class StubtestMiscUnit(unittest.TestCase):
         assert output == expected
 
     def test_ignore_flags(self) -> None:
+        output = run_stubtest(
+            stub="", runtime="__all__ = ['f']\ndef f(): pass", options=["--ignore-missing-stub"]
+        )
+        assert output == "Success: no issues found in 1 module\n"
+
         output = run_stubtest(stub="", runtime="def f(): pass", options=["--ignore-missing-stub"])
         assert output == "Success: no issues found in 1 module\n"
 
@@ -2483,18 +2490,14 @@ class StubtestMiscUnit(unittest.TestCase):
                     def good() -> None: ...
                     def bad(number: int) -> None: ...
                     def also_bad(number: int) -> None: ...
-                    """.lstrip(
-                        "\n"
-                    )
+                    """.lstrip("\n")
                 ),
                 runtime=textwrap.dedent(
                     """
                     def good(): pass
                     def bad(asdf): pass
                     def also_bad(asdf): pass
-                    """.lstrip(
-                        "\n"
-                    )
+                    """.lstrip("\n")
                 ),
                 options=["--allowlist", allowlist.name, "--generate-allowlist"],
             )
