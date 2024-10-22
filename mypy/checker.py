@@ -2154,6 +2154,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     override_class_or_static,
                     context,
                 )
+            elif isinstance(original_type, UnionType) and any(
+                is_subtype(orig_typ, typ, ignore_pos_arg_names=True)
+                for orig_typ in original_type.items
+            ):
+                pass
             elif is_equivalent(original_type, typ):
                 # Assume invariance for a non-callable attribute here. Note
                 # that this doesn't affect read-only properties which can have
