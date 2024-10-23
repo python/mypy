@@ -1403,7 +1403,7 @@ class StubtestUnit(unittest.TestCase):
             runtime="""
             __all__ = []
             Z = 5""",
-            error=None,
+            error="__all__",
         )
 
     @collect_cases
@@ -1443,7 +1443,7 @@ class StubtestUnit(unittest.TestCase):
             runtime="",
             error="h",
         )
-        yield Case(stub="", runtime="__all__ = []", error=None)  # dummy case
+        yield Case(stub="", runtime="__all__ = []", error="__all__")  # dummy case
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
         # Here we should only check that runtime has B, since the stub explicitly re-exports it
