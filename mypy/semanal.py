@@ -4225,6 +4225,7 @@ class SemanticAnalyzer(
         is_final: bool = False,
         escape_comprehensions: bool = False,
         has_explicit_value: bool = False,
+        is_index_var: bool = False,
     ) -> None:
         """Analyze an lvalue or assignment target.
 
@@ -4235,6 +4236,7 @@ class SemanticAnalyzer(
             escape_comprehensions: If we are inside a comprehension, set the variable
                 in the enclosing scope instead. This implements
                 https://www.python.org/dev/peps/pep-0572/#scope-of-the-target
+            is_index_var: If lval is the index variable in a for loop
         """
         if escape_comprehensions:
             assert isinstance(lval, NameExpr), "assignment expression target must be NameExpr"
@@ -4245,6 +4247,7 @@ class SemanticAnalyzer(
                 is_final,
                 escape_comprehensions,
                 has_explicit_value=has_explicit_value,
+                is_index_var=is_index_var,
             )
         elif isinstance(lval, MemberExpr):
             self.analyze_member_lvalue(lval, explicit_type, is_final, has_explicit_value)
@@ -4271,6 +4274,7 @@ class SemanticAnalyzer(
         is_final: bool,
         escape_comprehensions: bool,
         has_explicit_value: bool,
+        is_index_var: bool,
     ) -> None:
         """Analyze an lvalue that targets a name expression.
 
@@ -4309,7 +4313,9 @@ class SemanticAnalyzer(
 
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
             # Define new variable.
-            var = self.make_name_lvalue_var(lvalue, kind, not explicit_type, has_explicit_value)
+            var = self.make_name_lvalue_var(
+                lvalue, kind, not explicit_type, has_explicit_value, is_index_var
+            )
             added = self.add_symbol(name, var, lvalue, escape_comprehensions=escape_comprehensions)
             # Only bind expression if we successfully added name to symbol table.
             if added:
@@ -4361,7 +4367,12 @@ class SemanticAnalyzer(
             return existing is not None and is_final_node(existing.node)
 
     def make_name_lvalue_var(
-        self, lvalue: NameExpr, kind: int, inferred: bool, has_explicit_value: bool
+        self,
+        lvalue: NameExpr,
+        kind: int,
+        inferred: bool,
+        has_explicit_value: bool,
+        is_index_var: bool,
     ) -> Var:
         """Return a Var node for an lvalue that is a name expression."""
         name = lvalue.name
@@ -4380,6 +4391,7 @@ class SemanticAnalyzer(
             v._fullname = name
         v.is_ready = False  # Type not inferred yet
         v.has_explicit_value = has_explicit_value
+        v.is_index_var = is_index_var
         return v
 
     def make_name_lvalue_point_to_existing_def(
@@ -5290,7 +5302,7 @@ class SemanticAnalyzer(
         s.expr.accept(self)
 
         # Bind index variables and check if they define new names.
-        self.analyze_lvalue(s.index, explicit_type=s.index_type is not None)
+        self.analyze_lvalue(s.index, explicit_type=s.index_type is not None, is_index_var=True)
         if s.index_type:
             if self.is_classvar(s.index_type):
                 self.fail_invalid_classvar(s.index)

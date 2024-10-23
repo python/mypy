@@ -969,6 +969,7 @@ VAR_FLAGS: Final = [
     "is_classvar",
     "is_abstract_var",
     "is_final",
+    "is_index_var",
     "final_unset_in_class",
     "final_set_in_init",
     "explicit_self_type",
@@ -1005,6 +1006,7 @@ class Var(SymbolNode):
         "is_classvar",
         "is_abstract_var",
         "is_final",
+        "is_index_var",
         "final_unset_in_class",
         "final_set_in_init",
         "is_suppressed_import",
@@ -1039,6 +1041,7 @@ class Var(SymbolNode):
         self.is_settable_property = False
         self.is_classvar = False
         self.is_abstract_var = False
+        self.is_index_var = False
         # Set to true when this variable refers to a module we were unable to
         # parse for some reason (eg a silenced module)
         self.is_suppressed_import = False
