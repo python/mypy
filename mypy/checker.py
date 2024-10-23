@@ -1074,6 +1074,40 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             new_type = self.function_type(defn)
             self.check_func_def_override(defn, new_type)
 
+    def check_func_item(
+        self,
+        defn: FuncItem,
+        type_override: CallableType | None = None,
+        name: str | None = None,
+        allow_empty: bool = False,
+    ) -> None:
+        """Type check a function.
+
+        If type_override is provided, use it as the function type.
+        """
+        self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
+
+        with self.enter_partial_types(is_function=True):
+            typ = self.function_type(defn)
+            if type_override:
+                typ = type_override.copy_modified(line=typ.line, column=typ.column)
+            if isinstance(typ, CallableType):
+                with self.enter_attribute_inference_context():
+                    self.check_func_def(defn, typ, name, allow_empty)
+            else:
+                raise RuntimeError("Not supported")
+
+        self.dynamic_funcs.pop()
+        self.current_node_deferred = False
+
+        if name == "__exit__":
+            self.check__exit__return_type(defn)
+        # TODO: the following logic should move to the dataclasses plugin
+        #  https://github.com/python/mypy/issues/15515
+        if name == "__post_init__":
+            if dataclasses_plugin.is_processed_dataclass(defn.info):
+                dataclasses_plugin.check_post_init(self, defn, defn.info)
+
     def check_func_def_override(self, defn: FuncDef, new_type: FunctionLike) -> None:
         assert defn.original_def is not None
         if isinstance(defn.original_def, FuncDef):
@@ -1116,40 +1150,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     "redefinition with type",
                     "original type",
                 )
-
-    def check_func_item(
-        self,
-        defn: FuncItem,
-        type_override: CallableType | None = None,
-        name: str | None = None,
-        allow_empty: bool = False,
-    ) -> None:
-        """Type check a function.
-
-        If type_override is provided, use it as the function type.
-        """
-        self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
-
-        with self.enter_partial_types(is_function=True):
-            typ = self.function_type(defn)
-            if type_override:
-                typ = type_override.copy_modified(line=typ.line, column=typ.column)
-            if isinstance(typ, CallableType):
-                with self.enter_attribute_inference_context():
-                    self.check_func_def(defn, typ, name, allow_empty)
-            else:
-                raise RuntimeError("Not supported")
-
-        self.dynamic_funcs.pop()
-        self.current_node_deferred = False
-
-        if name == "__exit__":
-            self.check__exit__return_type(defn)
-        # TODO: the following logic should move to the dataclasses plugin
-        #  https://github.com/python/mypy/issues/15515
-        if name == "__post_init__":
-            if dataclasses_plugin.is_processed_dataclass(defn.info):
-                dataclasses_plugin.check_post_init(self, defn, defn.info)
 
     @contextmanager
     def enter_attribute_inference_context(self) -> Iterator[None]:
