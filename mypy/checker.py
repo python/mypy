@@ -5124,7 +5124,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if e.type and not isinstance(get_proper_type(e.type), (FunctionLike, AnyType)):
                 self.fail(message_registry.BAD_CONSTRUCTOR_TYPE, e)
 
-        if e.func.original_def:
+        if e.func.original_def and isinstance(sig, FunctionLike):
             # Function definition overrides function definition.
             self.check_func_def_override(e.func, sig)
 
