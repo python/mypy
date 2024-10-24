@@ -2303,3 +2303,38 @@ reveal_type(capture(fn))  # N: Revealed type is "Union[builtins.str, builtins.in
 reveal_type(capture(err))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecOverlappingOverloadsOrder]
+from typing import Any, Callable, overload
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+class Base:
+    pass
+class Child(Base):
+    def __call__(self) -> str: ...
+class NotChild:
+    def __call__(self) -> str: ...
+
+@overload
+def handle(func: Base) -> int: ...
+@overload
+def handle(func: Callable[P, str], *args: P.args, **kwargs: P.kwargs) -> str: ...
+def handle(func: Any, *args: Any, **kwargs: Any) -> Any:
+    return func(*args, **kwargs)
+
+@overload
+def handle_reversed(func: Callable[P, str], *args: P.args, **kwargs: P.kwargs) -> str: ...
+@overload
+def handle_reversed(func: Base) -> int: ...
+def handle_reversed(func: Any, *args: Any, **kwargs: Any) -> Any:
+    return func(*args, **kwargs)
+
+reveal_type(handle(Child()))  # N: Revealed type is "builtins.int"
+reveal_type(handle(NotChild()))  # N: Revealed type is "builtins.str"
+
+reveal_type(handle_reversed(Child()))  # N: Revealed type is "builtins.str"
+reveal_type(handle_reversed(NotChild()))  # N: Revealed type is "builtins.str"
+
+[builtins fixtures/paramspec.pyi]
