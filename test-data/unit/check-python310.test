@@ -1525,6 +1525,60 @@ def g(m: Medal) -> int:
             reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
             return 2
 
+
+[case testMatchLiteralPatternEnumWithTypedAttribute]
+from enum import Enum
+from typing import NoReturn
+def assert_never(x: NoReturn) -> None: ...
+
+class int:
+    def __new__(cls, value: int): pass
+
+class Medal(int, Enum):
+    prize: str
+
+    def __new__(cls, value: int, prize: str) -> Medal:
+        enum = int.__new__(cls, value)
+        enum._value_ = value
+        enum.prize = prize
+        return enum
+
+    gold = (1, 'cash prize')
+    silver = (2, 'sponsorship')
+    bronze = (3, 'nothing')
+
+m: Medal
+
+match m:
+    case Medal.gold:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+    case Medal.silver:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver]"
+    case Medal.bronze:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
+    case _ as unreachable:
+        assert_never(unreachable)
+
+[builtins fixtures/tuple.pyi]
+
+[case testMatchLiteralPatternFunctionalEnum]
+from enum import Enum
+from typing import NoReturn
+def assert_never(x: NoReturn) -> None: ...
+
+Medal = Enum('Medal', 'gold silver bronze')
+m: Medal
+
+match m:
+    case Medal.gold:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+    case Medal.silver:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver]"
+    case Medal.bronze:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
+    case _ as unreachable:
+        assert_never(unreachable)
+
 [case testMatchLiteralPatternEnumCustomEquals-skip]
 from enum import Enum
 class Medal(Enum):

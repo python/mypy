@@ -4311,6 +4311,9 @@ class SemanticAnalyzer(
                     lvalue,
                 )
 
+            if explicit_type and has_explicit_value:
+                self.fail("Type annotations are not allowed for enum members", lvalue)
+
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
             # Define new variable.
             var = self.make_name_lvalue_var(
