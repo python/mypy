@@ -47,10 +47,13 @@ class BaseContext:
     # N.B. Keep this in sync with multiprocessing.connection.Pipe.
     # _ConnectionBase is the common base class of Connection and PipeConnection
     # and can be used in cross-platform code.
+    #
+    # The two connections should have the same generic types but inverted (Connection[_T1, _T2], Connection[_T2, _T1]).
+    # However, TypeVars scoped entirely within a return annotation is unspecified in the spec.
     if sys.platform != "win32":
-        def Pipe(self, duplex: bool = True) -> tuple[Connection, Connection]: ...
+        def Pipe(self, duplex: bool = True) -> tuple[Connection[Any, Any], Connection[Any, Any]]: ...
     else:
-        def Pipe(self, duplex: bool = True) -> tuple[PipeConnection, PipeConnection]: ...
+        def Pipe(self, duplex: bool = True) -> tuple[PipeConnection[Any, Any], PipeConnection[Any, Any]]: ...
 
     def Barrier(
         self, parties: int, action: Callable[..., object] | None = None, timeout: float | None = None
@@ -93,16 +96,20 @@ class BaseContext:
     def Value(self, typecode_or_type: str | type[_CData], *args: Any, lock: bool | _LockLike = True) -> Any: ...
     @overload
     def Array(
+        self, typecode_or_type: type[_SimpleCData[_T]], size_or_initializer: int | Sequence[Any], *, lock: Literal[False]
+    ) -> SynchronizedArray[_T]: ...
+    @overload
+    def Array(
         self, typecode_or_type: type[c_char], size_or_initializer: int | Sequence[Any], *, lock: Literal[True] | _LockLike = True
     ) -> SynchronizedString: ...
     @overload
     def Array(
-        self, typecode_or_type: type[_CT], size_or_initializer: int | Sequence[Any], *, lock: Literal[False]
-    ) -> SynchronizedArray[_CT]: ...
-    @overload
-    def Array(
-        self, typecode_or_type: type[_CT], size_or_initializer: int | Sequence[Any], *, lock: Literal[True] | _LockLike = True
-    ) -> SynchronizedArray[_CT]: ...
+        self,
+        typecode_or_type: type[_SimpleCData[_T]],
+        size_or_initializer: int | Sequence[Any],
+        *,
+        lock: Literal[True] | _LockLike = True,
+    ) -> SynchronizedArray[_T]: ...
     @overload
     def Array(
         self, typecode_or_type: str, size_or_initializer: int | Sequence[Any], *, lock: Literal[True] | _LockLike = True

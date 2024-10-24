@@ -256,16 +256,9 @@ def local_sys_path_set() -> Iterator[None]:
 
 
 def testfile_pyversion(path: str) -> tuple[int, int]:
-    if path.endswith("python312.test"):
-        return 3, 12
-    elif path.endswith("python311.test"):
-        return 3, 11
-    elif path.endswith("python310.test"):
-        return 3, 10
-    elif path.endswith("python39.test"):
-        return 3, 9
-    elif path.endswith("python38.test"):
-        return 3, 8
+    m = re.search(r"python3([0-9]+)\.test$", path)
+    if m:
+        return 3, int(m.group(1))
     else:
         return defaults.PYTHON3_VERSION
 

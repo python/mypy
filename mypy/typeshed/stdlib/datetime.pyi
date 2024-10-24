@@ -1,7 +1,7 @@
 import sys
 from abc import abstractmethod
 from time import struct_time
-from typing import ClassVar, Literal, NamedTuple, NoReturn, SupportsIndex, final, overload
+from typing import ClassVar, Final, NamedTuple, NoReturn, SupportsIndex, final, overload
 from typing_extensions import Self, TypeAlias, deprecated
 
 if sys.version_info >= (3, 11):
@@ -9,8 +9,8 @@ if sys.version_info >= (3, 11):
 elif sys.version_info >= (3, 9):
     __all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo", "MINYEAR", "MAXYEAR")
 
-MINYEAR: Literal[1]
-MAXYEAR: Literal[9999]
+MINYEAR: Final = 1
+MAXYEAR: Final = 9999
 
 class tzinfo:
     @abstractmethod
@@ -265,12 +265,12 @@ class datetime(date):
         def fromtimestamp(cls, timestamp: float, /, tz: _TzInfo | None = ...) -> Self: ...
 
     @classmethod
-    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .fromtimestamp(datetime.UTC)")
+    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .fromtimestamp(datetime.timezone.utc)")
     def utcfromtimestamp(cls, t: float, /) -> Self: ...
     @classmethod
     def now(cls, tz: _TzInfo | None = None) -> Self: ...
     @classmethod
-    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.UTC)")
+    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.timezone.utc)")
     def utcnow(cls) -> Self: ...
     @classmethod
     def combine(cls, date: _Date, time: _Time, tzinfo: _TzInfo | None = ...) -> Self: ...

@@ -2,7 +2,7 @@ import sys
 from _typeshed import ReadableBuffer, StrOrBytesPath
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from types import TracebackType
-from typing import IO, Any, AnyStr, Generic, Literal, TypeVar, overload
+from typing import IO, Any, AnyStr, Final, Generic, Literal, TypeVar, overload
 from typing_extensions import Self, TypeAlias
 
 if sys.version_info >= (3, 9):
@@ -74,8 +74,8 @@ _T = TypeVar("_T")
 
 # These two are private but documented
 if sys.version_info >= (3, 11):
-    _USE_VFORK: bool
-_USE_POSIX_SPAWN: bool
+    _USE_VFORK: Final[bool]
+_USE_POSIX_SPAWN: Final[bool]
 
 class CompletedProcess(Generic[_T]):
     # morally: _CMD
@@ -889,6 +889,7 @@ if sys.version_info >= (3, 11):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
+        encoding: str | None = None,
         timeout: float | None = None,
         text: bool | None = None,
         user: str | int | None = None,
@@ -920,6 +921,7 @@ elif sys.version_info >= (3, 10):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
+        encoding: str | None = None,
         timeout: float | None = None,
         text: bool | None = None,
         user: str | int | None = None,
@@ -950,6 +952,7 @@ elif sys.version_info >= (3, 9):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
+        encoding: str | None = None,
         timeout: float | None = None,
         text: bool | None = None,
         user: str | int | None = None,
@@ -978,6 +981,7 @@ else:
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
+        encoding: str | None = None,
         timeout: float | None = None,
         text: bool | None = None,
     ) -> int: ...
@@ -1005,6 +1009,7 @@ if sys.version_info >= (3, 11):
         pass_fds: Collection[int] = ...,
         timeout: float | None = ...,
         *,
+        encoding: str | None = None,
         text: bool | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -1036,6 +1041,7 @@ elif sys.version_info >= (3, 10):
         pass_fds: Collection[int] = ...,
         timeout: float | None = ...,
         *,
+        encoding: str | None = None,
         text: bool | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -1066,6 +1072,7 @@ elif sys.version_info >= (3, 9):
         pass_fds: Collection[int] = ...,
         timeout: float | None = ...,
         *,
+        encoding: str | None = None,
         text: bool | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -1094,6 +1101,7 @@ else:
         pass_fds: Collection[int] = ...,
         timeout: float | None = ...,
         *,
+        encoding: str | None = None,
         text: bool | None = None,
     ) -> int: ...
 
@@ -1802,9 +1810,9 @@ else:
         text: bool | None = None,
     ) -> Any: ...  # morally: -> str | bytes
 
-PIPE: int
-STDOUT: int
-DEVNULL: int
+PIPE: Final[int]
+STDOUT: Final[int]
+DEVNULL: Final[int]
 
 class SubprocessError(Exception): ...
 
@@ -2574,6 +2582,11 @@ else:
 def list2cmdline(seq: Iterable[StrOrBytesPath]) -> str: ...  # undocumented
 
 if sys.platform == "win32":
+    if sys.version_info >= (3, 13):
+        from _winapi import STARTF_FORCEOFFFEEDBACK, STARTF_FORCEONFEEDBACK
+
+        __all__ += ["STARTF_FORCEOFFFEEDBACK", "STARTF_FORCEONFEEDBACK"]
+
     class STARTUPINFO:
         def __init__(
             self,

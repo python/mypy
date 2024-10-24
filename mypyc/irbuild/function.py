@@ -96,7 +96,8 @@ from mypyc.sametype import is_same_method_signature, is_same_type
 
 
 def transform_func_def(builder: IRBuilder, fdef: FuncDef) -> None:
-    func_ir, func_reg = gen_func_item(builder, fdef, fdef.name, builder.mapper.fdef_to_sig(fdef))
+    sig = builder.mapper.fdef_to_sig(fdef, builder.options.strict_dunders_typing)
+    func_ir, func_reg = gen_func_item(builder, fdef, fdef.name, sig)
 
     # If the function that was visited was a nested function, then either look it up in our
     # current environment or define it if it was not already defined.
@@ -113,9 +114,8 @@ def transform_overloaded_func_def(builder: IRBuilder, o: OverloadedFuncDef) -> N
 
 
 def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
-    func_ir, func_reg = gen_func_item(
-        builder, dec.func, dec.func.name, builder.mapper.fdef_to_sig(dec.func)
-    )
+    sig = builder.mapper.fdef_to_sig(dec.func, builder.options.strict_dunders_typing)
+    func_ir, func_reg = gen_func_item(builder, dec.func, dec.func.name, sig)
     decorated_func: Value | None = None
     if func_reg:
         decorated_func = load_decorated_func(builder, dec.func, func_reg)
@@ -416,7 +416,8 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     # Perform the function of visit_method for methods inside extension classes.
     name = fdef.name
     class_ir = builder.mapper.type_to_ir[cdef.info]
-    func_ir, func_reg = gen_func_item(builder, fdef, name, builder.mapper.fdef_to_sig(fdef), cdef)
+    sig = builder.mapper.fdef_to_sig(fdef, builder.options.strict_dunders_typing)
+    func_ir, func_reg = gen_func_item(builder, fdef, name, sig, cdef)
     builder.functions.append(func_ir)
 
     if is_decorated(builder, fdef):
@@ -481,7 +482,8 @@ def handle_non_ext_method(
 ) -> None:
     # Perform the function of visit_method for methods inside non-extension classes.
     name = fdef.name
-    func_ir, func_reg = gen_func_item(builder, fdef, name, builder.mapper.fdef_to_sig(fdef), cdef)
+    sig = builder.mapper.fdef_to_sig(fdef, builder.options.strict_dunders_typing)
+    func_ir, func_reg = gen_func_item(builder, fdef, name, sig, cdef)
     assert func_reg is not None
     builder.functions.append(func_ir)
 

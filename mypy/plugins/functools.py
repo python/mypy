@@ -6,9 +6,11 @@ from typing import Final, NamedTuple
 
 import mypy.checker
 import mypy.plugin
+import mypy.semanal
 from mypy.argmap import map_actuals_to_formals
-from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, FuncItem, Var
+from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, CallExpr, FuncItem, Var
 from mypy.plugins.common import add_method_to_class
+from mypy.typeops import get_all_type_vars
 from mypy.types import (
     AnyType,
     CallableType,
@@ -16,14 +18,17 @@ from mypy.types import (
     Overloaded,
     Type,
     TypeOfAny,
+    TypeVarType,
     UnboundType,
-    UninhabitedType,
+    UnionType,
     get_proper_type,
 )
 
 functools_total_ordering_makers: Final = {"functools.total_ordering"}
 
 _ORDERING_METHODS: Final = {"__lt__", "__le__", "__gt__", "__ge__"}
+
+PARTIAL: Final = "functools.partial"
 
 
 class _MethodInfo(NamedTuple):
@@ -128,39 +133,58 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     if isinstance(get_proper_type(ctx.arg_types[0][0]), Overloaded):
         # TODO: handle overloads, just fall back to whatever the non-plugin code does
         return ctx.default_return_type
-    fn_type = ctx.api.extract_callable_type(ctx.arg_types[0][0], ctx=ctx.default_return_type)
+    return handle_partial_with_callee(ctx, callee=ctx.arg_types[0][0])
+
+
+def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -> Type:
+    if not isinstance(ctx.api, mypy.checker.TypeChecker):  # use internals
+        return ctx.default_return_type
+
+    if isinstance(callee_proper := get_proper_type(callee), UnionType):
+        return UnionType.make_union(
+            [handle_partial_with_callee(ctx, item) for item in callee_proper.items]
+        )
+
+    fn_type = ctx.api.extract_callable_type(callee, ctx=ctx.default_return_type)
     if fn_type is None:
         return ctx.default_return_type
 
-    defaulted = fn_type.copy_modified(
-        arg_kinds=[
-            (
-                ArgKind.ARG_OPT
-                if k == ArgKind.ARG_POS
-                else (ArgKind.ARG_NAMED_OPT if k == ArgKind.ARG_NAMED else k)
-            )
-            for k in fn_type.arg_kinds
-        ]
-    )
-    if defaulted.line < 0:
-        # Make up a line number if we don't have one
-        defaulted.set_line(ctx.default_return_type)
+    # We must normalize from the start to have coherent view together with TypeChecker.
+    fn_type = fn_type.with_unpacked_kwargs().with_normalized_var_args()
 
-    actual_args = [a for param in ctx.args[1:] for a in param]
-    actual_arg_kinds = [a for param in ctx.arg_kinds[1:] for a in param]
-    actual_arg_names = [a for param in ctx.arg_names[1:] for a in param]
-    actual_types = [a for param in ctx.arg_types[1:] for a in param]
+    last_context = ctx.api.type_context[-1]
+    if not fn_type.is_type_obj():
+        # We wrap the return type to get use of a possible type context provided by caller.
+        # We cannot do this in case of class objects, since otherwise the plugin may get
+        # falsely triggered when evaluating the constructed call itself.
+        ret_type: Type = ctx.api.named_generic_type(PARTIAL, [fn_type.ret_type])
+        wrapped_return = True
+    else:
+        ret_type = fn_type.ret_type
+        # Instead, for class objects we ignore any type context to avoid spurious errors,
+        # since the type context will be partial[X] etc., not X.
+        ctx.api.type_context[-1] = None
+        wrapped_return = False
 
-    _, bound = ctx.api.expr_checker.check_call(
-        callee=defaulted,
-        args=actual_args,
-        arg_kinds=actual_arg_kinds,
-        arg_names=actual_arg_names,
-        context=defaulted,
-    )
-    bound = get_proper_type(bound)
-    if not isinstance(bound, CallableType):
-        return ctx.default_return_type
+    # Flatten actual to formal mapping, since this is what check_call() expects.
+    actual_args = []
+    actual_arg_kinds = []
+    actual_arg_names = []
+    actual_types = []
+    seen_args = set()
+    for i, param in enumerate(ctx.args[1:], start=1):
+        for j, a in enumerate(param):
+            if a in seen_args:
+                # Same actual arg can map to multiple formals, but we need to include
+                # each one only once.
+                continue
+            # Here we rely on the fact that expressions are essentially immutable, so
+            # they can be compared by identity.
+            seen_args.add(a)
+            actual_args.append(a)
+            actual_arg_kinds.append(ctx.arg_kinds[i][j])
+            actual_arg_names.append(ctx.arg_names[i][j])
+            actual_types.append(ctx.arg_types[i][j])
 
     formal_to_actual = map_actuals_to_formals(
         actual_kinds=actual_arg_kinds,
@@ -170,6 +194,67 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         actual_arg_type=lambda i: actual_types[i],
     )
 
+    # We need to remove any type variables that appear only in formals that have
+    # no actuals, to avoid eagerly binding them in check_call() below.
+    can_infer_ids = set()
+    for i, arg_type in enumerate(fn_type.arg_types):
+        if not formal_to_actual[i]:
+            continue
+        can_infer_ids.update({tv.id for tv in get_all_type_vars(arg_type)})
+
+    defaulted = fn_type.copy_modified(
+        arg_kinds=[
+            (
+                ArgKind.ARG_OPT
+                if k == ArgKind.ARG_POS
+                else (ArgKind.ARG_NAMED_OPT if k == ArgKind.ARG_NAMED else k)
+            )
+            for k in fn_type.arg_kinds
+        ],
+        ret_type=ret_type,
+        variables=[
+            tv
+            for tv in fn_type.variables
+            # Keep TypeVarTuple/ParamSpec to avoid spurious errors on empty args.
+            if tv.id in can_infer_ids or not isinstance(tv, TypeVarType)
+        ],
+    )
+    if defaulted.line < 0:
+        # Make up a line number if we don't have one
+        defaulted.set_line(ctx.default_return_type)
+
+    # Create a valid context for various ad-hoc inspections in check_call().
+    call_expr = CallExpr(
+        callee=ctx.args[0][0],
+        args=actual_args,
+        arg_kinds=actual_arg_kinds,
+        arg_names=actual_arg_names,
+        analyzed=ctx.context.analyzed if isinstance(ctx.context, CallExpr) else None,
+    )
+    call_expr.set_line(ctx.context)
+
+    _, bound = ctx.api.expr_checker.check_call(
+        callee=defaulted,
+        args=actual_args,
+        arg_kinds=actual_arg_kinds,
+        arg_names=actual_arg_names,
+        context=call_expr,
+    )
+    if not wrapped_return:
+        # Restore previously ignored context.
+        ctx.api.type_context[-1] = last_context
+
+    bound = get_proper_type(bound)
+    if not isinstance(bound, CallableType):
+        return ctx.default_return_type
+
+    if wrapped_return:
+        # Reverse the wrapping we did above.
+        ret_type = get_proper_type(bound.ret_type)
+        if not isinstance(ret_type, Instance) or ret_type.type.fullname != PARTIAL:
+            return ctx.default_return_type
+        bound = bound.copy_modified(ret_type=ret_type.args[0])
+
     partial_kinds = []
     partial_types = []
     partial_names = []
@@ -178,7 +263,7 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     for i, actuals in enumerate(formal_to_actual):
         if len(bound.arg_types) == len(fn_type.arg_types):
             arg_type = bound.arg_types[i]
-            if isinstance(get_proper_type(arg_type), UninhabitedType):
+            if not mypy.checker.is_valid_inferred_type(arg_type):
                 arg_type = fn_type.arg_types[i]  # bit of a hack
         else:
             # TODO: I assume that bound and fn_type have the same arguments. It appears this isn't
@@ -189,18 +274,21 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
             partial_kinds.append(fn_type.arg_kinds[i])
             partial_types.append(arg_type)
             partial_names.append(fn_type.arg_names[i])
-        elif actuals:
-            if any(actual_arg_kinds[j] == ArgKind.ARG_POS for j in actuals):
+        else:
+            assert actuals
+            if any(actual_arg_kinds[j] in (ArgKind.ARG_POS, ArgKind.ARG_STAR) for j in actuals):
+                # Don't add params for arguments passed positionally
                 continue
+            # Add defaulted params for arguments passed via keyword
             kind = actual_arg_kinds[actuals[0]]
-            if kind == ArgKind.ARG_NAMED:
+            if kind == ArgKind.ARG_NAMED or kind == ArgKind.ARG_STAR2:
                 kind = ArgKind.ARG_NAMED_OPT
             partial_kinds.append(kind)
             partial_types.append(arg_type)
             partial_names.append(fn_type.arg_names[i])
 
     ret_type = bound.ret_type
-    if isinstance(get_proper_type(ret_type), UninhabitedType):
+    if not mypy.checker.is_valid_inferred_type(ret_type):
         ret_type = fn_type.ret_type  # same kind of hack as above
 
     partially_applied = fn_type.copy_modified(
@@ -210,7 +298,7 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         ret_type=ret_type,
     )
 
-    ret = ctx.api.named_generic_type("functools.partial", [ret_type])
+    ret = ctx.api.named_generic_type(PARTIAL, [ret_type])
     ret = ret.copy_with_extra_attr("__mypy_partial", partially_applied)
     return ret
 
@@ -220,7 +308,7 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
     if (
         not isinstance(ctx.api, mypy.checker.TypeChecker)  # use internals
         or not isinstance(ctx.type, Instance)
-        or ctx.type.type.fullname != "functools.partial"
+        or ctx.type.type.fullname != PARTIAL
         or not ctx.type.extra_attrs
         or "__mypy_partial" not in ctx.type.extra_attrs.attrs
     ):
@@ -230,15 +318,25 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
     if len(ctx.arg_types) != 2:  # *args, **kwargs
         return ctx.default_return_type
 
-    args = [a for param in ctx.args for a in param]
-    arg_kinds = [a for param in ctx.arg_kinds for a in param]
-    arg_names = [a for param in ctx.arg_names for a in param]
+    # See comments for similar actual to formal code above
+    actual_args = []
+    actual_arg_kinds = []
+    actual_arg_names = []
+    seen_args = set()
+    for i, param in enumerate(ctx.args):
+        for j, a in enumerate(param):
+            if a in seen_args:
+                continue
+            seen_args.add(a)
+            actual_args.append(a)
+            actual_arg_kinds.append(ctx.arg_kinds[i][j])
+            actual_arg_names.append(ctx.arg_names[i][j])
 
     result = ctx.api.expr_checker.check_call(
         callee=partial_type,
-        args=args,
-        arg_kinds=arg_kinds,
-        arg_names=arg_names,
+        args=actual_args,
+        arg_kinds=actual_arg_kinds,
+        arg_names=actual_arg_names,
         context=ctx.context,
     )
     return result[0]

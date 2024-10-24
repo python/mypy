@@ -152,7 +152,8 @@ between class and instance variables with callable types. For example:
 
 .. code-block:: python
 
-   from typing import Callable, ClassVar
+   from collections.abc import Callable
+   from typing import ClassVar
 
    class A:
        foo: Callable[[int], None]

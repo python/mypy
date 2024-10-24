@@ -23,8 +23,9 @@ from abc import abstractmethod
 from builtins import OSError
 from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping, Sequence
 from contextlib import AbstractContextManager
-from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper as _TextIOWrapper
+from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
 from subprocess import Popen
+from types import TracebackType
 from typing import (
     IO,
     Any,
@@ -365,7 +366,9 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
     if sys.version_info >= (3, 12) and sys.platform == "win32":
         @property
         @deprecated(
-            "Use st_birthtime instead to retrieve the file creation time. In the future, this property will contain the last metadata change time."
+            """\
+Use st_birthtime instead to retrieve the file creation time. \
+In the future, this property will contain the last metadata change time."""
         )
         def st_ctime(self) -> float: ...
     else:
@@ -576,7 +579,7 @@ def fdopen(
     newline: str | None = ...,
     closefd: bool = ...,
     opener: _Opener | None = ...,
-) -> _TextIOWrapper: ...
+) -> TextIOWrapper: ...
 @overload
 def fdopen(
     fd: int,
@@ -671,7 +674,6 @@ if sys.version_info >= (3, 12) or sys.platform != "win32":
     def set_blocking(fd: int, blocking: bool, /) -> None: ...
 
 if sys.platform != "win32":
-    def fchmod(fd: int, mode: int) -> None: ...
     def fchown(fd: int, uid: int, gid: int) -> None: ...
     def fpathconf(fd: int, name: str | int, /) -> int: ...
     def fstatvfs(fd: int, /) -> statvfs_result: ...
@@ -752,7 +754,6 @@ def chmod(path: FileDescriptorOrPath, mode: int, *, dir_fd: int | None = None, f
 if sys.platform != "win32" and sys.platform != "linux":
     def chflags(path: StrOrBytesPath, flags: int, follow_symlinks: bool = True) -> None: ...  # some flavors of Unix
     def lchflags(path: StrOrBytesPath, flags: int) -> None: ...
-    def lchmod(path: StrOrBytesPath, mode: int) -> None: ...
 
 if sys.platform != "win32":
     def chroot(path: StrOrBytesPath) -> None: ...
@@ -914,12 +915,28 @@ if sys.platform != "win32":
     def forkpty() -> tuple[int, int]: ...  # some flavors of Unix
     def killpg(pgid: int, signal: int, /) -> None: ...
     def nice(increment: int, /) -> int: ...
-    if sys.platform != "darwin":
-        def plock(op: int, /) -> None: ...  # ???op is int?
+    if sys.platform != "darwin" and sys.platform != "linux":
+        def plock(op: int, /) -> None: ...
 
-class _wrap_close(_TextIOWrapper):
-    def __init__(self, stream: _TextIOWrapper, proc: Popen[str]) -> None: ...
-    def close(self) -> int | None: ...  # type: ignore[override]
+class _wrap_close:
+    def __init__(self, stream: TextIOWrapper, proc: Popen[str]) -> None: ...
+    def close(self) -> int | None: ...
+    def __enter__(self) -> Self: ...
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+    ) -> None: ...
+    def __iter__(self) -> Iterator[str]: ...
+    # Methods below here don't exist directly on the _wrap_close object, but
+    # are copied from the wrapped TextIOWrapper object via __getattr__.
+    # The full set of TextIOWrapper methods are technically available this way,
+    # but undocumented. Only a subset are currently included here.
+    def read(self, size: int | None = -1, /) -> str: ...
+    def readable(self) -> bool: ...
+    def readline(self, size: int = -1, /) -> str: ...
+    def readlines(self, hint: int = -1, /) -> list[str]: ...
+    def writable(self) -> bool: ...
+    def write(self, s: str, /) -> int: ...
+    def writelines(self, lines: Iterable[str], /) -> None: ...
 
 def popen(cmd: str, mode: str = "r", buffering: int = -1) -> _wrap_close: ...
 def spawnl(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
@@ -971,7 +988,8 @@ else:
     def spawnvp(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
     def spawnvpe(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
     def wait() -> tuple[int, int]: ...  # Unix only
-    if sys.platform != "darwin":
+    # Added to MacOS in 3.13
+    if sys.platform != "darwin" or sys.version_info >= (3, 13):
         @final
         class waitid_result(structseq[int], tuple[int, int, int, int, int]):
             if sys.version_info >= (3, 10):
@@ -1141,17 +1159,47 @@ if sys.version_info >= (3, 10) and sys.platform == "linux":
 if sys.version_info >= (3, 12) and sys.platform == "linux":
     CLONE_FILES: int
     CLONE_FS: int
-    CLONE_NEWCGROUP: int
-    CLONE_NEWIPC: int
-    CLONE_NEWNET: int
+    CLONE_NEWCGROUP: int  # Linux 4.6+
+    CLONE_NEWIPC: int  # Linux 2.6.19+
+    CLONE_NEWNET: int  # Linux 2.6.24+
     CLONE_NEWNS: int
-    CLONE_NEWPID: int
-    CLONE_NEWTIME: int
-    CLONE_NEWUSER: int
-    CLONE_NEWUTS: int
+    CLONE_NEWPID: int  # Linux 3.8+
+    CLONE_NEWTIME: int  # Linux 5.6+
+    CLONE_NEWUSER: int  # Linux 3.8+
+    CLONE_NEWUTS: int  # Linux 2.6.19+
     CLONE_SIGHAND: int
-    CLONE_SYSVSEM: int
+    CLONE_SYSVSEM: int  # Linux 2.6.26+
     CLONE_THREAD: int
     CLONE_VM: int
     def unshare(flags: int) -> None: ...
     def setns(fd: FileDescriptorLike, nstype: int = 0) -> None: ...
+
+if sys.version_info >= (3, 13) and sys.platform != "win32":
+    def posix_openpt(oflag: int, /) -> int: ...
+    def grantpt(fd: FileDescriptorLike, /) -> None: ...
+    def unlockpt(fd: FileDescriptorLike, /) -> None: ...
+    def ptsname(fd: FileDescriptorLike, /) -> str: ...
+
+if sys.version_info >= (3, 13) and sys.platform == "linux":
+    TFD_TIMER_ABSTIME: Final = 1
+    TFD_TIMER_CANCEL_ON_SET: Final = 2
+    TFD_NONBLOCK: Final[int]
+    TFD_CLOEXEC: Final[int]
+    POSIX_SPAWN_CLOSEFROM: Final[int]
+
+    def timerfd_create(clockid: int, /, *, flags: int = 0) -> int: ...
+    def timerfd_settime(
+        fd: FileDescriptor, /, *, flags: int = 0, initial: float = 0.0, interval: float = 0.0
+    ) -> tuple[float, float]: ...
+    def timerfd_settime_ns(fd: FileDescriptor, /, *, flags: int = 0, initial: int = 0, interval: int = 0) -> tuple[int, int]: ...
+    def timerfd_gettime(fd: FileDescriptor, /) -> tuple[float, float]: ...
+    def timerfd_gettime_ns(fd: FileDescriptor, /) -> tuple[int, int]: ...
+
+if sys.version_info >= (3, 13) or sys.platform != "win32":
+    # Added to Windows in 3.13.
+    def fchmod(fd: int, mode: int) -> None: ...
+
+if sys.platform != "linux":
+    if sys.version_info >= (3, 13) or sys.platform != "win32":
+        # Added to Windows in 3.13.
+        def lchmod(path: StrOrBytesPath, mode: int) -> None: ...

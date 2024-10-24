@@ -103,10 +103,11 @@ PAX_NAME_FIELDS: set[str]
 
 ENCODING: str
 
+@overload
 def open(
     name: StrOrBytesPath | None = None,
-    mode: str = "r",
-    fileobj: IO[bytes] | None = None,  # depends on mode
+    mode: Literal["r", "r:*", "r:", "r:gz", "r:bz2", "r:xz"] = "r",
+    fileobj: IO[bytes] | None = None,
     bufsize: int = 10240,
     *,
     format: int | None = ...,
@@ -118,8 +119,134 @@ def open(
     pax_headers: Mapping[str, str] | None = ...,
     debug: int | None = ...,
     errorlevel: int | None = ...,
-    compresslevel: int | None = ...,
+) -> TarFile: ...
+@overload
+def open(
+    name: StrOrBytesPath | None,
+    mode: Literal["x", "x:", "a", "a:", "w", "w:"],
+    fileobj: _Fileobj | None = None,
+    bufsize: int = 10240,
+    *,
+    format: int | None = ...,
+    tarinfo: type[TarInfo] | None = ...,
+    dereference: bool | None = ...,
+    ignore_zeros: bool | None = ...,
+    encoding: str | None = ...,
+    errors: str = ...,
+    pax_headers: Mapping[str, str] | None = ...,
+    debug: int | None = ...,
+    errorlevel: int | None = ...,
+) -> TarFile: ...
+@overload
+def open(
+    name: StrOrBytesPath | None = None,
+    *,
+    mode: Literal["x", "x:", "a", "a:", "w", "w:"],
+    fileobj: _Fileobj | None = None,
+    bufsize: int = 10240,
+    format: int | None = ...,
+    tarinfo: type[TarInfo] | None = ...,
+    dereference: bool | None = ...,
+    ignore_zeros: bool | None = ...,
+    encoding: str | None = ...,
+    errors: str = ...,
+    pax_headers: Mapping[str, str] | None = ...,
+    debug: int | None = ...,
+    errorlevel: int | None = ...,
+) -> TarFile: ...
+@overload
+def open(
+    name: StrOrBytesPath | None,
+    mode: Literal["x:gz", "x:bz2", "w:gz", "w:bz2"],
+    fileobj: _Fileobj | None = None,
+    bufsize: int = 10240,
+    *,
+    format: int | None = ...,
+    tarinfo: type[TarInfo] | None = ...,
+    dereference: bool | None = ...,
+    ignore_zeros: bool | None = ...,
+    encoding: str | None = ...,
+    errors: str = ...,
+    pax_headers: Mapping[str, str] | None = ...,
+    debug: int | None = ...,
+    errorlevel: int | None = ...,
+    compresslevel: int = 9,
+) -> TarFile: ...
+@overload
+def open(
+    name: StrOrBytesPath | None = None,
+    *,
+    mode: Literal["x:gz", "x:bz2", "w:gz", "w:bz2"],
+    fileobj: _Fileobj | None = None,
+    bufsize: int = 10240,
+    format: int | None = ...,
+    tarinfo: type[TarInfo] | None = ...,
+    dereference: bool | None = ...,
+    ignore_zeros: bool | None = ...,
+    encoding: str | None = ...,
+    errors: str = ...,
+    pax_headers: Mapping[str, str] | None = ...,
+    debug: int | None = ...,
+    errorlevel: int | None = ...,
+    compresslevel: int = 9,
+) -> TarFile: ...
+@overload
+def open(
+    name: StrOrBytesPath | None,
+    mode: Literal["x:xz", "w:xz"],
+    fileobj: _Fileobj | None = None,
+    bufsize: int = 10240,
+    *,
+    format: int | None = ...,
+    tarinfo: type[TarInfo] | None = ...,
+    dereference: bool | None = ...,
+    ignore_zeros: bool | None = ...,
+    encoding: str | None = ...,
+    errors: str = ...,
+    pax_headers: Mapping[str, str] | None = ...,
+    debug: int | None = ...,
+    errorlevel: int | None = ...,
     preset: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] | None = ...,
+) -> TarFile: ...
+@overload
+def open(
+    name: StrOrBytesPath | None = None,
+    *,
+    mode: Literal["x:xz", "w:xz"],
+    fileobj: _Fileobj | None = None,
+    bufsize: int = 10240,
+    format: int | None = ...,
+    tarinfo: type[TarInfo] | None = ...,
+    dereference: bool | None = ...,
+    ignore_zeros: bool | None = ...,
+    encoding: str | None = ...,
+    errors: str = ...,
+    pax_headers: Mapping[str, str] | None = ...,
+    debug: int | None = ...,
+    errorlevel: int | None = ...,
+    preset: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] | None = ...,
+) -> TarFile: ...
+
+# TODO: Temporary fallback for modes containing pipe characters. These don't
+# work with mypy 1.10, but this should be fixed with mypy 1.11.
+# https://github.com/python/typeshed/issues/12182
+@overload
+def open(
+    name: StrOrBytesPath | None = None,
+    *,
+    mode: str,
+    fileobj: IO[bytes] | None = None,
+    bufsize: int = 10240,
+    format: int | None = ...,
+    tarinfo: type[TarInfo] | None = ...,
+    dereference: bool | None = ...,
+    ignore_zeros: bool | None = ...,
+    encoding: str | None = ...,
+    errors: str = ...,
+    pax_headers: Mapping[str, str] | None = ...,
+    debug: int | None = ...,
+    errorlevel: int | None = ...,
+    preset: int | None = ...,
 ) -> TarFile: ...
 
 class ExFileObject(io.BufferedReader):
@@ -142,22 +269,43 @@ class TarFile:
     errorlevel: int | None
     offset: int  # undocumented
     extraction_filter: _FilterFunction | None
-    def __init__(
-        self,
-        name: StrOrBytesPath | None = None,
-        mode: Literal["r", "a", "w", "x"] = "r",
-        fileobj: _Fileobj | None = None,
-        format: int | None = None,
-        tarinfo: type[TarInfo] | None = None,
-        dereference: bool | None = None,
-        ignore_zeros: bool | None = None,
-        encoding: str | None = None,
-        errors: str = "surrogateescape",
-        pax_headers: Mapping[str, str] | None = None,
-        debug: int | None = None,
-        errorlevel: int | None = None,
-        copybufsize: int | None = None,  # undocumented
-    ) -> None: ...
+    if sys.version_info >= (3, 13):
+        stream: bool
+        def __init__(
+            self,
+            name: StrOrBytesPath | None = None,
+            mode: Literal["r", "a", "w", "x"] = "r",
+            fileobj: _Fileobj | None = None,
+            format: int | None = None,
+            tarinfo: type[TarInfo] | None = None,
+            dereference: bool | None = None,
+            ignore_zeros: bool | None = None,
+            encoding: str | None = None,
+            errors: str = "surrogateescape",
+            pax_headers: Mapping[str, str] | None = None,
+            debug: int | None = None,
+            errorlevel: int | None = None,
+            copybufsize: int | None = None,  # undocumented
+            stream: bool = False,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            name: StrOrBytesPath | None = None,
+            mode: Literal["r", "a", "w", "x"] = "r",
+            fileobj: _Fileobj | None = None,
+            format: int | None = None,
+            tarinfo: type[TarInfo] | None = None,
+            dereference: bool | None = None,
+            ignore_zeros: bool | None = None,
+            encoding: str | None = None,
+            errors: str = "surrogateescape",
+            pax_headers: Mapping[str, str] | None = None,
+            debug: int | None = None,
+            errorlevel: int | None = None,
+            copybufsize: int | None = None,  # undocumented
+        ) -> None: ...
+
     def __enter__(self) -> Self: ...
     def __exit__(
         self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
@@ -380,7 +528,7 @@ class TarInfo:
     name: str
     path: str
     size: int
-    mtime: int
+    mtime: int | float
     chksum: int
     devmajor: int
     devminor: int

@@ -2,7 +2,7 @@
 # ruff: noqa: F811
 # TODO: The collections import is required, otherwise mypy crashes.
 # https://github.com/python/mypy/issues/16744
-import collections  # noqa: F401  # pyright: ignore
+import collections  # noqa: F401  # pyright: ignore[reportUnusedImport]
 import sys
 import typing_extensions
 from _collections_abc import dict_items, dict_keys, dict_values
@@ -21,7 +21,7 @@ from types import (
     TracebackType,
     WrapperDescriptorType,
 )
-from typing_extensions import Never as _Never, ParamSpec as _ParamSpec
+from typing_extensions import Never as _Never, ParamSpec as _ParamSpec, deprecated
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -129,7 +129,7 @@ if sys.version_info >= (3, 12):
     __all__ += ["TypeAliasType", "override"]
 
 if sys.version_info >= (3, 13):
-    __all__ += ["get_protocol_members", "is_protocol", "NoDefault"]
+    __all__ += ["get_protocol_members", "is_protocol", "NoDefault", "TypeIs", "ReadOnly"]
 
 Any = object()
 
@@ -183,6 +183,7 @@ class TypeVar:
     if sys.version_info >= (3, 11):
         def __typing_subst__(self, arg: Any) -> Any: ...
     if sys.version_info >= (3, 13):
+        def __typing_prepare_subst__(self, alias: Any, args: Any) -> tuple[Any, ...]: ...
         def has_default(self) -> bool: ...
 
 # Used for an undocumented mypy feature. Does not exist at runtime.
@@ -539,18 +540,20 @@ class AsyncIterator(AsyncIterable[_T_co], Protocol[_T_co]):
     def __aiter__(self) -> AsyncIterator[_T_co]: ...
 
 class AsyncGenerator(AsyncIterator[_YieldT_co], Generic[_YieldT_co, _SendT_contra]):
-    def __anext__(self) -> Awaitable[_YieldT_co]: ...
+    def __anext__(self) -> Coroutine[Any, Any, _YieldT_co]: ...
     @abstractmethod
-    def asend(self, value: _SendT_contra, /) -> Awaitable[_YieldT_co]: ...
+    def asend(self, value: _SendT_contra, /) -> Coroutine[Any, Any, _YieldT_co]: ...
     @overload
     @abstractmethod
     def athrow(
         self, typ: type[BaseException], val: BaseException | object = None, tb: TracebackType | None = None, /
-    ) -> Awaitable[_YieldT_co]: ...
+    ) -> Coroutine[Any, Any, _YieldT_co]: ...
     @overload
     @abstractmethod
-    def athrow(self, typ: BaseException, val: None = None, tb: TracebackType | None = None, /) -> Awaitable[_YieldT_co]: ...
-    def aclose(self) -> Awaitable[None]: ...
+    def athrow(
+        self, typ: BaseException, val: None = None, tb: TracebackType | None = None, /
+    ) -> Coroutine[Any, Any, _YieldT_co]: ...
+    def aclose(self) -> Coroutine[Any, Any, None]: ...
     @property
     def ag_await(self) -> Any: ...
     @property
@@ -797,16 +800,10 @@ class IO(Iterator[AnyStr]):
     def writable(self) -> bool: ...
     @abstractmethod
     @overload
-    def write(self: IO[str], s: str, /) -> int: ...
-    @abstractmethod
-    @overload
     def write(self: IO[bytes], s: ReadableBuffer, /) -> int: ...
     @abstractmethod
     @overload
     def write(self, s: AnyStr, /) -> int: ...
-    @abstractmethod
-    @overload
-    def writelines(self: IO[str], lines: Iterable[str], /) -> None: ...
     @abstractmethod
     @overload
     def writelines(self: IO[bytes], lines: Iterable[ReadableBuffer], /) -> None: ...
@@ -843,7 +840,8 @@ class TextIO(IO[str]):
     @abstractmethod
     def __enter__(self) -> TextIO: ...
 
-ByteString: typing_extensions.TypeAlias = bytes | bytearray | memoryview
+if sys.version_info < (3, 14):
+    ByteString: typing_extensions.TypeAlias = bytes | bytearray | memoryview
 
 # Functions
 
@@ -863,13 +861,13 @@ if sys.version_info >= (3, 9):
     def get_type_hints(
         obj: _get_type_hints_obj_allowed_types,
         globalns: dict[str, Any] | None = None,
-        localns: dict[str, Any] | None = None,
+        localns: Mapping[str, Any] | None = None,
         include_extras: bool = False,
     ) -> dict[str, Any]: ...
 
 else:
     def get_type_hints(
-        obj: _get_type_hints_obj_allowed_types, globalns: dict[str, Any] | None = None, localns: dict[str, Any] | None = None
+        obj: _get_type_hints_obj_allowed_types, globalns: dict[str, Any] | None = None, localns: Mapping[str, Any] | None = None
     ) -> dict[str, Any]: ...
 
 def get_args(tp: Any) -> tuple[Any, ...]: ...
@@ -989,12 +987,40 @@ class ForwardRef:
     else:
         def __init__(self, arg: str, is_argument: bool = True) -> None: ...
 
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 13):
+        @overload
+        @deprecated(
+            "Failing to pass a value to the 'type_params' parameter of ForwardRef._evaluate() is deprecated, "
+            "as it leads to incorrect behaviour when evaluating a stringified annotation "
+            "that references a PEP 695 type parameter. It will be disallowed in Python 3.15."
+        )
         def _evaluate(
-            self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None, recursive_guard: frozenset[str]
+            self, globalns: dict[str, Any] | None, localns: Mapping[str, Any] | None, *, recursive_guard: frozenset[str]
+        ) -> Any | None: ...
+        @overload
+        def _evaluate(
+            self,
+            globalns: dict[str, Any] | None,
+            localns: Mapping[str, Any] | None,
+            type_params: tuple[TypeVar | ParamSpec | TypeVarTuple, ...],
+            *,
+            recursive_guard: frozenset[str],
+        ) -> Any | None: ...
+    elif sys.version_info >= (3, 12):
+        def _evaluate(
+            self,
+            globalns: dict[str, Any] | None,
+            localns: Mapping[str, Any] | None,
+            type_params: tuple[TypeVar | ParamSpec | TypeVarTuple, ...] | None = None,
+            *,
+            recursive_guard: frozenset[str],
+        ) -> Any | None: ...
+    elif sys.version_info >= (3, 9):
+        def _evaluate(
+            self, globalns: dict[str, Any] | None, localns: Mapping[str, Any] | None, recursive_guard: frozenset[str]
         ) -> Any | None: ...
     else:
-        def _evaluate(self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None) -> Any | None: ...
+        def _evaluate(self, globalns: dict[str, Any] | None, localns: Mapping[str, Any] | None) -> Any | None: ...
 
     def __eq__(self, other: object) -> bool: ...
     def __hash__(self) -> int: ...
@@ -1025,7 +1051,7 @@ if sys.version_info >= (3, 12):
         # It's writable on types, but not on instances of TypeAliasType.
         @property
         def __module__(self) -> str | None: ...  # type: ignore[override]
-        def __getitem__(self, parameters: Any) -> Any: ...
+        def __getitem__(self, parameters: Any) -> GenericAlias: ...
         def __or__(self, right: Any) -> _SpecialForm: ...
         def __ror__(self, left: Any) -> _SpecialForm: ...
 
@@ -1036,3 +1062,5 @@ if sys.version_info >= (3, 13):
     class _NoDefaultType: ...
 
     NoDefault: _NoDefaultType
+    TypeIs: _SpecialForm
+    ReadOnly: _SpecialForm

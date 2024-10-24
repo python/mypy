@@ -23,19 +23,19 @@ x: P  # E: ParamSpec "P" is unbound
 def foo1(x: Callable[P, int]) -> Callable[P, str]:  ...
 
 def foo2(x: P) -> P: ...  # E: Invalid location for ParamSpec "P" \
-                          # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+                          # N: You can use ParamSpec as the first argument to Callable, e.g., "Callable[P, int]"
 
 def foo3(x: Concatenate[int, P]) -> int: ...  # E: Invalid location for Concatenate \
                                               # N: You can use Concatenate as the first argument to Callable
 
 def foo4(x: List[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
-                                   # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+                                   # N: You can use ParamSpec as the first argument to Callable, e.g., "Callable[P, int]"
 
 def foo5(x: Callable[[int, str], P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
-                                                   # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+                                                   # N: You can use ParamSpec as the first argument to Callable, e.g., "Callable[P, int]"
 
 def foo6(x: Callable[[P], int]) -> None: ...  # E: Invalid location for ParamSpec "P" \
-                                              # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+                                              # N: You can use ParamSpec as the first argument to Callable, e.g., "Callable[P, int]"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecImports]
@@ -901,8 +901,8 @@ class A:
     def func(self, action: Callable[_P, _R], *args: _P.args, **kwargs: _P.kwargs) -> _R:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`4, *_P.args, **_P.kwargs) -> _R`4"
-reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`8, *_P.args, **_P.kwargs) -> _R`8"
+reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`6, *_P.args, **_P.kwargs) -> _R`6"
+reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`10, *_P.args, **_P.kwargs) -> _R`10"
 
 def f(x: int) -> int:
     ...
@@ -933,8 +933,8 @@ class A:
     def func(self, action: Job[_P, None]) -> Job[_P, None]:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`3, None]) -> __main__.Job[_P`3, None]"
-reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`5, None]) -> __main__.Job[_P`5, None]"
+reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
+reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`6, None]) -> __main__.Job[_P`6, None]"
 reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[[x: Any], None]"
 
 def f(x: int, y: int) -> None: ...
@@ -1096,7 +1096,7 @@ j = Job(generic_f)
 reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`-1]]"
 
 jf = j.into_callable()
-reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`3)"
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`4)"
 reveal_type(jf(1))  # N: Revealed type is "None"
 [builtins fixtures/paramspec.pyi]
 
@@ -1193,28 +1193,7 @@ def func(callback: Callable[P, str]) -> Callable[P, str]:
     return inner
 [builtins fixtures/paramspec.pyi]
 
-[case testParamSpecArgsAndKwargsStringified]
-from typing import Callable
-from typing_extensions import ParamSpec
-
-P1 = ParamSpec("P1")
-
-def func(callback: Callable[P1, str]) -> Callable[P1, str]:
-    def inner(*args: "P1.args", **kwargs: "P1.kwargs") -> str:
-        return "foo"
-    return inner
-
-@func
-def outer(a: int) -> str:
-    return ""
-
-outer(1)  # OK
-outer("x")  # E: Argument 1 to "outer" has incompatible type "str"; expected "int"
-outer(a=1)  # OK
-outer(b=1)  # E: Unexpected keyword argument "b" for "outer"
-[builtins fixtures/paramspec.pyi]
-
-[case testParamSpecArgsAndKwargsMismatch]
+[case testParamSpecArgsAndKwargsMissmatch]
 from typing import Callable
 from typing_extensions import ParamSpec
 
@@ -1520,7 +1499,7 @@ T = TypeVar("T")
 A = List[T]
 def f(x: A[[int, str]]) -> None: ...  # E: Bracketed expression "[...]" is not valid as a type
 def g(x: A[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
-                             # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+                             # N: You can use ParamSpec as the first argument to Callable, e.g., "Callable[P, int]"
 
 C = Callable[P, T]
 x: C[int]  # E: Bad number of arguments for type alias, expected 2, given 1
@@ -1600,7 +1579,7 @@ from typing_extensions import Concatenate, ParamSpec
 P = ParamSpec("P")
 
 @overload
-def command() -> Callable[[Callable[Concatenate[object, object, P], object]], None]:  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def command() -> Callable[[Callable[Concatenate[object, object, P], object]], None]:
     ...
 
 @overload
@@ -1855,6 +1834,15 @@ P = ParamSpec("P")
 class C(Generic[P]): ...
 c: C[int, [int, str], str]  # E: Nested parameter specifications are not allowed
 reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecInheritNoCrashOnNested]
+from typing import Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+class C(Generic[P]): ...
+class D(C[int, [int, str], str]): ... # E: Nested parameter specifications are not allowed
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecConcatenateSelfType]
@@ -2203,4 +2191,115 @@ parametrize(_test, Case(1, 2), Case(3, 4))
 parametrize(_test, Case(1, b=2), Case(3, b=4))
 parametrize(_test, Case(1, 2), Case(3))
 parametrize(_test, Case(1, 2), Case(3, b=4))
+[builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecInsufficientArgs]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable
+
+_P = ParamSpec("_P")
+
+def run(predicate: Callable[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None:  # N: "run" defined here
+    predicate()  # E: Too few arguments
+    predicate(*args)  # E: Too few arguments
+    predicate(**kwargs)  # E: Too few arguments
+    predicate(*args, **kwargs)
+
+def fn() -> None: ...
+def fn_args(x: int) -> None: ...
+def fn_posonly(x: int, /) -> None: ...
+
+run(fn)
+run(fn_args, 1)
+run(fn_args, x=1)
+run(fn_posonly, 1)
+run(fn_posonly, x=1)  # E: Unexpected keyword argument "x" for "run"
+
+[builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecConcatenateInsufficientArgs]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable
+
+_P = ParamSpec("_P")
+
+def run(predicate: Callable[Concatenate[int, _P], None], *args: _P.args, **kwargs: _P.kwargs) -> None:  # N: "run" defined here
+    predicate()  # E: Too few arguments
+    predicate(1)  # E: Too few arguments
+    predicate(1, *args)  # E: Too few arguments
+    predicate(1, *args)  # E: Too few arguments
+    predicate(1, **kwargs)  # E: Too few arguments
+    predicate(*args, **kwargs)  # E: Argument 1 has incompatible type "*_P.args"; expected "int"
+    predicate(1, *args, **kwargs)
+
+def fn() -> None: ...
+def fn_args(x: int, y: str) -> None: ...
+def fn_posonly(x: int, /) -> None: ...
+def fn_posonly_args(x: int, /, y: str) -> None: ...
+
+run(fn)  # E: Argument 1 to "run" has incompatible type "Callable[[], None]"; expected "Callable[[int], None]"
+run(fn_args, 1, 'a')  # E: Too many arguments for "run" \
+                      # E: Argument 2 to "run" has incompatible type "int"; expected "str"
+run(fn_args, y='a')
+run(fn_args, 'a')
+run(fn_posonly)
+run(fn_posonly, x=1)  # E: Unexpected keyword argument "x" for "run"
+run(fn_posonly_args)  # E: Missing positional argument "y" in call to "run"
+run(fn_posonly_args, 'a')
+run(fn_posonly_args, y='a')
+
+[builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecConcatenateInsufficientArgsInDecorator]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable
+
+P = ParamSpec("P")
+
+def decorator(fn: Callable[Concatenate[str, P], None]) -> Callable[P, None]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> None:
+        fn("value")  # E: Too few arguments
+        fn("value", *args)  # E: Too few arguments
+        fn("value", **kwargs)  # E: Too few arguments
+        fn(*args, **kwargs)  # E: Argument 1 has incompatible type "*P.args"; expected "str"
+        fn("value", *args, **kwargs)
+    return inner
+
+@decorator
+def foo(s: str, s2: str) -> None: ...
+
+[builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecOverload]
+from typing_extensions import ParamSpec
+from typing import Callable, NoReturn, TypeVar, Union, overload
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+@overload
+def capture(
+    sync_fn: Callable[P, NoReturn],
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> int: ...
+@overload
+def capture(
+    sync_fn: Callable[P, T],
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> Union[T, int]: ...
+def capture(
+    sync_fn: Callable[P, T],
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> Union[T, int]:
+    return sync_fn(*args, **kwargs)
+
+def fn() -> str: return ''
+def err() -> NoReturn: ...
+
+reveal_type(capture(fn))  # N: Revealed type is "Union[builtins.str, builtins.int]"
+reveal_type(capture(err))  # N: Revealed type is "builtins.int"
+
 [builtins fixtures/paramspec.pyi]

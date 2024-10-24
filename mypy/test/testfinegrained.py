@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 import unittest
 from typing import Any
 
@@ -82,6 +83,9 @@ class FineGrainedSuite(DataSuite):
             f.write(main_src)
 
         options = self.get_options(main_src, testcase, build_cache=False)
+        if options.python_version > sys.version_info:
+            pytest.skip("Test case requires a newer Python version")
+
         build_options = self.get_options(main_src, testcase, build_cache=True)
         server = Server(options, DEFAULT_STATUS_FILE)
 

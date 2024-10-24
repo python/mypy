@@ -1,7 +1,7 @@
 import queue
 import sys
 import threading
-from _typeshed import SupportsKeysAndGetItem, SupportsRichComparison, SupportsRichComparisonT
+from _typeshed import Incomplete, SupportsKeysAndGetItem, SupportsRichComparison, SupportsRichComparisonT
 from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping, MutableSequence, Sequence
 from types import TracebackType
 from typing import Any, AnyStr, ClassVar, Generic, SupportsIndex, TypeVar, overload
@@ -83,6 +83,8 @@ class DictProxy(BaseProxy, MutableMapping[_KT, _VT]):
     def keys(self) -> list[_KT]: ...  # type: ignore[override]
     def items(self) -> list[tuple[_KT, _VT]]: ...  # type: ignore[override]
     def values(self) -> list[_VT]: ...  # type: ignore[override]
+    if sys.version_info >= (3, 13):
+        def __class_getitem__(cls, args: Any, /) -> Any: ...
 
 class BaseListProxy(BaseProxy, MutableSequence[_T]):
     __builtins__: ClassVar[dict[str, Any]]
@@ -117,6 +119,8 @@ class BaseListProxy(BaseProxy, MutableSequence[_T]):
 class ListProxy(BaseListProxy[_T]):
     def __iadd__(self, value: Iterable[_T], /) -> Self: ...  # type: ignore[override]
     def __imul__(self, value: SupportsIndex, /) -> Self: ...  # type: ignore[override]
+    if sys.version_info >= (3, 13):
+        def __class_getitem__(cls, args: Any, /) -> Any: ...
 
 # Returned by BaseManager.get_server()
 class Server:
@@ -125,7 +129,9 @@ class Server:
         self, registry: dict[str, tuple[Callable[..., Any], Any, Any, Any]], address: Any, authkey: bytes, serializer: str
     ) -> None: ...
     def serve_forever(self) -> None: ...
-    def accept_connection(self, c: Connection, name: str) -> None: ...
+    def accept_connection(
+        self, c: Connection[tuple[str, str | None], tuple[str, str, Iterable[Incomplete], Mapping[str, Incomplete]]], name: str
+    ) -> None: ...
 
 class BaseManager:
     if sys.version_info >= (3, 11):

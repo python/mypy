@@ -19,12 +19,18 @@ from mypy.config_parser import (
     validate_package_allow_list,
 )
 from mypy.error_formatter import OUTPUT_CHOICES
-from mypy.errorcodes import error_codes
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
-from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
-from mypy.options import COMPLETE_FEATURES, INCOMPLETE_FEATURES, BuildType, Options
+from mypy.modulefinder import (
+    BuildSource,
+    FindModuleCache,
+    ModuleNotFoundReason,
+    SearchPaths,
+    get_search_dirs,
+    mypy_path,
+)
+from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
 
@@ -565,7 +571,7 @@ def process_options(
         "--no-namespace-packages",
         dest="namespace_packages",
         default=True,
-        help="Support namespace packages (PEP 420, __init__.py-less)",
+        help="Disable support for namespace packages (PEP 420, __init__.py-less)",
         group=imports_group,
     )
     imports_group.add_argument(
@@ -798,6 +804,13 @@ def process_options(
         default=False,
         strict_flag=False,
         help="Warn about statements or expressions inferred to be unreachable",
+        group=lint_group,
+    )
+    add_invertible_flag(
+        "--report-deprecated-as-error",
+        default=False,
+        strict_flag=False,
+        help="Report importing or using deprecated features as errors instead of notes",
         group=lint_group,
     )
 
@@ -1336,28 +1349,8 @@ def process_options(
 
     validate_package_allow_list(options.untyped_calls_exclude)
 
-    # Process `--enable-error-code` and `--disable-error-code` flags
-    disabled_codes = set(options.disable_error_code)
-    enabled_codes = set(options.enable_error_code)
-
-    valid_error_codes = set(error_codes.keys())
-
-    invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
-    if invalid_codes:
-        parser.error(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
-
-    options.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
-    options.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
-
-    # Enabling an error code always overrides disabling
-    options.disabled_error_codes -= options.enabled_error_codes
-
-    # Validate incomplete features.
-    for feature in options.enable_incomplete_feature:
-        if feature not in INCOMPLETE_FEATURES | COMPLETE_FEATURES:
-            parser.error(f"Unknown incomplete feature: {feature}")
-        if feature in COMPLETE_FEATURES:
-            print(f"Warning: {feature} is already enabled by default")
+    options.process_error_codes(error_callback=parser.error)
+    options.process_incomplete_features(error_callback=parser.error, warning_callback=print)
 
     # Compute absolute path for custom typeshed (if present).
     if options.custom_typeshed_dir is not None:
@@ -1427,7 +1420,15 @@ def process_options(
                 fail(f"Package name '{p}' cannot have a slash in it.", stderr, options)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail(f"Can't find package '{p}'", stderr, options)
+                reason = cache.find_module(p)
+                if reason is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
+                    fail(
+                        f"Package '{p}' cannot be type checked due to missing py.typed marker. See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
+                        stderr,
+                        options,
+                    )
+                else:
+                    fail(f"Can't find package '{p}'", stderr, options)
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
@@ -1478,7 +1479,7 @@ def process_package_roots(
                 root = ""
         package_root.append(root)
     options.package_root = package_root
-    # Pass the package root on the the filesystem cache.
+    # Pass the package root on the filesystem cache.
     fscache.set_package_root(package_root)
 
 

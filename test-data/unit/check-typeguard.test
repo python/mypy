@@ -9,17 +9,6 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
 
-[case testTypeGuardStringified]
-from typing_extensions import TypeGuard
-class Point: pass
-def is_point(a: object) -> "TypeGuard[Point]": pass
-def main(a: object) -> None:
-    if is_point(a):
-        reveal_type(a)  # N: Revealed type is "__main__.Point"
-    else:
-        reveal_type(a)  # N: Revealed type is "builtins.object"
-[builtins fixtures/tuple.pyi]
-
 [case testTypeGuardTypeArgsNone]
 from typing_extensions import TypeGuard
 def foo(a: object) -> TypeGuard:  # E: TypeGuard must have exactly one type argument
@@ -96,6 +85,15 @@ def is_two_element_tuple(a: Tuple[T, ...]) -> TypeGuard[Tuple[T, T]]: pass
 def main(a: Tuple[T, ...]):
     if is_two_element_tuple(a):
         reveal_type(a)  # N: Revealed type is "Tuple[T`-1, T`-1]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardPassedAsTypeVarIsBool]
+from typing import Callable, TypeVar
+from typing_extensions import TypeGuard
+T = TypeVar('T')
+def is_str(x: object) -> TypeGuard[str]: ...
+def main(f: Callable[[object], T]) -> T: ...
+reveal_type(main(is_str))  # N: Revealed type is "builtins.bool"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardNonOverlapping]
