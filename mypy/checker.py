@@ -5746,7 +5746,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not non_truthy:
             return  # all the other types are just 'normal' types, not collections or ints, etc.
 
-        self.fail(message_registry.OPTIONAL_WITH_NON_TRUTHY.format("x"), expr)
+        non_truthy_formatted = ", ".join(format_type(t, self.options) for t in non_truthy)
+        self.fail(
+            message_registry.OPTIONAL_WITH_NON_TRUTHY.format(
+                self._format_expr_type(t, expr),
+                "type" if len(non_truthy) == 1 else "types",
+                non_truthy_formatted,
+            ),
+            expr,
+        )
 
     def find_type_equals_check(
         self, node: ComparisonExpr, expr_indices: list[int]

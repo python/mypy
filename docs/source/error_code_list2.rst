@@ -392,7 +392,7 @@ values should indeed behave like `None`.
     # Use "mypy --enable-error-code optional-non-truthy ..."
 
     foo: None | int = 0
-    # Error: FIXME
+    # Error: "foo" has type "Optional[int]" where both None and some other values (of type: "int") may behave as false in boolean contexts. Consider being explicit about the behaviour for None vs other falsy values.  [optional-non-truthy]
     if foo:
         ... # executes when foo is an int != 0
     else:
