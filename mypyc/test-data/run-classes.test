@@ -2594,3 +2594,15 @@ def test_class_final_attribute_inherited() -> None:
     assert C().b == 2
     assert B().c == 3
     assert C().c == 3
+
+[case testClassWithFinalAttributeAccess]
+from typing import Final
+
+class C:
+    a: Final = {'x': 'y'}
+    b: Final = C.a
+
+def test_final_attribute() -> None:
+    assert C.a['x'] == 'y'
+    assert C.b['x'] == 'y'
+    assert C.a is C.b
