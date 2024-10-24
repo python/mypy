@@ -5674,6 +5674,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
         )
 
+    def _format_expr_type(self, t: Type, expr: Expression) -> str:
+        typ = format_type(t, self.options)
+        if isinstance(expr, MemberExpr):
+            return f'Member "{expr.name}" has type {typ}'
+        elif isinstance(expr, RefExpr) and expr.fullname:
+            return f'"{expr.fullname}" has type {typ}'
+        elif isinstance(expr, CallExpr):
+            if isinstance(expr.callee, MemberExpr):
+                return f'"{expr.callee.name}" returns {typ}'
+            elif isinstance(expr.callee, RefExpr) and expr.callee.fullname:
+                return f'"{expr.callee.fullname}" returns {typ}'
+            return f"Call returns {typ}"
+        else:
+            return f"Expression has type {typ}"
+
     def check_for_truthy_type(self, t: Type, expr: Expression) -> None:
         """
         Check if a type can have a truthy value.
@@ -5692,19 +5707,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
 
         def format_expr_type() -> str:
-            typ = format_type(t, self.options)
-            if isinstance(expr, MemberExpr):
-                return f'Member "{expr.name}" has type {typ}'
-            elif isinstance(expr, RefExpr) and expr.fullname:
-                return f'"{expr.fullname}" has type {typ}'
-            elif isinstance(expr, CallExpr):
-                if isinstance(expr.callee, MemberExpr):
-                    return f'"{expr.callee.name}" returns {typ}'
-                elif isinstance(expr.callee, RefExpr) and expr.callee.fullname:
-                    return f'"{expr.callee.fullname}" returns {typ}'
-                return f"Call returns {typ}"
-            else:
-                return f"Expression has type {typ}"
+            return self._format_expr_type(t, expr)
 
         def get_expr_name() -> str:
             if isinstance(expr, (NameExpr, MemberExpr)):
