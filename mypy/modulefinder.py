@@ -416,7 +416,14 @@ class FindModuleCache:
         found_possible_third_party_missing_type_hints = False
         need_installed_stubs = False
         # Third-party stub/typed packages
+        candidate_package_dirs = {
+            package_dir[0]
+            for component in (components[0], components[0] + "-stubs", components[0] + ".py")
+            for package_dir in self.find_lib_path_dirs(component, self.search_paths.package_path)
+        }
         for pkg_dir in self.search_paths.package_path:
+            if pkg_dir not in candidate_package_dirs:
+                continue
             stub_name = components[0] + "-stubs"
             stub_dir = os_path_join(pkg_dir, stub_name)
             if fscache.isdir(stub_dir):
