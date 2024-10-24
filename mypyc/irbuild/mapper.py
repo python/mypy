@@ -217,7 +217,12 @@ class Mapper:
         if expr.node is None:
             return False
         if "." in expr.node.fullname:
-            return self.is_native_module(expr.node.fullname.rpartition(".")[0])
+            cur = expr.node.fullname
+            while "." in cur:
+                cur = cur.rpartition(".")[0]
+                if self.is_native_module(cur):
+                    return True
+            return False
         return True
 
     def is_native_module_ref_expr(self, expr: RefExpr) -> bool:
