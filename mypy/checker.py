@@ -116,6 +116,7 @@ from mypy.nodes import (
     RaiseStmt,
     RefExpr,
     ReturnStmt,
+    SetExpr,
     StarExpr,
     Statement,
     StrExpr,
@@ -6123,20 +6124,37 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             ):
                                 if_map[operands[left_index]] = remove_optional(item_type)
 
+                    right_iterable_expr = operands[right_index]
                     if right_index in narrowable_operand_index_to_hash:
                         if_type, else_type = self.conditional_types_for_iterable(
                             item_type, iterable_type
                         )
-                        expr = operands[right_index]
                         if if_type is None:
                             if_map = None
                         else:
-                            if_map[expr] = if_type
+                            if_map[right_iterable_expr] = if_type
                         if else_type is None:
                             else_map = None
                         else:
-                            else_map[expr] = else_type
+                            else_map[right_iterable_expr] = else_type
 
+                    # check for `None in <some_iterable>`
+                    if (
+                        isinstance(get_proper_type(item_type), NoneType)
+                        and isinstance(right_iterable_expr, (ListExpr, TupleExpr, SetExpr))
+                        # Ensure the iterable does not inherently contain None literals
+                        and not any(
+                            is_literal_none(iterable_item)
+                            for iterable_item in right_iterable_expr.items
+                        )
+                    ):
+                        if else_map is None:
+                            else_map = {}
+                        for iterable_item in right_iterable_expr.items:
+                            proper_item_type = self.lookup_type(iterable_item)
+                            # Remove the option of the current item to be `None` for the entire else scope
+                            if is_overlapping_none(proper_item_type):
+                                else_map[iterable_item] = remove_optional(proper_item_type)
                 else:
                     if_map = {}
                     else_map = {}
@@ -6203,8 +6221,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 and_conditional_maps(left_else_vars, right_else_vars),
             )
         elif isinstance(node, UnaryExpr) and node.op == "not":
-            left, right = self.find_isinstance_check(node.expr)
-            return right, left
+            left, iterable_expr = self.find_isinstance_check(node.expr)
+            return iterable_expr, left
         elif (
             literal(node) == LITERAL_TYPE
             and self.has_type(node)
