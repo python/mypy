@@ -646,12 +646,6 @@ def process_options(
         description="Disallow the use of the dynamic 'Any' type under certain conditions.",
     )
     disallow_any_group.add_argument(
-        "--disallow-any-unimported",
-        default=False,
-        action="store_true",
-        help="Disallow Any types resulting from unfollowed imports",
-    )
-    disallow_any_group.add_argument(
         "--disallow-any-expr",
         default=False,
         action="store_true",
@@ -675,6 +669,12 @@ def process_options(
         default=False,
         strict_flag=True,
         help="Disallow usage of generic types that do not specify explicit type parameters",
+        group=disallow_any_group,
+    )
+    add_invertible_flag(
+        "--disallow-any-unimported",
+        default=False,
+        help="Disallow Any types resulting from unfollowed imports",
         group=disallow_any_group,
     )
     add_invertible_flag(
