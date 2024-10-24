@@ -1,0 +1,80 @@
+[case testPEP696TypeAlias]
+type A[T = int] = C[T]
+[out]
+MypyFile:1(
+  TypeAliasStmt:1(
+    NameExpr(A)
+    TypeParam(
+      T
+      Default(
+        int?))
+    LambdaExpr:1(
+      Block:-1(
+        ReturnStmt:1(
+          IndexExpr:1(
+            NameExpr(C)
+            NameExpr(T)))))))
+
+[case testPEP696GenericFunction]
+def f[T = int](): pass
+class C[T = int]: pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    TypeParam(
+      T
+      Default(
+        int?))
+    Block:1(
+      PassStmt:1()))
+  ClassDef:2(
+    C
+    TypeParam(
+      T
+      Default(
+        int?))
+    PassStmt:2()))
+
+[case testPEP696ParamSpec]
+def f[**P = [int, str]](): pass
+class C[**P = [int, str]]: pass
+[out]
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    TypeParam(
+      **P
+      Default(
+        <TypeList int?, str?>))
+    Block:1(
+      PassStmt:1()))
+  ClassDef:2(
+    C
+    TypeParam(
+      **P
+      Default(
+        <TypeList int?, str?>))
+    PassStmt:2()))
+
+[case testPEP696TypeVarTuple]
+def f[*Ts = *tuple[str, int]](): pass
+class C[*Ts = *tuple[str, int]]: pass
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    TypeParam(
+      *Ts
+      Default(
+        Unpack[tuple?[str?, int?]]))
+    Block:1(
+      PassStmt:1()))
+  ClassDef:2(
+    C
+    TypeParam(
+      *Ts
+      Default(
+        Unpack[tuple?[str?, int?]]))
+    PassStmt:2()))

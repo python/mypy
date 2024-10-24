@@ -1072,46 +1072,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if defn.original_def:
             # Override previous definition.
             new_type = self.function_type(defn)
-            if isinstance(defn.original_def, FuncDef):
-                # Function definition overrides function definition.
-                old_type = self.function_type(defn.original_def)
-                if not is_same_type(new_type, old_type):
-                    self.msg.incompatible_conditional_function_def(defn, old_type, new_type)
-            else:
-                # Function definition overrides a variable initialized via assignment or a
-                # decorated function.
-                orig_type = defn.original_def.type
-                if orig_type is None:
-                    # If other branch is unreachable, we don't type check it and so we might
-                    # not have a type for the original definition
-                    return
-                if isinstance(orig_type, PartialType):
-                    if orig_type.type is None:
-                        # Ah this is a partial type. Give it the type of the function.
-                        orig_def = defn.original_def
-                        if isinstance(orig_def, Decorator):
-                            var = orig_def.var
-                        else:
-                            var = orig_def
-                        partial_types = self.find_partial_types(var)
-                        if partial_types is not None:
-                            var.type = new_type
-                            del partial_types[var]
-                    else:
-                        # Trying to redefine something like partial empty list as function.
-                        self.fail(message_registry.INCOMPATIBLE_REDEFINITION, defn)
-                else:
-                    name_expr = NameExpr(defn.name)
-                    name_expr.node = defn.original_def
-                    self.binder.assign_type(name_expr, new_type, orig_type)
-                    self.check_subtype(
-                        new_type,
-                        orig_type,
-                        defn,
-                        message_registry.INCOMPATIBLE_REDEFINITION,
-                        "redefinition with type",
-                        "original type",
-                    )
+            self.check_func_def_override(defn, new_type)
 
     def check_func_item(
         self,
@@ -1147,6 +1108,49 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if dataclasses_plugin.is_processed_dataclass(defn.info):
                 dataclasses_plugin.check_post_init(self, defn, defn.info)
 
+    def check_func_def_override(self, defn: FuncDef, new_type: FunctionLike) -> None:
+        assert defn.original_def is not None
+        if isinstance(defn.original_def, FuncDef):
+            # Function definition overrides function definition.
+            old_type = self.function_type(defn.original_def)
+            if not is_same_type(new_type, old_type):
+                self.msg.incompatible_conditional_function_def(defn, old_type, new_type)
+        else:
+            # Function definition overrides a variable initialized via assignment or a
+            # decorated function.
+            orig_type = defn.original_def.type
+            if orig_type is None:
+                # If other branch is unreachable, we don't type check it and so we might
+                # not have a type for the original definition
+                return
+            if isinstance(orig_type, PartialType):
+                if orig_type.type is None:
+                    # Ah this is a partial type. Give it the type of the function.
+                    orig_def = defn.original_def
+                    if isinstance(orig_def, Decorator):
+                        var = orig_def.var
+                    else:
+                        var = orig_def
+                    partial_types = self.find_partial_types(var)
+                    if partial_types is not None:
+                        var.type = new_type
+                        del partial_types[var]
+                else:
+                    # Trying to redefine something like partial empty list as function.
+                    self.fail(message_registry.INCOMPATIBLE_REDEFINITION, defn)
+            else:
+                name_expr = NameExpr(defn.name)
+                name_expr.node = defn.original_def
+                self.binder.assign_type(name_expr, new_type, orig_type)
+                self.check_subtype(
+                    new_type,
+                    orig_type,
+                    defn,
+                    message_registry.INCOMPATIBLE_REDEFINITION,
+                    "redefinition with type",
+                    "original type",
+                )
+
     @contextmanager
     def enter_attribute_inference_context(self) -> Iterator[None]:
         old_types = self.inferred_attribute_types
@@ -1159,6 +1163,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     ) -> None:
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
+        self.check_typevar_defaults(typ.variables)
         expanded = self.expand_typevars(defn, typ)
         original_typ = typ
         for item, typ in expanded:
@@ -2483,6 +2488,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             context=defn,
                             code=codes.TYPE_VAR,
                         )
+        if typ.defn.type_vars:
+            self.check_typevar_defaults(typ.defn.type_vars)
 
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
@@ -2545,6 +2552,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # We are only interested in the first Base having __init_subclass__,
             # all other bases have already been checked.
             break
+
+    def check_typevar_defaults(self, tvars: Sequence[TypeVarLikeType]) -> None:
+        for tv in tvars:
+            if not (isinstance(tv, TypeVarType) and tv.has_default()):
+                continue
+            if not is_subtype(tv.default, tv.upper_bound):
+                self.fail("TypeVar default must be a subtype of the bound type", tv)
+            if tv.values and not any(tv.default == value for value in tv.values):
+                self.fail("TypeVar default must be one of the constraint types", tv)
 
     def check_enum(self, defn: ClassDef) -> None:
         assert defn.info.is_enum
@@ -3159,6 +3175,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # Don't use type binder for definitions of special forms, like named tuples.
                     if not (isinstance(lvalue, NameExpr) and lvalue.is_special_form):
                         self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
+                        if (
+                            isinstance(lvalue, NameExpr)
+                            and isinstance(lvalue.node, Var)
+                            and lvalue.node.is_inferred
+                            and lvalue.node.is_index_var
+                            and lvalue_type is not None
+                        ):
+                            lvalue.node.type = remove_instance_last_known_values(lvalue_type)
 
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
@@ -3168,6 +3192,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type = self.expr_checker.accept(rvalue, type_context=type_context)
                 if not (
                     inferred.is_final
+                    or inferred.is_index_var
                     or (isinstance(lvalue, NameExpr) and lvalue.name == "__match_args__")
                 ):
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
@@ -5108,6 +5133,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if e.type and not isinstance(get_proper_type(e.type), (FunctionLike, AnyType)):
                 self.fail(message_registry.BAD_CONSTRUCTOR_TYPE, e)
 
+        if e.func.original_def and isinstance(sig, FunctionLike):
+            # Function definition overrides function definition.
+            self.check_func_def_override(e.func, sig)
+
     def check_for_untyped_decorator(
         self, func: FuncDef, dec_type: Type, dec_expr: Expression
     ) -> None:
@@ -5365,6 +5394,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         del type_map[expr]
 
     def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
+        if o.alias_node:
+            self.check_typevar_defaults(o.alias_node.alias_tvars)
+
         with self.msg.filter_errors():
             self.expr_checker.accept(o.value)
 

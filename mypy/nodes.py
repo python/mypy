@@ -670,7 +670,7 @@ TYPE_VAR_TUPLE_KIND: Final = 2
 
 
 class TypeParam:
-    __slots__ = ("name", "kind", "upper_bound", "values")
+    __slots__ = ("name", "kind", "upper_bound", "values", "default")
 
     def __init__(
         self,
@@ -678,11 +678,13 @@ class TypeParam:
         kind: int,
         upper_bound: mypy.types.Type | None,
         values: list[mypy.types.Type],
+        default: mypy.types.Type | None,
     ) -> None:
         self.name = name
         self.kind = kind
         self.upper_bound = upper_bound
         self.values = values
+        self.default = default
 
 
 FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [
@@ -782,7 +784,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "deco_line",
         "is_trivial_body",
         "is_mypy_only",
-        # Present only when a function is decorated with @typing.datasclass_transform or similar
+        # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
         "docstring",
         "deprecated",
@@ -967,6 +969,7 @@ VAR_FLAGS: Final = [
     "is_classvar",
     "is_abstract_var",
     "is_final",
+    "is_index_var",
     "final_unset_in_class",
     "final_set_in_init",
     "explicit_self_type",
@@ -1003,6 +1006,7 @@ class Var(SymbolNode):
         "is_classvar",
         "is_abstract_var",
         "is_final",
+        "is_index_var",
         "final_unset_in_class",
         "final_set_in_init",
         "is_suppressed_import",
@@ -1037,6 +1041,7 @@ class Var(SymbolNode):
         self.is_settable_property = False
         self.is_classvar = False
         self.is_abstract_var = False
+        self.is_index_var = False
         # Set to true when this variable refers to a module we were unable to
         # parse for some reason (eg a silenced module)
         self.is_suppressed_import = False
@@ -1657,7 +1662,7 @@ class MatchStmt(Statement):
 
 
 class TypeAliasStmt(Statement):
-    __slots__ = ("name", "type_args", "value", "invalid_recursive_alias")
+    __slots__ = ("name", "type_args", "value", "invalid_recursive_alias", "alias_node")
 
     __match_args__ = ("name", "type_args", "value")
 
@@ -1665,6 +1670,7 @@ class TypeAliasStmt(Statement):
     type_args: list[TypeParam]
     value: LambdaExpr  # Return value will get translated into a type
     invalid_recursive_alias: bool
+    alias_node: TypeAlias | None
 
     def __init__(self, name: NameExpr, type_args: list[TypeParam], value: LambdaExpr) -> None:
         super().__init__()
@@ -1672,6 +1678,7 @@ class TypeAliasStmt(Statement):
         self.type_args = type_args
         self.value = value
         self.invalid_recursive_alias = False
+        self.alias_node = None
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_type_alias_stmt(self)

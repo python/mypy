@@ -4,7 +4,6 @@ from _csv import (
     QUOTE_MINIMAL as QUOTE_MINIMAL,
     QUOTE_NONE as QUOTE_NONE,
     QUOTE_NONNUMERIC as QUOTE_NONNUMERIC,
-    Dialect as _Dialect,
     Error as Error,
     __version__ as __version__,
     _DialectLike,
@@ -59,7 +58,15 @@ if sys.version_info < (3, 13):
 
 _T = TypeVar("_T")
 
-class Dialect(_Dialect):
+class Dialect:
+    delimiter: str
+    quotechar: str | None
+    escapechar: str | None
+    doublequote: bool
+    skipinitialspace: bool
+    lineterminator: str
+    quoting: _QuotingType
+    strict: bool
     def __init__(self) -> None: ...
 
 class excel(Dialect): ...

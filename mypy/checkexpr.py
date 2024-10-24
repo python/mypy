@@ -399,8 +399,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: always do this in type_object_type by passing the original context
                 result.ret_type.line = e.line
                 result.ret_type.column = e.column
-            if isinstance(get_proper_type(self.type_context[-1]), TypeType):
-                # This is the type in a Type[] expression, so substitute type
+            if is_type_type_context(self.type_context[-1]):
+                # This is the type in a type[] expression, so substitute type
                 # variables with Any.
                 result = erasetype.erase_typevars(result)
         elif isinstance(node, MypyFile):
@@ -5809,6 +5809,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 context=if_type_fallback,
                 allow_none_return=allow_none_return,
             )
+
+        # In most cases using if_type as a context for right branch gives better inferred types.
+        # This is however not the case for literal types, so use the full context instead.
+        if is_literal_type_like(full_context_else_type) and not is_literal_type_like(else_type):
+            else_type = full_context_else_type
+
         res: Type = make_simplified_union([if_type, else_type])
         if has_uninhabited_component(res) and not isinstance(
             get_proper_type(self.type_context[-1]), UnionType
@@ -6621,3 +6627,12 @@ def get_partial_instance_type(t: Type | None) -> PartialType | None:
     if t is None or not isinstance(t, PartialType) or t.type is None:
         return None
     return t
+
+
+def is_type_type_context(context: Type | None) -> bool:
+    context = get_proper_type(context)
+    if isinstance(context, TypeType):
+        return True
+    if isinstance(context, UnionType):
+        return any(is_type_type_context(item) for item in context.items)
+    return False

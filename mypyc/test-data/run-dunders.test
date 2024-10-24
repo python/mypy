@@ -32,10 +32,6 @@ class BoxedThing:
 class Subclass2(BoxedThing):
     pass
 
-class UsesNotImplemented:
-    def __eq__(self, b: object) -> bool:
-        return NotImplemented
-
 def index_into(x : Any, y : Any) -> Any:
     return x[y]
 
@@ -80,8 +76,6 @@ assert is_truthy(Item(''))
 assert is_truthy(Item('a'))
 assert not is_truthy(Subclass1(''))
 assert is_truthy(Subclass1('a'))
-
-assert UsesNotImplemented() != object()
 
 internal_index_into()
 [out]
@@ -943,3 +937,31 @@ def test_errors() -> None:
         pow(ForwardNotImplemented(), Child(), 3)  # type: ignore
     with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'ForwardModRequired' and 'int'"):
         ForwardModRequired()**3  # type: ignore
+
+[case testDundersWithFinal]
+from typing import final
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __add__(self, y: int) -> int:
+        return self.x + y
+
+    def __lt__(self, x: 'A') -> bool:
+        return self.x < x.x
+
+@final
+class B(A):
+    def __add__(self, y: int) -> int:
+        return self.x + y + 1
+
+    def __lt__(self, x: 'A') -> bool:
+        return self.x < x.x + 1
+
+def test_final() -> None:
+    a = A(5)
+    b = B(5)
+    assert a + 3 == 8
+    assert b + 3 == 9
+    assert (a < A(5)) is False
+    assert (b < A(5)) is True

@@ -1908,9 +1908,9 @@ else:
     @dec
     def f(x: int) -> None:
         1()  # E: "int" not callable
-reveal_type(f) # N: Revealed type is "def (x: builtins.str)"
+reveal_type(f) # N: Revealed type is "def (builtins.str)"
 [file m.py]
-def f(x: str) -> None: pass
+def f(x: str, /) -> None: pass
 
 [case testNewAnalyzerConditionallyDefineFuncOverVar]
 from typing import Callable
