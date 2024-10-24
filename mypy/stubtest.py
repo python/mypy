@@ -1938,10 +1938,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
         options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
     options.config_file = args.mypy_config_file
     options.use_builtins_fixtures = use_builtins_fixtures
-    if args.show_traceback:
-        options.show_traceback = True
-    if args.pdb:
-        options.pdb = True
+    options.show_traceback = args.show_traceback
+    options.pdb = args.pdb
 
     if options.config_file:
 
