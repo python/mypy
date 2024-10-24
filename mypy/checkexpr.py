@@ -5805,6 +5805,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 context=if_type_fallback,
                 allow_none_return=allow_none_return,
             )
+
+        # In most cases using if_type as a context for right branch gives better inferred types.
+        # This is however not the case for literal types, so use the full context instead.
+        if is_literal_type_like(full_context_else_type) and not is_literal_type_like(else_type):
+            else_type = full_context_else_type
+
         res: Type = make_simplified_union([if_type, else_type])
         if has_uninhabited_component(res) and not isinstance(
             get_proper_type(self.type_context[-1]), UnionType
