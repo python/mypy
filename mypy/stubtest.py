@@ -1938,6 +1938,10 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
         options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
     options.config_file = args.mypy_config_file
     options.use_builtins_fixtures = use_builtins_fixtures
+    if args.show_traceback:
+        options.show_traceback = True
+    if args.pdb:
+        options.pdb = True
 
     if options.config_file:
 
@@ -2090,6 +2094,10 @@ def parse_options(args: list[str]) -> _Arguments:
     )
     parser.add_argument(
         "--version", action="version", version="%(prog)s " + mypy.version.__version__
+    )
+    parser.add_argument("--pdb", action="store_true", help="Invoke pdb on fatal error")
+    parser.add_argument(
+        "--show-traceback", "--tb", action="store_true", help="Show traceback on fatal error"
     )
 
     return parser.parse_args(args, namespace=_Arguments())
