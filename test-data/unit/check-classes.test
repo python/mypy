@@ -147,6 +147,47 @@ class Base:
 class Derived(Base):
     __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
 
+[case testOverrideCallableAttributeWithMethod]
+from typing import Callable
+
+class Base:
+    func1: Callable[[str], str]
+    func2: Callable[[str], str]
+    func3: Callable[[str], str]
+
+class Derived(Base):
+    def func1(self, x: str) -> str:
+        pass
+
+    @classmethod
+    def func2(cls, x: str) -> str:
+        pass
+
+    @staticmethod
+    def func3(x: str) -> str:
+        pass
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideCallableUnionAttributeWithMethod]
+from typing import Callable, Union
+
+class Base:
+    func1: Union[Callable[[str], str], str]
+    func2: Union[Callable[[str], str], str]
+    func3: Union[Callable[[str], str], str]
+
+class Derived(Base):
+    def func1(self, x: str) -> str:
+        pass
+
+    @classmethod
+    def func2(cls, x: str) -> str:
+        pass
+
+    @staticmethod
+    def func3(x: str) -> str:
+        pass
+[builtins fixtures/classmethod.pyi]
 
 [case testOverridePartialAttributeWithMethod]
 # This was crashing: https://github.com/python/mypy/issues/11686.
