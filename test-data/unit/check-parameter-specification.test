@@ -2370,17 +2370,38 @@ def run3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwar
     func2(**d)  # E: Argument 1 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
     return func2(**kwargs)
 
+def run4(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, 1)
+    return func2(*args, **kwargs)
+
+def run5(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, 1, *args, **kwargs)
+    func2()
+    return func2(**kwargs)
+
 def run_bad(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, *args)  # E: Argument 1 has incompatible type "*P.args"; expected "int"
     return func2(1, **kwargs)  # E: Argument 1 has incompatible type "int"; expected "P.args"
 
 def run_bad2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, 1, *args)
+    func2()  # E: Too few arguments
+    func2(*args, **kwargs)  # E: Too many arguments
     return func2(1, **kwargs)  # E: Argument 1 has incompatible type "int"; expected "P.args"
 
 def run_bad3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
-    func2 = partial(func, 1, *args)
-    return func2(1, **kwargs)  # E: Argument 1 has incompatible type "int"; expected "P.args"
+    func2 = partial(func, 1, **kwargs)
+    func2()  # E: Too few arguments
+    return func2(1, *args)  # E: Argument 1 has incompatible type "int"; expected "P.args"
 
+def run_bad4(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, 1)
+    func2()  # E: Too few arguments
+    func2(*args)  # E: Too few arguments
+    func2(1, *args)  # E: Too few arguments \
+                     # E: Argument 1 has incompatible type "int"; expected "P.args"
+    func2(1, **kwargs)  # E: Too few arguments \
+                        # E: Argument 1 has incompatible type "int"; expected "P.args"
+    return func2(**kwargs)  # E: Too few arguments
 
 [builtins fixtures/paramspec.pyi]
