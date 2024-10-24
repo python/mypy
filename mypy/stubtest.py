@@ -1893,6 +1893,8 @@ class _Arguments:
     custom_typeshed_dir: str | None
     check_typeshed: bool
     version: str
+    show_traceback: bool
+    pdb: bool
 
 
 # typeshed added a stub for __main__, but that causes stubtest to check itself
