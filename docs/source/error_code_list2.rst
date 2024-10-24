@@ -389,7 +389,7 @@ values should indeed behave like `None`.
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code optional-non-truthy ..."
+    # mypy: enable-error-code="optional-non-truthy"
 
     foo: None | int = 0
     # Error: "foo" has type "Optional[int]" where both None and some other values (of type: "int") may behave as false in boolean contexts. Consider being explicit about the behaviour for None vs other falsy values.  [optional-non-truthy]
@@ -397,6 +397,15 @@ values should indeed behave like `None`.
         ... # executes when foo is an int != 0
     else:
         ... # executes when foo is None or 0
+
+For instance, in the case that `None` and `0` should behave differently:
+
+.. code-block:: python
+
+    if foo is not None:
+        ... # executes when foo is any int, including 0
+    else:
+        ... # executes when foo is None
 
 .. _code-ignore-without-code:
 
