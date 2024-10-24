@@ -5689,7 +5689,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return f"Expression has type {typ}"
 
-    def check_for_truthy_type(self, t: Type, expr: Expression) -> None:
+    def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
         """
         Check if a type can have a truthy value.
 
@@ -5731,7 +5731,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             self.fail(message_registry.TYPE_ALWAYS_TRUE.format(format_expr_type()), expr)
 
-    def check_for_optional_non_truthy_type(self, t: Type, expr: Expression) -> None:
+    def _check_for_optional_non_truthy_type(self, t: Type, expr: Expression) -> None:
         """Check if a type involves both None and types that aren't always true, catching
         suspicious cases of falsy values being lumped together with None.
 
@@ -5765,6 +5765,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ),
             expr,
         )
+
+    def check_for_appropriate_truthiness_in_boolean_context(
+        self, t: Type, expr: Expression
+    ) -> None:
+        """Check if a type is truthy or potentially-falsy when it shouldn't be.
+
+        Used in checks like::
+
+            if x: # <---
+
+            not x  # <---
+
+        """
+        self._check_for_truthy_type(t, expr)
+        self._check_for_optional_non_truthy_type(t, expr)
 
     def find_type_equals_check(
         self, node: ComparisonExpr, expr_indices: list[int]
@@ -6212,9 +6227,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if in_boolean_context:
             # We don't check `:=` values in expressions like `(a := A())`,
             # because they produce two error messages.
-            # FIXME: make this a single call again
-            self.check_for_truthy_type(original_vartype, node)
-            self.check_for_optional_non_truthy_type(original_vartype, node)
+            self.check_for_appropriate_truthiness_in_boolean_context(original_vartype, node)
         vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
 
         if_type = true_only(vartype)
