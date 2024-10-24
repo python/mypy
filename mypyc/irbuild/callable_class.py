@@ -10,7 +10,7 @@ from mypyc.common import ENV_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import BasicBlock, Call, Register, Return, SetAttr, Value
-from mypyc.ir.rtypes import RInstance, object_rprimitive
+from mypyc.ir.rtypes import object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.primitives.misc_ops import method_new_op
@@ -67,7 +67,7 @@ def setup_callable_class(builder: IRBuilder) -> None:
     # If the enclosing class doesn't contain nested (which will happen if
     # this is a toplevel lambda), don't set up an environment.
     if builder.fn_infos[-2].contains_nested:
-        callable_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
+        callable_class_ir.attributes[ENV_ATTR_NAME] = builder.fn_infos[-2].env_class.rtype
     callable_class_ir.mro = [callable_class_ir]
     builder.fn_info.callable_class = ImplicitClass(callable_class_ir)
     builder.classes.append(callable_class_ir)

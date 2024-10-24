@@ -23,6 +23,7 @@ from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.ops import BasicBlock, Value
 from mypyc.ir.rtypes import (
     RInstance,
+    RInstanceValue,
     RPrimitive,
     RTuple,
     RType,
@@ -322,6 +323,8 @@ class Emitter:
             return rtype.c_undefined
         elif isinstance(rtype, RTuple):
             return self.tuple_undefined_value(rtype)
+        elif isinstance(rtype, RInstanceValue):
+            return self.rinstance_value_undefined_value(rtype)
         assert False, rtype
 
     def c_error_value(self, rtype: RType) -> str:
@@ -358,14 +361,17 @@ class Emitter:
             return "bitmap"
         return f"bitmap{n + 1}"
 
-    def attr_bitmap_expr(self, obj: str, cl: ClassIR, index: int) -> str:
+    def attr_bitmap_expr(self, obj: str, cl: RInstance, index: int) -> str:
         """Return reference to the attribute definedness bitmap."""
-        cast = f"({cl.struct_name(self.names)} *)"
         attr = self.bitmap_field(index)
-        return f"({cast}{obj})->{attr}"
+        if cl.is_unboxed:
+            return f"{obj}.{attr}"
+        else:
+            cast = f"({cl.struct_name(self.names)} *)"
+            return f"({cast}{obj})->{attr}"
 
     def emit_attr_bitmap_set(
-        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str
+        self, value: str, obj: str, rtype: RType, cl: RInstance, attr: str
     ) -> None:
         """Mark an attribute as defined in the attribute bitmap.
 
@@ -374,7 +380,7 @@ class Emitter:
         """
         self._emit_attr_bitmap_update(value, obj, rtype, cl, attr, clear=False)
 
-    def emit_attr_bitmap_clear(self, obj: str, rtype: RType, cl: ClassIR, attr: str) -> None:
+    def emit_attr_bitmap_clear(self, obj: str, rtype: RType, cl: RInstance, attr: str) -> None:
         """Mark an attribute as undefined in the attribute bitmap.
 
         Unlike emit_attr_bitmap_set, clear unconditionally.
@@ -382,12 +388,12 @@ class Emitter:
         self._emit_attr_bitmap_update("", obj, rtype, cl, attr, clear=True)
 
     def _emit_attr_bitmap_update(
-        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str, clear: bool
+        self, value: str, obj: str, rtype: RType, cl: RInstance, attr: str, clear: bool
     ) -> None:
         if value:
             check = self.error_value_check(rtype, value, "==")
             self.emit_line(f"if (unlikely({check})) {{")
-        index = cl.bitmap_attrs.index(attr)
+        index = cl.class_ir.bitmap_attrs.index(attr)
         mask = 1 << (index & (BITMAP_BITS - 1))
         bitmap = self.attr_bitmap_expr(obj, cl, index)
         if clear:
@@ -407,7 +413,7 @@ class Emitter:
         compare: str,
         obj: str,
         attr: str,
-        cl: ClassIR,
+        cl: RInstance,
         *,
         unlikely: bool = False,
     ) -> None:
@@ -415,11 +421,11 @@ class Emitter:
         if unlikely:
             check = f"unlikely({check})"
         if rtype.error_overlap:
-            index = cl.bitmap_attrs.index(attr)
+            index = cl.class_ir.bitmap_attrs.index(attr)
+            attr_expr = self.attr_bitmap_expr(obj, cl, index)
             bit = 1 << (index & (BITMAP_BITS - 1))
-            attr = self.bitmap_field(index)
-            obj_expr = f"({cl.struct_name(self.names)} *){obj}"
-            check = f"{check} && !(({obj_expr})->{attr} & {bit})"
+            check = f"{check} && !({attr_expr} & {bit})"
+
         self.emit_line(f"if ({check}) {{")
 
     def error_value_check(self, rtype: RType, value: str, compare: str) -> str:
@@ -427,6 +433,8 @@ class Emitter:
             return self.tuple_undefined_check_cond(
                 rtype, value, self.c_error_value, compare, check_exception=False
             )
+        elif isinstance(rtype, RInstanceValue):
+            return f"{value}.vtable {compare} NULL"
         else:
             return f"{value} {compare} {self.c_error_value(rtype)}"
 
@@ -468,6 +476,10 @@ class Emitter:
         """Undefined tuple value suitable in an expression."""
         return f"({rtuple.struct_name}) {self.c_initializer_undefined_value(rtuple)}"
 
+    def rinstance_value_undefined_value(self, rinstance_value: RInstanceValue) -> str:
+        """Undefined value for an unboxed instance."""
+        return f"(({rinstance_value.struct_name(self.names)}){self.c_initializer_undefined_value(rinstance_value)})"
+
     def c_initializer_undefined_value(self, rtype: RType) -> str:
         """Undefined value represented in a form suitable for variable initialization."""
         if isinstance(rtype, RTuple):
@@ -477,6 +489,8 @@ class Emitter:
                 return f"{{ {int_rprimitive.c_undefined} }}"
             items = ", ".join([self.c_initializer_undefined_value(t) for t in rtype.types])
             return f"{{ {items} }}"
+        elif isinstance(rtype, RInstanceValue):
+            return "{0}"
         else:
             return self.c_undefined_value(rtype)
 
@@ -489,6 +503,8 @@ class Emitter:
                 # XXX other types might eventually need similar behavior
                 if isinstance(typ, RTuple):
                     dependencies.add(typ.struct_name)
+                if isinstance(typ, RInstanceValue):
+                    dependencies.add(typ.struct_name(self.names))
 
             self.context.declarations[tuple_type.struct_name] = HeaderDeclaration(
                 self.tuple_c_declaration(tuple_type), dependencies=dependencies, is_type=True
@@ -987,7 +1003,17 @@ class Emitter:
             self.emit_line("}")
             if optional:
                 self.emit_line("}")
+        elif isinstance(typ, RInstanceValue):
+            if declare_dest:
+                self.emit_line(f"{self.ctype(typ)} {dest};")
+            if optional:
+                self.emit_line(f"if ({src} == NULL) {{")
+                self.emit_line(f"{dest} = {self.c_error_value(typ)};")
+                self.emit_line("} else {")
 
+            self.emit_line(f"{dest} = *({self.ctype(typ)} *){src};")
+            if optional:
+                self.emit_line("}")
         else:
             assert False, "Unboxing not implemented: %s" % typ
 
@@ -1041,6 +1067,31 @@ class Emitter:
                     inner_name = self.temp_name()
                     self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
                     self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
+        elif isinstance(typ, RInstanceValue):
+            cl = typ.class_ir
+            generate_full = not cl.is_trait and not cl.builtin_base
+            assert generate_full, "Only full classes can be boxed"  # only those have setup method
+            name_prefix = cl.name_prefix(self.names)
+            setup_name = f"{name_prefix}_setup"
+            py_type_struct = self.type_struct_name(cl)
+            temp_dest = self.temp_name()
+            self.emit_line(
+                f"{self.ctype_spaced(typ)}*{temp_dest} = ({self.ctype_spaced(typ)}*){setup_name}({py_type_struct});"
+            )
+            self.emit_line(f"if (unlikely({temp_dest} == NULL))")
+            self.emit_line("    CPyError_OutOfMemory();")
+            if cl.bitmap_attrs:
+                n_fields = (len(cl.bitmap_attrs) - 1) // BITMAP_BITS + 1
+                for i in range(n_fields):
+                    attr_name = self.bitmap_field(i * BITMAP_BITS)
+                    self.emit_line(f"{temp_dest}->{attr_name} = {src}.{attr_name};", ann="box")
+            for attr, attr_type in cl.all_attributes().items():
+                attr_name = self.attr(attr)
+                self.emit_line(f"{temp_dest}->{attr_name} = {src}.{attr_name};", ann="box")
+                if attr_type.is_refcounted:
+                    self.emit_inc_ref(temp_dest, attr_type)
+
+            self.emit_line(f"{declaration}{dest} = (PyObject *){temp_dest};")
         else:
             assert not typ.is_unboxed
             # Type is boxed -- trivially just assign.
@@ -1054,6 +1105,8 @@ class Emitter:
             else:
                 cond = self.tuple_undefined_check_cond(rtype, value, self.c_error_value, "==")
                 self.emit_line(f"if ({cond}) {{")
+        elif isinstance(rtype, RInstanceValue):
+            self.emit_line(f"if ({value}.vtable == NULL) {{")
         elif rtype.error_overlap:
             # The error value is also valid as a normal value, so we need to also check
             # for a raised exception.

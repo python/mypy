@@ -50,14 +50,16 @@ from mypyc.ir.func_ir import (
     RuntimeArg,
 )
 from mypyc.ir.ops import DeserMaps
-from mypyc.ir.rtypes import RInstance, RType, dict_rprimitive, none_rprimitive, tuple_rprimitive
+from mypyc.ir.rtypes import RType, dict_rprimitive, none_rprimitive, tuple_rprimitive
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def,
     get_mypyc_attrs,
     is_dataclass,
     is_extension_class,
+    is_immutable,
     is_trait,
+    is_value_type,
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
@@ -77,6 +79,8 @@ def build_type_map(
         module_classes = [node for node in module.defs if isinstance(node, ClassDef)]
         classes.extend([(module, cdef) for cdef in module_classes])
 
+    module_by_fullname = {module.fullname: module for module in modules}
+
     # Collect all class mappings so that we can bind arbitrary class name
     # references even if there are import cycles.
     for module, cdef in classes:
@@ -86,8 +90,13 @@ def build_type_map(
             is_trait(cdef),
             is_abstract=cdef.info.is_abstract,
             is_final_class=cdef.info.is_final,
+            is_ext_class=is_extension_class(cdef),
+            is_value_type=is_value_type(cdef),
         )
-        class_ir.is_ext_class = is_extension_class(cdef)
+
+        if class_ir.is_value_type:
+            check_value_type(cdef, errors, module_by_fullname)
+
         if class_ir.is_ext_class:
             class_ir.deletable = cdef.info.deletable_attributes.copy()
         # If global optimizations are disabled, turn of tracking of class children
@@ -136,6 +145,34 @@ def build_type_map(
                             module.path,
                             node.line,
                         )
+
+
+def check_value_type(
+    cdef: ClassDef, errors: Errors, module_by_fullname: dict[str, MypyFile]
+) -> None:
+    if not is_immutable(cdef) or not cdef.info.is_final:
+        module = module_by_fullname.get(cdef.info.module_name)
+        path = module.path if module else ""
+        # Because the value type have semantic differences we can not just ignore it
+        errors.error("Value types must be immutable and final", path, cdef.line)
+
+    for mtd_name in (
+        "__iter__",
+        "__next__",
+        "__enter__",
+        "__exit__",
+        "__getitem__",
+        "__setitem__",
+        "__delitem__",
+    ):
+        mtd = cdef.info.get_method(mtd_name)
+        if mtd is not None:
+            module = module_by_fullname.get(mtd.info.module_name)
+            errors.error(
+                f"Value types must not define method '{mtd_name}'",
+                module.path if module else "",
+                mtd.line,
+            )
 
 
 def is_from_module(node: SymbolNode, module: MypyFile) -> bool:
@@ -439,7 +476,7 @@ def add_property_methods_for_attribute_if_needed(
 def add_getter_declaration(
     ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str
 ) -> None:
-    self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
+    self_arg = RuntimeArg("self", ir.rtype, pos_only=True)
     sig = FuncSignature([self_arg], attr_rtype)
     decl = FuncDecl(attr_name, ir.name, module_name, sig, FUNC_NORMAL)
     decl.is_prop_getter = True
@@ -451,7 +488,7 @@ def add_getter_declaration(
 def add_setter_declaration(
     ir: ClassIR, attr_name: str, attr_rtype: RType, module_name: str
 ) -> None:
-    self_arg = RuntimeArg("self", RInstance(ir), pos_only=True)
+    self_arg = RuntimeArg("self", ir.rtype, pos_only=True)
     value_arg = RuntimeArg("value", attr_rtype, pos_only=True)
     sig = FuncSignature([self_arg, value_arg], none_rprimitive)
     setter_name = PROPSET_PREFIX + attr_name
@@ -486,7 +523,7 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
             )
 
         last_arg = len(init_sig.args) - init_sig.num_bitmap_args
-        ctor_sig = FuncSignature(init_sig.args[1:last_arg], RInstance(ir))
+        ctor_sig = FuncSignature(init_sig.args[1:last_arg], ir.rtype)
         ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
         mapper.func_to_decl[cdef.info] = ir.ctor
 
