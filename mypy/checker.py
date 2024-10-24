@@ -5737,7 +5737,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         without_nones = [t for t in item_types if not isinstance(t, NoneType)]
         any_none = len(without_nones) < len(item_types)
         if not any_none:
-            self.fail(message_registry.OPTIONAL_WITH_NON_TRUTHY.format("not any_none"), expr)
             return  # no None in it
 
         non_truthy = [t for t in without_nones if not self._is_truthy_type(t)]

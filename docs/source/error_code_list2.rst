@@ -382,8 +382,8 @@ Warn when the type of an expression in a boolean context is optional
 (implement ``__bool__`` or ``__len__``), such as `int`, `str` or `list`.
 
 In this case, the `if` block is likely to to be intending to just
-guard the `None` case, but falsey values like `0`, `""` or `[]` will
-behave the same as `None`. Instead `... is None` or `... is not None`
+guard the `None` case, but falsy values like `0`, `""` or `[]` will
+behave the same as `None`. Instead use `... is None` or `... is not None`
 if one is wanting to only guard `None`, or `bool(...)` if the falsey
 values should indeed behave like `None`.
 

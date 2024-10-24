@@ -216,7 +216,7 @@ TRUTHY_ITERABLE: Final[ErrorCode] = ErrorCode(
 )
 OPTIONAL_NON_TRUTHY: Final[ErrorCode] = ErrorCode(
     "optional-non-truthy",
-    "Warn about expressions involving both None and a non-always-true value in boolean contexts",
+    "Warn about expressions involving both None and other values that can be false in boolean contexts",
     "General",
     default_enabled=False,
 )
