@@ -62,6 +62,7 @@ class Mapper:
         self.group_map = group_map
         self.type_to_ir: dict[TypeInfo, ClassIR] = {}
         self.func_to_decl: dict[SymbolNode, FuncDecl] = {}
+        self.symbol_fullnames: set[str] = set()
 
     def type_to_rtype(self, typ: Type | None) -> RType:
         if typ is None:
@@ -217,12 +218,8 @@ class Mapper:
         if expr.node is None:
             return False
         if "." in expr.node.fullname:
-            cur = expr.node.fullname
-            while "." in cur:
-                cur = cur.rpartition(".")[0]
-                if self.is_native_module(cur):
-                    return True
-            return False
+            name = expr.node.fullname.rpartition(".")[0]
+            return self.is_native_module(name) or name in self.symbol_fullnames
         return True
 
     def is_native_module_ref_expr(self, expr: RefExpr) -> bool:
