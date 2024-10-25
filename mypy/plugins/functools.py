@@ -8,7 +8,7 @@ import mypy.checker
 import mypy.plugin
 import mypy.semanal
 from mypy.argmap import map_actuals_to_formals
-from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, CallExpr, FuncItem, Var
+from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, CallExpr, FuncItem, NameExpr, Var
 from mypy.plugins.common import add_method_to_class
 from mypy.typeops import get_all_type_vars
 from mypy.types import (
@@ -16,6 +16,8 @@ from mypy.types import (
     CallableType,
     Instance,
     Overloaded,
+    ParamSpecFlavor,
+    ParamSpecType,
     Type,
     TypeOfAny,
     TypeVarType,
@@ -344,7 +346,7 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
             actual_arg_kinds.append(ctx.arg_kinds[i][j])
             actual_arg_names.append(ctx.arg_names[i][j])
 
-    result, _ = ctx.api.expr_checker.check_call(
+    result, inf = ctx.api.expr_checker.check_call(
         callee=partial_type,
         args=actual_args,
         arg_kinds=actual_arg_kinds,
@@ -356,13 +358,29 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
 
     args_bound = "__mypy_partial_paramspec_args_bound" in extra_attrs.immutable
     kwargs_bound = "__mypy_partial_paramspec_kwargs_bound" in extra_attrs.immutable
+
     # ensure *args: P.args
-    if not args_bound and ArgKind.ARG_STAR not in actual_arg_kinds:
+    args_passed = any(
+        isinstance(arg, NameExpr)
+        and isinstance(arg.node, Var)
+        and isinstance(arg.node.type, ParamSpecType)
+        and arg.node.type.flavor == ParamSpecFlavor.ARGS
+        for arg in actual_args
+    )
+    if not args_bound and not args_passed:
         ctx.api.expr_checker.msg.too_few_arguments(partial_type, ctx.context, actual_arg_names)
-    elif args_bound and ArgKind.ARG_STAR in actual_arg_kinds:
+    elif args_bound and args_passed:
         ctx.api.expr_checker.msg.too_many_arguments(partial_type, ctx.context)
+
     # ensure **kwargs: P.kwargs
-    if not kwargs_bound and ArgKind.ARG_STAR2 not in actual_arg_kinds:
+    kwargs_passed = any(
+        isinstance(arg, NameExpr)
+        and isinstance(arg.node, Var)
+        and isinstance(arg.node.type, ParamSpecType)
+        and arg.node.type.flavor == ParamSpecFlavor.KWARGS
+        for arg in actual_args
+    )
+    if not kwargs_bound and not kwargs_passed:
         ctx.api.expr_checker.msg.too_few_arguments(partial_type, ctx.context, actual_arg_names)
 
     return result

@@ -2392,8 +2392,10 @@ def run(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwarg
 def run2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, **kwargs)
     p = [""]
-    func2(1, *p)  # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
-    func2(1, 2, *p)  # E: Argument 2 has incompatible type "int"; expected "P.args" \
+    func2(1, *p)  # E: Too few arguments \
+                  # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
+    func2(1, 2, *p)  # E: Too few arguments \
+                     # E: Argument 2 has incompatible type "int"; expected "P.args" \
                      # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
     func2(1, *args, *p)  # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
     func2(1, *p, *args)  # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
@@ -2402,7 +2404,8 @@ def run2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwar
 def run3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, 1, *args)
     d = {"":""}
-    func2(**d)  # E: Argument 1 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
+    func2(**d)  # E: Too few arguments \
+                # E: Argument 1 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
     return func2(**kwargs)
 
 def run4(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
@@ -2438,5 +2441,24 @@ def run_bad4(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.
     func2(1, **kwargs)  # E: Too few arguments \
                         # E: Argument 1 has incompatible type "int"; expected "P.args"
     return func2(**kwargs)  # E: Too few arguments
+
+[builtins fixtures/paramspec.pyi]
+
+[case testOtherVarArgs]
+from functools import partial
+from typing_extensions import Concatenate, ParamSpec
+from typing import Callable, TypeVar, Tuple
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def run(func: Callable[Concatenate[int, str, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, **kwargs)
+    args_prefix: Tuple[int, str] = (1, 'a')
+    func2(*args_prefix)  # E: Too few arguments
+    func2(*args, *args_prefix)  # E: Argument 1 has incompatible type "*P.args"; expected "int" \
+                                # E: Argument 1 has incompatible type "*P.args"; expected "str" \
+                                # E: Argument 2 has incompatible type "*Tuple[int, str]"; expected "P.args"
+    return func2(*args_prefix, *args)
 
 [builtins fixtures/paramspec.pyi]
