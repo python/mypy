@@ -165,7 +165,7 @@ class ModuleFinderSitePackagesSuite(Suite):
         self.fmc_nons = FindModuleCache(self.search_paths, fscache=None, options=options)
 
     def path(self, *parts: str) -> str:
-        return os.path.join(self.package_dir, *parts)
+        return os.path.normpath(os.path.join(self.package_dir, *parts))
 
     def test__packages_with_ns(self) -> None:
         cases = [
