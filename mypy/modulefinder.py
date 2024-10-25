@@ -412,7 +412,6 @@ class FindModuleCache:
         third_party_inline_dirs: PackageDirs = []
         third_party_stubs_dirs: PackageDirs = []
         found_possible_third_party_missing_type_hints = False
-        need_installed_stubs = False
         # Third-party stub/typed packages
         candidate_package_dirs = {
             package_dir[0]
@@ -454,9 +453,6 @@ class FindModuleCache:
             else:
                 third_party_inline_dirs.append(non_stub_match)
                 self._update_ns_ancestors(components, non_stub_match)
-
-        if approved_stub_package_exists(id):
-            need_installed_stubs = True
 
         if self.options and self.options.use_builtins_fixtures:
             # Everything should be in fixtures.
@@ -556,7 +552,7 @@ class FindModuleCache:
         if ancestor is not None:
             return ancestor
 
-        if need_installed_stubs:
+        if approved_stub_package_exists(id):
             return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         elif found_possible_third_party_missing_type_hints:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
