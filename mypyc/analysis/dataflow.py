@@ -437,27 +437,6 @@ class UndefinedVisitor(BaseAnalysisVisitor[Value]):
         return set(), set()
 
 
-def analyze_undefined_regs(
-    blocks: list[BasicBlock], cfg: CFG, initial_defined: set[Value]
-) -> AnalysisResult[Value]:
-    """Calculate potentially undefined registers at each CFG location.
-
-    A register is undefined if there is some path from initial block
-    where it has an undefined value.
-
-    Function arguments are assumed to be always defined.
-    """
-    initial_undefined = set(all_values([], blocks)) - initial_defined
-    return run_analysis(
-        blocks=blocks,
-        cfg=cfg,
-        gen_and_kill=UndefinedVisitor(),
-        initial=initial_undefined,
-        backward=False,
-        kind=MAYBE_ANALYSIS,
-    )
-
-
 def non_trivial_sources(op: Op) -> set[Value]:
     result = set()
     for source in op.sources():

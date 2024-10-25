@@ -27,14 +27,6 @@ def split_with_instance(
     )
 
 
-def extract_unpack(types: Sequence[Type]) -> ProperType | None:
-    """Given a list of types, extracts either a single type from an unpack, or returns None."""
-    if len(types) == 1:
-        if isinstance(types[0], UnpackType):
-            return get_proper_type(types[0].type)
-    return None
-
-
 def erased_vars(type_vars: Sequence[TypeVarLikeType], type_of_any: int) -> list[Type]:
     args: list[Type] = []
     for tv in type_vars:

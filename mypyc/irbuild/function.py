@@ -990,10 +990,6 @@ def singledispatch_main_func_name(orig_name: str) -> str:
     return f"__mypyc_singledispatch_main_function_{orig_name}__"
 
 
-def get_registry_identifier(fitem: FuncDef) -> str:
-    return f"__mypyc_singledispatch_registry_{fitem.fullname}__"
-
-
 def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
     line = fitem.line
     is_singledispatch_main_func = fitem in builder.singledispatch_impls

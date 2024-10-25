@@ -1075,20 +1075,6 @@ class GroupGenerator:
             )
 
 
-def sort_classes(classes: list[tuple[str, ClassIR]]) -> list[tuple[str, ClassIR]]:
-    mod_name = {ir: name for name, ir in classes}
-    irs = [ir for _, ir in classes]
-    deps: dict[ClassIR, set[ClassIR]] = {}
-    for ir in irs:
-        if ir not in deps:
-            deps[ir] = set()
-        if ir.base:
-            deps[ir].add(ir.base)
-        deps[ir].update(ir.traits)
-    sorted_irs = toposort(deps)
-    return [(mod_name[ir], ir) for ir in sorted_irs]
-
-
 T = TypeVar("T")
 
 
