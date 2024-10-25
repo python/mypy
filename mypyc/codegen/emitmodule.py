@@ -47,7 +47,6 @@ from mypyc.common import (
     use_vectorcall,
 )
 from mypyc.errors import Errors
-from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral

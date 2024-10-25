@@ -7,12 +7,10 @@ from typing import Sequence
 from mypy.types import (
     AnyType,
     Instance,
-    ProperType,
     Type,
     TypeVarLikeType,
     TypeVarTupleType,
     UnpackType,
-    get_proper_type,
     split_with_prefix_and_suffix,
 )
 
