@@ -2785,7 +2785,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     ) -> list[CallableType]:
         """Returns all overload call targets that having matching argument counts.
 
-        If the given args contains a star-arg (*arg or **kwarg argument, including
+        If the given args contains a star-arg (*arg or **kwarg argument, except for
         ParamSpec), this method will ensure all star-arg overloads appear at the start
         of the list, instead of their usual location.
 
@@ -2820,7 +2820,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # ParamSpec can be expanded in a lot of different ways. We may try
                     # to expand it here instead, but picking an impossible overload
                     # is safe: it will be filtered out later.
-                    star_matches.append(typ)
+                    # Unlike other var-args signatures, ParamSpec produces essentially
+                    # a fixed signature, so there's no need to push them to the top.
+                    matches.append(typ)
                 elif self.check_argument_count(
                     typ, arg_types, arg_kinds, arg_names, formal_to_actual, None
                 ):
