@@ -2143,7 +2143,8 @@ class State:
                     raise CompileError(
                         [
                             "mypy: can't read file '{}': {}".format(
-                                self.path, os.strerror(ioerr.errno)
+                                self.path.replace(os.getcwd() + os.sep, ""),
+                                os.strerror(ioerr.errno),
                             )
                         ],
                         module_with_blocker=self.id,
