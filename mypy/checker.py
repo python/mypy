@@ -56,7 +56,6 @@ from mypy.messages import (
     make_inferred_type_note,
     pretty_seq,
 )
-from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.mro import MroError, calculate_mro
 from mypy.nodes import (
     ARG_NAMED,
