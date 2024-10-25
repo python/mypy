@@ -2861,7 +2861,7 @@ def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None
         manager.log(f"{'Found source:':24}{source}")
 
     # Complete list of searched paths can get very long, put them under TRACE
-    for path_type, paths in manager.search_paths._asdict().items():
+    for path_type, paths in manager.search_paths.asdict().items():
         if not paths:
             manager.trace(f"No {path_type}")
             continue
