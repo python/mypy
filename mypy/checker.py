@@ -45,7 +45,6 @@ from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_h
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_erased_types, is_overlapping_types, meet_types
 from mypy.message_registry import ErrorMessage
-test
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
     MessageBuilder,
