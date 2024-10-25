@@ -288,40 +288,6 @@ class PartialTypeScope(NamedTuple):
     is_local: bool
 
 
-class InstanceDeprecatedVisitor(MixedTraverserVisitor):
-    """Visitor that recursively checks for deprecations in nested instances."""
-
-    def __init__(self, typechecker: TypeChecker) -> None:
-        self.typechecker = typechecker
-        self.context: Context | None = None
-
-    @contextmanager
-    def _set_context(self, new: Context, /) -> Iterator[None]:
-        old = self.context
-        try:
-            self.context = new
-            yield None
-        finally:
-            self.context = old
-
-    def visit_decorator(self, o: Decorator) -> None:
-        with self._set_context(o.func):
-            super().visit_decorator(o)
-
-    def visit_func(self, o: FuncItem) -> None:
-        with self._set_context(o):
-            super().visit_func(o)
-
-    def visit_instance(self, t: Instance) -> None:
-        super().visit_instance(t)
-        if t.type and not (
-            isinstance(defn := self.context, FuncDef)
-            and defn.info
-            and (defn.info.fullname == t.type.fullname)
-        ):
-            self.typechecker.check_deprecated(node=t.type, context=t)
-
-
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     """Mypy type checker.
 
@@ -516,7 +482,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 break
                         else:
                             self.accept(d)
-                    self.tree.accept(InstanceDeprecatedVisitor(typechecker=self))
 
                 assert not self.current_node_deferred
 
@@ -574,7 +539,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_partial(self, node: DeferredNodeType | FineGrainedDeferredNodeType) -> None:
         if isinstance(node, MypyFile):
             self.check_top_level(node)
-            self.tree.accept(InstanceDeprecatedVisitor(typechecker=self))
         else:
             self.recurse_into_functions = True
             with self.binder.top_frame_context():
