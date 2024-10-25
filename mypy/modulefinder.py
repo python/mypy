@@ -331,8 +331,6 @@ class FindModuleCache:
             # If this is not a directory then we can't traverse further into it
             if not self.fscache.isdir(dir_path):
                 break
-        if approved_stub_package_exists(".".join(components)):
-            return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         if plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
@@ -421,10 +419,9 @@ class FindModuleCache:
             for component in (components[0], components[0] + "-stubs")
             for package_dir in self.find_lib_path_dirs(component, self.search_paths.package_path)
         }
-        for pkg_dir in [os.path.normpath(p) for p in self.search_paths.package_path]:
+        for pkg_dir in self.search_paths.package_path:
+            pkg_dir = os.path.normpath(pkg_dir)
             if pkg_dir not in candidate_package_dirs:
-                if approved_stub_package_exists(id):
-                    need_installed_stubs = True
                 continue
             stub_name = components[0] + "-stubs"
             stub_dir = os_path_join(pkg_dir, stub_name)
@@ -454,11 +451,13 @@ class FindModuleCache:
             if isinstance(non_stub_match, ModuleNotFoundReason):
                 if non_stub_match is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     found_possible_third_party_missing_type_hints = True
-                elif non_stub_match is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-                    need_installed_stubs = True
             else:
                 third_party_inline_dirs.append(non_stub_match)
                 self._update_ns_ancestors(components, non_stub_match)
+
+        if approved_stub_package_exists(id):
+            need_installed_stubs = True
+
         if self.options and self.options.use_builtins_fixtures:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()
