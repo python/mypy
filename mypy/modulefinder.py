@@ -554,10 +554,9 @@ class FindModuleCache:
 
         if approved_stub_package_exists(id):
             return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-        elif found_possible_third_party_missing_type_hints:
+        if found_possible_third_party_missing_type_hints:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
-        else:
-            return ModuleNotFoundReason.NOT_FOUND
+        return ModuleNotFoundReason.NOT_FOUND
 
     def find_modules_recursive(self, module: str) -> list[BuildSource]:
         module_path = self.find_module(module, fast_path=True)
