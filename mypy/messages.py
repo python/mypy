@@ -1685,7 +1685,7 @@ class MessageBuilder:
 
     def overloaded_signatures_ret_specific(self, index: int, context: Context) -> None:
         self.fail(
-            "Overloaded function implementation cannot produce return type of signature {index}",
+            f"Overloaded function implementation cannot produce return type of signature {index}",
             context,
         )
 
