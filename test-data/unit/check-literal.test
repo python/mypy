@@ -2984,3 +2984,40 @@ class C(Base):
             reveal_type(sep)  # N: Revealed type is "Union[Literal['a'], Literal['b']]"
         return super().feed_data(sep)
 [builtins fixtures/tuple.pyi]
+
+
+-- This is constructed so that when mypy performs first pass
+-- type analysis on _LiteralInteger, builtins.int is still a
+-- placeholder, and the analysis must defer to avoid an error.
+[case testDeferIntLiteral]
+[file typing.py]
+import abc
+
+[file abc.py]
+import collections.abc
+
+[file collections/__init__.py]
+
+[file collections/abc.py]
+from _collections_abc import *
+
+[file _collections_abc.py]
+
+[file typing_extensions.py]
+Literal: object
+
+[file numbers.py]
+class Number: ...
+
+[file builtins.py]
+import numbers
+import typing
+from typing_extensions import Literal
+
+_LiteralInteger: Literal[0]
+
+class int(numbers.Number): ...
+class str: ...
+class list: ...
+class dict: ...
+class ellipsis: ...
