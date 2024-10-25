@@ -2154,7 +2154,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     override_class_or_static,
                     context,
                 )
-            elif isinstance(original_type, UnionType) and any(
+            elif isinstance(original_type,UnionType) and any(
                 is_subtype(orig_typ, typ, ignore_pos_arg_names=True)
                 for orig_typ in original_type.items
             ):
