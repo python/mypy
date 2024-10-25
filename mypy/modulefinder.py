@@ -423,6 +423,8 @@ class FindModuleCache:
         }
         for pkg_dir in [os.path.normpath(p) for p in self.search_paths.package_path]:
             if pkg_dir not in candidate_package_dirs:
+                if approved_stub_package_exists(id):
+                    need_installed_stubs = True
                 continue
             stub_name = components[0] + "-stubs"
             stub_dir = os_path_join(pkg_dir, stub_name)
