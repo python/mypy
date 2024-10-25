@@ -73,8 +73,7 @@ class ModuleNotFoundReason(Enum):
         elif self is ModuleNotFoundReason.WRONG_WORKING_DIRECTORY:
             msg = 'Cannot find implementation or library stub for module named "{module}"'
             notes = [
-                "You may be running mypy in a subpackage, "
-                "mypy should be run on the package root"
+                "You may be running mypy in a subpackage, mypy should be run on the package root"
             ]
         elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
             msg = (
