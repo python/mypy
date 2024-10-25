@@ -6032,72 +6032,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             partial_type_maps = []
             for operator, expr_indices in simplified_operator_list:
                 if operator in {"is", "is not", "==", "!="}:
-                    # is_valid_target:
-                    #   Controls which types we're allowed to narrow exprs to. Note that
-                    #   we cannot use 'is_literal_type_like' in both cases since doing
-                    #   'x = 10000 + 1; x is 10001' is not always True in all Python
-                    #   implementations.
-                    #
-                    # coerce_only_in_literal_context:
-                    #   If true, coerce types into literal types only if one or more of
-                    #   the provided exprs contains an explicit Literal type. This could
-                    #   technically be set to any arbitrary value, but it seems being liberal
-                    #   with narrowing when using 'is' and conservative when using '==' seems
-                    #   to break the least amount of real-world code.
-                    #
-                    # should_narrow_by_identity:
-                    #   Set to 'false' only if the user defines custom __eq__ or __ne__ methods
-                    #   that could cause identity-based narrowing to produce invalid results.
-                    if operator in {"is", "is not"}:
-                        is_valid_target: Callable[[Type], bool] = is_singleton_type
-                        coerce_only_in_literal_context = False
-                        should_narrow_by_identity = True
-                    else:
-
-                        def is_exactly_literal_type(t: Type) -> bool:
-                            return isinstance(get_proper_type(t), LiteralType)
-
-                        def has_no_custom_eq_checks(t: Type) -> bool:
-                            return not custom_special_method(
-                                t, "__eq__", check_all=False
-                            ) and not custom_special_method(t, "__ne__", check_all=False)
-
-                        is_valid_target = is_exactly_literal_type
-                        coerce_only_in_literal_context = True
-
-                        expr_types = [operand_types[i] for i in expr_indices]
-                        should_narrow_by_identity = all(
-                            map(has_no_custom_eq_checks, expr_types)
-                        ) and not is_ambiguous_mix_of_enums(expr_types)
-
-                    if_map: TypeMap = {}
-                    else_map: TypeMap = {}
-                    if should_narrow_by_identity:
-                        if_map, else_map = self.refine_identity_comparison_expression(
-                            operands,
-                            operand_types,
-                            expr_indices,
-                            narrowable_operand_index_to_hash.keys(),
-                            is_valid_target,
-                            coerce_only_in_literal_context,
-                        )
-
-                    # Strictly speaking, we should also skip this check if the objects in the expr
-                    # chain have custom __eq__ or __ne__ methods. But we (maybe optimistically)
-                    # assume nobody would actually create a custom objects that considers itself
-                    # equal to None.
-                    if if_map == {} and else_map == {}:
-                        if_map, else_map = self.refine_away_none_in_comparison(
-                            operands,
-                            operand_types,
-                            expr_indices,
-                            narrowable_operand_index_to_hash.keys(),
-                        )
-
-                    # If we haven't been able to narrow types yet, we might be dealing with a
-                    # explicit type(x) == some_type check
-                    if if_map == {} and else_map == {}:
-                        if_map, else_map = self.find_type_equals_check(node, expr_indices)
+                    if_map, else_map = self.equality_type_narrowing_helper(
+                        node,
+                        operator,
+                        operands,
+                        operand_types,
+                        expr_indices,
+                        narrowable_operand_index_to_hash,
+                    )
                 elif operator in {"in", "not in"}:
                     assert len(expr_indices) == 2
                     left_index, right_index = expr_indices
@@ -6240,6 +6182,81 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else_type = false_only(vartype)
         if_map = {node: if_type} if not isinstance(if_type, UninhabitedType) else None
         else_map = {node: else_type} if not isinstance(else_type, UninhabitedType) else None
+        return if_map, else_map
+
+    def equality_type_narrowing_helper(
+        self,
+        node: ComparisonExpr,
+        operator: str,
+        operands: list[Expression],
+        operand_types: list[Type],
+        expr_indices: list[int],
+        narrowable_operand_index_to_hash: dict[int, tuple[Key, ...]],
+    ) -> tuple[TypeMap, TypeMap]:
+        """Calculate type maps for '==', '!=', 'is' or 'is not' expression."""
+        # is_valid_target:
+        #   Controls which types we're allowed to narrow exprs to. Note that
+        #   we cannot use 'is_literal_type_like' in both cases since doing
+        #   'x = 10000 + 1; x is 10001' is not always True in all Python
+        #   implementations.
+        #
+        # coerce_only_in_literal_context:
+        #   If true, coerce types into literal types only if one or more of
+        #   the provided exprs contains an explicit Literal type. This could
+        #   technically be set to any arbitrary value, but it seems being liberal
+        #   with narrowing when using 'is' and conservative when using '==' seems
+        #   to break the least amount of real-world code.
+        #
+        # should_narrow_by_identity:
+        #   Set to 'false' only if the user defines custom __eq__ or __ne__ methods
+        #   that could cause identity-based narrowing to produce invalid results.
+        if operator in {"is", "is not"}:
+            is_valid_target: Callable[[Type], bool] = is_singleton_type
+            coerce_only_in_literal_context = False
+            should_narrow_by_identity = True
+        else:
+
+            def is_exactly_literal_type(t: Type) -> bool:
+                return isinstance(get_proper_type(t), LiteralType)
+
+            def has_no_custom_eq_checks(t: Type) -> bool:
+                return not custom_special_method(
+                    t, "__eq__", check_all=False
+                ) and not custom_special_method(t, "__ne__", check_all=False)
+
+            is_valid_target = is_exactly_literal_type
+            coerce_only_in_literal_context = True
+
+            expr_types = [operand_types[i] for i in expr_indices]
+            should_narrow_by_identity = all(
+                map(has_no_custom_eq_checks, expr_types)
+            ) and not is_ambiguous_mix_of_enums(expr_types)
+
+        if_map: TypeMap = {}
+        else_map: TypeMap = {}
+        if should_narrow_by_identity:
+            if_map, else_map = self.refine_identity_comparison_expression(
+                operands,
+                operand_types,
+                expr_indices,
+                narrowable_operand_index_to_hash.keys(),
+                is_valid_target,
+                coerce_only_in_literal_context,
+            )
+
+        # Strictly speaking, we should also skip this check if the objects in the expr
+        # chain have custom __eq__ or __ne__ methods. But we (maybe optimistically)
+        # assume nobody would actually create a custom objects that considers itself
+        # equal to None.
+        if if_map == {} and else_map == {}:
+            if_map, else_map = self.refine_away_none_in_comparison(
+                operands, operand_types, expr_indices, narrowable_operand_index_to_hash.keys()
+            )
+
+        # If we haven't been able to narrow types yet, we might be dealing with a
+        # explicit type(x) == some_type check
+        if if_map == {} and else_map == {}:
+            if_map, else_map = self.find_type_equals_check(node, expr_indices)
         return if_map, else_map
 
     def propagate_up_typemap_info(self, new_types: TypeMap) -> TypeMap:
