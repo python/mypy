@@ -2276,15 +2276,6 @@ def set_any_tvars(
     return t
 
 
-def flatten_tvars(lists: list[list[T]]) -> list[T]:
-    result: list[T] = []
-    for lst in lists:
-        for item in lst:
-            if item not in result:
-                result.append(item)
-    return result
-
-
 class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
     """See docstring of detect_diverging_alias() for details."""
 
