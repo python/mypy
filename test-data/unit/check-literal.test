@@ -3021,3 +3021,39 @@ class str: ...
 class list: ...
 class dict: ...
 class ellipsis: ...
+
+
+-- In this version, looking up the node for builtins.int
+-- during type analysis of _LiteralInteger returns None
+[case testDeferIntLiteral2]
+[file _collections_abc.pyi]
+[file abc.pyi]
+[file collections/__init__.pyi]
+[file collections/abc.pyi]
+[file types.pyi]
+class UnionType: ...
+
+[file typing_extensions.pyi]
+from typing import Any
+TypeAlias: Any
+
+[file typing.pyi]
+Any = object()
+Literal: Any
+
+[file builtins.pyi]
+import _collections_abc
+import abc
+import collections.abc
+import types
+from typing import Literal
+from typing_extensions import TypeAlias
+
+class int: ...
+class ellipsis: ...
+class str: ...
+class list: ...
+class dict: ...
+
+_PositiveInteger: TypeAlias = Literal[1]
+_LiteralInteger = _PositiveInteger | Literal[0]

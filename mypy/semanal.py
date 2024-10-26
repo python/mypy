@@ -3181,7 +3181,7 @@ class SemanticAnalyzer(
         else:
             s.rvalue.accept(self)
 
-        if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
+        if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue, s):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
             # added later in this scope, since an earlier definition should take precedence.
@@ -3280,7 +3280,7 @@ class SemanticAnalyzer(
                     node.fullname = sym.node.fullname
             return True
 
-    def should_wait_rhs(self, rv: Expression) -> bool:
+    def should_wait_rhs(self, rv: Expression, s: AssignmentStmt) -> bool:
         """Can we already classify this r.h.s. of an assignment or should we wait?
 
         This returns True if we don't have enough information to decide whether
@@ -3291,6 +3291,10 @@ class SemanticAnalyzer(
         if self.final_iteration:
             # No chance, nothing has changed.
             return False
+        if isinstance(s.type, UnboundType):
+            lookup = self.lookup_qualified(s.type.name, s, suppress_errors=True)
+            if lookup and isinstance(lookup.node, PlaceholderNode):
+                return True
         if isinstance(rv, NameExpr):
             n = self.lookup(rv.name, rv)
             if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
@@ -3302,11 +3306,11 @@ class SemanticAnalyzer(
                 if n and isinstance(n.node, PlaceholderNode) and not n.node.becomes_typeinfo:
                     return True
         elif isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
-            return self.should_wait_rhs(rv.base)
+            return self.should_wait_rhs(rv.base, s)
         elif isinstance(rv, CallExpr) and isinstance(rv.callee, RefExpr):
             # This is only relevant for builtin SCC where things like 'TypeVar'
             # may be not ready.
-            return self.should_wait_rhs(rv.callee)
+            return self.should_wait_rhs(rv.callee, s)
         return False
 
     def can_be_type_alias(self, rv: Expression, allow_none: bool = False) -> bool:

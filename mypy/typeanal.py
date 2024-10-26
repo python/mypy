@@ -297,43 +297,40 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             and tvar_name not in self.alias_type_params_names
         )
 
-    def handle_placeholder_node(self, node: PlaceholderNode, t: UnboundType) -> Type:
-        if node.becomes_typeinfo:
-            # Reference to placeholder type.
-            if self.api.final_iteration:
-                self.cannot_resolve_type(t)
-                return AnyType(TypeOfAny.from_error)
-            elif self.allow_placeholder:
-                self.api.defer()
-            else:
-                self.api.record_incomplete_ref()
-            # Always allow ParamSpec for placeholders, if they are actually not valid,
-            # they will be reported later, after we resolve placeholders.
-            return PlaceholderType(
-                node.fullname,
-                self.anal_array(
-                    t.args,
-                    allow_param_spec=True,
-                    allow_param_spec_literals=True,
-                    allow_unpack=True,
-                ),
-                t.line,
-            )
-        else:
-            if self.api.final_iteration:
-                self.cannot_resolve_type(t)
-                return AnyType(TypeOfAny.from_error)
-            else:
-                # Reference to an unknown placeholder node.
-                self.api.record_incomplete_ref()
-                return AnyType(TypeOfAny.special_form)
-
     def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -> Type:
         sym = self.lookup_qualified(t.name, t)
         if sym is not None:
             node = sym.node
             if isinstance(node, PlaceholderNode):
-                return self.handle_placeholder_node(node, t)
+                if node.becomes_typeinfo:
+                    # Reference to placeholder type.
+                    if self.api.final_iteration:
+                        self.cannot_resolve_type(t)
+                        return AnyType(TypeOfAny.from_error)
+                    elif self.allow_placeholder:
+                        self.api.defer()
+                    else:
+                        self.api.record_incomplete_ref()
+                    # Always allow ParamSpec for placeholders, if they are actually not valid,
+                    # they will be reported later, after we resolve placeholders.
+                    return PlaceholderType(
+                        node.fullname,
+                        self.anal_array(
+                            t.args,
+                            allow_param_spec=True,
+                            allow_param_spec_literals=True,
+                            allow_unpack=True,
+                        ),
+                        t.line,
+                    )
+                else:
+                    if self.api.final_iteration:
+                        self.cannot_resolve_type(t)
+                        return AnyType(TypeOfAny.from_error)
+                    else:
+                        # Reference to an unknown placeholder node.
+                        self.api.record_incomplete_ref()
+                        return AnyType(TypeOfAny.special_form)
             if node is None:
                 self.fail(f"Internal error (node is None, kind={sym.kind})", t)
                 return AnyType(TypeOfAny.special_form)
@@ -1705,9 +1702,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return None
 
             # Make sure the literal's class is ready
-            sym = self.lookup_fully_qualified(arg.base_type_name)
-            if isinstance(sym.node, PlaceholderNode):
-                return [self.handle_placeholder_node(sym.node, UnboundType(arg.base_type_name))]
+            sym = self.api.lookup_fully_qualified_or_none(arg.base_type_name)
+            if sym is None or isinstance(sym.node, PlaceholderNode):
+                assert arg.base_type_name.startswith("builtins.")
+                if self.api.is_incomplete_namespace("builtins"):
+                    self.api.record_incomplete_ref()
+                else:
+                    self.fail(f'Name "{arg.base_type_name}" is not defined', arg)
+                return [AnyType(TypeOfAny.special_form)]
 
             # Remap bytes and unicode into the appropriate type for the correct Python version
             fallback = self.named_type(arg.base_type_name)
