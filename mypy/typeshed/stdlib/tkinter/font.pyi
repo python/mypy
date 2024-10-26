@@ -1,16 +1,16 @@
 import _tkinter
 import sys
 import tkinter
-from typing import Any, Literal, TypedDict, overload
+from typing import Any, Final, Literal, TypedDict, overload
 from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 9):
     __all__ = ["NORMAL", "ROMAN", "BOLD", "ITALIC", "nametofont", "Font", "families", "names"]
 
-NORMAL: Literal["normal"]
-ROMAN: Literal["roman"]
-BOLD: Literal["bold"]
-ITALIC: Literal["italic"]
+NORMAL: Final = "normal"
+ROMAN: Final = "roman"
+BOLD: Final = "bold"
+ITALIC: Final = "italic"
 
 _FontDescription: TypeAlias = (
     str  # "Helvetica 12"
@@ -97,9 +97,9 @@ class Font:
     configure = config
     def copy(self) -> Font: ...
     @overload
-    def metrics(self, __option: Literal["ascent", "descent", "linespace"], *, displayof: tkinter.Misc | None = ...) -> int: ...
+    def metrics(self, option: Literal["ascent", "descent", "linespace"], /, *, displayof: tkinter.Misc | None = ...) -> int: ...
     @overload
-    def metrics(self, __option: Literal["fixed"], *, displayof: tkinter.Misc | None = ...) -> bool: ...
+    def metrics(self, option: Literal["fixed"], /, *, displayof: tkinter.Misc | None = ...) -> bool: ...
     @overload
     def metrics(self, *, displayof: tkinter.Misc | None = ...) -> _MetricsDict: ...
     def measure(self, text: str, displayof: tkinter.Misc | None = None) -> int: ...

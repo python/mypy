@@ -5,7 +5,7 @@ from _typeshed import DataclassInstance
 from builtins import type as Type  # alias to avoid name clashes with fields named "type"
 from collections.abc import Callable, Iterable, Mapping
 from typing import Any, Generic, Literal, Protocol, TypeVar, overload
-from typing_extensions import TypeAlias, TypeGuard
+from typing_extensions import Never, TypeAlias, TypeIs
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -55,9 +55,9 @@ def astuple(obj: DataclassInstance) -> tuple[Any, ...]: ...
 @overload
 def astuple(obj: DataclassInstance, *, tuple_factory: Callable[[list[Any]], _T]) -> _T: ...
 @overload
-def dataclass(__cls: None) -> Callable[[type[_T]], type[_T]]: ...
+def dataclass(cls: None, /) -> Callable[[type[_T]], type[_T]]: ...
 @overload
-def dataclass(__cls: type[_T]) -> type[_T]: ...
+def dataclass(cls: type[_T], /) -> type[_T]: ...
 
 if sys.version_info >= (3, 11):
     @overload
@@ -108,7 +108,7 @@ class _DefaultFactory(Protocol[_T_co]):
 
 class Field(Generic[_T]):
     name: str
-    type: Type[_T]
+    type: Type[_T] | str | Any
     default: _T | Literal[_MISSING_TYPE.MISSING]
     default_factory: _DefaultFactory[_T] | Literal[_MISSING_TYPE.MISSING]
     repr: bool
@@ -143,7 +143,7 @@ class Field(Generic[_T]):
 
     def __set_name__(self, owner: Type[Any], name: str) -> None: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 # NOTE: Actual return type is 'Field[_T]', but we want to help type checkers
 # to understand the magic that happens at runtime.
@@ -213,12 +213,14 @@ else:
     ) -> Any: ...
 
 def fields(class_or_instance: DataclassInstance | type[DataclassInstance]) -> tuple[Field[Any], ...]: ...
+
+# HACK: `obj: Never` typing matches if object argument is using `Any` type.
 @overload
-def is_dataclass(obj: DataclassInstance) -> Literal[True]: ...
+def is_dataclass(obj: Never) -> TypeIs[DataclassInstance | type[DataclassInstance]]: ...  # type: ignore[narrowed-type-not-subtype]  # pyright: ignore[reportGeneralTypeIssues]
 @overload
-def is_dataclass(obj: type) -> TypeGuard[type[DataclassInstance]]: ...
+def is_dataclass(obj: type) -> TypeIs[type[DataclassInstance]]: ...
 @overload
-def is_dataclass(obj: object) -> TypeGuard[DataclassInstance | type[DataclassInstance]]: ...
+def is_dataclass(obj: object) -> TypeIs[DataclassInstance | type[DataclassInstance]]: ...
 
 class FrozenInstanceError(AttributeError): ...
 
@@ -227,21 +229,22 @@ if sys.version_info >= (3, 9):
 else:
     class _InitVarMeta(type):
         # Not used, instead `InitVar.__class_getitem__` is called.
-        def __getitem__(self, params: Any) -> InitVar[Any]: ...
+        # pyright (not unreasonably) thinks this is an invalid use of InitVar.
+        def __getitem__(self, params: Any) -> InitVar[Any]: ...  # pyright: ignore[reportInvalidTypeForm]
 
 class InitVar(Generic[_T], metaclass=_InitVarMeta):
     type: Type[_T]
     def __init__(self, type: Type[_T]) -> None: ...
     if sys.version_info >= (3, 9):
         @overload
-        def __class_getitem__(cls, type: Type[_T]) -> InitVar[_T]: ...
+        def __class_getitem__(cls, type: Type[_T]) -> InitVar[_T]: ...  # pyright: ignore[reportInvalidTypeForm]
         @overload
-        def __class_getitem__(cls, type: Any) -> InitVar[Any]: ...
+        def __class_getitem__(cls, type: Any) -> InitVar[Any]: ...  # pyright: ignore[reportInvalidTypeForm]
 
 if sys.version_info >= (3, 12):
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
         *,
         bases: tuple[type, ...] = (),
         namespace: dict[str, Any] | None = None,
@@ -261,7 +264,7 @@ if sys.version_info >= (3, 12):
 elif sys.version_info >= (3, 11):
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
         *,
         bases: tuple[type, ...] = (),
         namespace: dict[str, Any] | None = None,
@@ -280,7 +283,7 @@ elif sys.version_info >= (3, 11):
 elif sys.version_info >= (3, 10):
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
         *,
         bases: tuple[type, ...] = (),
         namespace: dict[str, Any] | None = None,
@@ -298,7 +301,7 @@ elif sys.version_info >= (3, 10):
 else:
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
         *,
         bases: tuple[type, ...] = (),
         namespace: dict[str, Any] | None = None,
@@ -310,4 +313,4 @@ else:
         frozen: bool = False,
     ) -> type: ...
 
-def replace(__obj: _DataclassT, **changes: Any) -> _DataclassT: ...
+def replace(obj: _DataclassT, /, **changes: Any) -> _DataclassT: ...

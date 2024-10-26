@@ -7,8 +7,8 @@ from re import Pattern
 from string import Template
 from time import struct_time
 from types import FrameType, TracebackType
-from typing import Any, ClassVar, Generic, Literal, Protocol, TextIO, TypeVar, overload
-from typing_extensions import Self, TypeAlias
+from typing import Any, ClassVar, Final, Generic, Literal, Protocol, TextIO, TypeVar, overload
+from typing_extensions import Self, TypeAlias, deprecated
 
 if sys.version_info >= (3, 11):
     from types import GenericAlias
@@ -50,12 +50,12 @@ __all__ = [
     "makeLogRecord",
     "setLoggerClass",
     "shutdown",
-    "warn",
     "warning",
     "getLogRecordFactory",
     "setLogRecordFactory",
     "lastResort",
     "raiseExceptions",
+    "warn",
 ]
 
 if sys.version_info >= (3, 11):
@@ -71,12 +71,12 @@ _FormatStyle: TypeAlias = Literal["%", "{", "$"]
 
 if sys.version_info >= (3, 12):
     class _SupportsFilter(Protocol):
-        def filter(self, __record: LogRecord) -> bool | LogRecord: ...
+        def filter(self, record: LogRecord, /) -> bool | LogRecord: ...
 
     _FilterType: TypeAlias = Filter | Callable[[LogRecord], bool | LogRecord] | _SupportsFilter
 else:
     class _SupportsFilter(Protocol):
-        def filter(self, __record: LogRecord) -> bool: ...
+        def filter(self, record: LogRecord, /) -> bool: ...
 
     _FilterType: TypeAlias = Filter | Callable[[LogRecord], bool] | _SupportsFilter
 
@@ -156,6 +156,7 @@ class Logger(Filterer):
         stacklevel: int = 1,
         extra: Mapping[str, object] | None = None,
     ) -> None: ...
+    @deprecated("Deprecated; use warning() instead.")
     def warn(
         self,
         msg: object,
@@ -233,14 +234,14 @@ class Logger(Filterer):
     def hasHandlers(self) -> bool: ...
     def callHandlers(self, record: LogRecord) -> None: ...  # undocumented
 
-CRITICAL: int
-FATAL: int
-ERROR: int
-WARNING: int
-WARN: int
-INFO: int
-DEBUG: int
-NOTSET: int
+CRITICAL: Final = 50
+FATAL: Final = CRITICAL
+ERROR: Final = 40
+WARNING: Final = 30
+WARN: Final = WARNING
+INFO: Final = 20
+DEBUG: Final = 10
+NOTSET: Final = 0
 
 class Handler(Filterer):
     level: int  # undocumented
@@ -341,6 +342,9 @@ class LogRecord:
     stack_info: str | None
     thread: int | None
     threadName: str | None
+    if sys.version_info >= (3, 12):
+        taskName: str | None
+
     def __init__(
         self,
         name: str,
@@ -355,19 +359,25 @@ class LogRecord:
     ) -> None: ...
     def getMessage(self) -> str: ...
     # Allows setting contextual information on LogRecord objects as per the docs, see #7833
-    def __setattr__(self, __name: str, __value: Any) -> None: ...
+    def __setattr__(self, name: str, value: Any, /) -> None: ...
 
 _L = TypeVar("_L", bound=Logger | LoggerAdapter[Any])
 
 class LoggerAdapter(Generic[_L]):
     logger: _L
     manager: Manager  # undocumented
-    if sys.version_info >= (3, 10):
-        extra: Mapping[str, object] | None
+
+    if sys.version_info >= (3, 13):
+        def __init__(self, logger: _L, extra: Mapping[str, object] | None = None, merge_extra: bool = False) -> None: ...
+    elif sys.version_info >= (3, 10):
         def __init__(self, logger: _L, extra: Mapping[str, object] | None = None) -> None: ...
     else:
-        extra: Mapping[str, object]
         def __init__(self, logger: _L, extra: Mapping[str, object]) -> None: ...
+
+    if sys.version_info >= (3, 10):
+        extra: Mapping[str, object] | None
+    else:
+        extra: Mapping[str, object]
 
     def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> tuple[Any, MutableMapping[str, Any]]: ...
     def debug(
@@ -400,6 +410,7 @@ class LoggerAdapter(Generic[_L]):
         extra: Mapping[str, object] | None = None,
         **kwargs: object,
     ) -> None: ...
+    @deprecated("Deprecated; use warning() instead.")
     def warn(
         self,
         msg: object,
@@ -455,19 +466,32 @@ class LoggerAdapter(Generic[_L]):
     def getEffectiveLevel(self) -> int: ...
     def setLevel(self, level: _Level) -> None: ...
     def hasHandlers(self) -> bool: ...
-    def _log(
-        self,
-        level: int,
-        msg: object,
-        args: _ArgsType,
-        exc_info: _ExcInfoType | None = None,
-        extra: Mapping[str, object] | None = None,
-        stack_info: bool = False,
-    ) -> None: ...  # undocumented
+    if sys.version_info >= (3, 11):
+        def _log(
+            self,
+            level: int,
+            msg: object,
+            args: _ArgsType,
+            *,
+            exc_info: _ExcInfoType | None = None,
+            extra: Mapping[str, object] | None = None,
+            stack_info: bool = False,
+        ) -> None: ...  # undocumented
+    else:
+        def _log(
+            self,
+            level: int,
+            msg: object,
+            args: _ArgsType,
+            exc_info: _ExcInfoType | None = None,
+            extra: Mapping[str, object] | None = None,
+            stack_info: bool = False,
+        ) -> None: ...  # undocumented
+
     @property
     def name(self) -> str: ...  # undocumented
     if sys.version_info >= (3, 11):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 def getLogger(name: str | None = None) -> Logger: ...
 def getLoggerClass() -> type[Logger]: ...
@@ -496,6 +520,7 @@ def warning(
     stacklevel: int = 1,
     extra: Mapping[str, object] | None = None,
 ) -> None: ...
+@deprecated("Deprecated; use warning() instead.")
 def warn(
     msg: object,
     *args: object,
@@ -542,7 +567,11 @@ fatal = critical
 
 def disable(level: int = 50) -> None: ...
 def addLevelName(level: int, levelName: str) -> None: ...
-def getLevelName(level: _Level) -> Any: ...
+@overload
+def getLevelName(level: int) -> str: ...
+@overload
+@deprecated("The str -> int case is considered a mistake.")
+def getLevelName(level: str) -> Any: ...
 
 if sys.version_info >= (3, 11):
     def getLevelNamesMapping() -> dict[str, int]: ...
@@ -584,7 +613,7 @@ def setLoggerClass(klass: type[Logger]) -> None: ...
 def captureWarnings(capture: bool) -> None: ...
 def setLogRecordFactory(factory: Callable[..., LogRecord]) -> None: ...
 
-lastResort: StreamHandler[Any] | None
+lastResort: Handler | None
 
 _StreamT = TypeVar("_StreamT", bound=SupportsWrite[str])
 
@@ -594,10 +623,10 @@ class StreamHandler(Handler, Generic[_StreamT]):
     @overload
     def __init__(self: StreamHandler[TextIO], stream: None = None) -> None: ...
     @overload
-    def __init__(self: StreamHandler[_StreamT], stream: _StreamT) -> None: ...
+    def __init__(self: StreamHandler[_StreamT], stream: _StreamT) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]  #11780
     def setStream(self, stream: _StreamT) -> _StreamT | None: ...
     if sys.version_info >= (3, 11):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 class FileHandler(StreamHandler[TextIOWrapper]):
     baseFilename: str  # undocumented
@@ -650,6 +679,6 @@ class StrFormatStyle(PercentStyle):  # undocumented
 class StringTemplateStyle(PercentStyle):  # undocumented
     _tpl: Template
 
-_STYLES: dict[str, tuple[PercentStyle, str]]
+_STYLES: Final[dict[str, tuple[PercentStyle, str]]]
 
-BASIC_FORMAT: str
+BASIC_FORMAT: Final[str]

@@ -71,6 +71,7 @@ def getsearchdirs() -> tuple[list[str], list[str]]:
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
     if sys.argv[-1] == "getsearchdirs":
         print(repr(getsearchdirs()))
     else:

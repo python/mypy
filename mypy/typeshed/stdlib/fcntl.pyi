@@ -1,6 +1,6 @@
 import sys
 from _typeshed import FileDescriptorLike, ReadOnlyBuffer, WriteableBuffer
-from typing import Any, Literal, overload
+from typing import Any, Final, Literal, overload
 from typing_extensions import Buffer
 
 if sys.platform != "win32":
@@ -44,9 +44,10 @@ if sys.platform != "win32":
         F_SEAL_SHRINK: int
         F_SEAL_WRITE: int
         if sys.version_info >= (3, 9):
-            F_OFD_GETLK: int
-            F_OFD_SETLK: int
-            F_OFD_SETLKW: int
+            F_OFD_GETLK: Final[int]
+            F_OFD_SETLK: Final[int]
+            F_OFD_SETLKW: Final[int]
+
         if sys.version_info >= (3, 10):
             F_GETPIPE_SZ: int
             F_SETPIPE_SZ: int
@@ -105,23 +106,53 @@ if sys.platform != "win32":
         FICLONE: int
         FICLONERANGE: int
 
+    if sys.version_info >= (3, 13) and sys.platform == "linux":
+        F_OWNER_TID: Final = 0
+        F_OWNER_PID: Final = 1
+        F_OWNER_PGRP: Final = 2
+        F_SETOWN_EX: Final = 15
+        F_GETOWN_EX: Final = 16
+        F_SEAL_FUTURE_WRITE: Final = 16
+        F_GET_RW_HINT: Final = 1035
+        F_SET_RW_HINT: Final = 1036
+        F_GET_FILE_RW_HINT: Final = 1037
+        F_SET_FILE_RW_HINT: Final = 1038
+        RWH_WRITE_LIFE_NOT_SET: Final = 0
+        RWH_WRITE_LIFE_NONE: Final = 1
+        RWH_WRITE_LIFE_SHORT: Final = 2
+        RWH_WRITE_LIFE_MEDIUM: Final = 3
+        RWH_WRITE_LIFE_LONG: Final = 4
+        RWH_WRITE_LIFE_EXTREME: Final = 5
+
+    if sys.version_info >= (3, 11) and sys.platform == "darwin":
+        F_OFD_SETLK: Final = 90
+        F_OFD_SETLKW: Final = 91
+        F_OFD_GETLK: Final = 92
+
+    if sys.version_info >= (3, 13) and sys.platform != "linux":
+        # OSx and NetBSD
+        F_GETNOSIGPIPE: Final[int]
+        F_SETNOSIGPIPE: Final[int]
+        # OSx and FreeBSD
+        F_RDAHEAD: Final[int]
+
     @overload
-    def fcntl(__fd: FileDescriptorLike, __cmd: int, __arg: int = 0) -> int: ...
+    def fcntl(fd: FileDescriptorLike, cmd: int, arg: int = 0, /) -> int: ...
     @overload
-    def fcntl(__fd: FileDescriptorLike, __cmd: int, __arg: str | ReadOnlyBuffer) -> bytes: ...
+    def fcntl(fd: FileDescriptorLike, cmd: int, arg: str | ReadOnlyBuffer, /) -> bytes: ...
     # If arg is an int, return int
     @overload
-    def ioctl(__fd: FileDescriptorLike, __request: int, __arg: int = 0, __mutate_flag: bool = True) -> int: ...
+    def ioctl(fd: FileDescriptorLike, request: int, arg: int = 0, mutate_flag: bool = True, /) -> int: ...
     # The return type works as follows:
     # - If arg is a read-write buffer, return int if mutate_flag is True, otherwise bytes
     # - If arg is a read-only buffer, return bytes (and ignore the value of mutate_flag)
     # We can't represent that precisely as we can't distinguish between read-write and read-only
     # buffers, so we add overloads for a few unambiguous cases and use Any for the rest.
     @overload
-    def ioctl(__fd: FileDescriptorLike, __request: int, __arg: bytes, __mutate_flag: bool = True) -> bytes: ...
+    def ioctl(fd: FileDescriptorLike, request: int, arg: bytes, mutate_flag: bool = True, /) -> bytes: ...
     @overload
-    def ioctl(__fd: FileDescriptorLike, __request: int, __arg: WriteableBuffer, __mutate_flag: Literal[False]) -> bytes: ...
+    def ioctl(fd: FileDescriptorLike, request: int, arg: WriteableBuffer, mutate_flag: Literal[False], /) -> bytes: ...
     @overload
-    def ioctl(__fd: FileDescriptorLike, __request: int, __arg: Buffer, __mutate_flag: bool = True) -> Any: ...
-    def flock(__fd: FileDescriptorLike, __operation: int) -> None: ...
-    def lockf(__fd: FileDescriptorLike, __cmd: int, __len: int = 0, __start: int = 0, __whence: int = 0) -> Any: ...
+    def ioctl(fd: FileDescriptorLike, request: int, arg: Buffer, mutate_flag: bool = True, /) -> Any: ...
+    def flock(fd: FileDescriptorLike, operation: int, /) -> None: ...
+    def lockf(fd: FileDescriptorLike, cmd: int, len: int = 0, start: int = 0, whence: int = 0, /) -> Any: ...

@@ -55,6 +55,7 @@ from mypy.plugins.common import (
     deserialize_and_fixup_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
+from mypy.state import state
 from mypy.typeops import get_type_vars, make_simplified_union, map_type_from_supertype
 from mypy.types import (
     AnyType,
@@ -69,6 +70,7 @@ from mypy.types import (
     Type,
     TypeOfAny,
     TypeType,
+    TypeVarId,
     TypeVarType,
     UninhabitedType,
     UnionType,
@@ -316,18 +318,29 @@ def attr_class_maker_callback(
 
     See https://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
-    If this returns False, some required metadata was not ready yet and we need another
+    If this returns False, some required metadata was not ready yet, and we need another
     pass.
     """
+    with state.strict_optional_set(ctx.api.options.strict_optional):
+        # This hook is called during semantic analysis, but it uses a bunch of
+        # type-checking ops, so it needs the strict optional set properly.
+        return attr_class_maker_callback_impl(
+            ctx, auto_attribs_default, frozen_default, slots_default
+        )
+
+
+def attr_class_maker_callback_impl(
+    ctx: mypy.plugin.ClassDefContext,
+    auto_attribs_default: bool | None,
+    frozen_default: bool,
+    slots_default: bool,
+) -> bool:
     info = ctx.cls.info
 
     init = _get_decorator_bool_argument(ctx, "init", True)
     frozen = _get_frozen(ctx, frozen_default)
     order = _determine_eq_order(ctx)
     slots = _get_decorator_bool_argument(ctx, "slots", slots_default)
-    hashable = _get_decorator_bool_argument(ctx, "hash", False) or _get_decorator_bool_argument(
-        ctx, "unsafe_hash", False
-    )
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, "auto_attribs", auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, "kw_only", False)
@@ -371,7 +384,24 @@ def attr_class_maker_callback(
         _add_order(ctx, adder)
     if frozen:
         _make_frozen(ctx, attributes)
-    elif not hashable:
+        # Frozen classes are hashable by default, even if inheriting from non-frozen ones.
+        hashable: bool | None = _get_decorator_bool_argument(
+            ctx, "hash", True
+        ) and _get_decorator_bool_argument(ctx, "unsafe_hash", True)
+    else:
+        hashable = _get_decorator_optional_bool_argument(ctx, "unsafe_hash")
+        if hashable is None:  # unspecified
+            hashable = _get_decorator_optional_bool_argument(ctx, "hash")
+
+    eq = _get_decorator_optional_bool_argument(ctx, "eq")
+    has_own_hash = "__hash__" in ctx.cls.info.names
+
+    if has_own_hash or (hashable is None and eq is False):
+        pass  # Do nothing.
+    elif hashable:
+        # We copy the `__hash__` signature from `object` to make them hashable.
+        ctx.cls.info.names["__hash__"] = ctx.cls.info.mro[-1].names["__hash__"]
+    else:
         _remove_hashability(ctx)
 
     return True
@@ -793,25 +823,25 @@ def _add_order(ctx: mypy.plugin.ClassDefContext, adder: MethodAdder) -> None:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
+    fullname = f"{ctx.cls.info.fullname}.{SELF_TVAR_NAME}"
     tvd = TypeVarType(
         SELF_TVAR_NAME,
-        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
-        id=-1,
+        fullname,
+        # Namespace is patched per-method below.
+        id=TypeVarId(-1, namespace=""),
         values=[],
         upper_bound=object_type,
         default=AnyType(TypeOfAny.from_omitted_generics),
     )
     self_tvar_expr = TypeVarExpr(
-        SELF_TVAR_NAME,
-        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
-        [],
-        object_type,
-        AnyType(TypeOfAny.from_omitted_generics),
+        SELF_TVAR_NAME, fullname, [], object_type, AnyType(TypeOfAny.from_omitted_generics)
     )
     ctx.cls.info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
-    args = [Argument(Var("other", tvd), tvd, None, ARG_POS)]
     for method in ["__lt__", "__le__", "__gt__", "__ge__"]:
+        namespace = f"{ctx.cls.info.fullname}.{method}"
+        tvd = tvd.copy_modified(id=TypeVarId(tvd.id.raw_id, namespace=namespace))
+        args = [Argument(Var("other", tvd), tvd, None, ARG_POS)]
         adder.add_method(method, args, bool_type, self_type=tvd, tvd=tvd)
 
 

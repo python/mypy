@@ -54,6 +54,7 @@ import mypy.mixedtraverser
 import mypy.parse
 import mypy.traverser
 import mypy.util
+import mypy.version
 from mypy.build import build
 from mypy.errors import CompileError, Errors
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -304,8 +305,25 @@ class AliasPrinter(NodeVisitor[str]):
     def visit_member_expr(self, o: MemberExpr) -> str:
         return self._visit_ref_expr(o)
 
-    def visit_str_expr(self, node: StrExpr) -> str:
+    def _visit_literal_node(
+        self, node: StrExpr | BytesExpr | IntExpr | FloatExpr | ComplexExpr
+    ) -> str:
         return repr(node.value)
+
+    def visit_str_expr(self, node: StrExpr) -> str:
+        return self._visit_literal_node(node)
+
+    def visit_bytes_expr(self, node: BytesExpr) -> str:
+        return f"b{self._visit_literal_node(node)}"
+
+    def visit_int_expr(self, node: IntExpr) -> str:
+        return self._visit_literal_node(node)
+
+    def visit_float_expr(self, node: FloatExpr) -> str:
+        return self._visit_literal_node(node)
+
+    def visit_complex_expr(self, node: ComplexExpr) -> str:
+        return self._visit_literal_node(node)
 
     def visit_index_expr(self, node: IndexExpr) -> str:
         base_fullname = self.stubgen.get_fullname(node.base)
@@ -314,6 +332,8 @@ class AliasPrinter(NodeVisitor[str]):
                 return " | ".join([item.accept(self) for item in node.index.items])
             return node.index.accept(self)
         if base_fullname == "typing.Optional":
+            if isinstance(node.index, TupleExpr):
+                return self.stubgen.add_name("_typeshed.Incomplete")
             return f"{node.index.accept(self)} | None"
         base = node.base.accept(self)
         index = node.index.accept(self)
@@ -453,6 +473,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         self.analyzed = analyzed
         # Short names of methods defined in the body of the current class
         self.method_names: set[str] = set()
+        self.processing_enum = False
         self.processing_dataclass = False
 
     def visit_mypy_file(self, o: MypyFile) -> None:
@@ -567,8 +588,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         if has_yield_expression(o) or has_yield_from_expression(o):
             generator_name = self.add_name("collections.abc.Generator")
             yield_name = "None"
-            send_name = "None"
-            return_name = "None"
+            send_name: str | None = None
+            return_name: str | None = None
             if has_yield_from_expression(o):
                 yield_name = send_name = self.add_name("_typeshed.Incomplete")
             else:
@@ -579,7 +600,14 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                         send_name = self.add_name("_typeshed.Incomplete")
             if has_return_statement(o):
                 return_name = self.add_name("_typeshed.Incomplete")
-            return f"{generator_name}[{yield_name}, {send_name}, {return_name}]"
+            if return_name is not None:
+                if send_name is None:
+                    send_name = "None"
+                return f"{generator_name}[{yield_name}, {send_name}, {return_name}]"
+            elif send_name is not None:
+                return f"{generator_name}[{yield_name}, {send_name}]"
+            else:
+                return f"{generator_name}[{yield_name}]"
         if not has_return_statement(o) and o.abstract_status == NOT_ABSTRACT:
             return "None"
         return None
@@ -727,6 +755,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         if base_types:
             for base in base_types:
                 self.import_tracker.require_name(base)
+        if self.analyzed and o.info.is_enum:
+            self.processing_enum = True
         if isinstance(o.metaclass, (NameExpr, MemberExpr)):
             meta = o.metaclass.accept(AliasPrinter(self))
             base_types.append("metaclass=" + meta)
@@ -756,6 +786,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             self._state = CLASS
         self.method_names = set()
         self.processing_dataclass = False
+        self.processing_enum = False
         self._current_class = None
 
     def get_base_types(self, cdef: ClassDef) -> list[str]:
@@ -798,7 +829,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         for name, value in cdef.keywords.items():
             if name == "metaclass":
                 continue  # handled separately
-            base_types.append(f"{name}={value.accept(p)}")
+            processed_value = value.accept(p) or "..."  # at least, don't crash
+            base_types.append(f"{name}={processed_value}")
         return base_types
 
     def get_class_decorators(self, cdef: ClassDef) -> list[str]:
@@ -1056,6 +1088,10 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 else:
                     return False
             return all(self.is_alias_expression(i, top_level=False) for i in indices)
+        elif isinstance(expr, OpExpr) and expr.op == "|":
+            return self.is_alias_expression(
+                expr.left, top_level=False
+            ) and self.is_alias_expression(expr.right, top_level=False)
         else:
             return False
 
@@ -1153,6 +1189,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 # Final without type argument is invalid in stubs.
                 final_arg = self.get_str_type_of_node(rvalue)
                 typename += f"[{final_arg}]"
+        elif self.processing_enum:
+            initializer, _ = self.get_str_default_of_node(rvalue)
+            return f"{self._indent}{lvalue} = {initializer}\n"
         elif self.processing_dataclass:
             # attribute without annotation is not a dataclass field, don't add annotation.
             return f"{self._indent}{lvalue} = ...\n"
@@ -1759,7 +1798,7 @@ def parse_options(args: list[str]) -> Options:
         action="store_true",
         help="don't perform semantic analysis of sources, just parse them "
         "(only applies to Python modules, might affect quality of stubs. "
-        "Not compatible with --inspect)",
+        "Not compatible with --inspect-mode)",
     )
     parser.add_argument(
         "--inspect-mode",
@@ -1833,6 +1872,9 @@ def parse_options(args: list[str]) -> Options:
         nargs="*",
         dest="files",
         help="generate stubs for given files or directories",
+    )
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + mypy.version.__version__
     )
 
     ns = parser.parse_args(args)

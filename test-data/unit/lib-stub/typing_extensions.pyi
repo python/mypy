@@ -1,5 +1,5 @@
 import typing
-from typing import Any, Callable, Mapping, Iterable, Iterator, NoReturn as NoReturn, Dict, Tuple, Type
+from typing import Any, Callable, Mapping, Iterable, Iterator, NoReturn as NoReturn, Dict, Tuple, Type, Union
 from typing import TYPE_CHECKING as TYPE_CHECKING
 from typing import NewType as NewType, overload as overload
 
@@ -39,6 +39,17 @@ Never: _SpecialForm
 
 TypeVarTuple: _SpecialForm
 Unpack: _SpecialForm
+Required: _SpecialForm
+NotRequired: _SpecialForm
+ReadOnly: _SpecialForm
+
+Self: _SpecialForm
+
+@final
+class TypeAliasType:
+    def __init__(
+        self, name: str, value: Any, *, type_params: Tuple[Union[TypeVar, ParamSpec, TypeVarTuple], ...] = ()
+    ) -> None: ...
 
 # Fallback type for all typed dicts (does not exist at runtime).
 class _TypedDict(Mapping[str, object]):

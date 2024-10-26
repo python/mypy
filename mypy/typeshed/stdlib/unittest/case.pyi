@@ -6,7 +6,20 @@ from collections.abc import Callable, Container, Iterable, Mapping, Sequence, Se
 from contextlib import AbstractContextManager
 from re import Pattern
 from types import TracebackType
-from typing import Any, AnyStr, ClassVar, Generic, NamedTuple, NoReturn, Protocol, SupportsAbs, SupportsRound, TypeVar, overload
+from typing import (
+    Any,
+    AnyStr,
+    ClassVar,
+    Final,
+    Generic,
+    NamedTuple,
+    NoReturn,
+    Protocol,
+    SupportsAbs,
+    SupportsRound,
+    TypeVar,
+    overload,
+)
 from typing_extensions import ParamSpec, Self, TypeAlias
 from warnings import WarningMessage
 
@@ -22,7 +35,7 @@ _E = TypeVar("_E", bound=BaseException)
 _FT = TypeVar("_FT", bound=Callable[..., Any])
 _P = ParamSpec("_P")
 
-DIFF_OMITTED: str
+DIFF_OMITTED: Final[str]
 
 class _BaseTestCaseContext:
     test_case: TestCase
@@ -68,7 +81,7 @@ else:
             self, exc_type: type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
         ) -> bool | None: ...
 
-def addModuleCleanup(__function: Callable[_P, object], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+def addModuleCleanup(function: Callable[_P, object], /, *args: _P.args, **kwargs: _P.kwargs) -> None: ...
 def doModuleCleanups() -> None: ...
 
 if sys.version_info >= (3, 11):
@@ -273,14 +286,14 @@ class TestCase:
     def defaultTestResult(self) -> unittest.result.TestResult: ...
     def id(self) -> str: ...
     def shortDescription(self) -> str | None: ...
-    def addCleanup(self, __function: Callable[_P, object], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+    def addCleanup(self, function: Callable[_P, object], /, *args: _P.args, **kwargs: _P.kwargs) -> None: ...
 
     if sys.version_info >= (3, 11):
         def enterContext(self, cm: AbstractContextManager[_T]) -> _T: ...
 
     def doCleanups(self) -> None: ...
     @classmethod
-    def addClassCleanup(cls, __function: Callable[_P, object], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+    def addClassCleanup(cls, function: Callable[_P, object], /, *args: _P.args, **kwargs: _P.kwargs) -> None: ...
     @classmethod
     def doClassCleanups(cls) -> None: ...
 
@@ -329,7 +342,7 @@ class _AssertRaisesContext(_AssertRaisesBaseContext, Generic[_E]):
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
     ) -> bool: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 class _AssertWarnsContext(_AssertRaisesBaseContext):
     warning: WarningMessage

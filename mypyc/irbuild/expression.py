@@ -44,6 +44,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeApplication,
     TypeInfo,
+    TypeVarLikeExpr,
     UnaryExpr,
     Var,
 )
@@ -95,7 +96,6 @@ from mypyc.irbuild.specialize import apply_function_specialization, apply_method
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op
-from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
 from mypyc.primitives.registry import CFunctionDescription, builtin_names
@@ -107,6 +107,10 @@ from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
 
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
+    if isinstance(expr.node, TypeVarLikeExpr) and expr.node.is_new_style:
+        # Reference to Python 3.12 implicit TypeVar/TupleVarTuple/... object.
+        # These are stored in C statics and not visible in Python namespaces.
+        return builder.load_type_var(expr.node.name, expr.node.line)
     if expr.node is None:
         builder.add(
             RaiseStandardError(
@@ -756,7 +760,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         set_literal = precompute_set_literal(builder, e.operands[1])
         if set_literal is not None:
             lhs = e.operands[0]
-            result = builder.builder.call_c(
+            result = builder.builder.primitive_op(
                 set_in_op, [builder.accept(lhs), set_literal], e.line, bool_rprimitive
             )
             if first_op == "not in":
@@ -778,7 +782,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                     borrow_left = is_borrow_friendly_expr(builder, right_expr)
                     left = builder.accept(left_expr, can_borrow=borrow_left)
                     right = builder.accept(right_expr, can_borrow=True)
-                    return builder.compare_tagged(left, right, first_op, e.line)
+                    return builder.binary_op(left, right, first_op, e.line)
 
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
@@ -814,13 +818,7 @@ def translate_is_none(builder: IRBuilder, expr: Expression, negated: bool) -> Va
 def transform_basic_comparison(
     builder: IRBuilder, op: str, left: Value, right: Value, line: int
 ) -> Value:
-    if (
-        is_int_rprimitive(left.type)
-        and is_int_rprimitive(right.type)
-        and op in int_comparison_op_mapping
-    ):
-        return builder.compare_tagged(left, right, op, line)
-    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping:
+    if is_fixed_width_rtype(left.type) and op in ComparisonOp.signed_ops:
         if right.type == left.type:
             if left.type.is_signed:
                 op_id = ComparisonOp.signed_ops[op]
@@ -837,7 +835,7 @@ def transform_basic_comparison(
             )
     elif (
         is_fixed_width_rtype(right.type)
-        and op in int_comparison_op_mapping
+        and op in ComparisonOp.signed_ops
         and isinstance(left, Integer)
     ):
         if right.type.is_signed:

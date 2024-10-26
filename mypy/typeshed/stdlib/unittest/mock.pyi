@@ -12,23 +12,44 @@ _F = TypeVar("_F", bound=Callable[..., Any])
 _AF = TypeVar("_AF", bound=Callable[..., Coroutine[Any, Any, Any]])
 _P = ParamSpec("_P")
 
-__all__ = (
-    "Mock",
-    "MagicMock",
-    "patch",
-    "sentinel",
-    "DEFAULT",
-    "ANY",
-    "call",
-    "create_autospec",
-    "AsyncMock",
-    "FILTER_DIR",
-    "NonCallableMock",
-    "NonCallableMagicMock",
-    "mock_open",
-    "PropertyMock",
-    "seal",
-)
+if sys.version_info >= (3, 13):
+    # ThreadingMock added in 3.13
+    __all__ = (
+        "Mock",
+        "MagicMock",
+        "patch",
+        "sentinel",
+        "DEFAULT",
+        "ANY",
+        "call",
+        "create_autospec",
+        "ThreadingMock",
+        "AsyncMock",
+        "FILTER_DIR",
+        "NonCallableMock",
+        "NonCallableMagicMock",
+        "mock_open",
+        "PropertyMock",
+        "seal",
+    )
+else:
+    __all__ = (
+        "Mock",
+        "MagicMock",
+        "patch",
+        "sentinel",
+        "DEFAULT",
+        "ANY",
+        "call",
+        "create_autospec",
+        "AsyncMock",
+        "FILTER_DIR",
+        "NonCallableMock",
+        "NonCallableMagicMock",
+        "mock_open",
+        "PropertyMock",
+        "seal",
+    )
 
 if sys.version_info < (3, 9):
     __version__: Final[str]
@@ -65,7 +86,7 @@ class _Call(tuple[Any, ...]):
         from_kall: bool = True,
     ) -> None: ...
     def __eq__(self, other: object) -> bool: ...
-    def __ne__(self, __value: object) -> bool: ...
+    def __ne__(self, value: object, /) -> bool: ...
     def __call__(self, *args: Any, **kwargs: Any) -> _Call: ...
     def __getattr__(self, attr: str) -> Any: ...
     def __getattribute__(self, attr: str) -> Any: ...
@@ -103,7 +124,7 @@ class NonCallableMock(Base, Any):
             **kwargs: Any,
         ) -> Self: ...
     else:
-        def __new__(__cls, *args: Any, **kw: Any) -> Self: ...
+        def __new__(cls, /, *args: Any, **kw: Any) -> Self: ...
 
     def __init__(
         self,
@@ -124,7 +145,6 @@ class NonCallableMock(Base, Any):
     def __delattr__(self, name: str) -> None: ...
     def __setattr__(self, name: str, value: Any) -> None: ...
     def __dir__(self) -> list[str]: ...
-    def _calls_repr(self, prefix: str = "Calls") -> str: ...
     def assert_called_with(self, *args: Any, **kwargs: Any) -> None: ...
     def assert_not_called(self) -> None: ...
     def assert_called_once_with(self, *args: Any, **kwargs: Any) -> None: ...
@@ -150,6 +170,10 @@ class NonCallableMock(Base, Any):
     def _format_mock_call_signature(self, args: Any, kwargs: Any) -> str: ...
     def _call_matcher(self, _call: tuple[_Call, ...]) -> _Call: ...
     def _get_child_mock(self, **kw: Any) -> NonCallableMock: ...
+    if sys.version_info >= (3, 13):
+        def _calls_repr(self) -> str: ...
+    else:
+        def _calls_repr(self, prefix: str = "Calls") -> str: ...
 
 class CallableMixin(Base):
     side_effect: Any
@@ -188,7 +212,7 @@ class _patch(Generic[_T]):
     # but that's impossible with the current type system.
     if sys.version_info >= (3, 10):
         def __init__(
-            self: _patch[_T],
+            self: _patch[_T],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
             getter: Callable[[], Any],
             attribute: str,
             new: _T,
@@ -203,7 +227,7 @@ class _patch(Generic[_T]):
         ) -> None: ...
     else:
         def __init__(
-            self: _patch[_T],
+            self: _patch[_T],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
             getter: Callable[[], Any],
             attribute: str,
             new: _T,
@@ -234,7 +258,7 @@ class _patch(Generic[_T]):
     is_local: bool
     def __enter__(self) -> _T: ...
     def __exit__(
-        self, __exc_type: type[BaseException] | None, __exc_value: BaseException | None, __traceback: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None, /
     ) -> None: ...
     def start(self) -> _T: ...
     def stop(self) -> None: ...
@@ -275,7 +299,7 @@ class _patcher:
     # Ideally we'd be able to add an overload for it so that the return type is _patch[MagicMock],
     # but that's impossible with the current type system.
     @overload
-    def __call__(  # type: ignore[overload-overlap]
+    def __call__(
         self,
         target: str,
         new: _T,
@@ -339,7 +363,7 @@ class _patcher:
 
 patch: _patcher
 
-class MagicMixin:
+class MagicMixin(Base):
     def __init__(self, *args: Any, **kw: Any) -> None: ...
 
 class NonCallableMagicMock(MagicMixin, NonCallableMock): ...
@@ -369,7 +393,7 @@ class AsyncMock(AsyncMockMixin, AsyncMagicMixin, Mock):
     # But, `NonCallableMock` super-class has the better version.
     def reset_mock(self, visited: Any = None, *, return_value: bool = False, side_effect: bool = False) -> None: ...
 
-class MagicProxy:
+class MagicProxy(Base):
     name: str
     parent: Any
     def __init__(self, name: str, parent: Any) -> None: ...
@@ -426,5 +450,17 @@ def mock_open(mock: Any | None = None, read_data: Any = "") -> Any: ...
 class PropertyMock(Mock):
     def __get__(self, obj: _T, obj_type: type[_T] | None = None) -> Self: ...
     def __set__(self, obj: Any, val: Any) -> None: ...
+
+if sys.version_info >= (3, 13):
+    class ThreadingMixin(Base):
+        DEFAULT_TIMEOUT: Final[float | None] = None
+
+        def __init__(self, /, *args: Any, timeout: float | None | _SentinelObject = ..., **kwargs: Any) -> None: ...
+        # Same as `NonCallableMock.reset_mock.`
+        def reset_mock(self, visited: Any = None, *, return_value: bool = False, side_effect: bool = False) -> None: ...
+        def wait_until_called(self, *, timeout: float | None | _SentinelObject = ...) -> None: ...
+        def wait_until_any_call_with(self, *args: Any, **kwargs: Any) -> None: ...
+
+    class ThreadingMock(ThreadingMixin, MagicMixin, Mock): ...
 
 def seal(mock: Any) -> None: ...

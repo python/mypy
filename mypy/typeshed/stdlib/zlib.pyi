@@ -1,29 +1,29 @@
 import sys
 from _typeshed import ReadableBuffer
-from typing import Literal
+from typing import Final
 
-DEFLATED: Literal[8]
+DEFLATED: Final = 8
 DEF_MEM_LEVEL: int  # can change
-DEF_BUF_SIZE: Literal[16384]
+DEF_BUF_SIZE: Final = 16384
 MAX_WBITS: int
 ZLIB_VERSION: str  # can change
 ZLIB_RUNTIME_VERSION: str  # can change
-Z_NO_COMPRESSION: Literal[0]
-Z_PARTIAL_FLUSH: Literal[1]
-Z_BEST_COMPRESSION: Literal[9]
-Z_BEST_SPEED: Literal[1]
-Z_BLOCK: Literal[5]
-Z_DEFAULT_COMPRESSION: Literal[-1]
-Z_DEFAULT_STRATEGY: Literal[0]
-Z_FILTERED: Literal[1]
-Z_FINISH: Literal[4]
-Z_FIXED: Literal[4]
-Z_FULL_FLUSH: Literal[3]
-Z_HUFFMAN_ONLY: Literal[2]
-Z_NO_FLUSH: Literal[0]
-Z_RLE: Literal[3]
-Z_SYNC_FLUSH: Literal[2]
-Z_TREES: Literal[6]
+Z_NO_COMPRESSION: Final = 0
+Z_PARTIAL_FLUSH: Final = 1
+Z_BEST_COMPRESSION: Final = 9
+Z_BEST_SPEED: Final = 1
+Z_BLOCK: Final = 5
+Z_DEFAULT_COMPRESSION: Final = -1
+Z_DEFAULT_STRATEGY: Final = 0
+Z_FILTERED: Final = 1
+Z_FINISH: Final = 4
+Z_FIXED: Final = 4
+Z_FULL_FLUSH: Final = 3
+Z_HUFFMAN_ONLY: Final = 2
+Z_NO_FLUSH: Final = 0
+Z_RLE: Final = 3
+Z_SYNC_FLUSH: Final = 2
+Z_TREES: Final = 6
 
 class error(Exception): ...
 
@@ -40,17 +40,17 @@ class _Decompress:
     def flush(self, length: int = ...) -> bytes: ...
     def copy(self) -> _Decompress: ...
 
-def adler32(__data: ReadableBuffer, __value: int = 1) -> int: ...
+def adler32(data: ReadableBuffer, value: int = 1, /) -> int: ...
 
 if sys.version_info >= (3, 11):
-    def compress(__data: ReadableBuffer, level: int = -1, wbits: int = 15) -> bytes: ...
+    def compress(data: ReadableBuffer, /, level: int = -1, wbits: int = 15) -> bytes: ...
 
 else:
-    def compress(__data: ReadableBuffer, level: int = -1) -> bytes: ...
+    def compress(data: ReadableBuffer, /, level: int = -1) -> bytes: ...
 
 def compressobj(
     level: int = -1, method: int = 8, wbits: int = 15, memLevel: int = 8, strategy: int = 0, zdict: ReadableBuffer | None = None
 ) -> _Compress: ...
-def crc32(__data: ReadableBuffer, __value: int = 0) -> int: ...
-def decompress(__data: ReadableBuffer, wbits: int = 15, bufsize: int = 16384) -> bytes: ...
+def crc32(data: ReadableBuffer, value: int = 0, /) -> int: ...
+def decompress(data: ReadableBuffer, /, wbits: int = 15, bufsize: int = 16384) -> bytes: ...
 def decompressobj(wbits: int = 15, zdict: ReadableBuffer = b"") -> _Decompress: ...
