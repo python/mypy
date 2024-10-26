@@ -372,15 +372,15 @@ without a value:
       elif x == 'two':
           return False
 
-For the sake of brevity, you can use the ``in`` operator in combination with tuple expressions
-(tuples created "on the fly"):
+For the sake of brevity, you can use the ``in`` operator in combination with list or tuple
+expressions (lists or tuples created "on the fly"):
 
 .. code-block:: python
 
   PossibleValues = Literal['one', 'two', 'three']
 
   def validate(x: PossibleValues) -> bool:
-      if x == 'one':
+      if x in ['one']:
           return True
       elif x in ('two', 'three'):
           return False

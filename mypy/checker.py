@@ -4556,7 +4556,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             isinstance(e, ComparisonExpr)
             and isinstance(left := e.operands[0], NameExpr)
             and ((op_in := e.operators[0]) in ("in", "not in"))
-            and isinstance(tuple_ := e.operands[1], TupleExpr)
+            and isinstance(litu := e.operands[1], (ListExpr, TupleExpr))
         ):
             return e
 
@@ -4564,7 +4564,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         line = e.line
         left_new = left
         comparisons = []
-        for right in reversed(tuple_.items):
+        for right in reversed(litu.items):
             if isinstance(right, StarExpr):
                 return e
             comparison = ComparisonExpr(op_eq, [left_new, right])
