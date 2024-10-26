@@ -1764,7 +1764,7 @@ class B(A):
     x = 1  # E: Cannot override writable attribute "x" with a final one
 
 class A1(Enum):
-    x: int = 1  # E: Type annotations are not allowed for enum members
+    x: int = 1  # E: Enum members must be left unannotated
 class B1(A1):  # E: Cannot extend enum with existing members: "A1"
     pass
 
@@ -2191,8 +2191,8 @@ def some_a(a: A):
 from enum import Enum
 
 class Medal(Enum):
-    gold: int = 1  # E: Type annotations are not allowed for enum members
-    silver: str = 2  # E: Type annotations are not allowed for enum members \
+    gold: int = 1  # E: Enum members must be left unannotated
+    silver: str = 2  # E: Enum members must be left unannotated \
                      # E: Incompatible types in assignment (expression has type "int", variable has type "str")
     bronze = 3
 
@@ -2202,7 +2202,7 @@ from enum import Enum
 
 class Pet(Enum):
     CAT = ...
-    DOG: str = ...  # E: Type annotations are not allowed for enum members \
+    DOG: str = ...  # E: Enum members must be left unannotated \
                     # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "str")
 
 [file test.pyi]
