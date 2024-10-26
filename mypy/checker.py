@@ -287,18 +287,6 @@ class PartialTypeScope(NamedTuple):
     is_local: bool
 
 
-class InstanceDeprecatedVisitor(TypeTraverserVisitor):
-    """Visitor that recursively checks for deprecations in nested instances."""
-
-    def __init__(self, typechecker: TypeChecker, context: Context) -> None:
-        self.typechecker = typechecker
-        self.context = context
-
-    def visit_instance(self, t: Instance) -> None:
-        super().visit_instance(t)
-        self.typechecker.check_deprecated(t.type, self.context)
-
-
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     """Mypy type checker.
 
@@ -2957,15 +2945,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-
-        if s.unanalyzed_type is not None:
-            for lvalue in s.lvalues:
-                if (
-                    isinstance(lvalue, NameExpr)
-                    and isinstance(var := lvalue.node, Var)
-                    and (var.type is not None)
-                ):
-                    var.type.accept(InstanceDeprecatedVisitor(typechecker=self, context=s))
 
         # Avoid type checking type aliases in stubs to avoid false
         # positives about modern type syntax available in stubs such
@@ -7655,8 +7634,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Warn if deprecated."""
         if isinstance(node, Decorator):
             node = node.func
-        if isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo)) and (
-            (deprecated := node.deprecated) is not None
+        if (
+            isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo))
+            and ((deprecated := node.deprecated) is not None)
+            and not self.is_typeshed_stub
         ):
             warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
             warn(deprecated, context, code=codes.DEPRECATED)

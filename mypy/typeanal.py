@@ -34,6 +34,7 @@ from mypy.nodes import (
     ArgKind,
     Context,
     Decorator,
+    ImportFrom,
     MypyFile,
     ParamSpecExpr,
     PlaceholderNode,
@@ -148,6 +149,7 @@ def analyze_type_alias(
     tvar_scope: TypeVarLikeScope,
     plugin: Plugin,
     options: Options,
+    cur_mod_node: MypyFile,
     is_typeshed_stub: bool,
     allow_placeholder: bool = False,
     in_dynamic_func: bool = False,
@@ -167,6 +169,7 @@ def analyze_type_alias(
         tvar_scope,
         plugin,
         options,
+        cur_mod_node,
         is_typeshed_stub,
         defining_alias=True,
         allow_placeholder=allow_placeholder,
@@ -213,6 +216,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         tvar_scope: TypeVarLikeScope,
         plugin: Plugin,
         options: Options,
+        cur_mod_node: MypyFile,
         is_typeshed_stub: bool,
         *,
         defining_alias: bool = False,
@@ -266,6 +270,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.report_invalid_types = report_invalid_types
         self.plugin = plugin
         self.options = options
+        self.cur_mod_node = cur_mod_node
         self.is_typeshed_stub = is_typeshed_stub
         # Names of type aliases encountered while analysing a type will be collected here.
         self.aliases_used: set[str] = set()
@@ -771,6 +776,21 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         disallow_any = not self.is_typeshed_stub and self.options.disallow_any_generics
         return get_omitted_any(disallow_any, self.fail, self.note, typ, self.options, fullname)
 
+    def check_and_warn_deprecated(self, info: TypeInfo, ctx: Context) -> None:
+        """Similar logic to `TypeChecker.check_deprecated` and `TypeChecker.warn_deprecated."""
+
+        if (
+            (deprecated := info.deprecated)
+            and not self.is_typeshed_stub
+            and not (self.api.type and (self.api.type.fullname == info.fullname))
+        ):
+            for imp in self.cur_mod_node.imports:
+                if isinstance(imp, ImportFrom) and any(info.name == n[0] for n in imp.names):
+                    break
+            else:
+                warn = self.fail if self.options.report_deprecated_as_error else self.note
+                warn(deprecated, ctx, code=codes.DEPRECATED)
+
     def analyze_type_with_type_info(
         self, info: TypeInfo, args: Sequence[Type], ctx: Context, empty_tuple_index: bool
     ) -> Type:
@@ -778,6 +798,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         This handles simple cases like 'int', 'modname.UserClass[str]', etc.
         """
+
+        self.check_and_warn_deprecated(info, ctx)
 
         if len(args) > 0 and info.fullname == "builtins.tuple":
             fallback = Instance(info, [AnyType(TypeOfAny.special_form)], ctx.line)
