@@ -2208,3 +2208,23 @@ class Pet(Enum):
     DOG: str = ...  # E: Enum members must be left unannotated \
                     # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
                     # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "str")
+
+[case testEnumValueWithPlaceholderNodeType]
+# https://github.com/python/mypy/issues/11971
+from enum import Enum
+from typing import Any, Callable, Dict
+class Foo(Enum):
+    Bar: Foo = Callable[[str], None]  # E: Enum members must be left unannotated \
+                                      # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
+                                      # E: Value of type "int" is not indexable
+    Baz: Any = Callable[[Dict[str, "Missing"]], None]  # E: Enum members must be left unannotated \
+                                                       # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
+                                                       # E: Value of type "int" is not indexable \
+                                                       # E: Type application targets a non-generic function or class \
+                                                       # E: Name "Missing" is not defined
+
+reveal_type(Foo.Bar)  # N: Revealed type is "Literal[__main__.Foo.Bar]?"
+reveal_type(Foo.Bar.value)  # N: Revealed type is "__main__.Foo"
+reveal_type(Foo.Baz)  # N: Revealed type is "Literal[__main__.Foo.Baz]?"
+reveal_type(Foo.Baz.value)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
