@@ -278,7 +278,7 @@ def infer_constraints(
     actual: Type,
     direction: int,
     skip_neg_op: bool = False,
-    can_have_union_overlaping: bool = True,
+    can_have_union_overlapping: bool = True,
 ) -> list[Constraint]:
     """Infer type constraints.
 
@@ -318,7 +318,7 @@ def infer_constraints(
         res = _infer_constraints(template, actual, direction, skip_neg_op)
         type_state.inferring.pop()
         return res
-    return _infer_constraints(template, actual, direction, skip_neg_op, can_have_union_overlaping)
+    return _infer_constraints(template, actual, direction, skip_neg_op, can_have_union_overlapping)
 
 
 def _infer_constraints(
@@ -326,7 +326,7 @@ def _infer_constraints(
     actual: Type,
     direction: int,
     skip_neg_op: bool,
-    can_have_union_overlaping: bool = True,
+    can_have_union_overlapping: bool = True,
 ) -> list[Constraint]:
     orig_template = template
     template = get_proper_type(template)
@@ -380,11 +380,11 @@ def _infer_constraints(
     if direction == SUPERTYPE_OF and isinstance(actual, UnionType):
         res = []
 
-        def _can_have_overlaping(_item: Type, _actual: UnionType) -> bool:
-            # There is a special overlaping case, where we have a Union of where two types
+        def _can_have_overlapping(_item: Type, _actual: UnionType) -> bool:
+            # There is a special overlapping case, where we have a Union of where two types
             # are the same, but one of them contains the other.
             # For example, we have Union[Sequence[T], Sequence[Sequence[T]]]
-            # In this case, only the second one can have overlaping because it contains the other.
+            # In this case, only the second one can have overlapping because it contains the other.
             # So, in case of list[list[int]], second one would be chosen.
             if isinstance(p_item := get_proper_type(_item), Instance) and p_item.args:
                 other_items = [o_item for o_item in _actual.items if o_item is not a_item]
@@ -411,7 +411,7 @@ def _infer_constraints(
                     orig_template,
                     a_item,
                     direction,
-                    can_have_union_overlaping=_can_have_overlaping(a_item, actual),
+                    can_have_union_overlapping=_can_have_overlapping(a_item, actual),
                 )
             )
         return res
@@ -435,8 +435,8 @@ def _infer_constraints(
         # type variables indeterminate. This helps with some special
         # cases, though this isn't very principled.
 
-        def _is_item_overlaping_actual_type(_item: Type) -> bool:
-            # Overlaping occurs when we have a Union where two types are
+        def _is_item_overlapping_actual_type(_item: Type) -> bool:
+            # Overlapping occurs when we have a Union where two types are
             # compatible and the more generic one is chosen.
             # For example, in Union[T, Sequence[T]], we have to choose
             # Sequence[T] if actual type is list[int].
@@ -456,7 +456,7 @@ def _infer_constraints(
                 for t_item in [
                     item
                     for item in template.items
-                    if not (can_have_union_overlaping and _is_item_overlaping_actual_type(item))
+                    if not (can_have_union_overlapping and _is_item_overlapping_actual_type(item))
                 ]
             ],
             eager=False,
