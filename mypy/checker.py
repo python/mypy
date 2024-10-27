@@ -117,6 +117,7 @@ from mypy.nodes import (
     RaiseStmt,
     RefExpr,
     ReturnStmt,
+    SetExpr,
     StarExpr,
     Statement,
     StrExpr,
@@ -4685,11 +4686,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if self.in_checked_function():
                     self.fail(message_registry.RETURN_VALUE_EXPECTED, s)
 
-    def _make_tupleexpr_with_literals_narrowable_by_using_in(self, e: Expression) -> Expression:
+    def _transform_sequence_expressions_for_narrowing_with_in(self, e: Expression) -> Expression:
         """
         Transform an expression like
 
-        (x is None) and (x in (1, 2)) and (x not in (3, 4))
+        (x is None) and (x in (1, 2)) and (x not in [3, 4])
 
         into
 
@@ -4700,15 +4701,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         implement additional narrowing logic.
         """
         if isinstance(e, OpExpr):
-            e.left = self._make_tupleexpr_with_literals_narrowable_by_using_in(e.left)
-            e.right = self._make_tupleexpr_with_literals_narrowable_by_using_in(e.right)
+            e.left = self._transform_sequence_expressions_for_narrowing_with_in(e.left)
+            e.right = self._transform_sequence_expressions_for_narrowing_with_in(e.right)
             return e
 
         if not (
             isinstance(e, ComparisonExpr)
             and isinstance(left := e.operands[0], NameExpr)
             and ((op_in := e.operators[0]) in ("in", "not in"))
-            and isinstance(litu := e.operands[1], (ListExpr, TupleExpr))
+            and isinstance(litu := e.operands[1], (ListExpr, SetExpr, TupleExpr))
         ):
             return e
 
@@ -4748,7 +4749,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         with self.binder.frame_context(can_skip=False, conditional_frame=True, fall_through=0):
             for e, b in zip(s.expr, s.body):
 
-                e = self._make_tupleexpr_with_literals_narrowable_by_using_in(e)
+                e = self._transform_sequence_expressions_for_narrowing_with_in(e)
 
                 t = get_proper_type(self.expr_checker.accept(e))
 

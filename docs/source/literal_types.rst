@@ -368,8 +368,8 @@ without a value:
       elif x == 'two':
           return False
 
-For the sake of brevity, you can use the ``in`` operator in combination with list or tuple
-expressions (lists or tuples created "on the fly"):
+For the sake of brevity, you can use the ``in`` operator in combination with
+list, set, or tuple expressions (lists, sets, or tuples created "on the fly"):
 
 .. code-block:: python
 
