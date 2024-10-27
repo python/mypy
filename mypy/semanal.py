@@ -3294,10 +3294,11 @@ class SemanticAnalyzer(
             # No chance, nothing has changed.
             return False
         if isinstance(s.type, UnboundType):
-            if s.type.name == "TypeAlias":
-                lookup = self.lookup_qualified(s.type.name, s, suppress_errors=True)
-                if lookup and isinstance(lookup.node, PlaceholderNode):
-                    return True
+            lookup = self.lookup_qualified(s.type.name, s, suppress_errors=True)
+            if lookup and isinstance(lookup.node, PlaceholderNode):
+                if isinstance(lookup.node.node, ImportFrom):
+                    if lookup.node.node.id in ("typing", "typing_extensions"):
+                        return True
         return False
 
     def should_wait_rhs(self, rv: Expression) -> bool:
