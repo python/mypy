@@ -1704,11 +1704,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # Make sure the literal's class is ready
             sym = self.api.lookup_fully_qualified_or_none(arg.base_type_name)
             if sym is None or isinstance(sym.node, PlaceholderNode):
-                assert arg.base_type_name.startswith("builtins.")
-                if self.api.is_incomplete_namespace("builtins"):
-                    self.api.record_incomplete_ref()
-                else:
-                    self.fail(f'Name "{arg.base_type_name}" is not defined', arg)
+                self.api.record_incomplete_ref()
                 return [AnyType(TypeOfAny.special_form)]
 
             # Remap bytes and unicode into the appropriate type for the correct Python version
