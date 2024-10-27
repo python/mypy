@@ -2136,7 +2136,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
                 # Check that the types are compatible.
-                self.check_override(
+                ok = self.check_override(
                     typ,
                     original_type,
                     defn.name,
@@ -2146,6 +2146,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     override_class_or_static,
                     context,
                 )
+                if (
+                    ok
+                    and original_node
+                    and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
+                    and self.is_writable_attribute(original_node)
+                    and not is_subtype(original_type, typ, ignore_pos_arg_names=True)
+                ):
+                    base_str, override_str = format_type_distinctly(
+                        original_type, typ, options=self.options
+                    )
+                    msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
+                        f' (base class "{base.name}" defined the type as {base_str},'
+                        f" override has type {override_str})"
+                    )
+                    self.fail(msg, context)
             elif is_equivalent(original_type, typ):
                 # Assume invariance for a non-callable attribute here. Note
                 # that this doesn't affect read-only properties which can have
@@ -2235,7 +2250,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         original_class_or_static: bool,
         override_class_or_static: bool,
         node: Context,
-    ) -> None:
+    ) -> bool:
         """Check a method override with given signatures.
 
         Arguments:
@@ -2385,6 +2400,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     node,
                     code=codes.OVERRIDE,
                 )
+        return not fail
 
     def check__exit__return_type(self, defn: FuncItem) -> None:
         """Generate error if the return type of __exit__ is problematic.
