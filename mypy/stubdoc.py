@@ -142,14 +142,7 @@ class FunctionSig(NamedTuple):
             retfield = " -> " + ret_type
 
         prefix = "async " if is_async else ""
-        sig = "{indent}{prefix}def {name}{type_args}({args}){ret}:".format(
-            indent=indent,
-            prefix=prefix,
-            name=self.name,
-            args=", ".join(args),
-            ret=retfield,
-            type_args=self.type_args,
-        )
+        sig = f"{indent}{prefix}def {self.name}{self.type_args}({', '.join(args)}){retfield}:"
         if docstring:
             suffix = f"\n{indent}    {mypy.util.quote_docstring(docstring)}"
         else:
