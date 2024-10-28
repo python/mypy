@@ -1235,6 +1235,19 @@ a[None:]
 a[:None]
 [builtins fixtures/slice.pyi]
 
+[case testSliceStepZero]
+from typing import Any
+from typing_extensions import Literal
+n1: Literal[0]
+n2: Literal[0, 1]
+a: Any
+a[::0]      # E: Slice step cannot be 0
+a[::-0]     # E: Slice step cannot be 0
+a[::+0]     # E: Slice step cannot be 0
+a[::n1]     # E: Slice step cannot be 0
+a[::n2]     # E: Slice step cannot be 0
+[builtins fixtures/tuple.pyi]
+
 
 -- Lambdas
 -- -------
