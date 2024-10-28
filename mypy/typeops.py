@@ -897,18 +897,16 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
         items = [
             try_expanding_sum_type_to_union(item, target_fullname) for item in typ.relevant_items()
         ]
-        return make_simplified_union(items, contract_literals=False)
     elif isinstance(typ, Instance) and typ.type.fullname == target_fullname:
         if typ.type.is_enum:
-            return make_simplified_union(
-                [LiteralType(name, typ) for name in typ.get_enum_values()], contract_literals=False
-            )
+            items = [LiteralType(name, typ) for name in typ.get_enum_values()]
         elif typ.type.fullname == "builtins.bool":
-            return make_simplified_union(
-                [LiteralType(True, typ), LiteralType(False, typ)], contract_literals=False
-            )
+            items = [LiteralType(True, typ), LiteralType(False, typ)]
+    else:
+        return typ
 
-    return typ
+    # if the expanded union would be `Never` leave the type as is
+    return typ if not items else make_simplified_union(items, contract_literals=False)
 
 
 def try_contracting_literals_in_union(types: Sequence[Type]) -> list[ProperType]:
