@@ -779,21 +779,51 @@ class B(A):
 [case testOverrideCallableUnionAttributeWithMethod]
 from typing import Callable, Union
 
-class Base:
+class A:
     f1: Union[Callable[[str], str], str]
     f2: Union[Callable[[str], str], str]
     f3: Union[Callable[[str], str], str]
+    f4: Union[Callable[[str], str], str]
 
-class Derived(Base):
+class B(A):
     def f1(self, x: str) -> str:
         pass
 
+    def f2(self, x: object) -> str:
+        pass
+
     @classmethod
-    def f2(cls, x: str) -> str:
+    def f3(cls, x: str) -> str:
         pass
 
     @staticmethod
-    def f3(x: str) -> str:
+    def f4(x: str) -> str:
+        pass
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideCallableUnionAttributeWithMethodMutableOverride]
+# flags: --enable-error-code=mutable-override
+from typing import Callable, Union
+
+class A:
+    f1: Union[Callable[[str], str], str]
+    f2: Union[Callable[[str], str], str]
+    f3: Union[Callable[[str], str], str]
+    f4: Union[Callable[[str], str], str]
+
+class B(A):
+    def f1(self, x: str) -> str:     # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+        pass
+
+    def f2(self, x: object) -> str:  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[object], str]")
+        pass
+
+    @classmethod
+    def f3(cls, x: str) -> str:      # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+        pass
+
+    @staticmethod
+    def f4(x: str) -> str:           # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
         pass
 [builtins fixtures/classmethod.pyi]
 

@@ -2146,6 +2146,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     override_class_or_static,
                     context,
                 )
+                # Check if this override is covariant.
                 if (
                     ok
                     and original_node
@@ -2153,6 +2154,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     and self.is_writable_attribute(original_node)
                     and not is_subtype(original_type, typ, ignore_pos_arg_names=True)
                 ):
+                    # Covariant override of mutable attribute.
                     base_str, override_str = format_type_distinctly(
                         original_type, typ, options=self.options
                     )
@@ -2162,10 +2164,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     )
                     self.fail(msg, context)
             elif isinstance(original_type, UnionType) and any(
-                is_subtype(orig_typ, typ, ignore_pos_arg_names=True)
+                is_subtype(typ, orig_typ, ignore_pos_arg_names=True)
                 for orig_typ in original_type.items
             ):
-                pass
+                # This method is a subtype of at least one union variant.
+                if (
+                    original_node
+                    and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
+                    and self.is_writable_attribute(original_node)
+                ):
+                    # Covariant override of mutable attribute.
+                    base_str, override_str = format_type_distinctly(
+                        original_type, typ, options=self.options
+                    )
+                    msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
+                        f' (base class "{base.name}" defined the type as {base_str},'
+                        f" override has type {override_str})"
+                    )
+                    self.fail(msg, context)
             elif is_equivalent(original_type, typ):
                 # Assume invariance for a non-callable attribute here. Note
                 # that this doesn't affect read-only properties which can have
