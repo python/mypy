@@ -1793,7 +1793,9 @@ manual changes.  This directory is assumed to exist.
 
 
 def parse_options(args: list[str]) -> Options:
-    parser = argparse.ArgumentParser(prog="stubgen", usage=HEADER, description=DESCRIPTION)
+    parser = argparse.ArgumentParser(
+        prog="stubgen", usage=HEADER, description=DESCRIPTION, fromfile_prefix_chars="@"
+    )
 
     parser.add_argument(
         "--ignore-errors",
