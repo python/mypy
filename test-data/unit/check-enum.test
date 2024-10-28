@@ -2230,7 +2230,7 @@ reveal_type(Foo.Baz.value)  # N: Revealed type is "Any"
 [typing fixtures/typing-full.pyi]
 
 
-[case testEnumWithImplicitMembersUsingAnnotationOnly]
+[case testEnumWithOnlyImplicitMembersUsingAnnotationOnly]
 # flags: --warn-unreachable
 import enum
 
@@ -2242,7 +2242,7 @@ class E(enum.IntEnum):
 
 def do_check(value: E) -> None:
     reveal_type(value)  # N: Revealed type is "__main__.E"
-    if value is E.A:
+    if value is E.A:  # this is a nonmember check, not an emum member check which should narrow the value
         return
 
     reveal_type(value)  # N: Revealed type is "__main__.E"
