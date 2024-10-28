@@ -2228,3 +2228,27 @@ reveal_type(Foo.Baz)  # N: Revealed type is "Literal[__main__.Foo.Baz]?"
 reveal_type(Foo.Baz.value)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+
+[case testEnumWithAnnotationOnly]
+# flags: --warn-unreachable
+import enum
+
+
+class E(enum.IntEnum):
+    A: int  # E: Enum members must be left unannotated \
+            # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
+    B: int  # E: Enum members must be left unannotated \
+            # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
+
+
+def do_check(value: E) -> None:
+    reveal_type(value)  # N: Revealed type is "__main__.E"
+    if value is E.A:
+        return
+
+    reveal_type(value)  # N: Revealed type is "Literal[__main__.E.B]"
+    "should be reachable"
+
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
