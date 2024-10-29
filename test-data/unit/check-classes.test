@@ -751,6 +751,72 @@ class B(A):
     @dec
     def f(self) -> Y: pass
 
+[case testOverrideCallableAttributeWithMethod]
+from typing import Callable
+
+class A:
+    f1: Callable[[str], None]
+    f2: Callable[[str], None]
+    f3: Callable[[str], None]
+
+class B(A):
+    def f1(self, x: object) -> None:
+        pass
+
+    @classmethod
+    def f2(cls, x: object) -> None:
+        pass
+
+    @staticmethod
+    def f3(x: object) -> None:
+        pass
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideCallableAttributeWithSettableProperty]
+from typing import Callable
+
+class A:
+    f: Callable[[str], None]
+
+class B(A):
+    @property
+    def f(self) -> Callable[[object], None]: pass
+    @func.setter
+    def f(self, x: object) -> None: pass
+[builtins fixtures/property.pyi]
+
+[case testOverrideCallableAttributeWithMethodMutableOverride]
+# flags: --enable-error-code=mutable-override
+from typing import Callable
+
+class A:
+    f1: Callable[[str], None]
+    f2: Callable[[str], None]
+    f3: Callable[[str], None]
+
+class B(A):
+    def f1(self, x: object) -> None: pass   # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+
+    @classmethod
+    def f2(cls, x: object) -> None: pass    # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+
+    @staticmethod
+    def f3(x: object) -> None: pass         # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideCallableAttributeWithSettablePropertyMutableOverride]
+# flags: --enable-error-code=mutable-override
+from typing import Callable
+
+class A:
+    f: Callable[[str], None]
+
+class B(A):
+    @property  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+    def f(self) -> Callable[[object], None]: pass
+    @func.setter
+    def f(self, x: object) -> None: pass
+[builtins fixtures/property.pyi]
 
 -- Constructors
 -- ------------

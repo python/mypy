@@ -106,6 +106,7 @@ from mypy.nodes import (
     StrExpr,
     TempNode,
     TupleExpr,
+    TypeAliasStmt,
     TypeInfo,
     UnaryExpr,
     Var,
@@ -398,6 +399,9 @@ class DefinitionFinder(mypy.traverser.TraverserVisitor):
         for name in get_assigned_names(o.lvalues):
             self.names.add(name)
 
+    def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
+        self.names.add(o.name.name)
+
 
 def find_referenced_names(file: MypyFile) -> set[str]:
     finder = ReferenceFinder()
@@ -507,7 +511,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
     def get_default_function_sig(self, func_def: FuncDef, ctx: FunctionContext) -> FunctionSig:
         args = self._get_func_args(func_def, ctx)
         retname = self._get_func_return(func_def, ctx)
-        return FunctionSig(func_def.name, args, retname)
+        type_args = self.format_type_args(func_def)
+        return FunctionSig(func_def.name, args, retname, type_args)
 
     def _get_func_args(self, o: FuncDef, ctx: FunctionContext) -> list[ArgSig]:
         args: list[ArgSig] = []
@@ -765,7 +770,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             self.import_tracker.add_import("abc")
             self.import_tracker.require_name("abc")
         bases = f"({', '.join(base_types)})" if base_types else ""
-        self.add(f"{self._indent}class {o.name}{bases}:\n")
+        type_args = self.format_type_args(o)
+        self.add(f"{self._indent}class {o.name}{type_args}{bases}:\n")
         self.indent()
         if self._include_docstrings and o.docstring:
             docstring = mypy.util.quote_docstring(o.docstring)
@@ -1100,6 +1106,16 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         self.add(f"{self._indent}{lvalue.name} = {rvalue.accept(p)}\n")
         self.record_name(lvalue.name)
         self._vars[-1].append(lvalue.name)
+
+    def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
+        """Type aliases defined with the `type` keyword (PEP 695)."""
+        p = AliasPrinter(self)
+        name = o.name.name
+        rvalue = o.value.expr()
+        type_args = self.format_type_args(o)
+        self.add(f"{self._indent}type {name}{type_args} = {rvalue.accept(p)}\n")
+        self.record_name(name)
+        self._vars[-1].append(name)
 
     def visit_if_stmt(self, o: IfStmt) -> None:
         # Ignore if __name__ == '__main__'.
@@ -1777,7 +1793,9 @@ manual changes.  This directory is assumed to exist.
 
 
 def parse_options(args: list[str]) -> Options:
-    parser = argparse.ArgumentParser(prog="stubgen", usage=HEADER, description=DESCRIPTION)
+    parser = argparse.ArgumentParser(
+        prog="stubgen", usage=HEADER, description=DESCRIPTION, fromfile_prefix_chars="@"
+    )
 
     parser.add_argument(
         "--ignore-errors",
