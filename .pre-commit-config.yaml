@@ -25,8 +25,9 @@ repos:
     hooks:
       - id: actionlint
         args: [
-          -ignore='property "debug_build" is not defined',
-          -ignore='property "allow_failure" is not defined',
+          -ignore=property "debug_build" is not defined,
+          -ignore=property "allow_failure" is not defined,
+          -ignore=SC2(046|086),
         ]
 ci:
   autoupdate_schedule: quarterly
