@@ -28,9 +28,9 @@ class Pet(Enum):
     DOG: int
 
     # Mypy will now issue a warning if it detects this situation in type stubs:
-    # Detected enum "Pet" in a type stub with zero members.
-    # There is a chance this is due to a recent change in the semantics of enum membership.
-    # If so, use `member = value` to mark an enum member, instead of `member: type
+    # > Detected enum "Pet" in a type stub with zero members.
+    # > There is a chance this is due to a recent change in the semantics of enum membership.
+    # > If so, use `member = value` to mark an enum member, instead of `member: type`
 
 class Pet(Enum):
     # As per the specification, you should now do one of the following:
