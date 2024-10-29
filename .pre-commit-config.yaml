@@ -25,8 +25,8 @@ repos:
     hooks:
       - id: actionlint
         args: [
-          # -ignore=1st argument of function call is not assignable,
-          # -ignore=SC2(015|038|086|091|097|098|129|155),
+          -ignore='property "debug_build" is not defined',
+          -ignore='property "allow_failure" is not defined',
         ]
 ci:
   autoupdate_schedule: quarterly
