@@ -1788,14 +1788,17 @@ import lib
 
 [file lib.pyi]
 from enum import Enum
-class A(Enum):
+class A(Enum):  # E: Detected an enum in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership. If so, use `member = ...` to mark an enum member, instead of `member: type` \
+                # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
     x: int
 class B(A):  # E: Cannot extend enum with existing members: "A"
     x = 1    # E: Cannot override writable attribute "x" with a final one
 
 class C(Enum):
     x = 1
-class D(C):  # E: Cannot extend enum with existing members: "C"
+class D(C):  # E: Cannot extend enum with existing members: "C" \
+             # E: Detected an enum in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership. If so, use `member = ...` to mark an enum member, instead of `member: type` \
+             # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
     x: int   # E: Cannot assign to final name "x"
 [builtins fixtures/bool.pyi]
 

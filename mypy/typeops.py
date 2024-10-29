@@ -957,16 +957,20 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
         items = [
             try_expanding_sum_type_to_union(item, target_fullname) for item in typ.relevant_items()
         ]
-    elif isinstance(typ, Instance) and typ.type.fullname == target_fullname:
-        if typ.type.is_enum:
-            items = [LiteralType(name, typ) for name in typ.get_enum_values()]
-        elif typ.type.fullname == "builtins.bool":
-            items = [LiteralType(True, typ), LiteralType(False, typ)]
-    else:
-        return typ
+        return make_simplified_union(items, contract_literals=False)
 
-    # if the expanded union would be `Never` leave the type as is
-    return typ if not items else make_simplified_union(items, contract_literals=False)
+    if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
+        if typ.type.fullname == "builtins.bool":
+            items = [LiteralType(True, typ), LiteralType(False, typ)]
+            return make_simplified_union(items, contract_literals=False)
+
+        if typ.type.is_enum:
+            items = [LiteralType(name, typ) for name in typ.type.enum_members]
+            if not items:
+                return typ
+            return make_simplified_union(items, contract_literals=False)
+
+    return typ
 
 
 def try_contracting_literals_in_union(types: Sequence[Type]) -> list[ProperType]:
@@ -990,7 +994,7 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> list[ProperType]
                 if fullname not in sum_types:
                     sum_types[fullname] = (
                         (
-                            set(typ.fallback.get_enum_values())
+                            set(typ.fallback.type.enum_members)
                             if typ.fallback.type.is_enum
                             else {True, False}
                         ),
@@ -1023,7 +1027,7 @@ def coerce_to_literal(typ: Type) -> Type:
         if typ.last_known_value:
             return typ.last_known_value
         elif typ.type.is_enum:
-            enum_values = typ.get_enum_values()
+            enum_values = typ.type.enum_members
             if len(enum_values) == 1:
                 return LiteralType(value=enum_values[0], fallback=typ)
     return original_type
