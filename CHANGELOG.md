@@ -2,6 +2,22 @@
 
 ## Next release
 
+### Change to enum membership semantics
+
+As per the updated [typing specification for enums](https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members),
+enum members must be left unannotated.
+
+```python
+class Pet(Enum):
+    CAT = 1  # Member attribute
+    DOG = 2  # Member attribute
+    # WOLF = ...  # The "..." placeholder can be used in type stubs
+
+    species: str  # Considered a non-member attribute
+```
+
+Contributed by Terence Honles in PR [17207](https://github.com/python/mypy/pull/17207).
+
 ## Mypy 1.13
 
 We’ve just uploaded mypy 1.13 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
