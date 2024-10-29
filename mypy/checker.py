@@ -2598,10 +2598,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if base.is_enum and base.fullname not in ENUM_BASES:
                 self.check_final_enum(defn, base)
 
-        if self.is_stub and not self.is_typeshed_stub and self.tree.fullname != "enum":
+        if self.is_stub and self.tree.fullname not in {"enum", "_typeshed"}:
             if not defn.info.enum_members:
                 self.fail(
-                    "Detected an enum in a type stub with zero members. "
+                    f'Detected enum "{defn.info.fullname}" in a type stub with zero members. '
                     "There is a chance this is due to a recent change in the semantics of "
                     "enum membership. If so, use `member = value` to mark an enum member, "
                     "instead of `member: type`",
