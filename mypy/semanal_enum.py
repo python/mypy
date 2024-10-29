@@ -143,6 +143,12 @@ class EnumCallAnalyzer:
             var = Var(item)
             var.info = info
             var.is_property = True
+            # When an enum is created by its functional form `Enum(name, values)`
+            # - if it is a string it is first split by commas/whitespace
+            # - if it is an iterable of single items each item is assigned a value starting at `start`
+            # - if it is an iterable of (name, value) then the given values will be used
+            # either way, each item should be treated as if it has an explicit value.
+            var.has_explicit_value = True
             var._fullname = f"{info.fullname}.{item}"
             info.names[item] = SymbolTableNode(MDEF, var)
         return info
