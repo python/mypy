@@ -2154,7 +2154,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     and self.is_writable_attribute(original_node)
                     and not is_subtype(original_type, typ, ignore_pos_arg_names=True)
                 ):
-                    # Covariant override of mutable attribute.
                     base_str, override_str = format_type_distinctly(
                         original_type, typ, options=self.options
                     )
