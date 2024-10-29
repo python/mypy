@@ -11,12 +11,36 @@ enum members must be left unannotated.
 class Pet(Enum):
     CAT = 1  # Member attribute
     DOG = 2  # Member attribute
-    # WOLF = ...  # The "..." placeholder can be used in type stubs
+    WOLF: int = 3  # New error: Enum members must be left unannotated
 
     species: str  # Considered a non-member attribute
 ```
 
-Contributed by Terence Honles in PR [17207](https://github.com/python/mypy/pull/17207).
+In particular, the specification change can result in issues in type stubs (`.pyi` files), since
+historically it was common to leave the value absent:
+
+```python
+# In a type stub (.pyi file)
+
+class Pet(Enum):
+    # Change in semantics: previously considered members, now non-member attributes
+    CAT: int
+    DOG: int
+
+    # Mypy will now issue a warning if it detects this situation in type stubs:
+    # Detected an enum in a type stub with zero members.
+    # There is a chance this is due to a recent change in the semantics of enum membership.
+    # If so, use `member = value` to mark an enum member, instead of `member: type
+
+class Pet(Enum):
+    # As per the specification, you should now do one of the following:
+    DOG = 1  # Member attribute with value 1 and known type
+    WOLF = cast(int, ...)  # Member attribute with unknown value but known type
+    LION = ...  # Member attribute with unknown value and unknown type
+```
+
+Contributed by Terence Honles in PR [17207](https://github.com/python/mypy/pull/17207) and
+Shantanu Jain in PR [18068](https://github.com/python/mypy/pull/18068).
 
 ## Mypy 1.13
 

@@ -1318,7 +1318,7 @@ class StubtestUnit(unittest.TestCase):
             """,
             runtime="""
             class Flags3(enum.Flag):
-                a = ...
+                a = 1
                 b = 2
             def baz(x=Flags3(0)): pass
             """,
@@ -1897,7 +1897,7 @@ assert annotations
 
             import enum
             class Color(enum.Enum):
-                RED: int
+                RED = ...
 
             NUM: Literal[1]
             CHAR: Literal['a']

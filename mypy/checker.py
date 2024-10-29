@@ -2603,7 +2603,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(
                     "Detected an enum in a type stub with zero members. "
                     "There is a chance this is due to a recent change in the semantics of "
-                    "enum membership. If so, use `member = ...` to mark an enum member, "
+                    "enum membership. If so, use `member = value` to mark an enum member, "
                     "instead of `member: type`",
                     defn,
                 )
