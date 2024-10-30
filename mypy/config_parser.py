@@ -284,7 +284,7 @@ def parse_config_file(
 
     os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(os.path.abspath(config_file))
 
-    def set_strict_flags(updates: Dict[str, object]) -> None:
+    def set_strict_flags(updates: dict[str, object]) -> None:
         updates.update(strict_flag_assignments)
 
     if "mypy" not in parser:
@@ -300,7 +300,7 @@ def parse_config_file(
             setattr(options, k, v)
         options.report_dirs.update(report_dirs)
 
-    def set_strict_flags_section(updates: Dict[str, object]) -> None:
+    def set_strict_flags_section(updates: dict[str, object]) -> None:
         for dest, value in strict_flag_assignments:
             if dest in PER_MODULE_OPTIONS:
                 updates[dest] = value
@@ -448,7 +448,7 @@ def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
 def parse_section(
     prefix: str,
     template: Options,
-    set_strict_flags: Callable[[Dict[str, object]], None],
+    set_strict_flags: Callable[[dict[str, object]], None],
     section: Mapping[str, Any],
     config_types: dict[str, Any],
     stderr: TextIO = sys.stderr,

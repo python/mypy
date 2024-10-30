@@ -212,7 +212,7 @@ class Options:
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
 
-        # Deprecated, use extra_checks instead.
+        # Make arguments prepended via Concatenate be truly positional-only.
         self.strict_concatenate = False
 
         # Enable additional checks that are technically correct but impractical.

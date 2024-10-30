@@ -1265,7 +1265,6 @@ def process_options(
         parser.error(f"Cannot find config file '{config_file}'")
 
     options = Options()
-    strict_option_set = False
 
     # Parse config file first, so command line can override.
     parse_config_file(options, strict_flag_assignments, config_file, stdout, stderr)
@@ -1394,9 +1393,6 @@ def process_options(
             "Warning: --new-type-inference flag is deprecated;"
             " new type inference algorithm is already enabled by default"
         )
-
-    if options.strict_concatenate and not strict_option_set:
-        print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
 
     # Set target.
     if special_opts.modules + special_opts.packages:
