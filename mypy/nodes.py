@@ -2902,6 +2902,10 @@ EXCLUDED_PROTOCOL_ATTRIBUTES: Final = frozenset(
     }
 )
 
+# Attributes that can optionally be defined in the body of a subclass of
+# enum.Enum but are removed from the class __dict__ by EnumMeta.
+EXCLUDED_ENUM_ATTRIBUTES: Final = frozenset({"_ignore_", "_order_", "__order__"})
+
 
 class TypeInfo(SymbolNode):
     """The type structure of a single class.
@@ -3228,6 +3232,19 @@ class TypeInfo(SymbolNode):
                         continue
                     members.add(name)
         return sorted(members)
+
+    @property
+    def enum_members(self) -> list[str]:
+        return [
+            name
+            for name, sym in self.names.items()
+            if (
+                isinstance(sym.node, Var)
+                and name not in EXCLUDED_ENUM_ATTRIBUTES
+                and not name.startswith("__")
+                and sym.node.has_explicit_value
+            )
+        ]
 
     def __getitem__(self, name: str) -> SymbolTableNode:
         n = self.get(name)

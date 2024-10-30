@@ -2588,19 +2588,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_enum(self, defn: ClassDef) -> None:
         assert defn.info.is_enum
-        if defn.info.fullname not in ENUM_BASES:
-            for sym in defn.info.names.values():
-                if (
-                    isinstance(sym.node, Var)
-                    and sym.node.has_explicit_value
-                    and sym.node.name == "__members__"
-                ):
-                    # `__members__` will always be overwritten by `Enum` and is considered
-                    # read-only so we disallow assigning a value to it
-                    self.fail(message_registry.ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN, sym.node)
+        if defn.info.fullname not in ENUM_BASES and "__members__" in defn.info.names:
+            sym = defn.info.names["__members__"]
+            if isinstance(sym.node, Var) and sym.node.has_explicit_value:
+                # `__members__` will always be overwritten by `Enum` and is considered
+                # read-only so we disallow assigning a value to it
+                self.fail(message_registry.ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN, sym.node)
         for base in defn.info.mro[1:-1]:  # we don't need self and `object`
             if base.is_enum and base.fullname not in ENUM_BASES:
                 self.check_final_enum(defn, base)
+
+        if self.is_stub and self.tree.fullname not in {"enum", "_typeshed"}:
+            if not defn.info.enum_members:
+                self.fail(
+                    f'Detected enum "{defn.info.fullname}" in a type stub with zero members. '
+                    "There is a chance this is due to a recent change in the semantics of "
+                    "enum membership. If so, use `member = value` to mark an enum member, "
+                    "instead of `member: type`",
+                    defn,
+                )
+                self.note(
+                    "See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members",
+                    defn,
+                )
 
         self.check_enum_bases(defn)
         self.check_enum_new(defn)

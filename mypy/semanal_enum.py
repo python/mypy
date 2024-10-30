@@ -10,6 +10,7 @@ from typing import Final, cast
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
+    EXCLUDED_ENUM_ATTRIBUTES,
     MDEF,
     AssignmentStmt,
     CallExpr,
@@ -30,7 +31,7 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.semanal_shared import SemanticAnalyzerInterface
-from mypy.types import ENUM_REMOVED_PROPS, LiteralType, get_proper_type
+from mypy.types import LiteralType, get_proper_type
 
 # Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
 # enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
@@ -43,7 +44,7 @@ ENUM_SPECIAL_PROPS: Final = frozenset(
         "value",
         "_name_",
         "_value_",
-        *ENUM_REMOVED_PROPS,
+        *EXCLUDED_ENUM_ATTRIBUTES,
         # Also attributes from `object`:
         "__module__",
         "__annotations__",

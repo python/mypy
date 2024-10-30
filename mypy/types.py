@@ -150,10 +150,6 @@ ASSERT_TYPE_NAMES: Final = ("typing.assert_type", "typing_extensions.assert_type
 
 OVERLOAD_NAMES: Final = ("typing.overload", "typing_extensions.overload")
 
-# Attributes that can optionally be defined in the body of a subclass of
-# enum.Enum but are removed from the class __dict__ by EnumMeta.
-ENUM_REMOVED_PROPS: Final = ("_ignore_", "_order_", "__order__")
-
 NEVER_NAMES: Final = (
     "typing.NoReturn",
     "typing_extensions.NoReturn",
@@ -1559,22 +1555,9 @@ class Instance(ProperType):
         # Also make this return True if the type corresponds to NotImplemented?
         return (
             self.type.is_enum
-            and len(self.get_enum_values()) == 1
+            and len(self.type.enum_members) == 1
             or self.type.fullname in {"builtins.ellipsis", "types.EllipsisType"}
         )
-
-    def get_enum_values(self) -> list[str]:
-        """Return the list of values for an Enum."""
-        return [
-            name
-            for name, sym in self.type.names.items()
-            if (
-                isinstance(sym.node, mypy.nodes.Var)
-                and name not in ENUM_REMOVED_PROPS
-                and not name.startswith("__")
-                and sym.node.has_explicit_value
-            )
-        ]
 
 
 class FunctionLike(ProperType):
