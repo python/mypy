@@ -594,7 +594,7 @@ class IRBuilder:
             if isinstance(symbol, Decorator):
                 symbol = symbol.func
             if symbol is None:
-                # New semantic analyzer doesn't create ad-hoc Vars for special forms.
+                # Semantic analyzer doesn't create ad-hoc Vars for special forms.
                 assert lvalue.is_special_form
                 symbol = Var(lvalue.name)
             if not for_read and isinstance(symbol, Var) and symbol.is_cls:
