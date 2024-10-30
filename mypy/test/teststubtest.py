@@ -2643,18 +2643,3 @@ class StubtestMiscUnit(unittest.TestCase):
         assert remove_color_code(output.getvalue()) == (
             "error: cannot pass both --check-typeshed and a list of modules\n"
         )
-
-    def test_config_file_strict(self) -> None:
-        config_file = "[mypy]\nstrict = True\n"
-        output = run_stubtest(stub="", runtime="", options=[], config_file=config_file)
-        assert output == (
-            "note: warn_unused_configs = True [global]\n"
-            "note: warn_unused_ignores = True [global]\n"
-            "Success: no issues found in 1 module\n"
-        )
-        config_file = "[mypy-test_module.*]\nstrict = True\n"
-        output = run_stubtest(stub="", runtime="", options=[], config_file=config_file)
-        assert output == (
-            "note: warn_unused_ignores = True [test_module.*]\n"
-            "Success: no issues found in 1 module\n"
-        )

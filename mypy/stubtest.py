@@ -1945,19 +1945,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     options.pdb = args.pdb
 
     if options.config_file:
-        strict_flags = ["warn_unused_configs", "warn_unused_ignores"]
-
-        strict_flag_assignments = [(dest, True) for dest in strict_flags]
-        parse_config_file(
-            options, strict_flag_assignments, options.config_file, sys.stdout, sys.stderr
-        )
-
-        for dest in strict_flags:
-            if getattr(options, dest, False):
-                print("note: {} = True [global]".format(dest))
-            for glob, updates in options.per_module_options.items():
-                if updates.get(dest):
-                    print("note: {} = True [{}]".format(dest, glob))
+        parse_config_file(options, [], options.config_file, sys.stdout, sys.stderr)
 
     def error_callback(msg: str) -> typing.NoReturn:
         print(_style("error:", color="red", bold=True), msg)

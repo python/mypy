@@ -639,7 +639,7 @@ def parse_mypy_comments(
         stderr = StringIO()
         strict_found = False
 
-        def set_strict_flags(ignored: Any) -> None:
+        def set_strict_flags(updates: dict[str, object]) -> None:
             nonlocal strict_found
             strict_found = True
 
