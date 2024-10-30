@@ -1,5 +1,5 @@
 import sys
-from _typeshed import SupportsKeysAndGetItem
+from _typeshed import MaybeNone, SupportsKeysAndGetItem
 from _typeshed.importlib import LoaderProtocol
 from collections.abc import (
     AsyncGenerator,
@@ -424,6 +424,8 @@ class MethodType:
     @property
     def __closure__(self) -> tuple[CellType, ...] | None: ...  # inherited from the added function
     @property
+    def __code__(self) -> CodeType: ...  # inherited from the added function
+    @property
     def __defaults__(self) -> tuple[Any, ...] | None: ...  # inherited from the added function
     @property
     def __func__(self) -> Callable[..., Any]: ...
@@ -526,9 +528,9 @@ class FrameType:
     def f_lasti(self) -> int: ...
     # see discussion in #6769: f_lineno *can* sometimes be None,
     # but you should probably file a bug report with CPython if you encounter it being None in the wild.
-    # An `int | None` annotation here causes too many false-positive errors.
+    # An `int | None` annotation here causes too many false-positive errors, so applying `int | Any`.
     @property
-    def f_lineno(self) -> int | Any: ...
+    def f_lineno(self) -> int | MaybeNone: ...
     @property
     def f_locals(self) -> dict[str, Any]: ...
     f_trace: Callable[[FrameType, str, Any], Any] | None

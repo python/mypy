@@ -399,8 +399,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: always do this in type_object_type by passing the original context
                 result.ret_type.line = e.line
                 result.ret_type.column = e.column
-            if isinstance(get_proper_type(self.type_context[-1]), TypeType):
-                # This is the type in a Type[] expression, so substitute type
+            if is_type_type_context(self.type_context[-1]):
+                # This is the type in a type[] expression, so substitute type
                 # variables with Any.
                 result = erasetype.erase_typevars(result)
         elif isinstance(node, MypyFile):
@@ -2377,7 +2377,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Positional argument when expecting a keyword argument.
                 self.msg.too_many_positional_arguments(callee, context)
                 ok = False
-            elif callee.param_spec() is not None and not formal_to_actual[i]:
+            elif (
+                callee.param_spec() is not None
+                and not formal_to_actual[i]
+                and callee.special_sig != "partial"
+            ):
                 self.msg.too_few_arguments(callee, context, actual_names)
                 ok = False
         return ok
@@ -2781,7 +2785,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     ) -> list[CallableType]:
         """Returns all overload call targets that having matching argument counts.
 
-        If the given args contains a star-arg (*arg or **kwarg argument, including
+        If the given args contains a star-arg (*arg or **kwarg argument, except for
         ParamSpec), this method will ensure all star-arg overloads appear at the start
         of the list, instead of their usual location.
 
@@ -2816,7 +2820,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # ParamSpec can be expanded in a lot of different ways. We may try
                     # to expand it here instead, but picking an impossible overload
                     # is safe: it will be filtered out later.
-                    star_matches.append(typ)
+                    # Unlike other var-args signatures, ParamSpec produces essentially
+                    # a fixed signature, so there's no need to push them to the top.
+                    matches.append(typ)
                 elif self.check_argument_count(
                     typ, arg_types, arg_kinds, arg_names, formal_to_actual, None
                 ):
@@ -3814,6 +3820,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             is_operator=True,
             msg=self.msg,
             original_type=original_type,
+            self_type=base_type,
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
         )
@@ -5804,6 +5811,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 context=if_type_fallback,
                 allow_none_return=allow_none_return,
             )
+
+        # In most cases using if_type as a context for right branch gives better inferred types.
+        # This is however not the case for literal types, so use the full context instead.
+        if is_literal_type_like(full_context_else_type) and not is_literal_type_like(else_type):
+            else_type = full_context_else_type
+
         res: Type = make_simplified_union([if_type, else_type])
         if has_uninhabited_component(res) and not isinstance(
             get_proper_type(self.type_context[-1]), UnionType
@@ -6616,3 +6629,12 @@ def get_partial_instance_type(t: Type | None) -> PartialType | None:
     if t is None or not isinstance(t, PartialType) or t.type is None:
         return None
     return t
+
+
+def is_type_type_context(context: Type | None) -> bool:
+    context = get_proper_type(context)
+    if isinstance(context, TypeType):
+        return True
+    if isinstance(context, UnionType):
+        return any(is_type_type_context(item) for item in context.items)
+    return False
