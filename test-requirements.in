@@ -13,5 +13,6 @@ pytest>=8.1.0
 pytest-xdist>=1.34.0
 pytest-cov>=2.10.0
 ruff==0.6.9  # must match version in .pre-commit-config.yaml
-setuptools>=65.5.1
+setuptools>=75.1.0
 tomli>=1.1.0  # needed even on py311+ so the self check passes with --python-version 3.8
+pre_commit>=3.5.0

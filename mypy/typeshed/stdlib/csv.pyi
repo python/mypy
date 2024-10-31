@@ -1,12 +1,9 @@
 import sys
-
-# actually csv.Dialect is a different class to _csv.Dialect at runtime, but for typing purposes, they're identical
 from _csv import (
     QUOTE_ALL as QUOTE_ALL,
     QUOTE_MINIMAL as QUOTE_MINIMAL,
     QUOTE_NONE as QUOTE_NONE,
     QUOTE_NONNUMERIC as QUOTE_NONNUMERIC,
-    Dialect as Dialect,
     Error as Error,
     __version__ as __version__,
     _DialectLike,
@@ -26,7 +23,7 @@ if sys.version_info >= (3, 12):
     from _csv import QUOTE_NOTNULL as QUOTE_NOTNULL, QUOTE_STRINGS as QUOTE_STRINGS
 
 from _typeshed import SupportsWrite
-from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from typing import Any, Generic, Literal, TypeVar, overload
 from typing_extensions import Self
 
@@ -61,11 +58,22 @@ if sys.version_info < (3, 13):
 
 _T = TypeVar("_T")
 
+class Dialect:
+    delimiter: str
+    quotechar: str | None
+    escapechar: str | None
+    doublequote: bool
+    skipinitialspace: bool
+    lineterminator: str
+    quoting: _QuotingType
+    strict: bool
+    def __init__(self) -> None: ...
+
 class excel(Dialect): ...
 class excel_tab(excel): ...
 class unix_dialect(Dialect): ...
 
-class DictReader(Iterator[dict[_T | Any, str | Any]], Generic[_T]):
+class DictReader(Generic[_T]):
     fieldnames: Sequence[_T] | None
     restkey: _T | None
     restval: str | Any | None

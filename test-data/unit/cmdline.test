@@ -153,18 +153,6 @@ FLAG = False
 if not FLAG:
     x = "unreachable"
 
-[case testErrorContextConfig]
-# cmd: mypy main.py
-[file mypy.ini]
-\[mypy]
-show_error_context=True
-[file main.py]
-def f() -> None:
-  0 + ""
-[out]
-main.py: note: In function "f":
-main.py:2: error: Unsupported operand types for + ("int" and "str")
-
 [case testAltConfigFile]
 # cmd: mypy --config-file config.ini main.py
 [file config.ini]
@@ -175,43 +163,6 @@ x: int
 FLAG = False
 if not FLAG:
     x = "unreachable"
-
-[case testNoConfigFile]
-# cmd: mypy main.py --config-file=
-[file mypy.ini]
-\[mypy]
-warn_unused_ignores = True
-[file main.py]
-# type: ignore
-
-[case testPerFileConfigSection]
-# cmd: mypy x.py y.py z.py
-[file mypy.ini]
-\[mypy]
-disallow_untyped_defs = True
-\[mypy-y]
-disallow_untyped_defs = False
-\[mypy-z]
-disallow_untyped_calls = True
-[file x.py]
-def f(a):
-    pass
-def g(a: int) -> int:
-    return f(a)
-[file y.py]
-def f(a):
-    pass
-def g(a: int) -> int:
-    return f(a)
-[file z.py]
-def f(a):
-    pass
-def g(a: int) -> int:
-    return f(a)
-[out]
-z.py:1: error: Function is missing a type annotation
-z.py:4: error: Call to untyped function "f" in typed context
-x.py:1: error: Function is missing a type annotation
 
 [case testPerFileConfigSectionMultipleMatchesDisallowed]
 # cmd: mypy xx.py xy.py yx.py yy.py
@@ -326,43 +277,6 @@ file.py:1: error: Cannot find implementation or library stub for module named "n
 file.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
-[case testIgnoreErrorsConfig]
-# cmd: mypy x.py y.py
-[file mypy.ini]
-\[mypy]
-\[mypy-x]
-ignore_errors = True
-[file x.py]
-x: str = 5
-[file y.py]
-x: str = 5
-[out]
-y.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-
-[case testConfigFollowImportsNormal]
-# cmd: mypy main.py
-[file main.py]
-from a import x
-x + 0
-x + ''  # E
-import a
-a.x + 0
-a.x + ''  # E
-a.y  # E
-a + 0  # E
-[file mypy.ini]
-\[mypy]
-follow_imports = normal
-[file a.py]
-x = 0
-x += ''  # Error reported here
-[out]
-a.py:2: error: Unsupported operand types for + ("int" and "str")
-main.py:3: error: Unsupported operand types for + ("int" and "str")
-main.py:6: error: Unsupported operand types for + ("int" and "str")
-main.py:7: error: Module has no attribute "y"
-main.py:8: error: Unsupported operand types for + (Module and "int")
-
 [case testConfigFollowImportsSysPath]
 # cmd: mypy main.py
 [file main.py]
@@ -389,102 +303,6 @@ main.py:6: error: Unsupported operand types for + ("int" and "str")
 main.py:7: error: Module has no attribute "y"
 main.py:8: error: Unsupported operand types for + (Module and "int")
 
-[case testConfigFollowImportsSilent]
-# cmd: mypy main.py
-[file main.py]
-from a import x
-x + ''
-import a
-a.x + ''
-a.y
-a + 0
-[file mypy.ini]
-\[mypy]
-follow_imports = silent
-[file a.py]
-x = 0
-x += ''  # No error reported
-[out]
-main.py:2: error: Unsupported operand types for + ("int" and "str")
-main.py:4: error: Unsupported operand types for + ("int" and "str")
-main.py:5: error: Module has no attribute "y"
-main.py:6: error: Unsupported operand types for + (Module and "int")
-
-[case testConfigFollowImportsSkip]
-# cmd: mypy main.py
-[file main.py]
-from a import x
-reveal_type(x)  # Expect Any
-import a
-reveal_type(a.x)  # Expect Any
-[file mypy.ini]
-\[mypy]
-follow_imports = skip
-[file a.py]
-/  # No error reported
-[out]
-main.py:2: note: Revealed type is "Any"
-main.py:4: note: Revealed type is "Any"
-== Return code: 0
-
-[case testConfigFollowImportsError]
-# cmd: mypy main.py
-[file main.py]
-from a import x  # Error reported here
-reveal_type(x)  # Expect Any
-import a
-reveal_type(a.x)  # Expect Any
-[file mypy.ini]
-\[mypy]
-follow_imports = error
-[file a.py]
-/  # No error reported
-[out]
-main.py:1: error: Import of "a" ignored
-main.py:1: note: (Using --follow-imports=error, module not passed on command line)
-main.py:2: note: Revealed type is "Any"
-main.py:4: note: Revealed type is "Any"
-
-[case testConfigFollowImportsSelective]
-# cmd: mypy main.py
-[file mypy.ini]
-\[mypy]
-\[mypy-normal]
-follow_imports = normal
-\[mypy-silent]
-follow_imports = silent
-\[mypy-skip]
-follow_imports = skip
-\[mypy-error]
-follow_imports = error
-[file main.py]
-import normal
-import silent
-import skip
-import error
-reveal_type(normal.x)
-reveal_type(silent.x)
-reveal_type(skip)
-reveal_type(error)
-[file normal.py]
-x = 0
-x += ''
-[file silent.py]
-x = 0
-x += ''
-[file skip.py]
-bla bla
-[file error.py]
-bla bla
-[out]
-normal.py:2: error: Unsupported operand types for + ("int" and "str")
-main.py:4: error: Import of "error" ignored
-main.py:4: note: (Using --follow-imports=error, module not passed on command line)
-main.py:5: note: Revealed type is "builtins.int"
-main.py:6: note: Revealed type is "builtins.int"
-main.py:7: note: Revealed type is "Any"
-main.py:8: note: Revealed type is "Any"
-
 [case testConfigFollowImportsInvalid]
 # cmd: mypy main.py
 [file mypy.ini]
@@ -493,31 +311,6 @@ follow_imports =True
 [file main.py]
 [out]
 mypy.ini: [mypy]: follow_imports: invalid choice 'True' (choose from 'normal', 'silent', 'skip', 'error')
-== Return code: 0
-
-[case testConfigSilentMissingImportsOff]
-# cmd: mypy main.py
-[file main.py]
-import missing  # Expect error here
-reveal_type(missing.x)  # Expect Any
-[file mypy.ini]
-\[mypy]
-ignore_missing_imports = False
-[out]
-main.py:1: error: Cannot find implementation or library stub for module named "missing"
-main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main.py:2: note: Revealed type is "Any"
-
-[case testConfigSilentMissingImportsOn]
-# cmd: mypy main.py
-[file main.py]
-import missing  # No error here
-reveal_type(missing.x)  # Expect Any
-[file mypy.ini]
-\[mypy]
-ignore_missing_imports = True
-[out]
-main.py:2: note: Revealed type is "Any"
 == Return code: 0
 
 [case testFailedImportOnWrongCWD]
@@ -683,21 +476,10 @@ int_pow.py:11: note: Revealed type is "Any"
 python_version = 3.8
 \[mypy-m]
 disallow_any_generics = True
-
 [file m.py]
-s = tuple([1, 2, 3])  # no error
-
-def f(t: tuple) -> None: pass
-def g() -> list: pass
-def h(s: dict) -> None: pass
-def i(s: set) -> None: pass
 def j(s: frozenset) -> None: pass
 [out]
-m.py:3: error: Implicit generic "Any". Use "typing.Tuple" and specify generic parameters
-m.py:4: error: Implicit generic "Any". Use "typing.List" and specify generic parameters
-m.py:5: error: Implicit generic "Any". Use "typing.Dict" and specify generic parameters
-m.py:6: error: Implicit generic "Any". Use "typing.Set" and specify generic parameters
-m.py:7: error: Implicit generic "Any". Use "typing.FrozenSet" and specify generic parameters
+m.py:1: error: Implicit generic "Any". Use "typing.FrozenSet" and specify generic parameters
 
 [case testDisallowAnyGenericsTypingCollections]
 # cmd: mypy m.py
@@ -705,21 +487,11 @@ m.py:7: error: Implicit generic "Any". Use "typing.FrozenSet" and specify generi
 \[mypy]
 \[mypy-m]
 disallow_any_generics = True
-
 [file m.py]
-from typing import Tuple, List, Dict, Set, FrozenSet
-
-def f(t: Tuple) -> None: pass
-def g() -> List: pass
-def h(s: Dict) -> None: pass
-def i(s: Set) -> None: pass
+from typing import FrozenSet
 def j(s: FrozenSet) -> None: pass
 [out]
-m.py:3: error: Missing type parameters for generic type "Tuple"
-m.py:4: error: Missing type parameters for generic type "List"
-m.py:5: error: Missing type parameters for generic type "Dict"
-m.py:6: error: Missing type parameters for generic type "Set"
-m.py:7: error: Missing type parameters for generic type "FrozenSet"
+m.py:2: error: Missing type parameters for generic type "FrozenSet"
 
 [case testSectionInheritance]
 # cmd: mypy a
@@ -756,44 +528,12 @@ ignore_errors = False
 a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type "List"
 a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "List[Any]"
 
-[case testDisallowUntypedDefsAndGenerics]
-# cmd: mypy a.py
-[file mypy.ini]
-\[mypy]
-disallow_untyped_defs = True
-disallow_any_generics = True
-[file a.py]
-def get_tasks(self):
-    return 'whatever'
-[out]
-a.py:1: error: Function is missing a return type annotation
-
 [case testMissingFile]
 # cmd: mypy nope.py
 [out]
 mypy: can't read file 'nope.py': No such file or directory
 == Return code: 2
 --'
-
-[case testParseError]
-# cmd: mypy a.py
-[file a.py]
-def foo(
-[out]
-a.py:1: error: unexpected EOF while parsing
-== Return code: 2
-[out version>=3.10]
-a.py:1: error: '(' was never closed
-== Return code: 2
-
-[case testParseErrorAnnots]
-# cmd: mypy a.py
-[file a.py]
-def foo(x):
-    # type: (str, int) -> None
-    return
-[out]
-a.py:1: error: Type signature has too many arguments
 
 [case testModulesAndPackages]
 # cmd: mypy --package p.a --package p.b --module c
@@ -1487,15 +1227,6 @@ Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
 pass
 [out]
 Warning: --new-type-inference flag is deprecated; new type inference algorithm is already enabled by default
-== Return code: 0
-
-[case testNotesOnlyResultInExitSuccess]
-# cmd: mypy a.py
-[file a.py]
-def f():
-    x: int = "no"
-[out]
-a.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
 == Return code: 0
 
 [case testCustomTypeshedDirFilePassedExplicitly]

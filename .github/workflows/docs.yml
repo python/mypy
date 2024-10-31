@@ -28,6 +28,7 @@ concurrency:
 jobs:
   docs:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       TOXENV: docs
       TOX_SKIP_MISSING_INTERPRETERS: False
@@ -38,7 +39,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install tox
-        run: pip install tox==4.11.0
+        run: pip install tox==4.21.2
       - name: Setup tox environment
         run: tox run -e ${{ env.TOXENV }} --notest
       - name: Test

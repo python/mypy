@@ -1764,7 +1764,8 @@ class B(A):
     x = 1  # E: Cannot override writable attribute "x" with a final one
 
 class A1(Enum):
-    x: int = 1
+    x: int = 1  # E: Enum members must be left unannotated \
+                # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
 class B1(A1):  # E: Cannot extend enum with existing members: "A1"
     pass
 
@@ -1779,6 +1780,7 @@ class A3(Enum):
     x: Final[int]  # type: ignore
 class B3(A3):
     x = 1  # E: Cannot override final attribute "x" (previously declared in base class "A3")
+
 [builtins fixtures/bool.pyi]
 
 [case testEnumNotFinalWithMethodsAndUninitializedValuesStub]
@@ -1786,14 +1788,17 @@ import lib
 
 [file lib.pyi]
 from enum import Enum
-class A(Enum):
+class A(Enum):  # E: Detected enum "lib.A" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership. If so, use `member = value` to mark an enum member, instead of `member: type` \
+                # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
     x: int
 class B(A):  # E: Cannot extend enum with existing members: "A"
     x = 1    # E: Cannot override writable attribute "x" with a final one
 
 class C(Enum):
     x = 1
-class D(C):  # E: Cannot extend enum with existing members: "C"
+class D(C):  # E: Cannot extend enum with existing members: "C" \
+             # E: Detected enum "lib.D" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership. If so, use `member = value` to mark an enum member, instead of `member: type` \
+             # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
     x: int   # E: Cannot assign to final name "x"
 [builtins fixtures/bool.pyi]
 
@@ -2185,3 +2190,67 @@ reveal_type(A.y.value)  # N: Revealed type is "Literal[2]?"
 def some_a(a: A):
     reveal_type(a.value)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
 [builtins fixtures/dict.pyi]
+
+
+[case testErrorOnAnnotatedMember]
+from enum import Enum
+
+class Medal(Enum):
+    gold: int = 1  # E: Enum members must be left unannotated \
+                   # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
+    silver: str = 2  # E: Enum members must be left unannotated \
+                     # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
+                     # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    bronze = 3
+
+[case testEnumMemberWithPlaceholder]
+from enum import Enum
+
+class Pet(Enum):
+    CAT = ...
+    DOG: str = ...  # E: Enum members must be left unannotated \
+                    # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
+                    # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "str")
+
+[case testEnumValueWithPlaceholderNodeType]
+# https://github.com/python/mypy/issues/11971
+from enum import Enum
+from typing import Any, Callable, Dict
+class Foo(Enum):
+    Bar: Foo = Callable[[str], None]  # E: Enum members must be left unannotated \
+                                      # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
+                                      # E: Incompatible types in assignment (expression has type "<typing special form>", variable has type "Foo")
+    Baz: Any = Callable[[Dict[str, "Missing"]], None]  # E: Enum members must be left unannotated \
+                                                       # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
+                                                       # E: Type application targets a non-generic function or class \
+                                                       # E: Name "Missing" is not defined
+
+reveal_type(Foo.Bar)  # N: Revealed type is "Literal[__main__.Foo.Bar]?"
+reveal_type(Foo.Bar.value)  # N: Revealed type is "__main__.Foo"
+reveal_type(Foo.Baz)  # N: Revealed type is "Literal[__main__.Foo.Baz]?"
+reveal_type(Foo.Baz.value)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+[case testEnumWithOnlyImplicitMembersUsingAnnotationOnly]
+# flags: --warn-unreachable
+import enum
+
+
+class E(enum.IntEnum):
+    A: int
+    B: int
+
+
+def do_check(value: E) -> None:
+    reveal_type(value)  # N: Revealed type is "__main__.E"
+    # this is a nonmember check, not an emum member check, and it should not narrow the value
+    if value is E.A:
+        return
+
+    reveal_type(value)  # N: Revealed type is "__main__.E"
+    "should be reachable"
+
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
