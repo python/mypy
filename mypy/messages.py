@@ -16,7 +16,17 @@ import itertools
 import re
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Collection, Final, Iterable, Iterator, Protocol, List, Sequence, cast
+from typing import (
+    Any,
+    Callable,
+    Collection,
+    Final,
+    Iterable,
+    Iterator,
+    List,
+    Sequence,
+    cast,
+)
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry
@@ -110,7 +120,7 @@ TYPES_FOR_UNIMPORTED_HINTS: Final = {
     "typing.TypeVar",
     "typing.Union",
     "typing.cast",
-    "typing.Protocol"
+    "typing.Protocol",
 }
 
 

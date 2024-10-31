@@ -194,7 +194,6 @@ from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
 from mypy.util import split_module_names
 from mypy.visitor import ExpressionVisitor
-from checker import TypeChecker
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
