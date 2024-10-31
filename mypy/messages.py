@@ -16,7 +16,7 @@ import itertools
 import re
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, Sequence, cast
+from typing import Any, Callable, Collection, Final, Iterable, Iterator, Protocol, List, Sequence, cast
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry
@@ -110,6 +110,7 @@ TYPES_FOR_UNIMPORTED_HINTS: Final = {
     "typing.TypeVar",
     "typing.Union",
     "typing.cast",
+    "typing.Protocol"
 }
 
 
@@ -689,6 +690,7 @@ class MessageBuilder:
         msg = ""
         code = codes.MISC
         notes: list[str] = []
+
         if callee_name == "<list>":
             name = callee_name[1:-1]
             n -= 1
@@ -782,6 +784,7 @@ class MessageBuilder:
                 arg_type_str, expected_type_str = format_type_distinctly(
                     arg_type, expected_type, bare=True, options=self.options
                 )
+
                 if arg_kind == ARG_STAR:
                     arg_type_str = "*" + arg_type_str
                 elif arg_kind == ARG_STAR2:
@@ -851,6 +854,7 @@ class MessageBuilder:
     ) -> None:
         if self.prefer_simple_messages():
             return
+
         if isinstance(
             original_caller_type, (Instance, TupleType, TypedDictType, TypeType, CallableType)
         ):
@@ -865,13 +869,14 @@ class MessageBuilder:
                         self.report_protocol_problems(
                             original_caller_type, item, context, code=code
                         )
-        if isinstance(callee_type, CallableType) and isinstance(original_caller_type, Instance):
+        if isinstance(original_caller_type, (Instance, Callable)) and (
+            isinstance(callee_type, CallableType) or callee_type.type.is_protocol
+        ):
             call = find_member(
                 "__call__", original_caller_type, original_caller_type, is_operator=True
             )
             if call:
                 self.note_call(original_caller_type, call, context, code=code)
-
         self.maybe_note_concatenate_pos_args(original_caller_type, callee_type, context, code)
 
     def maybe_note_concatenate_pos_args(
