@@ -777,6 +777,7 @@ def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]
             print(err.stdout)
             raise
         except OSError as err:
+            assert err.errno is not None
             reason = os.strerror(err.errno)
             raise CompileError(
                 [f"mypy: Invalid python executable '{python_executable}': {reason}"]
