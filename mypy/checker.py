@@ -2024,7 +2024,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if check_override_compatibility:
                 # Check compatibility of the override signature
                 # (__init__, __new__, __init_subclass__ are special).
-                if self.check_method_override_for_base_with_name(defn, name, base, first_baseclass):
+                if self.check_method_override_for_base_with_name(
+                    defn, name, base, first_baseclass
+                ):
                     return None
                 if name in operators.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
@@ -2033,12 +2035,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # always introduced safely if a base class defined __add__.
                     # TODO can't come up with an example where this is
                     #      necessary; now it's "just in case"
-                    if self.check_method_override_for_base_with_name(defn, method, base, first_baseclass):
+                    if self.check_method_override_for_base_with_name(
+                        defn, method, base, first_baseclass
+                    ):
                         return None
         return found_base_method
 
     def check_method_override_for_base_with_name(
-        self, defn: FuncDef | OverloadedFuncDef | Decorator, name: str, base: TypeInfo, first_baseclass: bool
+        self,
+        defn: FuncDef | OverloadedFuncDef | Decorator,
+        name: str,
+        base: TypeInfo,
+        first_baseclass: bool,
     ) -> bool:
         """Check if overriding an attribute `name` of `base` with `defn` is valid.
 
@@ -2173,7 +2181,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             f" override has type {override_str})"
                         )
                         self.fail(msg, context)
-                elif context.is_explicit_override and first_baseclass and not is_private(context.name):
+                elif (
+                    context.is_explicit_override
+                    and first_baseclass
+                    and not is_private(context.name)
+                ):
                     warn = self.fail if self.options.report_deprecated_as_error else self.note
                     warn(deprecated, context, code=codes.DEPRECATED)
             elif isinstance(original_type, UnionType) and any(
