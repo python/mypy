@@ -5,45 +5,73 @@ __version__: str
 
 class Point:
     class AngleUnit:
+        """Describes the angle measurement units.
+
+        Members:
+
+          radian
+
+          degree"""
         __members__: ClassVar[dict] = ...  # read-only
         __entries: ClassVar[dict] = ...
         degree: ClassVar[Point.AngleUnit] = ...
         radian: ClassVar[Point.AngleUnit] = ...
         def __init__(self, value: int) -> None:
-            """__init__(self: pybind11_fixtures.demo.Point.AngleUnit, value: int) -> None"""
+            """__init__(self: pybind11_fixtures.demo.Point.AngleUnit, value: int) -> None
+            """
         def __eq__(self, other: object) -> bool:
-            """__eq__(self: object, other: object) -> bool"""
+            """__eq__(self: object, other: object) -> bool
+            """
         def __hash__(self) -> int:
-            """__hash__(self: object) -> int"""
+            """__hash__(self: object) -> int
+            """
         def __index__(self) -> int:
-            """__index__(self: pybind11_fixtures.demo.Point.AngleUnit) -> int"""
+            """__index__(self: pybind11_fixtures.demo.Point.AngleUnit) -> int
+            """
         def __int__(self) -> int:
-            """__int__(self: pybind11_fixtures.demo.Point.AngleUnit) -> int"""
+            """__int__(self: pybind11_fixtures.demo.Point.AngleUnit) -> int
+            """
         def __ne__(self, other: object) -> bool:
-            """__ne__(self: object, other: object) -> bool"""
+            """__ne__(self: object, other: object) -> bool
+            """
         @property
         def name(self) -> str: ...
         @property
         def value(self) -> int: ...
 
     class LengthUnit:
+        """Describes the length measurement units.
+
+        Members:
+
+          mm
+
+          pixel
+
+          inch"""
         __members__: ClassVar[dict] = ...  # read-only
         __entries: ClassVar[dict] = ...
         inch: ClassVar[Point.LengthUnit] = ...
         mm: ClassVar[Point.LengthUnit] = ...
         pixel: ClassVar[Point.LengthUnit] = ...
         def __init__(self, value: int) -> None:
-            """__init__(self: pybind11_fixtures.demo.Point.LengthUnit, value: int) -> None"""
+            """__init__(self: pybind11_fixtures.demo.Point.LengthUnit, value: int) -> None
+            """
         def __eq__(self, other: object) -> bool:
-            """__eq__(self: object, other: object) -> bool"""
+            """__eq__(self: object, other: object) -> bool
+            """
         def __hash__(self) -> int:
-            """__hash__(self: object) -> int"""
+            """__hash__(self: object) -> int
+            """
         def __index__(self) -> int:
-            """__index__(self: pybind11_fixtures.demo.Point.LengthUnit) -> int"""
+            """__index__(self: pybind11_fixtures.demo.Point.LengthUnit) -> int
+            """
         def __int__(self) -> int:
-            """__int__(self: pybind11_fixtures.demo.Point.LengthUnit) -> int"""
+            """__int__(self: pybind11_fixtures.demo.Point.LengthUnit) -> int
+            """
         def __ne__(self, other: object) -> bool:
-            """__ne__(self: object, other: object) -> bool"""
+            """__ne__(self: object, other: object) -> bool
+            """
         @property
         def name(self) -> str: ...
         @property
@@ -74,7 +102,8 @@ class Point:
         2. __init__(self: pybind11_fixtures.demo.Point, x: float, y: float) -> None
         """
     def as_list(self) -> list[float]:
-        """as_list(self: pybind11_fixtures.demo.Point) -> List[float]"""
+        """as_list(self: pybind11_fixtures.demo.Point) -> List[float]
+        """
     @overload
     def distance_to(self, x: float, y: float) -> float:
         """distance_to(*args, **kwargs)
@@ -102,11 +131,13 @@ def answer() -> int:
     answer docstring, with end quote"
     '''
 def midpoint(left: float, right: float) -> float:
-    """midpoint(left: float, right: float) -> float"""
+    """midpoint(left: float, right: float) -> float
+    """
 def sum(arg0: int, arg1: int) -> int:
     '''sum(arg0: int, arg1: int) -> int
 
     multiline docstring test, edge case quotes """\'\'\'
     '''
 def weighted_midpoint(left: float, right: float, alpha: float = ...) -> float:
-    """weighted_midpoint(left: float, right: float, alpha: float = 0.5) -> float"""
+    """weighted_midpoint(left: float, right: float, alpha: float = 0.5) -> float
+    """

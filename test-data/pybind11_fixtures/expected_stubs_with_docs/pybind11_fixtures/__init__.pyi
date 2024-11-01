@@ -41,12 +41,17 @@ class TestStruct:
     def field_readonly(self) -> int: ...
 
 def func_incomplete_signature(*args, **kwargs):
-    """func_incomplete_signature() -> dummy_sub_namespace::HasNoBinding"""
+    """func_incomplete_signature() -> dummy_sub_namespace::HasNoBinding
+    """
 def func_returning_optional() -> int | None:
-    """func_returning_optional() -> Optional[int]"""
+    """func_returning_optional() -> Optional[int]
+    """
 def func_returning_pair() -> tuple[int, float]:
-    """func_returning_pair() -> Tuple[int, float]"""
+    """func_returning_pair() -> Tuple[int, float]
+    """
 def func_returning_path() -> os.PathLike:
-    """func_returning_path() -> os.PathLike"""
+    """func_returning_path() -> os.PathLike
+    """
 def func_returning_vector() -> list[float]:
-    """func_returning_vector() -> List[float]"""
+    """func_returning_vector() -> List[float]
+    """
