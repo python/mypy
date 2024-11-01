@@ -542,3 +542,76 @@ h(1.0)  # E: No overload variant of "h" matches argument type "float" \
         # N:     def h(x: str) -> str
 
 [builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedOverriddenMethod]
+
+from typing_extensions import deprecated, override
+
+class A:
+    @deprecated("replaced by g1")
+    def f1(self) -> int: ...
+    @deprecated("replaced by g2")
+    def f2(self) -> int: ...
+    @deprecated("replaced by g3")
+    def __f3__(self) -> int: ...
+    @deprecated("replaced by g4")
+    def __f4__(self) -> int: ...
+
+# no notes about incompatibilities
+# overriding a deprecated method is like defining a new one
+class B1(A):
+    def f1(self) -> int: ...
+    def f2(self) -> str: ...
+    def __f3(self) -> int: ...
+    def __f4(self) -> str: ...
+
+# no notes about deprecations
+# the directly overriden class is okay
+class B2(B1):
+    @override
+    def f1(self) -> int: ...
+    @override
+    def f2(self) -> str: ...
+    @override
+    def __f3(self) -> int: ...
+    @override
+    def __f4(self) -> str: ...
+
+# deprecation notes
+# single inheritance
+class C(A):
+    @override
+    def f1(self) -> int: ...  # N: function __main__.A.f1 is deprecated: replaced by g1
+    @override
+    def f2(self) -> str: ...  # N: function __main__.A.f2 is deprecated: replaced by g2
+    @override
+    def __f3(self) -> int: ...  # E: Method "__f3" is marked as an override, but no base method was found with this name
+    @override
+    def __f4(self) -> str: ...  # E: Method "__f4" is marked as an override, but no base method was found with this name
+
+# deprecation notes
+# multiple inheritance
+class D(B1, A):
+    @override
+    def f1(self) -> int: ...  # N: function __main__.A.f1 is deprecated: replaced by g1
+    @override
+    def f2(self) -> str: ...  # N: function __main__.A.f2 is deprecated: replaced by g2
+    @override
+    def __f3(self) -> int: ...  # No error?
+    @override
+    def __f4(self) -> str: ...  # No error?
+
+# no deprecation notes
+# multiple inheritance
+class E(B1, C):
+    @override
+    def f1(self) -> int: ...
+    @override
+    def f2(self) -> str: ...
+    @override
+    def __f3(self) -> int: ...  # No error?
+    @override
+    def __f4(self) -> str: ...  # No error?
+
+[builtins fixtures/tuple.pyi]
