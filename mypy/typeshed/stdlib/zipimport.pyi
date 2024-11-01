@@ -5,11 +5,16 @@ from importlib.machinery import ModuleSpec
 from types import CodeType, ModuleType
 from typing_extensions import deprecated
 
+if sys.version_info >= (3, 10):
+    from _frozen_importlib_external import _LoaderBasics
+else:
+    _LoaderBasics = object
+
 __all__ = ["ZipImportError", "zipimporter"]
 
 class ZipImportError(ImportError): ...
 
-class zipimporter:
+class zipimporter(_LoaderBasics):
     archive: str
     prefix: str
     if sys.version_info >= (3, 11):
