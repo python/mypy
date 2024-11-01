@@ -2140,6 +2140,7 @@ class State:
                     # other systems, but os.strerror(ioerr.errno) does not, so we use that.
                     # (We want the error messages to be platform-independent so that the
                     # tests have predictable output.)
+                    assert ioerr.errno is not None
                     raise CompileError(
                         [
                             "mypy: can't read file '{}': {}".format(
