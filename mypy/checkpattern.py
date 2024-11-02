@@ -46,6 +46,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarTupleType,
+    TypeVarType,
     UninhabitedType,
     UnionType,
     UnpackType,
@@ -342,13 +343,11 @@ class PatternChecker(PatternVisitor[PatternType]):
             new_inner_type = UninhabitedType()
             for typ in new_inner_types:
                 new_inner_type = join_types(new_inner_type, typ)
-            new_type = self.construct_sequence_child(current_type, new_inner_type)
-            if is_subtype(new_type, current_type):
-                new_type, _ = self.chk.conditional_types_with_intersection(
-                    current_type, [get_type_range(new_type)], o, default=current_type
-                )
+            if isinstance(current_type, TypeVarType):
+                new_bound = self.narrow_sequence_child(current_type.upper_bound, new_inner_type, o)
+                new_type = current_type.copy_modified(upper_bound=new_bound)
             else:
-                new_type = current_type
+                new_type = self.narrow_sequence_child(current_type, new_inner_type, o)
         return PatternType(new_type, rest_type, captures)
 
     def get_sequence_type(self, t: Type, context: Context) -> Type | None:
@@ -446,6 +445,16 @@ class PatternChecker(PatternVisitor[PatternType]):
         new_types += types[star_pos + 1 :]
 
         return new_types
+
+    def narrow_sequence_child(self, outer_type: Type, inner_type: Type, ctx: Context) -> Type:
+        new_type = self.construct_sequence_child(outer_type, inner_type)
+        if is_subtype(new_type, outer_type):
+            new_type, _ = self.chk.conditional_types_with_intersection(
+                outer_type, [get_type_range(new_type)], ctx, default=outer_type
+            )
+        else:
+            new_type = outer_type
+        return new_type
 
     def visit_starred_pattern(self, o: StarredPattern) -> PatternType:
         captures: dict[Expression, Type] = {}

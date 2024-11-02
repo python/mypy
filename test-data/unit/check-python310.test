@@ -2343,3 +2343,30 @@ def test(xs: Tuple[Unpack[Ts]]) -> None:
             reveal_type(b3)  # N: Revealed type is "builtins.list[builtins.object]"
             reveal_type(c3)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testMatchSequencePatternTypeVarBoundNoCrash]
+# This was crashing: https://github.com/python/mypy/issues/18089
+from typing import TypeVar, Sequence, Any
+
+T = TypeVar("T", bound=Sequence[Any])
+
+def f(x: T) -> None:
+    match x:
+        case [_]:
+            pass
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSequencePatternTypeVarBoundNarrows]
+from typing import TypeVar, Sequence
+
+T = TypeVar("T", bound=Sequence[int | str])
+
+def accept_seq_int(x: Sequence[int]): ...
+
+def f(x: T) -> None:
+    match x:
+        case [1, 2]:
+            accept_seq_int(x)
+        case _:
+            accept_seq_int(x)  # E: Argument 1 to "accept_seq_int" has incompatible type "T"; expected "Sequence[int]"
+[builtins fixtures/tuple.pyi]
