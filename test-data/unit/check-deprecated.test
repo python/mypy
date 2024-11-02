@@ -491,6 +491,7 @@ C().g = "x"  # N: function __main__.C.g is deprecated: use g2 instead \
 
 
 [case testDeprecatedDescriptor]
+# flags: --python-version 3.9
 
 from typing import Optional, Type, Union
 from typing_extensions import deprecated, overload
