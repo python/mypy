@@ -4425,7 +4425,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             msg=self.msg,
             chk=self,
         )
-        get_type = analyze_descriptor_access(attribute_type, mx)
+        get_type = analyze_descriptor_access(attribute_type, mx, assignment=True)
         if not attribute_type.type.has_readable_member("__set__"):
             # If there is no __set__, we type-check that the assigned value matches
             # the return type of __get__. This doesn't match the python semantics,
@@ -4490,6 +4490,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             context,
             object_type=attribute_type,
             callable_name=callable_name,
+        )
+
+        # Search for possible deprecations:
+        mx.chk.check_deprecated(dunder_set, mx.context)
+        mx.chk.warn_deprecated_overload_item(
+            dunder_set, mx.context, inferred_dunder_set_type, attribute_type
         )
 
         # In the following cases, a message already will have been recorded in check_call.
@@ -7687,6 +7693,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         ):
             warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
             warn(deprecated, context, code=codes.DEPRECATED)
+
+    def warn_deprecated_overload_item(
+        self, node: SymbolNode | None,
+        context: Context,
+        target: CallableType,
+        instance: Instance | None = None,
+    ) -> None:
+        """Warn if the overload item corresponding to the given callable is deprecated."""
+        if isinstance(node, OverloadedFuncDef):
+            for item in node.items:
+                if isinstance(item, Decorator):
+                    candidate = item.func.type
+                    if instance is not None:
+                        candidate = bind_self(candidate, instance)
+                    if candidate == target:
+                        self.warn_deprecated(item.func, context)
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):

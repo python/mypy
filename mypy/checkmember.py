@@ -638,7 +638,9 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
             msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 
-def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
+def analyze_descriptor_access(
+    descriptor_type: Type, mx: MemberContext, *, assignment: bool = False
+) -> Type:
     """Type check descriptor access.
 
     Arguments:
@@ -718,6 +720,12 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         object_type=descriptor_type,
         callable_name=callable_name,
     )
+
+    if not assignment:
+        mx.chk.check_deprecated(dunder_get, mx.context)
+        mx.chk.warn_deprecated_overload_item(
+            dunder_get, mx.context, inferred_dunder_get_type, descriptor_type
+        )
 
     inferred_dunder_get_type = get_proper_type(inferred_dunder_get_type)
     if isinstance(inferred_dunder_get_type, AnyType):
