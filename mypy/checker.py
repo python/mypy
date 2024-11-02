@@ -7695,12 +7695,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             warn(deprecated, context, code=codes.DEPRECATED)
 
     def warn_deprecated_overload_item(
-        self,
-        node: Node | None,
-        context: Context,
-        *,
-        target: Type,
-        selftype: Type | None = None,
+        self, node: Node | None, context: Context, *, target: Type, selftype: Type | None = None
     ) -> None:
         """Warn if the overload item corresponding to the given callable is deprecated."""
         target = get_proper_type(target)
