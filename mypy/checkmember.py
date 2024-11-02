@@ -724,7 +724,7 @@ def analyze_descriptor_access(
     if not assignment:
         mx.chk.check_deprecated(dunder_get, mx.context)
         mx.chk.warn_deprecated_overload_item(
-            dunder_get, mx.context, inferred_dunder_get_type, descriptor_type
+            dunder_get, mx.context, target=inferred_dunder_get_type, selftype=descriptor_type
         )
 
     inferred_dunder_get_type = get_proper_type(inferred_dunder_get_type)

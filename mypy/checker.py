@@ -4495,7 +4495,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Search for possible deprecations:
         mx.chk.check_deprecated(dunder_set, mx.context)
         mx.chk.warn_deprecated_overload_item(
-            dunder_set, mx.context, inferred_dunder_set_type, attribute_type
+            dunder_set, mx.context, target=inferred_dunder_set_type, selftype=attribute_type
         )
 
         # In the following cases, a message already will have been recorded in check_call.
@@ -7669,7 +7669,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
         return self.expr_checker.accept(node, type_context=type_context)
 
-    def check_deprecated(self, node: SymbolNode | None, context: Context) -> None:
+    def check_deprecated(self, node: Node | None, context: Context) -> None:
         """Warn if deprecated and not directly imported with a `from` statement."""
         if isinstance(node, Decorator):
             node = node.func
@@ -7682,7 +7682,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 self.warn_deprecated(node, context)
 
-    def warn_deprecated(self, node: SymbolNode | None, context: Context) -> None:
+    def warn_deprecated(self, node: Node | None, context: Context) -> None:
         """Warn if deprecated."""
         if isinstance(node, Decorator):
             node = node.func
@@ -7696,18 +7696,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def warn_deprecated_overload_item(
         self,
-        node: SymbolNode | None,
+        node: Node | None,
         context: Context,
-        target: CallableType,
-        instance: Instance | None = None,
+        *,
+        target: Type,
+        selftype: Type | None = None,
     ) -> None:
         """Warn if the overload item corresponding to the given callable is deprecated."""
-        if isinstance(node, OverloadedFuncDef):
+        target = get_proper_type(target)
+        if isinstance(node, OverloadedFuncDef) and isinstance(target, CallableType):
             for item in node.items:
-                if isinstance(item, Decorator):
-                    candidate = item.func.type
-                    if instance is not None:
-                        candidate = bind_self(candidate, instance)
+                if isinstance(item, Decorator) and isinstance(
+                    candidate := item.func.type, CallableType
+                ):
+                    if selftype is not None:
+                        candidate = bind_self(candidate, selftype)
                     if candidate == target:
                         self.warn_deprecated(item.func, context)
 
