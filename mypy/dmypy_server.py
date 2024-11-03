@@ -903,7 +903,9 @@ class Server:
 
         return changed, removed
 
-    def add_explicitly_new(self, sources: list[BuildSource], changed: list[tuple[str, str]]) -> None:
+    def add_explicitly_new(
+        self, sources: list[BuildSource], changed: list[tuple[str, str]]
+    ) -> None:
         # Always add modules that were (re-)added, since they may be detected as not changed by
         # fswatcher (if they were actually not changed), but they may still need to be checked
         # in case they had errors before they were deleted from sources on previous runs.

@@ -403,7 +403,10 @@ class FineGrainedBuildManager:
         # builtins and friends could potentially get triggered because
         # of protocol stuff, but nothing good could possibly come from
         # actually updating them.
-        if is_stdlib_file(self.manager.options.abs_custom_typeshed_dir, path) or module in SENSITIVE_INTERNAL_MODULES:
+        if (
+            is_stdlib_file(self.manager.options.abs_custom_typeshed_dir, path)
+            or module in SENSITIVE_INTERNAL_MODULES
+        ):
             return [], (module, path), None
 
         manager = self.manager
