@@ -29,6 +29,7 @@ try:
 except ImportError:
     lxml = None
 
+
 import pytest
 
 # List of files that contain test case descriptions.
@@ -44,6 +45,8 @@ if sys.version_info < (3, 11):
     typecheck_files.remove("check-python311.test")
 if sys.version_info < (3, 12):
     typecheck_files.remove("check-python312.test")
+if sys.version_info < (3, 13):
+    typecheck_files.remove("check-python313.test")
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform not in ("darwin", "win32"):
@@ -99,9 +102,11 @@ class TypeCheckSuite(DataSuite):
     def run_case_once(
         self,
         testcase: DataDrivenTestCase,
-        operations: list[FileOperation] = [],
+        operations: list[FileOperation] | None = None,
         incremental_step: int = 0,
     ) -> None:
+        if operations is None:
+            operations = []
         original_program_text = "\n".join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 

@@ -20,7 +20,7 @@ import mypy.util
 Sig: _TypeAlias = Tuple[str, str]
 
 
-_TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$")
+_TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], .\"\']*(\.[a-zA-Z_][\w\[\], ]*)*$")
 _ARG_NAME_RE: Final = re.compile(r"\**[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -36,11 +36,19 @@ def is_valid_type(s: str) -> bool:
 class ArgSig:
     """Signature info for a single argument."""
 
-    def __init__(self, name: str, type: str | None = None, default: bool = False):
+    def __init__(
+        self,
+        name: str,
+        type: str | None = None,
+        *,
+        default: bool = False,
+        default_value: str = "...",
+    ) -> None:
         self.name = name
         self.type = type
         # Does this argument have a default value?
         self.default = default
+        self.default_value = default_value
 
     def is_star_arg(self) -> bool:
         return self.name.startswith("*") and not self.name.startswith("**")
@@ -59,6 +67,7 @@ class ArgSig:
                 self.name == other.name
                 and self.type == other.type
                 and self.default == other.default
+                and self.default_value == other.default_value
             )
         return False
 
@@ -67,6 +76,7 @@ class FunctionSig(NamedTuple):
     name: str
     args: list[ArgSig]
     ret_type: str | None
+    type_args: str = ""  # TODO implement in stubgenc and remove the default
 
     def is_special_method(self) -> bool:
         return bool(
@@ -119,10 +129,10 @@ class FunctionSig(NamedTuple):
             if arg_type:
                 arg_def += ": " + arg_type
                 if arg.default:
-                    arg_def += " = ..."
+                    arg_def += f" = {arg.default_value}"
 
             elif arg.default:
-                arg_def += "=..."
+                arg_def += f"={arg.default_value}"
 
             args.append(arg_def)
 
@@ -132,9 +142,7 @@ class FunctionSig(NamedTuple):
             retfield = " -> " + ret_type
 
         prefix = "async " if is_async else ""
-        sig = "{indent}{prefix}def {name}({args}){ret}:".format(
-            indent=indent, prefix=prefix, name=self.name, args=", ".join(args), ret=retfield
-        )
+        sig = f"{indent}{prefix}def {self.name}{self.type_args}({', '.join(args)}){retfield}:"
         if docstring:
             suffix = f"\n{indent}    {mypy.util.quote_docstring(docstring)}"
         else:
@@ -316,7 +324,7 @@ class DocStringParser:
             return has_arg("*args", signature) and has_arg("**kwargs", signature)
 
         # Move functions with (*args, **kwargs) in their signature to last place.
-        return list(sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0))
+        return sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0)
 
 
 def infer_sig_from_docstring(docstr: str | None, name: str) -> list[FunctionSig] | None:
@@ -374,7 +382,8 @@ def infer_ret_type_sig_from_docstring(docstr: str, name: str) -> str | None:
 
 def infer_ret_type_sig_from_anon_docstring(docstr: str) -> str | None:
     """Convert signature in form of "(self: TestClass, arg0) -> int" to their return type."""
-    return infer_ret_type_sig_from_docstring("stub" + docstr.strip(), "stub")
+    lines = ["stub" + line.strip() for line in docstr.splitlines() if line.strip().startswith("(")]
+    return infer_ret_type_sig_from_docstring("".join(lines), "stub")
 
 
 def parse_signature(sig: str) -> tuple[str, list[str], list[str]] | None:

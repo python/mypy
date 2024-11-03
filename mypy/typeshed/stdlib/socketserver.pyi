@@ -3,8 +3,9 @@ import types
 from _socket import _Address, _RetAddress
 from _typeshed import ReadableBuffer
 from collections.abc import Callable
+from io import BufferedIOBase
 from socket import socket as _socket
-from typing import Any, BinaryIO, ClassVar
+from typing import Any, ClassVar
 from typing_extensions import Self, TypeAlias
 
 __all__ = [
@@ -86,7 +87,7 @@ class UDPServer(TCPServer):
     def get_request(self) -> tuple[tuple[bytes, _socket], _RetAddress]: ...  # type: ignore[override]
 
 if sys.platform != "win32":
-    class UnixStreamServer(BaseServer):
+    class UnixStreamServer(TCPServer):
         server_address: _AfUnixAddress  # type: ignore[assignment]
         def __init__(
             self,
@@ -95,7 +96,7 @@ if sys.platform != "win32":
             bind_and_activate: bool = True,
         ) -> None: ...
 
-    class UnixDatagramServer(BaseServer):
+    class UnixDatagramServer(UDPServer):
         server_address: _AfUnixAddress  # type: ignore[assignment]
         def __init__(
             self,
@@ -158,11 +159,11 @@ class StreamRequestHandler(BaseRequestHandler):
     timeout: ClassVar[float | None]  # undocumented
     disable_nagle_algorithm: ClassVar[bool]  # undocumented
     connection: Any  # undocumented
-    rfile: BinaryIO
-    wfile: BinaryIO
+    rfile: BufferedIOBase
+    wfile: BufferedIOBase
 
 class DatagramRequestHandler(BaseRequestHandler):
-    packet: _socket  # undocumented
+    packet: bytes  # undocumented
     socket: _socket  # undocumented
-    rfile: BinaryIO
-    wfile: BinaryIO
+    rfile: BufferedIOBase
+    wfile: BufferedIOBase

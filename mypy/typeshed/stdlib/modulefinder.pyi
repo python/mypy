@@ -1,15 +1,15 @@
 import sys
 from collections.abc import Container, Iterable, Iterator, Sequence
 from types import CodeType
-from typing import IO, Any
+from typing import IO, Any, Final
 
 if sys.version_info < (3, 11):
-    LOAD_CONST: int  # undocumented
-    IMPORT_NAME: int  # undocumented
-    STORE_NAME: int  # undocumented
-    STORE_GLOBAL: int  # undocumented
-    STORE_OPS: tuple[int, int]  # undocumented
-    EXTENDED_ARG: int  # undocumented
+    LOAD_CONST: Final[int]  # undocumented
+    IMPORT_NAME: Final[int]  # undocumented
+    STORE_NAME: Final[int]  # undocumented
+    STORE_GLOBAL: Final[int]  # undocumented
+    STORE_OPS: Final[tuple[int, int]]  # undocumented
+    EXTENDED_ARG: Final[int]  # undocumented
 
 packagePathMap: dict[str, list[str]]  # undocumented
 
@@ -31,23 +31,13 @@ class ModuleFinder:
     excludes: Container[str]  # undocumented
     replace_paths: Sequence[tuple[str, str]]  # undocumented
 
-    if sys.version_info >= (3, 8):
-        def __init__(
-            self,
-            path: list[str] | None = None,
-            debug: int = 0,
-            excludes: Container[str] | None = None,
-            replace_paths: Sequence[tuple[str, str]] | None = None,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            path: list[str] | None = None,
-            debug: int = 0,
-            excludes: Container[str] = [],
-            replace_paths: Sequence[tuple[str, str]] = [],
-        ) -> None: ...
-
+    def __init__(
+        self,
+        path: list[str] | None = None,
+        debug: int = 0,
+        excludes: Container[str] | None = None,
+        replace_paths: Sequence[tuple[str, str]] | None = None,
+    ) -> None: ...
     def msg(self, level: int, str: str, *args: Any) -> None: ...  # undocumented
     def msgin(self, *args: Any) -> None: ...  # undocumented
     def msgout(self, *args: Any) -> None: ...  # undocumented

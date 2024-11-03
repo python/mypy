@@ -61,16 +61,16 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         # Note that type variable values and upper bound aren't treated as
         # components, since they are components of the type variable
         # definition. We want to traverse everything just once.
-        pass
+        t.default.accept(self)
 
     def visit_param_spec(self, t: ParamSpecType) -> None:
-        pass
+        t.default.accept(self)
 
     def visit_parameters(self, t: Parameters) -> None:
         self.traverse_types(t.arg_types)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
-        pass
+        t.default.accept(self)
 
     def visit_literal_type(self, t: LiteralType) -> None:
         t.fallback.accept(self)
@@ -85,6 +85,12 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         self.traverse_types(t.arg_types)
         t.ret_type.accept(self)
         t.fallback.accept(self)
+
+        if t.type_guard is not None:
+            t.type_guard.accept(self)
+
+        if t.type_is is not None:
+            t.type_is.accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> None:
         self.traverse_types(t.items)

@@ -1,6 +1,7 @@
 import http.server
 import pydoc
 import socketserver
+from _typeshed import ReadableBuffer
 from collections.abc import Callable, Iterable, Mapping
 from re import Pattern
 from typing import Any, ClassVar, Protocol
@@ -12,17 +13,17 @@ class _DispatchArity0(Protocol):
     def __call__(self) -> _Marshallable: ...
 
 class _DispatchArity1(Protocol):
-    def __call__(self, __arg1: _Marshallable) -> _Marshallable: ...
+    def __call__(self, arg1: _Marshallable, /) -> _Marshallable: ...
 
 class _DispatchArity2(Protocol):
-    def __call__(self, __arg1: _Marshallable, __arg2: _Marshallable) -> _Marshallable: ...
+    def __call__(self, arg1: _Marshallable, arg2: _Marshallable, /) -> _Marshallable: ...
 
 class _DispatchArity3(Protocol):
-    def __call__(self, __arg1: _Marshallable, __arg2: _Marshallable, __arg3: _Marshallable) -> _Marshallable: ...
+    def __call__(self, arg1: _Marshallable, arg2: _Marshallable, arg3: _Marshallable, /) -> _Marshallable: ...
 
 class _DispatchArity4(Protocol):
     def __call__(
-        self, __arg1: _Marshallable, __arg2: _Marshallable, __arg3: _Marshallable, __arg4: _Marshallable
+        self, arg1: _Marshallable, arg2: _Marshallable, arg3: _Marshallable, arg4: _Marshallable, /
     ) -> _Marshallable: ...
 
 class _DispatchArityN(Protocol):
@@ -48,8 +49,8 @@ class SimpleXMLRPCDispatcher:  # undocumented
     def register_multicall_functions(self) -> None: ...
     def _marshaled_dispatch(
         self,
-        data: str,
-        dispatch_method: Callable[[str | None, tuple[_Marshallable, ...]], Fault | tuple[_Marshallable, ...]] | None = None,
+        data: str | ReadableBuffer,
+        dispatch_method: Callable[[str, tuple[_Marshallable, ...]], Fault | tuple[_Marshallable, ...]] | None = None,
         path: Any | None = None,
     ) -> str: ...  # undocumented
     def system_listMethods(self) -> list[str]: ...  # undocumented

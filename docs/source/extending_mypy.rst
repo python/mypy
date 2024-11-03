@@ -179,7 +179,7 @@ mypy will call ``get_method_signature_hook("ctypes.Array.__setitem__")``
 so that the plugin can mimic the :py:mod:`ctypes` auto-convert behavior.
 
 **get_attribute_hook()** overrides instance member field lookups and property
-access (not assignments, and not method calls). This hook is only called for
+access (not method calls). This hook is only called for
 fields which already exist on the class. *Exception:* if :py:meth:`__getattr__ <object.__getattr__>` or
 :py:meth:`__getattribute__ <object.__getattribute__>` is a method on the class, the hook is called for all
 fields which do not refer to methods.

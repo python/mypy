@@ -988,7 +988,7 @@ a = k2
 if int():
     a = k2
 if int():
-    a = k1 # E: Incompatible types in assignment (expression has type "Callable[[int, List[T]], List[Union[T, int]]]", variable has type "Callable[[S, List[T]], List[Union[T, int]]]")
+    a = k1 # E: Incompatible types in assignment (expression has type "Callable[[int, List[T@k1]], List[Union[T@k1, int]]]", variable has type "Callable[[S, List[T@k2]], List[Union[T@k2, int]]]")
 b = k1
 if int():
     b = k1
@@ -1238,6 +1238,35 @@ class B: pass
 [builtins fixtures/for.pyi]
 [out]
 
+[case testForStatementIndexNarrowing]
+from typing_extensions import TypedDict
+
+class X(TypedDict):
+    hourly: int
+    daily: int
+
+x: X
+for a in ("hourly", "daily"):
+    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
+    reveal_type(x[a])  # N: Revealed type is "builtins.int"
+    reveal_type(a.upper())  # N: Revealed type is "builtins.str"
+    c = a
+    reveal_type(c)  # N: Revealed type is "builtins.str"
+    a = "monthly"
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+    a = "yearly"
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+    a = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+    d = a
+    reveal_type(d)  # N: Revealed type is "builtins.str"
+
+b: str
+for b in ("hourly", "daily"):
+    reveal_type(b)  # N: Revealed type is "builtins.str"
+    reveal_type(b.upper())  # N: Revealed type is "builtins.str"
+[builtins fixtures/for.pyi]
+
 
 -- Regression tests
 -- ----------------
@@ -1438,17 +1467,21 @@ class Wrapper:
 
 def f(cond: bool) -> Any:
     f = Wrapper if cond else lambda x: x
-    reveal_type(f)  # N: Revealed type is "def (x: Any) -> Any"
+    reveal_type(f)  # N: Revealed type is "Union[def (x: Any) -> __main__.Wrapper, def (x: Any) -> Any]"
     return f(3)
 
 def g(cond: bool) -> Any:
     f = lambda x: x if cond else Wrapper
-    reveal_type(f)  # N: Revealed type is "def (x: Any) -> Any"
+    reveal_type(f)  # N: Revealed type is "def (x: Any) -> Union[Any, def (x: Any) -> __main__.Wrapper]"
+    return f(3)
+
+def h(cond: bool) -> Any:
+    f = (lambda x: x) if cond else Wrapper
+    reveal_type(f)  # N: Revealed type is "Union[def (x: Any) -> Any, def (x: Any) -> __main__.Wrapper]"
     return f(3)
 
 -- Boolean operators
 -- -----------------
-
 
 [case testOrOperationWithGenericOperands]
 from typing import List
@@ -3807,9 +3840,43 @@ def Negate(count: int, /, metric: Metric[float]) -> float: ...
 def Combine(count: int, m1: Metric[T], m2: Metric[T], /, *more: Metric[T]) -> T: ...
 
 reveal_type(Negate)  # N: Revealed type is "def (metric: __main__.Metric[builtins.float]) -> builtins.float"
-reveal_type(Combine)  # N: Revealed type is "def [T] (def () -> T`4, def () -> T`4, *more: def () -> T`4) -> T`4"
+reveal_type(Combine)  # N: Revealed type is "def [T] (def () -> T`5, def () -> T`5, *more: def () -> T`5) -> T`5"
 
 def m1() -> float: ...
 def m2() -> float: ...
 reveal_type(Combine(m1, m2))  # N: Revealed type is "builtins.float"
 [builtins fixtures/list.pyi]
+
+[case testInferenceWithUninhabitedType]
+from typing import Dict, Generic, List, Never, TypeVar
+
+T = TypeVar("T")
+
+class A(Generic[T]): ...
+class B(Dict[T, T]): ...
+
+def func1(a: A[T], b: T) -> T: ...
+def func2(a: T, b: A[T]) -> T: ...
+
+def a1(a: A[Dict[str, int]]) -> None:
+    reveal_type(func1(a, {}))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+    reveal_type(func2({}, a))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+
+def a2(check: bool, a: B[str]) -> None:
+    reveal_type(a if check else {})  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+
+def a3() -> None:
+    a = {}  # E: Need type annotation for "a" (hint: "a: Dict[<type>, <type>] = ...")
+    b = {1: {}}  # E: Need type annotation for "b"
+    c = {1: {}, 2: {"key": {}}}  # E: Need type annotation for "c"
+    reveal_type(a)  # N: Revealed type is "builtins.dict[Any, Any]"
+    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.int, builtins.dict[Any, Any]]"
+    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.dict[builtins.str, builtins.dict[Any, Any]]]"
+
+def a4(x: List[str], y: List[Never]) -> None:
+    z1 = [x, y]
+    z2 = [y, x]
+    reveal_type(z1)  # N: Revealed type is "builtins.list[builtins.object]"
+    reveal_type(z2)  # N: Revealed type is "builtins.list[builtins.object]"
+    z1[1].append("asdf")  # E: "object" has no attribute "append"
+[builtins fixtures/dict.pyi]

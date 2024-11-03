@@ -1,25 +1,18 @@
 import sys
-from _typeshed import OptExcInfo, ProfileFunction, TraceFunction, structseq
+from _typeshed import MaybeNone, OptExcInfo, ProfileFunction, TraceFunction, structseq
+from _typeshed.importlib import MetaPathFinderProtocol, PathEntryFinderProtocol
 from builtins import object as _object
-from collections.abc import AsyncGenerator, Callable, Coroutine, Sequence
-from importlib.abc import PathEntryFinder
-from importlib.machinery import ModuleSpec
+from collections.abc import AsyncGenerator, Callable, Sequence
 from io import TextIOWrapper
 from types import FrameType, ModuleType, TracebackType
-from typing import Any, NoReturn, Protocol, TextIO, TypeVar
-from typing_extensions import Final, Literal, TypeAlias, final
+from typing import Any, Final, Literal, NoReturn, Protocol, TextIO, TypeVar, final
+from typing_extensions import TypeAlias
 
 _T = TypeVar("_T")
 
 # see https://github.com/python/typeshed/issues/8513#issue-1333671093 for the rationale behind this alias
 _ExitCode: TypeAlias = str | int | None
 _OptExcInfo: TypeAlias = OptExcInfo  # noqa: Y047  # TODO: obsolete, remove fall 2022 or later
-
-# Intentionally omits one deprecated and one optional method of `importlib.abc.MetaPathFinder`
-class _MetaPathFinder(Protocol):
-    def find_spec(
-        self, __fullname: str, __path: Sequence[str] | None, __target: ModuleType | None = ...
-    ) -> ModuleSpec | None: ...
 
 # ----- sys variables -----
 if sys.platform != "win32":
@@ -42,43 +35,45 @@ hexversion: int
 last_type: type[BaseException] | None
 last_value: BaseException | None
 last_traceback: TracebackType | None
+if sys.version_info >= (3, 12):
+    last_exc: BaseException  # or undefined.
 maxsize: int
 maxunicode: int
-meta_path: list[_MetaPathFinder]
+meta_path: list[MetaPathFinderProtocol]
 modules: dict[str, ModuleType]
 if sys.version_info >= (3, 10):
     orig_argv: list[str]
 path: list[str]
-path_hooks: list[Callable[[str], PathEntryFinder]]
-path_importer_cache: dict[str, PathEntryFinder | None]
+path_hooks: list[Callable[[str], PathEntryFinderProtocol]]
+path_importer_cache: dict[str, PathEntryFinderProtocol | None]
 platform: str
 if sys.version_info >= (3, 9):
     platlibdir: str
 prefix: str
-if sys.version_info >= (3, 8):
-    pycache_prefix: str | None
+pycache_prefix: str | None
 ps1: object
 ps2: object
 
 # TextIO is used instead of more specific types for the standard streams,
 # since they are often monkeypatched at runtime. At startup, the objects
-# are initialized to instances of TextIOWrapper.
+# are initialized to instances of TextIOWrapper, but can also be None under
+# some circumstances.
 #
 # To use methods from TextIOWrapper, use an isinstance check to ensure that
 # the streams have not been overridden:
 #
 # if isinstance(sys.stdout, io.TextIOWrapper):
 #    sys.stdout.reconfigure(...)
-stdin: TextIO
-stdout: TextIO
-stderr: TextIO
+stdin: TextIO | MaybeNone
+stdout: TextIO | MaybeNone
+stderr: TextIO | MaybeNone
 
 if sys.version_info >= (3, 10):
     stdlib_module_names: frozenset[str]
 
-__stdin__: Final[TextIOWrapper]  # Contains the original value of stdin
-__stdout__: Final[TextIOWrapper]  # Contains the original value of stdout
-__stderr__: Final[TextIOWrapper]  # Contains the original value of stderr
+__stdin__: Final[TextIOWrapper | None]  # Contains the original value of stdin
+__stdout__: Final[TextIOWrapper | None]  # Contains the original value of stdout
+__stderr__: Final[TextIOWrapper | None]  # Contains the original value of stderr
 tracebacklimit: int
 version: str
 api_version: int
@@ -244,19 +239,19 @@ class _version_info(_UninstantiableStructseq, tuple[int, int, int, _ReleaseLevel
 
 version_info: _version_info
 
-def call_tracing(__func: Callable[..., _T], __args: Any) -> _T: ...
+def call_tracing(func: Callable[..., _T], args: Any, /) -> _T: ...
 def _clear_type_cache() -> None: ...
 def _current_frames() -> dict[int, FrameType]: ...
-def _getframe(__depth: int = 0) -> FrameType: ...
+def _getframe(depth: int = 0, /) -> FrameType: ...
 def _debugmallocstats() -> None: ...
-def __displayhook__(__object: object) -> None: ...
-def __excepthook__(__exctype: type[BaseException], __value: BaseException, __traceback: TracebackType | None) -> None: ...
+def __displayhook__(object: object, /) -> None: ...
+def __excepthook__(exctype: type[BaseException], value: BaseException, traceback: TracebackType | None, /) -> None: ...
 def exc_info() -> OptExcInfo: ...
 
 if sys.version_info >= (3, 11):
     def exception() -> BaseException | None: ...
 
-def exit(__status: _ExitCode = None) -> NoReturn: ...
+def exit(status: _ExitCode = None, /) -> NoReturn: ...
 def getallocatedblocks() -> int: ...
 def getdefaultencoding() -> str: ...
 
@@ -265,14 +260,14 @@ if sys.platform != "win32":
 
 def getfilesystemencoding() -> str: ...
 def getfilesystemencodeerrors() -> str: ...
-def getrefcount(__object: Any) -> int: ...
+def getrefcount(object: Any, /) -> int: ...
 def getrecursionlimit() -> int: ...
 def getsizeof(obj: object, default: int = ...) -> int: ...
 def getswitchinterval() -> float: ...
 def getprofile() -> ProfileFunction | None: ...
-def setprofile(profilefunc: ProfileFunction | None) -> None: ...
+def setprofile(function: ProfileFunction | None, /) -> None: ...
 def gettrace() -> TraceFunction | None: ...
-def settrace(tracefunc: TraceFunction | None) -> None: ...
+def settrace(function: TraceFunction | None, /) -> None: ...
 
 if sys.platform == "win32":
     # A tuple of length 5, even though it has more than 5 attributes.
@@ -301,39 +296,40 @@ if sys.platform == "win32":
 
     def getwindowsversion() -> _WinVersion: ...
 
-def intern(__string: str) -> str: ...
+def intern(string: str, /) -> str: ...
 def is_finalizing() -> bool: ...
 def breakpointhook(*args: Any, **kwargs: Any) -> Any: ...
 
 __breakpointhook__ = breakpointhook  # Contains the original value of breakpointhook
 
 if sys.platform != "win32":
-    def setdlopenflags(__flags: int) -> None: ...
+    def setdlopenflags(flags: int, /) -> None: ...
 
-def setrecursionlimit(__limit: int) -> None: ...
-def setswitchinterval(__interval: float) -> None: ...
+def setrecursionlimit(limit: int, /) -> None: ...
+def setswitchinterval(interval: float, /) -> None: ...
 def gettotalrefcount() -> int: ...  # Debug builds only
 
 if sys.version_info < (3, 9):
     def getcheckinterval() -> int: ...  # deprecated
-    def setcheckinterval(__n: int) -> None: ...  # deprecated
+    def setcheckinterval(n: int, /) -> None: ...  # deprecated
 
 if sys.version_info < (3, 9):
     # An 11-tuple or None
     def callstats() -> tuple[int, int, int, int, int, int, int, int, int, int, int] | None: ...
 
-if sys.version_info >= (3, 8):
-    # Doesn't exist at runtime, but exported in the stubs so pytest etc. can annotate their code more easily.
-    class UnraisableHookArgs(Protocol):
-        exc_type: type[BaseException]
-        exc_value: BaseException | None
-        exc_traceback: TracebackType | None
-        err_msg: str | None
-        object: _object
-    unraisablehook: Callable[[UnraisableHookArgs], Any]
-    def __unraisablehook__(__unraisable: UnraisableHookArgs) -> Any: ...
-    def addaudithook(hook: Callable[[str, tuple[Any, ...]], Any]) -> None: ...
-    def audit(__event: str, *args: Any) -> None: ...
+# Doesn't exist at runtime, but exported in the stubs so pytest etc. can annotate their code more easily.
+class UnraisableHookArgs(Protocol):
+    exc_type: type[BaseException]
+    exc_value: BaseException | None
+    exc_traceback: TracebackType | None
+    err_msg: str | None
+    object: _object
+
+unraisablehook: Callable[[UnraisableHookArgs], Any]
+
+def __unraisablehook__(unraisable: UnraisableHookArgs, /) -> Any: ...
+def addaudithook(hook: Callable[[str, tuple[Any, ...]], Any]) -> None: ...
+def audit(event: str, /, *args: Any) -> None: ...
 
 _AsyncgenHook: TypeAlias = Callable[[AsyncGenerator[Any, Any]], None] | None
 
@@ -353,25 +349,24 @@ if sys.platform == "win32":
 def get_coroutine_origin_tracking_depth() -> int: ...
 def set_coroutine_origin_tracking_depth(depth: int) -> None: ...
 
-if sys.version_info < (3, 8):
-    _CoroWrapper: TypeAlias = Callable[[Coroutine[Any, Any, Any]], Any]
-    def set_coroutine_wrapper(__wrapper: _CoroWrapper) -> None: ...
-    def get_coroutine_wrapper() -> _CoroWrapper: ...
-
-# The following two functions were added in 3.11.0, 3.10.7, 3.9.14, 3.8.14, & 3.7.14,
+# The following two functions were added in 3.11.0, 3.10.7, 3.9.14, and 3.8.14,
 # as part of the response to CVE-2020-10735
 def set_int_max_str_digits(maxdigits: int) -> None: ...
 def get_int_max_str_digits() -> int: ...
 
 if sys.version_info >= (3, 12):
-    def getunicodeinternedsize() -> int: ...
+    if sys.version_info >= (3, 13):
+        def getunicodeinternedsize(*, _only_immortal: bool = False) -> int: ...
+    else:
+        def getunicodeinternedsize() -> int: ...
+
     def deactivate_stack_trampoline() -> None: ...
     def is_stack_trampoline_active() -> bool: ...
     # It always exists, but raises on non-linux platforms:
     if sys.platform == "linux":
-        def activate_stack_trampoline(__backend: str) -> None: ...
+        def activate_stack_trampoline(backend: str, /) -> None: ...
     else:
-        def activate_stack_trampoline(__backend: str) -> NoReturn: ...
+        def activate_stack_trampoline(backend: str, /) -> NoReturn: ...
 
     from . import _monitoring
 

@@ -1,19 +1,54 @@
 import enum
 import socket
 import sys
+from _ssl import (
+    _DEFAULT_CIPHERS as _DEFAULT_CIPHERS,
+    _OPENSSL_API_VERSION as _OPENSSL_API_VERSION,
+    HAS_ALPN as HAS_ALPN,
+    HAS_ECDH as HAS_ECDH,
+    HAS_NPN as HAS_NPN,
+    HAS_SNI as HAS_SNI,
+    OPENSSL_VERSION as OPENSSL_VERSION,
+    OPENSSL_VERSION_INFO as OPENSSL_VERSION_INFO,
+    OPENSSL_VERSION_NUMBER as OPENSSL_VERSION_NUMBER,
+    HAS_SSLv2 as HAS_SSLv2,
+    HAS_SSLv3 as HAS_SSLv3,
+    HAS_TLSv1 as HAS_TLSv1,
+    HAS_TLSv1_1 as HAS_TLSv1_1,
+    HAS_TLSv1_2 as HAS_TLSv1_2,
+    HAS_TLSv1_3 as HAS_TLSv1_3,
+    MemoryBIO as MemoryBIO,
+    RAND_add as RAND_add,
+    RAND_bytes as RAND_bytes,
+    RAND_status as RAND_status,
+    SSLSession as SSLSession,
+    _PasswordType as _PasswordType,  # typeshed only, but re-export for other type stubs to use
+    _SSLContext,
+)
 from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from collections.abc import Callable, Iterable
-from typing import Any, NamedTuple, overload
-from typing_extensions import Literal, Never, Self, TypeAlias, TypedDict, final
+from typing import Any, Literal, NamedTuple, TypedDict, overload
+from typing_extensions import Never, Self, TypeAlias
+
+if sys.version_info >= (3, 13):
+    from _ssl import HAS_PSK as HAS_PSK
+
+if sys.version_info < (3, 12):
+    from _ssl import RAND_pseudo_bytes as RAND_pseudo_bytes
+
+if sys.version_info < (3, 10):
+    from _ssl import RAND_egd as RAND_egd
+
+if sys.platform == "win32":
+    from _ssl import enum_certificates as enum_certificates, enum_crls as enum_crls
 
 _PCTRTT: TypeAlias = tuple[tuple[str, str], ...]
 _PCTRTTT: TypeAlias = tuple[_PCTRTT, ...]
 _PeerCertRetDictType: TypeAlias = dict[str, str | _PCTRTTT | _PCTRTT]
 _PeerCertRetType: TypeAlias = _PeerCertRetDictType | bytes | None
-_EnumRetType: TypeAlias = list[tuple[bytes, str, set[str] | bool]]
-_PasswordType: TypeAlias = Callable[[], str | bytes | bytearray] | str | bytes | bytearray
-
 _SrvnmeCbType: TypeAlias = Callable[[SSLSocket | SSLObject, str | None, SSLSocket], int | None]
+
+socket_error = OSError
 
 class _Cipher(TypedDict):
     aead: bool
@@ -96,15 +131,6 @@ else:
 
 _create_default_https_context: Callable[..., SSLContext]
 
-def RAND_bytes(__n: int) -> bytes: ...
-
-if sys.version_info < (3, 12):
-    def RAND_pseudo_bytes(__n: int) -> tuple[bytes, bool]: ...
-
-def RAND_status() -> bool: ...
-def RAND_egd(path: str) -> None: ...
-def RAND_add(__string: str | ReadableBuffer, __entropy: float) -> None: ...
-
 if sys.version_info < (3, 12):
     def match_hostname(cert: _PeerCertRetDictType, hostname: str) -> None: ...
 
@@ -131,28 +157,24 @@ class DefaultVerifyPaths(NamedTuple):
 
 def get_default_verify_paths() -> DefaultVerifyPaths: ...
 
-if sys.platform == "win32":
-    def enum_certificates(store_name: str) -> _EnumRetType: ...
-    def enum_crls(store_name: str) -> _EnumRetType: ...
-
 class VerifyMode(enum.IntEnum):
-    CERT_NONE: int
-    CERT_OPTIONAL: int
-    CERT_REQUIRED: int
+    CERT_NONE = 0
+    CERT_OPTIONAL = 1
+    CERT_REQUIRED = 2
 
 CERT_NONE: VerifyMode
 CERT_OPTIONAL: VerifyMode
 CERT_REQUIRED: VerifyMode
 
 class VerifyFlags(enum.IntFlag):
-    VERIFY_DEFAULT: int
-    VERIFY_CRL_CHECK_LEAF: int
-    VERIFY_CRL_CHECK_CHAIN: int
-    VERIFY_X509_STRICT: int
-    VERIFY_X509_TRUSTED_FIRST: int
+    VERIFY_DEFAULT = 0
+    VERIFY_CRL_CHECK_LEAF = 4
+    VERIFY_CRL_CHECK_CHAIN = 12
+    VERIFY_X509_STRICT = 32
+    VERIFY_X509_TRUSTED_FIRST = 32768
     if sys.version_info >= (3, 10):
-        VERIFY_ALLOW_PROXY_CERTS: int
-        VERIFY_X509_PARTIAL_CHAIN: int
+        VERIFY_ALLOW_PROXY_CERTS = 64
+        VERIFY_X509_PARTIAL_CHAIN = 524288
 
 VERIFY_DEFAULT: VerifyFlags
 VERIFY_CRL_CHECK_LEAF: VerifyFlags
@@ -165,15 +187,15 @@ if sys.version_info >= (3, 10):
     VERIFY_X509_PARTIAL_CHAIN: VerifyFlags
 
 class _SSLMethod(enum.IntEnum):
-    PROTOCOL_SSLv23: int
-    PROTOCOL_SSLv2: int
-    PROTOCOL_SSLv3: int
-    PROTOCOL_TLSv1: int
-    PROTOCOL_TLSv1_1: int
-    PROTOCOL_TLSv1_2: int
-    PROTOCOL_TLS: int
-    PROTOCOL_TLS_CLIENT: int
-    PROTOCOL_TLS_SERVER: int
+    PROTOCOL_SSLv23 = 2
+    PROTOCOL_SSLv2 = ...
+    PROTOCOL_SSLv3 = ...
+    PROTOCOL_TLSv1 = 3
+    PROTOCOL_TLSv1_1 = 4
+    PROTOCOL_TLSv1_2 = 5
+    PROTOCOL_TLS = 2
+    PROTOCOL_TLS_CLIENT = 16
+    PROTOCOL_TLS_SERVER = 17
 
 PROTOCOL_SSLv23: _SSLMethod
 PROTOCOL_SSLv2: _SSLMethod
@@ -186,28 +208,25 @@ PROTOCOL_TLS_CLIENT: _SSLMethod
 PROTOCOL_TLS_SERVER: _SSLMethod
 
 class Options(enum.IntFlag):
-    OP_ALL: int
-    OP_NO_SSLv2: int
-    OP_NO_SSLv3: int
-    OP_NO_TLSv1: int
-    OP_NO_TLSv1_1: int
-    OP_NO_TLSv1_2: int
-    OP_NO_TLSv1_3: int
-    OP_CIPHER_SERVER_PREFERENCE: int
-    OP_SINGLE_DH_USE: int
-    OP_SINGLE_ECDH_USE: int
-    OP_NO_COMPRESSION: int
-    OP_NO_TICKET: int
-    OP_NO_RENEGOTIATION: int
-    if sys.version_info >= (3, 8):
-        OP_ENABLE_MIDDLEBOX_COMPAT: int
+    OP_ALL = 2147483728
+    OP_NO_SSLv2 = 0
+    OP_NO_SSLv3 = 33554432
+    OP_NO_TLSv1 = 67108864
+    OP_NO_TLSv1_1 = 268435456
+    OP_NO_TLSv1_2 = 134217728
+    OP_NO_TLSv1_3 = 536870912
+    OP_CIPHER_SERVER_PREFERENCE = 4194304
+    OP_SINGLE_DH_USE = 0
+    OP_SINGLE_ECDH_USE = 0
+    OP_NO_COMPRESSION = 131072
+    OP_NO_TICKET = 16384
+    OP_NO_RENEGOTIATION = 1073741824
+    OP_ENABLE_MIDDLEBOX_COMPAT = 1048576
     if sys.version_info >= (3, 12):
-        OP_LEGACY_SERVER_CONNECT: int
-        OP_ENABLE_KTLS: int
-    if sys.version_info >= (3, 11):
-        OP_IGNORE_UNEXPECTED_EOF: int
-    elif sys.version_info >= (3, 8) and sys.platform == "linux":
-        OP_IGNORE_UNEXPECTED_EOF: int
+        OP_LEGACY_SERVER_CONNECT = 4
+        OP_ENABLE_KTLS = 8
+    if sys.version_info >= (3, 11) or sys.platform == "linux":
+        OP_IGNORE_UNEXPECTED_EOF = 128
 
 OP_ALL: Options
 OP_NO_SSLv2: Options
@@ -222,61 +241,45 @@ OP_SINGLE_ECDH_USE: Options
 OP_NO_COMPRESSION: Options
 OP_NO_TICKET: Options
 OP_NO_RENEGOTIATION: Options
-if sys.version_info >= (3, 8):
-    OP_ENABLE_MIDDLEBOX_COMPAT: Options
+OP_ENABLE_MIDDLEBOX_COMPAT: Options
 if sys.version_info >= (3, 12):
     OP_LEGACY_SERVER_CONNECT: Options
     OP_ENABLE_KTLS: Options
-if sys.version_info >= (3, 11):
-    OP_IGNORE_UNEXPECTED_EOF: Options
-elif sys.version_info >= (3, 8) and sys.platform == "linux":
+if sys.version_info >= (3, 11) or sys.platform == "linux":
     OP_IGNORE_UNEXPECTED_EOF: Options
 
 HAS_NEVER_CHECK_COMMON_NAME: bool
-HAS_SSLv2: bool
-HAS_SSLv3: bool
-HAS_TLSv1: bool
-HAS_TLSv1_1: bool
-HAS_TLSv1_2: bool
-HAS_TLSv1_3: bool
-HAS_ALPN: bool
-HAS_ECDH: bool
-HAS_SNI: bool
-HAS_NPN: bool
+
 CHANNEL_BINDING_TYPES: list[str]
 
-OPENSSL_VERSION: str
-OPENSSL_VERSION_INFO: tuple[int, int, int, int, int]
-OPENSSL_VERSION_NUMBER: int
-
 class AlertDescription(enum.IntEnum):
-    ALERT_DESCRIPTION_ACCESS_DENIED: int
-    ALERT_DESCRIPTION_BAD_CERTIFICATE: int
-    ALERT_DESCRIPTION_BAD_CERTIFICATE_HASH_VALUE: int
-    ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE: int
-    ALERT_DESCRIPTION_BAD_RECORD_MAC: int
-    ALERT_DESCRIPTION_CERTIFICATE_EXPIRED: int
-    ALERT_DESCRIPTION_CERTIFICATE_REVOKED: int
-    ALERT_DESCRIPTION_CERTIFICATE_UNKNOWN: int
-    ALERT_DESCRIPTION_CERTIFICATE_UNOBTAINABLE: int
-    ALERT_DESCRIPTION_CLOSE_NOTIFY: int
-    ALERT_DESCRIPTION_DECODE_ERROR: int
-    ALERT_DESCRIPTION_DECOMPRESSION_FAILURE: int
-    ALERT_DESCRIPTION_DECRYPT_ERROR: int
-    ALERT_DESCRIPTION_HANDSHAKE_FAILURE: int
-    ALERT_DESCRIPTION_ILLEGAL_PARAMETER: int
-    ALERT_DESCRIPTION_INSUFFICIENT_SECURITY: int
-    ALERT_DESCRIPTION_INTERNAL_ERROR: int
-    ALERT_DESCRIPTION_NO_RENEGOTIATION: int
-    ALERT_DESCRIPTION_PROTOCOL_VERSION: int
-    ALERT_DESCRIPTION_RECORD_OVERFLOW: int
-    ALERT_DESCRIPTION_UNEXPECTED_MESSAGE: int
-    ALERT_DESCRIPTION_UNKNOWN_CA: int
-    ALERT_DESCRIPTION_UNKNOWN_PSK_IDENTITY: int
-    ALERT_DESCRIPTION_UNRECOGNIZED_NAME: int
-    ALERT_DESCRIPTION_UNSUPPORTED_CERTIFICATE: int
-    ALERT_DESCRIPTION_UNSUPPORTED_EXTENSION: int
-    ALERT_DESCRIPTION_USER_CANCELLED: int
+    ALERT_DESCRIPTION_ACCESS_DENIED = 49
+    ALERT_DESCRIPTION_BAD_CERTIFICATE = 42
+    ALERT_DESCRIPTION_BAD_CERTIFICATE_HASH_VALUE = 114
+    ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE = 113
+    ALERT_DESCRIPTION_BAD_RECORD_MAC = 20
+    ALERT_DESCRIPTION_CERTIFICATE_EXPIRED = 45
+    ALERT_DESCRIPTION_CERTIFICATE_REVOKED = 44
+    ALERT_DESCRIPTION_CERTIFICATE_UNKNOWN = 46
+    ALERT_DESCRIPTION_CERTIFICATE_UNOBTAINABLE = 111
+    ALERT_DESCRIPTION_CLOSE_NOTIFY = 0
+    ALERT_DESCRIPTION_DECODE_ERROR = 50
+    ALERT_DESCRIPTION_DECOMPRESSION_FAILURE = 30
+    ALERT_DESCRIPTION_DECRYPT_ERROR = 51
+    ALERT_DESCRIPTION_HANDSHAKE_FAILURE = 40
+    ALERT_DESCRIPTION_ILLEGAL_PARAMETER = 47
+    ALERT_DESCRIPTION_INSUFFICIENT_SECURITY = 71
+    ALERT_DESCRIPTION_INTERNAL_ERROR = 80
+    ALERT_DESCRIPTION_NO_RENEGOTIATION = 100
+    ALERT_DESCRIPTION_PROTOCOL_VERSION = 70
+    ALERT_DESCRIPTION_RECORD_OVERFLOW = 22
+    ALERT_DESCRIPTION_UNEXPECTED_MESSAGE = 10
+    ALERT_DESCRIPTION_UNKNOWN_CA = 48
+    ALERT_DESCRIPTION_UNKNOWN_PSK_IDENTITY = 115
+    ALERT_DESCRIPTION_UNRECOGNIZED_NAME = 112
+    ALERT_DESCRIPTION_UNSUPPORTED_CERTIFICATE = 43
+    ALERT_DESCRIPTION_UNSUPPORTED_EXTENSION = 110
+    ALERT_DESCRIPTION_USER_CANCELLED = 90
 
 ALERT_DESCRIPTION_HANDSHAKE_FAILURE: AlertDescription
 ALERT_DESCRIPTION_INTERNAL_ERROR: AlertDescription
@@ -320,8 +323,8 @@ class _ASN1Object(_ASN1ObjectBase):
     def fromname(cls, name: str) -> Self: ...
 
 class Purpose(_ASN1Object, enum.Enum):
-    SERVER_AUTH: _ASN1Object
-    CLIENT_AUTH: _ASN1Object
+    SERVER_AUTH = (129, "serverAuth", "TLS Web Server Authentication", "1.3.6.1.5.5.7.3.2")  # pyright: ignore[reportCallIssue]
+    CLIENT_AUTH = (130, "clientAuth", "TLS Web Client Authentication", "1.3.6.1.5.5.7.3.1")  # pyright: ignore[reportCallIssue]
 
 class SSLSocket(socket.socket):
     context: SSLContext
@@ -365,41 +368,40 @@ class SSLSocket(socket.socket):
     def unwrap(self) -> socket.socket: ...
     def version(self) -> str | None: ...
     def pending(self) -> int: ...
-    if sys.version_info >= (3, 8):
-        def verify_client_post_handshake(self) -> None: ...
+    def verify_client_post_handshake(self) -> None: ...
     # These methods always raise `NotImplementedError`:
     def recvmsg(self, *args: Never, **kwargs: Never) -> Never: ...  # type: ignore[override]
     def recvmsg_into(self, *args: Never, **kwargs: Never) -> Never: ...  # type: ignore[override]
     def sendmsg(self, *args: Never, **kwargs: Never) -> Never: ...  # type: ignore[override]
+    if sys.version_info >= (3, 13):
+        def get_verified_chain(self) -> list[bytes]: ...
+        def get_unverified_chain(self) -> list[bytes]: ...
 
 class TLSVersion(enum.IntEnum):
-    MINIMUM_SUPPORTED: int
-    MAXIMUM_SUPPORTED: int
-    SSLv3: int
-    TLSv1: int
-    TLSv1_1: int
-    TLSv1_2: int
-    TLSv1_3: int
+    MINIMUM_SUPPORTED = -2
+    MAXIMUM_SUPPORTED = -1
+    SSLv3 = 768
+    TLSv1 = 769
+    TLSv1_1 = 770
+    TLSv1_2 = 771
+    TLSv1_3 = 772
 
-class SSLContext:
-    check_hostname: bool
+class SSLContext(_SSLContext):
     options: Options
     verify_flags: VerifyFlags
     verify_mode: VerifyMode
     @property
-    def protocol(self) -> _SSLMethod: ...
+    def protocol(self) -> _SSLMethod: ...  # type: ignore[override]
     hostname_checks_common_name: bool
     maximum_version: TLSVersion
     minimum_version: TLSVersion
-    sni_callback: Callable[[SSLObject, str, SSLContext], None | int] | None
     # The following two attributes have class-level defaults.
     # However, the docs explicitly state that it's OK to override these attributes on instances,
     # so making these ClassVars wouldn't be appropriate
     sslobject_class: type[SSLObject]
     sslsocket_class: type[SSLSocket]
-    if sys.version_info >= (3, 8):
-        keylog_filename: str
-        post_handshake_auth: bool
+    keylog_filename: str
+    post_handshake_auth: bool
     if sys.version_info >= (3, 10):
         security_level: int
     if sys.version_info >= (3, 10):
@@ -409,10 +411,6 @@ class SSLContext:
     else:
         def __new__(cls, protocol: int = ..., *args: Any, **kwargs: Any) -> Self: ...
 
-    def cert_store_stats(self) -> dict[str, int]: ...
-    def load_cert_chain(
-        self, certfile: StrOrBytesPath, keyfile: StrOrBytesPath | None = None, password: _PasswordType | None = None
-    ) -> None: ...
     def load_default_certs(self, purpose: Purpose = ...) -> None: ...
     def load_verify_locations(
         self,
@@ -428,12 +426,12 @@ class SSLContext:
     def get_ca_certs(self, binary_form: bool = False) -> Any: ...
     def get_ciphers(self) -> list[_Cipher]: ...
     def set_default_verify_paths(self) -> None: ...
-    def set_ciphers(self, __cipherlist: str) -> None: ...
+    def set_ciphers(self, cipherlist: str, /) -> None: ...
     def set_alpn_protocols(self, alpn_protocols: Iterable[str]) -> None: ...
     def set_npn_protocols(self, npn_protocols: Iterable[str]) -> None: ...
     def set_servername_callback(self, server_name_callback: _SrvnmeCbType | None) -> None: ...
-    def load_dh_params(self, __path: str) -> None: ...
-    def set_ecdh_curve(self, __name: str) -> None: ...
+    def load_dh_params(self, path: str, /) -> None: ...
+    def set_ecdh_curve(self, name: str, /) -> None: ...
     def wrap_socket(
         self,
         sock: socket.socket,
@@ -451,7 +449,6 @@ class SSLContext:
         server_hostname: str | bytes | None = None,
         session: SSLSession | None = None,
     ) -> SSLObject: ...
-    def session_stats(self) -> dict[str, int]: ...
 
 class SSLObject:
     context: SSLContext
@@ -481,41 +478,21 @@ class SSLObject:
     def unwrap(self) -> None: ...
     def version(self) -> str | None: ...
     def get_channel_binding(self, cb_type: str = "tls-unique") -> bytes | None: ...
-    if sys.version_info >= (3, 8):
-        def verify_client_post_handshake(self) -> None: ...
-
-@final
-class MemoryBIO:
-    pending: int
-    eof: bool
-    def read(self, __size: int = -1) -> bytes: ...
-    def write(self, __b: ReadableBuffer) -> int: ...
-    def write_eof(self) -> None: ...
-
-@final
-class SSLSession:
-    @property
-    def has_ticket(self) -> bool: ...
-    @property
-    def id(self) -> bytes: ...
-    @property
-    def ticket_lifetime_hint(self) -> int: ...
-    @property
-    def time(self) -> int: ...
-    @property
-    def timeout(self) -> int: ...
-    def __eq__(self, __value: object) -> bool: ...
+    def verify_client_post_handshake(self) -> None: ...
+    if sys.version_info >= (3, 13):
+        def get_verified_chain(self) -> list[bytes]: ...
+        def get_unverified_chain(self) -> list[bytes]: ...
 
 class SSLErrorNumber(enum.IntEnum):
-    SSL_ERROR_EOF: int
-    SSL_ERROR_INVALID_ERROR_CODE: int
-    SSL_ERROR_SSL: int
-    SSL_ERROR_SYSCALL: int
-    SSL_ERROR_WANT_CONNECT: int
-    SSL_ERROR_WANT_READ: int
-    SSL_ERROR_WANT_WRITE: int
-    SSL_ERROR_WANT_X509_LOOKUP: int
-    SSL_ERROR_ZERO_RETURN: int
+    SSL_ERROR_EOF = 8
+    SSL_ERROR_INVALID_ERROR_CODE = 10
+    SSL_ERROR_SSL = 1
+    SSL_ERROR_SYSCALL = 5
+    SSL_ERROR_WANT_CONNECT = 7
+    SSL_ERROR_WANT_READ = 2
+    SSL_ERROR_WANT_WRITE = 3
+    SSL_ERROR_WANT_X509_LOOKUP = 4
+    SSL_ERROR_ZERO_RETURN = 6
 
 SSL_ERROR_EOF: SSLErrorNumber  # undocumented
 SSL_ERROR_INVALID_ERROR_CODE: SSLErrorNumber  # undocumented

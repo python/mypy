@@ -189,6 +189,8 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development",
     "Typing :: Typed",
 ]
@@ -217,9 +219,9 @@ setup(
     },
     classifiers=classifiers,
     cmdclass=cmdclass,
-    # When changing this, also update mypy-requirements.txt.
+    # When changing this, also update mypy-requirements.txt and pyproject.toml
     install_requires=[
-        "typing_extensions>=4.1.0",
+        "typing_extensions>=4.6.0",
         "mypy_extensions >= 1.0.0",
         "tomli>=1.1.0; python_version<'3.11'",
     ],
@@ -230,12 +232,14 @@ setup(
         "python2": "",
         "reports": "lxml",
         "install-types": "pip",
+        "faster-cache": "orjson",
     },
     python_requires=">=3.8",
     include_package_data=True,
     project_urls={
-        "News": "https://mypy-lang.org/news.html",
         "Documentation": "https://mypy.readthedocs.io/en/stable/index.html",
         "Repository": "https://github.com/python/mypy",
+        "Changelog": "https://github.com/python/mypy/blob/master/CHANGELOG.md",
+        "Issues": "https://github.com/python/mypy/issues",
     },
 )

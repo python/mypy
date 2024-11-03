@@ -124,10 +124,10 @@ z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unuse
 # flags: --enable-error-code ignore-without-code
 # type: ignore  # whole file ignore
 x
-y # type: ignore  # ignore the lack of error code since we're ignore the whole file
+y # type: ignore  # ignore the lack of error code since we ignore the whole file
 
 [case testErrorCodeMissingMultiple]
-# flags: --enable-error-code ignore-without-code --python-version 3.7
+# flags: --enable-error-code ignore-without-code
 from __future__ import annotations
 class A:
     attr: int
@@ -460,7 +460,7 @@ a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict 
 b: D = {'y': ''}  # E: Missing key "x" for TypedDict "D"  [typeddict-item] \
                   # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key]
 c = D(x=0) if int() else E(x=0, y=0)
-c = {}  # E: Expected TypedDict key "x" but found no keys  [typeddict-item]
+c = {}  # E: Missing key "x" for TypedDict "D"  [typeddict-item]
 d: D = {'x': '', 'y': 1}  # E: Extra key "y" for TypedDict "D"  [typeddict-unknown-key] \
                           # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
 
@@ -846,21 +846,31 @@ foo = Foo()
 if foo:  # E: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
+not foo  # E: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+
 zero = 0
 if zero:
     pass
+
+not zero
 
 false = False
 if false:
     pass
 
+not false
+
 null = None
 if null:
     pass
 
+not null
+
 s = ''
 if s:
     pass
+
+not s
 
 good_union: Union[str, int] = 5
 if good_union:
@@ -868,11 +878,15 @@ if good_union:
 if not good_union:
     pass
 
+not good_union
+
 bad_union: Union[Foo, Bar] = Foo()
 if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 if not bad_union:  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
+
+not bad_union  # E: "__main__.bad_union" has type "Union[Foo, Bar]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
 
 # 'object' is special and is treated as potentially falsy
 obj: object = Foo()
@@ -881,16 +895,30 @@ if obj:
 if not obj:
     pass
 
+not obj
+
 lst: List[int] = []
 if lst:
     pass
+
+not lst
 
 a: Any
 if a:
     pass
 
+not a
+
 any_or_object: Union[object, Any]
 if any_or_object:
+    pass
+
+not any_or_object
+
+if (my_foo := Foo()):  # E: "__main__.my_foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+
+if my_a := (a or Foo()):  # E: "__main__.Foo" returns "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 [builtins fixtures/list.pyi]
 
@@ -903,12 +931,16 @@ if not f:  # E: Function "f" could always be true in boolean context  [truthy-fu
     pass
 conditional_result = 'foo' if f else 'bar'  # E: Function "f" could always be true in boolean context  [truthy-function]
 
+not f  # E: Function "f" could always be true in boolean context  [truthy-function]
+
 [case testTruthyIterable]
 # flags: --enable-error-code truthy-iterable
 from typing import Iterable
 def func(var: Iterable[str]) -> None:
     if var:  # E: "var" has type "Iterable[str]" which can always be true in boolean context. Consider using "Collection[str]" instead.  [truthy-iterable]
         ...
+
+    not var  # E: "var" has type "Iterable[str]" which can always be true in boolean context. Consider using "Collection[str]" instead.  [truthy-iterable]
 
 [case testNoOverloadImplementation]
 from typing import overload
@@ -975,11 +1007,13 @@ def f(d: D, s: str) -> None:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testRecommendErrorCode]
-# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax]
+# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax] \
+                          # N: Error code "syntax" not covered by "type: ignore" comment
 1 + "asdf"
 
 [case testRecommendErrorCode2]
-# type: ignore[whatever, other]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax]
+# type: ignore[whatever, other]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax] \
+                                 # N: Error code "syntax" not covered by "type: ignore" comment
 1 + "asdf"
 
 [case testShowErrorCodesInConfig]
@@ -1180,3 +1214,25 @@ class D(C):
     def other(self) -> None:
         self.bad2: int = 5  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
 [builtins fixtures/property.pyi]
+
+[case testNarrowedTypeNotSubtype]
+from typing_extensions import TypeIs
+
+def f(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of input type "str"  [narrowed-type-not-subtype]
+    pass
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testOverloadedFunctionSignature]
+from typing import overload, Union
+
+@overload
+def process(response1: float,response2: float) -> float:
+    ...
+@overload
+def process(response1: int,response2: int) -> int: # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader  [overload-cannot-match]
+    ...
+
+def process(response1,response2)-> Union[float,int]:
+   return response1 + response2

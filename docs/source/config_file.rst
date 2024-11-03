@@ -3,6 +3,10 @@
 The mypy configuration file
 ===========================
 
+Mypy is very configurable. This is most useful when introducing typing to
+an existing codebase. See :ref:`existing-code` for concrete advice for
+that situation.
+
 Mypy supports reading configuration settings from a file with the following precedence order:
 
     1. ``./mypy.ini``
@@ -570,8 +574,8 @@ section of the command line docs.
     :type: boolean
     :default: False
 
-    Causes mypy to treat arguments with a ``None``
-    default value as having an implicit :py:data:`~typing.Optional` type.
+    Causes mypy to treat parameters with a ``None``
+    default value as having an implicit optional type (``T | None``).
 
     **Note:** This was True by default in mypy versions 0.980 and earlier.
 
@@ -580,10 +584,15 @@ section of the command line docs.
     :type: boolean
     :default: True
 
-    Enables or disables strict Optional checks. If False, mypy treats ``None``
+    Effectively disables checking of optional
+    types and ``None`` values. With this option, mypy doesn't
+    generally check the use of ``None`` values -- it is treated
     as compatible with every type.
 
-    **Note:** This was False by default in mypy versions earlier than 0.600.
+    .. warning::
+
+        ``strict_optional = false`` is evil. Avoid using it and definitely do
+        not use it without understanding what it does.
 
 
 Configuring warnings
@@ -777,6 +786,13 @@ These options may only be set in the global section (``[mypy]``).
     :default: False
 
     Shows column numbers in error messages.
+
+.. confval:: show_error_code_links
+
+    :type: boolean
+    :default: False
+
+    Shows documentation link to corresponding error code.
 
 .. confval:: hide_error_codes
 

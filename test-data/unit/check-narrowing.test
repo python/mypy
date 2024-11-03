@@ -1,5 +1,4 @@
 [case testNarrowingParentWithStrsBasic]
-# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple, Union
 from typing_extensions import Literal, TypedDict
@@ -83,7 +82,6 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingParentWithEnumsBasic]
-# flags: --python-version 3.7
 from enum import Enum
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple, Union
@@ -173,7 +171,6 @@ else:
 [builtins fixtures/narrowing.pyi]
 
 [case testNarrowingParentWithIsInstanceBasic]
-# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple, Union
 from typing_extensions import TypedDict
@@ -1041,7 +1038,7 @@ str_or_false: Union[Literal[False], str]
 if str_or_false:
     reveal_type(str_or_false)   # N: Revealed type is "builtins.str"
 else:
-    reveal_type(str_or_false)   # N: Revealed type is "Union[Literal[False], builtins.str]"
+    reveal_type(str_or_false)   # N: Revealed type is "Union[Literal[False], Literal['']]"
 
 true_or_false: Literal[True, False]
 
@@ -1050,6 +1047,121 @@ if true_or_false:
 else:
     reveal_type(true_or_false)  # N: Revealed type is "Literal[False]"
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowingFalseyToLiteral]
+from typing import Union
+
+a: str
+b: bytes
+c: int
+d: Union[str, bytes, int]
+
+if not a:
+    reveal_type(a)  # N: Revealed type is "Literal['']"
+if not b:
+    reveal_type(b)  # N: Revealed type is "Literal[b'']"
+if not c:
+    reveal_type(c)  # N: Revealed type is "Literal[0]"
+if not d:
+    reveal_type(d)  # N: Revealed type is "Union[Literal[''], Literal[b''], Literal[0]]"
+
+[case testNarrowingIsInstanceFinalSubclass]
+# flags: --warn-unreachable
+
+from typing import final
+
+class N: ...
+@final
+class F1: ...
+@final
+class F2: ...
+
+n: N
+f1: F1
+
+if isinstance(f1, F1):
+    reveal_type(f1)  # N: Revealed type is "__main__.F1"
+else:
+    reveal_type(f1)  # E: Statement is unreachable
+
+if isinstance(n, F1):  # E: Subclass of "N" and "F1" cannot exist: "F1" is final
+    reveal_type(n)  # E: Statement is unreachable
+else:
+    reveal_type(n)  # N: Revealed type is "__main__.N"
+
+if isinstance(f1, N):  # E: Subclass of "F1" and "N" cannot exist: "F1" is final
+    reveal_type(f1)  # E: Statement is unreachable
+else:
+    reveal_type(f1)  # N: Revealed type is "__main__.F1"
+
+if isinstance(f1, F2):  # E: Subclass of "F1" and "F2" cannot exist: "F1" is final \
+                        # E: Subclass of "F1" and "F2" cannot exist: "F2" is final
+    reveal_type(f1)  # E: Statement is unreachable
+else:
+    reveal_type(f1)  # N: Revealed type is "__main__.F1"
+[builtins fixtures/isinstance.pyi]
+
+
+[case testNarrowingIsInstanceFinalSubclassWithUnions]
+# flags: --warn-unreachable
+
+from typing import final, Union
+
+class N: ...
+@final
+class F1: ...
+@final
+class F2: ...
+
+n_f1: Union[N, F1]
+n_f2: Union[N, F2]
+f1_f2: Union[F1, F2]
+
+if isinstance(n_f1, F1):
+    reveal_type(n_f1)  # N: Revealed type is "__main__.F1"
+else:
+    reveal_type(n_f1)  # N: Revealed type is "__main__.N"
+
+if isinstance(n_f2, F1):  # E: Subclass of "N" and "F1" cannot exist: "F1" is final \
+                          # E: Subclass of "F2" and "F1" cannot exist: "F2" is final \
+                          # E: Subclass of "F2" and "F1" cannot exist: "F1" is final
+    reveal_type(n_f2)  # E: Statement is unreachable
+else:
+    reveal_type(n_f2)  # N: Revealed type is "Union[__main__.N, __main__.F2]"
+
+if isinstance(f1_f2, F1):
+    reveal_type(f1_f2)  # N: Revealed type is "__main__.F1"
+else:
+    reveal_type(f1_f2)  # N: Revealed type is "__main__.F2"
+[builtins fixtures/isinstance.pyi]
+
+
+[case testNarrowingIsSubclassFinalSubclassWithTypeVar]
+# flags: --warn-unreachable
+
+from typing import final, Type, TypeVar
+
+@final
+class A: ...
+@final
+class B: ...
+
+T = TypeVar("T", A, B)
+
+def f(cls: Type[T]) -> T:
+    if issubclass(cls, A):
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.A]"
+        x: bool
+        if x:
+            return A()
+        else:
+            return B()  # E: Incompatible return value type (got "B", expected "A")
+    assert False
+
+reveal_type(f(A))  # N: Revealed type is "__main__.A"
+reveal_type(f(B))  # N: Revealed type is "__main__.B"
+[builtins fixtures/isinstance.pyi]
+
 
 [case testNarrowingLiteralIdentityCheck]
 from typing import Union
@@ -1954,3 +2066,301 @@ def f(x: Union[int, Sequence[int]]) -> None:
     ):
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
 [builtins fixtures/len.pyi]
+
+[case testNarrowingIsSubclassNoneType1]
+from typing import Type, Union
+
+def f(cls: Type[Union[None, int]]) -> None:
+    if issubclass(cls, int):
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[None]"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingIsSubclassNoneType2]
+from typing import Type, Union
+
+def f(cls: Type[Union[None, int]]) -> None:
+    if issubclass(cls, type(None)):
+        reveal_type(cls)  # N: Revealed type is "Type[None]"
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingIsSubclassNoneType3]
+from typing import Type, Union
+
+NoneType_ = type(None)
+
+def f(cls: Type[Union[None, int]]) -> None:
+    if issubclass(cls, NoneType_):
+        reveal_type(cls)  # N: Revealed type is "Type[None]"
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingIsSubclassNoneType4]
+# flags: --python-version 3.10
+
+from types import NoneType
+from typing import Type, Union
+
+def f(cls: Type[Union[None, int]]) -> None:
+    if issubclass(cls, NoneType):
+        reveal_type(cls)  # N: Revealed type is "Type[None]"
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingIsInstanceNoIntersectionWithFinalTypeAndNoneType]
+# flags: --warn-unreachable --python-version 3.10
+
+from types import NoneType
+from typing import final
+
+class X: ...
+class Y: ...
+@final
+class Z: ...
+
+x: X
+
+if isinstance(x, (Y, Z)):
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">"
+if isinstance(x, (Y, NoneType)):
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">1"
+if isinstance(x, (Y, Z, NoneType)):
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">2"
+if isinstance(x, (Z, NoneType)):  # E: Subclass of "X" and "Z" cannot exist: "Z" is final \
+                                  # E: Subclass of "X" and "NoneType" cannot exist: "NoneType" is final
+    reveal_type(x)  # E: Statement is unreachable
+
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeNarrowingReachableNegative]
+# flags: --warn-unreachable
+from typing import Literal
+
+x: Literal[-1]
+
+if x == -1:
+    assert True
+
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/ops.pyi]
+
+[case testTypeNarrowingReachableNegativeUnion]
+from typing import Literal
+
+x: Literal[-1, 1]
+
+if x == -1:
+    reveal_type(x)  # N: Revealed type is "Literal[-1]"
+else:
+    reveal_type(x)  # N: Revealed type is "Literal[1]"
+
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/ops.pyi]
+
+[case testNarrowingWithIntEnum]
+# mypy: strict-equality
+from __future__ import annotations
+from typing import Any
+from enum import IntEnum
+
+class IE(IntEnum):
+    X = 1
+    Y = 2
+
+def f1(x: int) -> None:
+    if x == IE.X:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    if x != IE.X:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def f2(x: IE) -> None:
+    if x == 1:
+        reveal_type(x)  # N: Revealed type is "__main__.IE"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.IE"
+
+def f3(x: object) -> None:
+    if x == IE.X:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+
+def f4(x: int | Any) -> None:
+    if x == IE.X:
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+
+def f5(x: int) -> None:
+    if x is IE.X:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    if x is not IE.X:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
+
+def f6(x: IE) -> None:
+     if x == IE.X:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.Y]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingWithIntEnum2]
+# mypy: strict-equality
+from __future__ import annotations
+from typing import Any
+from enum import IntEnum, Enum
+
+class MyDecimal: ...
+
+class IE(IntEnum):
+    X = 1
+    Y = 2
+
+class IE2(IntEnum):
+    X = 1
+    Y = 2
+
+class E(Enum):
+    X = 1
+    Y = 2
+
+def f1(x: IE | MyDecimal) -> None:
+     if x == IE.X:
+         reveal_type(x)  # N: Revealed type is "Union[__main__.IE, __main__.MyDecimal]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Union[__main__.IE, __main__.MyDecimal]"
+
+def f2(x: E | bytes) -> None:
+     if x == E.X:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.E.X]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.E.Y], builtins.bytes]"
+
+def f3(x: IE | IE2) -> None:
+     if x == IE.X:
+         reveal_type(x)  # N: Revealed type is "Union[__main__.IE, __main__.IE2]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Union[__main__.IE, __main__.IE2]"
+
+def f4(x: IE | E) -> None:
+     if x == IE.X:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
+     elif x == E.X:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.E.X]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.IE.Y], Literal[__main__.E.Y]]"
+
+def f5(x: E | str | int) -> None:
+     if x == E.X:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.E.X]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.E.Y], builtins.str, builtins.int]"
+
+def f6(x: IE | Any) -> None:
+     if x == IE.X:
+         reveal_type(x)  # N: Revealed type is "Union[__main__.IE, Any]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Union[__main__.IE, Any]"
+
+def f7(x: IE | None) -> None:
+     if x == IE.X:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.IE.Y], None]"
+
+def f8(x: IE | None) -> None:
+     if x is None:
+         reveal_type(x)  # N: Revealed type is "None"
+     elif x == IE.X:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.X]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.IE.Y]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingWithStrEnum]
+# mypy: strict-equality
+from enum import StrEnum
+
+class SE(StrEnum):
+    A = 'a'
+    B = 'b'
+
+def f1(x: str) -> None:
+    if x == SE.A:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def f2(x: SE) -> None:
+    if x == 'a':
+        reveal_type(x)  # N: Revealed type is "__main__.SE"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.SE"
+
+def f3(x: object) -> None:
+    if x == SE.A:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+
+def f4(x: SE) -> None:
+     if x == SE.A:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.SE.A]"
+     else:
+         reveal_type(x)  # N: Revealed type is "Literal[__main__.SE.B]"
+[builtins fixtures/primitives.pyi]
+
+[case testConsistentNarrowingEqAndIn]
+# flags: --python-version 3.10
+
+# https://github.com/python/mypy/issues/17864
+def f(x: str | int) -> None:
+    if x == "x":
+        reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+        y = x
+
+    if x in ["x"]:
+        # TODO: we should fix this reveal https://github.com/python/mypy/issues/3229
+        reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+        y = x
+        z = x
+    z = y
+[builtins fixtures/primitives.pyi]
+
+[case testConsistentNarrowingInWithCustomEq]
+# flags: --python-version 3.10
+
+# https://github.com/python/mypy/issues/17864
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __eq__(self, other: object) -> bool:
+        raise
+        # Example implementation:
+        # if isinstance(other, C) and other.x == self.x:
+        #     return True
+        # return NotImplemented
+
+class D(C):
+    pass
+
+def f(x: C) -> None:
+    if x in [D(5)]:
+        reveal_type(x)  # D  # N: Revealed type is "__main__.C"
+
+f(C(5))
+[builtins fixtures/primitives.pyi]

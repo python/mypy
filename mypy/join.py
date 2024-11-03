@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import overload
+from typing import Sequence, overload
 
 import mypy.typeops
+from mypy.expandtype import expand_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
+from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT, VARIANCE_NOT_READY
 from mypy.state import state
 from mypy.subtypes import (
     SubtypeContext,
@@ -36,6 +37,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
@@ -97,7 +99,7 @@ class InstanceJoiner:
                 elif isinstance(sa_proper, AnyType):
                     new_type = AnyType(TypeOfAny.from_another_any, sa_proper)
                 elif isinstance(type_var, TypeVarType):
-                    if type_var.variance == COVARIANT:
+                    if type_var.variance in (COVARIANT, VARIANCE_NOT_READY):
                         new_type = join_types(ta, sa, self)
                         if len(type_var.values) != 0 and new_type not in type_var.values:
                             self.seen_instances.pop()
@@ -108,12 +110,17 @@ class InstanceJoiner:
                     # TODO: contravariant case should use meet but pass seen instances as
                     # an argument to keep track of recursive checks.
                     elif type_var.variance in (INVARIANT, CONTRAVARIANT):
-                        if not is_equivalent(ta, sa):
+                        if isinstance(ta_proper, UninhabitedType) and ta_proper.ambiguous:
+                            new_type = sa
+                        elif isinstance(sa_proper, UninhabitedType) and sa_proper.ambiguous:
+                            new_type = ta
+                        elif not is_equivalent(ta, sa):
                             self.seen_instances.pop()
                             return object_from_instance(t)
-                        # If the types are different but equivalent, then an Any is involved
-                        # so using a join in the contravariant case is also OK.
-                        new_type = join_types(ta, sa, self)
+                        else:
+                            # If the types are different but equivalent, then an Any is involved
+                            # so using a join in the contravariant case is also OK.
+                            new_type = join_types(ta, sa, self)
                 elif isinstance(type_var, TypeVarTupleType):
                     new_type = get_proper_type(join_types(ta, sa, self))
                     # Put the joined arguments back into instance in the normal form:
@@ -237,13 +244,11 @@ def trivial_join(s: Type, t: Type) -> Type:
 @overload
 def join_types(
     s: ProperType, t: ProperType, instance_joiner: InstanceJoiner | None = None
-) -> ProperType:
-    ...
+) -> ProperType: ...
 
 
 @overload
-def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> Type:
-    ...
+def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> Type: ...
 
 
 def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> Type:
@@ -626,10 +631,13 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 )
             }
             fallback = self.s.create_anonymous_fallback()
+            all_keys = set(items.keys())
             # We need to filter by items.keys() since some required keys present in both t and
             # self.s might be missing from the join if the types are incompatible.
-            required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
-            return TypedDictType(items, required_keys, fallback)
+            required_keys = all_keys & t.required_keys & self.s.required_keys
+            # If one type has a key as readonly, we mark it as readonly for both:
+            readonly_keys = (t.readonly_keys | t.readonly_keys) & all_keys
+            return TypedDictType(items, required_keys, readonly_keys, fallback)
         elif isinstance(self.s, Instance):
             return join_types(self.s, t.fallback)
         else:
@@ -715,7 +723,35 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
     )
 
 
+def update_callable_ids(c: CallableType, ids: list[TypeVarId]) -> CallableType:
+    tv_map = {}
+    tvs = []
+    for tv, new_id in zip(c.variables, ids):
+        new_tv = tv.copy_modified(id=new_id)
+        tvs.append(new_tv)
+        tv_map[tv.id] = new_tv
+    return expand_type(c, tv_map).copy_modified(variables=tvs)
+
+
+def match_generic_callables(t: CallableType, s: CallableType) -> tuple[CallableType, CallableType]:
+    # The case where we combine/join/meet similar callables, situation where both are generic
+    # requires special care. A more principled solution may involve unify_generic_callable(),
+    # but it would have two problems:
+    #   * This adds risk of infinite recursion: e.g. join -> unification -> solver -> join
+    #   * Using unification is an incorrect thing for meets, as it "widens" the types
+    # Finally, this effectively falls back to an old behaviour before namespaces were added to
+    # type variables, and it worked relatively well.
+    max_len = max(len(t.variables), len(s.variables))
+    min_len = min(len(t.variables), len(s.variables))
+    if min_len == 0:
+        return t, s
+    new_ids = [TypeVarId.new(meta_level=0) for _ in range(max_len)]
+    # Note: this relies on variables being in order they appear in function definition.
+    return update_callable_ids(t, new_ids), update_callable_ids(s, new_ids)
+
+
 def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
+    t, s = match_generic_callables(t, s)
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(safe_meet(t.arg_types[i], s.arg_types[i]))
@@ -768,6 +804,7 @@ def safe_meet(t: Type, s: Type) -> Type:
 
 
 def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
+    t, s = match_generic_callables(t, s)
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(safe_join(t.arg_types[i], s.arg_types[i]))
@@ -850,7 +887,7 @@ def object_or_any_from_type(typ: ProperType) -> ProperType:
     return AnyType(TypeOfAny.implementation_artifact)
 
 
-def join_type_list(types: list[Type]) -> Type:
+def join_type_list(types: Sequence[Type]) -> Type:
     if not types:
         # This is a little arbitrary but reasonable. Any empty tuple should be compatible
         # with all variable length tuples, and this makes it possible.

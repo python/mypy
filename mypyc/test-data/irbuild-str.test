@@ -203,8 +203,8 @@ def f(var, num):
     r12 :: object
     r13 :: str
     r14 :: list
-    r15, r16, r17 :: ptr
-    r18, s2, r19, s3, r20, s4 :: str
+    r15 :: ptr
+    r16, s2, r17, s3, r18, s4 :: str
 L0:
     r0 = "Hi! I'm "
     r1 = '. I am '
@@ -222,18 +222,16 @@ L0:
     r12 = CPyObject_CallMethodObjArgs(r7, r11, var, r10, 0)
     r13 = cast(str, r12)
     r14 = PyList_New(2)
-    r15 = get_element_ptr r14 ob_item :: PyListObject
-    r16 = load_mem r15 :: ptr*
-    set_mem r16, r6 :: builtins.object*
-    r17 = r16 + WORD_SIZE*1
-    set_mem r17, r13 :: builtins.object*
+    r15 = list_items r14
+    buf_init_item r15, 0, r6
+    buf_init_item r15, 1, r13
     keep_alive r14
-    r18 = PyUnicode_Join(r5, r14)
-    s2 = r18
-    r19 = ''
-    s3 = r19
-    r20 = 'abc'
-    s4 = r20
+    r16 = PyUnicode_Join(r5, r14)
+    s2 = r16
+    r17 = ''
+    s3 = r17
+    r18 = 'abc'
+    s4 = r18
     return 1
 
 [case testStringFormattingCStyle]

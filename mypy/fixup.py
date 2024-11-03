@@ -239,6 +239,9 @@ class TypeFixer(TypeVisitor[None]):
             a.accept(self)
         if inst.last_known_value is not None:
             inst.last_known_value.accept(self)
+        if inst.extra_attrs:
+            for v in inst.extra_attrs.attrs.values():
+                v.accept(self)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         type_ref = t.type_ref
@@ -270,6 +273,8 @@ class TypeFixer(TypeVisitor[None]):
                 arg.accept(self)
         if ct.type_guard is not None:
             ct.type_guard.accept(self)
+        if ct.type_is is not None:
+            ct.type_is.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items:

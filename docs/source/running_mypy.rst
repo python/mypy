@@ -305,16 +305,20 @@ not catch errors in its use.
     The ``.*`` after ``foobar`` will ignore imports of ``foobar`` modules
     and subpackages in addition to the ``foobar`` top-level package namespace.
 
-3.  To suppress *all* missing import errors for *all* libraries in your codebase,
-    invoke mypy with the :option:`--ignore-missing-imports <mypy --ignore-missing-imports>` command line flag or set
-    the :confval:`ignore_missing_imports`
-    config file option to True
-    in the *global* section of your mypy config file::
+3.  To suppress *all* missing import errors for *all* untyped libraries
+    in your codebase, use :option:`--disable-error-code=import-untyped <mypy --ignore-missing-imports>`.
+    See :ref:`code-import-untyped` for more details on this error code.
+
+    You can also set :confval:`disable_error_code`, like so::
 
         [mypy]
-        ignore_missing_imports = True
+        disable_error_code = import-untyped
 
-    We recommend using this approach only as a last resort: it's equivalent
+
+    You can also set the :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`
+    command line flag or set the :confval:`ignore_missing_imports` config file
+    option to True in the *global* section of your mypy config file. We
+    recommend avoiding ``--ignore-missing-imports`` if possible: it's equivalent
     to adding a ``# type: ignore`` to all unresolved imports in your codebase.
 
 
@@ -387,11 +391,11 @@ this error, try:
     installing into the environment you expect by running pip like
     ``python -m pip ...``.
 
-2.  Reading the :ref:`finding-imports` section below to make sure you
+3.  Reading the :ref:`finding-imports` section below to make sure you
     understand how exactly mypy searches for and finds modules and modify
     how you're invoking mypy accordingly.
 
-3.  Directly specifying the directory containing the module you want to
+4.  Directly specifying the directory containing the module you want to
     type check from the command line, by using the :confval:`mypy_path`
     or :confval:`files` config file options,
     or by using the ``MYPYPATH`` environment variable.
@@ -401,7 +405,7 @@ this error, try:
     For example, suppose you are trying to add the module ``foo.bar.baz``
     which is located at ``~/foo-project/src/foo/bar/baz.py``. In this case,
     you must run ``mypy ~/foo-project/src`` (or set the ``MYPYPATH`` to
-    ``~/foo-project/src``.
+    ``~/foo-project/src``).
 
 .. _finding-imports:
 
@@ -499,7 +503,7 @@ accepts one of four string values:
         main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 If you are starting a new codebase and plan on using type hints from
-the start, we recommend you use either :option:`--follow-imports=normal <mypy --follow-imports>`
+the start, we **recommend** you use either :option:`--follow-imports=normal <mypy --follow-imports>`
 (the default) or :option:`--follow-imports=error <mypy --follow-imports>`. Either option will help
 make sure you are not skipping checking any part of your codebase by
 accident.
@@ -510,16 +514,27 @@ files that do not use type hints) pass under :option:`--follow-imports=normal <m
 This is usually not too difficult to do: mypy is designed to report as
 few error messages as possible when it is looking at unannotated code.
 
-Only if doing this is intractable, we recommend passing mypy just the files
-you want to type check and use :option:`--follow-imports=silent <mypy --follow-imports>`. Even if
-mypy is unable to perfectly type check a file, it can still glean some
+Only if doing this is intractable, try passing mypy just the files
+you want to type check and using :option:`--follow-imports=silent <mypy --follow-imports>`.
+Even if mypy is unable to perfectly type check a file, it can still glean some
 useful information by parsing it (for example, understanding what methods
 a given object has). See :ref:`existing-code` for more recommendations.
-
-We do not recommend using ``skip`` unless you know what you are doing:
-while this option can be quite powerful, it can also cause many
-hard-to-debug errors.
 
 Adjusting import following behaviour is often most useful when restricted to
 specific modules. This can be accomplished by setting a per-module
 :confval:`follow_imports` config option.
+
+.. warning::
+
+    We do not recommend using ``follow_imports=skip`` unless you're really sure
+    you know what you are doing. This option greatly restricts the analysis mypy
+    can perform and you will lose a lot of the benefits of type checking.
+
+    This is especially true at the global level. Setting a per-module
+    ``follow_imports=skip`` for a specific problematic module can be
+    useful without causing too much harm.
+
+.. note::
+
+    If you're looking to resolve import errors related to libraries, try following
+    the advice in :ref:`fix-missing-imports` before messing with ``follow_imports``.

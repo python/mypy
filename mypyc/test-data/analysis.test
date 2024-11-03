@@ -10,40 +10,27 @@ def f(a: int) -> None:
 [out]
 def f(a):
     a, x :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
+    r0 :: bit
     y, z :: int
 L0:
     x = 2
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = int_eq x, a
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPyTagged_IsEq_(x, a)
-    if r2 goto L3 else goto L4 :: bool
-L2:
-    r3 = x == a
-    if r3 goto L3 else goto L4 :: bool
-L3:
     y = 2
-    goto L5
-L4:
+    goto L3
+L2:
     z = 2
-L5:
+L3:
     return 1
 (0, 0)   {a}                     {a, x}
 (0, 1)   {a, x}                  {a, x}
 (0, 2)   {a, x}                  {a, x}
-(0, 3)   {a, x}                  {a, x}
-(1, 0)   {a, x}                  {a, x}
-(1, 1)   {a, x}                  {a, x}
-(2, 0)   {a, x}                  {a, x}
-(2, 1)   {a, x}                  {a, x}
-(3, 0)   {a, x}                  {a, x, y}
-(3, 1)   {a, x, y}               {a, x, y}
-(4, 0)   {a, x}                  {a, x, z}
-(4, 1)   {a, x, z}               {a, x, z}
-(5, 0)   {a, x, y, z}            {a, x, y, z}
+(1, 0)   {a, x}                  {a, x, y}
+(1, 1)   {a, x, y}               {a, x, y}
+(2, 0)   {a, x}                  {a, x, z}
+(2, 1)   {a, x, z}               {a, x, z}
+(3, 0)   {a, x, y, z}            {a, x, y, z}
 
 [case testSimple_Liveness]
 def f(a: int) -> int:
@@ -58,7 +45,7 @@ def f(a):
     r0 :: bit
 L0:
     x = 2
-    r0 = x == 2
+    r0 = int_eq x, 2
     if r0 goto L1 else goto L2 :: bool
 L1:
     return a
@@ -124,7 +111,7 @@ def f(a):
     r0 :: bit
     y, x :: int
 L0:
-    r0 = a == 2
+    r0 = int_eq a, 2
     if r0 goto L1 else goto L2 :: bool
 L1:
     y = 2
@@ -161,40 +148,27 @@ def f(n: int) -> None:
 [out]
 def f(n):
     n :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
-    r4, m :: int
+    r0 :: bit
+    r1, m :: int
 L0:
 L1:
-    r0 = n & 1
-    r1 = r0 != 0
-    if r1 goto L2 else goto L3 :: bool
+    r0 = int_lt n, 10
+    if r0 goto L2 else goto L3 :: bool
 L2:
-    r2 = CPyTagged_IsLt_(n, 10)
-    if r2 goto L4 else goto L5 :: bool
-L3:
-    r3 = n < 10 :: signed
-    if r3 goto L4 else goto L5 :: bool
-L4:
-    r4 = CPyTagged_Add(n, 2)
-    n = r4
+    r1 = CPyTagged_Add(n, 2)
+    n = r1
     m = n
     goto L1
-L5:
+L3:
     return 1
 (0, 0)   {n}                     {n}
 (1, 0)   {n}                     {n}
 (1, 1)   {n}                     {n}
-(1, 2)   {n}                     {n}
 (2, 0)   {n}                     {n}
 (2, 1)   {n}                     {n}
+(2, 2)   {n}                     {m, n}
+(2, 3)   {m, n}                  {m, n}
 (3, 0)   {n}                     {n}
-(3, 1)   {n}                     {n}
-(4, 0)   {n}                     {n}
-(4, 1)   {n}                     {n}
-(4, 2)   {n}                     {m, n}
-(4, 3)   {m, n}                  {m, n}
-(5, 0)   {n}                     {n}
 
 [case testMultiPass_Liveness]
 def f(n: int) -> None:
@@ -208,67 +182,40 @@ def f(n: int) -> None:
 [out]
 def f(n):
     n, x, y :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
-    r4 :: native_int
-    r5, r6, r7 :: bit
+    r0, r1 :: bit
 L0:
     x = 2
     y = 2
 L1:
-    r0 = n & 1
-    r1 = r0 != 0
-    if r1 goto L2 else goto L3 :: bool
+    r0 = int_lt n, 2
+    if r0 goto L2 else goto L6 :: bool
 L2:
-    r2 = CPyTagged_IsLt_(n, 2)
-    if r2 goto L4 else goto L10 :: bool
-L3:
-    r3 = n < 2 :: signed
-    if r3 goto L4 else goto L10 :: bool
-L4:
     n = y
-L5:
-    r4 = n & 1
-    r5 = r4 != 0
-    if r5 goto L6 else goto L7 :: bool
-L6:
-    r6 = CPyTagged_IsLt_(n, 4)
-    if r6 goto L8 else goto L9 :: bool
-L7:
-    r7 = n < 4 :: signed
-    if r7 goto L8 else goto L9 :: bool
-L8:
+L3:
+    r1 = int_lt n, 4
+    if r1 goto L4 else goto L5 :: bool
+L4:
     n = 2
     n = x
-    goto L5
-L9:
+    goto L3
+L5:
     goto L1
-L10:
+L6:
     return 1
 (0, 0)   {n}                     {n, x}
 (0, 1)   {n, x}                  {n, x, y}
 (0, 2)   {n, x, y}               {n, x, y}
-(1, 0)   {n, x, y}               {n, r0, x, y}
-(1, 1)   {n, r0, x, y}           {n, r1, x, y}
-(1, 2)   {n, r1, x, y}           {n, x, y}
-(2, 0)   {n, x, y}               {r2, x, y}
-(2, 1)   {r2, x, y}              {x, y}
-(3, 0)   {n, x, y}               {r3, x, y}
-(3, 1)   {r3, x, y}              {x, y}
-(4, 0)   {x, y}                  {n, x, y}
-(4, 1)   {n, x, y}               {n, x, y}
-(5, 0)   {n, x, y}               {n, r4, x, y}
-(5, 1)   {n, r4, x, y}           {n, r5, x, y}
-(5, 2)   {n, r5, x, y}           {n, x, y}
-(6, 0)   {n, x, y}               {n, r6, x, y}
-(6, 1)   {n, r6, x, y}           {n, x, y}
-(7, 0)   {n, x, y}               {n, r7, x, y}
-(7, 1)   {n, r7, x, y}           {n, x, y}
-(8, 0)   {x, y}                  {x, y}
-(8, 1)   {x, y}                  {n, x, y}
-(8, 2)   {n, x, y}               {n, x, y}
-(9, 0)   {n, x, y}               {n, x, y}
-(10, 0)  {}                      {}
+(1, 0)   {n, x, y}               {r0, x, y}
+(1, 1)   {r0, x, y}              {x, y}
+(2, 0)   {x, y}                  {n, x, y}
+(2, 1)   {n, x, y}               {n, x, y}
+(3, 0)   {n, x, y}               {n, r1, x, y}
+(3, 1)   {n, r1, x, y}           {n, x, y}
+(4, 0)   {x, y}                  {x, y}
+(4, 1)   {x, y}                  {n, x, y}
+(4, 2)   {n, x, y}               {n, x, y}
+(5, 0)   {n, x, y}               {n, x, y}
+(6, 0)   {}                      {}
 
 [case testCall_Liveness]
 def f(x: int) -> int:
@@ -309,80 +256,35 @@ def f(a: int) -> None:
 [out]
 def f(a):
     a :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: native_int
-    r7 :: bit
-    r8 :: native_int
-    r9, r10, r11 :: bit
+    r0, r1 :: bit
     y, x :: int
 L0:
 L1:
-    r0 = a & 1
-    r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    r0 = int_lt a, a
+    if r0 goto L2 else goto L6 :: bool
 L2:
-    r2 = a & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
 L3:
-    r4 = CPyTagged_IsLt_(a, a)
-    if r4 goto L5 else goto L12 :: bool
+    r1 = int_lt a, a
+    if r1 goto L4 else goto L5 :: bool
 L4:
-    r5 = a < a :: signed
-    if r5 goto L5 else goto L12 :: bool
-L5:
-L6:
-    r6 = a & 1
-    r7 = r6 != 0
-    if r7 goto L8 else goto L7 :: bool
-L7:
-    r8 = a & 1
-    r9 = r8 != 0
-    if r9 goto L8 else goto L9 :: bool
-L8:
-    r10 = CPyTagged_IsLt_(a, a)
-    if r10 goto L10 else goto L11 :: bool
-L9:
-    r11 = a < a :: signed
-    if r11 goto L10 else goto L11 :: bool
-L10:
     y = a
-    goto L6
-L11:
+    goto L3
+L5:
     x = a
     goto L1
-L12:
+L6:
     return 1
 (0, 0)   {a}                     {a}
 (1, 0)   {a, x, y}               {a, x, y}
 (1, 1)   {a, x, y}               {a, x, y}
-(1, 2)   {a, x, y}               {a, x, y}
 (2, 0)   {a, x, y}               {a, x, y}
-(2, 1)   {a, x, y}               {a, x, y}
-(2, 2)   {a, x, y}               {a, x, y}
 (3, 0)   {a, x, y}               {a, x, y}
 (3, 1)   {a, x, y}               {a, x, y}
 (4, 0)   {a, x, y}               {a, x, y}
 (4, 1)   {a, x, y}               {a, x, y}
 (5, 0)   {a, x, y}               {a, x, y}
+(5, 1)   {a, x, y}               {a, x, y}
 (6, 0)   {a, x, y}               {a, x, y}
-(6, 1)   {a, x, y}               {a, x, y}
-(6, 2)   {a, x, y}               {a, x, y}
-(7, 0)   {a, x, y}               {a, x, y}
-(7, 1)   {a, x, y}               {a, x, y}
-(7, 2)   {a, x, y}               {a, x, y}
-(8, 0)   {a, x, y}               {a, x, y}
-(8, 1)   {a, x, y}               {a, x, y}
-(9, 0)   {a, x, y}               {a, x, y}
-(9, 1)   {a, x, y}               {a, x, y}
-(10, 0)  {a, x, y}               {a, x, y}
-(10, 1)  {a, x, y}               {a, x, y}
-(11, 0)  {a, x, y}               {a, x, y}
-(11, 1)  {a, x, y}               {a, x, y}
-(12, 0)  {a, x, y}               {a, x, y}
 
 [case testTrivial_BorrowedArgument]
 def f(a: int, b: int) -> int:
@@ -421,40 +323,27 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
+    r0 :: bit
     x :: int
 L0:
-    r0 = a & 1
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = int_eq a, a
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPyTagged_IsEq_(a, a)
-    if r2 goto L3 else goto L4 :: bool
-L2:
-    r3 = a == a
-    if r3 goto L3 else goto L4 :: bool
-L3:
     x = 4
     a = 2
-    goto L5
-L4:
+    goto L3
+L2:
     x = 2
-L5:
+L3:
     return x
 (0, 0)   {a}                     {a}
 (0, 1)   {a}                     {a}
-(0, 2)   {a}                     {a}
 (1, 0)   {a}                     {a}
-(1, 1)   {a}                     {a}
+(1, 1)   {a}                     {}
+(1, 2)   {}                      {}
 (2, 0)   {a}                     {a}
 (2, 1)   {a}                     {a}
-(3, 0)   {a}                     {a}
-(3, 1)   {a}                     {}
-(3, 2)   {}                      {}
-(4, 0)   {a}                     {a}
-(4, 1)   {a}                     {a}
-(5, 0)   {}                      {}
+(3, 0)   {}                      {}
 
 [case testLoop_BorrowedArgument]
 def f(a: int) -> int:
@@ -467,55 +356,33 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a, sum, i :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6, r7 :: int
+    r0 :: bit
+    r1, r2 :: int
 L0:
     sum = 0
     i = 0
 L1:
-    r0 = i & 1
-    r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    r0 = int_le i, a
+    if r0 goto L2 else goto L3 :: bool
 L2:
-    r2 = a & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
-L3:
-    r4 = CPyTagged_IsLt_(a, i)
-    if r4 goto L6 else goto L5 :: bool
-L4:
-    r5 = i <= a :: signed
-    if r5 goto L5 else goto L6 :: bool
-L5:
-    r6 = CPyTagged_Add(sum, i)
-    sum = r6
-    r7 = CPyTagged_Add(i, 2)
-    i = r7
+    r1 = CPyTagged_Add(sum, i)
+    sum = r1
+    r2 = CPyTagged_Add(i, 2)
+    i = r2
     goto L1
-L6:
+L3:
     return sum
 (0, 0)   {a}                     {a}
 (0, 1)   {a}                     {a}
 (0, 2)   {a}                     {a}
 (1, 0)   {a}                     {a}
 (1, 1)   {a}                     {a}
-(1, 2)   {a}                     {a}
 (2, 0)   {a}                     {a}
 (2, 1)   {a}                     {a}
 (2, 2)   {a}                     {a}
+(2, 3)   {a}                     {a}
+(2, 4)   {a}                     {a}
 (3, 0)   {a}                     {a}
-(3, 1)   {a}                     {a}
-(4, 0)   {a}                     {a}
-(4, 1)   {a}                     {a}
-(5, 0)   {a}                     {a}
-(5, 1)   {a}                     {a}
-(5, 2)   {a}                     {a}
-(5, 3)   {a}                     {a}
-(5, 4)   {a}                     {a}
-(6, 0)   {a}                     {a}
 
 [case testError]
 def f(x: List[int]) -> None: pass # E: Name "List" is not defined \

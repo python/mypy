@@ -573,6 +573,25 @@ async def return_f() -> AsyncGenerator[int, None]:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
 
+[case testImplicitAsyncGenerator]
+from typing import List
+
+async def get_list() -> List[int]:
+    return [1]
+
+async def predicate() -> bool:
+    return True
+
+async def test_implicit_generators() -> None:
+    reveal_type(await predicate() for _ in [1])  # N: Revealed type is "typing.AsyncGenerator[builtins.bool, None]"
+    reveal_type(x for x in [1] if await predicate())  # N: Revealed type is "typing.AsyncGenerator[builtins.int, None]"
+    reveal_type(x for x in await get_list())  # N: Revealed type is "typing.Generator[builtins.int, None, None]"
+    reveal_type(x for _ in [1] for x in await get_list())  # N: Revealed type is "typing.AsyncGenerator[builtins.int, None]"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-async.pyi]
+
+
 -- The full matrix of coroutine compatibility
 -- ------------------------------------------
 
@@ -765,7 +784,8 @@ class Task(Future[T]):
 
 @overload
 def wait(fs: Iterable[FT]) -> Future[Tuple[List[FT], List[FT]]]: ...  \
-    # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    # E: Overloaded function signatures 1 and 2 overlap with incompatible return types \
+    # N: Flipping the order of overloads will fix this error
 @overload
 def wait(fs: Iterable[Awaitable[T]]) -> Future[Tuple[List[Task[T]], List[Task[T]]]]: ...
 def wait(fs: Any) -> Any:
@@ -788,6 +808,7 @@ async def precise1(futures: Iterable[Future[int]]) -> None:
 async def precise2(futures: Iterable[Awaitable[int]]) -> None:
     done, pending = await wait(futures)
     reveal_type(done)  # N: Revealed type is "builtins.list[__main__.Task[builtins.int]]"
+
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
@@ -819,8 +840,6 @@ def bar() -> None:
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncForOutsideCoroutine]
-# flags: --python-version 3.7
-
 async def g():
     yield 0
 
@@ -841,8 +860,6 @@ async for x in g(): ... # E: "async for" outside async function
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncWithOutsideCoroutine]
-# flags: --python-version 3.7
-
 class C:
     async def __aenter__(self): pass
     async def __aexit__(self, x, y, z): pass
@@ -858,7 +875,6 @@ async with C() as x: # E: "async with" outside async function
 [typing fixtures/typing-async.pyi]
 
 [case testAwaitMissingNote]
-# flags: --python-version 3.7
 from typing import Generic, TypeVar, Generator, Any, Awaitable, Type
 
 class C:

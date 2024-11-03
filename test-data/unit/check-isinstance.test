@@ -1833,6 +1833,30 @@ def f(x: T) -> None:
     reveal_type(x) # N: Revealed type is "T`-1"
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound]
+from typing import Union, TypeVar
+
+class A:
+    a: int
+class B:
+    b: int
+
+T = TypeVar("T", bound=Union[A, B])
+
+def f(x: T) -> T:
+    if isinstance(x, A):
+        reveal_type(x)      # N: Revealed type is "__main__.A"
+        x.a
+        x.b                 # E: "A" has no attribute "b"
+    else:
+        reveal_type(x)      # N: Revealed type is "T`-1"
+        x.a                 # E: "T" has no attribute "a"
+        x.b
+    x.a                     # E: Item "B" of the upper bound "Union[A, B]" of type variable "T" has no attribute "a"
+    x.b                     # E: Item "A" of the upper bound "Union[A, B]" of type variable "T" has no attribute "b"
+    return x
+[builtins fixtures/isinstance.pyi]
+
 [case testIsinstanceAndTypeType]
 from typing import Type
 def f(x: Type[int]) -> None:

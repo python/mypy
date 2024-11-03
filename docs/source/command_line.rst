@@ -96,6 +96,10 @@ Optional arguments
 
     Show program's version number and exit.
 
+.. option:: -O FORMAT, --output FORMAT {json}
+
+    Set a custom output format.
+
 .. _config-file-flag:
 
 Config file
@@ -415,17 +419,16 @@ None and Optional handling
 **************************
 
 The following flags adjust how mypy handles values of type ``None``.
-For more details, see :ref:`no_strict_optional`.
 
 .. _implicit-optional:
 
 .. option:: --implicit-optional
 
-    This flag causes mypy to treat arguments with a ``None``
-    default value as having an implicit :py:data:`~typing.Optional` type.
+    This flag causes mypy to treat parameters with a ``None``
+    default value as having an implicit optional type (``T | None``).
 
     For example, if this flag is set, mypy would assume that the ``x``
-    parameter is actually of type ``Optional[int]`` in the code snippet below
+    parameter is actually of type ``int | None`` in the code snippet below,
     since the default parameter is ``None``:
 
     .. code-block:: python
@@ -435,16 +438,19 @@ For more details, see :ref:`no_strict_optional`.
 
     **Note:** This was disabled by default starting in mypy 0.980.
 
+.. _no_strict_optional:
+
 .. option:: --no-strict-optional
 
-    This flag disables strict checking of :py:data:`~typing.Optional`
+    This flag effectively disables checking of optional
     types and ``None`` values. With this option, mypy doesn't
-    generally check the use of ``None`` values -- they are valid
-    everywhere. See :ref:`no_strict_optional` for more about this feature.
+    generally check the use of ``None`` values -- it is treated
+    as compatible with every type.
 
-    **Note:** Strict optional checking was enabled by default starting in
-    mypy 0.600, and in previous versions it had to be explicitly enabled
-    using ``--strict-optional`` (which is still accepted).
+    .. warning::
+
+        ``--no-strict-optional`` is evil. Avoid using it and definitely do
+        not use it without understanding what it does.
 
 
 .. _configuring-warnings:
@@ -531,6 +537,12 @@ potentially problematic or redundant in some way.
 
         This limitation will be removed in future releases of mypy.
 
+.. option:: --report-deprecated-as-error
+
+    By default, mypy emits notes if your code imports or uses deprecated
+    features.    This flag converts such notes to errors, causing mypy to
+    eventually finish with a non-zero exit code.  Features are considered
+    deprecated when decorated with ``warnings.deprecated``.
 
 .. _miscellaneous-strictness-flags:
 
@@ -573,26 +585,24 @@ of the above sections.
 .. option:: --local-partial-types
 
     In mypy, the most common cases for partial types are variables initialized using ``None``,
-    but without explicit ``Optional`` annotations. By default, mypy won't check partial types
+    but without explicit ``X | None`` annotations. By default, mypy won't check partial types
     spanning module top level or class top level. This flag changes the behavior to only allow
     partial types at local level, therefore it disallows inferring variable type for ``None``
     from two assignments in different scopes. For example:
 
     .. code-block:: python
 
-        from typing import Optional
-
         a = None  # Need type annotation here if using --local-partial-types
-        b: Optional[int] = None
+        b: int | None = None
 
         class Foo:
             bar = None  # Need type annotation here if using --local-partial-types
-            baz: Optional[int] = None
+            baz: int | None = None
 
             def __init__(self) -> None:
                 self.bar = 1
 
-        reveal_type(Foo().bar)  # Union[int, None] without --local-partial-types
+        reveal_type(Foo().bar)  # 'int | None' without --local-partial-types
 
     Note: this option is always implicitly enabled in mypy daemon and will become
     enabled by default for mypy in a future release.
@@ -628,13 +638,11 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import Text
-
        items: list[int]
        if 'some string' in items:  # Error: non-overlapping container check!
            ...
 
-       text: Text
+       text: str
        if text != b'other bytes':  # Error: non-overlapping equality check!
            ...
 
@@ -744,6 +752,17 @@ in error messages.
     (note that column offsets are 0-based)::
 
         main.py:12:9: error: Unsupported operand types for / ("int" and "str")
+
+.. option:: --show-error-code-links
+
+    This flag will also display a link to error code documentation, anchored to the error code reported by mypy.
+    The corresponding error code will be highlighted within the documentation page.
+    If we enable this flag, the error message now looks like this::
+
+        main.py:3: error: Unsupported operand types for - ("int" and "str")  [operator]
+        main.py:3: note: See 'https://mypy.rtfd.io/en/stable/_refs.html#code-operator' for more info
+
+
 
 .. option:: --show-error-end
 
@@ -995,7 +1014,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature FEATURE
+.. option:: --enable-incomplete-feature {PreciseTupleTypes, InlineTypedDict}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
@@ -1041,6 +1060,14 @@ List of currently incomplete/experimental features:
          reveal_type(numbers)
          # Without PreciseTupleTypes: tuple[int, ...]
          # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
+
+* ``InlineTypedDict``: this feature enables non-standard syntax for inline
+  :ref:`TypedDicts <typeddict>`, for example:
+
+  .. code-block:: python
+
+     def test_values() -> {"int": int, "str": str}:
+         return {"int": 42, "str": "test"}
 
 
 Miscellaneous
