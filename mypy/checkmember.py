@@ -1329,15 +1329,18 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
     """
 
     # We take the type from whichever of __init__ and __new__ is first
-    # in the MRO, preferring __init__ if there is a tie.
+    # in the MRO, preferring __new__ if there is a tie.
     init_method = info.get("__init__")
     new_method = info.get("__new__")
     if not init_method or not is_valid_constructor(init_method.node):
         # Must be an invalid class definition.
         return AnyType(TypeOfAny.from_error)
     # There *should* always be a __new__ method except the test stubs
-    # lack it, so just copy init_method in that situation
-    new_method = new_method or init_method
+    # lack it, so just copy builtin's init in that situation
+    if new_method is None:
+        new_method = named_type("builtins.object").type.get("__init__")
+        if not new_method:
+            return AnyType(TypeOfAny.from_error)
     if not is_valid_constructor(new_method.node):
         # Must be an invalid class definition.
         return AnyType(TypeOfAny.from_error)
@@ -1371,12 +1374,13 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
                     fallback=named_type("builtins.function"),
                 )
                 return class_callable(sig, info, fallback, None, is_new=False)
-
-        # Otherwise prefer __init__ in a tie. It isn't clear that this
-        # is the right thing, but __new__ caused problems with
-        # typeshed (#5647).
-        method = init_method.node
-        is_new = False
+        if init_method.node.info.fullname == "builtins.dict":
+            # dict.__new__ in typeshed is pretty unhelpful
+            method = init_method.node
+            is_new = False
+        else:
+            method = new_method.node
+            is_new = True
     # Construct callable type based on signature of __init__. Adjust
     # return type and insert type arguments.
     if isinstance(method, FuncBase):

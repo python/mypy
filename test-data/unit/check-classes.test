@@ -6324,7 +6324,7 @@ class A:
     def __init__(self, x: int) -> None:
         pass
 
-reveal_type(A)  # N: Revealed type is "def (x: builtins.int) -> __main__.A"
+reveal_type(A)  # N: Revealed type is "def (*args: Any) -> __main__.A"
 [builtins fixtures/tuple.pyi]
 
 [case testCyclicDecorator]
@@ -7883,7 +7883,7 @@ if object():
 if object():
     reveal_type(B())  # N: Revealed type is "Never"
 if object():
-    reveal_type(C())  # N: Revealed type is "Never"
+    reveal_type(C())  # N: Revealed type is "__main__.C"
 if object():
     reveal_type(D())  # N: Revealed type is "Never"
 
@@ -7933,7 +7933,7 @@ if object():
 reveal_type(B(1))  # N: Revealed type is "__main__.B"
 
 if object():
-    reveal_type(C())  # N: Revealed type is "Never"
+    reveal_type(C())  # N: Revealed type is "__main__.C"
 reveal_type(C(1))  # N: Revealed type is "__main__.C"
 
 if object():
