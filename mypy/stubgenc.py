@@ -788,7 +788,11 @@ class InspectionStubGenerator(BaseStubGenerator):
         return [self.strip_or_import(self.get_type_fullname(base)) for base in bases]
 
     def generate_class_stub(
-        self, class_name: str, cls: type[object], output: list[str], parent_class: ClassInfo | None = None
+        self,
+        class_name: str,
+        cls: type[object],
+        output: list[str],
+        parent_class: ClassInfo | None = None,
     ) -> None:
         """Generate stub for a single class using runtime introspection.
 
