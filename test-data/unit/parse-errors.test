@@ -151,6 +151,13 @@ x = 0 # type: A B #comment #7
 [out]
 file:2: error: Syntax error in type comment "A B"
 
+[case testMissingBracket]
+def foo(
+[out]
+file:1: error: unexpected EOF while parsing
+[out version>=3.10]
+file:1: error: '(' was never closed
+
 [case testInvalidSignatureInComment1]
 def f(): # type: x
   pass

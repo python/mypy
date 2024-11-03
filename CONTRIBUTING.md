@@ -30,17 +30,23 @@ cd mypy
 #### (3) Create then activate a virtual environment
 
 ```bash
-# On Windows, the commands may be slightly different. For more details, see
-# https://docs.python.org/3/library/venv.html#creating-virtual-environments
 python3 -m venv venv
 source venv/bin/activate
+```
+
+```bash
+# For Windows use
+python -m venv venv
+. venv/Scripts/activate
+
+# For more details, see https://docs.python.org/3/library/venv.html#creating-virtual-environments
 ```
 
 #### (4) Install the test requirements and the project
 
 ```bash
-python3 -m pip install -r test-requirements.txt
-python3 -m pip install -e .
+python -m pip install -r test-requirements.txt
+python -m pip install -e .
 hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
 

@@ -1,7 +1,7 @@
 import sys
 from abc import abstractmethod
 from time import struct_time
-from typing import ClassVar, Literal, NamedTuple, NoReturn, SupportsIndex, final, overload
+from typing import ClassVar, Final, NamedTuple, NoReturn, SupportsIndex, final, overload
 from typing_extensions import Self, TypeAlias, deprecated
 
 if sys.version_info >= (3, 11):
@@ -9,8 +9,8 @@ if sys.version_info >= (3, 11):
 elif sys.version_info >= (3, 9):
     __all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo", "MINYEAR", "MAXYEAR")
 
-MINYEAR: Literal[1]
-MAXYEAR: Literal[9999]
+MINYEAR: Final = 1
+MAXYEAR: Final = 9999
 
 class tzinfo:
     @abstractmethod
@@ -79,6 +79,9 @@ class date:
     def isoformat(self) -> str: ...
     def timetuple(self) -> struct_time: ...
     def toordinal(self) -> int: ...
+    if sys.version_info >= (3, 13):
+        def __replace__(self, /, *, year: SupportsIndex = ..., month: SupportsIndex = ..., day: SupportsIndex = ...) -> Self: ...
+
     def replace(self, year: SupportsIndex = ..., month: SupportsIndex = ..., day: SupportsIndex = ...) -> Self: ...
     def __le__(self, value: date, /) -> bool: ...
     def __lt__(self, value: date, /) -> bool: ...
@@ -148,6 +151,19 @@ class time:
     def utcoffset(self) -> timedelta | None: ...
     def tzname(self) -> str | None: ...
     def dst(self) -> timedelta | None: ...
+    if sys.version_info >= (3, 13):
+        def __replace__(
+            self,
+            /,
+            *,
+            hour: SupportsIndex = ...,
+            minute: SupportsIndex = ...,
+            second: SupportsIndex = ...,
+            microsecond: SupportsIndex = ...,
+            tzinfo: _TzInfo | None = ...,
+            fold: int = ...,
+        ) -> Self: ...
+
     def replace(
         self,
         hour: SupportsIndex = ...,
@@ -249,12 +265,12 @@ class datetime(date):
         def fromtimestamp(cls, timestamp: float, /, tz: _TzInfo | None = ...) -> Self: ...
 
     @classmethod
-    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .fromtimestamp(datetime.UTC)")
+    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .fromtimestamp(datetime.timezone.utc)")
     def utcfromtimestamp(cls, t: float, /) -> Self: ...
     @classmethod
     def now(cls, tz: _TzInfo | None = None) -> Self: ...
     @classmethod
-    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.UTC)")
+    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.timezone.utc)")
     def utcnow(cls) -> Self: ...
     @classmethod
     def combine(cls, date: _Date, time: _Time, tzinfo: _TzInfo | None = ...) -> Self: ...
@@ -263,6 +279,22 @@ class datetime(date):
     def date(self) -> _Date: ...
     def time(self) -> _Time: ...
     def timetz(self) -> _Time: ...
+    if sys.version_info >= (3, 13):
+        def __replace__(
+            self,
+            /,
+            *,
+            year: SupportsIndex = ...,
+            month: SupportsIndex = ...,
+            day: SupportsIndex = ...,
+            hour: SupportsIndex = ...,
+            minute: SupportsIndex = ...,
+            second: SupportsIndex = ...,
+            microsecond: SupportsIndex = ...,
+            tzinfo: _TzInfo | None = ...,
+            fold: int = ...,
+        ) -> Self: ...
+
     def replace(
         self,
         year: SupportsIndex = ...,

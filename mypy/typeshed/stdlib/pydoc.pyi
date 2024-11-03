@@ -1,11 +1,11 @@
 import sys
-from _typeshed import OptExcInfo, SupportsWrite
+from _typeshed import OptExcInfo, SupportsWrite, Unused
 from abc import abstractmethod
 from builtins import list as _list  # "list" conflicts with method name
 from collections.abc import Callable, Container, Mapping, MutableMapping
 from reprlib import Repr
 from types import MethodType, ModuleType, TracebackType
-from typing import IO, Any, AnyStr, Final, NoReturn, TypeVar
+from typing import IO, Any, AnyStr, Final, NoReturn, Protocol, TypeVar
 from typing_extensions import TypeGuard
 
 __all__ = ["help"]
@@ -16,6 +16,9 @@ __author__: Final[str]
 __date__: Final[str]
 __version__: Final[str]
 __credits__: Final[str]
+
+class _Pager(Protocol):
+    def __call__(self, text: str, title: str = "") -> None: ...
 
 def pathdirs() -> list[str]: ...
 def getdoc(object: object) -> str: ...
@@ -121,7 +124,7 @@ class HTMLDoc(Doc):
     def formattree(
         self, tree: list[tuple[type, tuple[type, ...]] | list[Any]], modname: str, parent: type | None = None
     ) -> str: ...
-    def docmodule(self, object: object, name: str | None = None, mod: str | None = None, *ignored: Any) -> str: ...
+    def docmodule(self, object: object, name: str | None = None, mod: str | None = None, *ignored: Unused) -> str: ...
     def docclass(
         self,
         object: object,
@@ -129,22 +132,44 @@ class HTMLDoc(Doc):
         mod: str | None = None,
         funcs: Mapping[str, str] = {},
         classes: Mapping[str, str] = {},
-        *ignored: Any,
+        *ignored: Unused,
     ) -> str: ...
     def formatvalue(self, object: object) -> str: ...
-    def docroutine(  # type: ignore[override]
-        self,
-        object: object,
-        name: str | None = None,
-        mod: str | None = None,
-        funcs: Mapping[str, str] = {},
-        classes: Mapping[str, str] = {},
-        methods: Mapping[str, str] = {},
-        cl: type | None = None,
-    ) -> str: ...
-    def docproperty(self, object: object, name: str | None = None, mod: str | None = None, cl: Any | None = None) -> str: ...  # type: ignore[override]
-    def docother(self, object: object, name: str | None = None, mod: Any | None = None, *ignored: Any) -> str: ...
-    def docdata(self, object: object, name: str | None = None, mod: Any | None = None, cl: Any | None = None) -> str: ...  # type: ignore[override]
+    def docother(self, object: object, name: str | None = None, mod: Any | None = None, *ignored: Unused) -> str: ...
+    if sys.version_info >= (3, 11):
+        def docroutine(  # type: ignore[override]
+            self,
+            object: object,
+            name: str | None = None,
+            mod: str | None = None,
+            funcs: Mapping[str, str] = {},
+            classes: Mapping[str, str] = {},
+            methods: Mapping[str, str] = {},
+            cl: type | None = None,
+            homecls: type | None = None,
+        ) -> str: ...
+        def docproperty(
+            self, object: object, name: str | None = None, mod: str | None = None, cl: Any | None = None, *ignored: Unused
+        ) -> str: ...
+        def docdata(
+            self, object: object, name: str | None = None, mod: Any | None = None, cl: Any | None = None, *ignored: Unused
+        ) -> str: ...
+    else:
+        def docroutine(  # type: ignore[override]
+            self,
+            object: object,
+            name: str | None = None,
+            mod: str | None = None,
+            funcs: Mapping[str, str] = {},
+            classes: Mapping[str, str] = {},
+            methods: Mapping[str, str] = {},
+            cl: type | None = None,
+        ) -> str: ...
+        def docproperty(self, object: object, name: str | None = None, mod: str | None = None, cl: Any | None = None) -> str: ...  # type: ignore[override]
+        def docdata(self, object: object, name: str | None = None, mod: Any | None = None, cl: Any | None = None) -> str: ...  # type: ignore[override]
+    if sys.version_info >= (3, 11):
+        def parentlink(self, object: type | ModuleType, modname: str) -> str: ...
+
     def index(self, dir: str, shadowed: MutableMapping[str, bool] | None = None) -> str: ...
     def filelink(self, url: str, path: str) -> str: ...
 
@@ -164,31 +189,78 @@ class TextDoc(Doc):
     def formattree(
         self, tree: list[tuple[type, tuple[type, ...]] | list[Any]], modname: str, parent: type | None = None, prefix: str = ""
     ) -> str: ...
-    def docmodule(self, object: object, name: str | None = None, mod: Any | None = None) -> str: ...  # type: ignore[override]
-    def docclass(self, object: object, name: str | None = None, mod: str | None = None, *ignored: Any) -> str: ...
+    def docclass(self, object: object, name: str | None = None, mod: str | None = None, *ignored: Unused) -> str: ...
     def formatvalue(self, object: object) -> str: ...
-    def docroutine(self, object: object, name: str | None = None, mod: str | None = None, cl: Any | None = None) -> str: ...  # type: ignore[override]
-    def docproperty(self, object: object, name: str | None = None, mod: Any | None = None, cl: Any | None = None) -> str: ...  # type: ignore[override]
-    def docdata(self, object: object, name: str | None = None, mod: str | None = None, cl: Any | None = None) -> str: ...  # type: ignore[override]
-    def docother(  # type: ignore[override]
-        self,
-        object: object,
-        name: str | None = None,
-        mod: str | None = None,
-        parent: str | None = None,
-        maxlen: int | None = None,
-        doc: Any | None = None,
-    ) -> str: ...
+    if sys.version_info >= (3, 11):
+        def docroutine(  # type: ignore[override]
+            self,
+            object: object,
+            name: str | None = None,
+            mod: str | None = None,
+            cl: Any | None = None,
+            homecls: Any | None = None,
+        ) -> str: ...
+        def docmodule(self, object: object, name: str | None = None, mod: Any | None = None, *ignored: Unused) -> str: ...
+        def docproperty(
+            self, object: object, name: str | None = None, mod: Any | None = None, cl: Any | None = None, *ignored: Unused
+        ) -> str: ...
+        def docdata(
+            self, object: object, name: str | None = None, mod: str | None = None, cl: Any | None = None, *ignored: Unused
+        ) -> str: ...
+        def docother(
+            self,
+            object: object,
+            name: str | None = None,
+            mod: str | None = None,
+            parent: str | None = None,
+            *ignored: Unused,
+            maxlen: int | None = None,
+            doc: Any | None = None,
+        ) -> str: ...
+    else:
+        def docroutine(self, object: object, name: str | None = None, mod: str | None = None, cl: Any | None = None) -> str: ...  # type: ignore[override]
+        def docmodule(self, object: object, name: str | None = None, mod: Any | None = None) -> str: ...  # type: ignore[override]
+        def docproperty(self, object: object, name: str | None = None, mod: Any | None = None, cl: Any | None = None) -> str: ...  # type: ignore[override]
+        def docdata(self, object: object, name: str | None = None, mod: str | None = None, cl: Any | None = None) -> str: ...  # type: ignore[override]
+        def docother(  # type: ignore[override]
+            self,
+            object: object,
+            name: str | None = None,
+            mod: str | None = None,
+            parent: str | None = None,
+            maxlen: int | None = None,
+            doc: Any | None = None,
+        ) -> str: ...
 
-def pager(text: str) -> None: ...
-def getpager() -> Callable[[str], None]: ...
+if sys.version_info >= (3, 13):
+    def pager(text: str, title: str = "") -> None: ...
+
+else:
+    def pager(text: str) -> None: ...
+
 def plain(text: str) -> str: ...
-def pipepager(text: str, cmd: str) -> None: ...
-def tempfilepager(text: str, cmd: str) -> None: ...
-def ttypager(text: str) -> None: ...
-def plainpager(text: str) -> None: ...
 def describe(thing: Any) -> str: ...
 def locate(path: str, forceload: bool = ...) -> object: ...
+
+if sys.version_info >= (3, 13):
+    def get_pager() -> _Pager: ...
+    def pipe_pager(text: str, cmd: str, title: str = "") -> None: ...
+    def tempfile_pager(text: str, cmd: str, title: str = "") -> None: ...
+    def tty_pager(text: str, title: str = "") -> None: ...
+    def plain_pager(text: str, title: str = "") -> None: ...
+
+    # For backwards compatibility.
+    getpager = get_pager
+    pipepager = pipe_pager
+    tempfilepager = tempfile_pager
+    ttypager = tty_pager
+    plainpager = plain_pager
+else:
+    def getpager() -> Callable[[str], None]: ...
+    def pipepager(text: str, cmd: str) -> None: ...
+    def tempfilepager(text: str, cmd: str) -> None: ...
+    def ttypager(text: str) -> None: ...
+    def plainpager(text: str) -> None: ...
 
 text: TextDoc
 html: HTMLDoc

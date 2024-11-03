@@ -189,7 +189,7 @@ def g(x: int | str | tuple[int, str] | C) -> None:
 # flags: --python-version 3.9
 from typing import Union
 def f(x: Union[int, str, None]) -> None:
-    if isinstance(x, int | str): # E: Unsupported left operand type for | ("Type[int]")
+    if isinstance(x, int | str):
         reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
     else:
         reveal_type(x)  # N: Revealed type is "None"
@@ -207,6 +207,36 @@ foo: ReadableBuffer
 [file was_mmap.pyi]
 from was_builtins import *
 class mmap: ...
+[builtins fixtures/type.pyi]
+
+[case testTypeAliasWithNewUnionIsInstance]
+# flags: --python-version 3.10
+SimpleAlias = int | str
+
+def foo(x: int | str | tuple):
+    if isinstance(x, SimpleAlias):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.tuple[Any, ...]"
+
+ParameterizedAlias = str | list[str]
+
+# these are false negatives:
+isinstance(5, str | list[str])
+isinstance(5, ParameterizedAlias)
+[builtins fixtures/type.pyi]
+
+[case testIsInstanceUnionNone]
+# flags: --python-version 3.10
+def foo(value: str | bool | None):
+    assert not isinstance(value, str | None)
+    reveal_type(value)  # N: Revealed type is "builtins.bool"
+
+def bar(value: object):
+    assert isinstance(value, str | None)
+    reveal_type(value)  # N: Revealed type is "Union[builtins.str, None]"
+[builtins fixtures/type.pyi]
+
 
 # TODO: Get this test to pass
 [case testImplicit604TypeAliasWithCyclicImportNotInStub-xfail]

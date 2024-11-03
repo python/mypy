@@ -2,7 +2,7 @@ import sys
 from _collections_abc import dict_keys
 from _typeshed import FileDescriptorOrPath, ReadableBuffer, SupportsRead, SupportsWrite
 from collections.abc import Callable, Generator, ItemsView, Iterable, Iterator, Mapping, Sequence
-from typing import Any, Literal, SupportsIndex, TypeVar, overload
+from typing import Any, Final, Literal, SupportsIndex, TypeVar, overload
 from typing_extensions import TypeAlias, TypeGuard, deprecated
 
 __all__ = [
@@ -41,7 +41,7 @@ _FileRead: TypeAlias = FileDescriptorOrPath | SupportsRead[bytes] | SupportsRead
 _FileWriteC14N: TypeAlias = FileDescriptorOrPath | SupportsWrite[bytes]
 _FileWrite: TypeAlias = _FileWriteC14N | SupportsWrite[str]
 
-VERSION: str
+VERSION: Final[str]
 
 class ParseError(SyntaxError):
     code: int
@@ -239,9 +239,15 @@ if sys.version_info >= (3, 9):
     def indent(tree: Element | ElementTree, space: str = "  ", level: int = 0) -> None: ...
 
 def parse(source: _FileRead, parser: XMLParser | None = None) -> ElementTree: ...
-def iterparse(
-    source: _FileRead, events: Sequence[str] | None = None, parser: XMLParser | None = None
-) -> Iterator[tuple[str, Any]]: ...
+
+class _IterParseIterator(Iterator[tuple[str, Any]]):
+    def __next__(self) -> tuple[str, Any]: ...
+    if sys.version_info >= (3, 13):
+        def close(self) -> None: ...
+    if sys.version_info >= (3, 11):
+        def __del__(self) -> None: ...
+
+def iterparse(source: _FileRead, events: Sequence[str] | None = None, parser: XMLParser | None = None) -> _IterParseIterator: ...
 
 class XMLPullParser:
     def __init__(self, events: Sequence[str] | None = None, *, _parser: XMLParser | None = None) -> None: ...
