@@ -1,0 +1,44 @@
+-- Test cases for `--output=json`.
+-- These cannot be run by the usual unit test runner because of the backslashes
+-- in the output, which get normalized to forward slashes by the test suite on
+-- Windows.
+
+[case testOutputJsonNoIssues]
+# flags: --output=json
+def foo() -> None:
+    pass
+
+foo()
+[out]
+
+[case testOutputJsonSimple]
+# flags: --output=json
+def foo() -> None:
+    pass
+
+foo(1)
+[out]
+{"file": "main", "line": 5, "column": 0, "message": "Too many arguments for \"foo\"", "hint": null, "code": "call-arg", "severity": "error"}
+
+[case testOutputJsonWithHint]
+# flags: --output=json
+from typing import Optional, overload
+
+@overload
+def foo() -> None: ...
+@overload
+def foo(x: int) -> None: ...
+
+def foo(x: Optional[int] = None) -> None:
+    ...
+
+reveal_type(foo)
+
+foo('42')
+
+def bar() -> None: ...
+bar('42')
+[out]
+{"file": "main", "line": 12, "column": 12, "message": "Revealed type is \"Overload(def (), def (x: builtins.int))\"", "hint": null, "code": "misc", "severity": "note"}
+{"file": "main", "line": 14, "column": 0, "message": "No overload variant of \"foo\" matches argument type \"str\"", "hint": "Possible overload variants:\n    def foo() -> None\n    def foo(x: int) -> None", "code": "call-overload", "severity": "error"}
+{"file": "main", "line": 17, "column": 0, "message": "Too many arguments for \"bar\"", "hint": null, "code": "call-arg", "severity": "error"}

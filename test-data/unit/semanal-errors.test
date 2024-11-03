@@ -1046,7 +1046,7 @@ T = TypeVar(b'T')      # E: TypeVar() expects a string literal as first argument
 d = TypeVar('D')    # E: String argument 1 "D" to TypeVar(...) does not match variable name "d"
 e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to "TypeVar()": "x"
 f = TypeVar('f', (int, str), int) # E: Type expected
-g = TypeVar('g', int)             # E: TypeVar cannot have only a single constraint
+g = TypeVar('g', int)             # E: Type variable must have at least two constrained types
 h = TypeVar('h', x=(int, str))    # E: Unexpected argument to "TypeVar()": "x"
 i = TypeVar('i', bound=1)         # E: TypeVar "bound" must be a type
 j = TypeVar('j', covariant=None)  # E: TypeVar "covariant" may only be a literal bool
@@ -1241,6 +1241,12 @@ class A:
     @property  # OK
     @dec
     def g(self) -> int: pass
+    @dec  # type: ignore[misc]
+    @property
+    def h(self) -> int: pass
+    @dec  # type: ignore[prop-decorator]
+    @property
+    def i(self) -> int: pass
 [builtins fixtures/property.pyi]
 [out]
 

@@ -265,3 +265,15 @@ var_object_size = custom_primitive_op(
     return_type=c_pyssize_t_rprimitive,
     error_kind=ERR_NEVER,
 )
+
+# Set the lazy value compute function of an TypeAliasType instance (Python 3.12+).
+# This must only be used as part of initializing the object. Any existing value
+# will be cleared.
+set_type_alias_compute_function_op = custom_primitive_op(
+    name="set_type_alias_compute_function",
+    c_function_name="CPy_SetTypeAliasTypeComputeFunction",
+    # (alias object, value compute function)
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+)

@@ -44,41 +44,6 @@ CPyTagged CPyTagged_FromInt64(int64_t value) {
     }
 }
 
-CPyTagged CPyTagged_FromObject(PyObject *object) {
-    int overflow;
-    // The overflow check knows about CPyTagged's width
-    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
-    if (unlikely(overflow != 0)) {
-        Py_INCREF(object);
-        return ((CPyTagged)object) | CPY_INT_TAG;
-    } else {
-        return value << 1;
-    }
-}
-
-CPyTagged CPyTagged_StealFromObject(PyObject *object) {
-    int overflow;
-    // The overflow check knows about CPyTagged's width
-    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
-    if (unlikely(overflow != 0)) {
-        return ((CPyTagged)object) | CPY_INT_TAG;
-    } else {
-        Py_DECREF(object);
-        return value << 1;
-    }
-}
-
-CPyTagged CPyTagged_BorrowFromObject(PyObject *object) {
-    int overflow;
-    // The overflow check knows about CPyTagged's width
-    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
-    if (unlikely(overflow != 0)) {
-        return ((CPyTagged)object) | CPY_INT_TAG;
-    } else {
-        return value << 1;
-    }
-}
-
 PyObject *CPyTagged_AsObject(CPyTagged x) {
     PyObject *value;
     if (unlikely(CPyTagged_CheckLong(x))) {
@@ -135,13 +100,8 @@ void CPyTagged_XDecRef(CPyTagged x) {
     }
 }
 
-CPyTagged CPyTagged_Negate(CPyTagged num) {
-    if (CPyTagged_CheckShort(num)
-            && num != (CPyTagged) ((Py_ssize_t)1 << (CPY_INT_BITS - 1))) {
-        // The only possibility of an overflow error happening when negating a short is if we
-        // attempt to negate the most negative number.
-        return -num;
-    }
+// Tagged int negation slow path, where the result may be a long integer
+CPyTagged CPyTagged_Negate_(CPyTagged num) {
     PyObject *num_obj = CPyTagged_AsObject(num);
     PyObject *result = PyNumber_Negative(num_obj);
     if (result == NULL) {
@@ -151,14 +111,8 @@ CPyTagged CPyTagged_Negate(CPyTagged num) {
     return CPyTagged_StealFromObject(result);
 }
 
-CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
-    // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
-    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
-        CPyTagged sum = left + right;
-        if (likely(!CPyTagged_IsAddOverflow(sum, left, right))) {
-            return sum;
-        }
-    }
+// Tagged int addition slow path, where the result may be a long integer
+CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Add(left_obj, right_obj);
@@ -170,14 +124,8 @@ CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
-    // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
-    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
-        CPyTagged diff = left - right;
-        if (likely(!CPyTagged_IsSubtractOverflow(diff, left, right))) {
-            return diff;
-        }
-    }
+// Tagged int subraction slow path, where the result may be a long integer
+CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Subtract(left_obj, right_obj);
@@ -189,13 +137,8 @@ CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
-    // TODO: Consider using some clang/gcc extension
-    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)) {
-        if (!CPyTagged_IsMultiplyOverflow(left, right)) {
-            return left * CPyTagged_ShortAsSsize_t(right);
-        }
-    }
+// Tagged int multiplication slow path, where the result may be a long integer
+CPyTagged CPyTagged_Multiply_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Multiply(left_obj, right_obj);
@@ -207,19 +150,8 @@ CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
-    if (CPyTagged_CheckShort(left)
-        && CPyTagged_CheckShort(right)
-        && !CPyTagged_MaybeFloorDivideFault(left, right)) {
-        Py_ssize_t result = CPyTagged_ShortAsSsize_t(left) / CPyTagged_ShortAsSsize_t(right);
-        if (((Py_ssize_t)left < 0) != (((Py_ssize_t)right) < 0)) {
-            if (result * right != left) {
-                // Round down
-                result--;
-            }
-        }
-        return result << 1;
-    }
+// Tagged int // slow path, where the result may be a long integer (or raise)
+CPyTagged CPyTagged_FloorDivide_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_FloorDivide(left_obj, right_obj);
@@ -233,15 +165,8 @@ CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
     }
 }
 
-CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right) {
-    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)
-        && !CPyTagged_MaybeRemainderFault(left, right)) {
-        Py_ssize_t result = (Py_ssize_t)left % (Py_ssize_t)right;
-        if (((Py_ssize_t)right < 0) != ((Py_ssize_t)left < 0) && result != 0) {
-            result += right;
-        }
-        return result;
-    }
+// Tagged int % slow path, where the result may be a long integer (or raise)
+CPyTagged CPyTagged_Remainder_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Remainder(left_obj, right_obj);
@@ -368,7 +293,7 @@ static digit *GetIntDigits(CPyTagged n, Py_ssize_t *size, digit *buf) {
 
 // Shared implementation of bitwise '&', '|' and '^' (specified by op) for at least
 // one long operand. This is somewhat optimized for performance.
-static CPyTagged BitwiseLongOp(CPyTagged a, CPyTagged b, char op) {
+CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op) {
     // Directly access the digits, as there is no fast C API function for this.
     digit abuf[3];
     digit bbuf[3];
@@ -419,89 +344,34 @@ static CPyTagged BitwiseLongOp(CPyTagged a, CPyTagged b, char op) {
     return CPyTagged_StealFromObject((PyObject *)r);
 }
 
-// Bitwise '&'
-CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right) {
-    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
-        return left & right;
+// Bitwise '~' slow path
+CPyTagged CPyTagged_Invert_(CPyTagged num) {
+    PyObject *obj = CPyTagged_AsObject(num);
+    PyObject *result = PyNumber_Invert(obj);
+    if (unlikely(result == NULL)) {
+        CPyError_OutOfMemory();
     }
-    return BitwiseLongOp(left, right, '&');
+    Py_DECREF(obj);
+    return CPyTagged_StealFromObject(result);
 }
 
-// Bitwise '|'
-CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right) {
-    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
-        return left | right;
+// Bitwise '>>' slow path
+CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right) {
+    // Long integer or negative shift -- use generic op
+    PyObject *lobj = CPyTagged_AsObject(left);
+    PyObject *robj = CPyTagged_AsObject(right);
+    PyObject *result = PyNumber_Rshift(lobj, robj);
+    Py_DECREF(lobj);
+    Py_DECREF(robj);
+    if (result == NULL) {
+        // Propagate error (could be negative shift count)
+        return CPY_INT_TAG;
     }
-    return BitwiseLongOp(left, right, '|');
+    return CPyTagged_StealFromObject(result);
 }
 
-// Bitwise '^'
-CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right) {
-    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
-        return left ^ right;
-    }
-    return BitwiseLongOp(left, right, '^');
-}
-
-// Bitwise '~'
-CPyTagged CPyTagged_Invert(CPyTagged num) {
-    if (likely(CPyTagged_CheckShort(num) && num != CPY_TAGGED_ABS_MIN)) {
-        return ~num & ~CPY_INT_TAG;
-    } else {
-        PyObject *obj = CPyTagged_AsObject(num);
-        PyObject *result = PyNumber_Invert(obj);
-        if (unlikely(result == NULL)) {
-            CPyError_OutOfMemory();
-        }
-        Py_DECREF(obj);
-        return CPyTagged_StealFromObject(result);
-    }
-}
-
-// Bitwise '>>'
-CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right) {
-    if (likely(CPyTagged_CheckShort(left)
-               && CPyTagged_CheckShort(right)
-               && (Py_ssize_t)right >= 0)) {
-        CPyTagged count = CPyTagged_ShortAsSsize_t(right);
-        if (unlikely(count >= CPY_INT_BITS)) {
-            if ((Py_ssize_t)left >= 0) {
-                return 0;
-            } else {
-                return CPyTagged_ShortFromInt(-1);
-            }
-        }
-        return ((Py_ssize_t)left >> count) & ~CPY_INT_TAG;
-    } else {
-        // Long integer or negative shift -- use generic op
-        PyObject *lobj = CPyTagged_AsObject(left);
-        PyObject *robj = CPyTagged_AsObject(right);
-        PyObject *result = PyNumber_Rshift(lobj, robj);
-        Py_DECREF(lobj);
-        Py_DECREF(robj);
-        if (result == NULL) {
-            // Propagate error (could be negative shift count)
-            return CPY_INT_TAG;
-        }
-        return CPyTagged_StealFromObject(result);
-    }
-}
-
-static inline bool IsShortLshiftOverflow(Py_ssize_t short_int, Py_ssize_t shift) {
-    return ((Py_ssize_t)(short_int << shift) >> shift) != short_int;
-}
-
-// Bitwise '<<'
-CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
-    if (likely(CPyTagged_CheckShort(left)
-               && CPyTagged_CheckShort(right)
-               && (Py_ssize_t)right >= 0
-               && right < CPY_INT_BITS * 2)) {
-        CPyTagged shift = CPyTagged_ShortAsSsize_t(right);
-        if (!IsShortLshiftOverflow(left, shift))
-            // Short integers, no overflow
-            return left << shift;
-    }
+// Bitwise '<<' slow path
+CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right) {
     // Long integer or out of range shift -- use generic op
     PyObject *lobj = CPyTagged_AsObject(left);
     PyObject *robj = CPyTagged_AsObject(right);
@@ -515,18 +385,8 @@ CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-int64_t CPyLong_AsInt64(PyObject *o) {
-    if (likely(PyLong_Check(o))) {
-        PyLongObject *lobj = (PyLongObject *)o;
-        Py_ssize_t size = Py_SIZE(lobj);
-        if (likely(size == 1)) {
-            // Fast path
-            return CPY_LONG_DIGIT(lobj, 0);
-        } else if (likely(size == 0)) {
-            return 0;
-        }
-    }
-    // Slow path
+// i64 unboxing slow path
+int64_t CPyLong_AsInt64_(PyObject *o) {
     int overflow;
     int64_t result = PyLong_AsLongLongAndOverflow(o, &overflow);
     if (result == -1) {
@@ -574,29 +434,8 @@ int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
     return d;
 }
 
-int32_t CPyLong_AsInt32(PyObject *o) {
-    if (likely(PyLong_Check(o))) {
-    #if CPY_3_12_FEATURES
-        PyLongObject *lobj = (PyLongObject *)o;
-        size_t tag = CPY_LONG_TAG(lobj);
-        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
-            // Fast path
-            return CPY_LONG_DIGIT(lobj, 0);
-        } else if (likely(tag == CPY_SIGN_ZERO)) {
-            return 0;
-        }
-    #else
-        PyLongObject *lobj = (PyLongObject *)o;
-        Py_ssize_t size = lobj->ob_base.ob_size;
-        if (likely(size == 1)) {
-            // Fast path
-            return CPY_LONG_DIGIT(lobj, 0);
-        } else if (likely(size == 0)) {
-            return 0;
-        }
-    #endif
-    }
-    // Slow path
+// i32 unboxing slow path
+int32_t CPyLong_AsInt32_(PyObject *o) {
     int overflow;
     long result = PyLong_AsLongAndOverflow(o, &overflow);
     if (result > 0x7fffffffLL || result < -0x80000000LL) {
@@ -652,33 +491,8 @@ void CPyInt32_Overflow() {
     PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
 }
 
-int16_t CPyLong_AsInt16(PyObject *o) {
-    if (likely(PyLong_Check(o))) {
-    #if CPY_3_12_FEATURES
-        PyLongObject *lobj = (PyLongObject *)o;
-        size_t tag = CPY_LONG_TAG(lobj);
-        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
-            // Fast path
-            digit x = CPY_LONG_DIGIT(lobj, 0);
-            if (x < 0x8000)
-                return x;
-        } else if (likely(tag == CPY_SIGN_ZERO)) {
-            return 0;
-        }
-    #else
-        PyLongObject *lobj = (PyLongObject *)o;
-        Py_ssize_t size = lobj->ob_base.ob_size;
-        if (likely(size == 1)) {
-            // Fast path
-            digit x = lobj->ob_digit[0];
-            if (x < 0x8000)
-                return x;
-        } else if (likely(size == 0)) {
-            return 0;
-        }
-    #endif
-    }
-    // Slow path
+// i16 unboxing slow path
+int16_t CPyLong_AsInt16_(PyObject *o) {
     int overflow;
     long result = PyLong_AsLongAndOverflow(o, &overflow);
     if (result > 0x7fff || result < -0x8000) {
@@ -734,34 +548,8 @@ void CPyInt16_Overflow() {
     PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
 }
 
-
-uint8_t CPyLong_AsUInt8(PyObject *o) {
-    if (likely(PyLong_Check(o))) {
-    #if CPY_3_12_FEATURES
-        PyLongObject *lobj = (PyLongObject *)o;
-        size_t tag = CPY_LONG_TAG(lobj);
-        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
-            // Fast path
-            digit x = CPY_LONG_DIGIT(lobj, 0);
-            if (x < 256)
-                return x;
-        } else if (likely(tag == CPY_SIGN_ZERO)) {
-            return 0;
-        }
-    #else
-        PyLongObject *lobj = (PyLongObject *)o;
-        Py_ssize_t size = lobj->ob_base.ob_size;
-        if (likely(size == 1)) {
-            // Fast path
-            digit x = lobj->ob_digit[0];
-            if (x < 256)
-                return x;
-        } else if (likely(size == 0)) {
-            return 0;
-        }
-    #endif
-    }
-    // Slow path
+// u8 unboxing slow path
+uint8_t CPyLong_AsUInt8_(PyObject *o) {
     int overflow;
     long result = PyLong_AsLongAndOverflow(o, &overflow);
     if (result < 0 || result >= 256) {

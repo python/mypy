@@ -1,6 +1,7 @@
 import sys
+from _typeshed import ReadableBuffer, Unused
 from types import TracebackType
-from typing import Any, Literal, final
+from typing import Any, Final, Literal, final, overload
 from typing_extensions import Self, TypeAlias
 
 if sys.platform == "win32":
@@ -24,12 +25,40 @@ if sys.platform == "win32":
     def QueryValueEx(key: _KeyType, name: str, /) -> tuple[Any, int]: ...
     def SaveKey(key: _KeyType, file_name: str, /) -> None: ...
     def SetValue(key: _KeyType, sub_key: str, type: int, value: str, /) -> None: ...
+    @overload  # type=REG_DWORD|REG_QWORD
     def SetValueEx(
-        key: _KeyType, value_name: str | None, reserved: Any, type: int, value: str | int, /
-    ) -> None: ...  # reserved is ignored
+        key: _KeyType, value_name: str | None, reserved: Unused, type: Literal[4, 5], value: int | None, /
+    ) -> None: ...
+    @overload  # type=REG_SZ|REG_EXPAND_SZ
+    def SetValueEx(
+        key: _KeyType, value_name: str | None, reserved: Unused, type: Literal[1, 2], value: str | None, /
+    ) -> None: ...
+    @overload  # type=REG_MULTI_SZ
+    def SetValueEx(
+        key: _KeyType, value_name: str | None, reserved: Unused, type: Literal[7], value: list[str] | None, /
+    ) -> None: ...
+    @overload  # type=REG_BINARY and everything else
+    def SetValueEx(
+        key: _KeyType,
+        value_name: str | None,
+        reserved: Unused,
+        type: Literal[0, 3, 8, 9, 10, 11],
+        value: ReadableBuffer | None,
+        /,
+    ) -> None: ...
+    @overload  # Unknown or undocumented
+    def SetValueEx(
+        key: _KeyType,
+        value_name: str | None,
+        reserved: Unused,
+        type: int,
+        value: int | str | list[str] | ReadableBuffer | None,
+        /,
+    ) -> None: ...
     def DisableReflectionKey(key: _KeyType, /) -> None: ...
     def EnableReflectionKey(key: _KeyType, /) -> None: ...
     def QueryReflectionKey(key: _KeyType, /) -> bool: ...
+
     HKEY_CLASSES_ROOT: int
     HKEY_CURRENT_USER: int
     HKEY_LOCAL_MACHINE: int
@@ -38,52 +67,52 @@ if sys.platform == "win32":
     HKEY_CURRENT_CONFIG: int
     HKEY_DYN_DATA: int
 
-    KEY_ALL_ACCESS: Literal[983103]
-    KEY_WRITE: Literal[131078]
-    KEY_READ: Literal[131097]
-    KEY_EXECUTE: Literal[131097]
-    KEY_QUERY_VALUE: Literal[1]
-    KEY_SET_VALUE: Literal[2]
-    KEY_CREATE_SUB_KEY: Literal[4]
-    KEY_ENUMERATE_SUB_KEYS: Literal[8]
-    KEY_NOTIFY: Literal[16]
-    KEY_CREATE_LINK: Literal[32]
+    KEY_ALL_ACCESS: Final = 983103
+    KEY_WRITE: Final = 131078
+    KEY_READ: Final = 131097
+    KEY_EXECUTE: Final = 131097
+    KEY_QUERY_VALUE: Final = 1
+    KEY_SET_VALUE: Final = 2
+    KEY_CREATE_SUB_KEY: Final = 4
+    KEY_ENUMERATE_SUB_KEYS: Final = 8
+    KEY_NOTIFY: Final = 16
+    KEY_CREATE_LINK: Final = 32
 
-    KEY_WOW64_64KEY: Literal[256]
-    KEY_WOW64_32KEY: Literal[512]
+    KEY_WOW64_64KEY: Final = 256
+    KEY_WOW64_32KEY: Final = 512
 
-    REG_BINARY: Literal[3]
-    REG_DWORD: Literal[4]
-    REG_DWORD_LITTLE_ENDIAN: Literal[4]
-    REG_DWORD_BIG_ENDIAN: Literal[5]
-    REG_EXPAND_SZ: Literal[2]
-    REG_LINK: Literal[6]
-    REG_MULTI_SZ: Literal[7]
-    REG_NONE: Literal[0]
-    REG_QWORD: Literal[11]
-    REG_QWORD_LITTLE_ENDIAN: Literal[11]
-    REG_RESOURCE_LIST: Literal[8]
-    REG_FULL_RESOURCE_DESCRIPTOR: Literal[9]
-    REG_RESOURCE_REQUIREMENTS_LIST: Literal[10]
-    REG_SZ: Literal[1]
+    REG_BINARY: Final = 3
+    REG_DWORD: Final = 4
+    REG_DWORD_LITTLE_ENDIAN: Final = 4
+    REG_DWORD_BIG_ENDIAN: Final = 5
+    REG_EXPAND_SZ: Final = 2
+    REG_LINK: Final = 6
+    REG_MULTI_SZ: Final = 7
+    REG_NONE: Final = 0
+    REG_QWORD: Final = 11
+    REG_QWORD_LITTLE_ENDIAN: Final = 11
+    REG_RESOURCE_LIST: Final = 8
+    REG_FULL_RESOURCE_DESCRIPTOR: Final = 9
+    REG_RESOURCE_REQUIREMENTS_LIST: Final = 10
+    REG_SZ: Final = 1
 
-    REG_CREATED_NEW_KEY: int  # undocumented
-    REG_LEGAL_CHANGE_FILTER: int  # undocumented
-    REG_LEGAL_OPTION: int  # undocumented
-    REG_NOTIFY_CHANGE_ATTRIBUTES: int  # undocumented
-    REG_NOTIFY_CHANGE_LAST_SET: int  # undocumented
-    REG_NOTIFY_CHANGE_NAME: int  # undocumented
-    REG_NOTIFY_CHANGE_SECURITY: int  # undocumented
-    REG_NO_LAZY_FLUSH: int  # undocumented
-    REG_OPENED_EXISTING_KEY: int  # undocumented
-    REG_OPTION_BACKUP_RESTORE: int  # undocumented
-    REG_OPTION_CREATE_LINK: int  # undocumented
-    REG_OPTION_NON_VOLATILE: int  # undocumented
-    REG_OPTION_OPEN_LINK: int  # undocumented
-    REG_OPTION_RESERVED: int  # undocumented
-    REG_OPTION_VOLATILE: int  # undocumented
-    REG_REFRESH_HIVE: int  # undocumented
-    REG_WHOLE_HIVE_VOLATILE: int  # undocumented
+    REG_CREATED_NEW_KEY: Final = 1  # undocumented
+    REG_LEGAL_CHANGE_FILTER: Final = 268435471  # undocumented
+    REG_LEGAL_OPTION: Final = 31  # undocumented
+    REG_NOTIFY_CHANGE_ATTRIBUTES: Final = 2  # undocumented
+    REG_NOTIFY_CHANGE_LAST_SET: Final = 4  # undocumented
+    REG_NOTIFY_CHANGE_NAME: Final = 1  # undocumented
+    REG_NOTIFY_CHANGE_SECURITY: Final = 8  # undocumented
+    REG_NO_LAZY_FLUSH: Final = 4  # undocumented
+    REG_OPENED_EXISTING_KEY: Final = 2  # undocumented
+    REG_OPTION_BACKUP_RESTORE: Final = 4  # undocumented
+    REG_OPTION_CREATE_LINK: Final = 2  # undocumented
+    REG_OPTION_NON_VOLATILE: Final = 0  # undocumented
+    REG_OPTION_OPEN_LINK: Final = 8  # undocumented
+    REG_OPTION_RESERVED: Final = 0  # undocumented
+    REG_OPTION_VOLATILE: Final = 1  # undocumented
+    REG_REFRESH_HIVE: Final = 2  # undocumented
+    REG_WHOLE_HIVE_VOLATILE: Final = 1  # undocumented
 
     error = OSError
 

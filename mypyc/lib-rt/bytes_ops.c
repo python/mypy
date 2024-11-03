@@ -99,7 +99,7 @@ PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
 // (mostly commonly, for bytearrays)
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter) {
     if (PyBytes_CheckExact(sep)) {
-        return _PyBytes_Join(sep, iter);
+        return PyBytes_Join(sep, iter);
     } else {
         _Py_IDENTIFIER(join);
         return _PyObject_CallMethodIdOneArg(sep, &PyId_join, iter);

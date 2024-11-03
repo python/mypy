@@ -34,6 +34,7 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
 )
+from mypy.typevartuples import erased_vars
 
 
 def erase_type(typ: Type) -> ProperType:
@@ -77,17 +78,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return t
 
     def visit_instance(self, t: Instance) -> ProperType:
-        args: list[Type] = []
-        for tv in t.type.defn.type_vars:
-            # Valid erasure for *Ts is *tuple[Any, ...], not just Any.
-            if isinstance(tv, TypeVarTupleType):
-                args.append(
-                    UnpackType(
-                        tv.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
-                    )
-                )
-            else:
-                args.append(AnyType(TypeOfAny.special_form))
+        args = erased_vars(t.type.defn.type_vars, TypeOfAny.special_form)
         return Instance(t.type, args, t.line)
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
@@ -170,6 +161,7 @@ class TypeVarEraser(TypeTranslator):
     """Implementation of type erasure"""
 
     def __init__(self, erase_id: Callable[[TypeVarId], bool], replacement: Type) -> None:
+        super().__init__()
         self.erase_id = erase_id
         self.replacement = replacement
 

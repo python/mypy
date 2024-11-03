@@ -51,7 +51,9 @@ def update_typeshed(typeshed_dir: str, commit: str | None) -> str:
     # Remove existing stubs.
     shutil.rmtree(stdlib_dir)
     # Copy new stdlib stubs.
-    shutil.copytree(os.path.join(typeshed_dir, "stdlib"), stdlib_dir)
+    shutil.copytree(
+        os.path.join(typeshed_dir, "stdlib"), stdlib_dir, ignore=shutil.ignore_patterns("@tests")
+    )
     shutil.copy(os.path.join(typeshed_dir, "LICENSE"), os.path.join("mypy", "typeshed"))
     return commit
 

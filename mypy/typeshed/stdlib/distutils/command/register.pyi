@@ -1,10 +1,13 @@
-from typing import Any
+from _typeshed import Incomplete
+from collections.abc import Callable
+from typing import Any, ClassVar
 
 from ..config import PyPIRCCommand
 
 class register(PyPIRCCommand):
     description: str
-    sub_commands: Any
+    # Any to work around variance issues
+    sub_commands: ClassVar[list[tuple[str, Callable[[Any], bool] | None]]]
     list_classifiers: int
     strict: int
     def initialize_options(self) -> None: ...
@@ -15,4 +18,4 @@ class register(PyPIRCCommand):
     def verify_metadata(self) -> None: ...
     def send_metadata(self) -> None: ...
     def build_post_data(self, action): ...
-    def post_to_server(self, data, auth: Any | None = None): ...
+    def post_to_server(self, data, auth: Incomplete | None = None): ...

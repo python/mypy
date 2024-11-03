@@ -71,6 +71,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeAlias,
     TypeAliasExpr,
+    TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
     TypeVarExpr,
@@ -242,6 +243,10 @@ class TraverserVisitor(NodeVisitor[None]):
             if guard is not None:
                 guard.accept(self)
             o.bodies[i].accept(self)
+
+    def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
+        o.name.accept(self)
+        o.value.accept(self)
 
     def visit_member_expr(self, o: MemberExpr) -> None:
         o.expr.accept(self)
@@ -953,9 +958,3 @@ class YieldFromCollector(FuncCollectorBase):
 
     def visit_yield_from_expr(self, expr: YieldFromExpr) -> None:
         self.yield_from_expressions.append((expr, self.in_assignment))
-
-
-def all_yield_from_expressions(node: Node) -> list[tuple[YieldFromExpr, bool]]:
-    v = YieldFromCollector()
-    node.accept(v)
-    return v.yield_from_expressions

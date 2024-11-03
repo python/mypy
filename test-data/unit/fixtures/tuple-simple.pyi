@@ -5,7 +5,7 @@
 
 from typing import Iterable, TypeVar, Generic
 
-T = TypeVar('T')
+T = TypeVar('T', covariant=True)
 
 class object:
     def __init__(self): pass

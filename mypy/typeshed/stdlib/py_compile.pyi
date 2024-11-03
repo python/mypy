@@ -12,9 +12,9 @@ class PyCompileError(Exception):
     def __init__(self, exc_type: type[BaseException], exc_value: BaseException, file: str, msg: str = "") -> None: ...
 
 class PycInvalidationMode(enum.Enum):
-    TIMESTAMP: int
-    CHECKED_HASH: int
-    UNCHECKED_HASH: int
+    TIMESTAMP = 1
+    CHECKED_HASH = 2
+    UNCHECKED_HASH = 3
 
 def _get_default_invalidation_mode() -> PycInvalidationMode: ...
 def compile(

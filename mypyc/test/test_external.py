@@ -20,7 +20,9 @@ class TestExternal(unittest.TestCase):
         cppflags: list[str] = []
         env = os.environ.copy()
         if sys.platform == "darwin":
-            cppflags += ["-mmacosx-version-min=10.10", "-stdlib=libc++"]
+            cppflags += ["-O0", "-mmacosx-version-min=10.10", "-stdlib=libc++"]
+        elif sys.platform == "linux":
+            cppflags += ["-O0"]
         env["CPPFLAGS"] = " ".join(cppflags)
         # Build Python wrapper for C unit tests.
 

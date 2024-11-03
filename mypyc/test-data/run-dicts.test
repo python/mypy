@@ -157,7 +157,11 @@ else:
 try:
     clear_during_iter(d)
 except RuntimeError as e:
-    assert str(e) == "OrderedDict changed size during iteration"
+    assert str(e) in (
+        "OrderedDict changed size during iteration",
+        # Error message changed in Python 3.13 and some 3.12 patch version
+        "OrderedDict mutated during iteration",
+    )
 else:
     assert False
 

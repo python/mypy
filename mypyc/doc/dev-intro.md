@@ -202,6 +202,10 @@ general overview of how things work. Test cases live under
 -q mypyc`. If you don't make changes to code under `mypy/`, it's not
 important to regularly run mypy tests during development.
 
+You can use `python runtests.py mypyc-fast` to run a subset of mypyc
+tests that covers most functionality but runs significantly quicker
+than the entire test suite.
+
 When you create a PR, we have Continuous Integration jobs set up that
 compile mypy using mypyc and run the mypy test suite using the
 compiled mypy. This will sometimes catch additional issues not caught

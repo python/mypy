@@ -104,7 +104,9 @@ def render_diff_range(
             output.write("\n")
 
 
-def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str) -> None:
+def assert_string_arrays_equal(
+    expected: list[str], actual: list[str], msg: str, *, traceback: bool = False
+) -> None:
     """Assert that two string arrays are equal.
 
     Display any differences in a human-readable form.
@@ -133,10 +135,10 @@ def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str)
             show_align_message(expected[first_diff], actual[first_diff])
 
         sys.stderr.write(
-            "Update the test output using --update-data -n0 "
-            "(you can additionally use the -k selector to update only specific tests)\n"
+            "Update the test output using --update-data "
+            "(implies -n0; you can additionally use the -k selector to update only specific tests)\n"
         )
-        pytest.fail(msg, pytrace=False)
+        pytest.fail(msg, pytrace=traceback)
 
 
 def assert_module_equivalence(name: str, expected: Iterable[str], actual: Iterable[str]) -> None:
@@ -254,16 +256,9 @@ def local_sys_path_set() -> Iterator[None]:
 
 
 def testfile_pyversion(path: str) -> tuple[int, int]:
-    if path.endswith("python312.test"):
-        return 3, 12
-    elif path.endswith("python311.test"):
-        return 3, 11
-    elif path.endswith("python310.test"):
-        return 3, 10
-    elif path.endswith("python39.test"):
-        return 3, 9
-    elif path.endswith("python38.test"):
-        return 3, 8
+    m = re.search(r"python3([0-9]+)\.test$", path)
+    if m:
+        return 3, int(m.group(1))
     else:
         return defaults.PYTHON3_VERSION
 

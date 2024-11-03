@@ -39,7 +39,10 @@ L0:
     return r0
 
 [case testNewSetFromIterable]
-from typing import Set, List
+from typing import Set, List, TypeVar
+
+T = TypeVar("T")
+
 def f(l: List[T]) -> Set[T]:
     return set(l)
 [out]

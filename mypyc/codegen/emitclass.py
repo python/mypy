@@ -213,8 +213,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
 
-    fields: dict[str, str] = {}
-    fields["tp_name"] = f'"{name}"'
+    fields: dict[str, str] = {"tp_name": f'"{name}"'}
 
     generate_full = not cl.is_trait and not cl.builtin_base
     needs_getseters = cl.needs_getseters or not cl.is_generated or cl.has_dict
@@ -571,6 +570,7 @@ def generate_setup_for_class(
         emitter.emit_line("}")
     else:
         emitter.emit_line(f"self->vtable = {vtable_name};")
+
     for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
         field = emitter.bitmap_field(i)
         emitter.emit_line(f"self->{field} = 0;")
@@ -734,7 +734,7 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_visit(f"self->{emitter.attr(attr)}", rtype)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("_PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
+        emitter.emit_line("PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -757,7 +757,7 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("_PyObject_ClearManagedDict((PyObject *)self);")
+        emitter.emit_line("PyObject_ClearManagedDict((PyObject *)self);")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that

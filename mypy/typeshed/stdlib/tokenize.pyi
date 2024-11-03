@@ -10,10 +10,8 @@ from typing_extensions import TypeAlias
 __all__ = [
     "AMPER",
     "AMPEREQUAL",
-    "ASYNC",
     "AT",
     "ATEQUAL",
-    "AWAIT",
     "CIRCUMFLEX",
     "CIRCUMFLEXEQUAL",
     "COLON",
@@ -83,12 +81,17 @@ __all__ = [
     "tokenize",
     "untokenize",
 ]
+if sys.version_info < (3, 13):
+    __all__ += ["ASYNC", "AWAIT"]
 
 if sys.version_info >= (3, 10):
     __all__ += ["SOFT_KEYWORD"]
 
 if sys.version_info >= (3, 12):
     __all__ += ["EXCLAMATION", "FSTRING_END", "FSTRING_MIDDLE", "FSTRING_START"]
+
+if sys.version_info >= (3, 13):
+    __all__ += ["TokenError", "open"]
 
 cookie_re: Pattern[str]
 blank_re: Pattern[bytes]
@@ -110,7 +113,9 @@ class TokenInfo(_TokenInfo):
 _Token: TypeAlias = TokenInfo | Sequence[int | str | _Position]
 
 class TokenError(Exception): ...
-class StopTokenizing(Exception): ...  # undocumented
+
+if sys.version_info < (3, 13):
+    class StopTokenizing(Exception): ...  # undocumented
 
 class Untokenizer:
     tokens: list[str]
@@ -120,13 +125,15 @@ class Untokenizer:
     def add_whitespace(self, start: _Position) -> None: ...
     def untokenize(self, iterable: Iterable[_Token]) -> str: ...
     def compat(self, token: Sequence[int | str], iterable: Iterable[_Token]) -> None: ...
+    if sys.version_info >= (3, 12):
+        def escape_brackets(self, token: str) -> str: ...
 
 # the docstring says "returns bytes" but is incorrect --
 # if the ENCODING token is missing, it skips the encode
 def untokenize(iterable: Iterable[_Token]) -> Any: ...
 def detect_encoding(readline: Callable[[], bytes | bytearray]) -> tuple[str, Sequence[bytes]]: ...
 def tokenize(readline: Callable[[], bytes | bytearray]) -> Generator[TokenInfo, None, None]: ...
-def generate_tokens(readline: Callable[[], str]) -> Generator[TokenInfo, None, None]: ...  # undocumented
+def generate_tokens(readline: Callable[[], str]) -> Generator[TokenInfo, None, None]: ...
 def open(filename: FileDescriptorOrPath) -> TextIO: ...
 def group(*choices: str) -> str: ...  # undocumented
 def any(*choices: str) -> str: ...  # undocumented

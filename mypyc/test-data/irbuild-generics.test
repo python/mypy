@@ -148,3 +148,44 @@ L2:
     r4 = x
 L3:
     return r4
+
+
+[case testParamSpec]
+from typing import Callable, ParamSpec, TypeVar
+
+P = ParamSpec("P")
+
+def execute(func: Callable[P, int], *args: P.args, **kwargs: P.kwargs) -> int:
+    return func(*args, **kwargs)
+
+def f(x: int) -> int:
+    return x
+
+execute(f, 1)
+[out]
+def execute(func, args, kwargs):
+    func :: object
+    args :: tuple
+    kwargs :: dict
+    r0 :: list
+    r1 :: object
+    r2 :: dict
+    r3 :: i32
+    r4 :: bit
+    r5 :: tuple
+    r6 :: object
+    r7 :: int
+L0:
+    r0 = PyList_New(0)
+    r1 = CPyList_Extend(r0, args)
+    r2 = PyDict_New()
+    r3 = CPyDict_UpdateInDisplay(r2, kwargs)
+    r4 = r3 >= 0 :: signed
+    r5 = PyList_AsTuple(r0)
+    r6 = PyObject_Call(func, r5, r2)
+    r7 = unbox(int, r6)
+    return r7
+def f(x):
+    x :: int
+L0:
+    return x

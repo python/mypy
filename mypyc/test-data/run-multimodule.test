@@ -291,6 +291,23 @@ Traceback (most recent call last):
   File "other.py", line 3, in fail2
     x[2] = 2
 IndexError: list assignment index out of range
+[out version>=3.13]
+Traceback (most recent call last):
+  File "driver.py", line 6, in <module>
+    other.fail2()
+    ~~~~~~~~~~~^^
+  File "other.py", line 3, in fail2
+    x[2] = 2
+IndexError: list assignment index out of range
+Traceback (most recent call last):
+  File "driver.py", line 12, in <module>
+    native.fail()
+    ~~~~~~~~~~~^^
+  File "native.py", line 4, in fail
+    fail2()
+  File "other.py", line 3, in fail2
+    x[2] = 2
+IndexError: list assignment index out of range
 
 [case testMultiModuleCycle]
 if False:

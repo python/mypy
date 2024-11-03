@@ -14,6 +14,7 @@ from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
+    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -30,7 +31,6 @@ from mypy.nodes import (
 )
 from mypy.state import state
 from mypy.types import (
-    ENUM_REMOVED_PROPS,
     AnyType,
     CallableType,
     ExtraAttrs,
@@ -95,8 +95,6 @@ def is_recursive_pair(s: Type, t: Type) -> bool:
 
 def tuple_fallback(typ: TupleType) -> Instance:
     """Return fallback type for a tuple."""
-    from mypy.join import join_type_list
-
     info = typ.partial_fallback.type
     if info.fullname != "builtins.tuple":
         return typ.partial_fallback
@@ -115,8 +113,13 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError
         else:
             items.append(item)
-    # TODO: we should really use a union here, tuple types are special.
-    return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
+    return Instance(
+        info,
+        # Note: flattening recursive unions is dangerous, since it can fool recursive
+        # types optimization in subtypes.py and go into infinite recursion.
+        [make_simplified_union(items, handle_recursive=False)],
+        extra_attrs=typ.partial_fallback.extra_attrs,
+    )
 
 
 def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
@@ -152,7 +155,14 @@ def type_object_type_from_function(
     #      ...
     #
     # We need to map B's __init__ to the type (List[T]) -> None.
-    signature = bind_self(signature, original_type=default_self, is_classmethod=is_new)
+    signature = bind_self(
+        signature,
+        original_type=default_self,
+        is_classmethod=is_new,
+        # Explicit instance self annotations have special handling in class_callable(),
+        # we don't need to bind any type variables in them if they are generic.
+        ignore_instances=True,
+    )
     signature = cast(FunctionLike, map_type_from_supertype(signature, info, def_info))
 
     special_sig: str | None = None
@@ -244,7 +254,9 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo, super_info: TypeInfo)
     return expand_type_by_instance(typ, inst_type)
 
 
-def supported_self_type(typ: ProperType, allow_callable: bool = True) -> bool:
+def supported_self_type(
+    typ: ProperType, allow_callable: bool = True, allow_instances: bool = True
+) -> bool:
     """Is this a supported kind of explicit self-types?
 
     Currently, this means an X or Type[X], where X is an instance or
@@ -257,14 +269,19 @@ def supported_self_type(typ: ProperType, allow_callable: bool = True) -> bool:
         # as well as callable self for callback protocols.
         return True
     return isinstance(typ, TypeVarType) or (
-        isinstance(typ, Instance) and typ != fill_typevars(typ.type)
+        allow_instances and isinstance(typ, Instance) and typ != fill_typevars(typ.type)
     )
 
 
 F = TypeVar("F", bound=FunctionLike)
 
 
-def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool = False) -> F:
+def bind_self(
+    method: F,
+    original_type: Type | None = None,
+    is_classmethod: bool = False,
+    ignore_instances: bool = False,
+) -> F:
     """Return a copy of `method`, with the type of its first parameter (usually
     self or cls) bound to original_type.
 
@@ -288,20 +305,41 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
 
     """
     if isinstance(method, Overloaded):
-        return cast(
-            F, Overloaded([bind_self(c, original_type, is_classmethod) for c in method.items])
-        )
+        items = []
+        original_type = get_proper_type(original_type)
+        for c in method.items:
+            if isinstance(original_type, Instance):
+                # Filter based on whether declared self type can match actual object type.
+                # For example, if self has type C[int] and method is accessed on a C[str] value,
+                # omit this item. This is best effort since bind_self can be called in many
+                # contexts, and doing complete validation might trigger infinite recursion.
+                #
+                # Note that overload item filtering normally happens elsewhere. This is needed
+                # at least during constraint inference.
+                keep = is_valid_self_type_best_effort(c, original_type)
+            else:
+                keep = True
+            if keep:
+                items.append(bind_self(c, original_type, is_classmethod, ignore_instances))
+        if len(items) == 0:
+            # If no item matches, returning all items helps avoid some spurious errors
+            items = [
+                bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
+            ]
+        return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
     func = method
     if not func.arg_types:
         # Invalid method, return something.
         return cast(F, func)
-    if func.arg_kinds[0] == ARG_STAR:
+    if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
         # since func will be absorbed by the *args.
-
         # TODO: infer bounds on the type of *args?
+
+        # In the case of **kwargs we should probably emit an error, but
+        # for now we simply skip it, to avoid crashes down the line.
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
 
@@ -310,7 +348,9 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
     # this special-casing looks not very principled, there is nothing meaningful we can infer
     # from such definition, since it is inherently indefinitely recursive.
     allow_callable = func.name is None or not func.name.startswith("__call__ of")
-    if func.variables and supported_self_type(self_param_type, allow_callable=allow_callable):
+    if func.variables and supported_self_type(
+        self_param_type, allow_callable=allow_callable, allow_instances=not ignore_instances
+    ):
         from mypy.infer import infer_type_arguments
 
         if original_type is None:
@@ -355,6 +395,43 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         bound_args=[original_type],
     )
     return cast(F, res)
+
+
+def is_valid_self_type_best_effort(c: CallableType, self_type: Instance) -> bool:
+    """Quickly check if self_type might match the self in a callable.
+
+    Avoid performing any complex type operations. This is performance-critical.
+
+    Default to returning True if we don't know (or it would be too expensive).
+    """
+    if (
+        self_type.args
+        and c.arg_types
+        and isinstance((arg_type := get_proper_type(c.arg_types[0])), Instance)
+        and c.arg_kinds[0] in (ARG_POS, ARG_OPT)
+        and arg_type.args
+        and self_type.type.fullname != "functools._SingleDispatchCallable"
+    ):
+        if self_type.type is not arg_type.type:
+            # We can't map to supertype, since it could trigger expensive checks for
+            # protocol types, so we consevatively assume this is fine.
+            return True
+
+        # Fast path: no explicit annotation on self
+        if all(
+            (
+                type(arg) is TypeVarType
+                and type(arg.upper_bound) is Instance
+                and arg.upper_bound.type.fullname == "builtins.object"
+            )
+            for arg in arg_type.args
+        ):
+            return True
+
+        from mypy.meet import is_overlapping_types
+
+        return is_overlapping_types(self_type, c.arg_types[0])
+    return True
 
 
 def erase_to_bound(t: Type) -> Type:
@@ -422,6 +499,7 @@ def make_simplified_union(
     *,
     keep_erased: bool = False,
     contract_literals: bool = True,
+    handle_recursive: bool = True,
 ) -> ProperType:
     """Build union type with redundant union items removed.
 
@@ -447,7 +525,7 @@ def make_simplified_union(
     to_union().
     """
     # Step 1: expand all nested unions
-    items = flatten_nested_unions(items)
+    items = flatten_nested_unions(items, handle_recursive=handle_recursive)
 
     # Step 2: fast path for single item
     if len(items) == 1:
@@ -634,6 +712,10 @@ def false_only(t: Type) -> ProperType:
         new_items = [false_only(item) for item in t.items]
         can_be_false_items = [item for item in new_items if item.can_be_false]
         return make_simplified_union(can_be_false_items, line=t.line, column=t.column)
+    elif isinstance(t, Instance) and t.type.fullname in ("builtins.str", "builtins.bytes"):
+        return LiteralType("", fallback=t)
+    elif isinstance(t, Instance) and t.type.fullname == "builtins.int":
+        return LiteralType(0, fallback=t)
     else:
         ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
             t, name="__len__"
@@ -876,21 +958,17 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
             try_expanding_sum_type_to_union(item, target_fullname) for item in typ.relevant_items()
         ]
         return make_simplified_union(items, contract_literals=False)
-    elif isinstance(typ, Instance) and typ.type.fullname == target_fullname:
+
+    if isinstance(typ, Instance) and typ.type.fullname == target_fullname:
+        if typ.type.fullname == "builtins.bool":
+            items = [LiteralType(True, typ), LiteralType(False, typ)]
+            return make_simplified_union(items, contract_literals=False)
+
         if typ.type.is_enum:
-            new_items = []
-            for name, symbol in typ.type.names.items():
-                if not isinstance(symbol.node, Var):
-                    continue
-                # Skip these since Enum will remove it
-                if name in ENUM_REMOVED_PROPS:
-                    continue
-                new_items.append(LiteralType(name, typ))
-            return make_simplified_union(new_items, contract_literals=False)
-        elif typ.type.fullname == "builtins.bool":
-            return make_simplified_union(
-                [LiteralType(True, typ), LiteralType(False, typ)], contract_literals=False
-            )
+            items = [LiteralType(name, typ) for name in typ.type.enum_members]
+            if not items:
+                return typ
+            return make_simplified_union(items, contract_literals=False)
 
     return typ
 
@@ -916,7 +994,7 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> list[ProperType]
                 if fullname not in sum_types:
                     sum_types[fullname] = (
                         (
-                            set(typ.fallback.get_enum_values())
+                            set(typ.fallback.type.enum_members)
                             if typ.fallback.type.is_enum
                             else {True, False}
                         ),
@@ -949,7 +1027,7 @@ def coerce_to_literal(typ: Type) -> Type:
         if typ.last_known_value:
             return typ.last_known_value
         elif typ.type.is_enum:
-            enum_values = typ.get_enum_values()
+            enum_values = typ.type.enum_members
             if len(enum_values) == 1:
                 return LiteralType(value=enum_values[0], fallback=typ)
     return original_type

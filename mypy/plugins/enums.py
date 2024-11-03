@@ -20,7 +20,15 @@ from mypy.nodes import TypeInfo
 from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
 from mypy.typeops import fixup_partial_type, make_simplified_union
-from mypy.types import CallableType, Instance, LiteralType, ProperType, Type, get_proper_type
+from mypy.types import (
+    CallableType,
+    Instance,
+    LiteralType,
+    ProperType,
+    Type,
+    get_proper_type,
+    is_named_instance,
+)
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
     f"{prefix}._name_" for prefix in ENUM_BASES
@@ -79,6 +87,8 @@ def _infer_value_type_with_auto_fallback(
         return None
     proper_type = get_proper_type(fixup_partial_type(proper_type))
     if not (isinstance(proper_type, Instance) and proper_type.type.fullname == "enum.auto"):
+        if is_named_instance(proper_type, "enum.member") and proper_type.args:
+            return proper_type.args[0]
         return proper_type
     assert isinstance(ctx.type, Instance), "An incorrect ctx.type was passed."
     info = ctx.type.type
@@ -116,6 +126,22 @@ def _implements_new(info: TypeInfo) -> bool:
     if type_with_new is None:
         return False
     return type_with_new.fullname not in ("enum.Enum", "enum.IntEnum", "enum.StrEnum")
+
+
+def enum_member_callback(ctx: mypy.plugin.FunctionContext) -> Type:
+    """By default `member(1)` will be infered as `member[int]`,
+    we want to improve the inference to be `Literal[1]` here."""
+    if ctx.arg_types or ctx.arg_types[0]:
+        arg = get_proper_type(ctx.arg_types[0][0])
+        proper_return = get_proper_type(ctx.default_return_type)
+        if (
+            isinstance(arg, Instance)
+            and arg.last_known_value
+            and isinstance(proper_return, Instance)
+            and len(proper_return.args) == 1
+        ):
+            return proper_return.copy_modified(args=[arg])
+    return ctx.default_return_type
 
 
 def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
@@ -159,7 +185,7 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
 
             stnodes = (info.get(name) for name in info.names)
 
-            # Enums _can_ have methods and instance attributes.
+            # Enums _can_ have methods, instance attributes, and `nonmember`s.
             # Omit methods and attributes created by assigning to self.*
             # for our value inference.
             node_types = (
@@ -170,7 +196,8 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
             proper_types = [
                 _infer_value_type_with_auto_fallback(ctx, t)
                 for t in node_types
-                if t is None or not isinstance(t, CallableType)
+                if t is None
+                or (not isinstance(t, CallableType) and not is_named_instance(t, "enum.nonmember"))
             ]
             underlying_type = _first(proper_types)
             if underlying_type is None:

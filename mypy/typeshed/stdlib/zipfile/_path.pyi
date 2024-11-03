@@ -3,11 +3,13 @@ from _typeshed import StrPath
 from collections.abc import Iterator, Sequence
 from io import TextIOWrapper
 from os import PathLike
-from typing import IO, Literal, overload
+from typing import IO, Literal, TypeVar, overload
 from typing_extensions import Self, TypeAlias
 from zipfile import ZipFile
 
 _ReadWriteBinaryMode: TypeAlias = Literal["r", "w", "rb", "wb"]
+
+_ZF = TypeVar("_ZF", bound=ZipFile)
 
 if sys.version_info >= (3, 12):
     class InitializedState:
@@ -23,9 +25,13 @@ if sys.version_info >= (3, 12):
         @overload
         @classmethod
         def make(cls, source: StrPath | IO[bytes]) -> Self: ...
+        if sys.version_info >= (3, 13):
+            @classmethod
+            def inject(cls, zf: _ZF) -> _ZF: ...
 
     class Path:
         root: CompleteDirs
+        at: str
         def __init__(self, root: ZipFile | StrPath | IO[bytes], at: str = "") -> None: ...
         @property
         def name(self) -> str: ...

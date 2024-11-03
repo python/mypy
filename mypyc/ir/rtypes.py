@@ -64,7 +64,7 @@ class RType:
 
     @abstractmethod
     def accept(self, visitor: RTypeVisitor[T]) -> T:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def short_name(self) -> str:
         return short_name(self.name)

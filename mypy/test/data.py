@@ -620,11 +620,13 @@ def pytest_addoption(parser: Any) -> None:
     )
 
 
-def pytest_configure(config: pytest.Config) -> None:
-    if config.getoption("--update-data") and config.getoption("--numprocesses", default=1) > 1:
-        raise pytest.UsageError(
-            "--update-data incompatible with parallelized tests; re-run with -n 1"
-        )
+@pytest.hookimpl(tryfirst=True)
+def pytest_cmdline_main(config: pytest.Config) -> None:
+    if config.getoption("--collectonly"):
+        return
+    # --update-data is not compatible with parallelized tests, disable parallelization
+    if config.getoption("--update-data"):
+        config.option.numprocesses = 0
 
 
 # This function name is special to pytest.  See

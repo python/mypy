@@ -17,9 +17,8 @@ from typing import Callable, Final
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
-    import ctypes
-
     import _winapi
+    import ctypes
 
     _IPCHandle = int
 

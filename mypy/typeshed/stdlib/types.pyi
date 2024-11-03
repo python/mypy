@@ -1,5 +1,6 @@
 import sys
-from _typeshed import SupportsKeysAndGetItem
+from _typeshed import MaybeNone, SupportsKeysAndGetItem
+from _typeshed.importlib import LoaderProtocol
 from collections.abc import (
     AsyncGenerator,
     Awaitable,
@@ -16,7 +17,7 @@ from collections.abc import (
 from importlib.machinery import ModuleSpec
 
 # pytype crashes if types.MappingProxyType inherits from collections.abc.Mapping instead of typing.Mapping
-from typing import Any, ClassVar, Literal, Mapping, Protocol, TypeVar, final, overload  # noqa: Y022
+from typing import Any, ClassVar, Literal, Mapping, TypeVar, final, overload  # noqa: Y022
 from typing_extensions import ParamSpec, Self, TypeVarTuple, deprecated
 
 __all__ = [
@@ -57,6 +58,9 @@ if sys.version_info >= (3, 10):
 if sys.version_info >= (3, 12):
     __all__ += ["get_original_bases"]
 
+if sys.version_info >= (3, 13):
+    __all__ += ["CapsuleType"]
+
 # Note, all classes "defined" here require special handling.
 
 _T1 = TypeVar("_T1")
@@ -64,18 +68,11 @@ _T2 = TypeVar("_T2")
 _KT = TypeVar("_KT")
 _VT_co = TypeVar("_VT_co", covariant=True)
 
-@final
-class _Cell:
-    def __new__(cls, contents: object = ..., /) -> Self: ...
-    def __eq__(self, value: object, /) -> bool: ...
-    __hash__: ClassVar[None]  # type: ignore[assignment]
-    cell_contents: Any
-
 # Make sure this class definition stays roughly in line with `builtins.function`
 @final
 class FunctionType:
     @property
-    def __closure__(self) -> tuple[_Cell, ...] | None: ...
+    def __closure__(self) -> tuple[CellType, ...] | None: ...
     __code__: CodeType
     __defaults__: tuple[Any, ...] | None
     __dict__: dict[str, Any]
@@ -84,7 +81,7 @@ class FunctionType:
     __name__: str
     __qualname__: str
     __annotations__: dict[str, Any]
-    __kwdefaults__: dict[str, Any]
+    __kwdefaults__: dict[str, Any] | None
     if sys.version_info >= (3, 10):
         @property
         def __builtins__(self) -> dict[str, Any]: ...
@@ -98,7 +95,7 @@ class FunctionType:
         globals: dict[str, Any],
         name: str | None = ...,
         argdefs: tuple[object, ...] | None = ...,
-        closure: tuple[_Cell, ...] | None = ...,
+        closure: tuple[CellType, ...] | None = ...,
     ) -> Self: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
     @overload
@@ -248,7 +245,7 @@ class CodeType:
             co_qualname: str = ...,
             co_linetable: bytes = ...,
             co_exceptiontable: bytes = ...,
-        ) -> CodeType: ...
+        ) -> Self: ...
     elif sys.version_info >= (3, 10):
         def replace(
             self,
@@ -269,7 +266,7 @@ class CodeType:
             co_filename: str = ...,
             co_name: str = ...,
             co_linetable: bytes = ...,
-        ) -> CodeType: ...
+        ) -> Self: ...
     else:
         def replace(
             self,
@@ -290,7 +287,10 @@ class CodeType:
             co_filename: str = ...,
             co_name: str = ...,
             co_lnotab: bytes = ...,
-        ) -> CodeType: ...
+        ) -> Self: ...
+
+    if sys.version_info >= (3, 13):
+        __replace__ = replace
 
 @final
 class MappingProxyType(Mapping[_KT, _VT_co]):
@@ -304,37 +304,57 @@ class MappingProxyType(Mapping[_KT, _VT_co]):
     def keys(self) -> KeysView[_KT]: ...
     def values(self) -> ValuesView[_VT_co]: ...
     def items(self) -> ItemsView[_KT, _VT_co]: ...
+    @overload
+    def get(self, key: _KT, /) -> _VT_co | None: ...
+    @overload
+    def get(self, key: _KT, default: _VT_co | _T2, /) -> _VT_co | _T2: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
         def __reversed__(self) -> Iterator[_KT]: ...
         def __or__(self, value: Mapping[_T1, _T2], /) -> dict[_KT | _T1, _VT_co | _T2]: ...
         def __ror__(self, value: Mapping[_T1, _T2], /) -> dict[_KT | _T1, _VT_co | _T2]: ...
 
 class SimpleNamespace:
     __hash__: ClassVar[None]  # type: ignore[assignment]
-    def __init__(self, **kwargs: Any) -> None: ...
+    if sys.version_info >= (3, 13):
+        def __init__(self, mapping_or_iterable: Mapping[str, Any] | Iterable[tuple[str, Any]] = (), /, **kwargs: Any) -> None: ...
+    else:
+        def __init__(self, **kwargs: Any) -> None: ...
+
     def __eq__(self, value: object, /) -> bool: ...
     def __getattribute__(self, name: str, /) -> Any: ...
     def __setattr__(self, name: str, value: Any, /) -> None: ...
     def __delattr__(self, name: str, /) -> None: ...
-
-class _LoaderProtocol(Protocol):
-    def load_module(self, fullname: str, /) -> ModuleType: ...
+    if sys.version_info >= (3, 13):
+        def __replace__(self, **kwargs: Any) -> Self: ...
 
 class ModuleType:
     __name__: str
     __file__: str | None
     @property
     def __dict__(self) -> dict[str, Any]: ...  # type: ignore[override]
-    __loader__: _LoaderProtocol | None
+    __loader__: LoaderProtocol | None
     __package__: str | None
     __path__: MutableSequence[str]
     __spec__: ModuleSpec | None
+    # N.B. Although this is the same type as `builtins.object.__doc__`,
+    # it is deliberately redeclared here. Most symbols declared in the namespace
+    # of `types.ModuleType` are available as "implicit globals" within a module's
+    # namespace, but this is not true for symbols declared in the namespace of `builtins.object`.
+    # Redeclaring `__doc__` here helps some type checkers understand that `__doc__` is available
+    # as an implicit global in all modules, similar to `__name__`, `__file__`, `__spec__`, etc.
+    __doc__: str | None
     def __init__(self, name: str, doc: str | None = ...) -> None: ...
     # __getattr__ doesn't exist at runtime,
     # but having it here in typeshed makes dynamic imports
     # using `builtins.__import__` or `importlib.import_module` less painful
     def __getattr__(self, name: str) -> Any: ...
+
+@final
+class CellType:
+    def __new__(cls, contents: object = ..., /) -> Self: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
+    cell_contents: Any
 
 _YieldT_co = TypeVar("_YieldT_co", covariant=True)
 _SendT_contra = TypeVar("_SendT_contra", contravariant=True)
@@ -358,6 +378,8 @@ class GeneratorType(Generator[_YieldT_co, _SendT_contra, _ReturnT_co]):
     ) -> _YieldT_co: ...
     @overload
     def throw(self, typ: BaseException, val: None = None, tb: TracebackType | None = ..., /) -> _YieldT_co: ...
+    if sys.version_info >= (3, 13):
+        def __class_getitem__(cls, item: Any, /) -> Any: ...
 
 @final
 class AsyncGeneratorType(AsyncGenerator[_YieldT_co, _SendT_contra]):
@@ -401,11 +423,15 @@ class CoroutineType(Coroutine[_YieldT_co, _SendT_contra, _ReturnT_co]):
     ) -> _YieldT_co: ...
     @overload
     def throw(self, typ: BaseException, val: None = None, tb: TracebackType | None = ..., /) -> _YieldT_co: ...
+    if sys.version_info >= (3, 13):
+        def __class_getitem__(cls, item: Any, /) -> Any: ...
 
 @final
 class MethodType:
     @property
-    def __closure__(self) -> tuple[_Cell, ...] | None: ...  # inherited from the added function
+    def __closure__(self) -> tuple[CellType, ...] | None: ...  # inherited from the added function
+    @property
+    def __code__(self) -> CodeType: ...  # inherited from the added function
     @property
     def __defaults__(self) -> tuple[Any, ...] | None: ...  # inherited from the added function
     @property
@@ -509,9 +535,9 @@ class FrameType:
     def f_lasti(self) -> int: ...
     # see discussion in #6769: f_lineno *can* sometimes be None,
     # but you should probably file a bug report with CPython if you encounter it being None in the wild.
-    # An `int | None` annotation here causes too many false-positive errors.
+    # An `int | None` annotation here causes too many false-positive errors, so applying `int | Any`.
     @property
-    def f_lineno(self) -> int | Any: ...
+    def f_lineno(self) -> int | MaybeNone: ...
     @property
     def f_locals(self) -> dict[str, Any]: ...
     f_trace: Callable[[FrameType, str, Any], Any] | None
@@ -566,11 +592,9 @@ _P = ParamSpec("_P")
 
 # it's not really an Awaitable, but can be used in an await expression. Real type: Generator & Awaitable
 @overload
-def coroutine(func: Callable[_P, Generator[Any, Any, _R]]) -> Callable[_P, Awaitable[_R]]: ...  # type: ignore[overload-overlap]
+def coroutine(func: Callable[_P, Generator[Any, Any, _R]]) -> Callable[_P, Awaitable[_R]]: ...
 @overload
 def coroutine(func: _Fn) -> _Fn: ...
-
-CellType = _Cell
 
 if sys.version_info >= (3, 9):
     class GenericAlias:
@@ -589,6 +613,9 @@ if sys.version_info >= (3, 9):
             def __unpacked__(self) -> bool: ...
             @property
             def __typing_unpacked_tuple_args__(self) -> tuple[Any, ...] | None: ...
+        if sys.version_info >= (3, 10):
+            def __or__(self, value: Any, /) -> UnionType: ...
+            def __ror__(self, value: Any, /) -> UnionType: ...
 
         # GenericAlias delegates attr access to `__origin__`
         def __getattr__(self, name: str) -> Any: ...
@@ -612,3 +639,7 @@ if sys.version_info >= (3, 10):
         def __ror__(self, value: Any, /) -> UnionType: ...
         def __eq__(self, value: object, /) -> bool: ...
         def __hash__(self) -> int: ...
+
+if sys.version_info >= (3, 13):
+    @final
+    class CapsuleType: ...

@@ -1,6 +1,6 @@
 TypeVar = 0
 Generic = 0
-Any = 0
+Any = object()
 overload = 0
 Type = 0
 Literal = 0
@@ -26,3 +26,5 @@ class NamedTuple(tuple[Any, ...]):
     def __init__(self, typename: str, fields: Iterable[tuple[str, Any]] = ...) -> None: ...
     @overload
     def __init__(self, typename: str, fields: None = None, **kwargs: Any) -> None: ...
+
+class _SpecialForm: pass

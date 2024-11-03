@@ -4,14 +4,14 @@ from collections.abc import Callable, Hashable, Iterable, Sequence
 from configparser import RawConfigParser
 from re import Pattern
 from threading import Thread
-from typing import IO, Any, Literal, SupportsIndex, TypedDict, overload
+from typing import IO, Any, Final, Literal, SupportsIndex, TypedDict, overload
 from typing_extensions import Required, TypeAlias
 
 from . import Filter, Filterer, Formatter, Handler, Logger, _FilterType, _FormatStyle, _Level
 
 DEFAULT_LOGGING_CONFIG_PORT: int
-RESET_ERROR: int  # undocumented
-IDENTIFIER: Pattern[str]  # undocumented
+RESET_ERROR: Final[int]  # undocumented
+IDENTIFIER: Final[Pattern[str]]  # undocumented
 
 if sys.version_info >= (3, 11):
     class _RootLoggerConfiguration(TypedDict, total=False):
@@ -116,7 +116,7 @@ class BaseConfigurator:  # undocumented
     def cfg_convert(self, value: str) -> Any: ...
     def convert(self, value: Any) -> Any: ...
     def configure_custom(self, config: dict[str, Any]) -> Any: ...
-    def as_tuple(self, value: list[Any] | tuple[Any]) -> tuple[Any]: ...
+    def as_tuple(self, value: list[Any] | tuple[Any, ...]) -> tuple[Any, ...]: ...
 
 class DictConfigurator(BaseConfigurator):
     def configure(self) -> None: ...  # undocumented

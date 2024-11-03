@@ -1,7 +1,7 @@
 import sys
-from collections.abc import Callable, Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from types import TracebackType
-from typing import Any, Generic, Literal, TypeVar
+from typing import Any, Final, Generic, TypeVar
 from typing_extensions import Self
 
 if sys.version_info >= (3, 9):
@@ -21,7 +21,7 @@ class ApplyResult(Generic[_T]):
     def ready(self) -> bool: ...
     def successful(self) -> bool: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 # alias created during issue #17805
 AsyncResult = ApplyResult
@@ -36,7 +36,7 @@ class MapResult(ApplyResult[list[_T]]):
         error_callback: Callable[[BaseException], object] | None,
     ) -> None: ...
 
-class IMapIterator(Iterator[_T]):
+class IMapIterator(Generic[_T]):
     def __init__(self, pool: Pool) -> None: ...
     def __iter__(self) -> Self: ...
     def next(self, timeout: float | None = None) -> _T: ...
@@ -97,7 +97,7 @@ class ThreadPool(Pool):
     ) -> None: ...
 
 # undocumented
-INIT: Literal["INIT"]
-RUN: Literal["RUN"]
-CLOSE: Literal["CLOSE"]
-TERMINATE: Literal["TERMINATE"]
+INIT: Final = "INIT"
+RUN: Final = "RUN"
+CLOSE: Final = "CLOSE"
+TERMINATE: Final = "TERMINATE"

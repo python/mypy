@@ -968,7 +968,10 @@ print(z)
 [case testCheckVersion]
 import sys
 
-if sys.version_info[:2] == (3, 12):
+if sys.version_info[:2] == (3, 13):
+    def version() -> int:
+        return 13
+elif sys.version_info[:2] == (3, 12):
     def version() -> int:
         return 12
 elif sys.version_info[:2] == (3, 11):

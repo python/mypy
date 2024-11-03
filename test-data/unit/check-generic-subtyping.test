@@ -306,7 +306,7 @@ main:14: error: Signature of "f" incompatible with supertype "A"
 main:14: note:      Superclass:
 main:14: note:          def [S] f(self, x: int, y: S) -> None
 main:14: note:      Subclass:
-main:14: note:          def [T1 <: str, S] f(self, x: T1, y: S) -> None
+main:14: note:          def [T1: str, S] f(self, x: T1, y: S) -> None
 
 -- Inheritance from generic types with implicit dynamic supertype
 -- --------------------------------------------------------------

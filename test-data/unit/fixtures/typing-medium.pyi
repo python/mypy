@@ -8,7 +8,7 @@
 
 cast = 0
 overload = 0
-Any = 0
+Any = object()
 Union = 0
 Optional = 0
 TypeVar = 0

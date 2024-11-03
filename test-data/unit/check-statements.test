@@ -519,6 +519,13 @@ if object():
     raise BaseException from f # E: Exception must be derived from BaseException
 [builtins fixtures/exception.pyi]
 
+[case testRaiseNotImplementedFails]
+if object():
+    raise NotImplemented    # E: Exception must be derived from BaseException; did you mean "NotImplementedError"?
+if object():
+    raise NotImplemented()  # E: NotImplemented? not callable
+[builtins fixtures/notimplemented.pyi]
+
 [case testTryFinallyStatement]
 import typing
 try:
@@ -1339,7 +1346,7 @@ from typing import Generator
 def g() -> Generator[int, None, None]:
     yield from ()
     yield from (0, 1, 2)
-    yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "object", expected type "int")
+    yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "Union[int, str]", expected type "int")
     yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int")
 [builtins fixtures/tuple.pyi]
 
@@ -2307,3 +2314,38 @@ class Outer:
         class Inner:
             break  # E: "break" outside loop
 [builtins fixtures/list.pyi]
+
+[case testCallableInstanceOverlapAllowed]
+# flags: --warn-unreachable
+from typing import Any, Callable, List
+
+class CAny:
+    def __call__(self) -> Any: ...
+class CNone:
+    def __call__(self) -> None: ...
+class CWrong:
+    def __call__(self, x: int) -> None: ...
+
+def describe(func: Callable[[], None]) -> str:
+    if isinstance(func, CAny):
+        return "CAny"
+    elif isinstance(func, CNone):
+        return "CNone"
+    elif isinstance(func, CWrong):
+        return "CWrong"  # E: Statement is unreachable
+    else:
+        return "other"
+
+class C(CAny):
+    def __call__(self) -> None: ...
+
+def f():
+    pass
+
+describe(CAny())
+describe(C())
+describe(CNone())
+describe(CWrong())  # E: Argument 1 to "describe" has incompatible type "CWrong"; expected "Callable[[], None]" \
+                    # N: "CWrong.__call__" has type "Callable[[Arg(int, 'x')], None]"
+describe(f)
+[builtins fixtures/isinstancelist.pyi]

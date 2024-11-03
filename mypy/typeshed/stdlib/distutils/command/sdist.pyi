@@ -1,4 +1,6 @@
-from typing import Any
+from _typeshed import Incomplete, Unused
+from collections.abc import Callable
+from typing import Any, ClassVar
 
 from ..cmd import Command
 
@@ -7,28 +9,29 @@ def show_formats() -> None: ...
 class sdist(Command):
     description: str
     def checking_metadata(self): ...
-    user_options: Any
-    boolean_options: Any
-    help_options: Any
-    negative_opt: Any
-    sub_commands: Any
-    READMES: Any
-    template: Any
-    manifest: Any
+    user_options: ClassVar[list[tuple[str, str | None, str]]]
+    boolean_options: ClassVar[list[str]]
+    help_options: ClassVar[list[tuple[str, str | None, str, Callable[[], Unused]]]]
+    negative_opt: ClassVar[dict[str, str]]
+    # Any to work around variance issues
+    sub_commands: ClassVar[list[tuple[str, Callable[[Any], bool] | None]]]
+    READMES: ClassVar[tuple[str, ...]]
+    template: Incomplete
+    manifest: Incomplete
     use_defaults: int
     prune: int
     manifest_only: int
     force_manifest: int
-    formats: Any
+    formats: Incomplete
     keep_temp: int
-    dist_dir: Any
-    archive_files: Any
+    dist_dir: Incomplete
+    archive_files: Incomplete
     metadata_check: int
-    owner: Any
-    group: Any
+    owner: Incomplete
+    group: Incomplete
     def initialize_options(self) -> None: ...
     def finalize_options(self) -> None: ...
-    filelist: Any
+    filelist: Incomplete
     def run(self) -> None: ...
     def check_metadata(self) -> None: ...
     def get_file_list(self) -> None: ...

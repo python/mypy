@@ -7,9 +7,9 @@ from typing_extensions import TypeAlias
 _FieldsType: TypeAlias = tuple[int, int, int, int, int, int]
 
 class SafeUUID(Enum):
-    safe: int
-    unsafe: int
-    unknown: None
+    safe = 0
+    unsafe = -1
+    unknown = None
 
 class UUID:
     def __init__(

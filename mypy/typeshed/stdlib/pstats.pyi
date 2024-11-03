@@ -14,15 +14,15 @@ else:
 _Selector: TypeAlias = str | float | int
 
 class SortKey(StrEnum):
-    CALLS: str
-    CUMULATIVE: str
-    FILENAME: str
-    LINE: str
-    NAME: str
-    NFL: str
-    PCALLS: str
-    STDNAME: str
-    TIME: str
+    CALLS = "calls"
+    CUMULATIVE = "cumulative"
+    FILENAME = "filename"
+    LINE = "line"
+    NAME = "name"
+    NFL = "nfl"
+    PCALLS = "pcalls"
+    STDNAME = "stdname"
+    TIME = "time"
 
 if sys.version_info >= (3, 9):
     from dataclasses import dataclass

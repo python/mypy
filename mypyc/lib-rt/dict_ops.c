@@ -78,7 +78,11 @@ PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value) {
         return ret;
     }
     _Py_IDENTIFIER(setdefault);
-    return _PyObject_CallMethodIdObjArgs(dict, &PyId_setdefault, key, value, NULL);
+    PyObject *name = _PyUnicode_FromId(&PyId_setdefault); /* borrowed */
+    if (name == NULL) {
+        return NULL;
+    }
+    return PyObject_CallMethodObjArgs(dict, name, key, value, NULL);
 }
 
 PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
@@ -133,7 +137,11 @@ static inline int CPy_ObjectToStatus(PyObject *obj) {
 
 static int CPyDict_UpdateGeneral(PyObject *dict, PyObject *stuff) {
     _Py_IDENTIFIER(update);
-    PyObject *res = _PyObject_CallMethodIdOneArg(dict, &PyId_update, stuff);
+    PyObject *name = _PyUnicode_FromId(&PyId_update); /* borrowed */
+    if (name == NULL) {
+        return -1;
+    }
+    PyObject *res = PyObject_CallMethodOneArg(dict, name, stuff);
     return CPy_ObjectToStatus(res);
 }
 
@@ -230,12 +238,11 @@ PyObject *CPyDict_Keys(PyObject *dict) {
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 
@@ -250,12 +257,11 @@ PyObject *CPyDict_Values(PyObject *dict) {
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 
@@ -270,12 +276,11 @@ PyObject *CPyDict_Items(PyObject *dict) {
     if (view == NULL) {
         return NULL;
     }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    int res = PyList_Extend(list, view);
     Py_DECREF(view);
-    if (res == NULL) {
+    if (res < 0) {
         return NULL;
     }
-    Py_DECREF(res);
     return list;
 }
 

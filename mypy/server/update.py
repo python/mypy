@@ -1059,8 +1059,7 @@ def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> dict[str,
 
     Returns a dictionary from full name to corresponding symbol table.
     """
-    result = {}
-    result[prefix] = symbols
+    result = {prefix: symbols}
     for name, node in symbols.items():
         if isinstance(node.node, TypeInfo) and node.node.fullname.startswith(prefix + "."):
             more = find_symbol_tables_recursive(prefix + "." + name, node.node.names)

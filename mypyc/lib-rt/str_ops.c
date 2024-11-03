@@ -117,7 +117,11 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
             PyObject *item = va_arg(args, PyObject *);
             Py_ssize_t itemlen = PyUnicode_GET_LENGTH(item);
             if (itemlen != 0) {
+#if CPY_3_13_FEATURES
+                PyUnicode_CopyCharacters(res, res_offset, item, 0, itemlen);
+#else
                 _PyUnicode_FastCopyCharacters(res, res_offset, item, 0, itemlen);
+#endif
                 res_offset += itemlen;
             }
         }

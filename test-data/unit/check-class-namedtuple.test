@@ -535,7 +535,7 @@ class Base(NamedTuple):
         self.x = 3  # E: Property "x" defined in "Base" is read-only
         self[1]  # E: Tuple index out of range
         reveal_type(self[T])  # N: Revealed type is "builtins.int" \
-                              # E: No overload variant of "__getitem__" of "tuple" matches argument type "object" \
+                              # E: No overload variant of "__getitem__" of "tuple" matches argument type "TypeVar" \
                               # N: Possible overload variants: \
                               # N:     def __getitem__(self, int, /) -> int \
                               # N:     def __getitem__(self, slice, /) -> Tuple[int, ...]
@@ -568,6 +568,7 @@ reveal_type(Base(1).bad_override())  # N: Revealed type is "builtins.int"
 reveal_type(takes_base(Base(1)))  # N: Revealed type is "builtins.int"
 reveal_type(takes_base(Child(1)))  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testNewNamedTupleIllegalNames]
 from typing import Callable, NamedTuple

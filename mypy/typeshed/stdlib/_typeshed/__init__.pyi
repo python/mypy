@@ -47,10 +47,15 @@ AnyStr_co = TypeVar("AnyStr_co", str, bytes, covariant=True)  # noqa: Y001
 # isn't possible or a type is already partially known. In cases like these,
 # use Incomplete instead of Any as a marker. For example, use
 # "Incomplete | None" instead of "Any | None".
-Incomplete: TypeAlias = Any
+Incomplete: TypeAlias = Any  # stable
 
 # To describe a function parameter that is unused and will work with anything.
-Unused: TypeAlias = object
+Unused: TypeAlias = object  # stable
+
+# Marker for return types that include None, but where forcing the user to
+# check for None can be detrimental. Sometimes called "the Any trick". See
+# CONTRIBUTING.md for more information.
+MaybeNone: TypeAlias = Any  # stable
 
 # Used to mark arguments that default to a sentinel value. This prevents
 # stubtest from complaining about the default value not matching.
@@ -146,13 +151,22 @@ class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
     def keys(self) -> Iterable[_KT]: ...
     def __getitem__(self, key: _KT, /) -> _VT_co: ...
 
-# stable
+# This protocol is currently under discussion. Use SupportsContainsAndGetItem
+# instead, if you require the __contains__ method.
+# See https://github.com/python/typeshed/issues/11822.
 class SupportsGetItem(Protocol[_KT_contra, _VT_co]):
     def __contains__(self, x: Any, /) -> bool: ...
     def __getitem__(self, key: _KT_contra, /) -> _VT_co: ...
 
 # stable
-class SupportsItemAccess(SupportsGetItem[_KT_contra, _VT], Protocol[_KT_contra, _VT]):
+class SupportsContainsAndGetItem(Protocol[_KT_contra, _VT_co]):
+    def __contains__(self, x: Any, /) -> bool: ...
+    def __getitem__(self, key: _KT_contra, /) -> _VT_co: ...
+
+# stable
+class SupportsItemAccess(Protocol[_KT_contra, _VT]):
+    def __contains__(self, x: Any, /) -> bool: ...
+    def __getitem__(self, key: _KT_contra, /) -> _VT: ...
     def __setitem__(self, key: _KT_contra, value: _VT, /) -> None: ...
     def __delitem__(self, key: _KT_contra, /) -> None: ...
 
@@ -312,6 +326,8 @@ class structseq(Generic[_T_co]):
     # but only has any meaning if you supply it a dict where the keys are strings.
     # https://github.com/python/typeshed/pull/6560#discussion_r767149830
     def __new__(cls: type[Self], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self: ...
+    if sys.version_info >= (3, 13):
+        def __replace__(self: Self, **kwargs: Any) -> Self: ...
 
 # Superset of typing.AnyStr that also includes LiteralString
 AnyOrLiteralStr = TypeVar("AnyOrLiteralStr", str, bytes, LiteralString)  # noqa: Y001

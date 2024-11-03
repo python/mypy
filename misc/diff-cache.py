@@ -8,7 +8,6 @@ many cases instead of full cache artifacts.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 from collections import defaultdict
@@ -17,6 +16,7 @@ from typing import Any
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
+from mypy.util import json_dumps, json_loads
 
 
 def make_cache(input_dir: str, sqlite: bool) -> MetadataStore:
@@ -33,7 +33,7 @@ def merge_deps(all: dict[str, set[str]], new: dict[str, set[str]]) -> None:
 
 def load(cache: MetadataStore, s: str) -> Any:
     data = cache.read(s)
-    obj = json.loads(data)
+    obj = json_loads(data)
     if s.endswith(".meta.json"):
         # For meta files, zero out the mtimes and sort the
         # dependencies to avoid spurious conflicts
@@ -73,7 +73,7 @@ def main() -> None:
     type_misses: dict[str, int] = defaultdict(int)
     type_hits: dict[str, int] = defaultdict(int)
 
-    updates: dict[str, str | None] = {}
+    updates: dict[str, bytes | None] = {}
 
     deps1: dict[str, set[str]] = {}
     deps2: dict[str, set[str]] = {}
@@ -96,7 +96,7 @@ def main() -> None:
             # so we can produce a much smaller direct diff of them.
             if ".deps." not in s:
                 if obj2 is not None:
-                    updates[s] = json.dumps(obj2)
+                    updates[s] = json_dumps(obj2)
                 else:
                     updates[s] = None
             elif obj2:
@@ -122,7 +122,7 @@ def main() -> None:
     merge_deps(new_deps, root_deps)
 
     new_deps_json = {k: list(v) for k, v in new_deps.items() if v}
-    updates["@root.deps.json"] = json.dumps(new_deps_json)
+    updates["@root.deps.json"] = json_dumps(new_deps_json)
 
     # Drop updates to deps.meta.json for size reasons. The diff
     # applier will manually fix it up.
@@ -136,8 +136,8 @@ def main() -> None:
         print("hits", type_hits)
         print("misses", type_misses)
 
-    with open(args.output, "w") as f:
-        json.dump(updates, f)
+    with open(args.output, "wb") as f:
+        f.write(json_dumps(updates))
 
 
 if __name__ == "__main__":

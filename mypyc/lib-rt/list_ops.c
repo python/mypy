@@ -256,7 +256,10 @@ int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value)
 }
 
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2) {
-    return _PyList_Extend((PyListObject *)o1, o2);
+    if (PyList_Extend(o1, o2) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 // Return -2 or error, -1 if not found, or index of first match otherwise.

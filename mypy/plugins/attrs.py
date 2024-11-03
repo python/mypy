@@ -55,6 +55,7 @@ from mypy.plugins.common import (
     deserialize_and_fixup_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
+from mypy.state import state
 from mypy.typeops import get_type_vars, make_simplified_union, map_type_from_supertype
 from mypy.types import (
     AnyType,
@@ -69,6 +70,7 @@ from mypy.types import (
     Type,
     TypeOfAny,
     TypeType,
+    TypeVarId,
     TypeVarType,
     UninhabitedType,
     UnionType,
@@ -316,9 +318,23 @@ def attr_class_maker_callback(
 
     See https://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
-    If this returns False, some required metadata was not ready yet and we need another
+    If this returns False, some required metadata was not ready yet, and we need another
     pass.
     """
+    with state.strict_optional_set(ctx.api.options.strict_optional):
+        # This hook is called during semantic analysis, but it uses a bunch of
+        # type-checking ops, so it needs the strict optional set properly.
+        return attr_class_maker_callback_impl(
+            ctx, auto_attribs_default, frozen_default, slots_default
+        )
+
+
+def attr_class_maker_callback_impl(
+    ctx: mypy.plugin.ClassDefContext,
+    auto_attribs_default: bool | None,
+    frozen_default: bool,
+    slots_default: bool,
+) -> bool:
     info = ctx.cls.info
 
     init = _get_decorator_bool_argument(ctx, "init", True)
@@ -807,25 +823,25 @@ def _add_order(ctx: mypy.plugin.ClassDefContext, adder: MethodAdder) -> None:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
+    fullname = f"{ctx.cls.info.fullname}.{SELF_TVAR_NAME}"
     tvd = TypeVarType(
         SELF_TVAR_NAME,
-        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
-        id=-1,
+        fullname,
+        # Namespace is patched per-method below.
+        id=TypeVarId(-1, namespace=""),
         values=[],
         upper_bound=object_type,
         default=AnyType(TypeOfAny.from_omitted_generics),
     )
     self_tvar_expr = TypeVarExpr(
-        SELF_TVAR_NAME,
-        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
-        [],
-        object_type,
-        AnyType(TypeOfAny.from_omitted_generics),
+        SELF_TVAR_NAME, fullname, [], object_type, AnyType(TypeOfAny.from_omitted_generics)
     )
     ctx.cls.info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
-    args = [Argument(Var("other", tvd), tvd, None, ARG_POS)]
     for method in ["__lt__", "__le__", "__gt__", "__ge__"]:
+        namespace = f"{ctx.cls.info.fullname}.{method}"
+        tvd = tvd.copy_modified(id=TypeVarId(tvd.id.raw_id, namespace=namespace))
+        args = [Argument(Var("other", tvd), tvd, None, ARG_POS)]
         adder.add_method(method, args, bool_type, self_type=tvd, tvd=tvd)
 
 

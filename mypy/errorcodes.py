@@ -185,6 +185,9 @@ UNREACHABLE: Final = ErrorCode(
 ANNOTATION_UNCHECKED = ErrorCode(
     "annotation-unchecked", "Notify about type annotations in unchecked functions", "General"
 )
+TYPEDDICT_READONLY_MUTATED = ErrorCode(
+    "typeddict-readonly-mutated", "TypedDict's ReadOnly key is mutated", "General"
+)
 POSSIBLY_UNDEFINED: Final[ErrorCode] = ErrorCode(
     "possibly-undefined",
     "Warn about variables that are defined only in some execution paths",
@@ -262,7 +265,6 @@ MUTABLE_OVERRIDE: Final[ErrorCode] = ErrorCode(
     default_enabled=False,
 )
 
-
 # Syntax errors are often blocking.
 SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")
 
@@ -272,7 +274,15 @@ FILE: Final = ErrorCode("file", "Internal marker for a whole file being ignored"
 del error_codes[FILE.code]
 
 # This is a catch-all for remaining uncategorized errors.
-MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")
+MISC: Final[ErrorCode] = ErrorCode("misc", "Miscellaneous other checks", "General")
+
+OVERLOAD_CANNOT_MATCH: Final[ErrorCode] = ErrorCode(
+    "overload-cannot-match",
+    "Warn if an @overload signature can never be matched",
+    "General",
+    sub_code_of=MISC,
+)
+
 
 OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
     "overload-overlap",
@@ -281,9 +291,22 @@ OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
     sub_code_of=MISC,
 )
 
+PROPERTY_DECORATOR = ErrorCode(
+    "prop-decorator",
+    "Decorators on top of @property are not supported",
+    "General",
+    sub_code_of=MISC,
+)
+
 NARROWED_TYPE_NOT_SUBTYPE: Final[ErrorCode] = ErrorCode(
     "narrowed-type-not-subtype",
     "Warn if a TypeIs function's narrowed type is not a subtype of the original type",
+    "General",
+)
+
+DEPRECATED: Final = ErrorCode(
+    "deprecated",
+    "Warn when importing or using deprecated (overloaded) functions, methods or classes",
     "General",
 )
 

@@ -11,8 +11,8 @@ if sys.version_info < (3, 9):
     __all__ += ["readPlist", "writePlist", "readPlistFromBytes", "writePlistToBytes", "Data"]
 
 class PlistFormat(Enum):
-    FMT_XML: int
-    FMT_BINARY: int
+    FMT_XML = 1
+    FMT_BINARY = 2
 
 FMT_XML = PlistFormat.FMT_XML
 FMT_BINARY = PlistFormat.FMT_BINARY

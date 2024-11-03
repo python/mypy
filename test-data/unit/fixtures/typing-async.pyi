@@ -10,7 +10,7 @@ from abc import abstractmethod, ABCMeta
 
 cast = 0
 overload = 0
-Any = 0
+Any = object()
 Union = 0
 Optional = 0
 TypeVar = 0
@@ -125,3 +125,5 @@ class AsyncContextManager(Generic[T]):
     def __aenter__(self) -> Awaitable[T]: pass
     # Use Any because not all the precise types are in the fixtures.
     def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Awaitable[Any]: pass
+
+class _SpecialForm: pass

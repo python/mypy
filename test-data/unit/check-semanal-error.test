@@ -151,4 +151,33 @@ class C:
 
 x: P[int] = C()
 [builtins fixtures/tuple.pyi]
-[out]
+
+[case testSemanalDoesNotLeakSyntheticTypes]
+# flags: --cache-fine-grained
+from typing import Generic, NamedTuple, TypedDict, TypeVar
+from dataclasses import dataclass
+
+T = TypeVar('T')
+class Wrap(Generic[T]): pass
+
+invalid_1: 1 + 2        # E: Invalid type comment or annotation
+invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
+
+class A:
+    invalid_1: 1 + 2        # E: Invalid type comment or annotation
+    invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
+
+class B(NamedTuple):
+    invalid_1: 1 + 2        # E: Invalid type comment or annotation
+    invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
+
+class C(TypedDict):
+    invalid_1: 1 + 2        # E: Invalid type comment or annotation
+    invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
+
+@dataclass
+class D:
+    invalid_1: 1 + 2        # E: Invalid type comment or annotation
+    invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
