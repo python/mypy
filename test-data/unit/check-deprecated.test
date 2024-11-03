@@ -491,18 +491,17 @@ C().g = "x"  # N: function __main__.C.g is deprecated: use g2 instead \
 
 
 [case testDeprecatedDescriptor]
-# flags: --python-version 3.9
 
-from typing import Optional, Type, Union
+from typing import Any, Optional, Union
 from typing_extensions import deprecated, overload
 
 @deprecated("use E1 instead")
 class D1:
-    def __get__(self, obj: Optional[C], objtype: Type[C]) -> Union[D1, int]: ...
+    def __get__(self, obj: Optional[C], objtype: Any) -> Union[D1, int]: ...
 
 class D2:
     @deprecated("use E2.__get__ instead")
-    def __get__(self, obj: Optional[C], objtype: Type[C]) -> Union[D2, int]: ...
+    def __get__(self, obj: Optional[C], objtype: Any) -> Union[D2, int]: ...
 
     @deprecated("use E2.__set__ instead")
     def __set__(self, obj: C, value: int) -> None: ...
@@ -510,11 +509,11 @@ class D2:
 class D3:
     @overload
     @deprecated("use E3.__get__ instead")
-    def __get__(self, obj: None, objtype: Type[C]) -> D3: ...
+    def __get__(self, obj: None, objtype: Any) -> D3: ...
     @overload
     @deprecated("use E3.__get__ instead")
-    def __get__(self, obj: C, objtype: Type[C]) -> int: ...
-    def __get__(self, obj: Optional[C], objtype: Type[C]) -> Union[D3, int]: ...
+    def __get__(self, obj: C, objtype: Any) -> int: ...
+    def __get__(self, obj: Optional[C], objtype: Any) -> Union[D3, int]: ...
 
     @overload
     def __set__(self, obj: C, value: int) -> None: ...
@@ -537,8 +536,8 @@ C.d2  # N: function __main__.D2.__get__ is deprecated: use E2.__get__ instead
 c.d2  # N: function __main__.D2.__get__ is deprecated: use E2.__get__ instead
 c.d2 = 1  # N: function __main__.D2.__set__ is deprecated: use E2.__set__ instead
 
-C.d3  # N: overload def (self: __main__.D3, obj: None, objtype: type[__main__.C]) -> __main__.D3 of function __main__.D3.__get__ is deprecated: use E3.__get__ instead
-c.d3  # N: overload def (self: __main__.D3, obj: __main__.C, objtype: type[__main__.C]) -> builtins.int of function __main__.D3.__get__ is deprecated: use E3.__get__ instead
+C.d3  # N: overload def (self: __main__.D3, obj: None, objtype: Any) -> __main__.D3 of function __main__.D3.__get__ is deprecated: use E3.__get__ instead
+c.d3  # N: overload def (self: __main__.D3, obj: __main__.C, objtype: Any) -> builtins.int of function __main__.D3.__get__ is deprecated: use E3.__get__ instead
 c.d3 = 1
 c.d3 = "x"  # N: overload def (self: __main__.D3, obj: __main__.C, value: builtins.str) of function __main__.D3.__set__ is deprecated: use E3.__set__ instead
 [builtins fixtures/property.pyi]
