@@ -3244,6 +3244,7 @@ y = 1[y]  # E: Value of type "int" is not indexable \
 [case testBuiltinTypeType]
 # flags: --python-version 3.10 --disallow-any-generics
 
+import types
 from typing import Any, cast, Union, TypeVar
 from typing_extensions import TypeAlias
 
@@ -3285,8 +3286,8 @@ def p(q: O) -> O: ...
 reveal_type(p(str))  # N: Revealed type is "def () -> builtins.str"
 p(1)  # E: Value of type variable "O" of "p" cannot be "int"
 
-type[str](1)  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
-r = type[str]("r", (), {})  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
+type[str](1)  # E: "GenericAlias" not callable
+r = type[str]("r", (), {})  # E: "GenericAlias" not callable
 class S(type[str]): ...  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
 
 [builtins fixtures/tuple.pyi]
