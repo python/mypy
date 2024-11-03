@@ -162,6 +162,9 @@ from mypy.util import is_stdlib_file, module_prefix, split_target
 
 MAX_ITER: Final = 1000
 
+# These are modules beyond stdlib that have some special meaning for mypy.
+SENSITIVE_INTERNAL_MODULES = ("mypy_extensions", "typing_extensions")
+
 
 class FineGrainedBuildManager:
     def __init__(self, result: BuildResult) -> None:
@@ -400,7 +403,7 @@ class FineGrainedBuildManager:
         # builtins and friends could potentially get triggered because
         # of protocol stuff, but nothing good could possibly come from
         # actually updating them.
-        if is_stdlib_file(self.manager.options.abs_custom_typeshed_dir, path):
+        if is_stdlib_file(self.manager.options.abs_custom_typeshed_dir, path) or module in SENSITIVE_INTERNAL_MODULES:
             return [], (module, path), None
 
         manager = self.manager
