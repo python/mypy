@@ -2225,7 +2225,7 @@ class C(Generic[T]):
     x: T
     @classmethod
     def get(cls) -> T:
-        return cls.x  # OK
+        return cls.x  # E: Access to generic instance variables via class is ambiguous
 
 x = C.x  # E: Access to generic instance variables via class is ambiguous
 reveal_type(x)  # N: Revealed type is "Any"
@@ -2288,7 +2288,7 @@ reveal_type(b)  # N: Revealed type is "__main__.B"
 
 def g(t: Type[Maker[T]]) -> T:
     if bool():
-        return t.x
+        return t.x  # E: Access to generic instance variables via class is ambiguous
     return t.get()
 bb = g(B)
 reveal_type(bb)  # N: Revealed type is "__main__.B"
