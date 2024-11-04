@@ -625,8 +625,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         return is_named_instance(item, "builtins.object")
         if isinstance(right, LiteralType) and left.last_known_value is not None:
             return self._is_subtype(left.last_known_value, right)
-        if isinstance(right, CallableType):
-            # Special case: Instance can be a subtype of Callable.
+        if isinstance(right, FunctionLike):
+            # Special case: Instance can be a subtype of Callable / Overloaded.
             call = find_member("__call__", left, left, is_operator=True)
             if call:
                 return self._is_subtype(call, right)
