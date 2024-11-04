@@ -1005,7 +1005,7 @@ def process_options(
     )
     incremental_group.add_argument(
         "--plugins",
-        nargs='*',
+        nargs="*",
         dest="special-opts:cli_plugins",
         help="Include user defined plugins during Mypy's type analysis",
     )
