@@ -747,33 +747,30 @@ section of the command line docs.
 
 .. confval:: strict_concatenate
 
-    :type: boolean
-    :default: False
+   :type: boolean
+   :default: False
 
-    Make arguments prepended via ``Concatenate`` be truly positional-only.
-
-    .. warning::
-       Deprecated: use :confval:`extra_checks` instead.
+   Make arguments prepended via ``Concatenate`` be truly positional-only.
 
 .. confval:: strict_equality
 
-    :type: boolean
-    :default: False
+   :type: boolean
+   :default: False
 
-    Prohibit equality checks, identity checks, and container checks between
-    non-overlapping types.
+   Prohibit equality checks, identity checks, and container checks between
+   non-overlapping types.
 
 .. confval:: strict
 
-    :type: boolean
-    :default: False
+   :type: boolean
+   :default: False
 
-    Enable all optional error checking flags.  You can see the list of
-    flags enabled by strict mode in the full :option:`mypy --help`
-    output.
+   Enable all optional error checking flags.  You can see the list of
+   flags enabled by strict mode in the full :option:`mypy --help`
+   output.
 
-    Note: the exact list of flags enabled by :confval:`strict` may
-    change over time.
+   Note: the exact list of flags enabled by :confval:`strict` may
+   change over time.
 
 
 Configuring error messages
