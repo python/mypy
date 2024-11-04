@@ -717,6 +717,14 @@ section of the command line docs.
 
     Note: This option will override disabled error codes from the disable_error_code option.
 
+.. confval:: extra_checks
+
+   :type: boolean
+   :default: False
+
+   This flag enables additional checks that are technically correct but may be impractical in real code.
+   See :option:`--extra-checks` for more info.
+
 .. confval:: implicit_reexport
 
     :type: boolean
@@ -744,25 +752,28 @@ section of the command line docs.
 
     Make arguments prepended via ``Concatenate`` be truly positional-only.
 
+    .. warning::
+       Deprecated: use :confval:`extra_checks` instead.
+
 .. confval:: strict_equality
 
     :type: boolean
     :default: False
 
-   Prohibit equality checks, identity checks, and container checks between
-   non-overlapping types.
+    Prohibit equality checks, identity checks, and container checks between
+    non-overlapping types.
 
 .. confval:: strict
 
     :type: boolean
     :default: False
 
-   Enable all optional error checking flags.  You can see the list of
-   flags enabled by strict mode in the full :option:`mypy --help`
-   output.
+    Enable all optional error checking flags.  You can see the list of
+    flags enabled by strict mode in the full :option:`mypy --help`
+    output.
 
-   Note: the exact list of flags enabled by :confval:`strict` may
-   change over time.
+    Note: the exact list of flags enabled by :confval:`strict` may
+    change over time.
 
 
 Configuring error messages
