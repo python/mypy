@@ -723,7 +723,7 @@ section of the command line docs.
    :default: False
 
    This flag enables additional checks that are technically correct but may be impractical in real code.
-   See :option:`--extra-checks` for more info.
+   See :option:`mypy --extra-checks` for more info.
 
 .. confval:: implicit_reexport
 
