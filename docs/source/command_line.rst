@@ -890,7 +890,7 @@ in developing or debugging mypy internals.
 
 .. option:: --plugins {MODULE|PLUGIN_FILE} ...
 
-    This flag acts as a supplementary way to pass (a list of) plugins to customize 
+    This flag acts as a supplementary way to pass (a list of) plugins to customize
     Mypy's type checking approach. See :ref:`extending-mypy` for more details.
 
 .. option:: --show-traceback, --tb
