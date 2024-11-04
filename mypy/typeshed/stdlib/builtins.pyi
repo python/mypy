@@ -1,3 +1,4 @@
+# ruff: noqa: PYI036 # This is the module declaring BaseException
 import _ast
 import _typeshed
 import sys
@@ -8,6 +9,7 @@ from _typeshed import (
     ConvertibleToFloat,
     ConvertibleToInt,
     FileDescriptorOrPath,
+    MaybeNone,
     OpenBinaryMode,
     OpenBinaryModeReading,
     OpenBinaryModeUpdating,
@@ -33,7 +35,8 @@ from collections.abc import Awaitable, Callable, Iterable, Iterator, MutableSet,
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
 from types import CellType, CodeType, TracebackType
 
-# mypy crashes if any of {ByteString, Sequence, MutableSequence, Mapping, MutableMapping} are imported from collections.abc in builtins.pyi
+# mypy crashes if any of {ByteString, Sequence, MutableSequence, Mapping, MutableMapping}
+# are imported from collections.abc in builtins.pyi
 from typing import (  # noqa: Y022
     IO,
     Any,
@@ -91,6 +94,9 @@ _SupportsAnextT = TypeVar("_SupportsAnextT", bound=SupportsAnext[Any], covariant
 _AwaitableT = TypeVar("_AwaitableT", bound=Awaitable[Any])
 _AwaitableT_co = TypeVar("_AwaitableT_co", bound=Awaitable[Any], covariant=True)
 _P = ParamSpec("_P")
+_StartT = TypeVar("_StartT", covariant=True, default=Any)
+_StopT = TypeVar("_StopT", covariant=True, default=Any)
+_StepT = TypeVar("_StepT", covariant=True, default=Any)
 
 class object:
     __doc__: str | None
@@ -784,7 +790,7 @@ class memoryview(Sequence[_I]):
     @overload
     def __setitem__(self, key: slice, value: ReadableBuffer, /) -> None: ...
     @overload
-    def __setitem__(self, key: SupportsIndex | tuple[SupportsIndex, ...], value: SupportsIndex, /) -> None: ...
+    def __setitem__(self, key: SupportsIndex | tuple[SupportsIndex, ...], value: _I, /) -> None: ...
     if sys.version_info >= (3, 10):
         def tobytes(self, order: Literal["C", "F", "A"] | None = "C") -> bytes: ...
     else:
@@ -796,6 +802,11 @@ class memoryview(Sequence[_I]):
     def hex(self, sep: str | bytes = ..., bytes_per_sep: SupportsIndex = ...) -> str: ...
     def __buffer__(self, flags: int, /) -> memoryview: ...
     def __release_buffer__(self, buffer: memoryview, /) -> None: ...
+
+    # These are inherited from the Sequence ABC, but don't actually exist on memoryview.
+    # See https://github.com/python/cpython/issues/125420
+    index: ClassVar[None]  # type: ignore[assignment]
+    count: ClassVar[None]  # type: ignore[assignment]
 
 @final
 class bool(int):
@@ -831,19 +842,31 @@ class bool(int):
     def __invert__(self) -> int: ...
 
 @final
-class slice:
+class slice(Generic[_StartT, _StopT, _StepT]):
     @property
-    def start(self) -> Any: ...
+    def start(self) -> _StartT: ...
     @property
-    def step(self) -> Any: ...
+    def step(self) -> _StepT: ...
     @property
-    def stop(self) -> Any: ...
+    def stop(self) -> _StopT: ...
     @overload
-    def __new__(cls, stop: Any, /) -> Self: ...
+    def __new__(cls, stop: int | None, /) -> slice[int | MaybeNone, int | MaybeNone, int | MaybeNone]: ...
     @overload
-    def __new__(cls, start: Any, stop: Any, step: Any = ..., /) -> Self: ...
+    def __new__(
+        cls, start: int | None, stop: int | None, step: int | None = None, /
+    ) -> slice[int | MaybeNone, int | MaybeNone, int | MaybeNone]: ...
+    @overload
+    def __new__(cls, stop: _T2, /) -> slice[Any, _T2, Any]: ...
+    @overload
+    def __new__(cls, start: _T1, stop: _T2, /) -> slice[_T1, _T2, Any]: ...
+    @overload
+    def __new__(cls, start: _T1, stop: _T2, step: _T3, /) -> slice[_T1, _T2, _T3]: ...
     def __eq__(self, value: object, /) -> bool: ...
-    __hash__: ClassVar[None]  # type: ignore[assignment]
+    if sys.version_info >= (3, 12):
+        def __hash__(self) -> int: ...
+    else:
+        __hash__: ClassVar[None]  # type: ignore[assignment]
+
     def indices(self, len: SupportsIndex, /) -> tuple[int, int, int]: ...
 
 class tuple(Sequence[_T_co]):
@@ -872,7 +895,9 @@ class tuple(Sequence[_T_co]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
-# Doesn't exist at runtime, but deleting this breaks mypy. See #2999
+# Doesn't exist at runtime, but deleting this breaks mypy and pyright. See:
+# https://github.com/python/typeshed/issues/7580
+# https://github.com/python/mypy/issues/8240
 @final
 @type_check_only
 class function:
@@ -989,7 +1014,8 @@ class dict(MutableMapping[_KT, _VT]):
     def keys(self) -> dict_keys[_KT, _VT]: ...
     def values(self) -> dict_values[_KT, _VT]: ...
     def items(self) -> dict_items[_KT, _VT]: ...
-    # Signature of `dict.fromkeys` should be kept identical to `fromkeys` methods of `OrderedDict`/`ChainMap`/`UserDict` in `collections`
+    # Signature of `dict.fromkeys` should be kept identical to
+    # `fromkeys` methods of `OrderedDict`/`ChainMap`/`UserDict` in `collections`
     # TODO: the true signature of `dict.fromkeys` is not expressible in the current type system.
     # See #3800 & https://github.com/python/typing/issues/548#issuecomment-683336963.
     @classmethod
@@ -1104,8 +1130,8 @@ class frozenset(AbstractSet[_T_co]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
-class enumerate(Iterator[tuple[int, _T]]):
-    def __new__(cls, iterable: Iterable[_T], start: int = ...) -> Self: ...
+class enumerate(Generic[_T]):
+    def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> tuple[int, _T]: ...
     if sys.version_info >= (3, 9):
@@ -1298,7 +1324,7 @@ else:
 
 def exit(code: sys._ExitCode = None) -> NoReturn: ...
 
-class filter(Iterator[_T]):
+class filter(Generic[_T]):
     @overload
     def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
     @overload
@@ -1359,7 +1385,7 @@ def len(obj: Sized, /) -> int: ...
 def license() -> None: ...
 def locals() -> dict[str, Any]: ...
 
-class map(Iterator[_S]):
+class map(Generic[_S]):
     @overload
     def __new__(cls, func: Callable[[_T1], _S], iter1: Iterable[_T1], /) -> Self: ...
     @overload
@@ -1601,7 +1627,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: float, mod: None = None) -> Any: ...
 def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex: ...
 def quit(code: sys._ExitCode = None) -> NoReturn: ...
 
-class reversed(Iterator[_T]):
+class reversed(Generic[_T]):
     @overload
     def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
     @overload
@@ -1649,7 +1675,7 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
 # without creating many false-positive errors (see #7578).
 # Instead, we special-case the most common examples of this: bool and literal integers.
 @overload
-def sum(iterable: Iterable[bool], /, start: int = 0) -> int: ...  # type: ignore[overload-overlap]
+def sum(iterable: Iterable[bool], /, start: int = 0) -> int: ...
 @overload
 def sum(iterable: Iterable[_SupportsSumNoDefaultT], /) -> _SupportsSumNoDefaultT | Literal[0]: ...
 @overload
@@ -1657,13 +1683,12 @@ def sum(iterable: Iterable[_AddableT1], /, start: _AddableT2) -> _AddableT1 | _A
 
 # The argument to `vars()` has to have a `__dict__` attribute, so the second overload can't be annotated with `object`
 # (A "SupportsDunderDict" protocol doesn't work)
-# Use a type: ignore to make complaints about overlapping overloads go away
 @overload
-def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...  # type: ignore[overload-overlap]
+def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
 @overload
 def vars(object: Any = ..., /) -> dict[str, Any]: ...
 
-class zip(Iterator[_T_co]):
+class zip(Generic[_T_co]):
     if sys.version_info >= (3, 10):
         @overload
         def __new__(cls, *, strict: bool = ...) -> zip[Any]: ...
@@ -1793,7 +1818,7 @@ class StopIteration(Exception):
     value: Any
 
 class OSError(Exception):
-    errno: int
+    errno: int | None
     strerror: str
     # filename, filename2 are actually str | bytes | None
     filename: Any

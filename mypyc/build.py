@@ -470,6 +470,7 @@ def mypycify(
     skip_cgen_input: Any | None = None,
     target_dir: str | None = None,
     include_runtime_files: bool | None = None,
+    strict_dunder_typing: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -509,6 +510,9 @@ def mypycify(
                                should be directly #include'd instead of linked
                                separately in order to reduce compiler invocations.
                                Defaults to False in multi_file mode, True otherwise.
+        strict_dunder_typing: If True, force dunder methods to have the return type
+                              of the method strictly, which can lead to more
+                              optimization opportunities. Defaults to False.
     """
 
     # Figure out our configuration
@@ -519,6 +523,7 @@ def mypycify(
         separate=separate is not False,
         target_dir=target_dir,
         include_runtime_files=include_runtime_files,
+        strict_dunder_typing=strict_dunder_typing,
     )
 
     # Generate all the actual important C code

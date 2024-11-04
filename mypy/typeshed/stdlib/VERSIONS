@@ -20,7 +20,9 @@
 __future__: 3.0-
 __main__: 3.0-
 _ast: 3.0-
+_asyncio: 3.0-
 _bisect: 3.0-
+_blake2: 3.6-
 _bootlocale: 3.4-3.9
 _codecs: 3.0-
 _collections_abc: 3.3-
@@ -32,16 +34,19 @@ _curses: 3.0-
 _decimal: 3.3-
 _dummy_thread: 3.0-3.8
 _dummy_threading: 3.0-3.8
+_frozen_importlib: 3.0-
+_frozen_importlib_external: 3.5-
 _heapq: 3.0-
 _imp: 3.0-
 _interpchannels: 3.13-
 _interpqueues: 3.13-
 _interpreters: 3.13-
+_io: 3.0-
 _json: 3.0-
 _locale: 3.0-
 _lsprof: 3.0-
 _markupbase: 3.0-
-_msi: 3.0-
+_msi: 3.0-3.12
 _operator: 3.4-
 _osx_support: 3.0-
 _posixsubprocess: 3.2-
@@ -50,6 +55,8 @@ _pydecimal: 3.5-
 _random: 3.0-
 _sitebuiltins: 3.4-
 _socket: 3.0-  # present in 3.0 at runtime, but not in typeshed
+_sqlite3: 3.0-
+_ssl: 3.0-
 _stat: 3.4-
 _thread: 3.0-
 _threading_local: 3.0-
@@ -156,11 +163,15 @@ imghdr: 3.0-3.12
 imp: 3.0-3.11
 importlib: 3.0-
 importlib._abc: 3.10-
+importlib._bootstrap: 3.0-
+importlib._bootstrap_external: 3.5-
 importlib.metadata: 3.8-
 importlib.metadata._meta: 3.10-
 importlib.metadata.diagnose: 3.13-
 importlib.readers: 3.10-
 importlib.resources: 3.7-
+importlib.resources._common: 3.11-
+importlib.resources._functional: 3.13-
 importlib.resources.abc: 3.11-
 importlib.resources.readers: 3.11-
 importlib.resources.simple: 3.11-

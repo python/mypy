@@ -104,6 +104,15 @@ def main(x: object, type_check_func: Callable[[object], TypeIs[T]]) -> T:
 reveal_type(main("a", is_str))  # N: Revealed type is "builtins.str"
 [builtins fixtures/exception.pyi]
 
+[case testTypeIsPassedAsTypeVarIsBool]
+from typing import Callable, TypeVar
+from typing_extensions import TypeIs
+T = TypeVar('T')
+def is_str(x: object) -> TypeIs[str]: pass
+def main(f: Callable[[object], T]) -> T: pass
+reveal_type(main(is_str))  # N: Revealed type is "builtins.bool"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsUnionIn]
 from typing import Union
 from typing_extensions import TypeIs

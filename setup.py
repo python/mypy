@@ -190,6 +190,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development",
     "Typing :: Typed",
 ]
@@ -231,6 +232,7 @@ setup(
         "python2": "",
         "reports": "lxml",
         "install-types": "pip",
+        "faster-cache": "orjson",
     },
     python_requires=">=3.8",
     include_package_data=True,

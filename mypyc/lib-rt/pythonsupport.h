@@ -17,13 +17,10 @@
 #ifndef Py_BUILD_CORE
 #define Py_BUILD_CORE
 #endif
-#include "internal/pycore_bytesobject.h"  // _PyBytes_Join
-#include "internal/pycore_call.h"  // _PyObject_CallMethodIdNoArgs, _PyObject_CallMethodIdObjArgs, _PyObject_CallMethodIdOneArg
+#include "internal/pycore_call.h"  // _PyObject_CallMethodIdNoArgs, _PyObject_CallMethodIdOneArg
 #include "internal/pycore_genobject.h"  // _PyGen_FetchStopIterationValue
-#include "internal/pycore_object.h"  // _PyType_CalculateMetaclass
 #include "internal/pycore_pyerrors.h"  // _PyErr_FormatFromCause, _PyErr_SetKeyError
 #include "internal/pycore_setobject.h"  // _PySet_Update
-#include "internal/pycore_unicodeobject.h"  // _PyUnicode_EQ, _PyUnicode_FastCopyCharacters
 #endif
 
 #if CPY_3_12_FEATURES
@@ -405,45 +402,15 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     PyObject_CallMethodObjArgs((self), (name), (arg), NULL)
 #endif
 
-#if CPY_3_13_FEATURES
-
-// These are copied from genobject.c in Python 3.13
-
-/* Returns a borrowed reference */
-static inline PyCodeObject *
-_PyGen_GetCode(PyGenObject *gen) {
-    _PyInterpreterFrame *frame = (_PyInterpreterFrame *)(gen->gi_iframe);
-    return _PyFrame_GetCode(frame);
-}
-
-static int
-gen_is_coroutine(PyObject *o)
-{
-    if (PyGen_CheckExact(o)) {
-        PyCodeObject *code = _PyGen_GetCode((PyGenObject*)o);
-        if (code->co_flags & CO_ITERABLE_COROUTINE) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-#elif CPY_3_12_FEATURES
+#if CPY_3_12_FEATURES
 
 // These are copied from genobject.c in Python 3.12
 
-/* Returns a borrowed reference */
-static inline PyCodeObject *
-_PyGen_GetCode(PyGenObject *gen) {
-    _PyInterpreterFrame *frame = (_PyInterpreterFrame *)(gen->gi_iframe);
-    return frame->f_code;
-}
-
 static int
 gen_is_coroutine(PyObject *o)
 {
     if (PyGen_CheckExact(o)) {
-        PyCodeObject *code = _PyGen_GetCode((PyGenObject*)o);
+        PyCodeObject *code = PyGen_GetCode((PyGenObject*)o);
         if (code->co_flags & CO_ITERABLE_COROUTINE) {
             return 1;
         }

@@ -3,10 +3,10 @@ import io
 import ssl
 import sys
 import types
-from _typeshed import ReadableBuffer, SupportsRead, SupportsReadline, WriteableBuffer
+from _typeshed import MaybeNone, ReadableBuffer, SupportsRead, SupportsReadline, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from socket import socket
-from typing import Any, BinaryIO, TypeVar, overload
+from typing import BinaryIO, TypeVar, overload
 from typing_extensions import Self, TypeAlias
 
 __all__ = [
@@ -34,6 +34,7 @@ __all__ = [
 _DataType: TypeAlias = SupportsRead[bytes] | Iterable[ReadableBuffer] | ReadableBuffer
 _T = TypeVar("_T")
 _MessageT = TypeVar("_MessageT", bound=email.message.Message)
+_HeaderValue: TypeAlias = ReadableBuffer | str | int
 
 HTTP_PORT: int
 HTTPS_PORT: int
@@ -153,7 +154,7 @@ class HTTPConnection:
     timeout: float | None
     host: str
     port: int
-    sock: socket | Any  # can be `None` if `.connect()` was not called
+    sock: socket | MaybeNone  # can be `None` if `.connect()` was not called
     def __init__(
         self,
         host: str,
@@ -167,7 +168,7 @@ class HTTPConnection:
         method: str,
         url: str,
         body: _DataType | str | None = None,
-        headers: Mapping[str, str] = {},
+        headers: Mapping[str, _HeaderValue] = {},
         *,
         encode_chunked: bool = False,
     ) -> None: ...
@@ -180,13 +181,13 @@ class HTTPConnection:
     def connect(self) -> None: ...
     def close(self) -> None: ...
     def putrequest(self, method: str, url: str, skip_host: bool = False, skip_accept_encoding: bool = False) -> None: ...
-    def putheader(self, header: str | bytes, *argument: str | bytes) -> None: ...
+    def putheader(self, header: str | bytes, *values: _HeaderValue) -> None: ...
     def endheaders(self, message_body: _DataType | None = None, *, encode_chunked: bool = False) -> None: ...
     def send(self, data: _DataType | str) -> None: ...
 
 class HTTPSConnection(HTTPConnection):
     # Can be `None` if `.connect()` was not called:
-    sock: ssl.SSLSocket | Any
+    sock: ssl.SSLSocket | MaybeNone
     if sys.version_info >= (3, 12):
         def __init__(
             self,
