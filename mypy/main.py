@@ -1009,8 +1009,9 @@ def process_options(
     )
     internals_group.add_argument("--pdb", action="store_true", help="Invoke pdb on fatal error")
     internals_group.add_argument(
-        "--extend-plugins", "--ep",
-        type=lambda s: [item.strip() for item in s.split(',')],
+        "--extend-plugins",
+        "--ep",
+        type=lambda s: [item.strip() for item in s.split(",")],
         metavar="{MODULE|PLUGIN_FILE}",
         dest="special-opts:cli_plugins",
         help="Include user defined plugins during Mypy's type analysis",
