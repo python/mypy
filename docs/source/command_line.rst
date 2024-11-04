@@ -888,7 +888,7 @@ in developing or debugging mypy internals.
     This flag will invoke the Python debugger when mypy encounters
     a fatal error.
 
-.. option:: --extend-plugins {MODULE|PLUGIN_FILE} ...
+.. option:: --extend-plugins, --ep {MODULE|PLUGIN_FILE} ...
 
     This flag acts as a supplementary way to pass (a list of) plugins to customize
     Mypy's type checking approach. See :ref:`extending-mypy` for more details.
