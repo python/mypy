@@ -1003,17 +1003,17 @@ def process_options(
         action="store_true",
         help="Skip cache internal consistency checks based on mtime",
     )
-    incremental_group.add_argument(
-        "--plugins",
-        nargs="*",
-        dest="special-opts:cli_plugins",
-        help="Include user defined plugins during Mypy's type analysis",
-    )
 
     internals_group = parser.add_argument_group(
         title="Advanced options", description="Debug and customize mypy internals."
     )
     internals_group.add_argument("--pdb", action="store_true", help="Invoke pdb on fatal error")
+    internals_group.add_argument(
+        "--plugins",
+        nargs="*",
+        dest="special-opts:cli_plugins",
+        help="Include user defined plugins during Mypy's type analysis",
+    )
     internals_group.add_argument(
         "--show-traceback", "--tb", action="store_true", help="Show traceback on fatal error"
     )
