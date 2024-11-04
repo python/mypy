@@ -1003,6 +1003,12 @@ def process_options(
         action="store_true",
         help="Skip cache internal consistency checks based on mtime",
     )
+    incremental_group.add_argument(
+        "--plugins",
+        nargs='*',
+        dest="special-opts:cli_plugins",
+        help="Include user defined plugins during Mypy's type analysis",
+    )
 
     internals_group = parser.add_argument_group(
         title="Advanced options", description="Debug and customize mypy internals."
@@ -1290,6 +1296,10 @@ def process_options(
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
     parser.parse_args(args, SplitNamespace(options, special_opts, "special-opts:"))
+
+    # Parse extra plugins passed via cli args
+    if special_opts.cli_plugins:
+        options.plugins.extend(special_opts.cli_plugins)
 
     # The python_version is either the default, which can be overridden via a config file,
     # or stored in special_opts and is passed via the command line.
