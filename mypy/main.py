@@ -1009,8 +1009,9 @@ def process_options(
     )
     internals_group.add_argument("--pdb", action="store_true", help="Invoke pdb on fatal error")
     internals_group.add_argument(
-        "--plugins",
-        nargs="*",
+        "--extend-plugins", "--ep",
+        type=lambda s: [item.strip() for item in s.split(',')],
+        metavar="{MODULE|PLUGIN_FILE}",
         dest="special-opts:cli_plugins",
         help="Include user defined plugins during Mypy's type analysis",
     )
@@ -1300,6 +1301,7 @@ def process_options(
     # Parse extra plugins passed via cli args
     if special_opts.cli_plugins:
         options.plugins.extend(special_opts.cli_plugins)
+        print(special_opts.cli_plugins)
 
     # The python_version is either the default, which can be overridden via a config file,
     # or stored in special_opts and is passed via the command line.
