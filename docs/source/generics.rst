@@ -668,7 +668,7 @@ the attribute as ``Final``, the class could still be made covariant:
            self.content: Final = content
 
        def get_content(self) -> T:
-           return self._content
+           return self.content
 
 When using the legacy syntax, mypy assumes that all user-defined generics
 are invariant by default. To declare a given generic class as covariant or
