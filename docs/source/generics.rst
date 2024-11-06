@@ -641,7 +641,7 @@ infer the most flexible variance for each class type variable. Here
 
 .. code-block:: python
 
-   class Box[T]:  # this type is implilicitly covariant
+   class Box[T]:  # this type is implicitly covariant
        def __init__(self, content: T) -> None:
            self._content = content
 
@@ -663,7 +663,7 @@ the attribute as ``Final``, the class could still be made covariant:
 
    from typing import Final
 
-   class Box[T]:  # this type is implilicitly covariant
+   class Box[T]:  # this type is implicitly covariant
        def __init__(self, content: T) -> None:
            self.content: Final = content
 
