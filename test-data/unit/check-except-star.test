@@ -1,0 +1,36 @@
+[case testExceptStarForbiddenBasic]
+# flags: --python-version 3.11
+[builtins fixtures/exception.pyi]
+def foo() -> None:
+    for _ in range(5):
+        try:
+            ...
+        except* Exception:
+            continue   # E: "continue" not allowed in except* block
+        except* ValueError:
+            for _ in range(2):
+                continue
+            break  # E: "break" not allowed in except* block
+        except* TypeError:
+            return  # E: "return" not allowed in except* block
+
+[case testExceptStarForbiddenEdgeCases]
+# flags: --python-version 3.11
+[builtins fixtures/exception.pyi]
+def foo2():
+    while True:
+        try:
+            ...
+        except* ValueError:
+            def inner():
+                while True:
+                    if 1 < 1:
+                        continue
+                    else:
+                        break
+                return
+            if 1 < 2:
+                break  # E: "break" not allowed in except* block
+            if 1 < 2:
+                continue  # E: "continue" not allowed in except* block
+            return  # E: "return" not allowed in except* block

@@ -484,6 +484,10 @@ class SemanticAnalyzer(
         # Used to pass information about current overload index to visit_func_def().
         self.current_overload_item: int | None = None
 
+        # Used to track whether currently inside an except* block. This helps
+        # to invoke errors when continue/break/return is used inside except * block.
+        self.is_in_except_block: bool = False
+
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
     @property
@@ -854,6 +858,9 @@ class SemanticAnalyzer(
     def visit_func_def(self, defn: FuncDef) -> None:
         self.statement = defn
 
+        was_in_except_block: bool = self.is_in_except_block
+        self.is_in_except_block = False
+
         # Visit default values because they may contain assignment expressions.
         for arg in defn.arguments:
             if arg.initializer:
@@ -874,10 +881,13 @@ class SemanticAnalyzer(
                 self.add_function_to_symbol_table(defn)
 
         if not self.recurse_into_functions:
+            self.is_in_except_block = was_in_except_block
             return
 
         with self.scope.function_scope(defn):
             self.analyze_func_def(defn)
+
+        self.is_in_except_block = was_in_except_block
 
     def function_fullname(self, fullname: str) -> str:
         if self.current_overload_item is None:
@@ -5263,6 +5273,8 @@ class SemanticAnalyzer(
         self.statement = s
         if not self.is_func_scope():
             self.fail('"return" outside function', s)
+        if self.is_in_except_block:
+            self.fail('"return" not allowed in except* block', s, serious=True, blocker=True)
         if s.expr:
             s.expr.accept(self)
 
@@ -5295,9 +5307,12 @@ class SemanticAnalyzer(
     def visit_while_stmt(self, s: WhileStmt) -> None:
         self.statement = s
         s.expr.accept(self)
+        was_in_except_block: bool = self.is_in_except_block
+        self.is_in_except_block = False
         self.loop_depth[-1] += 1
         s.body.accept(self)
         self.loop_depth[-1] -= 1
+        self.is_in_except_block = was_in_except_block
         self.visit_block_maybe(s.else_body)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
@@ -5319,9 +5334,12 @@ class SemanticAnalyzer(
                 self.store_declared_types(s.index, analyzed)
                 s.index_type = analyzed
 
+        was_in_except_block: bool = self.is_in_except_block
+        self.is_in_except_block = False
         self.loop_depth[-1] += 1
         self.visit_block(s.body)
         self.loop_depth[-1] -= 1
+        self.is_in_except_block = was_in_except_block
 
         self.visit_block_maybe(s.else_body)
 
@@ -5329,11 +5347,15 @@ class SemanticAnalyzer(
         self.statement = s
         if self.loop_depth[-1] == 0:
             self.fail('"break" outside loop', s, serious=True, blocker=True)
+        if self.is_in_except_block:
+            self.fail('"break" not allowed in except* block', s, serious=True, blocker=True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.statement = s
         if self.loop_depth[-1] == 0:
             self.fail('"continue" outside loop', s, serious=True, blocker=True)
+        if self.is_in_except_block:
+            self.fail('"continue" not allowed in except* block', s, serious=True, blocker=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         self.statement = s
@@ -5354,7 +5376,13 @@ class SemanticAnalyzer(
                 type.accept(visitor)
             if var:
                 self.analyze_lvalue(var)
-            handler.accept(visitor)
+            if s.is_star:
+                was_in_except_block: bool = self.is_in_except_block
+                self.is_in_except_block = True
+                handler.accept(visitor)
+                self.is_in_except_block = was_in_except_block
+            else:
+                handler.accept(visitor)
         if s.else_body:
             s.else_body.accept(visitor)
         if s.finally_body:
