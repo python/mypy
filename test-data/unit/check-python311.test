@@ -173,3 +173,52 @@ Alias4 = Callable[[*IntList], int]  # E: "List[int]" cannot be unpacked (must be
 x4: Alias4[int]  # E: Bad number of arguments for type alias, expected 0, given 1
 reveal_type(x4)  # N: Revealed type is "def (*Any) -> builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testReturnInExceptStarBlock]
+# flags: --python-version 3.11
+def foo() -> None:
+    try:
+        pass
+    except* Exception:
+        return   # E: "return" not allowed in except* block
+    finally:
+        return
+[builtins fixtures/exception.pyi]
+
+[case testBreakContinueReturnInExceptStarBlock1]
+# flags: --python-version 3.11
+class range: pass
+def foo() -> None:
+    for _ in range(5):
+        try:
+            pass
+        except* Exception:
+            continue   # E: "continue" not allowed in except* block
+        except* Exception:
+            for _ in range(2):
+                continue
+            break  # E: "break" not allowed in except* block
+        except* Exception:
+            return  # E: "return" not allowed in except* block
+[builtins fixtures/exception.pyi]
+
+[case testBreakContinueReturnInExceptStarBlock2]
+# flags: --python-version 3.11
+def foo():
+    while True:
+        try:
+            pass
+        except* Exception:
+            def inner():
+                while True:
+                    if 1 < 1:
+                        continue
+                    else:
+                        break
+                return
+            if 1 < 2:
+                break  # E: "break" not allowed in except* block
+            if 1 < 2:
+                continue  # E: "continue" not allowed in except* block
+            return  # E: "return" not allowed in except* block
+[builtins fixtures/exception.pyi]
