@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import DefaultDict, Iterator, List, NamedTuple, Optional, Tuple, Union, cast
+from typing import DefaultDict, Iterator, List, NamedTuple, Optional, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
@@ -231,7 +231,9 @@ class ConditionalTypeBinder:
             declaration_type = get_proper_type(self.declarations.get(key))
             if isinstance(declaration_type, AnyType):
                 # At this point resulting values can't contain None, see continue above
-                if not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:]):
+                if not all(
+                    t is not None and is_same_type(type, t.type) for t in resulting_values[1:]
+                ):
                     type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
                 for other in resulting_values[1:]:
