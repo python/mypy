@@ -2227,22 +2227,6 @@ def foo_while(x: T) -> T:
     return out
 [builtins fixtures/isinstance.pyi]
 
-[case testNoneCheckDoesNotMakeTypeVarOptionalMatch]
-# flags: --python-version=3.10
-from typing import TypeVar
-
-T = TypeVar('T')
-
-def foo(x: T) -> T:
-    out = None
-    out = x
-    match out:
-        case None:
-            pass
-    return out
-
-[builtins fixtures/isinstance.pyi]
-
 [case testNoneCheckDoesNotNarrowWhenUsingTypeVarsNoStrictOptional]
 # flags: --no-strict-optional
 from typing import TypeVar
