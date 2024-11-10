@@ -4725,11 +4725,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # XXX Issue a warning if condition is always False?
                 with self.binder.frame_context(can_skip=True, fall_through=2):
-                    self.push_type_map(if_map)
+                    self.push_type_map(if_map, False)
                     self.accept(b)
 
                 # XXX Issue a warning if condition is always True?
-                self.push_type_map(else_map)
+                self.push_type_map(else_map, False)
 
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 if s.else_body:
@@ -5310,18 +5310,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if b.is_unreachable or isinstance(
                         get_proper_type(pattern_type.type), UninhabitedType
                     ):
-                        self.push_type_map(None)
+                        self.push_type_map(None, False)
                         else_map: TypeMap = {}
                     else:
                         pattern_map, else_map = conditional_types_to_typemaps(
                             named_subject, pattern_type.type, pattern_type.rest_type
                         )
                         self.remove_capture_conflicts(pattern_type.captures, inferred_types)
-                        self.push_type_map(pattern_map)
+                        self.push_type_map(pattern_map, False)
                         if pattern_map:
                             for expr, typ in pattern_map.items():
-                                self.push_type_map(self._get_recursive_sub_patterns_map(expr, typ))
-                        self.push_type_map(pattern_type.captures)
+                                self.push_type_map(
+                                    self._get_recursive_sub_patterns_map(expr, typ), False
+                                )
+                        self.push_type_map(pattern_type.captures, False)
                     if g is not None:
                         with self.binder.frame_context(can_skip=False, fall_through=3):
                             gt = get_proper_type(self.expr_checker.accept(g))
@@ -5347,11 +5349,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                 continue
                                             type_map[named_subject] = type_map[expr]
 
-                            self.push_type_map(guard_map)
+                            self.push_type_map(guard_map, False)
                             self.accept(b)
                     else:
                         self.accept(b)
-                self.push_type_map(else_map)
+                self.push_type_map(else_map, False)
 
             # This is needed due to a quirk in frame_context. Without it types will stay narrowed
             # after the match.
@@ -7365,12 +7367,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type("builtins.function"))
 
-    def push_type_map(self, type_map: TypeMap) -> None:
+    def push_type_map(self, type_map: TypeMap, from_assignment: bool = True) -> None:
         if type_map is None:
             self.binder.unreachable()
         else:
             for expr, type in type_map.items():
-                self.binder.put(expr, type)
+                self.binder.put(expr, type, from_assignment)
 
     def infer_issubclass_maps(self, node: CallExpr, expr: Expression) -> tuple[TypeMap, TypeMap]:
         """Infer type restrictions for an expression in issubclass call."""
@@ -7743,9 +7745,7 @@ def conditional_types(
         ) and is_proper_subtype(current_type, proposed_type, ignore_promotions=True):
             # Expression is always of one of the types in proposed_type_ranges
             return default, UninhabitedType()
-        elif not is_overlapping_types(
-            current_type, proposed_type, prohibit_none_typevar_overlap=True, ignore_promotions=True
-        ):
+        elif not is_overlapping_types(current_type, proposed_type, ignore_promotions=True):
             # Expression is never of any type in proposed_type_ranges
             return UninhabitedType(), default
         else:
