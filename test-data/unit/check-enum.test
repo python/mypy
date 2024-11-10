@@ -2267,6 +2267,7 @@ class Medal(Enum):
                      # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
                      # E: Incompatible types in assignment (expression has type "int", variable has type "str")
     bronze = 3
+[builtins fixtures/enum.pyi]
 
 [case testEnumMemberWithPlaceholder]
 from enum import Enum
@@ -2276,6 +2277,7 @@ class Pet(Enum):
     DOG: str = ...  # E: Enum members must be left unannotated \
                     # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
                     # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "str")
+[builtins fixtures/enum.pyi]
 
 [case testEnumValueWithPlaceholderNodeType]
 # https://github.com/python/mypy/issues/11971
