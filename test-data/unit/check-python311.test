@@ -174,7 +174,7 @@ x4: Alias4[int]  # E: Bad number of arguments for type alias, expected 0, given 
 reveal_type(x4)  # N: Revealed type is "def (*Any) -> builtins.int"
 [builtins fixtures/tuple.pyi]
 
-[case testReturnInExceptStarBlock]
+[case testReturnInExceptStarBlock1]
 # flags: --python-version 3.11
 def foo() -> None:
     try:
@@ -183,6 +183,17 @@ def foo() -> None:
         return   # E: "return" not allowed in except* block
     finally:
         return
+[builtins fixtures/exception.pyi]
+
+[case testReturnInExceptStarBlock2]
+# flags: --python-version 3.11
+def foo():
+    while True:
+        try:
+            pass
+        except* Exception:
+            while True:
+                return  # E: "return" not allowed in except* block
 [builtins fixtures/exception.pyi]
 
 [case testBreakContinueReturnInExceptStarBlock1]

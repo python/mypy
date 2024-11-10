@@ -487,6 +487,8 @@ class SemanticAnalyzer(
         # Used to track whether currently inside an except* block. This helps
         # to invoke errors when continue/break/return is used inside except* block.
         self.inside_except_star_block: bool = False
+        # Used to track edge case when return is still inside except* if it enters a loop
+        self.return_stmt_inside_except_star_block: bool = False
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -516,13 +518,23 @@ class SemanticAnalyzer(
             self.allow_unbound_tvars = old
 
     @contextmanager
-    def inside_except_star_block_set(self, value: bool) -> Iterator[None]:
+    def inside_except_star_block_set(
+        self, value: bool, enteringLoop: bool = False
+    ) -> Iterator[None]:
         old = self.inside_except_star_block
         self.inside_except_star_block = value
+
+        # Return statement would still be in except* scope if entering loops
+        if not enteringLoop:
+            old_return_stmt_flag = self.return_stmt_inside_except_star_block
+            self.return_stmt_inside_except_star_block = value
+
         try:
             yield
         finally:
             self.inside_except_star_block = old
+            if not enteringLoop:
+                self.return_stmt_inside_except_star_block = old_return_stmt_flag
 
     #
     # Preparing module (performed before semantic analysis)
@@ -890,7 +902,7 @@ class SemanticAnalyzer(
             return
 
         with self.scope.function_scope(defn):
-            with self.inside_except_star_block_set(False):
+            with self.inside_except_star_block_set(value=False):
                 self.analyze_func_def(defn)
 
     def function_fullname(self, fullname: str) -> str:
@@ -5277,7 +5289,7 @@ class SemanticAnalyzer(
         self.statement = s
         if not self.is_func_scope():
             self.fail('"return" outside function', s)
-        if self.inside_except_star_block:
+        if self.return_stmt_inside_except_star_block:
             self.fail('"return" not allowed in except* block', s, serious=True, blocker=True)
         if s.expr:
             s.expr.accept(self)
@@ -5312,7 +5324,7 @@ class SemanticAnalyzer(
         self.statement = s
         s.expr.accept(self)
         self.loop_depth[-1] += 1
-        with self.inside_except_star_block_set(False):
+        with self.inside_except_star_block_set(value=False, enteringLoop=True):
             s.body.accept(self)
         self.loop_depth[-1] -= 1
         self.visit_block_maybe(s.else_body)
@@ -5337,7 +5349,7 @@ class SemanticAnalyzer(
                 s.index_type = analyzed
 
         self.loop_depth[-1] += 1
-        with self.inside_except_star_block_set(False):
+        with self.inside_except_star_block_set(value=False, enteringLoop=True):
             self.visit_block(s.body)
         self.loop_depth[-1] -= 1
         self.visit_block_maybe(s.else_body)
