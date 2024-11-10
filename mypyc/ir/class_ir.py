@@ -93,6 +93,7 @@ class ClassIR:
         is_generated: bool = False,
         is_abstract: bool = False,
         is_ext_class: bool = True,
+        is_final_class: bool = False,
     ) -> None:
         self.name = name
         self.module_name = module_name
@@ -100,6 +101,7 @@ class ClassIR:
         self.is_generated = is_generated
         self.is_abstract = is_abstract
         self.is_ext_class = is_ext_class
+        self.is_final_class = is_final_class
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
@@ -199,7 +201,8 @@ class ClassIR:
             "ClassIR("
             "name={self.name}, module_name={self.module_name}, "
             "is_trait={self.is_trait}, is_generated={self.is_generated}, "
-            "is_abstract={self.is_abstract}, is_ext_class={self.is_ext_class}"
+            "is_abstract={self.is_abstract}, is_ext_class={self.is_ext_class}, "
+            "is_final_class={self.is_final_class}"
             ")".format(self=self)
         )
 
@@ -248,8 +251,7 @@ class ClassIR:
     def is_method_final(self, name: str) -> bool:
         subs = self.subclasses()
         if subs is None:
-            # TODO: Look at the final attribute!
-            return False
+            return self.is_final_class
 
         if self.has_method(name):
             method_decl = self.method_decl(name)
@@ -349,6 +351,7 @@ class ClassIR:
             "is_abstract": self.is_abstract,
             "is_generated": self.is_generated,
             "is_augmented": self.is_augmented,
+            "is_final_class": self.is_final_class,
             "inherits_python": self.inherits_python,
             "has_dict": self.has_dict,
             "allow_interpreted_subclasses": self.allow_interpreted_subclasses,
@@ -404,6 +407,7 @@ class ClassIR:
         ir.is_abstract = data["is_abstract"]
         ir.is_ext_class = data["is_ext_class"]
         ir.is_augmented = data["is_augmented"]
+        ir.is_final_class = data["is_final_class"]
         ir.inherits_python = data["inherits_python"]
         ir.has_dict = data["has_dict"]
         ir.allow_interpreted_subclasses = data["allow_interpreted_subclasses"]
