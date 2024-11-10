@@ -693,7 +693,9 @@ class PatternChecker(PatternVisitor[PatternType]):
 
     def should_self_match(self, typ: Type) -> bool:
         typ = get_proper_type(typ)
-        if isinstance(typ, Instance) and typ.type.is_named_tuple:
+        if isinstance(typ, Instance) and typ.type.get("__match_args__") is not None:
+            # Named tuples and other subtypes of builtins that define __match_args__
+            # should not self match.
             return False
         for other in self.self_match_types:
             if is_subtype(typ, other):

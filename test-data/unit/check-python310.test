@@ -648,6 +648,25 @@ match m:
         reveal_type(m)  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/primitives.pyi]
 
+[case testMatchClassPatternCaptureSelfSubtype]
+class A(str):
+    pass
+
+class B(str):
+    __match_args__ = ("b",)
+    b: int
+
+def f1(x: A):
+    match x:
+        case A(a):
+            reveal_type(a)  # N: Revealed type is "__main__.A"
+
+def f2(x: B):
+    match x:
+        case B(b):
+            reveal_type(b)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchInvalidClassPattern]
 m: object
 
