@@ -5132,6 +5132,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if not allow_empty:
                     self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
+            if refers_to_fullname(d, "abc.abstractmethod"):
+                # Normally these would be removed, except for abstract settable properties,
+                # where it is non-trivial to remove.
+                continue
             dec = self.expr_checker.accept(d)
             temp = self.temp_node(sig, context=e)
             fullname = None
