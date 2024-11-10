@@ -230,12 +230,14 @@ class TypesSuite(Suite):
     def test_indirection_no_infinite_recursion(self) -> None:
         A, _ = self.fx.def_alias_1(self.fx.a)
         visitor = TypeIndirectionVisitor()
-        modules = A.accept(visitor)
+        A.accept(visitor)
+        modules = visitor.modules
         assert modules == {"__main__", "builtins"}
 
         A, _ = self.fx.def_alias_2(self.fx.a)
         visitor = TypeIndirectionVisitor()
-        modules = A.accept(visitor)
+        A.accept(visitor)
+        modules = visitor.modules
         assert modules == {"__main__", "builtins"}
 
 
