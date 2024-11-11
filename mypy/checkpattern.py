@@ -158,7 +158,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         for pattern in o.patterns:
             pattern_type = self.accept(pattern, current_type)
             pattern_types.append(pattern_type)
-            current_type = pattern_type.rest_type
+            if not is_uninhabited(pattern_type.type):
+                current_type = pattern_type.rest_type
 
         #
         # Collect the final type

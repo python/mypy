@@ -1721,6 +1721,22 @@ def f(x: int | str) -> int:
         case str() as s:
             return 1
 
+[case testMatchOrPatternExhaustiveness]
+from typing import NoReturn, Literal
+def assert_never(x: NoReturn) -> None: ...
+
+Color = Literal["blue", "green", "red"]
+c: Color
+
+match c:
+    case "blue":
+        reveal_type(c) # N: Revealed type is "Literal['blue']"
+    case "green" | "notColor":
+        reveal_type(c) # N: Revealed type is "Literal['green']"
+    case _:
+        assert_never(c) # E: Argument 1 to "assert_never" has incompatible type "Literal['red']"; expected "Never"
+[typing fixtures/typing-typeddict.pyi]
+
 [case testMatchAsPatternIntersection-skip]
 class A: pass
 class B: pass
