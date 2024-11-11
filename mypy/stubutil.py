@@ -832,7 +832,7 @@ class BaseStubGenerator:
         return False
 
     def is_private_name(self, name: str, fullname: str | None = None) -> bool:
-        if name.startswith("__mypy-"):
+        if "__mypy-" in name:
             return True  # Never include mypy generated symbols
         if self._include_private:
             return False
