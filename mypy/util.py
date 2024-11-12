@@ -937,10 +937,8 @@ def json_dumps(obj: object, debug: bool = False) -> bytes:
         try:
             return orjson.dumps(obj, option=dumps_option) # type: ignore[no-any-return]
         except TypeError as e:
-            if str(e) == 'Integer exceeds 64-bit range':
-                # use stdlib json below
-                pass
-            raise
+            if str(e) != 'Integer exceeds 64-bit range':
+                raise
 
     if debug:
         return json.dumps(obj, indent=2, sort_keys=True).encode("utf-8")
