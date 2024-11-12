@@ -935,7 +935,7 @@ def json_dumps(obj: object, debug: bool = False) -> bytes:
             dumps_option = orjson.OPT_SORT_KEYS
 
         try:
-            return orjson.dumps(obj, option=dumps_option)
+            return orjson.dumps(obj, option=dumps_option) # type: ignore[no-any-return]
         except TypeError as e:
             if str(e) == 'Integer exceeds 64-bit range':
                 # use stdlib json below
