@@ -225,7 +225,7 @@ def foo():
 [case testBreakContinueReturnInExceptStarBlock1]
 # flags: --python-version 3.11
 from typing import Sequence
-class range(Sequence[int]): 
+class range(Sequence[int]):
     def __init__(self, __x: int, __y: int = ..., __z: int = ...) -> None: pass
 
 def foo() -> None:
