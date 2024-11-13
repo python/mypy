@@ -228,6 +228,7 @@ from mypy.semanal_shared import (
     set_callable_name as set_callable_name,
 )
 from mypy.semanal_typeddict import TypedDictAnalyzer
+from mypy.traverser import has_await_expression
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typeanal import (
     SELF_TYPE_NAMES,
@@ -6074,9 +6075,9 @@ class SemanticAnalyzer(
                 expr.types[i] = analyzed
 
     def visit_list_comprehension(self, expr: ListComprehension) -> None:
-        if any(expr.generator.is_async):
+        if any(expr.generator.is_async) or has_await_expression(expr):
             if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
-                self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
+                self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX, serious=True)
 
         expr.generator.accept(self)
 
@@ -6090,7 +6091,7 @@ class SemanticAnalyzer(
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
         if any(expr.is_async):
             if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
-                self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
+                self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX, serious=True)
 
         with self.enter(expr):
             self.analyze_comp_for(expr)
@@ -6167,7 +6168,7 @@ class SemanticAnalyzer(
             # This is not a blocker, because some enviroments (like ipython)
             # support top level awaits.
             self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
-        elif not self.function_stack[-1].is_coroutine:
+        elif not self.function_stack[-1].is_coroutine and not self.is_in_generator_expression(expr):
             self.fail(
                 '"await" outside coroutine ("async def")',
                 expr,
@@ -6175,6 +6176,9 @@ class SemanticAnalyzer(
                 code=codes.AWAIT_NOT_ASYNC,
             )
         expr.expr.accept(self)
+
+    def is_in_generator_expression(self, node: AwaitExpr):
+        return self.scope_stack[-1] == SCOPE_COMPREHENSION
 
     #
     # Patterns
