@@ -6088,7 +6088,7 @@ class SemanticAnalyzer(
                 self.fail(
                     message_registry.AWAIT_WITH_OUTSIDE_COROUTINE,
                     expr,
-                    code=codes.SYNTAX,
+                    code=codes.AWAIT_NOT_ASYNC,
                     serious=True,
                 )
 
