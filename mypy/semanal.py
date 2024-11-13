@@ -6186,7 +6186,10 @@ class SemanticAnalyzer(
             # This is not a blocker, because some enviroments (like ipython)
             # support top level awaits.
             self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
-        elif not self.function_stack[-1].is_coroutine and self.scope_stack[-1] != SCOPE_COMPREHENSION:
+        elif (
+            not self.function_stack[-1].is_coroutine
+            and self.scope_stack[-1] != SCOPE_COMPREHENSION
+        ):
             self.fail(
                 message_registry.AWAIT_WITH_OUTSIDE_COROUTINE,
                 expr,
