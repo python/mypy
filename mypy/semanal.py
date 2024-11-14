@@ -6074,7 +6074,9 @@ class SemanticAnalyzer(
             if analyzed is not None:
                 expr.types[i] = analyzed
 
-    def _check_await_outside_coroutine(self, expr: ListComprehension | SetComprehension | DictionaryComprehension) -> None:
+    def _check_await_outside_coroutine(
+        self, expr: ListComprehension | SetComprehension | DictionaryComprehension
+    ) -> None:
         if not has_await_expression(expr):
             return
 
@@ -6195,8 +6197,16 @@ class SemanticAnalyzer(
             # We check both because is_function_scope() returns True inside comprehensions.
             # This is not a blocker, because some enviroments (like ipython)
             # support top level awaits.
-            self.fail(message_registry.AWAIT_OUTSIDE_FUNCTION, expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
-        elif not self.function_stack[-1].is_coroutine and self.scope_stack[-1] != SCOPE_COMPREHENSION:
+            self.fail(
+                message_registry.AWAIT_OUTSIDE_FUNCTION,
+                expr,
+                serious=True,
+                code=codes.TOP_LEVEL_AWAIT,
+            )
+        elif (
+            not self.function_stack[-1].is_coroutine
+            and self.scope_stack[-1] != SCOPE_COMPREHENSION
+        ):
             self.fail(
                 message_registry.AWAIT_OUTSIDE_COROUTINE,
                 expr,
