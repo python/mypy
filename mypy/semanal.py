@@ -6074,6 +6074,18 @@ class SemanticAnalyzer(
             if analyzed is not None:
                 expr.types[i] = analyzed
 
+    def _check_await_outside_coroutine(self, expr: ListComprehension | SetComprehension | DictionaryComprehension) -> None:
+        if not has_await_expression(expr):
+            return
+
+        if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+            self.fail(
+                message_registry.AWAIT_OUTSIDE_COROUTINE,
+                expr,
+                code=codes.AWAIT_NOT_ASYNC,
+                serious=True,
+            )
+
     def visit_list_comprehension(self, expr: ListComprehension) -> None:
         if any(expr.generator.is_async):
             if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
@@ -6083,14 +6095,8 @@ class SemanticAnalyzer(
                     code=codes.SYNTAX,
                     serious=True,
                 )
-        elif has_await_expression(expr):
-            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
-                self.fail(
-                    message_registry.AWAIT_WITH_OUTSIDE_COROUTINE,
-                    expr,
-                    code=codes.AWAIT_NOT_ASYNC,
-                    serious=True,
-                )
+
+        self._check_await_outside_coroutine(expr)
 
         expr.generator.accept(self)
 
@@ -6098,6 +6104,8 @@ class SemanticAnalyzer(
         if any(expr.generator.is_async):
             if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
                 self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
+
+        self._check_await_outside_coroutine(expr)
 
         expr.generator.accept(self)
 
@@ -6110,6 +6118,8 @@ class SemanticAnalyzer(
                     code=codes.SYNTAX,
                     serious=True,
                 )
+
+        self._check_await_outside_coroutine(expr)
 
         with self.enter(expr):
             self.analyze_comp_for(expr)
@@ -6185,13 +6195,10 @@ class SemanticAnalyzer(
             # We check both because is_function_scope() returns True inside comprehensions.
             # This is not a blocker, because some enviroments (like ipython)
             # support top level awaits.
-            self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
-        elif (
-            not self.function_stack[-1].is_coroutine
-            and self.scope_stack[-1] != SCOPE_COMPREHENSION
-        ):
+            self.fail(message_registry.AWAIT_OUTSIDE_FUNCTION, expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
+        elif not self.function_stack[-1].is_coroutine and self.scope_stack[-1] != SCOPE_COMPREHENSION:
             self.fail(
-                message_registry.AWAIT_WITH_OUTSIDE_COROUTINE,
+                message_registry.AWAIT_OUTSIDE_COROUTINE,
                 expr,
                 serious=True,
                 code=codes.AWAIT_NOT_ASYNC,

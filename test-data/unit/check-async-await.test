@@ -1085,12 +1085,23 @@ class Launcher(P):
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
-[case testAwaitInsideGeneratorExpr]
+[case testAwaitOutsideCoroutine]
 def foo():
     yield 0
 
 def bar():
     (await x for x in foo())
+
+    (await x for x in xs)  # OK
+    [await x for x in xs]  # E: "await" outside coroutine ("async def")
+    {await x for x in xs}  # E: "await" outside coroutine ("async def")
+    {0: await x for x in xs} # E: "await" outside coroutine ("async def")
+    {await x: 0 for x in xs} # E: "await" outside coroutine ("async def")
+
+    (x for x in await xs) # E: "await" outside coroutine ("async def")
+    [x for x in await xs] # E: "await" outside coroutine ("async def")
+    {x for x in await xs} # E: "await" outside coroutine ("async def")
+    {x: 0 for x in await xs} # E: "await" outside coroutine ("async def")
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
