@@ -1466,7 +1466,7 @@ m3: Tuple[Union[int, str]]
 match m3:
     case (1,):
         reveal_type(m3)  # N: Revealed type is "Tuple[Literal[1]]"
-    case r2:
+    case r3:
         reveal_type(m3)  # N: Revealed type is "Tuple[Union[builtins.int, builtins.str]]"
 
 m4: Tuple[Literal[1], int]
