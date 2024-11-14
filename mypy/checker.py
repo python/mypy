@@ -35,7 +35,7 @@ from mypy.checkmember import (
     analyze_member_access,
     type_object_type,
 )
-from mypy.checkpattern import PatternChecker
+from mypy.checkpattern import PatternChecker, PatternType
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
@@ -5296,7 +5296,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # capture variable may depend on multiple patterns (it
             # will be a union of all capture types). This pass ignores
             # guard expressions.
-            pattern_types = [self.pattern_checker.accept(p, subject_type) for p in s.patterns]
+            pattern_types: list[PatternType] = []
+            type_context = subject_type
+            for p in s.patterns:
+                pattern_type = self.pattern_checker.accept(p, type_context)
+                pattern_types.append(pattern_type)
+                type_context = get_proper_type(pattern_type.rest_type)
+
             type_maps: list[TypeMap] = [t.captures for t in pattern_types]
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
