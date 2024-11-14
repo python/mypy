@@ -115,6 +115,7 @@ select = [
   "W",       # pycodestyle (warning)
   "B",       # flake8-bugbear
   "I",       # isort
+  "N",       # pep8-naming
   "RUF100",  # Unused noqa comments
   "PGH004",  # blanket noqa comments
   "UP",      # pyupgrade
@@ -134,6 +135,8 @@ ignore = [
   "E721",  # Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
   "E731",  # Do not assign a `lambda` expression, use a `def`
   "E741",  # Ambiguous variable name
+  "N818",  # Exception should be named with an Error suffix
+  "N806",  # UPPER_CASE used for constant local variables
   "UP031", # Use format specifiers instead of percent format
   "UP032", # 'f-string always preferable to format' is controversial
   "C416",  # There are a few cases where it's nice to have names for the dict items
@@ -146,6 +149,10 @@ unfixable = [
     "B018",  # automatic fix might obscure issue
     "UP036", # sometimes it's better to just noqa this
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Mixed case variable and function names.
+"mypy/fastparse.py" = ["N802", "N816"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
