@@ -224,18 +224,15 @@ def foo():
 
 [case testBreakContinueReturnInExceptStarBlock1]
 # flags: --python-version 3.11
-from typing import Sequence
-class range(Sequence[int]): 
-    def __init__(self, __x: int, __y: int = ..., __z: int = ...) -> None: pass
-
-def foo() -> None:
-    for _ in range(5):
+from typing import Iterable
+def foo(x: Iterable[int]) -> None:
+    for _ in x:
         try:
             pass
         except* Exception:
             continue   # E: "continue" not allowed in except* block
         except* Exception:
-            for _ in range(2):
+            for _ in x:
                 continue
             break  # E: "break" not allowed in except* block
         except* Exception:
