@@ -148,7 +148,7 @@ class ConditionalTypeBinder:
                 return self.frames[i].types[key]
         return None
 
-    def put(self, expr: Expression, typ: Type, from_assignment: bool = True) -> None:
+    def put(self, expr: Expression, typ: Type, *, from_assignment: bool = True) -> None:
         if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not literal(expr):
@@ -258,7 +258,7 @@ class ConditionalTypeBinder:
                         if simplified == self.declarations[key]:
                             type = simplified
             if current_value is None or not is_same_type(type, current_value[0]):
-                self._put(key, type, True)
+                self._put(key, type, from_assignment=True)
                 changed = True
 
         self.frames[-1].unreachable = not frames
