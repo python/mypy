@@ -806,6 +806,11 @@ def load_type(builder: IRBuilder, typ: TypeInfo, line: int) -> Value:
     elif typ.fullname in builtin_names:
         builtin_addr_type, src = builtin_names[typ.fullname]
         class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
+    elif typ.module_name in builder.imports:
+        loaded_module = builder.load_module(typ.module_name)
+        class_obj = builder.builder.get_attr(
+            loaded_module, typ.name, object_rprimitive, line, borrow=False
+        )
     else:
         class_obj = builder.load_global_str(typ.name, line)
 
