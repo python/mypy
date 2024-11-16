@@ -76,6 +76,19 @@ assert hasattr(c, 'x')
 1000000000000000000000000000001
 1000000000000000000000000000002
 
+[case testTypedDictWithFields]
+import collections
+from typing_extensions import TypedDict
+class C(TypedDict):
+    x: collections.deque
+[file driver.py]
+from native import C
+from collections import deque
+
+print(C.__annotations__["x"] is deque)
+[out]
+True
+
 [case testClassWithDeletableAttributes]
 from typing import Any, cast
 from testutil import assertRaises
