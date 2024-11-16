@@ -8043,6 +8043,8 @@ def are_argument_counts_overlapping(t: CallableType, s: CallableType) -> bool:
 def get_type_var_group_variants(
     variables: list[TypeVarLikeType],
 ) -> Generator[dict[TypeVarId, Type], None, None]:
+    """Expand a group of type variables into all possible combinations of their values."""
+
     tvar_values = []
     for tvar in variables:
         if isinstance(tvar, TypeVarType) and tvar.values:
