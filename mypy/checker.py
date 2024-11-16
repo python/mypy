@@ -8108,7 +8108,9 @@ def is_unsafe_overlapping_overload_signatures(
     signature = expand_callable_self(signature)
     other = expand_callable_self(other)
 
-    all_variables = {v.id: v for v in signature.variables} | {v.id: v for v in other.variables}
+    all_variables = {v.id: v for v in signature.variables}
+    all_variables.update({v.id: v for v in other.variables})
+
     for tvar_map in get_type_var_group_variants(all_variables.values()):
         sig_variant = expand_type(signature, tvar_map).copy_modified(variables=[])
         other_variant = expand_type(other, tvar_map).copy_modified(variables=[])
