@@ -8,6 +8,7 @@ from contextlib import ExitStack, contextmanager
 from typing import (
     AbstractSet,
     Callable,
+    Collection,
     Dict,
     Final,
     Generator,
@@ -8041,7 +8042,7 @@ def are_argument_counts_overlapping(t: CallableType, s: CallableType) -> bool:
 
 
 def get_type_var_group_variants(
-    variables: list[TypeVarLikeType],
+    variables: Collection[TypeVarLikeType],
 ) -> Generator[dict[TypeVarId, Type], None, None]:
     """Expand a group of type variables into all possible combinations of their values."""
 
