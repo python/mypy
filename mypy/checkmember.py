@@ -769,6 +769,9 @@ def analyze_var(
     itype = map_instance_to_supertype(itype, var.info)
     if var.is_settable_property and mx.is_lvalue:
         typ = var.setter_type
+        if typ is None and var.is_ready:
+            # Existing synthetic properties may not set setter type. Fall back to getter.
+            typ = var.type
     else:
         typ = var.type
     if typ:
@@ -828,7 +831,7 @@ def analyze_var(
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(expanded_signature, CallableType)
-                    if var.is_settable_property and mx.is_lvalue:
+                    if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
                         result = expanded_signature.arg_types[0]
                     else:
                         result = expanded_signature.ret_type
