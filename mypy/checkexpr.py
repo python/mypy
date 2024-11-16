@@ -5616,6 +5616,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if index:
                 t = self.accept(index)
                 self.chk.check_subtype(t, expected, index, message_registry.INVALID_SLICE_INDEX)
+
+        if e.stride:
+            stride_literals = self.try_getting_int_literals(e.stride)
+            if stride_literals is not None and 0 in stride_literals:
+                self.msg.fail("Slice step cannot be 0", index)
+                return AnyType(TypeOfAny.from_error)
+
         return self.named_type("builtins.slice")
 
     def visit_list_comprehension(self, e: ListComprehension) -> Type:
