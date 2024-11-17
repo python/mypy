@@ -38,7 +38,7 @@ HIDE_LINK_CODES: Final = {
     codes.OVERRIDE,
 }
 
-allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
+allowed_duplicates: Final = ["@overload", "Got:", "Expected:", "Expected setter type:"]
 
 BASE_RTD_URL: Final = "https://mypy.rtfd.io/en/stable/_refs.html#code"
 
