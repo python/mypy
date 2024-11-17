@@ -8059,8 +8059,6 @@ def get_type_var_group_variants(
 
 def expand_callable_self(c: CallableType) -> CallableType:
     for tv in c.variables:
-        # We need to expand self-type before other variables, because this is the only
-        # type variable that can have other type variables in the upper bound.
         if tv.id.is_self():
             return expand_type(c, {tv.id: tv.upper_bound}).copy_modified(
                 variables=[v for v in c.variables if not v.id.is_self()]
@@ -8142,14 +8140,32 @@ def is_unsafe_overlapping_overload_signatures(
         # Using the same `allow_partial_overlap` flag as before, can cause false
         # negatives in case where star argument is used in a catch-all fallback overload.
         # But again, practicality beats purity here.
-        if not partial_only or not is_callable_compatible(
-            other_variant,
-            sig_variant,
-            is_compat=is_subset_no_promote,
-            check_args_covariantly=True,
-            is_proper_subtype=False,
-            ignore_return=True,
-            allow_partial_overlap=True,
+
+        # Also earlier overload may not be more general overall but is more general when
+        # narrowed to common calls is handled here, so there is no unsafe overlap because
+        # it will still be caught by the earlier overload.
+        # Exeption here is when signature variants are exactly the same, in which case we
+        # should still consider them overlapping.
+        if (
+            not partial_only
+            or not is_callable_compatible(
+                other_variant,
+                sig_variant,
+                is_compat=is_subset_no_promote,
+                check_args_covariantly=True,
+                is_proper_subtype=False,
+                ignore_return=True,
+                allow_partial_overlap=True,
+            )
+            or is_callable_compatible(
+                sig_variant,
+                other_variant,
+                is_compat=lambda l, r: l == r,
+                check_args_covariantly=False,
+                is_proper_subtype=False,
+                ignore_return=True,
+                allow_partial_overlap=False,
+            )
         ):
             return True
     return False

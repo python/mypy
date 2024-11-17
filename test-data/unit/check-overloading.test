@@ -1327,9 +1327,8 @@ def h(x: Sequence[str]) -> int: pass
 @overload
 def h(x: Sequence[T]) -> None: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
-# Safety of this highly depends on the implementation, so we lean towards being silent.
 @overload
-def i(x: List[str]) -> int: pass
+def i(x: List[str]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def i(x: List[T]) -> None: pass
 [builtins fixtures/list.pyi]
@@ -6768,3 +6767,18 @@ class D(Generic[T]):
 a: D[str]  # E: Type argument "str" of "D" must be a subtype of "C"
 reveal_type(a.f(1))  # N: Revealed type is "builtins.int"
 reveal_type(a.f("x"))  # N: Revealed type is "builtins.str"
+
+
+[case testOverloadOnExactSameTypeVariantWithIncompetibleReturnTypes]
+from typing import TypeVar, overload
+
+class A: pass
+class B: pass
+
+T = TypeVar('T', A, B)
+
+@overload
+def f(x: B) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: T) -> str: ...
+def f(x): ...
