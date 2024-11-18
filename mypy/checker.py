@@ -5304,6 +5304,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 new_type_context = get_proper_type(pattern_type.rest_type)
                 if isinstance(new_type_context, UninhabitedType):
                     continue
+                if isinstance(new_type_context, UnionType) and any(
+                    isinstance(get_proper_type(t), UninhabitedType) for t in new_type_context.items
+                ):
+                    continue
                 type_context = new_type_context
 
             type_maps: list[TypeMap] = [t.captures for t in pattern_types]
