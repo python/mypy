@@ -6105,7 +6105,12 @@ class SemanticAnalyzer(
     def visit_set_comprehension(self, expr: SetComprehension) -> None:
         if any(expr.generator.is_async):
             if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
-                self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX, serious=True)
+                self.fail(
+                    message_registry.ASYNC_FOR_OUTSIDE_COROUTINE,
+                    expr,
+                    code=codes.SYNTAX,
+                    serious=True,
+                )
 
         self._check_await_outside_coroutine(expr)
 
