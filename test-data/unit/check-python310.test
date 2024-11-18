@@ -8,6 +8,16 @@ match m:
     case a:
         reveal_type(a)  # N: Revealed type is "__main__.A"
 
+[case testMatchCapturePatternNarrows]
+x: int | None
+y: int
+
+match x:
+    case None:
+        pass
+    case y:
+        reveal_type(y) # N: Revealed type is "builtins.int"
+
 -- Literal Pattern --
 
 [case testMatchLiteralPatternNarrows]
