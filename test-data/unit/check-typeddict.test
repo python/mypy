@@ -3894,6 +3894,20 @@ accepts_B(b)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictRequiredConsistentWithNotRequiredReadOnly]
+from typing import NotRequired, ReadOnly, Required, TypedDict
+
+class A(TypedDict):
+    x: NotRequired[ReadOnly[str]]
+
+class B(TypedDict):
+    x: Required[str]
+
+def f(b: B):
+    a: A = b  # ok
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictReadOnlyCall]
 from typing import ReadOnly, TypedDict
 
