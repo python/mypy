@@ -1022,8 +1022,6 @@ def bad() -> None:
 async def good() -> None:
     y = [await foo(x) for x in [1, 2, 3]]  # OK
 
-
-
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
