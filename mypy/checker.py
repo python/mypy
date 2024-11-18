@@ -5301,7 +5301,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for p in s.patterns:
                 pattern_type = self.pattern_checker.accept(p, type_context)
                 pattern_types.append(pattern_type)
-                type_context = get_proper_type(pattern_type.rest_type)
+                new_type_context = get_proper_type(pattern_type.rest_type)
+                if isinstance(new_type_context, UninhabitedType):
+                    continue
+                type_context = new_type_context
 
             type_maps: list[TypeMap] = [t.captures for t in pattern_types]
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
