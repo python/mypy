@@ -3989,6 +3989,16 @@ class TP(TypedDict):
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictAnnotatedWithSpecialForms]
+from typing import NotRequired, ReadOnly, Required, TypedDict
+from typing_extensions import Annotated
+
+class A(TypedDict):
+    a: Annotated[NotRequired[ReadOnly[int]], ""]  # ok
+    b: NotRequired[ReadOnly[Annotated[int, ""]]]  # ok
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictReadOnlyCovariant]
 from typing import ReadOnly, TypedDict, Union
 
