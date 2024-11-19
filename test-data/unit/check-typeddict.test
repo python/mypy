@@ -3991,6 +3991,7 @@ class TP(TypedDict):
 
 [case testTypedDictAnnotatedWithSpecialForms]
 from typing import NotRequired, ReadOnly, Required, TypedDict
+from typing_extensions import Annotated
 
 class A(TypedDict):
     a: Annotated[NotRequired[ReadOnly[int]], ""]  # ok
