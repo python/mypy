@@ -6782,3 +6782,28 @@ def f(x: B) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap wit
 @overload
 def f(x: T) -> str: ...
 def f(x): ...
+
+
+
+[case testOverloadOnManyTypeVariablesGenericClassDoesNotSignificantlyDegradePerformance]
+from typing import Generic, TypeVar, overload
+
+class A: pass
+
+class B: pass
+
+class C: pass
+
+T1 = TypeVar("T1", A, B, C)
+T2 = TypeVar("T2", A, B, C)
+T3 = TypeVar("T3", A, B, C)
+T4 = TypeVar("T4", A, B, C)
+T5 = TypeVar("T5", A, B, C)
+T6 = TypeVar("T6", A, B, C)
+
+class Container(Generic[T1, T2, T3, T4, T5, T6]):
+    @overload
+    def f(self, t1: int, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6) -> int: ...
+    @overload
+    def f(self, t1: str, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6) -> str: ...
+    def f(self, t1, t2, t3, t4, t5, t6): ...
