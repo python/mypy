@@ -595,3 +595,26 @@ h(1.0)  # E: No overload variant of "h" matches argument type "float" \
         # N:     def h(x: str) -> str
 
 [builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedImportedOverloadedFunction]
+
+import m
+
+m.g
+m.g(1)  # N: overload def (x: builtins.int) -> builtins.int of function m.g is deprecated: work with str instead
+m.g("x")
+
+[file m.py]
+
+from typing import Union
+from typing_extensions import deprecated, overload
+
+@overload
+@deprecated("work with str instead")
+def g(x: int) -> int: ...
+@overload
+def g(x: str) -> str: ...
+def g(x: Union[int, str]) -> Union[int, str]: ...
+
+[builtins fixtures/tuple.pyi]
