@@ -1238,3 +1238,15 @@ from typing import List, Union
 A = Union[int, List[A]]
 def func(x: A) -> int: ...
 [builtins fixtures/tuple.pyi]
+
+[case testAliasExplicitNoArgsNotGeneric]
+from typing import List, assert_type
+from typing_extensions import TypeAlias
+
+Implicit = List
+Explicit: TypeAlias = List
+
+x1: Implicit[str]
+x2: Explicit[str]  # E: Bad number of arguments for type alias, expected 0, given 1
+assert_type(x1, List[str])
+[builtins fixtures/tuple.pyi]
