@@ -2496,24 +2496,97 @@ class B:
     attr: int
 class C:
     attr: str
+class D:
+    attr: int
+
+# basic test cases:
 
 T1 = TypeVar('T1', A, B)
 def f1(x: T1) -> T1:
     if isinstance(x, A):
-        # The error message is confusing, but we indeed do run into problems if
-        # 'x' is a subclass of A and B
-        return A()   # E: Incompatible return value type (got "A", expected "B")
+        # No error, because "A" takes priority over "B" when passing a subclass
+        # of "A" and "B" to "f1".
+        return A()
     else:
         return B()
 
 T2 = TypeVar('T2', B, C)
 def f2(x: T2) -> T2:
     if isinstance(x, B):
-        # In contrast, it's impossible for a subclass of "B" and "C" to
-        # exist, so this is fine
+        # No error, because a subclass of "B" and "C" cannot exist.
         return B()
     else:
         return C()
+
+T3 = TypeVar('T3', B, A)
+def f3(x: T3) -> T3:
+    if isinstance(x, A):
+        # The error message is confusing, but we indeed do run into problems if
+        # 'x' is a subclass of "A" and "B" and "B" takes priority over "A".
+        return A()  # E: Incompatible return value type (got "A", expected "B")
+    else:
+        return B()
+
+# more complex test cases:
+
+T4 = TypeVar('T4', A, B, D)
+def f4(x: T4) -> T4:
+    if isinstance(x, A):
+        return A()
+    elif isinstance(x, B):
+        return B()
+    else:
+        return D()
+
+T5 = TypeVar('T5', A, B, D)
+def f5(x: T5) -> T5:
+    if isinstance(x, A):
+        return A()
+    if isinstance(x, B):
+        return B()
+    return D()
+
+T6 = TypeVar('T6', A, B, D)
+def f6(x: T6) -> T6:
+    if isinstance(x, A):
+        if isinstance(x, B):
+            return B()  # E: Incompatible return value type (got "B", expected "A")
+        return A()
+    if isinstance(x, B):
+        return B()
+    return D()
+
+T7 = TypeVar('T7', A, B, D)
+def f7(x: T7) -> T7:
+    if isinstance(x, (A, B)):
+        return A()  # E: Incompatible return value type (got "A", expected "B")
+    return D()
+
+T8 = TypeVar('T8', A, B, D)
+def f8(x: T8) -> T8:
+    if isinstance(x, (A, B)):
+        if isinstance(x, A):
+            return A()
+        return B()
+    return D()
+
+T9 = TypeVar('T9', A, D, B)
+def f9(x: T9) -> T9:
+    if isinstance(x, A):
+        return A()
+    elif isinstance(x, B):
+        return B()  # E: Incompatible return value type (got "B", expected "D")
+    else:
+        return D()
+
+T10 = TypeVar('T10', A, D, B)
+def f10(x: T10) -> T10:
+    if isinstance(x, (A, B)):
+        if isinstance(x, A):
+            return A()
+        return B() # E: Incompatible return value type (got "B", expected "Union[D, A]")
+    return D()
+
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionUsage]
