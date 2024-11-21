@@ -1684,6 +1684,7 @@ class SemanticAnalyzer(
                     "abc.abstractproperty",
                     "functools.cached_property",
                     "enum.property",
+                    "types.DynamicClassAttribute",
                 ),
             ):
                 removed.append(i)
