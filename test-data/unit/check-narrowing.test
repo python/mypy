@@ -2333,3 +2333,22 @@ def f(x: C) -> None:
 
 f(C(5))
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowingTypeVarNone]
+# flags: --warn-unreachable
+
+# https://github.com/python/mypy/issues/18126
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def fn_if(arg: T) -> None:
+    if arg is None:
+        return None
+    return None
+
+def fn_while(arg: T) -> None:
+    while arg is None:
+        return None
+    return None
+[builtins fixtures/primitives.pyi]
