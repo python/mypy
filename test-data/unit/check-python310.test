@@ -648,6 +648,25 @@ match m:
         reveal_type(m)  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/primitives.pyi]
 
+[case testMatchClassPatternCaptureSelfSubtype]
+class A(str):
+    pass
+
+class B(str):
+    __match_args__ = ("b",)
+    b: int
+
+def f1(x: A):
+    match x:
+        case A(a):
+            reveal_type(a)  # N: Revealed type is "__main__.A"
+
+def f2(x: B):
+    match x:
+        case B(b):
+            reveal_type(b)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchInvalidClassPattern]
 m: object
 
@@ -1424,6 +1443,7 @@ def f(value: Literal[1] | Literal[2]) -> int:
 
 [case testMatchSequencePatternNegativeNarrowing]
 from typing import Union, Sequence, Tuple
+from typing_extensions import Literal
 
 m1: Sequence[int | str]
 
@@ -1448,6 +1468,31 @@ match m3:
         reveal_type(m3)  # N: Revealed type is "Tuple[Literal[1]]"
     case r2:
         reveal_type(m3)  # N: Revealed type is "Tuple[Union[builtins.int, builtins.str]]"
+
+m4: Tuple[Literal[1], int]
+
+match m4:
+    case (1, 5):
+        reveal_type(m4)  # N: Revealed type is "Tuple[Literal[1], Literal[5]]"
+    case (1, 6):
+        reveal_type(m4)  # N: Revealed type is "Tuple[Literal[1], Literal[6]]"
+    case _:
+        reveal_type(m4)  # N: Revealed type is "Tuple[Literal[1], builtins.int]"
+
+m5: Tuple[Literal[1, 2], Literal["a", "b"]]
+
+match m5:
+    case (1, str()):
+        reveal_type(m5)  # N: Revealed type is "Tuple[Literal[1], Union[Literal['a'], Literal['b']]]"
+    case _:
+        reveal_type(m5)  # N: Revealed type is "Tuple[Literal[2], Union[Literal['a'], Literal['b']]]"
+
+match m5:
+    case (1, "a"):
+        reveal_type(m5)  # N: Revealed type is "Tuple[Literal[1], Literal['a']]"
+    case _:
+        reveal_type(m5)  # N: Revealed type is "Tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
+
 [builtins fixtures/tuple.pyi]
 
 [case testMatchEnumSingleChoice]
@@ -1498,6 +1543,62 @@ def g(m: Medal) -> int:
         case Medal.bronze:
             reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
             return 2
+[builtins fixtures/enum.pyi]
+
+
+[case testMatchLiteralPatternEnumWithTypedAttribute]
+from enum import Enum
+from typing import NoReturn
+def assert_never(x: NoReturn) -> None: ...
+
+class int:
+    def __new__(cls, value: int): pass
+
+class Medal(int, Enum):
+    prize: str
+
+    def __new__(cls, value: int, prize: str) -> Medal:
+        enum = int.__new__(cls, value)
+        enum._value_ = value
+        enum.prize = prize
+        return enum
+
+    gold = (1, 'cash prize')
+    silver = (2, 'sponsorship')
+    bronze = (3, 'nothing')
+
+m: Medal
+
+match m:
+    case Medal.gold:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+    case Medal.silver:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver]"
+    case Medal.bronze:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
+    case _ as unreachable:
+        assert_never(unreachable)
+
+[builtins fixtures/tuple.pyi]
+
+[case testMatchLiteralPatternFunctionalEnum]
+from enum import Enum
+from typing import NoReturn
+def assert_never(x: NoReturn) -> None: ...
+
+Medal = Enum('Medal', 'gold silver bronze')
+m: Medal
+
+match m:
+    case Medal.gold:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+    case Medal.silver:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver]"
+    case Medal.bronze:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
+    case _ as unreachable:
+        assert_never(unreachable)
+[builtins fixtures/enum.pyi]
 
 [case testMatchLiteralPatternEnumCustomEquals-skip]
 from enum import Enum
@@ -1515,6 +1616,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
     case _:
         reveal_type(m)  # N: Revealed type is "__main__.Medal"
+[builtins fixtures/enum.pyi]
 
 [case testMatchNarrowUsingPatternGuardSpecialCase]
 def f(x: int | str) -> int:
@@ -1592,6 +1694,7 @@ def union(x: str | bool) -> None:
         case True:
             return
     reveal_type(x)  # N: Revealed type is "Union[builtins.str, Literal[False]]"
+[builtins fixtures/tuple.pyi]
 
 [case testMatchAssertFalseToSilenceFalsePositives]
 class C:
@@ -1621,6 +1724,22 @@ def f(x: int | str) -> int:
             return n
         case str() as s:
             return 1
+
+[case testMatchOrPatternExhaustiveness]
+from typing import NoReturn, Literal
+def assert_never(x: NoReturn) -> None: ...
+
+Color = Literal["blue", "green", "red"]
+c: Color
+
+match c:
+    case "blue":
+        reveal_type(c) # N: Revealed type is "Literal['blue']"
+    case "green" | "notColor":
+        reveal_type(c) # N: Revealed type is "Literal['green']"
+    case _:
+        assert_never(c) # E: Argument 1 to "assert_never" has incompatible type "Literal['red']"; expected "Never"
+[typing fixtures/typing-typeddict.pyi]
 
 [case testMatchAsPatternIntersection-skip]
 class A: pass
@@ -2263,3 +2382,60 @@ def test(xs: Tuple[Unpack[Ts]]) -> None:
             reveal_type(b3)  # N: Revealed type is "builtins.list[builtins.object]"
             reveal_type(c3)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testMatchSequencePatternTypeVarBoundNoCrash]
+# This was crashing: https://github.com/python/mypy/issues/18089
+from typing import TypeVar, Sequence, Any
+
+T = TypeVar("T", bound=Sequence[Any])
+
+def f(x: T) -> None:
+    match x:
+        case [_]:
+            pass
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSequencePatternTypeVarBoundNarrows]
+from typing import TypeVar, Sequence
+
+T = TypeVar("T", bound=Sequence[int | str])
+
+def accept_seq_int(x: Sequence[int]): ...
+
+def f(x: T) -> None:
+    match x:
+        case [1, 2]:
+            accept_seq_int(x)
+        case _:
+            accept_seq_int(x)  # E: Argument 1 to "accept_seq_int" has incompatible type "T"; expected "Sequence[int]"
+[builtins fixtures/tuple.pyi]
+
+[case testNarrowingTypeVarMatch]
+# flags: --warn-unreachable
+
+# https://github.com/python/mypy/issues/18126
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def fn_case(arg: T) -> None:
+    match arg:
+        case None:
+            return None
+    return None
+[builtins fixtures/primitives.pyi]
+
+[case testNoneCheckDoesNotMakeTypeVarOptionalMatch]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def foo(x: T) -> T:
+    out = None
+    out = x
+    match out:
+        case None:
+            pass
+    return out
+
+[builtins fixtures/isinstance.pyi]

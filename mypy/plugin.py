@@ -114,9 +114,6 @@ a forward reference to a class in a top-level annotation. Example:
 Note that a forward reference in a function signature won't trigger another
 pass, since all functions are processed only after the top level has been fully
 analyzed.
-
-You can use `api.options.new_semantic_analyzer` to check whether the new
-semantic analyzer is enabled (it's always true in mypy 0.730 and later).
 """
 
 from __future__ import annotations
@@ -495,6 +492,7 @@ class MethodContext(NamedTuple):
 class AttributeContext(NamedTuple):
     type: ProperType  # Type of object with attribute
     default_attr_type: Type  # Original attribute type
+    is_lvalue: bool  # Whether the attribute is the target of an assignment
     context: Context  # Relevant location context (e.g. for error messages)
     api: CheckerPluginInterface
 

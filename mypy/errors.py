@@ -20,7 +20,7 @@ T = TypeVar("T")
 
 # Show error codes for some note-level messages (these usually appear alone
 # and not as a comment for a previous error-level message).
-SHOW_NOTE_CODES: Final = {codes.ANNOTATION_UNCHECKED}
+SHOW_NOTE_CODES: Final = {codes.ANNOTATION_UNCHECKED, codes.DEPRECATED}
 
 # Do not add notes with links to error code docs to errors with these codes.
 # We can tweak this set as we get more experience about what is helpful and what is not.
@@ -194,6 +194,9 @@ class ErrorWatcher:
         Return True to filter out the error, preventing it from being seen by other
         ErrorWatcher further down the stack and from being recorded by Errors
         """
+        if info.code == codes.DEPRECATED:
+            return False
+
         self._has_new_errors = True
         if isinstance(self._filter, bool):
             should_filter = self._filter
@@ -919,8 +922,24 @@ class Errors:
         self.flushed_files.add(path)
         source_lines = None
         if self.options.pretty and self.read_source:
-            source_lines = self.read_source(path)
+            # Find shadow file mapping and read source lines if a shadow file exists for the given path.
+            # If shadow file mapping is not found, read source lines
+            mapped_path = self.find_shadow_file_mapping(path)
+            if mapped_path:
+                source_lines = self.read_source(mapped_path)
+            else:
+                source_lines = self.read_source(path)
         return self.format_messages(error_tuples, source_lines)
+
+    def find_shadow_file_mapping(self, path: str) -> str | None:
+        """Return the shadow file path for a given source file path or None."""
+        if self.options.shadow_file is None:
+            return None
+
+        for i in self.options.shadow_file:
+            if i[0] == path:
+                return i[1]
+        return None
 
     def new_messages(self) -> list[str]:
         """Return a string list of new error messages.

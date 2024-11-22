@@ -2,7 +2,7 @@ import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from ctypes import CDLL, ArgumentError as ArgumentError
+from ctypes import CDLL, ArgumentError as ArgumentError, c_void_p
 from typing import Any, ClassVar, Generic, TypeVar, overload
 from typing_extensions import Self, TypeAlias
 
@@ -51,8 +51,8 @@ class _CDataMeta(type):
     # By default mypy complains about the following two methods, because strictly speaking cls
     # might not be a Type[_CT]. However this can never actually happen, because the only class that
     # uses _CDataMeta as its metaclass is _CData. So it's safe to ignore the errors here.
-    def __mul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]
-    def __rmul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]
+    def __mul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
+    def __rmul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
 
 class _CData(metaclass=_CDataMeta):
     _b_base_: int
@@ -99,6 +99,9 @@ class _Pointer(_PointerLike, _CData, Generic[_CT]):
     def __getitem__(self, key: slice, /) -> list[Any]: ...
     def __setitem__(self, key: int, value: Any, /) -> None: ...
 
+@overload
+def POINTER(type: None, /) -> type[c_void_p]: ...
+@overload
 def POINTER(type: type[_CT], /) -> type[_Pointer[_CT]]: ...
 def pointer(obj: _CT, /) -> _Pointer[_CT]: ...
 

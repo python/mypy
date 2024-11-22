@@ -181,7 +181,25 @@ class TypeTranslator(TypeVisitor[Type]):
 
     Subclass this and override some methods to implement a non-trivial
     transformation.
+
+    We cache the results of certain translations to avoid
+    massively expanding the sizes of types.
     """
+
+    def __init__(self, cache: dict[Type, Type] | None = None) -> None:
+        # For deduplication of results
+        self.cache = cache
+
+    def get_cached(self, t: Type) -> Type | None:
+        if self.cache is None:
+            return None
+        return self.cache.get(t)
+
+    def set_cached(self, orig: Type, new: Type) -> None:
+        if self.cache is None:
+            # Minor optimization: construct lazily
+            self.cache = {}
+        self.cache[orig] = new
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -251,15 +269,21 @@ class TypeTranslator(TypeVisitor[Type]):
         )
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
+        # Use cache to avoid O(n**2) or worse expansion of types during translation
+        if cached := self.get_cached(t):
+            return cached
         items = {item_name: item_type.accept(self) for (item_name, item_type) in t.items.items()}
-        return TypedDictType(
+        result = TypedDictType(
             items,
             t.required_keys,
+            t.readonly_keys,
             # TODO: This appears to be unsafe.
             cast(Any, t.fallback.accept(self)),
             t.line,
             t.column,
         )
+        self.set_cached(t, result)
+        return result
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         fallback = t.fallback.accept(self)
@@ -267,12 +291,21 @@ class TypeTranslator(TypeVisitor[Type]):
         return LiteralType(value=t.value, fallback=fallback, line=t.line, column=t.column)
 
     def visit_union_type(self, t: UnionType) -> Type:
-        return UnionType(
+        # Use cache to avoid O(n**2) or worse expansion of types during translation
+        # (only for large unions, since caching adds overhead)
+        use_cache = len(t.items) > 3
+        if use_cache and (cached := self.get_cached(t)):
+            return cached
+
+        result = UnionType(
             self.translate_types(t.items),
             t.line,
             t.column,
             uses_pep604_syntax=t.uses_pep604_syntax,
         )
+        if use_cache:
+            self.set_cached(t, result)
+        return result
 
     def translate_types(self, types: Iterable[Type]) -> list[Type]:
         return [t.accept(self) for t in types]

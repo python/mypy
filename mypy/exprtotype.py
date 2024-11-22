@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from typing import Callable
+
 from mypy.fastparse import parse_type_string
 from mypy.nodes import (
     MISSING_FALLBACK,
     BytesExpr,
     CallExpr,
     ComplexExpr,
+    Context,
     DictExpr,
     EllipsisExpr,
     Expression,
@@ -21,6 +24,7 @@ from mypy.nodes import (
     RefExpr,
     StarExpr,
     StrExpr,
+    SymbolTableNode,
     TupleExpr,
     UnaryExpr,
     get_member_expr_fullname,
@@ -63,11 +67,15 @@ def expr_to_unanalyzed_type(
     allow_new_syntax: bool = False,
     _parent: Expression | None = None,
     allow_unpack: bool = False,
+    lookup_qualified: Callable[[str, Context], SymbolTableNode | None] | None = None,
 ) -> ProperType:
     """Translate an expression to the corresponding type.
 
     The result is not semantically analyzed. It can be UnboundType or TypeList.
     Raise TypeTranslationError if the expression cannot represent a type.
+
+    If lookup_qualified is not provided, the expression is expected to be semantically
+    analyzed.
 
     If allow_new_syntax is True, allow all type syntax independent of the target
     Python version (used in stubs).
@@ -101,19 +109,26 @@ def expr_to_unanalyzed_type(
             else:
                 args = [expr.index]
 
-            if isinstance(expr.base, RefExpr) and expr.base.fullname in ANNOTATED_TYPE_NAMES:
-                # TODO: this is not the optimal solution as we are basically getting rid
-                # of the Annotation definition and only returning the type information,
-                # losing all the annotations.
+            if isinstance(expr.base, RefExpr):
+                # Check if the type is Annotated[...]. For this we need the fullname,
+                # which must be looked up if the expression hasn't been semantically analyzed.
+                base_fullname = None
+                if lookup_qualified is not None:
+                    sym = lookup_qualified(base.name, expr)
+                    if sym and sym.node:
+                        base_fullname = sym.node.fullname
+                else:
+                    base_fullname = expr.base.fullname
 
-                return expr_to_unanalyzed_type(args[0], options, allow_new_syntax, expr)
-            else:
-                base.args = tuple(
-                    expr_to_unanalyzed_type(
-                        arg, options, allow_new_syntax, expr, allow_unpack=True
-                    )
-                    for arg in args
-                )
+                if base_fullname is not None and base_fullname in ANNOTATED_TYPE_NAMES:
+                    # TODO: this is not the optimal solution as we are basically getting rid
+                    # of the Annotation definition and only returning the type information,
+                    # losing all the annotations.
+                    return expr_to_unanalyzed_type(args[0], options, allow_new_syntax, expr)
+            base.args = tuple(
+                expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr, allow_unpack=True)
+                for arg in args
+            )
             if not base.args:
                 base.empty_tuple_index = True
             return base
@@ -229,7 +244,7 @@ def expr_to_unanalyzed_type(
                 value, options, allow_new_syntax, expr
             )
         result = TypedDictType(
-            items, set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
+            items, set(), set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
         )
         result.extra_items_from = extra_items_from
         return result

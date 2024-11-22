@@ -7,11 +7,13 @@ from abc import abstractmethod
 from typing import Callable, Final
 
 from mypy.nodes import (
+    EXCLUDED_ENUM_ATTRIBUTES,
     TYPE_VAR_TUPLE_KIND,
     AssignmentStmt,
     CallExpr,
     ClassDef,
     Decorator,
+    EllipsisExpr,
     ExpressionStmt,
     FuncDef,
     Lvalue,
@@ -26,7 +28,7 @@ from mypy.nodes import (
     TypeParam,
     is_class_var,
 )
-from mypy.types import ENUM_REMOVED_PROPS, Instance, UnboundType, get_proper_type
+from mypy.types import Instance, UnboundType, get_proper_type
 from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
@@ -80,6 +82,7 @@ from mypyc.primitives.misc_ops import (
     pytype_from_template_op,
     type_object_op,
 )
+from mypyc.subtype import is_subtype
 
 
 def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
@@ -145,7 +148,9 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                 continue
             with builder.catch_errors(stmt.line):
                 cls_builder.add_method(get_func_def(stmt))
-        elif isinstance(stmt, PassStmt):
+        elif isinstance(stmt, PassStmt) or (
+            isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
+        ):
             continue
         elif isinstance(stmt, AssignmentStmt):
             if len(stmt.lvalues) != 1:
@@ -679,7 +684,7 @@ def add_non_ext_class_attr(
             cdef.info.bases
             and cdef.info.bases[0].type.fullname == "enum.Enum"
             # Skip these since Enum will remove it
-            and lvalue.name not in ENUM_REMOVED_PROPS
+            and lvalue.name not in EXCLUDED_ENUM_ATTRIBUTES
         ):
             # Enum values are always boxed, so use object_rprimitive.
             attr_to_cache.append((lvalue, object_rprimitive))
@@ -798,30 +803,42 @@ def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
 
 def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
     """Generate a "__ne__" method from a "__eq__" method."""
-    with builder.enter_method(cls, "__ne__", object_rprimitive):
-        rhs_arg = builder.add_argument("rhs", object_rprimitive)
-
-        # If __eq__ returns NotImplemented, then __ne__ should also
-        not_implemented_block, regular_block = BasicBlock(), BasicBlock()
+    func_ir = cls.get_method("__eq__")
+    assert func_ir
+    eq_sig = func_ir.decl.sig
+    strict_typing = builder.options.strict_dunders_typing
+    with builder.enter_method(cls, "__ne__", eq_sig.ret_type):
+        rhs_type = eq_sig.args[0].type if strict_typing else object_rprimitive
+        rhs_arg = builder.add_argument("rhs", rhs_type)
         eqval = builder.add(MethodCall(builder.self(), "__eq__", [rhs_arg], line))
-        not_implemented = builder.add(
-            LoadAddress(not_implemented_op.type, not_implemented_op.src, line)
-        )
-        builder.add(
-            Branch(
-                builder.translate_is_op(eqval, not_implemented, "is", line),
-                not_implemented_block,
-                regular_block,
-                Branch.BOOL,
+
+        can_return_not_implemented = is_subtype(not_implemented_op.type, eq_sig.ret_type)
+        return_bool = is_subtype(eq_sig.ret_type, bool_rprimitive)
+
+        if not strict_typing or can_return_not_implemented:
+            # If __eq__ returns NotImplemented, then __ne__ should also
+            not_implemented_block, regular_block = BasicBlock(), BasicBlock()
+            not_implemented = builder.add(
+                LoadAddress(not_implemented_op.type, not_implemented_op.src, line)
             )
-        )
-
-        builder.activate_block(regular_block)
-        retval = builder.coerce(builder.unary_op(eqval, "not", line), object_rprimitive, line)
-        builder.add(Return(retval))
-
-        builder.activate_block(not_implemented_block)
-        builder.add(Return(not_implemented))
+            builder.add(
+                Branch(
+                    builder.translate_is_op(eqval, not_implemented, "is", line),
+                    not_implemented_block,
+                    regular_block,
+                    Branch.BOOL,
+                )
+            )
+            builder.activate_block(regular_block)
+            rettype = bool_rprimitive if return_bool and strict_typing else object_rprimitive
+            retval = builder.coerce(builder.unary_op(eqval, "not", line), rettype, line)
+            builder.add(Return(retval))
+            builder.activate_block(not_implemented_block)
+            builder.add(Return(not_implemented))
+        else:
+            rettype = bool_rprimitive if return_bool and strict_typing else object_rprimitive
+            retval = builder.coerce(builder.unary_op(eqval, "not", line), rettype, line)
+            builder.add(Return(retval))
 
 
 def load_non_ext_class(

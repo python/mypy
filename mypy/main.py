@@ -22,7 +22,14 @@ from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
-from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
+from mypy.modulefinder import (
+    BuildSource,
+    FindModuleCache,
+    ModuleNotFoundReason,
+    SearchPaths,
+    get_search_dirs,
+    mypy_path,
+)
 from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
@@ -545,15 +552,16 @@ def process_options(
     )
     config_group.add_argument(
         "--config-file",
-        help="Configuration file, must have a [mypy] section "
-        "(defaults to {})".format(", ".join(defaults.CONFIG_FILES)),
+        help=(
+            f"Configuration file, must have a [mypy] section "
+            f"(defaults to {', '.join(defaults.CONFIG_FILES)})"
+        ),
     )
     add_invertible_flag(
         "--warn-unused-configs",
         default=False,
         strict_flag=True,
-        help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' "
-        "config sections",
+        help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' config sections",
         group=config_group,
     )
 
@@ -587,8 +595,7 @@ def process_options(
         "--python-executable",
         action="store",
         metavar="EXECUTABLE",
-        help="Python executable used for finding PEP 561 compliant installed"
-        " packages and stubs",
+        help="Python executable used for finding PEP 561 compliant installed packages and stubs",
         dest="special-opts:python_executable",
     )
     imports_group.add_argument(
@@ -621,8 +628,7 @@ def process_options(
         "--platform",
         action="store",
         metavar="PLATFORM",
-        help="Type check special-cased code for the given OS platform "
-        "(defaults to sys.platform)",
+        help="Type check special-cased code for the given OS platform (defaults to sys.platform)",
     )
     platform_group.add_argument(
         "--always-true",
@@ -644,12 +650,6 @@ def process_options(
         description="Disallow the use of the dynamic 'Any' type under certain conditions.",
     )
     disallow_any_group.add_argument(
-        "--disallow-any-unimported",
-        default=False,
-        action="store_true",
-        help="Disallow Any types resulting from unfollowed imports",
-    )
-    disallow_any_group.add_argument(
         "--disallow-any-expr",
         default=False,
         action="store_true",
@@ -659,8 +659,7 @@ def process_options(
         "--disallow-any-decorated",
         default=False,
         action="store_true",
-        help="Disallow functions that have Any in their signature "
-        "after decorator transformation",
+        help="Disallow functions that have Any in their signature after decorator transformation",
     )
     disallow_any_group.add_argument(
         "--disallow-any-explicit",
@@ -673,6 +672,12 @@ def process_options(
         default=False,
         strict_flag=True,
         help="Disallow usage of generic types that do not specify explicit type parameters",
+        group=disallow_any_group,
+    )
+    add_invertible_flag(
+        "--disallow-any-unimported",
+        default=False,
+        help="Disallow Any types resulting from unfollowed imports",
         group=disallow_any_group,
     )
     add_invertible_flag(
@@ -802,6 +807,13 @@ def process_options(
         default=False,
         strict_flag=False,
         help="Warn about statements or expressions inferred to be unreachable",
+        group=lint_group,
+    )
+    add_invertible_flag(
+        "--report-deprecated-as-error",
+        default=False,
+        strict_flag=False,
+        help="Report importing or using deprecated features as errors instead of notes",
         group=lint_group,
     )
 
@@ -1411,7 +1423,15 @@ def process_options(
                 fail(f"Package name '{p}' cannot have a slash in it.", stderr, options)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail(f"Can't find package '{p}'", stderr, options)
+                reason = cache.find_module(p)
+                if reason is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
+                    fail(
+                        f"Package '{p}' cannot be type checked due to missing py.typed marker. See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
+                        stderr,
+                        options,
+                    )
+                else:
+                    fail(f"Can't find package '{p}'", stderr, options)
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
@@ -1462,7 +1482,7 @@ def process_package_roots(
                 root = ""
         package_root.append(root)
     options.package_root = package_root
-    # Pass the package root on the the filesystem cache.
+    # Pass the package root on the filesystem cache.
     fscache.set_package_root(package_root)
 
 
