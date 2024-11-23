@@ -353,7 +353,7 @@ class FindModuleCache:
         if plausible_match:
             if self.options:
                 module_specific_options = self.options.clone_for_module(id)
-                if module_specific_options.enable_installed_packages:
+                if module_specific_options.follow_untyped_imports:
                     # print("Returning ", id)
                     return os.path.join(pkg_dir, *components[:-1]), False
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS

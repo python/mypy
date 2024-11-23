@@ -581,7 +581,7 @@ def process_options(
         help="Silently ignore imports of missing modules",
     )
     imports_group.add_argument(
-        "--enable-installed-packages",
+        "--follow-untyped-imports",
         action="store_true",
         help="Typecheck modules without stubs or py.typed marker",
     )

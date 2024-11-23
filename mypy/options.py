@@ -39,10 +39,10 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_defs",
     "enable_error_code",
     "enabled_error_codes",
-    "enable_installed_packages",
     "extra_checks",
     "follow_imports_for_stubs",
     "follow_imports",
+    "follow_untyped_imports",
     "ignore_errors",
     "ignore_missing_imports",
     "implicit_optional",
@@ -115,7 +115,7 @@ class Options:
         # Is ignore_missing_imports set in a per-module section
         self.ignore_missing_imports_per_module = False
         # Typecheck modules without stubs or py.typed marker
-        self.enable_installed_packages = False
+        self.follow_untyped_imports = False
         self.follow_imports = "normal"  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.

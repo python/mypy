@@ -189,7 +189,7 @@ testNamespacePkgWStubsWithNamespacePackagesFlag.py:8: error: Argument 1 to "bf" 
 
 [case testMissingPytypedFlag]
 # pkgs: typedpkg_ns_b
-# flags: --namespace-packages --enable-installed-packages
+# flags: --namespace-packages --follow-untyped-imports
 import typedpkg_ns.b.bbb as b
 b.bf("foo", "bar")
 [out]
