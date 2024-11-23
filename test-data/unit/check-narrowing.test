@@ -2379,4 +2379,13 @@ def g() -> None:
                 z[0] + "v"  # E: Unsupported operand types for + ("int" and "str")
             z.append(1)
 
+class A:
+    def g(self) -> None:
+        z = []  # E: Need type annotation for "z" (hint: "z: List[<type>] = ...")
+        for i in range(2):
+            while f():
+                if z:
+                    z[0] + "v"  # E: Unsupported operand types for + ("int" and "str")
+                z.append(1)
+
 [builtins fixtures/primitives.pyi]
