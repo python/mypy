@@ -13,7 +13,7 @@ import re
 import subprocess
 import sys
 from enum import Enum, unique
-from typing import Dict, Final, List, Optional, Tuple, Union, cast
+from typing import Dict, Final, List, Optional, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import pyinfo
