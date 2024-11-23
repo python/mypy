@@ -885,6 +885,10 @@ class RInstanceValue(RInstance):
     def is_refcounted(self) -> bool:
         return any(t.is_refcounted for t in self.class_ir.all_attributes().values())
 
+    @is_refcounted.setter
+    def is_refcounted(self, value: bool) -> None:
+        raise NotImplementedError("is_refcounted is read-only for RInstanceValue")
+
     def __repr__(self) -> str:
         return "<RInstanceValue %s>" % self.name
 
