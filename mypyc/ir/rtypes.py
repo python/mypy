@@ -646,7 +646,7 @@ class RTuple(RType):
     def __init__(self, types: list[RType]) -> None:
         self.name = "tuple"
         self.types = tuple(types)
-        self.is_refcounted = any(t.is_refcounted for t in self.types)
+        self._is_refcounted = any(t.is_refcounted for t in self.types)
         # Generate a unique id which is used in naming corresponding C identifiers.
         # This is necessary since C does not have anonymous structural type equivalence
         # in the same way python can just assign a Tuple[int, bool] to a Tuple[int, bool].
@@ -655,6 +655,10 @@ class RTuple(RType):
         self.struct_name = f"tuple_{self.unique_id}"
         self._ctype = f"{self.struct_name}"
         self.error_overlap = all(t.error_overlap for t in self.types) and bool(self.types)
+
+    @property
+    def is_refcounted(self) -> bool:
+        return self._is_refcounted
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rtuple(self)
