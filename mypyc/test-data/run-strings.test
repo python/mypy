@@ -639,3 +639,67 @@ def test_encode() -> None:
     assert u'\u00E1'.encode('latin1') == b'\xe1'
     with assertRaises(UnicodeEncodeError):
         u.encode('latin1')
+
+[case testCompare]
+def test_compare() -> None:
+    s1: str = 'xxx'
+    s2: str = 'xxx'
+    s3: str = 'yyy'
+
+    assert s1 == s2
+    assert s2 == s1
+    assert s1 != s3
+    assert s3 != s1
+    assert s2 != s3
+    assert s3 != s2
+
+    assert s1 == s1
+    assert s2 == s2
+    assert s3 == s3
+
+[case testOverridenCompare]
+from interp import StrEqualNever, StrEqualAlways
+
+def test_custom_compare() -> None:
+    s_en1: StrEqualNever = StrEqualNever("x")
+    assert not s_en1 == "x"
+    assert not "x" == s_en1
+
+    assert s_en1 != "x"
+    assert "x" != s_en1
+
+    s_en2: StrEqualNever = StrEqualNever("xxx")
+    assert not s_en2 == "x"
+    assert not "x" == s_en2
+
+    assert s_en2 != "x"
+    assert "x" != s_en2
+
+    s_ea1: StrEqualAlways = StrEqualAlways("x")
+    assert s_ea1 == "x"
+    assert "x" == s_ea1
+
+    assert not s_ea1 != "x"
+    assert not "x" != s_ea1
+
+    s_ea2: StrEqualAlways = StrEqualAlways("xxx")
+    assert s_ea2 == "x"
+    assert "x" == s_ea2
+
+    assert not s_ea2 != "x"
+    assert not "x" != s_ea2
+
+[file interp.py]
+class StrEqualNever(str):
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return True
+
+class StrEqualAlways(str):
+    def __eq__(self, other: object) -> bool:
+        return True
+
+    def __ne__(self, other: object) -> bool:
+        return False

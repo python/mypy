@@ -417,7 +417,7 @@ L2:
     k = r9
     v = r8
     r10 = 'name'
-    r11 = PyUnicode_Compare(k, r10)
+    r11 = CPyStr_Compare(k, r10)
     r12 = r11 == -1
     if r12 goto L3 else goto L5 :: bool
 L3:
