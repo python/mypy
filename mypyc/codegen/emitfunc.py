@@ -15,14 +15,7 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.func_ir import (
-    FUNC_CLASSMETHOD,
-    FUNC_NORMAL,
-    FUNC_STATICMETHOD,
-    FuncDecl,
-    FuncIR,
-    all_values,
-)
+from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (
     ERR_FALSE,
     NAMESPACE_MODULE,
@@ -570,20 +563,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if method.decl.kind == FUNC_STATICMETHOD
             else [f"(PyObject *)Py_TYPE({obj})"] if method.decl.kind == FUNC_CLASSMETHOD else [obj]
         )
-        need_box_obj = (
-            method.decl.kind == FUNC_NORMAL
-            and rtype.is_unboxed
-            and not method.args[0].type.is_unboxed
-        )
-        obj_boxed = ""
-        if need_box_obj:
-            # for cases where obj.method(...) is called and obj is unboxed, but method
-            # expects a boxed due inheritance or trait. e.g. obj is a value type
-            # but method comes from a parent which not
-            obj_boxed = self.temp_name()
-            self.emitter.emit_box(obj, obj_boxed, rtype, declare_dest=True)
-            obj_args = [obj_boxed]
-
         args = ", ".join(obj_args + [self.reg(arg) for arg in op_args])
         mtype = native_function_type(method, self.emitter)
         version = "_TRAIT" if rtype.class_ir.is_trait else ""
@@ -607,9 +586,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     name,
                 )
             )
-
-        if need_box_obj:
-            self.emitter.emit_dec_ref(obj_boxed, RInstance(rtype.class_ir))
 
     def visit_inc_ref(self, op: IncRef) -> None:
         src = self.reg(op.src)

@@ -156,6 +156,17 @@ def check_value_type(
         # Because the value type have semantic differences we can not just ignore it
         errors.error("Value types must be immutable and final", path, cdef.line)
 
+    for base in cdef.info.mro:
+        if base is cdef.info or (base.module_name == "builtins" and base.name == "object"):
+            continue
+
+        module = module_by_fullname.get(base.module_name)
+        errors.error(
+            "Value types must not inherit from other types",
+            module.path if module else "",
+            cdef.line,
+        )
+
     for mtd_name in (
         "__iter__",
         "__next__",

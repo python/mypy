@@ -873,7 +873,6 @@ class RInstanceValue(RInstance):
     """
 
     is_unboxed = True
-    is_refcounted = False
 
     def __init__(self, class_ir: ClassIR) -> None:
         super().__init__(class_ir)
@@ -881,6 +880,10 @@ class RInstanceValue(RInstance):
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rinstance_value(self)
+
+    @property
+    def is_refcounted(self) -> bool:
+        return any(t.is_refcounted for t in self.class_ir.all_attributes().values())
 
     def __repr__(self) -> str:
         return "<RInstanceValue %s>" % self.name
