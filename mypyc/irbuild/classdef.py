@@ -682,7 +682,7 @@ def add_non_ext_class_attr(
         # are final.
         if (
             cdef.info.bases
-            and cdef.info.bases[0].type.fullname == "enum.Enum"
+            and cdef.info.bases[0].type.is_enum
             # Skip these since Enum will remove it
             and lvalue.name not in EXCLUDED_ENUM_ATTRIBUTES
         ):
