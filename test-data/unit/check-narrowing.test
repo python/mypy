@@ -2380,4 +2380,3 @@ def g() -> None:
             z.append(1)
 
 [builtins fixtures/primitives.pyi]
-
