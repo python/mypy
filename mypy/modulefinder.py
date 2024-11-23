@@ -334,10 +334,11 @@ class FindModuleCache:
         return version >= min_version and (max_version is None or version <= max_version)
 
     def _find_module_non_stub_helper(
-        self, components: list[str], pkg_dir: str
+        self, id: str, pkg_dir: str
     ) -> OnePackageDir | ModuleNotFoundReason:
         plausible_match = False
         dir_path = pkg_dir
+        components = id.split(".")
         for index, component in enumerate(components):
             dir_path = os_path_join(dir_path, component)
             if self.fscache.isfile(os_path_join(dir_path, "py.typed")):
@@ -351,17 +352,9 @@ class FindModuleCache:
                 break
         if plausible_match:
             if self.options:
-                enable_installed_packages = self.options.enable_installed_packages
-                try:
-                    enable_installed_packages = cast(
-                        bool,
-                        self.options.per_module_options[components[0]][
-                            "enable_installed_packages"
-                        ],
-                    )
-                except KeyError:
-                    pass
-                if enable_installed_packages:
+                module_specific_options = self.options.clone_for_module(id)
+                if module_specific_options.enable_installed_packages:
+                    # print("Returning ", id)
                     return os.path.join(pkg_dir, *components[:-1]), False
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
@@ -476,7 +469,7 @@ class FindModuleCache:
                             third_party_stubs_dirs.append((path, True))
                     else:
                         third_party_stubs_dirs.append((path, True))
-            non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)
+            non_stub_match = self._find_module_non_stub_helper(id, pkg_dir)
             if isinstance(non_stub_match, ModuleNotFoundReason):
                 if non_stub_match is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     found_possible_third_party_missing_type_hints = True
