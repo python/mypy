@@ -49,8 +49,12 @@ class RType:
     #
     # TODO: This shouldn't be specific to C or a string
     c_undefined: str
-    # If unboxed: does the unboxed version use reference counting?
-    is_refcounted = True
+
+    @property
+    def is_refcounted(self) -> bool:
+        # If unboxed: does the unboxed version use reference counting?
+        return True
+
     # C type; use Emitter.ctype() to access
     _ctype: str
     # If True, error/undefined value overlaps with a valid value. To
@@ -204,7 +208,7 @@ class RPrimitive(RType):
 
         self.name = name
         self.is_unboxed = is_unboxed
-        self.is_refcounted = is_refcounted
+        self._is_refcounted = is_refcounted
         self.is_native_int = is_native_int
         self.is_signed = is_signed
         self._ctype = ctype
@@ -232,6 +236,10 @@ class RPrimitive(RType):
             self.c_undefined = "239"  # An arbitrary number
         else:
             assert False, "Unrecognized ctype: %r" % ctype
+
+    @property
+    def is_refcounted(self) -> bool:
+        return self._is_refcounted
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rprimitive(self)
@@ -822,12 +830,17 @@ class RInstance(RType):
 
     is_unboxed = False
 
-    def __init__(self, class_ir: ClassIR) -> None:
+    def __init__(self, class_ir: ClassIR, is_refcounted: bool = True) -> None:
         # name is used for formatting the name in messages and debug output
         # so we want the fullname for precision.
         self.name = class_ir.fullname
         self.class_ir = class_ir
         self._ctype = "PyObject *"
+        self._is_refcounted = is_refcounted
+
+    @property
+    def is_refcounted(self) -> bool:
+        return self._is_refcounted
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rinstance(self)
@@ -884,10 +897,6 @@ class RInstanceValue(RInstance):
     @property
     def is_refcounted(self) -> bool:
         return any(t.is_refcounted for t in self.class_ir.all_attributes().values())
-
-    @is_refcounted.setter
-    def is_refcounted(self, value: bool) -> None:
-        raise NotImplementedError("is_refcounted is read-only for RInstanceValue")
 
     def __repr__(self) -> str:
         return "<RInstanceValue %s>" % self.name
@@ -1005,7 +1014,10 @@ class RArray(RType):
         self.item_type = item_type
         # Number of items
         self.length = length
-        self.is_refcounted = False
+
+    @property
+    def is_refcounted(self) -> bool:
+        return False
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rarray(self)

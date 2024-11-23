@@ -27,9 +27,8 @@ def patch_value_type_init_methods(ir: FuncIR, options: CompilerOptions) -> None:
         return
 
     # patch the type of the self parameter to be a reference to the value type
-    ref_type = RInstance(cl)
     # the refcounted flag is set to False because we only need to initialize the
     # attributes of the value type, but it is not expected to be refcounted
-    ref_type.is_refcounted = False
+    ref_type = RInstance(cl, is_refcounted=False)
     ir.args[0].type = ref_type
     ir.arg_regs[0].type = ref_type
