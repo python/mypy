@@ -1,0 +1,62 @@
+[case testValueTypeBasic]
+from typing import final, Final
+from mypy_extensions import mypyc_attr, i32
+
+@final
+@mypyc_attr(value_type=True)
+class Vector2I:
+    def __init__(self, x: i32) -> None:
+        self.x: Final = x
+
+@final
+class Vector2Ir:
+    def __init__(self, x: i32) -> None:
+        self.x: Final = x
+
+def test_rt() -> None:
+    l1 = [Vector2I(1), Vector2I(1)]  # require boxing
+    l2 = [Vector2Ir(1), Vector2Ir(1)]  # do NOT require boxing
+
+[out]
+def Vector2I.__init__(self, x):
+    self :: __main__.Vector2I
+    x :: i32
+L0:
+    self.x = x
+    return 1
+def Vector2Ir.__init__(self, x):
+    self :: __main__.Vector2Ir
+    x :: i32
+L0:
+    self.x = x
+    return 1
+def test_rt():
+    r0, r1 :: __main__.Vector2I
+    r2 :: list
+    r3, r4 :: object
+    r5 :: ptr
+    l1 :: list
+    r6, r7 :: __main__.Vector2Ir
+    r8 :: list
+    r9 :: ptr
+    l2 :: list
+L0:
+    r0 = Vector2I(1)
+    r1 = Vector2I(1)
+    r2 = PyList_New(2)
+    r3 = box(__main__.Vector2I, r0)
+    r4 = box(__main__.Vector2I, r1)
+    r5 = list_items r2
+    buf_init_item r5, 0, r3
+    buf_init_item r5, 1, r4
+    keep_alive r2
+    l1 = r2
+    r6 = Vector2Ir(1)
+    r7 = Vector2Ir(1)
+    r8 = PyList_New(2)
+    r9 = list_items r8
+    buf_init_item r9, 0, r6
+    buf_init_item r9, 1, r7
+    keep_alive r8
+    l2 = r8
+    return 1
