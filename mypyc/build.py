@@ -31,7 +31,7 @@ from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
 from mypy.main import process_options
-from mypy.options import Options
+from mypy.options import MYPYC_VALUE_TYPES, Options
 from mypy.util import write_junit_xml
 from mypyc.codegen import emitmodule
 from mypyc.common import RUNTIME_C_FILES, shared_lib_name
@@ -416,6 +416,11 @@ def mypyc_build(
     fscache = FileSystemCache()
     mypyc_sources, all_sources, options = get_mypy_config(
         paths, only_compile_paths, compiler_options, fscache
+    )
+
+    # Enable value types option via mypy options
+    compiler_options.experimental_value_types = (
+        MYPYC_VALUE_TYPES in options.enable_incomplete_feature
     )
 
     # We generate a shared lib if there are multiple modules or if any

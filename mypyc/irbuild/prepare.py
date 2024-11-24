@@ -91,7 +91,7 @@ def build_type_map(
             is_abstract=cdef.info.is_abstract,
             is_final_class=cdef.info.is_final,
             is_ext_class=is_extension_class(cdef),
-            is_value_type=is_value_type(cdef),
+            is_value_type=is_value_type(cdef) and options.experimental_value_types,
         )
 
         if class_ir.is_value_type:

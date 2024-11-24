@@ -526,6 +526,9 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref(f"{dest}.f{i}", item_type)
+        elif isinstance(rtype, RInstanceValue):
+            for i, (attr, attr_type) in enumerate(rtype.class_ir.all_attributes().items()):
+                self.emit_inc_ref(f"{dest}.{self.attr(attr)}", attr_type)
         elif not rtype.is_unboxed:
             # Always inline, since this is a simple op
             self.emit_line("CPy_INCREF(%s);" % dest)
@@ -1089,7 +1092,7 @@ class Emitter:
                 attr_name = self.attr(attr)
                 self.emit_line(f"{temp_dest}->{attr_name} = {src}.{attr_name};", ann="box")
                 if attr_type.is_refcounted:
-                    self.emit_inc_ref(temp_dest, attr_type)
+                    self.emit_inc_ref(f"{temp_dest}->{attr_name}", attr_type)
 
             self.emit_line(f"{declaration}{dest} = (PyObject *){temp_dest};")
         else:
@@ -1131,6 +1134,9 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_visit(f"{target}.f{i}", item_type)
+        elif isinstance(rtype, RInstanceValue):
+            for i, (attr, attr_type) in enumerate(rtype.class_ir.all_attributes().items()):
+                self.emit_gc_visit(f"{target}.{self.attr(attr)}", attr_type)
         elif self.ctype(rtype) == "PyObject *":
             # The simplest case.
             self.emit_line(f"Py_VISIT({target});")
@@ -1155,6 +1161,9 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_clear(f"{target}.f{i}", item_type)
+        elif isinstance(rtype, RInstanceValue):
+            for i, (attr, attr_type) in enumerate(rtype.class_ir.all_attributes().items()):
+                self.emit_gc_clear(f"{target}.{self.attr(attr)}", attr_type)
         elif self.ctype(rtype) == "PyObject *" and self.c_undefined_value(rtype) == "NULL":
             # The simplest case.
             self.emit_line(f"Py_CLEAR({target});")
