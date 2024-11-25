@@ -2558,6 +2558,7 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.has_self_type = False
         self.seen_aliases: set[TypeAliasType] | None = None
         self.include_callables = True
+        self.include_bound_tvars = False
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
         if not type.args:
@@ -2583,7 +2584,7 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         if (
             node
             and isinstance(node.node, TypeVarLikeExpr)
-            and self.scope.get_binding(node) is None
+            and (self.scope.get_binding(node) is None or self.include_bound_tvars)
         ):
             if (name, node.node) not in self.type_var_likes:
                 self.type_var_likes.append((name, node.node))

@@ -2369,8 +2369,11 @@ class SemanticAnalyzer(
             assert isinstance(sym.node, TypeVarExpr)
             return t.name, sym.node
 
-    def find_type_var_likes(self, t: Type) -> TypeVarLikeList:
+    def find_type_var_likes(
+        self, t: Type, *, include_bound_tvars: bool = False
+    ) -> TypeVarLikeList:
         visitor = FindTypeVarVisitor(self, self.tvar_scope)
+        visitor.include_bound_tvars = include_bound_tvars
         t.accept(visitor)
         return visitor.type_var_likes
 
@@ -5036,9 +5039,15 @@ class SemanticAnalyzer(
         result: list[Type] = []
         for node in items:
             try:
-                analyzed = self.anal_type(
-                    self.expr_to_unanalyzed_type(node), allow_placeholder=True
-                )
+                unanalyzed_type = self.expr_to_unanalyzed_type(node)
+                if self.find_type_var_likes(unanalyzed_type, include_bound_tvars=True):
+                    self.fail(
+                        "TypeVar constraint type cannot be parametrized by type variables", node
+                    )
+                    result.append(AnyType(TypeOfAny.from_error))
+                    continue
+
+                analyzed = self.anal_type(unanalyzed_type, allow_placeholder=True)
                 if analyzed is None:
                     # Type variables are special: we need to place them in the symbol table
                     # soon, even if some value is not ready yet, see process_typevar_parameters()
