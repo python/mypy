@@ -238,11 +238,12 @@ def test_cmp() -> None:
     assert 2 not in a
 
 [case testValueTypeLifetime]
-from typing import final, Final, NamedTuple
+from typing import final, Final
 from mypy_extensions import mypyc_attr
 
-class A(NamedTuple):
-    n: str
+class A:
+    def __init__(self, n: str) -> None:
+        self.n = n
 
 @final
 @mypyc_attr(value_type=True)
@@ -258,8 +259,27 @@ def f() -> B:
 def test_value_type_lifetime() -> None:
     assert f().a.n == "test"
 
+
+def f2(a: A) -> B:
+    # A instance is passed as an argument
+    # should be keep alive after the function returns
+    return B(a)
+
+def test_value_type_lifetime2() -> None:
+    assert f2(A("test")).a.n == "test"
+
+def f3(a: A) -> B:
+    # A instance is passed as an argument and discarded here
+    # should be keep alive after the function returns
+    return B(A("other"))
+
+def test_value_type_lifetime3() -> None:
+    a = A("test")
+    assert f3(a).a.n == "other"
+    assert a.n == "test", "a instance should be keep alive"
+
 [case testFixedLengthTupleWithValueType]
-from typing import final, Final
+from typing import final, Final, Tuple
 from mypy_extensions import mypyc_attr, i32
 
 @final
@@ -270,11 +290,11 @@ class A:
 
 def test_fixed_length_tuple_with_value_type() -> None:
     a = A(12)
-    t: tuple[A, A] = (a, a)
+    t: Tuple[A, A] = (a, a)
     assert t[0].x == 12
     assert t[1].x == 12
 
-def mtd_return_tuple() -> tuple[A, A]:
+def mtd_return_tuple() -> Tuple[A, A]:
     a = A(12)
     return (a, a)
 
@@ -283,14 +303,14 @@ def test_fixed_length_tuple_with_value_type_mtd_return_tuple() -> None:
     assert t[0].x == 12
     assert t[1].x == 12
 
-def mtd_pass_tuple(a: tuple[A, A]) -> i32:
+def mtd_pass_tuple(a: Tuple[A, A]) -> i32:
     return a[0].x + a[1].x
 
 def test_fixed_length_tuple_with_value_type_mtd_pass_tuple() -> None:
-    t: tuple[A, A] = (A(12), A(2))
+    t: Tuple[A, A] = (A(12), A(2))
     assert mtd_pass_tuple(t) == 14
 
-def mtd_return_tuple_but_raise() -> tuple[A, A]:
+def mtd_return_tuple_but_raise() -> Tuple[A, A]:
     raise ValueError("test")
 
 def test_raise_in_tuple() -> None:
