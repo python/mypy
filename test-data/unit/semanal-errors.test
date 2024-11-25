@@ -1062,6 +1062,7 @@ S = TypeVar('S', covariant=True, contravariant=True) \
 
 [case testInvalidTypevarArgumentsGenericConstraint]
 from typing import Generic, List, TypeVar
+from typing_extensions import Self
 
 T = TypeVar("T")
 
@@ -1069,6 +1070,8 @@ def f(x: T) -> None:
     Bad = TypeVar("Bad", int, List[T])    # E: TypeVar constraint type cannot be parametrized by type variables
 class C(Generic[T]):
     Bad = TypeVar("Bad", int, List[T])    # E: TypeVar constraint type cannot be parametrized by type variables
+class D:
+    Bad = TypeVar("Bad", int, List[Self]) # E: TypeVar constraint type cannot be parametrized by type variables
 
 [case testInvalidTypevarValues]
 from typing import TypeVar
