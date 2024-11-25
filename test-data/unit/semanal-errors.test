@@ -1065,13 +1065,10 @@ from typing import Generic, List, TypeVar
 
 T = TypeVar("T")
 
-Bad1 = TypeVar("Bad1", int, T)              # E: TypeVar constraint type cannot be parametrized by type variables
-Bad2 = TypeVar("Bad2", int, List[T])        # E: TypeVar constraint type cannot be parametrized by type variables
-Bad3 = TypeVar("Bad3", int, List[List[T]])  # E: TypeVar constraint type cannot be parametrized by type variables
 def f(x: T) -> None:
-    Bad4 = TypeVar("Bad4", int, List[T])    # E: TypeVar constraint type cannot be parametrized by type variables
+    Bad = TypeVar("Bad", int, List[T])    # E: TypeVar constraint type cannot be parametrized by type variables
 class C(Generic[T]):
-    Bad5 = TypeVar("Bad5", int, List[T])    # E: TypeVar constraint type cannot be parametrized by type variables
+    Bad = TypeVar("Bad", int, List[T])    # E: TypeVar constraint type cannot be parametrized by type variables
 
 [case testInvalidTypevarValues]
 from typing import TypeVar

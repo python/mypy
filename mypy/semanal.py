@@ -295,7 +295,7 @@ from mypy.types import (
     type_vars_as_args,
 )
 from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
-from mypy.typevars import fill_typevars
+from mypy.typevars import fill_typevars, has_no_typevars
 from mypy.util import correct_relative_import, is_dunder, module_prefix, unmangle, unnamed_function
 from mypy.visitor import NodeVisitor
 
@@ -2369,11 +2369,8 @@ class SemanticAnalyzer(
             assert isinstance(sym.node, TypeVarExpr)
             return t.name, sym.node
 
-    def find_type_var_likes(
-        self, t: Type, *, include_bound_tvars: bool = False
-    ) -> TypeVarLikeList:
+    def find_type_var_likes(self, t: Type) -> TypeVarLikeList:
         visitor = FindTypeVarVisitor(self, self.tvar_scope)
-        visitor.include_bound_tvars = include_bound_tvars
         t.accept(visitor)
         return visitor.type_var_likes
 
@@ -5039,21 +5036,25 @@ class SemanticAnalyzer(
         result: list[Type] = []
         for node in items:
             try:
-                unanalyzed_type = self.expr_to_unanalyzed_type(node)
-                if self.find_type_var_likes(unanalyzed_type, include_bound_tvars=True):
-                    self.fail(
-                        "TypeVar constraint type cannot be parametrized by type variables", node
-                    )
-                    result.append(AnyType(TypeOfAny.from_error))
-                    continue
-
-                analyzed = self.anal_type(unanalyzed_type, allow_placeholder=True)
+                analyzed = self.anal_type(
+                    self.expr_to_unanalyzed_type(node), allow_placeholder=True
+                )
                 if analyzed is None:
                     # Type variables are special: we need to place them in the symbol table
                     # soon, even if some value is not ready yet, see process_typevar_parameters()
                     # for an example.
                     analyzed = PlaceholderType(None, [], node.line)
-                result.append(analyzed)
+
+                # has_no_typevars does not work with PlaceholderType.
+                if not isinstance(
+                    get_proper_type(analyzed), PlaceholderType
+                ) and not has_no_typevars(analyzed):
+                    self.fail(
+                        "TypeVar constraint type cannot be parametrized by type variables", node
+                    )
+                    result.append(AnyType(TypeOfAny.from_error))
+                else:
+                    result.append(analyzed)
             except TypeTranslationError:
                 self.fail("Type expected", node)
                 result.append(AnyType(TypeOfAny.from_error))
