@@ -175,6 +175,7 @@ def check_value_type(
         "__getitem__",
         "__setitem__",
         "__delitem__",
+        "__del__",
     ):
         mtd = cdef.info.get_method(mtd_name)
         if mtd is not None:

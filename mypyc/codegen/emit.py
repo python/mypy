@@ -530,8 +530,9 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref(f"{dest}.f{i}", item_type)
         elif isinstance(rtype, RInstanceValue):
-            for i, (attr, attr_type) in enumerate(rtype.class_ir.all_attributes().items()):
-                self.emit_inc_ref(f"{dest}.{self.attr(attr)}", attr_type)
+            if rtype.is_refcounted:
+                for attr, attr_type in rtype.class_ir.all_attributes().items():
+                    self.emit_inc_ref(f"{dest}.{self.attr(attr)}", attr_type)
         elif not rtype.is_unboxed:
             # Always inline, since this is a simple op
             self.emit_line("CPy_INCREF(%s);" % dest)
@@ -557,6 +558,10 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_dec_ref(f"{dest}.f{i}", item_type, is_xdec=is_xdec, rare=rare)
+        elif isinstance(rtype, RInstanceValue):
+            if rtype.is_refcounted:
+                for attr, attr_type in rtype.class_ir.all_attributes().items():
+                    self.emit_dec_ref(f"{dest}.{self.attr(attr)}", attr_type, is_xdec=is_xdec)
         elif not rtype.is_unboxed:
             if rare:
                 self.emit_line(f"CPy_{x}DecRef({dest});")
