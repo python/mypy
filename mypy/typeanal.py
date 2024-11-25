@@ -180,7 +180,7 @@ def analyze_type_alias(
     )
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
-    res = type.accept(analyzer)
+    res = analyzer.anal_type(type, nested=False)
     return res, analyzer.aliases_used
 
 
@@ -688,7 +688,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     code=codes.VALID_TYPE,
                 )
                 return AnyType(TypeOfAny.from_error)
-            return self.anal_type(t.args[0])
+            return self.anal_type(
+                t.args[0], allow_typed_dict_special_forms=self.allow_typed_dict_special_forms
+            )
         elif fullname in ("typing_extensions.Required", "typing.Required"):
             if not self.allow_typed_dict_special_forms:
                 self.fail(
