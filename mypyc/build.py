@@ -476,6 +476,7 @@ def mypycify(
     target_dir: str | None = None,
     include_runtime_files: bool | None = None,
     strict_dunder_typing: bool = False,
+    compiler_type: str | None = None,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -501,7 +502,7 @@ def mypycify(
         separate: Should compiled modules be placed in separate extension modules.
                   If False, all modules are placed in a single shared library.
                   If True, every module is placed in its own library.
-                  Otherwise separate should be a list of
+                  Otherwise, separate should be a list of
                   (file name list, optional shared library name) pairs specifying
                   groups of files that should be placed in the same shared library
                   (while all other modules will be placed in its own library).
@@ -518,6 +519,9 @@ def mypycify(
         strict_dunder_typing: If True, force dunder methods to have the return type
                               of the method strictly, which can lead to more
                               optimization opportunities. Defaults to False.
+        compiler_type: The distutils compiler. If None or empty, the default compiler
+                       is used. Some possible values are 'msvc', 'mingw32', 'unix'.
+                       Defaults to None.
     """
 
     # Figure out our configuration
@@ -546,17 +550,18 @@ def mypycify(
     # Create a compiler object so we can make decisions based on what
     # compiler is being used. typeshed is missing some attributes on the
     # compiler object so we give it type Any
-    compiler: Any = ccompiler.new_compiler()
+    compiler: Any = ccompiler.new_compiler(compiler=compiler_type or None, verbose=verbose)
     sysconfig.customize_compiler(compiler)
 
     build_dir = compiler_options.target_dir
 
     cflags: list[str] = []
-    if compiler.compiler_type == "unix":
+    if compiler.compiler_type in ("mingw32", "unix"):
         cflags += [
             f"-O{opt_level}",
             f"-g{debug_level}",
             "-Werror",
+            "-Wno-missing-braces",
             "-Wno-unused-function",
             "-Wno-unused-label",
             "-Wno-unreachable-code",

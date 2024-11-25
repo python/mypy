@@ -887,6 +887,9 @@ class RInstanceValue(RInstance):
 
     These are used to represent unboxed values of RInstance which match
     the Value Type constraints.
+
+    No error overlap happens in the Value Type because it is represented
+    with vtable == NULL.
     """
 
     is_unboxed = True

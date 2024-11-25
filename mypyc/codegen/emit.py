@@ -466,6 +466,9 @@ class Emitter:
             return self.tuple_undefined_check_cond(
                 item_type, tuple_expr_in_c + f".f{i}", c_type_compare_val, compare
             )
+        elif isinstance(item_type, RInstanceValue):
+            check = f"{tuple_expr_in_c}.f{i}.vtable {compare} NULL"
+            return check
         else:
             check = f"{tuple_expr_in_c}.f{i} {compare} {c_type_compare_val(item_type)}"
             if rtuple.error_overlap and check_exception:
@@ -1135,7 +1138,7 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_visit(f"{target}.f{i}", item_type)
         elif isinstance(rtype, RInstanceValue):
-            for i, (attr, attr_type) in enumerate(rtype.class_ir.all_attributes().items()):
+            for attr, attr_type in rtype.class_ir.all_attributes().items():
                 self.emit_gc_visit(f"{target}.{self.attr(attr)}", attr_type)
         elif self.ctype(rtype) == "PyObject *":
             # The simplest case.
@@ -1162,7 +1165,7 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_clear(f"{target}.f{i}", item_type)
         elif isinstance(rtype, RInstanceValue):
-            for i, (attr, attr_type) in enumerate(rtype.class_ir.all_attributes().items()):
+            for attr, attr_type in rtype.class_ir.all_attributes().items():
                 self.emit_gc_clear(f"{target}.{self.attr(attr)}", attr_type)
         elif self.ctype(rtype) == "PyObject *" and self.c_undefined_value(rtype) == "NULL":
             # The simplest case.

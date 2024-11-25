@@ -257,3 +257,68 @@ def f() -> B:
 
 def test_value_type_lifetime() -> None:
     assert f().a.n == "test"
+
+[case testFixedLengthTupleWithValueType]
+from typing import final, Final
+from mypy_extensions import mypyc_attr, i32
+
+@final
+@mypyc_attr(value_type=True)
+class A:
+    def __init__(self, x: i32) -> None:
+        self.x: Final = x
+
+def test_fixed_length_tuple_with_value_type() -> None:
+    a = A(12)
+    t: tuple[A, A] = (a, a)
+    assert t[0].x == 12
+    assert t[1].x == 12
+
+def mtd_return_tuple() -> tuple[A, A]:
+    a = A(12)
+    return (a, a)
+
+def test_fixed_length_tuple_with_value_type_mtd_return_tuple() -> None:
+    t = mtd_return_tuple()
+    assert t[0].x == 12
+    assert t[1].x == 12
+
+def mtd_pass_tuple(a: tuple[A, A]) -> i32:
+    return a[0].x + a[1].x
+
+def test_fixed_length_tuple_with_value_type_mtd_pass_tuple() -> None:
+    t: tuple[A, A] = (A(12), A(2))
+    assert mtd_pass_tuple(t) == 14
+
+def mtd_return_tuple_but_raise() -> tuple[A, A]:
+    raise ValueError("test")
+
+def test_raise_in_tuple() -> None:
+    try:
+        mtd_return_tuple_but_raise()
+    except ValueError as e:
+        assert str(e) == "test"
+
+def mtd_return_value_type_raise() -> A:
+    raise ValueError("test")
+
+def test_raise_in_value_type() -> None:
+    try:
+        mtd_return_tuple_but_raise()
+    except ValueError as e:
+        assert str(e) == "test"
+
+module_level = A(12)
+final_module_level: Final = A(13)
+
+def test_module_level() -> None:
+    assert module_level.x == 12
+    assert final_module_level.x == 13
+
+def mtd_with_default_value_type(a: A = A(12)) -> i32:
+    return a.x
+
+def test_default_value_type() -> None:
+    assert mtd_with_default_value_type() == 12
+    assert mtd_with_default_value_type(A(13)) == 13
+    assert mtd_with_default_value_type(a=A(13)) == 13
