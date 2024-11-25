@@ -5046,9 +5046,8 @@ class SemanticAnalyzer(
                     analyzed = PlaceholderType(None, [], node.line)
 
                 # has_no_typevars does not work with PlaceholderType.
-                if not isinstance(
-                    get_proper_type(analyzed), PlaceholderType
-                ) and not has_no_typevars(analyzed):
+                typ = get_proper_type(analyzed)
+                if not isinstance(typ, PlaceholderType) and not has_no_typevars(typ):
                     self.fail(
                         "TypeVar constraint type cannot be parametrized by type variables", node
                     )
