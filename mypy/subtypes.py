@@ -1953,6 +1953,8 @@ def restrict_subtype_away(t: Type, s: Type, *, consider_runtime_isinstance: bool
         return UninhabitedType()
     elif is_proper_subtype(t, s, ignore_promotions=True):
         return UninhabitedType()
+    elif is_proper_subtype(t, s, ignore_promotions=True, erase_instances=True):
+        return UninhabitedType()
     else:
         return t
 
