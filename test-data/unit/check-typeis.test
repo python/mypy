@@ -134,6 +134,18 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsUnionOfGenerics]
+from typing import List, Union
+from typing_extensions import TypeIs
+def is_foo(a: Union[List[int], List[str]]) -> TypeIs[List[str]]: pass
+def main(a: Union[List[int], List[str]]) -> None:
+    if is_foo(a):
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsNonzeroFloat]
 from typing_extensions import TypeIs
 def is_nonzero(a: object) -> TypeIs[float]: pass
