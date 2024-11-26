@@ -804,13 +804,6 @@ def process_options(
         help="Warn about statements or expressions inferred to be unreachable",
         group=lint_group,
     )
-    add_invertible_flag(
-        "--report-deprecated-as-error",
-        default=False,
-        strict_flag=False,
-        help="Report importing or using deprecated features as errors instead of notes",
-        group=lint_group,
-    )
 
     # Note: this group is intentionally added here even though we don't add
     # --strict to this group near the end.
