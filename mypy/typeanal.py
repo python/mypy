@@ -2277,7 +2277,8 @@ def set_any_tvars(
         env[tv.id] = arg
     t = TypeAliasType(node, args, newline, newcolumn)
     if not has_type_var_tuple_type:
-        fixed = expand_type(t, env)
+        with state.strict_optional_set(options.strict_optional):
+            fixed = expand_type(t, env)
         assert isinstance(fixed, TypeAliasType)
         t.args = fixed.args
 
