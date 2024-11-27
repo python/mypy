@@ -2619,3 +2619,15 @@ def test_final_attribute() -> None:
     assert C.a['x'] == 'y'
     assert C.b['x'] == 'y'
     assert C.a is C.b
+
+[case testClassDerivedFromIntEnum]
+from enum import IntEnum, auto
+
+class Player(IntEnum):
+    MIN = auto()
+
+print(f'{Player.MIN = }')
+[file driver.py]
+from native import Player
+[out]
+Player.MIN = <Player.MIN: 1>

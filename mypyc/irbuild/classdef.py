@@ -513,7 +513,7 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
     is_named_tuple = cdef.info.is_named_tuple
     ir = builder.mapper.type_to_ir[cdef.info]
     bases = []
-    for cls in cdef.info.mro[1:]:
+    for cls in (b.type for b in cdef.info.bases):
         if cls.fullname == "builtins.object":
             continue
         if is_named_tuple and cls.fullname in (
@@ -682,7 +682,7 @@ def add_non_ext_class_attr(
         # are final.
         if (
             cdef.info.bases
-            and cdef.info.bases[0].type.fullname == "enum.Enum"
+            and cdef.info.bases[0].type.is_enum
             # Skip these since Enum will remove it
             and lvalue.name not in EXCLUDED_ENUM_ATTRIBUTES
         ):
