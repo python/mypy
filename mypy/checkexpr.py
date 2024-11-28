@@ -2481,6 +2481,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         check_arg = check_arg or self.check_arg
         # Keep track of consumed tuple *arg items.
         mapper = ArgTypeExpander(self.argument_infer_context())
+
+        for arg_type, arg_kind in zip(arg_types, arg_kinds):
+            arg_type = get_proper_type(arg_type)
+            if arg_kind == nodes.ARG_STAR and not self.is_valid_var_arg(arg_type):
+                self.msg.invalid_var_arg(arg_type, context)
+            if arg_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(
+                arg_type
+            ):
+                is_mapping = is_subtype(
+                    arg_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
+                )
+                self.msg.invalid_keyword_var_arg(arg_type, is_mapping, context)
+
         for i, actuals in enumerate(formal_to_actual):
             orig_callee_arg_type = get_proper_type(callee.arg_types[i])
 
@@ -2573,15 +2586,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if actual_type is None:
                     continue  # Some kind of error was already reported.
                 # Check that a *arg is valid as varargs.
-                if actual_kind == nodes.ARG_STAR and not self.is_valid_var_arg(actual_type):
-                    self.msg.invalid_var_arg(actual_type, context)
-                if actual_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(
-                    actual_type
-                ):
-                    is_mapping = is_subtype(
-                        actual_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
-                    )
-                    self.msg.invalid_keyword_var_arg(actual_type, is_mapping, context)
                 expanded_actual = mapper.expand_actual_type(
                     actual_type,
                     actual_kind,
