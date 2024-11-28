@@ -2452,3 +2452,10 @@ x + T  # E: Unsupported left operand type for + ("int")
 T()  # E: "TypeVar" not callable
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testListComprehensionWithUnionTypeGenerator]
+class A: pass
+class B: pass
+a = A()
+b = B()
+l3: list[A | B] = [x for x in [a, b]]
