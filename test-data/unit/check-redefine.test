@@ -321,7 +321,7 @@ def f() -> None:
     x = 1
     if int():
         x = ''
-    reveal_type(x) # N: Revealed type is "builtins.object"
+    reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int]"
     x = ''
     reveal_type(x) # N: Revealed type is "builtins.str"
     if int():
