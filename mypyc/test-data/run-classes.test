@@ -76,6 +76,19 @@ assert hasattr(c, 'x')
 1000000000000000000000000000001
 1000000000000000000000000000002
 
+[case testTypedDictWithFields]
+import collections
+from typing_extensions import TypedDict
+class C(TypedDict):
+    x: collections.deque
+[file driver.py]
+from native import C
+from collections import deque
+
+print(C.__annotations__["x"] is deque)
+[out]
+True
+
 [case testClassWithDeletableAttributes]
 from typing import Any, cast
 from testutil import assertRaises
@@ -2606,3 +2619,15 @@ def test_final_attribute() -> None:
     assert C.a['x'] == 'y'
     assert C.b['x'] == 'y'
     assert C.a is C.b
+
+[case testClassDerivedFromIntEnum]
+from enum import IntEnum, auto
+
+class Player(IntEnum):
+    MIN = auto()
+
+print(f'{Player.MIN = }')
+[file driver.py]
+from native import Player
+[out]
+Player.MIN = <Player.MIN: 1>
