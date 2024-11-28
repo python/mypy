@@ -268,17 +268,19 @@ f(a, *(b, cc))
 [builtins fixtures/tuple.pyi]
 
 [case testInvalidVarArg]
-# flags: --no-strict-optional
 def f(a: 'A') -> None:
     pass
 
 class A: pass
 
-a = None # type: A
+a = A()
 
-f(*None)
+f(*None)  # E: List or tuple expected as variadic arguments
 f(*a)    # E: List or tuple expected as variadic arguments
 f(*(a,))
+
+f(*4)  # E: List or tuple expected as variadic arguments
+f(a, *4)
 [builtins fixtures/tuple.pyi]
 
 
