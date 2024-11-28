@@ -5016,11 +5016,38 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.resolved_type[e] = ct
         return ct
 
+    def infer_item_type(self, item_types: List[Type]) -> Type:
+        """Infer the item type for a list based on its elements."""
+        joined_type = self.chk.join_types(*item_types)
+        proper_joined = get_proper_type(joined_type)
+        if (
+            isinstance(proper_joined, Instance)
+            and proper_joined.type.fullname == "builtins.object"
+            and len(set(map(type, item_types))) > 1
+        ):
+            # if we can't find a common supertype other than 'object',
+            # use a Union of the item types
+            return UnionType.make_simplified_union(item_types)
+        else:
+            # otherwise just use the common supertype
+            return joined_type
+
     def check_lst_expr(self, e: ListExpr | SetExpr | TupleExpr, fullname: str, tag: str) -> Type:
         # fast path
         t = self.fast_container_type(e, fullname)
         if t:
             return t
+
+        # if a ListExpr, just infer the item type directly
+        if isinstance(e, ListExpr):
+            item_types = [self.accept(item) for item in e.items]
+            if not item_types:
+                # empty list, default to Any
+                item_type = AnyType(TypeOfAny.from_empty_collection)
+            else:
+                # attempt to find a common supertype
+                item_type = self.infer_item_type(item_types)
+            return self.chk.named_generic_type(fullname, [item_type])
 
         # Translate into type checking a generic function call.
         # Used for list and set expressions, as well as for tuples
