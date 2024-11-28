@@ -2486,9 +2486,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             arg_type = get_proper_type(arg_type)
             if arg_kind == nodes.ARG_STAR and not self.is_valid_var_arg(arg_type):
                 self.msg.invalid_var_arg(arg_type, context)
-            if arg_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(
-                arg_type
-            ):
+            if arg_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(arg_type):
                 is_mapping = is_subtype(
                     arg_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
                 )
