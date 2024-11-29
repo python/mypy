@@ -74,7 +74,7 @@ class LoadAddressDescription(NamedTuple):
 method_call_ops: dict[str, list[CFunctionDescription]] = {}
 
 # CallC op for top level function call(such as 'builtins.list')
-function_ops: dict[str, list[CFunctionDescription]] = {}
+legacy_function_ops: dict[str, list[CFunctionDescription]] = {}
 
 # CallC op for binary ops
 binary_ops: dict[str, list[PrimitiveDescription]] = {}
@@ -174,7 +174,7 @@ def legacy_function_op(
     """
     if extra_int_constants is None:
         extra_int_constants = []
-    ops = function_ops.setdefault(name, [])
+    ops = legacy_function_ops.setdefault(name, [])
     desc = CFunctionDescription(
         name,
         arg_types,

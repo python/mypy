@@ -28,7 +28,7 @@ class TestHeaderInclusion(unittest.TestCase):
 
         for old_values in [
             registry.method_call_ops.values(),
-            registry.function_ops.values(),
+            registry.legacy_function_ops.values(),
             registry.unary_ops.values(),
         ]:
             for old_ops in old_values:
