@@ -154,6 +154,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_int_neg(self) -> None:
+        assert int_neg_op.c_function_name is not None
         self.assert_emit(
             CallC(
                 int_neg_op.c_function_name,

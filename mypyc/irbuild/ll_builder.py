@@ -1601,8 +1601,8 @@ class LowLevelIRBuilder:
             result = self.dunder_op(value, None, expr_op, line)
             if result is not None:
                 return result
-        call_c_ops_candidates = unary_ops.get(expr_op, [])
-        target = self.matching_call_c(call_c_ops_candidates, [value], line)
+        primitive_ops_candidates = unary_ops.get(expr_op, [])
+        target = self.matching_primitive_op(primitive_ops_candidates, [value], line)
         assert target, "Unsupported unary operation: %s" % expr_op
         return target
 
