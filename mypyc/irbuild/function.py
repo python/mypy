@@ -433,7 +433,7 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
 
         # Set the callable object representing the decorated method as an attribute of the
         # extension class.
-        builder.call_c(py_setattr_op, [typ, builder.load_str(name), decorated_func], fdef.line)
+        builder.primitive_op(py_setattr_op, [typ, builder.load_str(name), decorated_func], fdef.line)
 
     if fdef.is_property:
         # If there is a property setter, it will be processed after the getter,
@@ -973,7 +973,7 @@ def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
         cache_dict = builder.call_c(dict_new_op, [], line)
         dispatch_cache_str = builder.load_str("dispatch_cache")
         # use the py_setattr_op instead of SetAttr so that it also gets added to our __dict__
-        builder.call_c(py_setattr_op, [builder.self(), dispatch_cache_str, cache_dict], line)
+        builder.primitive_op(py_setattr_op, [builder.self(), dispatch_cache_str, cache_dict], line)
         # the generated C code seems to expect that __init__ returns a char, so just return 1
         builder.add(Return(Integer(1, bool_rprimitive, line), line))
 
@@ -1016,7 +1016,7 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
         registry_dict = builder.builder.make_dict([(loaded_object_type, main_func_obj)], line)
 
         dispatch_func_obj = builder.load_global_str(fitem.name, line)
-        builder.call_c(
+        builder.primitive_op(
             py_setattr_op, [dispatch_func_obj, builder.load_str("registry"), registry_dict], line
         )
 

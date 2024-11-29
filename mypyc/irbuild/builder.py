@@ -84,6 +84,7 @@ from mypyc.ir.ops import (
     IntOp,
     LoadStatic,
     Op,
+    PrimitiveDescription,
     RaiseStandardError,
     Register,
     SetAttr,
@@ -134,7 +135,7 @@ from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
 from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
-from mypyc.primitives.registry import CFunctionDescription, PrimitiveDescription, function_ops
+from mypyc.primitives.registry import CFunctionDescription, function_ops
 
 # These int binary operations can borrow their operands safely, since the
 # primitives take this into consideration.
@@ -694,7 +695,7 @@ class IRBuilder:
             else:
                 key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
-                self.call_c(py_setattr_op, [target.obj, key, boxed_reg], line)
+                self.primitive_op(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.gen_method_call(
                 target.base, "__setitem__", [target.index, rvalue_reg], None, line
@@ -771,7 +772,7 @@ class IRBuilder:
     def process_iterator_tuple_assignment(
         self, target: AssignmentTargetTuple, rvalue_reg: Value, line: int
     ) -> None:
-        iterator = self.call_c(iter_op, [rvalue_reg], line)
+        iterator = self.primitive_op(iter_op, [rvalue_reg], line)
 
         # This may be the whole lvalue list if there is no starred value
         split_idx = target.star_idx if target.star_idx is not None else len(target.items)
@@ -797,7 +798,7 @@ class IRBuilder:
         # Assign the starred value and all values after it
         if target.star_idx is not None:
             post_star_vals = target.items[split_idx + 1 :]
-            iter_list = self.call_c(to_list, [iterator], line)
+            iter_list = self.primitive_op(to_list, [iterator], line)
             iter_list_len = self.builtin_len(iter_list, line)
             post_star_len = Integer(len(post_star_vals))
             condition = self.binary_op(post_star_len, iter_list_len, "<=", line)

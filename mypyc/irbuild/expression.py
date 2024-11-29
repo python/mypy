@@ -476,7 +476,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
         # Grab first argument
         vself: Value = builder.self()
         if decl.kind == FUNC_CLASSMETHOD:
-            vself = builder.call_c(type_op, [vself], expr.line)
+            vself = builder.primitive_op(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:
             # For generator classes, the self target is the 6th value
             # in the symbol table (which is an ordered dict). This is sort
@@ -953,7 +953,7 @@ def transform_tuple_expr(builder: IRBuilder, expr: TupleExpr) -> Value:
 def _visit_tuple_display(builder: IRBuilder, expr: TupleExpr) -> Value:
     """Create a list, then turn it into a tuple."""
     val_as_list = _visit_list_display(builder, expr.items, expr.line)
-    return builder.call_c(list_tuple_op, [val_as_list], expr.line)
+    return builder.primitive_op(list_tuple_op, [val_as_list], expr.line)
 
 
 def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
