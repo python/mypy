@@ -1,0 +1,28 @@
+[case checkiter]
+# flags: --python-version 3.11
+import typing
+
+class Spam:
+    def __iter__(self, /) -> typing.Iterator[int]:
+        yield 1
+
+a = Spam()
+
+# list[int] TODO: fix
+# reveal_type(list(a))
+
+# list[int]
+reveal_type([i for i in a])  # N: Revealed type is "builtins.list[builtins.int]"
+
+# list[int]
+reveal_type([*(i for i in a)])  # N: Revealed type is "builtins.list[builtins.int]"
+
+# list[int]
+reveal_type([*a.__iter__()])  # N: Revealed type is "builtins.list[builtins.int]"
+
+# list[Any] ???
+reveal_type([*a])  # N: Revealed type is "builtins.list[builtins.int]"
+
+b, = a
+# int
+reveal_type(b)  # N: Revealed type is "builtins.int"

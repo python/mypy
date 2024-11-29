@@ -29,7 +29,13 @@ class ArgumentInferContext(NamedTuple):
     iterable_type: Instance
 
 
+import mypy.checker
+import mypy.nodes
+
+
 def infer_function_type_arguments(
+    context_check: mypy.nodes.Context,
+    checker: mypy.checker.TypeChecker,
     callee_type: CallableType,
     arg_types: Sequence[Type | None],
     arg_kinds: list[ArgKind],
@@ -53,8 +59,16 @@ def infer_function_type_arguments(
       formal_to_actual: mapping from formal to actual variable indices
     """
     # Infer constraints.
+    # pass Context into this
     constraints = infer_constraints_for_callable(
-        callee_type, arg_types, arg_kinds, arg_names, formal_to_actual, context
+        context_check,
+        checker,
+        callee_type,
+        arg_types,
+        arg_kinds,
+        arg_names,
+        formal_to_actual,
+        context,
     )
 
     # Solve constraints.
