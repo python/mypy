@@ -1045,12 +1045,12 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
             return builder.accept(arg)
 
     args = [get_arg(expr.begin_index), get_arg(expr.end_index), get_arg(expr.stride)]
-    return builder.call_c(new_slice_op, args, expr.line)
+    return builder.primitive_op(new_slice_op, args, expr.line)
 
 
 def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     builder.warning("Treating generator comprehension as list", o.line)
-    return builder.call_c(iter_op, [translate_list_comprehension(builder, o)], o.line)
+    return builder.primitive_op(iter_op, [translate_list_comprehension(builder, o)], o.line)
 
 
 def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:

@@ -134,7 +134,7 @@ from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
 from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
-from mypyc.primitives.registry import CFunctionDescription, function_ops
+from mypyc.primitives.registry import CFunctionDescription, PrimitiveDescription, function_ops
 
 # These int binary operations can borrow their operands safely, since the
 # primitives take this into consideration.
@@ -380,6 +380,9 @@ class IRBuilder:
 
     def call_c(self, desc: CFunctionDescription, args: list[Value], line: int) -> Value:
         return self.builder.call_c(desc, args, line)
+
+    def primitive_op(self, desc: PrimitiveDescription, args: list[Value], line: int) -> Value:
+        return self.builder.primitive_op(desc, args, line)
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.builder.int_op(type, lhs, rhs, op, line)
