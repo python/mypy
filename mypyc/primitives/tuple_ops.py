@@ -15,7 +15,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     tuple_rprimitive,
 )
-from mypyc.primitives.registry import custom_op, legacy_function_op, load_address_op, method_op
+from mypyc.primitives.registry import custom_op, function_op, load_address_op, method_op
 
 # Get the 'builtins.tuple' type object.
 load_address_op(name="builtins.tuple", type=object_rprimitive, src="PyTuple_Type")
@@ -56,7 +56,7 @@ new_tuple_set_item_op = custom_op(
 )
 
 # Construct tuple from a list.
-list_tuple_op = legacy_function_op(
+list_tuple_op = function_op(
     name="builtins.tuple",
     arg_types=[list_rprimitive],
     return_type=tuple_rprimitive,
@@ -66,7 +66,7 @@ list_tuple_op = legacy_function_op(
 )
 
 # Construct tuple from an arbitrary (iterable) object.
-legacy_function_op(
+function_op(
     name="builtins.tuple",
     arg_types=[object_rprimitive],
     return_type=tuple_rprimitive,

@@ -18,7 +18,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
-    legacy_function_op,
+    function_op,
     load_address_op,
     method_op,
 )
@@ -27,7 +27,7 @@ from mypyc.primitives.registry import (
 load_address_op(name="builtins.bytes", type=object_rprimitive, src="PyBytes_Type")
 
 # bytes(obj)
-legacy_function_op(
+function_op(
     name="builtins.bytes",
     arg_types=[RUnion([list_rprimitive, dict_rprimitive, str_rprimitive])],
     return_type=bytes_rprimitive,
@@ -36,7 +36,7 @@ legacy_function_op(
 )
 
 # bytearray(obj)
-legacy_function_op(
+function_op(
     name="builtins.bytearray",
     arg_types=[object_rprimitive],
     return_type=bytes_rprimitive,

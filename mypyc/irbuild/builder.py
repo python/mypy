@@ -134,7 +134,7 @@ from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
 from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
-from mypyc.primitives.registry import CFunctionDescription, function_ops, legacy_function_ops
+from mypyc.primitives.registry import CFunctionDescription, function_ops
 
 # These int binary operations can borrow their operands safely, since the
 # primitives take this into consideration.
@@ -1051,12 +1051,6 @@ class IRBuilder:
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname and expr.arg_kinds == [ARG_POS] * len(arg_values):
             fullname = get_call_target_fullname(callee)
-            call_c_ops_candidates = legacy_function_ops.get(fullname, [])
-            target = self.builder.matching_call_c(
-                call_c_ops_candidates, arg_values, expr.line, self.node_type(expr)
-            )
-            if target:
-                return target
             primitive_candidates = function_ops.get(fullname, [])
             target = self.builder.matching_primitive_op(
                 primitive_candidates, arg_values, expr.line, self.node_type(expr)

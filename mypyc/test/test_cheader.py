@@ -26,11 +26,7 @@ class TestHeaderInclusion(unittest.TestCase):
                     rf"\b{name}\b", header
                 ), f'"{name}" is used in mypyc.primitives but not declared in CPy.h'
 
-        for old_values in [
-            registry.method_call_ops.values(),
-            registry.legacy_function_ops.values(),
-            registry.unary_ops.values(),
-        ]:
+        for old_values in [registry.method_call_ops.values(), registry.unary_ops.values()]:
             for old_ops in old_values:
                 if isinstance(old_ops, CFunctionDescription):
                     old_ops = [old_ops]

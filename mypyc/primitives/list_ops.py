@@ -20,7 +20,6 @@ from mypyc.primitives.registry import (
     custom_op,
     custom_primitive_op,
     function_op,
-    legacy_function_op,
     load_address_op,
     method_op,
 )
@@ -38,7 +37,7 @@ to_list = function_op(
 )
 
 # Construct an empty list via list().
-legacy_function_op(
+function_op(
     name="builtins.list",
     arg_types=[],
     return_type=list_rprimitive,
