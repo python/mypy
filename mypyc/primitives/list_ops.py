@@ -19,7 +19,7 @@ from mypyc.primitives.registry import (
     binary_op,
     custom_op,
     custom_primitive_op,
-    function_op,
+    legacy_function_op,
     load_address_op,
     method_op,
 )
@@ -28,7 +28,7 @@ from mypyc.primitives.registry import (
 load_address_op(name="builtins.list", type=object_rprimitive, src="PyList_Type")
 
 # list(obj)
-to_list = function_op(
+to_list = legacy_function_op(
     name="builtins.list",
     arg_types=[object_rprimitive],
     return_type=list_rprimitive,
@@ -37,7 +37,7 @@ to_list = function_op(
 )
 
 # Construct an empty list via list().
-function_op(
+legacy_function_op(
     name="builtins.list",
     arg_types=[],
     return_type=list_rprimitive,

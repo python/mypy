@@ -20,7 +20,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
-    function_op,
+    legacy_function_op,
     load_address_op,
     method_op,
 )
@@ -29,7 +29,7 @@ from mypyc.primitives.registry import (
 load_address_op(name="builtins.str", type=object_rprimitive, src="PyUnicode_Type")
 
 # str(obj)
-str_op = function_op(
+str_op = legacy_function_op(
     name="builtins.str",
     arg_types=[object_rprimitive],
     return_type=str_rprimitive,

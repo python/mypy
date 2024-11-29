@@ -19,7 +19,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
-    function_op,
+    legacy_function_op,
     load_address_op,
     method_op,
 )
@@ -28,7 +28,7 @@ from mypyc.primitives.registry import (
 load_address_op(name="builtins.dict", type=object_rprimitive, src="PyDict_Type")
 
 # Construct an empty dictionary via dict().
-function_op(
+legacy_function_op(
     name="builtins.dict",
     arg_types=[],
     return_type=dict_rprimitive,
@@ -53,7 +53,7 @@ dict_build_op = custom_op(
 )
 
 # Construct a dictionary from another dictionary.
-function_op(
+legacy_function_op(
     name="builtins.dict",
     arg_types=[dict_rprimitive],
     return_type=dict_rprimitive,
@@ -63,7 +63,7 @@ function_op(
 )
 
 # Generic one-argument dict constructor: dict(obj)
-dict_copy = function_op(
+dict_copy = legacy_function_op(
     name="builtins.dict",
     arg_types=[object_rprimitive],
     return_type=dict_rprimitive,

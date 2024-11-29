@@ -21,7 +21,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     custom_op,
     custom_primitive_op,
-    function_op,
+    legacy_function_op,
     load_address_op,
 )
 
@@ -48,7 +48,7 @@ stop_async_iteration_op = load_address_op(
 )
 
 # id(obj)
-function_op(
+legacy_function_op(
     name="builtins.id",
     arg_types=[object_rprimitive],
     return_type=int_rprimitive,
@@ -161,7 +161,7 @@ get_module_dict_op = custom_op(
 )
 
 # isinstance(obj, cls)
-slow_isinstance_op = function_op(
+slow_isinstance_op = legacy_function_op(
     name="builtins.isinstance",
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
@@ -172,7 +172,7 @@ slow_isinstance_op = function_op(
 
 # Faster isinstance(obj, cls) that only works with native classes and doesn't perform
 # type checking of the type argument.
-fast_isinstance_op = function_op(
+fast_isinstance_op = legacy_function_op(
     "builtins.isinstance",
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=bool_rprimitive,
@@ -182,7 +182,7 @@ fast_isinstance_op = function_op(
 )
 
 # bool(obj) with unboxed result
-bool_op = function_op(
+bool_op = legacy_function_op(
     name="builtins.bool",
     arg_types=[object_rprimitive],
     return_type=c_int_rprimitive,
@@ -192,7 +192,7 @@ bool_op = function_op(
 )
 
 # slice(start, stop, step)
-new_slice_op = function_op(
+new_slice_op = legacy_function_op(
     name="builtins.slice",
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     c_function_name="PySlice_New",
@@ -201,7 +201,7 @@ new_slice_op = function_op(
 )
 
 # type(obj)
-type_op = function_op(
+type_op = legacy_function_op(
     name="builtins.type",
     arg_types=[object_rprimitive],
     c_function_name="PyObject_Type",

@@ -10,7 +10,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     str_rprimitive,
 )
-from mypyc.primitives.registry import binary_op, function_op, load_address_op
+from mypyc.primitives.registry import binary_op, legacy_function_op, load_address_op
 
 # Get the 'builtins.float' type object.
 load_address_op(name="builtins.float", type=object_rprimitive, src="PyFloat_Type")
@@ -24,7 +24,7 @@ binary_op(
 )
 
 # float(int)
-int_to_float_op = function_op(
+int_to_float_op = legacy_function_op(
     name="builtins.float",
     arg_types=[int_rprimitive],
     return_type=float_rprimitive,
@@ -33,7 +33,7 @@ int_to_float_op = function_op(
 )
 
 # float(str)
-function_op(
+legacy_function_op(
     name="builtins.float",
     arg_types=[str_rprimitive],
     return_type=object_rprimitive,
@@ -42,7 +42,7 @@ function_op(
 )
 
 # abs(float)
-function_op(
+legacy_function_op(
     name="builtins.abs",
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
@@ -51,7 +51,7 @@ function_op(
 )
 
 # math.sin(float)
-function_op(
+legacy_function_op(
     name="math.sin",
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
@@ -60,7 +60,7 @@ function_op(
 )
 
 # math.cos(float)
-function_op(
+legacy_function_op(
     name="math.cos",
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
@@ -69,7 +69,7 @@ function_op(
 )
 
 # math.tan(float)
-function_op(
+legacy_function_op(
     name="math.tan",
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
@@ -78,7 +78,7 @@ function_op(
 )
 
 # math.sqrt(float)
-function_op(
+legacy_function_op(
     name="math.sqrt",
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
@@ -87,7 +87,7 @@ function_op(
 )
 
 # math.exp(float)
-function_op(
+legacy_function_op(
     name="math.exp",
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
@@ -96,7 +96,7 @@ function_op(
 )
 
 # math.log(float)
-function_op(
+legacy_function_op(
     name="math.log",
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
@@ -105,7 +105,7 @@ function_op(
 )
 
 # math.floor(float)
-function_op(
+legacy_function_op(
     name="math.floor",
     arg_types=[float_rprimitive],
     return_type=int_rprimitive,
@@ -114,7 +114,7 @@ function_op(
 )
 
 # math.ceil(float)
-function_op(
+legacy_function_op(
     name="math.ceil",
     arg_types=[float_rprimitive],
     return_type=int_rprimitive,
@@ -123,7 +123,7 @@ function_op(
 )
 
 # math.fabs(float)
-function_op(
+legacy_function_op(
     name="math.fabs",
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
@@ -132,7 +132,7 @@ function_op(
 )
 
 # math.pow(float, float)
-pow_op = function_op(
+pow_op = legacy_function_op(
     name="math.pow",
     arg_types=[float_rprimitive, float_rprimitive],
     return_type=float_rprimitive,
@@ -141,7 +141,7 @@ pow_op = function_op(
 )
 
 # math.copysign(float, float)
-copysign_op = function_op(
+copysign_op = legacy_function_op(
     name="math.copysign",
     arg_types=[float_rprimitive, float_rprimitive],
     return_type=float_rprimitive,
@@ -150,7 +150,7 @@ copysign_op = function_op(
 )
 
 # math.isinf(float)
-function_op(
+legacy_function_op(
     name="math.isinf",
     arg_types=[float_rprimitive],
     return_type=bool_rprimitive,
@@ -159,7 +159,7 @@ function_op(
 )
 
 # math.isnan(float)
-function_op(
+legacy_function_op(
     name="math.isnan",
     arg_types=[float_rprimitive],
     return_type=bool_rprimitive,

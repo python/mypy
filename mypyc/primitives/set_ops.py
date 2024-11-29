@@ -14,7 +14,7 @@ from mypyc.ir.rtypes import (
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
-    function_op,
+    legacy_function_op,
     load_address_op,
     method_op,
 )
@@ -26,7 +26,7 @@ load_address_op(name="builtins.set", type=object_rprimitive, src="PySet_Type")
 load_address_op(name="builtins.frozenset", type=object_rprimitive, src="PyFrozenSet_Type")
 
 # Construct an empty set.
-new_set_op = function_op(
+new_set_op = legacy_function_op(
     name="builtins.set",
     arg_types=[],
     return_type=set_rprimitive,
@@ -36,7 +36,7 @@ new_set_op = function_op(
 )
 
 # set(obj)
-function_op(
+legacy_function_op(
     name="builtins.set",
     arg_types=[object_rprimitive],
     return_type=set_rprimitive,
@@ -45,7 +45,7 @@ function_op(
 )
 
 # frozenset(obj)
-function_op(
+legacy_function_op(
     name="builtins.frozenset",
     arg_types=[object_rprimitive],
     return_type=object_rprimitive,

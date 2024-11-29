@@ -148,7 +148,7 @@ def method_op(
     return desc
 
 
-def function_op(
+def legacy_function_op(
     name: str,
     arg_types: list[RType],
     return_type: RType,

@@ -35,7 +35,7 @@ from mypyc.primitives.registry import (
     CFunctionDescription,
     binary_op,
     custom_op,
-    function_op,
+    legacy_function_op,
     load_address_op,
     unary_op,
 )
@@ -58,7 +58,7 @@ for int_name in (
     load_address_op(name=int_name, type=object_rprimitive, src="PyLong_Type")
 
     # int(float). We could do a bit better directly.
-    function_op(
+    legacy_function_op(
         name=int_name,
         arg_types=[float_rprimitive],
         return_type=int_rprimitive,
@@ -67,7 +67,7 @@ for int_name in (
     )
 
     # int(string)
-    function_op(
+    legacy_function_op(
         name=int_name,
         arg_types=[str_rprimitive],
         return_type=object_rprimitive,
@@ -76,7 +76,7 @@ for int_name in (
     )
 
     # int(string, base)
-    function_op(
+    legacy_function_op(
         name=int_name,
         arg_types=[str_rprimitive, int_rprimitive],
         return_type=object_rprimitive,
@@ -85,7 +85,7 @@ for int_name in (
     )
 
 # str(int)
-int_to_str_op = function_op(
+int_to_str_op = legacy_function_op(
     name="builtins.str",
     arg_types=[int_rprimitive],
     return_type=str_rprimitive,
@@ -95,7 +95,7 @@ int_to_str_op = function_op(
 )
 
 # We need a specialization for str on bools also since the int one is wrong...
-function_op(
+legacy_function_op(
     name="builtins.str",
     arg_types=[bool_rprimitive],
     return_type=str_rprimitive,
