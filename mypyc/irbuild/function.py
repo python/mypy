@@ -433,7 +433,9 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
 
         # Set the callable object representing the decorated method as an attribute of the
         # extension class.
-        builder.primitive_op(py_setattr_op, [typ, builder.load_str(name), decorated_func], fdef.line)
+        builder.primitive_op(
+            py_setattr_op, [typ, builder.load_str(name), decorated_func], fdef.line
+        )
 
     if fdef.is_property:
         # If there is a property setter, it will be processed after the getter,
