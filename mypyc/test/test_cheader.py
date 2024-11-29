@@ -37,7 +37,7 @@ class TestHeaderInclusion(unittest.TestCase):
                 for old_op in old_ops:
                     check_name(old_op.c_function_name)
 
-        for values in [registry.binary_ops.values()]:
+        for values in [registry.binary_ops.values(), registry.function_ops.values()]:
             for ops in values:
                 if isinstance(ops, PrimitiveDescription):
                     ops = [ops]
