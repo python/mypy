@@ -26,7 +26,7 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
-    legacy_function_op,
+    function_op,
     method_op,
     unary_op,
 )
@@ -76,7 +76,7 @@ for op, funcname in [
     )
 
 
-legacy_function_op(
+function_op(
     name="builtins.divmod",
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
@@ -120,7 +120,7 @@ for op, c_function in (("**", "CPyNumber_Power"), ("**=", "CPyNumber_InPlacePowe
     )
 
 for arg_count, c_function in ((2, "CPyNumber_Power"), (3, "PyNumber_Power")):
-    legacy_function_op(
+    function_op(
         name="builtins.pow",
         arg_types=[object_rprimitive] * arg_count,
         return_type=object_rprimitive,
@@ -168,7 +168,7 @@ unary_op(
 )
 
 # abs(obj)
-legacy_function_op(
+function_op(
     name="builtins.abs",
     arg_types=[object_rprimitive],
     return_type=object_rprimitive,
@@ -208,7 +208,7 @@ method_op(
 )
 
 # hash(obj)
-legacy_function_op(
+function_op(
     name="builtins.hash",
     arg_types=[object_rprimitive],
     return_type=int_rprimitive,
@@ -217,7 +217,7 @@ legacy_function_op(
 )
 
 # getattr(obj, attr)
-py_getattr_op = legacy_function_op(
+py_getattr_op = function_op(
     name="builtins.getattr",
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
@@ -226,7 +226,7 @@ py_getattr_op = legacy_function_op(
 )
 
 # getattr(obj, attr, default)
-legacy_function_op(
+function_op(
     name="builtins.getattr",
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
@@ -235,7 +235,7 @@ legacy_function_op(
 )
 
 # setattr(obj, attr, value)
-py_setattr_op = legacy_function_op(
+py_setattr_op = function_op(
     name="builtins.setattr",
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
@@ -244,7 +244,7 @@ py_setattr_op = legacy_function_op(
 )
 
 # hasattr(obj, attr)
-py_hasattr_op = legacy_function_op(
+py_hasattr_op = function_op(
     name="builtins.hasattr",
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=bool_rprimitive,
@@ -253,7 +253,7 @@ py_hasattr_op = legacy_function_op(
 )
 
 # del obj.attr
-py_delattr_op = legacy_function_op(
+py_delattr_op = function_op(
     name="builtins.delattr",
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
@@ -336,7 +336,7 @@ generic_ssize_t_len_op = custom_op(
 )
 
 # iter(obj)
-iter_op = legacy_function_op(
+iter_op = function_op(
     name="builtins.iter",
     arg_types=[object_rprimitive],
     return_type=object_rprimitive,
