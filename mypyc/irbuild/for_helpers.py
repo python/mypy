@@ -586,7 +586,7 @@ class ForIterable(ForGenerator):
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
         builder = self.builder
-        iter_reg = builder.call_c(iter_op, [expr_reg], self.line)
+        iter_reg = builder.primitive_op(iter_op, [expr_reg], self.line)
         builder.maybe_spill(expr_reg)
         self.iter_target = builder.maybe_spill(iter_reg)
         self.target_type = target_type

@@ -292,7 +292,7 @@ class ExtClassBuilder(ClassBuilder):
             return
         typ = self.builder.load_native_type_object(self.cdef.fullname)
         value = self.builder.accept(stmt.rvalue)
-        self.builder.call_c(
+        self.builder.primitive_op(
             py_setattr_op, [typ, self.builder.load_str(lvalue.name), value], stmt.line
         )
         if self.builder.non_function_scope() and stmt.is_final_def:
@@ -452,7 +452,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
             )
         )
     # Populate a '__mypyc_attrs__' field containing the list of attrs
-    builder.call_c(
+    builder.primitive_op(
         py_setattr_op,
         [
             tp,
@@ -483,7 +483,7 @@ def make_generic_base_class(
     for tv, type_param in zip(tvs, type_args):
         if type_param.kind == TYPE_VAR_TUPLE_KIND:
             # Evaluate *Ts for a TypeVarTuple
-            it = builder.call_c(iter_op, [tv], line)
+            it = builder.primitive_op(iter_op, [tv], line)
             tv = builder.call_c(next_op, [it], line)
         args.append(tv)
 
@@ -603,7 +603,7 @@ def setup_non_ext_dict(
     This class dictionary is passed to the metaclass constructor.
     """
     # Check if the metaclass defines a __prepare__ method, and if so, call it.
-    has_prepare = builder.call_c(
+    has_prepare = builder.primitive_op(
         py_hasattr_op, [metaclass, builder.load_str("__prepare__")], cdef.line
     )
 

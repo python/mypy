@@ -620,7 +620,7 @@ class LowLevelIRBuilder:
         Prefer get_attr() which generates optimized code for native classes.
         """
         key = self.load_str(attr)
-        return self.call_c(py_getattr_op, [obj, key], line)
+        return self.primitive_op(py_getattr_op, [obj, key], line)
 
     # isinstance() checks
 
@@ -656,7 +656,9 @@ class LowLevelIRBuilder:
         """
         concrete = all_concrete_classes(class_ir)
         if concrete is None or len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
-            return self.call_c(fast_isinstance_op, [obj, self.get_native_type(class_ir)], line)
+            return self.primitive_op(
+                fast_isinstance_op, [obj, self.get_native_type(class_ir)], line
+            )
         if not concrete:
             # There can't be any concrete instance that matches this.
             return self.false()
@@ -857,7 +859,7 @@ class LowLevelIRBuilder:
             if star_result is None:
                 star_result = self.new_tuple(star_values, line)
             else:
-                star_result = self.call_c(list_tuple_op, [star_result], line)
+                star_result = self.primitive_op(list_tuple_op, [star_result], line)
         if has_star2 and star2_result is None:
             star2_result = self._create_dict(star2_keys, star2_values, line)
 
@@ -1515,7 +1517,7 @@ class LowLevelIRBuilder:
             # Cast to bool if necessary since most types uses comparison returning a object type
             # See generic_ops.py for more information
             if not is_bool_rprimitive(compare.type):
-                compare = self.call_c(bool_op, [compare], line)
+                compare = self.primitive_op(bool_op, [compare], line)
             if i < len(lhs.type.types) - 1:
                 branch = Branch(compare, early_stop, check_blocks[i + 1], Branch.BOOL)
             else:
@@ -1534,7 +1536,7 @@ class LowLevelIRBuilder:
     def translate_instance_contains(self, inst: Value, item: Value, op: str, line: int) -> Value:
         res = self.gen_method_call(inst, "__contains__", [item], None, line)
         if not is_bool_rprimitive(res.type):
-            res = self.call_c(bool_op, [res], line)
+            res = self.primitive_op(bool_op, [res], line)
         if op == "not in":
             res = self.bool_bitwise_op(res, Integer(1, rtype=bool_rprimitive), "^", line)
         return res
@@ -1667,7 +1669,7 @@ class LowLevelIRBuilder:
         return result_list
 
     def new_set_op(self, values: list[Value], line: int) -> Value:
-        return self.call_c(new_set_op, values, line)
+        return self.primitive_op(new_set_op, values, line)
 
     def setup_rarray(
         self, item_type: RType, values: Sequence[Value], *, object_ptr: bool = False
@@ -1775,7 +1777,7 @@ class LowLevelIRBuilder:
                     self.goto(end)
                     self.activate_block(end)
             else:
-                result = self.call_c(bool_op, [value], value.line)
+                result = self.primitive_op(bool_op, [value], value.line)
         return result
 
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
@@ -2065,7 +2067,7 @@ class LowLevelIRBuilder:
         self.activate_block(copysign)
         # If the remainder is zero, CPython ensures the result has the
         # same sign as the denominator.
-        adj = self.call_c(copysign_op, [Float(0.0), rhs], line)
+        adj = self.primitive_op(copysign_op, [Float(0.0), rhs], line)
         self.add(Assign(res, adj))
         self.add(Goto(done))
         self.activate_block(done)
@@ -2260,7 +2262,7 @@ class LowLevelIRBuilder:
         return self.call_c(new_tuple_with_length_op, [length], line)
 
     def int_to_float(self, n: Value, line: int) -> Value:
-        return self.call_c(int_to_float_op, [n], line)
+        return self.primitive_op(int_to_float_op, [n], line)
 
     # Internal helpers
 

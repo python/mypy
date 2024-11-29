@@ -84,6 +84,7 @@ from mypyc.ir.ops import (
     IntOp,
     LoadStatic,
     Op,
+    PrimitiveDescription,
     RaiseStandardError,
     Register,
     SetAttr,
@@ -380,6 +381,9 @@ class IRBuilder:
 
     def call_c(self, desc: CFunctionDescription, args: list[Value], line: int) -> Value:
         return self.builder.call_c(desc, args, line)
+
+    def primitive_op(self, desc: PrimitiveDescription, args: list[Value], line: int) -> Value:
+        return self.builder.primitive_op(desc, args, line)
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.builder.int_op(type, lhs, rhs, op, line)
@@ -691,7 +695,7 @@ class IRBuilder:
             else:
                 key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
-                self.call_c(py_setattr_op, [target.obj, key, boxed_reg], line)
+                self.primitive_op(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.gen_method_call(
                 target.base, "__setitem__", [target.index, rvalue_reg], None, line
@@ -768,7 +772,7 @@ class IRBuilder:
     def process_iterator_tuple_assignment(
         self, target: AssignmentTargetTuple, rvalue_reg: Value, line: int
     ) -> None:
-        iterator = self.call_c(iter_op, [rvalue_reg], line)
+        iterator = self.primitive_op(iter_op, [rvalue_reg], line)
 
         # This may be the whole lvalue list if there is no starred value
         split_idx = target.star_idx if target.star_idx is not None else len(target.items)
@@ -794,7 +798,7 @@ class IRBuilder:
         # Assign the starred value and all values after it
         if target.star_idx is not None:
             post_star_vals = target.items[split_idx + 1 :]
-            iter_list = self.call_c(to_list, [iterator], line)
+            iter_list = self.primitive_op(to_list, [iterator], line)
             iter_list_len = self.builtin_len(iter_list, line)
             post_star_len = Integer(len(post_star_vals))
             condition = self.binary_op(post_star_len, iter_list_len, "<=", line)
@@ -1051,9 +1055,9 @@ class IRBuilder:
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname and expr.arg_kinds == [ARG_POS] * len(arg_values):
             fullname = get_call_target_fullname(callee)
-            call_c_ops_candidates = function_ops.get(fullname, [])
-            target = self.builder.matching_call_c(
-                call_c_ops_candidates, arg_values, expr.line, self.node_type(expr)
+            primitive_candidates = function_ops.get(fullname, [])
+            target = self.builder.matching_primitive_op(
+                primitive_candidates, arg_values, expr.line, self.node_type(expr)
             )
             if target:
                 return target
