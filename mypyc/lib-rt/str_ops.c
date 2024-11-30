@@ -243,3 +243,13 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
         return NULL;
     }
 }
+
+CPyTagged CPy_Ordinal(PyObject *str) {
+    Py_ssize_t size = PyUnicode_GET_LENGTH(str);
+    if (size != 1) {
+        PyErr_Format(PyExc_TypeError,
+                     "ord() expected a character, but string of length %zd found", size);
+        return CPY_INT_TAG;
+    }
+    return PyUnicode_READ_CHAR(str, 0) << 1;
+}

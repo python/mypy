@@ -310,3 +310,44 @@ L0:
     r4 = 'backslashreplace'
     r5 = CPy_Encode(s, r3, r4)
     return 1
+
+[case testToAndFromOrdinal_64bit]
+def to(s: str) -> int:
+    return ord(s)
+def from_(i: int) -> str:
+    return chr(i)
+[out]
+def to(s):
+    s :: str
+    r0 :: int
+L0:
+    r0 = CPy_Ordinal(s)
+    return r0
+def from_(i):
+    i :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6 :: i32
+    r7 :: str
+L0:
+    r0 = i & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = i < 4294967296 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = i >= -4294967296 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = i >> 1
+    r5 = truncate r4: native_int to i32
+    r6 = r5
+    goto L5
+L4:
+    CPyInt32_Overflow()
+    unreachable
+L5:
+    r7 = PyUnicode_FromOrdinal(r6)
+    return r7
