@@ -276,7 +276,9 @@ class TransformVisitor(NodeVisitor[Node]):
         return NonlocalDecl(node.names.copy())
 
     def visit_block(self, node: Block) -> Block:
-        return Block(self.statements(node.body))
+        new = Block(self.statements(node.body))
+        new.is_unreachable = node.is_unreachable
+        return new
 
     def visit_decorator(self, node: Decorator) -> Decorator:
         # Note that a Decorator must be transformed to a Decorator.
