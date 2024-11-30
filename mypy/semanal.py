@@ -1862,7 +1862,12 @@ class SemanticAnalyzer(
                     analyzed = self.anal_type(value, allow_placeholder=True)
                     if analyzed is None:
                         analyzed = PlaceholderType(None, [], context.line)
-                    values.append(analyzed)
+                    # has_no_typevars does not work with PlaceholderType.
+                    if not has_placeholder(analyzed) and not has_no_typevars(analyzed):
+                        self.fail(message_registry.TYPE_VAR_GENERIC_CONSTRAINT_TYPE, context)
+                        values.append(AnyType(TypeOfAny.from_error))
+                    else:
+                        values.append(analyzed)
             return TypeVarExpr(
                 name=type_param.name,
                 fullname=fullname,
@@ -5047,9 +5052,7 @@ class SemanticAnalyzer(
 
                 # has_no_typevars does not work with PlaceholderType.
                 if not has_placeholder(analyzed) and not has_no_typevars(analyzed):
-                    self.fail(
-                        "TypeVar constraint type cannot be parametrized by type variables", node
-                    )
+                    self.fail(message_registry.TYPE_VAR_GENERIC_CONSTRAINT_TYPE, node)
                     result.append(AnyType(TypeOfAny.from_error))
                 else:
                     result.append(analyzed)
