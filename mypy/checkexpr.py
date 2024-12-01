@@ -181,6 +181,7 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
     has_recursive_types,
+    has_type_vars,
     is_named_instance,
     split_with_prefix_and_suffix,
 )
@@ -6350,23 +6351,7 @@ class ArgInferSecondPassQuery(types.BoolTypeQuery):
 
     def visit_callable_type(self, t: CallableType) -> bool:
         # TODO: we need to check only for type variables of original callable.
-        return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
-
-
-class HasTypeVarQuery(types.BoolTypeQuery):
-    """Visitor for querying whether a type has a type variable component."""
-
-    def __init__(self) -> None:
-        super().__init__(types.ANY_STRATEGY)
-
-    def visit_type_var(self, t: TypeVarType) -> bool:
-        return True
-
-    def visit_param_spec(self, t: ParamSpecType) -> bool:
-        return True
-
-    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
-        return True
+        return self.query_types(t.arg_types) or has_type_vars(t)
 
 
 def has_erased_component(t: Type | None) -> bool:
