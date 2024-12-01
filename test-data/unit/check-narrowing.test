@@ -2353,8 +2353,7 @@ def fn_while(arg: T) -> None:
     return None
 [builtins fixtures/primitives.pyi]
 
-
-[case testNarrowingIsinstanceCreatesUnion]
+[case testNarrowingInstancesCreatesUnion]
 
 class A: ...
 class B(A): y: int

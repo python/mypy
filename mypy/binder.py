@@ -10,7 +10,6 @@ from mypy.join import join_simple
 from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
 from mypy.subtypes import is_same_type, is_subtype
-from mypy.typeops import make_simplified_union
 from mypy.types import (
     AnyType,
     Instance,
@@ -238,22 +237,8 @@ class ConditionalTypeBinder:
                     type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
                 for other in resulting_values[1:]:
-
                     assert other is not None
-
-                    if (
-                        isinstance(t1 := get_proper_type(type), TupleType)
-                        and isinstance(t2 := get_proper_type(other.type), TupleType)
-                        and (len(l1 := t1.items) == len(l2 := t2.items))
-                        and (find_unpack_in_list(l1) is None)
-                        and (find_unpack_in_list(l2) is None)
-                    ):
-                        type = t1.copy_modified(
-                            items=[make_simplified_union([i1, i2]) for i1, i2 in zip(l1, l2)]
-                        )
-                    else:
-                        type = make_simplified_union([type, other.type])
-
+                    type = join_simple(self.declarations[key], type, other.type)
                     # Try simplifying resulting type for unions involving variadic tuples.
                     # Technically, everything is still valid without this step, but if we do
                     # not do this, this may create long unions after exiting an if check like:

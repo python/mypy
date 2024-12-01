@@ -17,6 +17,7 @@ from mypy.subtypes import (
     is_protocol_implementation,
     is_subtype,
 )
+from mypy.typeops import make_simplified_union
 from mypy.types import (
     AnyType,
     CallableType,
@@ -54,7 +55,8 @@ from mypy.types import (
 
 
 class InstanceJoiner:
-    def __init__(self) -> None:
+    def __init__(self, prefer_union_over_supertype: bool = False) -> None:
+        self.prefer_union_over_supertype: bool = prefer_union_over_supertype
         self.seen_instances: list[tuple[Instance, Instance]] = []
 
     def join_instances(self, t: Instance, s: Instance) -> ProperType:
@@ -164,6 +166,9 @@ class InstanceJoiner:
             if is_subtype(p, t):
                 return join_types(t, p, self)
 
+        if self.prefer_union_over_supertype:
+            return make_simplified_union([t, s])
+
         # Compute the "best" supertype of t when joined with s.
         # The definition of "best" may evolve; for now it is the one with
         # the longest MRO.  Ties are broken by using the earlier base.
@@ -224,7 +229,9 @@ def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
     if isinstance(s, UnionType) and not isinstance(t, UnionType):
         s, t = t, s
 
-    value = t.accept(TypeJoinVisitor(s))
+    value = t.accept(
+        TypeJoinVisitor(s, instance_joiner=InstanceJoiner(prefer_union_over_supertype=True))
+    )
     if declaration is None or is_subtype(value, declaration):
         return value
 
