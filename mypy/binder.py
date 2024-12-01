@@ -6,7 +6,6 @@ from typing import DefaultDict, Iterator, List, NamedTuple, Optional, Tuple, Uni
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
-from mypy.join import join_simple
 from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
 from mypy.subtypes import is_same_type, is_subtype
