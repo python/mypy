@@ -806,8 +806,7 @@ class JoinSuite(Suite):
             self.fx.anyt,
             self.fx.a,
             self.fx.o,
-            # TODO: fix this is not currently symmetric
-            # NoneType(),
+            NoneType(),
             UnboundType("x"),
             self.fx.t,
             self.tuple(),
@@ -1177,8 +1176,7 @@ class MeetSuite(Suite):
             self.assert_meet(self.fx.o, NoneType(), NoneType())
             for t in [
                 self.fx.a,
-                # TODO: fix this is not currently symmetric
-                # UnboundType("x"),
+                UnboundType("x"),
                 self.fx.t,
                 self.tuple(),
                 self.callable(self.fx.a, self.fx.b),
