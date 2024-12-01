@@ -4,10 +4,10 @@ def merge_sort_files(file_input, file_output):
     # Read input file
     with open(file_input, 'r') as f:
         arr = list(map(int, f.read().split()))
-    
+
     # Sort the array
     arr = merge_sort(arr)
-    
+
     # Write sorted data to the output file
     with open(file_output, 'w') as f:
         f.write(" ".join(map(str, arr)))
@@ -15,11 +15,11 @@ def merge_sort_files(file_input, file_output):
 def merge_sort(arr):
     if len(arr) <= 1:
         return arr
-    
+
     mid = len(arr) // 2
     left_half = merge_sort(arr[:mid])
     right_half = merge_sort(arr[mid:])
-    
+
     return merge(left_half, right_half)
 
 def merge(left, right):
