@@ -290,12 +290,13 @@ from mypy.types import (
     UnpackType,
     get_proper_type,
     get_proper_types,
+    has_type_vars,
     is_named_instance,
     remove_dups,
     type_vars_as_args,
 )
 from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
-from mypy.typevars import fill_typevars, has_no_typevars
+from mypy.typevars import fill_typevars
 from mypy.util import correct_relative_import, is_dunder, module_prefix, unmangle, unnamed_function
 from mypy.visitor import NodeVisitor
 
@@ -1856,14 +1857,13 @@ class SemanticAnalyzer(
         else:
             default = AnyType(TypeOfAny.from_omitted_generics)
         if type_param.kind == TYPE_VAR_KIND:
-            values = []
+            values: list[Type] = []
             if type_param.values:
                 for value in type_param.values:
                     analyzed = self.anal_type(value, allow_placeholder=True)
                     if analyzed is None:
                         analyzed = PlaceholderType(None, [], context.line)
-                    # has_no_typevars does not work with PlaceholderType.
-                    if not has_placeholder(analyzed) and not has_no_typevars(analyzed):
+                    if has_type_vars(analyzed):
                         self.fail(message_registry.TYPE_VAR_GENERIC_CONSTRAINT_TYPE, context)
                         values.append(AnyType(TypeOfAny.from_error))
                     else:
@@ -5049,9 +5049,7 @@ class SemanticAnalyzer(
                     # soon, even if some value is not ready yet, see process_typevar_parameters()
                     # for an example.
                     analyzed = PlaceholderType(None, [], node.line)
-
-                # has_no_typevars does not work with PlaceholderType.
-                if not has_placeholder(analyzed) and not has_no_typevars(analyzed):
+                if has_type_vars(analyzed):
                     self.fail(message_registry.TYPE_VAR_GENERIC_CONSTRAINT_TYPE, node)
                     result.append(AnyType(TypeOfAny.from_error))
                 else:
