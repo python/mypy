@@ -17,7 +17,6 @@ from mypy.subtypes import (
     is_protocol_implementation,
     is_subtype,
 )
-from mypy.typeops import make_simplified_union
 from mypy.types import (
     AnyType,
     CallableType,
@@ -167,7 +166,7 @@ class InstanceJoiner:
                 return join_types(t, p, self)
 
         if self.prefer_union_over_supertype:
-            return make_simplified_union([t, s])
+            return mypy.typeops.make_simplified_union([t, s])
 
         # Compute the "best" supertype of t when joined with s.
         # The definition of "best" may evolve; for now it is the one with
