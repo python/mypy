@@ -1939,7 +1939,7 @@ class LowLevelIRBuilder:
                 desc.priority,
                 is_pure=desc.is_pure,
             )
-            return self.call_c(c_desc, args, line, result_type)
+            return self.call_c(c_desc, args, line, result_type=result_type)
 
         # This primitive gets transformed in a lowering pass to
         # lower-level IR ops using a custom transform function.
@@ -2005,7 +2005,7 @@ class LowLevelIRBuilder:
                 else:
                     matching = desc
         if matching:
-            return self.primitive_op(matching, args, line=line)
+            return self.primitive_op(matching, args, line=line, result_type=result_type)
         return None
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> Value:
