@@ -59,8 +59,14 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.namegen import NameGenerator
-from mypyc.primitives.dict_ops import dict_new_op
+from mypyc.primitives.dict_ops import (
+    dict_get_item_op,
+    dict_new_op,
+    dict_set_item_op,
+    dict_update_op,
+)
 from mypyc.primitives.int_ops import int_neg_op
+from mypyc.primitives.list_ops import list_append_op, list_get_item_op, list_set_item_op
 from mypyc.primitives.misc_ops import none_object_op
 from mypyc.primitives.registry import binary_ops
 from mypyc.subtype import is_subtype
@@ -294,6 +300,34 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dec_ref_tuple_nested(self) -> None:
         self.assert_emit(DecRef(self.tt), "CPyTagged_DECREF(cpy_r_tt.f0.f0);")
 
+    def test_list_get_item(self) -> None:
+        self.assert_emit(
+            CallC(
+                str(list_get_item_op.c_function_name),
+                [self.m, self.k],
+                list_get_item_op.return_type,
+                list_get_item_op.steals,
+                list_get_item_op.is_borrowed,
+                list_get_item_op.error_kind,
+                55,
+            ),
+            """cpy_r_r0 = CPyList_GetItem(cpy_r_m, cpy_r_k);""",
+        )
+
+    def test_list_set_item(self) -> None:
+        self.assert_emit(
+            CallC(
+                str(list_set_item_op.c_function_name),
+                [self.l, self.n, self.o],
+                list_set_item_op.return_type,
+                list_set_item_op.steals,
+                list_set_item_op.is_borrowed,
+                list_set_item_op.error_kind,
+                55,
+            ),
+            """cpy_r_r0 = CPyList_SetItem(cpy_r_l, cpy_r_n, cpy_r_o);""",
+        )
+
     def test_box_int(self) -> None:
         self.assert_emit(Box(self.n), """cpy_r_r0 = CPyTagged_StealAsObject(cpy_r_n);""")
 
@@ -314,6 +348,20 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_unbox_i64(self) -> None:
         self.assert_emit(
             Unbox(self.o, int64_rprimitive, 55), """cpy_r_r0 = CPyLong_AsInt64(cpy_r_o);"""
+        )
+
+    def test_list_append(self) -> None:
+        self.assert_emit(
+            CallC(
+                str(list_append_op.c_function_name),
+                [self.l, self.o],
+                list_append_op.return_type,
+                list_append_op.steals,
+                list_append_op.is_borrowed,
+                list_append_op.error_kind,
+                1,
+            ),
+            """cpy_r_r0 = PyList_Append(cpy_r_l, cpy_r_o);""",
         )
 
     def test_get_attr(self) -> None:
@@ -440,6 +488,48 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                ((mod___AObject *)cpy_r_r)->_i1 = cpy_r_i64;
                cpy_r_r0 = 1;
             """,
+        )
+
+    def test_dict_get_item(self) -> None:
+        self.assert_emit(
+            CallC(
+                str(dict_get_item_op.c_function_name),
+                [self.d, self.o2],
+                dict_get_item_op.return_type,
+                dict_get_item_op.steals,
+                dict_get_item_op.is_borrowed,
+                dict_get_item_op.error_kind,
+                1,
+            ),
+            """cpy_r_r0 = CPyDict_GetItem(cpy_r_d, cpy_r_o2);""",
+        )
+
+    def test_dict_set_item(self) -> None:
+        self.assert_emit(
+            CallC(
+                str(dict_set_item_op.c_function_name),
+                [self.d, self.o, self.o2],
+                dict_set_item_op.return_type,
+                dict_set_item_op.steals,
+                dict_set_item_op.is_borrowed,
+                dict_set_item_op.error_kind,
+                1,
+            ),
+            """cpy_r_r0 = CPyDict_SetItem(cpy_r_d, cpy_r_o, cpy_r_o2);""",
+        )
+
+    def test_dict_update(self) -> None:
+        self.assert_emit(
+            CallC(
+                str(dict_update_op.c_function_name),
+                [self.d, self.o],
+                dict_update_op.return_type,
+                dict_update_op.steals,
+                dict_update_op.is_borrowed,
+                dict_update_op.error_kind,
+                1,
+            ),
+            """cpy_r_r0 = CPyDict_Update(cpy_r_d, cpy_r_o);""",
         )
 
     def test_new_dict(self) -> None:
