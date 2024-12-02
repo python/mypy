@@ -607,12 +607,17 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         # * Joining with any Sequence also returns a Sequence:
         #   Tuple[int, bool] + List[bool] becomes Sequence[int]
         if isinstance(self.s, TupleType):
+
             if self.instance_joiner is None:
                 self.instance_joiner = InstanceJoiner()
+            prefer_union = self.instance_joiner.prefer_union_over_supertype
+            self.instance_joiner.prefer_union_over_supertype = False
             fallback = self.instance_joiner.join_instances(
                 mypy.typeops.tuple_fallback(self.s), mypy.typeops.tuple_fallback(t)
             )
-            assert isinstance(fallback, Instance), f"s = {self.s}, t = {t}, f = {fallback}"
+            assert isinstance(fallback, Instance)
+            self.instance_joiner.prefer_union_over_supertype = prefer_union
+
             items = self.join_tuples(self.s, t)
             if items is not None:
                 return TupleType(items, fallback)
