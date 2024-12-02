@@ -10,6 +10,7 @@ import math
 from typing import Callable, Sequence
 
 from mypy.nodes import (
+    ARG_NAMED,
     ARG_POS,
     LDEF,
     AssertTypeExpr,
@@ -355,6 +356,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         and isinstance(callee.expr.node, TypeInfo)
         and callee.expr.node in builder.mapper.type_to_ir
         and builder.mapper.type_to_ir[callee.expr.node].has_method(callee.name)
+        and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
     ):
         # Call a method via the *class*
         assert isinstance(callee.expr.node, TypeInfo)
