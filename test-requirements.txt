@@ -4,58 +4,62 @@
 #
 #    pip-compile --allow-unsafe --output-file=test-requirements.txt --strip-extras test-requirements.in
 #
-attrs==23.1.0
+attrs==24.2.0
     # via -r test-requirements.in
-black==24.3.0
-    # via -r test-requirements.in
-click==8.1.7
-    # via black
-coverage==7.3.2
+cfgv==3.4.0
+    # via pre-commit
+coverage==7.6.1
     # via pytest-cov
-execnet==2.0.2
+distlib==0.3.9
+    # via virtualenv
+execnet==2.1.1
     # via pytest-xdist
-filelock==3.12.4
-    # via -r test-requirements.in
+filelock==3.16.1
+    # via
+    #   -r test-requirements.in
+    #   virtualenv
+identify==2.6.1
+    # via pre-commit
 iniconfig==2.0.0
     # via pytest
 lxml==4.9.2 ; (python_version < "3.11" or sys_platform != "win32") and python_version < "3.12"
     # via -r test-requirements.in
 mypy-extensions==1.0.0
-    # via
-    #   -r mypy-requirements.txt
-    #   black
-packaging==23.2
-    # via
-    #   black
-    #   pytest
-pathspec==0.11.2
-    # via black
-platformdirs==3.11.0
-    # via black
-pluggy==1.4.0
+    # via -r mypy-requirements.txt
+nodeenv==1.9.1
+    # via pre-commit
+packaging==24.1
     # via pytest
-psutil==5.9.6
+platformdirs==4.3.6
+    # via virtualenv
+pluggy==1.5.0
+    # via pytest
+pre-commit==3.5.0
     # via -r test-requirements.in
-pytest==8.1.1
+psutil==6.0.0
+    # via -r test-requirements.in
+pytest==8.3.3
     # via
     #   -r test-requirements.in
     #   pytest-cov
     #   pytest-xdist
-pytest-cov==4.1.0
+pytest-cov==5.0.0
     # via -r test-requirements.in
-pytest-xdist==3.3.1
+pytest-xdist==3.6.1
     # via -r test-requirements.in
-ruff==0.2.0
+pyyaml==6.0.2
+    # via pre-commit
+tomli==2.0.2
     # via -r test-requirements.in
-tomli==2.0.1
-    # via -r test-requirements.in
-types-psutil==5.9.5.17
+types-psutil==6.0.0.20241011
     # via -r build-requirements.txt
-types-setuptools==68.2.0.0
+types-setuptools==75.1.0.20241014
     # via -r build-requirements.txt
 typing-extensions==4.12.2
     # via -r mypy-requirements.txt
+virtualenv==20.26.6
+    # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==70.0.0
+setuptools==75.1.0
     # via -r test-requirements.in

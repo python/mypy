@@ -96,6 +96,10 @@ Optional arguments
 
     Show program's version number and exit.
 
+.. option:: -O FORMAT, --output FORMAT {json}
+
+    Set a custom output format.
+
 .. _config-file-flag:
 
 Config file
@@ -420,11 +424,11 @@ The following flags adjust how mypy handles values of type ``None``.
 
 .. option:: --implicit-optional
 
-    This flag causes mypy to treat arguments with a ``None``
-    default value as having an implicit :py:data:`~typing.Optional` type.
+    This flag causes mypy to treat parameters with a ``None``
+    default value as having an implicit optional type (``T | None``).
 
     For example, if this flag is set, mypy would assume that the ``x``
-    parameter is actually of type ``Optional[int]`` in the code snippet below
+    parameter is actually of type ``int | None`` in the code snippet below,
     since the default parameter is ``None``:
 
     .. code-block:: python
@@ -438,7 +442,7 @@ The following flags adjust how mypy handles values of type ``None``.
 
 .. option:: --no-strict-optional
 
-    This flag effectively disables checking of :py:data:`~typing.Optional`
+    This flag effectively disables checking of optional
     types and ``None`` values. With this option, mypy doesn't
     generally check the use of ``None`` values -- it is treated
     as compatible with every type.
@@ -533,6 +537,12 @@ potentially problematic or redundant in some way.
 
         This limitation will be removed in future releases of mypy.
 
+.. option:: --report-deprecated-as-error
+
+    By default, mypy emits notes if your code imports or uses deprecated
+    features.    This flag converts such notes to errors, causing mypy to
+    eventually finish with a non-zero exit code.  Features are considered
+    deprecated when decorated with ``warnings.deprecated``.
 
 .. _miscellaneous-strictness-flags:
 
@@ -575,26 +585,24 @@ of the above sections.
 .. option:: --local-partial-types
 
     In mypy, the most common cases for partial types are variables initialized using ``None``,
-    but without explicit ``Optional`` annotations. By default, mypy won't check partial types
+    but without explicit ``X | None`` annotations. By default, mypy won't check partial types
     spanning module top level or class top level. This flag changes the behavior to only allow
     partial types at local level, therefore it disallows inferring variable type for ``None``
     from two assignments in different scopes. For example:
 
     .. code-block:: python
 
-        from typing import Optional
-
         a = None  # Need type annotation here if using --local-partial-types
-        b: Optional[int] = None
+        b: int | None = None
 
         class Foo:
             bar = None  # Need type annotation here if using --local-partial-types
-            baz: Optional[int] = None
+            baz: int | None = None
 
             def __init__(self) -> None:
                 self.bar = 1
 
-        reveal_type(Foo().bar)  # Union[int, None] without --local-partial-types
+        reveal_type(Foo().bar)  # 'int | None' without --local-partial-types
 
     Note: this option is always implicitly enabled in mypy daemon and will become
     enabled by default for mypy in a future release.
@@ -630,13 +638,11 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import Text
-
        items: list[int]
        if 'some string' in items:  # Error: non-overlapping container check!
            ...
 
-       text: Text
+       text: str
        if text != b'other bytes':  # Error: non-overlapping equality check!
            ...
 
@@ -1008,7 +1014,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature {PreciseTupleTypes}
+.. option:: --enable-incomplete-feature {PreciseTupleTypes, InlineTypedDict}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
@@ -1054,19 +1060,6 @@ List of currently incomplete/experimental features:
          reveal_type(numbers)
          # Without PreciseTupleTypes: tuple[int, ...]
          # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
-
-* ``NewGenericSyntax``: this feature enables support for syntax defined
-  by :pep:`695`. For example:
-
-  .. code-block:: python
-
-     class Container[T]:  # defines a generic class
-         content: T
-
-     def first[T](items: list[T]) -> T:  # defines a generic function
-         return items[0]
-
-     type Items[T] = list[tuple[T, T]]  # defines a generic type alias
 
 * ``InlineTypedDict``: this feature enables non-standard syntax for inline
   :ref:`TypedDicts <typeddict>`, for example:

@@ -21,8 +21,9 @@ problems you may encounter.
 String literal types and type comments
 --------------------------------------
 
-Mypy allows you to add type annotations using ``# type:`` type comments.
-For example:
+Mypy lets you add type annotations using the (now deprecated) ``# type:``
+type comment syntax. These were required with Python versions older than 3.6,
+since they didn't support type annotations on variables. Example:
 
 .. code-block:: python
 
@@ -69,7 +70,7 @@ Future annotations import (PEP 563)
 -----------------------------------
 
 Many of the issues described here are caused by Python trying to evaluate
-annotations. Future Python versions (potentially Python 3.12) will by default no
+annotations. Future Python versions (potentially Python 3.14) will by default no
 longer attempt to evaluate function and variable annotations. This behaviour is
 made available in Python 3.7 and later through the use of
 ``from __future__ import annotations``.
@@ -84,7 +85,7 @@ required to be valid Python syntax. For more details, see :pep:`563`.
     still require string literals or result in errors, typically involving use
     of forward references or generics in:
 
-    * :ref:`type aliases <type-aliases>`;
+    * :ref:`type aliases <type-aliases>` not defined using the ``type`` statement;
     * :ref:`type narrowing <type-narrowing>`;
     * type definitions (see :py:class:`~typing.TypeVar`, :py:class:`~typing.NewType`, :py:class:`~typing.NamedTuple`);
     * base classes.
@@ -93,6 +94,7 @@ required to be valid Python syntax. For more details, see :pep:`563`.
 
         # base class example
         from __future__ import annotations
+
         class A(tuple['B', 'C']): ... # String literal types needed here
         class B: ...
         class C: ...
@@ -244,7 +246,8 @@ complicated and you need to use :ref:`typing.TYPE_CHECKING
    task_queue: Tasks
    reveal_type(task_queue.get())  # Reveals str
 
-If your subclass is also generic, you can use the following:
+If your subclass is also generic, you can use the following (using the
+legacy syntax for generic classes):
 
 .. code-block:: python
 
@@ -262,9 +265,11 @@ If your subclass is also generic, you can use the following:
    task_queue: MyQueue[str]
    reveal_type(task_queue.get())  # Reveals str
 
-In Python 3.9, we can just inherit directly from ``Queue[str]`` or ``Queue[T]``
+In Python 3.9 and later, we can just inherit directly from ``Queue[str]`` or ``Queue[T]``
 since its :py:class:`queue.Queue` implements :py:meth:`~object.__class_getitem__`, so
-the class object can be subscripted at runtime without issue.
+the class object can be subscripted at runtime. You may still encounter issues (even if
+you use a recent Python version) when subclassing generic classes defined in third-party
+libraries if types are generic only in stubs.
 
 Using types defined in stubs but not at runtime
 -----------------------------------------------
@@ -315,8 +320,8 @@ notes at :ref:`future annotations import<future-annotations>`.
 Using X | Y syntax for Unions
 -----------------------------
 
-Starting with Python 3.10 (:pep:`604`), you can spell union types as ``x: int |
-str``, instead of ``x: typing.Union[int, str]``.
+Starting with Python 3.10 (:pep:`604`), you can spell union types as
+``x: int | str``, instead of ``x: typing.Union[int, str]``.
 
 There is limited support for using this syntax in Python 3.7 and later as well:
 if you use ``from __future__ import annotations``, mypy will understand this

@@ -317,7 +317,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         if state.strict_optional:
             if isinstance(self.s, (NoneType, UninhabitedType)):
                 return t
-            elif isinstance(self.s, UnboundType):
+            elif isinstance(self.s, (UnboundType, AnyType)):
                 return AnyType(TypeOfAny.special_form)
             else:
                 return mypy.typeops.make_simplified_union([self.s, t])
@@ -631,10 +631,13 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 )
             }
             fallback = self.s.create_anonymous_fallback()
+            all_keys = set(items.keys())
             # We need to filter by items.keys() since some required keys present in both t and
             # self.s might be missing from the join if the types are incompatible.
-            required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
-            return TypedDictType(items, required_keys, fallback)
+            required_keys = all_keys & t.required_keys & self.s.required_keys
+            # If one type has a key as readonly, we mark it as readonly for both:
+            readonly_keys = (t.readonly_keys | t.readonly_keys) & all_keys
+            return TypedDictType(items, required_keys, readonly_keys, fallback)
         elif isinstance(self.s, Instance):
             return join_types(self.s, t.fallback)
         else:

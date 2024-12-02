@@ -1,7 +1,7 @@
 import abc
 import sys
 from _typeshed import FileDescriptorOrPath, Unused
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Generator, Iterator
 from types import TracebackType
 from typing import IO, Any, Generic, Protocol, TypeVar, overload, runtime_checkable
@@ -38,16 +38,22 @@ _P = ParamSpec("_P")
 _ExitFunc: TypeAlias = Callable[[type[BaseException] | None, BaseException | None, TracebackType | None], bool | None]
 _CM_EF = TypeVar("_CM_EF", bound=AbstractContextManager[Any, Any] | _ExitFunc)
 
+# mypy and pyright object to this being both ABC and Protocol.
+# At runtime it inherits from ABC and is not a Protocol, but it is on the
+# allowlist for use as a Protocol.
 @runtime_checkable
-class AbstractContextManager(Protocol[_T_co, _ExitT_co]):
+class AbstractContextManager(ABC, Protocol[_T_co, _ExitT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def __enter__(self) -> _T_co: ...
     @abstractmethod
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None, /
     ) -> _ExitT_co: ...
 
+# mypy and pyright object to this being both ABC and Protocol.
+# At runtime it inherits from ABC and is not a Protocol, but it is on the
+# allowlist for use as a Protocol.
 @runtime_checkable
-class AbstractAsyncContextManager(Protocol[_T_co, _ExitT_co]):
+class AbstractAsyncContextManager(ABC, Protocol[_T_co, _ExitT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     async def __aenter__(self) -> _T_co: ...
     @abstractmethod
     async def __aexit__(
@@ -55,11 +61,14 @@ class AbstractAsyncContextManager(Protocol[_T_co, _ExitT_co]):
     ) -> _ExitT_co: ...
 
 class ContextDecorator:
+    def _recreate_cm(self) -> Self: ...
     def __call__(self, func: _F) -> _F: ...
 
-class _GeneratorContextManager(AbstractContextManager[_T_co, bool | None], ContextDecorator):
+class _GeneratorContextManagerBase: ...
+
+class _GeneratorContextManager(_GeneratorContextManagerBase, AbstractContextManager[_T_co, bool | None], ContextDecorator):
     # __init__ and all instance attributes are actually inherited from _GeneratorContextManagerBase
-    # _GeneratorContextManagerBase is more trouble than it's worth to include in the stub; see #6676
+    # adding them there is more trouble than it's worth to include in the stub; see #6676
     def __init__(self, func: Callable[..., Iterator[_T_co]], args: tuple[Any, ...], kwds: dict[str, Any]) -> None: ...
     gen: Generator[_T_co, Any, Any]
     func: Callable[..., Generator[_T_co, Any, Any]]
@@ -80,11 +89,14 @@ if sys.version_info >= (3, 10):
     _AF = TypeVar("_AF", bound=Callable[..., Awaitable[Any]])
 
     class AsyncContextDecorator:
+        def _recreate_cm(self) -> Self: ...
         def __call__(self, func: _AF) -> _AF: ...
 
-    class _AsyncGeneratorContextManager(AbstractAsyncContextManager[_T_co, bool | None], AsyncContextDecorator):
+    class _AsyncGeneratorContextManager(
+        _GeneratorContextManagerBase, AbstractAsyncContextManager[_T_co, bool | None], AsyncContextDecorator
+    ):
         # __init__ and these attributes are actually defined in the base class _GeneratorContextManagerBase,
-        # which is more trouble than it's worth to include in the stub (see #6676)
+        # adding them there is more trouble than it's worth to include in the stub (see #6676)
         def __init__(self, func: Callable[..., AsyncIterator[_T_co]], args: tuple[Any, ...], kwds: dict[str, Any]) -> None: ...
         gen: AsyncGenerator[_T_co, Any]
         func: Callable[..., AsyncGenerator[_T_co, Any]]
@@ -95,7 +107,7 @@ if sys.version_info >= (3, 10):
         ) -> bool | None: ...
 
 else:
-    class _AsyncGeneratorContextManager(AbstractAsyncContextManager[_T_co, bool | None]):
+    class _AsyncGeneratorContextManager(_GeneratorContextManagerBase, AbstractAsyncContextManager[_T_co, bool | None]):
         def __init__(self, func: Callable[..., AsyncIterator[_T_co]], args: tuple[Any, ...], kwds: dict[str, Any]) -> None: ...
         gen: AsyncGenerator[_T_co, Any]
         func: Callable[..., AsyncGenerator[_T_co, Any]]
@@ -141,13 +153,15 @@ class _RedirectStream(AbstractContextManager[_T_io, None]):
 class redirect_stdout(_RedirectStream[_T_io]): ...
 class redirect_stderr(_RedirectStream[_T_io]): ...
 
-# In reality this is a subclass of `AbstractContextManager`;
-# see #7961 for why we don't do that in the stub
-class ExitStack(Generic[_ExitT_co], metaclass=abc.ABCMeta):
+class _BaseExitStack(Generic[_ExitT_co]):
     def enter_context(self, cm: AbstractContextManager[_T, _ExitT_co]) -> _T: ...
     def push(self, exit: _CM_EF) -> _CM_EF: ...
     def callback(self, callback: Callable[_P, _T], /, *args: _P.args, **kwds: _P.kwargs) -> Callable[_P, _T]: ...
     def pop_all(self) -> Self: ...
+
+# In reality this is a subclass of `AbstractContextManager`;
+# see #7961 for why we don't do that in the stub
+class ExitStack(_BaseExitStack[_ExitT_co], metaclass=abc.ABCMeta):
     def close(self) -> None: ...
     def __enter__(self) -> Self: ...
     def __exit__(
@@ -161,16 +175,12 @@ _ACM_EF = TypeVar("_ACM_EF", bound=AbstractAsyncContextManager[Any, Any] | _Exit
 
 # In reality this is a subclass of `AbstractAsyncContextManager`;
 # see #7961 for why we don't do that in the stub
-class AsyncExitStack(Generic[_ExitT_co], metaclass=abc.ABCMeta):
-    def enter_context(self, cm: AbstractContextManager[_T, _ExitT_co]) -> _T: ...
+class AsyncExitStack(_BaseExitStack[_ExitT_co], metaclass=abc.ABCMeta):
     async def enter_async_context(self, cm: AbstractAsyncContextManager[_T, _ExitT_co]) -> _T: ...
-    def push(self, exit: _CM_EF) -> _CM_EF: ...
     def push_async_exit(self, exit: _ACM_EF) -> _ACM_EF: ...
-    def callback(self, callback: Callable[_P, _T], /, *args: _P.args, **kwds: _P.kwargs) -> Callable[_P, _T]: ...
     def push_async_callback(
         self, callback: Callable[_P, Awaitable[_T]], /, *args: _P.args, **kwds: _P.kwargs
     ) -> Callable[_P, Awaitable[_T]]: ...
-    def pop_all(self) -> Self: ...
     async def aclose(self) -> None: ...
     async def __aenter__(self) -> Self: ...
     async def __aexit__(

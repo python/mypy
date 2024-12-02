@@ -160,7 +160,7 @@ def replacement_map_from_symbol_table(
         ):
             new_node = new[name]
             if (
-                type(new_node.node) == type(node.node)  # noqa: E721
+                type(new_node.node) == type(node.node)
                 and new_node.node
                 and node.node
                 and new_node.node.fullname == node.node.fullname
@@ -507,8 +507,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         typ.fallback.accept(self)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> None:
-        if t.node is not None:
-            t.node.accept(self)
+        pass
 
     def visit_literal_type(self, typ: LiteralType) -> None:
         typ.fallback.accept(self)

@@ -134,7 +134,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_tuple_get(self) -> None:
         self.assert_emit(TupleGet(self.t, 1, 0), "cpy_r_r0 = cpy_r_t.f1;")
 
-    def test_load_None(self) -> None:
+    def test_load_None(self) -> None:  # noqa: N802
         self.assert_emit(
             LoadAddress(none_object_op.type, none_object_op.src, 0),
             "cpy_r_r0 = (PyObject *)&_Py_NoneStruct;",
@@ -154,6 +154,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_int_neg(self) -> None:
+        assert int_neg_op.c_function_name is not None
         self.assert_emit(
             CallC(
                 int_neg_op.c_function_name,

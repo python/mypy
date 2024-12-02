@@ -161,6 +161,7 @@ class TypeVarEraser(TypeTranslator):
     """Implementation of type erasure"""
 
     def __init__(self, erase_id: Callable[[TypeVarId], bool], replacement: Type) -> None:
+        super().__init__()
         self.erase_id = erase_id
         self.replacement = replacement
 

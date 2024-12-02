@@ -6586,6 +6586,7 @@ class TheClass:
             for x in names
         })
         self.enum_type = pyenum
+[builtins fixtures/tuple.pyi]
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
@@ -6726,3 +6727,20 @@ from typing_extensions import TypeIs
 def guard(x: object) -> TypeIs[int]:
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testStartUsingPEP604Union]
+# flags: --python-version 3.10
+import a
+[file a.py]
+import lib
+
+[file a.py.2]
+from lib import IntOrStr
+assert isinstance(1, IntOrStr)
+
+[file lib.py]
+from typing_extensions import TypeAlias
+
+IntOrStr: TypeAlias = int | str
+assert isinstance(1, IntOrStr)
+[builtins fixtures/type.pyi]

@@ -232,6 +232,8 @@ reveal_type(magic.non_magic_method())  # N: Revealed type is "builtins.int"
 reveal_type(magic.non_magic_field)  # N: Revealed type is "builtins.int"
 magic.nonexistent_field  # E: Field does not exist
 reveal_type(magic.fallback_example)  # N: Revealed type is "Any"
+reveal_type(magic.no_assignment_field)  # N: Revealed type is "builtins.float"
+magic.no_assignment_field = "bad"  # E: Cannot assign to field
 
 derived = DerivedMagic()
 reveal_type(derived.magic_field)  # N: Revealed type is "builtins.str"
@@ -250,6 +252,7 @@ class Magic:
     def __getattr__(self, x: Any) -> Any: ...
     def non_magic_method(self) -> int: ...
     non_magic_field: int
+    no_assignment_field: float
 
 class DerivedMagic(Magic): ...
 [file mypy.ini]
@@ -964,6 +967,7 @@ class Cls(enum.Enum):
     attr = 'test'
 
 reveal_type(Cls.attr)  # N: Revealed type is "builtins.int"
+[builtins fixtures/enum.pyi]
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py

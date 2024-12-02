@@ -1,16 +1,16 @@
 import sys
 from abc import abstractmethod
 from time import struct_time
-from typing import ClassVar, Literal, NamedTuple, NoReturn, SupportsIndex, final, overload
-from typing_extensions import Self, TypeAlias, deprecated
+from typing import ClassVar, Final, NoReturn, SupportsIndex, final, overload, type_check_only
+from typing_extensions import CapsuleType, Self, TypeAlias, deprecated
 
 if sys.version_info >= (3, 11):
     __all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo", "MINYEAR", "MAXYEAR", "UTC")
 elif sys.version_info >= (3, 9):
     __all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo", "MINYEAR", "MAXYEAR")
 
-MINYEAR: Literal[1]
-MAXYEAR: Literal[9999]
+MINYEAR: Final = 1
+MAXYEAR: Final = 9999
 
 class tzinfo:
     @abstractmethod
@@ -40,10 +40,17 @@ if sys.version_info >= (3, 11):
     UTC: timezone
 
 if sys.version_info >= (3, 9):
-    class _IsoCalendarDate(NamedTuple):
-        year: int
-        week: int
-        weekday: int
+    # This class calls itself datetime.IsoCalendarDate. It's neither
+    # NamedTuple nor structseq.
+    @final
+    @type_check_only
+    class _IsoCalendarDate(tuple[int, int, int]):
+        @property
+        def year(self) -> int: ...
+        @property
+        def week(self) -> int: ...
+        @property
+        def weekday(self) -> int: ...
 
 class date:
     min: ClassVar[date]
@@ -265,12 +272,12 @@ class datetime(date):
         def fromtimestamp(cls, timestamp: float, /, tz: _TzInfo | None = ...) -> Self: ...
 
     @classmethod
-    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .fromtimestamp(datetime.UTC)")
+    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .fromtimestamp(datetime.timezone.utc)")
     def utcfromtimestamp(cls, t: float, /) -> Self: ...
     @classmethod
     def now(cls, tz: _TzInfo | None = None) -> Self: ...
     @classmethod
-    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.UTC)")
+    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.timezone.utc)")
     def utcnow(cls) -> Self: ...
     @classmethod
     def combine(cls, date: _Date, time: _Time, tzinfo: _TzInfo | None = ...) -> Self: ...
@@ -325,3 +332,5 @@ class datetime(date):
     def __sub__(self, value: Self, /) -> timedelta: ...
     @overload
     def __sub__(self, value: timedelta, /) -> Self: ...
+
+datetime_CAPI: CapsuleType

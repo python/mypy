@@ -2,24 +2,36 @@ import socket
 import sys
 from _typeshed import Incomplete, ReadableBuffer, WriteableBuffer
 from collections.abc import Callable
-from typing import IO, Any, ClassVar, Literal, NoReturn
+from typing import IO, Any, ClassVar, Final, NoReturn
 
 from . import events, futures, proactor_events, selector_events, streams, windows_utils
 
 if sys.platform == "win32":
-    __all__ = (
-        "SelectorEventLoop",
-        "ProactorEventLoop",
-        "IocpProactor",
-        "DefaultEventLoopPolicy",
-        "WindowsSelectorEventLoopPolicy",
-        "WindowsProactorEventLoopPolicy",
-    )
+    if sys.version_info >= (3, 13):
+        # 3.13 added `EventLoop`.
+        __all__ = (
+            "SelectorEventLoop",
+            "ProactorEventLoop",
+            "IocpProactor",
+            "DefaultEventLoopPolicy",
+            "WindowsSelectorEventLoopPolicy",
+            "WindowsProactorEventLoopPolicy",
+            "EventLoop",
+        )
+    else:
+        __all__ = (
+            "SelectorEventLoop",
+            "ProactorEventLoop",
+            "IocpProactor",
+            "DefaultEventLoopPolicy",
+            "WindowsSelectorEventLoopPolicy",
+            "WindowsProactorEventLoopPolicy",
+        )
 
-    NULL: Literal[0]
-    INFINITE: Literal[0xFFFFFFFF]
-    ERROR_CONNECTION_REFUSED: Literal[1225]
-    ERROR_CONNECTION_ABORTED: Literal[1236]
+    NULL: Final = 0
+    INFINITE: Final = 0xFFFFFFFF
+    ERROR_CONNECTION_REFUSED: Final = 1225
+    ERROR_CONNECTION_ABORTED: Final = 1236
     CONNECT_PIPE_INIT_DELAY: float
     CONNECT_PIPE_MAX_DELAY: float
 
@@ -84,3 +96,5 @@ if sys.platform == "win32":
         def set_child_watcher(self, watcher: Any) -> NoReturn: ...
 
     DefaultEventLoopPolicy = WindowsSelectorEventLoopPolicy
+    if sys.version_info >= (3, 13):
+        EventLoop = ProactorEventLoop

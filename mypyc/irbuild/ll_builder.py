@@ -14,7 +14,7 @@ from typing import Callable, Final, Optional, Sequence, Tuple
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
-from mypy.operators import op_methods
+from mypy.operators import op_methods, unary_op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypyc.common import (
     BITMAP_BITS,
@@ -167,6 +167,7 @@ from mypyc.primitives.misc_ops import (
     buf_init_item,
     fast_isinstance_op,
     none_object_op,
+    not_implemented_op,
     var_object_size,
 )
 from mypyc.primitives.registry import (
@@ -619,7 +620,7 @@ class LowLevelIRBuilder:
         Prefer get_attr() which generates optimized code for native classes.
         """
         key = self.load_str(attr)
-        return self.call_c(py_getattr_op, [obj, key], line)
+        return self.primitive_op(py_getattr_op, [obj, key], line)
 
     # isinstance() checks
 
@@ -655,7 +656,9 @@ class LowLevelIRBuilder:
         """
         concrete = all_concrete_classes(class_ir)
         if concrete is None or len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
-            return self.call_c(fast_isinstance_op, [obj, self.get_native_type(class_ir)], line)
+            return self.primitive_op(
+                fast_isinstance_op, [obj, self.get_native_type(class_ir)], line
+            )
         if not concrete:
             # There can't be any concrete instance that matches this.
             return self.false()
@@ -856,7 +859,7 @@ class LowLevelIRBuilder:
             if star_result is None:
                 star_result = self.new_tuple(star_values, line)
             else:
-                star_result = self.call_c(list_tuple_op, [star_result], line)
+                star_result = self.primitive_op(list_tuple_op, [star_result], line)
         if has_star2 and star2_result is None:
             star2_result = self._create_dict(star2_keys, star2_values, line)
 
@@ -1398,10 +1401,47 @@ class LowLevelIRBuilder:
                 if base_op in float_op_to_id:
                     return self.float_op(lreg, rreg, base_op, line)
 
+        dunder_op = self.dunder_op(lreg, rreg, op, line)
+        if dunder_op:
+            return dunder_op
+
         primitive_ops_candidates = binary_ops.get(op, [])
         target = self.matching_primitive_op(primitive_ops_candidates, [lreg, rreg], line)
         assert target, "Unsupported binary operation: %s" % op
         return target
+
+    def dunder_op(self, lreg: Value, rreg: Value | None, op: str, line: int) -> Value | None:
+        """
+        Dispatch a dunder method if applicable.
+        For example for `a + b` it will use `a.__add__(b)` which can lead to higher performance
+        due to the fact that the method could be already compiled and optimized instead of going
+        all the way through `PyNumber_Add(a, b)` python api (making a jump into the python DL).
+        """
+        ltype = lreg.type
+        if not isinstance(ltype, RInstance):
+            return None
+
+        method_name = op_methods.get(op) if rreg else unary_op_methods.get(op)
+        if method_name is None:
+            return None
+
+        if not ltype.class_ir.has_method(method_name):
+            return None
+
+        decl = ltype.class_ir.method_decl(method_name)
+        if not rreg and len(decl.sig.args) != 1:
+            return None
+
+        if rreg and (len(decl.sig.args) != 2 or not is_subtype(rreg.type, decl.sig.args[1].type)):
+            return None
+
+        if rreg and is_subtype(not_implemented_op.type, decl.sig.ret_type):
+            # If the method is able to return NotImplemented, we should not optimize it.
+            # We can just let go so it will be handled through the python api.
+            return None
+
+        args = [rreg] if rreg else []
+        return self.gen_method_call(lreg, method_name, args, decl.sig.ret_type, line)
 
     def check_tagged_short_int(self, val: Value, line: int, negated: bool = False) -> Value:
         """Check if a tagged integer is a short integer.
@@ -1477,7 +1517,7 @@ class LowLevelIRBuilder:
             # Cast to bool if necessary since most types uses comparison returning a object type
             # See generic_ops.py for more information
             if not is_bool_rprimitive(compare.type):
-                compare = self.call_c(bool_op, [compare], line)
+                compare = self.primitive_op(bool_op, [compare], line)
             if i < len(lhs.type.types) - 1:
                 branch = Branch(compare, early_stop, check_blocks[i + 1], Branch.BOOL)
             else:
@@ -1496,7 +1536,7 @@ class LowLevelIRBuilder:
     def translate_instance_contains(self, inst: Value, item: Value, op: str, line: int) -> Value:
         res = self.gen_method_call(inst, "__contains__", [item], None, line)
         if not is_bool_rprimitive(res.type):
-            res = self.call_c(bool_op, [res], line)
+            res = self.primitive_op(bool_op, [res], line)
         if op == "not in":
             res = self.bool_bitwise_op(res, Integer(1, rtype=bool_rprimitive), "^", line)
         return res
@@ -1558,18 +1598,11 @@ class LowLevelIRBuilder:
         if isinstance(value, Float):
             return Float(-value.value, value.line)
         if isinstance(typ, RInstance):
-            if expr_op == "-":
-                method = "__neg__"
-            elif expr_op == "+":
-                method = "__pos__"
-            elif expr_op == "~":
-                method = "__invert__"
-            else:
-                method = ""
-            if method and typ.class_ir.has_method(method):
-                return self.gen_method_call(value, method, [], None, line)
-        call_c_ops_candidates = unary_ops.get(expr_op, [])
-        target = self.matching_call_c(call_c_ops_candidates, [value], line)
+            result = self.dunder_op(value, None, expr_op, line)
+            if result is not None:
+                return result
+        primitive_ops_candidates = unary_ops.get(expr_op, [])
+        target = self.matching_primitive_op(primitive_ops_candidates, [value], line)
         assert target, "Unsupported unary operation: %s" % expr_op
         return target
 
@@ -1636,7 +1669,7 @@ class LowLevelIRBuilder:
         return result_list
 
     def new_set_op(self, values: list[Value], line: int) -> Value:
-        return self.call_c(new_set_op, values, line)
+        return self.primitive_op(new_set_op, values, line)
 
     def setup_rarray(
         self, item_type: RType, values: Sequence[Value], *, object_ptr: bool = False
@@ -1744,7 +1777,7 @@ class LowLevelIRBuilder:
                     self.goto(end)
                     self.activate_block(end)
             else:
-                result = self.call_c(bool_op, [value], value.line)
+                result = self.primitive_op(bool_op, [value], value.line)
         return result
 
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
@@ -1889,7 +1922,7 @@ class LowLevelIRBuilder:
         # Does this primitive map into calling a Python C API
         # or an internal mypyc C API function?
         if desc.c_function_name:
-            # TODO: Generate PrimitiOps here and transform them into CallC
+            # TODO: Generate PrimitiveOps here and transform them into CallC
             # ops only later in the lowering pass
             c_desc = CFunctionDescription(
                 desc.name,
@@ -1908,7 +1941,7 @@ class LowLevelIRBuilder:
             )
             return self.call_c(c_desc, args, line, result_type)
 
-        # This primitve gets transformed in a lowering pass to
+        # This primitive gets transformed in a lowering pass to
         # lower-level IR ops using a custom transform function.
 
         coerced = []
@@ -2034,7 +2067,7 @@ class LowLevelIRBuilder:
         self.activate_block(copysign)
         # If the remainder is zero, CPython ensures the result has the
         # same sign as the denominator.
-        adj = self.call_c(copysign_op, [Float(0.0), rhs], line)
+        adj = self.primitive_op(copysign_op, [Float(0.0), rhs], line)
         self.add(Assign(res, adj))
         self.add(Goto(done))
         self.activate_block(done)
@@ -2229,7 +2262,7 @@ class LowLevelIRBuilder:
         return self.call_c(new_tuple_with_length_op, [length], line)
 
     def int_to_float(self, n: Value, line: int) -> Value:
-        return self.call_c(int_to_float_op, [n], line)
+        return self.primitive_op(int_to_float_op, [n], line)
 
     # Internal helpers
 

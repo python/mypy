@@ -1,7 +1,7 @@
 import sys
 from _typeshed import ReadableBuffer, Unused
-from collections.abc import Iterable, Iterator, Sized
-from typing import Final, NoReturn, overload
+from collections.abc import Iterator
+from typing import Final, Literal, NoReturn, overload
 from typing_extensions import Self
 
 ACCESS_DEFAULT: int
@@ -30,13 +30,26 @@ if sys.platform != "win32":
 
 PAGESIZE: int
 
-class mmap(Iterable[int], Sized):
+class mmap:
     if sys.platform == "win32":
         def __init__(self, fileno: int, length: int, tagname: str | None = ..., access: int = ..., offset: int = ...) -> None: ...
     else:
-        def __init__(
-            self, fileno: int, length: int, flags: int = ..., prot: int = ..., access: int = ..., offset: int = ...
-        ) -> None: ...
+        if sys.version_info >= (3, 13):
+            def __init__(
+                self,
+                fileno: int,
+                length: int,
+                flags: int = ...,
+                prot: int = ...,
+                access: int = ...,
+                offset: int = ...,
+                *,
+                trackfd: bool = True,
+            ) -> None: ...
+        else:
+            def __init__(
+                self, fileno: int, length: int, flags: int = ..., prot: int = ..., access: int = ..., offset: int = ...
+            ) -> None: ...
 
     def close(self) -> None: ...
     def flush(self, offset: int = ..., size: int = ...) -> None: ...
@@ -77,7 +90,7 @@ class mmap(Iterable[int], Sized):
     def __buffer__(self, flags: int, /) -> memoryview: ...
     def __release_buffer__(self, buffer: memoryview, /) -> None: ...
     if sys.version_info >= (3, 13):
-        def seekable(self) -> bool: ...
+        def seekable(self) -> Literal[True]: ...
 
 if sys.platform != "win32":
     MADV_NORMAL: int
@@ -118,4 +131,16 @@ if sys.version_info >= (3, 13) and sys.platform != "win32":
     MAP_32BIT: Final = 32768
 
 if sys.version_info >= (3, 13) and sys.platform == "darwin":
+    MAP_NORESERVE: Final = 64
+    MAP_NOEXTEND: Final = 256
+    MAP_HASSEMAPHORE: Final = 512
+    MAP_NOCACHE: Final = 1024
+    MAP_JIT: Final = 2048
+    MAP_RESILIENT_CODESIGN: Final = 8192
+    MAP_RESILIENT_MEDIA: Final = 16384
+    MAP_TRANSLATED_ALLOW_EXECUTE: Final = 131072
+    MAP_UNIX03: Final = 262144
     MAP_TPRO: Final = 524288
+
+if sys.version_info >= (3, 13) and sys.platform == "linux":
+    MAP_NORESERVE: Final = 16384

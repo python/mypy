@@ -8,16 +8,21 @@ import mypy.checker
 import mypy.plugin
 import mypy.semanal
 from mypy.argmap import map_actuals_to_formals
-from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, CallExpr, FuncItem, Var
+from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, CallExpr, FuncItem, NameExpr, Var
 from mypy.plugins.common import add_method_to_class
+from mypy.typeops import get_all_type_vars
 from mypy.types import (
     AnyType,
     CallableType,
     Instance,
     Overloaded,
+    ParamSpecFlavor,
+    ParamSpecType,
     Type,
     TypeOfAny,
+    TypeVarType,
     UnboundType,
+    UnionType,
     get_proper_type,
 )
 
@@ -130,7 +135,19 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     if isinstance(get_proper_type(ctx.arg_types[0][0]), Overloaded):
         # TODO: handle overloads, just fall back to whatever the non-plugin code does
         return ctx.default_return_type
-    fn_type = ctx.api.extract_callable_type(ctx.arg_types[0][0], ctx=ctx.default_return_type)
+    return handle_partial_with_callee(ctx, callee=ctx.arg_types[0][0])
+
+
+def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -> Type:
+    if not isinstance(ctx.api, mypy.checker.TypeChecker):  # use internals
+        return ctx.default_return_type
+
+    if isinstance(callee_proper := get_proper_type(callee), UnionType):
+        return UnionType.make_union(
+            [handle_partial_with_callee(ctx, item) for item in callee_proper.items]
+        )
+
+    fn_type = ctx.api.extract_callable_type(callee, ctx=ctx.default_return_type)
     if fn_type is None:
         return ctx.default_return_type
 
@@ -151,21 +168,6 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         ctx.api.type_context[-1] = None
         wrapped_return = False
 
-    defaulted = fn_type.copy_modified(
-        arg_kinds=[
-            (
-                ArgKind.ARG_OPT
-                if k == ArgKind.ARG_POS
-                else (ArgKind.ARG_NAMED_OPT if k == ArgKind.ARG_NAMED else k)
-            )
-            for k in fn_type.arg_kinds
-        ],
-        ret_type=ret_type,
-    )
-    if defaulted.line < 0:
-        # Make up a line number if we don't have one
-        defaulted.set_line(ctx.default_return_type)
-
     # Flatten actual to formal mapping, since this is what check_call() expects.
     actual_args = []
     actual_arg_kinds = []
@@ -185,6 +187,45 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
             actual_arg_kinds.append(ctx.arg_kinds[i][j])
             actual_arg_names.append(ctx.arg_names[i][j])
             actual_types.append(ctx.arg_types[i][j])
+
+    formal_to_actual = map_actuals_to_formals(
+        actual_kinds=actual_arg_kinds,
+        actual_names=actual_arg_names,
+        formal_kinds=fn_type.arg_kinds,
+        formal_names=fn_type.arg_names,
+        actual_arg_type=lambda i: actual_types[i],
+    )
+
+    # We need to remove any type variables that appear only in formals that have
+    # no actuals, to avoid eagerly binding them in check_call() below.
+    can_infer_ids = set()
+    for i, arg_type in enumerate(fn_type.arg_types):
+        if not formal_to_actual[i]:
+            continue
+        can_infer_ids.update({tv.id for tv in get_all_type_vars(arg_type)})
+
+    # special_sig="partial" allows omission of args/kwargs typed with ParamSpec
+    defaulted = fn_type.copy_modified(
+        arg_kinds=[
+            (
+                ArgKind.ARG_OPT
+                if k == ArgKind.ARG_POS
+                else (ArgKind.ARG_NAMED_OPT if k == ArgKind.ARG_NAMED else k)
+            )
+            for k in fn_type.arg_kinds
+        ],
+        ret_type=ret_type,
+        variables=[
+            tv
+            for tv in fn_type.variables
+            # Keep TypeVarTuple/ParamSpec to avoid spurious errors on empty args.
+            if tv.id in can_infer_ids or not isinstance(tv, TypeVarType)
+        ],
+        special_sig="partial",
+    )
+    if defaulted.line < 0:
+        # Make up a line number if we don't have one
+        defaulted.set_line(ctx.default_return_type)
 
     # Create a valid context for various ad-hoc inspections in check_call().
     call_expr = CallExpr(
@@ -217,14 +258,6 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         if not isinstance(ret_type, Instance) or ret_type.type.fullname != PARTIAL:
             return ctx.default_return_type
         bound = bound.copy_modified(ret_type=ret_type.args[0])
-
-    formal_to_actual = map_actuals_to_formals(
-        actual_kinds=actual_arg_kinds,
-        actual_names=actual_arg_names,
-        formal_kinds=fn_type.arg_kinds,
-        formal_names=fn_type.arg_names,
-        actual_arg_type=lambda i: actual_types[i],
-    )
 
     partial_kinds = []
     partial_types = []
@@ -267,10 +300,19 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         arg_kinds=partial_kinds,
         arg_names=partial_names,
         ret_type=ret_type,
+        special_sig="partial",
     )
 
     ret = ctx.api.named_generic_type(PARTIAL, [ret_type])
     ret = ret.copy_with_extra_attr("__mypy_partial", partially_applied)
+    if partially_applied.param_spec():
+        assert ret.extra_attrs is not None  # copy_with_extra_attr above ensures this
+        attrs = ret.extra_attrs.copy()
+        if ArgKind.ARG_STAR in actual_arg_kinds:
+            attrs.immutable.add("__mypy_partial_paramspec_args_bound")
+        if ArgKind.ARG_STAR2 in actual_arg_kinds:
+            attrs.immutable.add("__mypy_partial_paramspec_kwargs_bound")
+        ret.extra_attrs = attrs
     return ret
 
 
@@ -285,7 +327,8 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
     ):
         return ctx.default_return_type
 
-    partial_type = ctx.type.extra_attrs.attrs["__mypy_partial"]
+    extra_attrs = ctx.type.extra_attrs
+    partial_type = get_proper_type(extra_attrs.attrs["__mypy_partial"])
     if len(ctx.arg_types) != 2:  # *args, **kwargs
         return ctx.default_return_type
 
@@ -303,11 +346,36 @@ def partial_call_callback(ctx: mypy.plugin.MethodContext) -> Type:
             actual_arg_kinds.append(ctx.arg_kinds[i][j])
             actual_arg_names.append(ctx.arg_names[i][j])
 
-    result = ctx.api.expr_checker.check_call(
+    result, _ = ctx.api.expr_checker.check_call(
         callee=partial_type,
         args=actual_args,
         arg_kinds=actual_arg_kinds,
         arg_names=actual_arg_names,
         context=ctx.context,
     )
-    return result[0]
+    if not isinstance(partial_type, CallableType) or partial_type.param_spec() is None:
+        return result
+
+    args_bound = "__mypy_partial_paramspec_args_bound" in extra_attrs.immutable
+    kwargs_bound = "__mypy_partial_paramspec_kwargs_bound" in extra_attrs.immutable
+
+    passed_paramspec_parts = [
+        arg.node.type
+        for arg in actual_args
+        if isinstance(arg, NameExpr)
+        and isinstance(arg.node, Var)
+        and isinstance(arg.node.type, ParamSpecType)
+    ]
+    # ensure *args: P.args
+    args_passed = any(part.flavor == ParamSpecFlavor.ARGS for part in passed_paramspec_parts)
+    if not args_bound and not args_passed:
+        ctx.api.expr_checker.msg.too_few_arguments(partial_type, ctx.context, actual_arg_names)
+    elif args_bound and args_passed:
+        ctx.api.expr_checker.msg.too_many_arguments(partial_type, ctx.context)
+
+    # ensure **kwargs: P.kwargs
+    kwargs_passed = any(part.flavor == ParamSpecFlavor.KWARGS for part in passed_paramspec_parts)
+    if not kwargs_bound and not kwargs_passed:
+        ctx.api.expr_checker.msg.too_few_arguments(partial_type, ctx.context, actual_arg_names)
+
+    return result
