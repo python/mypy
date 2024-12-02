@@ -203,7 +203,20 @@ def analyze_member_access(
         no_deferral=no_deferral,
         is_self=is_self,
     )
+    
+    # Calling the original member access logic
     result = _analyze_member_access(name, typ, mx, override_info)
+    
+    # Handle TypeVar with Union bound and Self
+    proper_typ = get_proper_type(typ)
+    if isinstance(proper_typ, TypeVarType) and isinstance(proper_typ.upper_bound, UnionType):
+        if is_self and name in ("clone",):  # Specifically for methods like 'clone'
+            # Narrowing return type to match the instance type
+            bound_union = proper_typ.upper_bound
+            if self_type and self_type in bound_union.items:
+                return self_type
+    
+    # Existing literal handling
     possible_literal = get_proper_type(result)
     if (
         in_literal_context
