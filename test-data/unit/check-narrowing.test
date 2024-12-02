@@ -2372,3 +2372,35 @@ def f(x: A):
     reveal_type(x.y)  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/isinstance.pyi]
+
+[case testNarrowingDoNotNarrowNamedTupleFallbacksToUnions]
+
+from typing import List, NamedTuple, Union
+
+class A(NamedTuple):
+    x: int
+class B(NamedTuple):
+    x: int
+    y: int
+class C(NamedTuple):
+    x: int
+    y: int
+    z: int
+
+def f() -> bool: ...
+
+def g() -> None:
+    l: List[Union[A, B, C]]
+    if f():
+        assert isinstance(l[0], A)
+        reveal_type(l[0])  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.A]"
+    elif f():
+        assert isinstance(l[0], B)
+        reveal_type(l[0])  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.B]"
+    else:
+        assert False
+    reveal_type(l[0])  # N: Revealed type is "Union[Tuple[builtins.int, fallback=__main__.A], \
+                                                    Tuple[builtins.int, builtins.int, fallback=__main__.B], \
+                                                    Tuple[builtins.int, builtins.int, builtins.int, fallback=__main__.C]]"
+
+[builtins fixtures/tuple.pyi]
