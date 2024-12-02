@@ -567,6 +567,7 @@ def test_chr() -> None:
 [case testOrd]
 def test_ord() -> None:
     assert ord('\ue000') == 57344
+    assert ord('\ue000' + str()) == 57344
     s = "a\xac\u1234\u20ac\U00008000"
     # ^^^^ two-digit hex escape
     #   ^^^^^^ four-digit Unicode escape
@@ -577,10 +578,16 @@ def test_ord() -> None:
     assert ord(u[-1]) == 233
     assert ord(b'a') == 97
     assert ord(b'a' + bytes()) == 97
-    u2 = '\U0010ffff'
+    u2 = '\U0010ffff' + str()
     assert ord(u2) == 1114111
+    assert ord('\U0010ffff') == 1114111
     try:
         ord('aa')
+        assert False
+    except TypeError:
+        pass
+    try:
+        ord('')
         assert False
     except TypeError:
         pass

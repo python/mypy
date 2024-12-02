@@ -144,11 +144,17 @@ PyObject *CPyBytes_Build(Py_ssize_t len, ...) {
 
 
 CPyTagged CPyBytes_Ord(PyObject *obj) {
-    Py_ssize_t s = PyBytes_GET_SIZE(obj);
-    if (s == 1) {
-        return PyBytes_AS_STRING(obj)[0] << 1;
+    if (PyBytes_Check(obj)) {
+        Py_ssize_t s = PyBytes_GET_SIZE(obj);
+        if (s == 1) {
+            return (unsigned char)(PyBytes_AS_STRING(obj)[0]) << 1;
+        }
+    } else if (PyByteArray_Check(obj)) {
+        Py_ssize_t s = PyByteArray_GET_SIZE(obj);
+        if (s == 1) {
+            return (unsigned char)(PyByteArray_AS_STRING(obj)[0]) << 1;
+        }
     }
-    // TODO: bytearray
     PyErr_SetString(PyExc_TypeError, "ord() expects a character");
     return CPY_INT_TAG;
 }
