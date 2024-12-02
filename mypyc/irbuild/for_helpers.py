@@ -251,7 +251,7 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.call_c(list_append_op, [builder.read(list_ops), e], gen.line)
+        builder.primitive_op(list_append_op, [builder.read(list_ops), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     return builder.read(list_ops)
@@ -286,7 +286,7 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.call_c(set_add_op, [builder.read(set_ops), e], gen.line)
+        builder.primitive_op(set_add_op, [builder.read(set_ops), e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     return builder.read(set_ops)

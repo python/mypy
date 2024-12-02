@@ -9,7 +9,6 @@ import unittest
 
 from mypyc.ir.ops import PrimitiveDescription
 from mypyc.primitives import registry
-from mypyc.primitives.registry import CFunctionDescription
 
 
 class TestHeaderInclusion(unittest.TestCase):
@@ -26,14 +25,8 @@ class TestHeaderInclusion(unittest.TestCase):
                     rf"\b{name}\b", header
                 ), f'"{name}" is used in mypyc.primitives but not declared in CPy.h'
 
-        for old_values in [registry.method_call_ops.values()]:
-            for old_ops in old_values:
-                if isinstance(old_ops, CFunctionDescription):
-                    old_ops = [old_ops]
-                for old_op in old_ops:
-                    check_name(old_op.c_function_name)
-
         for values in [
+            registry.method_call_ops.values(),
             registry.binary_ops.values(),
             registry.unary_ops.values(),
             registry.function_ops.values(),

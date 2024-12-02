@@ -762,7 +762,7 @@ class LowLevelIRBuilder:
             if kind == ARG_STAR:
                 if star_result is None:
                     star_result = self.new_list_op(star_values, line)
-                self.call_c(list_extend_op, [star_result, value], line)
+                self.primitive_op(list_extend_op, [star_result, value], line)
             elif kind == ARG_STAR2:
                 if star2_result is None:
                     star2_result = self._create_dict(star2_keys, star2_values, line)
@@ -1939,7 +1939,7 @@ class LowLevelIRBuilder:
                 desc.priority,
                 is_pure=desc.is_pure,
             )
-            return self.call_c(c_desc, args, line, result_type)
+            return self.call_c(c_desc, args, line, result_type=result_type)
 
         # This primitive gets transformed in a lowering pass to
         # lower-level IR ops using a custom transform function.
@@ -2005,7 +2005,7 @@ class LowLevelIRBuilder:
                 else:
                     matching = desc
         if matching:
-            return self.primitive_op(matching, args, line=line)
+            return self.primitive_op(matching, args, line=line, result_type=result_type)
         return None
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> Value:
@@ -2346,11 +2346,11 @@ class LowLevelIRBuilder:
 
         Return None if no translation found; otherwise return the target register.
         """
-        call_c_ops_candidates = method_call_ops.get(name, [])
-        call_c_op = self.matching_call_c(
-            call_c_ops_candidates, [base_reg] + args, line, result_type, can_borrow=can_borrow
+        primitive_ops_candidates = method_call_ops.get(name, [])
+        primitive_op = self.matching_primitive_op(
+            primitive_ops_candidates, [base_reg] + args, line, result_type, can_borrow=can_borrow
         )
-        return call_c_op
+        return primitive_op
 
     def translate_eq_cmp(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value | None:
         """Add a equality comparison operation.

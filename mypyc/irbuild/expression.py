@@ -60,6 +60,7 @@ from mypyc.ir.ops import (
     Integer,
     LoadAddress,
     LoadLiteral,
+    PrimitiveDescription,
     RaiseStandardError,
     Register,
     TupleGet,
@@ -99,7 +100,7 @@ from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_it
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
-from mypyc.primitives.registry import CFunctionDescription, builtin_names
+from mypyc.primitives.registry import builtin_names
 from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
@@ -182,7 +183,7 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
             # AST doesn't include a Var node for the module. We
             # instead load the module separately on each access.
             mod_dict = builder.call_c(get_module_dict_op, [], expr.line)
-            obj = builder.call_c(
+            obj = builder.primitive_op(
                 dict_get_item_op, [mod_dict, builder.load_str(expr.node.fullname)], expr.line
             )
             return obj
@@ -979,8 +980,8 @@ def _visit_display(
     builder: IRBuilder,
     items: list[Expression],
     constructor_op: Callable[[list[Value], int], Value],
-    append_op: CFunctionDescription,
-    extend_op: CFunctionDescription,
+    append_op: PrimitiveDescription,
+    extend_op: PrimitiveDescription,
     line: int,
     is_list: bool,
 ) -> Value:
@@ -1001,7 +1002,7 @@ def _visit_display(
         if result is None:
             result = constructor_op(initial_items, line)
 
-        builder.call_c(extend_op if starred else append_op, [result, value], line)
+        builder.primitive_op(extend_op if starred else append_op, [result, value], line)
 
     if result is None:
         result = constructor_op(initial_items, line)
@@ -1030,7 +1031,7 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
     def gen_inner_stmts() -> None:
         k = builder.accept(o.key)
         v = builder.accept(o.value)
-        builder.call_c(dict_set_item_op, [builder.read(d), k, v], o.line)
+        builder.primitive_op(dict_set_item_op, [builder.read(d), k, v], o.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return builder.read(d)
