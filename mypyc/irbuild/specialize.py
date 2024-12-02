@@ -90,6 +90,11 @@ from mypyc.primitives.dict_ops import (
 )
 from mypyc.primitives.list_ops import new_list_set_item_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
+from mypyc.primitives.str_ops import (
+    str_encode_utf8_strict,
+    str_encode_ascii_strict,
+    str_encode_latin1_strict,
+)
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -679,6 +684,45 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
             return None
 
         return join_formatted_strings(builder, None, substitutions, expr.line)
+    return None
+
+
+@specialize_function("encode", str_rprimitive)
+def str_encode_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Specialize common cases of str.encode for most used encodings and strict errors."""
+
+    if not isinstance(callee, MemberExpr):
+        return None
+
+    # We can only specialize strict errors
+    if (
+        len(expr.arg_kinds) > 1
+        and isinstance(expr.args[1], StrExpr)
+        and expr.args[1].value != "strict"
+    ):
+        return None
+
+    if (
+        len(expr.args) > 0
+        and expr.arg_kinds[0] == ARG_NAMED
+        and expr.arg_names[0] == "errors"
+        and isinstance(expr.args[0], StrExpr)
+        and expr.args[0].value != "strict"
+    ):
+        return None
+
+    encoding = "utf8"
+    if len(expr.args) > 0 and isinstance(expr.args[0], StrExpr):
+        encoding = expr.args[0].value.lower().replace("-", "_")
+
+    # Specialized encodings and their accepted aliases
+    if encoding in ['u8', 'utf', 'utf8', 'utf_8', 'cp65001']:
+        return builder.call_c(str_encode_utf8_strict, [builder.accept(callee.expr)], expr.line)
+    elif encoding in ["ascii", "646", "us_ascii"]:
+        return builder.call_c(str_encode_ascii_strict, [builder.accept(callee.expr)], expr.line)
+    elif encoding in ['iso_8859_1', 'iso8859_1', '8859', 'cp819', 'latin', 'latin1', 'latin_1', 'l1']:
+        return builder.call_c(str_encode_latin1_strict, [builder.accept(callee.expr)], expr.line)
+
     return None
 
 
