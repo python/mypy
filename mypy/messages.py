@@ -872,11 +872,8 @@ class MessageBuilder:
                 self.note_call(original_caller_type, call, context, code=code)
         if isinstance(callee_type, Instance) and callee_type.type.is_protocol:
             call = find_member("__call__", callee_type, callee_type, is_operator=True)
-            if call is not None:
-                item = get_proper_type(call)
-                # should we print out all possible overloadings?
-                if not (isinstance(item, Overloaded)):
-                    self.note_call(callee_type, call, context, code=code)
+            if call:
+                self.note_call(callee_type, call, context, code=code)
         self.maybe_note_concatenate_pos_args(original_caller_type, callee_type, context, code)
 
     def maybe_note_concatenate_pos_args(
