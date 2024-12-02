@@ -23,6 +23,7 @@ from mypyc.primitives.registry import (
     function_op,
     load_address_op,
     method_op,
+    custom_primitive_op,
 )
 
 # Get the 'str' type object.
@@ -249,5 +250,13 @@ method_op(
     arg_types=[str_rprimitive, str_rprimitive, str_rprimitive],
     return_type=bytes_rprimitive,
     c_function_name="CPy_Encode",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="builtins.ord",
+    arg_types=[str_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyStr_Ord",
     error_kind=ERR_MAGIC,
 )

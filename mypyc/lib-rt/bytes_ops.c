@@ -141,3 +141,14 @@ PyObject *CPyBytes_Build(Py_ssize_t len, ...) {
 
     return (PyObject *)ret;
 }
+
+
+CPyTagged CPyBytes_Ord(PyObject *obj) {
+    Py_ssize_t s = PyBytes_GET_SIZE(obj);
+    if (s == 1) {
+        return PyBytes_AS_STRING(obj)[0] << 1;
+    }
+    // TODO: bytearray
+    PyErr_SetString(PyExc_TypeError, "ord() expects a character");
+    return CPY_INT_TAG;
+}

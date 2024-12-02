@@ -152,7 +152,7 @@ def function_op(
     name: str,
     arg_types: list[RType],
     return_type: RType,
-    c_function_name: str,
+    c_function_name: str | None,
     error_kind: int,
     var_arg_type: RType | None = None,
     truncated_type: RType | None = None,
