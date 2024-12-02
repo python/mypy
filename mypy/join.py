@@ -612,7 +612,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             fallback = self.instance_joiner.join_instances(
                 mypy.typeops.tuple_fallback(self.s), mypy.typeops.tuple_fallback(t)
             )
-            assert isinstance(fallback, Instance)
+            assert isinstance(fallback, Instance), f"s = {self.s}, t = {t}, f = {fallback}"
             items = self.join_tuples(self.s, t)
             if items is not None:
                 return TupleType(items, fallback)
