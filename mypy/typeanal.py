@@ -790,7 +790,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if isinstance(imp, ImportFrom) and any(info.name == n[0] for n in imp.names):
                     break
             else:
-                self.fail(deprecated, ctx, code=codes.DEPRECATED)
+                warn = self.note if self.options.report_deprecated_as_note else self.fail
+                warn(deprecated, ctx, code=codes.DEPRECATED)
 
     def analyze_type_with_type_info(
         self, info: TypeInfo, args: Sequence[Type], ctx: Context, empty_tuple_index: bool

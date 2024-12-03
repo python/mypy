@@ -7696,8 +7696,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             and ((deprecated := node.deprecated) is not None)
             and not self.is_typeshed_stub
         ):
-            self.msg.fail(deprecated, context, code=codes.DEPRECATED)
-
+            warn = self.msg.note if self.options.report_deprecated_as_note else self.msg.fail
+            warn(deprecated, context, code=codes.DEPRECATED)
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
     """Collects the non-nested argument types in a set."""
