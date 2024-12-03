@@ -89,12 +89,12 @@ from mypyc.primitives.dict_ops import (
     dict_values_op,
 )
 from mypyc.primitives.list_ops import new_list_set_item_op
-from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.primitives.str_ops import (
-    str_encode_utf8_strict,
     str_encode_ascii_strict,
     str_encode_latin1_strict,
+    str_encode_utf8_strict,
 )
+from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed

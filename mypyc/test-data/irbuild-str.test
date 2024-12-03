@@ -383,4 +383,3 @@ L0:
     r37 = 'latin2'
     r38 = CPy_Encode(s, r37, 0)
     return 1
-
