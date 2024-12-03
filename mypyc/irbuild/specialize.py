@@ -694,33 +694,46 @@ def str_encode_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     if not isinstance(callee, MemberExpr):
         return None
 
-    # We can only specialize strict errors
-    if (
-        len(expr.arg_kinds) > 1
-        and isinstance(expr.args[1], StrExpr)
-        and expr.args[1].value != "strict"
-    ):
+    # We can only specialize if we have string literals as args
+    if len(expr.arg_kinds) > 0 and not isinstance(expr.args[0], StrExpr):
         return None
-
-    if (
-        len(expr.args) > 0
-        and expr.arg_kinds[0] == ARG_NAMED
-        and expr.arg_names[0] == "errors"
-        and isinstance(expr.args[0], StrExpr)
-        and expr.args[0].value != "strict"
-    ):
+    if len(expr.arg_kinds) > 1 and not isinstance(expr.args[1], StrExpr):
         return None
 
     encoding = "utf8"
-    if len(expr.args) > 0 and isinstance(expr.args[0], StrExpr):
-        encoding = expr.args[0].value.lower().replace("-", "_")
+    errors = "strict"
+    if len(expr.arg_kinds) > 0 and isinstance(expr.args[0], StrExpr):
+        if expr.arg_kinds[0] == ARG_NAMED:
+            if expr.arg_names[0] == "encoding":
+                encoding = expr.args[0].value
+            elif expr.arg_names[0] == "errors":
+                errors = expr.args[0].value
+        elif expr.arg_kinds[0] == ARG_POS:
+            encoding = expr.args[0].value
+        else:
+            return None
+    if len(expr.arg_kinds) > 1 and isinstance(expr.args[1], StrExpr):
+        if expr.arg_kinds[1] == ARG_NAMED:
+            if expr.arg_names[1] == "encoding":
+                encoding = expr.args[1].value
+            elif expr.arg_names[1] == "errors":
+                errors = expr.args[1].value
+        elif expr.arg_kinds[1] == ARG_POS:
+            errors = expr.args[1].value
+        else:
+            return None
 
+    if errors != "strict":
+        # We can only specialize strict errors
+        return None
+
+    encoding = encoding.lower().replace("-", "").replace("_", "")  # normalize
     # Specialized encodings and their accepted aliases
-    if encoding in ['u8', 'utf', 'utf8', 'utf_8', 'cp65001']:
+    if encoding in ["u8", "utf", "utf8", "cp65001"]:
         return builder.call_c(str_encode_utf8_strict, [builder.accept(callee.expr)], expr.line)
-    elif encoding in ["ascii", "646", "us_ascii"]:
+    elif encoding in ["646", "ascii", "usascii"]:
         return builder.call_c(str_encode_ascii_strict, [builder.accept(callee.expr)], expr.line)
-    elif encoding in ['iso_8859_1', 'iso8859_1', '8859', 'cp819', 'latin', 'latin1', 'latin_1', 'l1']:
+    elif encoding in ["iso88591", "8859", "cp819", "latin", "latin1", "l1"]:
         return builder.call_c(str_encode_latin1_strict, [builder.accept(callee.expr)], expr.line)
 
     return None

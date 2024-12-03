@@ -293,30 +293,94 @@ L0:
 def f(s: str) -> None:
     s.encode()
     s.encode('utf-8')
-    s.encode('utf-8', 'strict')
-    s.encode('utf-8', errors='strict')
-    s.encode('utf-8', 'backslashreplace')
+    s.encode('utf8', 'strict')
+    s.encode('latin1', errors='strict')
     s.encode(encoding='ascii')
+    s.encode(errors='strict', encoding='latin-1')
+    s.encode('utf-8', 'backslashreplace')
     s.encode('ascii', 'backslashreplace')
+    encoding = 'utf8'
+    s.encode(encoding)
+    errors = 'strict'
+    s.encode('utf8', errors)
+    s.encode('utf8', errors=errors)
+    s.encode(errors=errors)
+    s.encode(encoding=encoding, errors=errors)
+    s.encode('latin2')
+
 [out]
 def f(s):
     s :: str
-    r0, r1, r2, r3 :: bytes
-    r4, r5 :: str
-    r6, r7 :: bytes
-    r8, r9 :: str
-    r10 :: bytes
+    r0, r1, r2, r3, r4, r5 :: bytes
+    r6, r7 :: str
+    r8 :: bytes
+    r9, r10 :: str
+    r11 :: bytes
+    r12, encoding :: str
+    r13 :: bytes
+    r14, errors, r15 :: str
+    r16 :: bytes
+    r17, r18 :: str
+    r19 :: object
+    r20 :: str
+    r21 :: tuple
+    r22 :: dict
+    r23 :: object
+    r24 :: str
+    r25 :: object
+    r26 :: str
+    r27 :: tuple
+    r28 :: dict
+    r29 :: object
+    r30 :: str
+    r31 :: object
+    r32, r33 :: str
+    r34 :: tuple
+    r35 :: dict
+    r36 :: object
+    r37 :: str
+    r38 :: bytes
 L0:
     r0 = PyUnicode_AsUTF8String(s)
     r1 = PyUnicode_AsUTF8String(s)
     r2 = PyUnicode_AsUTF8String(s)
-    r3 = PyUnicode_AsUTF8String(s)
-    r4 = 'utf-8'
-    r5 = 'backslashreplace'
-    r6 = CPy_Encode(s, r4, r5)
-    r7 = PyUnicode_AsASCIIString(s)
-    r8 = 'ascii'
-    r9 = 'backslashreplace'
-    r10 = CPy_Encode(s, r8, r9)
+    r3 = PyUnicode_AsLatin1String(s)
+    r4 = PyUnicode_AsASCIIString(s)
+    r5 = PyUnicode_AsLatin1String(s)
+    r6 = 'utf-8'
+    r7 = 'backslashreplace'
+    r8 = CPy_Encode(s, r6, r7)
+    r9 = 'ascii'
+    r10 = 'backslashreplace'
+    r11 = CPy_Encode(s, r9, r10)
+    r12 = 'utf8'
+    encoding = r12
+    r13 = CPy_Encode(s, encoding, 0)
+    r14 = 'strict'
+    errors = r14
+    r15 = 'utf8'
+    r16 = CPy_Encode(s, r15, errors)
+    r17 = 'utf8'
+    r18 = 'encode'
+    r19 = CPyObject_GetAttr(s, r18)
+    r20 = 'errors'
+    r21 = PyTuple_Pack(1, r17)
+    r22 = CPyDict_Build(1, r20, errors)
+    r23 = PyObject_Call(r19, r21, r22)
+    r24 = 'encode'
+    r25 = CPyObject_GetAttr(s, r24)
+    r26 = 'errors'
+    r27 = PyTuple_Pack(0)
+    r28 = CPyDict_Build(1, r26, errors)
+    r29 = PyObject_Call(r25, r27, r28)
+    r30 = 'encode'
+    r31 = CPyObject_GetAttr(s, r30)
+    r32 = 'encoding'
+    r33 = 'errors'
+    r34 = PyTuple_Pack(0)
+    r35 = CPyDict_Build(2, r32, encoding, r33, errors)
+    r36 = PyObject_Call(r31, r34, r35)
+    r37 = 'latin2'
+    r38 = CPy_Encode(s, r37, 0)
     return 1
 
