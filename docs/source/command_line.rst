@@ -166,6 +166,10 @@ imports.
 
     For more details, see :ref:`ignore-missing-imports`.
 
+.. option:: --follow-untyped-imports
+
+    This flag makes mypy analyze imports without stubs or a py.typed marker.
+
 .. option:: --follow-imports {normal,silent,skip,error}
 
     This flag adjusts how mypy follows imported modules that were not
