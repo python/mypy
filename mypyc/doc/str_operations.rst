@@ -25,6 +25,9 @@ Operators
 Methods
 -------
 
+* ``s.encode()``
+* ``s.encode(encoding: str)``
+* ``s.encode(encoding: str, errors: str)``
 * ``s1.endswith(s2: str)``
 * ``s.join(x: Iterable)``
 * ``s.replace(old: str, new: str)``
@@ -34,8 +37,17 @@ Methods
 * ``s.split(sep: str, maxsplit: int)``
 * ``s1.startswith(s2: str)``
 
+Formatting
+----------
+
+A subset of these common string formatting expressions are optimized:
+
+* F-strings
+* ``"...".format(...)``
+* ``"..." % (...)``
+
 Functions
 ---------
 
- * ``len(s: str)``
- * ``ord(s: str)``
+* ``len(s: str)``
+* ``ord(s: str)``
