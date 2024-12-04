@@ -7696,7 +7696,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             and ((deprecated := node.deprecated) is not None)
             and not self.is_typeshed_stub
         ):
-            warn = self.msg.fail if self.options.report_deprecated_as_error else self.msg.note
+            warn = self.msg.note if self.options.report_deprecated_as_note else self.msg.fail
             warn(deprecated, context, code=codes.DEPRECATED)
 
 

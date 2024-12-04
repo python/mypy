@@ -810,10 +810,10 @@ def process_options(
         group=lint_group,
     )
     add_invertible_flag(
-        "--report-deprecated-as-error",
+        "--report-deprecated-as-note",
         default=False,
         strict_flag=False,
-        help="Report importing or using deprecated features as errors instead of notes",
+        help="Report importing or using deprecated features as notes instead of errors",
         group=lint_group,
     )
 
