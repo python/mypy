@@ -34,8 +34,8 @@ Methods
 * ``s.split(sep: str, maxsplit: int)``
 * ``s1.startswith(s2: str)``
 
-Other
------
+Functions
+---------
 
  * ``len(s: str)``
  * ``ord(s: str)``

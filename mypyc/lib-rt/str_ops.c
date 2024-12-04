@@ -252,6 +252,6 @@ CPyTagged CPyStr_Ord(PyObject *obj) {
         return PyUnicode_READ(kind, PyUnicode_DATA(obj), 0) << 1;
     }
     PyErr_Format(
-        PyExc_TypeError, "ord() expected a character, but a string of length %d found", (int)s);
+        PyExc_TypeError, "ord() expected a character, but a string of length %zd found", s);
     return CPY_INT_TAG;
 }
