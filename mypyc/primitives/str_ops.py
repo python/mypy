@@ -23,7 +23,6 @@ from mypyc.primitives.registry import (
     function_op,
     load_address_op,
     method_op,
-    custom_primitive_op,
 )
 
 # Get the 'str' type object.
