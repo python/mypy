@@ -20,6 +20,8 @@ Operators
 * Slicing (``b[n:m]``, ``b[n:]``, ``b[:m]``)
 * Comparisons (``==``, ``!=``)
 
+.. _bytes-methods:
+
 Methods
 -------
 
@@ -27,6 +29,10 @@ Methods
 * ``b.decode(encoding: str)``
 * ``b.decode(encoding: str, errors: str)``
 * ``b.join(x: Iterable)``
+
+.. note::
+
+    :ref:`str.encode() <str-methods>` is also optimized.
 
 Formatting
 ----------

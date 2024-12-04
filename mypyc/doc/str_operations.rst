@@ -22,6 +22,8 @@ Operators
 * Comparisons (``==``, ``!=``)
 * Augmented assignment (``s1 += s2``)
 
+.. _str-methods:
+
 Methods
 -------
 
@@ -36,6 +38,10 @@ Methods
 * ``s.split(sep: str)``
 * ``s.split(sep: str, maxsplit: int)``
 * ``s1.startswith(s2: str)``
+
+.. note::
+
+    :ref:`bytes.decode() <bytes-methods>` is also optimized.
 
 Formatting
 ----------
