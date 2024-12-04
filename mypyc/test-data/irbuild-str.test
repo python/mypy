@@ -383,3 +383,46 @@ L0:
     r37 = 'latin2'
     r38 = CPy_Encode(s, r37, 0)
     return 1
+
+[case testOrd]
+def str_ord(x: str) -> int:
+    return ord(x)
+def str_ord_literal() -> int:
+    return ord("a")
+def bytes_ord(x: bytes) -> int:
+    return ord(x)
+def bytes_ord_literal() -> int:
+    return ord(b"a")
+def any_ord(x) -> int:
+    return ord(x)
+[out]
+def str_ord(x):
+    x :: str
+    r0 :: int
+L0:
+    r0 = CPyStr_Ord(x)
+    return r0
+def str_ord_literal():
+L0:
+    return 194
+def bytes_ord(x):
+    x :: bytes
+    r0 :: int
+L0:
+    r0 = CPyBytes_Ord(x)
+    return r0
+def bytes_ord_literal():
+L0:
+    return 194
+def any_ord(x):
+    x, r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: int
+L0:
+    r0 = builtins :: module
+    r1 = 'ord'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = PyObject_CallFunctionObjArgs(r2, x, 0)
+    r4 = unbox(int, r3)
+    return r4

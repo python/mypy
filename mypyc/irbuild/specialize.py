@@ -19,6 +19,7 @@ from typing import Callable, Optional
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
+    BytesExpr,
     CallExpr,
     DictExpr,
     Expression,
@@ -876,4 +877,14 @@ def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Valu
     if is_float_rprimitive(arg_type):
         # No-op float conversion.
         return builder.accept(arg)
+    return None
+
+
+@specialize_function("builtins.ord")
+def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    if isinstance(arg, (StrExpr, BytesExpr)) and len(arg.value) == 1:
+        return Integer(ord(arg.value))
     return None

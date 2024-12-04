@@ -251,3 +251,11 @@ method_op(
     c_function_name="CPy_Encode",
     error_kind=ERR_MAGIC,
 )
+
+function_op(
+    name="builtins.ord",
+    arg_types=[str_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyStr_Ord",
+    error_kind=ERR_MAGIC,
+)
