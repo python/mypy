@@ -163,22 +163,24 @@ def f(nt: NT, b: bool) -> int:
     return nt.y
 [out]
 def f(nt, b):
-    nt :: tuple
+    nt :: object
     b :: bool
-    r0 :: object
-    r1 :: int
-    r2 :: object
-    r3 :: int
+    r0, r1 :: object
+    r2 :: int
+    r3, r4 :: object
+    r5 :: int
 L0:
     if b goto L1 else goto L2 :: bool
 L1:
-    r0 = CPySequenceTuple_GetItem(nt, 0)
-    r1 = unbox(int, r0)
-    return r1
+    r0 = object 0
+    r1 = PyObject_GetItem(nt, r0)
+    r2 = unbox(int, r1)
+    return r2
 L2:
-    r2 = CPySequenceTuple_GetItem(nt, 2)
-    r3 = unbox(int, r2)
-    return r3
+    r3 = object 1
+    r4 = PyObject_GetItem(nt, r3)
+    r5 = unbox(int, r4)
+    return r5
 
 
 [case testTupleOperatorIn]

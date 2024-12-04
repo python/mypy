@@ -545,3 +545,29 @@ def test_range_object() -> None:
         r4 = range(4, 12, 0)
     except ValueError as e:
         assert "range() arg 3 must not be zero" in str(e)
+
+[case testNamedTupleLoop]
+from collections.abc import Iterable
+from typing import NamedTuple, Any
+from typing_extensions import Self
+
+
+class Vector2(NamedTuple):
+    x: int
+    y: float
+
+    @classmethod
+    def from_iter(cls, iterable: Iterable[Any]) -> Self:
+        return cls(*iter(iterable))
+
+    def __neg__(self) -> Self:
+        return self.from_iter(-c for c in self)
+
+[file driver.py]
+import native
+print(-native.Vector2(2, -3.1))
+print([x for x in native.Vector2(4, -5.2)])
+
+[out]
+Vector2(x=-2, y=3.1)
+\[4, -5.2]

@@ -2156,36 +2156,35 @@ def __top_level__():
     r29 :: dict
     r30 :: str
     r31, r32, r33 :: object
-    r34 :: tuple
-    r35 :: dict
-    r36 :: str
-    r37 :: i32
-    r38 :: bit
-    r39 :: dict
-    r40 :: str
-    r41, r42, r43 :: object
-    r44 :: dict
-    r45 :: str
-    r46 :: i32
-    r47 :: bit
-    r48 :: str
-    r49 :: dict
-    r50 :: str
-    r51 :: object
-    r52 :: dict
-    r53 :: str
-    r54, r55 :: object
-    r56 :: dict
-    r57 :: str
-    r58 :: i32
-    r59 :: bit
-    r60 :: list
-    r61, r62, r63 :: object
-    r64 :: ptr
-    r65 :: dict
-    r66 :: str
-    r67 :: i32
-    r68 :: bit
+    r34 :: dict
+    r35 :: str
+    r36 :: i32
+    r37 :: bit
+    r38 :: dict
+    r39 :: str
+    r40, r41, r42 :: object
+    r43 :: dict
+    r44 :: str
+    r45 :: i32
+    r46 :: bit
+    r47 :: str
+    r48 :: dict
+    r49 :: str
+    r50 :: object
+    r51 :: dict
+    r52 :: str
+    r53, r54 :: object
+    r55 :: dict
+    r56 :: str
+    r57 :: i32
+    r58 :: bit
+    r59 :: list
+    r60, r61, r62 :: object
+    r63 :: ptr
+    r64 :: dict
+    r65 :: str
+    r66 :: i32
+    r67 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -2226,45 +2225,44 @@ L2:
     r31 = CPyDict_GetItem(r29, r30)
     r32 = object 1
     r33 = PyObject_CallFunctionObjArgs(r31, r32, r28, 0)
-    r34 = cast(tuple, r33)
-    r35 = __main__.globals :: static
-    r36 = 'x'
-    r37 = CPyDict_SetItem(r35, r36, r34)
-    r38 = r37 >= 0 :: signed
-    r39 = __main__.globals :: static
-    r40 = 'List'
-    r41 = CPyDict_GetItem(r39, r40)
-    r42 = load_address PyLong_Type
-    r43 = PyObject_GetItem(r41, r42)
-    r44 = __main__.globals :: static
-    r45 = 'Foo'
-    r46 = CPyDict_SetItem(r44, r45, r43)
-    r47 = r46 >= 0 :: signed
-    r48 = 'Bar'
-    r49 = __main__.globals :: static
-    r50 = 'Foo'
-    r51 = CPyDict_GetItem(r49, r50)
-    r52 = __main__.globals :: static
-    r53 = 'NewType'
-    r54 = CPyDict_GetItem(r52, r53)
-    r55 = PyObject_CallFunctionObjArgs(r54, r48, r51, 0)
-    r56 = __main__.globals :: static
-    r57 = 'Bar'
-    r58 = CPyDict_SetItem(r56, r57, r55)
-    r59 = r58 >= 0 :: signed
-    r60 = PyList_New(3)
-    r61 = object 1
-    r62 = object 2
-    r63 = object 3
-    r64 = list_items r60
-    buf_init_item r64, 0, r61
-    buf_init_item r64, 1, r62
-    buf_init_item r64, 2, r63
-    keep_alive r60
-    r65 = __main__.globals :: static
-    r66 = 'y'
-    r67 = CPyDict_SetItem(r65, r66, r60)
-    r68 = r67 >= 0 :: signed
+    r34 = __main__.globals :: static
+    r35 = 'x'
+    r36 = CPyDict_SetItem(r34, r35, r33)
+    r37 = r36 >= 0 :: signed
+    r38 = __main__.globals :: static
+    r39 = 'List'
+    r40 = CPyDict_GetItem(r38, r39)
+    r41 = load_address PyLong_Type
+    r42 = PyObject_GetItem(r40, r41)
+    r43 = __main__.globals :: static
+    r44 = 'Foo'
+    r45 = CPyDict_SetItem(r43, r44, r42)
+    r46 = r45 >= 0 :: signed
+    r47 = 'Bar'
+    r48 = __main__.globals :: static
+    r49 = 'Foo'
+    r50 = CPyDict_GetItem(r48, r49)
+    r51 = __main__.globals :: static
+    r52 = 'NewType'
+    r53 = CPyDict_GetItem(r51, r52)
+    r54 = PyObject_CallFunctionObjArgs(r53, r47, r50, 0)
+    r55 = __main__.globals :: static
+    r56 = 'Bar'
+    r57 = CPyDict_SetItem(r55, r56, r54)
+    r58 = r57 >= 0 :: signed
+    r59 = PyList_New(3)
+    r60 = object 1
+    r61 = object 2
+    r62 = object 3
+    r63 = list_items r59
+    buf_init_item r63, 0, r60
+    buf_init_item r63, 1, r61
+    buf_init_item r63, 2, r62
+    keep_alive r59
+    r64 = __main__.globals :: static
+    r65 = 'y'
+    r66 = CPyDict_SetItem(r64, r65, r59)
+    r67 = r66 >= 0 :: signed
     return 1
 
 [case testChainedConditional]

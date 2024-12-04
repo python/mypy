@@ -120,6 +120,8 @@ class Mapper:
                 and find_unpack_in_list(typ.items) is None
             ):
                 return RTuple([self.type_to_rtype(t) for t in typ.items])
+            elif typ.partial_fallback.type.is_named_tuple:
+                return object_rprimitive
             else:
                 return tuple_rprimitive
         elif isinstance(typ, CallableType):
