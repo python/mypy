@@ -1981,15 +1981,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             "__post_init__",
         ) and (self.options.check_untyped_defs or not defn.is_dynamic())
         found_method_base_classes: list[TypeInfo] = []
-        for base in defn.info.mro[1:]:
-            result = self.check_method_or_accessor_override_for_base(
-                defn, base, check_override_compatibility
-            )
-            if result is None:
-                # Node was deferred, we will have another attempt later.
-                return None
-            if result:
-                found_method_base_classes.append(base)
+        for directbase in defn.info.bases:
+            first_baseclass = True
+            for base in directbase.type.mro:
+                result = self.check_method_or_accessor_override_for_base(
+                    defn, base, check_override_compatibility, first_baseclass
+                )
+                if result is None:
+                    # Node was deferred, we will have another attempt later.
+                    return None
+                if result:
+                    found_method_base_classes.append(base)
+                    first_baseclass = False
         return found_method_base_classes
 
     def check_method_or_accessor_override_for_base(
@@ -1997,6 +2000,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         defn: FuncDef | OverloadedFuncDef | Decorator,
         base: TypeInfo,
         check_override_compatibility: bool,
+        first_baseclass: bool,
     ) -> bool | None:
         """Check if method definition is compatible with a base class.
 
@@ -2020,7 +2024,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if check_override_compatibility:
                 # Check compatibility of the override signature
                 # (__init__, __new__, __init_subclass__ are special).
-                if self.check_method_override_for_base_with_name(defn, name, base):
+                if self.check_method_override_for_base_with_name(
+                    defn, name, base, first_baseclass
+                ):
                     return None
                 if name in operators.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
@@ -2029,12 +2035,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # always introduced safely if a base class defined __add__.
                     # TODO can't come up with an example where this is
                     #      necessary; now it's "just in case"
-                    if self.check_method_override_for_base_with_name(defn, method, base):
+                    if self.check_method_override_for_base_with_name(
+                        defn, method, base, first_baseclass
+                    ):
                         return None
         return found_base_method
 
     def check_method_override_for_base_with_name(
-        self, defn: FuncDef | OverloadedFuncDef | Decorator, name: str, base: TypeInfo
+        self,
+        defn: FuncDef | OverloadedFuncDef | Decorator,
+        name: str,
+        base: TypeInfo,
+        first_baseclass: bool,
     ) -> bool:
         """Check if overriding an attribute `name` of `base` with `defn` is valid.
 
@@ -2135,33 +2147,47 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
-                # Check that the types are compatible.
-                ok = self.check_override(
-                    typ,
-                    original_type,
-                    defn.name,
-                    name,
-                    base.name,
-                    original_class_or_static,
-                    override_class_or_static,
-                    context,
-                )
-                # Check if this override is covariant.
-                if (
-                    ok
-                    and original_node
-                    and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
-                    and self.is_writable_attribute(original_node)
-                    and not is_subtype(original_type, typ, ignore_pos_arg_names=True)
+                if isinstance(original_node, Decorator):
+                    deprecated = original_node.func.deprecated
+                elif isinstance(original_node, OverloadedFuncDef):
+                    deprecated = original_node.deprecated
+                else:
+                    deprecated = None
+                if deprecated is None:
+                    # Check that the types are compatible.
+                    ok = self.check_override(
+                        typ,
+                        original_type,
+                        defn.name,
+                        name,
+                        base.name,
+                        original_class_or_static,
+                        override_class_or_static,
+                        context,
+                    )
+                    # Check if this override is covariant.
+                    if (
+                        ok
+                        and original_node
+                        and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
+                        and self.is_writable_attribute(original_node)
+                        and not is_subtype(original_type, typ, ignore_pos_arg_names=True)
+                    ):
+                        base_str, override_str = format_type_distinctly(
+                            original_type, typ, options=self.options
+                        )
+                        msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
+                            f' (base class "{base.name}" defined the type as {base_str},'
+                            f" override has type {override_str})"
+                        )
+                        self.fail(msg, context)
+                elif (
+                    context.is_explicit_override
+                    and first_baseclass
+                    and not is_private(context.name)
                 ):
-                    base_str, override_str = format_type_distinctly(
-                        original_type, typ, options=self.options
-                    )
-                    msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
-                        f' (base class "{base.name}" defined the type as {base_str},'
-                        f" override has type {override_str})"
-                    )
-                    self.fail(msg, context)
+                    warn = self.fail if self.options.report_deprecated_as_error else self.note
+                    warn(deprecated, context, code=codes.DEPRECATED)
             elif isinstance(original_type, UnionType) and any(
                 is_subtype(typ, orig_typ, ignore_pos_arg_names=True)
                 for orig_typ in original_type.items
