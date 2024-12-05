@@ -32,6 +32,9 @@ from typing import AbstractSet, Any, Generic, Iterator, TypeVar, Union
 from typing_extensions import get_origin, is_typeddict
 
 import mypy.build
+import mypy.checkexpr
+import mypy.checkmember
+import mypy.erasetype
 import mypy.modulefinder
 import mypy.nodes
 import mypy.state
@@ -670,7 +673,11 @@ def _verify_arg_default_value(
                 "has a default value but stub argument does not"
             )
         else:
-            runtime_type = get_mypy_type_of_runtime_value(runtime_arg.default)
+            type_context = stub_arg.variable.type
+            runtime_type = get_mypy_type_of_runtime_value(
+                runtime_arg.default, type_context=type_context
+            )
+
             # Fallback to the type annotation type if var type is missing. The type annotation
             # is an UnboundType, but I don't know enough to know what the pros and cons here are.
             # UnboundTypes have ugly question marks following them, so default to var type.
@@ -1097,7 +1104,7 @@ def verify_var(
     ):
         yield Error(object_path, "is read-only at runtime but not in the stub", stub, runtime)
 
-    runtime_type = get_mypy_type_of_runtime_value(runtime)
+    runtime_type = get_mypy_type_of_runtime_value(runtime, type_context=stub.type)
     if (
         runtime_type is not None
         and stub.type is not None
@@ -1586,7 +1593,9 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
         return mypy.subtypes.is_subtype(left, right)
 
 
-def get_mypy_type_of_runtime_value(runtime: Any) -> mypy.types.Type | None:
+def get_mypy_type_of_runtime_value(
+    runtime: Any, type_context: mypy.types.Type | None = None
+) -> mypy.types.Type | None:
     """Returns a mypy type object representing the type of ``runtime``.
 
     Returns None if we can't find something that works.
@@ -1647,7 +1656,49 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> mypy.types.Type | None:
             is_ellipsis_args=True,
         )
 
-    # Try and look up a stub for the runtime object
+    if type_context:
+        # Don't attempt to account for context if the context is generic
+        # This is related to issue #3737
+        if isinstance(type_context, mypy.types.CallableType):
+            if isinstance(type_context.ret_type, mypy.types.TypeVarType):
+                type_context = None
+        if isinstance(type_context, mypy.types.TypeType):
+            if isinstance(type_context.item, mypy.types.TypeVarType):
+                type_context = None
+
+    if type_context:
+
+        def _named_type(name: str) -> mypy.types.Instance:
+            parts = name.rsplit(".", maxsplit=1)
+            stub = get_stub(parts[0])
+            if stub is not None:
+                if parts[1] in stub.names:
+                    node = stub.names[parts[1]]
+                    assert isinstance(node.node, nodes.TypeInfo)
+                    any_type = mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
+                    return mypy.types.Instance(
+                        node.node, [any_type] * len(node.node.defn.type_vars)
+                    )
+
+            any_type = mypy.types.AnyType(mypy.types.TypeOfAny.from_error)
+            return mypy.types.Instance(node.node, [])
+
+        if isinstance(runtime, type):
+            # Try and look up a stub for the runtime object itself
+            # The logic here is similar to ExpressionChecker.analyze_ref_expr
+            stub = get_stub(runtime.__module__)
+            if stub is not None:
+                if runtime.__name__ in stub.names:
+                    type_info = stub.names[runtime.__name__].node
+                    if isinstance(type_info, nodes.TypeInfo):
+                        result = mypy.checkmember.type_object_type(type_info, _named_type)
+                        if mypy.checkexpr.is_type_type_context(type_context):
+                            # This is the type in a type[] expression, so substitute type
+                            # variables with Any.
+                            result = mypy.erasetype.erase_typevars(result)
+                        return result
+
+    # Try and look up a stub for the runtime object's type
     stub = get_stub(type(runtime).__module__)
     if stub is None:
         return None
