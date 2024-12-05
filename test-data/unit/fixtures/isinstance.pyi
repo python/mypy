@@ -7,7 +7,7 @@ class object:
 
 class type:
     def __init__(self, x) -> None: pass
-    def __or__(self, other: type) -> type: pass
+    def __or__(self, other: type[Any]) -> type[Any]: pass
 
 class tuple(Generic[T]): pass
 

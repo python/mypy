@@ -6,8 +6,18 @@
 from _typeshed import SupportsKeysAndGetItem
 import _typeshed
 from typing import (
-    TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Sequence,
+    Any,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    overload,
+    Optional,
     Self,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
 )
 
 T = TypeVar('T')
@@ -57,8 +67,9 @@ class function: pass
 class float: pass
 class complex: pass
 class bool(int): pass
-class ellipsis: pass
+class ellipsis:
+    __class__: object
 class BaseException: pass
 
-def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
+def isinstance(x: object, t: Union[type[Any], Tuple[type[Any], ...]]) -> bool: pass  # type: ignore[misc]
 def iter(__iterable: Iterable[T]) -> Iterator[T]: pass

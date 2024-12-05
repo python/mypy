@@ -311,7 +311,7 @@ class ClassInfo:
         name: str,
         self_var: str,
         docstring: str | None = None,
-        cls: type | None = None,
+        cls: type[object] | None = None,
         parent: ClassInfo | None = None,
     ) -> None:
         self.name = name
