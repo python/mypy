@@ -168,7 +168,11 @@ imports.
 
 .. option:: --follow-untyped-imports
 
-    This flag makes mypy analyze imports without stubs or a py.typed marker.
+    This flag makes mypy analyze imports even if missing a py.typed marker or stubs.
+
+    Note that analyzing all unannotated modules might result in issues
+    when analyzing code not designed to be type checked and may significantly
+    increase how long mypy takes to run.
 
 .. option:: --follow-imports {normal,silent,skip,error}
 
