@@ -328,7 +328,7 @@ section of the command line docs.
 
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
-    import statement
+    import statement.
 
 .. confval:: follow_imports
 
