@@ -1,11 +1,7 @@
 """A "low-level" IR builder class.
 
-LowLevelIRBuilder provides core abstractions we use for constructing
-IR as well as a number of higher-level ones (accessing attributes,
-calling functions and methods, and coercing between types, for
-example). The core principle of the low-level IR builder is that all
-of its facilities operate solely on the IR level and not the AST
-level---it has *no knowledge* of mypy types or expressions.
+See the docstring of class LowLevelIRBuiler for more information.
+
 """
 
 from __future__ import annotations
@@ -224,6 +220,22 @@ BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<="
 
 
 class LowLevelIRBuilder:
+    """A "low-level" IR builder class.
+
+    LowLevelIRBuilder provides core abstractions we use for constructing
+    IR as well as a number of higher-level ones (accessing attributes,
+    calling functions and methods, and coercing between types, for
+    example).
+
+    The core principle of the low-level IR builder is that all of its
+    facilities operate solely on the mypyc IR level and not the mypy AST
+    level---it has *no knowledge* of mypy types or expressions.
+
+    The mypyc.irbuilder.builder.IRBuilder class wraps an instance of this
+    class and provides additional functionality to transform mypy AST nodes
+    to IR.
+    """
+
     def __init__(self, errors: Errors | None, options: CompilerOptions) -> None:
         self.errors = errors
         self.options = options

@@ -1,14 +1,6 @@
-"""Builder class used to transform a mypy AST to the IR form.
+"""Builder class to transform a mypy AST to the IR form.
 
-The IRBuilder class maintains transformation state and provides access
-to various helpers used to implement the transform.
-
-The top-level transform control logic is in mypyc.irbuild.main.
-
-mypyc.irbuild.visitor.IRBuilderVisitor is used to dispatch based on mypy
-AST node type to code that actually does the bulk of the work. For
-example, expressions are transformed in mypyc.irbuild.expression and
-functions are transformed in mypyc.irbuild.function.
+See the docstring of class IRBuilder for more information.
 """
 
 from __future__ import annotations
@@ -154,6 +146,30 @@ SymbolTarget = Union[AssignmentTargetRegister, AssignmentTargetAttr]
 
 
 class IRBuilder:
+    """Builder class used to construct mypyc IR from a mypy AST.
+
+    The IRBuilder class maintains IR transformation state and provides access
+    to various helpers used to implement the transform.
+
+    mypyc.irbuild.visitor.IRBuilderVisitor is used to dispatch based on mypy
+    AST node type to code that actually does the bulk of the work. For
+    example, expressions are transformed in mypyc.irbuild.expression and
+    functions are transformed in mypyc.irbuild.function.
+
+    Use the "accept()" method to translate individual mypy AST nodes to IR.
+    Other methods are used to generate IR for various lower-level operations.
+
+    This class wraps the lower-level LowLevelIRBuilder class, an instance
+    of which is available through the "builder" attribute. The low-level
+    builder class doesn't have any knowledge of the mypy AST. Wrappers for
+    some LowLevelIRBuilder method are provided for convenience, but others
+    can also be accessed via the "builder" attribute.
+
+    See also:
+     * The mypyc IR is defined in the mypyc.ir package.
+     * The top-level IR transform control logic is in mypyc.irbuild.main.
+    """
+
     def __init__(
         self,
         current_module: str,
