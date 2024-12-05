@@ -4383,7 +4383,7 @@ from typing import Union
 class A:
     a = None  # type: Union[int, str]
 class B(A):
-    a = 1
+    a = 1  # type: int
 class C(B):
     a = "str"
 class D(A):
@@ -4621,8 +4621,6 @@ class B(A):
     x = 1
 class C(B):
     x = ''
-[out]
-main:6: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
 [case testSlots]
 class A:
