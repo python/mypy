@@ -5038,16 +5038,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if t:
             return t
 
-        # if a ListExpr, just infer the item type directly
+        # try to infer directly
         if isinstance(e, ListExpr):
             item_types = [self.accept(item) for item in e.items]
             if not item_types:
-                # empty list, default to Any
                 item_type = AnyType(TypeOfAny.from_empty_collection)
             else:
-                # attempt to find a common supertype
+                # use all the element types
                 item_type = self.infer_item_type(item_types)
             return self.chk.named_generic_type(fullname, [item_type])
+
+        #!BUG this forces all list exprs to be forced (we don't want that)
 
         # Translate into type checking a generic function call.
         # Used for list and set expressions, as well as for tuples
