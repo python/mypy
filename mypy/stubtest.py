@@ -1587,15 +1587,15 @@ def _signature_fromstr(
         except NameError:
             try:
                 value = eval(s, sys_module_dict)
-            except NameError:
-                raise ValueError
+            except NameError as err:
+                raise ValueError from err
 
         if isinstance(value, (str, int, float, bytes, bool, type(None))):
             return ast.Constant(value)
         raise ValueError
 
     class RewriteSymbolics(ast.NodeTransformer):
-        def visit_Attribute(self, node: ast.Attribute) -> Any:
+        def visit_Attribute(self, node: ast.Attribute) -> Any:  # noqa: N802
             a = []
             n: ast.expr = node
             while isinstance(n, ast.Attribute):
@@ -1607,12 +1607,12 @@ def _signature_fromstr(
             value = ".".join(reversed(a))
             return wrap_value(value)
 
-        def visit_Name(self, node: ast.Name) -> Any:
+        def visit_Name(self, node: ast.Name) -> Any:  # noqa: N802
             if not isinstance(node.ctx, ast.Load):
                 raise ValueError()
             return wrap_value(node.id)
 
-        def visit_BinOp(self, node: ast.BinOp) -> Any:
+        def visit_BinOp(self, node: ast.BinOp) -> Any:  # noqa: N802
             # Support constant folding of a couple simple binary operations
             # commonly used to define default values in text signatures
             left = self.visit(node.left)
@@ -1660,6 +1660,7 @@ def _signature_fromstr(
         else:
             kind = Parameter.POSITIONAL_OR_KEYWORD
         for i, (name, default) in enumerate(reversed(list(iter))):
+            assert name is not None
             p(name, default)
             if i == last_positional_only:
                 kind = Parameter.POSITIONAL_OR_KEYWORD
