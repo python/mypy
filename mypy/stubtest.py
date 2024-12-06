@@ -1690,18 +1690,15 @@ def get_mypy_type_of_runtime_value(
 
         # Try and look up a stub for the runtime object itself
         # The logic here is similar to ExpressionChecker.analyze_ref_expr
-        stub = get_stub(runtime.__module__)
-        if stub is not None:
-            if runtime.__name__ in stub.names:
-                type_info = stub.names[runtime.__name__].node
-                if isinstance(type_info, nodes.TypeInfo):
-                    result: mypy.types.Type | None = None
-                    result = mypy.checkmember.type_object_type(type_info, _named_type)
-                    if mypy.checkexpr.is_type_type_context(type_context):
-                        # This is the type in a type[] expression, so substitute type
-                        # variables with Any.
-                        result = mypy.erasetype.erase_typevars(result)
-                    return result
+        type_info = get_mypy_node_for_name(runtime.__module__, runtime.__name__)
+        if isinstance(type_info, nodes.TypeInfo):
+            result: mypy.types.Type | None = None
+            result = mypy.checkmember.type_object_type(type_info, _named_type)
+            if mypy.checkexpr.is_type_type_context(type_context):
+                # This is the type in a type[] expression, so substitute type
+                # variables with Any.
+                result = mypy.erasetype.erase_typevars(result)
+            return result
 
     # Try and look up a stub for the runtime object's type
     type_info = get_mypy_node_for_name(type(runtime).__module__, type(runtime).__name__)
