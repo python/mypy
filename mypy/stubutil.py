@@ -307,12 +307,18 @@ class AnnotationPrinter(TypeStrVisitor):
 
 class ClassInfo:
     def __init__(
-        self, name: str, self_var: str, docstring: str | None = None, cls: type | None = None
+        self,
+        name: str,
+        self_var: str,
+        docstring: str | None = None,
+        cls: type | None = None,
+        parent: ClassInfo | None = None,
     ) -> None:
         self.name = name
         self.self_var = self_var
         self.docstring = docstring
         self.cls = cls
+        self.parent = parent
 
 
 class FunctionContext:
@@ -335,7 +341,13 @@ class FunctionContext:
     def fullname(self) -> str:
         if self._fullname is None:
             if self.class_info:
-                self._fullname = f"{self.module_name}.{self.class_info.name}.{self.name}"
+                parents = []
+                class_info: ClassInfo | None = self.class_info
+                while class_info is not None:
+                    parents.append(class_info.name)
+                    class_info = class_info.parent
+                namespace = ".".join(reversed(parents))
+                self._fullname = f"{self.module_name}.{namespace}.{self.name}"
             else:
                 self._fullname = f"{self.module_name}.{self.name}"
         return self._fullname
@@ -820,6 +832,8 @@ class BaseStubGenerator:
         return False
 
     def is_private_name(self, name: str, fullname: str | None = None) -> bool:
+        if "__mypy-" in name:
+            return True  # Never include mypy generated symbols
         if self._include_private:
             return False
         if fullname in self.EXTRA_EXPORTED:
