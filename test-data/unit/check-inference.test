@@ -400,7 +400,7 @@ main:6: error: Need more than 3 values to unpack (4 expected)
 [case testInvalidRvalueTypeInInferredMultipleLvarDefinition]
 import typing
 def f() -> None:
-    a, b = f   # E: "Callable[[], None]" object is not iterable
+    a, b = f   # E: "() -> None" object is not iterable
     c, d = A() # E: "A" object is not iterable
 class A: pass
 [builtins fixtures/for.pyi]
@@ -409,7 +409,7 @@ class A: pass
 [case testInvalidRvalueTypeInInferredNestedTupleAssignment]
 import typing
 def f() -> None:
-    a1, (a2, b) = A(), f   # E: "Callable[[], None]" object is not iterable
+    a1, (a2, b) = A(), f   # E: "() -> None" object is not iterable
     a3, (c, d) = A(), A() # E: "A" object is not iterable
 class A: pass
 [builtins fixtures/for.pyi]
@@ -988,7 +988,7 @@ a = k2
 if int():
     a = k2
 if int():
-    a = k1 # E: Incompatible types in assignment (expression has type "Callable[[int, List[T@k1]], List[Union[T@k1, int]]]", variable has type "Callable[[S, List[T@k2]], List[Union[T@k2, int]]]")
+    a = k1 # E: Incompatible types in assignment (expression has type "(int, List[T@k1]) -> List[Union[T@k1, int]]", variable has type "(S, List[T@k2]) -> List[Union[T@k2, int]]")
 b = k1
 if int():
     b = k1
@@ -1109,7 +1109,7 @@ def f(*, x: int) -> int: ...
 def g(*, y: int) -> int: ...
 def h(*, x: int) -> int: ...
 
-list_1 = [f, g]  # E: List item 0 has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[NamedArg(int, 'y')], int]"
+list_1 = [f, g]  # E: List item 0 has incompatible type "(x: int) -> int"; expected "(y: int) -> int"
 list_2 = [f, h]
 [builtins fixtures/list.pyi]
 
@@ -1390,14 +1390,14 @@ from typing import List, Callable
 li = [1]
 l = lambda: li
 f1 = l # type: Callable[[], List[int]]
-f2 = l # type: Callable[[], List[str]] # E: Incompatible types in assignment (expression has type "Callable[[], List[int]]", variable has type "Callable[[], List[str]]")
+f2 = l # type: Callable[[], List[str]] # E: Incompatible types in assignment (expression has type "() -> List[int]", variable has type "() -> List[str]")
 [builtins fixtures/list.pyi]
 
 [case testInferLambdaType2]
 from typing import List, Callable
 l = lambda: [B()]
 f1 = l # type: Callable[[], List[B]]
-f2 = l # type: Callable[[], List[A]] # E: Incompatible types in assignment (expression has type "Callable[[], List[B]]", variable has type "Callable[[], List[A]]")
+f2 = l # type: Callable[[], List[A]] # E: Incompatible types in assignment (expression has type "() -> List[B]", variable has type "() -> List[A]")
 
 class A: pass
 class B: pass
@@ -1435,7 +1435,7 @@ from typing import Callable
 def f(a: Callable[..., None] = lambda *a, **k: None):
     pass
 
-def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible default for argument "a" (default has type "Callable[[VarArg(Any), KwArg(Any)], int]", argument has type "Callable[..., None]")
+def g(a: Callable[..., None] = lambda *a, **k: 1):  # E: Incompatible default for argument "a" (default has type "(Any, Any) -> int", argument has type "(..., None)")
     pass
 [builtins fixtures/dict.pyi]
 
