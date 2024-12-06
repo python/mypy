@@ -1659,6 +1659,7 @@ def get_mypy_type_of_runtime_value(
     if type_context:
         # Don't attempt to account for context if the context is generic
         # This is related to issue #3737
+        type_context = mypy.types.get_proper_type(type_context)
         if isinstance(type_context, mypy.types.CallableType):
             if isinstance(type_context.ret_type, mypy.types.TypeVarType):
                 type_context = None
@@ -1671,17 +1672,12 @@ def get_mypy_type_of_runtime_value(
         def _named_type(name: str) -> mypy.types.Instance:
             parts = name.rsplit(".", maxsplit=1)
             stub = get_stub(parts[0])
-            if stub is not None:
-                if parts[1] in stub.names:
-                    node = stub.names[parts[1]]
-                    assert isinstance(node.node, nodes.TypeInfo)
-                    any_type = mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
-                    return mypy.types.Instance(
-                        node.node, [any_type] * len(node.node.defn.type_vars)
-                    )
-
-            any_type = mypy.types.AnyType(mypy.types.TypeOfAny.from_error)
-            return mypy.types.Instance(node.node, [])
+            assert stub is not None
+            assert parts[1] in stub.names
+            node = stub.names[parts[1]]
+            assert isinstance(node.node, nodes.TypeInfo)
+            any_type = mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
+            return mypy.types.Instance(node.node, [any_type] * len(node.node.defn.type_vars))
 
         if isinstance(runtime, type):
             # Try and look up a stub for the runtime object itself
@@ -1691,6 +1687,7 @@ def get_mypy_type_of_runtime_value(
                 if runtime.__name__ in stub.names:
                     type_info = stub.names[runtime.__name__].node
                     if isinstance(type_info, nodes.TypeInfo):
+                        result: mypy.types.Type | None = None
                         result = mypy.checkmember.type_object_type(type_info, _named_type)
                         if mypy.checkexpr.is_type_type_context(type_context):
                             # This is the type in a type[] expression, so substitute type
