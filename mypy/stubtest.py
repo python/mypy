@@ -116,7 +116,7 @@ class Error:
         self.stub_desc = stub_desc or str(getattr(stub_object, "type", stub_object))
 
         if runtime_desc is None:
-            runtime_sig = safe_inspect_signature(runtime_object)
+            runtime_sig = safe_inspect_signature(runtime_object, object_path)
             if runtime_sig is None:
                 self.runtime_desc = _truncate(repr(runtime_object), 100)
             else:
@@ -1036,7 +1036,7 @@ def verify_funcitem(
     for message in _verify_static_class_methods(stub, runtime, static_runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
-    signature = safe_inspect_signature(runtime)
+    signature = safe_inspect_signature(runtime, object_path)
     runtime_is_coroutine = inspect.iscoroutinefunction(runtime)
 
     if signature:
@@ -1164,7 +1164,7 @@ def verify_overloadedfuncdef(
     # TODO: Should call _verify_final_method here,
     # but overloaded final methods in stubs cause a stubtest crash: see #14950
 
-    signature = safe_inspect_signature(runtime)
+    signature = safe_inspect_signature(runtime, object_path)
     if not signature:
         return
 
@@ -1526,14 +1526,15 @@ def is_read_only_property(runtime: object) -> bool:
     return isinstance(runtime, property) and runtime.fset is None
 
 
-def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
+def safe_inspect_signature(
+    runtime: Any, object_path: list[str] | None = None
+) -> inspect.Signature | None:
     if (
         hasattr(runtime, "__name__")
         and runtime.__name__ == "__init__"
         and hasattr(runtime, "__text_signature__")
         and runtime.__text_signature__ == "($self, /, *args, **kwargs)"
         and hasattr(runtime, "__objclass__")
-        and runtime.__objclass__ is not object
         and hasattr(runtime.__objclass__, "__text_signature__")
         and runtime.__objclass__.__text_signature__ is not None
     ):
@@ -1541,22 +1542,32 @@ def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
         # In this case, the underlying class usually has a better signature,
         # which we can convert into an __init__ signature by adding in the
         # self parameter.
+        runtime_objclass = None
+        if runtime.__objclass__ is object:
+            if object_path:
+                module_name = ".".join(object_path[:-2])
+                module = silent_import_module(module_name)
+                if module:
+                    runtime_objclass = getattr(module, object_path[-2], None)
+                if not (
+                    hasattr(runtime_objclass, "__text_signature__")
+                    and runtime_objclass.__text_signature__ is not None
+                ):
+                    runtime_objclass = None
+        else:
+            runtime_objclass = runtime.__objclass__
 
-        # TODO: Handle classes who get __init__ from object, but would have
-        # a better signature on the actual objclass if we had access to it
-        # here. This would probably require a second parameter on
-        # safe_inspect_signature to pass in the original class that this
-        # runtime method object was collected from?
-        try:
-            s = inspect.signature(runtime.__objclass__)
-            return s.replace(
-                parameters=[
-                    inspect.Parameter("self", inspect.Parameter.POSITIONAL_OR_KEYWORD),
-                    *s.parameters.values(),
-                ]
-            )
-        except Exception:
-            pass
+        if runtime_objclass is not None:
+            try:
+                s = inspect.signature(runtime_objclass)
+                return s.replace(
+                    parameters=[
+                        inspect.Parameter("self", inspect.Parameter.POSITIONAL_OR_KEYWORD),
+                        *s.parameters.values(),
+                    ]
+                )
+            except Exception:
+                pass
 
     try:
         try:
