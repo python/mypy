@@ -3790,6 +3790,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(left.value, bool) and isinstance(right.value, bool):
                 # Comparing different booleans is not dangerous.
                 return False
+        if isinstance(left, LiteralType) and isinstance(right, Instance):
+            # bytes/bytearray comparisons are supported
+            if left.fallback.type.fullname == "builtins.bytes" and right.type.has_base(
+                "builtins.bytearray"
+            ):
+                return False
+        if isinstance(right, LiteralType) and isinstance(left, Instance):
+            # bytes/bytearray comparisons are supported
+            if right.fallback.type.fullname == "builtins.bytes" and left.type.has_base(
+                "builtins.bytearray"
+            ):
+                return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
     def check_method_call_by_name(
