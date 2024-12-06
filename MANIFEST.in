@@ -9,6 +9,7 @@ recursive-include mypy/typeshed *.pyi
 
 # mypy and mypyc
 include mypy/py.typed
+include mypyc/py.typed
 recursive-include mypy *.py
 recursive-include mypyc *.py
 
