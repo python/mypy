@@ -1593,6 +1593,15 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
         return mypy.subtypes.is_subtype(left, right)
 
 
+def get_mypy_node_for_name(module: str, type_name: str) -> mypy.nodes.SymbolNode | None:
+    stub = get_stub(module)
+    if stub is None:
+        return None
+    if type_name not in stub.names:
+        return None
+    return stub.names[type_name].node
+
+
 def get_mypy_type_of_runtime_value(
     runtime: Any, type_context: mypy.types.Type | None = None
 ) -> mypy.types.Type | None:
@@ -1656,53 +1665,48 @@ def get_mypy_type_of_runtime_value(
             is_ellipsis_args=True,
         )
 
+    skip_type_object_type = False
     if type_context:
-        # Don't attempt to account for context if the context is generic
+        # Don't attempt to process the type object when context is generic
         # This is related to issue #3737
         type_context = mypy.types.get_proper_type(type_context)
+        # Callable types with a generic return value
         if isinstance(type_context, mypy.types.CallableType):
             if isinstance(type_context.ret_type, mypy.types.TypeVarType):
-                type_context = None
+                skip_type_object_type = True
+        # Type[x] where x is generic
         if isinstance(type_context, mypy.types.TypeType):
             if isinstance(type_context.item, mypy.types.TypeVarType):
-                type_context = None
+                skip_type_object_type = True
 
-    if type_context:
+    if isinstance(runtime, type) and not skip_type_object_type:
 
         def _named_type(name: str) -> mypy.types.Instance:
             parts = name.rsplit(".", maxsplit=1)
-            stub = get_stub(parts[0])
-            assert stub is not None
-            assert parts[1] in stub.names
-            node = stub.names[parts[1]]
-            assert isinstance(node.node, nodes.TypeInfo)
+            node = get_mypy_node_for_name(parts[0], parts[1])
+            assert isinstance(node, nodes.TypeInfo)
             any_type = mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
-            return mypy.types.Instance(node.node, [any_type] * len(node.node.defn.type_vars))
+            return mypy.types.Instance(node, [any_type] * len(node.defn.type_vars))
 
-        if isinstance(runtime, type):
-            # Try and look up a stub for the runtime object itself
-            # The logic here is similar to ExpressionChecker.analyze_ref_expr
-            stub = get_stub(runtime.__module__)
-            if stub is not None:
-                if runtime.__name__ in stub.names:
-                    type_info = stub.names[runtime.__name__].node
-                    if isinstance(type_info, nodes.TypeInfo):
-                        result: mypy.types.Type | None = None
-                        result = mypy.checkmember.type_object_type(type_info, _named_type)
-                        if mypy.checkexpr.is_type_type_context(type_context):
-                            # This is the type in a type[] expression, so substitute type
-                            # variables with Any.
-                            result = mypy.erasetype.erase_typevars(result)
-                        return result
+        # Try and look up a stub for the runtime object itself
+        # The logic here is similar to ExpressionChecker.analyze_ref_expr
+        stub = get_stub(runtime.__module__)
+        if stub is not None:
+            if runtime.__name__ in stub.names:
+                type_info = stub.names[runtime.__name__].node
+                if isinstance(type_info, nodes.TypeInfo):
+                    result: mypy.types.Type | None = None
+                    result = mypy.checkmember.type_object_type(type_info, _named_type)
+                    if mypy.checkexpr.is_type_type_context(type_context):
+                        # This is the type in a type[] expression, so substitute type
+                        # variables with Any.
+                        result = mypy.erasetype.erase_typevars(result)
+                    return result
 
     # Try and look up a stub for the runtime object's type
-    stub = get_stub(type(runtime).__module__)
-    if stub is None:
+    type_info = get_mypy_node_for_name(type(runtime).__module__, type(runtime).__name__)
+    if type_info is None:
         return None
-    type_name = type(runtime).__name__
-    if type_name not in stub.names:
-        return None
-    type_info = stub.names[type_name].node
     if isinstance(type_info, nodes.Var):
         return type_info.type
     if not isinstance(type_info, nodes.TypeInfo):
