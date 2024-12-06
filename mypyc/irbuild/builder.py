@@ -60,6 +60,7 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeOfAny,
+    TypeVarLikeType,
     UninhabitedType,
     UnionType,
     get_proper_type,
@@ -910,11 +911,22 @@ class IRBuilder:
             return RUnion.make_simplified_union(
                 [self.get_sequence_type_from_type(item) for item in target_type.items]
             )
-        assert isinstance(target_type, Instance), target_type
-        if target_type.type.fullname == "builtins.str":
-            return str_rprimitive
-        else:
-            return self.type_to_rtype(target_type.args[0])
+        elif isinstance(target_type, Instance):
+            if target_type.type.fullname == "builtins.str":
+                return str_rprimitive
+            else:
+                return self.type_to_rtype(target_type.args[0])
+        # This elif-blocks are needed for iterating over classes derived from NamedTuple.
+        elif isinstance(target_type, TypeVarLikeType):
+            return self.get_sequence_type_from_type(target_type.upper_bound)
+        elif isinstance(target_type, TupleType):
+            # Tuple might have elements of different types.
+            rtypes = {self.mapper.type_to_rtype(item) for item in target_type.items}
+            if len(rtypes) == 1:
+                return rtypes.pop()
+            else:
+                return RUnion.make_simplified_union(list(rtypes))
+        assert False, target_type
 
     def get_dict_base_type(self, expr: Expression) -> list[Instance]:
         """Find dict type of a dict-like expression.
