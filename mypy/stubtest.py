@@ -1552,7 +1552,8 @@ def safe_inspect_signature(
                 if module:
                     runtime_objclass = getattr(module, object_path[-2], None)
                 if not (
-                    hasattr(runtime_objclass, "__text_signature__")
+                    runtime_objclass is not None
+                    and hasattr(runtime_objclass, "__text_signature__")
                     and runtime_objclass.__text_signature__ is not None
                 ):
                     runtime_objclass = None
