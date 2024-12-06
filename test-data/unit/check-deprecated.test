@@ -504,6 +504,7 @@ C().g = "x"  # E: function __main__.C.g is deprecated: use g2 instead \
 
 
 [case testDeprecatedDescriptor]
+# flags: --enable-error-code=deprecated
 
 from typing import Any, Optional, Union
 from typing_extensions import deprecated, overload
@@ -536,7 +537,7 @@ class D3:
     def __set__(self, obj: C, value: Union[int, str]) -> None: ...
 
 class C:
-    d1 = D1() # N: class __main__.D1 is deprecated: use E1 instead
+    d1 = D1()  # E: class __main__.D1 is deprecated: use E1 instead
     d2 = D2()
     d3 = D3()
 
@@ -545,14 +546,14 @@ C.d1
 c.d1
 c.d1 = 1
 
-C.d2  # N: function __main__.D2.__get__ is deprecated: use E2.__get__ instead
-c.d2  # N: function __main__.D2.__get__ is deprecated: use E2.__get__ instead
-c.d2 = 1  # N: function __main__.D2.__set__ is deprecated: use E2.__set__ instead
+C.d2  # E: function __main__.D2.__get__ is deprecated: use E2.__get__ instead
+c.d2  # E: function __main__.D2.__get__ is deprecated: use E2.__get__ instead
+c.d2 = 1  # E: function __main__.D2.__set__ is deprecated: use E2.__set__ instead
 
-C.d3  # N: overload def (self: __main__.D3, obj: None, objtype: Any) -> __main__.D3 of function __main__.D3.__get__ is deprecated: use E3.__get__ instead
-c.d3  # N: overload def (self: __main__.D3, obj: __main__.C, objtype: Any) -> builtins.int of function __main__.D3.__get__ is deprecated: use E3.__get__ instead
+C.d3  # E: overload def (self: __main__.D3, obj: None, objtype: Any) -> __main__.D3 of function __main__.D3.__get__ is deprecated: use E3.__get__ instead
+c.d3  # E: overload def (self: __main__.D3, obj: __main__.C, objtype: Any) -> builtins.int of function __main__.D3.__get__ is deprecated: use E3.__get__ instead
 c.d3 = 1
-c.d3 = "x"  # N: overload def (self: __main__.D3, obj: __main__.C, value: builtins.str) of function __main__.D3.__set__ is deprecated: use E3.__set__ instead
+c.d3 = "x"  # E: overload def (self: __main__.D3, obj: __main__.C, value: builtins.str) of function __main__.D3.__set__ is deprecated: use E3.__set__ instead
 [builtins fixtures/property.pyi]
 
 
@@ -612,11 +613,12 @@ h(1.0)  # E: No overload variant of "h" matches argument type "float" \
 
 
 [case testDeprecatedImportedOverloadedFunction]
+# flags: --enable-error-code=deprecated
 
 import m
 
 m.g
-m.g(1)  # N: overload def (x: builtins.int) -> builtins.int of function m.g is deprecated: work with str instead
+m.g(1)  # E: overload def (x: builtins.int) -> builtins.int of function m.g is deprecated: work with str instead
 m.g("x")
 
 [file m.py]
