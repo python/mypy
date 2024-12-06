@@ -1544,6 +1544,8 @@ def safe_inspect_signature(
         # self parameter.
         runtime_objclass = None
         if runtime.__objclass__ is object:
+            # When __objclass__ is object, use the object_path to look up
+            # the actual class that this __init__ method came from.
             if object_path:
                 module_name = ".".join(object_path[:-2])
                 module = silent_import_module(module_name)
