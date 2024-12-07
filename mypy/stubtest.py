@@ -116,7 +116,7 @@ class Error:
         self.stub_desc = stub_desc or str(getattr(stub_object, "type", stub_object))
 
         if runtime_desc is None:
-            runtime_sig = safe_inspect_signature(runtime_object, object_path)
+            runtime_sig = safe_inspect_signature(runtime_object)
             if runtime_sig is None:
                 self.runtime_desc = _truncate(repr(runtime_object), 100)
             else:
@@ -837,6 +837,7 @@ class Signature(Generic[T]):
                     or arg.pos_only
                     or assume_positional_only
                     or arg.variable.name.strip("_") == "self"
+                    or (index == 0 and arg.variable.name.strip("_") == "cls")
                     else arg.variable.name
                 )
                 all_args.setdefault(name, []).append((arg, index))
@@ -907,6 +908,7 @@ def _verify_signature(
             and not stub_arg.pos_only
             and not stub_arg.variable.name.startswith("__")
             and stub_arg.variable.name.strip("_") != "self"
+            and stub_arg.variable.name.strip("_") != "cls"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
@@ -917,6 +919,7 @@ def _verify_signature(
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
             and (stub_arg.pos_only or stub_arg.variable.name.startswith("__"))
             and stub_arg.variable.name.strip("_") != "self"
+            and stub_arg.variable.name.strip("_") != "cls"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
@@ -1036,7 +1039,7 @@ def verify_funcitem(
     for message in _verify_static_class_methods(stub, runtime, static_runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
-    signature = safe_inspect_signature(runtime, object_path)
+    signature = safe_inspect_signature(runtime)
     runtime_is_coroutine = inspect.iscoroutinefunction(runtime)
 
     if signature:
@@ -1164,7 +1167,7 @@ def verify_overloadedfuncdef(
     # TODO: Should call _verify_final_method here,
     # but overloaded final methods in stubs cause a stubtest crash: see #14950
 
-    signature = safe_inspect_signature(runtime, object_path)
+    signature = safe_inspect_signature(runtime)
     if not signature:
         return
 
@@ -1526,9 +1529,7 @@ def is_read_only_property(runtime: object) -> bool:
     return isinstance(runtime, property) and runtime.fset is None
 
 
-def safe_inspect_signature(
-    runtime: Any, object_path: list[str] | None = None
-) -> inspect.Signature | None:
+def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
     if (
         hasattr(runtime, "__name__")
         and runtime.__name__ == "__init__"
@@ -1539,38 +1540,48 @@ def safe_inspect_signature(
         and runtime.__objclass__.__text_signature__ is not None
     ):
         # This is an __init__ method with the generic C-class signature.
-        # In this case, the underlying class usually has a better signature,
+        # In this case, the underlying class often has a better signature,
         # which we can convert into an __init__ signature by adding in the
         # self parameter.
-        runtime_objclass = None
-        if runtime.__objclass__ is object:
-            # When __objclass__ is object, use the object_path to look up
-            # the actual class that this __init__ method came from.
-            if object_path:
-                module_name = ".".join(object_path[:-2])
-                module = silent_import_module(module_name)
-                if module:
-                    runtime_objclass = getattr(module, object_path[-2], None)
-                if not (
-                    runtime_objclass is not None
-                    and hasattr(runtime_objclass, "__text_signature__")
-                    and runtime_objclass.__text_signature__ is not None
-                ):
-                    runtime_objclass = None
-        else:
-            runtime_objclass = runtime.__objclass__
+        try:
+            s = inspect.signature(runtime.__objclass__)
 
-        if runtime_objclass is not None:
-            try:
-                s = inspect.signature(runtime_objclass)
-                return s.replace(
-                    parameters=[
-                        inspect.Parameter("self", inspect.Parameter.POSITIONAL_OR_KEYWORD),
-                        *s.parameters.values(),
-                    ]
-                )
-            except Exception:
-                pass
+            parameter_kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
+            if s.parameters:
+                first_parameter = next(iter(s.parameters.values()))
+                if first_parameter.kind == inspect.Parameter.POSITIONAL_ONLY:
+                    parameter_kind = inspect.Parameter.POSITIONAL_ONLY
+            return s.replace(
+                parameters=[inspect.Parameter("self", parameter_kind), *s.parameters.values()]
+            )
+        except Exception:
+            pass
+
+    if (
+        hasattr(runtime, "__name__")
+        and runtime.__name__ == "__new__"
+        and hasattr(runtime, "__text_signature__")
+        and runtime.__text_signature__ == "($type, *args, **kwargs)"
+        and hasattr(runtime, "__self__")
+        and hasattr(runtime.__self__, "__text_signature__")
+        and runtime.__self__.__text_signature__ is not None
+    ):
+        # This is a __new__ method with the generic C-class signature.
+        # In this case, the underlying class often has a better signature,
+        # which we can convert into a __new__ signature by adding in the
+        # cls parameter.
+        try:
+            s = inspect.signature(runtime.__self__)
+            parameter_kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
+            if s.parameters:
+                first_parameter = next(iter(s.parameters.values()))
+                if first_parameter.kind == inspect.Parameter.POSITIONAL_ONLY:
+                    parameter_kind = inspect.Parameter.POSITIONAL_ONLY
+            return s.replace(
+                parameters=[inspect.Parameter("cls", parameter_kind), *s.parameters.values()]
+            )
+        except Exception:
+            pass
 
     try:
         try:
