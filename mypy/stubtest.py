@@ -1546,7 +1546,7 @@ def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
         try:
             s = inspect.signature(runtime.__objclass__)
 
-            parameter_kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
+            parameter_kind: inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
             if s.parameters:
                 first_parameter = next(iter(s.parameters.values()))
                 if first_parameter.kind == inspect.Parameter.POSITIONAL_ONLY:
