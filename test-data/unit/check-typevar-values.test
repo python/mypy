@@ -554,7 +554,7 @@ b = g
 if int():
     b = g
 if int():
-    b = f # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[U], U]")
+    b = f # E: Incompatible types in assignment (expression has type "(T) -> T", variable has type "(U) -> U")
 
 [case testInnerFunctionWithTypevarValues]
 from typing import TypeVar

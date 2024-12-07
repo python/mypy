@@ -161,8 +161,8 @@ reveal_type(p1)  # N: Revealed type is "functools.partial[builtins.int]"
 def takes_callable_int(f: Callable[..., int]) -> None: ...
 def takes_callable_str(f: Callable[..., str]) -> None: ...
 takes_callable_int(p1)
-takes_callable_str(p1)  # E: Argument 1 to "takes_callable_str" has incompatible type "partial[int]"; expected "Callable[..., str]" \
-                        # N: "partial[int].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], int]"
+takes_callable_str(p1)  # E: Argument 1 to "takes_callable_str" has incompatible type "partial[int]"; expected "(..., str)" \
+                        # N: "partial[int].__call__" has type "(Any, Any) -> int"
 
 p2 = functools.partial(foo, 1)
 p2("a")  # OK
@@ -186,7 +186,7 @@ functools.partial(foo, "a")  # E: Argument 1 to "foo" has incompatible type "str
 functools.partial(foo, b=1)  # E: Argument "b" to "foo" has incompatible type "int"; expected "str"
 functools.partial(foo, a=1, b=2, c=3)  # E: Argument "b" to "foo" has incompatible type "int"; expected "str"
 functools.partial(1)  # E: "int" not callable \
-                      # E: Argument 1 to "partial" has incompatible type "int"; expected "Callable[..., Never]"
+                      # E: Argument 1 to "partial" has incompatible type "int"; expected "(..., Never)"
 [builtins fixtures/dict.pyi]
 
 [case testFunctoolsPartialStar]
@@ -353,7 +353,7 @@ reveal_type(functools.partial(fn2, 2)())  # N: Revealed type is "Union[builtins.
 fn3: Union[Callable[[int], int], str]
 reveal_type(functools.partial(fn3, 2)())  # E: "str" not callable \
                                           # N: Revealed type is "builtins.int" \
-                                          # E: Argument 1 to "partial" has incompatible type "Union[Callable[[int], int], str]"; expected "(..., int)"
+                                          # E: Argument 1 to "partial" has incompatible type "Union[(int) -> int, str]"; expected "(..., int)"
 [builtins fixtures/tuple.pyi]
 
 [case testFunctoolsPartialUnionOfTypeAndCallable]

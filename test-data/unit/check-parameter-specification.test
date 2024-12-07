@@ -347,8 +347,8 @@ def f(c1: C[P], c2: C[P2]) -> None:
 def g(f: Callable[P, None], g: Callable[P2, None]) -> None:
     f = f
     g = g
-    f = g  # E: Incompatible types in assignment (expression has type "Callable[P2, None]", variable has type "Callable[P, None]")
-    g = f  # E: Incompatible types in assignment (expression has type "Callable[P, None]", variable has type "Callable[P2, None]")
+    f = g  # E: Incompatible types in assignment (expression has type "(P2, None)", variable has type "(P, None)")
+    g = f  # E: Incompatible types in assignment (expression has type "(P, None)", variable has type "(P2, None)")
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecJoin]
@@ -422,8 +422,8 @@ def g(x: int, y: str) -> None: pass
 reveal_type(register(lambda: f(1)))  # N: Revealed type is "def ()"
 reveal_type(register(lambda x: f(x), x=1))  # N: Revealed type is "def (x: Literal[1]?)"
 register(lambda x: f(x))  # E: Cannot infer type of lambda \
-                          # E: Argument 1 to "register" has incompatible type "Callable[[Any], None]"; expected "Callable[[], None]"
-register(lambda x: f(x), y=1)  # E: Argument 1 to "register" has incompatible type "Callable[[Arg(int, 'x')], None]"; expected "Callable[[Arg(int, 'y')], None]"
+                          # E: Argument 1 to "register" has incompatible type "(Any) -> None"; expected "() -> None"
+register(lambda x: f(x), y=1)  # E: Argument 1 to "register" has incompatible type "(x: int) -> None"; expected "(y: int) -> None"
 reveal_type(register(lambda x: f(x), 1))  # N: Revealed type is "def (Literal[1]?)"
 reveal_type(register(lambda x, y: g(x, y), 1, "a"))  # N: Revealed type is "def (Literal[1]?, Literal['a']?)"
 reveal_type(register(lambda x, y: g(x, y), 1, y="a"))  # N: Revealed type is "def (Literal[1]?, y: Literal['a']?)"
@@ -599,14 +599,14 @@ reveal_type(transform(bar)) # N: Revealed type is "def (builtins.str, *args: bui
 # CASE 4
 def expects_int_first(x: Callable[Concatenate[int, P], int]) -> None: ...
 
-@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[str], int]"; expected "Callable[[int], int]" \
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "(str) -> int"; expected "(int) -> int" \
                     # N: This is likely because "one" has named arguments: "x". Consider marking them positional-only
 def one(x: str) -> int: ...
 
-@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[int, NamedArg(int, 'x')], int]"
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "(x: int) -> int"; expected "(int, x: int) -> int"
 def two(*, x: int) -> int: ...
 
-@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[KwArg(int)], int]"; expected "Callable[[int, KwArg(int)], int]"
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "(int) -> int"; expected "(int, int) -> int"
 def three(**kwargs: int) -> int: ...
 
 @expects_int_first # Accepted
@@ -664,7 +664,7 @@ def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
 f2(lambda x: 42)(42, x=42)
 [builtins fixtures/paramspec.pyi]
 [out]
-main:17: error: Incompatible return value type (got "Callable[[Arg(int, 'x'), **P], R]", expected "Callable[[int, **P], R]")
+main:17: error: Incompatible return value type (got "([x: int, **P], R)", expected "([int, **P], R)")
 main:17: note: This is likely because "result" has named arguments: "x". Consider marking them positional-only
 
 [case testNonStrictParamSpecConcatenateNamedArgs]
@@ -762,15 +762,15 @@ def f1(n: str) -> None: ...
 def f2(b: bytes, i: int) -> None: ...
 
 Z[[int]](lambda one, two: None)  # E: Cannot infer type of lambda \
-                                 # E: Argument 1 to "Z" has incompatible type "Callable[[Any, Any], None]"; expected "Callable[[int], None]"
-Z[[int]](f1)  # E: Argument 1 to "Z" has incompatible type "Callable[[str], None]"; expected "Callable[[int], None]"
+                                 # E: Argument 1 to "Z" has incompatible type "(Any, Any) -> None"; expected "(int) -> None"
+Z[[int]](f1)  # E: Argument 1 to "Z" has incompatible type "(str) -> None"; expected "(int) -> None"
 
 Z[[]](lambda one: None)  # E: Cannot infer type of lambda \
-                         # E: Argument 1 to "Z" has incompatible type "Callable[[Any], None]"; expected "Callable[[], None]"
+                         # E: Argument 1 to "Z" has incompatible type "(Any) -> None"; expected "() -> None"
 
 Z[bytes, str](lambda one: None)  # E: Cannot infer type of lambda \
-                                 # E: Argument 1 to "Z" has incompatible type "Callable[[Any], None]"; expected "Callable[[bytes, str], None]"
-Z[bytes, str](f2)  # E: Argument 1 to "Z" has incompatible type "Callable[[bytes, int], None]"; expected "Callable[[bytes, str], None]"
+                                 # E: Argument 1 to "Z" has incompatible type "(Any) -> None"; expected "(bytes, str) -> None"
+Z[bytes, str](f2)  # E: Argument 1 to "Z" has incompatible type "(bytes, int) -> None"; expected "(bytes, str) -> None"
 
 [builtins fixtures/paramspec.pyi]
 
@@ -1040,18 +1040,18 @@ a2 = Job(f1)
 
 # and this is not legal
 def f4(n: bytes) -> None: ...
-a1 = f4  # E: Incompatible types in assignment (expression has type "Callable[[bytes], None]", variable has type "Callable[[bool], None]")
-a2 = Job(f4)  # E: Argument 1 to "Job" has incompatible type "Callable[[bytes], None]"; expected "Callable[[bool], None]"
+a1 = f4  # E: Incompatible types in assignment (expression has type "(bytes) -> None", variable has type "(bool) -> None")
+a2 = Job(f4)  # E: Argument 1 to "Job" has incompatible type "(bytes) -> None"; expected "(bool) -> None"
 
 # nor is this:
 a4: Job[[int]]
-a4 = Job(f3)  # E: Argument 1 to "Job" has incompatible type "Callable[[bool], None]"; expected "Callable[[int], None]"
+a4 = Job(f3)  # E: Argument 1 to "Job" has incompatible type "(bool) -> None"; expected "(int) -> None"
 a4 = Job(f2)
 a4 = Job(f1)
 
 # just like this:
 a3: Callable[[int], None]
-a3 = f3  # E: Incompatible types in assignment (expression has type "Callable[[bool], None]", variable has type "Callable[[int], None]")
+a3 = f3  # E: Incompatible types in assignment (expression has type "(bool) -> None", variable has type "(int) -> None")
 a3 = f2
 a3 = f1
 [builtins fixtures/paramspec.pyi]
@@ -1411,7 +1411,7 @@ def f(n: C[P]) -> C[P]: ...
 
 @f
 def bar(x: int) -> int: ...
-@f    # E: Argument 1 to "f" has incompatible type "Callable[[int], str]"; expected "Callable[[int], int]"
+@f    # E: Argument 1 to "f" has incompatible type "(int) -> str"; expected "(int) -> int"
 def foo(x: int) -> str: ...
 
 x: C[[int, str]]
@@ -1428,7 +1428,7 @@ P = ParamSpec("P")
 C = Callable[Concatenate[int, P], int]
 def f(n: C[P]) -> C[P]: ...
 
-@f  # E: Argument 1 to "f" has incompatible type "Callable[[], int]"; expected "Callable[[int], int]"
+@f  # E: Argument 1 to "f" has incompatible type "() -> int"; expected "(int) -> int"
 def bad() -> int: ...
 
 @f
@@ -1438,11 +1438,11 @@ def bar(x: int) -> int: ...
 def bar2(x: int, y: str) -> int: ...
 reveal_type(bar2)  # N: Revealed type is "def (builtins.int, y: builtins.str) -> builtins.int"
 
-@f  # E: Argument 1 to "f" has incompatible type "Callable[[int], str]"; expected "Callable[[int], int]" \
+@f  # E: Argument 1 to "f" has incompatible type "(int) -> str"; expected "(int) -> int" \
     # N: This is likely because "foo" has named arguments: "x". Consider marking them positional-only
 def foo(x: int) -> str: ...
 
-@f  # E: Argument 1 to "f" has incompatible type "Callable[[str, int], int]"; expected "Callable[[int, int], int]" \
+@f  # E: Argument 1 to "f" has incompatible type "(str, int) -> int"; expected "(int, int) -> int" \
     # N: This is likely because "foo2" has named arguments: "x". Consider marking them positional-only
 def foo2(x: str, y: int) -> int: ...
 
@@ -1476,10 +1476,10 @@ def bar(x: int) -> int: ...
 @f
 def bar2(__x: int) -> Callable[[int], int]: ...
 
-@f  # E: Argument 1 to "f" has incompatible type "Callable[[int], str]"; expected "C[[int]]"
+@f  # E: Argument 1 to "f" has incompatible type "(int) -> str"; expected "C[[int]]"
 def foo(x: int) -> str: ...
 
-@f  # E: Argument 1 to "f" has incompatible type "Callable[[int], Callable[[int], str]]"; expected "C[[int]]"
+@f  # E: Argument 1 to "f" has incompatible type "(int) -> (int) -> str"; expected "C[[int]]"
 def foo2(__x: int) -> Callable[[int], str]: ...
 
 x: C[[int, str]]
@@ -1699,14 +1699,14 @@ def apply(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> None: ...
 def test(x: int) -> int: ...
 apply(apply, test, x=42)  # OK
 apply(apply, test, 42)  # Also OK (but requires some special casing)
-apply(apply, test, "bad")  # E: Argument 1 to "apply" has incompatible type "Callable[[Callable[P, T], **P], None]"; expected "Callable[[Callable[[int], int], str], None]"
+apply(apply, test, "bad")  # E: Argument 1 to "apply" has incompatible type "([(P, T), **P], None)"; expected "((int) -> int, str) -> None"
 
 def test2(x: int, y: str) -> None: ...
 apply(apply, test2, 42, "yes")
-apply(apply, test2, "no", 42)  # E: Argument 1 to "apply" has incompatible type "Callable[[Callable[P, T], **P], None]"; expected "Callable[[Callable[[int, str], None], str, int], None]"
+apply(apply, test2, "no", 42)  # E: Argument 1 to "apply" has incompatible type "([(P, T), **P], None)"; expected "((int, str) -> None, str, int) -> None"
 apply(apply, test2, x=42, y="yes")
 apply(apply, test2, y="yes", x=42)
-apply(apply, test2, y=42, x="no")  # E: Argument 1 to "apply" has incompatible type "Callable[[Callable[P, T], **P], None]"; expected "Callable[[Callable[[int, str], None], int, str], None]"
+apply(apply, test2, y=42, x="no")  # E: Argument 1 to "apply" has incompatible type "([(P, T), **P], None)"; expected "((int, str) -> None, int, str) -> None"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecApplyPosVsNamedOptional]
@@ -2131,7 +2131,7 @@ reveal_type(submit(  # N: Revealed type is "__main__.Result"
     backend="asyncio",
 ))
 submit(
-    run,  # E: Argument 1 to "submit" has incompatible type "Callable[[Callable[[], R], VarArg(object), DefaultNamedArg(str, 'backend')], R]"; expected "Callable[[Callable[[], Result], int], Result]"
+    run,  # E: Argument 1 to "submit" has incompatible type "(() -> R, object, backend: str) -> R"; expected "(() -> Result, int) -> Result"
     run_portal,
     backend=int(),
 )
@@ -2153,7 +2153,7 @@ class SomeClass:
         pass
 
 # Error message is confusing, but this is a known issue, see #4530.
-@smoke_testable(name=42, size="bad", flt=0.5)  # E: Argument 1 has incompatible type "Type[OtherClass]"; expected "Callable[[int, str, float], OtherClass]"
+@smoke_testable(name=42, size="bad", flt=0.5)  # E: Argument 1 has incompatible type "Type[OtherClass]"; expected "(int, str, float) -> OtherClass"
 class OtherClass:
     def __init__(self, size: int, name: str, flt: float) -> None:
         pass

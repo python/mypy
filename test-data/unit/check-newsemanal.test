@@ -295,7 +295,7 @@ reveal_type(y2) # N: Revealed type is "builtins.int"
 
 y3, y4 = y, y
 if MYPY:  # Tweak processing order
-    from b import f as y3 # E: Incompatible import of "y3" (imported name has type "Callable[[], Any]", local name has type "int")
+    from b import f as y3 # E: Incompatible import of "y3" (imported name has type "() -> Any", local name has type "int")
 reveal_type(y3) # N: Revealed type is "builtins.int"
 
 [file b.py]
@@ -321,7 +321,7 @@ class y2: pass # E: Name "y2" already defined on line 7
 reveal_type(y2) # N: Revealed type is "builtins.int"
 
 y3, y4 = y, y
-from b import f as y3 # E: Incompatible import of "y3" (imported name has type "Callable[[], Any]", local name has type "int")
+from b import f as y3 # E: Incompatible import of "y3" (imported name has type "() -> Any", local name has type "int")
 reveal_type(y3) # N: Revealed type is "builtins.int"
 
 [file b.py]
