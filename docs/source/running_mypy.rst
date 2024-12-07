@@ -277,6 +277,25 @@ If you are getting this error, try to obtain type hints for the library you're u
     to the library -- see our documentation on creating
     :ref:`PEP 561 compliant packages <installed-packages>`.
 
+4.  Force mypy to analyze the library as best as it can (as if the library provided
+    a ``py.typed`` file), despite it likely missing any type annotations. In general,
+    the quality of type checking will be poor and mypy may have issues when
+    analyzing code not designed to be type checked.
+
+    You can do this via setting the
+    :option:`--follow-untyped-imports <mypy --follow-untyped-imports>`
+    command line flag or :confval:`follow_untyped_imports` config file option to True.
+    This option can be specified on a per-module basis as well::
+
+        # mypy.ini
+        [mypy-untyped_package.*]
+        follow_untyped_imports = True
+
+        # pyproject.toml
+        [[tool.mypy.overrides]]
+        module = ["untyped_package.*"]
+        follow_untyped_imports = true
+
 If you are unable to find any existing type hints nor have time to write your
 own, you can instead *suppress* the errors.
 
@@ -295,8 +314,14 @@ not catch errors in its use.
     all import errors associated with that library and that library alone by
     adding the following section to your config file::
 
+        # mypy.ini
         [mypy-foobar.*]
         ignore_missing_imports = True
+
+        # pyproject.toml
+        [[tool.mypy.overrides]]
+        module = ["foobar.*"]
+        ignore_missing_imports = true
 
     Note: this option is equivalent to adding a ``# type: ignore`` to every
     import of ``foobar`` in your codebase. For more information, see the
@@ -311,21 +336,19 @@ not catch errors in its use.
 
     You can also set :confval:`disable_error_code`, like so::
 
+        # mypy.ini
         [mypy]
         disable_error_code = import-untyped
 
+        # pyproject.toml
+        [tool.mypy]
+        disable_error_code = ["import-untyped"]
 
     You can also set the :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`
     command line flag or set the :confval:`ignore_missing_imports` config file
     option to True in the *global* section of your mypy config file. We
     recommend avoiding ``--ignore-missing-imports`` if possible: it's equivalent
     to adding a ``# type: ignore`` to all unresolved imports in your codebase.
-
-4.  To make mypy typecheck imports from modules without stubs or a py.typed
-    marker, you can set the :option:`--follow-untyped-imports <mypy --follow-untyped-imports>`
-    command line flag or set the :confval:`follow_untyped_imports` config file option to True,
-    either in the global section of your mypy config file, or individually on a
-    per-module basis.
 
 
 Library stubs not installed
