@@ -1570,18 +1570,30 @@ def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
         # In this case, the underlying class often has a better signature,
         # which we can convert into a __new__ signature by adding in the
         # cls parameter.
-        try:
-            s = inspect.signature(runtime.__self__)
-            parameter_kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
-            if s.parameters:
-                first_parameter = next(iter(s.parameters.values()))
-                if first_parameter.kind == inspect.Parameter.POSITIONAL_ONLY:
-                    parameter_kind = inspect.Parameter.POSITIONAL_ONLY
-            return s.replace(
-                parameters=[inspect.Parameter("cls", parameter_kind), *s.parameters.values()]
-            )
-        except Exception:
-            pass
+
+        # If the attached class has a valid __init__, skip recovering a
+        # signature for this __new__ method.
+        has_init = False
+        if (
+            hasattr(runtime.__self__, "__init__")
+            and hasattr(runtime.__self__.__init__, "__objclass__")
+            and runtime.__self__.__init__.__objclass__ is runtime.__self__
+        ):
+            has_init = True
+
+        if not has_init:
+            try:
+                s = inspect.signature(runtime.__self__)
+                parameter_kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
+                if s.parameters:
+                    first_parameter = next(iter(s.parameters.values()))
+                    if first_parameter.kind == inspect.Parameter.POSITIONAL_ONLY:
+                        parameter_kind = inspect.Parameter.POSITIONAL_ONLY
+                return s.replace(
+                    parameters=[inspect.Parameter("cls", parameter_kind), *s.parameters.values()]
+                )
+            except Exception:
+                pass
 
     try:
         try:
