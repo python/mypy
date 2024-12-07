@@ -278,7 +278,7 @@ If you are getting this error, try to obtain type hints for the library you're u
     :ref:`PEP 561 compliant packages <installed-packages>`.
 
 4.  Force mypy to analyze the library as best as it can (as if the library provided
-    a py.typed file), despite it likely missing any type annotations. In general,
+    a ``py.typed`` file), despite it likely missing any type annotations. In general,
     the quality of type checking will be poor and mypy may have issues when
     analyzing code not designed to be type checked.
 
