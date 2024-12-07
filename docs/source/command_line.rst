@@ -168,7 +168,8 @@ imports.
 
 .. option:: --follow-untyped-imports
 
-    This flag makes mypy analyze imports even if missing a py.typed marker or stubs.
+    This flag makes mypy analyze imports from installed packages even if
+    missing a :ref:`py.typed marker or stubs <installed-packages>`.
 
     .. warning::
 

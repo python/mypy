@@ -320,7 +320,8 @@ section of the command line docs.
     :type: boolean
     :default: False
 
-    Makes mypy analyze imports even if missing a py.typed marker or stubs.
+    Makes mypy analyze imports from installed packages even if missing a
+    :ref:`py.typed marker or stubs <installed-packages>`.
 
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
