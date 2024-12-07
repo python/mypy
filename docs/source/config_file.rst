@@ -320,12 +320,18 @@ section of the command line docs.
     :type: boolean
     :default: False
 
-    Typechecks imports from modules that do not have stubs or a py.typed marker.
+    Makes mypy analyze imports from installed packages even if missing a
+    :ref:`py.typed marker or stubs <installed-packages>`.
 
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
-    import statement. Note that scanning all unannotated modules might
-    significantly increase the runtime of your mypy calls.
+    import statement.
+
+    .. warning::
+
+        Note that analyzing all unannotated modules might result in issues
+        when analyzing code not designed to be type checked and may significantly
+        increase how long mypy takes to run.
 
 .. confval:: follow_imports
 
