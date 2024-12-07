@@ -674,7 +674,7 @@ else:
     def f3() -> None: pass
 [builtins fixtures/exception.pyi]
 [out]
-main:7: error: Incompatible redefinition (redefinition with type "Callable[[], str]", original type "Callable[[], None]")
+main:7: error: Incompatible redefinition (redefinition with type "() -> str", original type "() -> None")
 
 [case testExceptWithoutType]
 import typing
@@ -2345,7 +2345,7 @@ def f():
 describe(CAny())
 describe(C())
 describe(CNone())
-describe(CWrong())  # E: Argument 1 to "describe" has incompatible type "CWrong"; expected "Callable[[], None]" \
-                    # N: "CWrong.__call__" has type "Callable[[Arg(int, 'x')], None]"
+describe(CWrong())  # E: Argument 1 to "describe" has incompatible type "CWrong"; expected "() -> None" \
+                    # N: "CWrong.__call__" has type "(x: int) -> None"
 describe(f)
 [builtins fixtures/isinstancelist.pyi]

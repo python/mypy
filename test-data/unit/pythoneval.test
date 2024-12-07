@@ -616,7 +616,7 @@ def f(*args: str) -> str: return args[0]
 map(f, ['x'])
 map(f, [1])
 [out]
-_program.py:4: error: Argument 1 to "map" has incompatible type "Callable[[VarArg(str)], str]"; expected "Callable[[int], str]"
+_program.py:4: error: Argument 1 to "map" has incompatible type "(str) -> str"; expected "(int) -> str"
 
 [case testMapStr]
 import typing
@@ -823,7 +823,7 @@ class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
-_program.py:7: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Optional[Callable[[], str]]"
+_program.py:7: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Optional[() -> str]"
 _program.py:10: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
 _program.py:10: error: Incompatible types in assignment (expression has type "int", target has type "str")
 _program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[Never]]"; expected "defaultdict[int, List[Never]]"

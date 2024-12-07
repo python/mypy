@@ -892,9 +892,9 @@ class A:
 reveal_type(A)
 [out]
 main:16: error: Cannot determine __init__ type from converter
-main:16: error: Argument "converter" has incompatible type "Callable[[], str]"; expected "Callable[[Any], str]"
+main:16: error: Argument "converter" has incompatible type "() -> str"; expected "(Any) -> str"
 main:17: error: Cannot determine __init__ type from converter
-main:17: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
+main:17: error: Argument "converter" has incompatible type overloaded function; expected "(Any) -> int"
 main:18: note: Revealed type is "def (bad: Any, bad_overloaded: Any) -> __main__.A"
 [builtins fixtures/list.pyi]
 
@@ -920,9 +920,9 @@ class A:
 reveal_type(A)
 [out]
 main:17: error: Cannot determine __init__ type from converter
-main:17: error: Argument "converter" has incompatible type "Callable[[], str]"; expected "Callable[[Any], str]"
+main:17: error: Argument "converter" has incompatible type "() -> str"; expected "(Any) -> str"
 main:18: error: Cannot determine __init__ type from converter
-main:18: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
+main:18: error: Argument "converter" has incompatible type overloaded function; expected "(Any) -> int"
 main:19: note: Revealed type is "def (bad: Any, bad_overloaded: Any) -> __main__.A"
 [builtins fixtures/list.pyi]
 

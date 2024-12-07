@@ -697,7 +697,7 @@ class C(Generic[T]):
 i: C[int]
 s: C[str]
 
-i.from_item()  # E: Invalid self argument "C[int]" to attribute function "from_item" with type "Callable[[C[str]], None]"
+i.from_item()  # E: Invalid self argument "C[int]" to attribute function "from_item" with type "(C[str]) -> None"
 s.from_item()
 
 [case testSelfTypeRestrictedClassMethod]
@@ -711,9 +711,9 @@ class C(Generic[T]):
 class DI(C[int]): ...
 class DS(C[str]): ...
 
-DI().from_item()  # E: Invalid self argument "Type[DI]" to class attribute function "from_item" with type "Callable[[Type[C[str]]], None]"
+DI().from_item()  # E: Invalid self argument "Type[DI]" to class attribute function "from_item" with type "(Type[C[str]]) -> None"
 DS().from_item()
-DI.from_item()  # E: Invalid self argument "Type[DI]" to attribute function "from_item" with type "Callable[[Type[C[str]]], None]"
+DI.from_item()  # E: Invalid self argument "Type[DI]" to attribute function "from_item" with type "(Type[C[str]]) -> None"
 DS.from_item()
 [builtins fixtures/classmethod.pyi]
 
@@ -755,7 +755,7 @@ ci.from_item()  # E: Missing positional argument "converter" in call to "from_it
 def conv(x: int) -> str: ...
 def bad(x: str) -> str: ...
 reveal_type(ci.from_item(conv))  # N: Revealed type is "builtins.str"
-ci.from_item(bad)  # E: Argument 1 to "from_item" of "C" has incompatible type "Callable[[str], str]"; expected "Callable[[int], str]"
+ci.from_item(bad)  # E: Argument 1 to "from_item" of "C" has incompatible type "(str) -> str"; expected "(int) -> str"
 
 [case testSelfTypeRestrictedMethodOverloadInit]
 from typing import TypeVar
@@ -854,7 +854,7 @@ class Sub(Base[List[int]]): ...
 class BadSub(Base[int]): ...
 
 reveal_type(Sub().get_item())  # N: Revealed type is "builtins.int"
-BadSub().get_item()  # E: Invalid self argument "BadSub" to attribute function "get_item" with type "Callable[[Base[List[S]]], S]"
+BadSub().get_item()  # E: Invalid self argument "BadSub" to attribute function "get_item" with type "(Base[List[S]]) -> S"
 [builtins fixtures/list.pyi]
 
 [case testMixinAllowedWithProtocol]
@@ -882,10 +882,10 @@ class Bad(AtomicClose, Copyable):
 f: File
 b: Bad
 f.atomic_close()  # OK
-b.atomic_close()  # E: Invalid self argument "Bad" to attribute function "atomic_close" with type "Callable[[Resource], int]"
+b.atomic_close()  # E: Invalid self argument "Bad" to attribute function "atomic_close" with type "(Resource) -> int"
 
 reveal_type(f.copy())  # N: Revealed type is "__main__.File"
-b.copy()  # E: Invalid self argument "Bad" to attribute function "copy" with type "Callable[[T], T]"
+b.copy()  # E: Invalid self argument "Bad" to attribute function "copy" with type "(T) -> T"
 [builtins fixtures/tuple.pyi]
 
 [case testMixinProtocolSuper]
@@ -924,7 +924,7 @@ class Test:
     def meth(self, x: str) -> int: ...
 
 reveal_type(Test().meth)  # N: Revealed type is "def (x: builtins.str) -> builtins.int"
-Test()._deco  # E: Invalid self argument "Test" to attribute function "_deco" with type "Callable[[F], F]"
+Test()._deco  # E: Invalid self argument "Test" to attribute function "_deco" with type "(F) -> F"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfTypeTrickyExample]
@@ -985,9 +985,9 @@ T = TypeVar('T')
 
 class Foo(Generic[T]):
     def f1(self: Foo[str]) -> None:
-        self.f2()  # E: Invalid self argument "Foo[str]" to attribute function "f2" with type "Callable[[Foo[int]], None]"
+        self.f2()  # E: Invalid self argument "Foo[str]" to attribute function "f2" with type "(Foo[int]) -> None"
     def f2(self: Foo[int]) -> None:
-        self.f1()  # E: Invalid self argument "Foo[int]" to attribute function "f1" with type "Callable[[Foo[str]], None]"
+        self.f1()  # E: Invalid self argument "Foo[int]" to attribute function "f1" with type "(Foo[str]) -> None"
 
 [case testSelfTypeStructureMetaclassMatch]
 from typing import TypeVar, Type, Generic, cast
@@ -1031,7 +1031,7 @@ class Bad(metaclass=Meta):
     pass
 
 Good.do_x()
-Bad.do_x()  # E: Invalid self argument "Type[Bad]" to attribute function "do_x" with type "Callable[[Type[T]], T]"
+Bad.do_x()  # E: Invalid self argument "Type[Bad]" to attribute function "do_x" with type "(Type[T]) -> T"
 
 [case testSelfTypeProtocolClassmethodMatch]
 from typing import Type, TypeVar, Protocol
