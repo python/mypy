@@ -67,6 +67,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "plugins",
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
+        "strict_bytes",
     }
 ) - {"debug_cache"}
 
@@ -214,6 +215,9 @@ class Options:
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
+
+        # Disable treating bytearray and memoryview as subtypes of bytes
+        self.strict_bytes = False
 
         # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
