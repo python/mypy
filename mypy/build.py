@@ -16,10 +16,8 @@ from __future__ import annotations
 import collections
 import contextlib
 import errno
-import gc
 import json
 import os
-import platform
 import re
 import stat
 import sys
@@ -46,6 +44,7 @@ import mypy.semanal_main
 from mypy.checker import TypeChecker
 from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
+from mypy.gctune import tune_gc
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
@@ -217,9 +216,9 @@ def _build(
     stderr: TextIO,
     extra_plugins: Sequence[Plugin],
 ) -> BuildResult:
-    if platform.python_implementation() == "CPython":
-        # This seems the most reasonable place to tune garbage collection.
-        gc.set_threshold(150 * 1000)
+    # We tune gc in __main__, but also do it here in case we are called from
+    # another entry point such as a test.
+    tune_gc()
 
     data_dir = default_data_dir()
     fscache = fscache or FileSystemCache()

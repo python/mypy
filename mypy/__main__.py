@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from mypy.gctune import tune_gc
+
+# Tune GC as early as possible, before most imports
+tune_gc()
+
 import os
 import sys
 import traceback
