@@ -2352,3 +2352,40 @@ def fn_while(arg: T) -> None:
         return None
     return None
 [builtins fixtures/primitives.pyi]
+
+[case testRefinePartialTypeWithinLoop]
+
+x = None
+for _ in range(2):
+    if x is not None:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    x = 1
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
+
+def f() -> bool: ...
+
+y = None
+while f():
+    reveal_type(y)  # N: Revealed type is "None" \
+                    # N: Revealed type is "Union[builtins.int, None]"
+    y = 1
+reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+
+z = []  # E: Need type annotation for "z" (hint: "z: List[<type>] = ...")
+def g() -> None:
+    for i in range(2):
+        while f():
+            if z:
+                z[0] + "v"  # E: Unsupported operand types for + ("int" and "str")
+            z.append(1)
+
+class A:
+    def g(self) -> None:
+        z = []  # E: Need type annotation for "z" (hint: "z: List[<type>] = ...")
+        for i in range(2):
+            while f():
+                if z:
+                    z[0] + "v"  # E: Unsupported operand types for + ("int" and "str")
+                z.append(1)
+
+[builtins fixtures/primitives.pyi]
