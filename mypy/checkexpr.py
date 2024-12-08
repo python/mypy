@@ -4977,7 +4977,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""
-        return self.check_lst_expr(e, "builtins.list", "<list>")
+        if len(e.items) > 0:
+            item_types = []
+            for item in e.items:
+                item_type = self.accept(item)
+                item_types.append(item_type)
+            element_type = make_simplified_union(item_types)
+            return self.chk.named_generic_type("builtins.list", [element_type])
 
     def visit_set_expr(self, e: SetExpr) -> Type:
         return self.check_lst_expr(e, "builtins.set", "<set>")
@@ -5004,11 +5010,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         values: list[Type] = []
         for item in e.items:
             if isinstance(item, StarExpr):
-                # fallback to slow path
                 self.resolved_type[e] = NoneType()
                 return None
             values.append(self.accept(item))
-        vt = join.join_type_list(values)
+        vt = make_simplified_union(values)
         if not allow_fast_container_literal(vt):
             self.resolved_type[e] = NoneType()
             return None
@@ -5051,9 +5056,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         #!BUG this forces all list exprs to be forced (we don't want that)
 
         # Translate into type checking a generic function call.
-        # Used for list and set expressions, as well as for tuples
-        # containing star expressions that don't refer to a
-        # Tuple. (Note: "lst" stands for list-set-tuple. :-)
         tv = TypeVarType(
             "T",
             "T",
@@ -5062,6 +5064,31 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             upper_bound=self.object_type(),
             default=AnyType(TypeOfAny.from_omitted_generics),
         )
+
+        # get all elements and join types from list items
+        if isinstance(e, ListExpr):
+            item_types: list[Type] = []
+            for item in e.items:
+                if isinstance(item, StarExpr):
+                    starred_type = self.accept(item.expr)
+                    starred_type = get_proper_type(starred_type)
+                    if isinstance(starred_type, TupleType):
+                        item_types.extend(starred_type.items)
+                    else:
+                        item_types.append(starred_type)
+                else:
+                    item_types.append(self.accept(item))
+            unified_type = join.join_type_list(item_types)
+            if not isinstance(unified_type, (AnyType, UninhabitedType)):
+                tv = TypeVarType(
+                    "T",
+                    "T",
+                    id=TypeVarId(-1, namespace="<lst>"),
+                    values=[],
+                    upper_bound=unified_type,
+                    default=unified_type,
+                )
+
         constructor = CallableType(
             [tv],
             [nodes.ARG_STAR],
@@ -5071,6 +5098,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             name=tag,
             variables=[tv],
         )
+
         out = self.check_call(
             constructor,
             [(i.expr if isinstance(i, StarExpr) else i) for i in e.items],
@@ -5763,21 +5791,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 _, sequence_type = self.chk.analyze_async_iterable_item_type(sequence)
             else:
                 _, sequence_type = self.chk.analyze_iterable_item_type(sequence)
+                sequence_type = get_proper_type(sequence_type)
+                if isinstance(sequence_type, Instance):
+                    if sequence_type.type.fullname == "builtins.list":
+                        item_types = []
+                        if isinstance(sequence, ListExpr):
+                            for item in sequence.items:
+                                item_type = self.accept(item)
+                                item_types.append(item_type)
+                            if item_types:
+                                sequence_type = make_simplified_union(item_types)
             self.chk.analyze_index_variables(index, sequence_type, True, e)
-            for condition in conditions:
-                self.accept(condition)
-
-                # values are only part of the comprehension when all conditions are true
-                true_map, false_map = self.chk.find_isinstance_check(condition)
-
-                if true_map:
-                    self.chk.push_type_map(true_map)
-
-                if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
-                    if true_map is None:
-                        self.msg.redundant_condition_in_comprehension(False, condition)
-                    elif false_map is None:
-                        self.msg.redundant_condition_in_comprehension(True, condition)
 
     def visit_conditional_expr(self, e: ConditionalExpr, allow_none_return: bool = False) -> Type:
         self.accept(e.cond)
