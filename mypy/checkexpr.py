@@ -181,6 +181,7 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
     has_recursive_types,
+    has_type_vars,
     is_named_instance,
     split_with_prefix_and_suffix,
 )
@@ -1482,10 +1483,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             object_type=object_type,
         )
         proper_callee = get_proper_type(callee_type)
-        if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, OverloadedFuncDef):
-            for item in e.callee.node.items:
-                if isinstance(item, Decorator) and (item.func.type == callee_type):
-                    self.chk.check_deprecated(item.func, e)
+        if isinstance(e.callee, (NameExpr, MemberExpr)):
+            self.chk.warn_deprecated_overload_item(e.callee.node, e, target=callee_type)
         if isinstance(e.callee, RefExpr) and isinstance(proper_callee, CallableType):
             # Cache it for find_isinstance_check()
             if proper_callee.type_guard is not None:
@@ -2481,6 +2480,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         check_arg = check_arg or self.check_arg
         # Keep track of consumed tuple *arg items.
         mapper = ArgTypeExpander(self.argument_infer_context())
+
+        for arg_type, arg_kind in zip(arg_types, arg_kinds):
+            arg_type = get_proper_type(arg_type)
+            if arg_kind == nodes.ARG_STAR and not self.is_valid_var_arg(arg_type):
+                self.msg.invalid_var_arg(arg_type, context)
+            if arg_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(arg_type):
+                is_mapping = is_subtype(
+                    arg_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
+                )
+                self.msg.invalid_keyword_var_arg(arg_type, is_mapping, context)
+
         for i, actuals in enumerate(formal_to_actual):
             orig_callee_arg_type = get_proper_type(callee.arg_types[i])
 
@@ -2573,15 +2583,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if actual_type is None:
                     continue  # Some kind of error was already reported.
                 # Check that a *arg is valid as varargs.
-                if actual_kind == nodes.ARG_STAR and not self.is_valid_var_arg(actual_type):
-                    self.msg.invalid_var_arg(actual_type, context)
-                if actual_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(
-                    actual_type
-                ):
-                    is_mapping = is_subtype(
-                        actual_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
-                    )
-                    self.msg.invalid_keyword_var_arg(actual_type, is_mapping, context)
                 expanded_actual = mapper.expand_actual_type(
                     actual_type,
                     actual_kind,
@@ -3786,6 +3787,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(left, LiteralType) and isinstance(right, LiteralType):
             if isinstance(left.value, bool) and isinstance(right.value, bool):
                 # Comparing different booleans is not dangerous.
+                return False
+        if isinstance(left, LiteralType) and isinstance(right, Instance):
+            # bytes/bytearray comparisons are supported
+            if left.fallback.type.fullname == "builtins.bytes" and right.type.has_base(
+                "builtins.bytearray"
+            ):
+                return False
+        if isinstance(right, LiteralType) and isinstance(left, Instance):
+            # bytes/bytearray comparisons are supported
+            if right.fallback.type.fullname == "builtins.bytes" and left.type.has_base(
+                "builtins.bytearray"
+            ):
                 return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
@@ -5612,11 +5625,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         except KeyError:
             supports_index = self.chk.named_type("builtins.int")  # thanks, fixture life
         expected = make_optional_type(supports_index)
+        type_args = []
         for index in [e.begin_index, e.end_index, e.stride]:
             if index:
                 t = self.accept(index)
                 self.chk.check_subtype(t, expected, index, message_registry.INVALID_SLICE_INDEX)
-        return self.named_type("builtins.slice")
+                type_args.append(t)
+            else:
+                type_args.append(NoneType())
+        return self.chk.named_generic_type("builtins.slice", type_args)
 
     def visit_list_comprehension(self, e: ListComprehension) -> Type:
         return self.check_generator_or_comprehension(
@@ -6344,23 +6361,7 @@ class ArgInferSecondPassQuery(types.BoolTypeQuery):
 
     def visit_callable_type(self, t: CallableType) -> bool:
         # TODO: we need to check only for type variables of original callable.
-        return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
-
-
-class HasTypeVarQuery(types.BoolTypeQuery):
-    """Visitor for querying whether a type has a type variable component."""
-
-    def __init__(self) -> None:
-        super().__init__(types.ANY_STRATEGY)
-
-    def visit_type_var(self, t: TypeVarType) -> bool:
-        return True
-
-    def visit_param_spec(self, t: ParamSpecType) -> bool:
-        return True
-
-    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
-        return True
+        return self.query_types(t.arg_types) or has_type_vars(t)
 
 
 def has_erased_component(t: Type | None) -> bool:

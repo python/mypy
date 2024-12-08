@@ -2345,10 +2345,19 @@ x: int = ""  # E: Incompatible types in assignment (expression has type "str", v
 x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testDisableBytearrayPromotion]
-# flags: --disable-bytearray-promotion
+# flags: --disable-bytearray-promotion --strict-equality
 def f(x: bytes) -> None: ...
 f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
 f(memoryview(b"asdf"))
+ba = bytearray(b"")
+if ba == b"":
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if b"" == ba:
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if ba == bytes():
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if bytes() == ba:
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
 [builtins fixtures/primitives.pyi]
 
 [case testDisableMemoryviewPromotion]
