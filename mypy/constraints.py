@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, Iterable, List, Sequence
+from typing import TYPE_CHECKING, Final, Iterable, List, Sequence, cast
+from typing_extensions import TypeGuard
 
 import mypy.subtypes
 import mypy.typeops
@@ -338,6 +339,26 @@ def _infer_constraints(
     # doesn't really matter because it is all heuristic anyway.)
     if isinstance(actual, AnyType) and actual.type_of_any == TypeOfAny.suggestion_engine:
         return []
+
+    # type[A | B] is always represented as type[A] | type[B] internally.
+    # This makes our constraint solver choke on type[T] <: type[A] | type[B],
+    # solving T as generic meet(A, B) which is often `object`. Force unwrap such unions
+    # if both sides are type[...] or unions thereof. See `testTypeVarType` test
+    def _is_type_type(tp: ProperType) -> TypeGuard[TypeType | UnionType]:
+        return (
+            isinstance(tp, TypeType)
+            or isinstance(tp, UnionType)
+            and all(isinstance(get_proper_type(o), TypeType) for o in tp.items)
+        )
+
+    def _unwrap_type_type(tp: TypeType | UnionType) -> ProperType:
+        if isinstance(tp, TypeType):
+            return tp.item
+        return UnionType.make_union([cast(TypeType, o).item for o in tp.items])
+
+    if _is_type_type(template) and _is_type_type(actual):
+        template = _unwrap_type_type(template)
+        actual = _unwrap_type_type(actual)
 
     # If the template is simply a type variable, emit a Constraint directly.
     # We need to handle this case before handling Unions for two reasons:
