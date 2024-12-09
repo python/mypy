@@ -2809,9 +2809,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if name in ("__init__", "__new__", "__init_subclass__"):
             # __init__ and friends can be incompatible -- it's a special case.
             return
+
+        if is_subtype(base1, base2, ignore_promotions=True):
+            # If base1 already inherits from base2 with correct type args,
+            # we have reported errors if any. Avoid reporting them again.
+            return
+
         first_type = first_node = None
         second_type = second_node = None
         orig_var = ctx.get(name)
+
         if orig_var is not None and orig_var.node is not None:
             if (b1type := base1.type.get_containing_type_info(name)) is not None:
                 base1 = map_instance_to_supertype(base1, b1type)
@@ -2845,15 +2852,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 base1, base2 = base2, base1
                 first_type, second_type = second_type, first_type
                 first_node, second_node = second_node, first_node
-
-            if (
-                base1 is not None
-                and base2 is not None
-                and is_subtype(base1, base2, ignore_promotions=True)
-            ):
-                # If base1 already inherits from base2 with correct type args,
-                # we have reported errors if any. Avoid reporting them again.
-                return
 
         # TODO: use more principled logic to decide is_subtype() vs is_equivalent().
         # We should rely on mutability of superclass node, not on types being Callable.
