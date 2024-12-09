@@ -819,3 +819,59 @@ This is best understood via an example:
 To get this code to type check, you could assign ``y = x`` after ``x`` has been
 narrowed, and use ``y`` in the inner function, or add an assert in the inner
 function.
+
+
+Name shadowing issues with :pep:`585` syntax
+--------------------------------------------
+
+Prior to :pep:`585`, instances of built-in types such as ``dict``, ``list``,
+``tuple``, and ``type`` were annotated using aliases
+from the :py:mod:`typing` module
+(``typing.Dict``, ``typing.List``, ``typing.Tuple``, ``typing.Type`` etc.).
+
+When updating a codebase to use modern syntax, you may hit a case such as the following:
+
+.. code-block:: python
+
+    from typing import TypeVar
+
+    T = TypeVar("T", bound="Foo")
+
+    class Foo:
+	type: str
+
+	# Mypy complains that "Foo.type" is "not valid as a type":
+	@classmethod
+	def bar(cls: type[T], value: str) -> None:
+	    pass
+
+This occurs due to the fact that the class has an attribute named ``type``
+that shadows the built-in function :py:class:`type`.
+To illustrate the issue: at runtime in the following example,
+the annotation for ``arg`` in the ``ham`` method
+is resolved as being the string ``"spam"``
+due to the fact that method signatures are executed
+in the same scope as class attributes:
+
+.. code-block:: pycon
+
+    >>> class Eggs:
+    ...     type: str = "spam"
+    ...     def ham(self, arg: type) -> None:
+    ...         pass
+    ...
+    >>> import inspect
+    >>> inspect.signature(Eggs.ham)
+    <Signature (self, arg: 'spam') -> None>
+
+Mypy follows the same scoping semantics as Python at runtime
+when resolving references.
+To get this code to type-check, therefore, you have the following options:
+
+- Continue using  ``typing.Type[]`` for your annotation.
+- Add ``import builtins`` to the top of your module and use ``builtins.type[]``
+  for your annotation.
+- Add ``from builtins import type as Type`` to the top of your module
+  and use ``Type[]`` for your annotation
+
+The same thing applies for any other built-in name.
