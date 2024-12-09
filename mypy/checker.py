@@ -2750,7 +2750,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for i, base in enumerate(bases):
             # Attributes defined in both the type and base are skipped.
             # Normal checks for attribute compatibility should catch any problems elsewhere.
-            non_overridden_attrs = all_names[i] - typ.names.keys()
+            # Sort for consistent messages order.
+            non_overridden_attrs = sorted(all_names[i] - typ.names.keys())
             for name in non_overridden_attrs:
                 if is_private(name):
                     continue
