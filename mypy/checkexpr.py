@@ -226,6 +226,10 @@ ArgChecker: _TypeAlias = Callable[
 # see https://github.com/python/mypy/pull/5255#discussion_r196896335 for discussion.
 MAX_UNIONS: Final = 5
 
+# Use fallback type if literal addition of unions results in too many literal
+# values. Explicitly set on the safe side to prevent accidental issues.
+MAX_LITERAL_ADDITION_VALUES: Final = 15
+
 
 # Types considered safe for comparisons with --strict-equality due to known behaviour of __eq__.
 # NOTE: All these types are subtypes of AbstractSet.
@@ -3625,6 +3629,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         )
         if len(values) == 1:
             return LiteralType(values[0], self.named_type(lvalue[1]))
+        elif len(values) > MAX_LITERAL_ADDITION_VALUES:
+            return None
         return make_simplified_union(
             [LiteralType(val, self.named_type(lvalue[1])) for val in values]
         )
