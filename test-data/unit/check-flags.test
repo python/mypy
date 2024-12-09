@@ -2125,6 +2125,31 @@ disallow_subclassing_any = true
 module = 'm'
 disallow_subclassing_any = false
 
+[case testStrictPerModule]
+# flags: --config-file tmp/mypy.ini
+
+import strictmodule
+import loosemodule
+a = 0  # type: ignore
+
+[file strictmodule.py]
+def foo():  # E: Function is missing a return type annotation \
+            # N: Use "-> None" if function does not return a value
+    1 + "asdf"  # E: Unsupported operand types for + ("int" and "str")
+
+a = 0  # type: ignore  # E: Unused "type: ignore" comment
+
+[file loosemodule.py]
+def foo():
+    1 + "asdf"
+
+a = 0  # type: ignore
+
+[file mypy.ini]
+\[mypy]
+strict = False
+\[mypy-strictmodule]
+strict = True
 
 [case testNoImplicitOptionalPerModule]
 # flags: --config-file tmp/mypy.ini

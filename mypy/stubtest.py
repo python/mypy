@@ -1940,15 +1940,12 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
         options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
     options.config_file = args.mypy_config_file
     options.use_builtins_fixtures = use_builtins_fixtures
+    options.per_module_options = {}
     options.show_traceback = args.show_traceback
     options.pdb = args.pdb
 
     if options.config_file:
-
-        def set_strict_flags() -> None:  # not needed yet
-            return
-
-        parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
+        parse_config_file(options, [], options.config_file, sys.stdout, sys.stderr)
 
     def error_callback(msg: str) -> typing.NoReturn:
         print(_style("error:", color="red", bold=True), msg)

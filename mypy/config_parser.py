@@ -231,7 +231,7 @@ toml_config_types.update(
 
 def parse_config_file(
     options: Options,
-    set_strict_flags: Callable[[], None],
+    strict_flag_assignments: Sequence[tuple[str, object]],
     filename: str | None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
@@ -284,6 +284,9 @@ def parse_config_file(
 
     os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(os.path.abspath(config_file))
 
+    def set_strict_flags(updates: dict[str, object]) -> None:
+        updates.update(strict_flag_assignments)
+
     if "mypy" not in parser:
         if filename or file_read not in defaults.SHARED_CONFIG_FILES:
             print(f"{file_read}: No [mypy] section in config file", file=stderr)
@@ -297,11 +300,16 @@ def parse_config_file(
             setattr(options, k, v)
         options.report_dirs.update(report_dirs)
 
+    def set_strict_flags_section(updates: dict[str, object]) -> None:
+        for dest, value in strict_flag_assignments:
+            if dest in PER_MODULE_OPTIONS:
+                updates[dest] = value
+
     for name, section in parser.items():
         if name.startswith("mypy-"):
             prefix = get_prefix(file_read, name)
             updates, report_dirs = parse_section(
-                prefix, options, set_strict_flags, section, config_types, stderr
+                prefix, options, set_strict_flags_section, section, config_types, stderr
             )
             if report_dirs:
                 print(
@@ -440,7 +448,7 @@ def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
 def parse_section(
     prefix: str,
     template: Options,
-    set_strict_flags: Callable[[], None],
+    set_strict_flags: Callable[[dict[str, object]], None],
     section: Mapping[str, Any],
     config_types: dict[str, Any],
     stderr: TextIO = sys.stderr,
@@ -530,7 +538,7 @@ def parse_section(
             continue
         if key == "strict":
             if v:
-                set_strict_flags()
+                set_strict_flags(results)
             continue
         results[options_key] = v
 
@@ -626,7 +634,7 @@ def parse_mypy_comments(
         stderr = StringIO()
         strict_found = False
 
-        def set_strict_flags() -> None:
+        def set_strict_flags(updates: dict[str, object]) -> None:
             nonlocal strict_found
             strict_found = True
 
