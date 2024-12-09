@@ -1,13 +1,14 @@
 import ctypes
 import sys
+from _ctypes import _CData
 from collections.abc import Callable, Iterable, Sequence
-from ctypes import _CData
+from ctypes import _SimpleCData, c_char
 from logging import Logger, _Level as _LoggingLevel
 from multiprocessing import popen_fork, popen_forkserver, popen_spawn_posix, popen_spawn_win32, queues, synchronize
 from multiprocessing.managers import SyncManager
 from multiprocessing.pool import Pool as _Pool
 from multiprocessing.process import BaseProcess
-from multiprocessing.sharedctypes import Synchronized, SynchronizedArray
+from multiprocessing.sharedctypes import Synchronized, SynchronizedArray, SynchronizedString
 from typing import Any, ClassVar, Literal, TypeVar, overload
 from typing_extensions import TypeAlias
 
@@ -19,6 +20,7 @@ else:
 __all__ = ()
 
 _LockLike: TypeAlias = synchronize.Lock | synchronize.RLock
+_T = TypeVar("_T")
 _CT = TypeVar("_CT", bound=_CData)
 
 class ProcessError(Exception): ...
@@ -46,10 +48,13 @@ class BaseContext:
     # N.B. Keep this in sync with multiprocessing.connection.Pipe.
     # _ConnectionBase is the common base class of Connection and PipeConnection
     # and can be used in cross-platform code.
+    #
+    # The two connections should have the same generic types but inverted (Connection[_T1, _T2], Connection[_T2, _T1]).
+    # However, TypeVars scoped entirely within a return annotation is unspecified in the spec.
     if sys.platform != "win32":
-        def Pipe(self, duplex: bool = True) -> tuple[Connection, Connection]: ...
+        def Pipe(self, duplex: bool = True) -> tuple[Connection[Any, Any], Connection[Any, Any]]: ...
     else:
-        def Pipe(self, duplex: bool = True) -> tuple[PipeConnection, PipeConnection]: ...
+        def Pipe(self, duplex: bool = True) -> tuple[PipeConnection[Any, Any], PipeConnection[Any, Any]]: ...
 
     def Barrier(
         self, parties: int, action: Callable[..., object] | None = None, timeout: float | None = None
@@ -79,6 +84,10 @@ class BaseContext:
     @overload
     def RawArray(self, typecode_or_type: str, size_or_initializer: int | Sequence[Any]) -> Any: ...
     @overload
+    def Value(
+        self, typecode_or_type: type[_SimpleCData[_T]], *args: Any, lock: Literal[True] | _LockLike = True
+    ) -> Synchronized[_T]: ...
+    @overload
     def Value(self, typecode_or_type: type[_CT], *args: Any, lock: Literal[False]) -> Synchronized[_CT]: ...
     @overload
     def Value(self, typecode_or_type: type[_CT], *args: Any, lock: Literal[True] | _LockLike = True) -> Synchronized[_CT]: ...
@@ -88,12 +97,20 @@ class BaseContext:
     def Value(self, typecode_or_type: str | type[_CData], *args: Any, lock: bool | _LockLike = True) -> Any: ...
     @overload
     def Array(
-        self, typecode_or_type: type[_CT], size_or_initializer: int | Sequence[Any], *, lock: Literal[False]
-    ) -> SynchronizedArray[_CT]: ...
+        self, typecode_or_type: type[_SimpleCData[_T]], size_or_initializer: int | Sequence[Any], *, lock: Literal[False]
+    ) -> SynchronizedArray[_T]: ...
     @overload
     def Array(
-        self, typecode_or_type: type[_CT], size_or_initializer: int | Sequence[Any], *, lock: Literal[True] | _LockLike = True
-    ) -> SynchronizedArray[_CT]: ...
+        self, typecode_or_type: type[c_char], size_or_initializer: int | Sequence[Any], *, lock: Literal[True] | _LockLike = True
+    ) -> SynchronizedString: ...
+    @overload
+    def Array(
+        self,
+        typecode_or_type: type[_SimpleCData[_T]],
+        size_or_initializer: int | Sequence[Any],
+        *,
+        lock: Literal[True] | _LockLike = True,
+    ) -> SynchronizedArray[_T]: ...
     @overload
     def Array(
         self, typecode_or_type: str, size_or_initializer: int | Sequence[Any], *, lock: Literal[True] | _LockLike = True

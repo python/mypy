@@ -3,10 +3,8 @@ import sys
 __all__ = [
     "AMPER",
     "AMPEREQUAL",
-    "ASYNC",
     "AT",
     "ATEQUAL",
-    "AWAIT",
     "CIRCUMFLEX",
     "CIRCUMFLEXEQUAL",
     "COLON",
@@ -71,12 +69,14 @@ __all__ = [
     "NL",
     "COMMENT",
 ]
+if sys.version_info < (3, 13):
+    __all__ += ["ASYNC", "AWAIT"]
 
 if sys.version_info >= (3, 10):
     __all__ += ["SOFT_KEYWORD"]
 
 if sys.version_info >= (3, 12):
-    __all__ += ["EXCLAMATION", "FSTRING_END", "FSTRING_MIDDLE", "FSTRING_START"]
+    __all__ += ["EXCLAMATION", "FSTRING_END", "FSTRING_MIDDLE", "FSTRING_START", "EXACT_TOKEN_TYPES"]
 
 ENDMARKER: int
 NAME: int
@@ -131,8 +131,9 @@ AT: int
 RARROW: int
 ELLIPSIS: int
 ATEQUAL: int
-AWAIT: int
-ASYNC: int
+if sys.version_info < (3, 13):
+    AWAIT: int
+    ASYNC: int
 OP: int
 ERRORTOKEN: int
 N_TOKENS: int

@@ -142,3 +142,120 @@ myclass3 = MyClass(float, float, float)  # E: No overload variant of "MyClass" m
                                          # N:     def [T1, T2] __init__(Type[T1], Type[T2], /) -> MyClass[T1, T2]
 reveal_type(myclass3)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
+
+[case testUnpackNewSyntaxInvalidCallableAlias]
+from typing import Any, Callable, List, Tuple, TypeVar, Unpack
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")  # E: Name "TypeVarTuple" is not defined
+
+def good(*x: int) -> int: ...
+def bad(*x: int, y: int) -> int: ...
+
+Alias1 = Callable[[*Ts], int]  # E: Variable "__main__.Ts" is not valid as a type \
+                               # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+x1: Alias1[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(x1)  # N: Revealed type is "def (*Any) -> builtins.int"
+x1 = good
+x1 = bad  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), NamedArg(int, 'y')], int]", variable has type "Callable[[VarArg(Any)], int]")
+
+Alias2 = Callable[[*T], int]  # E: "T" cannot be unpacked (must be tuple or TypeVarTuple)
+x2: Alias2[int]
+reveal_type(x2)  # N: Revealed type is "def (*Any) -> builtins.int"
+
+Unknown = Any
+Alias3 = Callable[[*Unknown], int]
+x3: Alias3[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(x3)  # N: Revealed type is "def (*Any) -> builtins.int"
+
+IntList = List[int]
+Alias4 = Callable[[*IntList], int]  # E: "List[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+x4: Alias4[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(x4)  # N: Revealed type is "def (*Any) -> builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testReturnInExceptStarBlock1]
+# flags: --python-version 3.11
+def foo() -> None:
+    try:
+        pass
+    except* Exception:
+        return   # E: "return" not allowed in except* block
+    finally:
+        return
+[builtins fixtures/exception.pyi]
+
+[case testReturnInExceptStarBlock2]
+# flags: --python-version 3.11
+def foo():
+    while True:
+        try:
+            pass
+        except* Exception:
+            while True:
+                return  # E: "return" not allowed in except* block
+[builtins fixtures/exception.pyi]
+
+[case testContinueInExceptBlockNestedInExceptStarBlock]
+# flags: --python-version 3.11
+while True:
+    try:
+        ...
+    except* Exception:
+        try:
+            ...
+        except Exception:
+            continue  # E: "continue" not allowed in except* block
+        continue  # E: "continue" not allowed in except* block
+[builtins fixtures/exception.pyi]
+
+[case testReturnInExceptBlockNestedInExceptStarBlock]
+# flags: --python-version 3.11
+def foo():
+    try:
+        ...
+    except* Exception:
+        try:
+            ...
+        except Exception:
+            return  # E: "return" not allowed in except* block
+        return  # E: "return" not allowed in except* block
+[builtins fixtures/exception.pyi]
+
+[case testBreakContinueReturnInExceptStarBlock1]
+# flags: --python-version 3.11
+from typing import Iterable
+def foo(x: Iterable[int]) -> None:
+    for _ in x:
+        try:
+            pass
+        except* Exception:
+            continue   # E: "continue" not allowed in except* block
+        except* Exception:
+            for _ in x:
+                continue
+            break  # E: "break" not allowed in except* block
+        except* Exception:
+            return  # E: "return" not allowed in except* block
+[builtins fixtures/exception.pyi]
+
+[case testBreakContinueReturnInExceptStarBlock2]
+# flags: --python-version 3.11
+def foo():
+    while True:
+        try:
+            pass
+        except* Exception:
+            def inner():
+                while True:
+                    if 1 < 1:
+                        continue
+                    else:
+                        break
+                return
+            if 1 < 2:
+                break  # E: "break" not allowed in except* block
+            if 1 < 2:
+                continue  # E: "continue" not allowed in except* block
+            return  # E: "return" not allowed in except* block
+[builtins fixtures/exception.pyi]

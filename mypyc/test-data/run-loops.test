@@ -228,6 +228,7 @@ def nested_enumerate() -> None:
             assert i == inner
             inner += 1
         outer += 1
+    assert i == 2
     assert outer_seen == l1
 
 def nested_range() -> None:
@@ -276,7 +277,10 @@ for k in range(12):
 [out]
 
 [case testForIterable]
-from typing import Iterable, Dict, Any, Tuple
+from typing import Iterable, Dict, Any, Tuple, TypeVar
+
+T = TypeVar("T")
+
 def iterate_over_any(a: Any) -> None:
     for element in a:
         print(element)
@@ -350,13 +354,13 @@ iterate_over_tuple((1, 2, 3))
 Traceback (most recent call last):
   File "driver.py", line 16, in <module>
     iterate_over_any(5)
-  File "native.py", line 3, in iterate_over_any
+  File "native.py", line 6, in iterate_over_any
     for element in a:
 TypeError: 'int' object is not iterable
 Traceback (most recent call last):
   File "driver.py", line 20, in <module>
     iterate_over_iterable(broken_generator(5))
-  File "native.py", line 7, in iterate_over_iterable
+  File "native.py", line 10, in iterate_over_iterable
     for element in iterable:
   File "driver.py", line 8, in broken_generator
     raise Exception('Exception Manually Raised')
@@ -364,7 +368,42 @@ Exception: Exception Manually Raised
 Traceback (most recent call last):
   File "driver.py", line 24, in <module>
     iterate_and_delete(d)
-  File "native.py", line 11, in iterate_and_delete
+  File "native.py", line 14, in iterate_and_delete
+    for key in d:
+RuntimeError: dictionary changed size during iteration
+15
+6
+3
+0
+1
+2
+3
+4
+1
+2
+3
+[out version>=3.13]
+Traceback (most recent call last):
+  File "driver.py", line 16, in <module>
+    iterate_over_any(5)
+    ~~~~~~~~~~~~~~~~^^^
+  File "native.py", line 6, in iterate_over_any
+    for element in a:
+TypeError: 'int' object is not iterable
+Traceback (most recent call last):
+  File "driver.py", line 20, in <module>
+    iterate_over_iterable(broken_generator(5))
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "native.py", line 10, in iterate_over_iterable
+    for element in iterable:
+  File "driver.py", line 8, in broken_generator
+    raise Exception('Exception Manually Raised')
+Exception: Exception Manually Raised
+Traceback (most recent call last):
+  File "driver.py", line 24, in <module>
+    iterate_and_delete(d)
+    ~~~~~~~~~~~~~~~~~~^^^
+  File "native.py", line 14, in iterate_and_delete
     for key in d:
 RuntimeError: dictionary changed size during iteration
 15
@@ -427,6 +466,29 @@ assert g([6, 7], ['a', 'b']) == [(0, 6, 'a'), (1, 7, 'b')]
 assert f([6, 7], [8]) == [(0, 6, 8)]
 assert f([6], [8, 9]) == [(0, 6, 8)]
 
+[case testEnumerateEmptyList]
+from typing import List
+
+def get_enumerate_locals(iterable: List[int]) -> int:
+    for i, j in enumerate(iterable):
+        pass
+    try:
+        return i
+    except NameError:
+        return -100
+
+[file driver.py]
+from native import get_enumerate_locals
+
+print(get_enumerate_locals([]))
+print(get_enumerate_locals([55]))
+print(get_enumerate_locals([551, 552]))
+
+[out]
+-100
+0
+1
+
 [case testIterTypeTrickiness]
 # Test inferring the type of a for loop body doesn't cause us grief
 # Extracted from somethings that broke in mypy
@@ -483,3 +545,29 @@ def test_range_object() -> None:
         r4 = range(4, 12, 0)
     except ValueError as e:
         assert "range() arg 3 must not be zero" in str(e)
+
+[case testNamedTupleLoop]
+from collections.abc import Iterable
+from typing import NamedTuple, Any
+from typing_extensions import Self
+
+
+class Vector2(NamedTuple):
+    x: int
+    y: float
+
+    @classmethod
+    def from_iter(cls, iterable: Iterable[Any]) -> Self:
+        return cls(*iter(iterable))
+
+    def __neg__(self) -> Self:
+        return self.from_iter(-c for c in self)
+
+[file driver.py]
+import native
+print(-native.Vector2(2, -3.1))
+print([x for x in native.Vector2(4, -5.2)])
+
+[out]
+Vector2(x=-2, y=3.1)
+\[4, -5.2]

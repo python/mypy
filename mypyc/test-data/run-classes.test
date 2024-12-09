@@ -3,8 +3,13 @@ class Empty: pass
 
 def f(e: Empty) -> Empty:
     return e
+
+class EmptyEllipsis: ...
+
+def g(e: EmptyEllipsis) -> EmptyEllipsis:
+    return e
 [file driver.py]
-from native import Empty, f
+from native import Empty, EmptyEllipsis, f, g
 
 print(isinstance(Empty, type))
 print(Empty)
@@ -12,10 +17,21 @@ print(str(Empty())[:20])
 
 e = Empty()
 print(f(e) is e)
+
+print(isinstance(EmptyEllipsis, type))
+print(EmptyEllipsis)
+print(str(EmptyEllipsis())[:28])
+
+e2 = EmptyEllipsis()
+print(g(e2) is e2)
 [out]
 True
 <class 'native.Empty'>
 <native.Empty object
+True
+True
+<class 'native.EmptyEllipsis'>
+<native.EmptyEllipsis object
 True
 
 [case testClassWithFields]
@@ -59,6 +75,19 @@ assert hasattr(c, 'x')
 1000000000000000000000000000000
 1000000000000000000000000000001
 1000000000000000000000000000002
+
+[case testTypedDictWithFields]
+import collections
+from typing_extensions import TypedDict
+class C(TypedDict):
+    x: collections.deque
+[file driver.py]
+from native import C
+from collections import deque
+
+print(C.__annotations__["x"] is deque)
+[out]
+True
 
 [case testClassWithDeletableAttributes]
 from typing import Any, cast
@@ -254,8 +283,8 @@ from enum import Enum
 
 class TestEnum(Enum):
     _order_ = "a b"
-    a : int = 1
-    b : int = 2
+    a = 1
+    b = 2
 
     @classmethod
     def test(cls) -> int:
@@ -2503,3 +2532,126 @@ class C:
 def test_final_attribute() -> None:
     assert C.A == -1
     assert C.a == [-1]
+
+[case testClassWithFinalDecorator]
+from typing import final
+
+@final
+class C:
+    def a(self) -> int:
+        return 1
+
+def test_class_final_attribute() -> None:
+    assert C().a() == 1
+
+
+[case testClassWithFinalDecoratorCtor]
+from typing import final
+
+@final
+class C:
+    def __init__(self) -> None:
+        self.a = 1
+
+    def b(self) -> int:
+        return 2
+
+    @property
+    def c(self) -> int:
+        return 3
+
+def test_class_final_attribute() -> None:
+    assert C().a == 1
+    assert C().b() == 2
+    assert C().c == 3
+
+[case testClassWithFinalDecoratorInheritedWithProperties]
+from typing import final
+
+class B:
+    def a(self) -> int:
+        return 2
+
+    @property
+    def b(self) -> int:
+        return self.a() + 2
+
+    @property
+    def c(self) -> int:
+        return 3
+
+def test_class_final_attribute_basic() -> None:
+    assert B().a() == 2
+    assert B().b == 4
+    assert B().c == 3
+
+@final
+class C(B):
+    def a(self) -> int:
+        return 1
+
+    @property
+    def b(self) -> int:
+        return self.a() + 1
+
+def fn(cl: B) -> int:
+    return cl.a()
+
+def test_class_final_attribute_inherited() -> None:
+    assert C().a() == 1
+    assert fn(C()) == 1
+    assert B().a() == 2
+    assert fn(B()) == 2
+
+    assert B().b == 4
+    assert C().b == 2
+    assert B().c == 3
+    assert C().c == 3
+
+[case testClassWithFinalAttributeAccess]
+from typing import Final
+
+class C:
+    a: Final = {'x': 'y'}
+    b: Final = C.a
+
+def test_final_attribute() -> None:
+    assert C.a['x'] == 'y'
+    assert C.b['x'] == 'y'
+    assert C.a is C.b
+
+[case testClassDerivedFromIntEnum]
+from enum import IntEnum, auto
+
+class Player(IntEnum):
+    MIN = auto()
+
+print(f'{Player.MIN = }')
+[file driver.py]
+from native import Player
+[out]
+Player.MIN = <Player.MIN: 1>
+
+[case testStaticCallsWithUnpackingArgs]
+from typing import Tuple
+
+class Foo:
+  @staticmethod
+  def static(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return (c+1, a+2, b+3)
+
+  @classmethod
+  def clsmethod(cls, a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return (c+1, a+2, b+3)
+
+
+print(Foo.static(*[10, 20, 30]))
+print(Foo.static(*(40, 50), *[60]))
+assert Foo.static(70, 80, *[90]) == Foo.clsmethod(70, *(80, 90))
+
+[file driver.py]
+import native
+
+[out]
+(31, 12, 23)
+(61, 42, 53)

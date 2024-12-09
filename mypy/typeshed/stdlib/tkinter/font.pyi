@@ -1,16 +1,17 @@
 import _tkinter
+import itertools
 import sys
 import tkinter
-from typing import Any, Literal, TypedDict, overload
+from typing import Any, ClassVar, Final, Literal, TypedDict, overload
 from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 9):
     __all__ = ["NORMAL", "ROMAN", "BOLD", "ITALIC", "nametofont", "Font", "families", "names"]
 
-NORMAL: Literal["normal"]
-ROMAN: Literal["roman"]
-BOLD: Literal["bold"]
-ITALIC: Literal["italic"]
+NORMAL: Final = "normal"
+ROMAN: Final = "roman"
+BOLD: Final = "bold"
+ITALIC: Final = "italic"
 
 _FontDescription: TypeAlias = (
     str  # "Helvetica 12"
@@ -40,6 +41,7 @@ class _MetricsDict(TypedDict):
 class Font:
     name: str
     delete_font: bool
+    counter: ClassVar[itertools.count[int]]  # undocumented
     def __init__(
         self,
         # In tkinter, 'root' refers to tkinter.Tk by convention, but the code

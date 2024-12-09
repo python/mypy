@@ -14,6 +14,9 @@ from genericpath import (
     sameopenfile as sameopenfile,
     samestat as samestat,
 )
+
+if sys.version_info >= (3, 13):
+    from genericpath import isdevdrive as isdevdrive
 from os import PathLike
 from typing import AnyStr, overload
 from typing_extensions import LiteralString
@@ -60,6 +63,8 @@ __all__ = [
 ]
 if sys.version_info >= (3, 12):
     __all__ += ["isjunction", "splitroot"]
+if sys.version_info >= (3, 13):
+    __all__ += ["isdevdrive"]
 
 supports_unicode_filenames: bool
 # aliases (also in os)
@@ -72,7 +77,7 @@ pathsep: LiteralString
 defpath: LiteralString
 devnull: LiteralString
 
-# Overloads are necessary to work around python/mypy#3644.
+# Overloads are necessary to work around python/mypy#17952 & python/mypy#11880
 @overload
 def abspath(path: PathLike[AnyStr]) -> AnyStr: ...
 @overload

@@ -1,6 +1,6 @@
 import sys
 from _typeshed import StrPath
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from http.client import HTTPResponse
 from re import Pattern
 from typing import ClassVar, TypeVar, overload
@@ -21,7 +21,7 @@ _T = TypeVar("_T")
 
 class LoadError(OSError): ...
 
-class CookieJar(Iterable[Cookie]):
+class CookieJar:
     non_word_re: ClassVar[Pattern[str]]  # undocumented
     quote_re: ClassVar[Pattern[str]]  # undocumented
     strict_domain_re: ClassVar[Pattern[str]]  # undocumented
@@ -42,7 +42,7 @@ class CookieJar(Iterable[Cookie]):
     def __len__(self) -> int: ...
 
 class FileCookieJar(CookieJar):
-    filename: str
+    filename: str | None
     delayload: bool
     def __init__(self, filename: StrPath | None = None, delayload: bool = False, policy: CookiePolicy | None = None) -> None: ...
     def save(self, filename: str | None = None, ignore_discard: bool = False, ignore_expires: bool = False) -> None: ...

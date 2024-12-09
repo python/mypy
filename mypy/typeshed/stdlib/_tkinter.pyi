@@ -1,5 +1,7 @@
 import sys
-from typing import Any, ClassVar, Literal, final
+from collections.abc import Callable
+from typing import Any, ClassVar, Final, final
+from typing_extensions import TypeAlias
 
 # _tkinter is meant to be only used internally by tkinter, but some tkinter
 # functions e.g. return _tkinter.Tcl_Obj objects. Tcl_Obj represents a Tcl
@@ -29,6 +31,8 @@ class Tcl_Obj:
     def __ne__(self, value, /): ...
 
 class TclError(Exception): ...
+
+_TkinterTraceFunc: TypeAlias = Callable[[tuple[str, ...]], object]
 
 # This class allows running Tcl code. Tkinter uses it internally a lot, and
 # it's often handy to drop a piece of Tcl code into a tkinter program. Example:
@@ -86,36 +90,54 @@ class TkappType:
     def unsetvar(self, *args, **kwargs): ...
     def wantobjects(self, *args, **kwargs): ...
     def willdispatch(self): ...
+    if sys.version_info >= (3, 12):
+        def gettrace(self, /) -> _TkinterTraceFunc | None: ...
+        def settrace(self, func: _TkinterTraceFunc | None, /) -> None: ...
 
 # These should be kept in sync with tkinter.tix constants, except ALL_EVENTS which doesn't match TCL_ALL_EVENTS
-ALL_EVENTS: Literal[-3]
-FILE_EVENTS: Literal[8]
-IDLE_EVENTS: Literal[32]
-TIMER_EVENTS: Literal[16]
-WINDOW_EVENTS: Literal[4]
+ALL_EVENTS: Final = -3
+FILE_EVENTS: Final = 8
+IDLE_EVENTS: Final = 32
+TIMER_EVENTS: Final = 16
+WINDOW_EVENTS: Final = 4
 
-DONT_WAIT: Literal[2]
-EXCEPTION: Literal[8]
-READABLE: Literal[2]
-WRITABLE: Literal[4]
+DONT_WAIT: Final = 2
+EXCEPTION: Final = 8
+READABLE: Final = 2
+WRITABLE: Final = 4
 
-TCL_VERSION: str
-TK_VERSION: str
+TCL_VERSION: Final[str]
+TK_VERSION: Final[str]
 
 @final
 class TkttType:
     def deletetimerhandler(self): ...
 
-def create(
-    screenName: str | None = None,
-    baseName: str = "",
-    className: str = "Tk",
-    interactive: bool = False,
-    wantobjects: bool = False,
-    wantTk: bool = True,
-    sync: bool = False,
-    use: str | None = None,
-    /,
-): ...
+if sys.version_info >= (3, 13):
+    def create(
+        screenName: str | None = None,
+        baseName: str = "",
+        className: str = "Tk",
+        interactive: bool = False,
+        wantobjects: int = 0,
+        wantTk: bool = True,
+        sync: bool = False,
+        use: str | None = None,
+        /,
+    ): ...
+
+else:
+    def create(
+        screenName: str | None = None,
+        baseName: str = "",
+        className: str = "Tk",
+        interactive: bool = False,
+        wantobjects: bool = False,
+        wantTk: bool = True,
+        sync: bool = False,
+        use: str | None = None,
+        /,
+    ): ...
+
 def getbusywaitinterval(): ...
 def setbusywaitinterval(new_val, /): ...

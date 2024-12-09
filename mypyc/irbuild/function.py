@@ -96,7 +96,8 @@ from mypyc.sametype import is_same_method_signature, is_same_type
 
 
 def transform_func_def(builder: IRBuilder, fdef: FuncDef) -> None:
-    func_ir, func_reg = gen_func_item(builder, fdef, fdef.name, builder.mapper.fdef_to_sig(fdef))
+    sig = builder.mapper.fdef_to_sig(fdef, builder.options.strict_dunders_typing)
+    func_ir, func_reg = gen_func_item(builder, fdef, fdef.name, sig)
 
     # If the function that was visited was a nested function, then either look it up in our
     # current environment or define it if it was not already defined.
@@ -113,9 +114,8 @@ def transform_overloaded_func_def(builder: IRBuilder, o: OverloadedFuncDef) -> N
 
 
 def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
-    func_ir, func_reg = gen_func_item(
-        builder, dec.func, dec.func.name, builder.mapper.fdef_to_sig(dec.func)
-    )
+    sig = builder.mapper.fdef_to_sig(dec.func, builder.options.strict_dunders_typing)
+    func_ir, func_reg = gen_func_item(builder, dec.func, dec.func.name, sig)
     decorated_func: Value | None = None
     if func_reg:
         decorated_func = load_decorated_func(builder, dec.func, func_reg)
@@ -133,7 +133,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
 
     if decorated_func is not None:
         # Set the callable object representing the decorated function as a global.
-        builder.call_c(
+        builder.primitive_op(
             dict_set_item_op,
             [builder.load_globals_dict(), builder.load_str(dec.func.name), decorated_func],
             decorated_func.line,
@@ -416,7 +416,8 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     # Perform the function of visit_method for methods inside extension classes.
     name = fdef.name
     class_ir = builder.mapper.type_to_ir[cdef.info]
-    func_ir, func_reg = gen_func_item(builder, fdef, name, builder.mapper.fdef_to_sig(fdef), cdef)
+    sig = builder.mapper.fdef_to_sig(fdef, builder.options.strict_dunders_typing)
+    func_ir, func_reg = gen_func_item(builder, fdef, name, sig, cdef)
     builder.functions.append(func_ir)
 
     if is_decorated(builder, fdef):
@@ -432,7 +433,9 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
 
         # Set the callable object representing the decorated method as an attribute of the
         # extension class.
-        builder.call_c(py_setattr_op, [typ, builder.load_str(name), decorated_func], fdef.line)
+        builder.primitive_op(
+            py_setattr_op, [typ, builder.load_str(name), decorated_func], fdef.line
+        )
 
     if fdef.is_property:
         # If there is a property setter, it will be processed after the getter,
@@ -481,7 +484,8 @@ def handle_non_ext_method(
 ) -> None:
     # Perform the function of visit_method for methods inside non-extension classes.
     name = fdef.name
-    func_ir, func_reg = gen_func_item(builder, fdef, name, builder.mapper.fdef_to_sig(fdef), cdef)
+    sig = builder.mapper.fdef_to_sig(fdef, builder.options.strict_dunders_typing)
+    func_ir, func_reg = gen_func_item(builder, fdef, name, sig, cdef)
     assert func_reg is not None
     builder.functions.append(func_ir)
 
@@ -804,6 +808,11 @@ def load_type(builder: IRBuilder, typ: TypeInfo, line: int) -> Value:
     elif typ.fullname in builtin_names:
         builtin_addr_type, src = builtin_names[typ.fullname]
         class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
+    elif typ.module_name in builder.imports:
+        loaded_module = builder.load_module(typ.module_name)
+        class_obj = builder.builder.get_attr(
+            loaded_module, typ.name, object_rprimitive, line, borrow=False
+        )
     else:
         class_obj = builder.load_global_str(typ.name, line)
 
@@ -840,7 +849,7 @@ def generate_singledispatch_dispatch_function(
         dispatch_func_obj, "dispatch_cache", dict_rprimitive, line
     )
     call_find_impl, use_cache, call_func = BasicBlock(), BasicBlock(), BasicBlock()
-    get_result = builder.call_c(dict_get_method_with_none, [dispatch_cache, arg_type], line)
+    get_result = builder.primitive_op(dict_get_method_with_none, [dispatch_cache, arg_type], line)
     is_not_none = builder.translate_is_op(get_result, builder.none_object(), "is not", line)
     impl_to_use = Register(object_rprimitive)
     builder.add_bool_branch(is_not_none, use_cache, call_find_impl)
@@ -853,7 +862,7 @@ def generate_singledispatch_dispatch_function(
     find_impl = builder.load_module_attr_by_fullname("functools._find_impl", line)
     registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
     uncached_impl = builder.py_call(find_impl, [arg_type, registry], line)
-    builder.call_c(dict_set_item_op, [dispatch_cache, arg_type, uncached_impl], line)
+    builder.primitive_op(dict_set_item_op, [dispatch_cache, arg_type, uncached_impl], line)
     builder.assign(impl_to_use, uncached_impl, line)
     builder.goto(call_func)
 
@@ -966,7 +975,7 @@ def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
         cache_dict = builder.call_c(dict_new_op, [], line)
         dispatch_cache_str = builder.load_str("dispatch_cache")
         # use the py_setattr_op instead of SetAttr so that it also gets added to our __dict__
-        builder.call_c(py_setattr_op, [builder.self(), dispatch_cache_str, cache_dict], line)
+        builder.primitive_op(py_setattr_op, [builder.self(), dispatch_cache_str, cache_dict], line)
         # the generated C code seems to expect that __init__ returns a char, so just return 1
         builder.add(Return(Integer(1, bool_rprimitive, line), line))
 
@@ -986,10 +995,6 @@ def load_singledispatch_registry(builder: IRBuilder, dispatch_func_obj: Value, l
 
 def singledispatch_main_func_name(orig_name: str) -> str:
     return f"__mypyc_singledispatch_main_function_{orig_name}__"
-
-
-def get_registry_identifier(fitem: FuncDef) -> str:
-    return f"__mypyc_singledispatch_registry_{fitem.fullname}__"
 
 
 def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
@@ -1013,7 +1018,7 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
         registry_dict = builder.builder.make_dict([(loaded_object_type, main_func_obj)], line)
 
         dispatch_func_obj = builder.load_global_str(fitem.name, line)
-        builder.call_c(
+        builder.primitive_op(
             py_setattr_op, [dispatch_func_obj, builder.load_str("registry"), registry_dict], line
         )
 
@@ -1034,7 +1039,7 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
         registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
         for typ in types:
             loaded_type = load_type(builder, typ, line)
-            builder.call_c(dict_set_item_op, [registry, loaded_type, to_insert], line)
+            builder.primitive_op(dict_set_item_op, [registry, loaded_type, to_insert], line)
         dispatch_cache = builder.builder.get_attr(
             dispatch_func_obj, "dispatch_cache", dict_rprimitive, line
         )
