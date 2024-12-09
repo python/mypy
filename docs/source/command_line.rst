@@ -664,7 +664,7 @@ of the above sections.
 
     By default, mypy treats ``bytearray`` and ``memoryview`` as subtypes of ``bytes`` which
     is not true at runtime. Use this flag to disable this behavior. ``--strict-bytes`` will
-    be enabled by default in *mypy 2.0*
+    be enabled by default in *mypy 2.0*.
 
     .. code-block:: python
 
@@ -683,6 +683,7 @@ of the above sections.
            with open("binary_file", "wb") as fp:
                fp.write(buf)
 
+       f(b"")  # Ok
        f(bytearray(b""))  # Ok
        f(memoryview(b""))  # Ok
 
