@@ -332,7 +332,7 @@ L4:
 L5:
     return 4
 
-[case testLowerIntForLoop]
+[case testLowerIntForLoop_64bit]
 from __future__ import annotations
 
 def f(l: list[int]) -> None:
