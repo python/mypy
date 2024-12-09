@@ -264,7 +264,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                         "TypeGuard",
                         "Union",
                     ],
-                    "os" [:"PathLike"],
+                    "os": ["PathLike"],
                     "pathlib": ["Path"]
                 }
             )
