@@ -52,7 +52,12 @@ def list_item_ptr(builder: LowLevelIRBuilder, obj: Value, index: Value, line: in
     """
     items = list_items(builder, [obj], line)
     delta = builder.add(
-        IntOp(c_pyssize_t_rprimitive, index, Integer(8, c_pyssize_t_rprimitive), IntOp.MUL)
+        IntOp(
+            c_pyssize_t_rprimitive,
+            index,
+            Integer(PLATFORM_SIZE, c_pyssize_t_rprimitive),
+            IntOp.MUL,
+        )
     )
     return builder.add(IntOp(pointer_rprimitive, items, delta, IntOp.ADD))
 
