@@ -482,23 +482,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(typeddict_callable, CallableType):
                 typeddict_type = get_proper_type(typeddict_callable.ret_type)
                 assert isinstance(typeddict_type, TypedDictType)
-                return self.check_typeddict_call(
-                    e, typeddict_type, typeddict_callable
-                )
-        
+                return self.check_typeddict_call(e, typeddict_type, typeddict_callable)
+
         # Add logic to handle the `get` method
-        if isinstance(e.callee, MemberExpr) and e.callee.name == 'get':
+        if isinstance(e.callee, MemberExpr) and e.callee.name == "get":
             dict_type = self.accept(e.callee.expr)
-            if isinstance(dict_type, Instance) and dict_type.type.fullname == 'builtins.dict':
+            if isinstance(dict_type, Instance) and dict_type.type.fullname == "builtins.dict":
                 key_type = self.accept(e.args[0])
                 if len(e.args) == 2:
                     default_type = self.accept(e.args[1])
                     return UnionType.make_union([dict_type.args[1], default_type])
                 return UnionType.make_union([dict_type.args[1], NoneType()])
-            elif isinstance(dict_type, Instance) and dict_type.type.fullname == 'builtins.dict':
+            elif isinstance(dict_type, Instance) and dict_type.type.fullname == "builtins.dict":
                 # Handle empty dictionary case
                 return AnyType(TypeOfAny.special_form)
-            
+
         if e.analyzed:
             if isinstance(e.analyzed, NamedTupleExpr) and not e.analyzed.is_typed:
                 # Type check the arguments, but ignore the results. This relies

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable, Sequence, cast
-from mypy.nodes import ARG_POS, ARG_OPT
+
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import (
@@ -14,6 +14,7 @@ from mypy.expandtype import (
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
+    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -203,11 +204,11 @@ def analyze_member_access(
         no_deferral=no_deferral,
         is_self=is_self,
     )
-    
-    if name == 'get' and isinstance(typ, Instance) and typ.type.fullname == 'builtins.dict':
+
+    if name == "get" and isinstance(typ, Instance) and typ.type.fullname == "builtins.dict":
         # Handle overload resolution for dict.get
         return analyze_dict_get(typ, context)
-    
+
     result = _analyze_member_access(name, typ, mx, override_info)
     possible_literal = get_proper_type(result)
     if (
@@ -219,6 +220,7 @@ def analyze_member_access(
     else:
         return result
 
+
 def analyze_dict_get(self, typ: Instance, context: Context) -> Type:
     key_type = typ.args[0]
     value_type = typ.args[1]
@@ -227,9 +229,10 @@ def analyze_dict_get(self, typ: Instance, context: Context) -> Type:
         [ARG_POS, ARG_OPT],
         [None, None],
         UnionType.make_union([value_type, NoneType()]),
-        self.named_type('builtins.function')
+        self.named_type("builtins.function"),
     )
-    
+
+
 def _analyze_member_access(
     name: str, typ: Type, mx: MemberContext, override_info: TypeInfo | None = None
 ) -> Type:
