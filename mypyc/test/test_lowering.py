@@ -15,6 +15,7 @@ from mypyc.test.testutil import (
     MypycDataSuite,
     assert_test_output,
     build_ir_for_single_file,
+    infer_ir_build_options_from_test_name,
     remove_comment_lines,
     replace_word_size,
     use_custom_builtins,
@@ -31,11 +32,15 @@ class TestLowering(MypycDataSuite):
     base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        options = infer_ir_build_options_from_test_name(testcase.name)
+        if options is None:
+            # Skipped test case
+            return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
             expected_output = replace_word_size(expected_output)
             try:
-                ir = build_ir_for_single_file(testcase.input)
+                ir = build_ir_for_single_file(testcase.input, options)
             except CompileError as e:
                 actual = e.messages
             else:

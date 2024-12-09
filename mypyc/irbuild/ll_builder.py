@@ -509,10 +509,12 @@ class LowLevelIRBuilder:
         return res
 
     def coerce_short_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
-        if is_int64_rprimitive(target_type):
+        if is_int64_rprimitive(target_type) or (
+            PLATFORM_SIZE == 4 and is_int32_rprimitive(target_type)
+        ):
             return self.int_op(target_type, src, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
-        # TODO: i32
-        assert False, (src.type, target_type)
+        # TODO: i32 on 64-bit platform
+        assert False, (src.type, target_type, PLATFORM_SIZE)
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
         if (
