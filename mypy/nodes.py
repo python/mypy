@@ -3593,7 +3593,7 @@ class TypeAlias(SymbolNode):
     type will be initially an instance type with wrong number of type arguments.
     Such instances are all fixed either during or after main semantic analysis passes.
     We therefore store the difference between `List` and `List[Any]` rvalues (targets)
-    using the `no_args` flag. See also TypeAliasExpr.no_args.
+    using the `no_args` flag.
 
     Meaning of other fields:
 
