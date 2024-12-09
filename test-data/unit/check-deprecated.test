@@ -53,7 +53,7 @@ f  # E: function __main__.f is deprecated: use f2 instead  # type: ignore[deprec
 f(1)  # E: function __main__.f is deprecated: use f2 instead \
       # E: Too many arguments for "f"
 f[1]  # E: function __main__.f is deprecated: use f2 instead \
-      # E: Value of type "Callable[[], None]" is not indexable
+      # E: Value of type "() -> None" is not indexable
 g = f  # E: function __main__.f is deprecated: use f2 instead
 g()
 t = (f, f, g)  # E: function __main__.f is deprecated: use f2 instead
