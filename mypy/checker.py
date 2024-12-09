@@ -2841,8 +2841,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 and ctx.mro.index(b1type) > ctx.mro.index(b2type)
             ):
                 b1type, b2type = b2type, b1type
+                base1, base2 = base2, base1
                 first_type, second_type = second_type, first_type
                 first_node, second_node = second_node, first_node
+
+            if (
+                base1 is not None
+                and base2 is not None
+                and is_subtype(base1, base2, ignore_promotions=True)
+            ):
+                # If base1 already inherits from base2 with correct type args,
+                # we have reported errors if any. Avoid reporting them again.
+                return
 
         # TODO: use more principled logic to decide is_subtype() vs is_equivalent().
         # We should rely on mutability of superclass node, not on types being Callable.

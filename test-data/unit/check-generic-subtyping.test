@@ -1090,3 +1090,14 @@ class C5(A2[U], B[T]): pass  # E: Definition of "x" in base class "A" is incompa
                              # E: Definition of "fn" in base class "A" is incompatible with definition in base class "B"
 
 [builtins fixtures/tuple.pyi]
+
+[case testMultipleInheritanceCompatErrorPropagation]
+class A:
+    foo: bytes
+class B(A):
+    foo: str  # type: ignore[assignment]
+
+class Ok(B, A): pass
+
+class C(A): pass
+class Ok2(B, C): pass
