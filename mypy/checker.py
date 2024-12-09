@@ -2744,23 +2744,44 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if len(typ.bases) <= 1:
             # No multiple inheritance.
             return
+
         # Verify that inherited attributes are compatible.
-        bases = typ.bases
-        all_names = [{n for p in b.type.mro for n in p.names} for b in bases]
-        for i, base in enumerate(bases):
+        # Construct a "typed" MRO that follows regular MRO order, but includes instances
+        # parametrized with their generic args.
+        # This detects e.g. `class A(Mapping[int, str], Iterable[str])` correctly.
+        # For each MRO entry, include it parametrized according to each base inheriting
+        # from it.
+        typed_mro = [
+            map_instance_to_supertype(base, parent)
+            for parent in typ.mro[1:]
+            for base in typ.bases
+            if parent in base.type.mro
+        ]
+        # If the first MRO entry is compatible with everything following, we don't need
+        # (and shouldn't) compare further pairs
+        # (see testMultipleInheritanceExplcitDiamondResolution)
+        seen_names = set()
+        for i, base in enumerate(typed_mro):
             # Attributes defined in both the type and base are skipped.
             # Normal checks for attribute compatibility should catch any problems elsewhere.
             # Sort for consistent messages order.
-            non_overridden_attrs = sorted(all_names[i] - typ.names.keys())
+            non_overridden_attrs = sorted(typed_mro[i].type.names - typ.names.keys())
             for name in non_overridden_attrs:
                 if is_private(name):
                     continue
-                for j, base2 in enumerate(bases[i + 1 :], i + 1):
+                if name in seen_names:
+                    continue
+                for j, base2 in enumerate(typed_mro[i + 1 :], i + 1):
                     # We only need to check compatibility of attributes from classes not
                     # in a subclass relationship. For subclasses, normal (single inheritance)
                     # checks suffice (these are implemented elsewhere).
-                    if name in all_names[j] and base.type != base2.type:
+                    if name in base2.type.names and not is_subtype(
+                        base, base2, ignore_promotions=True
+                    ):
+                        # If base1 already inherits from base2 with correct type args,
+                        # we have reported errors if any. Avoid reporting them again.
                         self.check_compatibility(name, base, base2, typ)
+                seen_names.add(name)
 
     def determine_type_of_member(self, node: SymbolNode) -> Type | None:
         if isinstance(node, FuncBase):
@@ -2810,48 +2831,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # __init__ and friends can be incompatible -- it's a special case.
             return
 
-        if is_subtype(base1, base2, ignore_promotions=True):
-            # If base1 already inherits from base2 with correct type args,
-            # we have reported errors if any. Avoid reporting them again.
-            return
-
         first_type = first_node = None
         second_type = second_node = None
         orig_var = ctx.get(name)
 
         if orig_var is not None and orig_var.node is not None:
-            if (b1type := base1.type.get_containing_type_info(name)) is not None:
-                base1 = map_instance_to_supertype(base1, b1type)
-                first_type, first_node = self.attribute_type_from_base(
-                    orig_var.node, base1.type, base1
-                )
-
-            if (b2type := base2.type.get_containing_type_info(name)) is not None:
-                base2 = map_instance_to_supertype(base2, b2type)
-                second_type, second_node = self.attribute_type_from_base(
-                    orig_var.node, base2.type, base2
-                )
-
-            # Fix the order. We iterate over the explicit bases, which means we may
-            # end up with the following structure:
-            # class A:
-            #     def fn(self, x: int) -> None: ...
-            # class B(A): ...
-            # class C(A):
-            #     def fn(self, x: int|str) -> None: ...
-            # class D(B, C): ...
-            # Here D.fn will actually be dispatched to C.fn which is assignable to A.fn,
-            # but without this fixup we'd check A.fn against C.fn instead.
-            # See testMultipleInheritanceTransitive in check-multiple-inheritance.test
-            if (
-                b1type is not None
-                and b2type is not None
-                and ctx.mro.index(b1type) > ctx.mro.index(b2type)
-            ):
-                b1type, b2type = b2type, b1type
-                base1, base2 = base2, base1
-                first_type, second_type = second_type, first_type
-                first_node, second_node = second_node, first_node
+            first_type, first_node = self.attribute_type_from_base(
+                orig_var.node, base1.type, base1
+            )
+            second_type, second_node = self.attribute_type_from_base(
+                orig_var.node, base2.type, base2
+            )
 
         # TODO: use more principled logic to decide is_subtype() vs is_equivalent().
         # We should rely on mutability of superclass node, not on types being Callable.
