@@ -2944,6 +2944,7 @@ class TypeInfo(SymbolNode):
         "fallback_to_any",
         "meta_fallback_to_any",
         "type_vars",
+        "mapped_type_vars",
         "has_param_spec_type",
         "bases",
         "_promote",
@@ -3048,6 +3049,8 @@ class TypeInfo(SymbolNode):
 
     # Generic type variable names (full names)
     type_vars: list[str]
+    # Map of current class TypeVars and Inheritor specified type to calculate real type in MRO
+    mapped_type_vars: dict[mypy.types.TypeVarLikeType, mypy.types.ProperType]
 
     # Whether this class has a ParamSpec type variable
     has_param_spec_type: bool
@@ -3139,6 +3142,7 @@ class TypeInfo(SymbolNode):
         self.defn = defn
         self.module_name = module_name
         self.type_vars = []
+        self.mapped_type_vars = {}
         self.has_param_spec_type = False
         self.has_type_var_tuple_type = False
         self.bases = []
