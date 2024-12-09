@@ -265,7 +265,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                         "Union",
                     ],
                     "os": ["PathLike"],
-                    "pathlib": ["Path"]
+                    "pathlib": ["Path"],
                 }
             )
 
