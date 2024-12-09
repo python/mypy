@@ -946,7 +946,7 @@ x1: X1[str, int]
 reveal_type(list(x1))  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type([*x1])  # N: Revealed type is "builtins.list[builtins.int]"
 
-class X2(Generic[T, U], Iterator[U], Mapping[T, U]):
+class X2(Generic[T, U], Iterator[U], Mapping[T, U]):  # E: Definition of "__iter__" in base class "Iterable" is incompatible with definition in base class "Iterable"
     pass
 
 x2: X2[str, int]
@@ -1017,10 +1017,7 @@ x1: X1[str, int]
 reveal_type(iter(x1))  # N: Revealed type is "typing.Iterator[builtins.int]"
 reveal_type({**x1})  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
 
-# Some people would expect this to raise an error, but this currently does not:
-# `Mapping` has `Iterable[U]` base class, `X2` has direct `Iterable[T]` base class.
-# It would be impossible to define correct `__iter__` method for incompatible `T` and `U`.
-class X2(Generic[T, U],  Mapping[U, T], Iterable[T]):
+class X2(Generic[T, U],  Mapping[U, T], Iterable[T]):  # E: Definition of "__iter__" in base class "Iterable" is incompatible with definition in base class "Iterable"
     pass
 
 x2: X2[str, int]
@@ -1065,3 +1062,31 @@ class F(E[T_co], Generic[T_co]): ...  # E: Variance of TypeVar "T_co" incompatib
 
 class G(Generic[T]): ...
 class H(G[T_contra], Generic[T_contra]): ...  # E: Variance of TypeVar "T_contra" incompatible with variance in parent type
+
+[case testMultipleInheritanceCompatibleTypeVar]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class A(Generic[T]):
+    x: T
+    def fn(self, t: T) -> None: ...
+
+class A2(A[T]):
+    y: str
+    z: str
+
+class B(Generic[T]):
+    x: T
+    def fn(self, t: T) -> None: ...
+
+class C1(A2[str], B[str]): pass
+class C2(A2[str], B[int]): pass  # E: Definition of "x" in base class "A" is incompatible with definition in base class "B" \
+                                 # E: Definition of "fn" in base class "A" is incompatible with definition in base class "B"
+class C3(A2[T], B[T]): pass
+class C4(A2[U], B[U]): pass
+class C5(A2[U], B[T]): pass  # E: Definition of "x" in base class "A" is incompatible with definition in base class "B" \
+                             # E: Definition of "fn" in base class "A" is incompatible with definition in base class "B"
+
+[builtins fixtures/tuple.pyi]
