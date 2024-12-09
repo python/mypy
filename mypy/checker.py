@@ -607,11 +607,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         # The outer frame accumulates the results of all iterations
         with self.binder.frame_context(can_skip=False, conditional_frame=True):
+            partials_old = sum(len(pts.map) for pts in self.partial_types)
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
                     self.accept(body)
-                if not self.binder.last_pop_changed:
+                partials_new = sum(len(pts.map) for pts in self.partial_types)
+                if (partials_new == partials_old) and not self.binder.last_pop_changed:
                     break
+                partials_old = partials_new
             if exit_condition:
                 _, else_map = self.find_isinstance_check(exit_condition)
                 self.push_type_map(else_map)
