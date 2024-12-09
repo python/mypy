@@ -860,6 +860,14 @@ def process_options(
     )
 
     add_invertible_flag(
+        "--strict-bytes",
+        default=False,
+        strict_flag=False,
+        help="Disable treating bytearray and memoryview as subtypes of bytes",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
         "--extra-checks",
         default=False,
         strict_flag=True,
@@ -1385,6 +1393,11 @@ def process_options(
             parser.error("--cache-map is incompatible with --sqlite-cache")
 
         process_cache_map(parser, special_opts, options)
+
+    # Process --strict-bytes
+    if options.strict_bytes:
+        options.disable_bytearray_promotion = True
+        options.disable_memoryview_promotion = True
 
     # An explicitly specified cache_fine_grained implies local_partial_types
     # (because otherwise the cache is not compatible with dmypy)
