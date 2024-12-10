@@ -2393,6 +2393,20 @@ def f(x: bytes, y: bytearray, z: memoryview) -> None:
     x in z
 [builtins fixtures/primitives.pyi]
 
+[case testStrictBytes]
+# flags: --strict-bytes
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+[builtins fixtures/primitives.pyi]
+
+[case testNoStrictBytes]
+# flags: --no-strict-bytes
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))
+f(memoryview(b"asdf"))
+[builtins fixtures/primitives.pyi]
+
 [case testNoCrashFollowImportsForStubs]
 # flags: --config-file tmp/mypy.ini
 {**{"x": "y"}}

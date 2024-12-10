@@ -778,6 +778,14 @@ section of the command line docs.
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
 
+.. confval:: strict_bytes
+
+   :type: boolean
+   :default: False
+
+   Disable treating ``bytearray`` and ``memoryview`` as subtypes of ``bytes``.
+   This will be enabled by default in *mypy 2.0*.
+
 .. confval:: strict
 
    :type: boolean
