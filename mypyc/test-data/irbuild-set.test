@@ -115,7 +115,7 @@ L1:
     r9 = int_lt r6, r8
     if r9 goto L2 else goto L4 :: bool
 L2:
-    r10 = CPyList_GetItemUnsafe(tmp_list, r6)
+    r10 = list_get_item_unsafe tmp_list, r6
     r11 = unbox(int, r10)
     x = r11
     r12 = f(x)
@@ -361,7 +361,7 @@ L1:
     r13 = int_lt r10, r12
     if r13 goto L2 else goto L6 :: bool
 L2:
-    r14 = CPyList_GetItemUnsafe(tmp_list, r10)
+    r14 = list_get_item_unsafe tmp_list, r10
     r15 = unbox(int, r14)
     z = r15
     r16 = int_lt z, 8

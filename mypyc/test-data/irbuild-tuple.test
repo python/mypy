@@ -265,7 +265,7 @@ L1:
     r10 = int_lt r7, r9
     if r10 goto L2 else goto L4 :: bool
 L2:
-    r11 = CPyList_GetItemUnsafe(source, r7)
+    r11 = list_get_item_unsafe source, r7
     r12 = unbox(int, r11)
     x = r12
     r13 = f(x)
