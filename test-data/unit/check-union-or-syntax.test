@@ -251,3 +251,65 @@ foo: ReadableBuffer
 [file was_mmap.py]
 from was_builtins import *
 class mmap: ...
+
+[case testUnionOrSyntaxWithQuotedOperandsNotAllowed]
+# flags: --python-version 3.10
+from typing import Union, assert_type
+
+x1: "int" | str          # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+x2: int | "str"          # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+x3: int | str | "bytes"  # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+assert_type(x1, Union[int, str])
+assert_type(x2, Union[int, str])
+assert_type(x3, Union[int, str, bytes])
+
+[case testUnionOrSyntaxWithQuotedOperandsWithTypeVar]
+# flags: --python-version 3.10
+import types
+from typing import TypeVar, Union, assert_type
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+
+ok1: TypeAlias =  T | "int"
+ok2: TypeAlias = "int" | T
+ok3: TypeAlias = int | T | "str"
+ok4: TypeAlias = "int" | T | "str"
+ok5: TypeAlias = T | "int" | str
+ok6: TypeAlias = T | int | "str"
+ok7: TypeAlias = list["str" | T]
+
+bad1: TypeAlias = "T" | "int"       # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+bad2: TypeAlias = int | "str" | T   # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+bad3: TypeAlias = list["str" | int] # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+[builtins fixtures/tuple.pyi]
+
+[case testUnionOrSyntaxWithQuotedOperandsWithAlias]
+# flags: --python-version 3.10
+import types
+from typing import TypeVar
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+
+A1: TypeAlias = int
+A2: TypeAlias = int | str
+A3: TypeAlias = list[T]
+A4: TypeAlias = T | str
+
+x1: A1 | "bytes"        # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+x2: A2 | "bytes"        # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+x3: A3[int] | "bytes"   # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+x4: A4[int] | "bytes"   # ok
+[builtins fixtures/tuple.pyi]
+
+[case testUnionOrSyntaxWithQuotedOperandsFutureAnnotations]
+# flags: --python-version 3.10
+from __future__ import annotations
+import types
+from typing_extensions import TypeAlias
+
+x1: int | "str"              # ok
+def f(x: int | "str"): pass  # ok
+x2: TypeAlias = int | "str"  # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+[builtins fixtures/tuple.pyi]
