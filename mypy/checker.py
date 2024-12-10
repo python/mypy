@@ -2771,7 +2771,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     continue
                 if name in seen_names:
                     continue
-                for j, base2 in enumerate(typed_mro[i + 1 :], i + 1):
+                for base2 in typed_mro[i + 1 :]:
                     # We only need to check compatibility of attributes from classes not
                     # in a subclass relationship. For subclasses, normal (single inheritance)
                     # checks suffice (these are implemented elsewhere).

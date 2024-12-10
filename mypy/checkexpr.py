@@ -462,7 +462,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 continue
             if isinstance(n.node, Var) and n.node.is_final:
                 immutable.add(name)
-
             typ = self.chk.determine_type_of_member(n)
             if typ:
                 module_attrs[name] = typ
