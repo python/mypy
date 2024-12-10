@@ -110,7 +110,7 @@ from mypy.types import (
     get_proper_type,
     has_type_vars,
 )
-from mypy.types_utils import is_bad_type_type_item
+from mypy.types_utils import get_bad_type_type_item
 from mypy.typevars import fill_typevars
 
 T = TypeVar("T")
@@ -652,14 +652,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # To prevent assignment of 'builtins.type' inferred as 'builtins.object'
                     # See https://github.com/python/mypy/issues/9476 for more information
                     return None
+            type_str = "Type[...]" if fullname == "typing.Type" else "type[...]"
             if len(t.args) != 1:
-                type_str = "Type[...]" if fullname == "typing.Type" else "type[...]"
                 self.fail(
-                    type_str + " must have exactly one type argument", t, code=codes.VALID_TYPE
+                    f"{type_str} must have exactly one type argument", t, code=codes.VALID_TYPE
                 )
             item = self.anal_type(t.args[0])
-            if is_bad_type_type_item(item):
-                self.fail("Type[...] can't contain another Type[...]", t, code=codes.VALID_TYPE)
+            bad_item_name = get_bad_type_type_item(item)
+            if bad_item_name:
+                self.fail(f'{type_str} can\'t contain "{bad_item_name}"', t, code=codes.VALID_TYPE)
                 item = AnyType(TypeOfAny.from_error)
             return TypeType.make_normalized(item, line=t.line, column=t.column)
         elif fullname == "typing.ClassVar":
