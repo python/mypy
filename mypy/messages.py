@@ -24,9 +24,6 @@ from mypy.erasetype import erase_type
 from mypy.errorcodes import ErrorCode
 from mypy.errors import ErrorInfo, Errors, ErrorWatcher
 from mypy.nodes import (
-    ARG_NAMED,
-    ARG_NAMED_OPT,
-    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -111,17 +108,6 @@ TYPES_FOR_UNIMPORTED_HINTS: Final = {
     "typing.Union",
     "typing.cast",
 }
-
-
-ARG_CONSTRUCTOR_NAMES: Final = {
-    ARG_POS: "Arg",
-    ARG_OPT: "DefaultArg",
-    ARG_NAMED: "NamedArg",
-    ARG_NAMED_OPT: "DefaultNamedArg",
-    ARG_STAR: "VarArg",
-    ARG_STAR2: "KwArg",
-}
-
 
 # Map from the full name of a missing definition to the test fixture (under
 # test-data/unit/fixtures/) that provides the definition. This is used for
@@ -2039,6 +2025,7 @@ class MessageBuilder:
     def note_call(
         self, subtype: Type, call: Type, context: Context, *, code: ErrorCode | None
     ) -> None:
+        # breakpoint()
         self.note(
             '"{}.__call__" has type {}'.format(
                 format_type_bare(subtype, self.options),
@@ -2487,11 +2474,10 @@ def format_callable_args(
         if arg_kind == ARG_POS and arg_name is None or verbosity == 0 and arg_kind.is_positional():
             arg_strings.append(format(arg_type))
         else:
-            constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
             if arg_kind.is_star() or arg_name is None:
-                arg_strings.append(f"{constructor}({format(arg_type)})")
+                arg_strings.append(f"{format(arg_type)}")
             else:
-                arg_strings.append(f"{constructor}({format(arg_type)}, {repr(arg_name)})")
+                arg_strings.append(f"{arg_name}: {format(arg_type)}")
 
     return ", ".join(arg_strings)
 
@@ -2709,14 +2695,14 @@ def format_type_inner(
             else:
                 return_type = format(func.ret_type)
             if func.is_ellipsis_args:
-                return f"Callable[..., {return_type}]"
+                return f"(..., {return_type})"
             param_spec = func.param_spec()
             if param_spec is not None:
-                return f"Callable[{format(param_spec)}, {return_type}]"
+                return f"({format(param_spec)}, {return_type})"
             args = format_callable_args(
                 func.arg_types, func.arg_kinds, func.arg_names, format, verbosity
             )
-            return f"Callable[[{args}], {return_type}]"
+            return f"({args}) -> {return_type}"
         else:
             # Use a simple representation for function types; proper
             # function types may result in long and difficult-to-read

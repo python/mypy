@@ -155,8 +155,8 @@ x = 5  # type: Union[int, Callable[[], str]]
 if callable(x) and x() == 'test':
     x()
 else:
-    x + 5  # E: Unsupported left operand type for + ("Callable[[], str]") \
-           # N: Left operand is of type "Union[int, Callable[[], str]]"
+    x + 5  # E: Unsupported left operand type for + ("() -> str") \
+           # N: Left operand is of type "Union[int, () -> str]"
 
 [builtins fixtures/callable.pyi]
 
@@ -605,14 +605,14 @@ class Call(Protocol):
     def __call__(self, x: int, *args: Any, **kwargs: Any) -> None: ...
 
 def f1() -> None: ...
-a1: Call = f1  # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "Call") \
-               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+a1: Call = f1  # E: Incompatible types in assignment (expression has type "() -> None", variable has type "Call") \
+               # N: "Call.__call__" has type "(x: int, Any, Any) -> None"
 def f2(x: str) -> None: ...
-a2: Call = f2  # E: Incompatible types in assignment (expression has type "Callable[[str], None]", variable has type "Call") \
-               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+a2: Call = f2  # E: Incompatible types in assignment (expression has type "(str) -> None", variable has type "Call") \
+               # N: "Call.__call__" has type "(x: int, Any, Any) -> None"
 def f3(y: int) -> None: ...
-a3: Call = f3  # E: Incompatible types in assignment (expression has type "Callable[[int], None]", variable has type "Call") \
-               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+a3: Call = f3  # E: Incompatible types in assignment (expression has type "(int) -> None", variable has type "Call") \
+               # N: "Call.__call__" has type "(x: int, Any, Any) -> None"
 def f4(x: int) -> None: ...
 a4: Call = f4
 
