@@ -2739,6 +2739,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if expected != tvar.variance:
                 self.msg.bad_proto_variance(tvar.variance, tvar.name, expected, defn)
 
+    def get_parameterized_base_classes(self, typ: TypeInfo) -> list[Instance]:
+        """Build an MRO-like structure with generic type args substituted.
+
+        Excludes the class itself.
+
+        When several bases have a common ancestor, includes an :class:`Instance`
+        for each param.
+        """
+        bases = []
+        for parent in typ.mro[1:]:
+            if parent.is_generic():
+                for base in typ.bases:
+                    if parent in base.type.mro:
+                        bases.append(map_instance_to_supertype(base, parent))
+            else:
+                bases.append(Instance(parent, []))
+        return bases
+
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""
         if len(typ.bases) <= 1:
@@ -2746,17 +2764,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
 
         # Verify that inherited attributes are compatible.
-        # Construct a "typed" MRO that follows regular MRO order, but includes instances
-        # parametrized with their generic args.
-        # This detects e.g. `class A(Mapping[int, str], Iterable[str])` correctly.
-        # For each MRO entry, include it parametrized according to each base inheriting
-        # from it.
-        typed_mro = [
-            map_instance_to_supertype(base, parent)
-            for parent in typ.mro[1:]
-            for base in typ.bases
-            if parent in base.type.mro
-        ]
+        typed_mro = self.get_parameterized_base_classes(typ)
         # If the first MRO entry is compatible with everything following, we don't need
         # (and shouldn't) compare further pairs
         # (see testMultipleInheritanceExplcitDiamondResolution)
