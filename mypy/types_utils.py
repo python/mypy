@@ -88,9 +88,9 @@ def get_bad_type_type_item(item: Type) -> str | None:
     # TODO: what else cannot be present in `type[...]`?
     item = get_proper_type(item)
     if isinstance(item, TypeType):
-        return 'Type[...]'
+        return "Type[...]"
     if isinstance(item, LiteralType):
-        return 'Literal[...]'
+        return "Literal[...]"
     if isinstance(item, UnionType):
         items = [
             bad_item
