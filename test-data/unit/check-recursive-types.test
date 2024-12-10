@@ -409,10 +409,9 @@ def local() -> None:
     x: L
     reveal_type(x)  # N: Revealed type is "builtins.list[Union[builtins.int, Any]]"
 
-S = Type[S]  # E: Type[...] can't contain "type[<placeholder __main__.S>]" \
-             # E: Type[...] can't contain "type[Any]"
-U = Type[Union[int, U]]  # E: Type[...] can't contain "Union[builtins.int, Union[type[builtins.int], type[<placeholder __main__.U>]]]" \
-                         # E: Type[...] can't contain "Union[builtins.int, type[Any]]"
+S = Type[S]  # E: Type[...] can't contain "Type[...]"
+U = Type[Union[int, U]]  # E: Type[...] can't contain "Union[Type[...], Type[...]]" \
+                         # E: Type[...] can't contain "Type[...]"
 x: U
 reveal_type(x)  # N: Revealed type is "Type[Any]"
 

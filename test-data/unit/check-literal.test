@@ -2989,7 +2989,7 @@ class C(Base):
 from typing_extensions import Literal
 from typing import Type, Union
 
-x: Type[Literal[1]]  # E: Type[...] can't contain "Literal[1]"
-y: Type[Union[Literal[1], Literal[2]]]  # E: Type[...] can't contain "Union[Literal[1], Literal[2]]"
-z: Type[Literal[1, 2]]  # E: Type[...] can't contain "Union[Literal[1], Literal[2]]"
+x: Type[Literal[1]]  # E: Type[...] can't contain "Literal[...]"
+y: Type[Union[Literal[1], Literal[2]]]  # E: Type[...] can't contain "Union[Literal[...], Literal[...]]"
+z: Type[Literal[1, 2]]  # E: Type[...] can't contain "Union[Literal[...], Literal[...]]"
 [builtins fixtures/tuple.pyi]
