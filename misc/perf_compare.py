@@ -2,7 +2,7 @@
 
 Simple usage:
 
-  python misc/perf_compare.py my-branch master ...
+  python misc/perf_compare.py master my-branch ...
 
 What this does:
 
@@ -78,10 +78,17 @@ def run_benchmark(compiled_dir: str, check_dir: str) -> float:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("commit", nargs="+")
+    parser.add_argument(
+        "-n",
+        metavar="NUM",
+        default=15,
+        type=int,
+        help="number of measurements to perform (default=15)",
+    )
+    parser.add_argument("commit", nargs="+", help="git revision to measure (e.g. branch name)")
     args = parser.parse_args()
     commits = args.commit
-    num_runs = 16
+    num_runs: int = args.n + 1
 
     if not (os.path.isdir(".git") and os.path.isdir("mypyc")):
         sys.exit("error: Run this the mypy repo root")
