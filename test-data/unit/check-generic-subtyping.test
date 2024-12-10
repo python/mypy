@@ -1090,3 +1090,18 @@ class C5(A2[U], B[T]): pass  # E: Definition of "fn" in base class "A" is incomp
                              # E: Definition of "x" in base class "A" is incompatible with definition in base class "B"
 
 [builtins fixtures/tuple.pyi]
+
+[case testMultipleInheritanceNestedTypeVarPropagation]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    foo: T
+class B(A[str]): ...
+class C(B): ...
+class D(C): ...
+
+class Bad(D, A[T]): ...  # E: Definition of "foo" in base class "A" is incompatible with definition in base class "A"
+class Good(D, A[str]): ...  # OK
+[builtins fixtures/tuple.pyi]
