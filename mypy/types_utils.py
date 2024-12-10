@@ -82,6 +82,8 @@ def is_bad_type_type_item(item: Type) -> bool:
     Such types are explicitly prohibited by PEP 484. Also, they cause problems
     with recursive types like T = Type[T], because internal representation of
     TypeType item is normalized (i.e. always a proper type).
+
+    Also forbids `Type[Literal[...]]`, because typing spec does not allow it.
     """
     item = get_proper_type(item)
     if isinstance(item, (TypeType, LiteralType)):
