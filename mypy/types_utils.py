@@ -15,6 +15,7 @@ from mypy.types import (
     AnyType,
     CallableType,
     Instance,
+    LiteralType,
     NoneType,
     Overloaded,
     ParamSpecType,
@@ -26,7 +27,6 @@ from mypy.types import (
     TypeVarType,
     UnionType,
     UnpackType,
-    LiteralType,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -87,9 +87,7 @@ def is_bad_type_type_item(item: Type) -> bool:
     if isinstance(item, (TypeType, LiteralType)):
         return True
     if isinstance(item, UnionType):
-        return any(
-            is_bad_type_type_item(typ) for typ in flatten_nested_unions(item.items)
-        )
+        return any(is_bad_type_type_item(typ) for typ in flatten_nested_unions(item.items))
     return False
 
 
