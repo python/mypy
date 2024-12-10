@@ -26,6 +26,7 @@ from mypy.types import (
     TypeVarType,
     UnionType,
     UnpackType,
+    LiteralType,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -83,11 +84,11 @@ def is_bad_type_type_item(item: Type) -> bool:
     TypeType item is normalized (i.e. always a proper type).
     """
     item = get_proper_type(item)
-    if isinstance(item, TypeType):
+    if isinstance(item, (TypeType, LiteralType)):
         return True
     if isinstance(item, UnionType):
         return any(
-            isinstance(get_proper_type(i), TypeType) for i in flatten_nested_unions(item.items)
+            is_bad_type_type_item(typ) for typ in flatten_nested_unions(item.items)
         )
     return False
 

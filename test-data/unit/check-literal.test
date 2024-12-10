@@ -2984,3 +2984,12 @@ class C(Base):
             reveal_type(sep)  # N: Revealed type is "Union[Literal['a'], Literal['b']]"
         return super().feed_data(sep)
 [builtins fixtures/tuple.pyi]
+
+[case testLiteralInsideAType]
+from typing_extensions import Literal
+from typing import Type, Union
+
+x: Type[Literal[1]]  # E: Type[...] can't contain "Literal[1]"
+y: Type[Union[Literal[1], Literal[2]]]  # E: Type[...] can't contain "Union[Literal[1], Literal[2]]"
+z: Type[Literal[1, 2]]  # E: Type[...] can't contain "Union[Literal[1], Literal[2]]"
+[builtins fixtures/tuple.pyi]
