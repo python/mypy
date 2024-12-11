@@ -562,6 +562,7 @@ class TypedDictAnalyzer:
                 allow_typed_dict_special_forms=True,
                 allow_placeholder=not self.api.is_func_scope(),
                 prohibit_self_type="TypedDict item type",
+                prohibit_special_class_field_types="TypedDict",
             )
             if analyzed is None:
                 return None

@@ -1452,5 +1452,11 @@ class My(NamedTuple):
     c: ClassVar       # E: ClassVar[...] can't be used inside a NamedTuple
     d: ClassVar[int]  # E: ClassVar[...] can't be used inside a NamedTuple
 
+Func = NamedTuple('Func', [
+    ('a', Final),         # E: Final[...] can't be used inside a NamedTuple
+    ('b', Final[int]),    # E: Final[...] can't be used inside a NamedTuple
+    ('c', ClassVar),      # E: ClassVar[...] can't be used inside a NamedTuple
+    ('d', ClassVar[int]), # E: ClassVar[...] can't be used inside a NamedTuple
+])
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]

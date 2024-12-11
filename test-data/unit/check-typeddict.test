@@ -4064,5 +4064,11 @@ class My(TypedDict):
     c: ClassVar       # E: ClassVar[...] can't be used inside a TypedDict
     d: ClassVar[int]  # E: ClassVar[...] can't be used inside a TypedDict
 
+Func = TypedDict('Func', {
+    'a': Final,         # E: Final[...] can't be used inside a TypedDict
+    'b': Final[int],    # E: Final[...] can't be used inside a TypedDict
+    'c': ClassVar,      # E: ClassVar[...] can't be used inside a TypedDict
+    'd': ClassVar[int], # E: ClassVar[...] can't be used inside a TypedDict
+})
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
