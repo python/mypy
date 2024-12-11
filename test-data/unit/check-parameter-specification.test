@@ -440,13 +440,13 @@ class C(Generic[P, P2]):
     def m1(self, *args: P.args, **kwargs: P.kwargs) -> None:
         self.m1(*args, **kwargs)
         self.m2(*args, **kwargs)  # E: Argument 1 to "m2" of "C" has incompatible type "*P.args"; expected "P2.args" \
-            # E: Argument 2 to "m2" of "C" has incompatible type "**P.kwargs"; expected "P2.kwargs"
+                                  # E: Argument 2 to "m2" of "C" has incompatible type "**P.kwargs"; expected "P2.kwargs"
         self.m1(*kwargs, **args)  # E: Argument 1 to "m1" of "C" has incompatible type "*P.kwargs"; expected "P.args" \
-            # E: Argument 2 to "m1" of "C" has incompatible type "**P.args"; expected "P.kwargs"
+                                  # E: Argument 2 to "m1" of "C" has incompatible type "**P.args"; expected "P.kwargs"
         self.m3(*args, **kwargs)  # E: Argument 1 to "m3" of "C" has incompatible type "*P.args"; expected "int" \
-            # E: Argument 2 to "m3" of "C" has incompatible type "**P.kwargs"; expected "int"
+                                  # E: Argument 2 to "m3" of "C" has incompatible type "**P.kwargs"; expected "int"
         self.m4(*args, **kwargs)  # E: Argument 1 to "m4" of "C" has incompatible type "*P.args"; expected "int" \
-            # E: Argument 2 to "m4" of "C" has incompatible type "**P.kwargs"; expected "int"
+                                  # E: Argument 2 to "m4" of "C" has incompatible type "**P.kwargs"; expected "int"
 
         self.m1(*args, **args)  # E: Argument 2 to "m1" of "C" has incompatible type "**P.args"; expected "P.kwargs"
         self.m1(*kwargs, **kwargs)  # E: Argument 1 to "m1" of "C" has incompatible type "*P.kwargs"; expected "P.args"
@@ -1264,7 +1264,7 @@ def f1(f: Callable[P, int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSp
 def f2(f: Callable[P, int], *args: P.args, **kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f3(f: Callable[P, int], *args: P.args) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f4(f: Callable[P, int], **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
-def f5(f: Callable[P, int], *args: P.args, extra_keyword_arg: int, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f5(f: Callable[P, int], *args: P.args, extra_keyword_arg: int, **kwargs: P.kwargs) -> int: ...  # E: Arguments not allowed after ParamSpec.args
 
 # Error message test:
 P1 = ParamSpec('P1')
@@ -1294,7 +1294,10 @@ def f1(f: Callable[Concatenate[int, P], int], *args, **kwargs: P.kwargs) -> int:
 def f2(f: Callable[Concatenate[int, P], int], *args: P.args, **kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f3(f: Callable[Concatenate[int, P], int], *args: P.args) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f4(f: Callable[Concatenate[int, P], int], **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
-def f5(f: Callable[Concatenate[int, P], int], *args: P.args, extra_keyword_arg: int, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f5(f: Callable[Concatenate[int, P], int], *args: P.args, extra_keyword_arg: int, **kwargs: P.kwargs) -> int: ...  # E: Arguments not allowed after ParamSpec.args
+
+
+
 [builtins fixtures/paramspec.pyi]
 
 
@@ -2474,12 +2477,6 @@ def run(func: Callable[Concatenate[int, str, P], T], *args: P.args, **kwargs: P.
 
 [builtins fixtures/paramspec.pyi]
 
-
-
-
-
-
-
 [case testParamSpecConformance1]
 #flags: --python-version 3.12
 from typing import Any, Callable, List, ParamSpec
@@ -2525,13 +2522,7 @@ def func5(*args: P, **kwargs: P) -> None:  # E  # E: Invalid location for ParamS
                                                 # N: You can use ParamSpec as the first argument to Callable, e.g., "Callable[P, int]"
     ...
 
-
 [builtins fixtures/paramspec.pyi]
-
-
-
-
-
 
 [case testParamSpecConformance2]
 #flags: --python-version 3.12
@@ -2555,7 +2546,7 @@ def puts_p_into_scope1(f: Callable[P, int]) -> None:
     def bad_kwargs1(*args: P.args, **kwargs: P.args) -> None:  # E  # E: Use "P.kwargs" for variadic "**" parameter
         pass
 
-    def bad_kwargs2(*args: P.args, **kwargs: Any) -> None:  # E
+    def bad_kwargs2(*args: P.args, **kwargs: Any) -> None:  # E  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
         pass
 
 
@@ -2567,10 +2558,10 @@ def puts_p_into_scope2(f: Callable[P, int]) -> None:
     stored_args: P.args  # E  # E: ParamSpec parts are not allowed here
     stored_kwargs: P.kwargs  # E  # E: ParamSpec parts are not allowed here
 
-    def just_args(*args: P.args) -> None:  # E  # E: ParamSpec parts are not allowed here
+    def just_args(*args: P.args) -> None:  # E  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
         pass
 
-    def just_kwargs(**kwargs: P.kwargs) -> None:  # E  # E: ParamSpec parts are not allowed here
+    def just_kwargs(**kwargs: P.kwargs) -> None:  # E  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
         pass
 
 
@@ -2590,7 +2581,7 @@ def add(f: Callable[P, int]) -> Callable[Concatenate[str, P], None]:
     def foo(s: str, *args: P.args, **kwargs: P.kwargs) -> None:  # OK
         pass
 
-    def bar(*args: P.args, s: str, **kwargs: P.kwargs) -> None:  # E  # E: ParamSpec parts are not allowed here
+    def bar(*args: P.args, s: str, **kwargs: P.kwargs) -> None:  # E  # E: Arguments not allowed after ParamSpec.args
         pass
 
     return foo  # OK
@@ -2633,5 +2624,11 @@ twice(a_int_b_str, 1, "A")  # OK
 twice(a_int_b_str, b="A", a=1)  # OK
 twice(a_int_b_str, "A", 1)  # E  # E: Argument 2 to "twice" has incompatible type "str"; expected "int" \
                                  # E: Argument 3 to "twice" has incompatible type "int"; expected "str"
+
+
+
+
+
+
 
 [builtins fixtures/paramspec.pyi]

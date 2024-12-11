@@ -1102,46 +1102,42 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 variables, _ = self.bind_function_type_variables(t, t)
             type_guard = self.anal_type_guard(t.ret_type)
             type_is = self.anal_type_is(t.ret_type)
+
             arg_kinds = t.arg_kinds
-            if len(arg_kinds) >= 2 and arg_kinds[-2] == ARG_STAR and arg_kinds[-1] == ARG_STAR2:
-                arg_types = self.anal_array(t.arg_types[:-2], nested=nested) + [
-                    self.anal_star_arg_type(t.arg_types[-2], ARG_STAR, nested=nested),
-                    self.anal_star_arg_type(t.arg_types[-1], ARG_STAR2, nested=nested),
-                ]
-                # If nested is True, it means we are analyzing a Callable[...] type, rather
-                # than a function definition type. We need to "unpack" ** TypedDict annotation
-                # here (for function definitions it is done in semanal).
-                if nested and isinstance(arg_types[-1], UnpackType):
-                    # TODO: it would be better to avoid this get_proper_type() call.
-                    unpacked = get_proper_type(arg_types[-1].type)
-                    if isinstance(unpacked, TypedDictType):
-                        arg_types[-1] = unpacked
-                        unpacked_kwargs = True
-                    arg_types = self.check_unpacks_in_list(arg_types)
-            else:
-                star_index = None
-                if ARG_STAR in arg_kinds:
-                    star_index = arg_kinds.index(ARG_STAR)
-                star2_index = None
-                if ARG_STAR2 in arg_kinds:
-                    star2_index = arg_kinds.index(ARG_STAR2)
-                arg_types = []
-                for i, ut in enumerate(t.arg_types):
-                    at = self.anal_type(
-                        ut, nested=nested, allow_unpack=i in (star_index, star2_index)
-                    )
-                    if nested and isinstance(at, UnpackType) and i == star_index:
+            arg_types = []
+            has_pspec_args = has_pspec_kwargs = None
+            for kind, ut in zip(arg_kinds, t.arg_types):
+                if kind == ARG_STAR:
+                    has_pspec_args, at = self.anal_star_arg_type(ut, kind, nested=nested)
+                elif kind == ARG_STAR2:
+                    has_pspec_kwargs, at = self.anal_star_arg_type(ut, kind, nested=nested)
+                    if nested and isinstance(at, UnpackType):
                         # TODO: it would be better to avoid this get_proper_type() call.
                         p_at = get_proper_type(at.type)
                         if isinstance(p_at, TypedDictType) and not at.from_star_syntax:
                             # Automatically detect Unpack[Foo] in Callable as backwards
                             # compatible syntax for **Foo, if Foo is a TypedDict.
                             at = p_at
-                            arg_kinds[i] = ARG_STAR2
                             unpacked_kwargs = True
-                    arg_types.append(at)
-                if nested:
-                    arg_types = self.check_unpacks_in_list(arg_types)
+                else:
+                    if has_pspec_args:
+                        self.fail("Arguments not allowed after ParamSpec.args", t)
+                    at = self.anal_type(ut, nested=nested, allow_unpack=False)
+                arg_types.append(at)
+            if nested:
+                arg_types = self.check_unpacks_in_list(arg_types)
+
+            if has_pspec_args != has_pspec_kwargs:
+                name = has_pspec_args or has_pspec_kwargs
+                self.fail(
+                    f'ParamSpec must have "*args" typed as "{name}.args" and "**kwargs" typed as "{name}.kwargs"',
+                    t,
+                )
+                if ARG_STAR in arg_kinds:
+                    arg_types[arg_kinds.index(ARG_STAR)] = AnyType(TypeOfAny.from_error)
+                if ARG_STAR2 in arg_kinds:
+                    arg_types[arg_kinds.index(ARG_STAR2)] = AnyType(TypeOfAny.from_error)
+
             # If there were multiple (invalid) unpacks, the arg types list will become shorter,
             # we need to trim the kinds/names as well to avoid crashes.
             arg_kinds = t.arg_kinds[: len(arg_types)]
@@ -1196,7 +1192,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return self.anal_type(t.args[0])
         return None
 
-    def anal_star_arg_type(self, t: Type, kind: ArgKind, nested: bool) -> Type:
+    def anal_star_arg_type(self, t: Type, kind: ArgKind, nested: bool) -> tuple[str | None, Type]:
         """Analyze signature argument type for *args and **kwargs argument."""
         if isinstance(t, UnboundType) and t.name and "." in t.name and not t.args:
             components = t.name.split(".")
@@ -1205,6 +1201,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if sym is not None and isinstance(sym.node, ParamSpecExpr):
                 tvar_def = self.tvar_scope.get_binding(sym)
                 if isinstance(tvar_def, ParamSpecType):
+                    # if t.line==25:breakpoint()
                     if kind == ARG_STAR:
                         make_paramspec = paramspec_args
                         if components[-1] != "args":
@@ -1223,7 +1220,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                             )
                     else:
                         assert False, kind
-                    return make_paramspec(
+                    return tvar_name, make_paramspec(
                         tvar_def.name,
                         tvar_def.fullname,
                         tvar_def.id,
@@ -1231,7 +1228,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         line=t.line,
                         column=t.column,
                     )
-        return self.anal_type(t, nested=nested, allow_unpack=True)
+        return None, self.anal_type(t, nested=nested, allow_unpack=True)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         # Overloaded types are manually constructed in semanal.py by analyzing the
