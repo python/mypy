@@ -3650,7 +3650,7 @@ class SemanticAnalyzer(
                 isinstance(s.rvalue, TempNode)
                 and s.rvalue.no_rhs
                 # Filter duplicate errors, we already reported this:
-                and not self.type.is_named_tuple
+                and not (self.type and self.type.is_named_tuple)
             ):
                 invalid_bare_final = True
                 self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
