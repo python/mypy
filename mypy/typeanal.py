@@ -304,6 +304,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -> Type:
         sym = self.lookup_qualified(t.name, t)
+        from_parts = False
+        if t.name.endswith((".args", ".kwargs")):
+            maybe_pspec = self.lookup_qualified(t.name.rsplit(".", 1)[0], t)
+            if maybe_pspec and isinstance(maybe_pspec.node, ParamSpecExpr):
+                sym = maybe_pspec
+                from_parts = True
+
         if sym is not None:
             node = sym.node
             if isinstance(node, PlaceholderNode):
@@ -367,6 +374,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     self.fail(
                         f'ParamSpec "{t.name}" used with arguments', t, code=codes.VALID_TYPE
                     )
+                if from_parts and not self.allow_param_spec_literals:
+                    self.fail("ParamSpec parts are not allowed here", t, code=codes.VALID_TYPE)
+                    return AnyType(TypeOfAny.from_error)
                 # Change the line number
                 return ParamSpecType(
                     tvar_def.name,
