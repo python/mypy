@@ -1115,15 +1115,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 kind = arg_kinds[i]
                 if kind == ARG_STAR:
                     pspec_with_args, at = self.anal_star_arg_type(ut, kind, nested=nested)
-                    if nested and isinstance(at, UnpackType):
-                        # TODO: it would be better to avoid this get_proper_type() call.
-                        p_at = get_proper_type(at.type)
-                        if isinstance(p_at, TypedDictType) and not at.from_star_syntax:
-                            # Automatically detect Unpack[Foo] in Callable as backwards
-                            # compatible syntax for **Foo, if Foo is a TypedDict.
-                            at = p_at
-                            unpacked_kwargs = True
-                            arg_kinds[i] = ARG_STAR2
                 elif kind == ARG_STAR2:
                     pspec_with_kwargs, at = self.anal_star_arg_type(ut, kind, nested=nested)
                 else:
@@ -1131,7 +1122,18 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         self.fail("Arguments not allowed after ParamSpec.args", t)
                     at = self.anal_type(ut, nested=nested, allow_unpack=False)
                 arg_types.append(at)
-            if nested:
+
+            if nested and arg_types:
+                last = arg_types[-1]
+                if isinstance(last, UnpackType):
+                    # TODO: it would be better to avoid this get_proper_type() call.
+                    p_at = get_proper_type(last.type)
+                    if isinstance(p_at, TypedDictType) and not last.from_star_syntax:
+                        # Automatically detect Unpack[Foo] in Callable as backwards
+                        # compatible syntax for **Foo, if Foo is a TypedDict.
+                        arg_kinds[-1] = ARG_STAR2
+                        arg_types[-1] = p_at
+                        unpacked_kwargs = True
                 arg_types = self.check_unpacks_in_list(arg_types)
 
             if pspec_with_args != pspec_with_kwargs:
