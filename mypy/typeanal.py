@@ -1111,11 +1111,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             arg_kinds = t.arg_kinds
             arg_types = []
             pspec_with_args = pspec_with_kwargs = None
-            for kind, ut in zip(arg_kinds, t.arg_types):
+            for i, ut in enumerate(t.arg_types):
+                kind = arg_kinds[i]
                 if kind == ARG_STAR:
                     pspec_with_args, at = self.anal_star_arg_type(ut, kind, nested=nested)
-                elif kind == ARG_STAR2:
-                    pspec_with_kwargs, at = self.anal_star_arg_type(ut, kind, nested=nested)
                     if nested and isinstance(at, UnpackType):
                         # TODO: it would be better to avoid this get_proper_type() call.
                         p_at = get_proper_type(at.type)
@@ -1124,6 +1123,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                             # compatible syntax for **Foo, if Foo is a TypedDict.
                             at = p_at
                             unpacked_kwargs = True
+                            arg_kinds[i] = ARG_STAR2
+                elif kind == ARG_STAR2:
+                    pspec_with_kwargs, at = self.anal_star_arg_type(ut, kind, nested=nested)
                 else:
                     if pspec_with_args:
                         self.fail("Arguments not allowed after ParamSpec.args", t)
