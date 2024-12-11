@@ -304,12 +304,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -> Type:
         sym = self.lookup_qualified(t.name, t)
-        from_parts = False
+        paramspec_name = None
         if t.name.endswith((".args", ".kwargs")):
-            maybe_pspec = self.lookup_qualified(t.name.rsplit(".", 1)[0], t)
+            paramspec_name = t.name.rsplit(".", 1)[0]
+            maybe_pspec = self.lookup_qualified(paramspec_name, t)
             if maybe_pspec and isinstance(maybe_pspec.node, ParamSpecExpr):
                 sym = maybe_pspec
-                from_parts = True
+            else:
+                paramspec_name = None
 
         if sym is not None:
             node = sym.node
@@ -363,10 +365,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if tvar_def is None:
                     if self.allow_unbound_tvars:
                         return t
+                    name = paramspec_name or t.name
                     if self.defining_alias and self.not_declared_in_type_params(t.name):
-                        msg = f'ParamSpec "{t.name}" is not included in type_params'
+                        msg = f'ParamSpec "{name}" is not included in type_params'
                     else:
-                        msg = f'ParamSpec "{t.name}" is unbound'
+                        msg = f'ParamSpec "{name}" is unbound'
                     self.fail(msg, t, code=codes.VALID_TYPE)
                     return AnyType(TypeOfAny.from_error)
                 assert isinstance(tvar_def, ParamSpecType)
@@ -374,8 +377,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     self.fail(
                         f'ParamSpec "{t.name}" used with arguments', t, code=codes.VALID_TYPE
                     )
-                if from_parts and not self.allow_param_spec_literals:
-                    self.fail("ParamSpec parts are not allowed here", t, code=codes.VALID_TYPE)
+                if paramspec_name is not None and not self.allow_param_spec_literals:
+                    self.fail(
+                        "ParamSpec components are not allowed here", t, code=codes.VALID_TYPE
+                    )
                     return AnyType(TypeOfAny.from_error)
                 # Change the line number
                 return ParamSpecType(
@@ -1105,12 +1110,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
             arg_kinds = t.arg_kinds
             arg_types = []
-            has_pspec_args = has_pspec_kwargs = None
+            pspec_with_args = pspec_with_kwargs = None
             for kind, ut in zip(arg_kinds, t.arg_types):
                 if kind == ARG_STAR:
-                    has_pspec_args, at = self.anal_star_arg_type(ut, kind, nested=nested)
+                    pspec_with_args, at = self.anal_star_arg_type(ut, kind, nested=nested)
                 elif kind == ARG_STAR2:
-                    has_pspec_kwargs, at = self.anal_star_arg_type(ut, kind, nested=nested)
+                    pspec_with_kwargs, at = self.anal_star_arg_type(ut, kind, nested=nested)
                     if nested and isinstance(at, UnpackType):
                         # TODO: it would be better to avoid this get_proper_type() call.
                         p_at = get_proper_type(at.type)
@@ -1120,15 +1125,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                             at = p_at
                             unpacked_kwargs = True
                 else:
-                    if has_pspec_args:
+                    if pspec_with_args:
                         self.fail("Arguments not allowed after ParamSpec.args", t)
                     at = self.anal_type(ut, nested=nested, allow_unpack=False)
                 arg_types.append(at)
             if nested:
                 arg_types = self.check_unpacks_in_list(arg_types)
 
-            if has_pspec_args != has_pspec_kwargs:
-                name = has_pspec_args or has_pspec_kwargs
+            if pspec_with_args != pspec_with_kwargs:
+                name = pspec_with_args or pspec_with_kwargs
                 self.fail(
                     f'ParamSpec must have "*args" typed as "{name}.args" and "**kwargs" typed as "{name}.kwargs"',
                     t,
@@ -1201,7 +1206,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if sym is not None and isinstance(sym.node, ParamSpecExpr):
                 tvar_def = self.tvar_scope.get_binding(sym)
                 if isinstance(tvar_def, ParamSpecType):
-                    # if t.line==25:breakpoint()
                     if kind == ARG_STAR:
                         make_paramspec = paramspec_args
                         if components[-1] != "args":
@@ -2574,18 +2578,7 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
 
     def visit_unbound_type(self, t: UnboundType) -> None:
         name = t.name
-        node = None
-
-        # Special case P.args and P.kwargs for ParamSpecs only.
-        if name.endswith("args"):
-            if name.endswith((".args", ".kwargs")):
-                base = ".".join(name.split(".")[:-1])
-                n = self.api.lookup_qualified(base, t)
-                if n is not None and isinstance(n.node, ParamSpecExpr):
-                    node = n
-                    name = base
-        if node is None:
-            node = self.api.lookup_qualified(name, t)
+        node = self.api.lookup_qualified(name, t)
         if node and node.fullname in SELF_TYPE_NAMES:
             self.has_self_type = True
         if (
