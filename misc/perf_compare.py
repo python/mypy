@@ -91,9 +91,9 @@ def main() -> None:
     parser.add_argument(
         "-j",
         metavar="N",
-        default=4,
+        default=8,
         type=int,
-        help="set maximum number of parallel builds (default=4)",
+        help="set maximum number of parallel builds (default=8)",
     )
     parser.add_argument("commit", nargs="+", help="git revision to measure (e.g. branch name)")
     args = parser.parse_args()
