@@ -191,6 +191,7 @@ class NamedTupleAnalyzer:
                         stmt.type,
                         allow_placeholder=not self.api.is_func_scope(),
                         prohibit_self_type="NamedTuple item type",
+                        prohibit_special_class_field_types="NamedTuple",
                     )
                     if analyzed is None:
                         # Something is incomplete. We need to defer this named tuple.

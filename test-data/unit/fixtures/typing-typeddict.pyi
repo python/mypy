@@ -28,6 +28,7 @@ Required = 0
 NotRequired = 0
 ReadOnly = 0
 Self = 0
+ClassVar = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)

@@ -3646,7 +3646,12 @@ class SemanticAnalyzer(
         invalid_bare_final = False
         if not s.unanalyzed_type.args:
             s.type = None
-            if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
+            if (
+                isinstance(s.rvalue, TempNode)
+                and s.rvalue.no_rhs
+                # Filter duplicate errors, we already reported this:
+                and not self.type.is_named_tuple
+            ):
                 invalid_bare_final = True
                 self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
         else:
@@ -7351,6 +7356,7 @@ class SemanticAnalyzer(
         allow_unpack: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        prohibit_special_class_field_types: str | None = None,
         allow_type_any: bool = False,
     ) -> TypeAnalyser:
         if tvar_scope is None:
@@ -7370,6 +7376,7 @@ class SemanticAnalyzer(
             allow_param_spec_literals=allow_param_spec_literals,
             allow_unpack=allow_unpack,
             prohibit_self_type=prohibit_self_type,
+            prohibit_special_class_field_types=prohibit_special_class_field_types,
             allow_type_any=allow_type_any,
         )
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
@@ -7394,6 +7401,7 @@ class SemanticAnalyzer(
         allow_unpack: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        prohibit_special_class_field_types: str | None = None,
         allow_type_any: bool = False,
     ) -> Type | None:
         """Semantically analyze a type.
@@ -7429,6 +7437,7 @@ class SemanticAnalyzer(
             allow_unpack=allow_unpack,
             report_invalid_types=report_invalid_types,
             prohibit_self_type=prohibit_self_type,
+            prohibit_special_class_field_types=prohibit_special_class_field_types,
             allow_type_any=allow_type_any,
         )
         tag = self.track_incomplete_refs()
