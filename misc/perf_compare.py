@@ -63,7 +63,9 @@ def edit_python_file(fnam: str) -> None:
         f.write(data)
 
 
-def run_benchmark(compiled_dir: str, check_dir: str, *, incremental: bool) -> float:
+def run_benchmark(
+    compiled_dir: str, check_dir: str, *, incremental: bool, code: str | None
+) -> float:
     cache_dir = os.path.join(compiled_dir, ".mypy_cache")
     if os.path.isdir(cache_dir) and not incremental:
         shutil.rmtree(cache_dir)
@@ -71,19 +73,17 @@ def run_benchmark(compiled_dir: str, check_dir: str, *, incremental: bool) -> fl
     env["PYTHONPATH"] = os.path.abspath(compiled_dir)
     env["PYTHONHASHSEED"] = "1"
     abschk = os.path.abspath(check_dir)
-    cmd = [
-        sys.executable,
-        "-m",
-        "mypy",
-        "--config-file",
-        os.path.join(abschk, "mypy_self_check.ini"),
-    ]
-    cmd += glob.glob(os.path.join(abschk, "mypy/*.py"))
-    cmd += glob.glob(os.path.join(abschk, "mypy/*/*.py"))
-    if incremental:
-        # Update a few files to force non-trivial incremental run
-        edit_python_file(os.path.join(abschk, "mypy/__main__.py"))
-        edit_python_file(os.path.join(abschk, "mypy/test/testcheck.py"))
+    cmd = [sys.executable, "-m", "mypy"]
+    if code:
+        cmd += ["-c", code]
+    else:
+        cmd += ["--config-file", os.path.join(abschk, "mypy_self_check.ini")]
+        cmd += glob.glob(os.path.join(abschk, "mypy/*.py"))
+        cmd += glob.glob(os.path.join(abschk, "mypy/*/*.py"))
+        if incremental:
+            # Update a few files to force non-trivial incremental run
+            edit_python_file(os.path.join(abschk, "mypy/__main__.py"))
+            edit_python_file(os.path.join(abschk, "mypy/test/testcheck.py"))
     t0 = time.time()
     # Ignore errors, since some commits being measured may generate additional errors.
     subprocess.run(cmd, cwd=compiled_dir, env=env)
@@ -112,12 +112,20 @@ def main() -> None:
         type=int,
         help="set maximum number of parallel builds (default=8)",
     )
+    parser.add_argument(
+        "-c",
+        metavar="CODE",
+        default=None,
+        type=str,
+        help="measure time to type check Python code fragment instead of mypy self-check",
+    )
     parser.add_argument("commit", nargs="+", help="git revision to measure (e.g. branch name)")
     args = parser.parse_args()
     incremental: bool = args.incremental
     commits = args.commit
     num_runs: int = args.num_runs + 1
     max_workers: int = args.j
+    code: str | None = args.c
 
     if not (os.path.isdir(".git") and os.path.isdir("mypyc")):
         sys.exit("error: Run this the mypy repo root")
@@ -152,7 +160,7 @@ def main() -> None:
         items = list(enumerate(commits))
         random.shuffle(items)
         for i, commit in items:
-            tt = run_benchmark(target_dirs[i], self_check_dir, incremental=incremental)
+            tt = run_benchmark(target_dirs[i], self_check_dir, incremental=incremental, code=code)
             # Don't record the first warm-up run
             if n > 0:
                 print(f"{commit}: t={tt:.3f}s")
