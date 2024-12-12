@@ -39,6 +39,7 @@ def build_mypy(target_dir: str) -> None:
     env = os.environ.copy()
     env["CC"] = "clang"
     env["MYPYC_OPT_LEVEL"] = "2"
+    env["PYTHONHASHSEED"] = "1"
     cmd = [sys.executable, "setup.py", "--use-mypyc", "build_ext", "--inplace"]
     subprocess.run(cmd, env=env, check=True, cwd=target_dir)
 
@@ -60,6 +61,7 @@ def run_benchmark(compiled_dir: str, check_dir: str) -> float:
         shutil.rmtree(cache_dir)
     env = os.environ.copy()
     env["PYTHONPATH"] = os.path.abspath(compiled_dir)
+    env["PYTHONHASHSEED"] = "1"
     abschk = os.path.abspath(check_dir)
     cmd = [
         sys.executable,
