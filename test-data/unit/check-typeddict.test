@@ -4053,3 +4053,22 @@ d: D = {"a": 1, "b": "x"}
 c: C = d  # E: Incompatible types in assignment (expression has type "D", variable has type "C")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictFinalAndClassVar]
+from typing import TypedDict, Final, ClassVar
+
+class My(TypedDict):
+    a: Final      # E: Final[...] can't be used inside a TypedDict
+    b: Final[int] # E: Final[...] can't be used inside a TypedDict
+    c: ClassVar       # E: ClassVar[...] can't be used inside a TypedDict
+    d: ClassVar[int]  # E: ClassVar[...] can't be used inside a TypedDict
+
+Func = TypedDict('Func', {
+    'a': Final,         # E: Final[...] can't be used inside a TypedDict
+    'b': Final[int],    # E: Final[...] can't be used inside a TypedDict
+    'c': ClassVar,      # E: ClassVar[...] can't be used inside a TypedDict
+    'd': ClassVar[int], # E: ClassVar[...] can't be used inside a TypedDict
+})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
