@@ -9,6 +9,7 @@ import sys
 import time
 from collections import defaultdict
 from gettext import gettext
+from io import TextIOWrapper
 from typing import IO, Any, Final, NoReturn, Sequence, TextIO
 
 from mypy import build, defaults, state, util
@@ -73,6 +74,10 @@ def main(
     sys.setrecursionlimit(2**14)
     if args is None:
         args = sys.argv[1:]
+
+    # Write an escape sequence instead of raising an exception on encoding errors.
+    if isinstance(stdout, TextIOWrapper) and stdout.errors == "strict":
+        stdout.reconfigure(errors="backslashreplace")
 
     fscache = FileSystemCache()
     sources, options = process_options(args, stdout=stdout, stderr=stderr, fscache=fscache)
