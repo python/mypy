@@ -12,7 +12,7 @@ import unittest
 from typing import Any, Callable, Iterator
 
 import mypy.stubtest
-from mypy import build
+from mypy import build, nodes
 from mypy.modulefinder import BuildSource
 from mypy.options import Options
 from mypy.stubtest import parse_options, test_stubs
@@ -2613,7 +2613,7 @@ class StubtestMiscUnit(unittest.TestCase):
         """
         result = build_helper(source)
         stub = result.files["__main__"].names["myfunction"].node
-        assert stub is not None
+        assert isinstance(stub, nodes.OverloadedFuncDef)
         sig = mypy.stubtest.Signature.from_overloadedfuncdef(stub)
         assert str(sig) == "def (arg: Union[builtins.int, builtins.str])"
 
