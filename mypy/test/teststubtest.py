@@ -2613,6 +2613,7 @@ class StubtestMiscUnit(unittest.TestCase):
         """
         result = build_helper(source)
         stub = result.files["__main__"].names["myfunction"].node
+        assert stub is not None
         sig = mypy.stubtest.Signature.from_overloadedfuncdef(stub)
         assert str(sig) == "def (arg: Union[builtins.int, builtins.str])"
 
