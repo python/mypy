@@ -227,9 +227,19 @@ class D(TypedDict):
     x: int
 t: D = {'x':
     'y'} # E:5: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+s: str
 
 if int():
-    del t['y'] # E:5: TypedDict "D" has no key "y"
+    del t[s]    # E:11: Expected TypedDict key to be string literal
+    del t["x"]  # E:11: Key "x" of TypedDict "D" cannot be deleted
+    del t["y"]  # E:11: TypedDict "D" has no key "y"
+
+t.pop(s)    # E:7: Expected TypedDict key to be string literal
+t.pop("y")  # E:7: TypedDict "D" has no key "y"
+
+t.setdefault(s, 123)    # E:14: Expected TypedDict key to be string literal
+t.setdefault("x", "a")  # E:19: Argument 2 to "setdefault" of "TypedDict" has incompatible type "str"; expected "int"
+t.setdefault("y", 123)  # E:14: TypedDict "D" has no key "y"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
