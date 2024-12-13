@@ -310,7 +310,7 @@ T = TypeVar('T', int, str)
 class C(Generic[T]):
     pass
 
-def f(c: C[object]) -> None: pass # E:10: Value of type variable "T" of "C" cannot be "object"
+def f(c: C[object]) -> None: pass # E:12: Value of type variable "T" of "C" cannot be "object"
 (C[object]()) # E:2: Value of type variable "T" of "C" cannot be "object"
 
 [case testColumnSyntaxErrorInTypeAnnotation]
