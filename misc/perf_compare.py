@@ -92,8 +92,12 @@ def run_benchmark(compiled_dir: str, check_dir: str, *, incremental: bool) -> fl
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--incremental", default=False, 
-        action="store_true", help="measure incremental run (fully cached)")
+    parser.add_argument(
+        "--incremental",
+        default=False,
+        action="store_true",
+        help="measure incremental run (fully cached)",
+    )
     parser.add_argument(
         "-n",
         metavar="NUM",
