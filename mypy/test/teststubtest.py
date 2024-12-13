@@ -2603,7 +2603,7 @@ class StubtestMiscUnit(unittest.TestCase):
 
     def test_overload_signature(self) -> None:
         # The same argument as both positional-only and pos-or-kw in
-        # different overloads used to produce incorrect signatures
+        # different overloads previously produced incorrect signatures
         source = """
         from typing import overload
         @overload
