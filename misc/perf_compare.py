@@ -25,8 +25,8 @@ import shutil
 import statistics
 import subprocess
 import sys
-import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def heading(s: str) -> None:
@@ -99,30 +99,34 @@ def main() -> None:
         help="measure incremental run (fully cached)",
     )
     parser.add_argument(
-        "-n",
-        metavar="NUM",
+        "--num-runs",
+        metavar="N",
         default=15,
         type=int,
-        help="number of measurements to perform (default=15)",
+        help="set number of measurements to perform (default=15)",
+    )
+    parser.add_argument(
+        "-j",
+        metavar="N",
+        default=8,
+        type=int,
+        help="set maximum number of parallel builds (default=8)",
     )
     parser.add_argument("commit", nargs="+", help="git revision to measure (e.g. branch name)")
     args = parser.parse_args()
     incremental: bool = args.incremental
     commits = args.commit
-    num_runs: int = args.n + 1
+    num_runs: int = args.num_runs + 1
+    max_workers: int = args.j
 
     if not (os.path.isdir(".git") and os.path.isdir("mypyc")):
         sys.exit("error: Run this the mypy repo root")
 
-    build_threads = []
     target_dirs = []
     for i, commit in enumerate(commits):
         target_dir = f"mypy.{i}.tmpdir"
         target_dirs.append(target_dir)
         clone(target_dir, commit)
-        t = threading.Thread(target=lambda: build_mypy(target_dir))
-        t.start()
-        build_threads.append(t)
 
     self_check_dir = "mypy.self.tmpdir"
     clone(self_check_dir, commits[0])
@@ -130,8 +134,10 @@ def main() -> None:
     heading("Compiling mypy")
     print("(This will take a while...)")
 
-    for t in build_threads:
-        t.join()
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(build_mypy, target_dir) for target_dir in target_dirs]
+        for future in as_completed(futures):
+            future.result()
 
     print(f"Finished compiling mypy ({len(commits)} builds)")
 
