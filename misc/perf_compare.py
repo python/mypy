@@ -25,7 +25,6 @@ import shutil
 import statistics
 import subprocess
 import sys
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
