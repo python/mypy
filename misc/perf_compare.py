@@ -55,9 +55,17 @@ def clone(target_dir: str, commit: str | None) -> None:
         subprocess.run(["git", "checkout", commit], check=True, cwd=target_dir)
 
 
-def run_benchmark(compiled_dir: str, check_dir: str) -> float:
+def edit_python_file(fnam: str) -> None:
+    with open(fnam) as f:
+        data = f.read()
+    data += "\n#"
+    with open(fnam, "w") as f:
+        f.write(data)
+
+
+def run_benchmark(compiled_dir: str, check_dir: str, *, incremental: bool) -> float:
     cache_dir = os.path.join(compiled_dir, ".mypy_cache")
-    if os.path.isdir(cache_dir):
+    if os.path.isdir(cache_dir) and not incremental:
         shutil.rmtree(cache_dir)
     env = os.environ.copy()
     env["PYTHONPATH"] = os.path.abspath(compiled_dir)
@@ -72,6 +80,10 @@ def run_benchmark(compiled_dir: str, check_dir: str) -> float:
     ]
     cmd += glob.glob(os.path.join(abschk, "mypy/*.py"))
     cmd += glob.glob(os.path.join(abschk, "mypy/*/*.py"))
+    if incremental:
+        # Update a few files to force non-trivial incremental run
+        edit_python_file(os.path.join(abschk, "mypy/__main__.py"))
+        edit_python_file(os.path.join(abschk, "mypy/test/testcheck.py"))
     t0 = time.time()
     # Ignore errors, since some commits being measured may generate additional errors.
     subprocess.run(cmd, cwd=compiled_dir, env=env)
@@ -81,6 +93,12 @@ def run_benchmark(compiled_dir: str, check_dir: str) -> float:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--incremental",
+        default=False,
+        action="store_true",
+        help="measure incremental run (fully cached)",
+    )
+    parser.add_argument(
         "-n",
         metavar="NUM",
         default=15,
@@ -89,6 +107,7 @@ def main() -> None:
     )
     parser.add_argument("commit", nargs="+", help="git revision to measure (e.g. branch name)")
     args = parser.parse_args()
+    incremental: bool = args.incremental
     commits = args.commit
     num_runs: int = args.n + 1
 
@@ -127,7 +146,7 @@ def main() -> None:
         items = list(enumerate(commits))
         random.shuffle(items)
         for i, commit in items:
-            tt = run_benchmark(target_dirs[i], self_check_dir)
+            tt = run_benchmark(target_dirs[i], self_check_dir, incremental=incremental)
             # Don't record the first warm-up run
             if n > 0:
                 print(f"{commit}: t={tt:.3f}s")
