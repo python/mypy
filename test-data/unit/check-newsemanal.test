@@ -1666,8 +1666,8 @@ T = TypeVar('T', bound=int)
 class C(Generic[T]): pass
 class C2(Generic[T]): pass
 
-A = C[str] # E: Type argument "str" of "C" must be a subtype of "int" \
-           # E: Value of type variable "T" of "C" cannot be "str"
+A = C[str] # E: Value of type variable "T" of "C" cannot be "str" \
+           # E: Type argument "str" of "C" must be a subtype of "int"
 B = Union[C[str], int] # E: Type argument "str" of "C" must be a subtype of "int"
 S = TypeVar('S', bound=C[str]) # E: Type argument "str" of "C" must be a subtype of "int"
 U = TypeVar('U', C[str], str) # E: Type argument "str" of "C" must be a subtype of "int"
