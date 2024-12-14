@@ -1909,8 +1909,9 @@ reveal_type(d.get(a_key, u))  # N: Revealed type is "Union[builtins.int, __main_
 reveal_type(d.get(b_key, u))  # N: Revealed type is "Union[builtins.str, __main__.Unrelated]"
 reveal_type(d.get(c_key, u))  # N: Revealed type is "builtins.object"
 
-reveal_type(d.pop(a_key))     # E: Key "a" of TypedDict "Outer" cannot be deleted \
-                              # N: Revealed type is "builtins.int"
+reveal_type(d.pop(a_key))     # N: Revealed type is "builtins.int" \
+                              # E: Key "a" of TypedDict "Outer" cannot be deleted
+
 reveal_type(d.pop(b_key))     # N: Revealed type is "builtins.str"
 d.pop(c_key)                  # E: TypedDict "Outer" has no key "c"
 
