@@ -25,14 +25,12 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
         self.modules: set[str] = set()
         # User to avoid infinite recursion with recursive type aliases
         self.seen_aliases: set[types.TypeAliasType] = set()
-        # The following two are used to avoid redundant work
+        # Used to avoid redundant work
         self.seen_fullnames: set[str] = set()
-        self.seen_module_names: set[str] = set()
 
     def find_modules(self, typs: Iterable[types.Type]) -> set[str]:
         self.modules = set()
         self.seen_fullnames = set()
-        self.seen_module_names = set()
         self.seen_aliases = set()
         self._visit(typs)
         return self.modules
@@ -48,9 +46,8 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
             typ.accept(self)
 
     def _visit_module_name(self, module_name: str) -> None:
-        if module_name not in self.seen_module_names:
+        if module_name not in self.modules:
             self.modules.update(split_module_names(module_name))
-            self.seen_module_names.add(module_name)
 
     def visit_unbound_type(self, t: types.UnboundType) -> None:
         self._visit(t.args)
