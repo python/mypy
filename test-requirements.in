@@ -12,5 +12,5 @@ pytest>=8.1.0
 pytest-xdist>=1.34.0
 pytest-cov>=2.10.0
 setuptools>=75.1.0
-tomli>=1.1.0  # needed even on py311+ so the self check passes with --python-version 3.8
+tomli>=1.1.0  # needed even on py311+ so the self check passes with --python-version 3.9
 pre_commit>=3.5.0
