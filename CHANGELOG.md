@@ -220,7 +220,6 @@ Thanks to all mypy contributors who contributed to this release:
 - Joe Gordon
 - John Doknjas
 - Jukka Lehtosalo
-- Jukka Lehtosalo
 - Kanishk Pachauri
 - Marc Mueller
 - Max Chang
