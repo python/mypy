@@ -1811,7 +1811,7 @@ assert annotations
                 def __mangle_good(self, text): pass
                 def __mangle_bad(self, text): pass
             """,
-            error="X.__mangle_bad",
+            error="X._X__mangle_bad",
         )
         yield Case(
             stub="""
@@ -1828,7 +1828,7 @@ assert annotations
                         def __mangle_good(self, text): pass
                         def __mangle_bad(self, text): pass
             """,
-            error="Klass.__Mangled1.__Mangled2.__mangle_bad",
+            error="Klass._Klass__Mangled1._Mangled1__Mangled2._Mangled2__mangle_bad",
         )
         yield Case(
             stub="""
@@ -1841,7 +1841,7 @@ assert annotations
                 def __mangle_good(self, text): pass
                 def __mangle_bad(self, text): pass
             """,
-            error="__Dunder__.__mangle_bad",
+            error="__Dunder__._Dunder____mangle_bad",
         )
         yield Case(
             stub="""
@@ -1854,7 +1854,7 @@ assert annotations
                 def __mangle_good(self, text): pass
                 def __mangle_bad(self, text): pass
             """,
-            error="_Private.__mangle_bad",
+            error="_Private._Private__mangle_bad",
         )
 
     @collect_cases
