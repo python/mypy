@@ -63,7 +63,8 @@ decorated with `warnings.deprecated`, as specified in [PEP 702](https://peps.pyt
 
 You can enable the error code via `--enable-error-code=deprecated` on the mypy
 command line or `enable_error_code = deprecated` in the mypy config file.
-Use the option `--report-deprecated-as-note` to turn all such errors into notes.
+Use the command line flag `--report-deprecated-as-note` or config file option
+`report_deprecated_as_note=True` to turn all such errors into notes.
 
 Deprecation errors will be enabled by default in a future mypy version.
 
