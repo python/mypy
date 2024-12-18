@@ -6,8 +6,8 @@
 
 ## Mypy 1.14 (unreleased)
 
-We’ve just uploaded mypy 1.14 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)). Mypy is a static type
-checker for Python. This release includes new features and bug fixes.
+We’ve just uploaded mypy 1.14 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. This release includes new features and bug fixes.
 You can install it as follows:
 
     python3 -m pip install -U mypy
@@ -51,8 +51,8 @@ class Pet(Enum):
     LION = ...  # Member attribute with unknown value and unknown type
 ```
 
-Contributed by Terence Honles in PR [17207](https://github.com/python/mypy/pull/17207) and
-Shantanu Jain in PR [18068](https://github.com/python/mypy/pull/18068).
+Contributed by Terence Honles (PR [17207](https://github.com/python/mypy/pull/17207)) and
+Shantanu Jain (PR [18068](https://github.com/python/mypy/pull/18068)).
 
 ### Added support for @deprecated decorator (PEP 702)
 
@@ -88,8 +88,45 @@ global section of your mypy config file, or individually on a per-module basis.
 Contributed by Jannick Kremer
 
 List of changes:
+
  * Implement flag to allow typechecking of untyped modules (Jannick Kremer, PR [17712](https://github.com/python/mypy/pull/17712))
  * Warn about --follow-untyped-imports (Shantanu, PR [18249](https://github.com/python/mypy/pull/18249))
+
+### Added support for new style TypeVar Defaults (PEP 696)
+
+Mypy now supports TypeVar defaults using the new syntax described in PEP 696, that was introduced in Python 3.13.
+
+```python
+@dataclass
+class Box[T = int]:
+    value: T | None = None
+
+reveal_type(Box())                      # type is Box[int], since it's the default
+reveal_type(Box(value="Hello World!"))  # type is Box[str]
+```
+
+Contributed by Marc Mueller (PR [17985](https://github.com/python/mypy/pull/17985))
+
+### Improved for loop index variable type narrowing
+
+Mypy now preserves the literal type of index expressions until the next assignment to support `TypedDict` lookups.
+
+```python
+from typing import TypedDict
+
+class X(TypedDict):
+    hourly: int
+    daily: int
+
+def func(x: X) -> int:
+    s = 0
+    for var in ("hourly", "daily"):
+        reveal_type(var)  # Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
+        s += x[var]       # x[var] would previously cause a literal-required error
+    return s
+```
+
+Contributed by Marc Mueller (PR [18014](https://github.com/python/mypy/pull/18014))
 
 ### Mypyc Improvements
 
@@ -187,10 +224,8 @@ List of changes:
  * Fix overlap check for ParamSpec types (Jukka Lehtosalo, PR [18040](https://github.com/python/mypy/pull/18040))
  * Do not prioritize ParamSpec signatures during overload resolution (Stanislav Terliakov, PR [18033](https://github.com/python/mypy/pull/18033))
  * Fix ternary union for literals (Ivan Levkivskyi, PR [18023](https://github.com/python/mypy/pull/18023))
- * Improve for loop index variable type narrowing (Marc Mueller, PR [18014](https://github.com/python/mypy/pull/18014))
  * Fix compatibility checks for conditional function definitions using decorators (Brian Schubert, PR [18020](https://github.com/python/mypy/pull/18020))
  * Add timeout-minutes to ci config (Marc Mueller, PR [18003](https://github.com/python/mypy/pull/18003))
- * Add initial support for new style TypeVar defaults (PEP 696) (Marc Mueller, PR [17985](https://github.com/python/mypy/pull/17985))
  * TypeGuard should be bool not Any when matching TypeVar (Evgeniy Slobodkin, PR [17145](https://github.com/python/mypy/pull/17145))
  * Fix cache-convert (Shantanu, PR [17974](https://github.com/python/mypy/pull/17974))
  * Fix generator comprehension in meet.py (Shantanu, PR [17969](https://github.com/python/mypy/pull/17969))
