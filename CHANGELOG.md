@@ -7,7 +7,7 @@
 ## Mypy 1.14 (unreleased)
 
 We’ve just uploaded mypy 1.14 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)). Mypy is a static type
-checker for Python. This release includes new features, performance improvements and bug fixes.
+checker for Python. This release includes new features and bug fixes.
 You can install it as follows:
 
     python3 -m pip install -U mypy
@@ -57,7 +57,7 @@ Shantanu Jain in PR [18068](https://github.com/python/mypy/pull/18068).
 ### Added support for @deprecated decorator (PEP 702)
 
 Mypy can now issue errors or notes when code imports a deprecated feature
-explicitly with a `from mod import depr` statement, uses a deprecated feature
+explicitly with a `from mod import depr` statement, or uses a deprecated feature
 imported otherwise or defined locally. Features are considered deprecated when
 decorated with `warnings.deprecated`, as specified in [PEP 702](https://peps.python.org/pep-0702).
 
@@ -65,7 +65,7 @@ You can enable the error code via `--enable-error-code=deprecated` on the mypy
 command line or `enable_error_code = deprecated` in the mypy config file.
 Use the option `--report-deprecated-as-note` to turn all such errors into notes.
 
-Will be enabled by default in a future mypy version.
+Deprecation errors will be enabled by default in a future mypy version.
 
 Contributed by Christoph Tyralla
 
@@ -77,6 +77,18 @@ List of changes:
  * PEP 702 (@deprecated): improve the handling of explicit type annotations of assignment statements (Christoph Tyralla, PR [17899](https://github.com/python/mypy/pull/17899))
  * Add basic support for PEP 702 (@deprecated). (Christoph Tyralla, PR [17476](https://github.com/python/mypy/pull/17476))
 
+### Mypy can be configured to analyze untyped modules
+
+Mypy normally doesn't analyze imports from modules without stubs or a py.typed marker.
+To force mypy to analyze these imports you can now set the `--follow-untyped-imports` command line
+flag or the `follow_untyped_imports` config file option to True. This can be set either in the
+global section of your mypy config file, or individually on a per-module basis.
+
+Contributed by Jannick Kremer
+
+List of changes:
+ * Implement flag to allow typechecking of untyped modules (Jannick Kremer, PR [17712](https://github.com/python/mypy/pull/17712))
+ * Warn about --follow-untyped-imports (Shantanu, PR [18249](https://github.com/python/mypy/pull/18249))
 
 ### Mypyc Improvements
 
@@ -131,8 +143,7 @@ List of changes:
 
 ### Other Notables Fixes and Improvements
 
- * Implement flag to allow typechecking of untyped modules (Jannick Kremer, PR [17712](https://github.com/python/mypy/pull/17712))
- * Show Protocol __call__ for arguments with incompatible types (MechanicalConstruct, PR [18214](https://github.com/python/mypy/pull/18214))
+ * Show `Protocol` `__call__` for arguments with incompatible types (MechanicalConstruct, PR [18214](https://github.com/python/mypy/pull/18214))
  * Make join and meet symmetric with strict_optional (MechanicalConstruct, PR [18227](https://github.com/python/mypy/pull/18227))
  * Preserve block unreachablility when checking function definitions with constrained TypeVars (Brian Schubert, PR [18217](https://github.com/python/mypy/pull/18217))
  * Do not include non-init fields in the synthesized `__replace__` method for dataclasses (Victorien, PR [18221](https://github.com/python/mypy/pull/18221))
