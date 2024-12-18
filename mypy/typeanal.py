@@ -155,6 +155,7 @@ def analyze_type_alias(
     in_dynamic_func: bool = False,
     global_scope: bool = True,
     allowed_alias_tvars: list[TypeVarLikeType] | None = None,
+    builtin_type_is_type_type: bool = True,
     alias_type_params_names: list[str] | None = None,
     python_3_12_type_alias: bool = False,
 ) -> tuple[Type, set[str]]:
@@ -175,6 +176,7 @@ def analyze_type_alias(
         allow_placeholder=allow_placeholder,
         prohibit_self_type="type alias target",
         allowed_alias_tvars=allowed_alias_tvars,
+        builtin_type_is_type_type=builtin_type_is_type_type,
         alias_type_params_names=alias_type_params_names,
         python_3_12_type_alias=python_3_12_type_alias,
     )
@@ -232,6 +234,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         prohibit_special_class_field_types: str | None = None,
         allowed_alias_tvars: list[TypeVarLikeType] | None = None,
         allow_type_any: bool = False,
+        builtin_type_is_type_type: bool = True,
         alias_type_params_names: list[str] | None = None,
     ) -> None:
         self.api = api
@@ -282,6 +285,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_type_any = allow_type_any
         self.allow_type_var_tuple = False
         self.allow_unpack = allow_unpack
+        self.builtin_type_is_type_type = builtin_type_is_type_type
 
     def lookup_qualified(
         self, name: str, ctx: Context, suppress_errors: bool = False
@@ -655,7 +659,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             and (self.always_allow_new_syntax or self.options.python_version >= (3, 9))
         ):
             if len(t.args) == 0:
-                if fullname == "typing.Type":
+                if fullname == "typing.Type" or (
+                    self.builtin_type_is_type_type and (fullname == "builtins.type")
+                ):
                     any_type = self.get_omitted_any(t)
                     return TypeType(any_type, line=t.line, column=t.column)
                 else:
