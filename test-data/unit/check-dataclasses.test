@@ -297,7 +297,7 @@ class Person:
     age: int = field(init=None)  # E: No overload variant of "field" matches argument type "None" \
                                  # N: Possible overload variants: \
                                  # N:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
-                                 # N:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
+                                 # N:     def [_T] field(*, default_factory: () -> _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
                                  # N:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> Any
 
 [builtins fixtures/dataclasses.pyi]
@@ -1374,7 +1374,7 @@ def x2(s: str) -> str:
 
 a = A(lambda i:i)
 a.x = x
-a.x = x2 # E: Incompatible types in assignment (expression has type "Callable[[str], str]", variable has type "Callable[[int], int]")
+a.x = x2 # E: Incompatible types in assignment (expression has type "(str) -> str", variable has type "(int) -> int")
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassFieldDoesNotFailOnKwargsUnpacking]
@@ -1389,7 +1389,7 @@ main:6: error: Unpacking **kwargs in "field()" is not supported
 main:6: error: No overload variant of "field" matches argument type "Dict[str, bool]"
 main:6: note: Possible overload variants:
 main:6: note:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
-main:6: note:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
+main:6: note:     def [_T] field(*, default_factory: () -> _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
 main:6: note:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> Any
 [builtins fixtures/dataclasses.pyi]
 
@@ -1402,7 +1402,7 @@ class C:
                        # E: No overload variant of "field" matches argument type "int" \
                        # N: Possible overload variants: \
                        # N:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
-                       # N:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
+                       # N:     def [_T] field(*, default_factory: () -> _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
                        # N:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> Any
 [builtins fixtures/dataclasses.pyi]
 

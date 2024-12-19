@@ -505,10 +505,10 @@ def with_typeguard(o: object) -> TypeGuard[bool]: pass
 def with_bool(o: object) -> bool: pass
 
 accepts_typeguard(with_typeguard)
-accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeGuard[bool]]"
+accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "(object) -> bool"; expected "(object) -> TypeGuard[bool]"
 
-different_typeguard(with_typeguard)  # E: Argument 1 to "different_typeguard" has incompatible type "Callable[[object], TypeGuard[bool]]"; expected "Callable[[object], TypeGuard[str]]"
-different_typeguard(with_bool)  # E: Argument 1 to "different_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeGuard[str]]"
+different_typeguard(with_typeguard)  # E: Argument 1 to "different_typeguard" has incompatible type "(object) -> TypeGuard[bool]"; expected "(object) -> TypeGuard[str]"
+different_typeguard(with_bool)  # E: Argument 1 to "different_typeguard" has incompatible type "(object) -> bool"; expected "(object) -> TypeGuard[str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardAsGenericFunctionArg]
@@ -525,7 +525,7 @@ def with_bool(o: object) -> bool: pass
 
 accepts_typeguard(with_bool_typeguard)
 accepts_typeguard(with_str_typeguard)
-accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeGuard[Never]]"
+accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "(object) -> bool"; expected "(object) -> TypeGuard[Never]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardAsOverloadedFunctionArg]
@@ -563,7 +563,7 @@ def with_typeguard_a(o: object) -> TypeGuard[A]: pass
 def with_typeguard_b(o: object) -> TypeGuard[B]: pass
 def with_typeguard_c(o: object) -> TypeGuard[C]: pass
 
-accepts_typeguard(with_typeguard_a)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], TypeGuard[A]]"; expected "Callable[[object], TypeGuard[B]]"
+accepts_typeguard(with_typeguard_a)  # E: Argument 1 to "accepts_typeguard" has incompatible type "(object) -> TypeGuard[A]"; expected "(object) -> TypeGuard[B]"
 accepts_typeguard(with_typeguard_b)
 accepts_typeguard(with_typeguard_c)
 [builtins fixtures/tuple.pyi]

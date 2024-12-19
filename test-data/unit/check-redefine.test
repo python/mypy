@@ -251,7 +251,7 @@ def f() -> None:
 # flags: --allow-redefinition
 def f() -> None:
     def x(): pass
-    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "() -> Any")
     reveal_type(x) # N: Revealed type is "def () -> Any"
     y = 1
     def y(): pass # E: Name "y" already defined on line 6

@@ -531,7 +531,7 @@ def f(): pass
 
 a, b = None # E: "None" object is not iterable
 a, b = a   # E: "A" object is not iterable
-a, b = f   # E: "Callable[[], Any]" object is not iterable
+a, b = f   # E: "() -> Any" object is not iterable
 
 class A: pass
 class B: pass

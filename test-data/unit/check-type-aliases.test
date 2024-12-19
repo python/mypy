@@ -1149,7 +1149,7 @@ ParamAlias = TypeAliasType("ParamAlias", Callable[P, int], type_params=(P,))
 def f(x: str, y: float) -> int: return 1
 def g(x: int, y: float) -> int: return 1
 xp1: ParamAlias[str, float] = f
-xp2: ParamAlias[str, float] = g  # E: Incompatible types in assignment (expression has type "Callable[[int, float], int]", variable has type "Callable[[str, float], int]")
+xp2: ParamAlias[str, float] = g  # E: Incompatible types in assignment (expression has type "(int, float) -> int", variable has type "(str, float) -> int")
 xp3: ParamAlias[str, float] = lambda x, y: 1
 
 class G(Generic[P, T]): ...

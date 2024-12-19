@@ -375,7 +375,7 @@ def f(x): pass
 f()     # E: Missing positional argument "x" in call to "f"
 f(x, x) # E: Too many arguments for "f"
 if int():
-    g = f   # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
+    g = f   # E: Incompatible types in assignment (expression has type "(Any) -> Any", variable has type "() -> None")
 f(a)
 f(x)
 if int():
@@ -396,13 +396,13 @@ def f0(): pass
 def f2(x, y): pass
 
 if int():
-    g1 = f0 # E: Incompatible types in assignment (expression has type "Callable[[], Any]", variable has type "Callable[[A], None]")
+    g1 = f0 # E: Incompatible types in assignment (expression has type "() -> Any", variable has type "(A) -> None")
 if int():
-    g2 = f0 # E: Incompatible types in assignment (expression has type "Callable[[], Any]", variable has type "Callable[[A, A], None]")
+    g2 = f0 # E: Incompatible types in assignment (expression has type "() -> Any", variable has type "(A, A) -> None")
 if int():
-    g0 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[], None]")
+    g0 = f2 # E: Incompatible types in assignment (expression has type "(Any, Any) -> Any", variable has type "() -> None")
 if int():
-    g1 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[A], None]")
+    g1 = f2 # E: Incompatible types in assignment (expression has type "(Any, Any) -> Any", variable has type "(A) -> None")
 
 if int():
     g0 = g0
@@ -434,11 +434,11 @@ f01(a, a)       # E: Too many arguments for "f01"
 f13()           # E: Missing positional argument "x" in call to "f13"
 f13(a, a, a, a) # E: Too many arguments for "f13"
 if int():
-    g2 = f01 # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[A, A], None]")
+    g2 = f01 # E: Incompatible types in assignment (expression has type "(Any) -> Any", variable has type "(A, A) -> None")
 if int():
-    g0 = f13 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any, Any], Any]", variable has type "Callable[[], None]")
+    g0 = f13 # E: Incompatible types in assignment (expression has type "(Any, Any, Any) -> Any", variable has type "() -> None")
 if int():
-    g4 = f13 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any, Any], Any]", variable has type "Callable[[A, A, A, A], None]")
+    g4 = f13 # E: Incompatible types in assignment (expression has type "(Any, Any, Any) -> Any", variable has type "(A, A, A, A) -> None")
 
 f01()
 f01(a)
@@ -488,11 +488,11 @@ g2: Callable[[A, A], None]
 a: A
 
 if int():
-    g0 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
+    g0 = a.f # E: Incompatible types in assignment (expression has type "(Any) -> Any", variable has type "() -> None")
 if int():
-    g2 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[A, A], None]")
+    g2 = a.f # E: Incompatible types in assignment (expression has type "(Any) -> Any", variable has type "(A, A) -> None")
 if int():
-    a = a.f  # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "A")
+    a = a.f  # E: Incompatible types in assignment (expression has type "(Any) -> Any", variable has type "A")
 
 class A:
     def g(self) -> None:
@@ -520,7 +520,7 @@ g1: Callable[[A], None]
 a: A
 
 if int():
-    g0 = a.f # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
+    g0 = a.f # E: Incompatible types in assignment (expression has type "(Any) -> Any", variable has type "() -> None")
 
 if int():
     g1 = a.f
@@ -569,7 +569,7 @@ a: A
 
 A(a)   # E: Missing positional argument "b" in call to "A"
 if int():
-    f1 = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "Callable[[A], A]")
+    f1 = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "(A) -> A")
 
 A(a, a)
 if int():
@@ -659,7 +659,7 @@ f1: Callable[[Any], None]
 f2: Callable[[Any, Any], None]
 
 if int():
-    f1 = f2 # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], None]", variable has type "Callable[[Any], None]")
+    f1 = f2 # E: Incompatible types in assignment (expression has type "(Any, Any) -> None", variable has type "(Any) -> None")
 
 
 -- Overriding

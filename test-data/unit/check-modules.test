@@ -572,7 +572,7 @@ x = 1
 # input, which is maybe better, but no error about f, which seems
 # wrong)
 from m import *
-f = None  # E: Incompatible types in assignment (expression has type "None", variable has type "Callable[[], Any]")
+f = None  # E: Incompatible types in assignment (expression has type "None", variable has type "() -> Any")
 x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [file m.py]
 def f(): pass
@@ -650,11 +650,11 @@ x = ''
 def f(x): pass
 def g(x): pass
 try:
-    from m import f, g # E: Incompatible import of "g" (imported name has type "Callable[[Any, Any], Any]", local name has type "Callable[[Any], Any]")
+    from m import f, g # E: Incompatible import of "g" (imported name has type "(Any, Any) -> Any", local name has type "(Any) -> Any")
 except:
     pass
 
-import m as f  # E: Incompatible import of "f" (imported name has type "object", local name has type "Callable[[Any], Any]")
+import m as f  # E: Incompatible import of "f" (imported name has type "object", local name has type "(Any) -> Any")
 
 [file m.py]
 def f(x): pass
@@ -707,7 +707,7 @@ def f(x): pass
 try:
     from m import f
 except:
-    f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+    f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "() -> Any")
 [file m.py]
 def f(): pass
 
@@ -719,7 +719,7 @@ def g() -> None:
     global f
     f = None
     if int():
-        f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+        f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "() -> Any")
 [file m.py]
 def f(): pass
 [out]
@@ -728,7 +728,7 @@ def f(): pass
 # flags: --no-strict-optional
 import m.n
 m.n.f = None
-m.n.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+m.n.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "() -> Any")
 [file m/__init__.py]
 [file m/n.py]
 def f(): pass
@@ -738,7 +738,7 @@ def f(): pass
 # flags: --no-strict-optional
 import m
 m.f = None
-m.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+m.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "() -> Any")
 [file m.py]
 def f(): pass
 [out]
@@ -1049,7 +1049,7 @@ def y() -> str: return "foo"
 class z: pass
 [out]
 main:2: error: Incompatible import of "x" (imported name has type "str", local name has type "int")
-main:2: error: Incompatible import of "y" (imported name has type "Callable[[], str]", local name has type "Callable[[], int]")
+main:2: error: Incompatible import of "y" (imported name has type "() -> str", local name has type "() -> int")
 main:2: error: Incompatible import of "z" (imported name has type "Type[b.z]", local name has type "Type[a.z]")
 
 -- Misc
@@ -2047,7 +2047,7 @@ reveal_type(has_getattr.any_attribute)
 def __getattr__(x: int, y: str) -> str: ...
 
 [out]
-tmp/has_getattr.pyi:1: error: Invalid signature "Callable[[int, str], str]" for "__getattr__"
+tmp/has_getattr.pyi:1: error: Invalid signature "(int, str) -> str" for "__getattr__"
 main:3: note: Revealed type is "builtins.str"
 
 [builtins fixtures/module.pyi]
@@ -2162,7 +2162,7 @@ def make_getattr_bad() -> Callable[[], int]: ...
 __getattr__ = make_getattr_bad()
 
 [out]
-tmp/non_stub.py:4: error: Invalid signature "Callable[[], int]" for "__getattr__"
+tmp/non_stub.py:4: error: Invalid signature "() -> int" for "__getattr__"
 main:2: note: Revealed type is "builtins.int"
 
 [case testModuleLevelGetattrImportedGood]
@@ -2186,7 +2186,7 @@ from has_getattr import __getattr__
 def __getattr__() -> int: ...
 
 [out]
-tmp/has_getattr.py:1: error: Invalid signature "Callable[[], int]" for "__getattr__"
+tmp/has_getattr.py:1: error: Invalid signature "() -> int" for "__getattr__"
 main:2: note: Revealed type is "builtins.int"
 
 [builtins fixtures/module.pyi]

@@ -1574,7 +1574,7 @@ def f(a: Callable[[], int]) -> None: pass
 def f(a: str) -> None: pass
 f(0)  # E: No overload variant of "f" matches argument type "int" \
       # N: Possible overload variants: \
-      # N:     def f(a: Callable[[], int]) -> None \
+      # N:     def f(a: () -> int) -> None \
       # N:     def f(a: str) -> None
 
 [case testCustomRedefinitionDecorator]
@@ -6463,7 +6463,7 @@ class D: ...
 def f1(g: A) -> A: ...
 if True:
     @overload  # E: Single overload definition, multiple required
-    def f1(g: B) -> B: ...  # E: Incompatible redefinition (redefinition with type "Callable[[B], B]", original type "Callable[[A], A]")
+    def f1(g: B) -> B: ...  # E: Incompatible redefinition (redefinition with type "(B) -> B", original type "(A) -> A")
     if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                     # E: Name "maybe_true" is not defined
         @overload
@@ -6480,14 +6480,14 @@ if True:
         def f2(g: B) -> B: ...
     elif maybe_true:  # E: Name "maybe_true" is not defined
         @overload  # E: Single overload definition, multiple required
-        def f2(g: C) -> C: ...  # E: Incompatible redefinition (redefinition with type "Callable[[C], C]", original type "Callable[[A], A]")
+        def f2(g: C) -> C: ...  # E: Incompatible redefinition (redefinition with type "(C) -> C", original type "(A) -> A")
 def f2(g): ...  # E: Name "f2" already defined on line 21
 
 @overload  # E: Single overload definition, multiple required
 def f3(g: A) -> A: ...
 if True:
     @overload  # E: Single overload definition, multiple required
-    def f3(g: B) -> B: ...  # E: Incompatible redefinition (redefinition with type "Callable[[B], B]", original type "Callable[[A], A]")
+    def f3(g: B) -> B: ...  # E: Incompatible redefinition (redefinition with type "(B) -> B", original type "(A) -> A")
     if True:
         pass  # Some other node
         @overload  # E: Name "f3" already defined on line 32 \
