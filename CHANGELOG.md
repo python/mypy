@@ -4,7 +4,7 @@
 
 ...
 
-## Mypy 1.14 (unreleased)
+## Mypy 1.14
 
 We’ve just uploaded mypy 1.14 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
 Mypy is a static type checker for Python. This release includes new features and bug fixes.
