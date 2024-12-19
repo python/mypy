@@ -1454,6 +1454,13 @@ class LowLevelIRBuilder:
             # We can just let go so it will be handled through the python api.
             return None
 
+        if op == "in" and method_name == "__contains__":
+            # contains needs to swap the r and l values
+            assert rreg, "'in' operator is binary and must have a valid right value"
+            tmp = lreg
+            lreg = rreg
+            rreg = tmp
+
         args = [rreg] if rreg else []
         return self.gen_method_call(lreg, method_name, args, decl.sig.ret_type, line)
 

@@ -41,7 +41,6 @@ from mypyc.ir.ops import (
     LoadAddress,
     LoadErrorValue,
     LoadStatic,
-    MethodCall,
     Register,
     Return,
     SetAttr,
@@ -810,10 +809,11 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
     with builder.enter_method(cls, "__ne__", eq_sig.ret_type):
         rhs_type = eq_sig.args[0].type if strict_typing else object_rprimitive
         rhs_arg = builder.add_argument("rhs", rhs_type)
-        eqval = builder.add(MethodCall(builder.self(), "__eq__", [rhs_arg], line))
 
         can_return_not_implemented = is_subtype(not_implemented_op.type, eq_sig.ret_type)
         return_bool = is_subtype(eq_sig.ret_type, bool_rprimitive)
+        rettype = bool_rprimitive if return_bool and strict_typing else object_rprimitive
+        eqval = builder.gen_method_call(builder.self(), "__eq__", [rhs_arg], rettype, line)
 
         if not strict_typing or can_return_not_implemented:
             # If __eq__ returns NotImplemented, then __ne__ should also
@@ -830,13 +830,11 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
                 )
             )
             builder.activate_block(regular_block)
-            rettype = bool_rprimitive if return_bool and strict_typing else object_rprimitive
             retval = builder.coerce(builder.unary_op(eqval, "not", line), rettype, line)
             builder.add(Return(retval))
             builder.activate_block(not_implemented_block)
             builder.add(Return(not_implemented))
         else:
-            rettype = bool_rprimitive if return_bool and strict_typing else object_rprimitive
             retval = builder.coerce(builder.unary_op(eqval, "not", line), rettype, line)
             builder.add(Return(retval))
 

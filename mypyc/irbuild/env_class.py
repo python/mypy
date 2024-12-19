@@ -45,11 +45,11 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     env_class = ClassIR(
         f"{builder.fn_info.namespaced_name()}_env", builder.module_name, is_generated=True
     )
-    env_class.attributes[SELF_NAME] = RInstance(env_class)
+    env_class.attributes[SELF_NAME] = env_class.rtype
     if builder.fn_info.is_nested:
         # If the function is nested, its environment class must contain an environment
         # attribute pointing to its encapsulating functions' environment class.
-        env_class.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
+        env_class.attributes[ENV_ATTR_NAME] = builder.fn_infos[-2].env_class.rtype
     env_class.mro = [env_class]
     builder.fn_info.env_class = env_class
     builder.classes.append(env_class)
