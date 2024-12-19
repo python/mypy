@@ -218,8 +218,9 @@ def _build(
     extra_plugins: Sequence[Plugin],
 ) -> BuildResult:
     if platform.python_implementation() == "CPython":
-        # This seems the most reasonable place to tune garbage collection.
-        gc.set_threshold(150 * 1000)
+        # Run gc less frequently, as otherwise we can spent a large fraction of
+        # cpu in gc. This seems the most reasonable place to tune garbage collection.
+        gc.set_threshold(200 * 1000, 30, 30)
 
     data_dir = default_data_dir()
     fscache = fscache or FileSystemCache()
