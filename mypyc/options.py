@@ -38,3 +38,6 @@ class CompilerOptions:
         # will assume the return type of the method strictly, which can lead to
         # more optimization opportunities.
         self.strict_dunders_typing = strict_dunder_typing
+        # Enable value types for the generated code. This option is experimental until
+        # the feature reference get removed from INCOMPLETE_FEATURES.
+        self.experimental_value_types = True  # overridden by the mypy command line option
