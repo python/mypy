@@ -62,7 +62,9 @@ def format_code(h: str) -> str:
         else:
             r.append(a[i])
             i += 1
-    return "\n".join(r)
+    formatted = "\n".join(r)
+    # remove empty first line for code blocks
+    return re.sub(r"<code>\n", r"<code>", formatted)
 
 
 def convert(src: str) -> str:
