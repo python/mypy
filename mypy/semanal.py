@@ -4157,8 +4157,12 @@ class SemanticAnalyzer(
             names.append("typing.TypeAliasType")
         if not refers_to_fullname(rvalue.callee, tuple(names)):
             return False
+        if not self.check_typevarlike_name(rvalue, name, rvalue):
+            return False
+        if rvalue.arg_kinds.count(ARG_POS) != 2:
+            return False
 
-        return self.check_typevarlike_name(rvalue, name, rvalue)
+        return True
 
     def analyze_type_alias_type_params(
         self, rvalue: CallExpr
