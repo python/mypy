@@ -508,10 +508,10 @@ def with_typeis(o: object) -> TypeIs[bool]: pass
 def with_bool(o: object) -> bool: pass
 
 accepts_typeis(with_typeis)
-accepts_typeis(with_bool)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[bool]]"
+accepts_typeis(with_bool)  # E: Argument 1 to "accepts_typeis" has incompatible type "(object) -> bool"; expected "(object) -> TypeIs[bool]"
 
-different_typeis(with_typeis)  # E: Argument 1 to "different_typeis" has incompatible type "Callable[[object], TypeIs[bool]]"; expected "Callable[[object], TypeIs[str]]"
-different_typeis(with_bool)  # E: Argument 1 to "different_typeis" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[str]]"
+different_typeis(with_typeis)  # E: Argument 1 to "different_typeis" has incompatible type "(object) -> TypeIs[bool]"; expected "(object) -> TypeIs[str]"
+different_typeis(with_bool)  # E: Argument 1 to "different_typeis" has incompatible type "(object) -> bool"; expected "(object) -> TypeIs[str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsAsGenericFunctionArg]
@@ -528,7 +528,7 @@ def with_bool(o: object) -> bool: pass
 
 accepts_typeis(with_bool_typeis)
 accepts_typeis(with_str_typeis)
-accepts_typeis(with_bool)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[Never]]"
+accepts_typeis(with_bool)  # E: Argument 1 to "accepts_typeis" has incompatible type "(object) -> bool"; expected "(object) -> TypeIs[Never]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsAsOverloadedFunctionArg]
@@ -566,9 +566,9 @@ def with_typeis_a(o: object) -> TypeIs[A]: pass
 def with_typeis_b(o: object) -> TypeIs[B]: pass
 def with_typeis_c(o: object) -> TypeIs[C]: pass
 
-accepts_typeis(with_typeis_a)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], TypeIs[A]]"; expected "Callable[[object], TypeIs[B]]"
+accepts_typeis(with_typeis_a)  # E: Argument 1 to "accepts_typeis" has incompatible type "(object) -> TypeIs[A]"; expected "(object) -> TypeIs[B]"
 accepts_typeis(with_typeis_b)
-accepts_typeis(with_typeis_c)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], TypeIs[C]]"; expected "Callable[[object], TypeIs[B]]"
+accepts_typeis(with_typeis_c)  # E: Argument 1 to "accepts_typeis" has incompatible type "(object) -> TypeIs[C]"; expected "(object) -> TypeIs[B]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsWithIdentityGeneric]
@@ -812,8 +812,8 @@ def typeguard(x: object) -> TypeGuard[str]:
     pass
 
 accept_typeis(typeis)
-accept_typeis(typeguard)  # E: Argument 1 to "accept_typeis" has incompatible type "Callable[[object], TypeGuard[str]]"; expected "Callable[[object], TypeIs[str]]"
-accept_typeguard(typeis)  # E: Argument 1 to "accept_typeguard" has incompatible type "Callable[[object], TypeIs[str]]"; expected "Callable[[object], TypeGuard[str]]"
+accept_typeis(typeguard)  # E: Argument 1 to "accept_typeis" has incompatible type "(object) -> TypeGuard[str]"; expected "(object) -> TypeIs[str]"
+accept_typeguard(typeis)  # E: Argument 1 to "accept_typeguard" has incompatible type "(object) -> TypeIs[str]"; expected "(object) -> TypeGuard[str]"
 accept_typeguard(typeguard)
 
 [builtins fixtures/tuple.pyi]
