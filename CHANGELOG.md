@@ -165,14 +165,14 @@ This was contributed by Marc Mueller (PR [18014](https://github.com/python/mypy/
  * Sync `pythoncapi_compat.h` (Marc Mueller, PR [17929](https://github.com/python/mypy/pull/17929))
  * Add `runtests.py mypyc-fast` for running fast mypyc tests (Jukka Lehtosalo, PR [17906](https://github.com/python/mypy/pull/17906))
 
-### Stubgen improvements
+### Stubgen Improvements
 
  * Do not include mypy generated symbols (Ali Hamdan, PR [18137](https://github.com/python/mypy/pull/18137))
  * Fix `FunctionContext.fullname` for nested classes (Chad Dombrova, PR [17963](https://github.com/python/mypy/pull/17963))
  * Add flagfile support (Ruslan Sayfutdinov, PR [18061](https://github.com/python/mypy/pull/18061))
  * Add support for PEP 695 and PEP 696 syntax (Ali Hamdan, PR [18054](https://github.com/python/mypy/pull/18054))
 
-### Stubtest improvements
+### Stubtest Improvements
 
  * Allow the use of `--show-traceback` and `--pdb` with stubtest (Stephen Morton, PR [18037](https://github.com/python/mypy/pull/18037))
  * Verify `__all__` exists in stub (Sebastian Rittau, PR [18005](https://github.com/python/mypy/pull/18005))
