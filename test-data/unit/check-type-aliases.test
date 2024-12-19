@@ -1105,6 +1105,10 @@ t1: T1  # E: Variable "__main__.T1" is not valid as a type \
 T3 = TypeAliasType("T3", -1)  # E: Invalid type: try using Literal[-1] instead?
 t3: T3
 reveal_type(t3)  # N: Revealed type is "Any"
+
+T4 = TypeAliasType("T4")  # E: Missing positional argument "value" in call to "TypeAliasType"
+T5 = TypeAliasType("T5", int, str)  # E: Too many positional arguments for "TypeAliasType" \
+                                    # E: Argument 3 to "TypeAliasType" has incompatible type "Type[str]"; expected "Tuple[Union[TypeVar?, ParamSpec?, TypeVarTuple?], ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
