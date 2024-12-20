@@ -568,6 +568,13 @@ def verify_typeinfo(
             # Catch all exceptions in case the runtime raises an unexpected exception
             # from __getattr__ or similar.
             continue
+
+        # If it came from the metaclass, consider the runtime_attr to be MISSING
+        # for a more accurate message
+        if runtime_attr is not MISSING and type(runtime) is not runtime:
+            if getattr(runtime_attr, "__objclass__", None) is type(runtime):
+                runtime_attr = MISSING
+
         # Do not error for an object missing from the stub
         # If the runtime object is a types.WrapperDescriptorType object
         # and has a non-special dunder name.
@@ -1519,6 +1526,7 @@ def is_probably_a_function(runtime: Any) -> bool:
         isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
         or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
+        or (isinstance(runtime, types.MethodWrapperType) and callable(runtime))
     )
 
 
