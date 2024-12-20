@@ -344,18 +344,6 @@ def _infer_constraints(
     # This makes our constraint solver choke on type[T] <: type[A] | type[B],
     # solving T as generic meet(A, B) which is often `object`. Force unwrap such unions
     # if both sides are type[...] or unions thereof. See `testTypeVarType` test
-    def _is_type_type(tp: ProperType) -> TypeGuard[TypeType | UnionType]:
-        return (
-            isinstance(tp, TypeType)
-            or isinstance(tp, UnionType)
-            and all(isinstance(get_proper_type(o), TypeType) for o in tp.items)
-        )
-
-    def _unwrap_type_type(tp: TypeType | UnionType) -> ProperType:
-        if isinstance(tp, TypeType):
-            return tp.item
-        return UnionType.make_union([cast(TypeType, o).item for o in tp.items])
-
     if _is_type_type(template) and _is_type_type(actual):
         template = _unwrap_type_type(template)
         actual = _unwrap_type_type(actual)
@@ -429,6 +417,30 @@ def _infer_constraints(
 
     # Remaining cases are handled by ConstraintBuilderVisitor.
     return template.accept(ConstraintBuilderVisitor(actual, direction, skip_neg_op))
+
+
+def _is_type_type(tp: ProperType) -> TypeGuard[TypeType | UnionType]:
+    """Is ``tp`` a type[...] or union thereof?
+
+    Type[A | B] is internally represented as type[A] | type[B], and this troubles
+    the solver sometimes.
+    """
+    return (
+        isinstance(tp, TypeType)
+        or isinstance(tp, UnionType)
+        and all(isinstance(get_proper_type(o), TypeType) for o in tp.items)
+    )
+
+
+def _unwrap_type_type(tp: TypeType | UnionType) -> ProperType:
+    """Rewrite `type[A] | type[B]` as `type[A | B]`.
+
+    This is an opposite of normalized form used elsewhere, necessary to solve type[...]
+    constraints on typevars.
+    """
+    if isinstance(tp, TypeType):
+        return tp.item
+    return UnionType.make_union([cast(TypeType, get_proper_type(o)).item for o in tp.items])
 
 
 def infer_constraints_if_possible(
