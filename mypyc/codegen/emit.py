@@ -195,7 +195,7 @@ class Emitter:
         return ATTR_PREFIX + name
 
     def object_annotation(self, obj: object, line: str) -> str:
-        """Build a C comment with an object's string represention.
+        """Build a C comment with an object's string representation.
 
         If the comment exceeds the line length limit, it's wrapped into a
         multiline string (with the extra lines indented to be aligned with

@@ -757,7 +757,7 @@ type check such code. Consider this example:
         x: int = 'abc'  # Unreachable -- no error
 
 It's easy to see that any statement after ``return`` is unreachable,
-and hence mypy will not complain about the mis-typed code below
+and hence mypy will not complain about the mistyped code below
 it. For a more subtle example, consider this code:
 
 .. code-block:: python

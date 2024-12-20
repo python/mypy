@@ -18,7 +18,7 @@ articulated in the [Python Community Code of Conduct](https://www.python.org/psf
 
 #### (1) Fork the mypy repository
 
-Within Github, navigate to <https://github.com/python/mypy> and fork the repository.
+Within GitHub, navigate to <https://github.com/python/mypy> and fork the repository.
 
 #### (2) Clone the mypy repository and enter into it
 

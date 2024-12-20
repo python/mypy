@@ -176,7 +176,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: set[ClassIR]) -> No
         m.blocks, self_reg, maybe_defined, dirty
     )
 
-    mark_attr_initialiation_ops(m.blocks, self_reg, maybe_defined, dirty)
+    mark_attr_initialization_ops(m.blocks, self_reg, maybe_defined, dirty)
 
     # Check if __init__ can run unpredictable code (leak 'self').
     any_dirty = False
@@ -260,7 +260,7 @@ def find_sometimes_defined_attributes(
     return attrs
 
 
-def mark_attr_initialiation_ops(
+def mark_attr_initialization_ops(
     blocks: list[BasicBlock],
     self_reg: Register,
     maybe_defined: AnalysisResult[str],

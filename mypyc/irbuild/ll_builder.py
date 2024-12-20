@@ -1,6 +1,6 @@
 """A "low-level" IR builder class.
 
-See the docstring of class LowLevelIRBuiler for more information.
+See the docstring of class LowLevelIRBuilder for more information.
 
 """
 
@@ -439,7 +439,7 @@ class LowLevelIRBuilder:
 
         size = target_type.size
         if size < int_rprimitive.size:
-            # Add a range check when the target type is smaller than the source tyoe
+            # Add a range check when the target type is smaller than the source type
             fast2, fast3 = BasicBlock(), BasicBlock()
             upper_bound = 1 << (size * 8 - 1)
             if not target_type.is_signed:

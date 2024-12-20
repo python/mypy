@@ -335,7 +335,7 @@ class InspectionEngine:
             node = expression.node
             names = sorted(node.names)
             if "__builtins__" in names:
-                # This is just to make tests stable. No one will really need ths name.
+                # This is just to make tests stable. No one will really need this name.
                 names.remove("__builtins__")
             mod_dict = {f'"<{node.fullname}>"': [f'"{name}"' for name in names]}
         else:

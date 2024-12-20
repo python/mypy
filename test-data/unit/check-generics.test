@@ -713,7 +713,7 @@ reveal_type(z) # N: Revealed type is "__main__.Node[Any, Any]"
 
 [out]
 
-[case testGenericTypeAliasesAcessingMethods]
+[case testGenericTypeAliasesAccessingMethods]
 from typing import TypeVar, Generic, List
 T = TypeVar('T')
 class Node(Generic[T]):

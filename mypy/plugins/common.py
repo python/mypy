@@ -164,7 +164,7 @@ def find_shallow_matching_overload_item(overload: Overloaded, call: CallExpr) ->
 
 
 def _get_callee_type(call: CallExpr) -> CallableType | None:
-    """Return the type of the callee, regardless of its syntatic form."""
+    """Return the type of the callee, regardless of its syntactic form."""
 
     callee_node: Node | None = call.callee
 

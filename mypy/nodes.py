@@ -1179,7 +1179,7 @@ class ClassDef(Statement):
         self.keywords = dict(keywords) if keywords else {}
         self.analyzed = None
         self.has_incompatible_baseclass = False
-        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        # Used for error reporting (to keep backward compatibility with pre-3.8)
         self.deco_line: int | None = None
         self.docstring: str | None = None
         self.removed_statements = []

@@ -241,7 +241,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.module_name = module_name
         if self.is_c_module:
             # Add additional implicit imports.
-            # C-extensions are given more lattitude since they do not import the typing module.
+            # C-extensions are given more latitude since they do not import the typing module.
             self.known_imports.update(
                 {
                     "typing": [

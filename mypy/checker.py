@@ -2594,7 +2594,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(sym.node, Var) and sym.node.has_explicit_value:
                 # `__members__` will always be overwritten by `Enum` and is considered
                 # read-only so we disallow assigning a value to it
-                self.fail(message_registry.ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN, sym.node)
+                self.fail(message_registry.ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDDEN, sym.node)
         for base in defn.info.mro[1:-1]:  # we don't need self and `object`
             if base.is_enum and base.fullname not in ENUM_BASES:
                 self.check_final_enum(defn, base)
@@ -3642,7 +3642,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         typ = get_proper_type(typ)
         if typ is None or isinstance(typ, AnyType):
-            return True  # Any can be literally anything, like `@propery`
+            return True  # Any can be literally anything, like `@property`
         if isinstance(typ, Instance):
             # When working with instances, we need to know if they contain
             # `__set__` special method. Like `@property` does.
@@ -8519,7 +8519,7 @@ def group_comparison_operands(
 
         x0 == x1 == x2 < x3 < x4 is x5 is x6 is not x7 is not x8
 
-    If we get these expressions in a pairwise way (e.g. by calling ComparisionExpr's
+    If we get these expressions in a pairwise way (e.g. by calling ComparisonExpr's
     'pairwise()' method), we get the following as input:
 
         [('==', x0, x1), ('==', x1, x2), ('<', x2, x3), ('<', x3, x4),

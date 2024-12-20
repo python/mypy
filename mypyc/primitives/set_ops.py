@@ -22,7 +22,7 @@ from mypyc.primitives.registry import (
 # Get the 'builtins.set' type object.
 load_address_op(name="builtins.set", type=object_rprimitive, src="PySet_Type")
 
-# Get the 'builtins.frozenset' tyoe object.
+# Get the 'builtins.frozenset' type object.
 load_address_op(name="builtins.frozenset", type=object_rprimitive, src="PyFrozenSet_Type")
 
 # Construct an empty set.

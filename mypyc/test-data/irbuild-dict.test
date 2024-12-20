@@ -186,7 +186,7 @@ L3:
     r14 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
-    r15 = CPy_NoErrOccured()
+    r15 = CPy_NoErrOccurred()
 L5:
     return d
 
@@ -295,7 +295,7 @@ L5:
     r13 = CPyDict_CheckSize(d1, r2)
     goto L1
 L6:
-    r14 = CPy_NoErrOccured()
+    r14 = CPy_NoErrOccurred()
 L7:
     r15 = 0
     r16 = PyDict_Size(d2)
@@ -325,7 +325,7 @@ L10:
     r33 = CPyDict_CheckSize(d2, r17)
     goto L8
 L11:
-    r34 = CPy_NoErrOccured()
+    r34 = CPy_NoErrOccurred()
 L12:
     return 1
 def union_of_dicts(d):
@@ -377,7 +377,7 @@ L3:
     r18 = CPyDict_CheckSize(d, r3)
     goto L1
 L4:
-    r19 = CPy_NoErrOccured()
+    r19 = CPy_NoErrOccurred()
 L5:
     return 1
 def typeddict(d):
@@ -436,7 +436,7 @@ L8:
     r17 = CPyDict_CheckSize(d, r2)
     goto L1
 L9:
-    r18 = CPy_NoErrOccured()
+    r18 = CPy_NoErrOccurred()
 L10:
     return 1
 

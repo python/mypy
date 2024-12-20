@@ -1193,7 +1193,7 @@ def func(callback: Callable[P, str]) -> Callable[P, str]:
     return inner
 [builtins fixtures/paramspec.pyi]
 
-[case testParamSpecArgsAndKwargsMissmatch]
+[case testParamSpecArgsAndKwargsMismatch]
 from typing import Callable
 from typing_extensions import ParamSpec
 

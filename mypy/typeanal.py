@@ -1000,7 +1000,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif unbound_tvar:
             assert isinstance(sym.node, TypeVarLikeExpr)
             if sym.node.is_new_style:
-                # PEP 695 type paramaters are never considered unbound -- they are undefined
+                # PEP 695 type parameters are never considered unbound -- they are undefined
                 # in contexts where they aren't valid, such as in argument default values.
                 message = 'Name "{}" is not defined'
                 name = name.split(".")[-1]

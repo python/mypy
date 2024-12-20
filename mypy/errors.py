@@ -268,7 +268,7 @@ class Errors:
     show_column_numbers: bool = False
 
     # Set to True to show end line and end column in error messages.
-    # Ths implies `show_column_numbers`.
+    # This implies `show_column_numbers`.
     show_error_end: bool = False
 
     # Set to True to show absolute file paths in error messages.

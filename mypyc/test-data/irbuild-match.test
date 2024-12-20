@@ -148,7 +148,7 @@ L2:
 L3:
     r10 = box(None, 1)
     return r10
-[case testMatchExaustivePattern_python3_10]
+[case testMatchExhaustivePattern_python3_10]
 def f():
     match 123:
         case _:
