@@ -1526,7 +1526,7 @@ def is_probably_a_function(runtime: Any) -> bool:
         isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
         or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
-        or (inspect.ismethodwrapper(runtime) and callable(runtime))
+        or (isinstance(runtime, types.MethodWrapperType) and callable(runtime))
     )
 
 
