@@ -185,6 +185,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         allow_placeholder: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        prohibit_special_class_field_types: str | None = None,
     ) -> Type | None:
         raise NotImplementedError
 

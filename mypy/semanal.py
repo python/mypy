@@ -2737,15 +2737,15 @@ class SemanticAnalyzer(
                 return None, True, False  # defer later in the caller
 
             # Support type aliases, like `_Meta: TypeAlias = type`
+            metaclass_info: Node | None = sym.node
             if (
                 isinstance(sym.node, TypeAlias)
-                and sym.node.no_args
-                and isinstance(sym.node.target, ProperType)
-                and isinstance(sym.node.target, Instance)
+                and not sym.node.python_3_12_type_alias
+                and not sym.node.alias_tvars
             ):
-                metaclass_info: Node | None = sym.node.target.type
-            else:
-                metaclass_info = sym.node
+                target = get_proper_type(sym.node.target)
+                if isinstance(target, Instance):
+                    metaclass_info = target.type
 
             if not isinstance(metaclass_info, TypeInfo) or metaclass_info.tuple_type is not None:
                 self.fail(f'Invalid metaclass "{metaclass_name}"', metaclass_expr)
@@ -3586,7 +3586,12 @@ class SemanticAnalyzer(
         invalid_bare_final = False
         if not s.unanalyzed_type.args:
             s.type = None
-            if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
+            if (
+                isinstance(s.rvalue, TempNode)
+                and s.rvalue.no_rhs
+                # Filter duplicate errors, we already reported this:
+                and not (self.type and self.type.is_named_tuple)
+            ):
                 invalid_bare_final = True
                 self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
         else:
@@ -4012,6 +4017,7 @@ class SemanticAnalyzer(
             and not res.args
             and not empty_tuple_index
             and not pep_695
+            and not pep_613
         )
         if isinstance(res, ProperType) and isinstance(res, Instance):
             if not validate_instance(res, self.fail, empty_tuple_index):
@@ -4092,8 +4098,12 @@ class SemanticAnalyzer(
             names.append("typing.TypeAliasType")
         if not refers_to_fullname(rvalue.callee, tuple(names)):
             return False
+        if not self.check_typevarlike_name(rvalue, name, rvalue):
+            return False
+        if rvalue.arg_kinds.count(ARG_POS) != 2:
+            return False
 
-        return self.check_typevarlike_name(rvalue, name, rvalue)
+        return True
 
     def analyze_type_alias_type_params(
         self, rvalue: CallExpr
@@ -7291,6 +7301,7 @@ class SemanticAnalyzer(
         allow_unpack: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        prohibit_special_class_field_types: str | None = None,
         allow_type_any: bool = False,
     ) -> TypeAnalyser:
         if tvar_scope is None:
@@ -7310,6 +7321,7 @@ class SemanticAnalyzer(
             allow_param_spec_literals=allow_param_spec_literals,
             allow_unpack=allow_unpack,
             prohibit_self_type=prohibit_self_type,
+            prohibit_special_class_field_types=prohibit_special_class_field_types,
             allow_type_any=allow_type_any,
         )
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
@@ -7334,6 +7346,7 @@ class SemanticAnalyzer(
         allow_unpack: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        prohibit_special_class_field_types: str | None = None,
         allow_type_any: bool = False,
     ) -> Type | None:
         """Semantically analyze a type.
@@ -7369,6 +7382,7 @@ class SemanticAnalyzer(
             allow_unpack=allow_unpack,
             report_invalid_types=report_invalid_types,
             prohibit_self_type=prohibit_self_type,
+            prohibit_special_class_field_types=prohibit_special_class_field_types,
             allow_type_any=allow_type_any,
         )
         tag = self.track_incomplete_refs()

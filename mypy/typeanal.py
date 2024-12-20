@@ -110,7 +110,7 @@ from mypy.types import (
     get_proper_type,
     has_type_vars,
 )
-from mypy.types_utils import is_bad_type_type_item
+from mypy.types_utils import get_bad_type_type_item
 from mypy.typevars import fill_typevars
 
 T = TypeVar("T")
@@ -229,6 +229,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_unpack: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        prohibit_special_class_field_types: str | None = None,
         allowed_alias_tvars: list[TypeVarLikeType] | None = None,
         allow_type_any: bool = False,
         alias_type_params_names: list[str] | None = None,
@@ -275,6 +276,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Names of type aliases encountered while analysing a type will be collected here.
         self.aliases_used: set[str] = set()
         self.prohibit_self_type = prohibit_self_type
+        # Set when we analyze TypedDicts or NamedTuples, since they are special:
+        self.prohibit_special_class_field_types = prohibit_special_class_field_types
         # Allow variables typed as Type[Any] and type (useful for base classes).
         self.allow_type_any = allow_type_any
         self.allow_type_var_tuple = False
@@ -611,11 +614,18 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif fullname == "typing.Any" or fullname == "builtins.Any":
             return AnyType(TypeOfAny.explicit, line=t.line, column=t.column)
         elif fullname in FINAL_TYPE_NAMES:
-            self.fail(
-                "Final can be only used as an outermost qualifier in a variable annotation",
-                t,
-                code=codes.VALID_TYPE,
-            )
+            if self.prohibit_special_class_field_types:
+                self.fail(
+                    f"Final[...] can't be used inside a {self.prohibit_special_class_field_types}",
+                    t,
+                    code=codes.VALID_TYPE,
+                )
+            else:
+                self.fail(
+                    "Final can be only used as an outermost qualifier in a variable annotation",
+                    t,
+                    code=codes.VALID_TYPE,
+                )
             return AnyType(TypeOfAny.from_error)
         elif fullname == "typing.Tuple" or (
             fullname == "builtins.tuple"
@@ -667,20 +677,27 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # To prevent assignment of 'builtins.type' inferred as 'builtins.object'
                     # See https://github.com/python/mypy/issues/9476 for more information
                     return None
+            type_str = "Type[...]" if fullname == "typing.Type" else "type[...]"
             if len(t.args) != 1:
-                type_str = "Type[...]" if fullname == "typing.Type" else "type[...]"
                 self.fail(
-                    type_str + " must have exactly one type argument", t, code=codes.VALID_TYPE
+                    f"{type_str} must have exactly one type argument", t, code=codes.VALID_TYPE
                 )
             item = self.anal_type(t.args[0])
-            if is_bad_type_type_item(item):
-                self.fail("Type[...] can't contain another Type[...]", t, code=codes.VALID_TYPE)
+            bad_item_name = get_bad_type_type_item(item)
+            if bad_item_name:
+                self.fail(f'{type_str} can\'t contain "{bad_item_name}"', t, code=codes.VALID_TYPE)
                 item = AnyType(TypeOfAny.from_error)
             return TypeType.make_normalized(item, line=t.line, column=t.column)
         elif fullname == "typing.ClassVar":
             if self.nesting_level > 0:
                 self.fail(
                     "Invalid type: ClassVar nested inside other type", t, code=codes.VALID_TYPE
+                )
+            if self.prohibit_special_class_field_types:
+                self.fail(
+                    f"ClassVar[...] can't be used inside a {self.prohibit_special_class_field_types}",
+                    t,
+                    code=codes.VALID_TYPE,
                 )
             if len(t.args) == 0:
                 return AnyType(TypeOfAny.from_omitted_generics, line=t.line, column=t.column)

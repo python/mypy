@@ -671,7 +671,7 @@ reveal_type(a) # N: Revealed type is "other.array[Any, other.dtype[builtins.floa
 [out]
 main:3: error: Type argument "float" of "Array" must be a subtype of "generic"  [type-var]
     a: other.Array[float]
-       ^
+                   ^
 [file other.py]
 from typing import Any, Generic, TypeVar
 

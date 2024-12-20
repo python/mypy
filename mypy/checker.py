@@ -3565,7 +3565,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             lvs = [s.lvalue]
         is_final_decl = s.is_final_def if isinstance(s, AssignmentStmt) else False
-        if is_final_decl and self.scope.active_class():
+        if is_final_decl and (active_class := self.scope.active_class()):
             lv = lvs[0]
             assert isinstance(lv, RefExpr)
             if lv.node is not None:
@@ -3579,6 +3579,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # then we already reported the error about missing r.h.s.
                     isinstance(s, AssignmentStmt)
                     and s.type is not None
+                    # Avoid extra error message for NamedTuples,
+                    # they were reported during semanal
+                    and not active_class.is_named_tuple
                 ):
                     self.msg.final_without_value(s)
         for lv in lvs:
@@ -4790,7 +4793,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # If this is asserting some isinstance check, bind that type in the following code
         true_map, else_map = self.find_isinstance_check(s.expr)
         if s.msg is not None:
-            self.expr_checker.analyze_cond_branch(else_map, s.msg, None)
+            self.expr_checker.analyze_cond_branch(
+                else_map, s.msg, None, suppress_unreachable_errors=False
+            )
         self.push_type_map(true_map)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
