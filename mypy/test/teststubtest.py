@@ -1460,6 +1460,16 @@ class StubtestUnit(unittest.TestCase):
             runtime="__all__ += ['Z']\nclass Z:\n  def __reduce__(self): return (Z,)",
             error=None,
         )
+        # __call__ exists on type, so it appears to exist on the class.
+        # This checks that we identify it as missing at runtime anyway.
+        yield Case(
+            stub="""
+            class ClassWithMetaclassOverride:
+                def __call__(*args, **kwds): ...
+            """,
+            runtime="class ClassWithMetaclassOverride: ...",
+            error="ClassWithMetaclassOverride.__call__",
+        )
 
     @collect_cases
     def test_missing_no_runtime_all(self) -> Iterator[Case]:

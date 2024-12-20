@@ -571,7 +571,7 @@ def verify_typeinfo(
 
         # If it came from the metaclass, consider the runtime_attr to be MISSING
         # for a more accurate message
-        if runtime_attr is not MISSING and type(runtime) != runtime:
+        if runtime_attr is not MISSING and type(runtime) is not runtime:
             if getattr(runtime_attr, "__objclass__", None) is type(runtime):
                 runtime_attr = MISSING
 
@@ -1526,6 +1526,7 @@ def is_probably_a_function(runtime: Any) -> bool:
         isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
         or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
+        or (inspect.ismethodwrapper(runtime) and callable(runtime))
     )
 
 
