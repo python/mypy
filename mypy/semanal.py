@@ -2797,15 +2797,15 @@ class SemanticAnalyzer(
                 return None, True, False  # defer later in the caller
 
             # Support type aliases, like `_Meta: TypeAlias = type`
+            metaclass_info: Node | None = sym.node
             if (
                 isinstance(sym.node, TypeAlias)
-                and sym.node.no_args
-                and isinstance(sym.node.target, ProperType)
-                and isinstance(sym.node.target, Instance)
+                and not sym.node.python_3_12_type_alias
+                and not sym.node.alias_tvars
             ):
-                metaclass_info: Node | None = sym.node.target.type
-            else:
-                metaclass_info = sym.node
+                target = get_proper_type(sym.node.target)
+                if isinstance(target, Instance):
+                    metaclass_info = target.type
 
             if not isinstance(metaclass_info, TypeInfo) or metaclass_info.tuple_type is not None:
                 self.fail(f'Invalid metaclass "{metaclass_name}"', metaclass_expr)
@@ -4077,6 +4077,7 @@ class SemanticAnalyzer(
             and not res.args
             and not empty_tuple_index
             and not pep_695
+            and not pep_613
         )
         if isinstance(res, ProperType) and isinstance(res, Instance):
             if not validate_instance(res, self.fail, empty_tuple_index):
