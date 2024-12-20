@@ -17,7 +17,6 @@ import html
 import os
 import re
 import sys
-import textwrap
 
 
 def format_lists(h: str) -> str:
