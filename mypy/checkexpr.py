@@ -4249,11 +4249,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ):
             self.msg.unreachable_right_operand(e.op, e.right)
 
-        # If right_map is None then we know mypy considers the right branch
-        # to be unreachable and therefore any errors found in the right branch
-        # should be suppressed.
-        with self.msg.filter_errors(filter_errors=right_map is None):
-            right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
+        right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
 
         if left_map is None and right_map is None:
             return UninhabitedType()
@@ -5851,12 +5847,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         node: Expression,
         context: Type | None,
         allow_none_return: bool = False,
+        suppress_unreachable_errors: bool = True,
     ) -> Type:
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             if map is None:
                 # We still need to type check node, in case we want to
-                # process it for isinstance checks later
-                self.accept(node, type_context=context, allow_none_return=allow_none_return)
+                # process it for isinstance checks later. Since the branch was
+                # determined to be unreachable, any errors should be suppressed.
+                with self.msg.filter_errors(filter_errors=suppress_unreachable_errors):
+                    self.accept(node, type_context=context, allow_none_return=allow_none_return)
                 return UninhabitedType()
             self.chk.push_type_map(map)
             return self.accept(node, type_context=context, allow_none_return=allow_none_return)
