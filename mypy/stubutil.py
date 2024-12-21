@@ -5,6 +5,7 @@ from __future__ import annotations
 import os.path
 import re
 import sys
+import traceback
 from abc import abstractmethod
 from collections import defaultdict
 from contextlib import contextmanager
@@ -70,6 +71,9 @@ def walk_packages(
         try:
             prop = inspect.get_package_properties(package_name)
         except InspectError:
+            if verbose:
+                tb = traceback.format_exc()
+                sys.stderr.write(tb)
             report_missing(package_name)
             continue
         yield prop.name
