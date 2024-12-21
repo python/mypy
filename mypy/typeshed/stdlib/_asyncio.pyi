@@ -1,6 +1,6 @@
 import sys
 from asyncio.events import AbstractEventLoop
-from collections.abc import Awaitable, Callable, Coroutine, Generator
+from collections.abc import Awaitable, Callable, Coroutine, Generator, Iterable
 from contextvars import Context
 from types import FrameType, GenericAlias
 from typing import Any, Literal, TextIO, TypeVar
@@ -11,7 +11,7 @@ _T_co = TypeVar("_T_co", covariant=True)
 _TaskYieldType: TypeAlias = Future[object] | None
 
 @disjoint_base
-class Future(Awaitable[_T]):
+class Future(Awaitable[_T], Iterable[_T]):
     _state: str
     @property
     def _exception(self) -> BaseException | None: ...
