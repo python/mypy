@@ -365,7 +365,8 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
     pos = 0;
     PyObject *key;
     while (PyDict_Next(annotations, &pos, &key, NULL)) {
-        if (PyObject_DelAttr(tp, key) != 0) {
+        // Check and delete key. Key may be absent from tp for InitVar variables.
+        if (PyObject_HasAttr(tp, key) == 1 && PyObject_DelAttr(tp, key) != 0) {
             goto fail;
         }
     }
