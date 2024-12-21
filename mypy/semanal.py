@@ -4170,7 +4170,7 @@ class SemanticAnalyzer(
     ) -> tuple[TypeVarLikeList, list[str]]:
         """Analyze type_params of TypeAliasType.
 
-        Returns declared unbound type variable expressions and a list of all decalred type
+        Returns declared unbound type variable expressions and a list of all declared type
         variable names for error reporting.
         """
         if "type_params" in rvalue.arg_names:
@@ -4436,7 +4436,7 @@ class SemanticAnalyzer(
         if kind != LDEF:
             v._fullname = self.qualified_name(name)
         else:
-            # fullanme should never stay None
+            # fullname should never stay None
             v._fullname = name
         v.is_ready = False  # Type not inferred yet
         v.has_explicit_value = has_explicit_value
@@ -6218,7 +6218,7 @@ class SemanticAnalyzer(
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope() or not self.function_stack:
             # We check both because is_function_scope() returns True inside comprehensions.
-            # This is not a blocker, because some enviroments (like ipython)
+            # This is not a blocker, because some environments (like ipython)
             # support top level awaits.
             self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
         elif not self.function_stack[-1].is_coroutine:

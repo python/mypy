@@ -124,7 +124,7 @@ class MatchVisitor(TraverserVisitor):
 
     def visit_class_pattern(self, pattern: ClassPattern) -> None:
         # TODO: use faster instance check for native classes (while still
-        # making sure to account for inheritence)
+        # making sure to account for inheritance)
         isinstance_op = (
             fast_isinstance_op
             if self.builder.is_builtin_ref_expr(pattern.class_ref)

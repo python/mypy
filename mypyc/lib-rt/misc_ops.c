@@ -897,7 +897,7 @@ fail:
 
 }
 
-// Adapated from ceval.c GET_AITER
+// Adapted from ceval.c GET_AITER
 PyObject *CPy_GetAIter(PyObject *obj)
 {
     unaryfunc getter = NULL;
@@ -935,7 +935,7 @@ PyObject *CPy_GetAIter(PyObject *obj)
     return iter;
 }
 
-// Adapated from ceval.c GET_ANEXT
+// Adapted from ceval.c GET_ANEXT
 PyObject *CPy_GetANext(PyObject *aiter)
 {
     unaryfunc getter = NULL;

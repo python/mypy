@@ -154,7 +154,7 @@ def infer_truth(truth: Truth) -> None:
     reveal_type(truth.value) # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
 
-[case testEnumValueInhomogenous]
+[case testEnumValueInhomogeneous]
 from enum import Enum
 class Truth(Enum):
     true = 'True'
@@ -2163,7 +2163,7 @@ class Mixed(Enum):
         reveal_type(Mixed.b.value)  # N: Revealed type is "None"
 
         # Inferring Any here instead of a union seems to be a deliberate
-        # choice; see the testEnumValueInhomogenous case above.
+        # choice; see the testEnumValueInhomogeneous case above.
         reveal_type(self.value)  # N: Revealed type is "Any"
 
         for field in Mixed:

@@ -771,7 +771,7 @@ L3:
     r12 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
-    r13 = CPy_NoErrOccured()
+    r13 = CPy_NoErrOccurred()
 L5:
     return 1
 L6:

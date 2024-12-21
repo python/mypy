@@ -1669,7 +1669,7 @@ class A:
         self.a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
-[case testInferListInitializedToEmptyInClassBodyAndOverriden]
+[case testInferListInitializedToEmptyInClassBodyAndOverridden]
 from typing import List
 
 class A:

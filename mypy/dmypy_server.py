@@ -714,7 +714,7 @@ class Server:
             find_changes_time=t1 - t0,
             fg_update_time=t2 - t1,
             refresh_suppressed_time=t3 - t2,
-            find_added_supressed_time=t4 - t3,
+            find_added_suppressed_time=t4 - t3,
             cleanup_time=t5 - t4,
         )
 

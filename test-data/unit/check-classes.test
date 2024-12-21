@@ -2219,7 +2219,7 @@ reveal_type(B() + A())  # N: Revealed type is "__main__.A"
 reveal_type(A() + B())  # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
 
-[case testBinaryOpeartorMethodPositionalArgumentsOnly]
+[case testBinaryOperatorMethodPositionalArgumentsOnly]
 class A:
     def __add__(self, other: int) -> int: pass
     def __iadd__(self, other: int) -> int: pass

@@ -2138,7 +2138,7 @@ force4(reveal_type(f.instancevar4))  # N: Revealed type is "None"
 [builtins fixtures/primitives.pyi]
 [out]
 
-[case testLiteralFinalDirectInstanceTypesSupercedeInferredLiteral]
+[case testLiteralFinalDirectInstanceTypesSupersedeInferredLiteral]
 from typing_extensions import Final, Literal
 
 var1: Final[int] = 1

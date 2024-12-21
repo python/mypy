@@ -184,7 +184,7 @@ This was contributed by Marc Mueller (PR [18014](https://github.com/python/mypy/
  * Improve contributor documentation for Windows (ag-tafe, PR [18097](https://github.com/python/mypy/pull/18097))
  * Correct note about `--disallow-any-generics` flag in documentation (Abel Sen, PR [18055](https://github.com/python/mypy/pull/18055))
  * Further caution against `--follow-imports=skip` (Shantanu, PR [18048](https://github.com/python/mypy/pull/18048))
- * Fix the edit page buttton link in documentation (Kanishk Pachauri, PR [17933](https://github.com/python/mypy/pull/17933))
+ * Fix the edit page button link in documentation (Kanishk Pachauri, PR [17933](https://github.com/python/mypy/pull/17933))
 
 ### Other Notables Fixes and Improvements
 
@@ -751,7 +751,7 @@ This feature was contributed by Jukka Lehtosalo (PR [17404](https://github.com/p
 
 ### Mypyc Improvements
 
-Mypyc now supports the new syntax for generics introduced in Python 3.12 (see above). Another notable improvement is signficantly faster basic operations on `int` values.
+Mypyc now supports the new syntax for generics introduced in Python 3.12 (see above). Another notable improvement is significantly faster basic operations on `int` values.
 
  * Support Python 3.12 syntax for generic functions and classes (Jukka Lehtosalo, PR [17357](https://github.com/python/mypy/pull/17357))
  * Support Python 3.12 type alias syntax (Jukka Lehtosalo, PR [17384](https://github.com/python/mypy/pull/17384))

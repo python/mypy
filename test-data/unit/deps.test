@@ -749,7 +749,7 @@ class C:
 <mod.decb> -> m.outer
 <mod> -> m, m.outer
 
-[case testDecoratorDepsDeeepNested]
+[case testDecoratorDepsDeepNested]
 import mod
 
 def outer() -> None:

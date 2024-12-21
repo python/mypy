@@ -844,7 +844,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Having an optional key not explicitly declared by a ** unpacked
                 # TypedDict is unsafe, it may be an (incompatible) subtype at runtime.
                 # TODO: catch the cases where a declared key is overridden by a subsequent
-                # ** item without it (and not again overriden with complete ** item).
+                # ** item without it (and not again overridden with complete ** item).
                 self.msg.non_required_keys_absent_with_star(absent_keys, last_star_found)
         return result, always_present_keys
 
@@ -5349,7 +5349,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 can_skip=True, fall_through=0
             ), self.chk.scope.push_function(e):
                 # Lambdas can have more than one element in body,
-                # when we add "fictional" AssigmentStatement nodes, like in:
+                # when we add "fictional" AssignmentStatement nodes, like in:
                 # `lambda (a, b): a`
                 for stmt in e.body.body[:-1]:
                     stmt.accept(self.chk)
