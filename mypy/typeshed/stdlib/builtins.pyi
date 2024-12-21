@@ -1146,7 +1146,7 @@ class frozenset(AbstractSet[_T_co]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
-class enumerate(Generic[_T]):
+class enumerate(Iterator[tuple[int, _T]]):
     def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> tuple[int, _T]: ...
@@ -1340,7 +1340,7 @@ else:
 
 exit: _sitebuiltins.Quitter
 
-class filter(Generic[_T]):
+class filter(Iterator[_T]):
     @overload
     def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
     @overload
@@ -1405,7 +1405,7 @@ license: _sitebuiltins._Printer
 
 def locals() -> dict[str, Any]: ...
 
-class map(Generic[_S]):
+class map(Iterator[_S]):
     @overload
     def __new__(cls, func: Callable[[_T1], _S], iterable: Iterable[_T1], /) -> Self: ...
     @overload
@@ -1648,7 +1648,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
 
 quit: _sitebuiltins.Quitter
 
-class reversed(Generic[_T]):
+class reversed(Iterator[_T]):
     @overload
     def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
     @overload
@@ -1709,7 +1709,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
 @overload
 def vars(object: Any = ..., /) -> dict[str, Any]: ...
 
-class zip(Generic[_T_co]):
+class zip(Iterator[_T_co]):
     if sys.version_info >= (3, 10):
         @overload
         def __new__(cls, *, strict: bool = ...) -> zip[Any]: ...
