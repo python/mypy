@@ -28,7 +28,7 @@ _Predicate: TypeAlias = Callable[[_T], object]
 # Technically count can take anything that implements a number protocol and has an add method
 # but we can't enforce the add method
 @disjoint_base
-class count(Generic[_N]):
+class count(Iterator[_N]):
     @overload
     def __new__(cls) -> count[int]: ...
     @overload
@@ -39,13 +39,13 @@ class count(Generic[_N]):
     def __iter__(self) -> Self: ...
 
 @disjoint_base
-class cycle(Generic[_T]):
+class cycle(Iterator[_T]):
     def __new__(cls, iterable: Iterable[_T], /) -> Self: ...
     def __next__(self) -> _T: ...
     def __iter__(self) -> Self: ...
 
 @disjoint_base
-class repeat(Generic[_T]):
+class repeat(Iterator[_T]):
     @overload
     def __new__(cls, object: _T) -> Self: ...
     @overload
@@ -55,7 +55,7 @@ class repeat(Generic[_T]):
     def __length_hint__(self) -> int: ...
 
 @disjoint_base
-class accumulate(Generic[_T]):
+class accumulate(Iterator[_T]):
     @overload
     def __new__(cls, iterable: Iterable[_T], func: None = None, *, initial: _T | None = ...) -> Self: ...
     @overload
@@ -64,7 +64,7 @@ class accumulate(Generic[_T]):
     def __next__(self) -> _T: ...
 
 @disjoint_base
-class chain(Generic[_T]):
+class chain(Iterator[_T]):
     def __new__(cls, *iterables: Iterable[_T]) -> Self: ...
     def __next__(self) -> _T: ...
     def __iter__(self) -> Self: ...
@@ -74,25 +74,25 @@ class chain(Generic[_T]):
     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 @disjoint_base
-class compress(Generic[_T]):
+class compress(Iterator[_T]):
     def __new__(cls, data: Iterable[_T], selectors: Iterable[Any]) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> _T: ...
 
 @disjoint_base
-class dropwhile(Generic[_T]):
+class dropwhile(Iterator[_T]):
     def __new__(cls, predicate: _Predicate[_T], iterable: Iterable[_T], /) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> _T: ...
 
 @disjoint_base
-class filterfalse(Generic[_T]):
+class filterfalse(Iterator[_T]):
     def __new__(cls, function: _Predicate[_T] | None, iterable: Iterable[_T], /) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> _T: ...
 
 @disjoint_base
-class groupby(Generic[_T_co, _S_co]):
+class groupby(Iterator[tuple[_T_co, Iterator[_S_co]]], Generic[_T_co, _S_co]):
     @overload
     def __new__(cls, iterable: Iterable[_T1], key: None = None) -> groupby[_T1, _T1]: ...
     @overload
@@ -101,7 +101,7 @@ class groupby(Generic[_T_co, _S_co]):
     def __next__(self) -> tuple[_T_co, Iterator[_S_co]]: ...
 
 @disjoint_base
-class islice(Generic[_T]):
+class islice(Iterator[_T]):
     @overload
     def __new__(cls, iterable: Iterable[_T], stop: int | None, /) -> Self: ...
     @overload
@@ -110,20 +110,20 @@ class islice(Generic[_T]):
     def __next__(self) -> _T: ...
 
 @disjoint_base
-class starmap(Generic[_T_co]):
+class starmap(Iterator[_T_co]):
     def __new__(cls, function: Callable[..., _T], iterable: Iterable[Iterable[Any]], /) -> starmap[_T]: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> _T_co: ...
 
 @disjoint_base
-class takewhile(Generic[_T]):
+class takewhile(Iterator[_T]):
     def __new__(cls, predicate: _Predicate[_T], iterable: Iterable[_T], /) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> _T: ...
 
 def tee(iterable: Iterable[_T], n: int = 2, /) -> tuple[Iterator[_T], ...]: ...
 @disjoint_base
-class zip_longest(Generic[_T_co]):
+class zip_longest(Iterator[_T_co]):
     # one iterable (fillvalue doesn't matter)
     @overload
     def __new__(cls, iter1: Iterable[_T1], /, *, fillvalue: object = ...) -> zip_longest[tuple[_T1]]: ...
@@ -202,7 +202,7 @@ class zip_longest(Generic[_T_co]):
     def __next__(self) -> _T_co: ...
 
 @disjoint_base
-class product(Generic[_T_co]):
+class product(Iterator[_T_co]):
     @overload
     def __new__(cls, iter1: Iterable[_T1], /) -> product[tuple[_T1]]: ...
     @overload
@@ -288,7 +288,7 @@ class product(Generic[_T_co]):
     def __next__(self) -> _T_co: ...
 
 @disjoint_base
-class permutations(Generic[_T_co]):
+class permutations(Iterator[_T_co]):
     @overload
     def __new__(cls, iterable: Iterable[_T], r: Literal[2]) -> permutations[tuple[_T, _T]]: ...
     @overload
@@ -303,7 +303,7 @@ class permutations(Generic[_T_co]):
     def __next__(self) -> _T_co: ...
 
 @disjoint_base
-class combinations(Generic[_T_co]):
+class combinations(Iterator[_T_co]):
     @overload
     def __new__(cls, iterable: Iterable[_T], r: Literal[2]) -> combinations[tuple[_T, _T]]: ...
     @overload
@@ -318,7 +318,7 @@ class combinations(Generic[_T_co]):
     def __next__(self) -> _T_co: ...
 
 @disjoint_base
-class combinations_with_replacement(Generic[_T_co]):
+class combinations_with_replacement(Iterator[_T_co]):
     @overload
     def __new__(cls, iterable: Iterable[_T], r: Literal[2]) -> combinations_with_replacement[tuple[_T, _T]]: ...
     @overload
@@ -334,14 +334,14 @@ class combinations_with_replacement(Generic[_T_co]):
 
 if sys.version_info >= (3, 10):
     @disjoint_base
-    class pairwise(Generic[_T_co]):
+    class pairwise(Iterator[_T_co]):
         def __new__(cls, iterable: Iterable[_T], /) -> pairwise[tuple[_T, _T]]: ...
         def __iter__(self) -> Self: ...
         def __next__(self) -> _T_co: ...
 
 if sys.version_info >= (3, 12):
     @disjoint_base
-    class batched(Generic[_T_co]):
+    class batched(Iterator[tuple[_T_co, ...]], Generic[_T_co]):
         if sys.version_info >= (3, 13):
             def __new__(cls, iterable: Iterable[_T_co], n: int, *, strict: bool = False) -> Self: ...
         else:
