@@ -8,8 +8,10 @@ from contextlib import ExitStack, contextmanager
 from typing import (
     AbstractSet,
     Callable,
+    Collection,
     Dict,
     Final,
+    Generator,
     Generic,
     Iterable,
     Iterator,
@@ -8076,33 +8078,29 @@ def are_argument_counts_overlapping(t: CallableType, s: CallableType) -> bool:
     return min_args <= max_args
 
 
-def expand_callable_variants(c: CallableType) -> list[CallableType]:
-    """Expand a generic callable using all combinations of type variables' values/bounds."""
-    for tv in c.variables:
-        # We need to expand self-type before other variables, because this is the only
-        # type variable that can have other type variables in the upper bound.
-        if tv.id.is_self():
-            c = expand_type(c, {tv.id: tv.upper_bound}).copy_modified(
-                variables=[v for v in c.variables if not v.id.is_self()]
-            )
-            break
-
-    if not c.is_generic():
-        # Fast path.
-        return [c]
+def get_type_var_group_variants(
+    variables: Collection[TypeVarLikeType],
+) -> Generator[dict[TypeVarId, Type], None, None]:
+    """Expand a group of type variables into all possible combinations of their values."""
 
     tvar_values = []
-    for tvar in c.variables:
+    for tvar in variables:
         if isinstance(tvar, TypeVarType) and tvar.values:
             tvar_values.append(tvar.values)
         else:
             tvar_values.append([tvar.upper_bound])
 
-    variants = []
     for combination in itertools.product(*tvar_values):
-        tvar_map = {tv.id: subst for (tv, subst) in zip(c.variables, combination)}
-        variants.append(expand_type(c, tvar_map).copy_modified(variables=[]))
-    return variants
+        yield {tv.id: subst for (tv, subst) in zip(variables, combination)}
+
+
+def expand_callable_self(c: CallableType) -> CallableType:
+    for tv in c.variables:
+        if tv.id.is_self():
+            return expand_type(c, {tv.id: tv.upper_bound}).copy_modified(
+                variables=[v for v in c.variables if not v.id.is_self()]
+            )
+    return c
 
 
 def is_unsafe_overlapping_overload_signatures(
@@ -8141,37 +8139,53 @@ def is_unsafe_overlapping_overload_signatures(
     # Note: We repeat this check twice in both directions compensate for slight
     # asymmetries in 'is_callable_compatible'.
 
-    for sig_variant in expand_callable_variants(signature):
-        for other_variant in expand_callable_variants(other):
-            # Using only expanded callables may cause false negatives, we can add
-            # more variants (e.g. using inference between callables) in the future.
-            if is_subset_no_promote(sig_variant.ret_type, other_variant.ret_type):
-                continue
-            if not (
-                is_callable_compatible(
-                    sig_variant,
-                    other_variant,
-                    is_compat=is_overlapping_types_for_overload,
-                    check_args_covariantly=False,
-                    is_proper_subtype=False,
-                    is_compat_return=lambda l, r: not is_subset_no_promote(l, r),
-                    allow_partial_overlap=True,
-                )
-                or is_callable_compatible(
-                    other_variant,
-                    sig_variant,
-                    is_compat=is_overlapping_types_for_overload,
-                    check_args_covariantly=True,
-                    is_proper_subtype=False,
-                    is_compat_return=lambda l, r: not is_subset_no_promote(r, l),
-                    allow_partial_overlap=True,
-                )
-            ):
-                continue
-            # Using the same `allow_partial_overlap` flag as before, can cause false
-            # negatives in case where star argument is used in a catch-all fallback overload.
-            # But again, practicality beats purity here.
-            if not partial_only or not is_callable_compatible(
+    # We need to expand self-type before other variables, because this is the only
+    # type variable that can have other type variables in the upper bound.
+    signature = expand_callable_self(signature)
+    other = expand_callable_self(other)
+
+    all_variables = {v.id: v for v in signature.variables}
+    all_variables.update({v.id: v for v in other.variables})
+
+    for tvar_map in get_type_var_group_variants(all_variables.values()):
+        sig_variant = expand_type(signature, tvar_map).copy_modified(variables=[])
+        other_variant = expand_type(other, tvar_map).copy_modified(variables=[])
+
+        if is_subset_no_promote(sig_variant.ret_type, other_variant.ret_type):
+            continue
+        if not (
+            is_callable_compatible(
+                sig_variant,
+                other_variant,
+                is_compat=is_overlapping_types_for_overload,
+                check_args_covariantly=False,
+                is_proper_subtype=False,
+                is_compat_return=lambda l, r: not is_subset_no_promote(l, r),
+                allow_partial_overlap=True,
+            )
+            or is_callable_compatible(
+                other_variant,
+                sig_variant,
+                is_compat=is_overlapping_types_for_overload,
+                check_args_covariantly=True,
+                is_proper_subtype=False,
+                is_compat_return=lambda l, r: not is_subset_no_promote(r, l),
+                allow_partial_overlap=True,
+            )
+        ):
+            continue
+        # Using the same `allow_partial_overlap` flag as before, can cause false
+        # negatives in case where star argument is used in a catch-all fallback overload.
+        # But again, practicality beats purity here.
+
+        # Also earlier overload may not be more general overall but is more general when
+        # narrowed to common calls is handled here, so there is no unsafe overlap because
+        # it will still be caught by the earlier overload.
+        # Exeption here is when signature variants are exactly the same, in which case we
+        # should still consider them overlapping.
+        if (
+            not partial_only
+            or not is_callable_compatible(
                 other_variant,
                 sig_variant,
                 is_compat=is_subset_no_promote,
@@ -8179,8 +8193,18 @@ def is_unsafe_overlapping_overload_signatures(
                 is_proper_subtype=False,
                 ignore_return=True,
                 allow_partial_overlap=True,
-            ):
-                return True
+            )
+            or is_callable_compatible(
+                sig_variant,
+                other_variant,
+                is_compat=lambda l, r: l == r,
+                check_args_covariantly=False,
+                is_proper_subtype=False,
+                ignore_return=True,
+                allow_partial_overlap=False,
+            )
+        ):
+            return True
     return False
 
 
