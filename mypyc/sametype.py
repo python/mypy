@@ -6,6 +6,7 @@ from mypyc.ir.func_ir import FuncSignature
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
+    RInstanceValue,
     RPrimitive,
     RStruct,
     RTuple,
@@ -49,6 +50,9 @@ class SameTypeVisitor(RTypeVisitor[bool]):
 
     def visit_rinstance(self, left: RInstance) -> bool:
         return isinstance(self.right, RInstance) and left.name == self.right.name
+
+    def visit_rinstance_value(self, left: RInstanceValue) -> bool:
+        return isinstance(self.right, RInstanceValue) and left.name == self.right.name
 
     def visit_runion(self, left: RUnion) -> bool:
         if isinstance(self.right, RUnion):

@@ -1,0 +1,142 @@
+[case testValueTypeBasic]
+from typing import final, Final
+from mypy_extensions import mypyc_attr, i32
+
+@final
+@mypyc_attr(value_type=True)
+class Vector2I:
+    def __init__(self, x: i32) -> None:
+        self.x: Final = x
+
+@final
+class Vector2Ir:
+    def __init__(self, x: i32) -> None:
+        self.x: Final = x
+
+def test_rt() -> None:
+    l1 = [Vector2I(1), Vector2I(1)]  # require boxing
+    l2 = [Vector2Ir(1), Vector2Ir(1)]  # already boxed
+
+[out]
+def Vector2I.__init__(self, x):
+    self :: __main__.Vector2I
+    x :: i32
+L0:
+    self.x = x
+    return 1
+def Vector2Ir.__init__(self, x):
+    self :: __main__.Vector2Ir
+    x :: i32
+L0:
+    self.x = x
+    return 1
+def test_rt():
+    r0, r1 :: __main__.Vector2I
+    r2 :: list
+    r3, r4 :: object
+    r5 :: ptr
+    l1 :: list
+    r6, r7 :: __main__.Vector2Ir
+    r8 :: list
+    r9 :: ptr
+    l2 :: list
+L0:
+    r0 = Vector2I(1)
+    r1 = Vector2I(1)
+    r2 = PyList_New(2)
+    r3 = box(__main__.Vector2I, r0)
+    r4 = box(__main__.Vector2I, r1)
+    r5 = list_items r2
+    buf_init_item r5, 0, r3
+    buf_init_item r5, 1, r4
+    keep_alive r2
+    l1 = r2
+    r6 = Vector2Ir(1)
+    r7 = Vector2Ir(1)
+    r8 = PyList_New(2)
+    r9 = list_items r8
+    buf_init_item r9, 0, r6
+    buf_init_item r9, 1, r7
+    keep_alive r8
+    l2 = r8
+    return 1
+
+[case testValueTypeInTuple]
+from typing import final, Final, Tuple
+from mypy_extensions import mypyc_attr, i32
+
+@final
+@mypyc_attr(value_type=True)
+class Vector2I:
+    def __init__(self, x: i32) -> None:
+        self.x: Final = x
+
+def return_tuple() -> Tuple[Vector2I, Vector2I]:
+    return Vector2I(11), Vector2I(10)  # no boxing required due target type
+
+module_level = Vector2I(12)
+final_module_level: Final = Vector2I(13)
+
+def fn_module_level() -> None:
+    assert module_level.x == 12  # unbox required
+
+def fn_module_level_final() -> None:
+    assert final_module_level.x == 13  # no boxing required
+
+[out]
+def Vector2I.__init__(self, x):
+    self :: __main__.Vector2I
+    x :: i32
+L0:
+    self.x = x
+    return 1
+def return_tuple():
+    r0, r1 :: __main__.Vector2I
+    r2 :: tuple[__main__.Vector2I, __main__.Vector2I]
+L0:
+    r0 = Vector2I(11)
+    r1 = Vector2I(10)
+    r2 = (r0, r1)
+    return r2
+def fn_module_level():
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3 :: __main__.Vector2I
+    r4 :: i32
+    r5 :: bit
+    r6 :: bool
+L0:
+    r0 = __main__.globals :: static
+    r1 = 'module_level'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = unbox(__main__.Vector2I, r2)
+    r4 = r3.x
+    r5 = r4 == 12
+    if r5 goto L2 else goto L1 :: bool
+L1:
+    r6 = raise AssertionError
+    unreachable
+L2:
+    return 1
+def fn_module_level_final():
+    r0 :: __main__.Vector2I
+    r1 :: bool
+    r2 :: i32
+    r3 :: bit
+    r4 :: bool
+L0:
+    r0 = __main__.final_module_level :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    r1 = raise NameError('value for final name "final_module_level" was not set')
+    unreachable
+L2:
+    r2 = r0.x
+    r3 = r2 == 13
+    if r3 goto L4 else goto L3 :: bool
+L3:
+    r4 = raise AssertionError
+    unreachable
+L4:
+    return 1

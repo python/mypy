@@ -1,0 +1,35 @@
+[case testValueTypeNotFinal]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(value_type=True)
+class A:
+    pass
+
+[out]
+main:4: error: Value types must be immutable and final
+
+[case testValueTypeHasNotParent]
+from mypy_extensions import mypyc_attr
+from typing import final
+
+class A: pass
+
+@final
+@mypyc_attr(value_type=True)
+class B(A): pass
+
+[out]
+main:8: error: Value types must not inherit from other types
+
+[case testValueTypeForbiddenMethods]
+from typing import final
+from mypy_extensions import mypyc_attr
+
+@final
+@mypyc_attr(value_type=True)
+class A:
+    def __iter__(self) -> None:
+        pass
+
+[out]
+main:7: error: Value types must not define method '__iter__'

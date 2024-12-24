@@ -5,6 +5,7 @@ from __future__ import annotations
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
+    RInstanceValue,
     RPrimitive,
     RStruct,
     RTuple,
@@ -49,6 +50,9 @@ class SubtypeVisitor(RTypeVisitor[bool]):
 
     def visit_rinstance(self, left: RInstance) -> bool:
         return isinstance(self.right, RInstance) and self.right.class_ir in left.class_ir.mro
+
+    def visit_rinstance_value(self, left: RInstanceValue) -> bool:
+        return isinstance(self.right, RInstanceValue) and self.right.class_ir in left.class_ir.mro
 
     def visit_runion(self, left: RUnion) -> bool:
         return all(is_subtype(item, self.right) for item in left.items)

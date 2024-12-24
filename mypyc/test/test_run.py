@@ -15,7 +15,7 @@ from typing import Any, Iterator
 
 from mypy import build
 from mypy.errors import CompileError
-from mypy.options import Options
+from mypy.options import MYPYC_VALUE_TYPES, Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypy.test.helpers import assert_module_equivalence, perform_file_operations
@@ -68,6 +68,7 @@ files = [
     "run-attrs.test",
     "run-python37.test",
     "run-python38.test",
+    "run-valuetype.test",
 ]
 
 if sys.version_info >= (3, 10):
@@ -198,6 +199,7 @@ class TestRun(MypycDataSuite):
         options.preserve_asts = True
         options.allow_empty_bodies = True
         options.incremental = self.separate
+        options.enable_incomplete_feature.append(MYPYC_VALUE_TYPES)
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
@@ -412,7 +414,13 @@ class TestRunStrictDunderTyping(TestRun):
 
     strict_dunder_typing = True
     test_name_suffix = "_dunder_typing"
-    files = ["run-dunders.test", "run-floats.test"]
+    files = [
+        "run-bools.test",
+        "run-dunders.test",
+        "run-floats.test",
+        "run-integers.test",
+        "run-strings.test",
+    ]
 
 
 def fix_native_line_number(message: str, fnam: str, delta: int) -> str:

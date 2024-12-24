@@ -17,11 +17,12 @@ from mypyc.codegen.emitwrapper import (
     generate_len_wrapper,
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
+    generate_str_wrapper,
 )
 from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
-from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
+from mypyc.ir.rtypes import RInstance, RInstanceValue, RTuple, RType, object_rprimitive
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
 
@@ -44,8 +45,8 @@ SlotTable = Mapping[str, Tuple[str, SlotGenerator]]
 SLOT_DEFS: SlotTable = {
     "__init__": ("tp_init", lambda c, t, e: generate_init_for_class(c, t, e)),
     "__call__": ("tp_call", lambda c, t, e: generate_call_wrapper(c, t, e)),
-    "__str__": ("tp_str", native_slot),
-    "__repr__": ("tp_repr", native_slot),
+    "__str__": ("tp_str", generate_str_wrapper),
+    "__repr__": ("tp_repr", generate_str_wrapper),
     "__next__": ("tp_iternext", native_slot),
     "__iter__": ("tp_iter", native_slot),
     "__hash__": ("tp_hash", generate_hash_wrapper),
@@ -293,7 +294,15 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         # Declare setup method that allocates and initializes an object. type is the
         # type of the class being initialized, which could be another class if there
         # is an interpreted subclass.
-        emitter.emit_line(f"static PyObject *{setup_name}(PyTypeObject *type);")
+        if cl.is_value_type:
+            # Value types will need this method be exported because it will be required
+            # when boxing the value type instance.
+            emitter.context.declarations[setup_name] = HeaderDeclaration(
+                f"PyObject *{setup_name}(PyTypeObject *type);", needs_export=True
+            )
+        else:
+            emitter.emit_line(f"static PyObject *{setup_name}(PyTypeObject *type);")
+
         assert cl.ctor is not None
         emitter.emit_line(native_function_header(cl.ctor, emitter) + ";")
 
@@ -393,6 +402,7 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
                         if attr not in bitmap_attrs:
                             lines.append(f"{BITMAP_TYPE} {attr};")
                             bitmap_attrs.append(attr)
+
             for attr, rtype in base.attributes.items():
                 if (attr, rtype) not in seen_attrs:
                     lines.append(f"{emitter.ctype_spaced(rtype)}{emitter.attr(attr)};")
@@ -554,7 +564,7 @@ def generate_setup_for_class(
     emitter: Emitter,
 ) -> None:
     """Generate a native function that allocates an instance of a class."""
-    emitter.emit_line("static PyObject *")
+    emitter.emit_line("PyObject *")
     emitter.emit_line(f"{func_name}(PyTypeObject *type)")
     emitter.emit_line("{")
     emitter.emit_line(f"{cl.struct_name(emitter.names)} *self;")
@@ -585,7 +595,7 @@ def generate_setup_for_class(
 
             # We don't need to set this field to NULL since tp_alloc() already
             # zero-initializes `self`.
-            if value != "NULL":
+            if value not in ("NULL", "0"):
                 emitter.emit_line(rf"self->{emitter.attr(attr)} = {value};")
 
     # Initialize attributes to default values, if necessary
@@ -614,10 +624,15 @@ def generate_constructor_for_class(
     """Generate a native function that allocates and initializes an instance of a class."""
     emitter.emit_line(f"{native_function_header(fn, emitter)}")
     emitter.emit_line("{")
-    emitter.emit_line(f"PyObject *self = {setup_name}({emitter.type_struct_name(cl)});")
-    emitter.emit_line("if (self == NULL)")
-    emitter.emit_line("    return NULL;")
-    args = ", ".join(["self"] + [REG_PREFIX + arg.name for arg in fn.sig.args])
+    if cl.is_value_type:
+        emitter.emit_line(f"{cl.struct_name(emitter.names)} self = {{0}};")
+        emitter.emit_line(f"self.vtable = {vtable_name};")
+        args = ", ".join(["(PyObject*)&self"] + [REG_PREFIX + arg.name for arg in fn.sig.args])
+    else:
+        emitter.emit_line(f"PyObject *self = {setup_name}({emitter.type_struct_name(cl)});")
+        emitter.emit_line("if (self == NULL)")
+        emitter.emit_line("    return NULL;")
+        args = ", ".join(["self"] + [REG_PREFIX + arg.name for arg in fn.sig.args])
     if init_fn is not None:
         emitter.emit_line(
             "char res = {}{}{}({});".format(
@@ -628,8 +643,12 @@ def generate_constructor_for_class(
             )
         )
         emitter.emit_line("if (res == 2) {")
-        emitter.emit_line("Py_DECREF(self);")
-        emitter.emit_line("return NULL;")
+        if cl.is_value_type:
+            emitter.emit_line("self.vtable = NULL;")
+            emitter.emit_line("return self;")
+        else:
+            emitter.emit_line("Py_DECREF(self);")
+            emitter.emit_line("return NULL;")
         emitter.emit_line("}")
 
     # If there is a nontrivial ctor that we didn't define, invoke it via tp_init
@@ -637,8 +656,12 @@ def generate_constructor_for_class(
         emitter.emit_line(f"int res = {emitter.type_struct_name(cl)}->tp_init({args});")
 
         emitter.emit_line("if (res < 0) {")
-        emitter.emit_line("Py_DECREF(self);")
-        emitter.emit_line("return NULL;")
+        if cl.is_value_type:
+            emitter.emit_line("self.vtable = NULL;")
+            emitter.emit_line("return self;")
+        else:
+            emitter.emit_line("Py_DECREF(self);")
+            emitter.emit_line("return NULL;")
         emitter.emit_line("}")
 
     emitter.emit_line("return self;")
@@ -931,11 +954,13 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
 
     if not always_defined:
-        emitter.emit_undefined_attr_check(rtype, attr_expr, "==", "self", attr, cl, unlikely=True)
+        clt = RInstance(cl)
+        emitter.emit_undefined_attr_check(rtype, attr_expr, "==", "self", attr, clt, unlikely=True)
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
         emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
         emitter.emit_line("return NULL;")
         emitter.emit_line("}")
+
     emitter.emit_inc_ref(f"self->{attr_field}", rtype)
     emitter.emit_box(f"self->{attr_field}", "retval", rtype, declare_dest=True)
     emitter.emit_line("return retval;")
@@ -970,7 +995,8 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if rtype.is_refcounted:
         attr_expr = f"self->{attr_field}"
         if not always_defined:
-            emitter.emit_undefined_attr_check(rtype, attr_expr, "!=", "self", attr, cl)
+            clt = RInstance(cl)
+            emitter.emit_undefined_attr_check(rtype, attr_expr, "!=", "self", attr, clt)
         emitter.emit_dec_ref(f"self->{attr_field}", rtype)
         if not always_defined:
             emitter.emit_line("}")
@@ -988,13 +1014,13 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     emitter.emit_inc_ref("tmp", rtype)
     emitter.emit_line(f"self->{attr_field} = tmp;")
     if rtype.error_overlap and not always_defined:
-        emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
+        emitter.emit_attr_bitmap_set("tmp", "self", rtype, RInstance(cl), attr)
 
     if deletable:
         emitter.emit_line("} else")
         emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
         if rtype.error_overlap:
-            emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
+            emitter.emit_attr_bitmap_clear("self", rtype, RInstance(cl), attr)
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
@@ -1009,19 +1035,22 @@ def generate_readonly_getter(
         )
     )
     emitter.emit_line("{")
+
+    arg0 = func_ir.args[0].type
+    obj = "*self" if isinstance(arg0, RInstanceValue) else "(PyObject *)self"
+
     if rtype.is_unboxed:
         emitter.emit_line(
-            "{}retval = {}{}((PyObject *) self);".format(
-                emitter.ctype_spaced(rtype), NATIVE_PREFIX, func_ir.cname(emitter.names)
+            "{}retval = {}{}({});".format(
+                emitter.ctype_spaced(rtype), NATIVE_PREFIX, func_ir.cname(emitter.names), obj
             )
         )
         emitter.emit_error_check("retval", rtype, "return NULL;")
         emitter.emit_box("retval", "retbox", rtype, declare_dest=True)
         emitter.emit_line("return retbox;")
     else:
-        emitter.emit_line(
-            f"return {NATIVE_PREFIX}{func_ir.cname(emitter.names)}((PyObject *) self);"
-        )
+        emitter.emit_line(f"return {NATIVE_PREFIX}{func_ir.cname(emitter.names)}({obj});")
+
     emitter.emit_line("}")
 
 

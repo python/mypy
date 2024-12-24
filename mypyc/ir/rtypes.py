@@ -49,8 +49,12 @@ class RType:
     #
     # TODO: This shouldn't be specific to C or a string
     c_undefined: str
-    # If unboxed: does the unboxed version use reference counting?
-    is_refcounted = True
+
+    @property
+    def is_refcounted(self) -> bool:
+        # If unboxed: does the unboxed version use reference counting?
+        return True
+
     # C type; use Emitter.ctype() to access
     _ctype: str
     # If True, error/undefined value overlaps with a valid value. To
@@ -98,6 +102,8 @@ def deserialize_type(data: JsonDict | str, ctx: DeserMaps) -> RType:
             return RVoid()
         else:
             assert False, f"Can't find class {data}"
+    elif data[".class"] == "RInstanceValue":
+        return RInstanceValue.deserialize(data, ctx)
     elif data[".class"] == "RTuple":
         return RTuple.deserialize(data, ctx)
     elif data[".class"] == "RUnion":
@@ -114,6 +120,10 @@ class RTypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_rinstance(self, typ: RInstance) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_rinstance_value(self, typ: RInstanceValue) -> T:
         raise NotImplementedError
 
     @abstractmethod
@@ -198,7 +208,7 @@ class RPrimitive(RType):
 
         self.name = name
         self.is_unboxed = is_unboxed
-        self.is_refcounted = is_refcounted
+        self._is_refcounted = is_refcounted
         self.is_native_int = is_native_int
         self.is_signed = is_signed
         self._ctype = ctype
@@ -226,6 +236,10 @@ class RPrimitive(RType):
             self.c_undefined = "239"  # An arbitrary number
         else:
             assert False, "Unrecognized ctype: %r" % ctype
+
+    @property
+    def is_refcounted(self) -> bool:
+        return self._is_refcounted
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rprimitive(self)
@@ -574,6 +588,9 @@ class TupleNameVisitor(RTypeVisitor[str]):
     def visit_rinstance(self, t: RInstance) -> str:
         return "O"
 
+    def visit_rinstance_value(self, typ: RInstanceValue) -> str:
+        return "O"
+
     def visit_runion(self, t: RUnion) -> str:
         return "O"
 
@@ -629,7 +646,7 @@ class RTuple(RType):
     def __init__(self, types: list[RType]) -> None:
         self.name = "tuple"
         self.types = tuple(types)
-        self.is_refcounted = any(t.is_refcounted for t in self.types)
+        self._is_refcounted = any(t.is_refcounted for t in self.types)
         # Generate a unique id which is used in naming corresponding C identifiers.
         # This is necessary since C does not have anonymous structural type equivalence
         # in the same way python can just assign a Tuple[int, bool] to a Tuple[int, bool].
@@ -638,6 +655,10 @@ class RTuple(RType):
         self.struct_name = f"tuple_{self.unique_id}"
         self._ctype = f"{self.struct_name}"
         self.error_overlap = all(t.error_overlap for t in self.types) and bool(self.types)
+
+    @property
+    def is_refcounted(self) -> bool:
+        return self._is_refcounted
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rtuple(self)
@@ -813,12 +834,17 @@ class RInstance(RType):
 
     is_unboxed = False
 
-    def __init__(self, class_ir: ClassIR) -> None:
+    def __init__(self, class_ir: ClassIR, is_refcounted: bool = True) -> None:
         # name is used for formatting the name in messages and debug output
         # so we want the fullname for precision.
         self.name = class_ir.fullname
         self.class_ir = class_ir
         self._ctype = "PyObject *"
+        self._is_refcounted = is_refcounted
+
+    @property
+    def is_refcounted(self) -> bool:
+        return self._is_refcounted
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rinstance(self)
@@ -842,13 +868,60 @@ class RInstance(RType):
         return "<RInstance %s>" % self.name
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, RInstance) and other.name == self.name
+        return (
+            isinstance(other, RInstance)
+            and not isinstance(other, RInstanceValue)
+            and other.name == self.name
+        )
 
     def __hash__(self) -> int:
         return hash(self.name)
 
-    def serialize(self) -> str:
+    def serialize(self) -> JsonDict | str:
         return self.name
+
+
+class RInstanceValue(RInstance):
+    """
+    Fixed-length unboxed Value Type.
+
+    These are used to represent unboxed values of RInstance which match
+    the Value Type constraints.
+
+    No error overlap happens in the Value Type because it is represented
+    with vtable == NULL.
+    """
+
+    is_unboxed = True
+
+    def __init__(self, class_ir: ClassIR) -> None:
+        super().__init__(class_ir)
+        self._ctype = self.class_ir.struct_name2()
+
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
+        return visitor.visit_rinstance_value(self)
+
+    @property
+    def is_refcounted(self) -> bool:
+        return any(t.is_refcounted for t in self.class_ir.all_attributes().values())
+
+    def __repr__(self) -> str:
+        return "<RInstanceValue %s>" % self.name
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RInstanceValue) and other.name == self.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
+    def serialize(self) -> JsonDict | str:
+        return {".class": "RInstanceValue", "cls": super().serialize()}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RInstanceValue:
+        dt = deserialize_type(data["cls"], ctx)
+        assert isinstance(dt, RInstance)
+        return RInstanceValue(dt.class_ir)
 
 
 class RUnion(RType):
@@ -948,7 +1021,10 @@ class RArray(RType):
         self.item_type = item_type
         # Number of items
         self.length = length
-        self.is_refcounted = False
+
+    @property
+    def is_refcounted(self) -> bool:
+        return False
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rarray(self)

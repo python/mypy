@@ -44,6 +44,7 @@ files = [
     "irbuild-i32.test",
     "irbuild-i16.test",
     "irbuild-u8.test",
+    "irbuild-valuetype.test",
     "irbuild-vectorcall.test",
     "irbuild-unreachable.test",
     "irbuild-isinstance.test",
@@ -69,6 +70,7 @@ class TestGenOps(MypycDataSuite):
         if options is None:
             # Skipped test case
             return
+        assert options.experimental_value_types
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
             expected_output = replace_word_size(expected_output)
