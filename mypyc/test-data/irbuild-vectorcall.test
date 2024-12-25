@@ -3,7 +3,7 @@
 -- Vectorcalls are faster than the legacy API, especially with keyword arguments,
 -- since there is no need to allocate a temporary dictionary for keyword args.
 
-[case testeVectorcallBasic_python3_8]
+[case testeVectorcallBasic]
 from typing import Any
 
 def f(c: Any) -> None:
@@ -26,7 +26,7 @@ L0:
     keep_alive r1, r2
     return 1
 
-[case testVectorcallKeywords_python3_8]
+[case testVectorcallKeywords]
 from typing import Any
 
 def f(c: Any) -> None:
@@ -60,7 +60,7 @@ L0:
     keep_alive r5, r6, r7
     return 1
 
-[case testVectorcallMethod_python3_8]
+[case testVectorcallMethod]
 from typing import Any
 
 def f(o: Any) -> None:
