@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Optional
 
 from mypy.nodes import MatchStmt, NameExpr, TypeInfo
 from mypy.patterns import (
@@ -57,7 +58,7 @@ class MatchVisitor(TraverserVisitor):
     subject: Value
     match: MatchStmt
 
-    as_pattern: Optional[AsPattern] = None
+    as_pattern: AsPattern | None = None
 
     def __init__(self, builder: IRBuilder, match_node: MatchStmt) -> None:
         self.builder = builder
@@ -340,9 +341,9 @@ class MatchVisitor(TraverserVisitor):
 
 def prep_sequence_pattern(
     seq_pattern: SequencePattern,
-) -> tuple[Optional[int], Optional[NameExpr], list[Pattern]]:
-    star_index: Optional[int] = None
-    capture: Optional[NameExpr] = None
+) -> tuple[int | None, NameExpr | None, list[Pattern]]:
+    star_index: int | None = None
+    capture: NameExpr | None = None
     patterns: list[Pattern] = []
 
     for i, pattern in enumerate(seq_pattern.patterns):
