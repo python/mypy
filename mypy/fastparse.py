@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import re
 import sys
 import warnings
@@ -241,13 +240,6 @@ def parse(
             path=fnam,
         ).visit(ast)
     except SyntaxError as e:
-        # alias to please mypyc
-        is_py38_or_earlier = sys.version_info < (3, 9)
-        if is_py38_or_earlier and e.filename == "<fstring>":
-            # In Python 3.8 and earlier, syntax errors in f-strings have lineno relative to the
-            # start of the f-string. This would be misleading, as mypy will report the error as the
-            # lineno within the file.
-            e.lineno = None
         message = e.msg
         if feature_version > sys.version_info.minor and message.startswith("invalid syntax"):
             python_version_str = f"{options.python_version[0]}.{options.python_version[1]}"
@@ -2069,40 +2061,15 @@ class TypeConverter:
     def visit_Slice(self, n: ast3.Slice) -> Type:
         return self.invalid_type(n, note="did you mean to use ',' instead of ':' ?")
 
-    # Subscript(expr value, slice slice, expr_context ctx)  # Python 3.8 and before
     # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
-        if sys.version_info >= (3, 9):  # Really 3.9a5 or later
-            sliceval: Any = n.slice
-        # Python 3.8 or earlier use a different AST structure for subscripts
-        elif isinstance(n.slice, ast3.Index):
-            sliceval: Any = n.slice.value
-        elif isinstance(n.slice, ast3.Slice):
-            sliceval = copy.deepcopy(n.slice)  # so we don't mutate passed AST
-            if getattr(sliceval, "col_offset", None) is None:
-                # Fix column information so that we get Python 3.9+ message order
-                sliceval.col_offset = sliceval.lower.col_offset
-        else:
-            assert isinstance(n.slice, ast3.ExtSlice)
-            dims = cast(List[ast3.expr], copy.deepcopy(n.slice.dims))
-            for s in dims:
-                # These fields don't actually have a col_offset attribute but we add
-                # it manually.
-                if getattr(s, "col_offset", None) is None:
-                    if isinstance(s, ast3.Index):
-                        s.col_offset = s.value.col_offset
-                    elif isinstance(s, ast3.Slice):
-                        assert s.lower is not None
-                        s.col_offset = s.lower.col_offset
-            sliceval = ast3.Tuple(dims, n.ctx)
-
         empty_tuple_index = False
-        if isinstance(sliceval, ast3.Tuple):
-            params = self.translate_expr_list(sliceval.elts)
-            if len(sliceval.elts) == 0:
+        if isinstance(n.slice, ast3.Tuple):
+            params = self.translate_expr_list(n.slice.elts)
+            if len(n.slice.elts) == 0:
                 empty_tuple_index = True
         else:
-            params = [self.visit(sliceval)]
+            params = [self.visit(n.slice)]
 
         value = self.visit(n.value)
         if isinstance(value, UnboundType) and not value.args:

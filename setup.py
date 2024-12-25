@@ -8,7 +8,7 @@ import os.path
 import sys
 from typing import TYPE_CHECKING, Any
 
-if sys.version_info < (3, 9, 0):
+if sys.version_info < (3, 9, 0):  # noqa: UP036, RUF100
     sys.stderr.write("ERROR: You need Python 3.9 or later to use mypy.\n")
     exit(1)
 
