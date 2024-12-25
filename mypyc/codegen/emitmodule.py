@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Iterable, List, Optional, Tuple, TypeVar
+from collections.abc import Iterable
+from typing import List, Optional, Tuple, TypeVar
 
 from mypy.build import (
     BuildResult,

@@ -16,9 +16,10 @@ import subprocess
 import tarfile
 import tempfile
 import venv
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 from urllib.request import urlopen
 
 BASE = "https://api.github.com/repos"

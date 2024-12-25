@@ -8,9 +8,10 @@ import subprocess
 import sys
 import time
 from collections import defaultdict
+from collections.abc import Sequence
 from gettext import gettext
 from io import TextIOWrapper
-from typing import IO, Any, Final, NoReturn, Sequence, TextIO
+from typing import IO, Any, Final, NoReturn, TextIO
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import (

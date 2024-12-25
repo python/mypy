@@ -47,7 +47,8 @@ import os
 import os.path
 import sys
 import traceback
-from typing import Final, Iterable, Iterator
+from collections.abc import Iterable, Iterator
+from typing import Final
 
 import mypy.build
 import mypy.mixedtraverser

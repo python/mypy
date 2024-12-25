@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Final, Iterable, Optional, Tuple
+from collections.abc import Iterable
+from typing import Any, Final, Optional, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import (

@@ -25,6 +25,7 @@ import stat
 import sys
 import time
 import types
+from collections.abc import Iterator, Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     AbstractSet,
@@ -33,11 +34,8 @@ from typing import (
     ClassVar,
     Dict,
     Final,
-    Iterator,
-    Mapping,
     NamedTuple,
     NoReturn,
-    Sequence,
     TextIO,
 )
 from typing_extensions import TypeAlias as _TypeAlias, TypedDict

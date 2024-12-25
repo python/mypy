@@ -11,7 +11,8 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from mypy import build
 from mypy.errors import CompileError

@@ -12,7 +12,8 @@ value has a type (RType). A value can hold various things, such as:
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Final, Generic, List, NamedTuple, Sequence, TypeVar, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Final, Generic, List, NamedTuple, TypeVar, Union
 
 from mypy_extensions import trait
 

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import functools
 import os
-from typing import Final, Sequence
+from collections.abc import Sequence
+from typing import Final
 
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import PYTHON_EXTENSIONS, BuildSource, matches_exclude, mypy_path

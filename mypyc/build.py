@@ -25,7 +25,8 @@ import os.path
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, Union, cast
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, Dict, NoReturn, Union, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError

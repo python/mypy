@@ -13,7 +13,8 @@ implementation simple.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Callable, Dict, Final, Match, Pattern, Tuple, Union, cast
+from re import Match, Pattern
+from typing import TYPE_CHECKING, Callable, Dict, Final, Tuple, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes

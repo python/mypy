@@ -18,7 +18,8 @@ into a regular, owned reference that needs to freed before return.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, Tuple
+from collections.abc import Iterable
+from typing import Dict, Tuple
 
 from mypyc.analysis.dataflow import (
     AnalysisDict,

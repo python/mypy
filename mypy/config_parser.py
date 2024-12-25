@@ -15,20 +15,8 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Final,
-    Iterable,
-    List,
-    Mapping,
-    MutableMapping,
-    Sequence,
-    TextIO,
-    Tuple,
-    Union,
-)
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
+from typing import Any, Callable, Dict, Final, List, TextIO, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import defaults
