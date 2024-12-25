@@ -17,12 +17,12 @@ def f(c):
     r4 :: object_ptr
     r5 :: object
 L0:
-    r0 = _PyObject_Vectorcall(c, 0, 0, 0)
+    r0 = PyObject_Vectorcall(c, 0, 0, 0)
     r1 = 'x'
     r2 = 'y'
     r3 = [r1, r2]
     r4 = load_address r3
-    r5 = _PyObject_Vectorcall(c, r4, 2, 0)
+    r5 = PyObject_Vectorcall(c, r4, 2, 0)
     keep_alive r1, r2
     return 1
 
@@ -48,7 +48,7 @@ L0:
     r1 = [r0]
     r2 = load_address r1
     r3 = ('x',)
-    r4 = _PyObject_Vectorcall(c, r2, 0, r3)
+    r4 = PyObject_Vectorcall(c, r2, 0, r3)
     keep_alive r0
     r5 = 'x'
     r6 = 'y'
@@ -56,7 +56,7 @@ L0:
     r8 = [r5, r6, r7]
     r9 = load_address r8
     r10 = ('a', 'b')
-    r11 = _PyObject_Vectorcall(c, r9, 1, r10)
+    r11 = PyObject_Vectorcall(c, r9, 1, r10)
     keep_alive r5, r6, r7
     return 1
 
@@ -88,7 +88,7 @@ L0:
     r7 = [r3, r4]
     r8 = load_address r7
     r9 = ('a',)
-    r10 = _PyObject_Vectorcall(r6, r8, 1, r9)
+    r10 = PyObject_Vectorcall(r6, r8, 1, r9)
     keep_alive r3, r4
     return 1
 
