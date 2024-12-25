@@ -176,7 +176,7 @@ L1:
     r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L3 (error at g:3) else goto L2
 L2:
-    r3 = _PyObject_Vectorcall(r2, 0, 0, 0)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
     dec_ref r2
     if is_error(r3) goto L3 (error at g:3) else goto L10
 L3:
@@ -189,7 +189,7 @@ L3:
 L4:
     r9 = [r5]
     r10 = load_address r9
-    r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
+    r11 = PyObject_Vectorcall(r8, r10, 1, 0)
     dec_ref r8
     if is_error(r11) goto L6 (error at g:5) else goto L11
 L5:
@@ -247,7 +247,7 @@ L1:
     r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L5 (error at a:3) else goto L2
 L2:
-    r3 = _PyObject_Vectorcall(r2, 0, 0, 0)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
     dec_ref r2
     if is_error(r3) goto L5 (error at a:3) else goto L19
 L3:
@@ -272,7 +272,7 @@ L6:
 L7:
     r14 = [r10]
     r15 = load_address r14
-    r16 = _PyObject_Vectorcall(r13, r15, 1, 0)
+    r16 = PyObject_Vectorcall(r13, r15, 1, 0)
     dec_ref r13
     if is_error(r16) goto L20 (error at a:6) else goto L21
 L8:
@@ -491,7 +491,7 @@ L6:
 L7:
     r9 = [v]
     r10 = load_address r9
-    r11 = _PyObject_Vectorcall(r7, r10, 1, 0)
+    r11 = PyObject_Vectorcall(r7, r10, 1, 0)
     dec_ref r7
     if is_error(r11) goto L15 (error at f:7) else goto L17
 L8:

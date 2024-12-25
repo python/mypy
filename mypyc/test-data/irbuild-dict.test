@@ -373,7 +373,7 @@ L2:
     r12 = load_address PyLong_Type
     r13 = [v]
     r14 = load_address r13
-    r15 = _PyObject_Vectorcall(r12, r14, 1, 0)
+    r15 = PyObject_Vectorcall(r12, r14, 1, 0)
     keep_alive v
     r16 = unbox(int, r15)
     r17 = box(int, r16)

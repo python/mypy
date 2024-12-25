@@ -205,7 +205,7 @@ L1:
     r0 = builtins :: module
     r1 = 'ValueError'
     r2 = CPyObject_GetAttr(r0, r1)
-    r3 = _PyObject_Vectorcall(r2, 0, 0, 0)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
     CPy_Raise(r3)
     unreachable
 L2:
@@ -241,7 +241,7 @@ L3:
     r4 = CPyObject_GetAttr(r2, r3)
     r5 = [r1]
     r6 = load_address r5
-    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
     keep_alive r1
 L4:
     return 4

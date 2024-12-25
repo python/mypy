@@ -673,7 +673,7 @@ L2:
     r6 = CPyObject_GetAttr(r4, r5)
     r7 = [s]
     r8 = load_address r7
-    r9 = _PyObject_Vectorcall(r6, r8, 1, 0)
+    r9 = PyObject_Vectorcall(r6, r8, 1, 0)
     keep_alive s
     CPy_Raise(r9)
     unreachable

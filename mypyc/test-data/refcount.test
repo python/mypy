@@ -695,7 +695,7 @@ L0:
     r2 = [x, r1]
     r3 = load_address r2
     r4 = ('base',)
-    r5 = _PyObject_Vectorcall(r0, r3, 1, r4)
+    r5 = PyObject_Vectorcall(r0, r3, 1, r4)
     r6 = unbox(int, r5)
     dec_ref r5
     return r6
@@ -890,7 +890,7 @@ L0:
     r0 = box(int, x)
     r1 = [r0]
     r2 = load_address r1
-    r3 = _PyObject_Vectorcall(f, r2, 1, 0)
+    r3 = PyObject_Vectorcall(f, r2, 1, 0)
     dec_ref r0
     r4 = unbox(int, r3)
     dec_ref r3
