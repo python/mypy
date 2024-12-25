@@ -328,7 +328,7 @@ a: A
 a.x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 
 [case testErrorCodeMissingTypeArg]
-# flags: --disallow-any-generics
+# flags: --python-version 3.8 --disallow-any-generics
 from typing import List, TypeVar
 x: List  # E: Missing type parameters for generic type "List"  [type-arg]
 y: list  # E: Implicit generic "Any". Use "typing.List" and specify generic parameters  [type-arg]
