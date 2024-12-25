@@ -750,7 +750,7 @@ L0:
     r1 = b'1234'
     return r1
 
-[case testPyMethodCall1]
+[case testPyMethodCall1_64bit]
 from typing import Any
 def f(x: Any) -> int:
     y: int = x.pop()
@@ -759,20 +759,30 @@ def f(x: Any) -> int:
 def f(x):
     x :: object
     r0 :: str
-    r1 :: object
-    r2, y :: int
-    r3 :: str
-    r4 :: object
-    r5 :: int
+    r1 :: object[1]
+    r2 :: object_ptr
+    r3 :: object
+    r4, y :: int
+    r5 :: str
+    r6 :: object[1]
+    r7 :: object_ptr
+    r8 :: object
+    r9 :: int
 L0:
     r0 = 'pop'
-    r1 = CPyObject_CallMethodObjArgs(x, r0, 0)
-    r2 = unbox(int, r1)
-    y = r2
-    r3 = 'pop'
-    r4 = CPyObject_CallMethodObjArgs(x, r3, 0)
-    r5 = unbox(int, r4)
-    return r5
+    r1 = [x]
+    r2 = load_address r1
+    r3 = PyObject_VectorcallMethod(r0, r2, 9223372036854775809, 0)
+    keep_alive x
+    r4 = unbox(int, r3)
+    y = r4
+    r5 = 'pop'
+    r6 = [x]
+    r7 = load_address r6
+    r8 = PyObject_VectorcallMethod(r5, r7, 9223372036854775809, 0)
+    keep_alive x
+    r9 = unbox(int, r8)
+    return r9
 
 [case testObjectType]
 def g(y: object) -> None:
@@ -1167,7 +1177,7 @@ L0:
     r2 = unbox(float, r1)
     return r2
 
-[case testCallableTypesWithKeywordArgs]
+[case testCallableTypesWithKeywordArgs_64bit]
 from typing import List
 
 def call_python_function_with_keyword_arg(x: str) -> int:
@@ -1200,34 +1210,32 @@ def call_python_method_with_keyword_args(xs, first, second):
     xs :: list
     first, second :: int
     r0 :: str
-    r1, r2, r3 :: object
-    r4 :: object[2]
-    r5 :: object_ptr
-    r6, r7 :: object
-    r8 :: str
-    r9, r10, r11 :: object
-    r12 :: object[2]
-    r13 :: object_ptr
-    r14, r15 :: object
+    r1, r2 :: object
+    r3 :: object[3]
+    r4 :: object_ptr
+    r5, r6 :: object
+    r7 :: str
+    r8, r9 :: object
+    r10 :: object[3]
+    r11 :: object_ptr
+    r12, r13 :: object
 L0:
     r0 = 'insert'
-    r1 = CPyObject_GetAttr(xs, r0)
-    r2 = object 0
-    r3 = box(int, first)
-    r4 = [r2, r3]
-    r5 = load_address r4
-    r6 = ('x',)
-    r7 = PyObject_Vectorcall(r1, r5, 1, r6)
-    keep_alive r2, r3
-    r8 = 'insert'
-    r9 = CPyObject_GetAttr(xs, r8)
-    r10 = box(int, second)
-    r11 = object 1
-    r12 = [r10, r11]
-    r13 = load_address r12
-    r14 = ('x', 'i')
-    r15 = PyObject_Vectorcall(r9, r13, 0, r14)
-    keep_alive r10, r11
+    r1 = object 0
+    r2 = box(int, first)
+    r3 = [xs, r1, r2]
+    r4 = load_address r3
+    r5 = ('x',)
+    r6 = PyObject_VectorcallMethod(r0, r4, 9223372036854775810, r5)
+    keep_alive xs, r1, r2
+    r7 = 'insert'
+    r8 = box(int, second)
+    r9 = object 1
+    r10 = [xs, r8, r9]
+    r11 = load_address r10
+    r12 = ('x', 'i')
+    r13 = PyObject_VectorcallMethod(r7, r11, 9223372036854775809, r12)
+    keep_alive xs, r8, r9
     return xs
 
 [case testObjectAsBoolean]

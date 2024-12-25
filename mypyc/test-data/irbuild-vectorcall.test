@@ -60,39 +60,7 @@ L0:
     keep_alive r5, r6, r7
     return 1
 
-[case testVectorcallMethod]
-from typing import Any
-
-def f(o: Any) -> None:
-    # On Python 3.8 vectorcalls are only faster with keyword args
-    o.m('x')
-    o.m('x', a='y')
-[out]
-def f(o):
-    o :: object
-    r0, r1 :: str
-    r2 :: object
-    r3, r4, r5 :: str
-    r6 :: object
-    r7 :: object[2]
-    r8 :: object_ptr
-    r9, r10 :: object
-L0:
-    r0 = 'x'
-    r1 = 'm'
-    r2 = CPyObject_CallMethodObjArgs(o, r1, r0, 0)
-    r3 = 'x'
-    r4 = 'y'
-    r5 = 'm'
-    r6 = CPyObject_GetAttr(o, r5)
-    r7 = [r3, r4]
-    r8 = load_address r7
-    r9 = ('a',)
-    r10 = PyObject_Vectorcall(r6, r8, 1, r9)
-    keep_alive r3, r4
-    return 1
-
-[case testVectorcallMethod_python3_9_64bit]
+[case testVectorcallMethod_64bit]
 from typing import Any
 
 def f(o: Any) -> None:
@@ -128,7 +96,7 @@ L0:
     keep_alive o, r5, r6, r7
     return 1
 
-[case testVectorcallMethod_python3_9_32bit]
+[case testVectorcallMethod_32bit]
 from typing import Any
 
 def f(o: Any) -> None:
