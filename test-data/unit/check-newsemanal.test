@@ -3241,3 +3241,54 @@ class b:
 x = x[1]  # E: Cannot resolve name "x" (possible cyclic definition)
 y = 1[y]  # E: Value of type "int" is not indexable \
           # E: Cannot determine type of "y"
+
+[case testBuiltinTypeType]
+# flags: --python-version 3.10 --disallow-any-generics
+
+import types
+from typing import Any, cast, Union, TypeVar
+from typing_extensions import TypeAlias
+
+a: type  # E: Missing type parameters for generic type "type"
+reveal_type(a)  # N: Revealed type is "Type[Any]"
+
+b: Any
+c = cast(type, b)  # E: Missing type parameters for generic type "type"
+reveal_type(c)  # N: Revealed type is "Type[Any]"
+
+d: list[type]  # E: Missing type parameters for generic type "type"
+reveal_type(d)  # N: Revealed type is "builtins.list[Type[Any]]"
+
+class E(list[type]): ...  # E: Missing type parameters for generic type "type"
+reveal_type(E()[0])  # N: Revealed type is "Type[Any]"
+
+class F(tuple[type]): ...  # E: Missing type parameters for generic type "type"
+reveal_type(F()[0])  # N: Revealed type is "Type[Any]"
+
+class G(tuple[list[Union[type, int]], ...]): ...  # E: Missing type parameters for generic type "type"
+reveal_type(G()[0])  # N: Revealed type is "builtins.list[Union[Type[Any], builtins.int]]"
+
+h: Union[type, int]  # E: Missing type parameters for generic type "type"
+reveal_type(h)  # N: Revealed type is "Union[Type[Any], builtins.int]"
+
+i: type | int  # E: Missing type parameters for generic type "type"
+reveal_type(i)  # N: Revealed type is "Union[Type[Any], builtins.int]"
+
+j: TypeAlias = type  # E: Missing type parameters for generic type "type"
+class K(metaclass=j): ...  # E: Invalid metaclass "j"
+l: j
+reveal_type(l)  # N: Revealed type is "Type[Any]"
+
+m = type
+class N(metaclass=m): ...
+
+O = TypeVar("O", bound=type)  # E: Missing type parameters for generic type "type"
+def p(q: O) -> O: ...
+reveal_type(p(str))  # N: Revealed type is "def () -> builtins.str"
+p(1)  # E: Value of type variable "O" of "p" cannot be "int"
+
+type[str](1)  # E: "GenericAlias" not callable
+r = type[str]("r", (), {})  # E: "GenericAlias" not callable
+class S(type[str]): ...  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
+
+[builtins fixtures/tuple.pyi]

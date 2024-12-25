@@ -107,7 +107,7 @@ reveal_type(t6)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 reveal_type(t7)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 reveal_type(t8)  # N: Revealed type is "builtins.dict[Any, Any]"
 reveal_type(t9)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
-reveal_type(t10)  # N: Revealed type is "builtins.type"
+reveal_type(t10)  # N: Revealed type is "Type[Any]"
 reveal_type(t11)  # N: Revealed type is "Type[builtins.int]"
 [builtins fixtures/dict.pyi]
 

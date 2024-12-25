@@ -313,14 +313,14 @@ def assert_equal(a: object, b: object, fmt: str = "{} != {}") -> None:
         raise AssertionError(fmt.format(good_repr(a), good_repr(b)))
 
 
-def typename(t: type) -> str:
+def typename(t: type[object]) -> str:
     if "." in str(t):
         return str(t).split(".")[-1].rstrip("'>")
     else:
         return str(t)[8:-2]
 
 
-def assert_type(typ: type, value: object) -> None:
+def assert_type(typ: type[object], value: object) -> None:
     __tracebackhide__ = True
     if type(value) != typ:
         raise AssertionError(f"Invalid type {typename(type(value))}, expected {typename(typ)}")

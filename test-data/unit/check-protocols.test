@@ -323,6 +323,50 @@ var: MyHashable = C()  # E: Incompatible types in assignment (expression has typ
                        # N: Following member(s) of "C" have conflicts: \
                        # N:     __my_hash__: expected "Callable[[], int]", got "None"
 
+[case testTypeTypeIsHashable]
+# flags: --python-version 3.9
+
+from typing import Any, Hashable
+
+def f(x: Hashable) -> None: ...
+
+def g0(x: type[Any]) -> None:
+    f(x)
+
+class C1: ...
+def g1(x: type[C1]) -> None:
+    f(x)
+
+class C2(metaclass=type): ...
+def g2(x: type[C2]) -> None:
+    f(x)
+
+class M1(type): ...
+class C3(metaclass=M1): ...
+def g3(x: type[C3]) -> None:
+    f(x)
+
+class M2(M1):
+    __hash__ = None
+class C4(metaclass=M2): ...
+def g4(x: type[C4]) -> None:
+    f(x)  # E: Argument 1 to "f" has incompatible type "Type[C4]"; expected "Hashable"
+
+class M3(M1):
+    def __hash__(self) -> None: ...
+class C5(metaclass=M3): ...
+def g5(x: type[C5]) -> None:
+    f(x)  # E: Argument 1 to "f" has incompatible type "Type[C5]"; expected "Hashable"
+
+class M4(M3):
+    def __hash__(self) -> int: ...  # type: ignore
+class C6(metaclass=M4): ...
+def g6(x: type[C6]) -> None:
+    f(x)
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testNoneDisablesProtocolSubclassingWithStrictOptional]
 from typing import Protocol
 

@@ -422,6 +422,13 @@ class MessageBuilder:
             # Indexed get.
             # TODO: Fix this consistently in format_type
             if isinstance(original_type, FunctionLike) and original_type.is_type_obj():
+                if (
+                    isinstance(original_type, CallableType)
+                    and isinstance(ret_type := get_proper_type(original_type.ret_type), Instance)
+                    and (ret_type.type.fullname == "builtins.type")
+                ):
+                    self.fail(message_registry.BUILTIN_TYPE_USED_AS_GENERIC, context)
+                    return None
                 self.fail(
                     "The type {} is not generic and not indexable".format(
                         format_type(original_type, self.options)
@@ -2116,7 +2123,7 @@ class MessageBuilder:
         # note:     method, attr
         MAX_ITEMS = 2  # Maximum number of conflicts, missing members, and overloads shown
         # List of special situations where we don't want to report additional problems
-        exclusions: dict[type, list[str]] = {
+        exclusions: dict[type[object], list[str]] = {
             TypedDictType: ["typing.Mapping"],
             TupleType: ["typing.Iterable", "typing.Sequence"],
         }

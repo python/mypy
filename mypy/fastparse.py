@@ -384,7 +384,7 @@ class ASTConverter:
         self.type_ignores: dict[int, list[str]] = {}
 
         # Cache of visit_X methods keyed by type of visited object
-        self.visitor_cache: dict[type, Callable[[AST | None], Any]] = {}
+        self.visitor_cache: dict[type[object], Callable[[AST | None], Any]] = {}
 
     def note(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, severity="note", code=codes.SYNTAX)

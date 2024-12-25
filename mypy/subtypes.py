@@ -1096,6 +1096,30 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 #       of x is Type[int]. It's unclear what's the right way to address this.
                 return True
             item = left.item
+            if (
+                right.type.is_protocol
+                and len(right.type.protocol_members) == 1
+                and right.type.protocol_members[0] == "__hash__"
+                and (symtab := right.type.get("__hash__")) is not None
+                and isinstance(hash_ := get_proper_type(symtab.type), CallableType)
+                and len(hash_.arg_names) == 1
+                and hash_.arg_names[0] == "self"
+                and isinstance(ret := get_proper_type(hash_.ret_type), Instance)
+                and ret.type.fullname == "builtins.int"
+            ):
+                if isinstance(item, AnyType):
+                    return True
+                if isinstance(item, Instance):
+                    if (mtype := item.type.metaclass_type) is None or (
+                        mtype.type.get("__hash__") is None
+                    ):
+                        return True
+                    supertype = get_proper_type(find_member("__hash__", right, mtype))
+                    assert supertype is not None
+                    subtype = mypy.typeops.get_protocol_member(mtype, "__hash__", False)
+                    assert subtype is not None
+                    if is_subtype(subtype, supertype, ignore_pos_arg_names=True):
+                        return True
             if isinstance(item, TypeVarType):
                 item = get_proper_type(item.upper_bound)
             if isinstance(item, Instance):

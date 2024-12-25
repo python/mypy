@@ -1,7 +1,18 @@
 # Builtins stub used in tuple-related test cases.
 
 import _typeshed
-from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Optional, overload, Tuple, Type
+from typing import (
+    Any,
+    Iterable,
+    Iterator,
+    TypeVar,
+    Generic,
+    Sequence,
+    Optional,
+    overload,
+    Tuple,
+    Type,
+)
 
 _T = TypeVar("_T")
 _Tco = TypeVar('_Tco', covariant=True)
@@ -48,7 +59,7 @@ class list(Sequence[_T], Generic[_T]):
     def __contains__(self, item: object) -> bool: ...
     def __iter__(self) -> Iterator[_T]: ...
 
-def isinstance(x: object, t: type) -> bool: pass
+def isinstance(x: object, t: type[Any]) -> bool: pass  # type: ignore[misc]
 
 class BaseException: pass
 

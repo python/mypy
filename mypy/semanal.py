@@ -2543,7 +2543,10 @@ class SemanticAnalyzer(
 
             try:
                 base = self.expr_to_analyzed_type(
-                    base_expr, allow_placeholder=True, allow_type_any=True
+                    base_expr,
+                    allow_placeholder=True,
+                    allow_type_any=True,
+                    builtin_type_is_type_type=not refers_to_fullname(base_expr, "builtins.type"),
                 )
             except TypeTranslationError:
                 name = self.get_name_repr_of_expr(base_expr)
@@ -2593,10 +2596,14 @@ class SemanticAnalyzer(
             elif isinstance(base, TypedDictType):
                 base_types.append(base.fallback)
             else:
-                msg = "Invalid base class"
-                name = self.get_name_repr_of_expr(base_expr)
-                if name:
-                    msg += f' "{name}"'
+                if isinstance(base_expr, IndexExpr) and refers_to_fullname(
+                    base_expr.base, "builtins.type"
+                ):
+                    msg = message_registry.BUILTIN_TYPE_USED_AS_GENERIC
+                else:
+                    msg = "Invalid base class"
+                    if name := self.get_name_repr_of_expr(base_expr):
+                        msg += f' "{name}"'
                 self.fail(msg, base_expr)
                 info.fallback_to_any = True
             if self.options.disallow_any_unimported and has_any_from_unimported_type(base):
@@ -3864,6 +3871,7 @@ class SemanticAnalyzer(
         name: str,
         rvalue: Expression,
         allow_placeholder: bool = False,
+        builtin_type_is_type_type: bool = False,
         declared_type_vars: TypeVarLikeList | None = None,
         all_declared_type_params_names: list[str] | None = None,
         python_3_12_type_alias: bool = False,
@@ -3913,6 +3921,7 @@ class SemanticAnalyzer(
                 in_dynamic_func=dynamic,
                 global_scope=global_scope,
                 allowed_alias_tvars=tvar_defs,
+                builtin_type_is_type_type=builtin_type_is_type_type,
                 alias_type_params_names=all_declared_type_params_names,
                 python_3_12_type_alias=python_3_12_type_alias,
             )
@@ -4032,6 +4041,9 @@ class SemanticAnalyzer(
                 lvalue.name,
                 rvalue,
                 allow_placeholder=True,
+                builtin_type_is_type_type=(
+                    (s.type is not None) or not refers_to_fullname(s.rvalue, "builtins.type")
+                ),
                 declared_type_vars=type_params,
                 all_declared_type_params_names=all_type_params_names,
             )
@@ -7306,6 +7318,7 @@ class SemanticAnalyzer(
         allow_unbound_tvars: bool = False,
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
+        builtin_type_is_type_type: bool = True,
     ) -> Type | None:
         if isinstance(expr, CallExpr):
             # This is a legacy syntax intended mostly for Python 2, we keep it for
@@ -7337,6 +7350,9 @@ class SemanticAnalyzer(
             allow_unbound_tvars=allow_unbound_tvars,
             allow_param_spec_literals=allow_param_spec_literals,
             allow_unpack=allow_unpack,
+            builtin_type_is_type_type=(
+                builtin_type_is_type_type or not refers_to_fullname(expr, "builtins.type")
+            ),
         )
 
     def analyze_type_expr(self, expr: Expression) -> None:
@@ -7363,6 +7379,7 @@ class SemanticAnalyzer(
         prohibit_self_type: str | None = None,
         prohibit_special_class_field_types: str | None = None,
         allow_type_any: bool = False,
+        builtin_type_is_type_type: bool = True,
     ) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
@@ -7383,6 +7400,7 @@ class SemanticAnalyzer(
             prohibit_self_type=prohibit_self_type,
             prohibit_special_class_field_types=prohibit_special_class_field_types,
             allow_type_any=allow_type_any,
+            builtin_type_is_type_type=builtin_type_is_type_type,
         )
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
@@ -7408,6 +7426,7 @@ class SemanticAnalyzer(
         prohibit_self_type: str | None = None,
         prohibit_special_class_field_types: str | None = None,
         allow_type_any: bool = False,
+        builtin_type_is_type_type: bool = True,
     ) -> Type | None:
         """Semantically analyze a type.
 
@@ -7444,6 +7463,7 @@ class SemanticAnalyzer(
             prohibit_self_type=prohibit_self_type,
             prohibit_special_class_field_types=prohibit_special_class_field_types,
             allow_type_any=allow_type_any,
+            builtin_type_is_type_type=builtin_type_is_type_type,
         )
         tag = self.track_incomplete_refs()
         typ = typ.accept(a)
