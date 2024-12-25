@@ -496,7 +496,7 @@ L0:
     r3 = box(int, x)
     r4 = [r3]
     r5 = load_address r4
-    r6 = _PyObject_Vectorcall(r2, r5, 1, 0)
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
     keep_alive r3
     r7 = unbox(int, r6)
     return r7
@@ -587,7 +587,7 @@ L2:
     r33 = single :: module
     r34 = 'hello'
     r35 = CPyObject_GetAttr(r33, r34)
-    r36 = _PyObject_Vectorcall(r35, 0, 0, 0)
+    r36 = PyObject_Vectorcall(r35, 0, 0, 0)
     return 1
 
 [case testFromImport_toplevel]
@@ -626,19 +626,19 @@ L0:
     r3 = box(int, x)
     r4 = [r3]
     r5 = load_address r4
-    r6 = _PyObject_Vectorcall(r2, r5, 1, 0)
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
     keep_alive r3
     r7 = unbox(int, r6)
     r8 = __main__.globals :: static
     r9 = 'h'
     r10 = CPyDict_GetItem(r8, r9)
-    r11 = _PyObject_Vectorcall(r10, 0, 0, 0)
+    r11 = PyObject_Vectorcall(r10, 0, 0, 0)
     r12 = unbox(int, r11)
     r13 = CPyTagged_Add(r7, r12)
     r14 = __main__.globals :: static
     r15 = 'two'
     r16 = CPyDict_GetItem(r14, r15)
-    r17 = _PyObject_Vectorcall(r16, 0, 0, 0)
+    r17 = PyObject_Vectorcall(r16, 0, 0, 0)
     r18 = unbox(int, r17)
     r19 = CPyTagged_Add(r13, r18)
     return r19
@@ -696,7 +696,7 @@ L0:
     r3 = object 5
     r4 = [r3]
     r5 = load_address r4
-    r6 = _PyObject_Vectorcall(r2, r5, 1, 0)
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
     keep_alive r3
     return 1
 
@@ -720,7 +720,7 @@ L0:
     r3 = object 5
     r4 = [r3]
     r5 = load_address r4
-    r6 = _PyObject_Vectorcall(r2, r5, 1, 0)
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
     keep_alive r3
     return 1
 
@@ -1141,7 +1141,7 @@ L0:
     r3 = box(int, x)
     r4 = [r3]
     r5 = load_address r4
-    r6 = _PyObject_Vectorcall(r2, r5, 1, 0)
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
     keep_alive r3
     r7 = unbox(int, r6)
     return r7
@@ -1163,7 +1163,7 @@ def call_callable_type():
 L0:
     r0 = return_callable_type()
     f = r0
-    r1 = _PyObject_Vectorcall(f, 0, 0, 0)
+    r1 = PyObject_Vectorcall(f, 0, 0, 0)
     r2 = unbox(float, r1)
     return r2
 
@@ -1192,7 +1192,7 @@ L0:
     r2 = [x, r1]
     r3 = load_address r2
     r4 = ('base',)
-    r5 = _PyObject_Vectorcall(r0, r3, 1, r4)
+    r5 = PyObject_Vectorcall(r0, r3, 1, r4)
     keep_alive x, r1
     r6 = unbox(int, r5)
     return r6
@@ -1217,7 +1217,7 @@ L0:
     r4 = [r2, r3]
     r5 = load_address r4
     r6 = ('x',)
-    r7 = _PyObject_Vectorcall(r1, r5, 1, r6)
+    r7 = PyObject_Vectorcall(r1, r5, 1, r6)
     keep_alive r2, r3
     r8 = 'insert'
     r9 = CPyObject_GetAttr(xs, r8)
@@ -1226,7 +1226,7 @@ L0:
     r12 = [r10, r11]
     r13 = load_address r12
     r14 = ('x', 'i')
-    r15 = _PyObject_Vectorcall(r9, r13, 0, r14)
+    r15 = PyObject_Vectorcall(r9, r13, 0, r14)
     keep_alive r10, r11
     return xs
 
@@ -1393,7 +1393,7 @@ L0:
     r0 = builtins :: module
     r1 = 'Exception'
     r2 = CPyObject_GetAttr(r0, r1)
-    r3 = _PyObject_Vectorcall(r2, 0, 0, 0)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
     CPy_Raise(r3)
     unreachable
 def bar():
@@ -1436,7 +1436,7 @@ L0:
     r7 = box(int, r3)
     r8 = [r7]
     r9 = load_address r8
-    r10 = _PyObject_Vectorcall(r6, r9, 1, 0)
+    r10 = PyObject_Vectorcall(r6, r9, 1, 0)
     keep_alive r7
     return 1
 def __top_level__():
@@ -1484,7 +1484,7 @@ L2:
     r17 = box(int, r13)
     r18 = [r17]
     r19 = load_address r18
-    r20 = _PyObject_Vectorcall(r16, r19, 1, 0)
+    r20 = PyObject_Vectorcall(r16, r19, 1, 0)
     keep_alive r17
     return 1
 
@@ -1514,7 +1514,7 @@ L0:
     r3 = object 1
     r4 = [r3]
     r5 = load_address r4
-    r6 = _PyObject_Vectorcall(r2, r5, 1, 0)
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
     keep_alive r3
     r7 = cast(str, r6)
     return r7
@@ -2269,7 +2269,7 @@ L2:
     r22 = CPyDict_GetItem(r20, r21)
     r23 = [r9, r19]
     r24 = load_address r23
-    r25 = _PyObject_Vectorcall(r22, r24, 2, 0)
+    r25 = PyObject_Vectorcall(r22, r24, 2, 0)
     keep_alive r9, r19
     r26 = __main__.globals :: static
     r27 = 'Lol'
@@ -2282,7 +2282,7 @@ L2:
     r34 = object 1
     r35 = [r34, r30]
     r36 = load_address r35
-    r37 = _PyObject_Vectorcall(r33, r36, 2, 0)
+    r37 = PyObject_Vectorcall(r33, r36, 2, 0)
     keep_alive r34, r30
     r38 = cast(tuple, r37)
     r39 = __main__.globals :: static
@@ -2307,7 +2307,7 @@ L2:
     r58 = CPyDict_GetItem(r56, r57)
     r59 = [r52, r55]
     r60 = load_address r59
-    r61 = _PyObject_Vectorcall(r58, r60, 2, 0)
+    r61 = PyObject_Vectorcall(r58, r60, 2, 0)
     keep_alive r52, r55
     r62 = __main__.globals :: static
     r63 = 'Bar'
@@ -2458,17 +2458,17 @@ L0:
     r4 = CPyObject_GetAttr(r2, r3)
     r5 = [r1]
     r6 = load_address r5
-    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
     keep_alive r1
     r8 = r0.f
-    r9 = _PyObject_Vectorcall(r8, 0, 0, 0)
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
     r10 = 'Exited'
     r11 = builtins :: module
     r12 = 'print'
     r13 = CPyObject_GetAttr(r11, r12)
     r14 = [r10]
     r15 = load_address r14
-    r16 = _PyObject_Vectorcall(r13, r15, 1, 0)
+    r16 = PyObject_Vectorcall(r13, r15, 1, 0)
     keep_alive r10
     return 1
 def a(f):
@@ -2523,17 +2523,17 @@ L0:
     r4 = CPyObject_GetAttr(r2, r3)
     r5 = [r1]
     r6 = load_address r5
-    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
     keep_alive r1
     r8 = r0.f
-    r9 = _PyObject_Vectorcall(r8, 0, 0, 0)
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
     r10 = '---'
     r11 = builtins :: module
     r12 = 'print'
     r13 = CPyObject_GetAttr(r11, r12)
     r14 = [r10]
     r15 = load_address r14
-    r16 = _PyObject_Vectorcall(r13, r15, 1, 0)
+    r16 = PyObject_Vectorcall(r13, r15, 1, 0)
     keep_alive r10
     return 1
 def b(f):
@@ -2581,7 +2581,7 @@ L0:
     r4 = CPyObject_GetAttr(r2, r3)
     r5 = [r1]
     r6 = load_address r5
-    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
     keep_alive r1
     return 1
 def c():
@@ -2620,14 +2620,14 @@ L0:
     r5 = CPyDict_GetItem(r3, r4)
     r6 = [r1]
     r7 = load_address r6
-    r8 = _PyObject_Vectorcall(r5, r7, 1, 0)
+    r8 = PyObject_Vectorcall(r5, r7, 1, 0)
     keep_alive r1
     r9 = __main__.globals :: static
     r10 = 'a'
     r11 = CPyDict_GetItem(r9, r10)
     r12 = [r8]
     r13 = load_address r12
-    r14 = _PyObject_Vectorcall(r11, r13, 1, 0)
+    r14 = PyObject_Vectorcall(r11, r13, 1, 0)
     keep_alive r8
     d = r14
     r15 = __main__.globals :: static
@@ -2640,9 +2640,9 @@ L0:
     r22 = CPyObject_GetAttr(r20, r21)
     r23 = [r19]
     r24 = load_address r23
-    r25 = _PyObject_Vectorcall(r22, r24, 1, 0)
+    r25 = PyObject_Vectorcall(r22, r24, 1, 0)
     keep_alive r19
-    r26 = _PyObject_Vectorcall(d, 0, 0, 0)
+    r26 = PyObject_Vectorcall(d, 0, 0, 0)
     return 1
 def __top_level__():
     r0, r1 :: object
@@ -2694,14 +2694,14 @@ L2:
     r14 = CPyDict_GetItem(r12, r13)
     r15 = [r11]
     r16 = load_address r15
-    r17 = _PyObject_Vectorcall(r14, r16, 1, 0)
+    r17 = PyObject_Vectorcall(r14, r16, 1, 0)
     keep_alive r11
     r18 = __main__.globals :: static
     r19 = 'a'
     r20 = CPyDict_GetItem(r18, r19)
     r21 = [r17]
     r22 = load_address r21
-    r23 = _PyObject_Vectorcall(r20, r22, 1, 0)
+    r23 = PyObject_Vectorcall(r20, r22, 1, 0)
     keep_alive r17
     r24 = __main__.globals :: static
     r25 = 'c'
@@ -2758,17 +2758,17 @@ L0:
     r4 = CPyObject_GetAttr(r2, r3)
     r5 = [r1]
     r6 = load_address r5
-    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
     keep_alive r1
     r8 = r0.f
-    r9 = _PyObject_Vectorcall(r8, 0, 0, 0)
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
     r10 = 'Exited'
     r11 = builtins :: module
     r12 = 'print'
     r13 = CPyObject_GetAttr(r11, r12)
     r14 = [r10]
     r15 = load_address r14
-    r16 = _PyObject_Vectorcall(r13, r15, 1, 0)
+    r16 = PyObject_Vectorcall(r13, r15, 1, 0)
     keep_alive r10
     return 1
 def a(f):
@@ -2909,7 +2909,7 @@ L2:
     r4 = box(int, x)
     r5 = [r4]
     r6 = load_address r5
-    r7 = _PyObject_Vectorcall(comparison, r6, 1, 0)
+    r7 = PyObject_Vectorcall(comparison, r6, 1, 0)
     keep_alive r4
     r8 = unbox(bool, r7)
     r9 = r8 << 1
@@ -3210,7 +3210,7 @@ L0:
     r3 = box(int, x)
     r4 = [r3]
     r5 = load_address r4
-    r6 = _PyObject_Vectorcall(r2, r5, 1, 0)
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
     keep_alive r3
     return 1
 
@@ -3435,7 +3435,7 @@ L0:
     r3 = object 2
     r4 = [r1, r2, r3]
     r5 = load_address r4
-    r6 = _PyObject_Vectorcall(r0, r5, 3, 0)
+    r6 = PyObject_Vectorcall(r0, r5, 3, 0)
     keep_alive r1, r2, r3
     r7 = cast(range, r6)
     r = r7

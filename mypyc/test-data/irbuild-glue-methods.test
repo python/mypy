@@ -207,7 +207,7 @@ L0:
     r3 = box(int, r1)
     r4 = [r3]
     r5 = load_address r4
-    r6 = _PyObject_Vectorcall(r2, r5, 1, 0)
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
     keep_alive r3
     r7 = unbox(int, r6)
     r8 = DerivedProperty(r0, r7)
@@ -248,14 +248,14 @@ L0:
     r3 = box(int, r1)
     r4 = [r3]
     r5 = load_address r4
-    r6 = _PyObject_Vectorcall(r2, r5, 1, 0)
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
     keep_alive r3
     r7 = unbox(int, r6)
     r8 = self._incr_func
     r9 = box(int, r7)
     r10 = [r9]
     r11 = load_address r10
-    r12 = _PyObject_Vectorcall(r8, r11, 1, 0)
+    r12 = PyObject_Vectorcall(r8, r11, 1, 0)
     keep_alive r9
     r13 = unbox(int, r12)
     r14 = AgainProperty(r0, r13)

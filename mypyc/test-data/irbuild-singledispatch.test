@@ -74,7 +74,7 @@ L2:
     r10 = __mypyc_self__.registry
     r11 = [r1, r10]
     r12 = load_address r11
-    r13 = _PyObject_Vectorcall(r9, r12, 2, 0)
+    r13 = PyObject_Vectorcall(r9, r12, 2, 0)
     keep_alive r1, r10
     r14 = CPyDict_SetItem(r2, r1, r13)
     r15 = r14 >= 0 :: signed
@@ -99,7 +99,7 @@ L6:
 L7:
     r24 = [arg]
     r25 = load_address r24
-    r26 = _PyObject_Vectorcall(r6, r25, 1, 0)
+    r26 = PyObject_Vectorcall(r6, r25, 1, 0)
     keep_alive arg
     r27 = unbox(bool, r26)
     return r27
@@ -212,7 +212,7 @@ L2:
     r10 = __mypyc_self__.registry
     r11 = [r1, r10]
     r12 = load_address r11
-    r13 = _PyObject_Vectorcall(r9, r12, 2, 0)
+    r13 = PyObject_Vectorcall(r9, r12, 2, 0)
     keep_alive r1, r10
     r14 = CPyDict_SetItem(r2, r1, r13)
     r15 = r14 >= 0 :: signed
@@ -230,7 +230,7 @@ L4:
 L5:
     r21 = [x]
     r22 = load_address r21
-    r23 = _PyObject_Vectorcall(r6, r22, 1, 0)
+    r23 = PyObject_Vectorcall(r6, r22, 1, 0)
     keep_alive x
     r24 = unbox(None, r23)
     return r24
