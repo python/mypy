@@ -1,27 +1,27 @@
 exclude: '^(mypyc/external/)|(mypy/typeshed/)|misc/typeshed_patches'  # Exclude all vendored code from lints
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v5.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 24.8.0
+    rev: 24.10.0
     hooks:
       - id: black
         exclude: '^(test-data/)'
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    rev: v0.8.4
     hooks:
       - id: ruff
         args: [--exit-non-zero-on-fix]
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.29.4
+    rev: 0.30.0
     hooks:
       - id: check-dependabot
       - id: check-github-workflows
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.3
+    rev: v1.7.4
     hooks:
       - id: actionlint
         args: [
