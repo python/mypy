@@ -5345,9 +5345,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.return_types.append(AnyType(TypeOfAny.special_form))
             # Type check everything in the body except for the final return
             # statement (it can contain tuple unpacking before return).
-            with self.chk.binder.frame_context(
-                can_skip=True, fall_through=0
-            ), self.chk.scope.push_function(e):
+            with (
+                self.chk.binder.frame_context(can_skip=True, fall_through=0),
+                self.chk.scope.push_function(e),
+            ):
                 # Lambdas can have more than one element in body,
                 # when we add "fictional" AssignmentStatement nodes, like in:
                 # `lambda (a, b): a`
