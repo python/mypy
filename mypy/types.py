@@ -173,6 +173,8 @@ DATACLASS_TRANSFORM_NAMES: Final = (
 # Supported @override decorator names.
 OVERRIDE_DECORATOR_NAMES: Final = ("typing.override", "typing_extensions.override")
 
+NO_MATCH_NAMES: Final = ("typing.NoMatch", "typing_extensions.NoMatch")
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 
@@ -209,6 +211,8 @@ class TypeOfAny:
     # used to ignore Anys inserted by the suggestion engine when
     # generating constraints.
     suggestion_engine: Final = 9
+    # Does this Any come from NoMatch overload return annotation?
+    no_match: Final = 10
 
 
 def deserialize_type(data: JsonDict | str) -> Type:

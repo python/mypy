@@ -6768,3 +6768,21 @@ class D(Generic[T]):
 a: D[str]  # E: Type argument "str" of "D" must be a subtype of "C"
 reveal_type(a.f(1))  # N: Revealed type is "builtins.int"
 reveal_type(a.f("x"))  # N: Revealed type is "builtins.str"
+
+[case testOverloadNoMatch]
+from typing import Sequence, overload
+from typing_extensions import NoMatch
+
+@overload
+def f1(args: str) -> NoMatch: ...
+@overload
+def f1(arg: Sequence[str]) -> int: ...
+def f1(arg): ...
+
+reveal_type(f1(["Hello", "World"]))  # N: Revealed type is "builtins.int"
+reveal_type(f1("Hello World"))  # E: No matching overload found for "f1" \
+                                # N: Revealed type is "Any"
+
+y: NoMatch  # E: NoMatch can only be used as an overload return annotation
+def f2(arg: NoMatch) -> int: ...  # E: NoMatch can only be used as an overload return annotation
+[builtins fixtures/tuple.pyi]

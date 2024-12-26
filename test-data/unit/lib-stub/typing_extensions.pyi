@@ -45,6 +45,8 @@ ReadOnly: _SpecialForm
 
 Self: _SpecialForm
 
+NoMatch: _SpecialForm
+
 @final
 class TypeAliasType:
     def __init__(
