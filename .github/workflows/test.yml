@@ -135,6 +135,12 @@ jobs:
       PYTEST_ADDOPTS: --color=yes
 
     steps:
+
+    - name: Set TEMP to D:\ on Windows pytest runs
+      if: ${{startsWith(matrix.os, 'windows-') && startsWith(matrix.toxenv, 'py')}}
+      run: |
+        mkdir "D:\\Temp"
+        echo "TEMP=D:\\Temp" >> $env:GITHUB_ENV
     - uses: actions/checkout@v4
 
     - name: Debug build
