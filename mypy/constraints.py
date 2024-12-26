@@ -344,7 +344,9 @@ def _infer_constraints(
     # This makes our constraint solver choke on type[T] <: type[A] | type[B],
     # solving T as generic meet(A, B) which is often `object`. Force unwrap such unions
     # if both sides are type[...] or unions thereof. See `testTypeVarType` test
+    type_type_unwrapped = False
     if _is_type_type(template) and _is_type_type(actual):
+        type_type_unwrapped = True
         template = _unwrap_type_type(template)
         actual = _unwrap_type_type(actual)
 
@@ -381,6 +383,11 @@ def _infer_constraints(
     if direction == SUPERTYPE_OF and isinstance(actual, UnionType):
         res = []
         for a_item in actual.items:
+            # `orig_template` has to be preserved intact in case it's recursive.
+            # If we unwraped ``type[...]`` previously, wrap the item back again,
+            # as ``type[...]`` can't be removed from `orig_template`.
+            if type_type_unwrapped:
+                a_item = TypeType.make_normalized(a_item)
             res.extend(infer_constraints(orig_template, a_item, direction))
         return res
 
