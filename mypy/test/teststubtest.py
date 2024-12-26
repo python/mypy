@@ -1533,12 +1533,11 @@ assert annotations
             runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
             error=None,
         )
-        if sys.version_info >= (3, 9):
-            yield Case(
-                stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
-                runtime="class D:\n  def __class_getitem__(cls, type): ...",
-                error=None,
-            )
+        yield Case(
+            stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
+            runtime="class D:\n  def __class_getitem__(cls, type): ...",
+            error=None,
+        )
 
     @collect_cases
     def test_not_subclassable(self) -> Iterator[Case]:
