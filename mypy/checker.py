@@ -476,11 +476,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if self.binder.is_unreachable():
                             if not self.should_report_unreachable_issues():
                                 break
-                            if not self.is_noop_for_reachability(d):
+                            if self.is_noop_for_reachability(d):
+                                if not isinstance(d, ExpressionStmt) or not isinstance(
+                                    d.expr, CallExpr
+                                ):
+                                    self.accept(d)
+                            else:
                                 self.msg.unreachable_statement(d)
                                 break
-                            else:
-                                self.accept(d)
                         else:
                             self.accept(d)
 
@@ -2950,11 +2953,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if self.binder.is_unreachable():
                 if not self.should_report_unreachable_issues():
                     break
-                if not self.is_noop_for_reachability(s):
+                if self.is_noop_for_reachability(s):
+                    if not isinstance(s, ExpressionStmt) or not isinstance(s.expr, CallExpr):
+                        self.accept(s)
+                else:
                     self.msg.unreachable_statement(s)
                     break
-                else:
-                    self.accept(s)
             else:
                 self.accept(s)
 
