@@ -331,6 +331,7 @@ else:
 _F = TypeVar("_F", bound=Callable[..., Any])
 _P = _ParamSpec("_P")
 _T = TypeVar("_T")
+_FT = TypeVar("_FT", bound=Callable[..., Any] | type)
 
 # These type variables are used by the container types.
 _S = TypeVar("_S")
@@ -346,7 +347,7 @@ def no_type_check(arg: _F) -> _F: ...
 def no_type_check_decorator(decorator: Callable[_P, _T]) -> Callable[_P, _T]: ...
 
 # This itself is only available during type checking
-def type_check_only(func_or_cls: _F) -> _F: ...
+def type_check_only(func_or_cls: _FT) -> _FT: ...
 
 # Type aliases and type constructors
 
