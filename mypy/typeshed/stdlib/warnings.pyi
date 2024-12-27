@@ -1,9 +1,10 @@
+import re
 import sys
 from _warnings import warn as warn, warn_explicit as warn_explicit
 from collections.abc import Sequence
 from types import ModuleType, TracebackType
 from typing import Any, Generic, Literal, TextIO, TypeVar, overload
-from typing_extensions import TypeAlias
+from typing_extensions import LiteralString, TypeAlias
 
 __all__ = [
     "warn",
@@ -16,10 +17,16 @@ __all__ = [
     "catch_warnings",
 ]
 
-_W = TypeVar("_W", bound=list[WarningMessage] | None)
-_ActionKind: TypeAlias = Literal["default", "error", "ignore", "always", "module", "once"]
+if sys.version_info >= (3, 13):
+    __all__ += ["deprecated"]
 
-filters: Sequence[tuple[str, str | None, type[Warning], str | None, int]]  # undocumented, do not mutate
+_T = TypeVar("_T")
+_W = TypeVar("_W", bound=list[WarningMessage] | None)
+if sys.version_info >= (3, 14):
+    _ActionKind: TypeAlias = Literal["default", "error", "ignore", "always", "module", "once"]
+else:
+    _ActionKind: TypeAlias = Literal["default", "error", "ignore", "always", "all", "module", "once"]
+filters: Sequence[tuple[str, re.Pattern[str] | None, type[Warning], re.Pattern[str] | None, int]]  # undocumented, do not mutate
 
 def showwarning(
     message: Warning | str,
@@ -110,3 +117,11 @@ class catch_warnings(Generic[_W]):
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
+
+if sys.version_info >= (3, 13):
+    class deprecated:
+        message: LiteralString
+        category: type[Warning] | None
+        stacklevel: int
+        def __init__(self, message: LiteralString, /, *, category: type[Warning] | None = ..., stacklevel: int = 1) -> None: ...
+        def __call__(self, arg: _T, /) -> _T: ...

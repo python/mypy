@@ -227,9 +227,19 @@ class D(TypedDict):
     x: int
 t: D = {'x':
     'y'} # E:5: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+s: str
 
 if int():
-    del t['y'] # E:5: TypedDict "D" has no key "y"
+    del t[s]    # E:11: Expected TypedDict key to be string literal
+    del t["x"]  # E:11: Key "x" of TypedDict "D" cannot be deleted
+    del t["y"]  # E:11: TypedDict "D" has no key "y"
+
+t.pop(s)    # E:7: Expected TypedDict key to be string literal
+t.pop("y")  # E:7: TypedDict "D" has no key "y"
+
+t.setdefault(s, 123)    # E:14: Expected TypedDict key to be string literal
+t.setdefault("x", "a")  # E:19: Argument 2 to "setdefault" of "TypedDict" has incompatible type "str"; expected "int"
+t.setdefault("y", 123)  # E:14: TypedDict "D" has no key "y"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -250,7 +260,7 @@ class D(A):
                               # N:5:          def f(self) -> None
 
 [case testColumnMissingTypeParameters]
-# flags: --disallow-any-generics
+# flags: --python-version 3.8 --disallow-any-generics
 from typing import List, Callable
 def f(x: List) -> None: pass # E:10: Missing type parameters for generic type "List"
 def g(x: list) -> None: pass # E:10: Implicit generic "Any". Use "typing.List" and specify generic parameters
@@ -310,8 +320,17 @@ T = TypeVar('T', int, str)
 class C(Generic[T]):
     pass
 
-def f(c: C[object]) -> None: pass # E:10: Value of type variable "T" of "C" cannot be "object"
+def f(c: C[object]) -> None: pass # E:12: Value of type variable "T" of "C" cannot be "object"
 (C[object]()) # E:2: Value of type variable "T" of "C" cannot be "object"
+
+[case testColumnInvalidLocationForParamSpec]
+from typing import List
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+def foo(x: List[P]): pass  # E:17: Invalid location for ParamSpec "P" \
+                           # N:17: You can use ParamSpec as the first argument to Callable, e.g., "Callable[P, int]"
+[builtins fixtures/list.pyi]
 
 [case testColumnSyntaxErrorInTypeAnnotation]
 if int():

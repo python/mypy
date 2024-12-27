@@ -9,6 +9,7 @@ recursive-include mypy/typeshed *.pyi
 
 # mypy and mypyc
 include mypy/py.typed
+include mypyc/py.typed
 recursive-include mypy *.py
 recursive-include mypyc *.py
 
@@ -41,8 +42,8 @@ include runtests.py
 include pytest.ini
 include tox.ini
 
-include LICENSE mypyc/README.md
-exclude .gitmodules CONTRIBUTING.md CREDITS ROADMAP.md CHANGELOG.md action.yml .editorconfig
+include LICENSE mypyc/README.md CHANGELOG.md
+exclude .gitmodules CONTRIBUTING.md CREDITS ROADMAP.md action.yml .editorconfig
 exclude .git-blame-ignore-revs .pre-commit-config.yaml
 
 global-exclude *.py[cod]

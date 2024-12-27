@@ -1,6 +1,6 @@
 TypeVar = 0
 Generic = 0
-Any = 0
+Any = object()
 overload = 0
 Type = 0
 Literal = 0
@@ -8,6 +8,7 @@ Optional = 0
 Self = 0
 Tuple = 0
 ClassVar = 0
+Final = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -26,3 +27,5 @@ class NamedTuple(tuple[Any, ...]):
     def __init__(self, typename: str, fields: Iterable[tuple[str, Any]] = ...) -> None: ...
     @overload
     def __init__(self, typename: str, fields: None = None, **kwargs: Any) -> None: ...
+
+class _SpecialForm: pass

@@ -749,7 +749,7 @@ class C:
 <mod.decb> -> m.outer
 <mod> -> m, m.outer
 
-[case testDecoratorDepsDeeepNested]
+[case testDecoratorDepsDeepNested]
 import mod
 
 def outer() -> None:
@@ -1431,3 +1431,25 @@ class B(A):
 <m.Z> -> m
 <dataclasses.dataclass> -> m
 <dataclasses> -> m
+
+[case testPEP695TypeAliasDeps]
+# flags: --python-version=3.12
+from a import C, E
+type A = C
+type A2 = A
+type A3 = E
+[file a.py]
+class C: pass
+class D: pass
+type E = D
+[out]
+<m.A2> -> m
+<m.A3> -> m
+<m.A> -> m
+<a.C.__init__> -> m
+<a.C.__new__> -> m
+<a.C> -> m
+<a.E> -> m
+<a> -> m
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

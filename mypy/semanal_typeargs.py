@@ -12,9 +12,10 @@ from typing import Callable
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
 from mypy.errors import Errors
+from mypy.message_registry import INVALID_PARAM_SPEC_LOCATION, INVALID_PARAM_SPEC_LOCATION_NOTE
 from mypy.messages import format_type
 from mypy.mixedtraverser import MixedTraverserVisitor
-from mypy.nodes import ARG_STAR, Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile
+from mypy.nodes import Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile
 from mypy.options import Options
 from mypy.scope import Scope
 from mypy.subtypes import is_same_type, is_subtype
@@ -38,6 +39,7 @@ from mypy.types import (
     get_proper_types,
     split_with_prefix_and_suffix,
 )
+from mypy.typevartuples import erased_vars
 
 
 class TypeArgumentAnalyzer(MixedTraverserVisitor):
@@ -88,7 +90,14 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             return
         self.seen_aliases.add(t)
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
-        is_error = self.validate_args(t.alias.name, tuple(t.args), t.alias.alias_tvars, t)
+        is_error, is_invalid = self.validate_args(
+            t.alias.name, tuple(t.args), t.alias.alias_tvars, t
+        )
+        if is_invalid:
+            # If there is an arity error (e.g. non-Parameters used for ParamSpec etc.),
+            # then it is safer to erase the arguments completely, to avoid crashes later.
+            # TODO: can we move this logic to typeanal.py?
+            t.args = erased_vars(t.alias.alias_tvars, TypeOfAny.from_error)
         if not is_error:
             # If there was already an error for the alias itself, there is no point in checking
             # the expansion, most likely it will result in the same kind of error.
@@ -103,15 +112,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def visit_callable_type(self, t: CallableType) -> None:
         super().visit_callable_type(t)
-        # Normalize trivial unpack in var args as *args: *tuple[X, ...] -> *args: X
-        if t.is_var_arg:
-            star_index = t.arg_kinds.index(ARG_STAR)
-            star_type = t.arg_types[star_index]
-            if isinstance(star_type, UnpackType):
-                p_type = get_proper_type(star_type.type)
-                if isinstance(p_type, Instance):
-                    assert p_type.type.fullname == "builtins.tuple"
-                    t.arg_types[star_index] = p_type.args[0]
+        t.normalize_trivial_unpack()
 
     def visit_instance(self, t: Instance) -> None:
         super().visit_instance(t)
@@ -120,7 +121,9 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         info = t.type
         if isinstance(info, FakeInfo):
             return  # https://github.com/python/mypy/issues/11079
-        self.validate_args(info.name, t.args, info.defn.type_vars, t)
+        _, is_invalid = self.validate_args(info.name, t.args, info.defn.type_vars, t)
+        if is_invalid:
+            t.args = tuple(erased_vars(info.defn.type_vars, TypeOfAny.from_error))
         if t.type.fullname == "builtins.tuple" and len(t.args) == 1:
             # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
             arg = t.args[0]
@@ -132,7 +135,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def validate_args(
         self, name: str, args: tuple[Type, ...], type_vars: list[TypeVarLikeType], ctx: Context
-    ) -> bool:
+    ) -> tuple[bool, bool]:
         if any(isinstance(v, TypeVarTupleType) for v in type_vars):
             prefix = next(i for (i, v) in enumerate(type_vars) if isinstance(v, TypeVarTupleType))
             tvt = type_vars[prefix]
@@ -143,16 +146,30 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             args = start + (TupleType(list(middle), tvt.tuple_fallback),) + end
 
         is_error = False
+        is_invalid = False
         for (i, arg), tvar in zip(enumerate(args), type_vars):
+            context = ctx if arg.line < 0 else arg
             if isinstance(tvar, TypeVarType):
                 if isinstance(arg, ParamSpecType):
-                    # TODO: Better message
-                    is_error = True
-                    self.fail(f'Invalid location for ParamSpec "{arg.name}"', ctx)
+                    is_invalid = True
+                    self.fail(
+                        INVALID_PARAM_SPEC_LOCATION.format(format_type(arg, self.options)),
+                        context,
+                        code=codes.VALID_TYPE,
+                    )
                     self.note(
-                        "You can use ParamSpec as the first argument to Callable, e.g., "
-                        "'Callable[{}, int]'".format(arg.name),
-                        ctx,
+                        INVALID_PARAM_SPEC_LOCATION_NOTE.format(arg.name),
+                        context,
+                        code=codes.VALID_TYPE,
+                    )
+                    continue
+                if isinstance(arg, Parameters):
+                    is_invalid = True
+                    self.fail(
+                        f"Cannot use {format_type(arg, self.options)} for regular type variable,"
+                        " only for ParamSpec",
+                        context,
+                        code=codes.VALID_TYPE,
                     )
                     continue
                 if tvar.values:
@@ -166,13 +183,15 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                             is_error = True
                             self.fail(
                                 message_registry.INVALID_TYPEVAR_AS_TYPEARG.format(arg.name, name),
-                                ctx,
+                                context,
                                 code=codes.TYPE_VAR,
                             )
                             continue
                     else:
                         arg_values = [arg]
-                    if self.check_type_var_values(name, arg_values, tvar.name, tvar.values, ctx):
+                    if self.check_type_var_values(
+                        name, arg_values, tvar.name, tvar.values, context
+                    ):
                         is_error = True
                 # Check against upper bound. Since it's object the vast majority of the time,
                 # add fast path to avoid a potentially slow subtype check.
@@ -193,19 +212,23 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                             name,
                             format_type(upper_bound, self.options),
                         ),
-                        ctx,
+                        context,
                         code=codes.TYPE_VAR,
                     )
             elif isinstance(tvar, ParamSpecType):
                 if not isinstance(
                     get_proper_type(arg), (ParamSpecType, Parameters, AnyType, UnboundType)
                 ):
+                    is_invalid = True
                     self.fail(
                         "Can only replace ParamSpec with a parameter types list or"
                         f" another ParamSpec, got {format_type(arg, self.options)}",
-                        ctx,
+                        context,
+                        code=codes.VALID_TYPE,
                     )
-        return is_error
+        if is_invalid:
+            is_error = True
+        return is_error, is_invalid
 
     def visit_unpack_type(self, typ: UnpackType) -> None:
         super().visit_unpack_type(typ)

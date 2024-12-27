@@ -1666,8 +1666,8 @@ T = TypeVar('T', bound=int)
 class C(Generic[T]): pass
 class C2(Generic[T]): pass
 
-A = C[str] # E: Type argument "str" of "C" must be a subtype of "int" \
-           # E: Value of type variable "T" of "C" cannot be "str"
+A = C[str] # E: Value of type variable "T" of "C" cannot be "str" \
+           # E: Type argument "str" of "C" must be a subtype of "int"
 B = Union[C[str], int] # E: Type argument "str" of "C" must be a subtype of "int"
 S = TypeVar('S', bound=C[str]) # E: Type argument "str" of "C" must be a subtype of "int"
 U = TypeVar('U', C[str], str) # E: Type argument "str" of "C" must be a subtype of "int"
@@ -1908,9 +1908,9 @@ else:
     @dec
     def f(x: int) -> None:
         1()  # E: "int" not callable
-reveal_type(f) # N: Revealed type is "def (x: builtins.str)"
+reveal_type(f) # N: Revealed type is "def (builtins.str)"
 [file m.py]
-def f(x: str) -> None: pass
+def f(x: str, /) -> None: pass
 
 [case testNewAnalyzerConditionallyDefineFuncOverVar]
 from typing import Callable
@@ -1947,7 +1947,7 @@ class NTStr(NamedTuple):
     y: str
 
 t1: T
-reveal_type(t1.__iter__) # N: Revealed type is "def () -> typing.Iterator[__main__.A]"
+reveal_type(t1.__iter__) # N: Revealed type is "def () -> typing.Iterator[Union[__main__.B, __main__.C]]"
 
 t2: NTInt
 reveal_type(t2.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.int]"
@@ -1960,7 +1960,6 @@ t: Union[Tuple[int, int], Tuple[str, str]]
 for x in t:
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/for.pyi]
-[out]
 
 [case testNewAnalyzerFallbackUpperBoundCheckAndFallbacks]
 from typing import TypeVar, Generic, Tuple
@@ -1973,10 +1972,9 @@ S = TypeVar('S', bound='Tuple[G[A], ...]')
 
 class GG(Generic[S]): pass
 
-g: GG[Tuple[G[B], G[C]]] \
-  # E: Type argument "Tuple[G[B], G[C]]" of "GG" must be a subtype of "Tuple[G[A], ...]" \
-  # E: Type argument "B" of "G" must be a subtype of "A" \
-  # E: Type argument "C" of "G" must be a subtype of "A"
+g: GG[Tuple[G[B], G[C]]] # E: Type argument "Tuple[G[B], G[C]]" of "GG" must be a subtype of "Tuple[G[A], ...]" \
+                         # E: Type argument "B" of "G" must be a subtype of "A" \
+                         # E: Type argument "C" of "G" must be a subtype of "A"
 
 T = TypeVar('T', bound=A, covariant=True)
 
@@ -1984,7 +1982,7 @@ class G(Generic[T]): pass
 
 t: Tuple[G[B], G[C]] # E: Type argument "B" of "G" must be a subtype of "A" \
                      # E: Type argument "C" of "G" must be a subtype of "A"
-reveal_type(t.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.object]"
+reveal_type(t.__iter__) # N: Revealed type is "def () -> typing.Iterator[__main__.G[__main__.B]]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerClassKeywordsForward]
@@ -2071,6 +2069,7 @@ from enum import Enum
 
 A = Enum('A', ['x', 'y'])
 A = Enum('A', ['z', 't'])  # E: Name "A" already defined on line 3
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNewTypeRedefinition]
 from typing import NewType
@@ -2184,8 +2183,7 @@ from typing import TypeVar, Generic, Any
 T = TypeVar('T', bound='B[Any]')
 # The "int" error is because of typing fixture.
 T = TypeVar('T', bound='C')  # E: Cannot redefine "T" as a type variable \
-                           # E: Invalid assignment target \
-                           # E: "int" not callable
+                           # E: Invalid assignment target
 
 class B(Generic[T]):
     x: T
@@ -2194,6 +2192,8 @@ class C: ...
 x: B[int]  # E: Type argument "int" of "B" must be a subtype of "B[Any]"
 y: B[B[Any]]
 reveal_type(y.x)  # N: Revealed type is "__main__.B[Any]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testNewAnalyzerDuplicateTypeVarImportCycle]
 # flags: --disable-error-code used-before-def
@@ -2216,12 +2216,13 @@ class C: ...
 x: B[int]
 y: B[B[Any]]
 reveal_type(y.x)
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 tmp/b.py:8: error: Type argument "int" of "B" must be a subtype of "B[Any]"
 tmp/b.py:10: note: Revealed type is "b.B[Any]"
 tmp/a.py:5: error: Cannot redefine "T" as a type variable
 tmp/a.py:5: error: Invalid assignment target
-tmp/a.py:5: error: "int" not callable
 
 [case testNewAnalyzerDuplicateTypeVarImportCycleWithAliases]
 # flags: --disable-error-code used-before-def

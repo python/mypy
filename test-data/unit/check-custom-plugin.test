@@ -232,6 +232,8 @@ reveal_type(magic.non_magic_method())  # N: Revealed type is "builtins.int"
 reveal_type(magic.non_magic_field)  # N: Revealed type is "builtins.int"
 magic.nonexistent_field  # E: Field does not exist
 reveal_type(magic.fallback_example)  # N: Revealed type is "Any"
+reveal_type(magic.no_assignment_field)  # N: Revealed type is "builtins.float"
+magic.no_assignment_field = "bad"  # E: Cannot assign to field
 
 derived = DerivedMagic()
 reveal_type(derived.magic_field)  # N: Revealed type is "builtins.str"
@@ -250,6 +252,7 @@ class Magic:
     def __getattr__(self, x: Any) -> Any: ...
     def non_magic_method(self) -> int: ...
     non_magic_field: int
+    no_assignment_field: float
 
 class DerivedMagic(Magic): ...
 [file mypy.ini]
@@ -964,6 +967,7 @@ class Cls(enum.Enum):
     attr = 'test'
 
 reveal_type(Cls.attr)  # N: Revealed type is "builtins.int"
+[builtins fixtures/enum.pyi]
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
@@ -1049,6 +1053,39 @@ reveal_type(my_class.stmethod)  # N: Revealed type is "Overload(def (arg: builti
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/add_overloaded_method.py
+
+[case testAddMethodPluginExplicitOverride]
+# flags: --python-version 3.12 --config-file tmp/mypy.ini
+from typing import override, TypeVar
+
+T = TypeVar('T', bound=type)
+
+def inject_foo(t: T) -> T:
+    # Imitates:
+    # t.foo_implicit = some_method
+    return t
+
+class BaseWithoutFoo: pass
+
+@inject_foo
+class ChildWithFoo(BaseWithoutFoo): pass
+reveal_type(ChildWithFoo.foo_implicit)  # N: Revealed type is "def (self: __main__.ChildWithFoo)"
+
+@inject_foo
+class SomeWithFoo(ChildWithFoo): pass
+reveal_type(SomeWithFoo.foo_implicit)  # N: Revealed type is "def (self: __main__.SomeWithFoo)"
+
+class ExplicitOverride(SomeWithFoo):
+    @override
+    def foo_implicit(self) -> None: pass
+
+class ImplicitOverride(SomeWithFoo):
+    def foo_implicit(self) -> None: pass  # E: Method "foo_implicit" is not using @override but is overriding a method in class "__main__.SomeWithFoo"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_method.py
+enable_error_code = explicit-override
+[typing fixtures/typing-override.pyi]
 
 [case testCustomErrorCodePlugin]
 # flags: --config-file tmp/mypy.ini  --show-error-codes

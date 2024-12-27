@@ -24,7 +24,7 @@ def g(a: Tuple[Unpack[Ts]], b: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
 
 reveal_type(g(args, args))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 reveal_type(g(args, args2))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
-reveal_type(g(args, args3))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(g(args, args3))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 reveal_type(g(any, any))  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
 
@@ -881,7 +881,8 @@ y: B
 z: C
 reveal_type(x)  # N: Revealed type is "Any"
 reveal_type(y)  # N: Revealed type is "Any"
-reveal_type(z)  # N: Revealed type is "Tuple[builtins.int, Unpack[Any]]"
+reveal_type(z)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[Any, ...]]]"
+
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericVariadicWithBadType]
@@ -988,7 +989,7 @@ from typing_extensions import Unpack
 
 def pipeline(*xs: Unpack[Tuple[int, Unpack[Tuple[float, ...]], bool]]) -> None:
     for x in xs:
-        reveal_type(x)  # N: Revealed type is "builtins.float"
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
 [builtins fixtures/tuple.pyi]
 
 [case testFixedUnpackItemInInstanceArguments]
@@ -1099,9 +1100,10 @@ reveal_type(t.fn)  # N: Revealed type is "def (builtins.int, builtins.int, built
 [builtins fixtures/tuple.pyi]
 
 [case testVariadicNamedTuple]
-from typing import Tuple, Callable, NamedTuple, Generic
+from typing import Tuple, Callable, NamedTuple, Generic, TypeVar
 from typing_extensions import TypeVarTuple, Unpack
 
+T = TypeVar("T")
 Ts = TypeVarTuple("Ts")
 class A(NamedTuple, Generic[Unpack[Ts], T]):
     fn: Callable[[Unpack[Ts]], None]
@@ -1128,9 +1130,10 @@ nt2 = A(fn=bad, val=42)  # E: Argument "fn" to "A" has incompatible type "Callab
 [builtins fixtures/tuple.pyi]
 
 [case testVariadicTypedDict]
-from typing import Tuple, Callable, Generic
+from typing import Tuple, Callable, Generic, TypeVar
 from typing_extensions import TypeVarTuple, Unpack, TypedDict
 
+T = TypeVar("T")
 Ts = TypeVarTuple("Ts")
 class A(TypedDict, Generic[Unpack[Ts], T]):
     fn: Callable[[Unpack[Ts]], None]
@@ -1712,7 +1715,7 @@ vt: Tuple[int, Unpack[Tuple[float, ...]], int]
 
 reveal_type(vt + (1, 2))  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.int, Literal[1]?, Literal[2]?]"
 reveal_type((1, 2) + vt)  # N: Revealed type is "Tuple[Literal[1]?, Literal[2]?, builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.int]"
-reveal_type(vt + vt)  # N: Revealed type is "builtins.tuple[builtins.float, ...]"
+reveal_type(vt + vt)  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.float], ...]"
 reveal_type(vtf + (1, 2))  # N: Revealed type is "Tuple[Unpack[builtins.tuple[builtins.float, ...]], Literal[1]?, Literal[2]?]"
 reveal_type((1, 2) + vtf)  # N: Revealed type is "Tuple[Literal[1]?, Literal[2]?, Unpack[builtins.tuple[builtins.float, ...]]]"
 
@@ -1805,6 +1808,63 @@ def add(self: Any, other: Any) -> Any:
 def test(a: Tuple[int, str], b: Tuple[bool], c: Tuple[bool, ...]):
     reveal_type(add(a, b))  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
     reveal_type(add(b, c))  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleOverloadOverlap]
+from typing import Union, overload, Tuple
+from typing_extensions import Unpack
+
+class Int(int): ...
+
+A = Tuple[int, Unpack[Tuple[int, ...]]]
+B = Tuple[int, Unpack[Tuple[str, ...]]]
+
+@overload
+def f(arg: A) -> int: ...
+@overload
+def f(arg: B) -> str: ...
+def f(arg: Union[A, B]) -> Union[int, str]:
+    ...
+
+A1 = Tuple[int, Unpack[Tuple[Int, ...]]]
+B1 = Tuple[Unpack[Tuple[Int, ...]], int]
+
+@overload
+def f1(arg: A1) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f1(arg: B1) -> str: ...
+def f1(arg: Union[A1, B1]) -> Union[int, str]:
+    ...
+
+A2 = Tuple[int, int, int]
+B2 = Tuple[int, Unpack[Tuple[int, ...]]]
+
+@overload
+def f2(arg: A2) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f2(arg: B2) -> str: ...
+def f2(arg: Union[A2, B2]) -> Union[int, str]:
+    ...
+
+A3 = Tuple[int, int, int]
+B3 = Tuple[int, Unpack[Tuple[str, ...]]]
+
+@overload
+def f3(arg: A3) -> int: ...
+@overload
+def f3(arg: B3) -> str: ...
+def f3(arg: Union[A3, B3]) -> Union[int, str]:
+    ...
+
+A4 = Tuple[int, int, Unpack[Tuple[int, ...]]]
+B4 = Tuple[int]
+
+@overload
+def f4(arg: A4) -> int: ...
+@overload
+def f4(arg: B4) -> str: ...
+def f4(arg: Union[A4, B4]) -> Union[int, str]:
+    ...
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleIndexOldStyleNonNormalizedAndNonLiteral]
@@ -2278,6 +2338,22 @@ higher_order(bad3)  # E: Argument 1 to "higher_order" has incompatible type "Cal
 higher_order(bad4)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
 [builtins fixtures/tuple.pyi]
 
+[case testAliasToCallableWithUnpackInvalid]
+from typing import Any, Callable, List, Tuple, TypeVar, Unpack
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")  # E: Name "TypeVarTuple" is not defined
+
+def good(*x: int) -> int: ...
+def bad(*x: int, y: int) -> int: ...
+
+Alias = Callable[[Unpack[T]], int]  # E: "T" cannot be unpacked (must be tuple or TypeVarTuple)
+x: Alias[int]
+reveal_type(x)  # N: Revealed type is "def (*Any) -> builtins.int"
+x = good
+x = bad  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), NamedArg(int, 'y')], int]", variable has type "Callable[[VarArg(Any)], int]")
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTupleInvariant]
 from typing import Generic, Tuple
 from typing_extensions import Unpack, TypeVarTuple
@@ -2303,4 +2379,111 @@ def a2(x: Array[int, str]) -> None:
                                       # N: Revealed type is "builtins.tuple[Any, ...]"
     reveal_type(func(x, 2, "Hello", True))   # E: Cannot infer type argument 1 of "func" \
                                              # N: Revealed type is "builtins.tuple[Any, ...]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleTypeApplicationOverload]
+from typing import Generic, TypeVar, TypeVarTuple, Unpack, overload, Callable
+
+T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+Ts = TypeVarTuple("Ts")
+
+class C(Generic[T, Unpack[Ts]]):
+    @overload
+    def __init__(self, f: Callable[[Unpack[Ts]], T]) -> None: ...
+    @overload
+    def __init__(self, f: Callable[[T1, T2, T3, Unpack[Ts]], T], a: T1, b: T2, c: T3) -> None: ...
+    def __init__(self, f, *args, **kwargs) -> None:
+        ...
+
+reveal_type(C[int, str])  # N: Revealed type is "Overload(def (f: def (builtins.str) -> builtins.int) -> __main__.C[builtins.int, builtins.str], def [T1, T2, T3] (f: def (T1`-1, T2`-2, T3`-3, builtins.str) -> builtins.int, a: T1`-1, b: T2`-2, c: T3`-3) -> __main__.C[builtins.int, builtins.str])"
+Alias = C[int, str]
+
+def f(x: int, y: int, z: int, t: int) -> str: ...
+x = C(f, 0, 0, "hm")  # E: Argument 1 to "C" has incompatible type "Callable[[int, int, int, int], str]"; expected "Callable[[int, int, str, int], str]"
+reveal_type(x)  # N: Revealed type is "__main__.C[builtins.str, builtins.int]"
+reveal_type(C(f))  # N: Revealed type is "__main__.C[builtins.str, builtins.int, builtins.int, builtins.int, builtins.int]"
+C[()]  # E: At least 1 type argument(s) expected, none given
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleAgainstParamSpecActualSuccess]
+from typing import Generic, TypeVar, TypeVarTuple, Unpack, Callable, Tuple, List
+from typing_extensions import ParamSpec
+
+R = TypeVar("R")
+P = ParamSpec("P")
+
+class CM(Generic[R]): ...
+def cm(fn: Callable[P, R]) -> Callable[P, CM[R]]: ...
+
+Ts = TypeVarTuple("Ts")
+@cm
+def test(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]: ...
+
+reveal_type(test)  # N: Revealed type is "def [Ts] (*args: Unpack[Ts`-1]) -> __main__.CM[Tuple[Unpack[Ts`-1]]]"
+reveal_type(test(1, 2, 3))  # N: Revealed type is "__main__.CM[Tuple[Literal[1]?, Literal[2]?, Literal[3]?]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleAgainstParamSpecActualFailedNoCrash]
+from typing import Generic, TypeVar, TypeVarTuple, Unpack, Callable, Tuple, List
+from typing_extensions import ParamSpec
+
+R = TypeVar("R")
+P = ParamSpec("P")
+
+class CM(Generic[R]): ...
+def cm(fn: Callable[P, List[R]]) -> Callable[P, CM[R]]: ...
+
+Ts = TypeVarTuple("Ts")
+@cm  # E: Argument 1 to "cm" has incompatible type "Callable[[VarArg(Unpack[Ts])], Tuple[Unpack[Ts]]]"; expected "Callable[[VarArg(Never)], List[Never]]"
+def test(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]: ...
+
+reveal_type(test)  # N: Revealed type is "def (*args: Never) -> __main__.CM[Never]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleAgainstParamSpecActualPrefix]
+from typing import Generic, TypeVar, TypeVarTuple, Unpack, Callable, Tuple, List
+from typing_extensions import ParamSpec, Concatenate
+
+R = TypeVar("R")
+P = ParamSpec("P")
+T = TypeVar("T")
+
+class CM(Generic[R]): ...
+def cm(fn: Callable[Concatenate[T, P], R]) -> Callable[Concatenate[List[T], P], CM[R]]: ...
+
+Ts = TypeVarTuple("Ts")
+@cm
+def test(x: T, *args: Unpack[Ts]) -> Tuple[T, Unpack[Ts]]: ...
+
+reveal_type(test)  # N: Revealed type is "def [T, Ts] (builtins.list[T`2], *args: Unpack[Ts`-2]) -> __main__.CM[Tuple[T`2, Unpack[Ts`-2]]]"
+[builtins fixtures/tuple.pyi]
+
+[case testMixingTypeVarTupleAndParamSpec]
+from typing import Generic, ParamSpec, TypeVarTuple, Unpack, Callable, TypeVar
+
+P = ParamSpec("P")
+Ts = TypeVarTuple("Ts")
+
+class A(Generic[P, Unpack[Ts]]): ...
+class B(Generic[Unpack[Ts], P]): ...
+
+a: A[[int, str], int, str]
+reveal_type(a)  # N: Revealed type is "__main__.A[[builtins.int, builtins.str], builtins.int, builtins.str]"
+b: B[int, str, [int, str]]
+reveal_type(b)  # N: Revealed type is "__main__.B[builtins.int, builtins.str, [builtins.int, builtins.str]]"
+
+x: A[int, str, [int, str]]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
+reveal_type(x)  # N: Revealed type is "__main__.A[Any, Unpack[builtins.tuple[Any, ...]]]"
+y: B[[int, str], int, str]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "str"
+reveal_type(y)  # N: Revealed type is "__main__.B[Unpack[builtins.tuple[Any, ...]], Any]"
+
+R = TypeVar("R")
+class C(Generic[P, R]):
+    fn: Callable[P, None]
+
+c: C[int, str]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
+reveal_type(c.fn)  # N: Revealed type is "def (*Any, **Any)"
 [builtins fixtures/tuple.pyi]

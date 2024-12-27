@@ -133,7 +133,7 @@ class Error:
     def is_positional_only_related(self) -> bool:
         """Whether or not the error is for something being (or not being) positional-only."""
         # TODO: This is hacky, use error codes or something more resilient
-        return "leading double underscore" in self.message
+        return "should be positional" in self.message
 
     def get_description(self, concise: bool = False) -> str:
         """Returns a description of the error.
@@ -348,6 +348,8 @@ def verify_mypyfile(
             # Only verify the contents of the stub's __all__
             # if the stub actually defines __all__
             yield from _verify_exported_names(object_path, stub, runtime_all_as_set)
+        else:
+            yield Error(object_path + ["__all__"], "is not present in stub", MISSING, runtime)
     else:
         runtime_all_as_set = None
 
@@ -566,6 +568,13 @@ def verify_typeinfo(
             # Catch all exceptions in case the runtime raises an unexpected exception
             # from __getattr__ or similar.
             continue
+
+        # If it came from the metaclass, consider the runtime_attr to be MISSING
+        # for a more accurate message
+        if runtime_attr is not MISSING and type(runtime) is not runtime:
+            if getattr(runtime_attr, "__objclass__", None) is type(runtime):
+                runtime_attr = MISSING
+
         # Do not error for an object missing from the stub
         # If the runtime object is a types.WrapperDescriptorType object
         # and has a non-special dunder name.
@@ -634,6 +643,10 @@ def _verify_arg_name(
     if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:
         return
 
+    nonspecific_names = {"object", "args"}
+    if runtime_arg.name in nonspecific_names:
+        return
+
     def names_approx_match(a: str, b: str) -> bool:
         a = a.strip("_")
         b = b.strip("_")
@@ -696,7 +709,7 @@ def _verify_arg_default_value(
                         stub_default != runtime_arg.default
                         # We want the types to match exactly, e.g. in case the stub has
                         # True and the runtime has 1 (or vice versa).
-                        or type(stub_default) is not type(runtime_arg.default)  # noqa: E721
+                        or type(stub_default) is not type(runtime_arg.default)
                     )
                 ):
                     yield (
@@ -905,7 +918,7 @@ def _verify_signature(
         ):
             yield (
                 f'stub argument "{stub_arg.variable.name}" should be positional-only '
-                f'(rename with a leading double underscore, i.e. "__{runtime_arg.name}")'
+                f'(add "/", e.g. "{runtime_arg.name}, /")'
             )
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
@@ -915,7 +928,7 @@ def _verify_signature(
         ):
             yield (
                 f'stub argument "{stub_arg.variable.name}" should be positional or keyword '
-                "(remove leading double underscore)"
+                '(remove "/")'
             )
 
     # Check unmatched positional args
@@ -1220,6 +1233,9 @@ def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[s
     if isinstance(runtime, property):
         yield from _verify_final_method(stub.func, runtime.fget, MISSING)
         return
+    if isinstance(runtime, functools.cached_property):
+        yield from _verify_final_method(stub.func, runtime.func, MISSING)
+        return
     if inspect.isdatadescriptor(runtime):
         # It's enough like a property...
         return
@@ -1455,6 +1471,8 @@ IGNORABLE_CLASS_DUNDERS: typing_extensions.Final = frozenset(
         "__getattr__",  # resulting behaviour might be typed explicitly
         "__setattr__",  # defining this on a class can cause worse type checking
         "__vectorcalloffset__",  # undocumented implementation detail of the vectorcall protocol
+        "__firstlineno__",
+        "__static_attributes__",
         # isinstance/issubclass hooks that type-checkers don't usually care about
         "__instancecheck__",
         "__subclasshook__",
@@ -1508,6 +1526,7 @@ def is_probably_a_function(runtime: Any) -> bool:
         isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
         or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
+        or (isinstance(runtime, types.MethodWrapperType) and callable(runtime))
     )
 
 
@@ -1882,10 +1901,14 @@ class _Arguments:
     custom_typeshed_dir: str | None
     check_typeshed: bool
     version: str
+    show_traceback: bool
+    pdb: bool
 
 
 # typeshed added a stub for __main__, but that causes stubtest to check itself
-ANNOYING_STDLIB_MODULES: typing_extensions.Final = frozenset({"antigravity", "this", "__main__"})
+ANNOYING_STDLIB_MODULES: typing_extensions.Final = frozenset(
+    {"antigravity", "this", "__main__", "_ios_support"}
+)
 
 
 def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
@@ -1925,6 +1948,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
         options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
     options.config_file = args.mypy_config_file
     options.use_builtins_fixtures = use_builtins_fixtures
+    options.show_traceback = args.show_traceback
+    options.pdb = args.pdb
 
     if options.config_file:
 
@@ -1932,6 +1957,18 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
             return
 
         parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
+
+    def error_callback(msg: str) -> typing.NoReturn:
+        print(_style("error:", color="red", bold=True), msg)
+        sys.exit(1)
+
+    def warning_callback(msg: str) -> None:
+        print(_style("warning:", color="yellow", bold=True), msg)
+
+    options.process_error_codes(error_callback=error_callback)
+    options.process_incomplete_features(
+        error_callback=error_callback, warning_callback=warning_callback
+    )
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
@@ -2065,6 +2102,10 @@ def parse_options(args: list[str]) -> _Arguments:
     )
     parser.add_argument(
         "--version", action="version", version="%(prog)s " + mypy.version.__version__
+    )
+    parser.add_argument("--pdb", action="store_true", help="Invoke pdb on fatal error")
+    parser.add_argument(
+        "--show-traceback", "--tb", action="store_true", help="Show traceback on fatal error"
     )
 
     return parser.parse_args(args, namespace=_Arguments())

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable
+from typing import Callable, Final
 
 import mypy.errorcodes as codes
 from mypy import message_registry
@@ -41,12 +41,18 @@ class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
-        from mypy.plugins import ctypes, singledispatch
+        from mypy.plugins import ctypes, enums, singledispatch
 
         if fullname == "_ctypes.Array":
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
+        elif fullname == "functools.partial":
+            import mypy.plugins.functools
+
+            return mypy.plugins.functools.partial_new_callback
+        elif fullname == "enum.member":
+            return enums.enum_member_callback
 
         return None
 
@@ -118,6 +124,10 @@ class DefaultPlugin(Plugin):
             return singledispatch.singledispatch_register_callback
         elif fullname == singledispatch.REGISTER_CALLABLE_CALL_METHOD:
             return singledispatch.call_singledispatch_function_after_register_argument
+        elif fullname == "functools.partial.__call__":
+            import mypy.plugins.functools
+
+            return mypy.plugins.functools.partial_call_callback
         return None
 
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
@@ -155,12 +165,13 @@ class DefaultPlugin(Plugin):
     def get_class_decorator_hook_2(
         self, fullname: str
     ) -> Callable[[ClassDefContext], bool] | None:
-        from mypy.plugins import attrs, dataclasses, functools
+        import mypy.plugins.functools
+        from mypy.plugins import attrs, dataclasses
 
         if fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback
-        elif fullname in functools.functools_total_ordering_makers:
-            return functools.functools_total_ordering_maker_callback
+        elif fullname in mypy.plugins.functools.functools_total_ordering_makers:
+            return mypy.plugins.functools.functools_total_ordering_maker_callback
         elif fullname in attrs.attr_class_makers:
             return attrs.attr_class_maker_callback
         elif fullname in attrs.attr_dataclass_makers:
@@ -293,11 +304,12 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
         and len(ctx.arg_types) >= 1
         and len(ctx.arg_types[0]) == 1
     ):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        key_expr = ctx.args[0][0]
+        keys = try_getting_str_literals(key_expr, ctx.arg_types[0][0])
         if keys is None:
             ctx.api.fail(
                 message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
-                ctx.context,
+                key_expr,
                 code=codes.LITERAL_REQ,
             )
             return AnyType(TypeOfAny.from_error)
@@ -305,13 +317,13 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
         value_types = []
         for key in keys:
             if key in ctx.type.required_keys:
-                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, key_expr)
 
             value_type = ctx.type.items.get(key)
             if value_type:
                 value_types.append(value_type)
             else:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
                 return AnyType(TypeOfAny.from_error)
 
         if len(ctx.args[1]) == 0:
@@ -352,23 +364,29 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
         and len(ctx.arg_types[0]) == 1
         and len(ctx.arg_types[1]) == 1
     ):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        key_expr = ctx.args[0][0]
+        keys = try_getting_str_literals(key_expr, ctx.arg_types[0][0])
         if keys is None:
             ctx.api.fail(
                 message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
-                ctx.context,
+                key_expr,
                 code=codes.LITERAL_REQ,
             )
             return AnyType(TypeOfAny.from_error)
 
+        assigned_readonly_keys = ctx.type.readonly_keys & set(keys)
+        if assigned_readonly_keys:
+            ctx.api.msg.readonly_keys_mutated(assigned_readonly_keys, context=key_expr)
+
         default_type = ctx.arg_types[1][0]
+        default_expr = ctx.args[1][0]
 
         value_types = []
         for key in keys:
             value_type = ctx.type.items.get(key)
 
             if value_type is None:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
                 return AnyType(TypeOfAny.from_error)
 
             # The signature_callback above can't always infer the right signature
@@ -377,7 +395,7 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
             # default can be assigned to all key-value pairs we're updating.
             if not is_subtype(default_type, value_type):
                 ctx.api.msg.typeddict_setdefault_arguments_inconsistent(
-                    default_type, value_type, ctx.context
+                    default_type, value_type, default_expr
                 )
                 return AnyType(TypeOfAny.from_error)
 
@@ -394,21 +412,25 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
         and len(ctx.arg_types) == 1
         and len(ctx.arg_types[0]) == 1
     ):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        key_expr = ctx.args[0][0]
+        keys = try_getting_str_literals(key_expr, ctx.arg_types[0][0])
         if keys is None:
             ctx.api.fail(
                 message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
-                ctx.context,
+                key_expr,
                 code=codes.LITERAL_REQ,
             )
             return AnyType(TypeOfAny.from_error)
 
         for key in keys:
-            if key in ctx.type.required_keys:
-                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
+            if key in ctx.type.required_keys or key in ctx.type.readonly_keys:
+                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, key_expr)
             elif key not in ctx.type.items:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
     return ctx.default_return_type
+
+
+_TP_DICT_MUTATING_METHODS: Final = frozenset({"update of TypedDict", "__ior__ of TypedDict"})
 
 
 def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
@@ -425,10 +447,19 @@ def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
         arg_type = arg_type.as_anonymous()
         arg_type = arg_type.copy_modified(required_keys=set())
         if ctx.args and ctx.args[0]:
-            with ctx.api.msg.filter_errors():
+            if signature.name in _TP_DICT_MUTATING_METHODS:
+                # If we want to mutate this object in place, we need to set this flag,
+                # it will trigger an extra check in TypedDict's checker.
+                arg_type.to_be_mutated = True
+            with ctx.api.msg.filter_errors(
+                filter_errors=lambda name, info: info.code != codes.TYPEDDICT_READONLY_MUTATED,
+                save_filtered_errors=True,
+            ):
                 inferred = get_proper_type(
                     ctx.api.get_expression_type(ctx.args[0][0], type_context=arg_type)
                 )
+            if arg_type.to_be_mutated:
+                arg_type.to_be_mutated = False  # Done!
             possible_tds = []
             if isinstance(inferred, TypedDictType):
                 possible_tds = [inferred]
@@ -489,7 +520,7 @@ def int_neg_callback(ctx: MethodContext, multiplier: int = -1) -> Type:
                 return ctx.type.copy_modified(
                     last_known_value=LiteralType(
                         value=multiplier * value,
-                        fallback=ctx.type,
+                        fallback=fallback,
                         line=ctx.type.line,
                         column=ctx.type.column,
                     )

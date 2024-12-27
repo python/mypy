@@ -54,6 +54,18 @@ def main(a: object, b: object) -> None:
         reveal_type(b)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeGuardTypeVarReturn]
+from typing import Callable, Optional, TypeVar
+from typing_extensions import TypeGuard
+T = TypeVar('T')
+def is_str(x: object) -> TypeGuard[str]: pass
+def main(x: object, type_check_func: Callable[[object], TypeGuard[T]]) -> T:
+    if not type_check_func(x):
+        raise Exception()
+    return x
+reveal_type(main("a", is_str))  # N: Revealed type is "builtins.str"
+[builtins fixtures/exception.pyi]
+
 [case testTypeGuardIsBool]
 from typing_extensions import TypeGuard
 def f(a: TypeGuard[int]) -> None: pass
@@ -73,6 +85,15 @@ def is_two_element_tuple(a: Tuple[T, ...]) -> TypeGuard[Tuple[T, T]]: pass
 def main(a: Tuple[T, ...]):
     if is_two_element_tuple(a):
         reveal_type(a)  # N: Revealed type is "Tuple[T`-1, T`-1]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardPassedAsTypeVarIsBool]
+from typing import Callable, TypeVar
+from typing_extensions import TypeGuard
+T = TypeVar('T')
+def is_str(x: object) -> TypeGuard[str]: ...
+def main(f: Callable[[object], T]) -> T: ...
+reveal_type(main(is_str))  # N: Revealed type is "builtins.bool"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardNonOverlapping]

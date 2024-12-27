@@ -12,7 +12,7 @@ import inspect
 import keyword
 import os.path
 from types import FunctionType, ModuleType
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from mypy.fastparse import parse_type_comment
 from mypy.moduleinspect import is_c_module
@@ -178,7 +178,7 @@ def generate_stub_for_c_module(
     gen.generate_module()
     output = gen.output()
 
-    with open(target, "w") as file:
+    with open(target, "w", encoding="utf-8") as file:
         file.write(output)
 
 
@@ -241,7 +241,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.module_name = module_name
         if self.is_c_module:
             # Add additional implicit imports.
-            # C-extensions are given more lattitude since they do not import the typing module.
+            # C-extensions are given more latitude since they do not import the typing module.
             self.known_imports.update(
                 {
                     "typing": [
@@ -252,6 +252,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                         "Iterable",
                         "Iterator",
                         "List",
+                        "Literal",
                         "NamedTuple",
                         "Optional",
                         "Tuple",
@@ -291,6 +292,8 @@ class InspectionStubGenerator(BaseStubGenerator):
         varargs = argspec.varargs
         kwargs = argspec.varkw
         annotations = argspec.annotations
+        kwonlyargs = argspec.kwonlyargs
+        kwonlydefaults = argspec.kwonlydefaults
 
         def get_annotation(key: str) -> str | None:
             if key not in annotations:
@@ -303,27 +306,51 @@ class InspectionStubGenerator(BaseStubGenerator):
             return argtype
 
         arglist: list[ArgSig] = []
+
         # Add the arguments to the signature
-        for i, arg in enumerate(args):
-            # Check if the argument has a default value
-            if defaults and i >= len(args) - len(defaults):
-                default_value = defaults[i - (len(args) - len(defaults))]
-                if arg in annotations:
-                    argtype = annotations[arg]
+        def add_args(
+            args: list[str], get_default_value: Callable[[int, str], object | None]
+        ) -> None:
+            for i, arg in enumerate(args):
+                # Check if the argument has a default value
+                default_value = get_default_value(i, arg)
+                if default_value is not None:
+                    if arg in annotations:
+                        argtype = annotations[arg]
+                    else:
+                        argtype = self.get_type_annotation(default_value)
+                        if argtype == "None":
+                            # None is not a useful annotation, but we can infer that the arg
+                            # is optional
+                            incomplete = self.add_name("_typeshed.Incomplete")
+                            argtype = f"{incomplete} | None"
+
+                    arglist.append(ArgSig(arg, argtype, default=True))
                 else:
-                    argtype = self.get_type_annotation(default_value)
-                    if argtype == "None":
-                        # None is not a useful annotation, but we can infer that the arg
-                        # is optional
-                        incomplete = self.add_name("_typeshed.Incomplete")
-                        argtype = f"{incomplete} | None"
-                arglist.append(ArgSig(arg, argtype, default=True))
+                    arglist.append(ArgSig(arg, get_annotation(arg), default=False))
+
+        def get_pos_default(i: int, _arg: str) -> Any | None:
+            if defaults and i >= len(args) - len(defaults):
+                return defaults[i - (len(args) - len(defaults))]
             else:
-                arglist.append(ArgSig(arg, get_annotation(arg), default=False))
+                return None
+
+        add_args(args, get_pos_default)
 
         # Add *args if present
         if varargs:
             arglist.append(ArgSig(f"*{varargs}", get_annotation(varargs)))
+        # if we have keyword only args, then wee need to add "*"
+        elif kwonlyargs:
+            arglist.append(ArgSig("*"))
+
+        def get_kw_default(_i: int, arg: str) -> Any | None:
+            if kwonlydefaults:
+                return kwonlydefaults.get(arg)
+            else:
+                return None
+
+        add_args(kwonlyargs, get_kw_default)
 
         # Add **kwargs if present
         if kwargs:
@@ -466,6 +493,9 @@ class InspectionStubGenerator(BaseStubGenerator):
                 "__module__",
                 "__weakref__",
                 "__annotations__",
+                "__firstlineno__",
+                "__static_attributes__",
+                "__annotate__",
             )
             or attr in self.IGNORED_DUNDERS
             or is_pybind_skipped_attribute(attr)  # For pickling
@@ -730,7 +760,7 @@ class InspectionStubGenerator(BaseStubGenerator):
 
     def get_type_fullname(self, typ: type) -> str:
         """Given a type, return a string representation"""
-        if typ is Any:
+        if typ is Any:  # type: ignore[comparison-overlap]
             return "Any"
         typename = getattr(typ, "__qualname__", typ.__name__)
         module_name = self.get_obj_module(typ)
@@ -757,7 +787,9 @@ class InspectionStubGenerator(BaseStubGenerator):
                 bases.append(base)
         return [self.strip_or_import(self.get_type_fullname(base)) for base in bases]
 
-    def generate_class_stub(self, class_name: str, cls: type, output: list[str]) -> None:
+    def generate_class_stub(
+        self, class_name: str, cls: type, output: list[str], parent_class: ClassInfo | None = None
+    ) -> None:
         """Generate stub for a single class using runtime introspection.
 
         The result lines will be appended to 'output'. If necessary, any
@@ -778,7 +810,9 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.record_name(class_name)
         self.indent()
 
-        class_info = ClassInfo(class_name, "", getattr(cls, "__doc__", None), cls)
+        class_info = ClassInfo(
+            class_name, "", getattr(cls, "__doc__", None), cls, parent=parent_class
+        )
 
         for attr, value in items:
             # use unevaluated descriptors when dealing with property inspection
@@ -813,7 +847,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                     class_info,
                 )
             elif inspect.isclass(value) and self.is_defined_in_module(value):
-                self.generate_class_stub(attr, value, types)
+                self.generate_class_stub(attr, value, types, parent_class=class_info)
             else:
                 attrs.append((attr, value))
 

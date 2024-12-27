@@ -21,7 +21,7 @@ else:
     compile_args = ["--std=c++11"]
 
 
-class build_ext_custom(build_ext):
+class build_ext_custom(build_ext):  # noqa: N801
     def get_library_names(self):
         return ["gtest"]
 
@@ -58,6 +58,7 @@ setup(
                 "list_ops.c",
                 "exc_ops.c",
                 "generic_ops.c",
+                "pythonsupport.c",
             ],
             depends=["CPy.h", "mypyc_util.h", "pythonsupport.h"],
             extra_compile_args=["-Wno-unused-function", "-Wno-sign-compare"] + compile_args,

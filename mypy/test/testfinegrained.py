@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 import unittest
 from typing import Any
 
@@ -82,6 +83,9 @@ class FineGrainedSuite(DataSuite):
             f.write(main_src)
 
         options = self.get_options(main_src, testcase, build_cache=False)
+        if options.python_version > sys.version_info:
+            pytest.skip("Test case requires a newer Python version")
+
         build_options = self.get_options(main_src, testcase, build_cache=True)
         server = Server(options, DEFAULT_STATUS_FILE)
 
@@ -97,8 +101,8 @@ class FineGrainedSuite(DataSuite):
         if messages:
             a.extend(normalize_messages(messages))
 
-        assert testcase.tmpdir
-        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
+        assert testcase.tmpdir is not None
+        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir))
         a.extend(self.maybe_inspect(step, server, main_src))
 
         if server.fine_grained_manager:
@@ -244,8 +248,8 @@ class FineGrainedSuite(DataSuite):
         new_messages = normalize_messages(new_messages)
 
         a = new_messages
-        assert testcase.tmpdir
-        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
+        assert testcase.tmpdir is not None
+        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir))
         a.extend(self.maybe_inspect(step, server, main_src))
 
         return a, triggered

@@ -1,24 +1,19 @@
 from _typeshed import ReadableBuffer, SupportsRead
 from collections.abc import Callable
 from pyexpat import errors as errors, model as model
-from typing import Any, final
-from typing_extensions import TypeAlias
+from typing import Any, Final, final
+from typing_extensions import CapsuleType, TypeAlias
+from xml.parsers.expat import ExpatError as ExpatError
 
-EXPAT_VERSION: str  # undocumented
+EXPAT_VERSION: Final[str]  # undocumented
 version_info: tuple[int, int, int]  # undocumented
 native_encoding: str  # undocumented
 features: list[tuple[str, int]]  # undocumented
 
-class ExpatError(Exception):
-    code: int
-    lineno: int
-    offset: int
-
 error = ExpatError
-
-XML_PARAM_ENTITY_PARSING_NEVER: int
-XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE: int
-XML_PARAM_ENTITY_PARSING_ALWAYS: int
+XML_PARAM_ENTITY_PARSING_NEVER: Final = 0
+XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE: Final = 1
+XML_PARAM_ENTITY_PARSING_ALWAYS: Final = 2
 
 _Model: TypeAlias = tuple[int, int, str | None, tuple[Any, ...]]
 
@@ -32,6 +27,8 @@ class XMLParserType:
     def ExternalEntityParserCreate(self, context: str | None, encoding: str = ..., /) -> XMLParserType: ...
     def SetParamEntityParsing(self, flag: int, /) -> int: ...
     def UseForeignDTD(self, flag: bool = True, /) -> None: ...
+    def GetReparseDeferralEnabled(self) -> bool: ...
+    def SetReparseDeferralEnabled(self, enabled: bool, /) -> None: ...
     @property
     def intern(self) -> dict[str, str]: ...
     buffer_size: int
@@ -81,3 +78,5 @@ def ErrorString(code: int, /) -> str: ...
 def ParserCreate(
     encoding: str | None = None, namespace_separator: str | None = None, intern: dict[str, Any] | None = None
 ) -> XMLParserType: ...
+
+expat_CAPI: CapsuleType

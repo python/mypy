@@ -8,7 +8,6 @@ from typing_extensions import Literal, Protocol
 
 from mypy_extensions import trait
 
-from mypy import join
 from mypy.errorcodes import LITERAL_REQ, ErrorCode
 from mypy.nodes import (
     CallExpr,
@@ -30,6 +29,7 @@ from mypy.nodes import (
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
+from mypy.typeops import make_simplified_union
 from mypy.types import (
     TPDICT_FB_NAMES,
     AnyType,
@@ -58,7 +58,7 @@ ALLOW_INCOMPATIBLE_OVERRIDE: Final = ("__slots__", "__deletable__", "__match_arg
 # Priorities for ordering of patches within the "patch" phase of semantic analysis
 # (after the main pass):
 
-# Fix fallbacks (does joins)
+# Fix fallbacks (does subtype checks).
 PRIORITY_FALLBACKS: Final = 1
 
 
@@ -181,10 +181,11 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         tvar_scope: TypeVarLikeScope | None = None,
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
-        allow_required: bool = False,
+        allow_typed_dict_special_forms: bool = False,
         allow_placeholder: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
+        prohibit_special_class_field_types: str | None = None,
     ) -> Type | None:
         raise NotImplementedError
 
@@ -304,7 +305,7 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
                 raise NotImplementedError
         else:
             items.append(item)
-    fallback.args = (join.join_type_list(items),)
+    fallback.args = (make_simplified_union(items),)
 
 
 class _NamedTypeCallback(Protocol):
@@ -314,7 +315,7 @@ class _NamedTypeCallback(Protocol):
 def paramspec_args(
     name: str,
     fullname: str,
-    id: TypeVarId | int,
+    id: TypeVarId,
     *,
     named_type_func: _NamedTypeCallback,
     line: int = -1,
@@ -337,7 +338,7 @@ def paramspec_args(
 def paramspec_kwargs(
     name: str,
     fullname: str,
-    id: TypeVarId | int,
+    id: TypeVarId,
     *,
     named_type_func: _NamedTypeCallback,
     line: int = -1,

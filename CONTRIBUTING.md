@@ -18,7 +18,7 @@ articulated in the [Python Community Code of Conduct](https://www.python.org/psf
 
 #### (1) Fork the mypy repository
 
-Within Github, navigate to <https://github.com/python/mypy> and fork the repository.
+Within GitHub, navigate to <https://github.com/python/mypy> and fork the repository.
 
 #### (2) Clone the mypy repository and enter into it
 
@@ -30,22 +30,28 @@ cd mypy
 #### (3) Create then activate a virtual environment
 
 ```bash
-# On Windows, the commands may be slightly different. For more details, see
-# https://docs.python.org/3/library/venv.html#creating-virtual-environments
 python3 -m venv venv
 source venv/bin/activate
+```
+
+```bash
+# For Windows use
+python -m venv venv
+. venv/Scripts/activate
+
+# For more details, see https://docs.python.org/3/library/venv.html#creating-virtual-environments
 ```
 
 #### (4) Install the test requirements and the project
 
 ```bash
-python3 -m pip install -r test-requirements.txt
-python3 -m pip install -e .
+python -m pip install -r test-requirements.txt
+python -m pip install -e .
 hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
 
 > **Note**
-> You'll need Python 3.8 or higher to install all requirements listed in
+> You'll need Python 3.9 or higher to install all requirements listed in
 > test-requirements.txt
 
 ### Running tests
@@ -59,16 +65,16 @@ However, if you wish to do so, you can run the full test suite
 like this:
 
 ```bash
-python3 runtests.py
+python runtests.py
 ```
 
 Some useful commands for running specific tests include:
 
 ```bash
 # Use mypy to check mypy's own code
-python3 runtests.py self
+python runtests.py self
 # or equivalently:
-python3 -m mypy --config-file mypy_self_check.ini -p mypy
+python -m mypy --config-file mypy_self_check.ini -p mypy
 
 # Run a single test from the test suite
 pytest -n0 -k 'test_name'
@@ -111,7 +117,7 @@ tox -e dev --override testenv:dev.allowlist_externals+=env -- env  # inspect the
 ```
 
 If you don't already have `tox` installed, you can use a virtual environment as
-described above to install `tox` via `pip` (e.g., ``python3 -m pip install tox``).
+described above to install `tox` via `pip` (e.g., ``python -m pip install tox``).
 
 ## First time contributors
 

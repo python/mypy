@@ -124,14 +124,14 @@ class MatchVisitor(TraverserVisitor):
 
     def visit_class_pattern(self, pattern: ClassPattern) -> None:
         # TODO: use faster instance check for native classes (while still
-        # making sure to account for inheritence)
+        # making sure to account for inheritance)
         isinstance_op = (
             fast_isinstance_op
             if self.builder.is_builtin_ref_expr(pattern.class_ref)
             else slow_isinstance_op
         )
 
-        cond = self.builder.call_c(
+        cond = self.builder.primitive_op(
             isinstance_op, [self.subject, self.builder.accept(pattern.class_ref)], pattern.line
         )
 
@@ -246,7 +246,7 @@ class MatchVisitor(TraverserVisitor):
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
 
-            rest = self.builder.call_c(dict_copy, [self.subject], pattern.rest.line)
+            rest = self.builder.primitive_op(dict_copy, [self.subject], pattern.rest.line)
 
             target = self.builder.get_assignment_target(pattern.rest)
 

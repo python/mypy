@@ -8,16 +8,16 @@ from logging import FileHandler, Handler, LogRecord
 from re import Pattern
 from socket import SocketKind, socket
 from threading import Thread
-from typing import Any, ClassVar, Protocol, TypeVar
+from typing import Any, ClassVar, Final, Protocol, TypeVar
 
 _T = TypeVar("_T")
 
-DEFAULT_TCP_LOGGING_PORT: int
-DEFAULT_UDP_LOGGING_PORT: int
-DEFAULT_HTTP_LOGGING_PORT: int
-DEFAULT_SOAP_LOGGING_PORT: int
-SYSLOG_UDP_PORT: int
-SYSLOG_TCP_PORT: int
+DEFAULT_TCP_LOGGING_PORT: Final[int]
+DEFAULT_UDP_LOGGING_PORT: Final[int]
+DEFAULT_HTTP_LOGGING_PORT: Final[int]
+DEFAULT_SOAP_LOGGING_PORT: Final[int]
+SYSLOG_UDP_PORT: Final[int]
+SYSLOG_TCP_PORT: Final[int]
 
 class WatchedFileHandler(FileHandler):
     dev: int  # undocumented
@@ -46,7 +46,7 @@ class BaseRotatingHandler(FileHandler):
     def rotate(self, source: str, dest: str) -> None: ...
 
 class RotatingFileHandler(BaseRotatingHandler):
-    maxBytes: str  # undocumented
+    maxBytes: int  # undocumented
     backupCount: int  # undocumented
     if sys.version_info >= (3, 9):
         def __init__(
@@ -260,6 +260,8 @@ class QueueHandler(Handler):
     def __init__(self, queue: _QueueLike[Any]) -> None: ...
     def prepare(self, record: LogRecord) -> Any: ...
     def enqueue(self, record: LogRecord) -> None: ...
+    if sys.version_info >= (3, 12):
+        listener: QueueListener | None
 
 class QueueListener:
     handlers: tuple[Handler, ...]  # undocumented

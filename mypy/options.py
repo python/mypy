@@ -42,6 +42,7 @@ PER_MODULE_OPTIONS: Final = {
     "extra_checks",
     "follow_imports_for_stubs",
     "follow_imports",
+    "follow_untyped_imports",
     "ignore_errors",
     "ignore_missing_imports",
     "implicit_optional",
@@ -66,6 +67,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "plugins",
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
+        "strict_bytes",
     }
 ) - {"debug_cache"}
 
@@ -73,8 +75,10 @@ OPTIONS_AFFECTING_CACHE: Final = (
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
 UNPACK: Final = "Unpack"
 PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
-INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES,))
-COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
+NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
+INLINE_TYPEDDICT: Final = "InlineTypedDict"
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT))
+COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK, NEW_GENERIC_SYNTAX))
 
 
 class Options:
@@ -111,6 +115,8 @@ class Options:
         self.ignore_missing_imports = False
         # Is ignore_missing_imports set in a per-module section
         self.ignore_missing_imports_per_module = False
+        # Typecheck modules without stubs or py.typed marker
+        self.follow_untyped_imports = False
         self.follow_imports = "normal"  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
@@ -171,6 +177,9 @@ class Options:
         # declared with a precise type
         self.warn_return_any = False
 
+        # Report importing or using deprecated features as errors instead of notes.
+        self.report_deprecated_as_note = False
+
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
@@ -206,6 +215,9 @@ class Options:
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
+
+        # Disable treating bytearray and memoryview as subtypes of bytes
+        self.strict_bytes = False
 
         # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
@@ -376,9 +388,11 @@ class Options:
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
-
         self.force_uppercase_builtins = False
         self.force_union_syntax = False
+
+        # Sets custom output format
+        self.output: str | None = None
 
     def use_lowercase_names(self) -> bool:
         if self.python_version >= (3, 9):
@@ -393,17 +407,12 @@ class Options:
     def use_star_unpack(self) -> bool:
         return self.python_version >= (3, 11)
 
-    # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
-    @property
-    def new_semantic_analyzer(self) -> bool:
-        return True
-
     def snapshot(self) -> dict[str, object]:
         """Produce a comparable snapshot of this Option"""
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         d = dict(getattr(self, "__dict__", ()))
         for k in get_class_descriptors(Options):
-            if hasattr(self, k) and k != "new_semantic_analyzer":
+            if hasattr(self, k):
                 d[k] = getattr(self, k)
         # Remove private attributes from snapshot
         d = {k: v for k, v in d.items() if not k.startswith("_")}
@@ -411,6 +420,33 @@ class Options:
 
     def __repr__(self) -> str:
         return f"Options({pprint.pformat(self.snapshot())})"
+
+    def process_error_codes(self, *, error_callback: Callable[[str], Any]) -> None:
+        # Process `--enable-error-code` and `--disable-error-code` flags
+        disabled_codes = set(self.disable_error_code)
+        enabled_codes = set(self.enable_error_code)
+
+        valid_error_codes = set(error_codes.keys())
+
+        invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
+        if invalid_codes:
+            error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
+
+        self.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
+        self.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+
+        # Enabling an error code always overrides disabling
+        self.disabled_error_codes -= self.enabled_error_codes
+
+    def process_incomplete_features(
+        self, *, error_callback: Callable[[str], Any], warning_callback: Callable[[str], Any]
+    ) -> None:
+        # Validate incomplete features.
+        for feature in self.enable_incomplete_feature:
+            if feature not in INCOMPLETE_FEATURES | COMPLETE_FEATURES:
+                error_callback(f"Unknown incomplete feature: {feature}")
+            if feature in COMPLETE_FEATURES:
+                warning_callback(f"Warning: {feature} is already enabled by default")
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.
