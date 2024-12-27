@@ -1671,8 +1671,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if callee.is_type_obj() and callee.type_object().is_protocol:
             protocol_name = callee.type_object().name
             self.chk.fail(
-                message_registry.CANNOT_INSTANTIATE_PROTOCOL.format(protocol_name),
-                context,
+                message_registry.CANNOT_INSTANTIATE_PROTOCOL.format(protocol_name), context
             )
             if callee.from_type_type:
                 self.chk.note(
