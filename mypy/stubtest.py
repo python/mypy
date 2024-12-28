@@ -706,20 +706,20 @@ def _verify_arg_default_value(
                     and stub_default is not ...
                     and runtime_arg.default is not UNREPRESENTABLE
                 ):
-                    no_match = False
+                    defaults_match = True
                     # We want the types to match exactly, e.g. in case the stub has
                     # True and the runtime has 1 (or vice versa).
                     if type(stub_default) is not type(runtime_arg.default):
-                        no_match = True
+                        defaults_match = False
                     else:
                         try:
-                            no_match = bool(stub_default != runtime_arg.default)
+                            defaults_match = bool(stub_default == runtime_arg.default)
                         except Exception:
                             # Exception can be raised in eq/ne dunder methods (e.g. numpy arrays)
                             # At this point, consider the default to be different, it is probably
                             # too complex to put in a stub anyway.
-                            no_match = True
-                    if no_match:
+                            defaults_match = False
+                    if not defaults_match:
                         yield (
                             f'runtime argument "{runtime_arg.name}" '
                             f"has a default value of {runtime_arg.default!r}, "
