@@ -529,6 +529,18 @@ class StubtestUnit(unittest.TestCase):
             error="f11",
         )
 
+        # Simulate numpy ndarray.__bool__ that raises an error
+        yield Case(
+            stub="def f12(x=1): ...",
+            runtime="""
+            class _ndarray:
+                def __eq__(self, obj): return self
+                def __bool__(self): raise ValueError
+            def f12(x=_ndarray()) -> None: pass
+            """,
+            error="f12",
+        )
+
     @collect_cases
     def test_static_class_method(self) -> Iterator[Case]:
         yield Case(

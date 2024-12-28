@@ -670,7 +670,7 @@ def _verify_arg_default_value(
     stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
 ) -> Iterator[str]:
     """Checks whether argument default values are compatible."""
-    if runtime_arg.default != inspect.Parameter.empty:
+    if runtime_arg.default is not inspect.Parameter.empty:
         if stub_arg.kind.is_required():
             yield (
                 f'runtime argument "{runtime_arg.name}" '
@@ -705,18 +705,26 @@ def _verify_arg_default_value(
                     stub_default is not UNKNOWN
                     and stub_default is not ...
                     and runtime_arg.default is not UNREPRESENTABLE
-                    and (
-                        stub_default != runtime_arg.default
-                        # We want the types to match exactly, e.g. in case the stub has
-                        # True and the runtime has 1 (or vice versa).
-                        or type(stub_default) is not type(runtime_arg.default)
-                    )
                 ):
-                    yield (
-                        f'runtime argument "{runtime_arg.name}" '
-                        f"has a default value of {runtime_arg.default!r}, "
-                        f"which is different from stub argument default {stub_default!r}"
-                    )
+                    no_match = False
+                    # We want the types to match exactly, e.g. in case the stub has
+                    # True and the runtime has 1 (or vice versa).
+                    if type(stub_default) is not type(runtime_arg.default):
+                        no_match = True
+                    else:
+                        try:
+                            no_match = bool(stub_default != runtime_arg.default)
+                        except Exception:
+                            # Exception can be raised in eq/ne dunder methods (e.g. numpy arrays)
+                            # At this point, consider the default to be different, it is probably
+                            # too complex to put in a stub anyway.
+                            no_match = True
+                    if no_match:
+                        yield (
+                            f'runtime argument "{runtime_arg.name}" '
+                            f"has a default value of {runtime_arg.default!r}, "
+                            f"which is different from stub argument default {stub_default!r}"
+                        )
     else:
         if stub_arg.kind.is_optional():
             yield (
@@ -758,7 +766,7 @@ class Signature(Generic[T]):
 
         def has_default(arg: Any) -> bool:
             if isinstance(arg, inspect.Parameter):
-                return bool(arg.default != inspect.Parameter.empty)
+                return arg.default is not inspect.Parameter.empty
             if isinstance(arg, nodes.Argument):
                 return arg.kind.is_optional()
             raise AssertionError
@@ -1628,7 +1636,7 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> mypy.types.Type | None:
                 arg_names.append(
                     None if arg.kind == inspect.Parameter.POSITIONAL_ONLY else arg.name
                 )
-                has_default = arg.default == inspect.Parameter.empty
+                has_default = arg.default is inspect.Parameter.empty
                 if arg.kind == inspect.Parameter.POSITIONAL_ONLY:
                     arg_kinds.append(nodes.ARG_POS if has_default else nodes.ARG_OPT)
                 elif arg.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
