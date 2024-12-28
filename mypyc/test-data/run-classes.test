@@ -477,13 +477,9 @@ from native import X
 X('hello', a=0)
 try:
     X('hello', msg='hello')
-except TypeError:
-    traceback.print_exc()
+except TypeError as e:
+    print(f"{type(e).__name__}: {e}")
 [out]
-Traceback (most recent call last):
-  File "driver.py", line 5, in <module>
-    X('hello', msg='hello')
-    ~^^^^^^^^^^^^^^^^^^^^^^
 TypeError: argument for __init__() given by name ('msg') and position (1)
 
 [case testGenericClass]
