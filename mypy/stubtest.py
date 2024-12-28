@@ -715,7 +715,7 @@ def _verify_arg_default_value(
                         try:
                             defaults_match = bool(stub_default == runtime_arg.default)
                         except Exception:
-                            # Exception can be raised in eq/ne dunder methods (e.g. numpy arrays)
+                            # Exception can be raised in bool dunder method (e.g. numpy arrays)
                             # At this point, consider the default to be different, it is probably
                             # too complex to put in a stub anyway.
                             defaults_match = False
