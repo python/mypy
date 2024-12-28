@@ -864,9 +864,9 @@ reveal_type(make_cb(1)) # N: Revealed type is "def (*Any, **Any) -> builtins.int
 def use_cb(arg: T, cb: C2[T]) -> Node[T]:
     return cb(arg, arg)
 
-use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected "Callable[[int, int], Node[int]]"
+use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected "(int, int) -> Node[int]"
 my_cb: C2[int]
-use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type "Callable[[int, int], Node[int]]"; expected "Callable[[str, str], Node[str]]"
+use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type "(int, int) -> Node[int]"; expected "(str, str) -> Node[str]"
 reveal_type(use_cb(1, my_cb)) # N: Revealed type is "__main__.Node[builtins.int]"
 [builtins fixtures/tuple.pyi]
 
@@ -1425,7 +1425,7 @@ T = TypeVar('T')
 a: A[object, Callable[[], None]]
 def f(a: 'B') -> None: pass
 
-f(a) # E: Argument 1 to "f" has incompatible type "A[object, Callable[[], None]]"; expected "B"
+f(a) # E: Argument 1 to "f" has incompatible type "A[object, () -> None]"; expected "B"
 
 class A(Generic[S, T]): pass
 class B: pass
@@ -1614,17 +1614,17 @@ if int():
 if int():
     y1 = f3
 if int():
-    y1 = f4 # E: Incompatible types in assignment (expression has type "Callable[[int], A@f4]", variable has type "Callable[[A@f1], A@f1]")
+    y1 = f4 # E: Incompatible types in assignment (expression has type "(int) -> A@f4", variable has type "(A@f1) -> A@f1")
 
 y2 = f2
 if int():
     y2 = f2
 if int():
-    y2 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A@f1], A@f1]", variable has type "Callable[[A@f2], B]")
+    y2 = f1 # E: Incompatible types in assignment (expression has type "(A@f1) -> A@f1", variable has type "(A@f2) -> B")
 if int():
-    y2 = f3 # E: Incompatible types in assignment (expression has type "Callable[[B@f3], B@f3]", variable has type "Callable[[A], B@f2]")
+    y2 = f3 # E: Incompatible types in assignment (expression has type "(B@f3) -> B@f3", variable has type "(A) -> B@f2")
 if int():
-    y2 = f4 # E: Incompatible types in assignment (expression has type "Callable[[int], A@f4]", variable has type "Callable[[A@f2], B]")
+    y2 = f4 # E: Incompatible types in assignment (expression has type "(int) -> A@f4", variable has type "(A@f2) -> B")
 
 y3 = f3
 if int():
@@ -1634,17 +1634,17 @@ if int():
 if int():
     y3 = f2
 if int():
-    y3 = f4 # E: Incompatible types in assignment (expression has type "Callable[[int], A]", variable has type "Callable[[B], B]")
+    y3 = f4 # E: Incompatible types in assignment (expression has type "(int) -> A", variable has type "(B) -> B")
 
 y4 = f4
 if int():
     y4 = f4
 if int():
-    y4 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A@f1], A@f1]", variable has type "Callable[[int], A@f4]")
+    y4 = f1 # E: Incompatible types in assignment (expression has type "(A@f1) -> A@f1", variable has type "(int) -> A@f4")
 if int():
     y4 = f2
 if int():
-    y4 = f3 # E: Incompatible types in assignment (expression has type "Callable[[B], B]", variable has type "Callable[[int], A]")
+    y4 = f3 # E: Incompatible types in assignment (expression has type "(B) -> B", variable has type "(int) -> A")
 
 [case testSubtypingWithGenericInnerFunctions]
 from typing import TypeVar
@@ -1661,27 +1661,27 @@ def outer(t: T) -> None:
     y1 = f1
     if int():
         y1 = f2
-        y1 = f3 # E: Incompatible types in assignment (expression has type "Callable[[T], A@f3]", variable has type "Callable[[A@f1], A@f1]")
-        y1 = f4 # E: Incompatible types in assignment (expression has type "Callable[[A@f4], T]", variable has type "Callable[[A@f1], A@f1]")
-        y1 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[A], A]")
+        y1 = f3 # E: Incompatible types in assignment (expression has type "(T) -> A@f3", variable has type "(A@f1) -> A@f1")
+        y1 = f4 # E: Incompatible types in assignment (expression has type "(A@f4) -> T", variable has type "(A@f1) -> A@f1")
+        y1 = f5 # E: Incompatible types in assignment (expression has type "(T) -> T", variable has type "(A) -> A")
 
     y2 = f2
     if int():
-        y2 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A@f1], A@f1]", variable has type "Callable[[A@f2], B]")
+        y2 = f1 # E: Incompatible types in assignment (expression has type "(A@f1) -> A@f1", variable has type "(A@f2) -> B")
 
     y3 = f3
     if int():
-        y3 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A@f1], A@f1]", variable has type "Callable[[T], A@f3]")
+        y3 = f1 # E: Incompatible types in assignment (expression has type "(A@f1) -> A@f1", variable has type "(T) -> A@f3")
         y3 = f2
-        y3 = f4 # E: Incompatible types in assignment (expression has type "Callable[[A@f4], T]", variable has type "Callable[[T], A@f3]")
-        y3 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[T], A]")
+        y3 = f4 # E: Incompatible types in assignment (expression has type "(A@f4) -> T", variable has type "(T) -> A@f3")
+        y3 = f5 # E: Incompatible types in assignment (expression has type "(T) -> T", variable has type "(T) -> A")
 
     y4 = f4
     if int():
-        y4 = f1 # E: Incompatible types in assignment (expression has type "Callable[[A@f1], A@f1]", variable has type "Callable[[A@f4], T]")
+        y4 = f1 # E: Incompatible types in assignment (expression has type "(A@f1) -> A@f1", variable has type "(A@f4) -> T")
         y4 = f2
-        y4 = f3 # E: Incompatible types in assignment (expression has type "Callable[[T], A@f3]", variable has type "Callable[[A@f4], T]")
-        y4 = f5 # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[A], T]")
+        y4 = f3 # E: Incompatible types in assignment (expression has type "(T) -> A@f3", variable has type "(A@f4) -> T")
+        y4 = f5 # E: Incompatible types in assignment (expression has type "(T) -> T", variable has type "(A) -> T")
 
     y5 = f5
     if int():
@@ -1699,8 +1699,8 @@ g1(f)
 def g2(f: Callable[[int], int]) -> None: pass
 g2(f)
 def g3(f: Callable[[object], object]) -> None: pass
-g3(f) # E: Argument 1 to "g3" has incompatible type "Callable[[T], T]"; \
-           expected "Callable[[object], object]"
+g3(f) # E: Argument 1 to "g3" has incompatible type "(T) -> T"; \
+           expected "(object) -> object"
 
 [case testSubtypingWithGenericFunctionUsingTypevarWithValues2]
 from typing import TypeVar, Callable
@@ -1773,7 +1773,7 @@ T = TypeVar('T')
 class C(Generic[T]):
     def __init__(self) -> None: pass
 x = C # type: Callable[[], C[int]]
-y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type "Type[C[Any]]", variable has type "Callable[[], int]")
+y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type "Type[C[Any]]", variable has type "() -> int")
 
 
 -- Special cases
@@ -2307,7 +2307,7 @@ class Box(Generic[T]):
 
 class IteratorBox(Box[Iterator[T]]): ...
 
-@IteratorBox.wrap  # E: Argument 1 to "wrap" of "Box" has incompatible type "Callable[[], int]"; expected "Callable[[], Iterator[Never]]"
+@IteratorBox.wrap  # E: Argument 1 to "wrap" of "Box" has incompatible type "() -> int"; expected "() -> Iterator[Never]"
 def g() -> int:
     ...
 [builtins fixtures/classmethod.pyi]
@@ -3076,7 +3076,7 @@ reveal_type(dec1(id1))  # N: Revealed type is "def [S <: __main__.B] (S`1) -> bu
 reveal_type(dec1(id2))  # N: Revealed type is "def [S in (builtins.int, builtins.str)] (S`3) -> builtins.list[S`3]"
 reveal_type(dec2(id1))  # N: Revealed type is "def [UC <: __main__.C] (UC`5) -> builtins.list[UC`5]"
 reveal_type(dec2(id2))  # N: Revealed type is "def (Never) -> builtins.list[Never]" \
-                        # E: Argument 1 to "dec2" has incompatible type "Callable[[V], V]"; expected "Callable[[Never], Never]"
+                        # E: Argument 1 to "dec2" has incompatible type "(V) -> V"; expected "(Never) -> Never"
 
 [case testInferenceAgainstGenericLambdas]
 # flags: --new-type-inference
@@ -3511,7 +3511,7 @@ class Proto(Protocol[P, R]):
     @overload
     def __call__(self, f: Callable[P2, R2]) -> C[P2, R2, ..., R]: ...
     @overload
-    def __call__(self, **kwargs) -> C[P, R, ..., ...]: ...  # E: Cannot use "[VarArg(Any), KwArg(Any)]" for regular type variable, only for ParamSpec
+    def __call__(self, **kwargs) -> C[P, R, ..., ...]: ...  # E: Cannot use "[Any, Any]" for regular type variable, only for ParamSpec
 [builtins fixtures/tuple.pyi]
 
 [case testGenericOverloadOverlapUnion]

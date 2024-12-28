@@ -6639,8 +6639,8 @@ p3 = functools.partial(foo, b="a")
 [builtins fixtures/dict.pyi]
 [out]
 tmp/a.py:8: note: Revealed type is "functools.partial[builtins.int]"
-tmp/a.py:13: error: Argument 1 to "takes_callable_str" has incompatible type "partial[int]"; expected "Callable[..., str]"
-tmp/a.py:13: note: "partial[int].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], int]"
+tmp/a.py:13: error: Argument 1 to "takes_callable_str" has incompatible type "partial[int]"; expected "(..., str)"
+tmp/a.py:13: note: "partial[int].__call__" has type "(Any, Any) -> int"
 tmp/a.py:18: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 tmp/a.py:19: error: Too many arguments for "foo"
 tmp/a.py:19: error: Argument 1 to "foo" has incompatible type "int"; expected "str"

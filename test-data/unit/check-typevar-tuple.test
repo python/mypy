@@ -515,18 +515,18 @@ vargs: Tuple[int, ...]
 vargs_str: Tuple[str, ...]
 
 call(target=func, args=(0, 'foo'))
-call(target=func, args=('bar', 'foo'))  # E: Argument "target" to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[str, str], None]"
-call(target=func, args=(True, 'foo', 0))  # E: Argument "target" to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[bool, str, int], None]"
-call(target=func, args=(0, 0, 'foo'))  # E: Argument "target" to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[int, int, str], None]"
-call(target=func, args=vargs)  # E: Argument "target" to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[VarArg(int)], None]"
+call(target=func, args=('bar', 'foo'))  # E: Argument "target" to "call" has incompatible type "(int, str) -> None"; expected "(str, str) -> None"
+call(target=func, args=(True, 'foo', 0))  # E: Argument "target" to "call" has incompatible type "(int, str) -> None"; expected "(bool, str, int) -> None"
+call(target=func, args=(0, 0, 'foo'))  # E: Argument "target" to "call" has incompatible type "(int, str) -> None"; expected "(int, int, str) -> None"
+call(target=func, args=vargs)  # E: Argument "target" to "call" has incompatible type "(int, str) -> None"; expected "(int) -> None"
 
 # NOTE: This behavior may be a bit contentious, it is maybe inconsistent with our handling of
 # PEP646 but consistent with our handling of callable constraints.
-call(target=func2, args=vargs)  # E: Argument "target" to "call" has incompatible type "Callable[[int, int], None]"; expected "Callable[[VarArg(int)], None]"
+call(target=func2, args=vargs)  # E: Argument "target" to "call" has incompatible type "(int, int) -> None"; expected "(int) -> None"
 call(target=func3, args=vargs)
 call(target=func3, args=(0,1))
-call(target=func3, args=(0,'foo'))  # E: Argument "target" to "call" has incompatible type "Callable[[VarArg(int)], None]"; expected "Callable[[int, str], None]"
-call(target=func3, args=vargs_str)  # E: Argument "target" to "call" has incompatible type "Callable[[VarArg(int)], None]"; expected "Callable[[VarArg(str)], None]"
+call(target=func3, args=(0,'foo'))  # E: Argument "target" to "call" has incompatible type "(int) -> None"; expected "(int, str) -> None"
+call(target=func3, args=vargs_str)  # E: Argument "target" to "call" has incompatible type "(int) -> None"; expected "(str) -> None"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuplePep646CallableWithPrefixSuffix]
@@ -545,7 +545,7 @@ def func_prefix(arg0: bytes, arg1: int, arg2: str) -> None: ...
 def func2_prefix(arg0: str, arg1: int, arg2: str) -> None: ...
 
 call_prefix(target=func_prefix, args=(0, 'foo'))
-call_prefix(target=func2_prefix, args=(0, 'foo'))  # E: Argument "target" to "call_prefix" has incompatible type "Callable[[str, int, str], None]"; expected "Callable[[bytes, int, str], None]"
+call_prefix(target=func2_prefix, args=(0, 'foo'))  # E: Argument "target" to "call_prefix" has incompatible type "(str, int, str) -> None"; expected "(bytes, int, str) -> None"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuplePep646CallableSuffixSyntax]
@@ -640,11 +640,11 @@ class A:
 vargs: Tuple[int, ...]
 vargs_str: Tuple[str, ...]
 
-call(A().func)  # E: Argument 1 to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[], None]"
+call(A().func)  # E: Argument 1 to "call" has incompatible type "(int, str) -> None"; expected "() -> None"
 call(A().func, 0, 'foo')
-call(A().func, 0, 'foo', 0)  # E: Argument 1 to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[int, str, int], None]"
-call(A().func, 0)  # E: Argument 1 to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[int], None]"
-call(A().func, 0, 1)  # E: Argument 1 to "call" has incompatible type "Callable[[int, str], None]"; expected "Callable[[int, int], None]"
+call(A().func, 0, 'foo', 0)  # E: Argument 1 to "call" has incompatible type "(int, str) -> None"; expected "(int, str, int) -> None"
+call(A().func, 0)  # E: Argument 1 to "call" has incompatible type "(int, str) -> None"; expected "(int) -> None"
+call(A().func, 0, 1)  # E: Argument 1 to "call" has incompatible type "(int, str) -> None"; expected "(int, int) -> None"
 call(A().func2, 0, 0)
 call(A().func3, 0, 1, 2)
 call(A().func3)
@@ -1126,7 +1126,7 @@ nt = A(fn=test, val=42)
 reveal_type(nt)  # N: Revealed type is "Tuple[def (builtins.int, builtins.str), builtins.int, fallback=__main__.A[builtins.int, builtins.str, builtins.int]]"
 
 def bad() -> int: ...
-nt2 = A(fn=bad, val=42)  # E: Argument "fn" to "A" has incompatible type "Callable[[], int]"; expected "Callable[[], None]"
+nt2 = A(fn=bad, val=42)  # E: Argument "fn" to "A" has incompatible type "() -> int"; expected "() -> None"
 [builtins fixtures/tuple.pyi]
 
 [case testVariadicTypedDict]
@@ -1155,7 +1155,7 @@ td = A({"fn": test, "val": 42})
 reveal_type(td)  # N: Revealed type is "TypedDict('__main__.A', {'fn': def (builtins.int, builtins.str), 'val': builtins.int})"
 
 def bad() -> int: ...
-td2 = A({"fn": bad, "val": 42})  # E: Incompatible types (expression has type "Callable[[], int]", TypedDict item "fn" has type "Callable[[], None]")
+td2 = A({"fn": bad, "val": 42})  # E: Incompatible types (expression has type "() -> int", TypedDict item "fn" has type "() -> None")
 [builtins fixtures/tuple.pyi]
 
 [case testFixedUnpackWithRegularInstance]
@@ -1903,7 +1903,7 @@ def foo3(func: Callable[[int, Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
    return submit2(func, 1, *args)
 
 def foo_bad(func: Callable[[Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
-   return submit2(func, 1, *args)  # E: Argument 1 to "submit2" has incompatible type "Callable[[VarArg(Unpack[Args2])], T]"; expected "Callable[[int, VarArg(Unpack[Args2])], T]"
+   return submit2(func, 1, *args)  # E: Argument 1 to "submit2" has incompatible type "(Unpack[Args2]) -> T"; expected "(int, Unpack[Args2]) -> T"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleParamSpecInteraction]
@@ -2034,12 +2034,12 @@ class B(Generic[Unpack[Ts]]):
     def on_pair(self: B[T, S]) -> Tuple[T, S]: ...
 
 b1: B[int]
-reveal_type(b1.on_pair())  # E: Invalid self argument "B[int]" to attribute function "on_pair" with type "Callable[[B[T, S]], Tuple[T, S]]" \
+reveal_type(b1.on_pair())  # E: Invalid self argument "B[int]" to attribute function "on_pair" with type "(B[T, S]) -> Tuple[T, S]" \
                            # N: Revealed type is "Tuple[Never, Never]"
 b2: B[int, str]
 reveal_type(b2.on_pair())  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 b3: B[int, str, int]
-reveal_type(b3.on_pair())  # E: Invalid self argument "B[int, str, int]" to attribute function "on_pair" with type "Callable[[B[T, S]], Tuple[T, S]]" \
+reveal_type(b3.on_pair())  # E: Invalid self argument "B[int, str, int]" to attribute function "on_pair" with type "(B[T, S]) -> Tuple[T, S]" \
                            # N: Revealed type is "Tuple[Never, Never]"
 
 class C(B[T, S]): ...
@@ -2313,10 +2313,10 @@ def bad4(**kwargs: None) -> None: ...
 higher_order(good1)
 higher_order(good2)
 
-higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[str, int], None]"; expected "Callable[[VarArg(Any)], Any]"
-higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[bytes, VarArg(int)], str]"; expected "Callable[[VarArg(Any)], Any]"
-higher_order(bad3)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[NamedArg(str, 'd')], int]"; expected "Callable[[VarArg(Any)], Any]"
-higher_order(bad4)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[VarArg(Any)], Any]"
+higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "(str, int) -> None"; expected "(Any) -> Any"
+higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "(bytes, int) -> str"; expected "(Any) -> Any"
+higher_order(bad3)  # E: Argument 1 to "higher_order" has incompatible type "(d: str) -> int"; expected "(Any) -> Any"
+higher_order(bad4)  # E: Argument 1 to "higher_order" has incompatible type "(None) -> None"; expected "(Any) -> Any"
 [builtins fixtures/tuple.pyi]
 
 [case testAliasToCallableWithUnpack2]
@@ -2332,10 +2332,10 @@ def bad3(*, d: str) -> int: ...
 def bad4(**kwargs: None) -> None: ...
 
 higher_order(good)
-higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[str, int], None]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
-higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[bytes, VarArg(int)], str]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
-higher_order(bad3)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[NamedArg(str, 'd')], int]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
-higher_order(bad4)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
+higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "(str, int) -> None"; expected "(int, str, Unpack[Tuple[Unpack[Tuple[Any, ...]], int]]) -> Any"
+higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "(bytes, int) -> str"; expected "(int, str, Unpack[Tuple[Unpack[Tuple[Any, ...]], int]]) -> Any"
+higher_order(bad3)  # E: Argument 1 to "higher_order" has incompatible type "(d: str) -> int"; expected "(int, str, Unpack[Tuple[Unpack[Tuple[Any, ...]], int]]) -> Any"
+higher_order(bad4)  # E: Argument 1 to "higher_order" has incompatible type "(None) -> None"; expected "(int, str, Unpack[Tuple[Unpack[Tuple[Any, ...]], int]]) -> Any"
 [builtins fixtures/tuple.pyi]
 
 [case testAliasToCallableWithUnpackInvalid]
@@ -2351,7 +2351,7 @@ Alias = Callable[[Unpack[T]], int]  # E: "T" cannot be unpacked (must be tuple o
 x: Alias[int]
 reveal_type(x)  # N: Revealed type is "def (*Any) -> builtins.int"
 x = good
-x = bad  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), NamedArg(int, 'y')], int]", variable has type "Callable[[VarArg(Any)], int]")
+x = bad  # E: Incompatible types in assignment (expression has type "(int, y: int) -> int", variable has type "(Any) -> int")
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleInvariant]
@@ -2402,7 +2402,7 @@ reveal_type(C[int, str])  # N: Revealed type is "Overload(def (f: def (builtins.
 Alias = C[int, str]
 
 def f(x: int, y: int, z: int, t: int) -> str: ...
-x = C(f, 0, 0, "hm")  # E: Argument 1 to "C" has incompatible type "Callable[[int, int, int, int], str]"; expected "Callable[[int, int, str, int], str]"
+x = C(f, 0, 0, "hm")  # E: Argument 1 to "C" has incompatible type "(int, int, int, int) -> str"; expected "(int, int, str, int) -> str"
 reveal_type(x)  # N: Revealed type is "__main__.C[builtins.str, builtins.int]"
 reveal_type(C(f))  # N: Revealed type is "__main__.C[builtins.str, builtins.int, builtins.int, builtins.int, builtins.int]"
 C[()]  # E: At least 1 type argument(s) expected, none given
@@ -2437,7 +2437,7 @@ class CM(Generic[R]): ...
 def cm(fn: Callable[P, List[R]]) -> Callable[P, CM[R]]: ...
 
 Ts = TypeVarTuple("Ts")
-@cm  # E: Argument 1 to "cm" has incompatible type "Callable[[VarArg(Unpack[Ts])], Tuple[Unpack[Ts]]]"; expected "Callable[[VarArg(Never)], List[Never]]"
+@cm  # E: Argument 1 to "cm" has incompatible type "(Unpack[Ts]) -> Tuple[Unpack[Ts]]"; expected "(Never) -> List[Never]"
 def test(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]: ...
 
 reveal_type(test)  # N: Revealed type is "def (*args: Never) -> __main__.CM[Never]"

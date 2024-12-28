@@ -1340,7 +1340,7 @@ class A:
 [out]
 ==
 -- This is a bad error message
-main:7: error: Argument 1 to "use" has incompatible type "Type[A]"; expected "Callable[[], A]"
+main:7: error: Argument 1 to "use" has incompatible type "Type[A]"; expected "() -> A"
 
 [case testConstructorSignatureChanged3]
 from a import C
@@ -2227,7 +2227,7 @@ class B:
     x: int
 [out]
 ==
-a.py:3: error: Argument 1 to "deca" has incompatible type "Callable[[B], B]"; expected "Callable[[str], str]"
+a.py:3: error: Argument 1 to "deca" has incompatible type "(B) -> B"; expected "(str) -> str"
 ==
 a.py:6: error: "B" has no attribute "x"
 ==
@@ -2295,7 +2295,7 @@ class B:
     x: int
 [out]
 ==
-a.py:4: error: Argument 1 to "deca" has incompatible type "Callable[[B], B]"; expected "Callable[[str], str]"
+a.py:4: error: Argument 1 to "deca" has incompatible type "(B) -> B"; expected "(str) -> str"
 ==
 a.py:7: error: "B" has no attribute "x"
 ==
@@ -2363,7 +2363,7 @@ class B:
     x: int
 [out]
 ==
-a.py:4: error: Argument 1 to "deca" has incompatible type "Callable[[D, B], B]"; expected "Callable[..., str]"
+a.py:4: error: Argument 1 to "deca" has incompatible type "(D, B) -> B"; expected "(..., str)"
 ==
 a.py:7: error: "B" has no attribute "x"
 ==
@@ -2389,7 +2389,7 @@ def dec(func: Callable[[str], str]) -> Callable[[str], str]:
     pass
 [out]
 ==
-a.py:5: error: Argument 1 to "dec" has incompatible type "Callable[[int], int]"; expected "Callable[[str], str]"
+a.py:5: error: Argument 1 to "dec" has incompatible type "(int) -> int"; expected "(str) -> str"
 
 [case testDecoratorUpdateNestedClass]
 import a
@@ -2414,7 +2414,7 @@ class C:
         pass
 [out]
 ==
-a.py:6: error: Argument 1 to "dec" of "C" has incompatible type "Callable[[Inner, int], int]"; expected "Callable[..., str]"
+a.py:6: error: Argument 1 to "dec" of "C" has incompatible type "(Inner, int) -> int"; expected "(..., str)"
 
 [case testDecoratorUpdateClassInFunction]
 import a
@@ -2450,7 +2450,7 @@ class B:
     x: str
 [out]
 ==
-a.py:6: error: Argument 1 to "dec" of "C" has incompatible type "Callable[[Inner, B], int]"; expected "Callable[..., str]"
+a.py:6: error: Argument 1 to "dec" of "C" has incompatible type "(Inner, B) -> int"; expected "(..., str)"
 ==
 a.py:8: error: Incompatible return value type (got "str", expected "int")
 
@@ -2480,7 +2480,7 @@ def dec(f: Callable[[C], int]) -> Callable[[int], int]:
     pass
 [out]
 ==
-a.py:3: error: Argument 1 to "dec" has incompatible type "Callable[[B], int]"; expected "Callable[[C], int]"
+a.py:3: error: Argument 1 to "dec" has incompatible type "(B) -> int"; expected "(C) -> int"
 
 [case testOverloadRefresh]
 from typing import overload
@@ -4514,9 +4514,9 @@ x = 0
 x = ''
 [builtins fixtures/tuple.pyi]
 [out]
-b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], object], int]")
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "(Tuple[int, ...], object) -> int")
 ==
-b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], object], int]")
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "(Tuple[int, ...], object) -> int")
 
 [case testReprocessEllipses1]
 import a
@@ -6161,7 +6161,7 @@ class C:
         pass
 [out]
 ==
-a.py:6: error: Argument 1 to "func" has incompatible type "Type[C]"; expected "Callable[[int], Any]"
+a.py:6: error: Argument 1 to "func" has incompatible type "Type[C]"; expected "(int) -> Any"
 
 [case testDunderNewDefine]
 import a
@@ -8094,7 +8094,7 @@ def A(x: str) -> str: pass
 [builtins fixtures/list.pyi]
 [out]
 ==
-a.py:4: error: Incompatible import of "A" (imported name has type "Callable[[str], str]", local name has type "Type[List[Any]]")
+a.py:4: error: Incompatible import of "A" (imported name has type "(str) -> str", local name has type "Type[List[Any]]")
 
 [case testFakeOverloadCrash]
 import b

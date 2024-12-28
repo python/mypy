@@ -104,7 +104,7 @@ import typing
 class A:
     def f(self): pass
 A().f = None  # E: Cannot assign to a method \
-              # E: Incompatible types in assignment (expression has type "None", variable has type "Callable[[], Any]")
+              # E: Incompatible types in assignment (expression has type "None", variable has type "() -> Any")
 
 
 [case testOverrideAttributeWithMethod]
@@ -145,7 +145,7 @@ class Base:
         pass
 
 class Derived(Base):
-    __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
+    __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "(Base) -> int")
 
 [case testOverridePartialAttributeWithMethod]
 # This was crashing: https://github.com/python/mypy/issues/11686.
@@ -740,13 +740,13 @@ class A:
     f3: Callable[[str], None]
 
 class B(A):
-    def f1(self, x: object) -> None: pass   # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+    def f1(self, x: object) -> None: pass   # E: Covariant override of a mutable attribute (base class "A" defined the type as "(str) -> None", override has type "(object) -> None")
 
     @classmethod
-    def f2(cls, x: object) -> None: pass    # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+    def f2(cls, x: object) -> None: pass    # E: Covariant override of a mutable attribute (base class "A" defined the type as "(str) -> None", override has type "(object) -> None")
 
     @staticmethod
-    def f3(x: object) -> None: pass         # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+    def f3(x: object) -> None: pass         # E: Covariant override of a mutable attribute (base class "A" defined the type as "(str) -> None", override has type "(object) -> None")
 [builtins fixtures/classmethod.pyi]
 
 [case testOverrideCallableAttributeWithSettableProperty]
@@ -770,7 +770,7 @@ class A:
     f: Callable[[str], None]
 
 class B(A):
-    @property  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+    @property  # E: Covariant override of a mutable attribute (base class "A" defined the type as "(str) -> None", override has type "(object) -> None")
     def f(self) -> Callable[[object], None]: pass
     @func.setter
     def f(self, x: object) -> None: pass
@@ -812,18 +812,18 @@ class A:
     f4: Union[Callable[[str], str], str]
 
 class B(A):
-    def f1(self, x: str) -> str:     # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+    def f1(self, x: str) -> str:     # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[(str) -> str, str]", override has type "(str) -> str")
         pass
 
-    def f2(self, x: object) -> str:  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[object], str]")
+    def f2(self, x: object) -> str:  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[(str) -> str, str]", override has type "(object) -> str")
         pass
 
     @classmethod
-    def f3(cls, x: str) -> str:      # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+    def f3(cls, x: str) -> str:      # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[(str) -> str, str]", override has type "(str) -> str")
         pass
 
     @staticmethod
-    def f4(x: str) -> str:           # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+    def f4(x: str) -> str:           # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[(str) -> str, str]", override has type "(str) -> str")
         pass
 [builtins fixtures/classmethod.pyi]
 
@@ -1095,9 +1095,9 @@ class A:
     if int():
         h = f
         g = h
-    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[B], None]")
+    ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type "(A) -> None", variable has type "(B) -> None")
     if int():
-        g = ff  # E: Incompatible types in assignment (expression has type "Callable[[B], None]", variable has type "Callable[[A], None]")
+        g = ff  # E: Incompatible types in assignment (expression has type "(B) -> None", variable has type "(A) -> None")
 [out]
 
 
@@ -1206,7 +1206,7 @@ import typing
 class A:
     def f(self): pass
 A.f = None  # E: Cannot assign to a method \
-            # E: Incompatible types in assignment (expression has type "None", variable has type "Callable[[A], Any]")
+            # E: Incompatible types in assignment (expression has type "None", variable has type "(A) -> Any")
 
 [case testAssignToNestedClassViaClass]
 import typing
@@ -2345,8 +2345,8 @@ class B:
 class C:
     def __radd__(self, other, oops) -> int: ...
 [out]
-tmp/foo.pyi:3: error: Invalid signature "Callable[[B], A]"
-tmp/foo.pyi:5: error: Invalid signature "Callable[[C, Any, Any], int]"
+tmp/foo.pyi:3: error: Invalid signature "(B) -> A"
+tmp/foo.pyi:5: error: Invalid signature "(C, Any, Any) -> int"
 
 [case testReverseOperatorOrderingCase1]
 class A:
@@ -2934,8 +2934,8 @@ class C:
 class D:
     def __getattribute__(self, x: str) -> None: pass
 [out]
-main:4: error: Invalid signature "Callable[[B, A], B]" for "__getattribute__"
-main:6: error: Invalid signature "Callable[[C, str, str], C]" for "__getattribute__"
+main:4: error: Invalid signature "(B, A) -> B" for "__getattribute__"
+main:6: error: Invalid signature "(C, str, str) -> C" for "__getattribute__"
 
 [case testGetattr]
 a: A
@@ -3004,7 +3004,7 @@ class C:
 
 def do(cd: Callable[..., Any]) -> None: ...
 
-do(C())  # E: Argument 1 to "do" has incompatible type "C"; expected "Callable[..., Any]"
+do(C())  # E: Argument 1 to "do" has incompatible type "C"; expected "(..., Any)"
 
 [case testGetattrWithCallableTypeVar]
 from typing import Callable, Any, TypeVar
@@ -3040,8 +3040,8 @@ class C:
 class D:
     def __getattr__(self, x: str) -> None: pass
 [out]
-main:4: error: Invalid signature "Callable[[B, A], B]" for "__getattr__"
-main:6: error: Invalid signature "Callable[[C, str, str], C]" for "__getattr__"
+main:4: error: Invalid signature "(B, A) -> B" for "__getattr__"
+main:6: error: Invalid signature "(C, str, str) -> C" for "__getattr__"
 
 [case testSetattr]
 from typing import Union, Any
@@ -3119,12 +3119,12 @@ b.bad = 'a'  # E: Incompatible types in assignment (expression has type "str", v
 from typing import Any
 
 class Test:
-    def __setattr__() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument? # E: Invalid signature "Callable[[], None]" for "__setattr__"
+    def __setattr__() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument? # E: Invalid signature "() -> None" for "__setattr__"
 t = Test()
 t.crash = 'test'  # E: "Test" has no attribute "crash"
 
 class A:
-    def __setattr__(self): ...  # E: Invalid signature "Callable[[A], Any]" for "__setattr__"
+    def __setattr__(self): ...  # E: Invalid signature "(A) -> Any" for "__setattr__"
 a = A()
 a.test = 4  # E: "A" has no attribute "test"
 
@@ -3134,7 +3134,7 @@ b = B()
 b.integer = 5
 
 class C:
-    def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "Callable[[C, int, int], None]" for "__setattr__"
+    def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "(C, int, int) -> None" for "__setattr__"
 c = C()
 c.check = 13
 
@@ -3355,7 +3355,7 @@ class B:
     a = A
     bad = lambda: 42
 
-B().bad() # E: Attribute function "bad" with type "Callable[[], int]" does not accept self argument
+B().bad() # E: Attribute function "bad" with type "() -> int" does not accept self argument
 reveal_type(B.a) # N: Revealed type is "def () -> __main__.A"
 reveal_type(B().a) # N: Revealed type is "def () -> __main__.A"
 reveal_type(B().a()) # N: Revealed type is "__main__.A"
@@ -4439,7 +4439,7 @@ class A:
     def a(self) -> None: pass
     b = 1
 class B(A):
-    a = 1  # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "Callable[[A], None]")
+    a = 1  # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "(A) -> None")
     def b(self) -> None: pass  # E: Signature of "b" incompatible with supertype "A" \
                                # N:      Superclass: \
                                # N:          int \
@@ -4483,7 +4483,7 @@ class C(B):
     def m(self, a: str) -> None: pass
     n = m
 [out]
-main:5: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "B" defined the type as "Callable[[int], None]")
+main:5: error: Incompatible types in assignment (expression has type "(str) -> None", base class "B" defined the type as "(int) -> None")
 
 [case testInstanceMethodOverwriteTypevar]
 from typing import Generic, TypeVar
@@ -4527,7 +4527,7 @@ class C(B):
     n = m
 [builtins fixtures/classmethod.pyi]
 [out]
-main:7: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "B" defined the type as "Callable[[int], None]")
+main:7: error: Incompatible types in assignment (expression has type "(str) -> None", base class "B" defined the type as "(int) -> None")
 
 [case testClassSpec]
 from typing import Callable
@@ -4545,7 +4545,7 @@ class B(A):
     def c(self, a: str) -> int: pass
     b = c
 [out]
-main:6: error: Incompatible types in assignment (expression has type "Callable[[str], int]", base class "A" defined the type as "Callable[[int], int]")
+main:6: error: Incompatible types in assignment (expression has type "(str) -> int", base class "A" defined the type as "(int) -> int")
 
 [case testClassStaticMethod]
 class A():
@@ -4557,7 +4557,7 @@ class B(A):
     a = b
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:7: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "A" defined the type as "Callable[[int], None]")
+main:7: error: Incompatible types in assignment (expression has type "(str) -> None", base class "A" defined the type as "(int) -> None")
 
 [case testClassStaticMethodIndirect]
 class A():
@@ -4570,7 +4570,7 @@ class B(A):
     c = b
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:8: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "A" defined the type as "Callable[[int], None]")
+main:8: error: Incompatible types in assignment (expression has type "(str) -> None", base class "A" defined the type as "(int) -> None")
 
 [case testClassStaticMethodSubclassing]
 class A:
@@ -5053,9 +5053,9 @@ reveal_type(A.g4)  # N: Revealed type is "def () -> def () -> __main__.A"
 class B(metaclass=M):
     def foo(self): pass
 
-B.g1  # E: Invalid self argument "Type[B]" to attribute function "g1" with type "Callable[[Type[A]], A]"
-B.g2  # E: Invalid self argument "Type[B]" to attribute function "g2" with type "Callable[[Type[TA]], TA]"
-B.g3  # E: Invalid self argument "Type[B]" to attribute function "g3" with type "Callable[[TTA], TTA]"
+B.g1  # E: Invalid self argument "Type[B]" to attribute function "g1" with type "(Type[A]) -> A"
+B.g2  # E: Invalid self argument "Type[B]" to attribute function "g2" with type "(Type[TA]) -> TA"
+B.g3  # E: Invalid self argument "Type[B]" to attribute function "g3" with type "(TTA) -> TTA"
 reveal_type(B.g4)  # N: Revealed type is "def () -> def () -> __main__.B"
 
 # 4 examples of unsoundness - instantiation, classmethod, staticmethod and ClassVar:
@@ -5068,9 +5068,9 @@ reveal_type(ta.g3)  # N: Revealed type is "def () -> Type[__main__.A]"
 reveal_type(ta.g4)  # N: Revealed type is "def () -> Type[__main__.A]"
 
 x: M = ta
-x.g1  # E: Invalid self argument "M" to attribute function "g1" with type "Callable[[Type[A]], A]"
-x.g2  # E: Invalid self argument "M" to attribute function "g2" with type "Callable[[Type[TA]], TA]"
-x.g3  # E: Invalid self argument "M" to attribute function "g3" with type "Callable[[TTA], TTA]"
+x.g1  # E: Invalid self argument "M" to attribute function "g1" with type "(Type[A]) -> A"
+x.g2  # E: Invalid self argument "M" to attribute function "g2" with type "(Type[TA]) -> TA"
+x.g3  # E: Invalid self argument "M" to attribute function "g3" with type "(TTA) -> TTA"
 reveal_type(x.g4)  # N: Revealed type is "def () -> __main__.M"
 
 def r(ta: Type[TA], tta: TTA) -> None:
@@ -7823,7 +7823,7 @@ class Foo:
     def meth1(self, a: str) -> str: ...  # E: Name "meth1" already defined on line 5
 
     def meth2(self, a: str) -> str: ...
-    from mod1 import meth2  # E: Incompatible import of "meth2" (imported name has type "Callable[[int], int]", local name has type "Callable[[Foo, str], str]")
+    from mod1 import meth2  # E: Incompatible import of "meth2" (imported name has type "(int) -> int", local name has type "(Foo, str) -> str")
 
 class Bar:
     from mod1 import foo  # E: Unsupported class scoped import
