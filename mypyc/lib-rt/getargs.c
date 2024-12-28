@@ -374,8 +374,6 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             int res = PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg);
             if (res == 1) {
                 Py_DECREF(current_arg);
-            }
-            else if (unlikely(res == 0)) {
                 /* arg present in tuple and in dict */
                 PyErr_Format(PyExc_TypeError,
                              "argument for %.200s%s given by name ('%s') "
