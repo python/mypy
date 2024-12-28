@@ -250,12 +250,11 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                 current_arg = Py_NewRef(PyTuple_GET_ITEM(args, i));
             }
             else if (nkwargs && i >= pos) {
-                int res = PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg);
-                if (res == 1) {
-                    --nkwargs;
-                }
-                else if (res == -1) {
+                if (PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg) < 0) {
                     return 0;
+                }
+                if (current_arg) {
+                    --nkwargs;
                 }
             }
             else {
@@ -371,8 +370,11 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         Py_ssize_t j;
         /* make sure there are no arguments given by name and position */
         for (i = pos; i < bound_pos_args && i < len; i++) {
-            int res = PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg);
-            if (res == 1) {
+            PyObject *current_arg;
+            if (PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg) < 0) {
+                goto latefail;
+            }
+            if (unlikely(current_arg != NULL)) {
                 Py_DECREF(current_arg);
                 /* arg present in tuple and in dict */
                 PyErr_Format(PyExc_TypeError,
@@ -381,9 +383,6 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                              (fname == NULL) ? "function" : fname,
                              (fname == NULL) ? "" : "()",
                              kwlist[i], i+1);
-                goto latefail;
-            }
-            else if (unlikely(res == -1)) {
                 goto latefail;
             }
         }
