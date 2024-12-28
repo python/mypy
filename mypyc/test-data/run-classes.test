@@ -467,6 +467,21 @@ a = A(10)
 assert a.foo() == 11
 assert foo() == 21
 
+[case testClassKwargs]
+class X:
+    def __init__(self, msg: str, **variables: int) -> None:
+         pass
+[file driver.py]
+import traceback
+from native import X
+X('hello', a=0)
+try:
+    X('hello', msg='hello')
+except TypeError as e:
+    print(f"{type(e).__name__}: {e}")
+[out]
+TypeError: argument for __init__() given by name ('msg') and position (1)
+
 [case testGenericClass]
 from typing import TypeVar, Generic, Sequence
 T = TypeVar('T')
