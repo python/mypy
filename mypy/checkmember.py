@@ -1086,7 +1086,7 @@ def analyze_class_attribute_access(
             if not node.node.is_classvar and node.node.info.self_type:
                 def_vars.add(node.node.info.self_type)
             typ_vars = set(get_type_vars(t))
-            if def_vars & typ_vars:
+            if any(tv for tv in def_vars & typ_vars if tv.upper_bound != itype):
                 if node.node.is_classvar:
                     message = message_registry.GENERIC_CLASS_VAR_ACCESS
                 else:

@@ -2233,6 +2233,22 @@ xi = C[int].x  # E: Access to generic instance variables via class is ambiguous
 reveal_type(xi)  # N: Revealed type is "builtins.int"
 [builtins fixtures/classmethod.pyi]
 
+[case testGenericClassAttrSelfType]
+from typing import TypeVar, Generic, Self, Type, Mapping
+
+class A:
+    d: Mapping[str, Self]
+
+    @classmethod
+    def make(cls) -> Self:
+        return cls.d["asdf"]
+
+def main(A_t: Type[A]) -> None:
+    reveal_type(A.d)  # N: Revealed type is "typing.Mapping[builtins.str, __main__.A]"
+    reveal_type(A_t.d)  # N: Revealed type is "typing.Mapping[builtins.str, __main__.A]"
+
+[builtins fixtures/classmethod.pyi]
+
 [case testGenericClassAttrUnboundOnSubClass]
 from typing import Generic, TypeVar, Tuple
 T = TypeVar('T')
