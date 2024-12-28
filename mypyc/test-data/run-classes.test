@@ -472,8 +472,19 @@ class X:
     def __init__(self, msg: str, **variables: int) -> None:
          pass
 [file driver.py]
+import traceback
 from native import X
 X('hello', a=0)
+try:
+    X('hello', msg='hello')
+except TypeError:
+    traceback.print_exc()
+[out]
+Traceback (most recent call last):
+  File "driver.py", line 5, in <module>
+    X('hello', msg='hello')
+    ~^^^^^^^^^^^^^^^^^^^^^^
+TypeError: argument for __init__() given by name ('msg') and position (1)
 
 [case testGenericClass]
 from typing import TypeVar, Generic, Sequence
