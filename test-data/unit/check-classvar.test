@@ -282,6 +282,7 @@ main:2: note: Revealed type is "builtins.int"
 main:3: error: Cannot assign to class variable "x" via instance
 
 [case testClassVarWithGeneric]
+import types
 from typing import ClassVar, Generic, TypeVar, Type
 T = TypeVar('T')
 class A(Generic[T]):
