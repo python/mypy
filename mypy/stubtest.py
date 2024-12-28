@@ -1636,13 +1636,13 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> mypy.types.Type | None:
                 arg_names.append(
                     None if arg.kind == inspect.Parameter.POSITIONAL_ONLY else arg.name
                 )
-                has_default = arg.default is inspect.Parameter.empty
+                no_default = arg.default is inspect.Parameter.empty
                 if arg.kind == inspect.Parameter.POSITIONAL_ONLY:
-                    arg_kinds.append(nodes.ARG_POS if has_default else nodes.ARG_OPT)
+                    arg_kinds.append(nodes.ARG_POS if no_default else nodes.ARG_OPT)
                 elif arg.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
-                    arg_kinds.append(nodes.ARG_POS if has_default else nodes.ARG_OPT)
+                    arg_kinds.append(nodes.ARG_POS if no_default else nodes.ARG_OPT)
                 elif arg.kind == inspect.Parameter.KEYWORD_ONLY:
-                    arg_kinds.append(nodes.ARG_NAMED if has_default else nodes.ARG_NAMED_OPT)
+                    arg_kinds.append(nodes.ARG_NAMED if no_default else nodes.ARG_NAMED_OPT)
                 elif arg.kind == inspect.Parameter.VAR_POSITIONAL:
                     arg_kinds.append(nodes.ARG_STAR)
                 elif arg.kind == inspect.Parameter.VAR_KEYWORD:
