@@ -250,7 +250,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                 current_arg = Py_NewRef(PyTuple_GET_ITEM(args, i));
             }
             else if (nkwargs && i >= pos) {
-                if (PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg) < 0) {
+                if (unlikely(PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg) < 0)) {
                     return 0;
                 }
                 if (current_arg) {
@@ -371,7 +371,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         /* make sure there are no arguments given by name and position */
         for (i = pos; i < bound_pos_args && i < len; i++) {
             PyObject *current_arg;
-            if (PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg) < 0) {
+            if (unlikely(PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg) < 0)) {
                 goto latefail;
             }
             if (unlikely(current_arg != NULL)) {
