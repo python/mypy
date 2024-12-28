@@ -2234,7 +2234,7 @@ reveal_type(xi)  # N: Revealed type is "builtins.int"
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassAttrSelfType]
-from typing import TypeVar, Generic, Self, Type, Mapping
+from typing import TypeVar, Generic, Self, Type, Mapping, ClassVar
 
 class A:
     d: Mapping[str, Self]
@@ -2253,6 +2253,22 @@ def check_B(B_t: Type[B]) -> None:
     reveal_type(B.d)  # N: Revealed type is "typing.Mapping[builtins.str, __main__.B]"
     reveal_type(B_t.d)  # N: Revealed type is "typing.Mapping[builtins.str, __main__.B]"
 
+class AA:
+    d: ClassVar[Mapping[str, Self]]
+
+    @classmethod
+    def make(cls) -> Self:
+        return cls.d["asdf"]
+
+class BB(AA): ...
+
+def check_AA(AA_t: Type[AA]) -> None:
+    reveal_type(AA.d)  # N: Revealed type is "typing.Mapping[builtins.str, __main__.AA]"
+    reveal_type(AA_t.d)  # N: Revealed type is "typing.Mapping[builtins.str, __main__.AA]"
+
+def check_BB(BB_t: Type[BB]) -> None:
+    reveal_type(BB.d)  # N: Revealed type is "typing.Mapping[builtins.str, __main__.BB]"
+    reveal_type(BB_t.d)  # N: Revealed type is "typing.Mapping[builtins.str, __main__.BB]"
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassAttrUnboundOnSubClass]

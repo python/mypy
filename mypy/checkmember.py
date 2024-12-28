@@ -1081,26 +1081,17 @@ def analyze_class_attribute_access(
             #         x: T
             #     C.x  # Error, ambiguous access
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
-            # Exception is Self type wrapped in ClassVar, that is safe.
+            # Exception is Self type, which is always allowed
             def_vars = set(node.node.info.defn.type_vars)
-            if not node.node.is_classvar and node.node.info.self_type:
-                def_vars.add(node.node.info.self_type)
-
+            if node.node.info.self_type:
+                def_vars.discard(node.node.info.self_type)
             typ_vars = set(get_type_vars(t))
-            for tv in def_vars & typ_vars:
-                if (
-                    # Forgive access to variables generic over Self
-                    isinstance(tv.upper_bound, Instance)
-                    and super_info
-                    and tv.upper_bound.type.fullname == super_info.fullname
-                ):
-                    continue
+            if def_vars & typ_vars:
                 if node.node.is_classvar:
                     message = message_registry.GENERIC_CLASS_VAR_ACCESS
                 else:
                     message = message_registry.GENERIC_INSTANCE_VAR_CLASS_ACCESS
                 mx.msg.fail(message, mx.context)
-                break
 
             t = expand_self_type_if_needed(t, mx, node.node, itype, is_class=True)
             # Erase non-mapped variables, but keep mapped ones, even if there is an error.
