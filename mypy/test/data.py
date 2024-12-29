@@ -816,5 +816,5 @@ class DataSuite:
         """Setup fixtures (ad-hoc)"""
 
     @abstractmethod
-    def run_case(self, testcase: DataDrivenTestCase) -> None:
+    def run_case(self, test_case: DataDrivenTestCase, /) -> None:
         raise NotImplementedError

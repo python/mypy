@@ -62,87 +62,87 @@ class TypeVisitor(Generic[T]):
     """
 
     @abstractmethod
-    def visit_unbound_type(self, t: UnboundType) -> T:
+    def visit_unbound_type(self, t: UnboundType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_any(self, t: AnyType) -> T:
+    def visit_any(self, t: AnyType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_none_type(self, t: NoneType) -> T:
+    def visit_none_type(self, t: NoneType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_uninhabited_type(self, t: UninhabitedType) -> T:
+    def visit_uninhabited_type(self, t: UninhabitedType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_erased_type(self, t: ErasedType) -> T:
+    def visit_erased_type(self, t: ErasedType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_deleted_type(self, t: DeletedType) -> T:
+    def visit_deleted_type(self, t: DeletedType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_type_var(self, t: TypeVarType) -> T:
+    def visit_type_var(self, t: TypeVarType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_param_spec(self, t: ParamSpecType) -> T:
+    def visit_param_spec(self, t: ParamSpecType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_parameters(self, t: Parameters) -> T:
+    def visit_parameters(self, t: Parameters, /) -> T:
         pass
 
     @abstractmethod
-    def visit_type_var_tuple(self, t: TypeVarTupleType) -> T:
+    def visit_type_var_tuple(self, t: TypeVarTupleType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_instance(self, t: Instance) -> T:
+    def visit_instance(self, t: Instance, /) -> T:
         pass
 
     @abstractmethod
-    def visit_callable_type(self, t: CallableType) -> T:
+    def visit_callable_type(self, t: CallableType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_overloaded(self, t: Overloaded) -> T:
+    def visit_overloaded(self, t: Overloaded, /) -> T:
         pass
 
     @abstractmethod
-    def visit_tuple_type(self, t: TupleType) -> T:
+    def visit_tuple_type(self, t: TupleType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_typeddict_type(self, t: TypedDictType) -> T:
+    def visit_typeddict_type(self, t: TypedDictType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_literal_type(self, t: LiteralType) -> T:
+    def visit_literal_type(self, t: LiteralType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_union_type(self, t: UnionType) -> T:
+    def visit_union_type(self, t: UnionType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_partial_type(self, t: PartialType) -> T:
+    def visit_partial_type(self, t: PartialType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_type_type(self, t: TypeType) -> T:
+    def visit_type_type(self, t: TypeType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_type_alias_type(self, t: TypeAliasType) -> T:
+    def visit_type_alias_type(self, t: TypeAliasType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_unpack_type(self, t: UnpackType) -> T:
+    def visit_unpack_type(self, t: UnpackType, /) -> T:
         pass
 
 
@@ -155,23 +155,23 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
     """
 
     @abstractmethod
-    def visit_type_list(self, t: TypeList) -> T:
+    def visit_type_list(self, t: TypeList, /) -> T:
         pass
 
     @abstractmethod
-    def visit_callable_argument(self, t: CallableArgument) -> T:
+    def visit_callable_argument(self, t: CallableArgument, /) -> T:
         pass
 
     @abstractmethod
-    def visit_ellipsis_type(self, t: EllipsisType) -> T:
+    def visit_ellipsis_type(self, t: EllipsisType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_raw_expression_type(self, t: RawExpressionType) -> T:
+    def visit_raw_expression_type(self, t: RawExpressionType, /) -> T:
         pass
 
     @abstractmethod
-    def visit_placeholder_type(self, t: PlaceholderType) -> T:
+    def visit_placeholder_type(self, t: PlaceholderType, /) -> T:
         pass
 
 
