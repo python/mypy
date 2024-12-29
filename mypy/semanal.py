@@ -3657,7 +3657,7 @@ class SemanticAnalyzer(
         else:
             s.type = s.unanalyzed_type.args[0]
 
-        if s.type is not None and self.is_classvar(s.type):
+        if s.type is not None and self.options.python_version < (3, 13) and self.is_classvar(s.type):
             self.fail("Variable should not be annotated with both ClassVar and Final", s)
             return False
 

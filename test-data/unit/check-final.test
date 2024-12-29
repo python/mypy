@@ -1134,7 +1134,7 @@ class A:
     a: Final[ClassVar[int]]  # E: Variable should not be annotated with both ClassVar and Final
     b: ClassVar[Final[int]]  # E: Final can be only used as an outermost qualifier in a variable annotation
     c: ClassVar[Final] = 1  # E: Final can be only used as an outermost qualifier in a variable annotation
-[out]
+[out version<3.13]
 
 [case testFinalClassWithAbstractMethod]
 from typing import final
