@@ -109,31 +109,31 @@ class RTypeVisitor(Generic[T]):
     """Generic visitor over RTypes (uses the visitor design pattern)."""
 
     @abstractmethod
-    def visit_rprimitive(self, typ: RPrimitive) -> T:
+    def visit_rprimitive(self, typ: RPrimitive, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rinstance(self, typ: RInstance) -> T:
+    def visit_rinstance(self, typ: RInstance, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_runion(self, typ: RUnion) -> T:
+    def visit_runion(self, typ: RUnion, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rtuple(self, typ: RTuple) -> T:
+    def visit_rtuple(self, typ: RTuple, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rstruct(self, typ: RStruct) -> T:
+    def visit_rstruct(self, typ: RStruct, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rarray(self, typ: RArray) -> T:
+    def visit_rarray(self, typ: RArray, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rvoid(self, typ: RVoid) -> T:
+    def visit_rvoid(self, typ: RVoid, /) -> T:
         raise NotImplementedError
 
 
