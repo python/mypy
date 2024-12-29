@@ -5,8 +5,9 @@
 ### Drop Support for Python 3.8
 
 Mypy no longer supports running with Python 3.8, which has reached end-of-life.
-For the time being, it is still possible to type check older code using Python 3.9+
-by passing `--python-version 3.8` as argument. This will be dropped in the first half of 2025!
+When running mypy with Python 3.9+, it is still possible to type check code
+that needs to support Python 3.8 with the `--python-version 3.8` argument.
+Support for this will be dropped in the first half of 2025!
 Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/17492)).
 
 ### Mypyc accelerated mypy wheels for aarch64
