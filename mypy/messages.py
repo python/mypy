@@ -2701,7 +2701,7 @@ def format_type_inner(
         if func.is_type_obj():
             # The type of a type object type can be derived from the
             # return type (this always works).
-            return format(TypeType.make_normalized(erase_type(func.items[0].ret_type)))
+            return format(TypeType.make_normalized(func.items[0].ret_type))
         elif isinstance(func, CallableType):
             if func.type_guard is not None:
                 return_type = f"TypeGuard[{format(func.type_guard)}]"

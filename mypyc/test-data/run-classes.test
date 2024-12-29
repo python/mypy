@@ -467,6 +467,21 @@ a = A(10)
 assert a.foo() == 11
 assert foo() == 21
 
+[case testClassKwargs]
+class X:
+    def __init__(self, msg: str, **variables: int) -> None:
+         pass
+[file driver.py]
+import traceback
+from native import X
+X('hello', a=0)
+try:
+    X('hello', msg='hello')
+except TypeError as e:
+    print(f"{type(e).__name__}: {e}")
+[out]
+TypeError: argument for __init__() given by name ('msg') and position (1)
+
 [case testGenericClass]
 from typing import TypeVar, Generic, Sequence
 T = TypeVar('T')
@@ -2655,3 +2670,21 @@ import native
 [out]
 (31, 12, 23)
 (61, 42, 53)
+
+[case testDataclassInitVar]
+import dataclasses
+
+@dataclasses.dataclass
+class C:
+    init_v: dataclasses.InitVar[int]
+    v: float = dataclasses.field(init=False)
+
+    def __post_init__(self, init_v):
+        self.v = init_v + 0.1
+
+[file driver.py]
+import native
+print(native.C(22).v)
+
+[out]
+22.1

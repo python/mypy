@@ -530,6 +530,18 @@ class StubtestUnit(unittest.TestCase):
             error="f11",
         )
 
+        # Simulate numpy ndarray.__bool__ that raises an error
+        yield Case(
+            stub="def f12(x=1): ...",
+            runtime="""
+            class _ndarray:
+                def __eq__(self, obj): return self
+                def __bool__(self): raise ValueError
+            def f12(x=_ndarray()) -> None: pass
+            """,
+            error="f12",
+        )
+
     @collect_cases
     def test_static_class_method(self) -> Iterator[Case]:
         yield Case(
@@ -1534,12 +1546,11 @@ assert annotations
             runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
             error=None,
         )
-        if sys.version_info >= (3, 9):
-            yield Case(
-                stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
-                runtime="class D:\n  def __class_getitem__(cls, type): ...",
-                error=None,
-            )
+        yield Case(
+            stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
+            runtime="class D:\n  def __class_getitem__(cls, type): ...",
+            error=None,
+        )
 
     @collect_cases
     def test_not_subclassable(self) -> Iterator[Case]:

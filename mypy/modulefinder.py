@@ -751,7 +751,7 @@ def default_lib_path(
     return path
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]]:
     """Find package directories for given python. Guaranteed to return absolute paths.
 

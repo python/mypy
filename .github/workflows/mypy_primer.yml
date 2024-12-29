@@ -74,9 +74,9 @@ jobs:
         name: Save PR number
         run: |
           echo ${{ github.event.pull_request.number }} | tee pr_number.txt
-      - if: ${{ matrix.shard-index == 0 }}
-        name: Upload mypy_primer diff + PR number
+      - name: Upload mypy_primer diff + PR number
         uses: actions/upload-artifact@v4
+        if: ${{ matrix.shard-index == 0 }}
         with:
           name: mypy_primer_diffs-${{ matrix.shard-index }}
           path: |
