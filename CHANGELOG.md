@@ -9,9 +9,13 @@ For the time being, it is still possible to type check older code using Python 3
 by passing `--python-version 3.8` as argument. This will be dropped in the first half of 2025!
 Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/17492)).
 
-### Mypy wheels for aarch64
+### Mypyc accelerated mypy wheels for aarch64
 
-Precompiled wheels for `manylinux_aarch64` are now available for download on PyPI.
+Mypy can compile itself to C extension modules using mypyc. This makes mypy 3-5x faster
+than if mypy is interpreted with pure Python. We now build and upload mypyc accelerated
+mypy wheels for `manylinux_aarch64` to PyPI, making it easy for users on such platforms
+to realise this speedup.
+
 Contributed by Christian Bundy (PR [mypy_mypyc-wheels#76](https://github.com/mypyc/mypy_mypyc-wheels/pull/76))
 
 ### `--strict-bytes`
