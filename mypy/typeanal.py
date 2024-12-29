@@ -288,8 +288,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     ) -> SymbolTableNode | None:
         return self.api.lookup_qualified(name, ctx, suppress_errors)
 
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
-        return self.api.lookup_fully_qualified(name)
+    def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
+        return self.api.lookup_fully_qualified(fullname)
 
     def visit_unbound_type(self, t: UnboundType, defining_literal: bool = False) -> Type:
         typ = self.visit_unbound_type_nonoptional(t, defining_literal)
@@ -1762,8 +1762,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx, code=codes.VALID_TYPE)
             return None
 
-    def analyze_type(self, t: Type) -> Type:
-        return t.accept(self)
+    def analyze_type(self, typ: Type) -> Type:
+        return typ.accept(self)
 
     def fail(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -> None:
         self.fail_func(msg, ctx, code=code)
@@ -1938,12 +1938,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def named_type(
         self,
-        fully_qualified_name: str,
+        fullname: str,
         args: list[Type] | None = None,
         line: int = -1,
         column: int = -1,
     ) -> Instance:
-        node = self.lookup_fully_qualified(fully_qualified_name)
+        node = self.lookup_fully_qualified(fullname)
         assert isinstance(node.node, TypeInfo)
         any_type = AnyType(TypeOfAny.special_form)
         if args is not None:
