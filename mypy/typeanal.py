@@ -605,7 +605,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     t,
                     code=codes.VALID_TYPE,
                 )
-            else:
+            elif self.options.python_version < (3, 13):
                 self.fail(
                     "Final can be only used as an outermost qualifier in a variable annotation",
                     t,
