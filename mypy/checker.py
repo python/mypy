@@ -2166,8 +2166,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     )
                     self.fail(msg, context)
             elif isinstance(original_type, UnionType) and any(
-                is_subtype(typ, orig_typ)
-                for orig_typ in original_type.items
+                is_subtype(typ, orig_typ) for orig_typ in original_type.items
             ):
                 # This method is a subtype of at least one union variant.
                 if (
