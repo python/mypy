@@ -22,6 +22,7 @@ class int:
 class float:
     def __float__(self) -> float: pass
     def __add__(self, x: float) -> float: pass
+    def hex(self) -> str: pass
 class complex:
     def __add__(self, x: complex) -> complex: pass
 class bool(int): pass
