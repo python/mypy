@@ -1937,11 +1937,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return [self.anal_var_def(vd) for vd in var_defs]
 
     def named_type(
-        self,
-        fullname: str,
-        args: list[Type] | None = None,
-        line: int = -1,
-        column: int = -1,
+        self, fullname: str, args: list[Type] | None = None, line: int = -1, column: int = -1
     ) -> Instance:
         node = self.lookup_fully_qualified(fullname)
         assert isinstance(node.node, TypeInfo)
