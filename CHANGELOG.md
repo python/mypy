@@ -2,6 +2,18 @@
 
 ## Next release
 
+### Drop Support for Python 3.8
+
+Mypy no longer supports running with Python 3.8, which has reached end-of-life.
+For the time being, it is still possible to type check older code using Python 3.9+
+by passing `--python-version 3.8` as argument. This will be dropped in the first half of 2025!
+Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/17492)).
+
+### Mypy wheels for aarch64
+
+Precompiled wheels for `manylinux_aarch64` are now available for download on PyPI.
+Contributed by Christian Bundy (PR [mypy_mypyc-wheels#76](https://github.com/mypyc/mypy_mypyc-wheels/pull/76))
+
 ### `--strict-bytes`
 
 By default, mypy treats an annotation of ``bytes`` as permitting ``bytearray`` and ``memoryview``.
