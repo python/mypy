@@ -452,7 +452,7 @@ def require_bool_literal_argument(
     api: SemanticAnalyzerInterface | SemanticAnalyzerPluginInterface,
     expression: Expression,
     name: str,
-    default: Literal[True] | Literal[False],
+    default: Literal[True, False],
 ) -> bool: ...
 
 

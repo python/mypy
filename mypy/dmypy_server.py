@@ -16,9 +16,9 @@ import subprocess
 import sys
 import time
 import traceback
-from collections.abc import Sequence
+from collections.abc import Sequence, Set as AbstractSet
 from contextlib import redirect_stderr, redirect_stdout
-from typing import AbstractSet, Any, Callable, Final
+from typing import Any, Callable, Final
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build

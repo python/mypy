@@ -25,10 +25,9 @@ import stat
 import sys
 import time
 import types
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import (
     TYPE_CHECKING,
-    AbstractSet,
     Any,
     Callable,
     ClassVar,
