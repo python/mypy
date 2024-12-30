@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Final, Iterator
+from typing import Final
 
 from mypy.nodes import (
     AssignmentStmt,

@@ -11,8 +11,9 @@ import sys
 import time
 import tokenize
 from abc import ABCMeta, abstractmethod
+from collections.abc import Iterator
 from operator import attrgetter
-from typing import Any, Callable, Dict, Final, Iterator, Tuple
+from typing import Any, Callable, Dict, Final, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 from urllib.request import pathname2url
 

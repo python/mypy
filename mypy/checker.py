@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import ExitStack, contextmanager
 from typing import (
     AbstractSet,
@@ -11,12 +12,8 @@ from typing import (
     Dict,
     Final,
     Generic,
-    Iterable,
-    Iterator,
-    Mapping,
     NamedTuple,
     Optional,
-    Sequence,
     Tuple,
     TypeVar,
     Union,

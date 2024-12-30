@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import DefaultDict, Iterator, List, NamedTuple, Optional, Tuple, Union
+from typing import DefaultDict, List, NamedTuple, Optional, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values

@@ -4,16 +4,15 @@ from __future__ import annotations
 
 import sys
 from abc import abstractmethod
+from collections.abc import Iterable, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
     Dict,
     Final,
-    Iterable,
     NamedTuple,
     NewType,
-    Sequence,
     TypeVar,
     Union,
     cast,

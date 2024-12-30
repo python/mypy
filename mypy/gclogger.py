@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import gc
 import time
-from typing import Mapping
+from collections.abc import Mapping
 
 
 class GcLogger:

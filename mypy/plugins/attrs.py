@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable, Mapping
 from functools import reduce
-from typing import Final, Iterable, List, Mapping, cast
+from typing import Final, List, cast
 from typing_extensions import Literal
 
 import mypy.plugin  # To avoid circular imports.

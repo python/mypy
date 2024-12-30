@@ -27,8 +27,9 @@ from __future__ import annotations
 import itertools
 import json
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Callable, Iterator, NamedTuple, TypeVar, cast
+from typing import Callable, NamedTuple, TypeVar, cast
 from typing_extensions import TypedDict
 
 from mypy.argmap import map_actuals_to_formals

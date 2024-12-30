@@ -6,8 +6,9 @@ import enum
 import itertools
 import time
 from collections import defaultdict
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Callable, ClassVar, Final, Iterable, Iterator, List, Optional, Sequence, cast
+from typing import Callable, ClassVar, Final, List, Optional, cast
 from typing_extensions import TypeAlias as _TypeAlias, assert_never, overload
 
 import mypy.checker

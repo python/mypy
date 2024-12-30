@@ -8,7 +8,8 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 from __future__ import annotations
 
 import itertools
-from typing import Any, Iterable, List, Sequence, TypeVar, cast
+from collections.abc import Iterable, Sequence
+from typing import Any, List, TypeVar, cast
 
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Dict, Generic, Iterable, Iterator, Set, Tuple, TypeVar
+from collections.abc import Iterable, Iterator
+from typing import Dict, Generic, Set, Tuple, TypeVar
 
 from mypyc.ir.ops import (
     Assign,

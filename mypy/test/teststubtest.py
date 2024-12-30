@@ -9,7 +9,8 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from typing import Any, Callable, Iterator
+from collections.abc import Iterator
+from typing import Any, Callable
 
 import mypy.stubtest
 from mypy.stubtest import parse_options, test_stubs

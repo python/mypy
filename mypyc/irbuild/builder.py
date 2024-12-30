@@ -5,8 +5,9 @@ See the docstring of class IRBuilder for more information.
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from typing import Any, Callable, Final, Iterator, Sequence, Union
+from typing import Any, Callable, Final, Union
 from typing_extensions import overload
 
 from mypy.build import Graph

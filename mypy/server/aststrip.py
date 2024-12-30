@@ -33,8 +33,9 @@ Notes:
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
-from typing import Dict, Iterator, Tuple
+from typing import Dict, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import (

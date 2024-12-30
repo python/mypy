@@ -3,9 +3,9 @@ import subprocess
 import sys
 import textwrap
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 from mypy.test.config import test_data_prefix
 

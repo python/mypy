@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from abc import abstractmethod
 from collections import defaultdict
+from collections.abc import Iterator, Sequence
 from enum import Enum, unique
 from typing import (
     TYPE_CHECKING,
@@ -12,10 +13,8 @@ from typing import (
     Callable,
     Dict,
     Final,
-    Iterator,
     List,
     Optional,
-    Sequence,
     Tuple,
     TypeVar,
     Union,

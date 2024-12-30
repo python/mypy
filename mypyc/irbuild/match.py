@@ -1,5 +1,6 @@
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from mypy.nodes import MatchStmt, NameExpr, TypeInfo
 from mypy.patterns import (

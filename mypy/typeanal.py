@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import itertools
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Callable, Final, Iterable, Iterator, List, Sequence, Tuple, TypeVar
+from typing import Callable, Final, List, Tuple, TypeVar
 from typing_extensions import Protocol
 
 from mypy import errorcodes as codes, message_registry, nodes
