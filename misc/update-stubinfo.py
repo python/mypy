@@ -46,7 +46,10 @@ def main() -> None:
     print("Add the following to non_bundled_packages_flat:")
     print("=" * 40)
     for p in sorted(typeshed_p_to_d.keys() - mypy_p):
-        if p in {"pika"}:  # see comment
+        if p in {
+            "pika",  # see comment in stubinfo.py
+            "distutils",  # don't recommend types-setuptools here
+        }:
             continue
         print(f'"{p}": "{typeshed_p_to_d[p]}",')
     print()
