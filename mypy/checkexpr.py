@@ -8,8 +8,8 @@ import time
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Callable, ClassVar, Final, Optional, cast
-from typing_extensions import TypeAlias as _TypeAlias, assert_never, overload
+from typing import Callable, ClassVar, Final, Optional, cast, overload
+from typing_extensions import TypeAlias as _TypeAlias, assert_never
 
 import mypy.checker
 import mypy.errorcodes as codes

@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Callable, Final, overload
-from typing_extensions import Literal, Protocol
+from typing import Callable, Final, Literal, Protocol, overload
 
 from mypy_extensions import trait
 

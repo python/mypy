@@ -5,8 +5,19 @@ from __future__ import annotations
 import sys
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Final, NamedTuple, NewType, TypeVar, Union, cast
-from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Final,
+    NamedTuple,
+    NewType,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
+from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.nodes
 from mypy.bogus_type import Bogus

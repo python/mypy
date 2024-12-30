@@ -29,7 +29,7 @@ from collections.abc import Iterator, Set as AbstractSet
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Generic, TypeVar, Union
+from typing import Any, Final, Generic, TypeVar, Union
 from typing_extensions import get_origin, is_typeddict
 
 import mypy.build
@@ -52,7 +52,7 @@ class Missing:
         return "MISSING"
 
 
-MISSING: typing_extensions.Final = Missing()
+MISSING: Final = Missing()
 
 T = TypeVar("T")
 MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
@@ -65,10 +65,10 @@ class Unrepresentable:
         return "<unrepresentable>"
 
 
-UNREPRESENTABLE: typing_extensions.Final = Unrepresentable()
+UNREPRESENTABLE: Final = Unrepresentable()
 
 
-_formatter: typing_extensions.Final = FancyFormatter(sys.stdout, sys.stderr, False)
+_formatter: Final = FancyFormatter(sys.stdout, sys.stderr, False)
 
 
 def _style(message: str, **kwargs: Any) -> str:
@@ -1447,7 +1447,7 @@ def verify_typealias(
 # ====================
 
 
-IGNORED_MODULE_DUNDERS: typing_extensions.Final = frozenset(
+IGNORED_MODULE_DUNDERS: Final = frozenset(
     {
         "__file__",
         "__doc__",
@@ -1469,7 +1469,7 @@ IGNORED_MODULE_DUNDERS: typing_extensions.Final = frozenset(
     }
 )
 
-IGNORABLE_CLASS_DUNDERS: typing_extensions.Final = frozenset(
+IGNORABLE_CLASS_DUNDERS: Final = frozenset(
     {
         # Special attributes
         "__dict__",
@@ -1915,9 +1915,7 @@ class _Arguments:
 
 
 # typeshed added a stub for __main__, but that causes stubtest to check itself
-ANNOYING_STDLIB_MODULES: typing_extensions.Final = frozenset(
-    {"antigravity", "this", "__main__", "_ios_support"}
-)
+ANNOYING_STDLIB_MODULES: Final = frozenset({"antigravity", "this", "__main__", "_ios_support"})
 
 
 def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:

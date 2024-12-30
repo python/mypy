@@ -29,8 +29,7 @@ import json
 import os
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Callable, NamedTuple, TypeVar, cast
-from typing_extensions import TypedDict
+from typing import Callable, NamedTuple, TypedDict, TypeVar, cast
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.build import Graph, State
