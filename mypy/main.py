@@ -870,9 +870,9 @@ def process_options(
     )
 
     add_invertible_flag(
-        "--strict-bytes",
-        default=False,
-        strict_flag=False,
+        "--no-strict-bytes",
+        default=True,
+        dest="strict_bytes",
         help="Disable treating bytearray and memoryview as subtypes of bytes",
         group=strictness_group,
     )
