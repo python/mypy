@@ -10,7 +10,7 @@ import gc
 import sys
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Dict, cast
+from typing import cast
 
 from mypy.nodes import FakeInfo, Node
 from mypy.types import Type
@@ -109,7 +109,7 @@ def find_recursive_objects(objs: list[object]) -> None:
             # Processing these would cause a crash.
             continue
         if type(obj) in (dict, defaultdict):
-            for key, val in cast(Dict[object, object], obj).items():
+            for key, val in cast(dict[object, object], obj).items():
                 visit(key)
                 visit(val)
         if type(obj) in (list, tuple, set):

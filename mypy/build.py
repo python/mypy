@@ -32,7 +32,6 @@ from typing import (
     Any,
     Callable,
     ClassVar,
-    Dict,
     Final,
     NamedTuple,
     NoReturn,
@@ -118,7 +117,7 @@ CORE_BUILTIN_MODULES: Final = {
 }
 
 
-Graph: _TypeAlias = Dict[str, "State"]
+Graph: _TypeAlias = dict[str, "State"]
 
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.

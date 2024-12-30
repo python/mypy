@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Iterable
-from typing import List, Optional, Tuple, TypeVar
+from typing import Optional, TypeVar
 
 from mypy.build import (
     BuildResult,
@@ -84,11 +84,11 @@ from mypyc.transform.uninit import insert_uninit_checks
 # its modules along with the name of the group. (Which can be None
 # only if we are compiling only a single group with a single file in it
 # and not using shared libraries).
-Group = Tuple[List[BuildSource], Optional[str]]
-Groups = List[Group]
+Group = tuple[list[BuildSource], Optional[str]]
+Groups = list[Group]
 
 # A list of (file name, file contents) pairs.
-FileContents = List[Tuple[str, str]]
+FileContents = list[tuple[str, str]]
 
 
 class MarkedDeclaration:

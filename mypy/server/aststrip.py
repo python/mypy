@@ -35,7 +35,6 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
-from typing import Dict, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import (
@@ -69,7 +68,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
 from mypy.typestate import type_state
 
-SavedAttributes: _TypeAlias = Dict[Tuple[ClassDef, str], SymbolTableNode]
+SavedAttributes: _TypeAlias = dict[tuple[ClassDef, str], SymbolTableNode]
 
 
 def strip_target(

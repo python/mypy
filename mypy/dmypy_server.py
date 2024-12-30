@@ -18,7 +18,7 @@ import time
 import traceback
 from collections.abc import Sequence
 from contextlib import redirect_stderr, redirect_stdout
-from typing import AbstractSet, Any, Callable, Final, List, Tuple
+from typing import AbstractSet, Any, Callable, Final
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
@@ -162,9 +162,9 @@ def ignore_suppressed_imports(module: str) -> bool:
     return module.startswith("encodings.")
 
 
-ModulePathPair: _TypeAlias = Tuple[str, str]
-ModulePathPairs: _TypeAlias = List[ModulePathPair]
-ChangesAndRemovals: _TypeAlias = Tuple[ModulePathPairs, ModulePathPairs]
+ModulePathPair: _TypeAlias = tuple[str, str]
+ModulePathPairs: _TypeAlias = list[ModulePathPair]
+ChangesAndRemovals: _TypeAlias = tuple[ModulePathPairs, ModulePathPairs]
 
 
 class Server:

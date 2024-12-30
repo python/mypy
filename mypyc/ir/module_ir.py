@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 from mypyc.common import JsonDict
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR
@@ -91,4 +89,4 @@ def deserialize_modules(data: dict[str, JsonDict], ctx: DeserMaps) -> dict[str, 
 
 # ModulesIRs should also always be an *OrderedDict*, but if we
 # declared it that way we would need to put it in quotes everywhere...
-ModuleIRs = Dict[str, ModuleIR]
+ModuleIRs = dict[str, ModuleIR]

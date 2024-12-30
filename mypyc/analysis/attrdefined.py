@@ -63,7 +63,7 @@ run this on __init__ methods, this analysis pass will be fairly quick.
 
 from __future__ import annotations
 
-from typing import Final, Set, Tuple
+from typing import Final
 
 from mypyc.analysis.dataflow import (
     CFG,
@@ -279,7 +279,7 @@ def mark_attr_initialization_ops(
                     op.mark_as_initializer()
 
 
-GenAndKill = Tuple[Set[str], Set[str]]
+GenAndKill = tuple[set[str], set[str]]
 
 
 def attributes_initialized_by_init_call(op: Call) -> set[str]:

@@ -5,7 +5,7 @@ import sys
 import traceback
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Callable, Final, NoReturn, Optional, TextIO, Tuple, TypeVar
+from typing import Callable, Final, NoReturn, Optional, TextIO, TypeVar
 from typing_extensions import Literal, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
@@ -152,7 +152,7 @@ class ErrorInfo:
 
 # Type used internally to represent errors:
 #   (path, line, column, end_line, end_column, severity, message, allow_dups, code)
-ErrorTuple: _TypeAlias = Tuple[
+ErrorTuple: _TypeAlias = tuple[
     Optional[str], int, int, int, int, str, str, bool, Optional[ErrorCode]
 ]
 
@@ -1328,7 +1328,7 @@ class MypyError:
 
 
 # (file_path, line, column)
-_ErrorLocation = Tuple[str, int, int]
+_ErrorLocation = tuple[str, int, int]
 
 
 def create_errors(error_tuples: list[ErrorTuple]) -> list[MypyError]:
