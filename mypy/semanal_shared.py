@@ -76,11 +76,11 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+    def lookup_fully_qualified(self, fullname: str, /) -> SymbolTableNode:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified_or_none(self, name: str) -> SymbolTableNode | None:
+    def lookup_fully_qualified_or_none(self, fullname: str, /) -> SymbolTableNode | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -176,7 +176,8 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     @abstractmethod
     def anal_type(
         self,
-        t: Type,
+        typ: Type,
+        /,
         *,
         tvar_scope: TypeVarLikeScope | None = None,
         allow_tuple_literal: bool = False,
@@ -198,11 +199,11 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def schedule_patch(self, priority: int, fn: Callable[[], None]) -> None:
+    def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> bool:
+    def add_symbol_table_node(self, name: str, symbol: SymbolTableNode) -> bool:
         """Add node to the current symbol table."""
         raise NotImplementedError
 
@@ -242,7 +243,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def qualified_name(self, n: str) -> str:
+    def qualified_name(self, name: str) -> str:
         raise NotImplementedError
 
     @property
@@ -309,7 +310,7 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
 
 
 class _NamedTypeCallback(Protocol):
-    def __call__(self, fully_qualified_name: str, args: list[Type] | None = None) -> Instance: ...
+    def __call__(self, fullname: str, args: list[Type] | None = None) -> Instance: ...
 
 
 def paramspec_args(
