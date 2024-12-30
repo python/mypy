@@ -695,7 +695,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     "ClassVar[...] must have at most one type argument", t, code=codes.VALID_TYPE
                 )
                 return AnyType(TypeOfAny.from_error)
-            return self.anal_type(t.args[0], allow_final_in_classvar=self.options.python_version >= (3, 13))
+            return self.anal_type(
+                t.args[0], allow_final_in_classvar=self.options.python_version >= (3, 13)
+            )
         elif fullname in NEVER_NAMES:
             return UninhabitedType()
         elif fullname in LITERAL_TYPE_NAMES:

@@ -5084,7 +5084,9 @@ class SemanticAnalyzer(
             node = lvalue.node
             if isinstance(node, Var):
                 node.is_classvar = True
-            analyzed = self.anal_type(s.type, allow_final_in_classvar=self.options.python_version >= (3, 13))
+            analyzed = self.anal_type(
+                s.type, allow_final_in_classvar=self.options.python_version >= (3, 13)
+            )
             assert self.type is not None
             if analyzed is not None and set(get_type_vars(analyzed)) & set(
                 self.type.defn.type_vars
