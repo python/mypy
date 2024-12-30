@@ -2181,3 +2181,13 @@ class Status(Enum):
 
 def imperfect(status: Status) -> str:
     return status.name.lower()
+
+[case testUnpackIteratorBuiltins]
+# Regression test for https://github.com/python/mypy/issues/18320
+# Caused by https://github.com/python/typeshed/pull/12851
+x = [1, 2]
+reveal_type([*reversed(x)])
+reveal_type([*map(str, x)])
+[out]
+_testUnpackIteratorBuiltins.py:4: note: Revealed type is "builtins.list[builtins.int]"
+_testUnpackIteratorBuiltins.py:5: note: Revealed type is "builtins.list[builtins.str]"
