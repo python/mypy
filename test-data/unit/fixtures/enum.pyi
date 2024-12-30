@@ -11,6 +11,8 @@ class tuple(Generic[T]):
     def __getitem__(self, x: int) -> T: pass
 
 class int: pass
-class str: pass
+class str:
+    def __len__(self) -> int: pass
+
 class dict: pass
 class ellipsis: pass
