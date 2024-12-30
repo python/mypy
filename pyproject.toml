@@ -101,7 +101,7 @@ force-exclude = '''
 '''
 
 [tool.codespell]
-ignore-words-list = "ans,ccompiler,corus,fo,haa,hax,notin,ot,statics,whet,zar"
+ignore-words-list = "ans,ccompiler,corus,fo,froms,haa,hax,notin,ot,statics,whet,zar"
 skip = "./mypyc/external/*,*.pyi,*.test"
 
 [tool.ruff]
