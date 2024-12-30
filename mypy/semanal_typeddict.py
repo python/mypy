@@ -301,7 +301,9 @@ class TypedDictAnalyzer:
         total: bool | None = True
         for key in defn.keywords:
             if key == "total":
-                total = require_bool_literal_argument(self.api, defn.keywords["total"], "total", True)
+                total = require_bool_literal_argument(
+                    self.api, defn.keywords["total"], "total", True
+                )
                 continue
             for_function = ' for "__init_subclass__" of "TypedDict"'
             self.msg.unexpected_keyword_argument_for_function(for_function, key, defn)
@@ -472,7 +474,12 @@ class TypedDictAnalyzer:
             if isinstance(node.analyzed, TypedDictExpr):
                 existing_info = node.analyzed.info
             info = self.build_typeddict_typeinfo(
-                name, dict(zip(items, types)), required_keys, readonly_keys, call.line, existing_info
+                name,
+                dict(zip(items, types)),
+                required_keys,
+                readonly_keys,
+                call.line,
+                existing_info,
             )
             info.line = node.line
         # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
@@ -591,9 +598,7 @@ class TypedDictAnalyzer:
         )
         assert fallback is not None
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
-        typeddict_type = TypedDictType(
-            item_types, required_keys, readonly_keys, fallback
-        )
+        typeddict_type = TypedDictType(item_types, required_keys, readonly_keys, fallback)
         if info.special_alias and has_placeholder(info.special_alias.target):
             self.api.process_placeholder(
                 None, "TypedDict item", info, force_progress=typeddict_type != info.typeddict_type
