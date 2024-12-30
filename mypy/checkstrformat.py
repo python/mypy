@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 from re import Match, Pattern
-from typing import TYPE_CHECKING, Callable, Dict, Final, Tuple, Union, cast
+from typing import TYPE_CHECKING, Callable, Final, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes
@@ -70,8 +70,8 @@ from mypy.subtypes import is_subtype
 from mypy.typeops import custom_special_method
 
 FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr]
-Checkers: _TypeAlias = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
-MatchMap: _TypeAlias = Dict[Tuple[int, int], Match[str]]  # span -> match
+Checkers: _TypeAlias = tuple[Callable[[Expression], None], Callable[[Type], bool]]
+MatchMap: _TypeAlias = dict[tuple[int, int], Match[str]]  # span -> match
 
 
 def compile_format_re() -> Pattern[str]:

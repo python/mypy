@@ -8,7 +8,7 @@ from __future__ import annotations
 import keyword
 from collections.abc import Container, Iterator, Mapping
 from contextlib import contextmanager
-from typing import Final, List, cast
+from typing import Final, cast
 
 from mypy.errorcodes import ARG_TYPE, ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -605,7 +605,7 @@ class NamedTupleAnalyzer:
             items = [arg.variable.name for arg in args]
             arg_kinds = [arg.kind for arg in args]
             assert None not in types
-            signature = CallableType(cast(List[Type], types), arg_kinds, items, ret, function_type)
+            signature = CallableType(cast(list[Type], types), arg_kinds, items, ret, function_type)
             signature.variables = [self_type]
             func = FuncDef(funcname, args, Block([]))
             func.info = info

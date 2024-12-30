@@ -9,12 +9,10 @@ from contextlib import ExitStack, contextmanager
 from typing import (
     AbstractSet,
     Callable,
-    Dict,
     Final,
     Generic,
     NamedTuple,
     Optional,
-    Tuple,
     TypeVar,
     Union,
     cast,
@@ -265,7 +263,7 @@ class FineGrainedDeferredNode(NamedTuple):
 # (such as two references to the same variable). TODO: it would
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
-TypeMap: _TypeAlias = Optional[Dict[Expression, Type]]
+TypeMap: _TypeAlias = Optional[dict[Expression, Type]]
 
 
 # An object that represents either a precise type or a type with an upper bound;
@@ -7813,7 +7811,7 @@ def conditional_types_to_typemaps(
             assert typ is not None
             maps.append({expr: typ})
 
-    return cast(Tuple[TypeMap, TypeMap], tuple(maps))
+    return cast(tuple[TypeMap, TypeMap], tuple(maps))
 
 
 def gen_unique_name(base: str, table: SymbolTable) -> str:

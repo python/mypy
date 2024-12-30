@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Final, Generic, List, NamedTuple, TypeVar, Union
+from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, Union
 
 from mypy_extensions import trait
 
@@ -1025,7 +1025,7 @@ class RaiseStandardError(RegisterOp):
 
 
 # True steals all arguments, False steals none, a list steals those in matching positions
-StealsDescription = Union[bool, List[bool]]
+StealsDescription = Union[bool, list[bool]]
 
 
 class CallC(RegisterOp):

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import NamedTuple, Tuple
+from typing import NamedTuple
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -525,7 +525,7 @@ def prepare_non_ext_class_def(
         )
 
 
-RegisterImplInfo = Tuple[TypeInfo, FuncDef]
+RegisterImplInfo = tuple[TypeInfo, FuncDef]
 
 
 class SingledispatchInfo(NamedTuple):

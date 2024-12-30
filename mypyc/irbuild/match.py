@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from mypy.nodes import MatchStmt, NameExpr, TypeInfo
 from mypy.patterns import (
@@ -158,7 +158,7 @@ class MatchVisitor(TraverserVisitor):
             match_args_type = get_proper_type(ty.type)
             assert isinstance(match_args_type, TupleType)
 
-            match_args: List[str] = []
+            match_args: list[str] = []
 
             for item in match_args_type.items:
                 proper_item = get_proper_type(item)
@@ -221,7 +221,7 @@ class MatchVisitor(TraverserVisitor):
 
         self.builder.add_bool_branch(is_dict, self.code_block, self.next_block)
 
-        keys: List[Value] = []
+        keys: list[Value] = []
 
         for key, value in zip(pattern.keys, pattern.values):
             self.builder.activate_block(self.code_block)
@@ -340,10 +340,10 @@ class MatchVisitor(TraverserVisitor):
 
 def prep_sequence_pattern(
     seq_pattern: SequencePattern,
-) -> Tuple[Optional[int], Optional[NameExpr], List[Pattern]]:
+) -> tuple[Optional[int], Optional[NameExpr], list[Pattern]]:
     star_index: Optional[int] = None
     capture: Optional[NameExpr] = None
-    patterns: List[Pattern] = []
+    patterns: list[Pattern] = []
 
     for i, pattern in enumerate(seq_pattern.patterns):
         if isinstance(pattern, StarredPattern):

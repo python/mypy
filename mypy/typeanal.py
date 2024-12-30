@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Callable, Final, List, Tuple, TypeVar
+from typing import Callable, Final, TypeVar
 from typing_extensions import Protocol
 
 from mypy import errorcodes as codes, message_registry, nodes
@@ -1977,7 +1977,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         )
 
 
-TypeVarLikeList = List[Tuple[str, TypeVarLikeExpr]]
+TypeVarLikeList = list[tuple[str, TypeVarLikeExpr]]
 
 
 class MsgCallback(Protocol):
@@ -2432,7 +2432,7 @@ def collect_all_inner_types(t: Type) -> list[Type]:
     return t.accept(CollectAllInnerTypesQuery())
 
 
-class CollectAllInnerTypesQuery(TypeQuery[List[Type]]):
+class CollectAllInnerTypesQuery(TypeQuery[list[Type]]):
     def __init__(self) -> None:
         super().__init__(self.combine_lists_strategy)
 

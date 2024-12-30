@@ -7,7 +7,7 @@ See the docstring of class LowLevelIRBuilder for more information.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Callable, Final, Optional, Tuple
+from typing import Callable, Final, Optional
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
@@ -181,7 +181,7 @@ from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.sametype import is_same_type
 from mypyc.subtype import is_subtype
 
-DictEntry = Tuple[Optional[Value], Value]
+DictEntry = tuple[Optional[Value], Value]
 
 # If the number of items is less than the threshold when initializing
 # a list, we would inline the generate IR using SetMem and expanded

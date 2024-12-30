@@ -52,7 +52,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Iterable, Iterator
 from contextlib import contextmanager
-from typing import Any, Callable, Final, List, TypeVar, cast
+from typing import Any, Callable, Final, TypeVar, cast
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy import errorcodes as codes, message_registry
@@ -5140,7 +5140,7 @@ class SemanticAnalyzer(
             # with unpacking assignment like `x, y = a, b`. Mypy didn't
             # understand our all(isinstance(...)), so cast them as TupleExpr
             # so mypy knows it is safe to access their .items attribute.
-            seq_lvals = cast(List[TupleExpr], lvals)
+            seq_lvals = cast(list[TupleExpr], lvals)
             # given an assignment like:
             #     (x, y) = (m, n) = (a, b)
             # we now have:

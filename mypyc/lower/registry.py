@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Callable, Final, List
+from typing import Callable, Final
 
 from mypyc.ir.ops import Value
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
-LowerFunc = Callable[[LowLevelIRBuilder, List[Value], int], Value]
+LowerFunc = Callable[[LowLevelIRBuilder, list[Value], int], Value]
 
 
 lowering_registry: Final[dict[str, LowerFunc]] = {}
