@@ -117,7 +117,6 @@ non_bundled_packages_flat: dict[str, str] = {
     "dateparser_data": "types-dateparser",
     "dde": "types-pywin32",
     "defusedxml": "types-defusedxml",
-    "distutils": "types-setuptools",
     "docker": "types-docker",
     "dockerfile_parse": "types-dockerfile-parse",
     "docopt": "types-docopt",
