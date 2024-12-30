@@ -66,6 +66,7 @@ from mypy.types import (
     FINAL_TYPE_NAMES,
     LITERAL_TYPE_NAMES,
     NEVER_NAMES,
+    NO_MATCH_NAMES,
     TYPE_ALIAS_NAMES,
     AnyType,
     BoolTypeQuery,
@@ -228,6 +229,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_typed_dict_special_forms: bool = False,
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
+        allow_no_match: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
         prohibit_special_class_field_types: str | None = None,
@@ -283,6 +285,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_type_any = allow_type_any
         self.allow_type_var_tuple = False
         self.allow_unpack = allow_unpack
+        self.allow_no_match = allow_no_match
 
     def lookup_qualified(
         self, name: str, ctx: Context, suppress_errors: bool = False
@@ -695,6 +698,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return self.anal_type(t.args[0])
         elif fullname in NEVER_NAMES:
             return UninhabitedType()
+        elif fullname in NO_MATCH_NAMES:
+            if not self.allow_no_match:
+                self.fail(
+                    "NoMatch can only be used as an overload return annotation",
+                    t,
+                    code=codes.VALID_TYPE,
+                )
+                return AnyType(TypeOfAny.from_error)
+            return AnyType(TypeOfAny.no_match)
         elif fullname in LITERAL_TYPE_NAMES:
             return self.analyze_literal_type(t)
         elif fullname in ANNOTATED_TYPE_NAMES:
@@ -1159,7 +1171,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 arg_types=arg_types,
                 arg_kinds=arg_kinds,
                 arg_names=arg_names,
-                ret_type=self.anal_type(t.ret_type, nested=nested),
+                ret_type=self.anal_type(t.ret_type, nested=nested, allow_no_match=True),
                 # If the fallback isn't filled in yet,
                 # its type will be the falsey FakeInfo
                 fallback=(t.fallback if t.fallback.type else self.named_type("builtins.function")),
@@ -1878,6 +1890,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_unpack: bool = False,
         allow_ellipsis: bool = False,
         allow_typed_dict_special_forms: bool = False,
+        allow_no_match: bool = False,
     ) -> Type:
         if nested:
             self.nesting_level += 1
@@ -1887,6 +1900,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_ellipsis = allow_ellipsis
         old_allow_unpack = self.allow_unpack
         self.allow_unpack = allow_unpack
+        old_no_match = self.allow_no_match
+        self.allow_no_match = allow_no_match
         try:
             analyzed = t.accept(self)
         finally:
@@ -1895,6 +1910,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.allow_typed_dict_special_forms = old_allow_typed_dict_special_forms
             self.allow_ellipsis = old_allow_ellipsis
             self.allow_unpack = old_allow_unpack
+            self.allow_no_match = old_no_match
         if (
             not allow_param_spec
             and isinstance(analyzed, ParamSpecType)

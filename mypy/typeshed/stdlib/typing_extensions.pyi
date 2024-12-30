@@ -529,6 +529,8 @@ else:
     ReadOnly: _SpecialForm
     TypeIs: _SpecialForm
 
+NoMatch: _SpecialForm
+
 class Doc:
     documentation: str
     def __init__(self, documentation: str, /) -> None: ...

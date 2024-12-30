@@ -1486,6 +1486,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         proper_callee = get_proper_type(callee_type)
         if isinstance(e.callee, (NameExpr, MemberExpr)):
             self.chk.warn_deprecated_overload_item(e.callee.node, e, target=callee_type)
+        if (
+            isinstance((p_type := get_proper_type(ret_type)), AnyType)
+            and p_type.type_of_any == TypeOfAny.no_match
+            and isinstance(proper_callee, CallableType)
+        ):
+            self.chk.fail(
+                f'No matching overload found for "{proper_callee.name}"',
+                context=e,
+                code=codes.CALL_OVERLOAD,
+            )
         if isinstance(e.callee, RefExpr) and isinstance(proper_callee, CallableType):
             # Cache it for find_isinstance_check()
             if proper_callee.type_guard is not None:
