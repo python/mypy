@@ -2906,6 +2906,7 @@ hs(None)
 
 
 [case testPartialTypeProtocol]
+# flags: --no-local-partial-types
 from typing import Protocol
 
 class Flapper(Protocol):
@@ -2944,7 +2945,7 @@ class DataArray(ObjectHashable):
 
 
 [case testPartialAttributeNoneType]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --no-local-partial-types
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable
@@ -2962,6 +2963,7 @@ class MyClass:
 
 
 [case testPartialAttributeNoneTypeStrictOptional]
+# flags: --no-local-partial-types
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable
