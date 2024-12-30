@@ -658,9 +658,6 @@ def _get_type_method_ret_type(t: Type, *, name: str) -> Type | None:
 
     if isinstance(t, Instance):
         sym = t.type.get(name)
-        # Fallback to the metaclass for the lookup when necessary
-        if not sym and (m := t.type.metaclass_type):
-            sym = m.type.get(name)
         if sym:
             sym_type = get_proper_type(sym.type)
             if isinstance(sym_type, CallableType):
@@ -733,7 +730,10 @@ def false_only(t: Type) -> ProperType:
         if ret_type:
             if not ret_type.can_be_false:
                 return UninhabitedType(line=t.line)
-        elif isinstance(t, Instance) and t.type.is_final:
+        elif isinstance(t, Instance):
+            if t.type.is_final or t.type.is_enum:
+                return UninhabitedType(line=t.line)
+        elif isinstance(t, LiteralType) and t.is_enum_literal():
             return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
