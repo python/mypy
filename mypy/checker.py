@@ -4,20 +4,9 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
-from typing import (
-    AbstractSet,
-    Callable,
-    Final,
-    Generic,
-    NamedTuple,
-    Optional,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+from typing import Callable, Final, Generic, NamedTuple, Optional, TypeVar, Union, cast, overload
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.checkexpr

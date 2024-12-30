@@ -25,18 +25,8 @@ import stat
 import sys
 import time
 import types
-from collections.abc import Iterator, Mapping, Sequence
-from typing import (
-    TYPE_CHECKING,
-    AbstractSet,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    NamedTuple,
-    NoReturn,
-    TextIO,
-)
+from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Final, NamedTuple, NoReturn, TextIO
 from typing_extensions import TypeAlias as _TypeAlias, TypedDict
 
 import mypy.semanal_main

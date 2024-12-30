@@ -203,7 +203,7 @@ class CFunctionStub:
             sigs[0].name, "\n".join(sig.format_sig()[:-4] for sig in sigs), is_abstract
         )
 
-    def __get__(self) -> None:
+    def __get__(self) -> None:  # noqa: PLE0302
         """
         This exists to make this object look like a method descriptor and thus
         return true for CStubGenerator.ismethod()
