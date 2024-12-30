@@ -1575,8 +1575,9 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]
                 + "(and no cache from previous mypy run)\n"
             )
         else:
-            sys.stderr.write("error: --install-types failed (no mypy cache directory)\n")
-        sys.exit(2)
+            sys.stderr.write(
+                "error: --install-types failed (an error blocked analysis of which types to install)\n"
+            )
     fnam = build.missing_stubs_file(cache_dir)
     if not os.path.isfile(fnam):
         # No missing stubs.
