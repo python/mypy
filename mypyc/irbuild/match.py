@@ -332,7 +332,7 @@ class MatchVisitor(TraverserVisitor):
                 self.builder.goto(self.code_block)
 
     @contextmanager
-    def enter_subpattern(self, subject: Value) -> Generator[None, None, None]:
+    def enter_subpattern(self, subject: Value) -> Generator[None]:
         old_subject = self.subject
         self.subject = subject
         yield
