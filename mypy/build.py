@@ -36,8 +36,9 @@ from typing import (
     NamedTuple,
     NoReturn,
     TextIO,
+    TypedDict,
 )
-from typing_extensions import TypeAlias as _TypeAlias, TypedDict
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
