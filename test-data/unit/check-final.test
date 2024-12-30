@@ -194,6 +194,7 @@ def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost qu
 [out]
 
 [case testFinalDefiningNotInMethodExtensions]
+# flags: --python-version 3.14
 from typing_extensions import Final
 
 def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
