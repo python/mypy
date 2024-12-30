@@ -2354,6 +2354,7 @@ def fn_while(arg: T) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testRefinePartialTypeWithinLoop]
+# flags: --no-local-partial-types
 
 x = None
 for _ in range(2):

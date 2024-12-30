@@ -113,7 +113,7 @@ A().f = None  # E: Cannot assign to a method \
 from typing import Protocol
 
 class Base:
-    __hash__ = None
+    __hash__: None = None
 
 class Derived(Base):
     def __hash__(self) -> int:  # E: Signature of "__hash__" incompatible with supertype "Base" \
