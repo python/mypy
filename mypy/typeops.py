@@ -648,9 +648,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
     return items
 
 
-def _get_type_method_ret_type(t: Type, *, name: str) -> Type | None:
-    t = get_proper_type(t)
-
+def _get_type_method_ret_type(t: ProperType, *, name: str) -> Type | None:
     # For Enum literals the ret_type can change based on the Enum
     # we need to check the type of the enum rather than the literal
     if isinstance(t, LiteralType) and t.is_enum_literal():
