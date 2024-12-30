@@ -2185,7 +2185,7 @@ class FindAttributeAssign(TraverserVisitor):
 
 
 class FindYield(TraverserVisitor):
-    """Check if an AST contains yields or yield froms."""
+    """Check if an AST contains yields or yield forms."""
 
     def __init__(self) -> None:
         self.found = False
