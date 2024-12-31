@@ -1821,7 +1821,7 @@ class MessageBuilder:
         )
 
     def explicit_any(self, ctx: Context) -> None:
-        self.fail('Explicit "Any" is not allowed', ctx)
+        self.fail('Explicit "Any" is not allowed', ctx, code=codes.EXPLICIT_ANY)
 
     def unsupported_target_for_star_typeddict(self, typ: Type, ctx: Context) -> None:
         self.fail(
