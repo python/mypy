@@ -3472,3 +3472,19 @@ class Qux(Bar):
     def baz(self, x) -> None:
         pass
 [builtins fixtures/tuple.pyi]
+
+[case testCallableJoinWithDefaults]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+
+def join(t1: T, t2: T) -> T: ...
+
+def f1() -> None: ...
+def f2(i: int = 0) -> None: ...
+def f3(i: str = "") -> None: ...
+
+reveal_type(join(f1, f2))  # N: Revealed type is "def ()"
+reveal_type(join(f1, f3))  # N: Revealed type is "def ()"
+reveal_type(join(f2, f3))  # N: Revealed type is "builtins.function"  # TODO: this could be better
+[builtins fixtures/tuple.pyi]
