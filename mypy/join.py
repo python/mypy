@@ -414,6 +414,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                     # We don't want to return unusable Callable, attempt fallback instead.
                     return join_types(t.fallback, self.s)
             else:
+                s, t = self.s, t
+                if s.min_args < t.min_args:
+                    s, t = t, s
                 if is_subtype(self.s, t):
                     result = t.copy_modified()
                 elif is_subtype(t, self.s):

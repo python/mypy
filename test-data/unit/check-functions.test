@@ -3499,12 +3499,12 @@ def f_any(*_, **__): ...
 def f_3(common, b=None, x=None): ...
 
 fdict = {
-    "f_1": f_1,  # E: Dict entry 0 has incompatible type "str": "Callable[[Any, Any], Any]"; expected "str": "Callable[[Any, Any, Any], Any]"
+    "f_1": f_1,
     "f_any": f_any,
     "f_3": f_3,
 }
-reveal_type(fdict)  # N: Revealed type is "builtins.dict[builtins.str, def (common: Any, b: Any =, x: Any =) -> Any]"
+reveal_type(fdict)  # N: Revealed type is "builtins.dict[builtins.str, def (*_: Any, **__: Any) -> Any]"
 
-reveal_type(join(f_1, f_any, f_3))  # N: Revealed type is "def (common: Any, b: Any =, x: Any =) -> Any" \
-                                    # E: Argument 1 to "join" has incompatible type "Callable[[Any, Any], Any]"; expected "Callable[[Any, Any, Any], Any]"
+reveal_type(join(f_1, f_any, f_3))  # N: Revealed type is "def (*_: Any, **__: Any) -> Any"
+
 [builtins fixtures/tuple.pyi]
