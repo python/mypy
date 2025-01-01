@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Collection, Final
+from collections.abc import Collection
+from typing import Final
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
