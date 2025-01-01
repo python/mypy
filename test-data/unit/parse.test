@@ -3210,6 +3210,8 @@ MypyFile:1(
 
 [case testParseExtendedSlicing4]
 m[*index, :]
+[out]
+main:1: error: invalid syntax
 [out version>=3.11]
 MypyFile:1(
   ExpressionStmt:1(
@@ -3221,8 +3223,6 @@ MypyFile:1(
         SliceExpr:1(
           <empty>
           <empty>)))))
-[out]
-main:1: error: invalid syntax
 
 [case testParseIfExprInDictExpr]
 test =  { 'spam': 'eggs' if True else 'bacon' }
