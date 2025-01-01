@@ -288,8 +288,7 @@ class TypedDictAnalyzer:
         if given.
 
         Return tuple with these items:
-         * List of keys (or None if found an incomplete reference --> deferral)
-         * List of types for each key
+         * Dict of key -> type (or None if found an incomplete reference -> deferral)
          * List of statements from defn.defs.body that are legally allowed to be a
            part of a TypedDict definition
          * Set of required keys
