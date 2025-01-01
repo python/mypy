@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import itertools
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Callable, Final, Iterable, Iterator, List, Sequence, Tuple, TypeVar
-from typing_extensions import Protocol
+from typing import Callable, Final, Protocol, TypeVar
 
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
@@ -225,6 +225,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_unbound_tvars: bool = False,
         allow_placeholder: bool = False,
         allow_typed_dict_special_forms: bool = False,
+        allow_final: bool = True,
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
         report_invalid_types: bool = True,
@@ -260,6 +261,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_placeholder = allow_placeholder
         # Are we in a context where Required[] is allowed?
         self.allow_typed_dict_special_forms = allow_typed_dict_special_forms
+        # Set True when we analyze ClassVar else False
+        self.allow_final = allow_final
         # Are we in a context where ParamSpec literals are allowed?
         self.allow_param_spec_literals = allow_param_spec_literals
         # Are we in context where literal "..." specifically is allowed?
@@ -288,8 +291,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     ) -> SymbolTableNode | None:
         return self.api.lookup_qualified(name, ctx, suppress_errors)
 
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
-        return self.api.lookup_fully_qualified(name)
+    def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
+        return self.api.lookup_fully_qualified(fullname)
 
     def visit_unbound_type(self, t: UnboundType, defining_literal: bool = False) -> Type:
         typ = self.visit_unbound_type_nonoptional(t, defining_literal)
@@ -606,11 +609,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     code=codes.VALID_TYPE,
                 )
             else:
-                self.fail(
-                    "Final can be only used as an outermost qualifier in a variable annotation",
-                    t,
-                    code=codes.VALID_TYPE,
-                )
+                if not self.allow_final:
+                    self.fail(
+                        "Final can be only used as an outermost qualifier in a variable annotation",
+                        t,
+                        code=codes.VALID_TYPE,
+                    )
             return AnyType(TypeOfAny.from_error)
         elif fullname == "typing.Tuple" or (
             fullname == "builtins.tuple"
@@ -691,7 +695,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     "ClassVar[...] must have at most one type argument", t, code=codes.VALID_TYPE
                 )
                 return AnyType(TypeOfAny.from_error)
-            return self.anal_type(t.args[0])
+            return self.anal_type(t.args[0], allow_final=self.options.python_version >= (3, 13))
         elif fullname in NEVER_NAMES:
             return UninhabitedType()
         elif fullname in LITERAL_TYPE_NAMES:
@@ -1762,8 +1766,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx, code=codes.VALID_TYPE)
             return None
 
-    def analyze_type(self, t: Type) -> Type:
-        return t.accept(self)
+    def analyze_type(self, typ: Type) -> Type:
+        return typ.accept(self)
 
     def fail(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -> None:
         self.fail_func(msg, ctx, code=code)
@@ -1877,11 +1881,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         allow_unpack: bool = False,
         allow_ellipsis: bool = False,
         allow_typed_dict_special_forms: bool = False,
+        allow_final: bool = False,
     ) -> Type:
         if nested:
             self.nesting_level += 1
         old_allow_typed_dict_special_forms = self.allow_typed_dict_special_forms
         self.allow_typed_dict_special_forms = allow_typed_dict_special_forms
+        self.allow_final = allow_final
         old_allow_ellipsis = self.allow_ellipsis
         self.allow_ellipsis = allow_ellipsis
         old_allow_unpack = self.allow_unpack
@@ -1937,13 +1943,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return [self.anal_var_def(vd) for vd in var_defs]
 
     def named_type(
-        self,
-        fully_qualified_name: str,
-        args: list[Type] | None = None,
-        line: int = -1,
-        column: int = -1,
+        self, fullname: str, args: list[Type] | None = None, line: int = -1, column: int = -1
     ) -> Instance:
-        node = self.lookup_fully_qualified(fully_qualified_name)
+        node = self.lookup_fully_qualified(fullname)
         assert isinstance(node.node, TypeInfo)
         any_type = AnyType(TypeOfAny.special_form)
         if args is not None:
@@ -1980,7 +1982,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         )
 
 
-TypeVarLikeList = List[Tuple[str, TypeVarLikeExpr]]
+TypeVarLikeList = list[tuple[str, TypeVarLikeExpr]]
 
 
 class MsgCallback(Protocol):
@@ -2435,7 +2437,7 @@ def collect_all_inner_types(t: Type) -> list[Type]:
     return t.accept(CollectAllInnerTypesQuery())
 
 
-class CollectAllInnerTypesQuery(TypeQuery[List[Type]]):
+class CollectAllInnerTypesQuery(TypeQuery[list[Type]]):
     def __init__(self) -> None:
         super().__init__(self.combine_lists_strategy)
 

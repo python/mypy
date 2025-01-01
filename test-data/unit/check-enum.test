@@ -181,27 +181,100 @@ def infer_truth(truth: Truth) -> None:
 [case testEnumTruthyness]
 # mypy: warn-unreachable
 import enum
+from typing_extensions import Literal
+
 class E(enum.Enum):
-    x = 0
-if not E.x:
-    "noop"
+    zero = 0
+    one = 1
+
+def print(s: str) -> None: ...
+
+if E.zero:
+    print("zero is true")
+if not E.zero:
+    print("zero is false")  # E: Statement is unreachable
+
+if E.one:
+    print("one is true")
+if not E.one:
+    print("one is false")  # E: Statement is unreachable
+
+def main(zero: Literal[E.zero], one: Literal[E.one]) -> None:
+    if zero:
+        print("zero is true")
+    if not zero:
+        print("zero is false")  # E: Statement is unreachable
+    if one:
+        print("one is true")
+    if not one:
+        print("one is false")  # E: Statement is unreachable
 [builtins fixtures/tuple.pyi]
-[out]
-main:6: error: Statement is unreachable
 
 [case testEnumTruthynessCustomDunderBool]
 # mypy: warn-unreachable
 import enum
 from typing_extensions import Literal
+
 class E(enum.Enum):
-    x = 0
+    zero = 0
+    one = 1
     def __bool__(self) -> Literal[False]:
         return False
-if E.x:
-    "noop"
+
+def print(s: str) -> None: ...
+
+if E.zero:
+    print("zero is true")  # E: Statement is unreachable
+if not E.zero:
+    print("zero is false")
+
+if E.one:
+    print("one is true")  # E: Statement is unreachable
+if not E.one:
+    print("one is false")
+
+def main(zero: Literal[E.zero], one: Literal[E.one]) -> None:
+    if zero:
+        print("zero is true")  # E: Statement is unreachable
+    if not zero:
+        print("zero is false")
+    if one:
+        print("one is true")  # E: Statement is unreachable
+    if not one:
+        print("one is false")
 [builtins fixtures/enum.pyi]
-[out]
-main:9: error: Statement is unreachable
+
+[case testEnumTruthynessStrEnum]
+# mypy: warn-unreachable
+import enum
+from typing_extensions import Literal
+
+class E(enum.StrEnum):
+    empty = ""
+    not_empty = "asdf"
+
+def print(s: str) -> None: ...
+
+if E.empty:
+    print("empty is true")
+if not E.empty:
+    print("empty is false")
+
+if E.not_empty:
+    print("not_empty is true")
+if not E.not_empty:
+    print("not_empty is false")
+
+def main(empty: Literal[E.empty], not_empty: Literal[E.not_empty]) -> None:
+    if empty:
+        print("empty is true")
+    if not empty:
+        print("empty is false")
+    if not_empty:
+        print("not_empty is true")
+    if not not_empty:
+        print("not_empty is false")
+[builtins fixtures/enum.pyi]
 
 [case testEnumUnique]
 import enum

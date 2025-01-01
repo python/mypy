@@ -470,11 +470,15 @@ assert foo() == 21
 [case testClassKwargs]
 class X:
     def __init__(self, msg: str, **variables: int) -> None:
-         pass
+         self.msg = msg
+         self.variables = variables
+
 [file driver.py]
 import traceback
 from native import X
-X('hello', a=0)
+x = X('hello', a=0, b=1)
+assert x.msg == 'hello'
+assert x.variables == {'a': 0, 'b': 1}
 try:
     X('hello', msg='hello')
 except TypeError as e:

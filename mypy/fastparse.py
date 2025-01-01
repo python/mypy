@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 import sys
 import warnings
-from typing import Any, Callable, Final, List, Optional, Sequence, TypeVar, Union, cast
-from typing_extensions import Literal, overload
+from collections.abc import Sequence
+from typing import Any, Callable, Final, Literal, Optional, TypeVar, Union, cast, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
 from mypy.errors import Errors
@@ -424,7 +424,7 @@ class ASTConverter:
         return res
 
     def translate_expr_list(self, l: Sequence[AST]) -> list[Expression]:
-        return cast(List[Expression], self.translate_opt_expr_list(l))
+        return cast(list[Expression], self.translate_opt_expr_list(l))
 
     def get_lineno(self, node: ast3.expr | ast3.stmt) -> int:
         if (
@@ -667,7 +667,7 @@ class ASTConverter:
                         current_overload.append(last_if_overload)
                     last_if_stmt, last_if_overload = None, None
                 if isinstance(if_block_with_overload.body[-1], OverloadedFuncDef):
-                    skipped_if_stmts.extend(cast(List[IfStmt], if_block_with_overload.body[:-1]))
+                    skipped_if_stmts.extend(cast(list[IfStmt], if_block_with_overload.body[:-1]))
                     current_overload.extend(if_block_with_overload.body[-1].items)
                 else:
                     current_overload.append(
@@ -714,7 +714,7 @@ class ASTConverter:
                     last_if_stmt_overload_name = None
                     if if_block_with_overload is not None:
                         skipped_if_stmts.extend(
-                            cast(List[IfStmt], if_block_with_overload.body[:-1])
+                            cast(list[IfStmt], if_block_with_overload.body[:-1])
                         )
                         last_if_overload = cast(
                             Union[Decorator, FuncDef, OverloadedFuncDef],
@@ -938,7 +938,7 @@ class ASTConverter:
                         self.errors, line=lineno, override_column=n.col_offset
                     ).translate_expr_list(func_type_ast.argtypes)
                     # Use a cast to work around `list` invariance
-                    arg_types = cast(List[Optional[Type]], translated_args)
+                    arg_types = cast(list[Optional[Type]], translated_args)
                 return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
@@ -1050,7 +1050,7 @@ class ASTConverter:
     ) -> list[Argument]:
         new_args = []
         names: list[ast3.arg] = []
-        posonlyargs = getattr(args, "posonlyargs", cast(List[ast3.arg], []))
+        posonlyargs = getattr(args, "posonlyargs", cast(list[ast3.arg], []))
         args_args = posonlyargs + args.args
         args_defaults = args.defaults
         num_no_defaults = len(args_args) - len(args_defaults)
@@ -1588,7 +1588,7 @@ class ASTConverter:
             self.visit(n.func),
             arg_types,
             arg_kinds,
-            cast("List[Optional[str]]", [None] * len(args)) + keyword_names,
+            cast("list[Optional[str]]", [None] * len(args)) + keyword_names,
         )
         return self.set_line(e, n)
 

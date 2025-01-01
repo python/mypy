@@ -4,25 +4,9 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict
+from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
-from typing import (
-    AbstractSet,
-    Callable,
-    Dict,
-    Final,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+from typing import Callable, Final, Generic, NamedTuple, Optional, TypeVar, Union, cast, overload
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.checkexpr
@@ -268,7 +252,7 @@ class FineGrainedDeferredNode(NamedTuple):
 # (such as two references to the same variable). TODO: it would
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
-TypeMap: _TypeAlias = Optional[Dict[Expression, Type]]
+TypeMap: _TypeAlias = Optional[dict[Expression, Type]]
 
 
 # An object that represents either a precise type or a type with an upper bound;
@@ -5133,7 +5117,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
             dec = self.expr_checker.accept(d)
-            temp = self.temp_node(sig, context=e)
+            temp = self.temp_node(sig, context=d)
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname or None
@@ -7816,7 +7800,7 @@ def conditional_types_to_typemaps(
             assert typ is not None
             maps.append({expr: typ})
 
-    return cast(Tuple[TypeMap, TypeMap], tuple(maps))
+    return cast(tuple[TypeMap, TypeMap], tuple(maps))
 
 
 def gen_unique_name(base: str, table: SymbolTable) -> str:

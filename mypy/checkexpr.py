@@ -6,9 +6,10 @@ import enum
 import itertools
 import time
 from collections import defaultdict
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Callable, ClassVar, Final, Iterable, Iterator, List, Optional, Sequence, cast
-from typing_extensions import TypeAlias as _TypeAlias, assert_never, overload
+from typing import Callable, ClassVar, Final, Optional, cast, overload
+from typing_extensions import TypeAlias as _TypeAlias, assert_never
 
 import mypy.checker
 import mypy.errorcodes as codes
@@ -1965,7 +1966,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if not t:
                 res[i] = self.accept(args[i])
         assert all(tp is not None for tp in res)
-        return cast(List[Type], res)
+        return cast(list[Type], res)
 
     def infer_function_type_arguments_using_context(
         self, callable: CallableType, error_context: Context

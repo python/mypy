@@ -8,9 +8,9 @@ import sys
 import traceback
 from abc import abstractmethod
 from collections import defaultdict
+from collections.abc import Iterable, Iterator, Mapping
 from contextlib import contextmanager
-from typing import Final, Iterable, Iterator, Mapping
-from typing_extensions import overload
+from typing import Final, overload
 
 from mypy_extensions import mypyc_attr
 

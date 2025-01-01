@@ -52,7 +52,8 @@ Summary of how this works for certain kinds of differences:
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.expandtype import expand_type
@@ -114,10 +115,10 @@ from mypy.util import get_prefix
 
 # Type snapshots are strict, they must be hashable and ordered (e.g. for Unions).
 Primitive: _TypeAlias = Union[str, float, int, bool]  # float is for Literal[3.14] support.
-SnapshotItem: _TypeAlias = Tuple[Union[Primitive, "SnapshotItem"], ...]
+SnapshotItem: _TypeAlias = tuple[Union[Primitive, "SnapshotItem"], ...]
 
 # Symbol snapshots can be more lenient.
-SymbolSnapshot: _TypeAlias = Tuple[object, ...]
+SymbolSnapshot: _TypeAlias = tuple[object, ...]
 
 
 def compare_symbol_table_snapshots(

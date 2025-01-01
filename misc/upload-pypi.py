@@ -16,9 +16,10 @@ import subprocess
 import tarfile
 import tempfile
 import venv
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 from urllib.request import urlopen
 
 BASE = "https://api.github.com/repos"
@@ -26,7 +27,7 @@ REPO = "mypyc/mypy_mypyc-wheels"
 
 
 def is_whl_or_tar(name: str) -> bool:
-    return name.endswith(".tar.gz") or name.endswith(".whl")
+    return name.endswith((".tar.gz", ".whl"))
 
 
 def item_ok_for_pypi(name: str) -> bool:

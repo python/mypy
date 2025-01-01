@@ -25,22 +25,19 @@ import stat
 import sys
 import time
 import types
+from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import (
     TYPE_CHECKING,
-    AbstractSet,
     Any,
     Callable,
     ClassVar,
-    Dict,
     Final,
-    Iterator,
-    Mapping,
     NamedTuple,
     NoReturn,
-    Sequence,
     TextIO,
+    TypedDict,
 )
-from typing_extensions import TypeAlias as _TypeAlias, TypedDict
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
@@ -120,7 +117,7 @@ CORE_BUILTIN_MODULES: Final = {
 }
 
 
-Graph: _TypeAlias = Dict[str, "State"]
+Graph: _TypeAlias = dict[str, "State"]
 
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.

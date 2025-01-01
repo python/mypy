@@ -1507,24 +1507,24 @@ note: A user-defined top-level module with name "typing" is not supported
 # flags: --ignore-missing-imports
 import scribe  # No Python 3 stubs available for scribe
 from scribe import x
-import python2  # Python 3 stubs available for python2
+import pytz  # Python 3 stubs available for pytz
 import foobar_asdf
 import jack  # This has a stubs package but was never bundled with mypy, so ignoring works
 [out]
-_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "python2"
-_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-six"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "pytz"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-pytz"
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: (or run "mypy --install-types" to install all missing stub packages)
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testNoPython3StubAvailable]
 import scribe
 from scribe import x
-import python2
+import pytz
 [out]
 _testNoPython3StubAvailable.py:1: error: Cannot find implementation or library stub for module named "scribe"
 _testNoPython3StubAvailable.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "python2"
-_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-six"
+_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "pytz"
+_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-pytz"
 _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to install all missing stub packages)
 
 
@@ -2181,3 +2181,13 @@ class Status(Enum):
 
 def imperfect(status: Status) -> str:
     return status.name.lower()
+
+[case testUnpackIteratorBuiltins]
+# Regression test for https://github.com/python/mypy/issues/18320
+# Caused by https://github.com/python/typeshed/pull/12851
+x = [1, 2]
+reveal_type([*reversed(x)])
+reveal_type([*map(str, x)])
+[out]
+_testUnpackIteratorBuiltins.py:4: note: Revealed type is "builtins.list[builtins.int]"
+_testUnpackIteratorBuiltins.py:5: note: Revealed type is "builtins.list[builtins.str]"

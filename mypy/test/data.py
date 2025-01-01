@@ -10,9 +10,11 @@ import shutil
 import sys
 import tempfile
 from abc import abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Iterator, NamedTuple, NoReturn, Pattern, Union
+from re import Pattern
+from typing import Any, Final, NamedTuple, NoReturn, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 import pytest

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, Iterable, List, Sequence
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, Final
 
 import mypy.subtypes
 import mypy.typeops
@@ -626,7 +627,7 @@ class CompleteTypeVisitor(TypeQuery[bool]):
         return False
 
 
-class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
+class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
     """Visitor class for inferring type constraints."""
 
     # The type that is compared against a template

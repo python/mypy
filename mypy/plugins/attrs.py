@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable, Mapping
 from functools import reduce
-from typing import Final, Iterable, List, Mapping, cast
-from typing_extensions import Literal
+from typing import Final, Literal, cast
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.applytype import apply_generic_arguments
@@ -806,7 +806,7 @@ def _parse_assignments(
     rvalues: list[Expression] = []
     if isinstance(lvalue, (TupleExpr, ListExpr)):
         if all(isinstance(item, NameExpr) for item in lvalue.items):
-            lvalues = cast(List[NameExpr], lvalue.items)
+            lvalues = cast(list[NameExpr], lvalue.items)
         if isinstance(stmt.rvalue, (TupleExpr, ListExpr)):
             rvalues = stmt.rvalue.items
     elif isinstance(lvalue, NameExpr):
@@ -1087,7 +1087,7 @@ def _get_expanded_attr_types(
             return None
         init_func = expand_type_by_instance(init_func, typ)
         # [1:] to skip the self argument of AttrClass.__init__
-        field_names = cast(List[str], init_func.arg_names[1:])
+        field_names = cast(list[str], init_func.arg_names[1:])
         field_types = init_func.arg_types[1:]
         return [dict(zip(field_names, field_types))]
     else:
