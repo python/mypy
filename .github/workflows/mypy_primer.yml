@@ -26,8 +26,6 @@ jobs:
   mypy_primer:
     name: Run mypy_primer
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     strategy:
       matrix:
         shard-index: [0, 1, 2, 3, 4]
@@ -94,8 +92,6 @@ jobs:
     name: Join artifacts
     runs-on: ubuntu-latest
     needs: [mypy_primer]
-    permissions:
-      contents: read
     steps:
       - name: Merge artifacts
         uses: actions/upload-artifact/merge@v4
@@ -103,7 +99,10 @@ jobs:
           name: mypy_primer_diffs
           pattern: mypy_primer_diffs-*
           delete-merged: true
-      - name: Call comments workflow
-        uses: python/mypy/.github/workflows/mypy_primer_comment.yml@master
-        with:
-          workflow_id: ${{ github.run_id }}
+
+  call_comment_workflow:
+    name: Call mypy_primer_comment workflow
+    needs: [join_artifacts]
+    uses: python/mypy/.github/workflows/mypy_primer_comment.yml@master
+    with:
+      workflow_id: ${{ github.run_id }}
