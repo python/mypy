@@ -31,7 +31,7 @@
 // Here just for consistency
 #define CPy_XDECREF(p) Py_XDECREF(p)
 
-// The *_NO_IMM operations below are refcount manipulation operations for
+// The *_NO_IMM operations below perform refcount manipulation for
 // non-immortal objects (Python 3.12 and later).
 //
 // Py_INCREF and other CPython operations check for immortality. This

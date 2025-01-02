@@ -69,6 +69,11 @@ class RType:
     def short_name(self) -> str:
         return short_name(self.name)
 
+    @property
+    @abstractmethod
+    def may_be_immortal(sel) -> bool:
+        raise NotImplementedError
+
     def __str__(self) -> str:
         return short_name(self.name)
 
@@ -151,6 +156,10 @@ class RVoid(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rvoid(self)
 
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
+
     def serialize(self) -> str:
         return "void"
 
@@ -193,6 +202,7 @@ class RPrimitive(RType):
         ctype: str = "PyObject *",
         size: int = PLATFORM_SIZE,
         error_overlap: bool = False,
+        may_be_immortal: bool = True,
     ) -> None:
         RPrimitive.primitive_map[name] = self
 
@@ -204,6 +214,7 @@ class RPrimitive(RType):
         self._ctype = ctype
         self.size = size
         self.error_overlap = error_overlap
+        self._may_be_immortal = may_be_immortal
         if ctype == "CPyTagged":
             self.c_undefined = "CPY_INT_TAG"
         elif ctype in ("int16_t", "int32_t", "int64_t"):
@@ -229,6 +240,10 @@ class RPrimitive(RType):
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rprimitive(self)
+
+    @property
+    def may_be_immortal(self) -> bool:
+        return self._may_be_immortal
 
     def serialize(self) -> str:
         return self.name
@@ -434,13 +449,16 @@ none_rprimitive: Final = RPrimitive(
 )
 
 # Python list object (or an instance of a subclass of list).
-list_rprimitive: Final = RPrimitive("builtins.list", is_unboxed=False, is_refcounted=True)
+list_rprimitive: Final = RPrimitive("builtins.list", is_unboxed=False, is_refcounted=True,
+                                    may_be_immortal=False)
 
 # Python dict object (or an instance of a subclass of dict).
-dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True)
+dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True,
+                                    may_be_immortal=False)
 
 # Python set object (or an instance of a subclass of set).
-set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcounted=True)
+set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcounted=True,
+                                   may_be_immortal=False)
 
 # Python str object. At the C layer, str is referred to as unicode
 # (PyUnicode).
@@ -642,6 +660,10 @@ class RTuple(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rtuple(self)
 
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
+
     def __str__(self) -> str:
         return "tuple[%s]" % ", ".join(str(typ) for typ in self.types)
 
@@ -763,6 +785,10 @@ class RStruct(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rstruct(self)
 
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
+
     def __str__(self) -> str:
         # if not tuple(unnamed structs)
         return "{}{{{}}}".format(
@@ -823,6 +849,10 @@ class RInstance(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rinstance(self)
 
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
+
     def struct_name(self, names: NameGenerator) -> str:
         return self.class_ir.struct_name(names)
 
@@ -882,6 +912,10 @@ class RUnion(RType):
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_runion(self)
+
+    @property
+    def may_be_immortal(self) -> bool:
+        return any(item.may_be_immortal for item in self.items)
 
     def __repr__(self) -> str:
         return "<RUnion %s>" % ", ".join(str(item) for item in self.items)
@@ -952,6 +986,10 @@ class RArray(RType):
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rarray(self)
+
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
 
     def __str__(self) -> str:
         return f"{self.item_type}[{self.length}]"
