@@ -415,7 +415,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                     return join_types(t.fallback, self.s)
             else:
                 s, t = self.s, t
-                if s.min_args < t.min_args:
+                if t.is_var_arg:
                     s, t = t, s
                 if is_subtype(self.s, t):
                     result = t.copy_modified()

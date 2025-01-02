@@ -3503,8 +3503,8 @@ fdict = {
     "f_any": f_any,
     "f_3": f_3,
 }
-reveal_type(fdict)  # N: Revealed type is "builtins.dict[builtins.str, def (*_: Any, **__: Any) -> Any]"
+reveal_type(fdict)  # N: Revealed type is "builtins.dict[builtins.str, def (common: Any, a: Any =) -> Any]"
 
-reveal_type(join(f_1, f_any, f_3))  # N: Revealed type is "def (*_: Any, **__: Any) -> Any"
+reveal_type(join(f_1, f_any, f_3))  # N: Revealed type is "def (common: Any, a: Any =) -> Any"
 
 [builtins fixtures/tuple.pyi]
