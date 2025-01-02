@@ -2,10 +2,10 @@ name: Comment with mypy_primer diff
 
 on:
   workflow_call:
-    input:
+    inputs:
       workflow_id:
         required: true
-        type: integer
+        type: number
 
 
 jobs:

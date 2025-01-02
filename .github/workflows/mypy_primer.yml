@@ -106,4 +106,4 @@ jobs:
       - name: Call comments workflow
         uses: python/mypy/.github/workflows/mypy_primer_comment.yml@master
         with:
-          workflow_id: ${{ workflow.id }}
+          workflow_id: ${{ github.run_id }}
