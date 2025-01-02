@@ -18,7 +18,6 @@ repos:
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.30.0
     hooks:
-      - id: check-dependabot
       - id: check-github-workflows
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.4
