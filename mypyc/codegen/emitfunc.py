@@ -13,6 +13,7 @@ from mypyc.common import (
     STATIC_PREFIX,
     TYPE_PREFIX,
     TYPE_VAR_PREFIX,
+    HAVE_IMMORTAL,
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
@@ -81,6 +82,7 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_pointer_rprimitive,
     is_tagged,
+    is_none_rprimitive,
 )
 
 
@@ -578,6 +580,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             )
 
     def visit_inc_ref(self, op: IncRef) -> None:
+        if isinstance(op.src, Box) and is_none_rprimitive(op.src.src.type) and HAVE_IMMORTAL:
+            # On Python 3.12+, None is immortal and needs no reference count manipulation.
+            return
+
         src = self.reg(op.src)
         self.emit_inc_ref(src, op.src.type)
 
