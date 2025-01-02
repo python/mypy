@@ -29,5 +29,15 @@ repos:
           -ignore=property "allow_failure" is not defined,
           -ignore=SC2(046|086),
         ]
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.0.0
+    hooks:
+      - id: zizmor
+  # Should be the last one:
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+      - id: check-useless-excludes
+
 ci:
   autoupdate_schedule: quarterly

@@ -38,6 +38,7 @@ jobs:
         with:
           path: mypy_to_test
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -102,3 +103,7 @@ jobs:
           name: mypy_primer_diffs
           pattern: mypy_primer_diffs-*
           delete-merged: true
+      - name: Call comments workflow
+        uses: python/mypy/.github/workflows/mypy_primer_comment.yml@master
+        with:
+          workflow_id: ${{ workflow.id }}

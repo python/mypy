@@ -1,31 +1,32 @@
 name: Comment with mypy_primer diff
 
 on:
-  workflow_run:
-    workflows:
-      - Run mypy_primer
-    types:
-      - completed
+  workflow_call:
+    input:
+      workflow_id:
+        required: true
+        type: integer
 
-permissions:
-  contents: read
-  pull-requests: write
 
 jobs:
   comment:
     name: Comment PR from mypy_primer
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Download diffs
         uses: actions/github-script@v7
+        env:
+          WORKFLOW_ID: ${{ inputs.workflow_id }}
         with:
           script: |
             const fs = require('fs');
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
                owner: context.repo.owner,
                repo: context.repo.repo,
-               run_id: ${{ github.event.workflow_run.id }},
+               run_id: process.env.WORKFLOW_ID,
             });
             const [matchArtifact] = artifacts.data.artifacts.filter((artifact) =>
               artifact.name == "mypy_primer_diffs");
