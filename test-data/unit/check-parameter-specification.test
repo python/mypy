@@ -14,7 +14,7 @@ P5 = ParamSpec("P5", covariant=True, bound=int)  # E: The variance and bound arg
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecLocations]
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Type
 from typing_extensions import ParamSpec, Concatenate
 P = ParamSpec('P')
 
@@ -36,6 +36,11 @@ def foo5(x: Callable[[int, str], P]) -> None: ...  # E: Invalid location for Par
 
 def foo6(x: Callable[[P], int]) -> None: ...  # E: Invalid location for ParamSpec "P" \
                                               # N: You can use ParamSpec as the first argument to Callable, e.g., "Callable[P, int]"
+
+def foo7(
+    *args: P.args, **kwargs: P.kwargs  # E: ParamSpec "P" is unbound
+) -> Callable[[Callable[P, T]], Type[T]]:
+    ...
 
 def wrapper(f: Callable[P, int]) -> None:
     def inner(*args: P.args, **kwargs: P.kwargs) -> None: ...  # OK
@@ -2156,28 +2161,6 @@ submit(
     run_portal,
     backend=int(),
 )
-[builtins fixtures/paramspec.pyi]
-
-[case testParamSpecGenericWithNamedArg2]
-from typing import Callable, TypeVar, Type
-from typing_extensions import ParamSpec
-
-P= ParamSpec("P")
-T = TypeVar("T")
-
-def smoke_testable(*args: P.args, **kwargs: P.kwargs) -> Callable[[Callable[P, T]], Type[T]]:  # E: ParamSpec "P" is unbound
-    ...
-
-@smoke_testable(name="bob", size=512, flt=0.5)
-class SomeClass:
-    def __init__(self, size: int, name: str, flt: float) -> None:
-        pass
-
-# Error message is confusing, but this is a known issue, see #4530.
-@smoke_testable(name=42, size="bad", flt=0.5)
-class OtherClass:
-    def __init__(self, size: int, name: str, flt: float) -> None:
-        pass
 [builtins fixtures/paramspec.pyi]
 
 [case testInferenceAgainstGenericCallableUnionParamSpec]
