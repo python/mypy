@@ -83,6 +83,7 @@ from mypyc.ir.rtypes import (
     is_pointer_rprimitive,
     is_tagged,
     is_none_rprimitive,
+    is_bool_rprimitive,
 )
 
 
@@ -580,9 +581,17 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             )
 
     def visit_inc_ref(self, op: IncRef) -> None:
-        if isinstance(op.src, Box) and is_none_rprimitive(op.src.src.type) and HAVE_IMMORTAL:
-            # On Python 3.12+, None is immortal and needs no reference count manipulation.
+        if isinstance(op.src, Box) and (is_none_rprimitive(op.src.src.type) or
+                                        is_bool_rprimitive(op.src.src.type)) and HAVE_IMMORTAL:
+            # On Python 3.12+, None/True/False are immortal, and we can skip inc ref
             return
+
+        if isinstance(op.src, LoadLiteral) and HAVE_IMMORTAL:
+            value = op.src.value
+            # We can skip inc ref for immortal literals on Python 3.12+
+            if type(value) is int and -5 <= value <= 256:
+                # Small integers are immortal
+                return
 
         src = self.reg(op.src)
         self.emit_inc_ref(src, op.src.type)
