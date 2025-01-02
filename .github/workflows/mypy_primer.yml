@@ -103,6 +103,6 @@ jobs:
   call_comment_workflow:
     name: Call mypy_primer_comment workflow
     needs: [join_artifacts]
-    uses: python/mypy/.github/workflows/mypy_primer_comment.yml
+    uses: ./.github/workflows/mypy_primer_comment.yml
     with:
       workflow_id: ${{ github.run_id }}
