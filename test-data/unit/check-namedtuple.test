@@ -1460,3 +1460,17 @@ Func = NamedTuple('Func', [
 ])
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleRecursiveBound]
+from typing import Generic, NamedTuple, TypeVar
+T = TypeVar("T", bound="NT")
+class NT(NamedTuple, Generic[T]):
+    parent: T
+    item: int
+
+def main(n: NT[T]) -> None:
+    reveal_type(n.parent)  # N: Revealed type is "T`-1"
+    reveal_type(n.item)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
