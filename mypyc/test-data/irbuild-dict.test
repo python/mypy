@@ -342,11 +342,14 @@ def union_of_dicts(d):
     r11 :: union[int, str]
     k :: str
     v :: union[int, str]
-    r12, r13 :: object
-    r14 :: int
+    r12 :: object
+    r13 :: object[1]
+    r14 :: object_ptr
     r15 :: object
-    r16 :: i32
-    r17, r18, r19 :: bit
+    r16 :: int
+    r17 :: object
+    r18 :: i32
+    r19, r20, r21 :: bit
 L0:
     r0 = PyDict_New()
     new = r0
@@ -368,16 +371,19 @@ L2:
     k = r10
     v = r11
     r12 = load_address PyLong_Type
-    r13 = PyObject_CallFunctionObjArgs(r12, v, 0)
-    r14 = unbox(int, r13)
-    r15 = box(int, r14)
-    r16 = CPyDict_SetItem(new, k, r15)
-    r17 = r16 >= 0 :: signed
+    r13 = [v]
+    r14 = load_address r13
+    r15 = PyObject_Vectorcall(r12, r14, 1, 0)
+    keep_alive v
+    r16 = unbox(int, r15)
+    r17 = box(int, r16)
+    r18 = CPyDict_SetItem(new, k, r17)
+    r19 = r18 >= 0 :: signed
 L3:
-    r18 = CPyDict_CheckSize(d, r3)
+    r20 = CPyDict_CheckSize(d, r3)
     goto L1
 L4:
-    r19 = CPy_NoErrOccurred()
+    r21 = CPy_NoErrOccurred()
 L5:
     return 1
 def typeddict(d):
