@@ -104,6 +104,7 @@ jobs:
     name: Call mypy_primer_comment workflow
     needs: [join_artifacts]
     permissions:
+      contents: read
       pull-requests: write
     uses: ./.github/workflows/mypy_primer_comment.yml
     with:
