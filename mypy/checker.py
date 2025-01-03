@@ -2726,26 +2726,57 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if expected != tvar.variance:
                 self.msg.bad_proto_variance(tvar.variance, tvar.name, expected, defn)
 
+    def get_parameterized_base_classes(self, typ: TypeInfo) -> list[Instance]:
+        """Build an MRO-like structure with generic type args substituted.
+
+        Excludes the class itself.
+
+        When several bases have a common ancestor, includes an :class:`Instance`
+        for each param.
+        """
+        bases = []
+        for parent in typ.mro[1:]:
+            if parent.is_generic():
+                for base in typ.bases:
+                    if parent in base.type.mro:
+                        bases.append(map_instance_to_supertype(base, parent))
+            else:
+                bases.append(Instance(parent, []))
+        return bases
+
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
         """Check for multiple inheritance related errors."""
         if len(typ.bases) <= 1:
             # No multiple inheritance.
             return
+
         # Verify that inherited attributes are compatible.
-        mro = typ.mro[1:]
-        for i, base in enumerate(mro):
+        typed_mro = self.get_parameterized_base_classes(typ)
+        # If the first MRO entry is compatible with everything following, we don't need
+        # (and shouldn't) compare further pairs
+        # (see testMultipleInheritanceExplcitDiamondResolution)
+        seen_names = set()
+        for i, base in enumerate(typed_mro):
             # Attributes defined in both the type and base are skipped.
             # Normal checks for attribute compatibility should catch any problems elsewhere.
-            non_overridden_attrs = base.names.keys() - typ.names.keys()
+            # Sort for consistent messages order.
+            non_overridden_attrs = sorted(typed_mro[i].type.names - typ.names.keys())
             for name in non_overridden_attrs:
                 if is_private(name):
                     continue
-                for base2 in mro[i + 1 :]:
+                if name in seen_names:
+                    continue
+                for base2 in typed_mro[i + 1 :]:
                     # We only need to check compatibility of attributes from classes not
                     # in a subclass relationship. For subclasses, normal (single inheritance)
                     # checks suffice (these are implemented elsewhere).
-                    if name in base2.names and base2 not in base.mro:
+                    if name in base2.type.names and not is_subtype(
+                        base, base2, ignore_promotions=True
+                    ):
+                        # If base1 already inherits from base2 with correct type args,
+                        # we have reported errors if any. Avoid reporting them again.
                         self.check_compatibility(name, base, base2, typ)
+                seen_names.add(name)
 
     def determine_type_of_member(self, sym: SymbolTableNode) -> Type | None:
         if sym.type is not None:
@@ -2770,8 +2801,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: handle more node kinds here.
         return None
 
+    def attribute_type_from_base(
+        self, name: str, base: Instance
+    ) -> tuple[ProperType | None, SymbolTableNode]:
+        """For a NameExpr that is part of a class, walk all base classes and try
+        to find the first class that defines a Type for the same name."""
+        base_var = base.type[name]
+        base_type = self.determine_type_of_member(base_var)
+        if base_type is None:
+            return None, base_var
+
+        if not has_no_typevars(base_type):
+            base_type = expand_type_by_instance(base_type, base)
+
+        return get_proper_type(base_type), base_var
+
     def check_compatibility(
-        self, name: str, base1: TypeInfo, base2: TypeInfo, ctx: TypeInfo
+        self, name: str, base1: Instance, base2: Instance, ctx: TypeInfo
     ) -> None:
         """Check if attribute name in base1 is compatible with base2 in multiple inheritance.
 
@@ -2796,10 +2842,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if name in ("__init__", "__new__", "__init_subclass__"):
             # __init__ and friends can be incompatible -- it's a special case.
             return
-        first = base1.names[name]
-        second = base2.names[name]
-        first_type = get_proper_type(self.determine_type_of_member(first))
-        second_type = get_proper_type(self.determine_type_of_member(second))
+
+        first_type, first = self.attribute_type_from_base(name, base1)
+        second_type, second = self.attribute_type_from_base(name, base2)
 
         # TODO: use more principled logic to decide is_subtype() vs is_equivalent().
         # We should rely on mutability of superclass node, not on types being Callable.
@@ -2809,7 +2854,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(first_type, Instance):
             call = find_member("__call__", first_type, first_type, is_operator=True)
         if call and isinstance(second_type, FunctionLike):
-            second_sig = self.bind_and_map_method(second, second_type, ctx, base2)
+            second_sig = self.bind_and_map_method(second, second_type, ctx, base2.type)
             ok = is_subtype(call, second_sig, ignore_pos_arg_names=True)
         elif isinstance(first_type, FunctionLike) and isinstance(second_type, FunctionLike):
             if first_type.is_type_obj() and second_type.is_type_obj():
@@ -2821,8 +2866,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
             else:
                 # First bind/map method types when necessary.
-                first_sig = self.bind_and_map_method(first, first_type, ctx, base1)
-                second_sig = self.bind_and_map_method(second, second_type, ctx, base2)
+                first_sig = self.bind_and_map_method(first, first_type, ctx, base1.type)
+                second_sig = self.bind_and_map_method(second, second_type, ctx, base2.type)
                 ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
         elif first_type and second_type:
             if isinstance(first.node, Var):
@@ -2831,7 +2876,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 second_type = expand_self_type(second.node, second_type, fill_typevars(ctx))
             ok = is_equivalent(first_type, second_type)
             if not ok:
-                second_node = base2[name].node
+                second_node = base2.type[name].node
                 if (
                     isinstance(second_type, FunctionLike)
                     and second_node is not None
@@ -2841,14 +2886,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     ok = is_subtype(first_type, second_type)
         else:
             if first_type is None:
-                self.msg.cannot_determine_type_in_base(name, base1.name, ctx)
+                self.msg.cannot_determine_type_in_base(name, base1.type.name, ctx)
             if second_type is None:
-                self.msg.cannot_determine_type_in_base(name, base2.name, ctx)
+                self.msg.cannot_determine_type_in_base(name, base2.type.name, ctx)
             ok = True
         # Final attributes can never be overridden, but can override
         # non-final read-only attributes.
         if is_final_node(second.node) and not is_private(name):
-            self.msg.cant_override_final(name, base2.name, ctx)
+            self.msg.cant_override_final(name, base2.type.name, ctx)
         if is_final_node(first.node):
             self.check_if_final_var_override_writable(name, second.node, ctx)
         # Some attributes like __slots__ and __deletable__ are special, and the type can
@@ -2856,7 +2901,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(second.node, Var) and second.node.allow_incompatible_override:
             ok = True
         if not ok:
-            self.msg.base_class_definitions_incompatible(name, base1, base2, ctx)
+            self.msg.base_class_definitions_incompatible(name, base1.type, base2.type, ctx)
 
     def check_metaclass_compatibility(self, typ: TypeInfo) -> None:
         """Ensures that metaclasses of all parent types are compatible."""
