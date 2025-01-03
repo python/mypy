@@ -861,6 +861,14 @@ def process_options(
     )
 
     add_invertible_flag(
+        "--allow-redefinition2",
+        default=False,
+        strict_flag=False,
+        help="Allow variable redefinition with a new type (including conditional)",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
         "--no-implicit-reexport",
         default=True,
         strict_flag=True,

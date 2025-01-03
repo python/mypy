@@ -219,6 +219,9 @@ class Options:
         # and the same nesting level as the initialization
         self.allow_redefinition = False
 
+        # TODO
+        self.allow_redefinition2 = False
+
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
