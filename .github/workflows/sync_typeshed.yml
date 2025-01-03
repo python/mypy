@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true  # needed to `git push` the typeshed
+          persist-credentials: true  # needed to `git push` the PR branch
         # TODO: use whatever solution ends up working for
         # https://github.com/python/typeshed/issues/8434
       - uses: actions/setup-python@v5

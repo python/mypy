@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          persist-credentials: true  # needed to push tags
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

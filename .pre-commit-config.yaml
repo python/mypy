@@ -28,6 +28,11 @@ repos:
           -ignore=property "allow_failure" is not defined,
           -ignore=SC2(046|086),
         ]
+        additional_dependencies:
+          # actionlint has a shellcheck integration which extracts shell scripts in `run:` steps from GitHub Actions
+          # and checks these with shellcheck. This is arguably its most useful feature,
+          # but the integration only works if shellcheck is installed
+          - "github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.10.0"
   - repo: https://github.com/woodruffw/zizmor-pre-commit
     rev: v1.0.0
     hooks:
