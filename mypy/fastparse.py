@@ -1009,28 +1009,22 @@ class ASTConverter:
             func_def.is_coroutine = True
         if func_type is not None:
             func_type.definition = func_def
-            func_type.line = lineno
+            func_type.set_line(lineno)
 
         if n.decorator_list:
-            # Set deco_line to the old pre-3.8 lineno, in order to keep
-            # existing "# type: ignore" comments working:
-            deco_line = n.decorator_list[0].lineno
-
             var = Var(func_def.name)
             var.is_ready = False
             var.set_line(lineno)
 
             func_def.is_decorated = True
-            func_def.deco_line = deco_line
-            func_def.set_line(lineno, n.col_offset, end_line, end_column)
+            self.set_line(func_def, n)
 
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             first = n.decorator_list[0]
             deco.set_line(first.lineno, first.col_offset, end_line, end_column)
             retval: FuncDef | Decorator = deco
         else:
-            # FuncDef overrides set_line -- can't use self.set_line
-            func_def.set_line(lineno, n.col_offset, end_line, end_column)
+            self.set_line(func_def, n)
             retval = func_def
         if self.options.include_docstrings:
             func_def.docstring = ast3.get_docstring(n, clean=False)
@@ -1149,10 +1143,7 @@ class ASTConverter:
             type_args=explicit_type_params,
         )
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        # Set lines to match the old mypy 0.700 lines, in order to keep
-        # existing "# type: ignore" comments working:
-        cdef.line = n.lineno
-        cdef.deco_line = n.decorator_list[0].lineno if n.decorator_list else None
+        self.set_line(cdef, n)
 
         if self.options.include_docstrings:
             cdef.docstring = ast3.get_docstring(n, clean=False)
@@ -1247,8 +1238,7 @@ class ASTConverter:
         line = n.lineno
         if n.value is None:  # always allow 'x: int'
             rvalue: Expression = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)
-            rvalue.line = line
-            rvalue.column = n.col_offset
+            self.set_line(rvalue, n)
         else:
             rvalue = self.visit(n.value)
         typ = TypeConverter(self.errors, line=line).visit(n.annotation)
@@ -1675,19 +1665,7 @@ class ASTConverter:
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
-        self.set_line(e, n)
-        # alias to please mypyc
-        is_py38_or_earlier = sys.version_info < (3, 9)
-        if isinstance(n.slice, ast3.Slice) or (
-            is_py38_or_earlier and isinstance(n.slice, ast3.ExtSlice)
-        ):
-            # Before Python 3.9, Slice has no line/column in the raw ast. To avoid incompatibility
-            # visit_Slice doesn't set_line, even in Python 3.9 on.
-            # ExtSlice also has no line/column info. In Python 3.9 on, line/column is set for
-            # e.index when visiting n.slice.
-            e.index.line = e.line
-            e.index.column = e.column
-        return e
+        return self.set_line(e, n)
 
     # Starred(expr value, expr_context ctx)
     def visit_Starred(self, n: Starred) -> StarExpr:
@@ -1718,7 +1696,8 @@ class ASTConverter:
 
     # Slice(expr? lower, expr? upper, expr? step)
     def visit_Slice(self, n: ast3.Slice) -> SliceExpr:
-        return SliceExpr(self.visit(n.lower), self.visit(n.upper), self.visit(n.step))
+        e = SliceExpr(self.visit(n.lower), self.visit(n.upper), self.visit(n.step))
+        return self.set_line(e, n)
 
     # ExtSlice(slice* dims)
     def visit_ExtSlice(self, n: ast3.ExtSlice) -> TupleExpr:

@@ -17,8 +17,8 @@ def f(): ...  # E: Function is missing a return type annotation \
 # flags: --disallow-untyped-defs --warn-unused-ignores
 def d(f): ...  # type: ignore
 @d
-# type: ignore
-def f(): ...  # type: ignore  # E: Unused "type: ignore" comment
+# type: ignore  # E: Unused "type: ignore" comment
+def f(): ...  # type: ignore
 
 [case testIgnoreDecoratedFunction2]
 # flags: --disallow-untyped-defs

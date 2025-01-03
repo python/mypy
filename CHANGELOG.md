@@ -2,6 +2,10 @@
 
 ## Next release
 
+### Performance improvements
+
+TODO
+
 ### Drop Support for Python 3.8
 
 Mypy no longer supports running with Python 3.8, which has reached end-of-life.
@@ -39,6 +43,14 @@ Contributed by Christoph Tyralla (PR [18180](https://github.com/python/mypy/pull
 
 (Speaking of partial types, another reminder that mypy plans on enabling `--local-partial-types`
 by default in **mypy 2.0**).
+
+### Better line numbers for decorators and slice expressions
+
+Mypy now uses more correct line numbers for decorators and slice expressions. In some cases, this
+may necessitate changing the location of a `# type: ignore` comment.
+
+Contributed by Shantanu Jain (PR [18392](https://github.com/python/mypy/pull/18392),
+PR [18397](https://github.com/python/mypy/pull/18397)).
 
 ## Mypy 1.14
 
