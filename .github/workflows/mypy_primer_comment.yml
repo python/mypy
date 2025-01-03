@@ -5,7 +5,7 @@ on:
     inputs:
       workflow_id:
         required: true
-        type: number
+        type: string
 
 permissions:
   contents: read
