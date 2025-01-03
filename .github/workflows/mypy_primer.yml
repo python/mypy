@@ -106,6 +106,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: ./.github/workflows/mypy_primer_comment.yml
+    uses: ./.github/workflows/reusable_mypy_primer_comment.yml
     with:
       workflow_id: ${{ github.run_id }}

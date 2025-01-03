@@ -5,6 +5,8 @@ on:
   schedule:
     - cron: "0 0 1,15 * *"
 
+permissions: {}
+
 jobs:
   sync_typeshed:
     name: Sync typeshed
