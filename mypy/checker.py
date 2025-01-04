@@ -2734,7 +2734,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Verify that inherited attributes are compatible.
         mro = typ.mro[1:]
         all_names = {name for base in mro for name in base.names}
-        for name in all_names - typ.names.keys():
+        for name in sorted(all_names - typ.names.keys()):
+            # Sort for reproducible message order.
             # Attributes defined in both the type and base are skipped.
             # Normal checks for attribute compatibility should catch any problems elsewhere.
             if is_private(name):
