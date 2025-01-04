@@ -2733,19 +2733,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         # Verify that inherited attributes are compatible.
         mro = typ.mro[1:]
-        for i, base in enumerate(mro):
+        all_names = {name for base in mro for name in base.names}
+        for name in all_names - typ.names.keys():
             # Attributes defined in both the type and base are skipped.
             # Normal checks for attribute compatibility should catch any problems elsewhere.
-            non_overridden_attrs = base.names.keys() - typ.names.keys()
-            for name in non_overridden_attrs:
-                if is_private(name):
-                    continue
-                for base2 in mro[i + 1 :]:
-                    # We only need to check compatibility of attributes from classes not
-                    # in a subclass relationship. For subclasses, normal (single inheritance)
-                    # checks suffice (these are implemented elsewhere).
-                    if name in base2.names and base2 not in base.mro:
-                        self.check_compatibility(name, base, base2, typ)
+            if is_private(name):
+                continue
+            # Compare the first base defining a name with the rest.
+            # Remaining bases may not be pairwise compatible as the first base provides
+            # the used definition.
+            i, base = next((i, base) for i, base in enumerate(mro) if name in base.names)
+            for base2 in mro[i + 1 :]:
+                if name in base2.names and base2 not in base.mro:
+                    self.check_compatibility(name, base, base2, typ)
 
     def determine_type_of_member(self, sym: SymbolTableNode) -> Type | None:
         if sym.type is not None:
