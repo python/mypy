@@ -2826,8 +2826,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
         elif first_type and second_type:
             if isinstance(first.node, Var):
+                first_type = map_type_from_supertype(first_type, ctx, base1)
                 first_type = expand_self_type(first.node, first_type, fill_typevars(ctx))
             if isinstance(second.node, Var):
+                second_type = map_type_from_supertype(second_type, ctx, base2)
                 second_type = expand_self_type(second.node, second_type, fill_typevars(ctx))
             ok = is_equivalent(first_type, second_type)
             if not ok:
