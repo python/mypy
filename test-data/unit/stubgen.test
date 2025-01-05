@@ -3081,15 +3081,12 @@ class C:
     x = attrs.field()
 
 [out]
-from _typeshed import Incomplete
+import attrs
 
+@attrs.define
 class C:
-    x: Incomplete
+    x = ...
     def __init__(self, x) -> None: ...
-    def __lt__(self, other): ...
-    def __le__(self, other): ...
-    def __gt__(self, other): ...
-    def __ge__(self, other): ...
 
 [case testNamedTupleInClass]
 from collections import namedtuple
@@ -4226,6 +4223,72 @@ class Y(missing.Base):
     generated_kwargs_: float
     def __init__(self, *generated_args__, generated_args, generated_args_, generated_kwargs, generated_kwargs_, **generated_kwargs__) -> None: ...
 
+[case testDataclassTransformDecorator_semanal]
+import typing_extensions
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls):
+    return cls
+
+@create_model
+class X:
+    a: int
+    b: str = "hello"
+
+[out]
+import typing_extensions
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls): ...
+
+@create_model
+class X:
+    a: int
+    b: str = ...
+    def __init__(self, *, a, b=...) -> None: ...
+
+[case testDataclassTransformClass_semanal]
+from typing_extensions import dataclass_transform
+
+@dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class X(ModelBase):
+    a: int
+    b: str = "hello"
+
+[out]
+from typing_extensions import dataclass_transform
+
+@dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class X(ModelBase):
+    a: int
+    b: str = ...
+    def __init__(self, *, a, b=...) -> None: ...
+
+[case testDataclassTransformMetaclass_semanal]
+from typing_extensions import dataclass_transform
+
+@dataclass_transform(kw_only_default=True)
+class DCMeta(type): ...
+
+class X(metaclass=DCMeta):
+    a: int
+    b: str = "hello"
+
+[out]
+from typing_extensions import dataclass_transform
+
+@dataclass_transform(kw_only_default=True)
+class DCMeta(type): ...
+
+class X(metaclass=DCMeta):
+    a: int
+    b: str = ...
+    def __init__(self, *, a, b=...) -> None: ...
+
 [case testAlwaysUsePEP604Union]
 import typing
 import typing as t
@@ -4513,16 +4576,17 @@ def f5[T5 = int]() -> None: ...
 # flags: --include-private --python-version=3.13
 from typing_extensions import dataclass_transform
 
-# TODO: preserve dataclass_transform decorator
 @dataclass_transform()
 class DCMeta(type): ...
 class DC(metaclass=DCMeta):
     x: str
 
 [out]
+from typing_extensions import dataclass_transform
+
+@dataclass_transform()
 class DCMeta(type): ...
 
 class DC(metaclass=DCMeta):
     x: str
     def __init__(self, x) -> None: ...
-    def __replace__(self, *, x) -> None: ...

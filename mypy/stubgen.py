@@ -113,6 +113,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options as MypyOptions
+from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.sharedparse import MAGIC_METHODS_POS_ARGS_ONLY
 from mypy.stubdoc import ArgSig, FunctionSig
 from mypy.stubgenc import InspectionStubGenerator, generate_stub_for_c_module
@@ -139,6 +140,7 @@ from mypy.traverser import (
     has_yield_from_expression,
 )
 from mypy.types import (
+    DATACLASS_TRANSFORM_NAMES,
     OVERLOAD_NAMES,
     TPDICT_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
@@ -701,10 +703,13 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         """
         o.func.is_overload = False
         for decorator in o.original_decorators:
-            if not isinstance(decorator, (NameExpr, MemberExpr)):
+            d = decorator
+            if isinstance(d, CallExpr):
+                d = d.callee
+            if not isinstance(d, (NameExpr, MemberExpr)):
                 continue
-            qualname = get_qualified_name(decorator)
-            fullname = self.get_fullname(decorator)
+            qualname = get_qualified_name(d)
+            fullname = self.get_fullname(d)
             if fullname in (
                 "builtins.property",
                 "builtins.staticmethod",
@@ -739,6 +744,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 o.func.is_overload = True
             elif qualname.endswith((".setter", ".deleter")):
                 self.add_decorator(qualname, require_name=False)
+            elif fullname in DATACLASS_TRANSFORM_NAMES:
+                p = AliasPrinter(self)
+                self._decorators.append(f"@{decorator.accept(p)}")
 
     def get_fullname(self, expr: Expression) -> str:
         """Return the expression's full name."""
@@ -785,6 +793,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             self.add(f"{self._indent}{docstring}\n")
         n = len(self._output)
         self._vars.append([])
+        if self.analyzed and find_dataclass_transform_spec(o):
+            self.processing_dataclass = True
         super().visit_class_def(o)
         self.dedent()
         self._vars.pop()
@@ -854,12 +864,25 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 decorators.append(d.accept(p))
                 self.import_tracker.require_name(get_qualified_name(d))
                 self.processing_dataclass = True
+            if self.is_dataclass_transform(d):
+                decorators.append(d.accept(p))
+                self.import_tracker.require_name(get_qualified_name(d))
         return decorators
 
     def is_dataclass(self, expr: Expression) -> bool:
         if isinstance(expr, CallExpr):
             expr = expr.callee
         return self.get_fullname(expr) == "dataclasses.dataclass"
+
+    def is_dataclass_transform(self, expr: Expression) -> bool:
+        if isinstance(expr, CallExpr):
+            expr = expr.callee
+        if self.get_fullname(expr) in DATACLASS_TRANSFORM_NAMES:
+            return True
+        if find_dataclass_transform_spec(expr) is not None:
+            self.processing_dataclass = True
+            return True
+        return False
 
     def visit_block(self, o: Block) -> None:
         # Unreachable statements may be partially uninitialized and that may
