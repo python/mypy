@@ -47,7 +47,8 @@ import os
 import os.path
 import sys
 import traceback
-from typing import Final, Iterable, Iterator
+from collections.abc import Iterable, Iterator
+from typing import Final
 
 import mypy.build
 import mypy.mixedtraverser
@@ -1524,7 +1525,7 @@ def find_module_paths_using_imports(
             except CantImport as e:
                 tb = traceback.format_exc()
                 if verbose:
-                    sys.stdout.write(tb)
+                    sys.stderr.write(tb)
                 if not quiet:
                     report_missing(mod, e.message, tb)
                 continue

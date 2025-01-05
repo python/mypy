@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 import sysconfig
-from typing import Any, Dict, Final
+from typing import Any, Final
 
 from mypy.util import unnamed_function
 
@@ -83,7 +83,7 @@ RUNTIME_C_FILES: Final = [
 ]
 
 
-JsonDict = Dict[str, Any]
+JsonDict = dict[str, Any]
 
 
 def shared_lib_name(group_name: str) -> str:

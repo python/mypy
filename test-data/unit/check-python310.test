@@ -1915,7 +1915,7 @@ class Regular:
     x: str
     y: int
     __match_args__ = ("x",)
-class ReveresedOrder:
+class ReversedOrder:
     x: int
     y: str
     __match_args__ = ("y",)
@@ -1933,7 +1933,7 @@ class GenericDataclass(Generic[T]):
 
 input_arg: Union[
     Regular,
-    ReveresedOrder,
+    ReversedOrder,
     GenericRegular[str],
     GenericWithFinal[str],
     RegularSubtype,
@@ -1944,7 +1944,7 @@ input_arg: Union[
 match input_arg:
     case Regular(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
-    case ReveresedOrder(a):
+    case ReversedOrder(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
     case GenericWithFinal(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
@@ -1959,7 +1959,7 @@ match input_arg:
 match input_arg:
     case Regular(x=a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
-    case ReveresedOrder(x=b):  # Order is different
+    case ReversedOrder(x=b):  # Order is different
         reveal_type(b)  # N: Revealed type is "builtins.int"
     case GenericWithFinal(x=a):
         reveal_type(a)  # N: Revealed type is "builtins.str"

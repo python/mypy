@@ -1,5 +1,7 @@
+from __future__ import annotations
+
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator, List, Optional, Tuple
 
 from mypy.nodes import MatchStmt, NameExpr, TypeInfo
 from mypy.patterns import (
@@ -56,7 +58,7 @@ class MatchVisitor(TraverserVisitor):
     subject: Value
     match: MatchStmt
 
-    as_pattern: Optional[AsPattern] = None
+    as_pattern: AsPattern | None = None
 
     def __init__(self, builder: IRBuilder, match_node: MatchStmt) -> None:
         self.builder = builder
@@ -124,7 +126,7 @@ class MatchVisitor(TraverserVisitor):
 
     def visit_class_pattern(self, pattern: ClassPattern) -> None:
         # TODO: use faster instance check for native classes (while still
-        # making sure to account for inheritence)
+        # making sure to account for inheritance)
         isinstance_op = (
             fast_isinstance_op
             if self.builder.is_builtin_ref_expr(pattern.class_ref)
@@ -157,7 +159,7 @@ class MatchVisitor(TraverserVisitor):
             match_args_type = get_proper_type(ty.type)
             assert isinstance(match_args_type, TupleType)
 
-            match_args: List[str] = []
+            match_args: list[str] = []
 
             for item in match_args_type.items:
                 proper_item = get_proper_type(item)
@@ -220,7 +222,7 @@ class MatchVisitor(TraverserVisitor):
 
         self.builder.add_bool_branch(is_dict, self.code_block, self.next_block)
 
-        keys: List[Value] = []
+        keys: list[Value] = []
 
         for key, value in zip(pattern.keys, pattern.values):
             self.builder.activate_block(self.code_block)
@@ -330,7 +332,7 @@ class MatchVisitor(TraverserVisitor):
                 self.builder.goto(self.code_block)
 
     @contextmanager
-    def enter_subpattern(self, subject: Value) -> Generator[None, None, None]:
+    def enter_subpattern(self, subject: Value) -> Generator[None]:
         old_subject = self.subject
         self.subject = subject
         yield
@@ -339,10 +341,10 @@ class MatchVisitor(TraverserVisitor):
 
 def prep_sequence_pattern(
     seq_pattern: SequencePattern,
-) -> Tuple[Optional[int], Optional[NameExpr], List[Pattern]]:
-    star_index: Optional[int] = None
-    capture: Optional[NameExpr] = None
-    patterns: List[Pattern] = []
+) -> tuple[int | None, NameExpr | None, list[Pattern]]:
+    star_index: int | None = None
+    capture: NameExpr | None = None
+    patterns: list[Pattern] = []
 
     for i, pattern in enumerate(seq_pattern.patterns):
         if isinstance(pattern, StarredPattern):

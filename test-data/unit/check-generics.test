@@ -515,6 +515,7 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
+# flags: --python-version 3.8
 import types
 type[int] # this was crashing, see #2302 (comment)  # E: The type "Type[type]" is not generic and not indexable
 [builtins fixtures/tuple.pyi]
@@ -671,7 +672,7 @@ reveal_type(a) # N: Revealed type is "other.array[Any, other.dtype[builtins.floa
 [out]
 main:3: error: Type argument "float" of "Array" must be a subtype of "generic"  [type-var]
     a: other.Array[float]
-       ^
+                   ^
 [file other.py]
 from typing import Any, Generic, TypeVar
 
@@ -713,7 +714,7 @@ reveal_type(z) # N: Revealed type is "__main__.Node[Any, Any]"
 
 [out]
 
-[case testGenericTypeAliasesAcessingMethods]
+[case testGenericTypeAliasesAccessingMethods]
 from typing import TypeVar, Generic, List
 T = TypeVar('T')
 class Node(Generic[T]):
@@ -1130,6 +1131,7 @@ reveal_type(Bad) # N: Revealed type is "Any"
 [out]
 
 [case testNoSubscriptionOfBuiltinAliases]
+# flags: --python-version 3.8
 from typing import List, TypeVar
 
 list[int]() # E: "list" is not subscriptable
@@ -1771,8 +1773,7 @@ T = TypeVar('T')
 class C(Generic[T]):
     def __init__(self) -> None: pass
 x = C # type: Callable[[], C[int]]
-y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type "Type[C[Any]]", variable has type "Callable[[], int]")
-
+y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type "Type[C[T]]", variable has type "Callable[[], int]")
 
 -- Special cases
 -- -------------

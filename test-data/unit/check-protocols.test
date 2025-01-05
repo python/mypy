@@ -667,7 +667,7 @@ def fun4(x: U, y: P[U, U]) -> U:
     pass
 reveal_type(fun4('a', C())) # N: Revealed type is "builtins.object"
 
-[case testUnrealtedGenericProtolsEquivalent]
+[case testUnrealtedGenericProtocolsEquivalent]
 from typing import TypeVar, Protocol
 T = TypeVar('T')
 
@@ -2906,6 +2906,7 @@ hs(None)
 
 
 [case testPartialTypeProtocol]
+# flags: --no-local-partial-types
 from typing import Protocol
 
 class Flapper(Protocol):
@@ -2944,7 +2945,7 @@ class DataArray(ObjectHashable):
 
 
 [case testPartialAttributeNoneType]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --no-local-partial-types
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable
@@ -2962,6 +2963,7 @@ class MyClass:
 
 
 [case testPartialAttributeNoneTypeStrictOptional]
+# flags: --no-local-partial-types
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable
@@ -4185,7 +4187,7 @@ class WriteToMeOrReadFromMe(WriteToMe[AnyStr], SupportsRead[AnyStr]): ...
 
 copyfileobj(WriteToMeOrReadFromMe[bytes](), WriteToMe[bytes]())
 
-[case testOverloadedMethodWithExplictSelfTypes]
+[case testOverloadedMethodWithExplicitSelfTypes]
 from typing import Generic, overload, Protocol, TypeVar, Union
 
 AnyStr = TypeVar("AnyStr", str, bytes)

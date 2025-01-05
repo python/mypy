@@ -5,8 +5,8 @@ import re
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 import filelock
 
@@ -23,8 +23,8 @@ class PEP561Suite(DataSuite):
     files = ["pep561.test"]
     base_path = "."
 
-    def run_case(self, test_case: DataDrivenTestCase) -> None:
-        test_pep561(test_case)
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
+        test_pep561(testcase)
 
 
 @contextmanager
@@ -52,7 +52,6 @@ def upgrade_pip(python_executable: str) -> None:
         sys.version_info >= (3, 11)
         or (3, 10, 3) <= sys.version_info < (3, 11)
         or (3, 9, 11) <= sys.version_info < (3, 10)
-        or (3, 8, 13) <= sys.version_info < (3, 9)
     ):
         # Skip for more recent Python releases which come with pip>=21.3.1
         # out of the box - for performance reasons.

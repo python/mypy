@@ -2917,3 +2917,18 @@ if hasattr(mod, "y"):
 [file mod.py]
 def __getattr__(attr: str) -> str: ...
 [builtins fixtures/module.pyi]
+
+[case testTypeIsntLostAfterNarrowing]
+from typing import Any
+
+var: Any
+reveal_type(var)  # N: Revealed type is "Any"
+assert isinstance(var, (bool, str))
+reveal_type(var)  # N: Revealed type is "Union[builtins.bool, builtins.str]"
+
+if isinstance(var, bool):
+    reveal_type(var)  # N: Revealed type is "builtins.bool"
+
+# Type of var shouldn't fall back to Any
+reveal_type(var)  # N: Revealed type is "Union[builtins.bool, builtins.str]"
+[builtins fixtures/isinstance.pyi]

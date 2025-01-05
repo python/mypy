@@ -11,7 +11,8 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from mypy import build
 from mypy.errors import CompileError
@@ -146,9 +147,10 @@ class TestRun(MypycDataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # setup.py wants to be run from the root directory of the package, which we accommodate
         # by chdiring into tmp/
-        with use_custom_builtins(
-            os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase
-        ), chdir_manager("tmp"):
+        with (
+            use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase),
+            chdir_manager("tmp"),
+        ):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
@@ -320,6 +322,7 @@ class TestRun(MypycDataSuite):
             # TODO: testDecorators1 hangs on 3.12, remove this once fixed
             proc.wait(timeout=30)
         output = proc.communicate()[0].decode("utf8")
+        output = output.replace(f'  File "{os.getcwd()}{os.sep}', '  File "')
         outlines = output.splitlines()
 
         if testcase.config.getoption("--mypyc-showc"):

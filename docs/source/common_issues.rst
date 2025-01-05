@@ -757,7 +757,7 @@ type check such code. Consider this example:
         x: int = 'abc'  # Unreachable -- no error
 
 It's easy to see that any statement after ``return`` is unreachable,
-and hence mypy will not complain about the mis-typed code below
+and hence mypy will not complain about the mistyped code below
 it. For a more subtle example, consider this code:
 
 .. code-block:: python
@@ -819,3 +819,30 @@ This is best understood via an example:
 To get this code to type check, you could assign ``y = x`` after ``x`` has been
 narrowed, and use ``y`` in the inner function, or add an assert in the inner
 function.
+
+.. _incorrect-self:
+
+Incorrect use of ``Self``
+-------------------------
+
+``Self`` is not the type of the current class; it's a type variable with upper
+bound of the current class. That is, it represents the type of the current class
+or of potential subclasses.
+
+.. code-block:: python
+
+    from typing import Self
+
+    class Foo:
+        @classmethod
+        def constructor(cls) -> Self:
+            # Instead, either call cls() or change the annotation to -> Foo
+            return Foo()  # error: Incompatible return value type (got "Foo", expected "Self")
+
+    class Bar(Foo):
+        ...
+
+    reveal_type(Foo.constructor())  # note: Revealed type is "Foo"
+    # In the context of the subclass Bar, the Self return type promises
+    # that the return value will be Bar
+    reveal_type(Bar.constructor())  # note: Revealed type is "Bar"

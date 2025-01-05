@@ -200,9 +200,9 @@ wtvr = next(i for i in range(10) if i == 5)
 
 d1 = {1: 2}
 
-# Make sure we can produce an error when we hit the awful None case
+# Since PR 18180, the following pattern should pose no problems anymore:
 def f(l: List[object]) -> None:
-    x = None  # E: Local variable "x" has inferred type None; add an annotation
+    x = None
     for i in l:
         if x is None:
             x = i
@@ -243,3 +243,22 @@ def i(arg: Foo) -> None:
 
 [file test.py]
 names = (str(v) for v in [1, 2, 3])  # W: Treating generator comprehension as list
+
+[case testSubPackage]
+# cmd: pkg/sub/foo.py
+from pkg.sub import foo
+
+[file pkg/__init__.py]
+
+[file pkg/sub/__init__.py]
+print("importing...")
+from . import foo
+print("done")
+
+[file pkg/sub/foo.py]
+print("imported foo")
+
+[out]
+importing...
+imported foo
+done

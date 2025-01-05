@@ -187,3 +187,19 @@ if isinstance(x, (float, complex)):
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/primitives.pyi]
+
+[case testRejectPromotionsForProtocols]
+from typing import Protocol
+
+class H(Protocol):
+    def hex(self, /) -> str: ...
+
+f: H = 1.0
+o: H = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "H")
+c: H = 1j   # E: Incompatible types in assignment (expression has type "complex", variable has type "H")
+i: H = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "H")
+b: H = False  # E: Incompatible types in assignment (expression has type "bool", variable has type "H")
+
+class N(float): ...
+n: H = N()
+[builtins fixtures/primitives.pyi]

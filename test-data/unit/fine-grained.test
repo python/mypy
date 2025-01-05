@@ -2369,7 +2369,7 @@ a.py:7: error: "B" has no attribute "x"
 ==
 a.py:5: error: Missing positional argument "x" in call to "C"
 
-[case testDecoratorUpdateDeeepNested]
+[case testDecoratorUpdateDeepNested]
 import a
 [file a.py]
 import mod
@@ -6966,7 +6966,7 @@ class A:
 ==
 main:3: error: "A" has no attribute "__iter__" (not iterable)
 
-[case testWeAreCarefullWithBuiltinProtocolsBase]
+[case testWeAreCarefulWithBuiltinProtocolsBase]
 import a
 x: a.A
 for i in x:
@@ -7119,7 +7119,7 @@ class AS:
 ==
 main:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testOverloadsUpdatedTypeRechekConsistency]
+[case testOverloadsUpdatedTypeRecheckConsistency]
 from typing import overload
 import mod
 class Outer:
@@ -10228,7 +10228,7 @@ class Base(Protocol):
 main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
 [case testPrettyMessageSorting]
-# flags: --pretty
+# flags: --python-version 3.8 --pretty
 import a
 
 [file a.py]

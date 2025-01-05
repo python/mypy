@@ -48,7 +48,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const MAX_CHARACTERS = 30000
+            const MAX_CHARACTERS = 50000
             const MAX_CHARACTERS_PER_PROJECT = MAX_CHARACTERS / 3
 
             const fs = require('fs')

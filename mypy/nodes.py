@@ -5,22 +5,9 @@ from __future__ import annotations
 import os
 from abc import abstractmethod
 from collections import defaultdict
+from collections.abc import Iterator, Sequence
 from enum import Enum, unique
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Final,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Final, Optional, TypeVar, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
@@ -81,7 +68,7 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
-JsonDict: _TypeAlias = Dict[str, Any]
+JsonDict: _TypeAlias = dict[str, Any]
 
 
 # Symbol table node kinds
@@ -265,7 +252,7 @@ class SymbolNode(Node):
 
 
 # Items: fullname, related symbol table node, surrounding type (if any)
-Definition: _TypeAlias = Tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
+Definition: _TypeAlias = tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
 
 
 class MypyFile(SymbolNode):
@@ -1179,7 +1166,7 @@ class ClassDef(Statement):
         self.keywords = dict(keywords) if keywords else {}
         self.analyzed = None
         self.has_incompatible_baseclass = False
-        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        # Used for error reporting (to keep backward compatibility with pre-3.8)
         self.deco_line: int | None = None
         self.docstring: str | None = None
         self.removed_statements = []
@@ -3593,7 +3580,7 @@ class TypeAlias(SymbolNode):
     type will be initially an instance type with wrong number of type arguments.
     Such instances are all fixed either during or after main semantic analysis passes.
     We therefore store the difference between `List` and `List[Any]` rvalues (targets)
-    using the `no_args` flag. See also TypeAliasExpr.no_args.
+    using the `no_args` flag.
 
     Meaning of other fields:
 
@@ -3744,7 +3731,7 @@ class TypeAlias(SymbolNode):
             fullname,
             line,
             column,
-            alias_tvars=cast(List[mypy.types.TypeVarLikeType], alias_tvars),
+            alias_tvars=cast(list[mypy.types.TypeVarLikeType], alias_tvars),
             no_args=no_args,
             normalized=normalized,
             python_3_12_type_alias=python_3_12_type_alias,
@@ -4009,7 +3996,7 @@ class SymbolTableNode:
         return stnode
 
 
-class SymbolTable(Dict[str, SymbolTableNode]):
+class SymbolTable(dict[str, SymbolTableNode]):
     """Static representation of a namespace dictionary.
 
     This is used for module, class and function namespaces.

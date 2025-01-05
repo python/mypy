@@ -284,7 +284,7 @@ and the return type is derived from the sequence item type. Example:
 When using the legacy syntax, a single definition of a type variable
 (such as ``T`` above) can be used in multiple generic functions or
 classes. In this example we use the same type variable in two generic
-functions to declarare type parameters:
+functions to declare type parameters:
 
 .. code-block:: python
 

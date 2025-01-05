@@ -68,10 +68,11 @@ for full details, see :ref:`running-mypy`.
     checked. For instance, ``mypy --exclude '/setup.py$'
     but_still_check/setup.py``.
 
-    In particular, ``--exclude`` does not affect mypy's :ref:`import following
-    <follow-imports>`. You can use a per-module :confval:`follow_imports` config
-    option to additionally avoid mypy from following imports and checking code
-    you do not wish to be checked.
+    In particular, ``--exclude`` does not affect mypy's discovery of files
+    via :ref:`import following <follow-imports>`. You can use a per-module
+    :confval:`ignore_errors` config option to silence errors from a given module,
+    or a per-module :confval:`follow_imports` config option to additionally avoid
+    mypy from following imports and checking code you do not wish to be checked.
 
     Note that mypy will never recursively discover files and directories named
     "site-packages", "node_modules" or "__pycache__", or those whose name starts
@@ -658,6 +659,35 @@ of the above sections.
            ...
 
        assert text is not None  # OK, check against None is allowed as a special case.
+
+
+.. option:: --strict-bytes
+
+    By default, mypy treats ``bytearray`` and ``memoryview`` as subtypes of ``bytes`` which
+    is not true at runtime. Use this flag to disable this behavior. ``--strict-bytes`` will
+    be enabled by default in *mypy 2.0*.
+
+    .. code-block:: python
+
+       def f(buf: bytes) -> None:
+           assert isinstance(buf, bytes)  # Raises runtime AssertionError with bytearray/memoryview
+           with open("binary_file", "wb") as fp:
+               fp.write(buf)
+
+       f(bytearray(b""))  # error: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+       f(memoryview(b""))  # error: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+
+       # If `f` accepts any object that implements the buffer protocol, consider using:
+       from collections.abc import Buffer  # "from typing_extensions" in Python 3.11 and earlier
+
+       def f(buf: Buffer) -> None:
+           with open("binary_file", "wb") as fp:
+               fp.write(buf)
+
+       f(b"")  # Ok
+       f(bytearray(b""))  # Ok
+       f(memoryview(b""))  # Ok
+
 
 .. option:: --extra-checks
 

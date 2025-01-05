@@ -1747,8 +1747,9 @@ td: Union[TDA, TDB]
 
 reveal_type(td.pop('a'))  # N: Revealed type is "builtins.int"
 reveal_type(td.pop('b'))  # N: Revealed type is "Union[builtins.str, builtins.int]"
-reveal_type(td.pop('c'))  # E: TypedDict "TDA" has no key "c" \
-                          # N: Revealed type is "Union[Any, builtins.int]"
+reveal_type(td.pop('c'))  # N: Revealed type is "Union[Any, builtins.int]" \
+                          # E: TypedDict "TDA" has no key "c"
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -2614,8 +2615,9 @@ def func(foo: Union[Foo1, Foo2]):
 
     del foo["missing"]  # E: TypedDict "Foo1" has no key "missing" \
                         # E: TypedDict "Foo2" has no key "missing"
-    del foo[1]  # E: Expected TypedDict key to be string literal \
-                # E: Argument 1 to "__delitem__" has incompatible type "int"; expected "str"
+    del foo[1]  # E: Argument 1 to "__delitem__" has incompatible type "int"; expected "str" \
+                # E: Expected TypedDict key to be string literal
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -3013,7 +3015,7 @@ class Bar(TypedDict):
     b: int
 
 foo: Foo = {"a": 1, "b": "a"}
-bar1: Bar = {**foo, "b": 2}  # Incompatible item is overriden
+bar1: Bar = {**foo, "b": 2}  # Incompatible item is overridden
 bar2: Bar = {**foo, "a": 2}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -3726,8 +3728,9 @@ class TP(TypedDict):
     mutable: bool
 
 x: TP
-reveal_type(x.pop("key"))  # E: Key "key" of TypedDict "TP" cannot be deleted \
-                           # N: Revealed type is "builtins.str"
+reveal_type(x.pop("key"))  # N: Revealed type is "builtins.str" \
+                           # E: Key "key" of TypedDict "TP" cannot be deleted
+
 
 x.update({"key": "abc", "other": 1, "mutable": True})  # E: ReadOnly TypedDict keys ("key", "other") TypedDict are mutated
 x.setdefault("key", "abc")  # E: ReadOnly TypedDict key "key" TypedDict is mutated
@@ -4051,5 +4054,24 @@ class D(TypedDict):
 
 d: D = {"a": 1, "b": "x"}
 c: C = d  # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictFinalAndClassVar]
+from typing import TypedDict, Final, ClassVar
+
+class My(TypedDict):
+    a: Final      # E: Final[...] can't be used inside a TypedDict
+    b: Final[int] # E: Final[...] can't be used inside a TypedDict
+    c: ClassVar       # E: ClassVar[...] can't be used inside a TypedDict
+    d: ClassVar[int]  # E: ClassVar[...] can't be used inside a TypedDict
+
+Func = TypedDict('Func', {
+    'a': Final,         # E: Final[...] can't be used inside a TypedDict
+    'b': Final[int],    # E: Final[...] can't be used inside a TypedDict
+    'c': ClassVar,      # E: ClassVar[...] can't be used inside a TypedDict
+    'd': ClassVar[int], # E: ClassVar[...] can't be used inside a TypedDict
+})
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

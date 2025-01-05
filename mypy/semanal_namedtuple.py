@@ -6,8 +6,9 @@ This is conceptually part of mypy.semanal.
 from __future__ import annotations
 
 import keyword
+from collections.abc import Container, Iterator, Mapping
 from contextlib import contextmanager
-from typing import Container, Final, Iterator, List, Mapping, cast
+from typing import Final, cast
 
 from mypy.errorcodes import ARG_TYPE, ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -191,6 +192,7 @@ class NamedTupleAnalyzer:
                         stmt.type,
                         allow_placeholder=not self.api.is_func_scope(),
                         prohibit_self_type="NamedTuple item type",
+                        prohibit_special_class_field_types="NamedTuple",
                     )
                     if analyzed is None:
                         # Something is incomplete. We need to defer this named tuple.
@@ -483,6 +485,7 @@ class NamedTupleAnalyzer:
                     type,
                     allow_placeholder=not self.api.is_func_scope(),
                     prohibit_self_type="NamedTuple item type",
+                    prohibit_special_class_field_types="NamedTuple",
                 )
                 # Workaround #4987 and avoid introducing a bogus UnboundType
                 if isinstance(analyzed, UnboundType):
@@ -602,7 +605,7 @@ class NamedTupleAnalyzer:
             items = [arg.variable.name for arg in args]
             arg_kinds = [arg.kind for arg in args]
             assert None not in types
-            signature = CallableType(cast(List[Type], types), arg_kinds, items, ret, function_type)
+            signature = CallableType(cast(list[Type], types), arg_kinds, items, ret, function_type)
             signature.variables = [self_type]
             func = FuncDef(funcname, args, Block([]))
             func.info = info

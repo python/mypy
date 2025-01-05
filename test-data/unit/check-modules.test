@@ -2927,7 +2927,7 @@ reveal_type(abc.__name__)       # N: Revealed type is "builtins.str"
 reveal_type(builtins.__name__)  # N: Revealed type is "builtins.str"
 reveal_type(typing.__name__)    # N: Revealed type is "builtins.str"
 
-[case testSpecialAttrsAreAvaliableInClasses]
+[case testSpecialAttrsAreAvailableInClasses]
 class Some:
     name = __name__
 reveal_type(Some.name)  # N: Revealed type is "builtins.str"

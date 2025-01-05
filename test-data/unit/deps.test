@@ -597,6 +597,7 @@ class C:
 <m.f> -> m.C.__init__
 
 [case testPartialNoneTypeAttributeCrash1]
+# flags: --no-local-partial-types
 class C: pass
 
 class A:
@@ -612,6 +613,7 @@ class A:
 <m.C> -> <m.A.x>, m.A.f, m.C
 
 [case testPartialNoneTypeAttributeCrash2]
+# flags: --no-local-partial-types
 class C: pass
 
 class A:
@@ -749,7 +751,7 @@ class C:
 <mod.decb> -> m.outer
 <mod> -> m, m.outer
 
-[case testDecoratorDepsDeeepNested]
+[case testDecoratorDepsDeepNested]
 import mod
 
 def outer() -> None:

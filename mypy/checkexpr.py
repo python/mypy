@@ -6,9 +6,10 @@ import enum
 import itertools
 import time
 from collections import defaultdict
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Callable, ClassVar, Final, Iterable, Iterator, List, Optional, Sequence, cast
-from typing_extensions import TypeAlias as _TypeAlias, assert_never, overload
+from typing import Callable, ClassVar, Final, Optional, cast, overload
+from typing_extensions import TypeAlias as _TypeAlias, assert_never
 
 import mypy.checker
 import mypy.errorcodes as codes
@@ -844,7 +845,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Having an optional key not explicitly declared by a ** unpacked
                 # TypedDict is unsafe, it may be an (incompatible) subtype at runtime.
                 # TODO: catch the cases where a declared key is overridden by a subsequent
-                # ** item without it (and not again overriden with complete ** item).
+                # ** item without it (and not again overridden with complete ** item).
                 self.msg.non_required_keys_absent_with_star(absent_keys, last_star_found)
         return result, always_present_keys
 
@@ -1965,7 +1966,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if not t:
                 res[i] = self.accept(args[i])
         assert all(tp is not None for tp in res)
-        return cast(List[Type], res)
+        return cast(list[Type], res)
 
     def infer_function_type_arguments_using_context(
         self, callable: CallableType, error_context: Context
@@ -4249,11 +4250,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ):
             self.msg.unreachable_right_operand(e.op, e.right)
 
-        # If right_map is None then we know mypy considers the right branch
-        # to be unreachable and therefore any errors found in the right branch
-        # should be suppressed.
-        with self.msg.filter_errors(filter_errors=right_map is None):
-            right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
+        right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
 
         if left_map is None and right_map is None:
             return UninhabitedType()
@@ -5349,11 +5346,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.return_types.append(AnyType(TypeOfAny.special_form))
             # Type check everything in the body except for the final return
             # statement (it can contain tuple unpacking before return).
-            with self.chk.binder.frame_context(
-                can_skip=True, fall_through=0
-            ), self.chk.scope.push_function(e):
+            with (
+                self.chk.binder.frame_context(can_skip=True, fall_through=0),
+                self.chk.scope.push_function(e),
+            ):
                 # Lambdas can have more than one element in body,
-                # when we add "fictional" AssigmentStatement nodes, like in:
+                # when we add "fictional" AssignmentStatement nodes, like in:
                 # `lambda (a, b): a`
                 for stmt in e.body.body[:-1]:
                     stmt.accept(self.chk)
@@ -5851,12 +5849,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         node: Expression,
         context: Type | None,
         allow_none_return: bool = False,
+        suppress_unreachable_errors: bool = True,
     ) -> Type:
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             if map is None:
                 # We still need to type check node, in case we want to
-                # process it for isinstance checks later
-                self.accept(node, type_context=context, allow_none_return=allow_none_return)
+                # process it for isinstance checks later. Since the branch was
+                # determined to be unreachable, any errors should be suppressed.
+                with self.msg.filter_errors(filter_errors=suppress_unreachable_errors):
+                    self.accept(node, type_context=context, allow_none_return=allow_none_return)
                 return UninhabitedType()
             self.chk.push_type_map(map)
             return self.accept(node, type_context=context, allow_none_return=allow_none_return)

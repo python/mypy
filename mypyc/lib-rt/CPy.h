@@ -785,7 +785,7 @@ static inline PyObject *_CPy_FromDummy(PyObject *p) {
     return p;
 }
 
-static int CPy_NoErrOccured(void) {
+static int CPy_NoErrOccurred(void) {
     return PyErr_Occurred() == NULL;
 }
 
@@ -856,7 +856,7 @@ PyObject *CPy_FetchStopIterationValue(void);
 PyObject *CPyType_FromTemplate(PyObject *template_,
                                PyObject *orig_bases,
                                PyObject *modname);
-PyObject *CPyType_FromTemplateWarpper(PyObject *template_,
+PyObject *CPyType_FromTemplateWrapper(PyObject *template_,
                                       PyObject *orig_bases,
                                       PyObject *modname);
 int CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,

@@ -11,13 +11,14 @@ import io
 import keyword
 import re
 import tokenize
-from typing import Any, Final, MutableMapping, MutableSequence, NamedTuple, Sequence, Tuple
+from collections.abc import MutableMapping, MutableSequence, Sequence
+from typing import Any, Final, NamedTuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.util
 
 # Type alias for signatures strings in format ('func_name', '(arg, opt_arg=False)').
-Sig: _TypeAlias = Tuple[str, str]
+Sig: _TypeAlias = tuple[str, str]
 
 
 _TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], .\"\']*(\.[a-zA-Z_][\w\[\], ]*)*$")

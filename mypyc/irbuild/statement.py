@@ -9,7 +9,8 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 from __future__ import annotations
 
 import importlib.util
-from typing import Callable, Sequence
+from collections.abc import Sequence
+from typing import Callable
 
 from mypy.nodes import (
     ARG_NAMED,

@@ -13,7 +13,7 @@ import re
 import subprocess
 import sys
 from enum import Enum, unique
-from typing import Dict, Final, List, Optional, Tuple, Union
+from typing import Final, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import pyinfo
@@ -53,11 +53,11 @@ class SearchPaths:
 
 
 # Package dirs are a two-tuple of path to search and whether to verify the module
-OnePackageDir = Tuple[str, bool]
-PackageDirs = List[OnePackageDir]
+OnePackageDir = tuple[str, bool]
+PackageDirs = list[OnePackageDir]
 
 # Minimum and maximum Python versions for modules in stdlib as (major, minor)
-StdlibVersions: _TypeAlias = Dict[str, Tuple[Tuple[int, int], Optional[Tuple[int, int]]]]
+StdlibVersions: _TypeAlias = dict[str, tuple[tuple[int, int], Optional[tuple[int, int]]]]
 
 PYTHON_EXTENSIONS: Final = [".pyi", ".py"]
 
@@ -751,7 +751,7 @@ def default_lib_path(
     return path
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]]:
     """Find package directories for given python. Guaranteed to return absolute paths.
 
