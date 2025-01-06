@@ -768,7 +768,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "is_conditional",
         "abstract_status",
         "original_def",
-        "deco_line",
         "is_trivial_body",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
@@ -798,8 +797,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_trivial_body = False
         # Original conditional definition
         self.original_def: None | FuncDef | Var | Decorator = None
-        # Used for error reporting (to keep backward compatibility with pre-3.8)
-        self.deco_line: int | None = None
         # Definitions that appear in if TYPE_CHECKING are marked with this flag.
         self.is_mypy_only = False
         self.dataclass_transform_spec: DataclassTransformSpec | None = None
@@ -1115,7 +1112,6 @@ class ClassDef(Statement):
         "keywords",
         "analyzed",
         "has_incompatible_baseclass",
-        "deco_line",
         "docstring",
         "removed_statements",
     )
@@ -1166,8 +1162,6 @@ class ClassDef(Statement):
         self.keywords = dict(keywords) if keywords else {}
         self.analyzed = None
         self.has_incompatible_baseclass = False
-        # Used for error reporting (to keep backward compatibility with pre-3.8)
-        self.deco_line: int | None = None
         self.docstring: str | None = None
         self.removed_statements = []
 

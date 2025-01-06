@@ -244,7 +244,7 @@ class MessageBuilder:
             TODO: address this in follow up PR
             """
             if isinstance(ctx, (ClassDef, FuncDef)):
-                return range(ctx.deco_line or ctx.line, ctx.line + 1)
+                return range(ctx.line, ctx.line + 1)
             elif not isinstance(ctx, Expression):
                 return [ctx.line]
             else:
