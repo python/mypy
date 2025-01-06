@@ -1749,7 +1749,13 @@ class MessageBuilder:
 
     def reveal_type(self, typ: Type, context: Context) -> None:
         visitor = TypeStrVisitor(options=self.options)
-        self.note(f'Revealed type is "{typ.accept(visitor)}"', context)
+        proper_type = get_proper_type(typ)  # Resolve any type aliases or partial types
+
+        # Check if the type is UninhabitedType (unreachable code)
+        if isinstance(proper_type, UninhabitedType):
+            self.note('Revealed type is "Never"', context)
+        else:
+            self.note(f'Revealed type is "{proper_type.accept(visitor)}"', context)
 
     def reveal_locals(self, type_map: dict[str, Type | None], context: Context) -> None:
         # To ensure that the output is predictable on Python < 3.6,
