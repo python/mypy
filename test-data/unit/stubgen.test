@@ -238,13 +238,24 @@ class C:
     def __init__(self, x: str) -> None: ...
 
 [case testSelfAssignment]
+from mod import A
+from typing import Any, Dict, Union
 class C:
     def __init__(self):
+        self.a: A = A()
         self.x = 1
         x.y = 2
+        self.y: Dict[str, Any] = {}
+        self.z: Union[int, str, bool, None] = None
 [out]
+from mod import A
+from typing import Any
+
 class C:
+    a: A
     x: int
+    y: dict[str, Any]
+    z: int | str | bool | None
     def __init__(self) -> None: ...
 
 [case testSelfAndClassBodyAssignment]

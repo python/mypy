@@ -648,11 +648,11 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             self.add("\n")
         if not self.is_top_level():
             self_inits = find_self_initializers(o)
-            for init, value in self_inits:
+            for init, value, annotation in self_inits:
                 if init in self.method_names:
                     # Can't have both an attribute and a method/property with the same name.
                     continue
-                init_code = self.get_init(init, value)
+                init_code = self.get_init(init, value, annotation)
                 if init_code:
                     self.add(init_code)
 
@@ -1414,7 +1414,7 @@ def find_method_names(defs: list[Statement]) -> set[str]:
 
 class SelfTraverser(mypy.traverser.TraverserVisitor):
     def __init__(self) -> None:
-        self.results: list[tuple[str, Expression]] = []
+        self.results: list[tuple[str, Expression, Type | None]] = []
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         lvalue = o.lvalues[0]
@@ -1423,10 +1423,10 @@ class SelfTraverser(mypy.traverser.TraverserVisitor):
             and isinstance(lvalue.expr, NameExpr)
             and lvalue.expr.name == "self"
         ):
-            self.results.append((lvalue.name, o.rvalue))
+            self.results.append((lvalue.name, o.rvalue, o.unanalyzed_type))
 
 
-def find_self_initializers(fdef: FuncBase) -> list[tuple[str, Expression]]:
+def find_self_initializers(fdef: FuncBase) -> list[tuple[str, Expression, Type | None]]:
     """Find attribute initializers in a method.
 
     Return a list of pairs (attribute name, r.h.s. expression).
