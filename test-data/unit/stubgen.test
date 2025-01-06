@@ -4223,6 +4223,56 @@ class Y(missing.Base):
     generated_kwargs_: float
     def __init__(self, *generated_args__, generated_args, generated_args_, generated_kwargs, generated_kwargs_, **generated_kwargs__) -> None: ...
 
+[case testDataclassTransform]
+# dataclass_transform detection only works with sementic analysis.
+# Test stubgen doesn't break too badly without it.
+from typing_extensions import dataclass_transform
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls):
+    return cls
+
+@create_model
+class X:
+    a: int
+    b: str = "hello"
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class Y(ModelBase):
+    a: int
+    b: str = "hello"
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class DCMeta(type): ...
+
+class Z(metaclass=DCMeta):
+    a: int
+    b: str = "hello"
+
+[out]
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls): ...
+
+class X:
+    a: int
+    b: str
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class Y(ModelBase):
+    a: int
+    b: str
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class DCMeta(type): ...
+
+class Z(metaclass=DCMeta):
+    a: int
+    b: str
+
 [case testDataclassTransformDecorator_semanal]
 import typing_extensions
 
