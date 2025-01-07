@@ -2692,3 +2692,16 @@ print(native.C(22).v)
 
 [out]
 22.1
+
+[case testLastParentEnum]
+from enum import Enum
+
+class ColorCode(str, Enum):
+    OKGREEN = "okgreen"
+
+[file driver.py]
+import native
+print(native.ColorCode.OKGREEN.value)
+
+[out]
+okgreen
