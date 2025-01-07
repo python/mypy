@@ -11,7 +11,7 @@ repos:
       - id: black
         exclude: '^(test-data/)'
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.8.6
     hooks:
       - id: ruff
         args: [--exit-non-zero-on-fix]
@@ -21,7 +21,7 @@ repos:
       - id: check-dependabot
       - id: check-github-workflows
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.4
+    rev: v1.7.6
     hooks:
       - id: actionlint
         args: [
