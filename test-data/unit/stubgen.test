@@ -1236,6 +1236,7 @@ from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple('Ts')
 class D(Generic[Unpack[Ts]]): ...
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
 [out]
 from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
@@ -1243,12 +1244,15 @@ from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple('Ts')
 
 class D(Generic[Unpack[Ts]]): ...
+
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
 
 [case testGenericClassTypeVarTuple_semanal]
 from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple('Ts')
 class D(Generic[Unpack[Ts]]): ...
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
 [out]
 from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
@@ -1257,29 +1261,37 @@ Ts = TypeVarTuple('Ts')
 
 class D(Generic[Unpack[Ts]]): ...
 
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
+
 [case testGenericClassTypeVarTuplePy311]
 # flags: --python-version=3.11
 from typing import Generic, TypeVarTuple
 Ts = TypeVarTuple('Ts')
 class D(Generic[*Ts]): ...
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
 [out]
 from typing import Generic, TypeVarTuple
 
 Ts = TypeVarTuple('Ts')
 
 class D(Generic[*Ts]): ...
+
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
 
 [case testGenericClassTypeVarTuplePy311_semanal]
 # flags: --python-version=3.11
 from typing import Generic, TypeVarTuple
 Ts = TypeVarTuple('Ts')
 class D(Generic[*Ts]): ...
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
 [out]
 from typing import Generic, TypeVarTuple
 
 Ts = TypeVarTuple('Ts')
 
 class D(Generic[*Ts]): ...
+
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
 
 [case testObjectBaseClass]
 class A(object): ...
