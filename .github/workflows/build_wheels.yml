@@ -5,16 +5,15 @@ on:
     branches: [main, master, 'release*']
     tags: ['*']
 
+permissions:
+  contents: read
+
 jobs:
   build-wheels:
     if: github.repository == 'python/mypy'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: true  # needed to push tags
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
