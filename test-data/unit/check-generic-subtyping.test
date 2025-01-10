@@ -1108,6 +1108,28 @@ class BadGenericPropertyOverride(A[str], Generic[T]):
     def member(self, val: T): ...
 [builtins fixtures/property.pyi]
 
+[case testParameterizedGenericOverrideSelfWithProperty]
+from typing_extensions import Self
+
+class A:
+    def __init__(self, val: Self):
+        self.member: Self = val
+
+class GoodPropertyOverride(A):
+    @property
+    def member(self) -> "GoodPropertyOverride": ...
+
+    @member.setter
+    def member(self, val: "GoodPropertyOverride"): ...
+
+class GoodPropertyOverrideSelf(A):
+    @property
+    def member(self) -> Self: ...
+
+    @member.setter
+    def member(self, val: Self): ...
+[builtins fixtures/property.pyi]
+
 [case testParameterizedGenericOverrideWithSelfProperty]
 from typing import TypeVar, Generic
 from typing_extensions import Self
