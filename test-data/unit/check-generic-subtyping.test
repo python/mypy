@@ -1081,7 +1081,6 @@ class B(A[str]):
 class GoodPropertyOverride(A[str]):
     @property
     def member(self) -> str: ...
-
     @member.setter
     def member(self, val: str): ...
 
@@ -1092,7 +1091,6 @@ class BadPropertyOverride(A[str]):
                # N:      Subclass: \
                # N:          int
     def member(self) -> int: ...
-
     @member.setter
     def member(self, val: int): ...
 
@@ -1103,7 +1101,47 @@ class BadGenericPropertyOverride(A[str], Generic[T]):
                # N:      Subclass: \
                # N:          T
     def member(self) -> T: ...
+    @member.setter
+    def member(self, val: T): ...
+[builtins fixtures/property.pyi]
 
+[case testParameterizedGenericPropertyOverrideWithProperty]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    @property
+    def member(self) -> T: ...
+    @member.setter
+    def member(self, val: T): ...
+
+class B(A[str]):
+    member: str
+
+class GoodPropertyOverride(A[str]):
+    @property
+    def member(self) -> str: ...
+    @member.setter
+    def member(self, val: str): ...
+
+class BadPropertyOverride(A[str]):
+    @property  # E: Signature of "member" incompatible with supertype "A" \
+               # N:      Superclass: \
+               # N:          str \
+               # N:      Subclass: \
+               # N:          int
+    def member(self) -> int: ...
+    @member.setter
+    def member(self, val: int): ...
+
+class BadGenericPropertyOverride(A[str], Generic[T]):
+    @property  # E: Signature of "member" incompatible with supertype "A" \
+               # N:      Superclass: \
+               # N:          str \
+               # N:      Subclass: \
+               # N:          T
+    def member(self) -> T: ...
     @member.setter
     def member(self, val: T): ...
 [builtins fixtures/property.pyi]
@@ -1118,14 +1156,12 @@ class A:
 class GoodPropertyOverride(A):
     @property
     def member(self) -> "GoodPropertyOverride": ...
-
     @member.setter
     def member(self, val: "GoodPropertyOverride"): ...
 
 class GoodPropertyOverrideSelf(A):
     @property
     def member(self) -> Self: ...
-
     @member.setter
     def member(self, val: Self): ...
 [builtins fixtures/property.pyi]
@@ -1146,7 +1182,6 @@ class B(A["B"]):
 class GoodPropertyOverride(A["GoodPropertyOverride"]):
     @property
     def member(self) -> Self: ...
-
     @member.setter
     def member(self, val: Self): ...
 [builtins fixtures/property.pyi]
