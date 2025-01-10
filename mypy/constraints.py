@@ -428,10 +428,10 @@ def _infer_constraints(
 
 
 def _is_type_type(tp: ProperType) -> TypeGuard[TypeType | UnionType]:
-    """Is ``tp`` a type[...] or union thereof?
+    """Is ``tp`` a ``type[...]`` or a union thereof?
 
-    Type[A | B] is internally represented as type[A] | type[B], and this troubles
-    the solver sometimes.
+    ``Type[A | B]`` is internally represented as ``type[A] | type[B]``, and this
+    troubles the solver sometimes.
     """
     return (
         isinstance(tp, TypeType)
@@ -441,11 +441,7 @@ def _is_type_type(tp: ProperType) -> TypeGuard[TypeType | UnionType]:
 
 
 def _unwrap_type_type(tp: TypeType | UnionType) -> ProperType:
-    """Rewrite `type[A] | type[B]` as `type[A | B]`.
-
-    This is an opposite of normalized form used elsewhere, necessary to solve type[...]
-    constraints on typevars.
-    """
+    """Extract the inner type from ``type[...]`` expression or a union thereof."""
     if isinstance(tp, TypeType):
         return tp.item
     return UnionType.make_union([cast(TypeType, get_proper_type(o)).item for o in tp.items])
