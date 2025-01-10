@@ -612,7 +612,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # If necessary, reset the modified options and make up for the postponed error checks:
             if warn_unreachable or warn_redundant:
                 self.options.warn_unreachable = warn_unreachable
-                self.options.enabled_error_codes.add(codes.REDUNDANT_EXPR)
+                if warn_redundant:
+                    self.options.enabled_error_codes.add(codes.REDUNDANT_EXPR)
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
                     self.accept(body)
 
