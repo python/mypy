@@ -24,6 +24,7 @@ from mypyc.build import construct_groups
 from mypyc.codegen import emitmodule
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
+from mypyc.test.config import test_data_prefix
 from mypyc.test.test_serialization import check_serialization_roundtrip
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
@@ -291,9 +292,7 @@ class TestRun(MypycDataSuite):
             # No driver.py provided by test case. Use the default one
             # (mypyc/test-data/driver/driver.py) that calls each
             # function named test_*.
-            default_driver = os.path.join(
-                os.path.dirname(__file__), "..", "test-data", "driver", "driver.py"
-            )
+            default_driver = os.path.join(test_data_prefix, "driver", "driver.py")
             shutil.copy(default_driver, driver_path)
         env = os.environ.copy()
         env["MYPYC_RUN_BENCH"] = "1" if bench else "0"
