@@ -1065,3 +1065,38 @@ class F(E[T_co], Generic[T_co]): ...  # E: Variance of TypeVar "T_co" incompatib
 
 class G(Generic[T]): ...
 class H(G[T_contra], Generic[T_contra]): ...  # E: Variance of TypeVar "T_contra" incompatible with variance in parent type
+
+[case testMultipleInheritanceCompatibleTypeVar]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class A(Generic[T]):
+    x: T
+    def fn(self, t: T) -> None: ...
+
+class A2(A[T]):
+    y: str
+    z: str
+
+class B(Generic[T]):
+    x: T
+    def fn(self, t: T) -> None: ...
+
+class C1(A2[str], B[str]): pass
+class C2(A2[str], B[int]): pass  # E: Definition of "fn" in base class "A" is incompatible with definition in base class "B" \
+                                 # E: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+class C3(A2[T], B[T]): pass
+class C4(A2[U], B[U]): pass
+class C5(A2[U], B[T]): pass  # E: Definition of "fn" in base class "A" is incompatible with definition in base class "B" \
+                             # E: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+
+class D1(A[str], B[str]): pass
+class D2(A[str], B[int]): pass  # E: Definition of "fn" in base class "A" is incompatible with definition in base class "B" \
+                                # E: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+class D3(A[T], B[T]): pass
+class D4(A[U], B[U]): pass
+class D5(A[U], B[T]): pass  # E: Definition of "fn" in base class "A" is incompatible with definition in base class "B" \
+                            # E: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+[builtins fixtures/tuple.pyi]
