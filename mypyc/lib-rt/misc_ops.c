@@ -381,6 +381,15 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
     if (!res) {
         goto fail;
     }
+    // These attributes are added or modified by @attr.s(slots=True).
+    const char * const keys[] = {"__attrs_attrs__", "__attrs_own_setattr__", "__init__", ""};
+    for (const char * const *key_iter = keys; **key_iter != '\0'; key_iter++) {
+        PyObject *value = PyObject_GetAttrString(res, *key_iter);
+        if (value) {
+            PyObject_SetAttrString(tp, *key_iter, value);
+            Py_DECREF(value);
+        }
+    }
     Py_DECREF(res);
 
     /* Copy back the original contents of the dict */
