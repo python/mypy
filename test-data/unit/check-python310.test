@@ -2439,3 +2439,35 @@ def foo(x: T) -> T:
     return out
 
 [builtins fixtures/isinstance.pyi]
+
+[case testMatchSequenceReachableFromAny]
+# flags: --warn-unreachable
+from typing import Any
+
+def maybe_list(d: Any) -> int:
+    match d:
+        case []:
+            return 0
+        case [[_]]:
+            return 1
+        case [_]:
+            return 1
+        case _:
+            return 2
+
+def with_guard(d: Any) -> None:
+    match d:
+        case [s] if isinstance(s, str):
+            reveal_type(s)  # N: Revealed type is "builtins.str"
+    match d:
+        case (s,) if isinstance(s, str):
+            reveal_type(s)  # N: Revealed type is "builtins.str"
+
+def nested_in_dict(d: dict[str, Any]) -> int:
+    match d:
+        case {"src": ["src"]}:
+            return 1
+        case _:
+            return 0
+
+[builtins fixtures/dict.pyi]

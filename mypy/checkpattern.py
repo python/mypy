@@ -713,6 +713,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         return False
 
     def can_match_sequence(self, typ: ProperType) -> bool:
+        if isinstance(typ, AnyType):
+            return True
         if isinstance(typ, UnionType):
             return any(self.can_match_sequence(get_proper_type(item)) for item in typ.items)
         for other in self.non_sequence_match_types:
@@ -763,6 +765,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         or class T(Sequence[Tuple[T, T]]), there is no way any of those can map to Sequence[str].
         """
         proper_type = get_proper_type(outer_type)
+        if isinstance(proper_type, AnyType):
+            return outer_type
         if isinstance(proper_type, UnionType):
             types = [
                 self.construct_sequence_child(item, inner_type)
@@ -772,7 +776,6 @@ class PatternChecker(PatternVisitor[PatternType]):
             return make_simplified_union(types)
         sequence = self.chk.named_generic_type("typing.Sequence", [inner_type])
         if is_subtype(outer_type, self.chk.named_type("typing.Sequence")):
-            proper_type = get_proper_type(outer_type)
             if isinstance(proper_type, TupleType):
                 proper_type = tuple_fallback(proper_type)
             assert isinstance(proper_type, Instance)
