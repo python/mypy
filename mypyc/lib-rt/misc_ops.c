@@ -353,7 +353,7 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
                            PyObject *dict, PyObject *annotations) {
     PyTypeObject *ttp = (PyTypeObject *)tp;
     Py_ssize_t pos;
-    PyObject *res;
+    PyObject *res = NULL;
 
     /* Make a copy of the original class __dict__ */
     PyObject *orig_dict = PyDict_Copy(ttp->tp_dict);
@@ -384,13 +384,15 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
     // These attributes are added or modified by @attr.s(slots=True).
     const char * const keys[] = {"__attrs_attrs__", "__attrs_own_setattr__", "__init__", ""};
     for (const char * const *key_iter = keys; **key_iter != '\0'; key_iter++) {
-        PyObject *value = PyObject_GetAttrString(res, *key_iter);
-        if (value) {
+        PyObject *value = NULL;
+        int rv = PyObject_GetOptionalAttrString(res, *key_iter, &value);
+        if (rv == 1) {
             PyObject_SetAttrString(tp, *key_iter, value);
             Py_DECREF(value);
+        } else if (rv == -1) {
+          goto fail;
         }
     }
-    Py_DECREF(res);
 
     /* Copy back the original contents of the dict */
     if (_CPy_UpdateObjFromDict(tp, orig_dict) != 0) {
@@ -401,6 +403,7 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
     return 1;
 
 fail:
+    Py_XDECREF(res);
     Py_XDECREF(orig_dict);
     return 0;
 }
