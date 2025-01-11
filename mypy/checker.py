@@ -2095,6 +2095,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if original_node and is_property(original_node):
                     original_type = get_property_type(original_type)
 
+            if isinstance(original_node, Var):
+                expanded_type = map_type_from_supertype(original_type, defn.info, base)
+                expanded_type = expand_self_type(
+                    original_node, expanded_type, fill_typevars(defn.info)
+                )
+                original_type = get_proper_type(expanded_type)
+
             if is_property(defn):
                 inner: FunctionLike | None
                 if isinstance(typ, FunctionLike):
