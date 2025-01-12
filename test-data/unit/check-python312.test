@@ -1972,3 +1972,19 @@ class D:
             class G[Q]:
                 def g(self, x: Q): ...
             d: G[str]
+
+[case testTypeAliasNormalization]
+from collections.abc import Callable
+from typing import Unpack
+from typing_extensions import TypeAlias
+
+type RK_function_args = tuple[float, int]
+type RK_functionBIS = Callable[[Unpack[RK_function_args], int], int]
+
+def ff(a: float, b: int, c: int) -> int:
+    return 2
+
+bis: RK_functionBIS = ff
+res: int = bis(1.0, 2, 3)
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
