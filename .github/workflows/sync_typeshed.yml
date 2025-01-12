@@ -5,20 +5,22 @@ on:
   schedule:
     - cron: "0 0 1,15 * *"
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   sync_typeshed:
     name: Sync typeshed
     if: github.repository == 'python/mypy'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true  # needed to `git push` the PR branch
         # TODO: use whatever solution ends up working for
         # https://github.com/python/typeshed/issues/8434
       - uses: actions/setup-python@v5

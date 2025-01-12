@@ -1,20 +1,21 @@
 name: Comment with mypy_primer diff
 
-on:
+on:  # zizmor: ignore[dangerous-triggers]
   workflow_run:
     workflows:
       - Run mypy_primer
     types:
       - completed
 
-permissions:
-  contents: read
-  pull-requests: write
+permissions: {}
 
 jobs:
   comment:
     name: Comment PR from mypy_primer
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Download diffs

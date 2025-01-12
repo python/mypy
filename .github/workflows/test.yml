@@ -136,6 +136,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Debug build
       if: ${{ matrix.debug_build }}
@@ -217,6 +219,8 @@ jobs:
       CC: i686-linux-gnu-gcc
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install 32-bit build dependencies
         run: |
           sudo dpkg --add-architecture i386 && \
