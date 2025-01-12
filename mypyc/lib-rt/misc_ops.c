@@ -399,6 +399,7 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
         goto fail;
     }
 
+    Py_DECREF(res);
     Py_DECREF(orig_dict);
     return 1;
 
