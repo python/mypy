@@ -2439,3 +2439,32 @@ def foo(x: T) -> T:
     return out
 
 [builtins fixtures/isinstance.pyi]
+
+[case testMatchRebindsOuterFunctionName]
+# flags: --warn-unreachable
+from typing_extensions import Literal
+
+def x() -> tuple[Literal["test"]]: ...
+
+match x():
+    case (x,) if x == "test":  # E: Incompatible types in capture pattern (pattern captures type "Literal['test']", variable has type "Callable[[], Tuple[Literal['test']]]")
+        pass
+    case foo:
+        foo
+
+[builtins fixtures/dict.pyi]
+
+[case testMatchRebindsInnerFunctionName]
+# flags: --warn-unreachable
+class Some:
+    value: int | str
+    __match_args__ = ("value",)
+
+def some(x: Some) -> None:
+    match x:
+        case int():
+            def value():
+                return 1
+        case Some(value):  # E: Incompatible types in capture pattern (pattern captures type "Union[int, str]", variable has type "Callable[[], Any]")
+            pass
+[builtins fixtures/dict.pyi]
