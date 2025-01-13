@@ -820,7 +820,7 @@ else {
         for x in -5, 0, 1, 5, 255, 256:
             b = LoadLiteral(x, object_rprimitive)
             self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
-        for x in -6, 257:
+        for x in -1123355, -6, 257, 123235345:
             b = LoadLiteral(x, object_rprimitive)
             self.assert_emit([b, IncRef(b)], "CPy_INCREF(cpy_r_r0);")
 
