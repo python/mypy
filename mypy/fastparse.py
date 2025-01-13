@@ -140,16 +140,18 @@ def ast3_parse(
     source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
 ) -> AST:
     """This function is just a convenience wrapper around ast.parse, with default flags useful to Mypy.
-    It also incorporates a hack to accomodate `# mypy: ignore` comments, which are treated by mypy as `# type: ignore` comments.
+    It also handles `# mypy: ignore` comments, by turning them into `# type: ignore` comments.
     """
     # Hack to support "mypy: ignore" comments until the builtin compile function changes to allow us to detect it otherwise:
-    # (Note: completely distinct from https://mypy.readthedocs.io/en/stable/inline_config.html ; see also, util.get_mypy_comments in this codebase)
+    # (Note: completely distinct from https://mypy.readthedocs.io/en/stable/inline_config.html ; see also, util.get_mypy_comments in this codebase.)
 
     # We make the substitution in comments, and to find those comments we use Python's `tokenize`.
     # https://docs.python.org/3/library/tokenize.html has a big red **Warning:**
-    #     Note that the functions in this module are only designed to parse syntactically valid Python code (code that does not raise when parsed using ast.parse()). The behavior of the functions in this module is **undefined** when providing invalid Python code and it can change at any point.
+    #     Note that the functions in this module are only designed to parse syntactically valid Python
+    #     code (code that does not raise when parsed using ast.parse()). The behavior of the functions
+    #     in this module is **undefined** when providing invalid Python code and it can change at any point.
     # So, we cannot rely on roundtrip behavior in tokenize iff ast.parse would throw when given `source`.
-    # The simplest way to deal with that is just to call ast.parse twice, once before and once after. So, we do that.
+    # The simplest way to deal with that is just to call ast.parse twice, once before and once after!
     def p() -> AST:
         return ast3.parse(
             source, filename, mode, type_comments=True, feature_version=feature_version
@@ -160,11 +162,12 @@ def ast3_parse(
         tokens = tokenize.generate_tokens(io.StringIO(source).readline)
     else:
         tokens = tokenize.tokenize(io.BytesIO(source).readline)
-    # We do a workaround for a roundtripping error https://github.com/python/cpython/issues/125008
-    # An error that was introduced in 3.12.3 (https://github.com/python/cpython/blob/v3.12.3/Lib/tokenize.py#L205) and fixed in 3.12.8 (not out yet at time of writing but it's probably https://github.com/python/cpython/blob/v3.12.8/Lib/tokenize.py#L203 or thereabouts).
+    # We do a workaround for a roundtripping error (https://github.com/python/cpython/issues/125008)
+    # that was introduced in 3.12.3 (https://github.com/python/cpython/blob/v3.12.3/Lib/tokenize.py#L205)
+    # and fixed in 3.12.8 (https://github.com/python/cpython/blob/v3.12.8/Lib/tokenize.py#L205).
     # Luckily, it was caught before the first official (non-rc) release of python 3.13.
     is_defective_version = (3, 12, 3) <= sys.version_info[:3] <= (3, 12, 7)
-    # Could the workaround ever come back to bite us? I confess I don't know enough about FSTRING_MIDDLE to say no for certain, even though I have tried to examine all relevant cases.
+    # This is a gnarly list comprehension, but that's basically just how untokenize is supposed to work.
     source = tokenize.untokenize(
         (
             t,
@@ -182,11 +185,11 @@ def ast3_parse(
                     else s
                 )
             ),
-            *_,  # this improves whitespace roundtripping (possibly always making it perfect, for this usecase?)
+            *_,  # Including this bit improves whitespace roundtripping (possibly always making it perfect).
         )
         for t, s, *_ in tokens
     )
-    return p()
+    return p() # `source` has changed, so this result is different than the first call.
 
 
 NamedExpr = ast3.NamedExpr
