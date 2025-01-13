@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Iterable, List, Optional, Tuple, TypeVar
+from collections.abc import Iterable
+from typing import Optional, TypeVar
 
 from mypy.build import (
     BuildResult,
@@ -24,7 +25,7 @@ from mypy.fscache import FileSystemCache
 from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
-from mypy.util import hash_digest
+from mypy.util import hash_digest, json_dumps
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
 from mypyc.codegen.emitclass import generate_class, generate_class_type_decl
@@ -47,7 +48,6 @@ from mypyc.common import (
     use_vectorcall,
 )
 from mypyc.errors import Errors
-from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
@@ -84,11 +84,11 @@ from mypyc.transform.uninit import insert_uninit_checks
 # its modules along with the name of the group. (Which can be None
 # only if we are compiling only a single group with a single file in it
 # and not using shared libraries).
-Group = Tuple[List[BuildSource], Optional[str]]
-Groups = List[Group]
+Group = tuple[list[BuildSource], Optional[str]]
+Groups = list[Group]
 
 # A list of (file name, file contents) pairs.
-FileContents = List[Tuple[str, str]]
+FileContents = list[tuple[str, str]]
 
 
 class MarkedDeclaration:
@@ -154,7 +154,7 @@ class MypycPlugin(Plugin):
         ir_data = json.loads(ir_json)
 
         # Check that the IR cache matches the metadata cache
-        if compute_hash(meta_json) != ir_data["meta_hash"]:
+        if hash_digest(meta_json) != ir_data["meta_hash"]:
             return None
 
         # Check that all of the source files are present and as
@@ -369,11 +369,11 @@ def write_cache(
         newpath = get_state_ir_cache_name(st)
         ir_data = {
             "ir": module.serialize(),
-            "meta_hash": compute_hash(meta_data),
+            "meta_hash": hash_digest(meta_data),
             "src_hashes": hashes[group_map[id]],
         }
 
-        result.manager.metastore.write(newpath, json.dumps(ir_data, separators=(",", ":")))
+        result.manager.metastore.write(newpath, json_dumps(ir_data))
 
     result.manager.metastore.commit()
 
@@ -1073,20 +1073,6 @@ class GroupGenerator:
                 [f"PyObject *{static_name} = NULL;"],
                 needs_export=False,
             )
-
-
-def sort_classes(classes: list[tuple[str, ClassIR]]) -> list[tuple[str, ClassIR]]:
-    mod_name = {ir: name for name, ir in classes}
-    irs = [ir for _, ir in classes]
-    deps: dict[ClassIR, set[ClassIR]] = {}
-    for ir in irs:
-        if ir not in deps:
-            deps[ir] = set()
-        if ir.base:
-            deps[ir].add(ir.base)
-        deps[ir].update(ir.traits)
-    sorted_irs = toposort(deps)
-    return [(mod_name[ir], ir) for ir in sorted_irs]
 
 
 T = TypeVar("T")

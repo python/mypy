@@ -27,7 +27,7 @@ will be incomplete.
 from __future__ import annotations
 
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Callable, Final, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Final, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     from mypy.build import Graph, State
 
 
-Patches: _TypeAlias = List[Tuple[int, Callable[[], None]]]
+Patches: _TypeAlias = list[tuple[int, Callable[[], None]]]
 
 
 # If we perform this many iterations, raise an exception since we are likely stuck.
@@ -304,7 +304,7 @@ def process_top_level_function(
     analyzer.saved_locals.clear()
 
 
-TargetInfo: _TypeAlias = Tuple[
+TargetInfo: _TypeAlias = tuple[
     str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
 ]
 

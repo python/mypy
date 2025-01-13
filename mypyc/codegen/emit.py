@@ -195,7 +195,7 @@ class Emitter:
         return ATTR_PREFIX + name
 
     def object_annotation(self, obj: object, line: str) -> str:
-        """Build a C comment with an object's string represention.
+        """Build a C comment with an object's string representation.
 
         If the comment exceeds the line length limit, it's wrapped into a
         multiline string (with the extra lines indented to be aligned with
@@ -1034,7 +1034,7 @@ class Emitter:
             self.emit_line(f"if (unlikely({dest} == NULL))")
             self.emit_line("    CPyError_OutOfMemory();")
             # TODO: Fail if dest is None
-            for i in range(0, len(typ.types)):
+            for i in range(len(typ.types)):
                 if not typ.is_unboxed:
                     self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {src}.f{i}")
                 else:

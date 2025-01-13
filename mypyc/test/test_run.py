@@ -11,7 +11,8 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from mypy import build
 from mypy.errors import CompileError
@@ -23,6 +24,7 @@ from mypyc.build import construct_groups
 from mypyc.codegen import emitmodule
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
+from mypyc.test.config import test_data_prefix
 from mypyc.test.test_serialization import check_serialization_roundtrip
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
@@ -63,6 +65,7 @@ files = [
     "run-bench.test",
     "run-mypy-sim.test",
     "run-dunders.test",
+    "run-dunders-special.test",
     "run-singledispatch.test",
     "run-attrs.test",
     "run-python37.test",
@@ -140,13 +143,15 @@ class TestRun(MypycDataSuite):
     optional_out = True
     multi_file = False
     separate = False  # If True, using separate (incremental) compilation
+    strict_dunder_typing = False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # setup.py wants to be run from the root directory of the package, which we accommodate
         # by chdiring into tmp/
-        with use_custom_builtins(
-            os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase
-        ), chdir_manager("tmp"):
+        with (
+            use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase),
+            chdir_manager("tmp"),
+        ):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
@@ -232,7 +237,11 @@ class TestRun(MypycDataSuite):
         groups = construct_groups(sources, separate, len(module_names) > 1)
 
         try:
-            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)
+            compiler_options = CompilerOptions(
+                multi_file=self.multi_file,
+                separate=self.separate,
+                strict_dunder_typing=self.strict_dunder_typing,
+            )
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
                 options=options,
@@ -283,9 +292,7 @@ class TestRun(MypycDataSuite):
             # No driver.py provided by test case. Use the default one
             # (mypyc/test-data/driver/driver.py) that calls each
             # function named test_*.
-            default_driver = os.path.join(
-                os.path.dirname(__file__), "..", "test-data", "driver", "driver.py"
-            )
+            default_driver = os.path.join(test_data_prefix, "driver", "driver.py")
             shutil.copy(default_driver, driver_path)
         env = os.environ.copy()
         env["MYPYC_RUN_BENCH"] = "1" if bench else "0"
@@ -314,6 +321,7 @@ class TestRun(MypycDataSuite):
             # TODO: testDecorators1 hangs on 3.12, remove this once fixed
             proc.wait(timeout=30)
         output = proc.communicate()[0].decode("utf8")
+        output = output.replace(f'  File "{os.getcwd()}{os.sep}', '  File "')
         outlines = output.splitlines()
 
         if testcase.config.getoption("--mypyc-showc"):
@@ -399,6 +407,14 @@ class TestRunSeparate(TestRun):
     separate = True
     test_name_suffix = "_separate"
     files = ["run-multimodule.test", "run-mypy-sim.test"]
+
+
+class TestRunStrictDunderTyping(TestRun):
+    """Run the tests with strict dunder typing."""
+
+    strict_dunder_typing = True
+    test_name_suffix = "_dunder_typing"
+    files = ["run-dunders.test", "run-floats.test"]
 
 
 def fix_native_line_number(message: str, fnam: str, delta: int) -> str:

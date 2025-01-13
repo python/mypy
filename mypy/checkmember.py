@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Callable, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
@@ -17,6 +18,7 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    EXCLUDED_ENUM_ATTRIBUTES,
     SYMBOL_FUNCBASE_TYPES,
     Context,
     Decorator,
@@ -48,7 +50,6 @@ from mypy.typeops import (
     type_object_type_from_function,
 )
 from mypy.types import (
-    ENUM_REMOVED_PROPS,
     AnyType,
     CallableType,
     DeletedType,
@@ -87,6 +88,7 @@ class MemberContext:
 
     def __init__(
         self,
+        *,
         is_lvalue: bool,
         is_super: bool,
         is_operator: bool,
@@ -126,16 +128,16 @@ class MemberContext:
         original_type: Type | None = None,
     ) -> MemberContext:
         mx = MemberContext(
-            self.is_lvalue,
-            self.is_super,
-            self.is_operator,
-            self.original_type,
-            self.context,
-            self.msg,
-            self.chk,
-            self.self_type,
-            self.module_symbol_table,
-            self.no_deferral,
+            is_lvalue=self.is_lvalue,
+            is_super=self.is_super,
+            is_operator=self.is_operator,
+            original_type=self.original_type,
+            context=self.context,
+            msg=self.msg,
+            chk=self.chk,
+            self_type=self.self_type,
+            module_symbol_table=self.module_symbol_table,
+            no_deferral=self.no_deferral,
         )
         if messages is not None:
             mx.msg = messages
@@ -152,11 +154,11 @@ def analyze_member_access(
     name: str,
     typ: Type,
     context: Context,
+    *,
     is_lvalue: bool,
     is_super: bool,
     is_operator: bool,
     msg: MessageBuilder,
-    *,
     original_type: Type,
     chk: mypy.checker.TypeChecker,
     override_info: TypeInfo | None = None,
@@ -190,12 +192,12 @@ def analyze_member_access(
     are not available via the type object directly)
     """
     mx = MemberContext(
-        is_lvalue,
-        is_super,
-        is_operator,
-        original_type,
-        context,
-        msg,
+        is_lvalue=is_lvalue,
+        is_super=is_super,
+        is_operator=is_operator,
+        original_type=original_type,
+        context=context,
+        msg=msg,
         chk=chk,
         self_type=self_type,
         module_symbol_table=module_symbol_table,
@@ -637,7 +639,9 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
             msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 
-def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
+def analyze_descriptor_access(
+    descriptor_type: Type, mx: MemberContext, *, assignment: bool = False
+) -> Type:
     """Type check descriptor access.
 
     Arguments:
@@ -717,6 +721,12 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         object_type=descriptor_type,
         callable_name=callable_name,
     )
+
+    if not assignment:
+        mx.chk.check_deprecated(dunder_get, mx.context)
+        mx.chk.warn_deprecated_overload_item(
+            dunder_get, mx.context, target=inferred_dunder_get_type, selftype=descriptor_type
+        )
 
     inferred_dunder_get_type = get_proper_type(inferred_dunder_get_type)
     if isinstance(inferred_dunder_get_type, AnyType):
@@ -1172,7 +1182,7 @@ def analyze_enum_class_attribute_access(
     itype: Instance, name: str, mx: MemberContext
 ) -> Type | None:
     # Skip these since Enum will remove it
-    if name in ENUM_REMOVED_PROPS:
+    if name in EXCLUDED_ENUM_ATTRIBUTES:
         return report_missing_attribute(mx.original_type, itype, name, mx)
     # Dunders and private names are not Enum members
     if name.startswith("__") and name.replace("_", "") != "":

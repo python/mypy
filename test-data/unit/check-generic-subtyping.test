@@ -1065,3 +1065,158 @@ class F(E[T_co], Generic[T_co]): ...  # E: Variance of TypeVar "T_co" incompatib
 
 class G(Generic[T]): ...
 class H(G[T_contra], Generic[T_contra]): ...  # E: Variance of TypeVar "T_contra" incompatible with variance in parent type
+
+[case testParameterizedGenericOverrideWithProperty]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __init__(self, val: T):
+        self.member: T = val
+
+class B(A[str]):
+    member: str
+
+class GoodPropertyOverride(A[str]):
+    @property
+    def member(self) -> str: ...
+    @member.setter
+    def member(self, val: str): ...
+
+class BadPropertyOverride(A[str]):
+    @property  # E: Signature of "member" incompatible with supertype "A" \
+               # N:      Superclass: \
+               # N:          str \
+               # N:      Subclass: \
+               # N:          int
+    def member(self) -> int: ...
+    @member.setter
+    def member(self, val: int): ...
+
+class BadGenericPropertyOverride(A[str], Generic[T]):
+    @property  # E: Signature of "member" incompatible with supertype "A" \
+               # N:      Superclass: \
+               # N:          str \
+               # N:      Subclass: \
+               # N:          T
+    def member(self) -> T: ...
+    @member.setter
+    def member(self, val: T): ...
+[builtins fixtures/property.pyi]
+
+[case testParameterizedGenericPropertyOverrideWithProperty]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    @property
+    def member(self) -> T: ...
+    @member.setter
+    def member(self, val: T): ...
+
+class B(A[str]):
+    member: str
+
+class GoodPropertyOverride(A[str]):
+    @property
+    def member(self) -> str: ...
+    @member.setter
+    def member(self, val: str): ...
+
+class BadPropertyOverride(A[str]):
+    @property  # E: Signature of "member" incompatible with supertype "A" \
+               # N:      Superclass: \
+               # N:          str \
+               # N:      Subclass: \
+               # N:          int
+    def member(self) -> int: ...
+    @member.setter
+    def member(self, val: int): ...
+
+class BadGenericPropertyOverride(A[str], Generic[T]):
+    @property  # E: Signature of "member" incompatible with supertype "A" \
+               # N:      Superclass: \
+               # N:          str \
+               # N:      Subclass: \
+               # N:          T
+    def member(self) -> T: ...
+    @member.setter
+    def member(self, val: T): ...
+[builtins fixtures/property.pyi]
+
+[case testParameterizedGenericOverrideSelfWithProperty]
+from typing_extensions import Self
+
+class A:
+    def __init__(self, val: Self):
+        self.member: Self = val
+
+class GoodPropertyOverride(A):
+    @property
+    def member(self) -> "GoodPropertyOverride": ...
+    @member.setter
+    def member(self, val: "GoodPropertyOverride"): ...
+
+class GoodPropertyOverrideSelf(A):
+    @property
+    def member(self) -> Self: ...
+    @member.setter
+    def member(self, val: Self): ...
+[builtins fixtures/property.pyi]
+
+[case testParameterizedGenericOverrideWithSelfProperty]
+from typing import TypeVar, Generic
+from typing_extensions import Self
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __init__(self, val: T):
+        self.member: T = val
+
+class B(A["B"]):
+    member: Self
+
+class GoodPropertyOverride(A["GoodPropertyOverride"]):
+    @property
+    def member(self) -> Self: ...
+    @member.setter
+    def member(self, val: Self): ...
+[builtins fixtures/property.pyi]
+
+[case testMultipleInheritanceCompatibleTypeVar]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class A(Generic[T]):
+    x: T
+    def fn(self, t: T) -> None: ...
+
+class A2(A[T]):
+    y: str
+    z: str
+
+class B(Generic[T]):
+    x: T
+    def fn(self, t: T) -> None: ...
+
+class C1(A2[str], B[str]): pass
+class C2(A2[str], B[int]): pass  # E: Definition of "fn" in base class "A" is incompatible with definition in base class "B" \
+                                 # E: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+class C3(A2[T], B[T]): pass
+class C4(A2[U], B[U]): pass
+class C5(A2[U], B[T]): pass  # E: Definition of "fn" in base class "A" is incompatible with definition in base class "B" \
+                             # E: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+
+class D1(A[str], B[str]): pass
+class D2(A[str], B[int]): pass  # E: Definition of "fn" in base class "A" is incompatible with definition in base class "B" \
+                                # E: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+class D3(A[T], B[T]): pass
+class D4(A[U], B[U]): pass
+class D5(A[U], B[T]): pass  # E: Definition of "fn" in base class "A" is incompatible with definition in base class "B" \
+                            # E: Definition of "x" in base class "A" is incompatible with definition in base class "B"
+[builtins fixtures/tuple.pyi]

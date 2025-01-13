@@ -7,11 +7,13 @@ from abc import abstractmethod
 from typing import Callable, Final
 
 from mypy.nodes import (
+    EXCLUDED_ENUM_ATTRIBUTES,
     TYPE_VAR_TUPLE_KIND,
     AssignmentStmt,
     CallExpr,
     ClassDef,
     Decorator,
+    EllipsisExpr,
     ExpressionStmt,
     FuncDef,
     Lvalue,
@@ -26,7 +28,7 @@ from mypy.nodes import (
     TypeParam,
     is_class_var,
 )
-from mypy.types import ENUM_REMOVED_PROPS, Instance, UnboundType, get_proper_type
+from mypy.types import Instance, UnboundType, get_proper_type
 from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
@@ -80,6 +82,7 @@ from mypyc.primitives.misc_ops import (
     pytype_from_template_op,
     type_object_op,
 )
+from mypyc.subtype import is_subtype
 
 
 def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
@@ -145,7 +148,9 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                 continue
             with builder.catch_errors(stmt.line):
                 cls_builder.add_method(get_func_def(stmt))
-        elif isinstance(stmt, PassStmt):
+        elif isinstance(stmt, PassStmt) or (
+            isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
+        ):
             continue
         elif isinstance(stmt, AssignmentStmt):
             if len(stmt.lvalues) != 1:
@@ -251,7 +256,7 @@ class NonExtClassBuilder(ClassBuilder):
         )
 
         # Add the non-extension class to the dict
-        self.builder.call_c(
+        self.builder.primitive_op(
             dict_set_item_op,
             [
                 self.builder.load_globals_dict(),
@@ -287,7 +292,7 @@ class ExtClassBuilder(ClassBuilder):
             return
         typ = self.builder.load_native_type_object(self.cdef.fullname)
         value = self.builder.accept(stmt.rvalue)
-        self.builder.call_c(
+        self.builder.primitive_op(
             py_setattr_op, [typ, self.builder.load_str(lvalue.name), value], stmt.line
         )
         if self.builder.non_function_scope() and stmt.is_final_def:
@@ -447,7 +452,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
             )
         )
     # Populate a '__mypyc_attrs__' field containing the list of attrs
-    builder.call_c(
+    builder.primitive_op(
         py_setattr_op,
         [
             tp,
@@ -461,7 +466,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     builder.add(InitStatic(tp, cdef.name, builder.module_name, NAMESPACE_TYPE))
 
     # Add it to the dict
-    builder.call_c(
+    builder.primitive_op(
         dict_set_item_op, [builder.load_globals_dict(), builder.load_str(cdef.name), tp], cdef.line
     )
 
@@ -478,7 +483,7 @@ def make_generic_base_class(
     for tv, type_param in zip(tvs, type_args):
         if type_param.kind == TYPE_VAR_TUPLE_KIND:
             # Evaluate *Ts for a TypeVarTuple
-            it = builder.call_c(iter_op, [tv], line)
+            it = builder.primitive_op(iter_op, [tv], line)
             tv = builder.call_c(next_op, [it], line)
         args.append(tv)
 
@@ -488,7 +493,7 @@ def make_generic_base_class(
     else:
         arg = builder.new_tuple(args, line)
 
-    base = builder.call_c(py_get_item_op, [gent, arg], line)
+    base = builder.primitive_op(py_get_item_op, [gent, arg], line)
     return base
 
 
@@ -508,7 +513,7 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
     is_named_tuple = cdef.info.is_named_tuple
     ir = builder.mapper.type_to_ir[cdef.info]
     bases = []
-    for cls in cdef.info.mro[1:]:
+    for cls in (b.type for b in cdef.info.bases):
         if cls.fullname == "builtins.object":
             continue
         if is_named_tuple and cls.fullname in (
@@ -598,7 +603,7 @@ def setup_non_ext_dict(
     This class dictionary is passed to the metaclass constructor.
     """
     # Check if the metaclass defines a __prepare__ method, and if so, call it.
-    has_prepare = builder.call_c(
+    has_prepare = builder.primitive_op(
         py_hasattr_op, [metaclass, builder.load_str("__prepare__")], cdef.line
     )
 
@@ -656,7 +661,7 @@ def add_non_ext_class_attr_ann(
             typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
 
     key = builder.load_str(lvalue.name)
-    builder.call_c(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
+    builder.primitive_op(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
 
 
 def add_non_ext_class_attr(
@@ -677,9 +682,10 @@ def add_non_ext_class_attr(
         # are final.
         if (
             cdef.info.bases
-            and cdef.info.bases[0].type.fullname == "enum.Enum"
+            # Enum class must be the last parent class.
+            and cdef.info.bases[-1].type.is_enum
             # Skip these since Enum will remove it
-            and lvalue.name not in ENUM_REMOVED_PROPS
+            and lvalue.name not in EXCLUDED_ENUM_ATTRIBUTES
         ):
             # Enum values are always boxed, so use object_rprimitive.
             attr_to_cache.append((lvalue, object_rprimitive))
@@ -798,30 +804,42 @@ def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
 
 def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
     """Generate a "__ne__" method from a "__eq__" method."""
-    with builder.enter_method(cls, "__ne__", object_rprimitive):
-        rhs_arg = builder.add_argument("rhs", object_rprimitive)
-
-        # If __eq__ returns NotImplemented, then __ne__ should also
-        not_implemented_block, regular_block = BasicBlock(), BasicBlock()
+    func_ir = cls.get_method("__eq__")
+    assert func_ir
+    eq_sig = func_ir.decl.sig
+    strict_typing = builder.options.strict_dunders_typing
+    with builder.enter_method(cls, "__ne__", eq_sig.ret_type):
+        rhs_type = eq_sig.args[0].type if strict_typing else object_rprimitive
+        rhs_arg = builder.add_argument("rhs", rhs_type)
         eqval = builder.add(MethodCall(builder.self(), "__eq__", [rhs_arg], line))
-        not_implemented = builder.add(
-            LoadAddress(not_implemented_op.type, not_implemented_op.src, line)
-        )
-        builder.add(
-            Branch(
-                builder.translate_is_op(eqval, not_implemented, "is", line),
-                not_implemented_block,
-                regular_block,
-                Branch.BOOL,
+
+        can_return_not_implemented = is_subtype(not_implemented_op.type, eq_sig.ret_type)
+        return_bool = is_subtype(eq_sig.ret_type, bool_rprimitive)
+
+        if not strict_typing or can_return_not_implemented:
+            # If __eq__ returns NotImplemented, then __ne__ should also
+            not_implemented_block, regular_block = BasicBlock(), BasicBlock()
+            not_implemented = builder.add(
+                LoadAddress(not_implemented_op.type, not_implemented_op.src, line)
             )
-        )
-
-        builder.activate_block(regular_block)
-        retval = builder.coerce(builder.unary_op(eqval, "not", line), object_rprimitive, line)
-        builder.add(Return(retval))
-
-        builder.activate_block(not_implemented_block)
-        builder.add(Return(not_implemented))
+            builder.add(
+                Branch(
+                    builder.translate_is_op(eqval, not_implemented, "is", line),
+                    not_implemented_block,
+                    regular_block,
+                    Branch.BOOL,
+                )
+            )
+            builder.activate_block(regular_block)
+            rettype = bool_rprimitive if return_bool and strict_typing else object_rprimitive
+            retval = builder.coerce(builder.unary_op(eqval, "not", line), rettype, line)
+            builder.add(Return(retval))
+            builder.activate_block(not_implemented_block)
+            builder.add(Return(not_implemented))
+        else:
+            rettype = bool_rprimitive if return_bool and strict_typing else object_rprimitive
+            retval = builder.coerce(builder.unary_op(eqval, "not", line), rettype, line)
+            builder.add(Return(retval))
 
 
 def load_non_ext_class(

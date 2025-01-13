@@ -916,9 +916,18 @@ f(None) # E: Too many arguments for "f"
 from typing import Any, Callable
 def dec1(f: Callable[[Any], None]) -> Callable[[], None]: pass
 def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
-@dec1 # E: Argument 1 to "dec2" has incompatible type "Callable[[Any], Any]"; expected "Callable[[Any, Any], None]"
-@dec2
+@dec1
+@dec2  # E: Argument 1 to "dec2" has incompatible type "Callable[[Any], Any]"; expected "Callable[[Any, Any], None]"
 def f(x): pass
+
+def faulty(c: Callable[[int], None]) -> Callable[[tuple[int, int]], None]:
+    return lambda x: None
+
+@faulty  # E: Argument 1 to "faulty" has incompatible type "Callable[[Tuple[int, int]], None]"; expected "Callable[[int], None]"
+@faulty  # E: Argument 1 to "faulty" has incompatible type "Callable[[str], None]"; expected "Callable[[int], None]"
+def g(x: str) -> None:
+    return None
+[builtins fixtures/tuple.pyi]
 
 [case testInvalidDecorator2]
 from typing import Any, Callable
@@ -1474,7 +1483,7 @@ def dec(f) -> Callable[[int], None]: pass
 
 x = int()
 if x:
-    def f(x: int) -> None: pass
+    def f(x: int, /) -> None: pass
 else:
     @dec
     def f(): pass
@@ -1489,9 +1498,12 @@ x = int()
 if x:
     def f(x: str) -> None: pass
 else:
-    # TODO: Complain about incompatible redefinition
     @dec
-    def f(): pass
+    def f(): pass   # E: All conditional function variants must have identical signatures \
+                    # N: Original: \
+                    # N:     def f(x: str) -> None \
+                    # N: Redefinition: \
+                    # N:     def f(int, /) -> None
 
 [case testConditionalFunctionDefinitionUnreachable]
 def bar() -> None:
@@ -1599,7 +1611,7 @@ else:
     def f():
         yield
 [file m.py]
-def f(): pass
+def f() -> None: pass
 
 [case testDefineConditionallyAsImportedAndDecoratedWithInference]
 if int():
@@ -1778,7 +1790,7 @@ def a(f: F):
     f("foo") # E: Argument 1 has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
-[case testCallableParsingInInheritence]
+[case testCallableParsingInInheritance]
 
 from collections import namedtuple
 class C(namedtuple('t', 'x')):
@@ -2346,7 +2358,7 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 
 [builtins fixtures/bool.pyi]
 
--- Type variable shenanagins
+-- Type variable shenanigans
 -- -------------------------
 
 [case testGenericFunctionTypeDecl]

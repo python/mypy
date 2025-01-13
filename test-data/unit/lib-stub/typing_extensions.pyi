@@ -43,6 +43,8 @@ Required: _SpecialForm
 NotRequired: _SpecialForm
 ReadOnly: _SpecialForm
 
+Self: _SpecialForm
+
 @final
 class TypeAliasType:
     def __init__(

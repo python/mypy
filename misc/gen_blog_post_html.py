@@ -46,7 +46,7 @@ def format_code(h: str) -> str:
             indent = a[i].startswith("    ")
             if not indent:
                 i += 1
-            r.append("<pre>")
+            r.append("<pre><code>")
             while i < len(a) and (
                 (indent and a[i].startswith("    ")) or (not indent and not a[i].startswith("```"))
             ):
@@ -56,13 +56,15 @@ def format_code(h: str) -> str:
                     line = "    " + line
                 r.append(html.escape(line))
                 i += 1
-            r.append("</pre>")
+            r.append("</code></pre>")
             if not indent and a[i].startswith("```"):
                 i += 1
         else:
             r.append(a[i])
             i += 1
-    return "\n".join(r)
+    formatted = "\n".join(r)
+    # remove empty first line for code blocks
+    return re.sub(r"<code>\n", r"<code>", formatted)
 
 
 def convert(src: str) -> str:
@@ -76,7 +78,7 @@ def convert(src: str) -> str:
     h = re.sub(r"^## (Mypy [0-9.]+)", r"<h1>\1 Released</h1>", h, flags=re.MULTILINE)
 
     # Subheadings
-    h = re.sub(r"\n#### ([A-Z`].*)\n", r"\n<h2>\1</h2>\n", h)
+    h = re.sub(r"\n### ([A-Z`].*)\n", r"\n<h2>\1</h2>\n", h)
 
     # Sub-subheadings
     h = re.sub(r"\n\*\*([A-Z_`].*)\*\*\n", r"\n<h3>\1</h3>\n", h)

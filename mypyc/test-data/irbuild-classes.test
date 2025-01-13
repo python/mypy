@@ -613,7 +613,7 @@ class C:
 class D:
     @classmethod
     def f(cls, x: int) -> int:
-        # TODO: This could aso be optimized, since g is not ever overridden
+        # TODO: This could also be optimized, since g is not ever overridden
         return cls.g(x)
 
     @classmethod

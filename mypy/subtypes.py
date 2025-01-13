@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Callable, Final, Iterator, List, TypeVar, cast
+from typing import Any, Callable, Final, TypeVar, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.applytype
@@ -499,7 +500,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             if type_state.is_cached_negative_subtype_check(self._subtype_kind, left, right):
                 return False
-            if not self.subtype_context.ignore_promotions:
+            if not self.subtype_context.ignore_promotions and not right.type.is_protocol:
                 for base in left.type.mro:
                     if base._promote and any(
                         self._is_subtype(p, self.right) for p in base._promote
@@ -625,8 +626,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         return is_named_instance(item, "builtins.object")
         if isinstance(right, LiteralType) and left.last_known_value is not None:
             return self._is_subtype(left.last_known_value, right)
-        if isinstance(right, CallableType):
-            # Special case: Instance can be a subtype of Callable.
+        if isinstance(right, FunctionLike):
+            # Special case: Instance can be a subtype of Callable / Overloaded.
             call = find_member("__call__", left, left, is_operator=True)
             if call:
                 return self._is_subtype(call, right)
@@ -892,32 +893,35 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return False
             for name, l, r in left.zip(right):
                 # TODO: should we pass on the full subtype_context here and below?
-                if self.proper_subtype:
-                    check = is_same_type(l, r)
+                right_readonly = name in right.readonly_keys
+                if not right_readonly:
+                    if self.proper_subtype:
+                        check = is_same_type(l, r)
+                    else:
+                        check = is_equivalent(
+                            l,
+                            r,
+                            ignore_type_params=self.subtype_context.ignore_type_params,
+                            options=self.options,
+                        )
                 else:
-                    check = is_equivalent(
-                        l,
-                        r,
-                        ignore_type_params=self.subtype_context.ignore_type_params,
-                        options=self.options,
-                    )
+                    # Read-only items behave covariantly
+                    check = self._is_subtype(l, r)
                 if not check:
                     return False
                 # Non-required key is not compatible with a required key since
                 # indexing may fail unexpectedly if a required key is missing.
-                # Required key is not compatible with a non-required key since
-                # the prior doesn't support 'del' but the latter should support
-                # it.
-                #
-                # NOTE: 'del' support is currently not implemented (#3550). We
-                #       don't want to have to change subtyping after 'del' support
-                #       lands so here we are anticipating that change.
-                if (name in left.required_keys) != (name in right.required_keys):
+                # Required key is not compatible with a non-read-only non-required
+                # key since the prior doesn't support 'del' but the latter should
+                # support it.
+                # Required key is compatible with a read-only non-required key.
+                required_differ = (name in left.required_keys) != (name in right.required_keys)
+                if not right_readonly and required_differ:
                     return False
                 # Readonly fields check:
                 #
                 # A = TypedDict('A', {'x': ReadOnly[int]})
-                # B = TypedDict('A', {'x': int})
+                # B = TypedDict('B', {'x': int})
                 # def reset_x(b: B) -> None:
                 #     b['x'] = 0
                 #
@@ -1882,7 +1886,7 @@ def unify_generic_callable(
     )
     if None in inferred_vars:
         return None
-    non_none_inferred_vars = cast(List[Type], inferred_vars)
+    non_none_inferred_vars = cast(list[Type], inferred_vars)
     had_errors = False
 
     def report(*args: Any) -> None:

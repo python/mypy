@@ -56,7 +56,7 @@ Examples of locations:
 * 'mod.Cls' represents each method in class 'mod.Cls' + the top-level of the
   module 'mod'. (To simplify the implementation, there is no location that only
   includes the body of a class without the entire surrounding module top level.)
-* Trigger '<...>' as a location is an indirect way of referring to to all
+* Trigger '<...>' as a location is an indirect way of referring to all
   locations triggered by the trigger. These indirect locations keep the
   dependency map smaller and easier to manage.
 
@@ -82,7 +82,6 @@ Test cases for this module live in 'test-data/unit/deps*.test'.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import List
 
 from mypy.nodes import (
     GDEF,
@@ -947,7 +946,7 @@ def get_type_triggers(
     return typ.accept(TypeTriggersVisitor(use_logical_deps, seen_aliases))
 
 
-class TypeTriggersVisitor(TypeVisitor[List[str]]):
+class TypeTriggersVisitor(TypeVisitor[list[str]]):
     def __init__(
         self, use_logical_deps: bool, seen_aliases: set[TypeAliasType] | None = None
     ) -> None:

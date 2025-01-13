@@ -115,7 +115,7 @@ L1:
     r9 = int_lt r6, r8
     if r9 goto L2 else goto L4 :: bool
 L2:
-    r10 = CPyList_GetItemUnsafe(tmp_list, r6)
+    r10 = list_get_item_unsafe tmp_list, r6
     r11 = unbox(int, r10)
     x = r11
     r12 = f(x)
@@ -157,7 +157,7 @@ L2:
 L3:
     goto L1
 L4:
-    r10 = CPy_NoErrOccured()
+    r10 = CPy_NoErrOccurred()
 L5:
     b = r1
     return 1
@@ -211,7 +211,7 @@ L3:
     r21 = CPyDict_CheckSize(tmp_dict, r10)
     goto L1
 L4:
-    r22 = CPy_NoErrOccured()
+    r22 = CPy_NoErrOccurred()
 L5:
     c = r7
     return 1
@@ -361,7 +361,7 @@ L1:
     r13 = int_lt r10, r12
     if r13 goto L2 else goto L6 :: bool
 L2:
-    r14 = CPyList_GetItemUnsafe(tmp_list, r10)
+    r14 = list_get_item_unsafe tmp_list, r10
     r15 = unbox(int, r14)
     z = r15
     r16 = int_lt z, 8
@@ -393,7 +393,7 @@ L8:
 L9:
     goto L7
 L10:
-    r30 = CPy_NoErrOccured()
+    r30 = CPy_NoErrOccurred()
 L11:
     r31 = PyObject_GetIter(r8)
     r32 = PyObject_GetIter(r31)
@@ -410,7 +410,7 @@ L13:
 L14:
     goto L12
 L15:
-    r39 = CPy_NoErrOccured()
+    r39 = CPy_NoErrOccurred()
 L16:
     a = r7
     return 1
@@ -752,7 +752,7 @@ L2:
 L3:
     goto L1
 L4:
-    r4 = CPy_NoErrOccured()
+    r4 = CPy_NoErrOccurred()
 L5:
     return 1
 def precomputed2():
@@ -770,7 +770,7 @@ L2:
 L3:
     goto L1
 L4:
-    r3 = CPy_NoErrOccured()
+    r3 = CPy_NoErrOccurred()
 L5:
     return 1
 def not_precomputed():
@@ -804,6 +804,6 @@ L2:
 L3:
     goto L1
 L4:
-    r11 = CPy_NoErrOccured()
+    r11 = CPy_NoErrOccurred()
 L5:
     return 1

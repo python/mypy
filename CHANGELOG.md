@@ -2,6 +2,690 @@
 
 ## Next release
 
+### Performance improvements
+
+Mypy may be 5-30% faster. This improvement comes largely from tuning the performance of the
+garbage collector.
+
+Contributed by Jukka Lehtosalo (PR [18306](https://github.com/python/mypy/pull/18306)).
+
+### Drop Support for Python 3.8
+
+Mypy no longer supports running with Python 3.8, which has reached end-of-life.
+When running mypy with Python 3.9+, it is still possible to type check code
+that needs to support Python 3.8 with the `--python-version 3.8` argument.
+Support for this will be dropped in the first half of 2025!
+
+Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/17492)).
+
+### Mypyc accelerated mypy wheels for aarch64
+
+Mypy can compile itself to C extension modules using mypyc. This makes mypy 3-5x faster
+than if mypy is interpreted with pure Python. We now build and upload mypyc accelerated
+mypy wheels for `manylinux_aarch64` to PyPI, making it easy for users on such platforms
+to realise this speedup.
+
+Contributed by Christian Bundy (PR [mypy_mypyc-wheels#76](https://github.com/mypyc/mypy_mypyc-wheels/pull/76))
+
+### `--strict-bytes`
+
+By default, mypy treats an annotation of ``bytes`` as permitting ``bytearray`` and ``memoryview``.
+[PEP 688](https://peps.python.org/pep-0688) specified the removal of this special case.
+Use this flag to disable this behavior. `--strict-bytes` will be enabled by default in **mypy 2.0**.
+
+Contributed by Ali Hamdan (PR [18137](https://github.com/python/mypy/pull/18263/)) and
+Shantanu Jain (PR [13952](https://github.com/python/mypy/pull/13952)).
+
+### Improvements to reachability analysis and partial type handling in loops
+
+This change results in mypy better modelling control flow within loops and hence detecting several
+issues it previously did not detect. In some cases, this change may require use of an additional
+explicit annotation of a variable.
+
+Contributed by Christoph Tyralla (PR [18180](https://github.com/python/mypy/pull/18180),
+[PR](https://github.com/python/mypy/pull/18433)).
+
+(Speaking of partial types, another reminder that mypy plans on enabling `--local-partial-types`
+by default in **mypy 2.0**).
+
+### Better line numbers for decorators and slice expressions
+
+Mypy now uses more correct line numbers for decorators and slice expressions. In some cases, this
+may necessitate changing the location of a `# type: ignore` comment.
+
+Contributed by Shantanu Jain (PR [18392](https://github.com/python/mypy/pull/18392),
+PR [18397](https://github.com/python/mypy/pull/18397)).
+
+## Mypy 1.14
+
+We’ve just uploaded mypy 1.14 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. This release includes new features and bug fixes.
+You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
+### Change to Enum Membership Semantics
+
+As per the updated [typing specification for enums](https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members),
+enum members must be left unannotated.
+
+```python
+class Pet(Enum):
+    CAT = 1  # Member attribute
+    DOG = 2  # Member attribute
+
+    # New error: Enum members must be left unannotated
+    WOLF: int = 3
+
+    species: str  # Considered a non-member attribute
+```
+
+In particular, the specification change can result in issues in type stubs (`.pyi` files), since
+historically it was common to leave the value absent:
+
+```python
+# In a type stub (.pyi file)
+
+class Pet(Enum):
+    # Change in semantics: previously considered members,
+    # now non-member attributes
+    CAT: int
+    DOG: int
+
+    # Mypy will now issue a warning if it detects this
+    # situation in type stubs:
+    # > Detected enum "Pet" in a type stub with zero
+    # > members. There is a chance this is due to a recent
+    # > change in the semantics of enum membership. If so,
+    # > use `member = value` to mark an enum member,
+    # > instead of `member: type`
+
+class Pet(Enum):
+    # As per the specification, you should now do one of
+    # the following:
+    DOG = 1  # Member attribute with value 1 and known type
+    WOLF = cast(int, ...)  # Member attribute with unknown
+                           # value but known type
+    LION = ...  # Member attribute with unknown value and
+                # # unknown type
+```
+
+Contributed by Terence Honles (PR [17207](https://github.com/python/mypy/pull/17207)) and
+Shantanu Jain (PR [18068](https://github.com/python/mypy/pull/18068)).
+
+### Support for @deprecated Decorator (PEP 702)
+
+Mypy can now issue errors or notes when code imports a deprecated feature
+explicitly with a `from mod import depr` statement, or uses a deprecated feature
+imported otherwise or defined locally. Features are considered deprecated when
+decorated with `warnings.deprecated`, as specified in [PEP 702](https://peps.python.org/pep-0702).
+
+You can enable the error code via `--enable-error-code=deprecated` on the mypy
+command line or `enable_error_code = deprecated` in the mypy config file.
+Use the command line flag `--report-deprecated-as-note` or config file option
+`report_deprecated_as_note=True` to turn all such errors into notes.
+
+Deprecation errors will be enabled by default in a future mypy version.
+
+This feature was contributed by Christoph Tyralla.
+
+List of changes:
+
+ * Add basic support for PEP 702 (`@deprecated`) (Christoph Tyralla, PR [17476](https://github.com/python/mypy/pull/17476))
+ * Support descriptors with `@deprecated` (Christoph Tyralla, PR [18090](https://github.com/python/mypy/pull/18090))
+ * Make "deprecated" note an error, disabled by default (Valentin Stanciu, PR [18192](https://github.com/python/mypy/pull/18192))
+ * Consider all possible type positions with `@deprecated` (Christoph Tyralla, PR [17926](https://github.com/python/mypy/pull/17926))
+ * Improve the handling of explicit type annotations in assignment statements with `@deprecated` (Christoph Tyralla, PR [17899](https://github.com/python/mypy/pull/17899))
+
+### Optionally Analyzing Untyped Modules
+
+Mypy normally doesn't analyze imports from third-party modules (installed using pip, for example)
+if there are no stubs or a py.typed marker file. To force mypy to analyze these imports, you
+can now use the `--follow-untyped-imports` flag or set the `follow_untyped_imports`
+config file option to True. This can be set either in the global section of your mypy config
+file, or individually on a per-module basis.
+
+This feature was contributed by Jannick Kremer.
+
+List of changes:
+
+ * Implement flag to allow type checking of untyped modules (Jannick Kremer, PR [17712](https://github.com/python/mypy/pull/17712))
+ * Warn about `--follow-untyped-imports` (Shantanu, PR [18249](https://github.com/python/mypy/pull/18249))
+
+### Support New Style Type Variable Defaults (PEP 696)
+
+Mypy now supports type variable defaults using the new syntax described in PEP 696, which
+was introduced in Python 3.13. Example:
+
+```python
+@dataclass
+class Box[T = int]:  # Set default for "T"
+    value: T | None = None
+
+reveal_type(Box())                      # type is Box[int], since it's the default
+reveal_type(Box(value="Hello World!"))  # type is Box[str]
+```
+
+This feature was contributed by Marc Mueller (PR [17985](https://github.com/python/mypy/pull/17985)).
+
+### Improved For Loop Index Variable Type Narrowing
+
+Mypy now preserves the literal type of for loop index variables, to support `TypedDict`
+lookups. Example:
+
+```python
+from typing import TypedDict
+
+class X(TypedDict):
+    hourly: int
+    daily: int
+
+def func(x: X) -> int:
+    s = 0
+    for var in ("hourly", "daily"):
+        # "Union[Literal['hourly']?, Literal['daily']?]"
+        reveal_type(var)
+
+        # x[var] no longer triggers a literal-required error
+        s += x[var]
+    return s
+```
+
+This was contributed by Marc Mueller (PR [18014](https://github.com/python/mypy/pull/18014)).
+
+### Mypyc Improvements
+
+ * Document optimized bytes operations and additional str operations (Jukka Lehtosalo, PR [18242](https://github.com/python/mypy/pull/18242))
+ * Add primitives and specialization for `ord()` (Jukka Lehtosalo, PR [18240](https://github.com/python/mypy/pull/18240))
+ * Optimize `str.encode` with specializations for common used encodings (Valentin Stanciu, PR [18232](https://github.com/python/mypy/pull/18232))
+ * Fix fall back to generic operation for staticmethod and classmethod (Advait Dixit, PR [18228](https://github.com/python/mypy/pull/18228))
+ * Support unicode surrogates in string literals (Jukka Lehtosalo, PR [18209](https://github.com/python/mypy/pull/18209))
+ * Fix index variable in for loop with `builtins.enumerate` (Advait Dixit, PR [18202](https://github.com/python/mypy/pull/18202))
+ * Fix check for enum classes (Advait Dixit, PR [18178](https://github.com/python/mypy/pull/18178))
+ * Fix loading type from imported modules (Advait Dixit, PR [18158](https://github.com/python/mypy/pull/18158))
+ * Fix initializers of final attributes in class body (Jared Hance, PR [18031](https://github.com/python/mypy/pull/18031))
+ * Fix name generation for modules with similar full names (aatle, PR [18001](https://github.com/python/mypy/pull/18001))
+ * Fix relative imports in `__init__.py` (Shantanu, PR [17979](https://github.com/python/mypy/pull/17979))
+ * Optimize dunder methods (jairov4, PR [17934](https://github.com/python/mypy/pull/17934))
+ * Replace deprecated `_PyDict_GetItemStringWithError` (Marc Mueller, PR [17930](https://github.com/python/mypy/pull/17930))
+ * Fix wheel build for cp313-win (Marc Mueller, PR [17941](https://github.com/python/mypy/pull/17941))
+ * Use public PyGen_GetCode instead of vendored implementation (Marc Mueller, PR [17931](https://github.com/python/mypy/pull/17931))
+ * Optimize calls to final classes (jairov4, PR [17886](https://github.com/python/mypy/pull/17886))
+ * Support ellipsis (`...`) expressions in class bodies (Newbyte, PR [17923](https://github.com/python/mypy/pull/17923))
+ * Sync `pythoncapi_compat.h` (Marc Mueller, PR [17929](https://github.com/python/mypy/pull/17929))
+ * Add `runtests.py mypyc-fast` for running fast mypyc tests (Jukka Lehtosalo, PR [17906](https://github.com/python/mypy/pull/17906))
+
+### Stubgen Improvements
+
+ * Do not include mypy generated symbols (Ali Hamdan, PR [18137](https://github.com/python/mypy/pull/18137))
+ * Fix `FunctionContext.fullname` for nested classes (Chad Dombrova, PR [17963](https://github.com/python/mypy/pull/17963))
+ * Add flagfile support (Ruslan Sayfutdinov, PR [18061](https://github.com/python/mypy/pull/18061))
+ * Add support for PEP 695 and PEP 696 syntax (Ali Hamdan, PR [18054](https://github.com/python/mypy/pull/18054))
+
+### Stubtest Improvements
+
+ * Allow the use of `--show-traceback` and `--pdb` with stubtest (Stephen Morton, PR [18037](https://github.com/python/mypy/pull/18037))
+ * Verify `__all__` exists in stub (Sebastian Rittau, PR [18005](https://github.com/python/mypy/pull/18005))
+ * Stop telling people to use double underscores (Jelle Zijlstra, PR [17897](https://github.com/python/mypy/pull/17897))
+
+### Documentation Updates
+
+ * Update config file documentation (sobolevn, PR [18103](https://github.com/python/mypy/pull/18103))
+ * Improve contributor documentation for Windows (ag-tafe, PR [18097](https://github.com/python/mypy/pull/18097))
+ * Correct note about `--disallow-any-generics` flag in documentation (Abel Sen, PR [18055](https://github.com/python/mypy/pull/18055))
+ * Further caution against `--follow-imports=skip` (Shantanu, PR [18048](https://github.com/python/mypy/pull/18048))
+ * Fix the edit page button link in documentation (Kanishk Pachauri, PR [17933](https://github.com/python/mypy/pull/17933))
+
+### Other Notables Fixes and Improvements
+
+ * Show `Protocol` `__call__` for arguments with incompatible types (MechanicalConstruct, PR [18214](https://github.com/python/mypy/pull/18214))
+ * Make join and meet symmetric with `strict_optional` (MechanicalConstruct, PR [18227](https://github.com/python/mypy/pull/18227))
+ * Preserve block unreachablility when checking function definitions with constrained TypeVars (Brian Schubert, PR [18217](https://github.com/python/mypy/pull/18217))
+ * Do not include non-init fields in the synthesized `__replace__` method for dataclasses (Victorien, PR [18221](https://github.com/python/mypy/pull/18221))
+ * Disallow `TypeVar` constraints parameterized by type variables (Brian Schubert, PR [18186](https://github.com/python/mypy/pull/18186))
+ * Always complain about invalid varargs and varkwargs (Shantanu, PR [18207](https://github.com/python/mypy/pull/18207))
+ * Set default strict_optional state to True (Shantanu, PR [18198](https://github.com/python/mypy/pull/18198))
+ * Preserve type variable default None in type alias (Sukhorosov Aleksey, PR [18197](https://github.com/python/mypy/pull/18197))
+ * Add checks for invalid usage of continue/break/return in `except*` block (coldwolverine, PR [18132](https://github.com/python/mypy/pull/18132))
+ * Do not consider bare TypeVar not overlapping with None for reachability analysis (Stanislav Terliakov, PR [18138](https://github.com/python/mypy/pull/18138))
+ * Special case `types.DynamicClassAttribute` as property-like (Stephen Morton, PR [18150](https://github.com/python/mypy/pull/18150))
+ * Disallow bare `ParamSpec` in type aliases (Brian Schubert, PR [18174](https://github.com/python/mypy/pull/18174))
+ * Move long_description metadata to pyproject.toml (Marc Mueller, PR [18172](https://github.com/python/mypy/pull/18172))
+ * Support `==`-based narrowing of Optional (Christoph Tyralla, PR [18163](https://github.com/python/mypy/pull/18163))
+ * Allow TypedDict assignment of Required item to NotRequired ReadOnly item (Brian Schubert, PR [18164](https://github.com/python/mypy/pull/18164))
+ * Allow nesting of Annotated with TypedDict special forms inside TypedDicts (Brian Schubert, PR [18165](https://github.com/python/mypy/pull/18165))
+ * Infer generic type arguments for slice expressions (Brian Schubert, PR [18160](https://github.com/python/mypy/pull/18160))
+ * Fix checking of match sequence pattern against bounded type variables (Brian Schubert, PR [18091](https://github.com/python/mypy/pull/18091))
+ * Fix incorrect truthyness for Enum types and literals (David Salvisberg, PR [17337](https://github.com/python/mypy/pull/17337))
+ * Move static project metadata to pyproject.toml (Marc Mueller, PR [18146](https://github.com/python/mypy/pull/18146))
+ * Fallback to stdlib json if integer exceeds 64-bit range (q0w, PR [18148](https://github.com/python/mypy/pull/18148))
+ * Fix 'or' pattern structural matching exhaustiveness (yihong, PR [18119](https://github.com/python/mypy/pull/18119))
+ * Fix type inference of positional parameter in class pattern involving builtin subtype (Brian Schubert, PR [18141](https://github.com/python/mypy/pull/18141))
+ * Fix `[override]` error with no line number when argument node has no line number (Brian Schubert, PR [18122](https://github.com/python/mypy/pull/18122))
+ * Fix some dmypy crashes (Ivan Levkivskyi, PR [18098](https://github.com/python/mypy/pull/18098))
+ * Fix subtyping between instance type and overloaded (Shantanu, PR [18102](https://github.com/python/mypy/pull/18102))
+ * Clean up new_semantic_analyzer config (Shantanu, PR [18071](https://github.com/python/mypy/pull/18071))
+ * Issue warning for enum with no members in stub (Shantanu, PR [18068](https://github.com/python/mypy/pull/18068))
+ * Fix enum attributes are not members (Terence Honles, PR [17207](https://github.com/python/mypy/pull/17207))
+ * Fix crash when checking slice expression with step 0 in tuple index (Brian Schubert, PR [18063](https://github.com/python/mypy/pull/18063))
+ * Allow union-with-callable attributes to be overridden by methods (Brian Schubert, PR [18018](https://github.com/python/mypy/pull/18018))
+ * Emit `[mutable-override]` for covariant override of attribute with method (Brian Schubert, PR [18058](https://github.com/python/mypy/pull/18058))
+ * Support ParamSpec mapping with `functools.partial` (Stanislav Terliakov, PR [17355](https://github.com/python/mypy/pull/17355))
+ * Fix approved stub ignore, remove normpath (Shantanu, PR [18045](https://github.com/python/mypy/pull/18045))
+ * Make `disallow-any-unimported` flag invertible (Séamus Ó Ceanainn, PR [18030](https://github.com/python/mypy/pull/18030))
+ * Filter to possible package paths before trying to resolve a module (falsedrow, PR [18038](https://github.com/python/mypy/pull/18038))
+ * Fix overlap check for ParamSpec types (Jukka Lehtosalo, PR [18040](https://github.com/python/mypy/pull/18040))
+ * Do not prioritize ParamSpec signatures during overload resolution (Stanislav Terliakov, PR [18033](https://github.com/python/mypy/pull/18033))
+ * Fix ternary union for literals (Ivan Levkivskyi, PR [18023](https://github.com/python/mypy/pull/18023))
+ * Fix compatibility checks for conditional function definitions using decorators (Brian Schubert, PR [18020](https://github.com/python/mypy/pull/18020))
+ * TypeGuard should be bool not Any when matching TypeVar (Evgeniy Slobodkin, PR [17145](https://github.com/python/mypy/pull/17145))
+ * Fix convert-cache tool (Shantanu, PR [17974](https://github.com/python/mypy/pull/17974))
+ * Fix generator comprehension with mypyc (Shantanu, PR [17969](https://github.com/python/mypy/pull/17969))
+ * Fix crash issue when using shadowfile with pretty (Max Chang, PR [17894](https://github.com/python/mypy/pull/17894))
+ * Fix multiple nested classes with new generics syntax (Max Chang, PR [17820](https://github.com/python/mypy/pull/17820))
+ * Better error for `mypy -p package` without py.typed (Joe Gordon, PR [17908](https://github.com/python/mypy/pull/17908))
+ * Emit error for `raise NotImplemented` (Brian Schubert, PR [17890](https://github.com/python/mypy/pull/17890))
+ * Add `is_lvalue` attribute to AttributeContext (Brian Schubert, PR [17881](https://github.com/python/mypy/pull/17881))
+
+### Acknowledgements
+
+Thanks to all mypy contributors who contributed to this release:
+
+- aatle
+- Abel Sen
+- Advait Dixit
+- ag-tafe
+- Alex Waygood
+- Ali Hamdan
+- Brian Schubert
+- Carlton Gibson
+- Chad Dombrova
+- Chelsea Durazo
+- chiri
+- Christoph Tyralla
+- coldwolverine
+- David Salvisberg
+- Ekin Dursun
+- Evgeniy Slobodkin
+- falsedrow
+- Gaurav Giri
+- Ihor
+- Ivan Levkivskyi
+- jairov4
+- Jannick Kremer
+- Jared Hance
+- Jelle Zijlstra
+- jianghuyiyuan
+- Joe Gordon
+- John Doknjas
+- Jukka Lehtosalo
+- Kanishk Pachauri
+- Marc Mueller
+- Max Chang
+- MechanicalConstruct
+- Newbyte
+- q0w
+- Ruslan Sayfutdinov
+- Sebastian Rittau
+- Shantanu
+- sobolevn
+- Stanislav Terliakov
+- Stephen Morton
+- Sukhorosov Aleksey
+- Séamus Ó Ceanainn
+- Terence Honles
+- Valentin Stanciu
+- vasiliy
+- Victorien
+- yihong
+
+I’d also like to thank my employer, Dropbox, for supporting mypy development.
+
+
+## Mypy 1.13
+
+We’ve just uploaded mypy 1.13 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
+Note that unlike typical releases, Mypy 1.13 does not have any changes to type checking semantics
+from 1.12.1.
+
+### Improved Performance
+
+Mypy 1.13 contains several performance improvements. Users can expect mypy to be 5-20% faster.
+In environments with long search paths (such as environments using many editable installs), mypy
+can be significantly faster, e.g. 2.2x faster in the use case targeted by these improvements.
+
+Mypy 1.13 allows use of the `orjson` library for handling the cache instead of the stdlib `json`,
+for improved performance. You can ensure the presence of `orjson` using the `faster-cache` extra:
+
+    python3 -m pip install -U mypy[faster-cache]
+
+Mypy may depend on `orjson` by default in the future.
+
+These improvements were contributed by Shantanu.
+
+List of changes:
+* Significantly speed up file handling error paths (Shantanu, PR [17920](https://github.com/python/mypy/pull/17920))
+* Use fast path in modulefinder more often (Shantanu, PR [17950](https://github.com/python/mypy/pull/17950))
+* Let mypyc optimise os.path.join (Shantanu, PR [17949](https://github.com/python/mypy/pull/17949))
+* Make is_sub_path faster (Shantanu, PR [17962](https://github.com/python/mypy/pull/17962))
+* Speed up stubs suggestions (Shantanu, PR [17965](https://github.com/python/mypy/pull/17965))
+* Use sha1 for hashing (Shantanu, PR [17953](https://github.com/python/mypy/pull/17953))
+* Use orjson instead of json, when available (Shantanu, PR [17955](https://github.com/python/mypy/pull/17955))
+* Add faster-cache extra, test in CI (Shantanu, PR [17978](https://github.com/python/mypy/pull/17978))
+
+### Acknowledgements
+Thanks to all mypy contributors who contributed to this release:
+
+- Shantanu Jain
+- Jukka Lehtosalo
+
+## Mypy 1.12
+
+We’ve just uploaded mypy 1.12 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)). Mypy is a static type
+checker for Python. This release includes new features, performance improvements and bug fixes.
+You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
+### Support Python 3.12 Syntax for Generics (PEP 695)
+
+Support for the new type parameter syntax introduced in Python 3.12 is now enabled by default,
+documented, and no longer experimental. It was available through a feature flag in
+mypy 1.11 as an experimental feature.
+
+This example demonstrates the new syntax:
+
+```python
+# Generic function
+def f[T](x: T) -> T: ...
+
+reveal_type(f(1))  # Revealed type is 'int'
+
+# Generic class
+class C[T]:
+    def __init__(self, x: T) -> None:
+       self.x = x
+
+c = C('a')
+reveal_type(c.x)  # Revealed type is 'str'
+
+# Type alias
+type A[T] = C[list[T]]
+```
+
+For more information, refer to the [documentation](https://mypy.readthedocs.io/en/latest/generics.html).
+
+These improvements are included:
+
+ * Document Python 3.12 type parameter syntax (Jukka Lehtosalo, PR [17816](https://github.com/python/mypy/pull/17816))
+ * Further documentation updates (Jukka Lehtosalo, PR [17826](https://github.com/python/mypy/pull/17826))
+ * Allow Self return types with contravariance (Jukka Lehtosalo, PR [17786](https://github.com/python/mypy/pull/17786))
+ * Enable new type parameter syntax by default (Jukka Lehtosalo, PR [17798](https://github.com/python/mypy/pull/17798))
+ * Generate error if new-style type alias used as base class (Jukka Lehtosalo, PR [17789](https://github.com/python/mypy/pull/17789))
+ * Inherit variance if base class has explicit variance (Jukka Lehtosalo, PR [17787](https://github.com/python/mypy/pull/17787))
+ * Fix crash on invalid type var reference (Jukka Lehtosalo, PR [17788](https://github.com/python/mypy/pull/17788))
+ * Fix covariance of frozen dataclasses (Jukka Lehtosalo, PR [17783](https://github.com/python/mypy/pull/17783))
+ * Allow covariance with attribute that has "`_`" name prefix (Jukka Lehtosalo, PR [17782](https://github.com/python/mypy/pull/17782))
+ * Support `Annotated[...]` in new-style type aliases (Jukka Lehtosalo, PR [17777](https://github.com/python/mypy/pull/17777))
+ * Fix nested generic classes (Jukka Lehtosalo, PR [17776](https://github.com/python/mypy/pull/17776))
+ * Add detection and error reporting for the use of incorrect expressions within the scope of a type parameter and a type alias (Kirill Podoprigora, PR [17560](https://github.com/python/mypy/pull/17560))
+
+### Basic Support for Python 3.13
+
+This release adds partial support for Python 3.13 features and compiled binaries for
+Python 3.13. Mypyc now also supports Python 3.13.
+
+In particular, these features are supported:
+ * Various new stdlib features and changes (through typeshed stub improvements)
+ * `typing.ReadOnly` (see below for more)
+ * `typing.TypeIs` (added in mypy 1.10, [PEP 742](https://peps.python.org/pep-0742/))
+ * Type parameter defaults when using the legacy syntax ([PEP 696](https://peps.python.org/pep-0696/))
+
+These features are not supported yet:
+ * `warnings.deprecated` ([PEP 702](https://peps.python.org/pep-0702/))
+ * Type parameter defaults when using Python 3.12 type parameter syntax
+
+### Mypyc Support for Python 3.13
+
+Mypyc now supports Python 3.13. This was contributed by Marc Mueller, with additional
+fixes by Jukka Lehtosalo. Free threaded Python 3.13 builds are not supported yet.
+
+List of changes:
+
+ * Add additional includes for Python 3.13 (Marc Mueller, PR [17506](https://github.com/python/mypy/pull/17506))
+ * Add another include for Python 3.13 (Marc Mueller, PR [17509](https://github.com/python/mypy/pull/17509))
+ * Fix ManagedDict functions for Python 3.13 (Marc Mueller, PR [17507](https://github.com/python/mypy/pull/17507))
+ * Update mypyc test output for Python 3.13 (Marc Mueller, PR [17508](https://github.com/python/mypy/pull/17508))
+ * Fix `PyUnicode` functions for Python 3.13 (Marc Mueller, PR [17504](https://github.com/python/mypy/pull/17504))
+ * Fix `_PyObject_LookupAttrId` for Python 3.13 (Marc Mueller, PR [17505](https://github.com/python/mypy/pull/17505))
+ * Fix `_PyList_Extend` for Python 3.13 (Marc Mueller, PR [17503](https://github.com/python/mypy/pull/17503))
+ * Fix `gen_is_coroutine` for Python 3.13 (Marc Mueller, PR [17501](https://github.com/python/mypy/pull/17501))
+ * Fix `_PyObject_FastCall` for Python 3.13 (Marc Mueller, PR [17502](https://github.com/python/mypy/pull/17502))
+ * Avoid uses of `_PyObject_CallMethodOneArg` on 3.13 (Jukka Lehtosalo, PR [17526](https://github.com/python/mypy/pull/17526))
+ * Don't rely on `_PyType_CalculateMetaclass` on 3.13 (Jukka Lehtosalo, PR [17525](https://github.com/python/mypy/pull/17525))
+ * Don't use `_PyUnicode_FastCopyCharacters` on 3.13 (Jukka Lehtosalo, PR [17524](https://github.com/python/mypy/pull/17524))
+ * Don't use `_PyUnicode_EQ` on 3.13, as it's no longer exported (Jukka Lehtosalo, PR [17523](https://github.com/python/mypy/pull/17523))
+
+### Inferring Unions for Conditional Expressions
+
+Mypy now always tries to infer a union type for a conditional expression if left and right
+operand types are different. This results in more precise inferred types and lets mypy detect
+more issues. Example:
+
+```python
+s = "foo" if cond() else 1
+# Type of "s" is now "str | int" (it used to be "object")
+```
+
+Notably, if one of the operands has type `Any`, the type of a conditional expression is
+now `<type> | Any`. Previously the inferred type was just `Any`. The new type essentially
+indicates that the value can be of type `<type>`, and potentially of some (unknown) type.
+Most operations performed on the result must also be valid for `<type>`.
+Example where this is relevant:
+
+```python
+from typing import Any
+
+def func(a: Any, b: bool) -> None:
+    x = a if b else None
+    # Type of x is "Any | None"
+    print(x.y)  # Error: None has no attribute "y"
+```
+
+This feature was contributed by Ivan Levkivskyi (PR [17427](https://github.com/python/mypy/pull/17427)).
+
+### ReadOnly Support for TypedDict (PEP 705)
+
+You can now use `typing.ReadOnly` to specity TypedDict items as
+read-only ([PEP 705](https://peps.python.org/pep-0705/)):
+
+```python
+from typing import TypedDict
+
+# Or "from typing ..." on Python 3.13
+from typing_extensions import ReadOnly
+
+class TD(TypedDict):
+    a: int
+    b: ReadOnly[int]
+
+d: TD = {"a": 1, "b": 2}
+d["a"] = 3  # OK
+d["b"] = 5  # Error: "b" is ReadOnly
+```
+
+This feature was contributed by Nikita Sobolev (PR [17644](https://github.com/python/mypy/pull/17644)).
+
+### Python 3.8 End of Life Approaching
+
+We are planning to drop support for Python 3.8 in the next mypy feature release or the
+one after that. Python 3.8 reaches end of life in October 2024.
+
+### Planned Changes to Defaults
+
+We are planning to enable `--local-partial-types` by default in mypy 2.0. This will
+often require at least minor code changes. This option is implicitly enabled by mypy
+daemon, so this makes the behavior of daemon and non-daemon modes consistent.
+
+We recommend that mypy users start using local partial types soon (or to explicitly disable
+them) to prepare for the change.
+
+This can also be configured in a mypy configuration file:
+
+```
+local_partial_types = True
+```
+
+For more information, refer to the
+[documentation](https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-local-partial-types).
+
+### Documentation Updates
+
+Mypy documentation now uses modern syntax variants and imports in many examples. Some
+examples no longer work on Python 3.8, which is the earliest Python version that mypy supports.
+
+Notably, `Iterable` and other protocols/ABCs are imported from `collections.abc` instead of
+`typing`:
+```python
+from collections.abc import Iterable, Callable
+```
+
+Examples also avoid the upper-case aliases to built-in types: `list[str]` is used instead
+of `List[str]`. The `X | Y` union type syntax introduced in Python 3.10 is also now prevalent.
+
+List of documentation updates:
+
+ * Document `--output=json` CLI option (Edgar Ramírez Mondragón, PR [17611](https://github.com/python/mypy/pull/17611))
+ * Update various references to deprecated type aliases in docs (Jukka Lehtosalo, PR [17829](https://github.com/python/mypy/pull/17829))
+ * Make "X | Y" union syntax more prominent in documentation (Jukka Lehtosalo, PR [17835](https://github.com/python/mypy/pull/17835))
+ * Discuss upper bounds before self types in documentation (Jukka Lehtosalo, PR [17827](https://github.com/python/mypy/pull/17827))
+ * Make changelog visible in mypy documentation (quinn-sasha, PR [17742](https://github.com/python/mypy/pull/17742))
+ * List all incomplete features in `--enable-incomplete-feature` docs (sobolevn, PR [17633](https://github.com/python/mypy/pull/17633))
+ * Remove the explicit setting of a pygments theme (Pradyun Gedam, PR [17571](https://github.com/python/mypy/pull/17571))
+ * Document ReadOnly with TypedDict (Jukka Lehtosalo, PR [17905](https://github.com/python/mypy/pull/17905))
+ * Document TypeIs (Chelsea Durazo, PR [17821](https://github.com/python/mypy/pull/17821))
+
+### Experimental Inline TypedDict Syntax
+
+Mypy now supports a non-standard, experimental syntax for defining anonymous TypedDicts.
+Example:
+
+```python
+def func(n: str, y: int) -> {"name": str, "year": int}:
+    return {"name": n, "year": y}
+```
+
+The feature is disabled by default. Use `--enable-incomplete-feature=InlineTypedDict` to
+enable it. *We might remove this feature in a future release.*
+
+This feature was contributed by Ivan Levkivskyi (PR [17457](https://github.com/python/mypy/pull/17457)).
+
+### Stubgen Improvements
+
+ * Fix crash on literal class-level keywords (sobolevn, PR [17663](https://github.com/python/mypy/pull/17663))
+ * Stubgen add `--version` (sobolevn, PR [17662](https://github.com/python/mypy/pull/17662))
+ * Fix `stubgen --no-analysis/--parse-only` docs (sobolevn, PR [17632](https://github.com/python/mypy/pull/17632))
+ * Include keyword only args when generating signatures in stubgenc (Eric Mark Martin, PR [17448](https://github.com/python/mypy/pull/17448))
+ * Add support for detecting `Literal` types when extracting types from docstrings (Michael Carlstrom, PR [17441](https://github.com/python/mypy/pull/17441))
+ * Use `Generator` type var defaults (Sebastian Rittau, PR [17670](https://github.com/python/mypy/pull/17670))
+
+### Stubtest Improvements
+ * Add support for `cached_property` (Ali Hamdan, PR [17626](https://github.com/python/mypy/pull/17626))
+ * Add `enable_incomplete_feature` validation to `stubtest` (sobolevn, PR [17635](https://github.com/python/mypy/pull/17635))
+ * Fix error code handling in `stubtest` with `--mypy-config-file` (sobolevn, PR [17629](https://github.com/python/mypy/pull/17629))
+
+### Other Notables Fixes and Improvements
+
+ * Report error if using unsupported type parameter defaults (Jukka Lehtosalo, PR [17876](https://github.com/python/mypy/pull/17876))
+ * Fix re-processing cross-reference in mypy daemon when node kind changes (Ivan Levkivskyi, PR [17883](https://github.com/python/mypy/pull/17883))
+ * Don't use equality to narrow when value is IntEnum/StrEnum (Jukka Lehtosalo, PR [17866](https://github.com/python/mypy/pull/17866))
+ * Don't consider None vs IntEnum comparison ambiguous (Jukka Lehtosalo, PR [17877](https://github.com/python/mypy/pull/17877))
+ * Fix narrowing of IntEnum and StrEnum types (Jukka Lehtosalo, PR [17874](https://github.com/python/mypy/pull/17874))
+ * Filter overload items based on self type during type inference (Jukka Lehtosalo, PR [17873](https://github.com/python/mypy/pull/17873))
+ * Enable negative narrowing of union TypeVar upper bounds (Brian Schubert, PR [17850](https://github.com/python/mypy/pull/17850))
+ * Fix issue with member expression formatting (Brian Schubert, PR [17848](https://github.com/python/mypy/pull/17848))
+ * Avoid type size explosion when expanding types (Jukka Lehtosalo, PR [17842](https://github.com/python/mypy/pull/17842))
+ * Fix negative narrowing of tuples in match statement (Brian Schubert, PR [17817](https://github.com/python/mypy/pull/17817))
+ * Narrow falsey str/bytes/int to literal type (Brian Schubert, PR [17818](https://github.com/python/mypy/pull/17818))
+ * Test against latest Python 3.13, make testing 3.14 easy (Shantanu, PR [17812](https://github.com/python/mypy/pull/17812))
+ * Reject ParamSpec-typed callables calls with insufficient arguments (Stanislav Terliakov, PR [17323](https://github.com/python/mypy/pull/17323))
+ * Fix crash when passing too many type arguments to generic base class accepting single ParamSpec (Brian Schubert, PR [17770](https://github.com/python/mypy/pull/17770))
+ * Fix TypeVar upper bounds sometimes not being displayed in pretty callables (Brian Schubert, PR [17802](https://github.com/python/mypy/pull/17802))
+ * Added error code for overlapping function signatures (Katrina Connors, PR [17597](https://github.com/python/mypy/pull/17597))
+ * Check for `truthy-bool` in `not ...` unary expressions (sobolevn, PR [17773](https://github.com/python/mypy/pull/17773))
+ * Add missing lines-covered and lines-valid attributes (Soubhik Kumar Mitra, PR [17738](https://github.com/python/mypy/pull/17738))
+ * Fix another crash scenario with recursive tuple types (Ivan Levkivskyi, PR [17708](https://github.com/python/mypy/pull/17708))
+ * Resolve TypeVar upper bounds in `functools.partial` (Shantanu, PR [17660](https://github.com/python/mypy/pull/17660))
+ * Always reset binder when checking deferred nodes (Ivan Levkivskyi, PR [17643](https://github.com/python/mypy/pull/17643))
+ * Fix crash on a callable attribute with single unpack (Ivan Levkivskyi, PR [17641](https://github.com/python/mypy/pull/17641))
+ * Fix mismatched signature between checker plugin API and implementation (bzoracler, PR [17343](https://github.com/python/mypy/pull/17343))
+ * Indexing a type also produces a GenericAlias (Shantanu, PR [17546](https://github.com/python/mypy/pull/17546))
+ * Fix crash on self-type in callable protocol (Ivan Levkivskyi, PR [17499](https://github.com/python/mypy/pull/17499))
+ * Fix crash on NamedTuple with method and error in function (Ivan Levkivskyi, PR [17498](https://github.com/python/mypy/pull/17498))
+ * Add `__replace__` for dataclasses in 3.13 (Max Muoto, PR [17469](https://github.com/python/mypy/pull/17469))
+ * Fix help message for `--no-namespace-packages` (Raphael Krupinski, PR [17472](https://github.com/python/mypy/pull/17472))
+ * Fix typechecking for async generators (Danny Yang, PR [17452](https://github.com/python/mypy/pull/17452))
+ * Fix strict optional handling in attrs plugin (Ivan Levkivskyi, PR [17451](https://github.com/python/mypy/pull/17451))
+ * Allow mixing ParamSpec and TypeVarTuple in Generic (Ivan Levkivskyi, PR [17450](https://github.com/python/mypy/pull/17450))
+ * Improvements to `functools.partial` of types (Shantanu, PR [17898](https://github.com/python/mypy/pull/17898))
+ * Make ReadOnly TypedDict items covariant (Jukka Lehtosalo, PR [17904](https://github.com/python/mypy/pull/17904))
+ * Fix union callees with `functools.partial` (Jukka Lehtosalo, PR [17903](https://github.com/python/mypy/pull/17903))
+ * Improve handling of generic functions with `functools.partial` (Ivan Levkivskyi, PR [17925](https://github.com/python/mypy/pull/17925))
+
+### Typeshed Updates
+
+Please see [git log](https://github.com/python/typeshed/commits/main?after=91a58b07cdd807b1d965e04ba85af2adab8bf924+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
+
+### Mypy 1.12.1
+ * Fix crash when showing partially analyzed type in error message (Ivan Levkivskyi, PR [17961](https://github.com/python/mypy/pull/17961))
+ * Fix iteration over union (when self type is involved) (Shantanu, PR [17976](https://github.com/python/mypy/pull/17976))
+ * Fix type object with type var default in union context (Jukka Lehtosalo, PR [17991](https://github.com/python/mypy/pull/17991))
+ * Revert change to `os.path` stubs affecting use of `os.PathLike[Any]` (Shantanu, PR [17995](https://github.com/python/mypy/pull/17995))
+
+### Acknowledgements
+Thanks to all mypy contributors who contributed to this release:
+
+- Ali Hamdan
+- Anders Kaseorg
+- Bénédikt Tran
+- Brian Schubert
+- bzoracler
+- Chelsea Durazo
+- Danny Yang
+- Edgar Ramírez Mondragón
+- Eric Mark Martin
+- InSync
+- Ivan Levkivskyi
+- Jordandev678
+- Katrina Connors
+- Kirill Podoprigora
+- Marc Mueller
+- Max Muoto
+- Max Murin
+- Michael Carlstrom
+- Michael I Chen
+- Pradyun Gedam
+- quinn-sasha
+- Raphael Krupinski
+- Sebastian Rittau
+- Shantanu
+- sobolevn
+- Soubhik Kumar Mitra
+- Stanislav Terliakov
+- wyattscarpenter
+
+I’d also like to thank my employer, Dropbox, for supporting mypy development.
+
 
 ## Mypy 1.11
 
@@ -119,7 +803,7 @@ This feature was contributed by Jukka Lehtosalo (PR [17404](https://github.com/p
 
 ### Mypyc Improvements
 
-Mypyc now supports the new syntax for generics introduced in Python 3.12 (see above). Another notable improvement is signficantly faster basic operations on `int` values.
+Mypyc now supports the new syntax for generics introduced in Python 3.12 (see above). Another notable improvement is significantly faster basic operations on `int` values.
 
  * Support Python 3.12 syntax for generic functions and classes (Jukka Lehtosalo, PR [17357](https://github.com/python/mypy/pull/17357))
  * Support Python 3.12 type alias syntax (Jukka Lehtosalo, PR [17384](https://github.com/python/mypy/pull/17384))
@@ -210,6 +894,15 @@ Mypyc now supports the new syntax for generics introduced in Python 3.12 (see ab
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=6dda799d8ad1d89e0f8aad7ac41d2d34bd838ace+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
+### Mypy 1.11.1
+ * Fix `RawExpressionType.accept` crash with `--cache-fine-grained` (Anders Kaseorg, PR [17588](https://github.com/python/mypy/pull/17588))
+ * Fix PEP 604 isinstance caching (Shantanu, PR [17563](https://github.com/python/mypy/pull/17563))
+ * Fix `typing.TypeAliasType` being undefined on python < 3.12 (Nikita Sobolev, PR [17558](https://github.com/python/mypy/pull/17558))
+ * Fix `types.GenericAlias` lookup crash (Shantanu, PR [17543](https://github.com/python/mypy/pull/17543))
+
+### Mypy 1.11.2
+ * Alternative fix for a union-like literal string (Ivan Levkivskyi, PR [17639](https://github.com/python/mypy/pull/17639))
+ * Unwrap `TypedDict` item types before storing (Ivan Levkivskyi, PR [17640](https://github.com/python/mypy/pull/17640))
 
 ### Acknowledgements
 Thanks to all mypy contributors who contributed to this release:

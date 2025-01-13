@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, Iterable, List, Sequence
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, Final
 
 import mypy.subtypes
 import mypy.typeops
@@ -626,7 +627,7 @@ class CompleteTypeVisitor(TypeQuery[bool]):
         return False
 
 
-class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
+class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
     """Visitor class for inferring type constraints."""
 
     # The type that is compared against a template
@@ -1029,18 +1030,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             if template.type_guard is not None and cactual.type_guard is not None:
                 template_ret_type = template.type_guard
                 cactual_ret_type = cactual.type_guard
-            elif template.type_guard is not None:
-                template_ret_type = AnyType(TypeOfAny.special_form)
-            elif cactual.type_guard is not None:
-                cactual_ret_type = AnyType(TypeOfAny.special_form)
 
             if template.type_is is not None and cactual.type_is is not None:
                 template_ret_type = template.type_is
                 cactual_ret_type = cactual.type_is
-            elif template.type_is is not None:
-                template_ret_type = AnyType(TypeOfAny.special_form)
-            elif cactual.type_is is not None:
-                cactual_ret_type = AnyType(TypeOfAny.special_form)
 
             res.extend(infer_constraints(template_ret_type, cactual_ret_type, self.direction))
 
