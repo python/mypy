@@ -189,7 +189,7 @@ def ast3_parse(
         )
         for t, s, *_ in tokens
     )
-    return p() # `source` has changed, so this result is different than the first call.
+    return p()  # `source` has changed, so this result is different than the first call.
 
 
 NamedExpr = ast3.NamedExpr
