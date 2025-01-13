@@ -973,8 +973,10 @@ def write_deps_cache(
         if st.source_hash:
             hash = st.source_hash
         else:
-            assert st.meta, "Module must be either parsed or cached"
-            hash = st.meta.hash
+            if st.meta:
+                hash = st.meta.hash
+            else:
+                hash = ""
         meta_snapshot[id] = hash
 
     meta = {"snapshot": meta_snapshot, "deps_meta": fg_deps_meta}
