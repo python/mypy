@@ -11,7 +11,6 @@ from mypyc.ir.rtypes import (
     RTuple,
     RUnion,
     bool_rprimitive,
-    dict_rprimitive,
     int_rprimitive,
     list_rprimitive,
     none_rprimitive,
@@ -117,14 +116,6 @@ CPyStatics[1]; /* [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
     def test_emit_inc_ref_optional(self) -> None:
         optional = RUnion([self.instance_a, none_rprimitive])
         self.emitter.emit_inc_ref("o", optional)
-        if HAVE_IMMORTAL:
-            self.assert_output("if (o != Py_None) {\n    CPy_INCREF_NO_IMM(o);\n}\n")
-        else:
-            self.assert_output("CPy_INCREF(o);\n")
-
-    def test_emit_inc_ref_optional_2(self) -> None:
-        optional = RUnion([dict_rprimitive, none_rprimitive])
-        self.emitter.emit_inc_ref("o", optional)
         self.assert_output("CPy_INCREF(o);\n")
 
     def test_emit_dec_ref_object(self) -> None:
@@ -171,14 +162,6 @@ CPyStatics[1]; /* [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
 
     def test_emit_dec_ref_optional(self) -> None:
         optional = RUnion([self.instance_a, none_rprimitive])
-        self.emitter.emit_dec_ref("o", optional)
-        if HAVE_IMMORTAL:
-            self.assert_output("if (o != Py_None) {\n    CPy_DECREF_NO_IMM(o);\n}\n")
-        else:
-            self.assert_output("CPy_DECREF(o);\n")
-
-    def test_emit_dec_ref_optional_2(self) -> None:
-        optional = RUnion([dict_rprimitive, none_rprimitive])
         self.emitter.emit_dec_ref("o", optional)
         self.assert_output("CPy_DECREF(o);\n")
 
