@@ -514,7 +514,18 @@ class Emitter:
         elif not rtype.is_unboxed:
             # Always inline, since this is a simple but very hot op
             if rtype.may_be_immortal or not HAVE_IMMORTAL:
-                self.emit_line("CPy_INCREF(%s);" % dest)
+                if (
+                    HAVE_IMMORTAL
+                    and (opt := optional_value_type(rtype))
+                    and not opt.may_be_immortal
+                ):
+                    # Optimized incref of optional type avoids reading reference count
+                    # if value is None (None is immortal)
+                    self.emit_line(f"if ({dest} != Py_None) {{")
+                    self.emit_line(f"CPy_INCREF_NO_IMM({dest});")
+                    self.emit_line("}")
+                else:
+                    self.emit_line("CPy_INCREF(%s);" % dest)
             else:
                 self.emit_line("CPy_INCREF_NO_IMM(%s);" % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
