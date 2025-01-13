@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import DefaultDict, Iterator, List, Optional, Tuple, Union, cast
+from typing import NamedTuple, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
@@ -12,17 +13,27 @@ from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, Typ
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.types import (
     AnyType,
+    Instance,
     NoneType,
     PartialType,
+    ProperType,
+    TupleType,
     Type,
     TypeOfAny,
     TypeType,
     UnionType,
+    UnpackType,
+    find_unpack_in_list,
     get_proper_type,
 )
 from mypy.typevars import fill_typevars_with_any
 
 BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, NameExpr]
+
+
+class CurrentType(NamedTuple):
+    type: Type
+    from_assignment: bool
 
 
 class Frame:
@@ -39,7 +50,7 @@ class Frame:
 
     def __init__(self, id: int, conditional_frame: bool = False) -> None:
         self.id = id
-        self.types: dict[Key, Type] = {}
+        self.types: dict[Key, CurrentType] = {}
         self.unreachable = False
         self.conditional_frame = conditional_frame
         self.suppress_unreachable_warnings = False
@@ -48,7 +59,7 @@ class Frame:
         return f"Frame({self.id}, {self.types}, {self.unreachable}, {self.conditional_frame})"
 
 
-Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
+Assigns = defaultdict[Expression, list[tuple[Type, Optional[Type]]]]
 
 
 class ConditionalTypeBinder:
@@ -127,10 +138,10 @@ class ConditionalTypeBinder:
         self.options_on_return.append([])
         return f
 
-    def _put(self, key: Key, type: Type, index: int = -1) -> None:
-        self.frames[index].types[key] = type
+    def _put(self, key: Key, type: Type, from_assignment: bool, index: int = -1) -> None:
+        self.frames[index].types[key] = CurrentType(type, from_assignment)
 
-    def _get(self, key: Key, index: int = -1) -> Type | None:
+    def _get(self, key: Key, index: int = -1) -> CurrentType | None:
         if index < 0:
             index += len(self.frames)
         for i in range(index, -1, -1):
@@ -138,7 +149,7 @@ class ConditionalTypeBinder:
                 return self.frames[i].types[key]
         return None
 
-    def put(self, expr: Expression, typ: Type) -> None:
+    def put(self, expr: Expression, typ: Type, *, from_assignment: bool = True) -> None:
         if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not literal(expr):
@@ -148,7 +159,7 @@ class ConditionalTypeBinder:
         if key not in self.declarations:
             self.declarations[key] = get_declaration(expr)
             self._add_dependencies(key)
-        self._put(key, typ)
+        self._put(key, typ, from_assignment)
 
     def unreachable(self) -> None:
         self.frames[-1].unreachable = True
@@ -159,7 +170,10 @@ class ConditionalTypeBinder:
     def get(self, expr: Expression) -> Type | None:
         key = literal_hash(expr)
         assert key is not None, "Internal error: binder tried to get non-literal"
-        return self._get(key)
+        found = self._get(key)
+        if found is None:
+            return None
+        return found.type
 
     def is_unreachable(self) -> bool:
         # TODO: Copy the value of unreachable into new frames to avoid
@@ -188,7 +202,7 @@ class ConditionalTypeBinder:
         If a key is declared as AnyType, only update it if all the
         options are the same.
         """
-
+        all_reachable = all(not f.unreachable for f in frames)
         frames = [f for f in frames if not f.unreachable]
         changed = False
         keys = {key for f in frames for key in f.types}
@@ -202,19 +216,50 @@ class ConditionalTypeBinder:
                 # know anything about key in at least one possible frame.
                 continue
 
-            type = resulting_values[0]
-            assert type is not None
+            if all_reachable and all(
+                x is not None and not x.from_assignment for x in resulting_values
+            ):
+                # Do not synthesize a new type if we encountered a conditional block
+                # (if, while or match-case) without assignments.
+                # See check-isinstance.test::testNoneCheckDoesNotMakeTypeVarOptional
+                # This is a safe assumption: the fact that we checked something with `is`
+                # or `isinstance` does not change the type of the value.
+                continue
+
+            current_type = resulting_values[0]
+            assert current_type is not None
+            type = current_type.type
             declaration_type = get_proper_type(self.declarations.get(key))
             if isinstance(declaration_type, AnyType):
                 # At this point resulting values can't contain None, see continue above
-                if not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:]):
+                if not all(
+                    t is not None and is_same_type(type, t.type) for t in resulting_values[1:]
+                ):
                     type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
                 for other in resulting_values[1:]:
                     assert other is not None
-                    type = join_simple(self.declarations[key], type, other)
-            if current_value is None or not is_same_type(type, current_value):
-                self._put(key, type)
+                    type = join_simple(self.declarations[key], type, other.type)
+                    # Try simplifying resulting type for unions involving variadic tuples.
+                    # Technically, everything is still valid without this step, but if we do
+                    # not do this, this may create long unions after exiting an if check like:
+                    #     x: tuple[int, ...]
+                    #     if len(x) < 10:
+                    #         ...
+                    # We want the type of x to be tuple[int, ...] after this block (if it is
+                    # still equivalent to such type).
+                    if isinstance(type, UnionType):
+                        type = collapse_variadic_union(type)
+                    if isinstance(type, ProperType) and isinstance(type, UnionType):
+                        # Simplify away any extra Any's that were added to the declared
+                        # type when popping a frame.
+                        simplified = UnionType.make_union(
+                            [t for t in type.items if not isinstance(get_proper_type(t), AnyType)]
+                        )
+                        if simplified == self.declarations[key]:
+                            type = simplified
+            if current_value is None or not is_same_type(type, current_value[0]):
+                self._put(key, type, from_assignment=True)
                 changed = True
 
         self.frames[-1].unreachable = not frames
@@ -268,7 +313,7 @@ class ConditionalTypeBinder:
             self.type_assignments[expr].append((type, declared_type))
             return
         if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
-            return None
+            return
         if not literal(expr):
             return
         self.invalidate_dependencies(expr)
@@ -351,7 +396,9 @@ class ConditionalTypeBinder:
         key = literal_hash(expr)
         assert key is not None
         enclosers = [get_declaration(expr)] + [
-            f.types[key] for f in self.frames if key in f.types and is_subtype(type, f.types[key])
+            f.types[key].type
+            for f in self.frames
+            if key in f.types and is_subtype(type, f.types[key][0])
         ]
         return enclosers[-1]
 
@@ -453,3 +500,63 @@ def get_declaration(expr: BindableExpression) -> Type | None:
         elif isinstance(expr.node, TypeInfo):
             return TypeType(fill_typevars_with_any(expr.node))
     return None
+
+
+def collapse_variadic_union(typ: UnionType) -> Type:
+    """Simplify a union involving variadic tuple if possible.
+
+    This will collapse a type like e.g.
+        tuple[X, Z] | tuple[X, Y, Z] | tuple[X, Y, Y, *tuple[Y, ...], Z]
+    back to
+        tuple[X, *tuple[Y, ...], Z]
+    which is equivalent, but much simpler form of the same type.
+    """
+    tuple_items = []
+    other_items = []
+    for t in typ.items:
+        p_t = get_proper_type(t)
+        if isinstance(p_t, TupleType):
+            tuple_items.append(p_t)
+        else:
+            other_items.append(t)
+    if len(tuple_items) <= 1:
+        # This type cannot be simplified further.
+        return typ
+    tuple_items = sorted(tuple_items, key=lambda t: len(t.items))
+    first = tuple_items[0]
+    last = tuple_items[-1]
+    unpack_index = find_unpack_in_list(last.items)
+    if unpack_index is None:
+        return typ
+    unpack = last.items[unpack_index]
+    assert isinstance(unpack, UnpackType)
+    unpacked = get_proper_type(unpack.type)
+    if not isinstance(unpacked, Instance):
+        return typ
+    assert unpacked.type.fullname == "builtins.tuple"
+    suffix = last.items[unpack_index + 1 :]
+
+    # Check that first item matches the expected pattern and infer prefix.
+    if len(first.items) < len(suffix):
+        return typ
+    if suffix and first.items[-len(suffix) :] != suffix:
+        return typ
+    if suffix:
+        prefix = first.items[: -len(suffix)]
+    else:
+        prefix = first.items
+
+    # Check that all middle types match the expected pattern as well.
+    arg = unpacked.args[0]
+    for i, it in enumerate(tuple_items[1:-1]):
+        if it.items != prefix + [arg] * (i + 1) + suffix:
+            return typ
+
+    # Check the last item (the one with unpack), and choose an appropriate simplified type.
+    if last.items != prefix + [arg] * (len(typ.items) - 1) + [unpack] + suffix:
+        return typ
+    if len(first.items) == 0:
+        simplified: Type = unpacked.copy_modified()
+    else:
+        simplified = TupleType(prefix + [unpack] + suffix, fallback=last.partial_fallback)
+    return UnionType.make_union([simplified] + other_items)

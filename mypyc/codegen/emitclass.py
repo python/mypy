@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Callable, Mapping, Tuple
+from collections.abc import Mapping
+from typing import Callable
 
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
 from mypyc.codegen.emitfunc import native_function_header
@@ -39,7 +40,7 @@ def wrapper_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 # and return the function name to stick in the slot.
 # TODO: Add remaining dunder methods
 SlotGenerator = Callable[[ClassIR, FuncIR, Emitter], str]
-SlotTable = Mapping[str, Tuple[str, SlotGenerator]]
+SlotTable = Mapping[str, tuple[str, SlotGenerator]]
 
 SLOT_DEFS: SlotTable = {
     "__init__": ("tp_init", lambda c, t, e: generate_init_for_class(c, t, e)),
@@ -213,11 +214,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
 
-    fields: dict[str, str] = {}
-    fields["tp_name"] = f'"{name}"'
+    fields: dict[str, str] = {"tp_name": f'"{name}"'}
 
     generate_full = not cl.is_trait and not cl.builtin_base
-    needs_getseters = cl.needs_getseters or not cl.is_generated
+    needs_getseters = cl.needs_getseters or not cl.is_generated or cl.has_dict
 
     if not cl.builtin_base:
         fields["tp_new"] = new_name
@@ -571,6 +571,7 @@ def generate_setup_for_class(
         emitter.emit_line("}")
     else:
         emitter.emit_line(f"self->vtable = {vtable_name};")
+
     for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
         field = emitter.bitmap_field(i)
         emitter.emit_line(f"self->{field} = 0;")
@@ -734,7 +735,7 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_visit(f"self->{emitter.attr(attr)}", rtype)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("_PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
+        emitter.emit_line("PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -757,7 +758,7 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
     if has_managed_dict(cl, emitter):
-        emitter.emit_line("_PyObject_ClearManagedDict((PyObject *)self);")
+        emitter.emit_line("PyObject_ClearManagedDict((PyObject *)self);")
     elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
@@ -885,6 +886,9 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
             emitter.emit_line("NULL, NULL},")
         else:
             emitter.emit_line("NULL, NULL, NULL},")
+
+    if cl.has_dict:
+        emitter.emit_line('{"__dict__", PyObject_GenericGetDict, PyObject_GenericSetDict},')
 
     emitter.emit_line("{NULL}  /* Sentinel */")
     emitter.emit_line("};")

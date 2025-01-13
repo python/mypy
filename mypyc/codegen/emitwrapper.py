@@ -12,7 +12,7 @@ or methods in a single compilation unit.
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
@@ -145,7 +145,7 @@ def generate_wrapper_function(
     real_args = list(fn.args)
     if fn.sig.num_bitmap_args:
         real_args = real_args[: -fn.sig.num_bitmap_args]
-    if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
+    if fn.class_name and fn.decl.kind != FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line(f"PyObject *obj_{arg.name} = self;")
 
@@ -238,7 +238,7 @@ def generate_legacy_wrapper_function(
     real_args = list(fn.args)
     if fn.sig.num_bitmap_args:
         real_args = real_args[: -fn.sig.num_bitmap_args]
-    if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
+    if fn.class_name and fn.decl.kind != FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line(f"PyObject *obj_{arg.name} = self;")
 

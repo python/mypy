@@ -1,5 +1,5 @@
 import sys
-from _typeshed import BytesPath, StrPath
+from _typeshed import BytesPath, StrOrBytesPath, StrPath
 from genericpath import (
     commonprefix as commonprefix,
     exists as exists,
@@ -45,6 +45,11 @@ from posixpath import (
 from typing import AnyStr, overload
 from typing_extensions import LiteralString
 
+if sys.version_info >= (3, 12):
+    from posixpath import isjunction as isjunction, splitroot as splitroot
+if sys.version_info >= (3, 13):
+    from genericpath import isdevdrive as isdevdrive
+
 __all__ = [
     "normcase",
     "isabs",
@@ -85,6 +90,10 @@ __all__ = [
     "samestat",
     "commonpath",
 ]
+if sys.version_info >= (3, 12):
+    __all__ += ["isjunction", "splitroot"]
+if sys.version_info >= (3, 13):
+    __all__ += ["isdevdrive", "isreserved"]
 
 altsep: LiteralString
 
@@ -92,11 +101,11 @@ altsep: LiteralString
 # but must be defined as pos-only in the stub or cross-platform code doesn't type-check,
 # as the parameter name is different in posixpath.join()
 @overload
-def join(__path: LiteralString, *paths: LiteralString) -> LiteralString: ...
+def join(path: LiteralString, /, *paths: LiteralString) -> LiteralString: ...
 @overload
-def join(__path: StrPath, *paths: StrPath) -> str: ...
+def join(path: StrPath, /, *paths: StrPath) -> str: ...
 @overload
-def join(__path: BytesPath, *paths: BytesPath) -> bytes: ...
+def join(path: BytesPath, /, *paths: BytesPath) -> bytes: ...
 
 if sys.platform == "win32":
     if sys.version_info >= (3, 10):
@@ -112,3 +121,6 @@ if sys.platform == "win32":
 
 else:
     realpath = abspath
+
+if sys.version_info >= (3, 13):
+    def isreserved(path: StrOrBytesPath) -> bool: ...

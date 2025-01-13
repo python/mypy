@@ -186,7 +186,7 @@ L3:
     r14 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
-    r15 = CPy_NoErrOccured()
+    r15 = CPy_NoErrOccurred()
 L5:
     return d
 
@@ -295,7 +295,7 @@ L5:
     r13 = CPyDict_CheckSize(d1, r2)
     goto L1
 L6:
-    r14 = CPy_NoErrOccured()
+    r14 = CPy_NoErrOccurred()
 L7:
     r15 = 0
     r16 = PyDict_Size(d2)
@@ -325,7 +325,7 @@ L10:
     r33 = CPyDict_CheckSize(d2, r17)
     goto L8
 L11:
-    r34 = CPy_NoErrOccured()
+    r34 = CPy_NoErrOccurred()
 L12:
     return 1
 def union_of_dicts(d):
@@ -377,7 +377,7 @@ L3:
     r18 = CPyDict_CheckSize(d, r3)
     goto L1
 L4:
-    r19 = CPy_NoErrOccured()
+    r19 = CPy_NoErrOccurred()
 L5:
     return 1
 def typeddict(d):
@@ -436,7 +436,7 @@ L8:
     r17 = CPyDict_CheckSize(d, r2)
     goto L1
 L9:
-    r18 = CPy_NoErrOccured()
+    r18 = CPy_NoErrOccurred()
 L10:
     return 1
 
@@ -537,8 +537,8 @@ def f3(d, flag):
     r2 :: str
     r3 :: list
     r4 :: object
-    r5, r6 :: ptr
-    r7, r8 :: object
+    r5 :: ptr
+    r6, r7 :: object
 L0:
     if flag goto L1 else goto L2 :: bool
 L1:
@@ -549,15 +549,14 @@ L2:
     r2 = 'a'
     r3 = PyList_New(1)
     r4 = object 1
-    r5 = get_element_ptr r3 ob_item :: PyListObject
-    r6 = load_mem r5 :: ptr*
-    set_mem r6, r4 :: builtins.object*
+    r5 = list_items r3
+    buf_init_item r5, 0, r4
     keep_alive r3
-    r7 = CPyDict_SetDefault(d, r2, r3)
-    return r7
+    r6 = CPyDict_SetDefault(d, r2, r3)
+    return r6
 L3:
-    r8 = box(None, 1)
-    return r8
+    r7 = box(None, 1)
+    return r7
 def f4(d, flag):
     d :: dict
     flag :: bool

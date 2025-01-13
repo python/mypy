@@ -27,7 +27,7 @@ will be incomplete.
 from __future__ import annotations
 
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Callable, Final, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Final, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     from mypy.build import Graph, State
 
 
-Patches: _TypeAlias = List[Tuple[int, Callable[[], None]]]
+Patches: _TypeAlias = list[tuple[int, Callable[[], None]]]
 
 
 # If we perform this many iterations, raise an exception since we are likely stuck.
@@ -291,6 +291,8 @@ def process_top_level_function(
         deferred, incomplete, progress = semantic_analyze_target(
             target, module, state, node, active_type, final_iteration, patches
         )
+        if not incomplete:
+            state.manager.incomplete_namespaces.discard(module)
         if final_iteration:
             assert not deferred, "Must not defer during final iteration"
         if not progress:
@@ -302,7 +304,7 @@ def process_top_level_function(
     analyzer.saved_locals.clear()
 
 
-TargetInfo: _TypeAlias = Tuple[
+TargetInfo: _TypeAlias = tuple[
     str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
 ]
 
@@ -380,7 +382,7 @@ def check_type_arguments(graph: Graph, scc: list[str], errors: Errors) -> None:
         analyzer = TypeArgumentAnalyzer(
             errors,
             state.options,
-            is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+            state.tree.is_typeshed_file(state.options),
             state.manager.semantic_analyzer.named_type,
         )
         with state.wrap_context():

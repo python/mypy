@@ -11,7 +11,7 @@
 cast = 0
 assert_type = 0
 overload = 0
-Any = 0
+Any = object()
 Union = 0
 Optional = 0
 TypeVar = 0
@@ -48,6 +48,7 @@ class Generator(Iterator[T], Generic[T, U, V]):
 
 class Sequence(Iterable[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass
+    def __len__(self) -> int: pass
 
 # Mapping type is oversimplified intentionally.
 class Mapping(Iterable[T], Generic[T, T_co]):
@@ -62,3 +63,5 @@ class Coroutine(Awaitable[V], Generic[T, U, V]): pass
 def final(meth: T) -> T: pass
 
 def reveal_type(__obj: T) -> T: pass
+
+class _SpecialForm: pass

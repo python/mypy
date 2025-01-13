@@ -566,6 +566,7 @@ A = Enum('A', 'x')
 B = Enum('B', 'y')
 C = IntEnum('C', 'x')
 D = IntEnum('D', 'x y')
+[builtins fixtures/enum.pyi]
 [out]
 __main__.B.x
 __main__.B.y
@@ -605,6 +606,7 @@ class D(Enum):
     Y = 'b'
 class F(Enum):
     X = 0
+[builtins fixtures/enum.pyi]
 [out]
 __main__.B.Y
 __main__.B.Z
@@ -1497,3 +1499,134 @@ class C:
     def meth(self) -> int: return 0
 [out]
 __main__.C.meth
+
+[case testGenericFunctionWithOptionalReturnType]
+from typing import Type, TypeVar
+
+T = TypeVar("T")
+
+class C:
+    @classmethod
+    def get_by_team_and_id(
+        cls: Type[T],
+        raw_member_id: int,
+        include_removed: bool = False,
+    ) -> T:
+        pass
+
+[file next.py]
+from typing import Type, TypeVar, Optional
+
+T = TypeVar("T")
+
+class C:
+    @classmethod
+    def get_by_team_and_id(
+        cls: Type[T],
+        raw_member_id: int,
+        include_removed: bool = False,
+    ) -> Optional[T]:
+        pass
+
+[builtins fixtures/classmethod.pyi]
+[out]
+__main__.C.get_by_team_and_id
+__main__.Optional
+
+[case testPEP695TypeAlias]
+# flags: --python-version=3.12
+from typing_extensions import TypeAlias, TypeAliasType
+type A = int
+type B = str
+type C = int
+D = int
+E: TypeAlias = int
+F = TypeAliasType("F", int)
+G = TypeAliasType("G", int)
+type H = int
+
+[file next.py]
+# flags: --python-version=3.12
+from typing_extensions import TypeAlias, TypeAliasType
+type A = str
+type B = str
+type C[T] = int
+type D = int
+type E = int
+type F = int
+type G = str
+type H[T] = int
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+__main__.A
+__main__.C
+__main__.D
+__main__.G
+__main__.H
+
+[case testPEP695TypeAlias2]
+# flags: --python-version=3.12
+type A[T: int] = list[T]
+type B[T: int] = list[T]
+type C[T: (int, str)] = list[T]
+type D[T: (int, str)] = list[T]
+type E[T: int] = list[T]
+type F[T: (int, str)] = list[T]
+
+[file next.py]
+# flags: --python-version=3.12
+type A[T] = list[T]
+type B[T: str] = list[T]
+type C[T: (int, None)] = list[T]
+type D[T] = list[T]
+type E[T: int] = list[T]
+type F[T: (int, str)] = list[T]
+
+[out]
+__main__.A
+__main__.B
+__main__.C
+__main__.D
+
+[case testPEP695GenericFunction]
+# flags: --python-version=3.12
+def f[T](x: T) -> T:
+    return x
+def g[T](x: T, y: T) -> T:
+    return x
+[file next.py]
+# flags: --python-version=3.12
+def f[T](x: T) -> T:
+    return x
+def g[T, S](x: T, y: S) -> S:
+    return y
+[out]
+__main__.g
+
+[case testPEP695GenericClass]
+# flags: --python-version=3.12
+class C[T]:
+    pass
+class D[T]:
+    pass
+class E[T]:
+    pass
+class F[T]:
+    def f(self, x: object) -> T: ...
+[file next.py]
+# flags: --python-version=3.12
+class C[T]:
+    pass
+class D[T: int]:
+    pass
+class E:
+    pass
+class F[T]:
+    def f(self, x: T) -> T: ...
+[out]
+__main__.D
+__main__.E
+__main__.F
+__main__.F.f

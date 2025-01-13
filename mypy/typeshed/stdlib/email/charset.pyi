@@ -1,12 +1,12 @@
 from collections.abc import Callable, Iterator
 from email.message import Message
-from typing import overload
+from typing import ClassVar, Final, overload
 
 __all__ = ["Charset", "add_alias", "add_charset", "add_codec"]
 
-QP: int  # undocumented
-BASE64: int  # undocumented
-SHORTEST: int  # undocumented
+QP: Final[int]  # undocumented
+BASE64: Final[int]  # undocumented
+SHORTEST: Final[int]  # undocumented
 
 class Charset:
     input_charset: str
@@ -24,8 +24,9 @@ class Charset:
     def body_encode(self, string: None) -> None: ...
     @overload
     def body_encode(self, string: str | bytes) -> str: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
     def __eq__(self, other: object) -> bool: ...
-    def __ne__(self, __value: object) -> bool: ...
+    def __ne__(self, value: object, /) -> bool: ...
 
 def add_charset(
     charset: str, header_enc: int | None = None, body_enc: int | None = None, output_charset: str | None = None

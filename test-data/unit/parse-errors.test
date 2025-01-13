@@ -55,7 +55,7 @@ file:1: error: invalid syntax
 [case testUnexpectedEof]
 if 1:
 [out]
-file:1: error: unexpected EOF while parsing
+file:1: error: expected an indented block
 
 [case testInvalidKeywordArguments1]
 f(x=y, z)
@@ -150,6 +150,13 @@ file:2: error: Syntax error in type comment "*"
 x = 0 # type: A B #comment #7
 [out]
 file:2: error: Syntax error in type comment "A B"
+
+[case testMissingBracket]
+def foo(
+[out]
+file:1: error: unexpected EOF while parsing
+[out version>=3.10]
+file:1: error: '(' was never closed
 
 [case testInvalidSignatureInComment1]
 def f(): # type: x
@@ -427,7 +434,7 @@ file:1: error: invalid syntax
 [case testSmartQuotes]
 foo = ‘bar’
 [out]
-file:1: error: invalid character in identifier
+file:1: error: invalid character '‘' (U+2018)
 
 [case testExceptCommaInPython3]
 try:

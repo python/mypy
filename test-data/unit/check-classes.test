@@ -113,7 +113,7 @@ A().f = None  # E: Cannot assign to a method \
 from typing import Protocol
 
 class Base:
-    __hash__ = None
+    __hash__: None = None
 
 class Derived(Base):
     def __hash__(self) -> int:  # E: Signature of "__hash__" incompatible with supertype "Base" \
@@ -146,7 +146,6 @@ class Base:
 
 class Derived(Base):
     __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
-
 
 [case testOverridePartialAttributeWithMethod]
 # This was crashing: https://github.com/python/mypy/issues/11686.
@@ -710,6 +709,123 @@ class B(A):
     @dec
     def f(self) -> Y: pass
 
+[case testOverrideCallableAttributeWithMethod]
+from typing import Callable
+
+class A:
+    f1: Callable[[str], None]
+    f2: Callable[[str], None]
+    f3: Callable[[str], None]
+
+class B(A):
+    def f1(self, x: object) -> None:
+        pass
+
+    @classmethod
+    def f2(cls, x: object) -> None:
+        pass
+
+    @staticmethod
+    def f3(x: object) -> None:
+        pass
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideCallableAttributeWithMethodMutableOverride]
+# flags: --enable-error-code=mutable-override
+from typing import Callable
+
+class A:
+    f1: Callable[[str], None]
+    f2: Callable[[str], None]
+    f3: Callable[[str], None]
+
+class B(A):
+    def f1(self, x: object) -> None: pass   # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+
+    @classmethod
+    def f2(cls, x: object) -> None: pass    # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+
+    @staticmethod
+    def f3(x: object) -> None: pass         # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideCallableAttributeWithSettableProperty]
+from typing import Callable
+
+class A:
+    f: Callable[[str], None]
+
+class B(A):
+    @property
+    def f(self) -> Callable[[object], None]: pass
+    @func.setter
+    def f(self, x: object) -> None: pass
+[builtins fixtures/property.pyi]
+
+[case testOverrideCallableAttributeWithSettablePropertyMutableOverride]
+# flags: --enable-error-code=mutable-override
+from typing import Callable
+
+class A:
+    f: Callable[[str], None]
+
+class B(A):
+    @property  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+    def f(self) -> Callable[[object], None]: pass
+    @func.setter
+    def f(self, x: object) -> None: pass
+[builtins fixtures/property.pyi]
+
+[case testOverrideCallableUnionAttributeWithMethod]
+from typing import Callable, Union
+
+class A:
+    f1: Union[Callable[[str], str], str]
+    f2: Union[Callable[[str], str], str]
+    f3: Union[Callable[[str], str], str]
+    f4: Union[Callable[[str], str], str]
+
+class B(A):
+    def f1(self, x: str) -> str:
+        pass
+
+    def f2(self, x: object) -> str:
+        pass
+
+    @classmethod
+    def f3(cls, x: str) -> str:
+        pass
+
+    @staticmethod
+    def f4(x: str) -> str:
+        pass
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideCallableUnionAttributeWithMethodMutableOverride]
+# flags: --enable-error-code=mutable-override
+from typing import Callable, Union
+
+class A:
+    f1: Union[Callable[[str], str], str]
+    f2: Union[Callable[[str], str], str]
+    f3: Union[Callable[[str], str], str]
+    f4: Union[Callable[[str], str], str]
+
+class B(A):
+    def f1(self, x: str) -> str:     # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+        pass
+
+    def f2(self, x: object) -> str:  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[object], str]")
+        pass
+
+    @classmethod
+    def f3(cls, x: str) -> str:      # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+        pass
+
+    @staticmethod
+    def f4(x: str) -> str:           # E: Covariant override of a mutable attribute (base class "A" defined the type as "Union[Callable[[str], str], str]", override has type "Callable[[str], str]")
+        pass
+[builtins fixtures/classmethod.pyi]
 
 -- Constructors
 -- ------------
@@ -1950,6 +2066,41 @@ class B:
 def foo(x: Union[A, B]) -> None:
     reveal_type(x.attr)  # N: Revealed type is "builtins.str"
 
+[case testDescriptorGetUnionRestricted]
+from typing import Any, Union
+
+class getter:
+    def __get__(self, instance: X1, owner: Any) -> str: ...
+
+class X1:
+    prop = getter()
+
+class X2:
+    prop: str
+
+def foo(x: Union[X1, X2]) -> None:
+    reveal_type(x.prop)  # N: Revealed type is "builtins.str"
+
+[case testDescriptorGetUnionType]
+from typing import Any, Union, Type, overload
+
+class getter:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> getter: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance, owner):
+        ...
+
+class X1:
+    prop = getter()
+class X2:
+    prop = getter()
+
+def foo(x: Type[Union[X1, X2]]) -> None:
+    reveal_type(x.prop)  # N: Revealed type is "__main__.getter"
+
+
 -- _promote decorators
 -- -------------------
 
@@ -2068,7 +2219,7 @@ reveal_type(B() + A())  # N: Revealed type is "__main__.A"
 reveal_type(A() + B())  # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
 
-[case testBinaryOpeartorMethodPositionalArgumentsOnly]
+[case testBinaryOperatorMethodPositionalArgumentsOnly]
 class A:
     def __add__(self, other: int) -> int: pass
     def __iadd__(self, other: int) -> int: pass
@@ -2392,10 +2543,10 @@ class B:
 [builtins fixtures/tuple.pyi]
 
 [case testReverseOperatorTypeVar1]
-from typing import TypeVar, Any
+from typing import TypeVar
 T = TypeVar("T", bound='Real')
 class Real:
-    def __add__(self, other: Any) -> str: ...
+    def __add__(self, other: object) -> str: ...
 class Fraction(Real):
     def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
 
@@ -2430,7 +2581,7 @@ reveal_type(Real() + Fraction())      # N: Revealed type is "__main__.Real"
 reveal_type(Fraction() + Fraction())  # N: Revealed type is "builtins.str"
 
 [case testReverseOperatorTypeVar3]
-from typing import TypeVar, Any
+from typing import TypeVar
 T = TypeVar("T", bound='Real')
 class Real:
     def __add__(self, other: FractionChild) -> str: ...
@@ -2666,14 +2817,12 @@ class X:
 [out]
 tmp/foo.pyi:6: error: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely overlapping
 
-[case testUnsafeOverlappingWithLineNo]
+[case testUnsafeOverlappingNotWithAny]
 from typing import TypeVar
 class Real:
     def __add__(self, other) -> str: ...
 class Fraction(Real):
     def __radd__(self, other: Real) -> Real: ...
-[out]
-main:5: error: Signatures of "__radd__" of "Fraction" and "__add__" of "Real" are unsafely overlapping
 
 [case testOverlappingNormalAndInplaceOperatorMethod]
 import typing
@@ -3431,7 +3580,7 @@ def foo(arg: Type[Any]):
 from typing import Type, Any
 def foo(arg: Type[Any]):
     reveal_type(arg.__str__)  # N: Revealed type is "def () -> builtins.str"
-    reveal_type(arg.mro())  # N: Revealed type is "builtins.list[builtins.type[Any]]"
+    reveal_type(arg.mro())  # N: Revealed type is "builtins.list[builtins.type]"
 [builtins fixtures/type.pyi]
 [out]
 
@@ -4007,10 +4156,16 @@ def f(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 o
 @overload
 def f(a: object) -> str: pass
 
+# Note: plain type is equivalent to Type[Any] so no error here
 @overload
-def g(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def g(a: Type[User]) -> int: pass
 @overload
 def g(a: type) -> str: pass
+
+@overload
+def h(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def h(a: Type[object]) -> str: pass
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -4751,12 +4906,15 @@ def g(x: Type[S]) -> str:
     return reveal_type(x * 0)  # N: Revealed type is "builtins.str"
 
 [case testMetaclassGetitem]
+import types
+
 class M(type):
     def __getitem__(self, key) -> int: return 1
 
 class A(metaclass=M): pass
 
 reveal_type(A[M])  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
 
 [case testMetaclassSelfType]
 from typing import TypeVar, Type
@@ -5002,12 +5160,13 @@ class A(Tuple[int, str]): pass
 -- -----------------------
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
-N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition)
-n: N
-reveal_type(n) # N: Revealed type is "Tuple[Any, fallback=__main__.N]"
+def test() -> None:
+    N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition) \
+                                    # N: Recursive types are not allowed at function scope
+    n: N
+    reveal_type(n) # N: Revealed type is "Tuple[Any, fallback=__main__.N@4]"
 [builtins fixtures/tuple.pyi]
 
 [case testCrashOnSelfRecursiveTypedDictVar]
@@ -5032,18 +5191,20 @@ lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
-# flags: --disable-recursive-aliases
 from mypy_extensions import TypedDict
 
-class N(TypedDict):
-    x: N # E: Cannot resolve name "N" (possible cyclic definition)
-class M(TypedDict):
-    x: M # E: Cannot resolve name "M" (possible cyclic definition)
+def test() -> None:
+    class N(TypedDict):
+        x: N  # E: Cannot resolve name "N" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
+    class M(TypedDict):
+        x: M  # E: Cannot resolve name "M" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
 
-n: N
-m: M
-lst = [n, m]
-reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
+    n: N
+    m: M
+    lst = [n, m]
+    reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCrashInForwardRefToNamedTupleWithIsinstance]
@@ -5951,8 +6112,8 @@ A = G
 x: A[B[int]] # E
 B = G
 [out]
-main:8:4: error: Type argument "G[int]" of "G" must be a subtype of "str"
-main:8:6: error: Type argument "int" of "G" must be a subtype of "str"
+main:8:6: error: Type argument "G[int]" of "G" must be a subtype of "str"
+main:8:8: error: Type argument "int" of "G" must be a subtype of "str"
 
 [case testExtremeForwardReferencing]
 from typing import TypeVar, Generic
@@ -7718,13 +7879,13 @@ class D:
     def __init__(self) -> NoReturn: ...
 
 if object():
-    reveal_type(A())  # N: Revealed type is "<nothing>"
+    reveal_type(A())  # N: Revealed type is "Never"
 if object():
-    reveal_type(B())  # N: Revealed type is "<nothing>"
+    reveal_type(B())  # N: Revealed type is "Never"
 if object():
-    reveal_type(C())  # N: Revealed type is "<nothing>"
+    reveal_type(C())  # N: Revealed type is "Never"
 if object():
-    reveal_type(D())  # N: Revealed type is "<nothing>"
+    reveal_type(D())  # N: Revealed type is "Never"
 
 [case testOverloadedNewAndInitNoReturn]
 from typing import NoReturn, overload
@@ -7764,19 +7925,19 @@ class D:
     def __init__(self, a: int = ...) -> None: ...
 
 if object():
-    reveal_type(A())  # N: Revealed type is "<nothing>"
+    reveal_type(A())  # N: Revealed type is "Never"
 reveal_type(A(1))  # N: Revealed type is "__main__.A"
 
 if object():
-    reveal_type(B())  # N: Revealed type is "<nothing>"
+    reveal_type(B())  # N: Revealed type is "Never"
 reveal_type(B(1))  # N: Revealed type is "__main__.B"
 
 if object():
-    reveal_type(C())  # N: Revealed type is "<nothing>"
+    reveal_type(C())  # N: Revealed type is "Never"
 reveal_type(C(1))  # N: Revealed type is "__main__.C"
 
 if object():
-    reveal_type(D())  # N: Revealed type is "<nothing>"
+    reveal_type(D())  # N: Revealed type is "Never"
 reveal_type(D(1))  # N: Revealed type is "__main__.D"
 
 [case testClassScopeImportWithWrapperAndError]
@@ -8001,3 +8162,11 @@ f5(1)  # E: Argument 1 to "f5" has incompatible type "int"; expected "Integral" 
        # N: Types from "numbers" aren't supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+[case testImplicitClassScopedNames]
+class C:
+    reveal_type(__module__)  # N: Revealed type is "builtins.str"
+    reveal_type(__qualname__)  # N: Revealed type is "builtins.str"
+    def f(self) -> None:
+        __module__  # E: Name "__module__" is not defined
+        __qualname__  # E: Name "__qualname__" is not defined

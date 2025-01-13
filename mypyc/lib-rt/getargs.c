@@ -247,15 +247,14 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
 #endif
         if (!skip) {
             if (i < nargs && i < max) {
-                current_arg = PyTuple_GET_ITEM(args, i);
+                current_arg = Py_NewRef(PyTuple_GET_ITEM(args, i));
             }
             else if (nkwargs && i >= pos) {
-                current_arg = _PyDict_GetItemStringWithError(kwargs, kwlist[i]);
+                if (unlikely(PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg) < 0)) {
+                    return 0;
+                }
                 if (current_arg) {
                     --nkwargs;
-                }
-                else if (PyErr_Occurred()) {
-                    return 0;
                 }
             }
             else {
@@ -265,6 +264,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             if (current_arg) {
                 PyObject **p = va_arg(*p_va, PyObject **);
                 *p = current_arg;
+                Py_DECREF(current_arg);
                 format++;
                 continue;
             }
@@ -370,8 +370,12 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         Py_ssize_t j;
         /* make sure there are no arguments given by name and position */
         for (i = pos; i < bound_pos_args && i < len; i++) {
-            current_arg = _PyDict_GetItemStringWithError(kwargs, kwlist[i]);
+            PyObject *current_arg;
+            if (unlikely(PyDict_GetItemStringRef(kwargs, kwlist[i], &current_arg) < 0)) {
+                goto latefail;
+            }
             if (unlikely(current_arg != NULL)) {
+                Py_DECREF(current_arg);
                 /* arg present in tuple and in dict */
                 PyErr_Format(PyExc_TypeError,
                              "argument for %.200s%s given by name ('%s') "
@@ -379,9 +383,6 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                              (fname == NULL) ? "function" : fname,
                              (fname == NULL) ? "" : "()",
                              kwlist[i], i+1);
-                goto latefail;
-            }
-            else if (unlikely(PyErr_Occurred() != NULL)) {
                 goto latefail;
             }
         }
@@ -395,7 +396,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                 goto latefail;
             }
             for (i = pos; i < len; i++) {
-                if (CPyUnicode_EqualToASCIIString(key, kwlist[i])) {
+                if (PyUnicode_EqualToUTF8(key, kwlist[i])) {
                     match = 1;
                     break;
                 }

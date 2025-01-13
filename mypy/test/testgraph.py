@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import AbstractSet
+from collections.abc import Set as AbstractSet
 
 from mypy.build import BuildManager, BuildSourceSet, State, order_ascc, sorted_components
 from mypy.errors import Errors
@@ -50,7 +50,7 @@ class GraphSuite(Suite):
             plugin=Plugin(options),
             plugins_snapshot={},
             errors=errors,
-            flush_errors=lambda msgs, serious: None,
+            flush_errors=lambda filename, msgs, serious: None,
             fscache=fscache,
             stdout=sys.stdout,
             stderr=sys.stderr,

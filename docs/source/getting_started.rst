@@ -16,7 +16,7 @@ may not make much sense otherwise.
 Installing and running mypy
 ***************************
 
-Mypy requires Python 3.8 or later to run.  You can install mypy using pip:
+Mypy requires Python 3.9 or later to run.  You can install mypy using pip:
 
 .. code-block:: shell
 
@@ -66,7 +66,7 @@ This is the case even if you misuse the function!
    def greeting(name):
        return 'Hello ' + name
 
-   # These calls will fail when the program run, but mypy does not report an error
+   # These calls will fail when the program runs, but mypy does not report an error
    # because "greeting" does not have type annotations.
    greeting(123)
    greeting(b"Alice")
@@ -186,18 +186,22 @@ For example, a ``RuntimeError`` instance can be passed to a function that is ann
 as taking an ``Exception``.
 
 As another example, suppose you want to write a function that can accept *either*
-ints or strings, but no other types. You can express this using the
-:py:data:`~typing.Union` type. For example, ``int`` is a subtype of ``Union[int, str]``:
+ints or strings, but no other types. You can express this using a
+union type. For example, ``int`` is a subtype of ``int | str``:
 
 .. code-block:: python
 
-   from typing import Union
-
-   def normalize_id(user_id: Union[int, str]) -> str:
+   def normalize_id(user_id: int | str) -> str:
        if isinstance(user_id, int):
            return f'user-{100_000 + user_id}'
        else:
            return user_id
+
+.. note::
+
+    If using Python 3.9 or earlier, use ``typing.Union[int, str]`` instead of
+    ``int | str``, or use ``from __future__ import annotations`` at the top of
+    the file (see :ref:`runtime_troubles`).
 
 The :py:mod:`typing` module contains many other useful types.
 
@@ -210,12 +214,12 @@ generic types or your own type aliases), look through the
 .. note::
 
    When adding types, the convention is to import types
-   using the form ``from typing import Union`` (as opposed to doing
+   using the form ``from typing import <name>`` (as opposed to doing
    just ``import typing`` or ``import typing as t`` or ``from typing import *``).
 
    For brevity, we often omit imports from :py:mod:`typing` or :py:mod:`collections.abc`
    in code examples, but mypy will give an error if you use types such as
-   :py:class:`~typing.Iterable` without first importing them.
+   :py:class:`~collections.abc.Iterable` without first importing them.
 
 .. note::
 
@@ -256,8 +260,7 @@ Mypy can also understand how to work with types from libraries that you use.
 
 For instance, mypy comes out of the box with an intimate knowledge of the
 Python standard library. For example, here is a function which uses the
-``Path`` object from the
-`pathlib standard library module <https://docs.python.org/3/library/pathlib.html>`_:
+``Path`` object from the :doc:`pathlib standard library module <python:library/pathlib>`:
 
 .. code-block:: python
 

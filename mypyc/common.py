@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 import sysconfig
-from typing import Any, Dict, Final
+from typing import Any, Final
 
 from mypy.util import unnamed_function
 
@@ -13,6 +13,7 @@ REG_PREFIX: Final = "cpy_r_"  # Registers
 STATIC_PREFIX: Final = "CPyStatic_"  # Static variables (for literals etc.)
 TYPE_PREFIX: Final = "CPyType_"  # Type object struct
 MODULE_PREFIX: Final = "CPyModule_"  # Cached modules
+TYPE_VAR_PREFIX: Final = "CPyTypeVar_"  # Type variables when using new-style Python 3.12 syntax
 ATTR_PREFIX: Final = "_"  # Attributes
 
 ENV_ATTR_NAME: Final = "__mypyc_env__"
@@ -78,10 +79,11 @@ RUNTIME_C_FILES: Final = [
     "exc_ops.c",
     "misc_ops.c",
     "generic_ops.c",
+    "pythonsupport.c",
 ]
 
 
-JsonDict = Dict[str, Any]
+JsonDict = dict[str, Any]
 
 
 def shared_lib_name(group_name: str) -> str:

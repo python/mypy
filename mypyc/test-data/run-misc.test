@@ -37,9 +37,9 @@ from testutil import assertRaises
 
 f(True, True)
 f(False, False)
-with assertRaises(NameError):
+with assertRaises(UnboundLocalError):
     f(False, True)
-with assertRaises(NameError):
+with assertRaises(UnboundLocalError):
     g()
 [out]
 lol
@@ -968,7 +968,10 @@ print(z)
 [case testCheckVersion]
 import sys
 
-if sys.version_info[:2] == (3, 12):
+if sys.version_info[:2] == (3, 13):
+    def version() -> int:
+        return 13
+elif sys.version_info[:2] == (3, 12):
     def version() -> int:
         return 12
 elif sys.version_info[:2] == (3, 11):
@@ -1097,8 +1100,10 @@ B = sys.platform == 'x' and sys.foobar
 C = sys.platform == 'x' and f(a, -b, 'y') > [c + e, g(y=2)]
 C = sys.platform == 'x' and cast(a, b[c])
 C = sys.platform == 'x' and (lambda x: y + x)
-# TODO: This still doesn't work
-# C = sys.platform == 'x' and (x for y in z)
+C = sys.platform == 'x' and (x for y in z)
+C = sys.platform == 'x' and [x for y in z]
+C = sys.platform == 'x' and {x: x for y in z}
+C = sys.platform == 'x' and {x for y in z}
 
 assert not A
 assert not B
@@ -1116,10 +1121,6 @@ for _ in range(2):
         raise RuntimeError('exception expected')
     except AssertionError:
         pass
-
-[case testRepeatedUnderscoreFunctions]
-def _(arg): pass
-def _(arg): pass
 
 [case testUnderscoreFunctionsInMethods]
 

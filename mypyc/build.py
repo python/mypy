@@ -25,7 +25,8 @@ import os.path
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, Union, cast
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, NoReturn, Union, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -40,8 +41,16 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-if sys.version_info < (3, 12):
-    if TYPE_CHECKING:
+try:
+    # Import setuptools so that it monkey-patch overrides distutils
+    import setuptools
+except ImportError:
+    pass
+
+if TYPE_CHECKING:
+    if sys.version_info >= (3, 12):
+        from setuptools import Extension
+    else:
         from distutils.core import Extension as _distutils_Extension
         from typing_extensions import TypeAlias
 
@@ -49,22 +58,11 @@ if sys.version_info < (3, 12):
 
         Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
 
-    try:
-        # Import setuptools so that it monkey-patch overrides distutils
-        import setuptools
-    except ImportError:
-        pass
-    from distutils import ccompiler, sysconfig
+if sys.version_info >= (3, 12):
+    # From setuptools' monkeypatch
+    from distutils import ccompiler, sysconfig  # type: ignore[import-not-found]
 else:
-    import setuptools
-    from setuptools import Extension
-    from setuptools._distutils import (
-        ccompiler as _ccompiler,  # type: ignore[attr-defined]
-        sysconfig as _sysconfig,  # type: ignore[attr-defined]
-    )
-
-    ccompiler = _ccompiler
-    sysconfig = _sysconfig
+    from distutils import ccompiler, sysconfig
 
 
 def get_extension() -> type[Extension]:
@@ -90,7 +88,7 @@ def setup_mypycify_vars() -> None:
     # There has to be a better approach to this.
 
     # The vars can contain ints but we only work with str ones
-    vars = cast(Dict[str, str], sysconfig.get_config_vars())
+    vars = cast(dict[str, str], sysconfig.get_config_vars())
     if sys.platform == "darwin":
         # Disable building 32-bit binaries, since we generate too much code
         # for a 32-bit Mach-O object. There has to be a better way to do this.
@@ -108,7 +106,14 @@ def emit_messages(options: Options, messages: list[str], dt: float, serious: boo
     # ... you know, just in case.
     if options.junit_xml:
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
-        write_junit_xml(dt, serious, messages, options.junit_xml, py_version, options.platform)
+        write_junit_xml(
+            dt,
+            serious,
+            {None: messages} if messages else {},
+            options.junit_xml,
+            py_version,
+            options.platform,
+        )
     if messages:
         print("\n".join(messages))
 
@@ -466,6 +471,7 @@ def mypycify(
     skip_cgen_input: Any | None = None,
     target_dir: str | None = None,
     include_runtime_files: bool | None = None,
+    strict_dunder_typing: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -505,6 +511,9 @@ def mypycify(
                                should be directly #include'd instead of linked
                                separately in order to reduce compiler invocations.
                                Defaults to False in multi_file mode, True otherwise.
+        strict_dunder_typing: If True, force dunder methods to have the return type
+                              of the method strictly, which can lead to more
+                              optimization opportunities. Defaults to False.
     """
 
     # Figure out our configuration
@@ -515,6 +524,7 @@ def mypycify(
         separate=separate is not False,
         target_dir=target_dir,
         include_runtime_files=include_runtime_files,
+        strict_dunder_typing=strict_dunder_typing,
     )
 
     # Generate all the actual important C code

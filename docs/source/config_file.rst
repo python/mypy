@@ -3,6 +3,10 @@
 The mypy configuration file
 ===========================
 
+Mypy is very configurable. This is most useful when introducing typing to
+an existing codebase. See :ref:`existing-code` for concrete advice for
+that situation.
+
 Mypy supports reading configuration settings from a file with the following precedence order:
 
     1. ``./mypy.ini``
@@ -238,10 +242,8 @@ section of the command line docs.
     Crafting a single regular expression that excludes multiple files while remaining
     human-readable can be a challenge. The above example demonstrates one approach.
     ``(?x)`` enables the ``VERBOSE`` flag for the subsequent regular expression, which
-    `ignores most whitespace and supports comments`__. The above is equivalent to:
-    ``(^one\.py$|two\.pyi$|^three\.)``.
-
-    .. __: https://docs.python.org/3/library/re.html#re.X
+    :py:data:`ignores most whitespace and supports comments <re.VERBOSE>`.
+    The above is equivalent to: ``(^one\.py$|two\.pyi$|^three\.)``.
 
     For more details, see :option:`--exclude <mypy --exclude>`.
 
@@ -312,6 +314,24 @@ section of the command line docs.
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
     import statement.
+
+.. confval:: follow_untyped_imports
+
+    :type: boolean
+    :default: False
+
+    Makes mypy analyze imports from installed packages even if missing a
+    :ref:`py.typed marker or stubs <installed-packages>`.
+
+    If this option is used in a per-module section, the module name should
+    match the name of the *imported* module, not the module containing the
+    import statement.
+
+    .. warning::
+
+        Note that analyzing all unannotated modules might result in issues
+        when analyzing code not designed to be type checked and may significantly
+        increase how long mypy takes to run.
 
 .. confval:: follow_imports
 
@@ -572,8 +592,8 @@ section of the command line docs.
     :type: boolean
     :default: False
 
-    Causes mypy to treat arguments with a ``None``
-    default value as having an implicit :py:data:`~typing.Optional` type.
+    Causes mypy to treat parameters with a ``None``
+    default value as having an implicit optional type (``T | None``).
 
     **Note:** This was True by default in mypy versions 0.980 and earlier.
 
@@ -582,10 +602,15 @@ section of the command line docs.
     :type: boolean
     :default: True
 
-    Enables or disables strict Optional checks. If False, mypy treats ``None``
+    Effectively disables checking of optional
+    types and ``None`` values. With this option, mypy doesn't
+    generally check the use of ``None`` values -- it is treated
     as compatible with every type.
 
-    **Note:** This was False by default in mypy versions earlier than 0.600.
+    .. warning::
+
+        ``strict_optional = false`` is evil. Avoid using it and definitely do
+        not use it without understanding what it does.
 
 
 Configuring warnings
@@ -710,6 +735,14 @@ section of the command line docs.
 
     Note: This option will override disabled error codes from the disable_error_code option.
 
+.. confval:: extra_checks
+
+   :type: boolean
+   :default: False
+
+   This flag enables additional checks that are technically correct but may be impractical in real code.
+   See :option:`mypy --extra-checks` for more info.
+
 .. confval:: implicit_reexport
 
     :type: boolean
@@ -732,23 +765,31 @@ section of the command line docs.
 
 .. confval:: strict_concatenate
 
-    :type: boolean
-    :default: False
+   :type: boolean
+   :default: False
 
-    Make arguments prepended via ``Concatenate`` be truly positional-only.
+   Make arguments prepended via ``Concatenate`` be truly positional-only.
 
 .. confval:: strict_equality
 
-    :type: boolean
-    :default: False
+   :type: boolean
+   :default: False
 
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
 
+.. confval:: strict_bytes
+
+   :type: boolean
+   :default: False
+
+   Disable treating ``bytearray`` and ``memoryview`` as subtypes of ``bytes``.
+   This will be enabled by default in *mypy 2.0*.
+
 .. confval:: strict
 
-    :type: boolean
-    :default: False
+   :type: boolean
+   :default: False
 
    Enable all optional error checking flags.  You can see the list of
    flags enabled by strict mode in the full :option:`mypy --help`
@@ -779,6 +820,13 @@ These options may only be set in the global section (``[mypy]``).
     :default: False
 
     Shows column numbers in error messages.
+
+.. confval:: show_error_code_links
+
+    :type: boolean
+    :default: False
+
+    Shows documentation link to corresponding error code.
 
 .. confval:: hide_error_codes
 
@@ -816,6 +864,22 @@ These options may only be set in the global section (``[mypy]``).
 
     Show absolute paths to files.
 
+.. confval:: force_uppercase_builtins
+
+    :type: boolean
+    :default: False
+
+    Always use ``List`` instead of ``list`` in error messages,
+    even on Python 3.9+.
+
+.. confval:: force_union_syntax
+
+    :type: boolean
+    :default: False
+
+    Always use ``Union[]`` and ``Optional[]`` for union types
+    in error messages (instead of the ``|`` operator),
+    even on Python 3.10+.
 
 Incremental mode
 ****************

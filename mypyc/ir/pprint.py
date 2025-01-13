@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Final, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Final, Union
 
 from mypyc.common import short_name
 from mypyc.ir.func_ir import FuncIR, all_values_full
@@ -43,6 +44,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     Return,
@@ -51,6 +53,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -153,7 +156,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%s = %r :: %s", name, op.value, op.namespace)
 
     def visit_tuple_get(self, op: TupleGet) -> str:
-        return self.format("%r = %r[%d]", op, op.src, op.index)
+        return self.format("%r = %s%r[%d]", op, self.borrow_prefix(op), op.src, op.index)
 
     def visit_tuple_set(self, op: TupleSet) -> str:
         item_str = ", ".join(self.format("%r", item) for item in op.items)
@@ -216,6 +219,25 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         else:
             return self.format("%r = %s(%s)", op, op.function_name, args_str)
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> str:
+        args = []
+        arg_index = 0
+        type_arg_index = 0
+        for arg_type in zip(op.desc.arg_types):
+            if arg_type:
+                args.append(self.format("%r", op.args[arg_index]))
+                arg_index += 1
+            else:
+                assert op.type_args
+                args.append(self.format("%r", op.type_args[type_arg_index]))
+                type_arg_index += 1
+
+        args_str = ", ".join(args)
+        if op.is_void:
+            return self.format("%s %s", op.desc.name, args_str)
+        else:
+            return self.format("%r = %s %s", op, op.desc.name, args_str)
+
     def visit_truncate(self, op: Truncate) -> str:
         return self.format("%r = truncate %r: %t to %t", op, op.src, op.src_type, op.type)
 
@@ -274,7 +296,16 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             return self.format("%r = load_address %s", op, op.src)
 
     def visit_keep_alive(self, op: KeepAlive) -> str:
-        return self.format("keep_alive %s" % ", ".join(self.format("%r", v) for v in op.src))
+        if op.steal:
+            steal = "steal "
+        else:
+            steal = ""
+        return self.format(
+            "keep_alive {}{}".format(steal, ", ".join(self.format("%r", v) for v in op.src))
+        )
+
+    def visit_unborrow(self, op: Unborrow) -> str:
+        return self.format("%r = unborrow %r", op, op.src)
 
     # Helpers
 

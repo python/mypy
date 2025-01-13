@@ -379,3 +379,9 @@ N = NewType('N', XXX)  # E: Argument 2 to NewType(...) must be subclassable (got
                        # E: Name "XXX" is not defined
 x: List[Union[N, int]]
 [builtins fixtures/list.pyi]
+
+[case testTypingExtensionsNewType]
+from typing_extensions import NewType
+N = NewType("N", int)
+x: N
+[builtins fixtures/tuple.pyi]

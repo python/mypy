@@ -11,12 +11,14 @@ from mypyc.ir.rtypes import (
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
+    pointer_rprimitive,
     short_int_rprimitive,
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     load_address_op,
     method_op,
@@ -58,6 +60,14 @@ list_build_op = custom_op(
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive,
     steals=True,
+)
+
+# Get pointer to list items (ob_item PyListObject field)
+list_items = custom_primitive_op(
+    name="list_items",
+    arg_types=[list_rprimitive],
+    return_type=pointer_rprimitive,
+    error_kind=ERR_NEVER,
 )
 
 # list[index] (for an integer index)
@@ -124,10 +134,10 @@ method_op(
 
 # This is unsafe because it assumes that the index is a non-negative short integer
 # that is in-bounds for the list.
-list_get_item_unsafe_op = custom_op(
+list_get_item_unsafe_op = custom_primitive_op(
+    name="list_get_item_unsafe",
     arg_types=[list_rprimitive, short_int_rprimitive],
     return_type=object_rprimitive,
-    c_function_name="CPyList_GetItemUnsafe",
     error_kind=ERR_NEVER,
 )
 
