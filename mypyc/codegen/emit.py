@@ -513,7 +513,7 @@ class Emitter:
                 self.emit_inc_ref(f"{dest}.f{i}", item_type)
         elif not rtype.is_unboxed:
             # Always inline, since this is a simple but very hot op
-            if rtype.may_be_immortal:
+            if rtype.may_be_immortal or not HAVE_IMMORTAL:
                 self.emit_line("CPy_INCREF(%s);" % dest)
             else:
                 self.emit_line("CPy_INCREF_NO_IMM(%s);" % dest)
@@ -544,7 +544,7 @@ class Emitter:
                 self.emit_line(f"CPy_{x}DecRef({dest});")
             else:
                 # Inlined
-                if rtype.may_be_immortal:
+                if rtype.may_be_immortal or not HAVE_IMMORTAL:
                     if (
                         HAVE_IMMORTAL
                         and (opt := optional_value_type(rtype))
