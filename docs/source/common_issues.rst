@@ -170,7 +170,7 @@ form to only ignore specific errors. Indeed, it is often wisest to use
 suppressing other errors that you don't really want to ignore!
 
 (``# mypy: ignore`` comments are per-line and should not be confused with
-:ref:`inline-configuration` comments, which are per-file configuration directives
+:ref:`inline-config` comments, which are per-file configuration directives
 that just happen to be formatted a similar way.)
 
 Another option is to explicitly annotate values with type ``Any`` --
