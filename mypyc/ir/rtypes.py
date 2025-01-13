@@ -71,7 +71,7 @@ class RType:
 
     @property
     @abstractmethod
-    def may_be_immortal(sel) -> bool:
+    def may_be_immortal(self) -> bool:
         raise NotImplementedError
 
     def __str__(self) -> str:
@@ -451,8 +451,9 @@ none_rprimitive: Final = RPrimitive(
 # Python list object (or an instance of a subclass of list). These could be
 # immortal, but since this is expected to be very rare, and the immortality checks
 # can be pretty expensive for lists, we treat lists as non-immortal.
-list_rprimitive: Final = RPrimitive("builtins.list", is_unboxed=False, is_refcounted=True,
-                                    may_be_immortal=False)
+list_rprimitive: Final = RPrimitive(
+    "builtins.list", is_unboxed=False, is_refcounted=True, may_be_immortal=False
+)
 
 # Python dict object (or an instance of a subclass of dict).
 dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True)

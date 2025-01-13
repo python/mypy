@@ -12,12 +12,12 @@ from mypyc.common import (
     ATTR_PREFIX,
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
+    HAVE_IMMORTAL,
     NATIVE_PREFIX,
     REG_PREFIX,
     STATIC_PREFIX,
     TYPE_PREFIX,
     use_vectorcall,
-    HAVE_IMMORTAL,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.ir.func_ir import FuncDecl
@@ -545,7 +545,11 @@ class Emitter:
             else:
                 # Inlined
                 if rtype.may_be_immortal:
-                    if HAVE_IMMORTAL and (opt := optional_value_type(rtype)) and not opt.may_be_immortal:
+                    if (
+                        HAVE_IMMORTAL
+                        and (opt := optional_value_type(rtype))
+                        and not opt.may_be_immortal
+                    ):
                         # Optimized decref of optional type avoids reading reference count
                         # if value is None (None is immortal)
                         self.emit_line(f"if ({dest} != Py_None) {{")

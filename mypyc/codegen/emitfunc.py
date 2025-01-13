@@ -7,13 +7,13 @@ from typing import Final
 from mypyc.analysis.blockfreq import frequently_executed_blocks
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
 from mypyc.common import (
+    HAVE_IMMORTAL,
     MODULE_PREFIX,
     NATIVE_PREFIX,
     REG_PREFIX,
     STATIC_PREFIX,
     TYPE_PREFIX,
     TYPE_VAR_PREFIX,
-    HAVE_IMMORTAL,
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
@@ -77,13 +77,13 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
+    is_bool_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
+    is_none_rprimitive,
     is_pointer_rprimitive,
     is_tagged,
-    is_none_rprimitive,
-    is_bool_rprimitive,
 )
 
 
@@ -581,8 +581,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             )
 
     def visit_inc_ref(self, op: IncRef) -> None:
-        if isinstance(op.src, Box) and (is_none_rprimitive(op.src.src.type) or
-                                        is_bool_rprimitive(op.src.src.type)) and HAVE_IMMORTAL:
+        if (
+            isinstance(op.src, Box)
+            and (is_none_rprimitive(op.src.src.type) or is_bool_rprimitive(op.src.src.type))
+            and HAVE_IMMORTAL
+        ):
             # On Python 3.12+, None/True/False are immortal, and we can skip inc ref
             return
 
