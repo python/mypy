@@ -194,23 +194,33 @@ def d(num):
     r2 :: bool
     inner :: object
     r3 :: str
-    r4 :: object
-    r5, a, r6 :: str
-    r7 :: object
-    r8, b :: str
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
+    r7, a, r8 :: str
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11 :: object
+    r12, b :: str
 L0:
     r0 = d_env()
     r1 = inner_d_obj()
     r1.__mypyc_env__ = r0; r2 = is_error
     inner = r1
     r3 = 'one'
-    r4 = PyObject_CallFunctionObjArgs(inner, r3, 0)
-    r5 = cast(str, r4)
-    a = r5
-    r6 = 'two'
-    r7 = PyObject_CallFunctionObjArgs(inner, r6, 0)
-    r8 = cast(str, r7)
-    b = r8
+    r4 = [r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(inner, r5, 1, 0)
+    keep_alive r3
+    r7 = cast(str, r6)
+    a = r7
+    r8 = 'two'
+    r9 = [r8]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(inner, r10, 1, 0)
+    keep_alive r8
+    r12 = cast(str, r11)
+    b = r12
     return a
 def inner():
     r0 :: str
@@ -290,7 +300,7 @@ L0:
     r2 = inner_a_obj()
     r2.__mypyc_env__ = r0; r3 = is_error
     inner = r2
-    r4 = PyObject_CallFunctionObjArgs(inner, 0)
+    r4 = PyObject_Vectorcall(inner, 0, 0, 0)
     r5 = unbox(int, r4)
     return r5
 def inner_b_obj.__get__(__mypyc_self__, instance, owner):
@@ -330,7 +340,7 @@ L0:
     r2 = inner_b_obj()
     r2.__mypyc_env__ = r0; r3 = is_error
     inner = r2
-    r4 = PyObject_CallFunctionObjArgs(inner, 0)
+    r4 = PyObject_Vectorcall(inner, 0, 0, 0)
     r5 = unbox(int, r4)
     r6 = r0.num
     r7 = CPyTagged_Add(r5, r6)
@@ -400,7 +410,7 @@ L2:
     r3.__mypyc_env__ = r0; r4 = is_error
     inner = r3
 L3:
-    r5 = PyObject_CallFunctionObjArgs(inner, 0)
+    r5 = PyObject_Vectorcall(inner, 0, 0, 0)
     r6 = cast(str, r5)
     return r6
 
@@ -472,7 +482,7 @@ L0:
     r6 = c_a_b_obj()
     r6.__mypyc_env__ = r1; r7 = is_error
     c = r6
-    r8 = PyObject_CallFunctionObjArgs(c, 0)
+    r8 = PyObject_Vectorcall(c, 0, 0, 0)
     r9 = unbox(int, r8)
     return r9
 def a():
@@ -488,7 +498,7 @@ L0:
     r2 = b_a_obj()
     r2.__mypyc_env__ = r0; r3 = is_error
     b = r2
-    r4 = PyObject_CallFunctionObjArgs(b, 0)
+    r4 = PyObject_Vectorcall(b, 0, 0, 0)
     r5 = unbox(int, r4)
     return r5
 
@@ -567,7 +577,7 @@ L2:
     r3.__mypyc_env__ = r0; r4 = is_error
     inner = r3
 L3:
-    r5 = PyObject_CallFunctionObjArgs(inner, 0)
+    r5 = PyObject_Vectorcall(inner, 0, 0, 0)
     r6 = cast(str, r5)
     return r6
 
@@ -632,7 +642,7 @@ def bar_f_obj.__call__(__mypyc_self__):
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.foo
-    r2 = PyObject_CallFunctionObjArgs(r1, 0)
+    r2 = PyObject_Vectorcall(r1, 0, 0, 0)
     r3 = unbox(int, r2)
     return r3
 def baz_f_obj.__get__(__mypyc_self__, instance, owner):
@@ -654,8 +664,11 @@ def baz_f_obj.__call__(__mypyc_self__, n):
     r0 :: __main__.f_env
     r1 :: bit
     r2 :: int
-    r3, r4, r5 :: object
-    r6, r7 :: int
+    r3, r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7 :: object
+    r8, r9 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = int_eq n, 0
@@ -666,10 +679,13 @@ L2:
     r2 = CPyTagged_Subtract(n, 2)
     r3 = r0.baz
     r4 = box(int, r2)
-    r5 = PyObject_CallFunctionObjArgs(r3, r4, 0)
-    r6 = unbox(int, r5)
-    r7 = CPyTagged_Add(n, r6)
-    return r7
+    r5 = [r4]
+    r6 = load_address r5
+    r7 = PyObject_Vectorcall(r3, r6, 1, 0)
+    keep_alive r4
+    r8 = unbox(int, r7)
+    r9 = CPyTagged_Add(n, r8)
+    return r9
 def f(a):
     a :: int
     r0 :: __main__.f_env
@@ -682,8 +698,11 @@ def f(a):
     r9, r10 :: bool
     r11, r12 :: object
     r13, r14 :: int
-    r15, r16, r17 :: object
-    r18, r19 :: int
+    r15, r16 :: object
+    r17 :: object[1]
+    r18 :: object_ptr
+    r19 :: object
+    r20, r21 :: int
 L0:
     r0 = f_env()
     r0.a = a; r1 = is_error
@@ -697,15 +716,18 @@ L0:
     r8.__mypyc_env__ = r0; r9 = is_error
     r0.baz = r8; r10 = is_error
     r11 = r0.bar
-    r12 = PyObject_CallFunctionObjArgs(r11, 0)
+    r12 = PyObject_Vectorcall(r11, 0, 0, 0)
     r13 = unbox(int, r12)
     r14 = r0.a
     r15 = r0.baz
     r16 = box(int, r14)
-    r17 = PyObject_CallFunctionObjArgs(r15, r16, 0)
-    r18 = unbox(int, r17)
-    r19 = CPyTagged_Add(r13, r18)
-    return r19
+    r17 = [r16]
+    r18 = load_address r17
+    r19 = PyObject_Vectorcall(r15, r18, 1, 0)
+    keep_alive r16
+    r20 = unbox(int, r19)
+    r21 = CPyTagged_Add(r13, r20)
+    return r21
 
 [case testLambdas]
 def f(x: int, y: int) -> None:
@@ -753,12 +775,18 @@ def __mypyc_lambda__1_f_obj.__call__(__mypyc_self__, a, b):
     __mypyc_self__ :: __main__.__mypyc_lambda__1_f_obj
     a, b :: object
     r0 :: __main__.f_env
-    r1, r2 :: object
+    r1 :: object
+    r2 :: object[2]
+    r3 :: object_ptr
+    r4 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.s
-    r2 = PyObject_CallFunctionObjArgs(r1, a, b, 0)
-    return r2
+    r2 = [a, b]
+    r3 = load_address r2
+    r4 = PyObject_Vectorcall(r1, r3, 2, 0)
+    keep_alive a, b
+    return r4
 def f(x, y):
     x, y :: int
     r0 :: __main__.f_env
@@ -766,8 +794,11 @@ def f(x, y):
     r2, r3 :: bool
     r4 :: __main__.__mypyc_lambda__1_f_obj
     r5 :: bool
-    t, r6, r7, r8 :: object
-    r9 :: None
+    t, r6, r7 :: object
+    r8 :: object[2]
+    r9 :: object_ptr
+    r10 :: object
+    r11 :: None
 L0:
     r0 = f_env()
     r1 = __mypyc_lambda__0_f_obj()
@@ -778,9 +809,12 @@ L0:
     t = r4
     r6 = box(int, x)
     r7 = box(int, y)
-    r8 = PyObject_CallFunctionObjArgs(t, r6, r7, 0)
-    r9 = unbox(None, r8)
-    return r9
+    r8 = [r6, r7]
+    r9 = load_address r8
+    r10 = PyObject_Vectorcall(t, r9, 2, 0)
+    keep_alive r6, r7
+    r11 = unbox(None, r10)
+    return r11
 
 [case testRecursiveFunction]
 from typing import Callable

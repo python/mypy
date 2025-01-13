@@ -13,24 +13,30 @@ def f(num, l, d, s):
     s :: str
     r0, r1 :: object
     r2, b1 :: bytes
-    r3, r4, r5 :: object
-    r6, b2, r7, b3, r8, b4, r9, b5 :: bytes
+    r3, r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7 :: object
+    r8, b2, r9, b3, r10, b4, r11, b5 :: bytes
 L0:
     r0 = load_address PyBytes_Type
-    r1 = PyObject_CallFunctionObjArgs(r0, 0)
+    r1 = PyObject_Vectorcall(r0, 0, 0, 0)
     r2 = cast(bytes, r1)
     b1 = r2
     r3 = load_address PyBytes_Type
     r4 = box(int, num)
-    r5 = PyObject_CallFunctionObjArgs(r3, r4, 0)
-    r6 = cast(bytes, r5)
-    b2 = r6
-    r7 = PyBytes_FromObject(l)
-    b3 = r7
-    r8 = PyBytes_FromObject(d)
-    b4 = r8
-    r9 = PyBytes_FromObject(s)
-    b5 = r9
+    r5 = [r4]
+    r6 = load_address r5
+    r7 = PyObject_Vectorcall(r3, r6, 1, 0)
+    keep_alive r4
+    r8 = cast(bytes, r7)
+    b2 = r8
+    r9 = PyBytes_FromObject(l)
+    b3 = r9
+    r10 = PyBytes_FromObject(d)
+    b4 = r10
+    r11 = PyBytes_FromObject(s)
+    b5 = r11
     return 1
 
 [case testBytearrayBasics]
@@ -53,7 +59,7 @@ L0:
     r0 = builtins :: module
     r1 = 'bytearray'
     r2 = CPyObject_GetAttr(r0, r1)
-    r3 = PyObject_CallFunctionObjArgs(r2, 0)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
     a = r3
     r4 = PyByteArray_FromObject(s)
     b = r4

@@ -655,7 +655,10 @@ def complex_msg(x, s):
     r3 :: bit
     r4 :: object
     r5 :: str
-    r6, r7 :: object
+    r6 :: object
+    r7 :: object[1]
+    r8 :: object_ptr
+    r9 :: object
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = x != r0
@@ -668,8 +671,11 @@ L2:
     r4 = builtins :: module
     r5 = 'AssertionError'
     r6 = CPyObject_GetAttr(r4, r5)
-    r7 = PyObject_CallFunctionObjArgs(r6, s, 0)
-    CPy_Raise(r7)
+    r7 = [s]
+    r8 = load_address r7
+    r9 = PyObject_Vectorcall(r6, r8, 1, 0)
+    keep_alive s
+    CPy_Raise(r9)
     unreachable
 L3:
     return 1
