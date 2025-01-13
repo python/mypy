@@ -448,17 +448,17 @@ none_rprimitive: Final = RPrimitive(
     "builtins.None", is_unboxed=True, is_refcounted=False, ctype="char", size=1
 )
 
-# Python list object (or an instance of a subclass of list).
+# Python list object (or an instance of a subclass of list). These could be
+# immortal, but since this is expected to be very rare, and the immortality checks
+# can be pretty expensive for lists, we treat lists as non-immortal.
 list_rprimitive: Final = RPrimitive("builtins.list", is_unboxed=False, is_refcounted=True,
                                     may_be_immortal=False)
 
 # Python dict object (or an instance of a subclass of dict).
-dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True,
-                                    may_be_immortal=False)
+dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True)
 
 # Python set object (or an instance of a subclass of set).
-set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcounted=True,
-                                   may_be_immortal=False)
+set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcounted=True)
 
 # Python str object. At the C layer, str is referred to as unicode
 # (PyUnicode).
