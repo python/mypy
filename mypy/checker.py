@@ -5402,17 +5402,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return sub_patterns_map
 
-    def infer_variable_types_from_type_maps(self, type_maps: list[TypeMap]) -> dict[Var, Type]:
-        all_captures: dict[Var, list[tuple[NameExpr, Type]]] = defaultdict(list)
+    def infer_variable_types_from_type_maps(
+        self, type_maps: list[TypeMap]
+    ) -> dict[SymbolNode, Type]:
+        # Type maps may contain variables inherited from previous code which are not
+        # necessary `Var`s (e.g. a function defined earlier with the same name).
+        all_captures: dict[SymbolNode, list[tuple[NameExpr, Type]]] = defaultdict(list)
         for tm in type_maps:
             if tm is not None:
                 for expr, typ in tm.items():
                     if isinstance(expr, NameExpr):
                         node = expr.node
-                        assert isinstance(node, Var)
+                        assert node is not None
                         all_captures[node].append((expr, typ))
 
-        inferred_types: dict[Var, Type] = {}
+        inferred_types: dict[SymbolNode, Type] = {}
         for var, captures in all_captures.items():
             already_exists = False
             types: list[Type] = []
@@ -5436,16 +5440,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 new_type = UnionType.make_union(types)
                 # Infer the union type at the first occurrence
                 first_occurrence, _ = captures[0]
+                # If it didn't exist before ``match``, it's a Var.
+                assert isinstance(var, Var)
                 inferred_types[var] = new_type
                 self.infer_variable_type(var, first_occurrence, new_type, first_occurrence)
         return inferred_types
 
-    def remove_capture_conflicts(self, type_map: TypeMap, inferred_types: dict[Var, Type]) -> None:
+    def remove_capture_conflicts(
+        self, type_map: TypeMap, inferred_types: dict[SymbolNode, Type]
+    ) -> None:
         if type_map:
             for expr, typ in list(type_map.items()):
                 if isinstance(expr, NameExpr):
                     node = expr.node
-                    assert isinstance(node, Var)
                     if node not in inferred_types or not is_subtype(typ, inferred_types[node]):
                         del type_map[expr]
 
