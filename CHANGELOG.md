@@ -4,7 +4,10 @@
 
 ### Performance improvements
 
-TODO
+Mypy may be 5-30% faster. This improvement comes largely from tuning the performance of the
+garbage collector.
+
+Contributed by Jukka Lehtosalo (PR [18306](https://github.com/python/mypy/pull/18306)).
 
 ### Drop Support for Python 3.8
 
@@ -33,13 +36,14 @@ Use this flag to disable this behavior. `--strict-bytes` will be enabled by defa
 Contributed by Ali Hamdan (PR [18137](https://github.com/python/mypy/pull/18263/)) and
 Shantanu Jain (PR [13952](https://github.com/python/mypy/pull/13952)).
 
-### Improvements to partial type handling in loops
+### Improvements to reachability analysis and partial type handling in loops
 
 This change results in mypy better modelling control flow within loops and hence detecting several
 issues it previously did not detect. In some cases, this change may require use of an additional
 explicit annotation of a variable.
 
-Contributed by Christoph Tyralla (PR [18180](https://github.com/python/mypy/pull/18180)).
+Contributed by Christoph Tyralla (PR [18180](https://github.com/python/mypy/pull/18180),
+[PR](https://github.com/python/mypy/pull/18433)).
 
 (Speaking of partial types, another reminder that mypy plans on enabling `--local-partial-types`
 by default in **mypy 2.0**).

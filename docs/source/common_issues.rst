@@ -427,8 +427,8 @@ More specifically, mypy will understand the use of :py:data:`sys.version_info` a
    import sys
 
    # Distinguishing between different versions of Python:
-   if sys.version_info >= (3, 8):
-       # Python 3.8+ specific definitions and imports
+   if sys.version_info >= (3, 13):
+       # Python 3.13+ specific definitions and imports
    else:
        # Other definitions and imports
 
