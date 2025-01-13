@@ -9,9 +9,11 @@ from mypyc.ir.ops import BasicBlock, Register, Value
 from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
+    RUnion,
     bool_rprimitive,
     int_rprimitive,
     list_rprimitive,
+    none_rprimitive,
     object_rprimitive,
     str_rprimitive,
 )
@@ -152,6 +154,14 @@ CPyStatics[1]; /* [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
             self.assert_output("CPy_XDECREF_NO_IMM(x);\n")
         else:
             self.assert_output("CPy_XDECREF(x);\n")
+
+    def test_emit_dec_ref_optional(self) -> None:
+        optional = RUnion([self.instance_a, none_rprimitive])
+        self.emitter.emit_dec_ref("o", optional)
+        if HAVE_IMMORTAL:
+            self.assert_output("if (o != Py_None) {\n    CPy_DECREF_NO_IMM(o);\n}\n")
+        else:
+            self.assert_output("CPy_DECREF(o);\n")
 
     def assert_output(self, expected: str) -> None:
         assert "".join(self.emitter.fragments) == expected
