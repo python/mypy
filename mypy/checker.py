@@ -5434,9 +5434,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for expr, typ in list(type_map.items()):
                 if isinstance(expr, NameExpr):
                     node = expr.node
-                    if isinstance(node, Var) and (
-                        node not in inferred_types or not is_subtype(typ, inferred_types[node])
-                    ):
+                    if node not in inferred_types or not is_subtype(typ, inferred_types[node]):
                         del type_map[expr]
 
     def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
