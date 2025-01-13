@@ -4,8 +4,10 @@ import unittest
 
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.common import HAVE_IMMORTAL
+from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import BasicBlock, Register, Value
 from mypyc.ir.rtypes import (
+    RInstance,
     RTuple,
     bool_rprimitive,
     int_rprimitive,
@@ -13,6 +15,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     str_rprimitive,
 )
+from mypyc.irbuild.vtable import compute_vtable
 from mypyc.namegen import NameGenerator
 
 
@@ -21,6 +24,11 @@ class TestEmitter(unittest.TestCase):
         self.n = Register(int_rprimitive, "n")
         self.context = EmitterContext(NameGenerator([["mod"]]))
         self.emitter = Emitter(self.context, {})
+
+        ir = ClassIR("A", "mod")
+        compute_vtable(ir)
+        ir.mro = [ir]
+        self.instance_a = RInstance(ir)
 
     def test_label(self) -> None:
         assert self.emitter.label(BasicBlock(4)) == "CPyL4"
@@ -96,6 +104,13 @@ CPyStatics[1]; /* [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
         else:
             self.assert_output("CPy_INCREF(x);\n")
 
+    def test_emit_inc_ref_instance(self) -> None:
+        self.emitter.emit_inc_ref("x", self.instance_a)
+        if HAVE_IMMORTAL:
+            self.assert_output("CPy_INCREF_NO_IMM(x);\n")
+        else:
+            self.assert_output("CPy_INCREF(x);\n")
+
     def test_emit_dec_ref_object(self) -> None:
         self.emitter.emit_dec_ref("x", object_rprimitive)
         self.assert_output("CPy_DECREF(x);\n")
@@ -121,6 +136,18 @@ CPyStatics[1]; /* [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
         else:
             self.assert_output("CPy_DECREF(x);\n")
         self.emitter.emit_dec_ref("x", list_rprimitive, is_xdec=True)
+        if HAVE_IMMORTAL:
+            self.assert_output("CPy_XDECREF_NO_IMM(x);\n")
+        else:
+            self.assert_output("CPy_XDECREF(x);\n")
+
+    def test_emit_dec_ref_instance(self) -> None:
+        self.emitter.emit_dec_ref("x", self.instance_a)
+        if HAVE_IMMORTAL:
+            self.assert_output("CPy_DECREF_NO_IMM(x);\n")
+        else:
+            self.assert_output("CPy_DECREF(x);\n")
+        self.emitter.emit_dec_ref("x", self.instance_a, is_xdec=True)
         if HAVE_IMMORTAL:
             self.assert_output("CPy_XDECREF_NO_IMM(x);\n")
         else:
