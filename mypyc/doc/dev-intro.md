@@ -4,6 +4,14 @@ This is a short introduction aimed at anybody who is interested in
 contributing to mypyc, or anybody who is curious to understand how
 mypyc works internally.
 
+## Developer Documentation in the Wiki
+
+We have more mypyc developer documentation in our
+[wiki](https://github.com/python/mypy/wiki/Developer-Guides).
+
+For basic information common to both mypy and mypyc development, refer
+to the [mypy wiki home page](https://github.com/python/mypy/wiki).
+
 ## Key Differences from Python
 
 Code compiled using mypyc is often much faster than CPython since it
