@@ -97,6 +97,10 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
 
     This is the main entry point to this module.
     """
+    if cdef.info not in builder.mapper.type_to_ir:
+        builder.error("Nested class definitions not supported", cdef.line)
+        return
+
     ir = builder.mapper.type_to_ir[cdef.info]
 
     # We do this check here because the base field of parent

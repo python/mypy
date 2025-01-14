@@ -2471,3 +2471,54 @@ def nested_in_dict(d: dict[str, Any]) -> int:
             return 0
 
 [builtins fixtures/dict.pyi]
+
+[case testMatchRebindsOuterFunctionName]
+# flags: --warn-unreachable
+from typing_extensions import Literal
+
+def x() -> tuple[Literal["test"]]: ...
+
+match x():
+    case (x,) if x == "test":  # E: Incompatible types in capture pattern (pattern captures type "Literal['test']", variable has type "Callable[[], Tuple[Literal['test']]]")
+        reveal_type(x)  # N: Revealed type is "def () -> Tuple[Literal['test']]"
+    case foo:
+        foo
+
+[builtins fixtures/dict.pyi]
+
+[case testMatchRebindsInnerFunctionName]
+# flags: --warn-unreachable
+class Some:
+    value: int | str
+    __match_args__ = ("value",)
+
+def fn1(x: Some | int | str) -> None:
+    match x:
+        case int():
+            def value():
+                return 1
+            reveal_type(value)  # N: Revealed type is "def () -> Any"
+        case str():
+            def value():
+                return 1
+            reveal_type(value)  # N: Revealed type is "def () -> Any"
+        case Some(value):  # E: Incompatible types in capture pattern (pattern captures type "Union[int, str]", variable has type "Callable[[], Any]")
+            pass
+
+def fn2(x: Some | int | str) -> None:
+    match x:
+        case int():
+            def value() -> str:
+                return ""
+            reveal_type(value)  # N: Revealed type is "def () -> builtins.str"
+        case str():
+            def value() -> int:  # E: All conditional function variants must have identical signatures \
+                                 # N: Original: \
+                                 # N:     def value() -> str \
+                                 # N: Redefinition: \
+                                 # N:     def value() -> int
+                return 1
+            reveal_type(value)  # N: Revealed type is "def () -> builtins.str"
+        case Some(value):  # E: Incompatible types in capture pattern (pattern captures type "Union[int, str]", variable has type "Callable[[], str]")
+            pass
+[builtins fixtures/dict.pyi]

@@ -2214,3 +2214,22 @@ class Test2:
 
 reveal_type(Test2().method) # N: Revealed type is "def (foo: builtins.int, *, bar: builtins.str) -> builtins.bytes"
 [builtins fixtures/tuple.pyi]
+
+[case testSelfInMultipleInheritance]
+from typing_extensions import Self
+
+class A:
+    foo: int
+    def method(self: Self, other: Self) -> None:
+        self.foo
+        other.foo
+
+class B:
+    bar: str
+    def method(self: Self, other: Self) -> None:
+        self.bar
+        other.bar
+
+class C(A, B):  # OK: both methods take Self
+    pass
+[builtins fixtures/tuple.pyi]

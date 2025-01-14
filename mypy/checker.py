@@ -1980,12 +1980,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Return a list of base classes which contain an attribute with the method name.
         """
         # Check against definitions in base classes.
-        check_override_compatibility = defn.name not in (
-            "__init__",
-            "__new__",
-            "__init_subclass__",
-            "__post_init__",
-        ) and (self.options.check_untyped_defs or not defn.is_dynamic())
+        check_override_compatibility = (
+            defn.name not in ("__init__", "__new__", "__init_subclass__", "__post_init__")
+            and (self.options.check_untyped_defs or not defn.is_dynamic())
+            and (
+                # don't check override for synthesized __replace__ methods from dataclasses
+                defn.name != "__replace__"
+                or defn.info.metadata.get("dataclass_tag") is None
+            )
+        )
         found_method_base_classes: list[TypeInfo] = []
         for base in defn.info.mro[1:]:
             result = self.check_method_or_accessor_override_for_base(
@@ -2232,8 +2235,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 is_class_method = sym.node.is_class
 
             mapped_typ = cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
-            active_self_type = self.scope.active_self_type()
-            if isinstance(mapped_typ, Overloaded) and active_self_type:
+            active_self_type = fill_typevars(sub_info)
+            if isinstance(mapped_typ, Overloaded):
                 # If we have an overload, filter to overloads that match the self type.
                 # This avoids false positives for concrete subclasses of generic classes,
                 # see testSelfTypeOverrideCompatibility for an example.
@@ -5402,17 +5405,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return sub_patterns_map
 
-    def infer_variable_types_from_type_maps(self, type_maps: list[TypeMap]) -> dict[Var, Type]:
-        all_captures: dict[Var, list[tuple[NameExpr, Type]]] = defaultdict(list)
+    def infer_variable_types_from_type_maps(
+        self, type_maps: list[TypeMap]
+    ) -> dict[SymbolNode, Type]:
+        # Type maps may contain variables inherited from previous code which are not
+        # necessary `Var`s (e.g. a function defined earlier with the same name).
+        all_captures: dict[SymbolNode, list[tuple[NameExpr, Type]]] = defaultdict(list)
         for tm in type_maps:
             if tm is not None:
                 for expr, typ in tm.items():
                     if isinstance(expr, NameExpr):
                         node = expr.node
-                        assert isinstance(node, Var)
+                        assert node is not None
                         all_captures[node].append((expr, typ))
 
-        inferred_types: dict[Var, Type] = {}
+        inferred_types: dict[SymbolNode, Type] = {}
         for var, captures in all_captures.items():
             already_exists = False
             types: list[Type] = []
@@ -5436,16 +5443,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 new_type = UnionType.make_union(types)
                 # Infer the union type at the first occurrence
                 first_occurrence, _ = captures[0]
+                # If it didn't exist before ``match``, it's a Var.
+                assert isinstance(var, Var)
                 inferred_types[var] = new_type
                 self.infer_variable_type(var, first_occurrence, new_type, first_occurrence)
         return inferred_types
 
-    def remove_capture_conflicts(self, type_map: TypeMap, inferred_types: dict[Var, Type]) -> None:
+    def remove_capture_conflicts(
+        self, type_map: TypeMap, inferred_types: dict[SymbolNode, Type]
+    ) -> None:
         if type_map:
             for expr, typ in list(type_map.items()):
                 if isinstance(expr, NameExpr):
                     node = expr.node
-                    assert isinstance(node, Var)
                     if node not in inferred_types or not is_subtype(typ, inferred_types[node]):
                         del type_map[expr]
 

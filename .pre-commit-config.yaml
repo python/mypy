@@ -16,10 +16,11 @@ repos:
       - id: ruff
         args: [--exit-non-zero-on-fix]
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.30.0
+    rev: 0.31.0
     hooks:
-      - id: check-dependabot
       - id: check-github-workflows
+      - id: check-github-actions
+      - id: check-readthedocs
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.6
     hooks:
@@ -29,5 +30,20 @@ repos:
           -ignore=property "allow_failure" is not defined,
           -ignore=SC2(046|086),
         ]
+        additional_dependencies:
+          # actionlint has a shellcheck integration which extracts shell scripts in `run:` steps from GitHub Actions
+          # and checks these with shellcheck. This is arguably its most useful feature,
+          # but the integration only works if shellcheck is installed
+          - "github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.10.0"
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.0.1
+    hooks:
+      - id: zizmor
+  # Should be the last one:
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+      - id: check-useless-excludes
+
 ci:
   autoupdate_schedule: quarterly
