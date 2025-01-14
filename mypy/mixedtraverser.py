@@ -83,7 +83,8 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
 
     def visit_type_alias_stmt(self, o: TypeAliasStmt, /) -> None:
         super().visit_type_alias_stmt(o)
-        self.visit_optional_type(o.alias_node)
+        if o.alias_node is not None:
+            o.alias_node.accept(self)
 
     def visit_type_alias(self, o: TypeAlias, /) -> None:
         super().visit_type_alias(o)
