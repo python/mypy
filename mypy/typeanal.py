@@ -1401,7 +1401,49 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             and not self.options.python_version >= (3, 10)
         ):
             self.fail("X | Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
-        return UnionType(self.anal_array(t.items), t.line, uses_pep604_syntax=t.uses_pep604_syntax)
+        items = self.anal_array(t.items)
+        # Check for invalid quoted type inside union syntax.
+        if (
+            t.original_str_expr is None
+            and not self.api.is_stub_file
+            and (not self.api.is_future_flag_set("annotations") or self.defining_alias)
+        ):
+            # Whether each type can be OR'd with a string.
+            item_ors_with_str = [
+                # Is a TypeVar?
+                isinstance(typ, (TypeVarType, UnboundType))
+                # Is a 'typing._UnionGenericAlias'?
+                or (
+                    isinstance(typ, TypeAliasType)
+                    and typ.alias is not None
+                    # "type: ignore" comment needed to satisfy the ProperTypePlugin.
+                    # Calling get_proper_type here would give the wrong result in the edge
+                    # case where a non-PEP-695 alias has a PEP-695 alias as its target.
+                    and isinstance(typ.alias.target, UnionType)  # type: ignore[misc]
+                    and typ.alias.alias_tvars
+                    and not typ.alias.python_3_12_type_alias
+                )
+                for typ in items
+            ]
+            for idx, itm in enumerate(t.items):
+                if (
+                    isinstance(itm, UnboundType)
+                    # Comes from a quoted expression.
+                    and itm.original_str_expr is not None
+                    # Not preceded by type that makes OR-ing with string valid.
+                    and not any(item_ors_with_str[:idx])
+                    # Not the first item immediately followed by a type that
+                    # can be OR'd with a string.
+                    # Accessing index 1 is safe because union syntax guarantees
+                    # that there are at least 2 items.
+                    and not (idx == 0 and item_ors_with_str[1])
+                ):
+                    self.fail(
+                        "X | Y syntax for unions cannot use quoted operands; use quotes"
+                        " around the entire expression instead",
+                        itm,
+                    )
+        return UnionType(items, t.line, uses_pep604_syntax=t.uses_pep604_syntax)
 
     def visit_partial_type(self, t: PartialType) -> Type:
         assert False, "Internal error: Unexpected partial type"

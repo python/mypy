@@ -1972,3 +1972,31 @@ class D:
             class G[Q]:
                 def g(self, x: Q): ...
             d: G[str]
+
+[case testPEP695TypeAliasInUnionOrSyntaxWithQuotedOperands]
+import types
+
+type A1 = int
+type A2 = int | str
+type A3[T] = list[T]
+type A4[T] = T | str
+
+x1: A1 | "bytes"        # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+x2: A2 | "bytes"        # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+x3: A3[int] | "bytes"   # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+x4: A4[int] | "bytes"   # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeAliasInUnionOrSyntaxWithQuotedOperandsNestedAlias]
+import types
+from typing import TypeVar
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+type A1[T] = T | str
+A2: TypeAlias = A1[T]
+
+x: A2[int] | "bytes"  # E: X | Y syntax for unions cannot use quoted operands; use quotes around the entire expression instead
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
