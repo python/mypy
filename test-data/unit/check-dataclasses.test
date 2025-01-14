@@ -2527,16 +2527,29 @@ Gen(2).__replace__(x="not an int")  # E: Argument "x" to "__replace__" of "Gen" 
 [builtins fixtures/tuple.pyi]
 
 [case testDunderReplaceCovariantOverride]
-# flags: --python-version 3.13
+# flags: --python-version 3.13  --enable-error-code mutable-override
 from dataclasses import dataclass
+from typing import Optional
+from typing_extensions import dataclass_transform
 
 @dataclass
 class Base:
-    a: object
+    a: Optional[int]
 
 @dataclass
-class Child(Base):  # E: Argument 1 of "__replace__" is incompatible with supertype "Base"; supertype defines the argument type as "object" \
-                    # N: This violates the Liskov substitution principle \
-                    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-    a: int
+class Child(Base):
+    a: int  # E: Covariant override of a mutable attribute (base class "Base" defined the type as "Optional[int]", expression has type "int")
+
+@dataclass
+class Other(Base):
+    a: str  # E: Incompatible types in assignment (expression has type "str", base class "Base" defined the type as "Optional[int]")
+
+@dataclass_transform(kw_only_default=True)
+class DCMeta(type): ...
+
+class X(metaclass=DCMeta):
+    a: Optional[int]
+
+class Y(X):
+    a: int  # E: Covariant override of a mutable attribute (base class "X" defined the type as "Optional[int]", expression has type "int")
 [builtins fixtures/tuple.pyi]

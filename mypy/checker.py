@@ -1980,12 +1980,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Return a list of base classes which contain an attribute with the method name.
         """
         # Check against definitions in base classes.
-        check_override_compatibility = defn.name not in (
-            "__init__",
-            "__new__",
-            "__init_subclass__",
-            "__post_init__",
-        ) and (self.options.check_untyped_defs or not defn.is_dynamic())
+        check_override_compatibility = (
+            defn.name not in ("__init__", "__new__", "__init_subclass__", "__post_init__")
+            and (self.options.check_untyped_defs or not defn.is_dynamic())
+            and (
+                # don't check override for synthesized __replace__ methods from dataclasses
+                defn.name != "__replace__"
+                or defn.info.metadata.get("dataclass_tag") is None
+            )
+        )
         found_method_base_classes: list[TypeInfo] = []
         for base in defn.info.mro[1:]:
             result = self.check_method_or_accessor_override_for_base(
