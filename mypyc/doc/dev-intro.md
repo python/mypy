@@ -364,8 +364,8 @@ cases should prefer assert statements to `[out]` sections.
 
 ### Debuggging Segfaults
 
-If you experience a segfault, using a debugger that supports C, such
-as gdb or lldb, is recommended.
+If you experience a segfault, it's recommended to use a debugger that supports
+C, such as gdb or lldb, to look into the segfault.
 
 If a test case segfaults, you can run tests using the debugger, so
 you can inspect the stack:
