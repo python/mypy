@@ -3498,6 +3498,30 @@ class C(P):
     x = ['a']  # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
+[case testUseSupertypeForUntypedList]
+from typing import List
+class A:
+  x: List[int] = []
+class B(A):
+  x = []
+class C(B):
+  x: List[str] = []  # E: Incompatible types in assignment (expression has type "List[str]", base class "A" defined the type as "List[int]")
+class D(B):
+  x = ["a"]  # E: List item 0 has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
+[case testUseSupertypeForUntypedTuple]
+from typing import Tuple
+class A:
+    x = (1,)
+class B(A):
+    x = (2,)
+class C(A):
+    x = (2, 3)  # E: Incompatible types in assignment (expression has type "Tuple[int, int]", base class "A" defined the type as "Tuple[int]")
+class D(B):
+    x = (2, 3)  # E: Incompatible types in assignment (expression has type "Tuple[int, int]", base class "A" defined the type as "Tuple[int]")
+[builtins fixtures/tuple.pyi]
+
 [case testUseSupertypeAsInferenceContextPartial]
 from typing import List
 

@@ -3334,38 +3334,48 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Show only one error per variable
                         break
 
-            direct_bases = lvalue_node.info.direct_base_classes()
-            last_immediate_base = direct_bases[-1] if direct_bases else None
+            if is_private(lvalue_node.name):
+                return False
 
-            for base in lvalue_node.info.mro[1:]:
-                # The type of "__slots__" and some other attributes usually doesn't need to
-                # be compatible with a base class. We'll still check the type of "__slots__"
-                # against "object" as an exception.
-                if lvalue_node.allow_incompatible_override and not (
-                    lvalue_node.name == "__slots__" and base.fullname == "builtins.object"
+            for base, base_type, base_node in self.classvar_base_types(lvalue_node):
+                if not self.check_compatibility_super(
+                    lvalue, lvalue_type, rvalue, base, base_type, base_node
                 ):
-                    continue
-
-                if is_private(lvalue_node.name):
-                    continue
-
-                base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
-                if isinstance(base_type, PartialType):
-                    base_type = None
-
-                if base_type:
-                    assert base_node is not None
-                    if not self.check_compatibility_super(
-                        lvalue, lvalue_type, rvalue, base, base_type, base_node
-                    ):
-                        # Only show one error per variable; even if other
-                        # base classes are also incompatible
-                        return True
-                    if base is last_immediate_base:
-                        # At this point, the attribute was found to be compatible with all
-                        # immediate parents.
-                        break
+                    # Only show one error per variable; even if other
+                    # base classes are also incompatible
+                    return True
         return False
+
+    def classvar_base_types(self, node: Var) -> list[tuple[TypeInfo, Type, Node]]:
+        """Determine base classes that a class variable should be checked against."""
+        base_types = []
+        direct_bases = node.info.direct_base_classes()
+        last_immediate_base = direct_bases[-1] if direct_bases else None
+        for base in node.info.mro[1:]:
+            # The type of "__slots__" and some other attributes usually doesn't need to
+            # be compatible with a base class. We'll still check the type of "__slots__"
+            # against "object" as an exception.
+            if node.allow_incompatible_override and not (
+                node.name == "__slots__" and base.fullname == "builtins.object"
+            ):
+                continue
+            base_type, base_node = self.lvalue_type_from_base(node, base)
+            if not base_type or isinstance(base_type, PartialType):
+                continue
+            assert base_node is not None
+            if isinstance(base_node, Var) and base_node.is_inferred:
+                # Skip the type inferred from the value if there is a superclass
+                # with an annotation or a (possibly more general) inferred type.
+                base_node_base_types = self.classvar_base_types(base_node)
+                if base_node_base_types:
+                    base_types.extend(base_node_base_types)
+                else:
+                    base_types.append((base, base_type, base_node))
+            else:
+                base_types.append((base, base_type, base_node))
+            if base is last_immediate_base:
+                break
+        return base_types
 
     def check_compatibility_super(
         self,
@@ -3449,8 +3459,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def lvalue_type_from_base(
         self, expr_node: Var, base: TypeInfo
     ) -> tuple[Type | None, Node | None]:
-        """For a NameExpr that is part of a class, walk all base classes and try
-        to find the first class that defines a Type for the same name."""
+        """Get NameExpr type from a given base class."""
         expr_name = expr_node.name
         base_var = base.names.get(expr_name)
 
