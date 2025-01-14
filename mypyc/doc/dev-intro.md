@@ -6,11 +6,11 @@ mypyc works internally.
 
 ## Developer Documentation in the Wiki
 
-We have more developer documentation in the mypy wiki:
-https://github.com/python/mypy/wiki/Developer-Guides
+We have more mypyc developer documentation in our
+[wiki](https://github.com/python/mypy/wiki/Developer-Guides).
 
 For basic information common to both mypy and mypyc development, refer
-to the mypy wiki home page: https://github.com/python/mypy/wiki
+to the [mypy wiki home page](https://github.com/python/mypy/wiki).
 
 ## Key Differences from Python
 
