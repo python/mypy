@@ -2232,8 +2232,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 is_class_method = sym.node.is_class
 
             mapped_typ = cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
-            active_self_type = self.scope.active_self_type()
-            if isinstance(mapped_typ, Overloaded) and active_self_type:
+            active_self_type = fill_typevars(sub_info)
+            if isinstance(mapped_typ, Overloaded):
                 # If we have an overload, filter to overloads that match the self type.
                 # This avoids false positives for concrete subclasses of generic classes,
                 # see testSelfTypeOverrideCompatibility for an example.
