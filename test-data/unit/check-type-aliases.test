@@ -977,18 +977,13 @@ class C(Generic[T]): ...
 class D(C[S]): ...  # E: Invalid type argument value for "C"
 
 U = TypeVar("U")
-A = List[C[U]]  # E: Type variable "U" not valid as type argument value for "C"
-A2 = List[C[T]]
-x: A[bytes]
-x2: A2[bytes]  # E: Value of type variable "T" of "A2" cannot be "bytes"
+A = List[C[U]]
+x: A[bytes]  # E: Value of type variable "T" of "C" cannot be "bytes"
 
 V = TypeVar("V", bound=int)
-V2 = TypeVar("V2", bound=int)
 class E(Generic[V]): ...
-B = List[E[U]]  # E: Type argument "U" of "E" must be a subtype of "int"
-B2 = List[E[V2]]
-y: B[str]
-y2: B2[str]  # E: Type argument "str" of "B2" must be a subtype of "int"
+B = List[E[U]]
+y: B[str]  # E: Type argument "str" of "E" must be a subtype of "int"
 
 [case testValidTypeAliasValuesMoreRestrictive]
 from typing import TypeVar, Generic, List
