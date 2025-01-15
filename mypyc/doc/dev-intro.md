@@ -376,20 +376,35 @@ If you experience a segfault, it's recommended to use a debugger that supports
 C, such as gdb or lldb, to look into the segfault.
 
 If a test case segfaults, you can run tests using the debugger, so
-you can inspect the stack:
+you can inspect the stack. Example of inspecting the C stack when a
+test case segfaults (user input after `$` and `(gdb)` prompts):
 
 ```
 $ pytest mypyc -n0 -s --mypyc-debug=gdb -k <name-of-test>
+...
+(gdb) r
+...
+Program received signal SIGSEGV, Segmentation fault.
+...
+(gdb) bt
+#0  0x00005555556ed1a2 in _PyObject_HashFast (op=0x0) at ./Include/object.h:336
+#1  PyDict_GetItemWithError (op=0x7ffff6c894c0, key=0x0) at Objects/dictobject.c:2394
+...
 ```
 
 You must use `-n0 -s` to enable interactive input to the debugger.
-Instad of `gdb`, you can also try `lldb`.
+Instad of `gdb`, you can also try `lldb` (especially on macOS).
 
 To get better C stack tracebacks and more assertions in the Python
-runtime, you can build Python in debug mode and use that to run tests
-or debug outside the test framework.
+runtime, you can build Python in debug mode and use that to run tests,
+or to manually run the debugger outside the test framework.
 
-Here are some hints that may help (for Ubuntu):
+**Note:** You may need to build Python yourself on macOS, as official
+Python builds may not have sufficient entitlements to use a debugger.
+
+Here are some hints about building a debug version of CPython that may
+help (for Ubuntu, macOS is mostly similar except for installing build
+dependencies):
 
 ```
 $ sudo apt install gdb build-essential libncursesw5-dev libssl-dev libgdbm-dev libc6-dev libsqlite3-dev libbz2-dev libffi-dev libgdbm-compat-dev
@@ -397,7 +412,7 @@ $ <download Python tarball and extract it>
 $ cd Python-3.XX.Y
 $ ./configure --with-pydebug
 $ make -s -j16
-$ ./python -m venv ~/<venv-location>
+$ ./python -m venv ~/<venv-location>  # Use ./python.exe -m venv ... on macOS
 $ source ~/<venv-location>/bin/activate
 $ cd <mypy-repo-dir>
 $ pip install -r test-requirements.txt
