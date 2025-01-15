@@ -109,6 +109,9 @@ def split_and_match_files_list(paths: Sequence[str]) -> list[str]:
     expanded_paths = []
 
     for path in paths:
+        if not path:
+            continue
+
         path = expand_path(path.strip())
         globbed_files = fileglob.glob(path, recursive=True)
         if globbed_files:
@@ -318,6 +321,22 @@ def parse_config_file(
             print(f"{file_read}: No [mypy] section in config file", file=stderr)
     else:
         section = parser["mypy"]
+
+        if "files" in section:
+            raw_files = section["files"].strip()
+            files_split = [file.strip() for file in raw_files.split(",")]
+
+            # Remove trailing empty entry if present
+            if files_split and files_split[-1] == "":
+                files_split.pop()
+
+            # Raise an error if there are any remaining empty strings
+            if "" in files_split:
+                raise ValueError("Invalid config: Empty filenames are not allowed except for trailing commas.")
+
+            options.files = files_split
+
+
         prefix = f"{file_read}: [mypy]: "
         updates, report_dirs = parse_section(
             prefix, options, set_strict_flags, section, config_types, stderr
