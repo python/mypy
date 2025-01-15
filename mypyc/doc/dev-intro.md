@@ -296,6 +296,22 @@ Compiled native functions have the prefix `CPyDef_`, while wrapper
 functions used for calling functions from interpreted Python code have
 the `CPyPy_` prefix.
 
+When running a test, the first test failure will copy generated C code
+into the `.mypyc_test_output` directory. You will see something like
+this in the test output:
+
+```
+...
+---------------------------- Captured stderr call -----------------------------
+
+Generated files: /Users/me/src/mypy/.mypyc_test_output (for first failure only)
+
+...
+```
+
+You can also run pytest with `--mypyc-showc` to display C code on every
+test failure.
+
 ## Other Important Limitations
 
 All of these limitations will likely be fixed in the future:
