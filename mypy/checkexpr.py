@@ -1486,8 +1486,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         proper_callee = get_proper_type(callee_type)
         if isinstance(e.callee, (NameExpr, MemberExpr)):
             node = e.callee.node
-            if (node is None) and (member is not None) and isinstance(object_type, Instance) and (
-                (symbol := object_type.type.names.get(member)) is not None
+            if (
+                (node is None)
+                and (member is not None)
+                and isinstance(object_type, Instance)
+                and ((symbol := object_type.type.names.get(member)) is not None)
             ):
                 node = symbol.node
             self.chk.warn_deprecated_overload_item(
