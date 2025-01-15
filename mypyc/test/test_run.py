@@ -328,7 +328,22 @@ class TestRun(MypycDataSuite):
             show_c(cfiles)
         if proc.returncode != 0:
             print()
-            print("*** Exit status: %d" % proc.returncode)
+            signal = proc.returncode == -11
+            extra = ""
+            if signal:
+                extra = " (likely segmentation fault)"
+            print(f"*** Exit status: {proc.returncode}{extra}")
+            if signal and not sys.platform.startswith("win"):
+                print()
+                if sys.platform == "darwin":
+                    debugger = "lldb"
+                else:
+                    debugger = "gdb"
+                print(
+                    f'hint: Use "pytest -n0 -s --mypyc-debug={debugger} -k <name-substring>" to run test in debugger'
+                )
+                print("hint: You may need to build a debug version of Python first and use it")
+                print('hint: See also "Debuggging Segfaults" in mypyc/doc/dev-intro.md')
 
         # Verify output.
         if bench:
