@@ -194,18 +194,24 @@ def DerivedProperty.next(self):
     self :: __main__.DerivedProperty
     r0 :: object
     r1 :: int
-    r2, r3, r4 :: object
-    r5 :: int
-    r6 :: __main__.DerivedProperty
+    r2, r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: int
+    r8 :: __main__.DerivedProperty
 L0:
     r0 = self._incr_func
     r1 = self.value
     r2 = self._incr_func
     r3 = box(int, r1)
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
-    r5 = unbox(int, r4)
-    r6 = DerivedProperty(r0, r5)
-    return r6
+    r4 = [r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
+    keep_alive r3
+    r7 = unbox(int, r6)
+    r8 = DerivedProperty(r0, r7)
+    return r8
 def DerivedProperty.next__BaseProperty_glue(__mypyc_self__):
     __mypyc_self__, r0 :: __main__.DerivedProperty
 L0:
@@ -224,24 +230,36 @@ def AgainProperty.next(self):
     self :: __main__.AgainProperty
     r0 :: object
     r1 :: int
-    r2, r3, r4 :: object
-    r5 :: int
-    r6, r7, r8 :: object
-    r9 :: int
-    r10 :: __main__.AgainProperty
+    r2, r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: int
+    r8, r9 :: object
+    r10 :: object[1]
+    r11 :: object_ptr
+    r12 :: object
+    r13 :: int
+    r14 :: __main__.AgainProperty
 L0:
     r0 = self._incr_func
     r1 = self.value
     r2 = self._incr_func
     r3 = box(int, r1)
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
-    r5 = unbox(int, r4)
-    r6 = self._incr_func
-    r7 = box(int, r5)
-    r8 = PyObject_CallFunctionObjArgs(r6, r7, 0)
-    r9 = unbox(int, r8)
-    r10 = AgainProperty(r0, r9)
-    return r10
+    r4 = [r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
+    keep_alive r3
+    r7 = unbox(int, r6)
+    r8 = self._incr_func
+    r9 = box(int, r7)
+    r10 = [r9]
+    r11 = load_address r10
+    r12 = PyObject_Vectorcall(r8, r11, 1, 0)
+    keep_alive r9
+    r13 = unbox(int, r12)
+    r14 = AgainProperty(r0, r13)
+    return r14
 def AgainProperty.next__DerivedProperty_glue(__mypyc_self__):
     __mypyc_self__, r0 :: __main__.AgainProperty
 L0:
