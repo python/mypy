@@ -15,7 +15,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from collections.abc import Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import Any, Callable, Final, TextIO, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
@@ -216,8 +216,9 @@ toml_config_types.update(
     }
 )
 
+
 def _maybe_parse_individual_file(
-    config_file: str, stderr: TextIO | None = None,
+    config_file: str, stderr: TextIO | None = None
 ) -> tuple[MutableMapping[str, Any], dict[str, _INI_PARSER_CALLABLE], str] | None:
 
     if not os.path.exists(config_file):
@@ -266,8 +267,7 @@ def _find_config_file(
             return ret
 
         if any(
-            os.path.exists(os.path.join(current_dir, cvs_root))
-            for cvs_root in (".git", ".hg")
+            os.path.exists(os.path.join(current_dir, cvs_root)) for cvs_root in (".git", ".hg")
         ):
             break
         parent_dir = os.path.dirname(current_dir)
