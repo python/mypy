@@ -294,8 +294,8 @@ class TypedDictAnalyzer:
          * Set of required keys
         """
         fields: dict[str, Type] = {}
-        readonly_keys = set()
-        required_keys = set()
+        readonly_keys = set[str]()
+        required_keys = set[str]()
         statements: list[Statement] = []
 
         total: bool | None = True
