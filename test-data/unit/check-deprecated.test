@@ -405,6 +405,8 @@ class A:
     @deprecated("use `h2`  instead")
     def h(self, v: Union[int, str]) -> A: ...
 
+class B(A): ...
+
 a = A()
 a.f(1)  # E: overload def (self: __main__.A, v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
 a.f("x")
@@ -412,6 +414,14 @@ a.g(1)
 a.g("x")  # E: overload def (self: __main__.A, v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
 a.h(1)  # E: function __main__.A.h is deprecated: use `h2`  instead
 a.h("x")  # E: function __main__.A.h is deprecated: use `h2`  instead
+
+b = B()
+b.f(1)  # E: overload def (self: __main__.A, v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
+b.f("x")
+b.g(1)
+b.g("x")  # E: overload def (self: __main__.A, v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
+b.h(1)  # E: function __main__.A.h is deprecated: use `h2`  instead
+b.h("x")  # E: function __main__.A.h is deprecated: use `h2`  instead
 
 [builtins fixtures/tuple.pyi]
 
