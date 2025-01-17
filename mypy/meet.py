@@ -223,7 +223,11 @@ def get_possible_variants(typ: Type) -> list[Type]:
         else:
             return [typ.upper_bound]
     elif isinstance(typ, ParamSpecType):
-        return [typ.upper_bound]
+        # Extract 'object' from the final mro item
+        upper_bound = get_proper_type(typ.upper_bound)
+        if isinstance(upper_bound, Instance):
+            return [Instance(upper_bound.type.mro[-1], [])]
+        return [AnyType(TypeOfAny.implementation_artifact)]
     elif isinstance(typ, TypeVarTupleType):
         return [typ.upper_bound]
     elif isinstance(typ, UnionType):
@@ -243,8 +247,8 @@ def is_enum_overlapping_union(x: ProperType, y: ProperType) -> bool:
         and x.type.is_enum
         and isinstance(y, UnionType)
         and any(
-            isinstance(p, LiteralType) and x.type == p.fallback.type
-            for p in (get_proper_type(z) for z in y.relevant_items())
+            isinstance(p := get_proper_type(z), LiteralType) and x.type == p.fallback.type
+            for z in y.relevant_items()
         )
     )
 
@@ -687,7 +691,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def visit_unbound_type(self, t: UnboundType) -> ProperType:
         if isinstance(self.s, NoneType):
             if state.strict_optional:
-                return AnyType(TypeOfAny.special_form)
+                return UninhabitedType()
             else:
                 return self.s
         elif isinstance(self.s, UninhabitedType):
@@ -1017,7 +1021,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             items = dict(item_list)
             fallback = self.s.create_anonymous_fallback()
             required_keys = t.required_keys | self.s.required_keys
-            return TypedDictType(items, required_keys, fallback)
+            readonly_keys = t.readonly_keys | self.s.readonly_keys
+            return TypedDictType(items, required_keys, readonly_keys, fallback)
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
             return t
         else:
@@ -1139,6 +1144,9 @@ def typed_dict_mapping_overlap(
       - TypedDict(x=str, y=str, total=False) doesn't overlap with Dict[str, int]
       - TypedDict(x=int, y=str, total=False) overlaps with Dict[str, str]
 
+    * A TypedDict with at least one ReadOnly[] key does not overlap
+      with Dict or MutableMapping, because they assume mutable data.
+
     As usual empty, dictionaries lie in a gray area. In general, List[str] and List[str]
     are considered non-overlapping despite empty list belongs to both. However, List[int]
     and List[Never] are considered overlapping.
@@ -1158,6 +1166,12 @@ def typed_dict_mapping_overlap(
         assert isinstance(left, Instance)
         assert isinstance(right, TypedDictType)
         typed, other = right, left
+
+    mutable_mapping = next(
+        (base for base in other.type.mro if base.fullname == "typing.MutableMapping"), None
+    )
+    if mutable_mapping is not None and typed.readonly_keys:
+        return False
 
     mapping = next(base for base in other.type.mro if base.fullname == "typing.Mapping")
     other = map_instance_to_supertype(other, mapping)

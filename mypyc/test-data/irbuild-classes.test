@@ -613,7 +613,7 @@ class C:
 class D:
     @classmethod
     def f(cls, x: int) -> int:
-        # TODO: This could aso be optimized, since g is not ever overridden
+        # TODO: This could also be optimized, since g is not ever overridden
         return cls.g(x)
 
     @classmethod
@@ -1300,3 +1300,15 @@ class T:
 
 class E(T):
     y: str  # E: Type of "y" is incompatible with definition in trait "T"
+
+
+[case testNestedClasses]
+def outer():
+    class Inner:  # E: Nested class definitions not supported
+        pass
+
+    return Inner
+
+if True:
+    class OtherInner:  # E: Nested class definitions not supported
+        pass

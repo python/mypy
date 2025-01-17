@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Container, cast
+from collections.abc import Container
+from typing import Callable, cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypy.types import (
@@ -161,6 +162,7 @@ class TypeVarEraser(TypeTranslator):
     """Implementation of type erasure"""
 
     def __init__(self, erase_id: Callable[[TypeVarId], bool], replacement: Type) -> None:
+        super().__init__()
         self.erase_id = erase_id
         self.replacement = replacement
 

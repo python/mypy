@@ -1,6 +1,6 @@
 import sys
 from _typeshed import StrOrBytesPath
-from collections.abc import Callable, Hashable, Iterable, Sequence
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from configparser import RawConfigParser
 from re import Pattern
 from threading import Thread
@@ -63,7 +63,7 @@ def dictConfig(config: _DictConfigArgs | dict[str, Any]) -> None: ...
 if sys.version_info >= (3, 10):
     def fileConfig(
         fname: StrOrBytesPath | IO[str] | RawConfigParser,
-        defaults: dict[str, str] | None = None,
+        defaults: Mapping[str, str] | None = None,
         disable_existing_loggers: bool = True,
         encoding: str | None = None,
     ) -> None: ...
@@ -71,7 +71,7 @@ if sys.version_info >= (3, 10):
 else:
     def fileConfig(
         fname: StrOrBytesPath | IO[str] | RawConfigParser,
-        defaults: dict[str, str] | None = None,
+        defaults: Mapping[str, str] | None = None,
         disable_existing_loggers: bool = True,
     ) -> None: ...
 
@@ -116,7 +116,7 @@ class BaseConfigurator:  # undocumented
     def cfg_convert(self, value: str) -> Any: ...
     def convert(self, value: Any) -> Any: ...
     def configure_custom(self, config: dict[str, Any]) -> Any: ...
-    def as_tuple(self, value: list[Any] | tuple[Any]) -> tuple[Any]: ...
+    def as_tuple(self, value: list[Any] | tuple[Any, ...]) -> tuple[Any, ...]: ...
 
 class DictConfigurator(BaseConfigurator):
     def configure(self) -> None: ...  # undocumented

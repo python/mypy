@@ -15,27 +15,15 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Final,
-    Iterable,
-    List,
-    Mapping,
-    MutableMapping,
-    Sequence,
-    TextIO,
-    Tuple,
-    Union,
-)
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
+from typing import Any, Callable, Final, TextIO, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options
 
 _CONFIG_VALUE_TYPES: _TypeAlias = Union[
-    str, bool, int, float, Dict[str, str], List[str], Tuple[int, int]
+    str, bool, int, float, dict[str, str], list[str], tuple[int, int]
 ]
 _INI_PARSER_CALLABLE: _TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 
@@ -472,12 +460,7 @@ def parse_section(
             )
             continue
         else:
-            dv = None
-            # We have to keep new_semantic_analyzer in Options
-            # for plugin compatibility but it is not a valid option anymore.
-            assert hasattr(template, "new_semantic_analyzer")
-            if key != "new_semantic_analyzer":
-                dv = getattr(template, key, None)
+            dv = getattr(template, key, None)
             if dv is None:
                 if key.endswith("_report"):
                     report_type = key[:-7].replace("_", "-")

@@ -14,9 +14,10 @@ from __future__ import annotations
 import difflib
 import itertools
 import re
+from collections.abc import Collection, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, Sequence, cast
+from typing import Any, Callable, Final, cast
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry
@@ -243,7 +244,7 @@ class MessageBuilder:
             TODO: address this in follow up PR
             """
             if isinstance(ctx, (ClassDef, FuncDef)):
-                return range(ctx.deco_line or ctx.line, ctx.line + 1)
+                return range(ctx.line, ctx.line + 1)
             elif not isinstance(ctx, Expression):
                 return [ctx.line]
             else:
@@ -675,8 +676,7 @@ class MessageBuilder:
                         arg_type, callee.arg_types[n - 1], options=self.options
                     )
                     info = (
-                        f" (expression has type {arg_type_str}, "
-                        f"target has type {callee_type_str})"
+                        f" (expression has type {arg_type_str}, target has type {callee_type_str})"
                     )
                     error_msg = (
                         message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT.with_additional_msg(info)
@@ -871,7 +871,10 @@ class MessageBuilder:
             )
             if call:
                 self.note_call(original_caller_type, call, context, code=code)
-
+        if isinstance(callee_type, Instance) and callee_type.type.is_protocol:
+            call = find_member("__call__", callee_type, callee_type, is_operator=True)
+            if call:
+                self.note_call(callee_type, call, context, code=code)
         self.maybe_note_concatenate_pos_args(original_caller_type, callee_type, context, code)
 
     def maybe_note_concatenate_pos_args(
@@ -926,6 +929,17 @@ class MessageBuilder:
             code=code,
         )
 
+    def readonly_keys_mutated(self, keys: set[str], context: Context) -> None:
+        if len(keys) == 1:
+            suffix = "is"
+        else:
+            suffix = "are"
+        self.fail(
+            "ReadOnly {} TypedDict {} mutated".format(format_key_list(sorted(keys)), suffix),
+            code=codes.TYPEDDICT_READONLY_MUTATED,
+            context=context,
+        )
+
     def too_few_arguments(
         self, callee: CallableType, context: Context, argument_names: Sequence[str | None] | None
     ) -> None:
@@ -941,7 +955,7 @@ class MessageBuilder:
                 msg = "Missing positional arguments"
             callee_name = callable_name(callee)
             if callee_name is not None and diff and all(d is not None for d in diff):
-                args = '", "'.join(cast(List[str], diff))
+                args = '", "'.join(cast(list[str], diff))
                 msg += f' "{args}" in call to {callee_name}'
             else:
                 msg = "Too few arguments" + for_function(callee)
@@ -1384,7 +1398,7 @@ class MessageBuilder:
             self.fail("Cannot infer function type argument", context)
 
     def invalid_var_arg(self, typ: Type, context: Context) -> None:
-        self.fail("List or tuple expected as variadic arguments", context)
+        self.fail("Expected iterable as variadic argument", context)
 
     def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
         typ = get_proper_type(typ)
@@ -1422,8 +1436,7 @@ class MessageBuilder:
 
     def unsafe_super(self, method: str, cls: str, ctx: Context) -> None:
         self.fail(
-            'Call to abstract method "{}" of "{}" with trivial body'
-            " via super() is unsafe".format(method, cls),
+            f'Call to abstract method "{method}" of "{cls}" with trivial body via super() is unsafe',
             ctx,
             code=codes.SAFE_SUPER,
         )
@@ -1577,8 +1590,10 @@ class MessageBuilder:
 
     def cant_override_final(self, name: str, base_name: str, ctx: Context) -> None:
         self.fail(
-            'Cannot override final attribute "{}"'
-            ' (previously declared in base class "{}")'.format(name, base_name),
+            (
+                f'Cannot override final attribute "{name}" '
+                f'(previously declared in base class "{base_name}")'
+            ),
             ctx,
         )
 
@@ -1653,6 +1668,7 @@ class MessageBuilder:
                 index1=index1, index2=index2
             ),
             context,
+            code=codes.OVERLOAD_CANNOT_MATCH,
         )
 
     def overloaded_signatures_typevar_specific(self, index: int, context: Context) -> None:
@@ -1664,15 +1680,16 @@ class MessageBuilder:
 
     def overloaded_signatures_arg_specific(self, index: int, context: Context) -> None:
         self.fail(
-            "Overloaded function implementation does not accept all possible arguments "
-            "of signature {}".format(index),
+            (
+                f"Overloaded function implementation does not accept all possible arguments "
+                f"of signature {index}"
+            ),
             context,
         )
 
     def overloaded_signatures_ret_specific(self, index: int, context: Context) -> None:
         self.fail(
-            "Overloaded function implementation cannot produce return type "
-            "of signature {}".format(index),
+            f"Overloaded function implementation cannot produce return type of signature {index}",
             context,
         )
 
@@ -1695,8 +1712,7 @@ class MessageBuilder:
         context: Context,
     ) -> None:
         self.fail(
-            'Signatures of "{}" of "{}" and "{}" of {} '
-            "are unsafely overlapping".format(
+            'Signatures of "{}" of "{}" and "{}" of {} are unsafely overlapping'.format(
                 reverse_method,
                 reverse_class.name,
                 forward_method,
@@ -1805,7 +1821,7 @@ class MessageBuilder:
         )
 
     def explicit_any(self, ctx: Context) -> None:
-        self.fail('Explicit "Any" is not allowed', ctx)
+        self.fail('Explicit "Any" is not allowed', ctx, code=codes.EXPLICIT_ANY)
 
     def unsupported_target_for_star_typeddict(self, typ: Type, ctx: Context) -> None:
         self.fail(
@@ -1985,8 +2001,7 @@ class MessageBuilder:
         self, actual: int, tvar_name: str, expected: int, context: Context
     ) -> None:
         msg = capitalize(
-            '{} type variable "{}" used in protocol where'
-            " {} one is expected".format(
+            '{} type variable "{}" used in protocol where {} one is expected'.format(
                 variance_string(actual), tvar_name, variance_string(expected)
             )
         )
@@ -2234,15 +2249,17 @@ class MessageBuilder:
         for name, subflags, superflags in conflict_flags[:MAX_ITEMS]:
             if not class_obj and IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
                 self.note(
-                    "Protocol member {}.{} expected instance variable,"
-                    " got class variable".format(supertype.type.name, name),
+                    "Protocol member {}.{} expected instance variable, got class variable".format(
+                        supertype.type.name, name
+                    ),
                     context,
                     code=code,
                 )
             if not class_obj and IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
                 self.note(
-                    "Protocol member {}.{} expected class variable,"
-                    " got instance variable".format(supertype.type.name, name),
+                    "Protocol member {}.{} expected class variable, got instance variable".format(
+                        supertype.type.name, name
+                    ),
                     context,
                     code=code,
                 )
@@ -2612,10 +2629,13 @@ def format_type_inner(
             return format(typ.fallback)
         items = []
         for item_name, item_type in typ.items.items():
-            modifier = "" if item_name in typ.required_keys else "?"
+            modifier = ""
+            if item_name not in typ.required_keys:
+                modifier += "?"
+            if item_name in typ.readonly_keys:
+                modifier += "="
             items.append(f"{item_name!r}{modifier}: {format(item_type)}")
-        s = f"TypedDict({{{', '.join(items)}}})"
-        return s
+        return f"TypedDict({{{', '.join(items)}}})"
     elif isinstance(typ, LiteralType):
         return f"Literal[{format_literal_value(typ)}]"
     elif isinstance(typ, UnionType):
@@ -2681,7 +2701,7 @@ def format_type_inner(
         if func.is_type_obj():
             # The type of a type object type can be derived from the
             # return type (this always works).
-            return format(TypeType.make_normalized(erase_type(func.items[0].ret_type)))
+            return format(TypeType.make_normalized(func.items[0].ret_type))
         elif isinstance(func, CallableType):
             if func.type_guard is not None:
                 return_type = f"TypeGuard[{format(func.type_guard)}]"
@@ -2941,9 +2961,9 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
         for tvar in tp.variables:
             if isinstance(tvar, TypeVarType):
                 upper_bound = get_proper_type(tvar.upper_bound)
-                if (
+                if not (
                     isinstance(upper_bound, Instance)
-                    and upper_bound.type.fullname != "builtins.object"
+                    and upper_bound.type.fullname == "builtins.object"
                 ):
                     tvars.append(f"{tvar.name}: {format_type_bare(upper_bound, options)}")
                 elif tvar.values:

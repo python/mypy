@@ -194,6 +194,7 @@ def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost qu
 [out]
 
 [case testFinalDefiningNotInMethodExtensions]
+# flags: --python-version 3.14
 from typing_extensions import Final
 
 def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
@@ -1128,6 +1129,7 @@ class A:
 [builtins fixtures/tuple.pyi]
 
 [case testFinalUsedWithClassVar]
+# flags: --python-version 3.12
 from typing import Final, ClassVar
 
 class A:
@@ -1135,6 +1137,15 @@ class A:
     b: ClassVar[Final[int]]  # E: Final can be only used as an outermost qualifier in a variable annotation
     c: ClassVar[Final] = 1  # E: Final can be only used as an outermost qualifier in a variable annotation
 [out]
+
+[case testFinalUsedWithClassVarAfterPy313]
+# flags: --python-version 3.13
+from typing import Final, ClassVar
+
+class A:
+    a: Final[ClassVar[int]] = 1
+    b: ClassVar[Final[int]] = 1
+    c: ClassVar[Final] = 1
 
 [case testFinalClassWithAbstractMethod]
 from typing import final

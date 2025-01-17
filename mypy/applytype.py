@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Callable
 
 import mypy.subtypes
 from mypy.erasetype import erase_typevars
@@ -215,6 +216,7 @@ class PolyTranslator(TypeTranslator):
         bound_tvars: frozenset[TypeVarLikeType] = frozenset(),
         seen_aliases: frozenset[TypeInfo] = frozenset(),
     ) -> None:
+        super().__init__()
         self.poly_tvars = set(poly_tvars)
         # This is a simplified version of TypeVarScope used during semantic analysis.
         self.bound_tvars = bound_tvars
