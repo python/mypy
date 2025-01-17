@@ -217,7 +217,7 @@ toml_config_types.update(
 )
 
 
-def _maybe_parse_individual_file(
+def _parse_individual_file(
     config_file: str, stderr: TextIO | None = None
 ) -> tuple[MutableMapping[str, Any], dict[str, _INI_PARSER_CALLABLE], str] | None:
 
@@ -261,7 +261,7 @@ def _find_config_file(
     while True:
         for name in defaults.CONFIG_NAMES + defaults.SHARED_CONFIG_NAMES:
             config_file = os.path.relpath(os.path.join(current_dir, name))
-            ret = _maybe_parse_individual_file(config_file, stderr)
+            ret = _parse_individual_file(config_file, stderr)
             if ret is None:
                 continue
             return ret
@@ -276,7 +276,7 @@ def _find_config_file(
         current_dir = parent_dir
 
     for config_file in defaults.USER_CONFIG_FILES:
-        ret = _maybe_parse_individual_file(config_file, stderr)
+        ret = _parse_individual_file(config_file, stderr)
         if ret is None:
             continue
         return ret
@@ -300,16 +300,14 @@ def parse_config_file(
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
 
-    if filename is not None:
-        ret = _maybe_parse_individual_file(filename, stderr)
-        if ret is None:
-            return
-        parser, config_types, file_read = ret
-    else:
-        ret = _find_config_file(stderr)
-        if ret is None:
-            return
-        parser, config_types, file_read = ret
+    ret = (
+        _parse_individual_file(filename, stderr)
+        if filename is not None
+        else _find_config_file(stderr)
+    )
+    if ret is None:
+        return
+    parser, config_types, file_read = ret
 
     options.config_file = file_read
     os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(os.path.abspath(file_read))
