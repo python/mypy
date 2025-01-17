@@ -224,7 +224,6 @@ def _parse_individual_file(
     if not os.path.exists(config_file):
         return None
 
-    config_parser = configparser.RawConfigParser()
     parser: MutableMapping[str, Any]
     try:
         if is_toml(config_file):
@@ -238,8 +237,8 @@ def _parse_individual_file(
             parser = destructure_overrides(toml_data)
             config_types = toml_config_types
         else:
-            config_parser.read(config_file)
-            parser = config_parser
+            parser = configparser.RawConfigParser()
+            parser.read(config_file)
             config_types = ini_config_types
 
     except (tomllib.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
