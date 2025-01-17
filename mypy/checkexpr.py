@@ -6565,7 +6565,7 @@ def all_same_types(types: list[Type]) -> bool:
 
 
 def all_same_type_narrowers(types: list[CallableType]) -> bool:
-    if not types:
+    if len(types) <= 1:
         return True
 
     type_guards: list[Type] = []

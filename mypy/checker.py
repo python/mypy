@@ -6037,6 +6037,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Also note that a care must be taken to unwrap this back at read places
                         # where we use this to narrow down declared type.
                         with self.msg.filter_errors(), self.local_type_map():
+                            # `node.callee` can be an `overload`ed function,
+                            # we need to resolve the real `overload` case.
                             _, real_func = self.expr_checker.check_call(
                                 get_proper_type(self.lookup_type(node.callee)),
                                 node.args,
