@@ -744,5 +744,4 @@ def fn(w: W) -> W:
     elif type(w) is int:
         reveal_type(w)  # N: Revealed type is "builtins.int"
     return w
-
 [builtins fixtures/isinstance.pyi]
