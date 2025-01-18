@@ -21,7 +21,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
-    overload,
+    overload, TypeGuard,
 )
 from typing_extensions import TypeAlias as _TypeAlias
 
@@ -2036,6 +2036,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         return None
         return found_base_method
 
+    def check_setter_type_override(
+        self, defn: OverloadedFuncDef, base_node: OverloadedFuncDef | Var, base: TypeInfo
+    ) -> None:
+        # TODO: implement actual logic.
+        setter_type = get_setter_type(defn)
+        original_setter_type = get_setter_type(base_node)
+
     def check_method_override_for_base_with_name(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, name: str, base: TypeInfo
     ) -> bool:
@@ -2044,163 +2051,174 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Return True if the supertype node was not analysed yet, and `defn` was deferred.
         """
         base_attr = base.names.get(name)
-        if base_attr:
-            # The name of the method is defined in the base class.
+        if not base_attr:
+            return False
+        # The name of the method is defined in the base class.
 
-            # Point errors at the 'def' line (important for backward compatibility
-            # of type ignores).
-            if not isinstance(defn, Decorator):
-                context = defn
-            else:
-                context = defn.func
+        # Point errors at the 'def' line (important for backward compatibility
+        # of type ignores).
+        if not isinstance(defn, Decorator):
+            context = defn
+        else:
+            context = defn.func
 
-            # Construct the type of the overriding method.
-            # TODO: this logic is much less complete than similar one in checkmember.py
-            if isinstance(defn, (FuncDef, OverloadedFuncDef)):
-                typ: Type = self.function_type(defn)
-                override_class_or_static = defn.is_class or defn.is_static
-                override_class = defn.is_class
-            else:
-                assert defn.var.is_ready
-                assert defn.var.type is not None
-                typ = defn.var.type
-                override_class_or_static = defn.func.is_class or defn.func.is_static
-                override_class = defn.func.is_class
-            typ = get_proper_type(typ)
-            if isinstance(typ, FunctionLike) and not is_static(context):
-                typ = bind_self(typ, self.scope.active_self_type(), is_classmethod=override_class)
-            # Map the overridden method type to subtype context so that
-            # it can be checked for compatibility.
-            original_type = get_proper_type(base_attr.type)
-            original_node = base_attr.node
-            # `original_type` can be partial if (e.g.) it is originally an
-            # instance variable from an `__init__` block that becomes deferred.
-            if original_type is None or isinstance(original_type, PartialType):
-                if self.pass_num < self.last_pass:
-                    # If there are passes left, defer this node until next pass,
-                    # otherwise try reconstructing the method type from available information.
-                    self.defer_node(defn, defn.info)
-                    return True
-                elif isinstance(original_node, (FuncDef, OverloadedFuncDef)):
-                    original_type = self.function_type(original_node)
-                elif isinstance(original_node, Decorator):
-                    original_type = self.function_type(original_node.func)
-                elif isinstance(original_node, Var):
-                    # Super type can define method as an attribute.
-                    # See https://github.com/python/mypy/issues/10134
-
-                    # We also check that sometimes `original_node.type` is None.
-                    # This is the case when we use something like `__hash__ = None`.
-                    if original_node.type is not None:
-                        original_type = get_proper_type(original_node.type)
-                    else:
-                        original_type = NoneType()
-                else:
-                    # Will always fail to typecheck below, since we know the node is a method
-                    original_type = NoneType()
-            if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
-                original_class_or_static = original_node.is_class or original_node.is_static
+        # Construct the type of the overriding method.
+        # TODO: this logic is much less complete than similar one in checkmember.py
+        if isinstance(defn, (FuncDef, OverloadedFuncDef)):
+            typ: Type = self.function_type(defn)
+            override_class_or_static = defn.is_class or defn.is_static
+            override_class = defn.is_class
+        else:
+            assert defn.var.is_ready
+            assert defn.var.type is not None
+            typ = defn.var.type
+            override_class_or_static = defn.func.is_class or defn.func.is_static
+            override_class = defn.func.is_class
+        typ = get_proper_type(typ)
+        if isinstance(typ, FunctionLike) and not is_static(context):
+            typ = bind_self(typ, self.scope.active_self_type(), is_classmethod=override_class)
+        # Map the overridden method type to subtype context so that
+        # it can be checked for compatibility.
+        original_type = get_proper_type(base_attr.type)
+        original_node = base_attr.node
+        always_allow_covariant = False
+        if is_settable_property(defn) and (
+            is_settable_property(original_node) or isinstance(original_node, Var)
+        ):
+            if is_custom_settable_property(defn) or (
+                is_custom_settable_property(original_node)
+            ):
+                always_allow_covariant = True
+                self.check_setter_type_override(defn, original_node, base)
+        # `original_type` can be partial if (e.g.) it is originally an
+        # instance variable from an `__init__` block that becomes deferred.
+        if original_type is None or isinstance(original_type, PartialType):
+            if self.pass_num < self.last_pass:
+                # If there are passes left, defer this node until next pass,
+                # otherwise try reconstructing the method type from available information.
+                self.defer_node(defn, defn.info)
+                return True
+            elif isinstance(original_node, (FuncDef, OverloadedFuncDef)):
+                original_type = self.function_type(original_node)
             elif isinstance(original_node, Decorator):
-                fdef = original_node.func
-                original_class_or_static = fdef.is_class or fdef.is_static
-            else:
-                original_class_or_static = False  # a variable can't be class or static
+                original_type = self.function_type(original_node.func)
+            elif isinstance(original_node, Var):
+                # Super type can define method as an attribute.
+                # See https://github.com/python/mypy/issues/10134
 
-            if isinstance(original_type, FunctionLike):
-                original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
-                if original_node and is_property(original_node):
-                    original_type = get_property_type(original_type)
-
-            if is_property(defn):
-                inner: FunctionLike | None
-                if isinstance(typ, FunctionLike):
-                    inner = typ
+                # We also check that sometimes `original_node.type` is None.
+                # This is the case when we use something like `__hash__ = None`.
+                if original_node.type is not None:
+                    original_type = get_proper_type(original_node.type)
                 else:
-                    inner = self.extract_callable_type(typ, context)
-                if inner is not None:
-                    typ = inner
-                    typ = get_property_type(typ)
-                    if (
-                        isinstance(original_node, Var)
-                        and not original_node.is_final
-                        and (not original_node.is_property or original_node.is_settable_property)
-                        and isinstance(defn, Decorator)
-                    ):
-                        # We only give an error where no other similar errors will be given.
-                        if not isinstance(original_type, AnyType):
-                            self.msg.fail(
-                                "Cannot override writeable attribute with read-only property",
-                                # Give an error on function line to match old behaviour.
-                                defn.func,
-                                code=codes.OVERRIDE,
-                            )
-
-            if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
-                pass
-            elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
-                # Check that the types are compatible.
-                ok = self.check_override(
-                    typ,
-                    original_type,
-                    defn.name,
-                    name,
-                    base.name,
-                    original_class_or_static,
-                    override_class_or_static,
-                    context,
-                )
-                # Check if this override is covariant.
-                if (
-                    ok
-                    and original_node
-                    and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
-                    and self.is_writable_attribute(original_node)
-                    and not is_subtype(original_type, typ, ignore_pos_arg_names=True)
-                ):
-                    base_str, override_str = format_type_distinctly(
-                        original_type, typ, options=self.options
-                    )
-                    msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
-                        f' (base class "{base.name}" defined the type as {base_str},'
-                        f" override has type {override_str})"
-                    )
-                    self.fail(msg, context)
-            elif isinstance(original_type, UnionType) and any(
-                is_subtype(typ, orig_typ, ignore_pos_arg_names=True)
-                for orig_typ in original_type.items
-            ):
-                # This method is a subtype of at least one union variant.
-                if (
-                    original_node
-                    and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
-                    and self.is_writable_attribute(original_node)
-                ):
-                    # Covariant override of mutable attribute.
-                    base_str, override_str = format_type_distinctly(
-                        original_type, typ, options=self.options
-                    )
-                    msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
-                        f' (base class "{base.name}" defined the type as {base_str},'
-                        f" override has type {override_str})"
-                    )
-                    self.fail(msg, context)
-            elif is_equivalent(original_type, typ):
-                # Assume invariance for a non-callable attribute here. Note
-                # that this doesn't affect read-only properties which can have
-                # covariant overrides.
-                pass
-            elif (
-                original_node
-                and not self.is_writable_attribute(original_node)
-                and is_subtype(typ, original_type)
-            ):
-                # If the attribute is read-only, allow covariance
-                pass
+                    original_type = NoneType()
             else:
-                self.msg.signature_incompatible_with_supertype(
-                    defn.name, name, base.name, context, original=original_type, override=typ
+                # Will always fail to typecheck below, since we know the node is a method
+                original_type = NoneType()
+        if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
+            original_class_or_static = original_node.is_class or original_node.is_static
+        elif isinstance(original_node, Decorator):
+            fdef = original_node.func
+            original_class_or_static = fdef.is_class or fdef.is_static
+        else:
+            original_class_or_static = False  # a variable can't be class or static
+
+        if isinstance(original_type, FunctionLike):
+            original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
+            if original_node and is_property(original_node):
+                original_type = get_property_type(original_type)
+
+        if is_property(defn):
+            inner: FunctionLike | None
+            if isinstance(typ, FunctionLike):
+                inner = typ
+            else:
+                inner = self.extract_callable_type(typ, context)
+            if inner is not None:
+                typ = inner
+                typ = get_property_type(typ)
+                if (
+                    isinstance(original_node, Var)
+                    and not original_node.is_final
+                    and (not original_node.is_property or original_node.is_settable_property)
+                    and isinstance(defn, Decorator)
+                ):
+                    # We only give an error where no other similar errors will be given.
+                    if not isinstance(original_type, AnyType):
+                        self.msg.fail(
+                            "Cannot override writeable attribute with read-only property",
+                            # Give an error on function line to match old behaviour.
+                            defn.func,
+                            code=codes.OVERRIDE,
+                        )
+
+        if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
+            pass
+        elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
+            # Check that the types are compatible.
+            ok = self.check_override(
+                typ,
+                original_type,
+                defn.name,
+                name,
+                base.name,
+                original_class_or_static,
+                override_class_or_static,
+                context,
+            )
+            # Check if this override is covariant.
+            if (
+                ok
+                and original_node
+                and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
+                and self.is_writable_attribute(original_node)
+                and not always_allow_covariant
+                and not is_subtype(original_type, typ, ignore_pos_arg_names=True)
+            ):
+                base_str, override_str = format_type_distinctly(
+                    original_type, typ, options=self.options
                 )
-        return False
+                msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
+                    f' (base class "{base.name}" defined the type as {base_str},'
+                    f" override has type {override_str})"
+                )
+                self.fail(msg, context)
+        elif isinstance(original_type, UnionType) and any(
+            is_subtype(typ, orig_typ, ignore_pos_arg_names=True)
+            for orig_typ in original_type.items
+        ):
+            # This method is a subtype of at least one union variant.
+            if (
+                original_node
+                and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
+                and self.is_writable_attribute(original_node)
+                and not always_allow_covariant
+            ):
+                # Covariant override of mutable attribute.
+                base_str, override_str = format_type_distinctly(
+                    original_type, typ, options=self.options
+                )
+                msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
+                    f' (base class "{base.name}" defined the type as {base_str},'
+                    f" override has type {override_str})"
+                )
+                self.fail(msg, context)
+        elif is_equivalent(original_type, typ):
+            # Assume invariance for a non-callable attribute here. Note
+            # that this doesn't affect read-only properties which can have
+            # covariant overrides.
+            pass
+        elif (
+            original_node
+            and (not self.is_writable_attribute(original_node) or always_allow_covariant)
+            and is_subtype(typ, original_type)
+        ):
+            # If the attribute is read-only, allow covariance
+            pass
+        else:
+            self.msg.signature_incompatible_with_supertype(
+                defn.name, name, base.name, context, original=original_type, override=typ
+            )
 
     def bind_and_map_method(
         self, sym: SymbolTableNode, typ: FunctionLike, sub_info: TypeInfo, super_info: TypeInfo
@@ -2819,6 +2837,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         # TODO: use more principled logic to decide is_subtype() vs is_equivalent().
         # We should rely on mutability of superclass node, not on types being Callable.
+        # (in particular handle settable properties with setter type different from getter).
 
         # start with the special case that Instance can be a subtype of FunctionLike
         call = None
@@ -8642,6 +8661,35 @@ def is_property(defn: SymbolNode) -> bool:
         if defn.items and isinstance(defn.items[0], Decorator):
             return defn.items[0].func.is_property
     return False
+
+
+def is_settable_property(defn: SymbolNode | None) -> TypeGuard[OverloadedFuncDef]:
+    if isinstance(defn, OverloadedFuncDef):
+        if defn.items and isinstance(defn.items[0], Decorator):
+            return defn.items[0].func.is_property
+    return False
+
+
+def is_custom_settable_property(defn: SymbolNode) -> bool:
+    if not is_settable_property(defn):
+        return False
+    first_item = defn.items[0]
+    assert isinstance(first_item, Decorator)
+    if not first_item.var.is_settable_property:
+        return False
+    var = first_item.var
+    if var.setter_type is None:
+        return False
+    return not is_same_type(
+        get_property_type(get_proper_type(var.type)), get_setter_type(var.setter_type)
+    )
+
+
+def get_setter_type(t: ProperType) -> ProperType:
+    # TODO: handle deferrals.
+    if isinstance(t, CallableType):
+        return get_proper_type(t.arg_types[0])
+    return t
 
 
 def get_property_type(t: ProperType) -> ProperType:
