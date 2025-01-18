@@ -2207,21 +2207,22 @@ def foo2(x: Optional[str]) -> None:
         reveal_type(x)      # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstance.pyi]
 
-[case testNoneCheckDoesNotNarrowWhenUsingTypeVars]
-
-# Note: this test (and the following one) are testing checker.conditional_type_map:
-# if you set the 'prohibit_none_typevar_overlap' keyword argument to False when calling
-# 'is_overlapping_types', the binder will incorrectly infer that 'out' has a type of
-# Union[T, None] after the if statement.
-
+[case testNoneCheckDoesNotMakeTypeVarOptional]
 from typing import TypeVar
 
 T = TypeVar('T')
 
-def foo(x: T) -> T:
+def foo_if(x: T) -> T:
     out = None
     out = x
     if out is None:
+        pass
+    return out
+
+def foo_while(x: T) -> T:
+    out = None
+    out = x
+    while out is None:
         pass
     return out
 [builtins fixtures/isinstance.pyi]
@@ -2916,3 +2917,18 @@ if hasattr(mod, "y"):
 [file mod.py]
 def __getattr__(attr: str) -> str: ...
 [builtins fixtures/module.pyi]
+
+[case testTypeIsntLostAfterNarrowing]
+from typing import Any
+
+var: Any
+reveal_type(var)  # N: Revealed type is "Any"
+assert isinstance(var, (bool, str))
+reveal_type(var)  # N: Revealed type is "Union[builtins.bool, builtins.str]"
+
+if isinstance(var, bool):
+    reveal_type(var)  # N: Revealed type is "builtins.bool"
+
+# Type of var shouldn't fall back to Any
+reveal_type(var)  # N: Revealed type is "Union[builtins.bool, builtins.str]"
+[builtins fixtures/isinstance.pyi]

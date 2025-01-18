@@ -321,9 +321,12 @@ def f() -> Generator[None, None, None]:
 [out]
 
 [case testNoneAndStringIsNone]
-a = None
+a: None = None
 b = "foo"
 reveal_type(a and b)  # N: Revealed type is "None"
+
+c = None
+reveal_type(c and b)  # N: Revealed type is "None"
 
 [case testNoneMatchesObjectInOverload]
 import a
@@ -581,7 +584,7 @@ x is not None and x + '42'  # E: Unsupported operand types for + ("int" and "str
 [case testInvalidBooleanBranchIgnored]
 from typing import Optional
 
-x = None
+x: None = None
 x is not None and x + 42
 [builtins fixtures/isinstance.pyi]
 

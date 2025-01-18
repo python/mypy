@@ -117,7 +117,8 @@ class NodeFixer(NodeVisitor[None]):
     # NOTE: This method *definitely* isn't part of the NodeVisitor API.
     def visit_symbol_table(self, symtab: SymbolTable, table_fullname: str) -> None:
         # Copy the items because we may mutate symtab.
-        for key, value in list(symtab.items()):
+        for key in list(symtab):
+            value = symtab[key]
             cross_ref = value.cross_ref
             if cross_ref is not None:  # Fix up cross-reference.
                 value.cross_ref = None

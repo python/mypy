@@ -9,6 +9,7 @@ recursive-include mypy/typeshed *.pyi
 
 # mypy and mypyc
 include mypy/py.typed
+include mypyc/py.typed
 recursive-include mypy *.py
 recursive-include mypyc *.py
 
@@ -25,8 +26,10 @@ prune docs/source/_build
 # assorted mypyc requirements
 graft mypyc/external
 graft mypyc/lib-rt
+graft mypyc/test
 graft mypyc/test-data
 graft mypyc/doc
+prune mypyc/doc/build
 
 # files necessary for testing sdist
 include mypy-requirements.txt
@@ -36,6 +39,7 @@ include test-requirements.txt
 include mypy_self_check.ini
 prune misc
 graft test-data
+graft mypy/test
 include conftest.py
 include runtests.py
 include pytest.ini

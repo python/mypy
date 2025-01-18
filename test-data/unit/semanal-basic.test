@@ -316,7 +316,7 @@ MypyFile:1(
         NameExpr(x* [l])
         NameExpr(None [builtins.None])))))
 
-[case testGlobaWithinMethod]
+[case testGlobalWithinMethod]
 x = None
 class A:
   def f(self):

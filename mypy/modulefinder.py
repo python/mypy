@@ -13,7 +13,7 @@ import re
 import subprocess
 import sys
 from enum import Enum, unique
-from typing import Dict, Final, List, Optional, Tuple, Union
+from typing import Final, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import pyinfo
@@ -53,11 +53,11 @@ class SearchPaths:
 
 
 # Package dirs are a two-tuple of path to search and whether to verify the module
-OnePackageDir = Tuple[str, bool]
-PackageDirs = List[OnePackageDir]
+OnePackageDir = tuple[str, bool]
+PackageDirs = list[OnePackageDir]
 
 # Minimum and maximum Python versions for modules in stdlib as (major, minor)
-StdlibVersions: _TypeAlias = Dict[str, Tuple[Tuple[int, int], Optional[Tuple[int, int]]]]
+StdlibVersions: _TypeAlias = dict[str, tuple[tuple[int, int], Optional[tuple[int, int]]]]
 
 PYTHON_EXTENSIONS: Final = [".pyi", ".py"]
 
@@ -334,10 +334,11 @@ class FindModuleCache:
         return version >= min_version and (max_version is None or version <= max_version)
 
     def _find_module_non_stub_helper(
-        self, components: list[str], pkg_dir: str
+        self, id: str, pkg_dir: str
     ) -> OnePackageDir | ModuleNotFoundReason:
         plausible_match = False
         dir_path = pkg_dir
+        components = id.split(".")
         for index, component in enumerate(components):
             dir_path = os_path_join(dir_path, component)
             if self.fscache.isfile(os_path_join(dir_path, "py.typed")):
@@ -350,6 +351,10 @@ class FindModuleCache:
             if not self.fscache.isdir(dir_path):
                 break
         if plausible_match:
+            if self.options:
+                module_specific_options = self.options.clone_for_module(id)
+                if module_specific_options.follow_untyped_imports:
+                    return os.path.join(pkg_dir, *components[:-1]), False
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
             return ModuleNotFoundReason.NOT_FOUND
@@ -463,7 +468,7 @@ class FindModuleCache:
                             third_party_stubs_dirs.append((path, True))
                     else:
                         third_party_stubs_dirs.append((path, True))
-            non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)
+            non_stub_match = self._find_module_non_stub_helper(id, pkg_dir)
             if isinstance(non_stub_match, ModuleNotFoundReason):
                 if non_stub_match is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     found_possible_third_party_missing_type_hints = True
@@ -746,7 +751,7 @@ def default_lib_path(
     return path
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]]:
     """Find package directories for given python. Guaranteed to return absolute paths.
 

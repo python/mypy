@@ -4,6 +4,14 @@ This is a short introduction aimed at anybody who is interested in
 contributing to mypyc, or anybody who is curious to understand how
 mypyc works internally.
 
+## Developer Documentation in the Wiki
+
+We have more mypyc developer documentation in our
+[wiki](https://github.com/python/mypy/wiki/Developer-Guides).
+
+For basic information common to both mypy and mypyc development, refer
+to the [mypy wiki home page](https://github.com/python/mypy/wiki).
+
 ## Key Differences from Python
 
 Code compiled using mypyc is often much faster than CPython since it
@@ -51,11 +59,9 @@ good error message.
 
 Here are some major things that aren't yet supported in compiled code:
 
-* Many dunder methods (only some work, such as `__init__` and `__eq__`)
+* Some dunder methods (most work though)
 * Monkey patching compiled functions or classes
 * General multiple inheritance (a limited form is supported)
-* Named tuple defined using the class-based syntax
-* Defining protocols
 
 We are generally happy to accept contributions that implement new Python
 features.
@@ -73,16 +79,16 @@ compiled code. For example, you may want to do interactive testing or
 to run benchmarks. This is also handy if you want to inspect the
 generated C code (see Inspecting Generated C).
 
-Run `mypyc` to compile a module to a C extension using your
+Run `python -m mypyc` to compile a module to a C extension using your
 development version of mypyc:
 
 ```
-$ mypyc program.py
+$ python -m mypyc program.py
 ```
 
 This will generate a C extension for `program` in the current working
-directory.  For example, on a Linux system the generated file may be
-called `program.cpython-37m-x86_64-linux-gnu.so`.
+directory.  For example, on a macOS system the generated file may be
+called `program.cpython-313-darwin.so`.
 
 Since C extensions can't be run as programs, use `python3 -c` to run
 the compiled module as a program:
@@ -95,7 +101,7 @@ Note that `__name__` in `program.py` will now be `program`, not
 `__main__`!
 
 You can manually delete the C extension to get back to an interpreted
-version (this example works on Linux):
+version (this example works on macOS or Linux):
 
 ```
 $ rm program.*.so
@@ -114,9 +120,9 @@ extensions) in compiled code.
 
 Mypyc will only make compiled code faster. To see a significant
 speedup, you must make sure that most of the time is spent in compiled
-code -- and not in libraries, for example.
+code, and not in libraries or I/O.
 
-Mypyc has these passes:
+Mypyc has these main passes:
 
 * Type check the code using mypy and infer types for variables and
   expressions.  This produces a mypy AST (defined in `mypy.nodes`) and
@@ -193,13 +199,13 @@ information. See the test cases in
 `mypyc/test-data/irbuild-basic.test` for examples of what the IR looks
 like in a pretty-printed form.
 
-## Testing overview
+## Testing Overview
 
 Most mypyc test cases are defined in the same format (`.test`) as used
 for test cases for mypy. Look at mypy developer documentation for a
 general overview of how things work. Test cases live under
 `mypyc/test-data/`, and you can run all mypyc tests via `pytest
--q mypyc`. If you don't make changes to code under `mypy/`, it's not
+ mypyc`. If you don't make changes to code under `mypy/`, it's not
 important to regularly run mypy tests during development.
 
 You can use `python runtests.py mypyc-fast` to run a subset of mypyc
@@ -228,7 +234,7 @@ We also have tests that verify the generate IR
 
 ## Type-checking Mypyc
 
-`./runtests.py self` type checks mypy and mypyc. This is pretty slow,
+`./runtests.py self` type checks mypy and mypyc. This is a little slow,
 however, since it's using an uncompiled mypy.
 
 Installing a released version of mypy using `pip` (which is compiled)
@@ -290,6 +296,22 @@ Compiled native functions have the prefix `CPyDef_`, while wrapper
 functions used for calling functions from interpreted Python code have
 the `CPyPy_` prefix.
 
+When running a test, the first test failure will copy generated C code
+into the `.mypyc_test_output` directory. You will see something like
+this in the test output:
+
+```
+...
+---------------------------- Captured stderr call -----------------------------
+
+Generated files: /Users/me/src/mypy/.mypyc_test_output (for first failure only)
+
+...
+```
+
+You can also run pytest with `--mypyc-showc` to display C code on every
+test failure.
+
 ## Other Important Limitations
 
 All of these limitations will likely be fixed in the future:
@@ -311,7 +333,7 @@ number of components at once, insensitive to the particular details of
 the IR), but there really is no substitute for running code. You can
 also write tests that test the generated IR, however.
 
-### Tests that compile and run code
+### Tests That Compile and Run Code
 
 Test cases that compile and run code are located in
 `mypyc/test-data/run*.test` and the test runner is in
@@ -364,7 +386,55 @@ Test cases can also have a `[out]` section, which specifies the
 expected contents of stdout the test case should produce. New test
 cases should prefer assert statements to `[out]` sections.
 
-### IR tests
+### Debuggging Segfaults
+
+If you experience a segfault, it's recommended to use a debugger that supports
+C, such as gdb or lldb, to look into the segfault.
+
+If a test case segfaults, you can run tests using the debugger, so
+you can inspect the stack. Example of inspecting the C stack when a
+test case segfaults (user input after `$` and `(gdb)` prompts):
+
+```
+$ pytest mypyc -n0 -s --mypyc-debug=gdb -k <name-of-test>
+...
+(gdb) r
+...
+Program received signal SIGSEGV, Segmentation fault.
+...
+(gdb) bt
+#0  0x00005555556ed1a2 in _PyObject_HashFast (op=0x0) at ./Include/object.h:336
+#1  PyDict_GetItemWithError (op=0x7ffff6c894c0, key=0x0) at Objects/dictobject.c:2394
+...
+```
+
+You must use `-n0 -s` to enable interactive input to the debugger.
+Instad of `gdb`, you can also try `lldb` (especially on macOS).
+
+To get better C stack tracebacks and more assertions in the Python
+runtime, you can build Python in debug mode and use that to run tests,
+or to manually run the debugger outside the test framework.
+
+**Note:** You may need to build Python yourself on macOS, as official
+Python builds may not have sufficient entitlements to use a debugger.
+
+Here are some hints about building a debug version of CPython that may
+help (for Ubuntu, macOS is mostly similar except for installing build
+dependencies):
+
+```
+$ sudo apt install gdb build-essential libncursesw5-dev libssl-dev libgdbm-dev libc6-dev libsqlite3-dev libbz2-dev libffi-dev libgdbm-compat-dev
+$ <download Python tarball and extract it>
+$ cd Python-3.XX.Y
+$ ./configure --with-pydebug
+$ make -s -j16
+$ ./python -m venv ~/<venv-location>  # Use ./python.exe -m venv ... on macOS
+$ source ~/<venv-location>/bin/activate
+$ cd <mypy-repo-dir>
+$ pip install -r test-requirements.txt
+```
+
+### IR Tests
 
 If the specifics of the generated IR of a change is important
 (because, for example, you want to make sure a particular optimization
@@ -372,7 +442,7 @@ is triggering), you should add a `mypyc.irbuild` test as well.  Test
 cases are located in `mypyc/test-data/irbuild-*.test` and the test
 driver is in `mypyc.test.test_irbuild`. IR build tests do a direct
 comparison of the IR output, so try to make the test as targeted as
-possible so as to capture only the important details.  (Many of our
+possible so as to capture only the important details.  (Some of our
 existing IR build tests do not follow this advice, unfortunately!)
 
 If you pass the `--update-data` flag to pytest, it will automatically

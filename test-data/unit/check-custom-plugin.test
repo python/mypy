@@ -967,6 +967,7 @@ class Cls(enum.Enum):
     attr = 'test'
 
 reveal_type(Cls.attr)  # N: Revealed type is "builtins.int"
+[builtins fixtures/enum.pyi]
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
@@ -1006,7 +1007,7 @@ reveal_type(Cls.attr) # N: Revealed type is "builtins.int"
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
 
 [case testClassAttrPluginPartialType]
-# flags: --config-file tmp/mypy.ini
+# flags: --config-file tmp/mypy.ini --no-local-partial-types
 
 class Cls:
     attr = None

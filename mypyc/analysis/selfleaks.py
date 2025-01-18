@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Set, Tuple
-
 from mypyc.analysis.dataflow import CFG, MAYBE_ANALYSIS, AnalysisResult, run_analysis
 from mypyc.ir.ops import (
     Assign,
@@ -47,7 +45,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RInstance
 
-GenAndKill = Tuple[Set[None], Set[None]]
+GenAndKill = tuple[set[None], set[None]]
 
 CLEAN: GenAndKill = (set(), set())
 DIRTY: GenAndKill = ({None}, {None})

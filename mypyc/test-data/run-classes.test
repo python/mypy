@@ -76,6 +76,19 @@ assert hasattr(c, 'x')
 1000000000000000000000000000001
 1000000000000000000000000000002
 
+[case testTypedDictWithFields]
+import collections
+from typing_extensions import TypedDict
+class C(TypedDict):
+    x: collections.deque
+[file driver.py]
+from native import C
+from collections import deque
+
+print(C.__annotations__["x"] is deque)
+[out]
+True
+
 [case testClassWithDeletableAttributes]
 from typing import Any, cast
 from testutil import assertRaises
@@ -453,6 +466,25 @@ from native import A, foo
 a = A(10)
 assert a.foo() == 11
 assert foo() == 21
+
+[case testClassKwargs]
+class X:
+    def __init__(self, msg: str, **variables: int) -> None:
+         self.msg = msg
+         self.variables = variables
+
+[file driver.py]
+import traceback
+from native import X
+x = X('hello', a=0, b=1)
+assert x.msg == 'hello'
+assert x.variables == {'a': 0, 'b': 1}
+try:
+    X('hello', msg='hello')
+except TypeError as e:
+    print(f"{type(e).__name__}: {e}")
+[out]
+TypeError: argument for __init__() given by name ('msg') and position (1)
 
 [case testGenericClass]
 from typing import TypeVar, Generic, Sequence
@@ -2606,3 +2638,84 @@ def test_final_attribute() -> None:
     assert C.a['x'] == 'y'
     assert C.b['x'] == 'y'
     assert C.a is C.b
+
+[case testClassDerivedFromIntEnum]
+from enum import IntEnum, auto
+
+class Player(IntEnum):
+    MIN = auto()
+
+print(f'{Player.MIN = }')
+[file driver.py]
+from native import Player
+[out]
+Player.MIN = <Player.MIN: 1>
+
+[case testStaticCallsWithUnpackingArgs]
+from typing import Tuple
+
+class Foo:
+  @staticmethod
+  def static(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return (c+1, a+2, b+3)
+
+  @classmethod
+  def clsmethod(cls, a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return (c+1, a+2, b+3)
+
+
+print(Foo.static(*[10, 20, 30]))
+print(Foo.static(*(40, 50), *[60]))
+assert Foo.static(70, 80, *[90]) == Foo.clsmethod(70, *(80, 90))
+
+[file driver.py]
+import native
+
+[out]
+(31, 12, 23)
+(61, 42, 53)
+
+[case testDataclassInitVar]
+import dataclasses
+
+@dataclasses.dataclass
+class C:
+    init_v: dataclasses.InitVar[int]
+    v: float = dataclasses.field(init=False)
+
+    def __post_init__(self, init_v):
+        self.v = init_v + 0.1
+
+[file driver.py]
+import native
+print(native.C(22).v)
+
+[out]
+22.1
+
+[case testLastParentEnum]
+from enum import Enum
+
+class ColorCode(str, Enum):
+    OKGREEN = "okgreen"
+
+[file driver.py]
+import native
+print(native.ColorCode.OKGREEN.value)
+
+[out]
+okgreen
+
+[case testAttrWithSlots]
+import attr
+
+@attr.s(slots=True)
+class A:
+    ints: list[int] = attr.ib()
+
+[file driver.py]
+import native
+print(native.A(ints=[1, -17]).ints)
+
+[out]
+\[1, -17]

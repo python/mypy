@@ -134,7 +134,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_tuple_get(self) -> None:
         self.assert_emit(TupleGet(self.t, 1, 0), "cpy_r_r0 = cpy_r_t.f1;")
 
-    def test_load_None(self) -> None:
+    def test_load_None(self) -> None:  # noqa: N802
         self.assert_emit(
             LoadAddress(none_object_op.type, none_object_op.src, 0),
             "cpy_r_r0 = (PyObject *)&_Py_NoneStruct;",
@@ -154,6 +154,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_int_neg(self) -> None:
+        assert int_neg_op.c_function_name is not None
         self.assert_emit(
             CallC(
                 int_neg_op.c_function_name,
@@ -302,7 +303,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_get_item(self) -> None:
         self.assert_emit(
             CallC(
-                list_get_item_op.c_function_name,
+                str(list_get_item_op.c_function_name),
                 [self.m, self.k],
                 list_get_item_op.return_type,
                 list_get_item_op.steals,
@@ -316,7 +317,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_set_item(self) -> None:
         self.assert_emit(
             CallC(
-                list_set_item_op.c_function_name,
+                str(list_set_item_op.c_function_name),
                 [self.l, self.n, self.o],
                 list_set_item_op.return_type,
                 list_set_item_op.steals,
@@ -352,7 +353,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_append(self) -> None:
         self.assert_emit(
             CallC(
-                list_append_op.c_function_name,
+                str(list_append_op.c_function_name),
                 [self.l, self.o],
                 list_append_op.return_type,
                 list_append_op.steals,
@@ -492,7 +493,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_get_item(self) -> None:
         self.assert_emit(
             CallC(
-                dict_get_item_op.c_function_name,
+                str(dict_get_item_op.c_function_name),
                 [self.d, self.o2],
                 dict_get_item_op.return_type,
                 dict_get_item_op.steals,
@@ -506,7 +507,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_set_item(self) -> None:
         self.assert_emit(
             CallC(
-                dict_set_item_op.c_function_name,
+                str(dict_set_item_op.c_function_name),
                 [self.d, self.o, self.o2],
                 dict_set_item_op.return_type,
                 dict_set_item_op.steals,
@@ -520,7 +521,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_update(self) -> None:
         self.assert_emit(
             CallC(
-                dict_update_op.c_function_name,
+                str(dict_update_op.c_function_name),
                 [self.d, self.o],
                 dict_update_op.return_type,
                 dict_update_op.steals,

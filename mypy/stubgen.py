@@ -47,7 +47,8 @@ import os
 import os.path
 import sys
 import traceback
-from typing import Final, Iterable, Iterator
+from collections.abc import Iterable, Iterator
+from typing import Final
 
 import mypy.build
 import mypy.mixedtraverser
@@ -112,6 +113,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options as MypyOptions
+from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.sharedparse import MAGIC_METHODS_POS_ARGS_ONLY
 from mypy.stubdoc import ArgSig, FunctionSig
 from mypy.stubgenc import InspectionStubGenerator, generate_stub_for_c_module
@@ -138,6 +140,7 @@ from mypy.traverser import (
     has_yield_from_expression,
 )
 from mypy.types import (
+    DATACLASS_TRANSFORM_NAMES,
     OVERLOAD_NAMES,
     TPDICT_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
@@ -647,11 +650,11 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             self.add("\n")
         if not self.is_top_level():
             self_inits = find_self_initializers(o)
-            for init, value in self_inits:
+            for init, value, annotation in self_inits:
                 if init in self.method_names:
                     # Can't have both an attribute and a method/property with the same name.
                     continue
-                init_code = self.get_init(init, value)
+                init_code = self.get_init(init, value, annotation)
                 if init_code:
                     self.add(init_code)
 
@@ -700,10 +703,13 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         """
         o.func.is_overload = False
         for decorator in o.original_decorators:
-            if not isinstance(decorator, (NameExpr, MemberExpr)):
+            d = decorator
+            if isinstance(d, CallExpr):
+                d = d.callee
+            if not isinstance(d, (NameExpr, MemberExpr)):
                 continue
-            qualname = get_qualified_name(decorator)
-            fullname = self.get_fullname(decorator)
+            qualname = get_qualified_name(d)
+            fullname = self.get_fullname(d)
             if fullname in (
                 "builtins.property",
                 "builtins.staticmethod",
@@ -738,6 +744,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 o.func.is_overload = True
             elif qualname.endswith((".setter", ".deleter")):
                 self.add_decorator(qualname, require_name=False)
+            elif fullname in DATACLASS_TRANSFORM_NAMES:
+                p = AliasPrinter(self)
+                self._decorators.append(f"@{decorator.accept(p)}")
 
     def get_fullname(self, expr: Expression) -> str:
         """Return the expression's full name."""
@@ -784,6 +793,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             self.add(f"{self._indent}{docstring}\n")
         n = len(self._output)
         self._vars.append([])
+        if self.analyzed and find_dataclass_transform_spec(o):
+            self.processing_dataclass = True
         super().visit_class_def(o)
         self.dedent()
         self._vars.pop()
@@ -853,12 +864,25 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 decorators.append(d.accept(p))
                 self.import_tracker.require_name(get_qualified_name(d))
                 self.processing_dataclass = True
+            if self.is_dataclass_transform(d):
+                decorators.append(d.accept(p))
+                self.import_tracker.require_name(get_qualified_name(d))
         return decorators
 
     def is_dataclass(self, expr: Expression) -> bool:
         if isinstance(expr, CallExpr):
             expr = expr.callee
         return self.get_fullname(expr) == "dataclasses.dataclass"
+
+    def is_dataclass_transform(self, expr: Expression) -> bool:
+        if isinstance(expr, CallExpr):
+            expr = expr.callee
+        if self.get_fullname(expr) in DATACLASS_TRANSFORM_NAMES:
+            return True
+        if find_dataclass_transform_spec(expr) is not None:
+            self.processing_dataclass = True
+            return True
+        return False
 
     def visit_block(self, o: Block) -> None:
         # Unreachable statements may be partially uninitialized and that may
@@ -1413,7 +1437,7 @@ def find_method_names(defs: list[Statement]) -> set[str]:
 
 class SelfTraverser(mypy.traverser.TraverserVisitor):
     def __init__(self) -> None:
-        self.results: list[tuple[str, Expression]] = []
+        self.results: list[tuple[str, Expression, Type | None]] = []
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         lvalue = o.lvalues[0]
@@ -1422,10 +1446,10 @@ class SelfTraverser(mypy.traverser.TraverserVisitor):
             and isinstance(lvalue.expr, NameExpr)
             and lvalue.expr.name == "self"
         ):
-            self.results.append((lvalue.name, o.rvalue))
+            self.results.append((lvalue.name, o.rvalue, o.unanalyzed_type))
 
 
-def find_self_initializers(fdef: FuncBase) -> list[tuple[str, Expression]]:
+def find_self_initializers(fdef: FuncBase) -> list[tuple[str, Expression, Type | None]]:
     """Find attribute initializers in a method.
 
     Return a list of pairs (attribute name, r.h.s. expression).
@@ -1524,7 +1548,7 @@ def find_module_paths_using_imports(
             except CantImport as e:
                 tb = traceback.format_exc()
                 if verbose:
-                    sys.stdout.write(tb)
+                    sys.stderr.write(tb)
                 if not quiet:
                     report_missing(mod, e.message, tb)
                 continue

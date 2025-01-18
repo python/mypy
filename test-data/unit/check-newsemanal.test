@@ -1666,8 +1666,8 @@ T = TypeVar('T', bound=int)
 class C(Generic[T]): pass
 class C2(Generic[T]): pass
 
-A = C[str] # E: Type argument "str" of "C" must be a subtype of "int" \
-           # E: Value of type variable "T" of "C" cannot be "str"
+A = C[str] # E: Value of type variable "T" of "C" cannot be "str" \
+           # E: Type argument "str" of "C" must be a subtype of "int"
 B = Union[C[str], int] # E: Type argument "str" of "C" must be a subtype of "int"
 S = TypeVar('S', bound=C[str]) # E: Type argument "str" of "C" must be a subtype of "int"
 U = TypeVar('U', C[str], str) # E: Type argument "str" of "C" must be a subtype of "int"
@@ -2069,6 +2069,7 @@ from enum import Enum
 
 A = Enum('A', ['x', 'y'])
 A = Enum('A', ['z', 't'])  # E: Name "A" already defined on line 3
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNewTypeRedefinition]
 from typing import NewType
@@ -2742,13 +2743,11 @@ T = TypeVar('T')
 
 class C(Generic[T]):
     pass
-# TODO: Error message is confusing
+
 C = C[int]  # E: Cannot assign to a type \
-            # E: Incompatible types in assignment (expression has type "Type[C[Any]]", variable has type "Type[C[Any]]")
+            # E: Incompatible types in assignment (expression has type "Type[C[int]]", variable has type "Type[C[T]]")
 x: C
 reveal_type(x) # N: Revealed type is "__main__.C[Any]"
-[out]
-[out2]
 
 [case testNewAnalyzerClassVariableOrdering]
 def foo(x: str) -> None: pass

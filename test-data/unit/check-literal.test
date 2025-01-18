@@ -1909,8 +1909,9 @@ reveal_type(d.get(a_key, u))  # N: Revealed type is "Union[builtins.int, __main_
 reveal_type(d.get(b_key, u))  # N: Revealed type is "Union[builtins.str, __main__.Unrelated]"
 reveal_type(d.get(c_key, u))  # N: Revealed type is "builtins.object"
 
-reveal_type(d.pop(a_key))     # E: Key "a" of TypedDict "Outer" cannot be deleted \
-                              # N: Revealed type is "builtins.int"
+reveal_type(d.pop(a_key))     # N: Revealed type is "builtins.int" \
+                              # E: Key "a" of TypedDict "Outer" cannot be deleted
+
 reveal_type(d.pop(b_key))     # N: Revealed type is "builtins.str"
 d.pop(c_key)                  # E: TypedDict "Outer" has no key "c"
 
@@ -2137,7 +2138,7 @@ force4(reveal_type(f.instancevar4))  # N: Revealed type is "None"
 [builtins fixtures/primitives.pyi]
 [out]
 
-[case testLiteralFinalDirectInstanceTypesSupercedeInferredLiteral]
+[case testLiteralFinalDirectInstanceTypesSupersedeInferredLiteral]
 from typing_extensions import Final, Literal
 
 var1: Final[int] = 1
@@ -2983,4 +2984,13 @@ class C(Base):
             sep = "a" if int() else "b"
             reveal_type(sep)  # N: Revealed type is "Union[Literal['a'], Literal['b']]"
         return super().feed_data(sep)
+[builtins fixtures/tuple.pyi]
+
+[case testLiteralInsideAType]
+from typing_extensions import Literal
+from typing import Type, Union
+
+x: Type[Literal[1]]  # E: Type[...] can't contain "Literal[...]"
+y: Type[Union[Literal[1], Literal[2]]]  # E: Type[...] can't contain "Union[Literal[...], Literal[...]]"
+z: Type[Literal[1, 2]]  # E: Type[...] can't contain "Union[Literal[...], Literal[...]]"
 [builtins fixtures/tuple.pyi]
