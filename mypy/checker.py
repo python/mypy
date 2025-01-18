@@ -2046,11 +2046,44 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return found_base_method
 
     def check_setter_type_override(
-        self, defn: OverloadedFuncDef, base_node: OverloadedFuncDef | Var, base: TypeInfo
+        self, defn: OverloadedFuncDef, base_attr: SymbolTableNode, base: TypeInfo
     ) -> None:
-        # TODO: implement actual logic.
-        setter_type = get_setter_type(defn)
-        original_setter_type = get_setter_type(base_node)
+        base_node = base_attr.node
+        assert isinstance(base_node, (OverloadedFuncDef, Var))
+        original_type = get_raw_setter_type(base_node)
+        if isinstance(base_node, Var):
+            expanded_type = map_type_from_supertype(original_type, defn.info, base)
+            expanded_type = expand_self_type(
+                base_node, expanded_type, fill_typevars(defn.info)
+            )
+            original_type = get_setter_type(get_proper_type(expanded_type))
+        else:
+            original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
+            original_type = get_setter_type(original_type)
+
+        typ = get_raw_setter_type(defn)
+        assert isinstance(typ, CallableType)
+        typ = bind_self(typ, self.scope.active_self_type())
+
+        if not is_subtype(original_type, typ):
+            self.fail(
+                "Incompatible override of a setter type",
+                defn,
+                code=codes.OVERRIDE,
+            )
+            base_str, override_str = format_type_distinctly(
+                original_type, typ, options=self.options
+            )
+            self.note(
+                f' (base class "{base.name}" defined the type as {base_str},',
+                defn,
+                code = codes.OVERRIDE,
+            )
+            self.note(
+                f" override has type {override_str})",
+                defn,
+                code=codes.OVERRIDE,
+            )
 
     def check_method_override_for_base_with_name(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, name: str, base: TypeInfo
@@ -2098,7 +2131,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 is_custom_settable_property(original_node)
             ):
                 always_allow_covariant = True
-                self.check_setter_type_override(defn, original_node, base)
+                self.check_setter_type_override(defn, base_attr, base)
         # `original_type` can be partial if (e.g.) it is originally an
         # instance variable from an `__init__` block that becomes deferred.
         if original_type is None or isinstance(original_type, PartialType):
@@ -8742,6 +8775,16 @@ def is_custom_settable_property(defn: SymbolNode) -> bool:
     return not is_same_type(
         get_property_type(get_proper_type(var.type)), get_setter_type(var.setter_type)
     )
+
+
+def get_raw_setter_type(defn: OverloadedFuncDef | Var) -> ProperType:
+    if isinstance(defn, Var):
+        return get_proper_type(defn.type)
+    first_item = defn.items[0]
+    assert isinstance(first_item, Decorator)
+    var = first_item.var
+    assert var.setter_type is not None
+    return var.setter_type
 
 
 def get_setter_type(t: ProperType) -> ProperType:
