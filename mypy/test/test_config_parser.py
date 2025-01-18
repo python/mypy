@@ -38,7 +38,7 @@ class FindConfigFileSuite(unittest.TestCase):
         with tempfile.TemporaryDirectory() as _tmpdir:
             tmpdir = Path(_tmpdir)
             (tmpdir / ".git").touch()
-            with contextlib.chdir(tmpdir):
+            with chdir(tmpdir):
                 result = _find_config_file()
                 assert result is None
 
@@ -86,7 +86,7 @@ class FindConfigFileSuite(unittest.TestCase):
             write_config(mypy_ini)
             write_config(dot_mypy)
 
-            with contextlib.chdir(tmpdir):
+            with chdir(tmpdir):
                 result = _find_config_file()
                 assert result is not None
                 assert result[2] == "mypy.ini"
@@ -118,7 +118,7 @@ class FindConfigFileSuite(unittest.TestCase):
             write_config(parent_mypy)
             write_config(child_pyproject, content="")
 
-            with contextlib.chdir(child):
+            with chdir(child):
                 result = _find_config_file()
                 assert result is not None
                 assert Path(result[2]).resolve() == parent_mypy.resolve()
