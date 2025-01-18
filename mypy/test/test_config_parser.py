@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import contextlib
 import os
 import tempfile
@@ -6,8 +7,8 @@ import unittest
 from collections.abc import Iterator
 from pathlib import Path
 
-from mypy.defaults import CONFIG_NAMES, SHARED_CONFIG_NAMES
 from mypy.config_parser import _find_config_file
+from mypy.defaults import CONFIG_NAMES, SHARED_CONFIG_NAMES
 
 
 @contextlib.contextmanager
