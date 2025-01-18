@@ -74,7 +74,7 @@ class FindConfigFileSuite(unittest.TestCase):
                     result = _find_config_file()
                     assert result is None
 
-    def test_precedence_basic(self) -> None:
+    def test_precedence(self) -> None:
         with tempfile.TemporaryDirectory() as _tmpdir:
             tmpdir = Path(_tmpdir)
 
@@ -82,30 +82,35 @@ class FindConfigFileSuite(unittest.TestCase):
             setup_cfg = tmpdir / "setup.cfg"
             mypy_ini = tmpdir / "mypy.ini"
             dot_mypy = tmpdir / ".mypy.ini"
-            write_config(pyproject)
-            write_config(setup_cfg)
-            write_config(mypy_ini)
-            write_config(dot_mypy)
 
-            with chdir(tmpdir):
-                result = _find_config_file()
-                assert result is not None
-                assert result[2] == "mypy.ini"
+            child = tmpdir / "child"
+            child.mkdir()
 
-                mypy_ini.unlink()
-                result = _find_config_file()
-                assert result is not None
-                assert result[2] == ".mypy.ini"
+            for cwd in [tmpdir, child]:
+                write_config(pyproject)
+                write_config(setup_cfg)
+                write_config(mypy_ini)
+                write_config(dot_mypy)
 
-                dot_mypy.unlink()
-                result = _find_config_file()
-                assert result is not None
-                assert result[2] == "pyproject.toml"
+                with chdir(cwd):
+                    result = _find_config_file()
+                    assert result is not None
+                    assert os.path.basename(result[2]) == "mypy.ini"
 
-                pyproject.unlink()
-                result = _find_config_file()
-                assert result is not None
-                assert result[2] == "setup.cfg"
+                    mypy_ini.unlink()
+                    result = _find_config_file()
+                    assert result is not None
+                    assert os.path.basename(result[2]) == ".mypy.ini"
+
+                    dot_mypy.unlink()
+                    result = _find_config_file()
+                    assert result is not None
+                    assert os.path.basename(result[2]) == "pyproject.toml"
+
+                    pyproject.unlink()
+                    result = _find_config_file()
+                    assert result is not None
+                    assert os.path.basename(result[2]) == "setup.cfg"
 
     def test_precedence_missing_section(self) -> None:
         with tempfile.TemporaryDirectory() as _tmpdir:
