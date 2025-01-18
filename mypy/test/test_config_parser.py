@@ -58,7 +58,17 @@ class FindConfigFileSuite(unittest.TestCase):
                     assert result is not None
                     assert Path(result[2]).resolve() == config.resolve()
 
-                    (child / ".git").touch()
+                    git = child / ".git"
+                    git.touch()
+
+                    result = _find_config_file()
+                    assert result is None
+
+                    git.unlink()
+                    result = _find_config_file()
+                    assert result is not None
+                    hg = child / ".hg"
+                    hg.touch()
 
                     result = _find_config_file()
                     assert result is None
