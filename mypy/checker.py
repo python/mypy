@@ -7746,7 +7746,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(item, Decorator) and isinstance(
                     candidate := item.func.type, CallableType
                 ):
-                    if (selftype is not None) and (not node.is_static):
+                    if selftype is not None and not node.is_static:
                         candidate = bind_self(candidate, selftype)
                     if candidate == target:
                         self.warn_deprecated(item.func, context)
