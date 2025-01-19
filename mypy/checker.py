@@ -4503,7 +4503,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
             return rvalue_type, attribute_type, True
 
-        with self.msg.filter_errors():
+        with self.msg.filter_errors(filter_deprecated=True):
             get_lvalue_type = self.expr_checker.analyze_ordinary_member_access(
                 lvalue, is_lvalue=False
             )

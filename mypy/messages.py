@@ -187,9 +187,13 @@ class MessageBuilder:
         *,
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = True,
         save_filtered_errors: bool = False,
+        filter_deprecated: bool = False,
     ) -> ErrorWatcher:
         return ErrorWatcher(
-            self.errors, filter_errors=filter_errors, save_filtered_errors=save_filtered_errors
+            self.errors,
+            filter_errors=filter_errors,
+            save_filtered_errors=save_filtered_errors,
+            filter_deprecated=filter_deprecated,
         )
 
     def add_errors(self, errors: list[ErrorInfo]) -> None:
