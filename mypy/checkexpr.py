@@ -1486,7 +1486,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         proper_callee = get_proper_type(callee_type)
         if isinstance(e.callee, (NameExpr, MemberExpr)):
             node = e.callee.node
-            if (node is None) and (member is not None) and isinstance(object_type, Instance):
+            if node is None and member is not None and isinstance(object_type, Instance):
                 for base in object_type.type.mro:
                     if (symbol := base.names.get(member)) is not None:
                         node = symbol.node
