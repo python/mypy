@@ -1012,7 +1012,7 @@ class Var(SymbolNode):
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
         self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
-        self.setter_type: mypy.types.ProperType | None = None
+        self.setter_type: mypy.types.CallableType | None = None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
         # Is this the first argument to a classmethod (typically "cls")?
@@ -1092,6 +1092,7 @@ class Var(SymbolNode):
         type = None if data["type"] is None else mypy.types.deserialize_type(data["type"])
         setter_type = None if data["setter_type"] is None else mypy.types.deserialize_type(data["setter_type"])
         v = Var(name, type)
+        assert setter_type is None or isinstance(setter_type, mypy.types.ProperType) and isinstance(setter_type, mypy.types.CallableType)
         v.setter_type = setter_type
         v.is_ready = False  # Override True default set in __init__
         v._fullname = data["fullname"]

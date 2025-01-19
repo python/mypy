@@ -1165,6 +1165,34 @@ class MessageBuilder:
         note_template = 'Overload variants must be defined in the same order as they are in "{}"'
         self.note(note_template.format(supertype), context, code=codes.OVERRIDE)
 
+    def incompatible_setter_override(
+        self, defn: Context, typ: Type, original_type: Type, base: TypeInfo
+    ) -> None:
+        self.fail(
+            "Incompatible override of a setter type",
+            defn,
+            code=codes.OVERRIDE,
+        )
+        base_str, override_str = format_type_distinctly(
+            original_type, typ, options=self.options
+        )
+        self.note(
+            f' (base class "{base.name}" defined the type as {base_str},',
+            defn,
+            code=codes.OVERRIDE,
+        )
+        self.note(
+            f" override has type {override_str})",
+            defn,
+            code=codes.OVERRIDE,
+        )
+        if is_subtype(typ, original_type):
+            self.note(
+                " Setter types should behave contravariantly",
+                defn,
+                code=codes.OVERRIDE,
+            )
+
     def signature_incompatible_with_supertype(
         self,
         name: str,

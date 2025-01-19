@@ -777,7 +777,7 @@ def analyze_var(
     original_itype = itype
     itype = map_instance_to_supertype(itype, var.info)
     if var.is_settable_property and mx.is_lvalue:
-        typ = var.setter_type
+        typ: Type | None = var.setter_type
         if typ is None and var.is_ready:
             # Existing synthetic properties may not set setter type. Fall back to getter.
             typ = var.type

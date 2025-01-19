@@ -784,7 +784,7 @@ class A:
     f: Callable[[str], None]
 
 class B(A):
-    @property  # E: Covariant override of a mutable attribute (base class "A" defined the type as "Callable[[str], None]", override has type "Callable[[object], None]")
+    @property
     def f(self) -> Callable[[object], None]: pass
     @func.setter
     def f(self, x: object) -> None: pass
@@ -8087,7 +8087,10 @@ class B2:
 class C2(B2):
     @property
     def foo(self) -> str: ...
-    @foo.setter
+    @foo.setter  # E: Incompatible override of a setter type \
+                 # N:  (base class "B2" defined the type as "B", \
+                 # N:  override has type "C") \
+                 # N:  Setter types should behave contravariantly
     def foo(self, x: C) -> None: ...
 
 class B3:
@@ -8109,7 +8112,10 @@ class B4:
 class C4(B4):
     @property
     def foo(self) -> C: ...
-    @foo.setter
+    @foo.setter  # E: Incompatible override of a setter type \
+                 # N:  (base class "B4" defined the type as "B", \
+                 # N:  override has type "C") \
+                 # N:  Setter types should behave contravariantly
     def foo(self, x: C) -> None: ...
 
 class B5:
@@ -8118,10 +8124,16 @@ class B5:
     @foo.setter
     def foo(self, x: B) -> None: ...
 class C5(B5):
-    @property
+    @property  # E: Signature of "foo" incompatible with supertype "B5" \
+               # N:      Superclass: \
+               # N:          str \
+               # N:      Subclass: \
+               # N:          C
     def foo(self) -> C: ...
-    @foo.setter
-    def foo(self, x: C) -> None: ...
+    @foo.setter  # E: Incompatible override of a setter type \
+                 # N:  (base class "B5" defined the type as "B", \
+                 # N:  override has type "str")
+    def foo(self, x: str) -> None: ...
 
 class B6:
     @property
@@ -8144,12 +8156,15 @@ class B1:
 class C1(B1):
     @property
     def foo(self) -> B: ...
-    @foo.setter
+    @foo.setter  # E: Incompatible override of a setter type \
+                 # N:  (base class "B1" defined the type as "B", \
+                 # N:  override has type "C") \
+                 # N:  Setter types should behave contravariantly
     def foo(self, x: C) -> None: ...
 
 class B2:
     foo: C
-class C2(2):
+class C2(B2):
     @property
     def foo(self) -> C: ...
     @foo.setter
@@ -8190,7 +8205,10 @@ class B3:
     @foo.setter
     def foo(self, x: B) -> None: ...
 class C3(B3):
-    foo: C
+    foo: C  # E: Incompatible override of a setter type \
+            # N:  (base class "B3" defined the type as "B", \
+            # N:  override has type "C") \
+            # N:  Setter types should behave contravariantly
 [builtins fixtures/property.pyi]
 
 [case testOverrideMethodProperty]
