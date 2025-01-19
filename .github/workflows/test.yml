@@ -33,49 +33,42 @@ jobs:
         # the oldest and newest supported Python versions
         - name: Test suite with py39-ubuntu, mypyc-compiled
           python: '3.9'
-          arch: x64
-          os: ubuntu-latest
+          os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
         - name: Test suite with py39-windows-64
           python: '3.9'
-          arch: x64
           os: windows-latest
           toxenv: py39
           tox_extra_args: "-n 4"
         - name: Test suite with py310-ubuntu
           python: '3.10'
-          arch: x64
-          os: ubuntu-latest
+          os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
         - name: Test suite with py311-ubuntu, mypyc-compiled
           python: '3.11'
-          arch: x64
-          os: ubuntu-latest
+          os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
         - name: Test suite with py312-ubuntu, mypyc-compiled
           python: '3.12'
-          arch: x64
-          os: ubuntu-latest
+          os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
         - name: Test suite with py313-ubuntu, mypyc-compiled
           python: '3.13'
-          arch: x64
-          os: ubuntu-latest
+          os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
 
         # - name: Test suite with py314-dev-ubuntu
         #   python: '3.14-dev'
-        #   arch: x64
-        #   os: ubuntu-latest
+        #   os: ubuntu-24.04-arm
         #   toxenv: py
         #   tox_extra_args: "-n 4"
         #   allow_failure: true
@@ -83,7 +76,6 @@ jobs:
 
         - name: mypyc runtime tests with py39-macos
           python: '3.9.21'
-          arch: x64
           # TODO: macos-13 is the last one to support Python 3.9, change it to macos-latest when updating the Python version
           os: macos-13
           toxenv: py
@@ -93,7 +85,6 @@ jobs:
         # - https://github.com/python/mypy/pull/17822
         # - name: mypyc runtime tests with py38-debug-build-ubuntu
         #   python: '3.9.21'
-        #   arch: x64
         #   os: ubuntu-latest
         #   toxenv: py
         #   tox_extra_args: "-n 4 mypyc/test/test_run.py mypyc/test/test_external.py"
@@ -101,12 +92,10 @@ jobs:
 
         - name: Type check our own code (py39-ubuntu)
           python: '3.9'
-          arch: x64
           os: ubuntu-latest
           toxenv: type
         - name: Type check our own code (py39-windows-64)
           python: '3.9'
-          arch: x64
           os: windows-latest
           toxenv: type
 
@@ -115,7 +104,6 @@ jobs:
           # to ensure the tox env works as expected
         - name: Formatting and code style with Black + ruff
           python: '3.10'
-          arch: x64
           os: ubuntu-latest
           toxenv: lint
 
@@ -169,7 +157,6 @@ jobs:
       if: ${{ !(matrix.debug_build || endsWith(matrix.python, '-dev')) }}
       with:
         python-version: ${{ matrix.python }}
-        architecture: ${{ matrix.arch }}
 
     - name: Install tox
       run: |
