@@ -8147,17 +8147,17 @@ class C1(B1):
     @foo.setter
     def foo(self, x: C) -> None: ...
 
-class B1:
+class B2:
     foo: C
-class C1(B1):
+class C2(2):
     @property
     def foo(self) -> C: ...
     @foo.setter
     def foo(self, x: B) -> None: ...
 
-class B1:
+class B3:
     foo: B
-class C1(B1):
+class C3(B3):
     @property
     def foo(self) -> C: ...
     @foo.setter
@@ -8168,6 +8168,29 @@ class C1(B1):
 class B: ...
 class C(B): ...
 
+class B1:
+    @property
+    def foo(self) -> B: ...
+    @foo.setter
+    def foo(self, x: C) -> None: ...
+class C1(B1):
+    foo: C
+
+class B2:
+    @property
+    def foo(self) -> B: ...
+    @foo.setter
+    def foo(self, x: C) -> None: ...
+class C2(B2):
+    foo: B
+
+class B3:
+    @property
+    def foo(self) -> C: ...
+    @foo.setter
+    def foo(self, x: B) -> None: ...
+class C3(B3):
+    foo: C
 [builtins fixtures/property.pyi]
 
 [case testOverrideMethodProperty]
