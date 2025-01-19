@@ -1491,6 +1491,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if (symbol := base.names.get(member)) is not None:
                         node = symbol.node
                         break
+            self.chk.check_deprecated(node, e)
             self.chk.warn_deprecated_overload_item(
                 node, e, target=callee_type, selftype=object_type
             )
