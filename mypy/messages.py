@@ -1168,30 +1168,16 @@ class MessageBuilder:
     def incompatible_setter_override(
         self, defn: Context, typ: Type, original_type: Type, base: TypeInfo
     ) -> None:
-        self.fail(
-            "Incompatible override of a setter type",
-            defn,
-            code=codes.OVERRIDE,
-        )
-        base_str, override_str = format_type_distinctly(
-            original_type, typ, options=self.options
-        )
+        self.fail("Incompatible override of a setter type", defn, code=codes.OVERRIDE)
+        base_str, override_str = format_type_distinctly(original_type, typ, options=self.options)
         self.note(
             f' (base class "{base.name}" defined the type as {base_str},',
             defn,
             code=codes.OVERRIDE,
         )
-        self.note(
-            f" override has type {override_str})",
-            defn,
-            code=codes.OVERRIDE,
-        )
+        self.note(f" override has type {override_str})", defn, code=codes.OVERRIDE)
         if is_subtype(typ, original_type):
-            self.note(
-                " Setter types should behave contravariantly",
-                defn,
-                code=codes.OVERRIDE,
-            )
+            self.note(" Setter types should behave contravariantly", defn, code=codes.OVERRIDE)
 
     def signature_incompatible_with_supertype(
         self,
@@ -3075,9 +3061,7 @@ def get_conflict_protocol_types(
                 different_setter = True
             supertype = set_supertype
         if IS_EXPLICIT_SETTER in get_member_flags(member, left):
-            set_subtype = mypy.typeops.get_protocol_member(
-                left, member, class_obj, is_lvalue=True
-            )
+            set_subtype = mypy.typeops.get_protocol_member(left, member, class_obj, is_lvalue=True)
             if set_subtype != subtype:
                 different_setter = True
             subtype = set_subtype

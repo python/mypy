@@ -2055,9 +2055,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         original_type = get_raw_setter_type(base_node)
         if isinstance(base_node, Var):
             expanded_type = map_type_from_supertype(original_type, defn.info, base)
-            original_type = get_proper_type(expand_self_type(
-                base_node, expanded_type, fill_typevars(defn.info)
-            ))
+            original_type = get_proper_type(
+                expand_self_type(base_node, expanded_type, fill_typevars(defn.info))
+            )
         else:
             assert isinstance(original_type, CallableType)
             original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
@@ -2114,9 +2114,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if is_settable_property(defn) and (
             is_settable_property(original_node) or isinstance(original_node, Var)
         ):
-            if is_custom_settable_property(defn) or (
-                is_custom_settable_property(original_node)
-            ):
+            if is_custom_settable_property(defn) or (is_custom_settable_property(original_node)):
                 always_allow_covariant = True
                 self.check_setter_type_override(defn, base_attr, base)
         # `original_type` can be partial if (e.g.) it is originally an
@@ -3402,8 +3400,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if base_type:
                     assert base_node is not None
                     if not self.check_compatibility_super(
-                        lvalue, lvalue_type, rvalue, base, base_type, base_node,
-                        always_allow_covariant=custom_setter
+                        lvalue,
+                        lvalue_type,
+                        rvalue,
+                        base,
+                        base_type,
+                        base_node,
+                        always_allow_covariant=custom_setter,
                     ):
                         # Only show one error per variable; even if other
                         # base classes are also incompatible
@@ -3507,7 +3510,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return True
 
     def lvalue_type_from_base(
-        self, expr_node: Var, base: TypeInfo, setter_type: bool = False,
+        self, expr_node: Var, base: TypeInfo, setter_type: bool = False
     ) -> tuple[Type | None, SymbolNode | None]:
         """For a NameExpr that is part of a class, walk all base classes and try
         to find the first class that defines a Type for the same name."""
@@ -3542,18 +3545,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # value, not the Callable
             if base_node.is_property:
                 base_type = get_proper_type(base_type.ret_type)
-        if isinstance(base_type, FunctionLike) and isinstance(
-            base_node, OverloadedFuncDef
-        ):
+        if isinstance(base_type, FunctionLike) and isinstance(base_node, OverloadedFuncDef):
             # Same for properties with setter
             if base_node.is_property:
                 if setter_type:
                     assert isinstance(base_node.items[0], Decorator)
                     base_type = base_node.items[0].var.setter_type
                     assert isinstance(base_type, CallableType)
-                    base_type = self.bind_and_map_method(
-                        base_var, base_type, expr_node.info, base
-                    )
+                    base_type = self.bind_and_map_method(base_var, base_type, expr_node.info, base)
                     assert isinstance(base_type, CallableType)
                     base_type = get_proper_type(base_type.arg_types[0])
                 else:
@@ -8790,9 +8789,7 @@ def is_custom_settable_property(defn: SymbolNode | None) -> bool:
     setter_type = var.setter_type.arg_types[1]
     if isinstance(get_proper_type(setter_type), AnyType):
         return False
-    return not is_same_type(
-        get_property_type(get_proper_type(var.type)), setter_type
-    )
+    return not is_same_type(get_property_type(get_proper_type(var.type)), setter_type)
 
 
 def get_raw_setter_type(defn: OverloadedFuncDef | Var) -> ProperType:

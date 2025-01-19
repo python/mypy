@@ -1090,9 +1090,17 @@ class Var(SymbolNode):
         assert data[".class"] == "Var"
         name = data["name"]
         type = None if data["type"] is None else mypy.types.deserialize_type(data["type"])
-        setter_type = None if data["setter_type"] is None else mypy.types.deserialize_type(data["setter_type"])
+        setter_type = (
+            None
+            if data["setter_type"] is None
+            else mypy.types.deserialize_type(data["setter_type"])
+        )
         v = Var(name, type)
-        assert setter_type is None or isinstance(setter_type, mypy.types.ProperType) and isinstance(setter_type, mypy.types.CallableType)
+        assert (
+            setter_type is None
+            or isinstance(setter_type, mypy.types.ProperType)
+            and isinstance(setter_type, mypy.types.CallableType)
+        )
         v.setter_type = setter_type
         v.is_ready = False  # Override True default set in __init__
         v._fullname = data["fullname"]

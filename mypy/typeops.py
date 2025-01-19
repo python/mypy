@@ -1172,8 +1172,7 @@ def get_protocol_member(
             NoneType()
             if subtype.type is None
             else Instance(
-                subtype.type,
-                [AnyType(TypeOfAny.unannotated)] * len(subtype.type.type_vars),
+                subtype.type, [AnyType(TypeOfAny.unannotated)] * len(subtype.type.type_vars)
             )
         )
     return subtype
