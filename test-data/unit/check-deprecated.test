@@ -410,6 +410,9 @@ class B(A): ...
 a = A()
 a.f(1)  # E: overload def (self: __main__.A, v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
 a.f("x")
+
+int_or_str: Union[int, str]
+a.f(int_or_str)
 a.g(1)
 a.g("x")  # E: overload def (self: __main__.A, v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
 a.h(1)  # E: function __main__.A.h is deprecated: use `h2`  instead
