@@ -5914,6 +5914,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         def combine_maps(list_maps: list[TypeMap]) -> TypeMap:
             """Combine all typemaps in list_maps into one typemap"""
+            if all(m is None for m in list_maps):
+                return None
             result_map = {}
             for d in list_maps:
                 if d is not None:
