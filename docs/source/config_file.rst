@@ -25,7 +25,7 @@ configuration files in the following locations (in this order):
     3. ``~/.mypy.ini``
 
 The :option:`--config-file <mypy --config-file>` command-line flag has the
-highest precedence and must be point towards a valid configuration file;
+highest precedence and must point towards a valid configuration file;
 otherwise mypy will report an error and exit. Without the command line option,
 mypy will look for configuration files in the precedence order above.
 
