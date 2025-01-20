@@ -32,7 +32,7 @@ branding:
 runs:
   using: composite
   steps:
-    - name: mypy setup
+    - name: mypy setup  # zizmor: ignore[template-injection]
       shell: bash
       run: |
         echo ::group::Installing mypy...

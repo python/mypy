@@ -17,7 +17,7 @@ from typing import Any
 from mypy import build
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.test.config import test_temp_dir
+from mypy.test.config import mypyc_output_dir, test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypy.test.helpers import assert_module_equivalence, perform_file_operations
 from mypyc.build import construct_groups
@@ -281,6 +281,7 @@ class TestRun(MypycDataSuite):
         if not run_setup(setup_file, ["build_ext", "--inplace"]):
             if testcase.config.getoption("--mypyc-showc"):
                 show_c(cfiles)
+            copy_output_files(mypyc_output_dir)
             assert False, "Compilation failed"
 
         # Assert that an output file got created
@@ -328,7 +329,23 @@ class TestRun(MypycDataSuite):
             show_c(cfiles)
         if proc.returncode != 0:
             print()
-            print("*** Exit status: %d" % proc.returncode)
+            signal = proc.returncode == -11
+            extra = ""
+            if signal:
+                extra = " (likely segmentation fault)"
+            print(f"*** Exit status: {proc.returncode}{extra}")
+            if signal and not sys.platform.startswith("win"):
+                print()
+                if sys.platform == "darwin":
+                    debugger = "lldb"
+                else:
+                    debugger = "gdb"
+                print(
+                    f'hint: Use "pytest -n0 -s --mypyc-debug={debugger} -k <name-substring>" to run test in debugger'
+                )
+                print("hint: You may need to build a debug version of Python first and use it")
+                print('hint: See also "Debuggging Segfaults" in mypyc/doc/dev-intro.md')
+            copy_output_files(mypyc_output_dir)
 
         # Verify output.
         if bench:
@@ -442,3 +459,17 @@ def fix_native_line_number(message: str, fnam: str, delta: int) -> str:
         message,
     )
     return message
+
+
+def copy_output_files(target_dir: str) -> None:
+    try:
+        os.mkdir(target_dir)
+    except OSError:
+        # Only copy data for the first failure, to avoid excessive output in case
+        # many tests fail
+        return
+
+    for fnam in glob.glob("build/*.[ch]"):
+        shutil.copy(fnam, target_dir)
+
+    sys.stderr.write(f"\nGenerated files: {target_dir} (for first failure only)\n\n")

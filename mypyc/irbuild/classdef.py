@@ -97,6 +97,10 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
 
     This is the main entry point to this module.
     """
+    if cdef.info not in builder.mapper.type_to_ir:
+        builder.error("Nested class definitions not supported", cdef.line)
+        return
+
     ir = builder.mapper.type_to_ir[cdef.info]
 
     # We do this check here because the base field of parent
@@ -377,9 +381,10 @@ class DataClassBuilder(ExtClassBuilder):
         dec = self.builder.accept(
             next(d for d in self.cdef.decorators if is_dataclass_decorator(d))
         )
+        dataclass_type_val = self.builder.load_str(dataclass_type(self.cdef) or "unknown")
         self.builder.call_c(
             dataclass_sleight_of_hand,
-            [dec, self.type_obj, self.non_ext.dict, self.non_ext.anns],
+            [dec, self.type_obj, self.non_ext.dict, self.non_ext.anns, dataclass_type_val],
             self.cdef.line,
         )
 

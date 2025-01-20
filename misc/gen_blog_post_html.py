@@ -44,16 +44,23 @@ def format_code(h: str) -> str:
     while i < len(a):
         if a[i].startswith("    ") or a[i].startswith("```"):
             indent = a[i].startswith("    ")
+            language: str = ""
             if not indent:
+                language = a[i][3:]
                 i += 1
-            r.append("<pre><code>")
+            if language:
+                r.append(f'<pre><code class="language-{language}">')
+            else:
+                r.append("<pre><code>")
             while i < len(a) and (
                 (indent and a[i].startswith("    ")) or (not indent and not a[i].startswith("```"))
             ):
                 # Undo &gt; and &lt;
                 line = a[i].replace("&gt;", ">").replace("&lt;", "<")
-                if not indent:
-                    line = "    " + line
+                if indent:
+                    # Undo this extra level of indentation so it looks nice with
+                    # syntax highlighting CSS.
+                    line = line[4:]
                 r.append(html.escape(line))
                 i += 1
             r.append("</code></pre>")
@@ -64,7 +71,7 @@ def format_code(h: str) -> str:
             i += 1
     formatted = "\n".join(r)
     # remove empty first line for code blocks
-    return re.sub(r"<code>\n", r"<code>", formatted)
+    return re.sub(r"<code([^\>]*)>\n", r"<code\1>", formatted)
 
 
 def convert(src: str) -> str:
@@ -131,8 +138,18 @@ def convert(src: str) -> str:
         h,
     )
 
-    # Add missing top-level HTML tags
-    h = '<html>\n<meta charset="utf-8" />\n<body>\n' + h + "</body>\n</html>"
+    # Add top-level HTML tags and headers for syntax highlighting css/js.
+    # We're configuring hljs to highlight python and bash code. We can remove
+    # this configure call to make it try all the languages it supports.
+    h = f"""<html>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.configure({{languages:["python","bash"]}});hljs.highlightAll();</script>
+<body>
+{h}
+</body>
+</html>"""
 
     return h
 
