@@ -2856,6 +2856,9 @@ def format_type_distinctly(*types: Type, options: Options, bare: bool = False) -
     """
     overlapping = find_type_overlaps(*types)
 
+    def format_single(arg: Type) -> str:
+        return format_type_inner(arg, verbosity=0, options=options, fullnames=overlapping)
+
     min_verbosity = 0
     # Prevent emitting weird errors like:
     # ... has incompatible type "Callable[[int], Child]"; expected "Callable[[int], Parent]"
@@ -2871,6 +2874,11 @@ def format_type_distinctly(*types: Type, options: Options, bare: bool = False) -
             and isinstance(right, CallableType)
             and is_subtype(left.ret_type, right.ret_type)
             and any(right.arg_names)
+            and len(right.arg_types) == len(left.arg_types)
+            and all(
+                format_single(aleft) == format_single(aright)
+                for aleft, aright in zip(left.arg_types, right.arg_types)
+            )
         ):
             min_verbosity = 1
 
