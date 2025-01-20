@@ -9,15 +9,6 @@ garbage collector.
 
 Contributed by Jukka Lehtosalo (PR [18306](https://github.com/python/mypy/pull/18306)).
 
-### Drop Support for Python 3.8
-
-Mypy no longer supports running with Python 3.8, which has reached end-of-life.
-When running mypy with Python 3.9+, it is still possible to type check code
-that needs to support Python 3.8 with the `--python-version 3.8` argument.
-Support for this will be dropped in the first half of 2025!
-
-Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/17492)).
-
 ### Mypyc accelerated mypy wheels for aarch64
 
 Mypy can compile itself to C extension modules using mypyc. This makes mypy 3-5x faster
@@ -25,7 +16,9 @@ than if mypy is interpreted with pure Python. We now build and upload mypyc acce
 mypy wheels for `manylinux_aarch64` to PyPI, making it easy for users on such platforms
 to realise this speedup.
 
-Contributed by Christian Bundy (PR [mypy_mypyc-wheels#76](https://github.com/mypyc/mypy_mypyc-wheels/pull/76))
+Contributed by Christian Bundy and Marc Mueller
+(PR [mypy_mypyc-wheels#76](https://github.com/mypyc/mypy_mypyc-wheels/pull/76),
+PR [mypy_mypyc-wheels#89](https://github.com/mypyc/mypy_mypyc-wheels/pull/89)).
 
 ### `--strict-bytes`
 
@@ -48,6 +41,16 @@ Contributed by Christoph Tyralla (PR [18180](https://github.com/python/mypy/pull
 (Speaking of partial types, another reminder that mypy plans on enabling `--local-partial-types`
 by default in **mypy 2.0**).
 
+### Better discovery of configuration files
+
+Mypy will now walk up the filesystem (up until a repository or file system root) to discover
+configuration files. See the
+[mypy configuration file documentation](https://mypy.readthedocs.io/en/stable/config_file.html)
+for more details.
+
+Contributed by Mikhail Shiryaev and Shantanu Jain
+(PR [16965](https://github.com/python/mypy/pull/16965), PR [18482](https://github.com/python/mypy/pull/18482)
+
 ### Better line numbers for decorators and slice expressions
 
 Mypy now uses more correct line numbers for decorators and slice expressions. In some cases, this
@@ -55,6 +58,15 @@ may necessitate changing the location of a `# type: ignore` comment.
 
 Contributed by Shantanu Jain (PR [18392](https://github.com/python/mypy/pull/18392),
 PR [18397](https://github.com/python/mypy/pull/18397)).
+
+### Drop Support for Python 3.8
+
+Mypy no longer supports running with Python 3.8, which has reached end-of-life.
+When running mypy with Python 3.9+, it is still possible to type check code
+that needs to support Python 3.8 with the `--python-version 3.8` argument.
+Support for this will be dropped in the first half of 2025!
+
+Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/17492)).
 
 ## Mypy 1.14
 

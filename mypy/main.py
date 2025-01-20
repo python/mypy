@@ -564,7 +564,7 @@ def process_options(
         "--config-file",
         help=(
             f"Configuration file, must have a [mypy] section "
-            f"(defaults to {', '.join(defaults.CONFIG_FILES)})"
+            f"(defaults to {', '.join(defaults.CONFIG_NAMES + defaults.SHARED_CONFIG_NAMES)})"
         ),
     )
     add_invertible_flag(
