@@ -3510,3 +3510,13 @@ class Child(Parent):
     method_without: Callable[["Child"], "Child"]
     method_with: Callable[["Child", str], "Child"]  # E: Incompatible types in assignment (expression has type "Callable[[str], Child]", base class "Parent" defined the type as "Callable[[Arg(str, 'param')], Parent]")
 [builtins fixtures/tuple.pyi]
+
+[case testDistinctFormattingUnion]
+from typing import Callable, Union
+from mypy_extensions import Arg
+
+def f(x: Callable[[Arg(int, 'x')], None]) -> None: pass
+
+y: Callable[[Union[int, str]], None]
+f(y)  # E: Argument 1 to "f" has incompatible type "Callable[[Union[int, str]], None]"; expected "Callable[[Arg(int, 'x')], None]"
+[builtins fixtures/tuple.pyi]
