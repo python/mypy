@@ -2050,6 +2050,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_setter_type_override(
         self, defn: OverloadedFuncDef, base_attr: SymbolTableNode, base: TypeInfo
     ) -> None:
+        """Check override of a setter type of a mutable attribute.
+
+        Currently, this should be only called when either base node or the current node
+        is a custom settable property (i.e. where setter type is different from getter type).
+        Note that this check is contravariant.
+        """
         base_node = base_attr.node
         assert isinstance(base_node, (OverloadedFuncDef, Var))
         original_type = get_raw_setter_type(base_node)
@@ -2154,6 +2160,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
             if original_node and is_property(original_node):
                 original_type = get_property_type(original_type)
+
         if isinstance(original_node, Var):
             expanded_type = map_type_from_supertype(original_type, defn.info, base)
             expanded_type = expand_self_type(
@@ -3557,6 +3564,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     base_type = get_proper_type(base_type.arg_types[0])
                 else:
                     base_type = base_type.items[0].ret_type
+
         return base_type, base_node
 
     def check_compatibility_classvar_super(
@@ -5223,10 +5231,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if refers_to_fullname(d, OVERLOAD_NAMES):
                 if not allow_empty:
                     self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
-                continue
-            if refers_to_fullname(d, "abc.abstractmethod"):
-                # Normally these would be removed, except for abstract settable properties,
-                # where it is non-trivial to remove.
                 continue
             dec = self.expr_checker.accept(d)
             temp = self.temp_node(sig, context=d)
@@ -8800,6 +8804,7 @@ def get_raw_setter_type(defn: OverloadedFuncDef | Var) -> ProperType:
     first_item = defn.items[0]
     assert isinstance(first_item, Decorator)
     var = first_item.var
+    # TODO: handle synthetic properties here and elsewhere.
     assert var.setter_type is not None
     return var.setter_type
 
