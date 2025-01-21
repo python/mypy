@@ -1665,6 +1665,36 @@ a.f = a.f # E: Property "f" defined in "A" is read-only
 a.f.x # E: "int" has no attribute "x"
 [builtins fixtures/property.pyi]
 
+[case testPropertyAccessOnClass]
+class Foo:
+    @property
+    def bar(self) -> bool:
+        return True
+
+reveal_type(Foo.bar)  # N: Revealed type is "builtins.property"
+reveal_type(Foo.bar(Foo()))  # E: "property" not callable \
+                             # N: Revealed type is "Any"
+[builtins fixtures/property.pyi]
+
+[case testPropertyAccessOnClass2]
+import functools
+from functools import cached_property
+
+class Foo:
+    @cached_property
+    def foo(self) -> bool:
+        return True
+
+    @functools.cached_property
+    def bar(self) -> bool:
+        return True
+
+reveal_type(Foo.foo)  # N: Revealed type is "functools.cached_property[Any]"
+reveal_type(Foo.bar)  # N: Revealed type is "functools.cached_property[Any]"
+Foo.foo(Foo())  # E: "cached_property[Any]" not callable
+Foo.bar(Foo())  # E: "cached_property[Any]" not callable
+[builtins fixtures/property.pyi]
+
 -- Descriptors
 -- -----------
 
