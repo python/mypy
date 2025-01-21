@@ -166,6 +166,7 @@ from mypyc.primitives.misc_ops import (
     none_object_op,
     not_implemented_op,
     var_object_size,
+    debug_print_op,
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
@@ -299,6 +300,11 @@ class LowLevelIRBuilder:
         if self.keep_alives:
             self.add(KeepAlive(self.keep_alives.copy()))
             self.keep_alives = []
+
+    def debug_print(self, toprint: str | Value) -> None:
+        if isinstance(toprint, str):
+            toprint = self.load_str(toprint)
+        self.primitive_op(debug_print_op, [toprint], -1)
 
     # Type conversions
 
