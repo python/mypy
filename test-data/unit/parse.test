@@ -3171,10 +3171,10 @@ MypyFile:1(
     IndexExpr:1(
       NameExpr(a)
       TupleExpr:1(
-        SliceExpr:-1(
+        SliceExpr:1(
           <empty>
           <empty>)
-        SliceExpr:-1(
+        SliceExpr:1(
           <empty>
           <empty>)))))
 
@@ -3186,10 +3186,10 @@ MypyFile:1(
     IndexExpr:1(
       NameExpr(a)
       TupleExpr:1(
-        SliceExpr:-1(
+        SliceExpr:1(
           IntExpr(1)
           IntExpr(2))
-        SliceExpr:-1(
+        SliceExpr:1(
           <empty>
           <empty>)))))
 
@@ -3201,12 +3201,28 @@ MypyFile:1(
     IndexExpr:1(
       NameExpr(a)
       TupleExpr:1(
-        SliceExpr:-1(
+        SliceExpr:1(
           IntExpr(1)
           IntExpr(2)
           IntExpr(3))
         Ellipsis
         IntExpr(1)))))
+
+[case testParseExtendedSlicing4]
+m[*index, :]
+[out]
+main:1: error: invalid syntax
+[out version>=3.11]
+MypyFile:1(
+  ExpressionStmt:1(
+    IndexExpr:1(
+      NameExpr(m)
+      TupleExpr:1(
+        StarExpr:1(
+          NameExpr(index))
+        SliceExpr:1(
+          <empty>
+          <empty>)))))
 
 [case testParseIfExprInDictExpr]
 test =  { 'spam': 'eggs' if True else 'bacon' }

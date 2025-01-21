@@ -11,7 +11,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from gettext import gettext
 from io import TextIOWrapper
-from typing import IO, Any, Final, NoReturn, Protocol, TextIO
+from typing import IO, TYPE_CHECKING, Any, Final, NoReturn, TextIO
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
@@ -36,9 +36,8 @@ from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
 
-
-class _SupportsWrite(Protocol):
-    def write(self, s: str, /) -> object: ...
+if TYPE_CHECKING:
+    from _typeshed import SupportsWrite
 
 
 orig_stat: Final = os.stat
@@ -378,17 +377,17 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     # =====================
     # Help-printing methods
     # =====================
-    def print_usage(self, file: _SupportsWrite | None = None) -> None:
+    def print_usage(self, file: SupportsWrite[str] | None = None) -> None:
         if file is None:
             file = self.stdout
         self._print_message(self.format_usage(), file)
 
-    def print_help(self, file: _SupportsWrite | None = None) -> None:
+    def print_help(self, file: SupportsWrite[str] | None = None) -> None:
         if file is None:
             file = self.stdout
         self._print_message(self.format_help(), file)
 
-    def _print_message(self, message: str, file: _SupportsWrite | None = None) -> None:
+    def _print_message(self, message: str, file: SupportsWrite[str] | None = None) -> None:
         if message:
             if file is None:
                 file = self.stderr
@@ -565,7 +564,7 @@ def process_options(
         "--config-file",
         help=(
             f"Configuration file, must have a [mypy] section "
-            f"(defaults to {', '.join(defaults.CONFIG_FILES)})"
+            f"(defaults to {', '.join(defaults.CONFIG_NAMES + defaults.SHARED_CONFIG_NAMES)})"
         ),
     )
     add_invertible_flag(
@@ -1185,7 +1184,7 @@ def process_options(
     parser.add_argument("--test-env", action="store_true", help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
-    parser.add_argument("--local-partial-types", action="store_true", help=argparse.SUPPRESS)
+    add_invertible_flag("--local-partial-types", default=False, help=argparse.SUPPRESS)
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
     # type precision in a code base. It also _removes_ some deps, so this flag should be never

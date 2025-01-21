@@ -2354,6 +2354,7 @@ def fn_while(arg: T) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testRefinePartialTypeWithinLoop]
+# flags: --no-local-partial-types
 
 x = None
 for _ in range(2):
@@ -2387,5 +2388,31 @@ class A:
                 if z:
                     z[0] + "v"  # E: Unsupported operand types for + ("int" and "str")
                 z.append(1)
+
+[builtins fixtures/primitives.pyi]
+
+[case testAvoidFalseUnreachableInLoop]
+# flags: --warn-unreachable --python-version 3.11
+
+def f() -> int | None: ...
+def b() -> bool: ...
+
+x: int | None
+x = 1
+while x is not None or b():
+    x = f()
+
+[builtins fixtures/bool.pyi]
+
+[case testAvoidFalseRedundantExprInLoop]
+# flags: --enable-error-code redundant-expr --python-version 3.11
+
+def f() -> int | None: ...
+def b() -> bool: ...
+
+x: int | None
+x = 1
+while x is not None and b():
+    x = f()
 
 [builtins fixtures/primitives.pyi]

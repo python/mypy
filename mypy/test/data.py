@@ -20,7 +20,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 import pytest
 
 from mypy import defaults
-from mypy.test.config import PREFIX, test_data_prefix, test_temp_dir
+from mypy.test.config import PREFIX, mypyc_output_dir, test_data_prefix, test_temp_dir
 
 root_dir = os.path.normpath(PREFIX)
 
@@ -584,6 +584,13 @@ def fix_cobertura_filename(line: str) -> str:
 # pytest setup
 #
 ##
+
+
+def pytest_sessionstart(session: Any) -> None:
+    # Clean up directory where mypyc tests write intermediate files on failure
+    # to avoid any confusion between test runs
+    if os.path.isdir(mypyc_output_dir):
+        shutil.rmtree(mypyc_output_dir)
 
 
 # This function name is special to pytest.  See

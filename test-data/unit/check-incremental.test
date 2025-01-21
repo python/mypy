@@ -6317,6 +6317,7 @@ class C: ...
 [out3]
 
 [case testNoCrashOnPartialLambdaInference]
+# flags: --no-local-partial-types
 import m
 [file m.py]
 from typing import TypeVar, Callable

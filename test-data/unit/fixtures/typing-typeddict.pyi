@@ -47,8 +47,7 @@ class Iterator(Iterable[T_co], Protocol):
     def __next__(self) -> T_co: pass
 
 class Sequence(Iterable[T_co]):
-    # misc is for explicit Any.
-    def __getitem__(self, n: Any) -> T_co: pass # type: ignore[misc]
+    def __getitem__(self, n: Any) -> T_co: pass # type: ignore[explicit-any]
 
 class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     def keys(self) -> Iterable[T]: pass  # Approximate return type

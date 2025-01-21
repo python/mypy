@@ -470,11 +470,15 @@ assert foo() == 21
 [case testClassKwargs]
 class X:
     def __init__(self, msg: str, **variables: int) -> None:
-         pass
+         self.msg = msg
+         self.variables = variables
+
 [file driver.py]
 import traceback
 from native import X
-X('hello', a=0)
+x = X('hello', a=0, b=1)
+assert x.msg == 'hello'
+assert x.variables == {'a': 0, 'b': 1}
 try:
     X('hello', msg='hello')
 except TypeError as e:
@@ -2688,3 +2692,30 @@ print(native.C(22).v)
 
 [out]
 22.1
+
+[case testLastParentEnum]
+from enum import Enum
+
+class ColorCode(str, Enum):
+    OKGREEN = "okgreen"
+
+[file driver.py]
+import native
+print(native.ColorCode.OKGREEN.value)
+
+[out]
+okgreen
+
+[case testAttrWithSlots]
+import attr
+
+@attr.s(slots=True)
+class A:
+    ints: list[int] = attr.ib()
+
+[file driver.py]
+import native
+print(native.A(ints=[1, -17]).ints)
+
+[out]
+\[1, -17]
