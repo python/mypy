@@ -916,9 +916,18 @@ f(None) # E: Too many arguments for "f"
 from typing import Any, Callable
 def dec1(f: Callable[[Any], None]) -> Callable[[], None]: pass
 def dec2(f: Callable[[Any, Any], None]) -> Callable[[Any], None]: pass
-@dec1 # E: Argument 1 to "dec2" has incompatible type "Callable[[Any], Any]"; expected "Callable[[Any, Any], None]"
-@dec2
+@dec1
+@dec2  # E: Argument 1 to "dec2" has incompatible type "Callable[[Any], Any]"; expected "Callable[[Any, Any], None]"
 def f(x): pass
+
+def faulty(c: Callable[[int], None]) -> Callable[[tuple[int, int]], None]:
+    return lambda x: None
+
+@faulty  # E: Argument 1 to "faulty" has incompatible type "Callable[[Tuple[int, int]], None]"; expected "Callable[[int], None]"
+@faulty  # E: Argument 1 to "faulty" has incompatible type "Callable[[str], None]"; expected "Callable[[int], None]"
+def g(x: str) -> None:
+    return None
+[builtins fixtures/tuple.pyi]
 
 [case testInvalidDecorator2]
 from typing import Any, Callable

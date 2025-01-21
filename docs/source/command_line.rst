@@ -68,10 +68,11 @@ for full details, see :ref:`running-mypy`.
     checked. For instance, ``mypy --exclude '/setup.py$'
     but_still_check/setup.py``.
 
-    In particular, ``--exclude`` does not affect mypy's :ref:`import following
-    <follow-imports>`. You can use a per-module :confval:`follow_imports` config
-    option to additionally avoid mypy from following imports and checking code
-    you do not wish to be checked.
+    In particular, ``--exclude`` does not affect mypy's discovery of files
+    via :ref:`import following <follow-imports>`. You can use a per-module
+    :confval:`ignore_errors` config option to silence errors from a given module,
+    or a per-module :confval:`follow_imports` config option to additionally avoid
+    mypy from following imports and checking code you do not wish to be checked.
 
     Note that mypy will never recursively discover files and directories named
     "site-packages", "node_modules" or "__pycache__", or those whose name starts

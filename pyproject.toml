@@ -77,6 +77,7 @@ mypyc = "mypyc.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["mypy*", "mypyc*", "*__mypyc*"]
+exclude = ["mypyc.test-data*"]
 namespaces = false
 
 [tool.setuptools.package-data]
@@ -88,6 +89,15 @@ mypy = [
   "xml/*.xsd",
   "xml/*.xslt",
   "xml/*.css",
+]
+[tool.setuptools.exclude-package-data]
+mypyc = [
+  "README.md",
+  "doc/**",
+  "external/**",
+  "lib-rt/test_capi.cc",
+  "lib-rt/setup.py",
+  "test-data/**",
 ]
 
 [tool.black]

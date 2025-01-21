@@ -1,4 +1,4 @@
-From 25250cbe1f7ee0e924ac03b3f19297e1885dd13e Mon Sep 17 00:00:00 2001
+From abc5225e3c69d7ae8f3388c87260fe496efaecac Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
 Date: Sat, 21 Dec 2024 22:36:38 +0100
 Subject: [PATCH] Revert Remove redundant inheritances from Iterator in
@@ -15,7 +15,7 @@ Subject: [PATCH] Revert Remove redundant inheritances from Iterator in
  7 files changed, 34 insertions(+), 34 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/_asyncio.pyi b/mypy/typeshed/stdlib/_asyncio.pyi
-index a25902661..18920cd8a 100644
+index 89cdff6cc..1397e579d 100644
 --- a/mypy/typeshed/stdlib/_asyncio.pyi
 +++ b/mypy/typeshed/stdlib/_asyncio.pyi
 @@ -1,6 +1,6 @@
@@ -36,7 +36,7 @@ index a25902661..18920cd8a 100644
      @property
      def _exception(self) -> BaseException | None: ...
 diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
-index 5c6d321f7..56a5969d1 100644
+index b75e34fc5..526406acc 100644
 --- a/mypy/typeshed/stdlib/builtins.pyi
 +++ b/mypy/typeshed/stdlib/builtins.pyi
 @@ -1130,7 +1130,7 @@ class frozenset(AbstractSet[_T_co]):
@@ -64,7 +64,7 @@ index 5c6d321f7..56a5969d1 100644
 -class map(Generic[_S]):
 +class map(Iterator[_S]):
      @overload
-     def __new__(cls, func: Callable[[_T1], _S], iter1: Iterable[_T1], /) -> Self: ...
+     def __new__(cls, func: Callable[[_T1], _S], iterable: Iterable[_T1], /) -> Self: ...
      @overload
 @@ -1632,7 +1632,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
 
@@ -131,7 +131,7 @@ index bf6daad0a..1e6aa78e2 100644
          # encoding and errors are added
          @overload
 diff --git a/mypy/typeshed/stdlib/itertools.pyi b/mypy/typeshed/stdlib/itertools.pyi
-index 013c3cba1..f69665882 100644
+index 55b0814ac..675533d44 100644
 --- a/mypy/typeshed/stdlib/itertools.pyi
 +++ b/mypy/typeshed/stdlib/itertools.pyi
 @@ -29,7 +29,7 @@ _Predicate: TypeAlias = Callable[[_T], object]
@@ -149,14 +149,14 @@ index 013c3cba1..f69665882 100644
 
 -class cycle(Generic[_T]):
 +class cycle(Iterator[_T]):
-     def __init__(self, iterable: Iterable[_T], /) -> None: ...
+     def __new__(cls, iterable: Iterable[_T], /) -> Self: ...
      def __next__(self) -> _T: ...
      def __iter__(self) -> Self: ...
 
 -class repeat(Generic[_T]):
 +class repeat(Iterator[_T]):
      @overload
-     def __init__(self, object: _T) -> None: ...
+     def __new__(cls, object: _T) -> Self: ...
      @overload
 @@ -53,7 +53,7 @@ class repeat(Generic[_T]):
      def __iter__(self) -> Self: ...
@@ -165,7 +165,7 @@ index 013c3cba1..f69665882 100644
 -class accumulate(Generic[_T]):
 +class accumulate(Iterator[_T]):
      @overload
-     def __init__(self, iterable: Iterable[_T], func: None = None, *, initial: _T | None = ...) -> None: ...
+     def __new__(cls, iterable: Iterable[_T], func: None = None, *, initial: _T | None = ...) -> Self: ...
      @overload
 @@ -61,7 +61,7 @@ class accumulate(Generic[_T]):
      def __iter__(self) -> Self: ...
@@ -173,7 +173,7 @@ index 013c3cba1..f69665882 100644
 
 -class chain(Generic[_T]):
 +class chain(Iterator[_T]):
-     def __init__(self, *iterables: Iterable[_T]) -> None: ...
+     def __new__(cls, *iterables: Iterable[_T]) -> Self: ...
      def __next__(self) -> _T: ...
      def __iter__(self) -> Self: ...
 @@ -71,22 +71,22 @@ class chain(Generic[_T]):
@@ -182,19 +182,19 @@ index 013c3cba1..f69665882 100644
 
 -class compress(Generic[_T]):
 +class compress(Iterator[_T]):
-     def __init__(self, data: Iterable[_T], selectors: Iterable[Any]) -> None: ...
+     def __new__(cls, data: Iterable[_T], selectors: Iterable[Any]) -> Self: ...
      def __iter__(self) -> Self: ...
      def __next__(self) -> _T: ...
 
 -class dropwhile(Generic[_T]):
 +class dropwhile(Iterator[_T]):
-     def __init__(self, predicate: _Predicate[_T], iterable: Iterable[_T], /) -> None: ...
+     def __new__(cls, predicate: _Predicate[_T], iterable: Iterable[_T], /) -> Self: ...
      def __iter__(self) -> Self: ...
      def __next__(self) -> _T: ...
 
 -class filterfalse(Generic[_T]):
 +class filterfalse(Iterator[_T]):
-     def __init__(self, predicate: _Predicate[_T] | None, iterable: Iterable[_T], /) -> None: ...
+     def __new__(cls, function: _Predicate[_T] | None, iterable: Iterable[_T], /) -> Self: ...
      def __iter__(self) -> Self: ...
      def __next__(self) -> _T: ...
 
@@ -210,7 +210,7 @@ index 013c3cba1..f69665882 100644
 -class islice(Generic[_T]):
 +class islice(Iterator[_T]):
      @overload
-     def __init__(self, iterable: Iterable[_T], stop: int | None, /) -> None: ...
+     def __new__(cls, iterable: Iterable[_T], stop: int | None, /) -> Self: ...
      @overload
 @@ -102,19 +102,19 @@ class islice(Generic[_T]):
      def __iter__(self) -> Self: ...
@@ -224,7 +224,7 @@ index 013c3cba1..f69665882 100644
 
 -class takewhile(Generic[_T]):
 +class takewhile(Iterator[_T]):
-     def __init__(self, predicate: _Predicate[_T], iterable: Iterable[_T], /) -> None: ...
+     def __new__(cls, predicate: _Predicate[_T], iterable: Iterable[_T], /) -> Self: ...
      def __iter__(self) -> Self: ...
      def __next__(self) -> _T: ...
 
@@ -288,17 +288,17 @@ index 013c3cba1..f69665882 100644
              def __new__(cls, iterable: Iterable[_T_co], n: int, *, strict: bool = False) -> Self: ...
          else:
 diff --git a/mypy/typeshed/stdlib/multiprocessing/pool.pyi b/mypy/typeshed/stdlib/multiprocessing/pool.pyi
-index 61d6d0781..950ed1d8c 100644
+index 2937d45e3..93197e5d4 100644
 --- a/mypy/typeshed/stdlib/multiprocessing/pool.pyi
 +++ b/mypy/typeshed/stdlib/multiprocessing/pool.pyi
 @@ -1,5 +1,5 @@
  import sys
 -from collections.abc import Callable, Iterable, Mapping
 +from collections.abc import Callable, Iterable, Iterator, Mapping
+ from multiprocessing.context import DefaultContext, Process
  from types import TracebackType
  from typing import Any, Final, Generic, TypeVar
- from typing_extensions import Self
-@@ -36,7 +36,7 @@ class MapResult(ApplyResult[list[_T]]):
+@@ -37,7 +37,7 @@ class MapResult(ApplyResult[list[_T]]):
          error_callback: Callable[[BaseException], object] | None,
      ) -> None: ...
 
@@ -308,7 +308,7 @@ index 61d6d0781..950ed1d8c 100644
      def __iter__(self) -> Self: ...
      def next(self, timeout: float | None = None) -> _T: ...
 diff --git a/mypy/typeshed/stdlib/sqlite3/__init__.pyi b/mypy/typeshed/stdlib/sqlite3/__init__.pyi
-index bc0ff6469..730404bde 100644
+index b83516b4d..724bc3166 100644
 --- a/mypy/typeshed/stdlib/sqlite3/__init__.pyi
 +++ b/mypy/typeshed/stdlib/sqlite3/__init__.pyi
 @@ -397,7 +397,7 @@ class Connection:

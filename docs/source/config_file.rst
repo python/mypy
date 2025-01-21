@@ -7,22 +7,30 @@ Mypy is very configurable. This is most useful when introducing typing to
 an existing codebase. See :ref:`existing-code` for concrete advice for
 that situation.
 
-Mypy supports reading configuration settings from a file with the following precedence order:
+Mypy supports reading configuration settings from a file. By default, mypy will
+discover configuration files by walking up the file system (up until the root of
+a repository or the root of the filesystem). In each directory, it will look for
+the following configuration files (in this order):
 
-    1. ``./mypy.ini``
-    2. ``./.mypy.ini``
-    3. ``./pyproject.toml``
-    4. ``./setup.cfg``
-    5. ``$XDG_CONFIG_HOME/mypy/config``
-    6. ``~/.config/mypy/config``
-    7. ``~/.mypy.ini``
+    1. ``mypy.ini``
+    2. ``.mypy.ini``
+    3. ``pyproject.toml`` (containing a ``[tool.mypy]`` section)
+    4. ``setup.cfg`` (containing a ``[mypy]`` section)
+
+If no configuration file is found by this method, mypy will then look for
+configuration files in the following locations (in this order):
+
+    1. ``$XDG_CONFIG_HOME/mypy/config``
+    2. ``~/.config/mypy/config``
+    3. ``~/.mypy.ini``
+
+The :option:`--config-file <mypy --config-file>` command-line flag has the
+highest precedence and must point towards a valid configuration file;
+otherwise mypy will report an error and exit. Without the command line option,
+mypy will look for configuration files in the precedence order above.
 
 It is important to understand that there is no merging of configuration
-files, as it would lead to ambiguity. The :option:`--config-file <mypy --config-file>`
-command-line flag has the highest precedence and
-must be correct; otherwise mypy will report an error and exit. Without the
-command line option, mypy will look for configuration files in the
-precedence order above.
+files, as it would lead to ambiguity.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some

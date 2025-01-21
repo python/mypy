@@ -2692,3 +2692,30 @@ print(native.C(22).v)
 
 [out]
 22.1
+
+[case testLastParentEnum]
+from enum import Enum
+
+class ColorCode(str, Enum):
+    OKGREEN = "okgreen"
+
+[file driver.py]
+import native
+print(native.ColorCode.OKGREEN.value)
+
+[out]
+okgreen
+
+[case testAttrWithSlots]
+import attr
+
+@attr.s(slots=True)
+class A:
+    ints: list[int] = attr.ib()
+
+[file driver.py]
+import native
+print(native.A(ints=[1, -17]).ints)
+
+[out]
+\[1, -17]

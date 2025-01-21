@@ -2229,3 +2229,22 @@ class X(Generic[T]):
         return inner_f
 
 reveal_type(X[Callable[[T], None]]().f())  # N: Revealed type is "def [V] (V`4) -> V`4"
+
+[case testSelfInMultipleInheritance]
+from typing_extensions import Self
+
+class A:
+    foo: int
+    def method(self: Self, other: Self) -> None:
+        self.foo
+        other.foo
+
+class B:
+    bar: str
+    def method(self: Self, other: Self) -> None:
+        self.bar
+        other.bar
+
+class C(A, B):  # OK: both methods take Self
+    pass
+[builtins fixtures/tuple.pyi]

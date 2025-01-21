@@ -244,7 +244,7 @@ class MessageBuilder:
             TODO: address this in follow up PR
             """
             if isinstance(ctx, (ClassDef, FuncDef)):
-                return range(ctx.deco_line or ctx.line, ctx.line + 1)
+                return range(ctx.line, ctx.line + 1)
             elif not isinstance(ctx, Expression):
                 return [ctx.line]
             else:
@@ -1821,7 +1821,7 @@ class MessageBuilder:
         )
 
     def explicit_any(self, ctx: Context) -> None:
-        self.fail('Explicit "Any" is not allowed', ctx)
+        self.fail('Explicit "Any" is not allowed', ctx, code=codes.EXPLICIT_ANY)
 
     def unsupported_target_for_star_typeddict(self, typ: Type, ctx: Context) -> None:
         self.fail(

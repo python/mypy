@@ -584,14 +584,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         *,
         exit_condition: Expression | None = None,
     ) -> None:
-        """Repeatedly type check a loop body until the frame doesn't change.
-        If exit_condition is set, assume it must be False on exit from the loop.
+        """Repeatedly type check a loop body until the frame doesn't change."""
 
-        Then check the else_body.
-        """
-        # The outer frame accumulates the results of all iterations
+        # The outer frame accumulates the results of all iterations:
         with self.binder.frame_context(can_skip=False, conditional_frame=True):
+
+            # Check for potential decreases in the number of partial types so as not to stop the
+            # iteration too early:
             partials_old = sum(len(pts.map) for pts in self.partial_types)
+
+            # Disable error types that we cannot safely identify in intermediate iteration steps:
+            warn_unreachable = self.options.warn_unreachable
+            warn_redundant = codes.REDUNDANT_EXPR in self.options.enabled_error_codes
+            self.options.warn_unreachable = False
+            self.options.enabled_error_codes.discard(codes.REDUNDANT_EXPR)
+
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
                     self.accept(body)
@@ -599,9 +606,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if (partials_new == partials_old) and not self.binder.last_pop_changed:
                     break
                 partials_old = partials_new
+
+            # If necessary, reset the modified options and make up for the postponed error checks:
+            self.options.warn_unreachable = warn_unreachable
+            if warn_redundant:
+                self.options.enabled_error_codes.add(codes.REDUNDANT_EXPR)
+            if warn_unreachable or warn_redundant:
+                with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
+                    self.accept(body)
+
+            # If exit_condition is set, assume it must be False on exit from the loop:
             if exit_condition:
                 _, else_map = self.find_isinstance_check(exit_condition)
                 self.push_type_map(else_map)
+
+            # Check the else body:
             if else_body:
                 self.accept(else_body)
 
@@ -1961,12 +1980,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Return a list of base classes which contain an attribute with the method name.
         """
         # Check against definitions in base classes.
-        check_override_compatibility = defn.name not in (
-            "__init__",
-            "__new__",
-            "__init_subclass__",
-            "__post_init__",
-        ) and (self.options.check_untyped_defs or not defn.is_dynamic())
+        check_override_compatibility = (
+            defn.name not in ("__init__", "__new__", "__init_subclass__", "__post_init__")
+            and (self.options.check_untyped_defs or not defn.is_dynamic())
+            and (
+                # don't check override for synthesized __replace__ methods from dataclasses
+                defn.name != "__replace__"
+                or defn.info.metadata.get("dataclass_tag") is None
+            )
+        )
         found_method_base_classes: list[TypeInfo] = []
         for base in defn.info.mro[1:]:
             result = self.check_method_or_accessor_override_for_base(
@@ -2095,6 +2117,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if original_node and is_property(original_node):
                     original_type = get_property_type(original_type)
 
+            if isinstance(original_node, Var):
+                expanded_type = map_type_from_supertype(original_type, defn.info, base)
+                expanded_type = expand_self_type(
+                    original_node, expanded_type, fill_typevars(defn.info)
+                )
+                original_type = get_proper_type(expanded_type)
+
             if is_property(defn):
                 inner: FunctionLike | None
                 if isinstance(typ, FunctionLike):
@@ -2206,8 +2235,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 is_class_method = sym.node.is_class
 
             mapped_typ = cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
-            active_self_type = self.scope.active_self_type()
-            if isinstance(mapped_typ, Overloaded) and active_self_type:
+            active_self_type = fill_typevars(sub_info)
+            if isinstance(mapped_typ, Overloaded):
                 # If we have an overload, filter to overloads that match the self type.
                 # This avoids false positives for concrete subclasses of generic classes,
                 # see testSelfTypeOverrideCompatibility for an example.
@@ -2733,19 +2762,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         # Verify that inherited attributes are compatible.
         mro = typ.mro[1:]
-        for i, base in enumerate(mro):
+        all_names = {name for base in mro for name in base.names}
+        for name in sorted(all_names - typ.names.keys()):
+            # Sort for reproducible message order.
             # Attributes defined in both the type and base are skipped.
             # Normal checks for attribute compatibility should catch any problems elsewhere.
-            non_overridden_attrs = base.names.keys() - typ.names.keys()
-            for name in non_overridden_attrs:
-                if is_private(name):
-                    continue
-                for base2 in mro[i + 1 :]:
-                    # We only need to check compatibility of attributes from classes not
-                    # in a subclass relationship. For subclasses, normal (single inheritance)
-                    # checks suffice (these are implemented elsewhere).
-                    if name in base2.names and base2 not in base.mro:
-                        self.check_compatibility(name, base, base2, typ)
+            if is_private(name):
+                continue
+            # Compare the first base defining a name with the rest.
+            # Remaining bases may not be pairwise compatible as the first base provides
+            # the used definition.
+            i, base = next((i, base) for i, base in enumerate(mro) if name in base.names)
+            for base2 in mro[i + 1 :]:
+                if name in base2.names and base2 not in base.mro:
+                    self.check_compatibility(name, base, base2, typ)
 
     def determine_type_of_member(self, sym: SymbolTableNode) -> Type | None:
         if sym.type is not None:
@@ -2826,8 +2856,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
         elif first_type and second_type:
             if isinstance(first.node, Var):
+                first_type = get_proper_type(map_type_from_supertype(first_type, ctx, base1))
                 first_type = expand_self_type(first.node, first_type, fill_typevars(ctx))
             if isinstance(second.node, Var):
+                second_type = get_proper_type(map_type_from_supertype(second_type, ctx, base2))
                 second_type = expand_self_type(second.node, second_type, fill_typevars(ctx))
             ok = is_equivalent(first_type, second_type)
             if not ok:
@@ -5117,7 +5149,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
             dec = self.expr_checker.accept(d)
-            temp = self.temp_node(sig, context=e)
+            temp = self.temp_node(sig, context=d)
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname or None
@@ -5373,17 +5405,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return sub_patterns_map
 
-    def infer_variable_types_from_type_maps(self, type_maps: list[TypeMap]) -> dict[Var, Type]:
-        all_captures: dict[Var, list[tuple[NameExpr, Type]]] = defaultdict(list)
+    def infer_variable_types_from_type_maps(
+        self, type_maps: list[TypeMap]
+    ) -> dict[SymbolNode, Type]:
+        # Type maps may contain variables inherited from previous code which are not
+        # necessary `Var`s (e.g. a function defined earlier with the same name).
+        all_captures: dict[SymbolNode, list[tuple[NameExpr, Type]]] = defaultdict(list)
         for tm in type_maps:
             if tm is not None:
                 for expr, typ in tm.items():
                     if isinstance(expr, NameExpr):
                         node = expr.node
-                        assert isinstance(node, Var)
+                        assert node is not None
                         all_captures[node].append((expr, typ))
 
-        inferred_types: dict[Var, Type] = {}
+        inferred_types: dict[SymbolNode, Type] = {}
         for var, captures in all_captures.items():
             already_exists = False
             types: list[Type] = []
@@ -5407,16 +5443,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 new_type = UnionType.make_union(types)
                 # Infer the union type at the first occurrence
                 first_occurrence, _ = captures[0]
+                # If it didn't exist before ``match``, it's a Var.
+                assert isinstance(var, Var)
                 inferred_types[var] = new_type
                 self.infer_variable_type(var, first_occurrence, new_type, first_occurrence)
         return inferred_types
 
-    def remove_capture_conflicts(self, type_map: TypeMap, inferred_types: dict[Var, Type]) -> None:
+    def remove_capture_conflicts(
+        self, type_map: TypeMap, inferred_types: dict[SymbolNode, Type]
+    ) -> None:
         if type_map:
             for expr, typ in list(type_map.items()):
                 if isinstance(expr, NameExpr):
                     node = expr.node
-                    assert isinstance(node, Var)
                     if node not in inferred_types or not is_subtype(typ, inferred_types[node]):
                         del type_map[expr]
 
