@@ -1359,7 +1359,7 @@ class B: pass
 
 x = B()
 if isinstance(x, A):
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "B" and "A">"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.B" and "__main__.A">"
 else:
     reveal_type(x)  # N: Revealed type is "__main__.B"
 reveal_type(x)  # N: Revealed type is "__main__.B"
@@ -2178,7 +2178,7 @@ def foo2(x: Optional[str]) -> None:
     if x is None:
         reveal_type(x)      # N: Revealed type is "None"
     elif isinstance(x, A):
-        reveal_type(x)      # N: Revealed type is "__main__.<subclass of "str" and "A">"
+        reveal_type(x)      # N: Revealed type is "__main__.<subclass of "builtins.str" and "__main__.A">"
     else:
         reveal_type(x)      # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstance.pyi]
@@ -2202,7 +2202,7 @@ def foo2(x: Optional[str]) -> None:
     if x is None:
         reveal_type(x)      # N: Revealed type is "None"
     elif isinstance(x, A):
-        reveal_type(x)      # N: Revealed type is "__main__.<subclass of "str" and "A">"
+        reveal_type(x)      # N: Revealed type is "__main__.<subclass of "builtins.str" and "__main__.A">"
     else:
         reveal_type(x)      # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstance.pyi]
@@ -2313,15 +2313,15 @@ class C:
 
 x: A
 if isinstance(x, B):
-    reveal_type(x)           # N: Revealed type is "__main__.<subclass of "A" and "B">"
+    reveal_type(x)           # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
     if isinstance(x, C):
-        reveal_type(x)       # N: Revealed type is "__main__.<subclass of "A", "B", and "C">"
+        reveal_type(x)       # N: Revealed type is "__main__.<subclass of "__main__.A", "__main__.B", and "__main__.C">"
         reveal_type(x.f1())  # N: Revealed type is "builtins.int"
         reveal_type(x.f2())  # N: Revealed type is "builtins.int"
         reveal_type(x.f3())  # N: Revealed type is "builtins.int"
-        x.bad()              # E: "<subclass of "A", "B", and "C">" has no attribute "bad"
+        x.bad()              # E: "<subclass of "__main__.A", "__main__.B", and "__main__.C">" has no attribute "bad"
     else:
-        reveal_type(x)       # N: Revealed type is "__main__.<subclass of "A" and "B">"
+        reveal_type(x)       # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
 else:
     reveal_type(x)           # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
@@ -2334,11 +2334,11 @@ class B: pass
 
 x: A
 if isinstance(x, B):
-    reveal_type(x)      # N: Revealed type is "__main__.<subclass of "A" and "B">"
+    reveal_type(x)      # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
     if isinstance(x, A):
-        reveal_type(x)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+        reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
     if isinstance(x, B):
-        reveal_type(x)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+        reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionIncompatibleClasses]
@@ -2359,7 +2359,7 @@ else:
 
 y: C
 if isinstance(y, B):
-    reveal_type(y)        # N: Revealed type is "__main__.<subclass of "C" and "B">"
+    reveal_type(y)        # N: Revealed type is "__main__.<subclass of "__main__.C" and "__main__.B">"
     if isinstance(y, A):  # E: Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
         reveal_type(y)    # E: Statement is unreachable
 [builtins fixtures/isinstance.pyi]
@@ -2393,19 +2393,19 @@ class B:
 
     def t1(self) -> None:
         if isinstance(self, A1):
-            reveal_type(self)           # N: Revealed type is "__main__.<subclass of "A1" and "B">"
+            reveal_type(self)           # N: Revealed type is "__main__.<subclass of "__main__.A1" and "__main__.B">"
             x0: Literal[0] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[0]")
             x1: Literal[1] = self.f()
 
     def t2(self) -> None:
         if isinstance(self, (A0, A1)):
-            reveal_type(self)           # N: Revealed type is "__main__.<subclass of "A1" and "B">1"
+            reveal_type(self)           # N: Revealed type is "__main__.<subclass of "__main__.A1" and "__main__.B">"
             x0: Literal[0] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[0]")
             x1: Literal[1] = self.f()
 
     def t3(self) -> None:
         if isinstance(self, (A1, A2)):
-            reveal_type(self)           # N: Revealed type is "Union[__main__.<subclass of "A1" and "B">2, __main__.<subclass of "A2" and "B">]"
+            reveal_type(self)           # N: Revealed type is "Union[__main__.<subclass of "__main__.A1" and "__main__.B">, __main__.<subclass of "__main__.A2" and "__main__.B">]"
             x0: Literal[0] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1, 2]", variable has type "Literal[0]")
             x1: Literal[1] = self.f()   # E: Incompatible types in assignment (expression has type "Literal[1, 2]", variable has type "Literal[1]")
 
@@ -2432,14 +2432,14 @@ else:
 
 y: A[Parent]
 if isinstance(y, B):
-    reveal_type(y)      # N: Revealed type is "__main__.<subclass of "A" and "B">"
+    reveal_type(y)      # N: Revealed type is "__main__.<subclass of "__main__.A[__main__.Parent]" and "__main__.B">"
     reveal_type(y.f())  # N: Revealed type is "__main__.Parent"
 else:
     reveal_type(y)      # N: Revealed type is "__main__.A[__main__.Parent]"
 
 z: A[Child]
 if isinstance(z, B):
-    reveal_type(z)      # N: Revealed type is "__main__.<subclass of "A" and "B">1"
+    reveal_type(z)      # N: Revealed type is "__main__.<subclass of "__main__.A[__main__.Child]" and "__main__.B">"
     reveal_type(z.f())  # N: Revealed type is "__main__.Child"
 else:
     reveal_type(z)      # N: Revealed type is "__main__.A[__main__.Child]"
@@ -2460,10 +2460,10 @@ T1 = TypeVar('T1', A, B)
 def f1(x: T1) -> T1:
     if isinstance(x, A):
         reveal_type(x)      # N: Revealed type is "__main__.A" \
-                            # N: Revealed type is "__main__.<subclass of "B" and "A">"
+                            # N: Revealed type is "__main__.<subclass of "__main__.B" and "__main__.A">"
         if isinstance(x, B):
-            reveal_type(x)  # N: Revealed type is "__main__.<subclass of "A" and "B">" \
-                            # N: Revealed type is "__main__.<subclass of "B" and "A">"
+            reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">" \
+                            # N: Revealed type is "__main__.<subclass of "__main__.B" and "__main__.A">"
         else:
             reveal_type(x)  # N: Revealed type is "__main__.A"
     else:
@@ -2502,7 +2502,7 @@ T1 = TypeVar('T1', A, B)
 def f1(x: T1) -> T1:
     if isinstance(x, A):
         # The error message is confusing, but we indeed do run into problems if
-        # 'x' is a subclass of A and B
+        # 'x' is a subclass of __main__.A and __main__.B
         return A()   # E: Incompatible return value type (got "A", expected "B")
     else:
         return B()
@@ -2530,10 +2530,10 @@ def accept_concrete(c: Concrete) -> None: pass
 x: A
 if isinstance(x, B):
     var = x
-    reveal_type(var)      # N: Revealed type is "__main__.<subclass of "A" and "B">"
+    reveal_type(var)      # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
     accept_a(var)
     accept_b(var)
-    accept_concrete(var)  # E: Argument 1 to "accept_concrete" has incompatible type "<subclass of "A" and "B">"; expected "Concrete"
+    accept_concrete(var)  # E: Argument 1 to "accept_concrete" has incompatible type "<subclass of "__main__.A" and "__main__.B">"; expected "Concrete"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionReinfer]
@@ -2543,14 +2543,14 @@ class B: pass
 
 x: A
 assert isinstance(x, B)
-reveal_type(x)      # N: Revealed type is "__main__.<subclass of "A" and "B">"
+reveal_type(x)      # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
 
 y: A
 assert isinstance(y, B)
-reveal_type(y)      # N: Revealed type is "__main__.<subclass of "A" and "B">1"
+reveal_type(y)      # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
 
 x = y
-reveal_type(x)      # N: Revealed type is "__main__.<subclass of "A" and "B">1"
+reveal_type(x)      # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionWithUnions]
@@ -2563,15 +2563,15 @@ class D: pass
 
 v1: A
 if isinstance(v1, (B, C)):
-    reveal_type(v1)  # N: Revealed type is "Union[__main__.<subclass of "A" and "B">, __main__.<subclass of "A" and "C">]"
+    reveal_type(v1)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.B">, __main__.<subclass of "__main__.A" and "__main__.C">]"
 
 v2: Union[A, B]
 if isinstance(v2, C):
-    reveal_type(v2)  # N: Revealed type is "Union[__main__.<subclass of "A" and "C">1, __main__.<subclass of "B" and "C">]"
+    reveal_type(v2)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.C">, __main__.<subclass of "__main__.B" and "__main__.C">]"
 
 v3: Union[A, B]
 if isinstance(v3, (C, D)):
-    reveal_type(v3)  # N: Revealed type is "Union[__main__.<subclass of "A" and "C">2, __main__.<subclass of "A" and "D">, __main__.<subclass of "B" and "C">1, __main__.<subclass of "B" and "D">]"
+    reveal_type(v3)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.C">, __main__.<subclass of "__main__.A" and "__main__.D">, __main__.<subclass of "__main__.B" and "__main__.C">, __main__.<subclass of "__main__.B" and "__main__.D">]"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionSameNames]
@@ -2581,7 +2581,7 @@ class A: pass
 
 x: A
 if isinstance(x, A2):
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "A" and "A">"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "foo.A">"
 
 [file foo.py]
 class A: pass
@@ -2611,7 +2611,7 @@ class Ambiguous:
 # We bias towards assuming these two classes could be overlapping
 foo: Concrete
 if isinstance(foo, Ambiguous):
-    reveal_type(foo)    # N: Revealed type is "__main__.<subclass of "Concrete" and "Ambiguous">"
+    reveal_type(foo)    # N: Revealed type is "__main__.<subclass of "__main__.Concrete" and "__main__.Ambiguous">"
     reveal_type(foo.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstance.pyi]
 
@@ -2628,11 +2628,11 @@ class C:
 
 x: Type[A]
 if issubclass(x, B):
-    reveal_type(x)        # N: Revealed type is "Type[__main__.<subclass of "A" and "B">]"
+    reveal_type(x)        # N: Revealed type is "Type[__main__.<subclass of "__main__.A" and "__main__.B">]"
     if issubclass(x, C):  # E: Subclass of "A", "B", and "C" cannot exist: would have incompatible method signatures
         reveal_type(x)    # E: Statement is unreachable
     else:
-        reveal_type(x)    # N: Revealed type is "Type[__main__.<subclass of "A" and "B">]"
+        reveal_type(x)    # N: Revealed type is "Type[__main__.<subclass of "__main__.A" and "__main__.B">]"
 else:
     reveal_type(x)        # N: Revealed type is "Type[__main__.A]"
 [builtins fixtures/isinstance.pyi]
@@ -2931,4 +2931,17 @@ if isinstance(var, bool):
 
 # Type of var shouldn't fall back to Any
 reveal_type(var)  # N: Revealed type is "Union[builtins.bool, builtins.str]"
+[builtins fixtures/isinstance.pyi]
+
+[case testReuseIntersectionForRepeatedIsinstanceCalls]
+
+class A: ...
+class B: ...
+
+a: A
+if isinstance(a, B):
+    c = a
+if isinstance(a, B):
+    c = a
+
 [builtins fixtures/isinstance.pyi]

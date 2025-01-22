@@ -5501,13 +5501,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         theoretical subclass of the instances the user may be trying to use
         the generated intersection can serve as a placeholder.
 
-        This function will create a fresh subclass every time you call it,
-        even if you pass in the exact same arguments. So this means calling
-        `self.intersect_intersection([inst_1, inst_2], ctx)` twice will result
-        in instances of two distinct subclasses of inst_1 and inst_2.
-
-        This is by design: we want each ad-hoc intersection to be unique since
-        they're supposed represent some other unknown subclass.
+        This function will create a fresh subclass the first time you call it.
+        So this means calling `self.intersect_intersection([inst_1, inst_2], ctx)`
+        twice will return the same subclass of inst_1 and inst_2.
 
         Returns None if creating the subclass is impossible (e.g. due to
         MRO errors or incompatible signatures). If we do successfully create
@@ -5540,20 +5536,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return base_classes_
 
         def _make_fake_typeinfo_and_full_name(
-            base_classes_: list[Instance], curr_module_: MypyFile
+            base_classes_: list[Instance], curr_module_: MypyFile, options: Options
         ) -> tuple[TypeInfo, str]:
-            names_list = pretty_seq([x.type.name for x in base_classes_], "and")
-            short_name = f"<subclass of {names_list}>"
-            full_name_ = gen_unique_name(short_name, curr_module_.names)
-            cdef, info_ = self.make_fake_typeinfo(
-                curr_module_.fullname, full_name_, short_name, base_classes_
-            )
-            return info_, full_name_
+            names = [format_type_bare(x, options=options, verbosity=2) for x in base_classes_]
+            name = f"<subclass of {pretty_seq(names, 'and')}>"
+            if (symbol := curr_module_.names.get(name)) is not None:
+                assert isinstance(symbol.node, TypeInfo)
+                return symbol.node, name
+            cdef, info_ = self.make_fake_typeinfo(curr_module_.fullname, name, name, base_classes_)
+            return info_, name
 
         base_classes = _get_base_classes(instances)
-        # We use the pretty_names_list for error messages but can't
-        # use it for the real name that goes into the symbol table
-        # because it can have dots in it.
+        # We use the pretty_names_list for error messages but for the real name that goes
+        # into the symbol table because it is not specific enough.
         pretty_names_list = pretty_seq(
             format_type_distinctly(*base_classes, options=self.options, bare=True), "and"
         )
@@ -5567,13 +5562,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return None
 
         try:
-            info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module)
+            info, full_name = _make_fake_typeinfo_and_full_name(
+                base_classes, curr_module, self.options
+            )
             with self.msg.filter_errors() as local_errors:
                 self.check_multiple_inheritance(info)
             if local_errors.has_new_errors():
                 # "class A(B, C)" unsafe, now check "class A(C, B)":
                 base_classes = _get_base_classes(instances[::-1])
-                info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module)
+                info, full_name = _make_fake_typeinfo_and_full_name(
+                    base_classes, curr_module, self.options
+                )
                 with self.msg.filter_errors() as local_errors:
                     self.check_multiple_inheritance(info)
             info.is_intersection = True
