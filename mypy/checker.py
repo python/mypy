@@ -5542,9 +5542,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             name = f"<subclass of {pretty_seq(names, 'and')}>"
             if (symbol := curr_module_.names.get(name)) is not None:
                 return symbol.node, name
-            cdef, info_ = self.make_fake_typeinfo(
-                curr_module_.fullname, name, name, base_classes_
-            )
+            cdef, info_ = self.make_fake_typeinfo(curr_module_.fullname, name, name, base_classes_)
             return info_, name
 
         base_classes = _get_base_classes(instances)
@@ -5563,13 +5561,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return None
 
         try:
-            info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module, self.options)
+            info, full_name = _make_fake_typeinfo_and_full_name(
+                base_classes, curr_module, self.options
+            )
             with self.msg.filter_errors() as local_errors:
                 self.check_multiple_inheritance(info)
             if local_errors.has_new_errors():
                 # "class A(B, C)" unsafe, now check "class A(C, B)":
                 base_classes = _get_base_classes(instances[::-1])
-                info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module, self.options)
+                info, full_name = _make_fake_typeinfo_and_full_name(
+                    base_classes, curr_module, self.options
+                )
                 with self.msg.filter_errors() as local_errors:
                     self.check_multiple_inheritance(info)
             info.is_intersection = True
