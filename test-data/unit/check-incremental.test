@@ -5447,6 +5447,59 @@ tmp/c.py:2: note: Revealed type is "Any"
 [out2]
 tmp/c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 
+[case testIsInstanceAdHocIntersectionIncrementalNestedClass]
+import b
+[file a.py]
+class A:
+    class B: ...
+    class C: ...
+    class D:
+        def __init__(self) -> None:
+            x: A.B
+            assert isinstance(x, A.C)
+            self.x = x
+[file b.py]
+from a import A
+[file b.py.2]
+from a import A
+reveal_type(A.D.x)
+[builtins fixtures/isinstance.pyi]
+[out]
+[out2]
+tmp/b.py:2: note: Revealed type is "a.<subclass of "a.A.B" and "a.A.C">"
+
+[case testIsInstanceAdHocIntersectionIncrementalUnions]
+import c
+[file a.py]
+import b
+class A:
+    p: b.D
+class B:
+    p: b.D
+class C:
+    p: b.D
+    c: str
+x: A
+assert isinstance(x, (B, C))
+y = x
+[file b.py]
+class D:
+    p: int
+[file c.py]
+from a import y
+[file c.py.2]
+from a import y, C
+reveal_type(y)
+reveal_type(y.p.p)
+assert isinstance(y, C)
+reveal_type(y.c)
+[builtins fixtures/isinstance.pyi]
+[out]
+[out2]
+tmp/c.py:2: note: Revealed type is "Union[a.<subclass of "a.A" and "a.B">, a.<subclass of "a.A" and "a.C">]"
+tmp/c.py:3: note: Revealed type is "builtins.int"
+tmp/c.py:5: note: Revealed type is "builtins.str"
+
 [case testStubFixupIssues]
 import a
 [file a.py]
