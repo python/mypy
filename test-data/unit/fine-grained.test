@@ -9591,7 +9591,7 @@ reveal_type(Foo().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 ==
-b.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
+b.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 
 [case testIsInstanceAdHocIntersectionFineGrainedIncrementalIsInstanceChange]
 import c
@@ -9625,9 +9625,9 @@ from b import y
 reveal_type(y)
 [builtins fixtures/isinstance.pyi]
 [out]
-c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
+c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 ==
-c.py:2: note: Revealed type is "a.<subclass of "A" and "C">"
+c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.C">"
 
 [case testIsInstanceAdHocIntersectionFineGrainedIncrementalUnderlyingObjChang]
 import c
@@ -9653,9 +9653,9 @@ from b import y
 reveal_type(y)
 [builtins fixtures/isinstance.pyi]
 [out]
-c.py:2: note: Revealed type is "b.<subclass of "A" and "B">"
+c.py:2: note: Revealed type is "b.<subclass of "a.A" and "a.B">"
 ==
-c.py:2: note: Revealed type is "b.<subclass of "A" and "C">"
+c.py:2: note: Revealed type is "b.<subclass of "a.A" and "a.C">"
 
 [case testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable]
 import c
@@ -9686,7 +9686,7 @@ from b import z
 reveal_type(z)
 [builtins fixtures/isinstance.pyi]
 [out]
-c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
+c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 ==
 c.py:2: note: Revealed type is "Any"
 b.py:2: error: Cannot determine type of "y"
@@ -9723,7 +9723,7 @@ reveal_type(z)
 b.py:2: error: Cannot determine type of "y"
 c.py:2: note: Revealed type is "Any"
 ==
-c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
+c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 
 [case testStubFixupIssues]
 [file a.py]

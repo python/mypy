@@ -432,7 +432,7 @@ def f(x: A) -> None:
         x.y
 [builtins fixtures/isinstancelist.pyi]
 [out]
-<m.<subclass of "A" and "B">.y> -> m.f
+<m.<subclass of "m.A" and "m.B">.y> -> m.f
 <m.A> -> <m.f>, m.A, m.f
 <m.B> -> m.B, m.f
 
