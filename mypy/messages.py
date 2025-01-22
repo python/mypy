@@ -3061,12 +3061,12 @@ def get_conflict_protocol_types(
         different_setter = False
         if IS_EXPLICIT_SETTER in superflags:
             set_supertype = find_member(member, right, left, is_lvalue=True)
-            if set_supertype != supertype:
+            if set_supertype and not is_same_type(set_supertype, supertype):
                 different_setter = True
             supertype = set_supertype
         if IS_EXPLICIT_SETTER in get_member_flags(member, left):
             set_subtype = mypy.typeops.get_protocol_member(left, member, class_obj, is_lvalue=True)
-            if set_subtype != subtype:
+            if set_subtype and not is_same_type(set_subtype, subtype):
                 different_setter = True
             subtype = set_subtype
         if not is_compat and not different_setter:

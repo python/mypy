@@ -651,6 +651,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.visit_func_def(defn.items[1].func)
             setter_type = self.function_type(defn.items[1].func)
             assert isinstance(setter_type, CallableType)
+            if len(setter_type.arg_types) != 2:
+                self.fail("Invalid property setter signature", defn.items[1].func)
+                any_type = AnyType(TypeOfAny.from_error)
+                setter_type = setter_type.copy_modified(
+                    arg_types=[any_type, any_type],
+                    arg_kinds=[ARG_POS, ARG_POS],
+                    arg_names=[None, None],
+                )
             defn.items[0].var.setter_type = setter_type
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
@@ -2058,22 +2066,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         base_node = base_attr.node
         assert isinstance(base_node, (OverloadedFuncDef, Var))
-        original_type = get_raw_setter_type(base_node)
+        original_type, is_original_setter = get_raw_setter_type(base_node)
         if isinstance(base_node, Var):
             expanded_type = map_type_from_supertype(original_type, defn.info, base)
             original_type = get_proper_type(
                 expand_self_type(base_node, expanded_type, fill_typevars(defn.info))
             )
         else:
+            assert isinstance(original_type, ProperType)
             assert isinstance(original_type, CallableType)
             original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
             assert isinstance(original_type, CallableType)
-            original_type = get_proper_type(original_type.arg_types[0])
+            if is_original_setter:
+                original_type = original_type.arg_types[0]
+            else:
+                original_type = original_type.ret_type
 
-        typ = get_raw_setter_type(defn)
-        assert isinstance(typ, CallableType)
+        typ, is_setter = get_raw_setter_type(defn)
+        assert isinstance(typ, ProperType) and isinstance(typ, CallableType)
         typ = bind_self(typ, self.scope.active_self_type())
-        typ = get_proper_type(typ.arg_types[0])
+        if is_setter:
+            typ = typ.arg_types[0]
+        else:
+            typ = typ.ret_type
 
         if not is_subtype(original_type, typ):
             self.msg.incompatible_setter_override(defn.items[1], typ, original_type, base)
@@ -3422,7 +3437,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         base_type, _ = self.lvalue_type_from_base(
                             lvalue_node, base, setter_type=True
                         )
-                        # Setter type must be ready if the getter type is ready.
+                        # Setter type for a custom property must be ready if
+                        # the getter type is ready.
                         assert base_type is not None
                         if not is_subtype(base_type, lvalue_type):
                             self.msg.incompatible_setter_override(
@@ -3519,8 +3535,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def lvalue_type_from_base(
         self, expr_node: Var, base: TypeInfo, setter_type: bool = False
     ) -> tuple[Type | None, SymbolNode | None]:
-        """For a NameExpr that is part of a class, walk all base classes and try
-        to find the first class that defines a Type for the same name."""
+        """Find a type for a variable name in base class.
+
+        Return the type found and the corresponding node defining the name or None
+        for both if the name is not defined in base or the node type is not known (yet).
+        The type returned is already properly mapped/bound to the subclass.
+        If setter_type is True, return setter types for settable properties (otherwise the
+        getter type is returned).
+        """
         expr_name = expr_node.name
         base_var = base.names.get(expr_name)
 
@@ -3558,7 +3580,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if setter_type:
                     assert isinstance(base_node.items[0], Decorator)
                     base_type = base_node.items[0].var.setter_type
-                    assert isinstance(base_type, CallableType)
+                    # This flag is True only for custom properties, so it is safe to assert.
+                    assert base_type is not None
                     base_type = self.bind_and_map_method(base_var, base_type, expr_node.info, base)
                     assert isinstance(base_type, CallableType)
                     base_type = get_proper_type(base_type.arg_types[0])
@@ -8778,6 +8801,11 @@ def is_settable_property(defn: SymbolNode | None) -> TypeGuard[OverloadedFuncDef
 
 
 def is_custom_settable_property(defn: SymbolNode | None) -> bool:
+    """Check if a node is a settable property with a non-trivial setter type.
+
+    By non-trivial here we mean that it is known (i.e. definition was already type
+    checked), it is not Any, and it is different from the property getter type.
+    """
     if defn is None:
         return False
     if not is_settable_property(defn):
@@ -8796,17 +8824,27 @@ def is_custom_settable_property(defn: SymbolNode | None) -> bool:
     return not is_same_type(get_property_type(get_proper_type(var.type)), setter_type)
 
 
-def get_raw_setter_type(defn: OverloadedFuncDef | Var) -> ProperType:
+def get_raw_setter_type(defn: OverloadedFuncDef | Var) -> tuple[Type, bool]:
+    """Get an effective original setter type for a node.
+
+    For a variable it is simply its type. For a property it is the type
+    of the setter method (if not None), or the getter method (used as fallback
+    for the plugin generated properties).
+    Return the type and a flag indicating that we didn't fall back to getter.
+    """
     if isinstance(defn, Var):
         # This function should not be called if the var is not ready.
         assert defn.type is not None
-        return get_proper_type(defn.type)
+        return defn.type, True
     first_item = defn.items[0]
     assert isinstance(first_item, Decorator)
     var = first_item.var
-    # TODO: handle synthetic properties here and elsewhere.
-    assert var.setter_type is not None
-    return var.setter_type
+    # This function may be called on non-custom properties, so we need
+    # to handle the situation when it is synthetic (plugin generated).
+    if var.setter_type is not None:
+        return var.setter_type, True
+    assert var.type is not None
+    return var.type, False
 
 
 def get_property_type(t: ProperType) -> ProperType:

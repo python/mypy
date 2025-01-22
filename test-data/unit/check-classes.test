@@ -8211,6 +8211,70 @@ class C3(B3):
             # N:  Setter types should behave contravariantly
 [builtins fixtures/property.pyi]
 
+[case testOverridePropertyInvalidSetter]
+class B1:
+    @property
+    def foo(self) -> int: ...
+    @foo.setter
+    def foo(self, x: str) -> None: ...
+class C1(B1):
+    @property
+    def foo(self) -> int: ...
+    @foo.setter
+    def foo(self) -> None: ...  # E: Invalid property setter signature
+
+class B2:
+    @property
+    def foo(self) -> int: ...
+    @foo.setter
+    def foo(self) -> None: ...  # E: Invalid property setter signature
+class C2(B2):
+    @property
+    def foo(self) -> int: ...
+    @foo.setter
+    def foo(self, x: str) -> None: ...
+
+class B3:
+    @property
+    def foo(self) -> int: ...
+    @foo.setter
+    def foo(self) -> None: ...  # E: Invalid property setter signature
+class C3(B3):
+    foo: int
+[builtins fixtures/property.pyi]
+
+[case testOverridePropertyGeneric]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+class B1(Generic[T]):
+    @property
+    def foo(self) -> int: ...
+    @foo.setter
+    def foo(self, x: T) -> None: ...
+class C1(B1[str]):
+    @property
+    def foo(self) -> int: ...
+    @foo.setter  # E: Incompatible override of a setter type \
+                 # N:  (base class "B1" defined the type as "str", \
+                 # N:  override has type "int")
+    def foo(self, x: int) -> None: ...
+
+class B2:
+    @property
+    def foo(self) -> int: ...
+    @foo.setter
+    def foo(self: T, x: T) -> None: ...
+class C2(B2):
+    @property
+    def foo(self) -> int: ...
+    @foo.setter  # E: Incompatible override of a setter type \
+                 # N:  (base class "B2" defined the type as "C2", \
+                 # N:  override has type "int")
+    def foo(self, x: int) -> None: ...
+[builtins fixtures/property.pyi]
+
 [case testOverrideMethodProperty]
 class B:
     def foo(self) -> int:
