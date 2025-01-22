@@ -5536,11 +5536,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return base_classes_
 
         def _make_fake_typeinfo_and_full_name(
-            base_classes_: list[Instance], curr_module_: MypyFile, options
+            base_classes_: list[Instance], curr_module_: MypyFile, options: Options
         ) -> tuple[TypeInfo, str]:
             names = [format_type_bare(x, options=options, verbosity=2) for x in base_classes_]
             name = f"<subclass of {pretty_seq(names, 'and')}>"
             if (symbol := curr_module_.names.get(name)) is not None:
+                assert isinstance(symbol.node, TypeInfo)
                 return symbol.node, name
             cdef, info_ = self.make_fake_typeinfo(curr_module_.fullname, name, name, base_classes_)
             return info_, name
