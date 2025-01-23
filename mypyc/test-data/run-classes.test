@@ -2725,17 +2725,23 @@ class A:
     def __del__(self):
         print("deleting A...")
 
-class B(A):
+class B:
+    def __del__(self):
+        print("deleting B...")
+
+class C(B):
     def __init__(self):
         self.a = A()
 
     def __del__(self):
-        print("deleting B...")
+        print("deleting C...")
+        super().__del__()
 
 [file driver.py]
 import native
-native.B()
+native.C()
 
 [out]
+deleting C...
 deleting B...
 deleting A...
