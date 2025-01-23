@@ -223,12 +223,12 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if not cl.builtin_base:
         fields["tp_new"] = new_name
 
-    # Populate .tp_finalize and generate a finalize method only if __del__ is defined for this class.
-    del_method = next((e.method for e in cl.vtable_entries if e.name == "__del__"), None)
     if generate_full:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
         fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
         fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
+    # Populate .tp_finalize and generate a finalize method only if __del__ is defined for this class.
+    del_method = next((e.method for e in cl.vtable_entries if e.name == "__del__"), None)
     if del_method:
         fields["tp_finalize"] = f"(destructor){finalize_name}"
     if needs_getseters:
