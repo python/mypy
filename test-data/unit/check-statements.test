@@ -2283,6 +2283,19 @@ def get_strings(foo: bool) -> Iterator[str]:
         yield "bar2"
 [builtins fixtures/tuple.pyi]
 
+[case testYieldFromInvalidType]
+from collections.abc import Iterator
+
+class A:
+    def list(self) -> None: ...
+
+    def foo(self) -> list[int]:
+        return []
+
+def fn() -> Iterator[int]:
+    yield from A().foo()
+[builtins fixtures/tuple.pyi]
+
 [case testNoCrashOnStarRightHandSide]
 x = *(1, 2, 3)  # E: can't use starred expression here
 [builtins fixtures/tuple.pyi]

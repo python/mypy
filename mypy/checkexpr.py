@@ -6141,6 +6141,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             generic_generator_type = self.chk.named_generic_type(
                 "typing.Generator", [any_type, any_type, any_type]
             )
+            generic_generator_type.set_line(e)
             iter_type, _ = self.check_method_call_by_name(
                 "__iter__", subexpr_type, [], [], context=generic_generator_type
             )
