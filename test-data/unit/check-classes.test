@@ -8410,3 +8410,33 @@ reveal_type(a.f)  # N: Revealed type is "builtins.int"
 a.f = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 reveal_type(a.f)  # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
+
+[case testPropertySetterTypeGeneric]
+from typing import TypeVar, Generic, List
+
+T = TypeVar("T")
+
+class B(Generic[T]):
+    @property
+    def foo(self) -> int: ...
+    @foo.setter
+    def foo(self, x: T) -> None: ...
+
+class C(B[List[T]]): ...
+
+a = C[str]()
+a.foo = ["foo", "bar"]
+reveal_type(a.foo)  # N: Revealed type is "builtins.int"
+a.foo = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "List[str]")
+reveal_type(a.foo)  # N: Revealed type is "builtins.int"
+[builtins fixtures/property.pyi]
+
+[case testPropertyDeleterNoSetterOK]
+class C:
+    @property
+    def x(self) -> int:
+        return 0
+    @x.deleter
+    def x(self) -> None:
+        pass
+[builtins fixtures/property.pyi]

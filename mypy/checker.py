@@ -647,19 +647,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # HACK: Infer the type of the property.
             assert isinstance(defn.items[0], Decorator)
             self.visit_decorator(defn.items[0])
-            assert isinstance(defn.items[1], Decorator)
-            self.visit_func_def(defn.items[1].func)
-            setter_type = self.function_type(defn.items[1].func)
-            assert isinstance(setter_type, CallableType)
-            if len(setter_type.arg_types) != 2:
-                self.fail("Invalid property setter signature", defn.items[1].func)
-                any_type = AnyType(TypeOfAny.from_error)
-                setter_type = setter_type.copy_modified(
-                    arg_types=[any_type, any_type],
-                    arg_kinds=[ARG_POS, ARG_POS],
-                    arg_names=[None, None],
-                )
-            defn.items[0].var.setter_type = setter_type
+            if defn.items[0].var.is_settable_property:
+                assert isinstance(defn.items[1], Decorator)
+                self.visit_func_def(defn.items[1].func)
+                setter_type = self.function_type(defn.items[1].func)
+                assert isinstance(setter_type, CallableType)
+                if len(setter_type.arg_types) != 2:
+                    self.fail("Invalid property setter signature", defn.items[1].func)
+                    any_type = AnyType(TypeOfAny.from_error)
+                    setter_type = setter_type.copy_modified(
+                        arg_types=[any_type, any_type],
+                        arg_kinds=[ARG_POS, ARG_POS],
+                        arg_names=[None, None],
+                    )
+                defn.items[0].var.setter_type = setter_type
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
             if defn.is_property:
