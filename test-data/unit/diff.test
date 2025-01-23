@@ -1563,6 +1563,7 @@ type H[T] = int
 __main__.A
 __main__.C
 __main__.D
+__main__.E
 __main__.G
 __main__.H
 
