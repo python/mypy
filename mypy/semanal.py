@@ -4022,7 +4022,6 @@ class SemanticAnalyzer(
             and not res.args
             and not empty_tuple_index
             and not pep_695
-            and not pep_613
         )
         if isinstance(res, ProperType) and isinstance(res, Instance):
             if not validate_instance(res, self.fail, empty_tuple_index):
