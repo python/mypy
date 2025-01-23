@@ -2719,3 +2719,23 @@ print(native.A(ints=[1, -17]).ints)
 
 [out]
 \[1, -17]
+
+[case testDel]
+class A:
+    def __del__(self):
+        print("deleting A...")
+
+class B(A):
+    def __init__(self):
+        self.a = A()
+
+    def __del__(self):
+        print("deleting B...")
+
+[file driver.py]
+import native
+native.B()
+
+[out]
+deleting B...
+deleting A...

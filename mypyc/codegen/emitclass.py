@@ -205,6 +205,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     setup_name = f"{name_prefix}_setup"
     new_name = f"{name_prefix}_new"
+    finalize_name = f"{name_prefix}_finalize"
     members_name = f"{name_prefix}_members"
     getseters_name = f"{name_prefix}_getseters"
     vtable_name = f"{name_prefix}_vtable"
@@ -222,10 +223,14 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if not cl.builtin_base:
         fields["tp_new"] = new_name
 
+    # Populate .tp_finalize and generate a finalize method only if __del__ is defined for this class.
+    del_method = next((e.method for e in cl.vtable_entries if e.name == "__del__"), None)
     if generate_full:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
         fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
         fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
+    if del_method:
+        fields["tp_finalize"] = f"(destructor){finalize_name}"
     if needs_getseters:
         fields["tp_getset"] = getseters_name
     fields["tp_methods"] = methods_name
@@ -308,6 +313,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
         generate_dealloc_for_class(cl, dealloc_name, clear_name, emitter)
         emit_line()
+        if del_method:
+            generate_finalize_for_class(del_method, finalize_name, emitter)
+            emit_line()
 
         if cl.allow_interpreted_subclasses:
             shadow_vtable_name: str | None = generate_vtables(
@@ -779,12 +787,31 @@ def generate_dealloc_for_class(
     emitter.emit_line("static void")
     emitter.emit_line(f"{dealloc_func_name}({cl.struct_name(emitter.names)} *self)")
     emitter.emit_line("{")
+    emitter.emit_line("if (Py_TYPE(self)->tp_finalize) {")
+    emitter.emit_line("    Py_TYPE(self)->tp_finalize((PyObject *)self);")
+    emitter.emit_line("}")
     emitter.emit_line("PyObject_GC_UnTrack(self);")
     # The trashcan is needed to handle deep recursive deallocations
     emitter.emit_line(f"CPy_TRASHCAN_BEGIN(self, {dealloc_func_name})")
     emitter.emit_line(f"{clear_func_name}(self);")
     emitter.emit_line("Py_TYPE(self)->tp_free((PyObject *)self);")
     emitter.emit_line("CPy_TRASHCAN_END(self)")
+    emitter.emit_line("}")
+
+
+def generate_finalize_for_class(
+    del_method: FuncIR, finalize_func_name: str, emitter: Emitter
+) -> None:
+    emitter.emit_line("static void")
+    emitter.emit_line(f"{finalize_func_name}(PyObject *self)")
+    emitter.emit_line("{")
+    emitter.emit_line(
+        "{}{}{}(self);".format(
+            emitter.get_group_prefix(del_method.decl),
+            NATIVE_PREFIX,
+            del_method.cname(emitter.names),
+        )
+    )
     emitter.emit_line("}")
 
 
