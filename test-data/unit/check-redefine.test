@@ -150,6 +150,21 @@ def exc_name() -> None:
         e = fn_exc(e)
 [builtins fixtures/exception.pyi]
 
+[case testRedefineNestedInTry]
+# flags: --allow-redefinition
+
+def fn_int(_: int) -> None: ...
+
+try:
+    try:
+        ...
+    finally:
+        a = ""
+        a = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+        fn_int(a)  # E: Argument 1 to "fn_int" has incompatible type "str"; expected "int"
+except:
+    pass
+
 [case testRedefineLocalWithinWith]
 # flags: --allow-redefinition
 def f() -> None:
