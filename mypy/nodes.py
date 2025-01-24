@@ -171,10 +171,7 @@ class Node(Context):
     __slots__ = ()
 
     def __str__(self) -> str:
-        ans = self.accept(mypy.strconv.StrConv(options=Options()))
-        if ans is None:
-            return repr(self)
-        return ans
+        return self.accept(mypy.strconv.StrConv(options=Options()))
 
     def str_with_options(self, options: Options) -> str:
         ans = self.accept(mypy.strconv.StrConv(options=options))
@@ -870,7 +867,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
 
 # All types that are both SymbolNodes and FuncBases. See the FuncBase
 # docstring for the rationale.
-SYMBOL_FUNCBASE_TYPES = (OverloadedFuncDef, FuncDef)
+SYMBOL_FUNCBASE_TYPES: Final = (OverloadedFuncDef, FuncDef)
 
 
 class Decorator(SymbolNode, Statement):
@@ -2551,6 +2548,10 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     def fullname(self) -> str:
         return self._fullname
 
+# All types that are both SymbolNodes and Expressions.
+# Use when common children of them are needed.
+SYMBOL_NODE_EXPRESSION_TYPES: Final = (TypeVarLikeExpr, )
+
 
 class TypeVarExpr(TypeVarLikeExpr):
     """Type variable expression TypeVar(...).
@@ -3250,7 +3251,7 @@ class TypeInfo(SymbolNode):
         for cls in self.mro:
             if name in cls.names:
                 node = cls.names[name].node
-                if isinstance(node, FuncBase):
+                if isinstance(node, SYMBOL_FUNCBASE_TYPES):
                     return node
                 elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
                     return node
@@ -4009,7 +4010,8 @@ class SymbolTable(dict[str, SymbolTableNode]):
                 ):
                     a.append("  " + str(key) + " : " + str(value))
             else:
-                a.append("  <invalid item>")
+                # Used in debugging:
+                a.append("  <invalid item>")  # type: ignore[unreachable]
         a = sorted(a)
         a.insert(0, "SymbolTable(")
         a[-1] += ")"
