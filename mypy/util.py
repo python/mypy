@@ -28,6 +28,8 @@ try:
 except ImportError:
     CURSES_ENABLED = False
 
+IS_WIN: Final = sys.platform == "win32"
+
 T = TypeVar("T")
 
 TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
@@ -571,8 +573,7 @@ def hash_digest(data: bytes) -> str:
 
 def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
-    if sys.platform == "win32":
-        assert False, "curses is not available on Windows"
+    assert sys.platform != "win32", "curses is not available on Windows"
     set_color = "".join([cup[:-1].decode(), "m"])
     gray = curses.tparm(set_color.encode("utf-8"), 1, 9).decode()
     return gray
@@ -605,7 +606,7 @@ class FancyFormatter:
         if not should_force_color() and (not f_out.isatty() or not f_err.isatty()):
             self.dummy_term = True
             return
-        if sys.platform == "win32":
+        if IS_WIN:
             self.dummy_term = not self.initialize_win_colors()
         elif sys.platform == "emscripten":
             self.dummy_term = not self.initialize_vt100_colors()
@@ -639,34 +640,32 @@ class FancyFormatter:
         # Windows ANSI escape sequences are only supported on Threshold 2 and above.
         # we check with an assert at runtime and an if check for mypy, as asserts do not
         # yet narrow platform
-        assert sys.platform == "win32"
-        if sys.platform == "win32":
-            winver = sys.getwindowsversion()
-            if (
-                winver.major < MINIMUM_WINDOWS_MAJOR_VT100
-                or winver.build < MINIMUM_WINDOWS_BUILD_VT100
-            ):
-                return False
-            import ctypes
+        assert IS_WIN, "Running not on Windows"
+        winver = sys.getwindowsversion()
+        if (
+            winver.major < MINIMUM_WINDOWS_MAJOR_VT100
+            or winver.build < MINIMUM_WINDOWS_BUILD_VT100
+        ):
+            return False
+        import ctypes
 
-            kernel32 = ctypes.windll.kernel32
-            ENABLE_PROCESSED_OUTPUT = 0x1
-            ENABLE_WRAP_AT_EOL_OUTPUT = 0x2
-            ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x4
-            STD_OUTPUT_HANDLE = -11
-            kernel32.SetConsoleMode(
-                kernel32.GetStdHandle(STD_OUTPUT_HANDLE),
-                ENABLE_PROCESSED_OUTPUT
-                | ENABLE_WRAP_AT_EOL_OUTPUT
-                | ENABLE_VIRTUAL_TERMINAL_PROCESSING,
-            )
-            self.initialize_vt100_colors()
-            return True
-        return False
+        kernel32 = ctypes.windll.kernel32
+        ENABLE_PROCESSED_OUTPUT = 0x1
+        ENABLE_WRAP_AT_EOL_OUTPUT = 0x2
+        ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x4
+        STD_OUTPUT_HANDLE = -11
+        kernel32.SetConsoleMode(
+            kernel32.GetStdHandle(STD_OUTPUT_HANDLE),
+            ENABLE_PROCESSED_OUTPUT
+            | ENABLE_WRAP_AT_EOL_OUTPUT
+            | ENABLE_VIRTUAL_TERMINAL_PROCESSING,
+        )
+        self.initialize_vt100_colors()
+        return True
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
-        if sys.platform == "win32" or not CURSES_ENABLED:
+        if IS_WIN or not CURSES_ENABLED:
             return False
         try:
             # setupterm wants a fd to potentially write an "initialization sequence".
