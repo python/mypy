@@ -3591,27 +3591,28 @@ c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypedDictRefresh]
-[builtins fixtures/dict.pyi]
 import a
 [file a.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 [file a.py.2]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337)) # dummy change
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 
 [case testTypedDictUpdate]
 import b
 [file a.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 [file a.py.2]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': str})
 p = Point(dict(x=42, y='lurr'))
 [file b.py]
@@ -3619,6 +3620,7 @@ from a import Point
 def foo(x: Point) -> int:
     return x['x'] + x['y']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 b.py:3: error: Unsupported operand types for + ("int" and "str")
@@ -3626,13 +3628,13 @@ b.py:3: error: Unsupported operand types for + ("int" and "str")
 [case testTypedDictUpdate2]
 import b
 [file a.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class Point(TypedDict):
     x: int
     y: int
 p = Point(dict(x=42, y=1337))
 [file a.py.2]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class Point(TypedDict):
     x: int
     y: str
@@ -3642,6 +3644,7 @@ from a import Point
 def foo(x: Point) -> int:
     return x['x'] + x['y']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 b.py:3: error: Unsupported operand types for + ("int" and "str")
@@ -3649,16 +3652,14 @@ b.py:3: error: Unsupported operand types for + ("int" and "str")
 [case testTypedDictUpdate3]
 import b
 [file a.py]
-from mypy_extensions import TypedDict
-from typing import Optional
+from typing import Optional, TypedDict
 class Point(TypedDict):
     x: Optional[Point]
     y: int
     z: int
 p = Point(dict(x=None, y=1337, z=0))
 [file a.py.2]
-from mypy_extensions import TypedDict
-from typing import Optional
+from typing import Optional, TypedDict
 class Point(TypedDict):
     x: Optional[Point]
     y: str
@@ -3670,6 +3671,7 @@ def foo(x: Point) -> int:
     assert x['x'] is not None
     return x['x']['z'] + x['x']['y']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 b.py:4: error: Unsupported operand types for + ("int" and "str")
@@ -3677,13 +3679,12 @@ b.py:4: error: Unsupported operand types for + ("int" and "str")
 [case testTypedDictUpdateGeneric]
 import b
 [file a.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class Point(TypedDict):
     x: int
     y: int
 [file a.py.2]
-from mypy_extensions import TypedDict
-from typing import Generic, TypeVar
+from typing import Generic, TypedDict, TypeVar
 
 T = TypeVar("T")
 class Point(TypedDict, Generic[T]):
@@ -3700,6 +3701,7 @@ def foo() -> None:
     p = Point(x=0, y="no")
     i: int = p["y"]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 ==

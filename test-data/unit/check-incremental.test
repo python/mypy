@@ -1893,11 +1893,12 @@ main:1: error: Module "ntcrash" has no attribute "nope"
 [case testIncrementalTypedDictInMethod]
 from tdcrash import nope
 [file tdcrash.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class C:
     def f(self) -> None:
         A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
@@ -1906,12 +1907,13 @@ main:1: error: Module "tdcrash" has no attribute "nope"
 [case testIncrementalTypedDictInMethod2]
 from tdcrash import nope
 [file tdcrash.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class C:
     class D:
         def f(self) -> None:
             A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
@@ -1920,13 +1922,14 @@ main:1: error: Module "tdcrash" has no attribute "nope"
 [case testIncrementalTypedDictInMethod3]
 from tdcrash import nope
 [file tdcrash.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class C:
     def a(self):
         class D:
             def f(self) -> None:
                 A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
@@ -1935,8 +1938,7 @@ main:1: error: Module "tdcrash" has no attribute "nope"
 [case testIncrementalNewTypeInMethod]
 from ntcrash import nope
 [file ntcrash.py]
-from mypy_extensions import TypedDict
-from typing import NewType, NamedTuple
+from typing import NewType, NamedTuple, TypedDict
 class C:
     def f(self) -> None:
         X = NewType('X', int)
@@ -1949,6 +1951,7 @@ def f() -> None:
     B = NamedTuple('B', [('x', X)])
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
@@ -2088,10 +2091,11 @@ reveal_type(b.x)
 y: b.A
 reveal_type(y)
 [file b.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 A = TypedDict('A', {'x': int, 'y': str})
 x: A
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:2: note: Revealed type is "TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})"
 main:4: note: Revealed type is "TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})"
@@ -2532,14 +2536,14 @@ x = NT(N(1))
 [out]
 
 [case testNewTypeFromForwardTypedDictIncremental]
-from typing import NewType, Tuple, Dict
-from mypy_extensions import TypedDict
+from typing import NewType, Tuple, TypedDict, Dict
 
 NT = NewType('NT', N) # type: ignore
 class N(TypedDict):
     x: A
 A = Dict[str, int]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 -- Some crazy self-referential named tuples, types dicts, and aliases
@@ -4146,7 +4150,7 @@ from d import k
 [case testCachedBadProtocolNote]
 import b
 [file a.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 [file b.py]
 from typing import Iterable
@@ -4158,8 +4162,8 @@ from typing import Iterable
 from a import Point
 p: Point
 it: Iterable[int] = p  # change
-[typing fixtures/typing-medium.pyi]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 tmp/b.py:4: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
 tmp/b.py:4: note: Following member(s) of "Point" have conflicts:
@@ -4643,10 +4647,11 @@ from typing import NamedTuple
 from other import B
 A = NamedTuple('A', [('x', B)])
 [file other.pyi]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 from lib import A
 B = TypedDict('B', {'x': A})
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is "Tuple[TypedDict('other.B', {'x': Tuple[..., fallback=lib.A]}), fallback=lib.A]"

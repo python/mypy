@@ -5184,11 +5184,12 @@ def test() -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testCrashOnSelfRecursiveTypedDictVar]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 A = TypedDict('A', {'a': 'A'})  # type: ignore
 a: A
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCrashInJoinOfSelfRecursiveNamedTuples]
 
@@ -5205,7 +5206,7 @@ lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 def test() -> None:
     class N(TypedDict):
@@ -5220,6 +5221,7 @@ def test() -> None:
     lst = [n, m]
     reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCrashInForwardRefToNamedTupleWithIsinstance]
 from typing import Dict, NamedTuple
@@ -5236,8 +5238,7 @@ def parse_ast(name_dict: NameDict) -> None:
 [typing fixtures/typing-medium.pyi]
 
 [case testCrashInForwardRefToTypedDictWithIsinstance]
-from mypy_extensions import TypedDict
-from typing import Dict
+from typing import Dict, TypedDict
 
 NameDict = Dict[str, 'NameInfo']
 class NameInfo(TypedDict):
@@ -5248,7 +5249,7 @@ def parse_ast(name_dict: NameDict) -> None:
         pass
     reveal_type(name_dict['']['ast'])  # N: Revealed type is "builtins.bool"
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCorrectIsinstanceInForwardRefToNewType]
 from typing import Dict, NewType
@@ -5313,13 +5314,13 @@ x = NT(N(1))
 
 [case testNewTypeFromForwardTypedDict]
 
-from typing import NewType, Tuple
-from mypy_extensions import TypedDict
+from typing import NewType, Tuple, TypedDict
 
 NT = NewType('NT', 'N') # E: Argument 2 to NewType(...) must be subclassable (got "N")
 class N(TypedDict):
     x: int
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testCorrectAttributeInForwardRefToNamedTuple]
@@ -5335,7 +5336,7 @@ class Process(NamedTuple):
 [out]
 
 [case testCorrectItemTypeInForwardRefToTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 proc: Process
 reveal_type(proc['state'])  # N: Revealed type is "builtins.int"
 
@@ -5344,6 +5345,7 @@ def get_state(proc: 'Process') -> int:
 class Process(TypedDict):
      state: int
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testCorrectDoubleForwardNamedTuple]
@@ -5362,7 +5364,7 @@ reveal_type(x.one.attr)  # N: Revealed type is "builtins.str"
 [out]
 
 [case testCrashOnDoubleForwardTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 x: A
 class A(TypedDict):
@@ -5373,6 +5375,7 @@ class B(TypedDict):
 
 reveal_type(x['one']['attr'])  # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testCrashOnForwardUnionOfNamedTuples]
@@ -5392,8 +5395,7 @@ def foo(node: Node) -> int:
 [out]
 
 [case testCrashOnForwardUnionOfTypedDicts]
-from mypy_extensions import TypedDict
-from typing import Union
+from typing import TypedDict, Union
 
 NodeType = Union['Foo', 'Bar']
 class Foo(TypedDict):
@@ -5405,6 +5407,7 @@ def foo(node: NodeType) -> int:
     x = node
     return x['x']
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testSupportForwardUnionOfNewTypes]
@@ -5471,8 +5474,7 @@ def f(x: ForwardUnion) -> None:
 [out]
 
 [case testCrashInvalidArgsSyntheticClassSyntax]
-from typing import List, NamedTuple
-from mypy_extensions import TypedDict
+from typing import List, NamedTuple, TypedDict
 class TD(TypedDict):
     x: List[int, str] # E: "list" expects 1 type argument, but 2 given
 class NM(NamedTuple):
@@ -5482,11 +5484,11 @@ class NM(NamedTuple):
 TD({'x': []})
 NM(x=[])
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testCrashInvalidArgsSyntheticClassSyntaxReveals]
-from typing import List, NamedTuple
-from mypy_extensions import TypedDict
+from typing import List, NamedTuple, TypedDict
 class TD(TypedDict):
     x: List[int, str] # E: "list" expects 1 type argument, but 2 given
 class NM(NamedTuple):
@@ -5501,11 +5503,11 @@ reveal_type(x1) # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.l
 reveal_type(y) # N: Revealed type is "Tuple[builtins.list[Any], fallback=__main__.NM]"
 reveal_type(y1) # N: Revealed type is "Tuple[builtins.list[Any], fallback=__main__.NM]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testCrashInvalidArgsSyntheticFunctionSyntax]
-from typing import List, NewType, NamedTuple
-from mypy_extensions import TypedDict
+from typing import List, NewType, NamedTuple, TypedDict
 TD = TypedDict('TD', {'x': List[int, str]}) # E: "list" expects 1 type argument, but 2 given
 NM = NamedTuple('NM', [('x', List[int, str])]) # E: "list" expects 1 type argument, but 2 given
 NT = NewType('NT', List[int, str]) # E: "list" expects 1 type argument, but 2 given
@@ -5515,11 +5517,11 @@ TD({'x': []})
 NM(x=[])
 NT([])
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testCrashForwardSyntheticClassSyntax]
-from typing import NamedTuple
-from mypy_extensions import TypedDict
+from typing import NamedTuple, TypedDict
 class A1(NamedTuple):
     b: 'B'
     x: int
@@ -5533,11 +5535,11 @@ y: A2
 reveal_type(x.b) # N: Revealed type is "__main__.B"
 reveal_type(y['b']) # N: Revealed type is "__main__.B"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testCrashForwardSyntheticFunctionSyntax]
-from typing import NamedTuple
-from mypy_extensions import TypedDict
+from typing import NamedTuple, TypedDict
 A1 = NamedTuple('A1', [('b', 'B'), ('x', int)])
 A2 = TypedDict('A2', {'b': 'B', 'x': int})
 class B:
@@ -5547,6 +5549,7 @@ y: A2
 reveal_type(x.b) # N: Revealed type is "__main__.B"
 reveal_type(y['b']) # N: Revealed type is "__main__.B"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 -- Special support for six
