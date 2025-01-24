@@ -338,7 +338,7 @@ def verify_mypyfile(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
     if not isinstance(runtime, types.ModuleType):
-        # Can possible happen:
+        # Can possibly happen:
         yield Error(object_path, "is not a module", stub, runtime)  # type: ignore[unreachable]
         return
 
