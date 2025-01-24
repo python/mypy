@@ -28,8 +28,6 @@ try:
 except ImportError:
     CURSES_ENABLED = False
 
-IS_WIN: Final = sys.platform == "win32"
-
 T = TypeVar("T")
 
 TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
@@ -606,7 +604,7 @@ class FancyFormatter:
         if not should_force_color() and (not f_out.isatty() or not f_err.isatty()):
             self.dummy_term = True
             return
-        if IS_WIN:
+        if sys.platform == "win32":
             self.dummy_term = not self.initialize_win_colors()
         elif sys.platform == "emscripten":
             self.dummy_term = not self.initialize_vt100_colors()
@@ -640,32 +638,34 @@ class FancyFormatter:
         # Windows ANSI escape sequences are only supported on Threshold 2 and above.
         # we check with an assert at runtime and an if check for mypy, as asserts do not
         # yet narrow platform
-        assert IS_WIN, "Running not on Windows"
-        winver = sys.getwindowsversion()
-        if (
-            winver.major < MINIMUM_WINDOWS_MAJOR_VT100
-            or winver.build < MINIMUM_WINDOWS_BUILD_VT100
-        ):
-            return False
-        import ctypes
+        assert sys.platform == "win32", "Running not on Windows"
+        if sys.platform == "win32":  # needed to find win specific sys apis
+            winver = sys.getwindowsversion()
+            if (
+                winver.major < MINIMUM_WINDOWS_MAJOR_VT100
+                or winver.build < MINIMUM_WINDOWS_BUILD_VT100
+            ):
+                return False
+            import ctypes
 
-        kernel32 = ctypes.windll.kernel32
-        ENABLE_PROCESSED_OUTPUT = 0x1
-        ENABLE_WRAP_AT_EOL_OUTPUT = 0x2
-        ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x4
-        STD_OUTPUT_HANDLE = -11
-        kernel32.SetConsoleMode(
-            kernel32.GetStdHandle(STD_OUTPUT_HANDLE),
-            ENABLE_PROCESSED_OUTPUT
-            | ENABLE_WRAP_AT_EOL_OUTPUT
-            | ENABLE_VIRTUAL_TERMINAL_PROCESSING,
-        )
-        self.initialize_vt100_colors()
+            kernel32 = ctypes.windll.kernel32
+            ENABLE_PROCESSED_OUTPUT = 0x1
+            ENABLE_WRAP_AT_EOL_OUTPUT = 0x2
+            ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x4
+            STD_OUTPUT_HANDLE = -11
+            kernel32.SetConsoleMode(
+                kernel32.GetStdHandle(STD_OUTPUT_HANDLE),
+                ENABLE_PROCESSED_OUTPUT
+                | ENABLE_WRAP_AT_EOL_OUTPUT
+                | ENABLE_VIRTUAL_TERMINAL_PROCESSING,
+            )
+            self.initialize_vt100_colors()
         return True
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
-        if IS_WIN or not CURSES_ENABLED:
+        is_win = sys.platform == "win32"
+        if is_win or not CURSES_ENABLED:
             return False
         try:
             # setupterm wants a fd to potentially write an "initialization sequence".
