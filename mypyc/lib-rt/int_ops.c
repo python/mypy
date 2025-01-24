@@ -124,7 +124,7 @@ CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-// Tagged int subraction slow path, where the result may be a long integer
+// Tagged int subtraction slow path, where the result may be a long integer
 CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);

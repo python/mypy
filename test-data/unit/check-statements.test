@@ -2283,6 +2283,20 @@ def get_strings(foo: bool) -> Iterator[str]:
         yield "bar2"
 [builtins fixtures/tuple.pyi]
 
+[case testYieldFromInvalidType]
+from collections.abc import Iterator
+
+class A:
+    def list(self) -> None: ...
+
+    def foo(self) -> list[int]:  # E: Function "__main__.A.list" is not valid as a type \
+                                 # N: Perhaps you need "Callable[...]" or a callback protocol?
+        return []
+
+def fn() -> Iterator[int]:
+    yield from A().foo()  # E: "list?[builtins.int]" has no attribute "__iter__" (not iterable)
+[builtins fixtures/tuple.pyi]
+
 [case testNoCrashOnStarRightHandSide]
 x = *(1, 2, 3)  # E: can't use starred expression here
 [builtins fixtures/tuple.pyi]

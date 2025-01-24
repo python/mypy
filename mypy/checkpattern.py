@@ -46,6 +46,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarTupleType,
+    TypeVarType,
     UninhabitedType,
     UnionType,
     UnpackType,
@@ -158,7 +159,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         for pattern in o.patterns:
             pattern_type = self.accept(pattern, current_type)
             pattern_types.append(pattern_type)
-            current_type = pattern_type.rest_type
+            if not is_uninhabited(pattern_type.type):
+                current_type = pattern_type.rest_type
 
         #
         # Collect the final type
@@ -342,13 +344,11 @@ class PatternChecker(PatternVisitor[PatternType]):
             new_inner_type = UninhabitedType()
             for typ in new_inner_types:
                 new_inner_type = join_types(new_inner_type, typ)
-            new_type = self.construct_sequence_child(current_type, new_inner_type)
-            if is_subtype(new_type, current_type):
-                new_type, _ = self.chk.conditional_types_with_intersection(
-                    current_type, [get_type_range(new_type)], o, default=current_type
-                )
+            if isinstance(current_type, TypeVarType):
+                new_bound = self.narrow_sequence_child(current_type.upper_bound, new_inner_type, o)
+                new_type = current_type.copy_modified(upper_bound=new_bound)
             else:
-                new_type = current_type
+                new_type = self.narrow_sequence_child(current_type, new_inner_type, o)
         return PatternType(new_type, rest_type, captures)
 
     def get_sequence_type(self, t: Type, context: Context) -> Type | None:
@@ -446,6 +446,16 @@ class PatternChecker(PatternVisitor[PatternType]):
         new_types += types[star_pos + 1 :]
 
         return new_types
+
+    def narrow_sequence_child(self, outer_type: Type, inner_type: Type, ctx: Context) -> Type:
+        new_type = self.construct_sequence_child(outer_type, inner_type)
+        if is_subtype(new_type, outer_type):
+            new_type, _ = self.chk.conditional_types_with_intersection(
+                outer_type, [get_type_range(new_type)], ctx, default=outer_type
+            )
+        else:
+            new_type = outer_type
+        return new_type
 
     def visit_starred_pattern(self, o: StarredPattern) -> PatternType:
         captures: dict[Expression, Type] = {}
@@ -693,7 +703,9 @@ class PatternChecker(PatternVisitor[PatternType]):
 
     def should_self_match(self, typ: Type) -> bool:
         typ = get_proper_type(typ)
-        if isinstance(typ, Instance) and typ.type.is_named_tuple:
+        if isinstance(typ, Instance) and typ.type.get("__match_args__") is not None:
+            # Named tuples and other subtypes of builtins that define __match_args__
+            # should not self match.
             return False
         for other in self.self_match_types:
             if is_subtype(typ, other):
@@ -701,6 +713,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         return False
 
     def can_match_sequence(self, typ: ProperType) -> bool:
+        if isinstance(typ, AnyType):
+            return True
         if isinstance(typ, UnionType):
             return any(self.can_match_sequence(get_proper_type(item)) for item in typ.items)
         for other in self.non_sequence_match_types:
@@ -751,6 +765,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         or class T(Sequence[Tuple[T, T]]), there is no way any of those can map to Sequence[str].
         """
         proper_type = get_proper_type(outer_type)
+        if isinstance(proper_type, AnyType):
+            return outer_type
         if isinstance(proper_type, UnionType):
             types = [
                 self.construct_sequence_child(item, inner_type)
@@ -760,7 +776,6 @@ class PatternChecker(PatternVisitor[PatternType]):
             return make_simplified_union(types)
         sequence = self.chk.named_generic_type("typing.Sequence", [inner_type])
         if is_subtype(outer_type, self.chk.named_type("typing.Sequence")):
-            proper_type = get_proper_type(outer_type)
             if isinstance(proper_type, TupleType):
                 proper_type = tuple_fallback(proper_type)
             assert isinstance(proper_type, Instance)

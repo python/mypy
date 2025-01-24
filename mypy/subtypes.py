@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Callable, Final, Iterator, List, TypeVar, cast
+from typing import Any, Callable, Final, TypeVar, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.applytype
@@ -499,7 +500,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             if type_state.is_cached_negative_subtype_check(self._subtype_kind, left, right):
                 return False
-            if not self.subtype_context.ignore_promotions:
+            if not self.subtype_context.ignore_promotions and not right.type.is_protocol:
                 for base in left.type.mro:
                     if base._promote and any(
                         self._is_subtype(p, self.right) for p in base._promote
@@ -910,14 +911,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return False
                 # Non-required key is not compatible with a required key since
                 # indexing may fail unexpectedly if a required key is missing.
-                # Required key is not compatible with a non-required key since
-                # the prior doesn't support 'del' but the latter should support
-                # it.
-                #
-                # NOTE: 'del' support is currently not implemented (#3550). We
-                #       don't want to have to change subtyping after 'del' support
-                #       lands so here we are anticipating that change.
-                if (name in left.required_keys) != (name in right.required_keys):
+                # Required key is not compatible with a non-read-only non-required
+                # key since the prior doesn't support 'del' but the latter should
+                # support it.
+                # Required key is compatible with a read-only non-required key.
+                required_differ = (name in left.required_keys) != (name in right.required_keys)
+                if not right_readonly and required_differ:
                     return False
                 # Readonly fields check:
                 #
@@ -1887,7 +1886,7 @@ def unify_generic_callable(
     )
     if None in inferred_vars:
         return None
-    non_none_inferred_vars = cast(List[Type], inferred_vars)
+    non_none_inferred_vars = cast(list[Type], inferred_vars)
     had_errors = False
 
     def report(*args: Any) -> None:

@@ -1441,3 +1441,36 @@ def bar() -> None:
             misspelled_var_name  # E: Name "misspelled_var_name" is not defined
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+
+[case testNamedTupleFinalAndClassVar]
+from typing import NamedTuple, Final, ClassVar
+
+class My(NamedTuple):
+    a: Final      # E: Final[...] can't be used inside a NamedTuple
+    b: Final[int] # E: Final[...] can't be used inside a NamedTuple
+    c: ClassVar       # E: ClassVar[...] can't be used inside a NamedTuple
+    d: ClassVar[int]  # E: ClassVar[...] can't be used inside a NamedTuple
+
+Func = NamedTuple('Func', [
+    ('a', Final),         # E: Final[...] can't be used inside a NamedTuple
+    ('b', Final[int]),    # E: Final[...] can't be used inside a NamedTuple
+    ('c', ClassVar),      # E: ClassVar[...] can't be used inside a NamedTuple
+    ('d', ClassVar[int]), # E: ClassVar[...] can't be used inside a NamedTuple
+])
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleRecursiveBound]
+from typing import Generic, NamedTuple, TypeVar
+T = TypeVar("T", bound="NT")
+class NT(NamedTuple, Generic[T]):
+    parent: T
+    item: int
+
+def main(n: NT[T]) -> None:
+    reveal_type(n.parent)  # N: Revealed type is "T`-1"
+    reveal_type(n.item)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]

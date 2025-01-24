@@ -1105,6 +1105,10 @@ t1: T1  # E: Variable "__main__.T1" is not valid as a type \
 T3 = TypeAliasType("T3", -1)  # E: Invalid type: try using Literal[-1] instead?
 t3: T3
 reveal_type(t3)  # N: Revealed type is "Any"
+
+T4 = TypeAliasType("T4")  # E: Missing positional argument "value" in call to "TypeAliasType"
+T5 = TypeAliasType("T5", int, str)  # E: Too many positional arguments for "TypeAliasType" \
+                                    # E: Argument 3 to "TypeAliasType" has incompatible type "Type[str]"; expected "Tuple[Union[TypeVar?, ParamSpec?, TypeVarTuple?], ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1237,4 +1241,48 @@ from typing import List, Union
 
 A = Union[int, List[A]]
 def func(x: A) -> int: ...
+[builtins fixtures/tuple.pyi]
+
+[case testAliasNonGeneric]
+from typing_extensions import TypeAlias
+class Foo: ...
+
+ImplicitFoo = Foo
+ExplicitFoo: TypeAlias = Foo
+
+x1: ImplicitFoo[str]  # E: "Foo" expects no type arguments, but 1 given
+x2: ExplicitFoo[str]  # E: "Foo" expects no type arguments, but 1 given
+
+def is_foo(x: object):
+    if isinstance(x, ImplicitFoo):
+        pass
+    if isinstance(x, ExplicitFoo):
+        pass
+
+[builtins fixtures/tuple.pyi]
+
+[case testAliasExplicitNoArgsTuple]
+from typing import Any, Tuple, assert_type
+from typing_extensions import TypeAlias
+
+Implicit = Tuple
+Explicit: TypeAlias = Tuple
+
+x1: Implicit[str]  # E: Bad number of arguments for type alias, expected 0, given 1
+x2: Explicit[str]  # E: Bad number of arguments for type alias, expected 0, given 1
+assert_type(x1, Tuple[Any, ...])
+assert_type(x2, Tuple[Any, ...])
+[builtins fixtures/tuple.pyi]
+
+[case testAliasExplicitNoArgsCallable]
+from typing import Any, Callable, assert_type
+from typing_extensions import TypeAlias
+
+Implicit = Callable
+Explicit: TypeAlias = Callable
+
+x1: Implicit[str]  # E: Bad number of arguments for type alias, expected 0, given 1
+x2: Explicit[str]  # E: Bad number of arguments for type alias, expected 0, given 1
+assert_type(x1, Callable[..., Any])
+assert_type(x2, Callable[..., Any])
 [builtins fixtures/tuple.pyi]

@@ -1669,7 +1669,7 @@ class A:
         self.a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
-[case testInferListInitializedToEmptyInClassBodyAndOverriden]
+[case testInferListInitializedToEmptyInClassBodyAndOverridden]
 from typing import List
 
 class A:
@@ -1728,12 +1728,14 @@ b[{}] = 1
 [builtins fixtures/dict.pyi]
 
 [case testInferDictInitializedToEmptyAndUpdatedFromMethod]
+# flags: --no-local-partial-types
 map = {}
 def add() -> None:
     map[1] = 2
 [builtins fixtures/dict.pyi]
 
 [case testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated]
+# flags: --no-local-partial-types
 map = {}
 def add():
     map[1] = 2
@@ -1921,6 +1923,7 @@ reveal_type(C().a)  # N: Revealed type is "builtins.dict[Any, Any]"
 [builtins fixtures/dict.pyi]
 
 [case testInferAttributeInitializedToNoneAndAssignedClassBody]
+# flags: --no-local-partial-types
 class C:
     a = None
     def __init__(self) -> None:
@@ -2069,6 +2072,7 @@ x = 1
 [out]
 
 [case testPartiallyInitializedVariableDoesNotEscapeScope2]
+# flags: --no-local-partial-types
 x = None
 def f() -> None:
     x = None
@@ -2114,36 +2118,32 @@ class C:
 -- ------------------------
 
 [case testPartialTypeErrorSpecialCase1]
+# flags: --no-local-partial-types
 # This used to crash.
 class A:
     x = None
     def f(self) -> None:
-        for a in self.x:
+        for a in self.x:  # E: "None" has no attribute "__iter__" (not iterable)
             pass
 [builtins fixtures/for.pyi]
-[out]
-main:5: error: "None" has no attribute "__iter__" (not iterable)
 
 [case testPartialTypeErrorSpecialCase2]
 # This used to crash.
 class A:
-    x = []
+    x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
     def f(self) -> None:
         for a in self.x:
             pass
 [builtins fixtures/for.pyi]
-[out]
-main:3: error: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 [case testPartialTypeErrorSpecialCase3]
+# flags: --no-local-partial-types
 class A:
     x = None
     def f(self) -> None:
-        for a in A.x:
+        for a in A.x:  # E: "None" has no attribute "__iter__" (not iterable)
             pass
 [builtins fixtures/for.pyi]
-[out]
-main:4: error: "None" has no attribute "__iter__" (not iterable)
 
 [case testPartialTypeErrorSpecialCase4]
 # This used to crash.
@@ -2488,10 +2488,11 @@ T = TypeVar('T')
 class C(Sequence[T], Generic[T]): pass
 C[0] = 0
 [out]
-main:4: error: Unsupported target for indexed assignment ("Type[C[Any]]")
+main:4: error: Unsupported target for indexed assignment ("Type[C[T]]")
 main:4: error: Invalid type: try using Literal[0] instead?
 
 [case testNoCrashOnPartialMember]
+# flags: --no-local-partial-types
 class C:
     x = None
     def __init__(self) -> None:
@@ -2512,6 +2513,7 @@ reveal_type(x) # N: Revealed type is "builtins.str"
 [out]
 
 [case testNoCrashOnPartialVariable2]
+# flags: --no-local-partial-types
 from typing import Tuple, TypeVar
 T = TypeVar('T', bound=str)
 
@@ -3677,7 +3679,8 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(__x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[str], None]"; expected "Call[Never]"
+                   # E: Argument 1 to "f" has incompatible type "Callable[[str], None]"; expected "Call[Never]" \
+                   # N: "Call[Never].__call__" has type "Callable[[NamedArg(Never, 'x')], None]"
 [builtins fixtures/list.pyi]
 
 [case testCallableInferenceAgainstCallableNamedVsPosOnly]
@@ -3693,7 +3696,8 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(*, x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[NamedArg(str, 'x')], None]"; expected "Call[Never]"
+                   # E: Argument 1 to "f" has incompatible type "Callable[[NamedArg(str, 'x')], None]"; expected "Call[Never]" \
+                   # N: "Call[Never].__call__" has type "Callable[[Never], None]"
 [builtins fixtures/list.pyi]
 
 [case testCallableInferenceAgainstCallablePosOnlyVsKwargs]
@@ -3709,7 +3713,8 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(**x: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[KwArg(str)], None]"; expected "Call[Never]"
+                   # E: Argument 1 to "f" has incompatible type "Callable[[KwArg(str)], None]"; expected "Call[Never]" \
+                   # N: "Call[Never].__call__" has type "Callable[[Never], None]"
 [builtins fixtures/list.pyi]
 
 [case testCallableInferenceAgainstCallableNamedVsArgs]
@@ -3725,7 +3730,8 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 
 def g(*args: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
-                   # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[Never]"
+                   # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[Never]" \
+                   # N: "Call[Never].__call__" has type "Callable[[NamedArg(Never, 'x')], None]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstTypeVarActualBound]

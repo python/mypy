@@ -4,21 +4,20 @@ from __future__ import annotations
 
 import sys
 from abc import abstractmethod
+from collections.abc import Iterable, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
-    Dict,
     Final,
-    Iterable,
     NamedTuple,
     NewType,
-    Sequence,
     TypeVar,
     Union,
     cast,
+    overload,
 )
-from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard, overload
+from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
@@ -38,7 +37,7 @@ from mypy.util import IdMapper
 
 T = TypeVar("T")
 
-JsonDict: _TypeAlias = Dict[str, Any]
+JsonDict: _TypeAlias = dict[str, Any]
 
 # The set of all valid expressions that can currently be contained
 # inside of a Literal[...].
@@ -2818,10 +2817,28 @@ class LiteralType(ProperType):
         self.fallback = fallback
         self._hash = -1  # Cached hash value
 
+    # NOTE: Enum types are always truthy by default, but this can be changed
+    #       in subclasses, so we need to get the truthyness from the Enum
+    #       type rather than base it on the value (which is a non-empty
+    #       string for enums, so always truthy)
+    # TODO: We should consider moving this branch to the `can_be_true`
+    #       `can_be_false` properties instead, so the truthyness only
+    #       needs to be determined once per set of Enum literals.
+    #       However, the same can be said for `TypeAliasType` in some
+    #       cases and we only set the default based on the type it is
+    #       aliasing. So if we decide to change this, we may want to
+    #       change that as well. perf_compare output was inconclusive
+    #       but slightly favored this version, probably because we have
+    #       almost no test cases where we would redundantly compute
+    #       `can_be_false`/`can_be_true`.
     def can_be_false_default(self) -> bool:
+        if self.fallback.type.is_enum:
+            return self.fallback.can_be_false
         return not self.value
 
     def can_be_true_default(self) -> bool:
+        if self.fallback.type.is_enum:
+            return self.fallback.can_be_true
         return bool(self.value)
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -3240,43 +3257,43 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         self.any_as_dots = False
         self.options = options
 
-    def visit_unbound_type(self, t: UnboundType) -> str:
+    def visit_unbound_type(self, t: UnboundType, /) -> str:
         s = t.name + "?"
         if t.args:
             s += f"[{self.list_str(t.args)}]"
         return s
 
-    def visit_type_list(self, t: TypeList) -> str:
+    def visit_type_list(self, t: TypeList, /) -> str:
         return f"<TypeList {self.list_str(t.items)}>"
 
-    def visit_callable_argument(self, t: CallableArgument) -> str:
+    def visit_callable_argument(self, t: CallableArgument, /) -> str:
         typ = t.typ.accept(self)
         if t.name is None:
             return f"{t.constructor}({typ})"
         else:
             return f"{t.constructor}({typ}, {t.name})"
 
-    def visit_any(self, t: AnyType) -> str:
+    def visit_any(self, t: AnyType, /) -> str:
         if self.any_as_dots and t.type_of_any == TypeOfAny.special_form:
             return "..."
         return "Any"
 
-    def visit_none_type(self, t: NoneType) -> str:
+    def visit_none_type(self, t: NoneType, /) -> str:
         return "None"
 
-    def visit_uninhabited_type(self, t: UninhabitedType) -> str:
+    def visit_uninhabited_type(self, t: UninhabitedType, /) -> str:
         return "Never"
 
-    def visit_erased_type(self, t: ErasedType) -> str:
+    def visit_erased_type(self, t: ErasedType, /) -> str:
         return "<Erased>"
 
-    def visit_deleted_type(self, t: DeletedType) -> str:
+    def visit_deleted_type(self, t: DeletedType, /) -> str:
         if t.source is None:
             return "<Deleted>"
         else:
             return f"<Deleted '{t.source}'>"
 
-    def visit_instance(self, t: Instance) -> str:
+    def visit_instance(self, t: Instance, /) -> str:
         if t.last_known_value and not t.args:
             # Instances with a literal fallback should never be generic. If they are,
             # something went wrong so we fall back to showing the full Instance repr.
@@ -3296,7 +3313,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += f"<{self.id_mapper.id(t.type)}>"
         return s
 
-    def visit_type_var(self, t: TypeVarType) -> str:
+    def visit_type_var(self, t: TypeVarType, /) -> str:
         if t.name is None:
             # Anonymous type variable type (only numeric id).
             s = f"`{t.id}"
@@ -3309,7 +3326,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += f" = {t.default.accept(self)}"
         return s
 
-    def visit_param_spec(self, t: ParamSpecType) -> str:
+    def visit_param_spec(self, t: ParamSpecType, /) -> str:
         # prefixes are displayed as Concatenate
         s = ""
         if t.prefix.arg_types:
@@ -3326,7 +3343,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += f" = {t.default.accept(self)}"
         return s
 
-    def visit_parameters(self, t: Parameters) -> str:
+    def visit_parameters(self, t: Parameters, /) -> str:
         # This is copied from visit_callable -- is there a way to decrease duplication?
         if t.is_ellipsis_args:
             return "..."
@@ -3355,7 +3372,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         return f"[{s}]"
 
-    def visit_type_var_tuple(self, t: TypeVarTupleType) -> str:
+    def visit_type_var_tuple(self, t: TypeVarTupleType, /) -> str:
         if t.name is None:
             # Anonymous type variable type (only numeric id).
             s = f"`{t.id}"
@@ -3366,7 +3383,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += f" = {t.default.accept(self)}"
         return s
 
-    def visit_callable_type(self, t: CallableType) -> str:
+    def visit_callable_type(self, t: CallableType, /) -> str:
         param_spec = t.param_spec()
         if param_spec is not None:
             num_skip = 2
@@ -3439,13 +3456,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         return f"def {s}"
 
-    def visit_overloaded(self, t: Overloaded) -> str:
+    def visit_overloaded(self, t: Overloaded, /) -> str:
         a = []
         for i in t.items:
             a.append(i.accept(self))
         return f"Overload({', '.join(a)})"
 
-    def visit_tuple_type(self, t: TupleType) -> str:
+    def visit_tuple_type(self, t: TupleType, /) -> str:
         s = self.list_str(t.items) or "()"
         tuple_name = "tuple" if self.options.use_lowercase_names() else "Tuple"
         if t.partial_fallback and t.partial_fallback.type:
@@ -3454,7 +3471,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 return f"{tuple_name}[{s}, fallback={t.partial_fallback.accept(self)}]"
         return f"{tuple_name}[{s}]"
 
-    def visit_typeddict_type(self, t: TypedDictType) -> str:
+    def visit_typeddict_type(self, t: TypedDictType, /) -> str:
         def item_str(name: str, typ: str) -> str:
             modifier = ""
             if name not in t.required_keys:
@@ -3474,36 +3491,36 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 prefix = repr(t.fallback.type.fullname) + ", "
         return f"TypedDict({prefix}{s})"
 
-    def visit_raw_expression_type(self, t: RawExpressionType) -> str:
+    def visit_raw_expression_type(self, t: RawExpressionType, /) -> str:
         return repr(t.literal_value)
 
-    def visit_literal_type(self, t: LiteralType) -> str:
+    def visit_literal_type(self, t: LiteralType, /) -> str:
         return f"Literal[{t.value_repr()}]"
 
-    def visit_union_type(self, t: UnionType) -> str:
+    def visit_union_type(self, t: UnionType, /) -> str:
         s = self.list_str(t.items)
         return f"Union[{s}]"
 
-    def visit_partial_type(self, t: PartialType) -> str:
+    def visit_partial_type(self, t: PartialType, /) -> str:
         if t.type is None:
             return "<partial None>"
         else:
             return "<partial {}[{}]>".format(t.type.name, ", ".join(["?"] * len(t.type.type_vars)))
 
-    def visit_ellipsis_type(self, t: EllipsisType) -> str:
+    def visit_ellipsis_type(self, t: EllipsisType, /) -> str:
         return "..."
 
-    def visit_type_type(self, t: TypeType) -> str:
+    def visit_type_type(self, t: TypeType, /) -> str:
         if self.options.use_lowercase_names():
             type_name = "type"
         else:
             type_name = "Type"
         return f"{type_name}[{t.item.accept(self)}]"
 
-    def visit_placeholder_type(self, t: PlaceholderType) -> str:
+    def visit_placeholder_type(self, t: PlaceholderType, /) -> str:
         return f"<placeholder {t.fullname}>"
 
-    def visit_type_alias_type(self, t: TypeAliasType) -> str:
+    def visit_type_alias_type(self, t: TypeAliasType, /) -> str:
         if t.alias is not None:
             unrolled, recursed = t._partial_expansion()
             self.any_as_dots = recursed
@@ -3512,7 +3529,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return type_str
         return "<alias (unfixed)>"
 
-    def visit_unpack_type(self, t: UnpackType) -> str:
+    def visit_unpack_type(self, t: UnpackType, /) -> str:
         return f"Unpack[{t.type.accept(self)}]"
 
     def list_str(self, a: Iterable[Type]) -> str:
@@ -3528,19 +3545,19 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 class TrivialSyntheticTypeTranslator(TypeTranslator, SyntheticTypeVisitor[Type]):
     """A base class for type translators that need to be run during semantic analysis."""
 
-    def visit_placeholder_type(self, t: PlaceholderType) -> Type:
+    def visit_placeholder_type(self, t: PlaceholderType, /) -> Type:
         return t
 
-    def visit_callable_argument(self, t: CallableArgument) -> Type:
+    def visit_callable_argument(self, t: CallableArgument, /) -> Type:
         return t
 
-    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
+    def visit_ellipsis_type(self, t: EllipsisType, /) -> Type:
         return t
 
-    def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
+    def visit_raw_expression_type(self, t: RawExpressionType, /) -> Type:
         return t
 
-    def visit_type_list(self, t: TypeList) -> Type:
+    def visit_type_list(self, t: TypeList, /) -> Type:
         return t
 
 
@@ -3594,6 +3611,8 @@ class LocationSetter(TypeTraverserVisitor):
 
 
 class HasTypeVars(BoolTypeQuery):
+    """Visitor for querying whether a type has a type variable component."""
+
     def __init__(self) -> None:
         super().__init__(ANY_STRATEGY)
         self.skip_alias_target = True

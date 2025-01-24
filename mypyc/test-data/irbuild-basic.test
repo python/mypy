@@ -1874,7 +1874,7 @@ L1:
     r9 = int_lt r6, r8
     if r9 goto L2 else goto L8 :: bool
 L2:
-    r10 = CPyList_GetItemUnsafe(r1, r6)
+    r10 = list_get_item_unsafe r1, r6
     r11 = unbox(int, r10)
     x = r11
     r12 = int_ne x, 4
@@ -1938,7 +1938,7 @@ L1:
     r9 = int_lt r6, r8
     if r9 goto L2 else goto L8 :: bool
 L2:
-    r10 = CPyList_GetItemUnsafe(r1, r6)
+    r10 = list_get_item_unsafe r1, r6
     r11 = unbox(int, r10)
     x = r11
     r12 = int_ne x, 4
@@ -2000,7 +2000,7 @@ L1:
     r3 = int_lt r0, r2
     if r3 goto L2 else goto L4 :: bool
 L2:
-    r4 = CPyList_GetItemUnsafe(l, r0)
+    r4 = list_get_item_unsafe l, r0
     r5 = unbox(tuple[int, int, int], r4)
     r6 = r5[0]
     x = r6
@@ -2022,7 +2022,7 @@ L5:
     r15 = int_lt r12, r14
     if r15 goto L6 else goto L8 :: bool
 L6:
-    r16 = CPyList_GetItemUnsafe(l, r12)
+    r16 = list_get_item_unsafe l, r12
     r17 = unbox(tuple[int, int, int], r16)
     r18 = r17[0]
     x_2 = r18
@@ -2711,7 +2711,7 @@ L4:
 L5:
     goto L1
 L6:
-    r5 = CPy_NoErrOccured()
+    r5 = CPy_NoErrOccurred()
 L7:
 L8:
     return r0
@@ -2740,7 +2740,7 @@ L4:
 L5:
     goto L1
 L6:
-    r6 = CPy_NoErrOccured()
+    r6 = CPy_NoErrOccurred()
 L7:
 L8:
     return r0
@@ -2780,7 +2780,7 @@ L2:
 L3:
     goto L1
 L4:
-    r10 = CPy_NoErrOccured()
+    r10 = CPy_NoErrOccurred()
 L5:
     return r0
 
@@ -3301,7 +3301,7 @@ L2:
 L3:
     goto L1
 L4:
-    r10 = CPy_NoErrOccured()
+    r10 = CPy_NoErrOccurred()
 L5:
     return 1
 def range_in_loop():

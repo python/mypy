@@ -148,7 +148,7 @@ L2:
 L3:
     r10 = box(None, 1)
     return r10
-[case testMatchExaustivePattern_python3_10]
+[case testMatchExhaustivePattern_python3_10]
 def f():
     match 123:
         case _:
@@ -1378,14 +1378,15 @@ def f(x):
     r15 :: bit
     r16 :: bool
     r17 :: native_int
-    r18, rest :: object
-    r19 :: str
-    r20 :: object
-    r21 :: str
-    r22 :: object
-    r23 :: object[1]
-    r24 :: object_ptr
-    r25, r26 :: object
+    r18 :: object
+    r19, rest :: list
+    r20 :: str
+    r21 :: object
+    r22 :: str
+    r23 :: object
+    r24 :: object[1]
+    r25 :: object_ptr
+    r26, r27 :: object
 L0:
     r0 = CPySequence_Check(x)
     r1 = r0 != 0
@@ -1414,21 +1415,23 @@ L3:
 L4:
     r17 = r2 - 0
     r18 = PySequence_GetSlice(x, 2, r17)
-    rest = r18
+    r19 = cast(list, r18)
+    rest = r19
 L5:
-    r19 = 'matched'
-    r20 = builtins :: module
-    r21 = 'print'
-    r22 = CPyObject_GetAttr(r20, r21)
-    r23 = [r19]
-    r24 = load_address r23
-    r25 = _PyObject_Vectorcall(r22, r24, 1, 0)
-    keep_alive r19
+    r20 = 'matched'
+    r21 = builtins :: module
+    r22 = 'print'
+    r23 = CPyObject_GetAttr(r21, r22)
+    r24 = [r20]
+    r25 = load_address r24
+    r26 = _PyObject_Vectorcall(r23, r25, 1, 0)
+    keep_alive r20
     goto L7
 L6:
 L7:
-    r26 = box(None, 1)
-    return r26
+    r27 = box(None, 1)
+    return r27
+
 [case testMatchSequenceWithStarPatternInTheMiddle_python3_10]
 def f(x):
     match x:
@@ -1455,14 +1458,15 @@ def f(x):
     r16 :: bit
     r17 :: bool
     r18 :: native_int
-    r19, rest :: object
-    r20 :: str
-    r21 :: object
-    r22 :: str
-    r23 :: object
-    r24 :: object[1]
-    r25 :: object_ptr
-    r26, r27 :: object
+    r19 :: object
+    r20, rest :: list
+    r21 :: str
+    r22 :: object
+    r23 :: str
+    r24 :: object
+    r25 :: object[1]
+    r26 :: object_ptr
+    r27, r28 :: object
 L0:
     r0 = CPySequence_Check(x)
     r1 = r0 != 0
@@ -1492,21 +1496,23 @@ L3:
 L4:
     r18 = r2 - 1
     r19 = PySequence_GetSlice(x, 1, r18)
-    rest = r19
+    r20 = cast(list, r19)
+    rest = r20
 L5:
-    r20 = 'matched'
-    r21 = builtins :: module
-    r22 = 'print'
-    r23 = CPyObject_GetAttr(r21, r22)
-    r24 = [r20]
-    r25 = load_address r24
-    r26 = _PyObject_Vectorcall(r23, r25, 1, 0)
-    keep_alive r20
+    r21 = 'matched'
+    r22 = builtins :: module
+    r23 = 'print'
+    r24 = CPyObject_GetAttr(r22, r23)
+    r25 = [r21]
+    r26 = load_address r25
+    r27 = _PyObject_Vectorcall(r24, r26, 1, 0)
+    keep_alive r21
     goto L7
 L6:
 L7:
-    r27 = box(None, 1)
-    return r27
+    r28 = box(None, 1)
+    return r28
+
 [case testMatchSequenceWithStarPatternAtTheStart_python3_10]
 def f(x):
     match x:
@@ -1530,14 +1536,15 @@ def f(x):
     r17 :: bit
     r18 :: bool
     r19 :: native_int
-    r20, rest :: object
-    r21 :: str
-    r22 :: object
-    r23 :: str
-    r24 :: object
-    r25 :: object[1]
-    r26 :: object_ptr
-    r27, r28 :: object
+    r20 :: object
+    r21, rest :: list
+    r22 :: str
+    r23 :: object
+    r24 :: str
+    r25 :: object
+    r26 :: object[1]
+    r27 :: object_ptr
+    r28, r29 :: object
 L0:
     r0 = CPySequence_Check(x)
     r1 = r0 != 0
@@ -1568,21 +1575,23 @@ L3:
 L4:
     r19 = r2 - 2
     r20 = PySequence_GetSlice(x, 0, r19)
-    rest = r20
+    r21 = cast(list, r20)
+    rest = r21
 L5:
-    r21 = 'matched'
-    r22 = builtins :: module
-    r23 = 'print'
-    r24 = CPyObject_GetAttr(r22, r23)
-    r25 = [r21]
-    r26 = load_address r25
-    r27 = _PyObject_Vectorcall(r24, r26, 1, 0)
-    keep_alive r21
+    r22 = 'matched'
+    r23 = builtins :: module
+    r24 = 'print'
+    r25 = CPyObject_GetAttr(r23, r24)
+    r26 = [r22]
+    r27 = load_address r26
+    r28 = _PyObject_Vectorcall(r25, r27, 1, 0)
+    keep_alive r22
     goto L7
 L6:
 L7:
-    r28 = box(None, 1)
-    return r28
+    r29 = box(None, 1)
+    return r29
+
 [case testMatchBuiltinClassPattern_python3_10]
 def f(x):
     match x:
@@ -1634,14 +1643,15 @@ def f(x):
     r2 :: native_int
     r3, r4 :: bit
     r5 :: native_int
-    r6, rest :: object
-    r7 :: str
-    r8 :: object
-    r9 :: str
-    r10 :: object
-    r11 :: object[1]
-    r12 :: object_ptr
-    r13, r14 :: object
+    r6 :: object
+    r7, rest :: list
+    r8 :: str
+    r9 :: object
+    r10 :: str
+    r11 :: object
+    r12 :: object[1]
+    r13 :: object_ptr
+    r14, r15 :: object
 L0:
     r0 = CPySequence_Check(x)
     r1 = r0 != 0
@@ -1654,21 +1664,23 @@ L1:
 L2:
     r5 = r2 - 0
     r6 = PySequence_GetSlice(x, 0, r5)
-    rest = r6
+    r7 = cast(list, r6)
+    rest = r7
 L3:
-    r7 = 'matched'
-    r8 = builtins :: module
-    r9 = 'print'
-    r10 = CPyObject_GetAttr(r8, r9)
-    r11 = [r7]
-    r12 = load_address r11
-    r13 = _PyObject_Vectorcall(r10, r12, 1, 0)
-    keep_alive r7
+    r8 = 'matched'
+    r9 = builtins :: module
+    r10 = 'print'
+    r11 = CPyObject_GetAttr(r9, r10)
+    r12 = [r8]
+    r13 = load_address r12
+    r14 = _PyObject_Vectorcall(r11, r13, 1, 0)
+    keep_alive r8
     goto L5
 L4:
 L5:
-    r14 = box(None, 1)
-    return r14
+    r15 = box(None, 1)
+    return r15
+
 [case testMatchTypeAnnotatedNativeClass_python3_10]
 class A:
     a: int

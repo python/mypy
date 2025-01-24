@@ -139,7 +139,7 @@ reveal_type(f2)  # N: Revealed type is "def (a: builtins.str) -> Any"
 def f3(a: Annotated["notdefined", "metadata"]): # E: Name "notdefined" is not defined
     pass
 T = TypeVar('T')
-def f4(a: Annotated[T, "metatdata"]):
+def f4(a: Annotated[T, "metadata"]):
     pass
 reveal_type(f4)  # N: Revealed type is "def [T] (a: T`-1) -> Any"
 [builtins fixtures/tuple.pyi]

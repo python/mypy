@@ -11,8 +11,9 @@ import importlib
 import inspect
 import keyword
 import os.path
+from collections.abc import Mapping
 from types import FunctionType, ModuleType
-from typing import Any, Callable, Mapping
+from typing import Any, Callable
 
 from mypy.fastparse import parse_type_comment
 from mypy.moduleinspect import is_c_module
@@ -204,7 +205,7 @@ class CFunctionStub:
             sigs[0].name, "\n".join(sig.format_sig()[:-4] for sig in sigs), is_abstract
         )
 
-    def __get__(self) -> None:
+    def __get__(self) -> None:  # noqa: PLE0302
         """
         This exists to make this object look like a method descriptor and thus
         return true for CStubGenerator.ismethod()
@@ -243,7 +244,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.module_name = module_name
         if self.is_c_module:
             # Add additional implicit imports.
-            # C-extensions are given more lattitude since they do not import the typing module.
+            # C-extensions are given more latitude since they do not import the typing module.
             self.known_imports.update(
                 {
                     "typing": [

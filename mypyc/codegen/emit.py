@@ -12,6 +12,7 @@ from mypyc.common import (
     ATTR_PREFIX,
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
+    HAVE_IMMORTAL,
     NATIVE_PREFIX,
     REG_PREFIX,
     STATIC_PREFIX,
@@ -195,7 +196,7 @@ class Emitter:
         return ATTR_PREFIX + name
 
     def object_annotation(self, obj: object, line: str) -> str:
-        """Build a C comment with an object's string represention.
+        """Build a C comment with an object's string representation.
 
         If the comment exceeds the line length limit, it's wrapped into a
         multiline string (with the extra lines indented to be aligned with
@@ -511,8 +512,11 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref(f"{dest}.f{i}", item_type)
         elif not rtype.is_unboxed:
-            # Always inline, since this is a simple op
-            self.emit_line("CPy_INCREF(%s);" % dest)
+            # Always inline, since this is a simple but very hot op
+            if rtype.may_be_immortal or not HAVE_IMMORTAL:
+                self.emit_line("CPy_INCREF(%s);" % dest)
+            else:
+                self.emit_line("CPy_INCREF_NO_IMM(%s);" % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def emit_dec_ref(
@@ -540,7 +544,10 @@ class Emitter:
                 self.emit_line(f"CPy_{x}DecRef({dest});")
             else:
                 # Inlined
-                self.emit_line(f"CPy_{x}DECREF({dest});")
+                if rtype.may_be_immortal or not HAVE_IMMORTAL:
+                    self.emit_line(f"CPy_{x}DECREF({dest});")
+                else:
+                    self.emit_line(f"CPy_{x}DECREF_NO_IMM({dest});")
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:
@@ -1034,7 +1041,7 @@ class Emitter:
             self.emit_line(f"if (unlikely({dest} == NULL))")
             self.emit_line("    CPyError_OutOfMemory();")
             # TODO: Fail if dest is None
-            for i in range(0, len(typ.types)):
+            for i in range(len(typ.types)):
                 if not typ.is_unboxed:
                     self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {src}.f{i}")
                 else:
