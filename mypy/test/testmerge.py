@@ -13,7 +13,6 @@ from mypy.nodes import (
     UNBOUND_IMPORTED,
     Expression,
     MypyFile,
-    Node,
     SymbolTable,
     SymbolTableNode,
     TypeInfo,

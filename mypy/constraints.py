@@ -240,10 +240,7 @@ def infer_constraints_for_callable(
                     )
                     c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
                     constraints.extend(c)
-    if (
-        param_spec
-        and not any(c.type_var == param_spec.id for c in constraints)
-    ):
+    if param_spec and not any(c.type_var == param_spec.id for c in constraints):
         # Use ParamSpec constraint from arguments only if there are no other constraints,
         # since as explained above it is quite ad-hoc.
         constraints.append(

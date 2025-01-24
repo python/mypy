@@ -43,7 +43,6 @@ from mypy.messages import (
 from mypy.mro import MroError, calculate_mro
 from mypy.nodes import (
     ARG_NAMED,
-    SYMBOL_FUNCBASE_TYPES,
     ARG_POS,
     ARG_STAR,
     CONTRAVARIANT,
@@ -57,6 +56,7 @@ from mypy.nodes import (
     LITERAL_TYPE,
     MDEF,
     NOT_ABSTRACT,
+    SYMBOL_FUNCBASE_TYPES,
     AssertStmt,
     AssignmentExpr,
     AssignmentStmt,
@@ -4341,7 +4341,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(rvalue, (IntExpr, StrExpr, BytesExpr, FloatExpr, RefExpr)):
             return True
         if isinstance(rvalue, CallExpr):
-            if isinstance(rvalue.callee, RefExpr) and isinstance(rvalue.callee.node, SYMBOL_FUNCBASE_TYPES):
+            if isinstance(rvalue.callee, RefExpr) and isinstance(
+                rvalue.callee.node, SYMBOL_FUNCBASE_TYPES
+            ):
                 typ = rvalue.callee.node.type
                 if isinstance(typ, CallableType):
                     return not typ.variables

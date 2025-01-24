@@ -2548,9 +2548,10 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     def fullname(self) -> str:
         return self._fullname
 
+
 # All types that are both SymbolNodes and Expressions.
 # Use when common children of them are needed.
-SYMBOL_NODE_EXPRESSION_TYPES: Final = (TypeVarLikeExpr, )
+SYMBOL_NODE_EXPRESSION_TYPES: Final = (TypeVarLikeExpr,)
 
 
 class TypeVarExpr(TypeVarLikeExpr):
