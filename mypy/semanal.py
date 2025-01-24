@@ -71,7 +71,6 @@ from mypy.messages import (
 from mypy.mro import MroError, calculate_mro
 from mypy.nodes import (
     ARG_NAMED,
-    SYMBOL_FUNCBASE_TYPES,
     ARG_POS,
     ARG_STAR2,
     CONTRAVARIANT,
@@ -87,6 +86,7 @@ from mypy.nodes import (
     REVEAL_LOCALS,
     REVEAL_TYPE,
     RUNTIME_PROTOCOL_DECOS,
+    SYMBOL_FUNCBASE_TYPES,
     TYPE_VAR_KIND,
     TYPE_VAR_TUPLE_KIND,
     VARIANCE_NOT_READY,

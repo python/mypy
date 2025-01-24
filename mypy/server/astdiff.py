@@ -58,10 +58,9 @@ from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.expandtype import expand_type
 from mypy.nodes import (
-    UNBOUND_IMPORTED,
     SYMBOL_FUNCBASE_TYPES,
+    UNBOUND_IMPORTED,
     Decorator,
-    FuncBase,
     FuncDef,
     FuncItem,
     MypyFile,
