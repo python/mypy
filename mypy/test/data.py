@@ -291,6 +291,7 @@ class DataDrivenTestCase(pytest.Item):
         data: str,
         line: int,
     ) -> None:
+        assert isinstance(parent, DataFileCollector)
         super().__init__(name, parent)
         self.suite = suite
         self.file = file

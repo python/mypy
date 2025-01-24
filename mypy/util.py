@@ -638,7 +638,6 @@ class FancyFormatter:
         # Windows ANSI escape sequences are only supported on Threshold 2 and above.
         # we check with an assert at runtime and an if check for mypy, as asserts do not
         # yet narrow platform
-        assert sys.platform == "win32", "Running not on Windows"
         if sys.platform == "win32":  # needed to find win specific sys apis
             winver = sys.getwindowsversion()
             if (
@@ -660,7 +659,8 @@ class FancyFormatter:
                 | ENABLE_VIRTUAL_TERMINAL_PROCESSING,
             )
             self.initialize_vt100_colors()
-        return True
+            return True
+        assert False, "Running not on Windows"
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
