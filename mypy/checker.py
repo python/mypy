@@ -459,15 +459,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
             with self.tscope.module_scope(self.tree.fullname):
                 with self.enter_partial_types(), self.binder.top_frame_context():
+                    reported_unreachable = False
                     for d in self.tree.defs:
-                        if self.binder.is_unreachable():
+                        if not reported_unreachable and self.binder.is_unreachable():
                             if not self.should_report_unreachable_issues():
-                                break
-                            if not self.is_noop_for_reachability(d):
+                                reported_unreachable = True
+                            elif not self.is_noop_for_reachability(d):
                                 self.msg.unreachable_statement(d)
-                                break
-                        else:
-                            self.accept(d)
+                                reported_unreachable = True
+                        self.accept(d)
 
                 assert not self.current_node_deferred
 
@@ -3044,18 +3044,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if b.is_unreachable:
             # This block was marked as being unreachable during semantic analysis.
             # It turns out any blocks marked in this way are *intentionally* marked
-            # as unreachable -- so we don't display an error.
+            # as unreachable -- so we don't display an error nor run type checking.
             self.binder.unreachable()
             return
+        reported_unreachable = False
         for s in b.body:
-            if self.binder.is_unreachable():
+            if not reported_unreachable and self.binder.is_unreachable():
                 if not self.should_report_unreachable_issues():
-                    break
-                if not self.is_noop_for_reachability(s):
+                    reported_unreachable = True
+                elif not self.is_noop_for_reachability(s):
                     self.msg.unreachable_statement(s)
-                    break
-            else:
-                self.accept(s)
+                    reported_unreachable = True
+            self.accept(s)
 
     def should_report_unreachable_issues(self) -> bool:
         return (
