@@ -554,7 +554,7 @@ def tuple_mul_callback(ctx: MethodContext) -> Type:
         value = arg_type.last_known_value.value
         if isinstance(value, int):
             return ctx.type.copy_modified(items=ctx.type.items * value)
-    elif isinstance(ctx.type, LiteralType):
+    elif isinstance(arg_type, LiteralType):
         value = arg_type.value
         if isinstance(value, int):
             return ctx.type.copy_modified(items=ctx.type.items * value)
