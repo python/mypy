@@ -2087,8 +2087,7 @@ else:
 [out]
 
 [case testNarrowTypeAfterInTypedDict]
-from typing import Optional
-from mypy_extensions import TypedDict
+from typing import Optional, TypedDict
 class TD(TypedDict):
     a: int
     b: str
@@ -2099,8 +2098,8 @@ def f() -> None:
     if x not in td:
         return
     reveal_type(x) # N: Revealed type is "builtins.str"
-[typing fixtures/typing-typeddict.pyi]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testIsinstanceWidensWithAnyArg]

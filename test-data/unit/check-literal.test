@@ -1884,8 +1884,7 @@ tup3: Tup2Class = tup2[:]     # E: Incompatible types in assignment (expression 
 [builtins fixtures/slice.pyi]
 
 [case testLiteralIntelligentIndexingTypedDict]
-from typing_extensions import Literal
-from mypy_extensions import TypedDict
+from typing_extensions import Literal, TypedDict
 
 class Unrelated: pass
 u: Unrelated
@@ -1924,8 +1923,7 @@ del d[c_key]                  # E: TypedDict "Outer" has no key "c"
 
 [case testLiteralIntelligentIndexingUsingFinal]
 from typing import Tuple, NamedTuple
-from typing_extensions import Literal, Final
-from mypy_extensions import TypedDict
+from typing_extensions import Literal, Final, TypedDict
 
 int_key_good: Final = 0
 int_key_bad: Final = 3
@@ -1992,8 +1990,7 @@ tup2[idx_bad]                   # E: Tuple index out of range
 [out]
 
 [case testLiteralIntelligentIndexingTypedDictUnions]
-from typing_extensions import Literal, Final
-from mypy_extensions import TypedDict
+from typing_extensions import Literal, Final, TypedDict
 
 class A: pass
 class B: pass
@@ -2045,8 +2042,7 @@ del test[bad_keys]              # E: Key "a" of TypedDict "Test" cannot be delet
 
 [case testLiteralIntelligentIndexingMultiTypedDict]
 from typing import Union
-from typing_extensions import Literal
-from mypy_extensions import TypedDict
+from typing_extensions import Literal, TypedDict
 
 class A: pass
 class B: pass
