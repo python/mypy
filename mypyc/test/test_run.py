@@ -11,18 +11,20 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from mypy import build
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.test.config import test_temp_dir
+from mypy.test.config import mypyc_output_dir, test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypy.test.helpers import assert_module_equivalence, perform_file_operations
 from mypyc.build import construct_groups
 from mypyc.codegen import emitmodule
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
+from mypyc.test.config import test_data_prefix
 from mypyc.test.test_serialization import check_serialization_roundtrip
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
@@ -146,9 +148,10 @@ class TestRun(MypycDataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # setup.py wants to be run from the root directory of the package, which we accommodate
         # by chdiring into tmp/
-        with use_custom_builtins(
-            os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase
-        ), chdir_manager("tmp"):
+        with (
+            use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase),
+            chdir_manager("tmp"),
+        ):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
@@ -278,6 +281,7 @@ class TestRun(MypycDataSuite):
         if not run_setup(setup_file, ["build_ext", "--inplace"]):
             if testcase.config.getoption("--mypyc-showc"):
                 show_c(cfiles)
+            copy_output_files(mypyc_output_dir)
             assert False, "Compilation failed"
 
         # Assert that an output file got created
@@ -289,9 +293,7 @@ class TestRun(MypycDataSuite):
             # No driver.py provided by test case. Use the default one
             # (mypyc/test-data/driver/driver.py) that calls each
             # function named test_*.
-            default_driver = os.path.join(
-                os.path.dirname(__file__), "..", "test-data", "driver", "driver.py"
-            )
+            default_driver = os.path.join(test_data_prefix, "driver", "driver.py")
             shutil.copy(default_driver, driver_path)
         env = os.environ.copy()
         env["MYPYC_RUN_BENCH"] = "1" if bench else "0"
@@ -320,13 +322,30 @@ class TestRun(MypycDataSuite):
             # TODO: testDecorators1 hangs on 3.12, remove this once fixed
             proc.wait(timeout=30)
         output = proc.communicate()[0].decode("utf8")
+        output = output.replace(f'  File "{os.getcwd()}{os.sep}', '  File "')
         outlines = output.splitlines()
 
         if testcase.config.getoption("--mypyc-showc"):
             show_c(cfiles)
         if proc.returncode != 0:
             print()
-            print("*** Exit status: %d" % proc.returncode)
+            signal = proc.returncode == -11
+            extra = ""
+            if signal:
+                extra = " (likely segmentation fault)"
+            print(f"*** Exit status: {proc.returncode}{extra}")
+            if signal and not sys.platform.startswith("win"):
+                print()
+                if sys.platform == "darwin":
+                    debugger = "lldb"
+                else:
+                    debugger = "gdb"
+                print(
+                    f'hint: Use "pytest -n0 -s --mypyc-debug={debugger} -k <name-substring>" to run test in debugger'
+                )
+                print("hint: You may need to build a debug version of Python first and use it")
+                print('hint: See also "Debuggging Segfaults" in mypyc/doc/dev-intro.md')
+            copy_output_files(mypyc_output_dir)
 
         # Verify output.
         if bench:
@@ -440,3 +459,17 @@ def fix_native_line_number(message: str, fnam: str, delta: int) -> str:
         message,
     )
     return message
+
+
+def copy_output_files(target_dir: str) -> None:
+    try:
+        os.mkdir(target_dir)
+    except OSError:
+        # Only copy data for the first failure, to avoid excessive output in case
+        # many tests fail
+        return
+
+    for fnam in glob.glob("build/*.[ch]"):
+        shutil.copy(fnam, target_dir)
+
+    sys.stderr.write(f"\nGenerated files: {target_dir} (for first failure only)\n\n")

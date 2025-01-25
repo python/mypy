@@ -579,8 +579,7 @@ plugins=<ROOT>/test-data/unit/plugins/method_sig_hook.py
 
 [case testMethodSignatureHookNamesFullyQualified]
 # flags: --config-file tmp/mypy.ini
-from mypy_extensions import TypedDict
-from typing import NamedTuple
+from typing import NamedTuple, TypedDict
 
 class FullyQualifiedTestClass:
     @classmethod
@@ -601,6 +600,7 @@ reveal_type(FullyQualifiedTestNamedTuple('')._asdict()) # N: Revealed type is "b
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fully_qualified_test_hook.py
 [builtins fixtures/classmethod.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testDynamicClassPlugin]
 # flags: --config-file tmp/mypy.ini
@@ -967,6 +967,7 @@ class Cls(enum.Enum):
     attr = 'test'
 
 reveal_type(Cls.attr)  # N: Revealed type is "builtins.int"
+[builtins fixtures/enum.pyi]
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
@@ -1006,7 +1007,7 @@ reveal_type(Cls.attr) # N: Revealed type is "builtins.int"
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
 
 [case testClassAttrPluginPartialType]
-# flags: --config-file tmp/mypy.ini
+# flags: --config-file tmp/mypy.ini --no-local-partial-types
 
 class Cls:
     attr = None

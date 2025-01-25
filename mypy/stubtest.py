@@ -25,10 +25,11 @@ import typing
 import typing_extensions
 import warnings
 from collections import defaultdict
+from collections.abc import Iterator, Set as AbstractSet
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import AbstractSet, Any, Generic, Iterator, TypeVar, Union
+from typing import Any, Final, Generic, TypeVar, Union
 from typing_extensions import get_origin, is_typeddict
 
 import mypy.build
@@ -51,7 +52,7 @@ class Missing:
         return "MISSING"
 
 
-MISSING: typing_extensions.Final = Missing()
+MISSING: Final = Missing()
 
 T = TypeVar("T")
 MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
@@ -64,10 +65,10 @@ class Unrepresentable:
         return "<unrepresentable>"
 
 
-UNREPRESENTABLE: typing_extensions.Final = Unrepresentable()
+UNREPRESENTABLE: Final = Unrepresentable()
 
 
-_formatter: typing_extensions.Final = FancyFormatter(sys.stdout, sys.stderr, False)
+_formatter: Final = FancyFormatter(sys.stdout, sys.stderr, False)
 
 
 def _style(message: str, **kwargs: Any) -> str:
@@ -568,6 +569,13 @@ def verify_typeinfo(
             # Catch all exceptions in case the runtime raises an unexpected exception
             # from __getattr__ or similar.
             continue
+
+        # If it came from the metaclass, consider the runtime_attr to be MISSING
+        # for a more accurate message
+        if runtime_attr is not MISSING and type(runtime) is not runtime:
+            if getattr(runtime_attr, "__objclass__", None) is type(runtime):
+                runtime_attr = MISSING
+
         # Do not error for an object missing from the stub
         # If the runtime object is a types.WrapperDescriptorType object
         # and has a non-special dunder name.
@@ -663,7 +671,7 @@ def _verify_arg_default_value(
     stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
 ) -> Iterator[str]:
     """Checks whether argument default values are compatible."""
-    if runtime_arg.default != inspect.Parameter.empty:
+    if runtime_arg.default is not inspect.Parameter.empty:
         if stub_arg.kind.is_required():
             yield (
                 f'runtime argument "{runtime_arg.name}" '
@@ -698,18 +706,26 @@ def _verify_arg_default_value(
                     stub_default is not UNKNOWN
                     and stub_default is not ...
                     and runtime_arg.default is not UNREPRESENTABLE
-                    and (
-                        stub_default != runtime_arg.default
-                        # We want the types to match exactly, e.g. in case the stub has
-                        # True and the runtime has 1 (or vice versa).
-                        or type(stub_default) is not type(runtime_arg.default)
-                    )
                 ):
-                    yield (
-                        f'runtime argument "{runtime_arg.name}" '
-                        f"has a default value of {runtime_arg.default!r}, "
-                        f"which is different from stub argument default {stub_default!r}"
-                    )
+                    defaults_match = True
+                    # We want the types to match exactly, e.g. in case the stub has
+                    # True and the runtime has 1 (or vice versa).
+                    if type(stub_default) is not type(runtime_arg.default):
+                        defaults_match = False
+                    else:
+                        try:
+                            defaults_match = bool(stub_default == runtime_arg.default)
+                        except Exception:
+                            # Exception can be raised in bool dunder method (e.g. numpy arrays)
+                            # At this point, consider the default to be different, it is probably
+                            # too complex to put in a stub anyway.
+                            defaults_match = False
+                    if not defaults_match:
+                        yield (
+                            f'runtime argument "{runtime_arg.name}" '
+                            f"has a default value of {runtime_arg.default!r}, "
+                            f"which is different from stub argument default {stub_default!r}"
+                        )
     else:
         if stub_arg.kind.is_optional():
             yield (
@@ -751,7 +767,7 @@ class Signature(Generic[T]):
 
         def has_default(arg: Any) -> bool:
             if isinstance(arg, inspect.Parameter):
-                return bool(arg.default != inspect.Parameter.empty)
+                return arg.default is not inspect.Parameter.empty
             if isinstance(arg, nodes.Argument):
                 return arg.kind.is_optional()
             raise AssertionError
@@ -1431,7 +1447,7 @@ def verify_typealias(
 # ====================
 
 
-IGNORED_MODULE_DUNDERS: typing_extensions.Final = frozenset(
+IGNORED_MODULE_DUNDERS: Final = frozenset(
     {
         "__file__",
         "__doc__",
@@ -1453,7 +1469,7 @@ IGNORED_MODULE_DUNDERS: typing_extensions.Final = frozenset(
     }
 )
 
-IGNORABLE_CLASS_DUNDERS: typing_extensions.Final = frozenset(
+IGNORABLE_CLASS_DUNDERS: Final = frozenset(
     {
         # Special attributes
         "__dict__",
@@ -1519,6 +1535,7 @@ def is_probably_a_function(runtime: Any) -> bool:
         isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
         or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
+        or (isinstance(runtime, types.MethodWrapperType) and callable(runtime))
     )
 
 
@@ -1620,13 +1637,13 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> mypy.types.Type | None:
                 arg_names.append(
                     None if arg.kind == inspect.Parameter.POSITIONAL_ONLY else arg.name
                 )
-                has_default = arg.default == inspect.Parameter.empty
+                no_default = arg.default is inspect.Parameter.empty
                 if arg.kind == inspect.Parameter.POSITIONAL_ONLY:
-                    arg_kinds.append(nodes.ARG_POS if has_default else nodes.ARG_OPT)
+                    arg_kinds.append(nodes.ARG_POS if no_default else nodes.ARG_OPT)
                 elif arg.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
-                    arg_kinds.append(nodes.ARG_POS if has_default else nodes.ARG_OPT)
+                    arg_kinds.append(nodes.ARG_POS if no_default else nodes.ARG_OPT)
                 elif arg.kind == inspect.Parameter.KEYWORD_ONLY:
-                    arg_kinds.append(nodes.ARG_NAMED if has_default else nodes.ARG_NAMED_OPT)
+                    arg_kinds.append(nodes.ARG_NAMED if no_default else nodes.ARG_NAMED_OPT)
                 elif arg.kind == inspect.Parameter.VAR_POSITIONAL:
                     arg_kinds.append(nodes.ARG_STAR)
                 elif arg.kind == inspect.Parameter.VAR_KEYWORD:
@@ -1898,9 +1915,7 @@ class _Arguments:
 
 
 # typeshed added a stub for __main__, but that causes stubtest to check itself
-ANNOYING_STDLIB_MODULES: typing_extensions.Final = frozenset(
-    {"antigravity", "this", "__main__", "_ios_support"}
-)
+ANNOYING_STDLIB_MODULES: Final = frozenset({"antigravity", "this", "__main__", "_ios_support"})
 
 
 def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:

@@ -1893,11 +1893,12 @@ main:1: error: Module "ntcrash" has no attribute "nope"
 [case testIncrementalTypedDictInMethod]
 from tdcrash import nope
 [file tdcrash.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class C:
     def f(self) -> None:
         A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
@@ -1906,12 +1907,13 @@ main:1: error: Module "tdcrash" has no attribute "nope"
 [case testIncrementalTypedDictInMethod2]
 from tdcrash import nope
 [file tdcrash.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class C:
     class D:
         def f(self) -> None:
             A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
@@ -1920,13 +1922,14 @@ main:1: error: Module "tdcrash" has no attribute "nope"
 [case testIncrementalTypedDictInMethod3]
 from tdcrash import nope
 [file tdcrash.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class C:
     def a(self):
         class D:
             def f(self) -> None:
                 A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
@@ -1935,8 +1938,7 @@ main:1: error: Module "tdcrash" has no attribute "nope"
 [case testIncrementalNewTypeInMethod]
 from ntcrash import nope
 [file ntcrash.py]
-from mypy_extensions import TypedDict
-from typing import NewType, NamedTuple
+from typing import NewType, NamedTuple, TypedDict
 class C:
     def f(self) -> None:
         X = NewType('X', int)
@@ -1949,6 +1951,7 @@ def f() -> None:
     B = NamedTuple('B', [('x', X)])
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
@@ -2088,10 +2091,11 @@ reveal_type(b.x)
 y: b.A
 reveal_type(y)
 [file b.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 A = TypedDict('A', {'x': int, 'y': str})
 x: A
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:2: note: Revealed type is "TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})"
 main:4: note: Revealed type is "TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})"
@@ -2532,14 +2536,14 @@ x = NT(N(1))
 [out]
 
 [case testNewTypeFromForwardTypedDictIncremental]
-from typing import NewType, Tuple, Dict
-from mypy_extensions import TypedDict
+from typing import NewType, Tuple, TypedDict, Dict
 
 NT = NewType('NT', N) # type: ignore
 class N(TypedDict):
     x: A
 A = Dict[str, int]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 -- Some crazy self-referential named tuples, types dicts, and aliases
@@ -3753,7 +3757,7 @@ import b
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by clobbering
 -- the proto deps file with something with mtime mismatches.
-[file ../.mypy_cache/3.8/@deps.meta.json.2]
+[file ../.mypy_cache/3.9/@deps.meta.json.2]
 {"snapshot": {"__main__": "a7c958b001a45bd6a2a320f4e53c4c16", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "c532c89da517a4b779bcf7a964478d67"}, "deps_meta": {"@root": {"path": "@root.deps.json", "mtime": 0}, "__main__": {"path": "__main__.deps.json", "mtime": 0}, "a": {"path": "a.deps.json", "mtime": 0}, "b": {"path": "b.deps.json", "mtime": 0}, "builtins": {"path": "builtins.deps.json", "mtime": 0}}}
 [file ../.mypy_cache/.gitignore]
 # Another hack to not trigger a .gitignore creation failure "false positive"
@@ -3788,7 +3792,7 @@ import b
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by deleting
 -- the proto deps file.
-[delete ../.mypy_cache/3.8/@deps.meta.json.2]
+[delete ../.mypy_cache/3.9/@deps.meta.json.2]
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
@@ -4146,7 +4150,7 @@ from d import k
 [case testCachedBadProtocolNote]
 import b
 [file a.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 [file b.py]
 from typing import Iterable
@@ -4158,8 +4162,8 @@ from typing import Iterable
 from a import Point
 p: Point
 it: Iterable[int] = p  # change
-[typing fixtures/typing-medium.pyi]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 tmp/b.py:4: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
 tmp/b.py:4: note: Following member(s) of "Point" have conflicts:
@@ -4643,10 +4647,11 @@ from typing import NamedTuple
 from other import B
 A = NamedTuple('A', [('x', B)])
 [file other.pyi]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 from lib import A
 B = TypedDict('B', {'x': A})
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is "Tuple[TypedDict('other.B', {'x': Tuple[..., fallback=lib.A]}), fallback=lib.A]"
@@ -5268,7 +5273,7 @@ reveal_type(Foo().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 [out2]
-tmp/b.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
+tmp/b.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 
 [case testIsInstanceAdHocIntersectionIncrementalNoChangeSameName]
 import b
@@ -5291,7 +5296,7 @@ reveal_type(Foo().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 [out2]
-tmp/b.py:2: note: Revealed type is "a.<subclass of "B" and "B">"
+tmp/b.py:2: note: Revealed type is "a.<subclass of "c.B" and "a.B">"
 
 
 [case testIsInstanceAdHocIntersectionIncrementalNoChangeTuple]
@@ -5313,7 +5318,7 @@ reveal_type(Foo().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 [out2]
-tmp/b.py:2: note: Revealed type is "a.<subclass of "tuple" and "B">"
+tmp/b.py:2: note: Revealed type is "a.<subclass of "Tuple[builtins.int, ...]" and "a.B">"
 
 [case testIsInstanceAdHocIntersectionIncrementalIsInstanceChange]
 import c
@@ -5347,9 +5352,9 @@ from b import y
 reveal_type(y)
 [builtins fixtures/isinstance.pyi]
 [out]
-tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
+tmp/c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 [out2]
-tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "C">"
+tmp/c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.C">"
 
 [case testIsInstanceAdHocIntersectionIncrementalUnderlyingObjChang]
 import c
@@ -5375,9 +5380,9 @@ from b import y
 reveal_type(y)
 [builtins fixtures/isinstance.pyi]
 [out]
-tmp/c.py:2: note: Revealed type is "b.<subclass of "A" and "B">"
+tmp/c.py:2: note: Revealed type is "b.<subclass of "a.A" and "a.B">"
 [out2]
-tmp/c.py:2: note: Revealed type is "b.<subclass of "A" and "C">"
+tmp/c.py:2: note: Revealed type is "b.<subclass of "a.A" and "a.C">"
 
 [case testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable]
 import c
@@ -5408,7 +5413,7 @@ from b import z
 reveal_type(z)
 [builtins fixtures/isinstance.pyi]
 [out]
-tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
+tmp/c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 [out2]
 tmp/b.py:2: error: Cannot determine type of "y"
 tmp/c.py:2: note: Revealed type is "Any"
@@ -5445,7 +5450,60 @@ reveal_type(z)
 tmp/b.py:2: error: Cannot determine type of "y"
 tmp/c.py:2: note: Revealed type is "Any"
 [out2]
-tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
+tmp/c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
+
+[case testIsInstanceAdHocIntersectionIncrementalNestedClass]
+import b
+[file a.py]
+class A:
+    class B: ...
+    class C: ...
+    class D:
+        def __init__(self) -> None:
+            x: A.B
+            assert isinstance(x, A.C)
+            self.x = x
+[file b.py]
+from a import A
+[file b.py.2]
+from a import A
+reveal_type(A.D.x)
+[builtins fixtures/isinstance.pyi]
+[out]
+[out2]
+tmp/b.py:2: note: Revealed type is "a.<subclass of "a.A.B" and "a.A.C">"
+
+[case testIsInstanceAdHocIntersectionIncrementalUnions]
+import c
+[file a.py]
+import b
+class A:
+    p: b.D
+class B:
+    p: b.D
+class C:
+    p: b.D
+    c: str
+x: A
+assert isinstance(x, (B, C))
+y = x
+[file b.py]
+class D:
+    p: int
+[file c.py]
+from a import y
+[file c.py.2]
+from a import y, C
+reveal_type(y)
+reveal_type(y.p.p)
+assert isinstance(y, C)
+reveal_type(y.c)
+[builtins fixtures/isinstance.pyi]
+[out]
+[out2]
+tmp/c.py:2: note: Revealed type is "Union[a.<subclass of "a.A" and "a.B">, a.<subclass of "a.A" and "a.C">]"
+tmp/c.py:3: note: Revealed type is "builtins.int"
+tmp/c.py:5: note: Revealed type is "builtins.str"
 
 [case testStubFixupIssues]
 import a
@@ -6317,6 +6375,7 @@ class C: ...
 [out3]
 
 [case testNoCrashOnPartialLambdaInference]
+# flags: --no-local-partial-types
 import m
 [file m.py]
 from typing import TypeVar, Callable
@@ -6586,6 +6645,7 @@ class TheClass:
             for x in names
         })
         self.enum_type = pyenum
+[builtins fixtures/tuple.pyi]
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
@@ -6743,3 +6803,29 @@ from typing_extensions import TypeAlias
 IntOrStr: TypeAlias = int | str
 assert isinstance(1, IntOrStr)
 [builtins fixtures/type.pyi]
+
+[case testPropertySetterTypeIncremental]
+import b
+[file a.py]
+class A:
+    @property
+    def f(self) -> int:
+        return 1
+    @f.setter
+    def f(self, x: str) -> None:
+        pass
+[file b.py]
+from a import A
+[file b.py.2]
+from a import A
+a = A()
+a.f = ''  # OK
+reveal_type(a.f)
+a.f = 1
+reveal_type(a.f)
+[builtins fixtures/property.pyi]
+[out]
+[out2]
+tmp/b.py:4: note: Revealed type is "builtins.int"
+tmp/b.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+tmp/b.py:6: note: Revealed type is "builtins.int"

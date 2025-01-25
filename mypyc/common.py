@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 import sysconfig
-from typing import Any, Dict, Final
+from typing import Any, Final
 
 from mypy.util import unnamed_function
 
@@ -82,8 +82,14 @@ RUNTIME_C_FILES: Final = [
     "pythonsupport.c",
 ]
 
+# Python 3.12 introduced immortal objects, specified via a special reference count
+# value. The reference counts of immortal objects are normally not modified, but it's
+# not strictly wrong to modify them. See PEP 683 for more information, but note that
+# some details in the PEP are out of date.
+HAVE_IMMORTAL: Final = sys.version_info >= (3, 12)
 
-JsonDict = Dict[str, Any]
+
+JsonDict = dict[str, Any]
 
 
 def shared_lib_name(group_name: str) -> str:

@@ -92,7 +92,7 @@ exclude = '''(?x)(
 [file x/__init__.py]
 i: int = 0
 [file x/_skipme_please.py]
-This isn't even syntatically valid!
+This isn't even syntactically valid!
 [file x/please_skipme_.py]
 Neither is this!
 
@@ -107,7 +107,7 @@ exclude = """(?x)(
 [file x/__init__.py]
 i: int = 0
 [file x/_skipme_please.py]
-This isn't even syntatically valid!
+This isn't even syntactically valid!
 [file x/please_skipme_.py]
 Neither is this!
 
@@ -122,7 +122,7 @@ exclude = [
 [file x/__init__.py]
 i: int = 0
 [file x/_skipme_please.py]
-This isn't even syntatically valid!
+This isn't even syntactically valid!
 [file x/please_skipme_.py]
 Neither is this!
 

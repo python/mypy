@@ -10,9 +10,9 @@ import re
 import shutil
 import sys
 import time
+from collections.abc import Container, Iterable, Sequence, Sized
 from importlib import resources as importlib_resources
-from typing import IO, Any, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
-from typing_extensions import Literal
+from typing import IO, Any, Callable, Final, Literal, TypeVar
 
 orjson: Any
 try:
@@ -30,15 +30,7 @@ except ImportError:
 
 T = TypeVar("T")
 
-if sys.version_info >= (3, 9):
-    TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
-else:
-    with importlib_resources.path(
-        "mypy",  # mypy-c doesn't support __package__
-        "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
-    ) as _resource:
-        TYPESHED_DIR = str(_resource.parent / "typeshed")
-
+TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
 
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
@@ -490,10 +482,10 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 8):  # noqa: UP036
+    if sys.version_info[:2] < (3, 9):  # noqa: UP036, RUF100
         sys.exit(
-            "Running {name} with Python 3.7 or lower is not supported; "
-            "please upgrade to 3.8 or newer".format(name=program)
+            "Running {name} with Python 3.8 or lower is not supported; "
+            "please upgrade to 3.9 or newer".format(name=program)
         )
 
 
@@ -870,6 +862,18 @@ def is_typeshed_file(typeshed_dir: str | None, file: str) -> bool:
         return False
 
 
+def is_stdlib_file(typeshed_dir: str | None, file: str) -> bool:
+    if "stdlib" not in file:
+        # Fast path
+        return False
+    typeshed_dir = typeshed_dir if typeshed_dir is not None else TYPESHED_DIR
+    stdlib_dir = os.path.join(typeshed_dir, "stdlib")
+    try:
+        return os.path.commonpath((stdlib_dir, os.path.abspath(file))) == stdlib_dir
+    except ValueError:  # Different drives on Windows
+        return False
+
+
 def is_stub_package_file(file: str) -> bool:
     # Use hacky heuristics to check whether file is part of a PEP 561 stub package.
     if not file.endswith(".pyi"):
@@ -916,11 +920,17 @@ def quote_docstring(docstr: str) -> str:
 def json_dumps(obj: object, debug: bool = False) -> bytes:
     if orjson is not None:
         if debug:
-            return orjson.dumps(obj, option=orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
+            dumps_option = orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS
         else:
             # TODO: If we don't sort keys here, testIncrementalInternalScramble fails
             # We should document exactly what is going on there
-            return orjson.dumps(obj, option=orjson.OPT_SORT_KEYS)  # type: ignore[no-any-return]
+            dumps_option = orjson.OPT_SORT_KEYS
+
+        try:
+            return orjson.dumps(obj, option=dumps_option)  # type: ignore[no-any-return]
+        except TypeError as e:
+            if str(e) != "Integer exceeds 64-bit range":
+                raise
 
     if debug:
         return json.dumps(obj, indent=2, sort_keys=True).encode("utf-8")

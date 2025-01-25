@@ -730,6 +730,7 @@ bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
 PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
+CPyTagged CPyStr_Ord(PyObject *obj);
 
 
 // Bytes operations
@@ -740,6 +741,7 @@ PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
 PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
+CPyTagged CPyBytes_Ord(PyObject *obj);
 
 
 int CPyBytes_Compare(PyObject *left, PyObject *right);
@@ -783,7 +785,7 @@ static inline PyObject *_CPy_FromDummy(PyObject *p) {
     return p;
 }
 
-static int CPy_NoErrOccured(void) {
+static int CPy_NoErrOccurred(void) {
     return PyErr_Occurred() == NULL;
 }
 
@@ -854,11 +856,12 @@ PyObject *CPy_FetchStopIterationValue(void);
 PyObject *CPyType_FromTemplate(PyObject *template_,
                                PyObject *orig_bases,
                                PyObject *modname);
-PyObject *CPyType_FromTemplateWarpper(PyObject *template_,
+PyObject *CPyType_FromTemplateWrapper(PyObject *template_,
                                       PyObject *orig_bases,
                                       PyObject *modname);
 int CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
-                               PyObject *dict, PyObject *annotations);
+                               PyObject *dict, PyObject *annotations,
+                               PyObject *dataclass_type);
 PyObject *CPyPickle_SetState(PyObject *obj, PyObject *state);
 PyObject *CPyPickle_GetState(PyObject *obj);
 CPyTagged CPyTagged_Id(PyObject *o);

@@ -1884,8 +1884,7 @@ tup3: Tup2Class = tup2[:]     # E: Incompatible types in assignment (expression 
 [builtins fixtures/slice.pyi]
 
 [case testLiteralIntelligentIndexingTypedDict]
-from typing_extensions import Literal
-from mypy_extensions import TypedDict
+from typing_extensions import Literal, TypedDict
 
 class Unrelated: pass
 u: Unrelated
@@ -1909,8 +1908,9 @@ reveal_type(d.get(a_key, u))  # N: Revealed type is "Union[builtins.int, __main_
 reveal_type(d.get(b_key, u))  # N: Revealed type is "Union[builtins.str, __main__.Unrelated]"
 reveal_type(d.get(c_key, u))  # N: Revealed type is "builtins.object"
 
-reveal_type(d.pop(a_key))     # E: Key "a" of TypedDict "Outer" cannot be deleted \
-                              # N: Revealed type is "builtins.int"
+reveal_type(d.pop(a_key))     # N: Revealed type is "builtins.int" \
+                              # E: Key "a" of TypedDict "Outer" cannot be deleted
+
 reveal_type(d.pop(b_key))     # N: Revealed type is "builtins.str"
 d.pop(c_key)                  # E: TypedDict "Outer" has no key "c"
 
@@ -1923,8 +1923,7 @@ del d[c_key]                  # E: TypedDict "Outer" has no key "c"
 
 [case testLiteralIntelligentIndexingUsingFinal]
 from typing import Tuple, NamedTuple
-from typing_extensions import Literal, Final
-from mypy_extensions import TypedDict
+from typing_extensions import Literal, Final, TypedDict
 
 int_key_good: Final = 0
 int_key_bad: Final = 3
@@ -1991,8 +1990,7 @@ tup2[idx_bad]                   # E: Tuple index out of range
 [out]
 
 [case testLiteralIntelligentIndexingTypedDictUnions]
-from typing_extensions import Literal, Final
-from mypy_extensions import TypedDict
+from typing_extensions import Literal, Final, TypedDict
 
 class A: pass
 class B: pass
@@ -2044,8 +2042,7 @@ del test[bad_keys]              # E: Key "a" of TypedDict "Test" cannot be delet
 
 [case testLiteralIntelligentIndexingMultiTypedDict]
 from typing import Union
-from typing_extensions import Literal
-from mypy_extensions import TypedDict
+from typing_extensions import Literal, TypedDict
 
 class A: pass
 class B: pass
@@ -2137,7 +2134,7 @@ force4(reveal_type(f.instancevar4))  # N: Revealed type is "None"
 [builtins fixtures/primitives.pyi]
 [out]
 
-[case testLiteralFinalDirectInstanceTypesSupercedeInferredLiteral]
+[case testLiteralFinalDirectInstanceTypesSupersedeInferredLiteral]
 from typing_extensions import Final, Literal
 
 var1: Final[int] = 1
@@ -2985,6 +2982,14 @@ class C(Base):
         return super().feed_data(sep)
 [builtins fixtures/tuple.pyi]
 
+[case testLiteralInsideAType]
+from typing_extensions import Literal
+from typing import Type, Union
+
+x: Type[Literal[1]]  # E: Type[...] can't contain "Literal[...]"
+y: Type[Union[Literal[1], Literal[2]]]  # E: Type[...] can't contain "Union[Literal[...], Literal[...]]"
+z: Type[Literal[1, 2]]  # E: Type[...] can't contain "Union[Literal[...], Literal[...]]"
+[builtins fixtures/tuple.pyi]
 
 -- This is constructed so that when mypy performs first pass
 -- type analysis on _LiteralInteger, builtins.int is still a

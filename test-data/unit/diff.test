@@ -566,6 +566,7 @@ A = Enum('A', 'x')
 B = Enum('B', 'y')
 C = IntEnum('C', 'x')
 D = IntEnum('D', 'x y')
+[builtins fixtures/enum.pyi]
 [out]
 __main__.B.x
 __main__.B.y
@@ -605,6 +606,7 @@ class D(Enum):
     Y = 'b'
 class F(Enum):
     X = 0
+[builtins fixtures/enum.pyi]
 [out]
 __main__.B.Y
 __main__.B.Z
@@ -615,57 +617,61 @@ __main__.E
 __main__.F
 
 [case testTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 [file next.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': str})
 p = Point(dict(x=42, y='lurr'))
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 __main__.Point
 __main__.p
 
 [case testTypedDict2]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class Point(TypedDict):
     x: int
     y: int
 p = Point(dict(x=42, y=1337))
 [file next.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class Point(TypedDict):
     x: int
     y: str
 p = Point(dict(x=42, y='lurr'))
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 __main__.Point
 __main__.p
 
 [case testTypedDict3]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 [file next.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int})
 p = Point(dict(x=42))
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 __main__.Point
 __main__.p
 
 [case testTypedDict4]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 [file next.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int}, total=False)
 p = Point(dict(x=42, y=1337))
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 __main__.Point
 __main__.p

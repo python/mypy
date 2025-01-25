@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, NamedTuple
+from typing import NamedTuple
 
 from mypyc.common import PROPSET_PREFIX, JsonDict
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
@@ -76,7 +76,7 @@ class VTableMethod(NamedTuple):
     shadow_method: FuncIR | None
 
 
-VTableEntries = List[VTableMethod]
+VTableEntries = list[VTableMethod]
 
 
 class ClassIR:

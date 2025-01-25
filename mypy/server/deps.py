@@ -82,7 +82,6 @@ Test cases for this module live in 'test-data/unit/deps*.test'.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import List
 
 from mypy.nodes import (
     GDEF,
@@ -947,7 +946,7 @@ def get_type_triggers(
     return typ.accept(TypeTriggersVisitor(use_logical_deps, seen_aliases))
 
 
-class TypeTriggersVisitor(TypeVisitor[List[str]]):
+class TypeTriggersVisitor(TypeVisitor[list[str]]):
     def __init__(
         self, use_logical_deps: bool, seen_aliases: set[TypeAliasType] | None = None
     ) -> None:

@@ -10,15 +10,17 @@ import shutil
 import sys
 import tempfile
 from abc import abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Iterator, NamedTuple, NoReturn, Pattern, Union
+from re import Pattern
+from typing import Any, Final, NamedTuple, NoReturn, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 import pytest
 
 from mypy import defaults
-from mypy.test.config import PREFIX, test_data_prefix, test_temp_dir
+from mypy.test.config import PREFIX, mypyc_output_dir, test_data_prefix, test_temp_dir
 
 root_dir = os.path.normpath(PREFIX)
 
@@ -304,7 +306,7 @@ class DataDrivenTestCase(pytest.Item):
         self.data = data
         self.line = line
         self.old_cwd: str | None = None
-        self.tmpdir: tempfile.TemporaryDirectory[str] | None = None
+        self.tmpdir: str | None = None
 
     def runtest(self) -> None:
         if self.skip:
@@ -323,19 +325,19 @@ class DataDrivenTestCase(pytest.Item):
             save_dir: str | None = self.config.getoption("--save-failures-to", None)
             if save_dir:
                 assert self.tmpdir is not None
-                target_dir = os.path.join(save_dir, os.path.basename(self.tmpdir.name))
+                target_dir = os.path.join(save_dir, os.path.basename(self.tmpdir))
                 print(f"Copying data from test {self.name} to {target_dir}")
                 if not os.path.isabs(target_dir):
                     assert self.old_cwd
                     target_dir = os.path.join(self.old_cwd, target_dir)
-                shutil.copytree(self.tmpdir.name, target_dir)
+                shutil.copytree(self.tmpdir, target_dir)
             raise
 
     def setup(self) -> None:
         parse_test_case(case=self)
         self.old_cwd = os.getcwd()
-        self.tmpdir = tempfile.TemporaryDirectory(prefix="mypy-test-")
-        os.chdir(self.tmpdir.name)
+        self.tmpdir = tempfile.mkdtemp(prefix="mypy-test-")
+        os.chdir(self.tmpdir)
         os.mkdir(test_temp_dir)
 
         # Precalculate steps for find_steps()
@@ -371,10 +373,7 @@ class DataDrivenTestCase(pytest.Item):
         if self.old_cwd is not None:
             os.chdir(self.old_cwd)
         if self.tmpdir is not None:
-            try:
-                self.tmpdir.cleanup()
-            except OSError:
-                pass
+            shutil.rmtree(self.tmpdir, ignore_errors=True)
         self.old_cwd = None
         self.tmpdir = None
 
@@ -585,6 +584,13 @@ def fix_cobertura_filename(line: str) -> str:
 # pytest setup
 #
 ##
+
+
+def pytest_sessionstart(session: Any) -> None:
+    # Clean up directory where mypyc tests write intermediate files on failure
+    # to avoid any confusion between test runs
+    if os.path.isdir(mypyc_output_dir):
+        shutil.rmtree(mypyc_output_dir)
 
 
 # This function name is special to pytest.  See
