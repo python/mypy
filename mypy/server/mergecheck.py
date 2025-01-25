@@ -25,13 +25,18 @@ def check_consistency(o: object) -> None:
         if isinstance(sym, FakeInfo):
             continue
 
+        fn = sym.fullname
+        # Skip None and empty names, since they are ambiguous.
+        # TODO: Everything should have a proper full name?
+        if not fn:
+            continue
+
         # Skip stuff that should be expected to have duplicate names
         if isinstance(sym, (Var, Decorator)):
             continue
         if isinstance(sym, FuncDef) and sym.is_overload:
             continue
 
-        fn = sym.fullname
         if fn not in m:
             m[fn] = sym
             continue

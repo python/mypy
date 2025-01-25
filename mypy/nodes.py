@@ -171,7 +171,11 @@ class Node(Context):
     __slots__ = ()
 
     def __str__(self) -> str:
-        return self.accept(mypy.strconv.StrConv(options=Options()))
+        ans = self.accept(mypy.strconv.StrConv(options=Options()))
+        if ans is None:
+            # Some visitors might have empty bodies and actually return `None`
+            return repr(self)  # type: ignore[unreachable]
+        return ans
 
     def str_with_options(self, options: Options) -> str:
         ans = self.accept(mypy.strconv.StrConv(options=options))
@@ -867,6 +871,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
 
 # All types that are both SymbolNodes and FuncBases. See the FuncBase
 # docstring for the rationale.
+# See https://github.com/python/mypy/pull/13607#issuecomment-1236357236
+# TODO: we want to remove this at some point and just use `FuncBase` ideally.
 SYMBOL_FUNCBASE_TYPES: Final = (OverloadedFuncDef, FuncDef)
 
 
