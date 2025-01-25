@@ -347,7 +347,7 @@ def f() -> int:
 
 [case testNoReturnDisallowsReturn]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 def f() -> NoReturn:
   if bool():
@@ -358,7 +358,7 @@ def f() -> NoReturn:
 
 [case testNoReturnWithoutImplicitReturn]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 def no_return() -> NoReturn: pass
 def f() -> NoReturn:
@@ -367,7 +367,7 @@ def f() -> NoReturn:
 
 [case testNoReturnDisallowsImplicitReturn]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 def f() -> NoReturn:  # E: Implicit return in function which does not return
   non_trivial_function = 1
@@ -391,7 +391,7 @@ x = force_forward_reference()
 
 [case testNoReturnNoWarnNoReturn]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 def no_return() -> NoReturn: pass
 def f() -> int:
@@ -403,7 +403,7 @@ def f() -> int:
 
 [case testNoReturnInExpr]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 def no_return() -> NoReturn: pass
 def f() -> int:
@@ -413,14 +413,14 @@ reveal_type(f() or no_return())  # N: Revealed type is "builtins.int"
 
 [case testNoReturnVariable]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type "Never")
 [builtins fixtures/dict.pyi]
 
 [case testNoReturnAsync]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 async def f() -> NoReturn: ...
 
