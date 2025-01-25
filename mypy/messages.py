@@ -56,6 +56,7 @@ from mypy.options import Options
 from mypy.subtypes import (
     IS_CLASS_OR_STATIC,
     IS_CLASSVAR,
+    IS_EXPLICIT_SETTER,
     IS_SETTABLE,
     IS_VAR,
     find_member,
@@ -186,9 +187,13 @@ class MessageBuilder:
         *,
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = True,
         save_filtered_errors: bool = False,
+        filter_deprecated: bool = False,
     ) -> ErrorWatcher:
         return ErrorWatcher(
-            self.errors, filter_errors=filter_errors, save_filtered_errors=save_filtered_errors
+            self.errors,
+            filter_errors=filter_errors,
+            save_filtered_errors=save_filtered_errors,
+            filter_deprecated=filter_deprecated,
         )
 
     def add_errors(self, errors: list[ErrorInfo]) -> None:
@@ -1163,6 +1168,20 @@ class MessageBuilder:
 
         note_template = 'Overload variants must be defined in the same order as they are in "{}"'
         self.note(note_template.format(supertype), context, code=codes.OVERRIDE)
+
+    def incompatible_setter_override(
+        self, defn: Context, typ: Type, original_type: Type, base: TypeInfo
+    ) -> None:
+        self.fail("Incompatible override of a setter type", defn, code=codes.OVERRIDE)
+        base_str, override_str = format_type_distinctly(original_type, typ, options=self.options)
+        self.note(
+            f' (base class "{base.name}" defined the type as {base_str},',
+            defn,
+            code=codes.OVERRIDE,
+        )
+        self.note(f" override has type {override_str})", defn, code=codes.OVERRIDE)
+        if is_subtype(typ, original_type):
+            self.note(" Setter types should behave contravariantly", defn, code=codes.OVERRIDE)
 
     def signature_incompatible_with_supertype(
         self,
@@ -2201,22 +2220,34 @@ class MessageBuilder:
         ):
             type_name = format_type(subtype, self.options, module_names=True)
             self.note(f"Following member(s) of {type_name} have conflicts:", context, code=code)
-            for name, got, exp in conflict_types[:MAX_ITEMS]:
+            for name, got, exp, is_lvalue in conflict_types[:MAX_ITEMS]:
                 exp = get_proper_type(exp)
                 got = get_proper_type(got)
+                setter_suffix = " setter type" if is_lvalue else ""
                 if not isinstance(exp, (CallableType, Overloaded)) or not isinstance(
                     got, (CallableType, Overloaded)
                 ):
                     self.note(
-                        "{}: expected {}, got {}".format(
-                            name, *format_type_distinctly(exp, got, options=self.options)
+                        "{}: expected{} {}, got {}".format(
+                            name,
+                            setter_suffix,
+                            *format_type_distinctly(exp, got, options=self.options),
                         ),
                         context,
                         offset=OFFSET,
                         code=code,
                     )
+                    if is_lvalue and is_subtype(got, exp, options=self.options):
+                        self.note(
+                            "Setter types should behave contravariantly",
+                            context,
+                            offset=OFFSET,
+                            code=code,
+                        )
                 else:
-                    self.note("Expected:", context, offset=OFFSET, code=code)
+                    self.note(
+                        "Expected{}:".format(setter_suffix), context, offset=OFFSET, code=code
+                    )
                     if isinstance(exp, CallableType):
                         self.note(
                             pretty_callable(exp, self.options, skip_self=class_obj or is_module),
@@ -3029,12 +3060,12 @@ def get_missing_protocol_members(left: Instance, right: Instance, skip: list[str
 
 def get_conflict_protocol_types(
     left: Instance, right: Instance, class_obj: bool = False, options: Options | None = None
-) -> list[tuple[str, Type, Type]]:
+) -> list[tuple[str, Type, Type, bool]]:
     """Find members that are defined in 'left' but have incompatible types.
-    Return them as a list of ('member', 'got', 'expected').
+    Return them as a list of ('member', 'got', 'expected', 'is_lvalue').
     """
     assert right.type.is_protocol
-    conflicts: list[tuple[str, Type, Type]] = []
+    conflicts: list[tuple[str, Type, Type, bool]] = []
     for member in right.type.protocol_members:
         if member in ("__init__", "__new__"):
             continue
@@ -3044,10 +3075,29 @@ def get_conflict_protocol_types(
         if not subtype:
             continue
         is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True, options=options)
-        if IS_SETTABLE in get_member_flags(member, right):
-            is_compat = is_compat and is_subtype(supertype, subtype, options=options)
         if not is_compat:
-            conflicts.append((member, subtype, supertype))
+            conflicts.append((member, subtype, supertype, False))
+        superflags = get_member_flags(member, right)
+        if IS_SETTABLE not in superflags:
+            continue
+        different_setter = False
+        if IS_EXPLICIT_SETTER in superflags:
+            set_supertype = find_member(member, right, left, is_lvalue=True)
+            if set_supertype and not is_same_type(set_supertype, supertype):
+                different_setter = True
+            supertype = set_supertype
+        if IS_EXPLICIT_SETTER in get_member_flags(member, left):
+            set_subtype = mypy.typeops.get_protocol_member(left, member, class_obj, is_lvalue=True)
+            if set_subtype and not is_same_type(set_subtype, subtype):
+                different_setter = True
+            subtype = set_subtype
+        if not is_compat and not different_setter:
+            # We already have this conflict listed, avoid duplicates.
+            continue
+        assert supertype is not None and subtype is not None
+        is_compat = is_subtype(supertype, subtype, options=options)
+        if not is_compat:
+            conflicts.append((member, subtype, supertype, different_setter))
     return conflicts
 
 

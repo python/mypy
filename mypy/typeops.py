@@ -1147,7 +1147,9 @@ def fixup_partial_type(typ: Type) -> Type:
         return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
 
 
-def get_protocol_member(left: Instance, member: str, class_obj: bool) -> ProperType | None:
+def get_protocol_member(
+    left: Instance, member: str, class_obj: bool, is_lvalue: bool = False
+) -> Type | None:
     if member == "__call__" and class_obj:
         # Special case: class objects always have __call__ that is just the constructor.
         from mypy.checkmember import type_object_type
@@ -1164,4 +1166,13 @@ def get_protocol_member(left: Instance, member: str, class_obj: bool) -> ProperT
 
     from mypy.subtypes import find_member
 
-    return get_proper_type(find_member(member, left, left, class_obj=class_obj))
+    subtype = find_member(member, left, left, class_obj=class_obj, is_lvalue=is_lvalue)
+    if isinstance(subtype, PartialType):
+        subtype = (
+            NoneType()
+            if subtype.type is None
+            else Instance(
+                subtype.type, [AnyType(TypeOfAny.unannotated)] * len(subtype.type.type_vars)
+            )
+        )
+    return subtype

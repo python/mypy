@@ -11163,3 +11163,53 @@ main:6: error: class a.D is deprecated: use D2 instead
 main:7: error: class a.D is deprecated: use D2 instead
 b.py:1: error: class a.C is deprecated: use C2 instead
 b.py:2: error: class a.D is deprecated: use D2 instead
+
+[case testPropertySetterTypeFineGrained]
+from a import A
+a = A()
+a.f = ''
+[file a.py]
+class A:
+    @property
+    def f(self) -> int:
+        return 1
+    @f.setter
+    def f(self, x: str) -> None:
+        pass
+[file a.py.2]
+class A:
+    @property
+    def f(self) -> int:
+        return 1
+    @f.setter
+    def f(self, x: int) -> None:
+        pass
+[builtins fixtures/property.pyi]
+[out]
+==
+main:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testPropertyDeleteSetterFineGrained]
+from a import A
+a = A()
+a.f = 1
+[file a.py]
+class A:
+    @property
+    def f(self) -> int:
+        return 1
+    @f.setter
+    def f(self, x: int) -> None:
+        pass
+[file a.py.2]
+class A:
+    @property
+    def f(self) -> int:
+        return 1
+    @f.deleter
+    def f(self) -> None:
+        pass
+[builtins fixtures/property.pyi]
+[out]
+==
+main:3: error: Property "f" defined in "A" is read-only

@@ -6803,3 +6803,29 @@ from typing_extensions import TypeAlias
 IntOrStr: TypeAlias = int | str
 assert isinstance(1, IntOrStr)
 [builtins fixtures/type.pyi]
+
+[case testPropertySetterTypeIncremental]
+import b
+[file a.py]
+class A:
+    @property
+    def f(self) -> int:
+        return 1
+    @f.setter
+    def f(self, x: str) -> None:
+        pass
+[file b.py]
+from a import A
+[file b.py.2]
+from a import A
+a = A()
+a.f = ''  # OK
+reveal_type(a.f)
+a.f = 1
+reveal_type(a.f)
+[builtins fixtures/property.pyi]
+[out]
+[out2]
+tmp/b.py:4: note: Revealed type is "builtins.int"
+tmp/b.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+tmp/b.py:6: note: Revealed type is "builtins.int"
