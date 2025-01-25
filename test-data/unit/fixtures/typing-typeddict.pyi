@@ -24,6 +24,7 @@ Final = 0
 Literal = 0
 TypedDict = 0
 NoReturn = 0
+NewType = 0
 Required = 0
 NotRequired = 0
 ReadOnly = 0

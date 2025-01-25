@@ -2182,8 +2182,7 @@ class M(N): pass
 [out]
 
 [case testForwardRefsInWithStatementImplicit]
-from typing import ContextManager, Any
-from mypy_extensions import TypedDict
+from typing import ContextManager, Any, TypedDict
 cm: ContextManager[N]
 
 with cm as g:
@@ -2191,12 +2190,11 @@ with cm as g:
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testForwardRefsInWithStatement]
-from typing import ContextManager, Any
-from mypy_extensions import TypedDict
+from typing import ContextManager, Any, TypedDict
 cm: ContextManager[Any]
 
 with cm as g:  # type: N
@@ -2204,7 +2202,7 @@ with cm as g:  # type: N
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testGlobalWithoutInitialization]

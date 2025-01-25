@@ -1033,7 +1033,7 @@ _program.py:17: note: Revealed type is "builtins.str"
 
 [case testTypedDictGet]
 # Test that TypedDict get plugin works with typeshed stubs
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
@@ -1054,7 +1054,7 @@ _testTypedDictGet.py:9: note:     def [_T] get(self, str, /, default: object) ->
 _testTypedDictGet.py:11: note: Revealed type is "builtins.object"
 
 [case testTypedDictMappingMethods]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Cell = TypedDict('Cell', {'value': int})
 c = Cell(value=42)
 for x in c:
@@ -1098,8 +1098,7 @@ def foo(mymap) -> Optional[MyNamedTuple]:
 [out]
 
 [case testCanConvertTypedDictToAnySuperclassOfMapping]
-from mypy_extensions import TypedDict
-from typing import Sized, Iterable, Container
+from typing import Sized, TypedDict, Iterable, Container
 
 Point = TypedDict('Point', {'x': int, 'y': int})
 
@@ -1110,12 +1109,12 @@ c: Container[str] = p
 o: object = p
 it2: Iterable[int] = p
 [out]
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note: Following member(s) of "Point" have conflicts:
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Expected:
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[int]
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Got:
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[str]
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note: Following member(s) of "Point" have conflicts:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:     Expected:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:         def __iter__(self) -> Iterator[int]
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:     Got:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:         def __iter__(self) -> Iterator[str]
 
 [case testAsyncioGatherPreciseType-xfail]
 # Mysteriously regressed in #11905
