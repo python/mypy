@@ -1532,7 +1532,13 @@ class IfStmt(Statement):
     else_body: Block | None
     pass1_always_true_block: bool
 
-    def __init__(self, expr: list[Expression], body: list[Block], else_body: Block | None, has_pass1_always_true_block=False) -> None:
+    def __init__(
+        self,
+        expr: list[Expression],
+        body: list[Block],
+        else_body: Block | None,
+        has_pass1_always_true_block=False,
+    ) -> None:
         super().__init__()
         self.expr = expr
         self.body = body
