@@ -14,7 +14,6 @@ from mypy.typeops import make_simplified_union
 from mypy.types import (
     AnyType,
     Instance,
-    NoneType,
     PartialType,
     ProperType,
     TupleType,
@@ -271,7 +270,7 @@ class ConditionalTypeBinder:
                         )
                         if simplified == self.declarations[key]:
                             type = simplified
-            if current_value is None or not is_same_type(type, current_value[0]):
+            if current_value is None or not is_same_type(type, current_value.type):
                 self._put(key, type, from_assignment=True)
                 changed = True
 
@@ -313,9 +312,7 @@ class ConditionalTypeBinder:
         yield self.type_assignments
         self.type_assignments = old_assignments
 
-    def assign_type(
-        self, expr: Expression, type: Type, declared_type: Type | None, restrict_any: bool = False
-    ) -> None:
+    def assign_type(self, expr: Expression, type: Type, declared_type: Type | None) -> None:
         # We should erase last known value in binder, because if we are using it,
         # it means that the target is not final, and therefore can't hold a literal.
         type = remove_instance_last_known_values(type)
@@ -344,43 +341,12 @@ class ConditionalTypeBinder:
             # times?
             return
 
-        p_declared = get_proper_type(declared_type)
-        p_type = get_proper_type(type)
         enclosing_type = get_proper_type(self.most_recent_enclosing_type(expr, type))
-        if isinstance(enclosing_type, AnyType) and not restrict_any:
-            # If x is Any and y is int, after x = y we do not infer that x is int.
-            # This could be changed.
-            # Instead, since we narrowed type from Any in a recent frame (probably an
-            # isinstance check), but now it is reassigned, we broaden back
-            # to Any (which is the most recent enclosing type)
+        if isinstance(enclosing_type, AnyType):
+            # If x is Any and y is int, after x = y we do not infer that x is int,
+            # instead we keep it Any. This behavior is unsafe, but it exists since
+            # long time, so we will keep it until someone complains.
             self.put(expr, enclosing_type)
-        # As a special case, when assigning Any to a variable with a
-        # declared Optional type that has been narrowed to None,
-        # replace all the Nones in the declared Union type with Any.
-        # This overrides the normal behavior of ignoring Any assignments to variables
-        # in order to prevent false positives.
-        # (See discussion in #3526)
-        elif (
-            isinstance(p_type, AnyType)
-            and isinstance(p_declared, UnionType)
-            and any(isinstance(get_proper_type(item), NoneType) for item in p_declared.items)
-            and isinstance(
-                get_proper_type(self.most_recent_enclosing_type(expr, NoneType())), NoneType
-            )
-        ):
-            # Replace any Nones in the union type with Any
-            new_items = [
-                type if isinstance(get_proper_type(item), NoneType) else item
-                for item in p_declared.items
-            ]
-            self.put(expr, UnionType(new_items))
-        elif isinstance(p_type, AnyType) and not (
-            isinstance(p_declared, UnionType)
-            and any(isinstance(get_proper_type(item), AnyType) for item in p_declared.items)
-        ):
-            # Assigning an Any value doesn't affect the type to avoid false negatives, unless
-            # there is an Any item in a declared union type.
-            self.put(expr, declared_type)
         else:
             self.put(expr, type)
 

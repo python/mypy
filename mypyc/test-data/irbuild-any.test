@@ -49,8 +49,8 @@ def f(a, n, c):
     r3 :: bool
     r4 :: object
     r5 :: int
-    r6 :: str
-    r7 :: object
+    r6 :: object
+    r7 :: str
     r8 :: i32
     r9 :: bit
 L0:
@@ -62,9 +62,9 @@ L0:
     a = r4
     r5 = unbox(int, a)
     n = r5
-    r6 = 'a'
-    r7 = box(int, n)
-    r8 = PyObject_SetAttr(a, r6, r7)
+    r6 = box(int, n)
+    r7 = 'a'
+    r8 = PyObject_SetAttr(a, r7, r6)
     r9 = r8 >= 0 :: signed
     return 1
 

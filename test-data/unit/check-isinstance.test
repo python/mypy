@@ -115,8 +115,8 @@ if int():
     x = B()
     x.z
     x = foo()
-    x.z          # E: "A" has no attribute "z"
-    x.y
+    reveal_type(x)  # N: Revealed type is "Any"
+reveal_type(x)  # N: Revealed type is "__main__.A"
 
 [case testSingleMultiAssignment]
 x = 'a'
