@@ -786,3 +786,20 @@ def func2(val: Union[int, str]):
     else:
         reveal_type(val)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardRestrictAwaySingleInvariant]
+from typing import List
+from typing_extensions import TypeGuard
+
+class B: ...
+class C(B): ...
+
+def is_c_list(x: list[B]) -> TypeGuard[list[C]]: ...
+
+def test() -> None:
+    x: List[B]
+    if not is_c_list(x):
+        reveal_type(x)  # N: Revealed type is "builtins.list[__main__.B]"
+        return
+    reveal_type(x)  # N: Revealed type is "builtins.list[__main__.C]"
+[builtins fixtures/tuple.pyi]

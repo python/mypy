@@ -237,25 +237,34 @@ class ConditionalTypeBinder:
                 ):
                     type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
-                type = make_simplified_union([t.type for t in resulting_values])
-                # Try simplifying resulting type for unions involving variadic tuples.
-                # Technically, everything is still valid without this step, but if we do
-                # not do this, this may create long unions after exiting an if check like:
-                #     x: tuple[int, ...]
-                #     if len(x) < 10:
-                #         ...
-                # We want the type of x to be tuple[int, ...] after this block (if it is
-                # still equivalent to such type).
-                if isinstance(type, UnionType):
-                    type = collapse_variadic_union(type)
-                if isinstance(type, ProperType) and isinstance(type, UnionType):
-                    # Simplify away any extra Any's that were added to the declared
-                    # type when popping a frame.
-                    simplified = UnionType.make_union(
-                        [t for t in type.items if not isinstance(get_proper_type(t), AnyType)]
-                    )
-                    if simplified == self.declarations[key]:
-                        type = simplified
+                possible_types = []
+                for t in resulting_values:
+                    assert t is not None
+                    possible_types.append(t.type)
+                if len(possible_types) == 1:
+                    # This is to avoid calling get_proper_type() unless needed, as this may
+                    # interfere with our (hacky) TypeGuard support.
+                    type = possible_types[0]
+                else:
+                    type = make_simplified_union(possible_types)
+                    # Try simplifying resulting type for unions involving variadic tuples.
+                    # Technically, everything is still valid without this step, but if we do
+                    # not do this, this may create long unions after exiting an if check like:
+                    #     x: tuple[int, ...]
+                    #     if len(x) < 10:
+                    #         ...
+                    # We want the type of x to be tuple[int, ...] after this block (if it is
+                    # still equivalent to such type).
+                    if isinstance(type, UnionType):
+                        type = collapse_variadic_union(type)
+                    if isinstance(type, ProperType) and isinstance(type, UnionType):
+                        # Simplify away any extra Any's that were added to the declared
+                        # type when popping a frame.
+                        simplified = UnionType.make_union(
+                            [t for t in type.items if not isinstance(get_proper_type(t), AnyType)]
+                        )
+                        if simplified == self.declarations[key]:
+                            type = simplified
             if current_value is None or not is_same_type(type, current_value[0]):
                 self._put(key, type, from_assignment=True)
                 changed = True
