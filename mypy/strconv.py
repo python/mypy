@@ -182,7 +182,8 @@ class StrConv(NodeVisitor[str]):
         if o.type_vars:
             a.insert(1, ("TypeVars", o.type_vars))
         if o.metaclass:
-            a.insert(1, f"Metaclass({o.metaclass.accept(self)})")
+            inner = o.metaclass.accept(self)
+            a.insert(1, f"Metaclass({inner})")
         if o.decorators:
             a.insert(1, ("Decorators", o.decorators))
         if o.info and o.info._promote:
@@ -430,13 +431,16 @@ class StrConv(NodeVisitor[str]):
 
     def visit_yield_from_expr(self, o: mypy.nodes.YieldFromExpr) -> str:
         if o.expr:
-            return self.dump([o.expr.accept(self)], o)
+            inner = o.expr.accept(self)
+            return self.dump([inner], o)
         else:
             return self.dump([], o)
 
     def visit_call_expr(self, o: mypy.nodes.CallExpr) -> str:
         if o.analyzed:
-            return o.analyzed.accept(self)
+            result = o.analyzed.accept(self)
+            assert result is not None
+            return result
         args: list[mypy.nodes.Expression] = []
         extra: list[str | tuple[str, list[Any]]] = []
         for i, kind in enumerate(o.arg_kinds):
@@ -455,7 +459,9 @@ class StrConv(NodeVisitor[str]):
 
     def visit_op_expr(self, o: mypy.nodes.OpExpr) -> str:
         if o.analyzed:
-            return o.analyzed.accept(self)
+            result = o.analyzed.accept(self)
+            assert result is not None
+            return result
         return self.dump([o.op, o.left, o.right], o)
 
     def visit_comparison_expr(self, o: mypy.nodes.ComparisonExpr) -> str:
@@ -494,7 +500,9 @@ class StrConv(NodeVisitor[str]):
 
     def visit_index_expr(self, o: mypy.nodes.IndexExpr) -> str:
         if o.analyzed:
-            return o.analyzed.accept(self)
+            result = o.analyzed.accept(self)
+            assert result is not None
+            return result
         return self.dump([o.base, o.index], o)
 
     def visit_super_expr(self, o: mypy.nodes.SuperExpr) -> str:
@@ -653,7 +661,9 @@ def dump_tagged(nodes: Sequence[object], tag: str | None, str_conv: StrConv) -> 
             s = dump_tagged(n[1], n[0], str_conv)
             a.append(indent(s, 2))
         elif isinstance(n, mypy.nodes.Node):
-            a.append(indent(n.accept(str_conv), 2))
+            indented = n.accept(str_conv)
+            assert indented is not None
+            a.append(indent(indented, 2))
         elif isinstance(n, Type):
             a.append(
                 indent(n.accept(TypeStrVisitor(str_conv.id_mapper, options=str_conv.options)), 2)

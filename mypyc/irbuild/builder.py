@@ -274,6 +274,7 @@ class IRBuilder:
                 self.can_borrow = can_borrow
                 try:
                     res = node.accept(self.visitor)
+                    assert res is not None
                     res = self.coerce(res, self.node_type(node), node.line)
                 # If we hit an error during compilation, we want to
                 # keep trying, so we can produce more error

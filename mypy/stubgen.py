@@ -285,14 +285,16 @@ class AliasPrinter(NodeVisitor[str]):
         callee = node.callee.accept(self)
         args = []
         for name, arg, kind in zip(node.arg_names, node.args, node.arg_kinds):
+            arg_str = arg.accept(self)
+            assert arg_str is not None
             if kind == ARG_POS:
-                args.append(arg.accept(self))
+                args.append(arg_str)
             elif kind == ARG_STAR:
-                args.append("*" + arg.accept(self))
+                args.append("*" + arg_str)
             elif kind == ARG_STAR2:
-                args.append("**" + arg.accept(self))
+                args.append("**" + arg_str)
             elif kind == ARG_NAMED:
-                args.append(f"{name}={arg.accept(self)}")
+                args.append(f"{name}={arg_str}")
             else:
                 raise ValueError(f"Unknown argument kind {kind} in call")
         return f"{callee}({', '.join(args)})"
@@ -335,41 +337,65 @@ class AliasPrinter(NodeVisitor[str]):
         base_fullname = self.stubgen.get_fullname(node.base)
         if base_fullname == "typing.Union":
             if isinstance(node.index, TupleExpr):
-                return " | ".join([item.accept(self) for item in node.index.items])
-            return node.index.accept(self)
+                items = []
+                for item in node.index.items:
+                    item_str = item.accept(self)
+                    assert item_str is not None
+                    items.append(item_str)
+                return " | ".join(items)
+            result = node.index.accept(self)
+            assert result is not None
+            return result
         if base_fullname == "typing.Optional":
             if isinstance(node.index, TupleExpr):
                 return self.stubgen.add_name("_typeshed.Incomplete")
-            return f"{node.index.accept(self)} | None"
+            inner = node.index.accept(self)
+            return f"{inner} | None"
         base = node.base.accept(self)
         index = node.index.accept(self)
+        assert index is not None
         if len(index) > 2 and index.startswith("(") and index.endswith(")"):
             index = index[1:-1].rstrip(",")
         return f"{base}[{index}]"
 
     def visit_tuple_expr(self, node: TupleExpr) -> str:
         suffix = "," if len(node.items) == 1 else ""
-        return f"({', '.join(n.accept(self) for n in node.items)}{suffix})"
+        items = []
+        for item in node.items:
+            item_str = item.accept(self)
+            assert item_str is not None
+            items.append(item_str)
+        return f"({', '.join(items)}{suffix})"
 
     def visit_list_expr(self, node: ListExpr) -> str:
-        return f"[{', '.join(n.accept(self) for n in node.items)}]"
+        items = []
+        for item in node.items:
+            item_str = item.accept(self)
+            assert item_str is not None
+            items.append(item_str)
+        return f"[{', '.join(items)}]"
 
     def visit_dict_expr(self, o: DictExpr) -> str:
         dict_items = []
         for key, value in o.items:
             # This is currently only used for TypedDict where all keys are strings.
             assert isinstance(key, StrExpr)
-            dict_items.append(f"{key.accept(self)}: {value.accept(self)}")
+            inner1 = key.accept(self)
+            inner2 = value.accept(self)
+            dict_items.append(f"{inner1}: {inner2}")
         return f"{{{', '.join(dict_items)}}}"
 
     def visit_ellipsis(self, node: EllipsisExpr) -> str:
         return "..."
 
     def visit_op_expr(self, o: OpExpr) -> str:
-        return f"{o.left.accept(self)} {o.op} {o.right.accept(self)}"
+        inner1 = o.left.accept(self)
+        inner2 = o.right.accept(self)
+        return f"{inner1} {o.op} {inner2}"
 
     def visit_star_expr(self, o: StarExpr) -> str:
-        return f"*{o.expr.accept(self)}"
+        inner = o.expr.accept(self)
+        return f"*{inner}"
 
     def visit_lambda_expr(self, o: LambdaExpr) -> str:
         # TODO: Required for among other things dataclass.field default_factory
@@ -754,7 +780,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 self.add_decorator(qualname, require_name=False)
             elif fullname in DATACLASS_TRANSFORM_NAMES:
                 p = AliasPrinter(self)
-                self._decorators.append(f"@{decorator.accept(p)}")
+                inner = decorator.accept(p)
+                self._decorators.append(f"@{inner}")
 
     def get_fullname(self, expr: Expression) -> str:
         """Return the expression's full name."""
@@ -787,7 +814,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             self.processing_enum = True
         if isinstance(o.metaclass, (NameExpr, MemberExpr)):
             meta = o.metaclass.accept(AliasPrinter(self))
-            base_types.append("metaclass=" + meta)
+            base_types.append(f"metaclass={meta}")
         elif self.analyzed and o.info.is_abstract and not o.info.is_protocol:
             base_types.append("metaclass=abc.ABCMeta")
             self.import_tracker.add_import("abc")
@@ -831,7 +858,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 if self.get_fullname(base) != "builtins.object":
                     base_types.append(get_qualified_name(base))
             elif isinstance(base, IndexExpr):
-                base_types.append(base.accept(p))
+                base_str = base.accept(p)
+                assert base_str is not None
+                base_types.append(base_str)
             elif isinstance(base, CallExpr):
                 # namedtuple(typename, fields), NamedTuple(typename, fields) calls can
                 # be used as a base class. The first argument is a string literal that
@@ -854,7 +883,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                     namedtuple_name = self.add_name("typing.NamedTuple")
                     base_types.append(f"{namedtuple_name}({typename!r}, [{fields_str}])")
                 elif self.is_typed_namedtuple(base):
-                    base_types.append(base.accept(p))
+                    base_str = base.accept(p)
+                    assert base_str is not None
+                    base_types.append(base_str)
                 else:
                     # At this point, we don't know what the base class is, so we
                     # just use Incomplete as the base class.
@@ -871,11 +902,15 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         p = AliasPrinter(self)
         for d in cdef.decorators:
             if self.is_dataclass(d):
-                decorators.append(d.accept(p))
+                d_str = d.accept(p)
+                assert d_str is not None
+                decorators.append(d_str)
                 self.import_tracker.require_name(get_qualified_name(d))
                 self.processing_dataclass = True
             if self.is_dataclass_transform(d):
-                decorators.append(d.accept(p))
+                d_str = d.accept(p)
+                assert d_str is not None
+                decorators.append(d_str)
                 self.import_tracker.require_name(get_qualified_name(d))
         return decorators
 
@@ -986,7 +1021,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 field_name, field_type = field.items
                 if not isinstance(field_name, StrExpr):
                     return None
-                fields.append((field_name.value, field_type.accept(p)))
+                field_type_str = field_type.accept(p)
+                assert field_type_str is not None
+                fields.append((field_name.value, field_type_str))
             return fields
         else:
             return None  # Not a named tuple call
@@ -1056,13 +1093,15 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         p = AliasPrinter(self)
         if any(not key.isidentifier() or keyword.iskeyword(key) for key, _ in items):
             # Keep the call syntax if there are non-identifier or reserved keyword keys.
-            self.add(f"{self._indent}{lvalue.name} = {rvalue.accept(p)}\n")
+            inner = rvalue.accept(p)
+            self.add(f"{self._indent}{lvalue.name} = {inner}\n")
             self._state = VAR
         else:
             bases = self.add_name("typing_extensions.TypedDict")
             # TODO: Add support for generic TypedDicts. Requires `Generic` as base class.
             if total is not None:
-                bases += f", total={total.accept(p)}"
+                inner = total.accept(p)
+                bases += f", total={inner}"
             class_def = f"{self._indent}class {lvalue.name}({bases}):"
             if len(items) == 0:
                 self.add(f"{class_def} ...\n")
@@ -1072,7 +1111,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                     self.add("\n")
                 self.add(f"{class_def}\n")
                 for key, key_type in items:
-                    self.add(f"{self._indent}    {key}: {key_type.accept(p)}\n")
+                    inner = key_type.accept(p)
+                    self.add(f"{self._indent}    {key}: {inner}\n")
                 self._state = CLASS
 
     def annotate_as_incomplete(self, lvalue: NameExpr) -> None:
@@ -1144,7 +1184,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
 
     def process_typealias(self, lvalue: NameExpr, rvalue: Expression) -> None:
         p = AliasPrinter(self)
-        self.add(f"{self._indent}{lvalue.name} = {rvalue.accept(p)}\n")
+        inner = rvalue.accept(p)
+        self.add(f"{self._indent}{lvalue.name} = {inner}\n")
         self.record_name(lvalue.name)
         self._vars[-1].append(lvalue.name)
 
@@ -1154,7 +1195,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         name = o.name.name
         rvalue = o.value.expr()
         type_args = self.format_type_args(o)
-        self.add(f"{self._indent}type {name}{type_args} = {rvalue.accept(p)}\n")
+        inner = rvalue.accept(p)
+        self.add(f"{self._indent}type {name}{type_args} = {inner}\n")
         self.record_name(name)
         self._vars[-1].append(name)
 
@@ -1275,7 +1317,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 fullname = self.get_fullname(rvalue.callee)
                 if fullname in (self.dataclass_field_specifier or DATACLASS_FIELD_SPECIFIERS):
                     p = AliasPrinter(self)
-                    return f" = {rvalue.accept(p)}"
+                    inner = rvalue.accept(p)
+                    return f" = {inner}"
             if not (isinstance(rvalue, TempNode) and rvalue.no_rhs):
                 return " = ..."
         # TODO: support other possible cases, where initializer is important

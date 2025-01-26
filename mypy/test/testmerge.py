@@ -150,6 +150,7 @@ class ASTMergeSuite(DataSuite):
         a = []
         for m in sorted(modules):
             s = modules[m].accept(self.str_conv)
+            assert s is not None
             a.extend(s.splitlines())
         return a
 

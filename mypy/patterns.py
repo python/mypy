@@ -18,7 +18,7 @@ class Pattern(Node):
 
     __slots__ = ()
 
-    def accept(self, visitor: PatternVisitor[T]) -> T:
+    def accept(self, visitor: PatternVisitor[T]) -> T | None:
         raise RuntimeError("Not implemented", type(self))
 
 
@@ -38,7 +38,7 @@ class AsPattern(Pattern):
         self.pattern = pattern
         self.name = name
 
-    def accept(self, visitor: PatternVisitor[T]) -> T:
+    def accept(self, visitor: PatternVisitor[T]) -> T | None:
         return visitor.visit_as_pattern(self)
 
 
@@ -51,7 +51,7 @@ class OrPattern(Pattern):
         super().__init__()
         self.patterns = patterns
 
-    def accept(self, visitor: PatternVisitor[T]) -> T:
+    def accept(self, visitor: PatternVisitor[T]) -> T | None:
         return visitor.visit_or_pattern(self)
 
 
@@ -64,7 +64,7 @@ class ValuePattern(Pattern):
         super().__init__()
         self.expr = expr
 
-    def accept(self, visitor: PatternVisitor[T]) -> T:
+    def accept(self, visitor: PatternVisitor[T]) -> T | None:
         return visitor.visit_value_pattern(self)
 
 
@@ -76,7 +76,7 @@ class SingletonPattern(Pattern):
         super().__init__()
         self.value = value
 
-    def accept(self, visitor: PatternVisitor[T]) -> T:
+    def accept(self, visitor: PatternVisitor[T]) -> T | None:
         return visitor.visit_singleton_pattern(self)
 
 
@@ -89,7 +89,7 @@ class SequencePattern(Pattern):
         super().__init__()
         self.patterns = patterns
 
-    def accept(self, visitor: PatternVisitor[T]) -> T:
+    def accept(self, visitor: PatternVisitor[T]) -> T | None:
         return visitor.visit_sequence_pattern(self)
 
 
@@ -102,7 +102,7 @@ class StarredPattern(Pattern):
         super().__init__()
         self.capture = capture
 
-    def accept(self, visitor: PatternVisitor[T]) -> T:
+    def accept(self, visitor: PatternVisitor[T]) -> T | None:
         return visitor.visit_starred_pattern(self)
 
 
@@ -120,7 +120,7 @@ class MappingPattern(Pattern):
         self.values = values
         self.rest = rest
 
-    def accept(self, visitor: PatternVisitor[T]) -> T:
+    def accept(self, visitor: PatternVisitor[T]) -> T | None:
         return visitor.visit_mapping_pattern(self)
 
 
@@ -146,5 +146,5 @@ class ClassPattern(Pattern):
         self.keyword_keys = keyword_keys
         self.keyword_values = keyword_values
 
-    def accept(self, visitor: PatternVisitor[T]) -> T:
+    def accept(self, visitor: PatternVisitor[T]) -> T | None:
         return visitor.visit_class_pattern(self)
