@@ -2431,5 +2431,6 @@ def foo(x: T) -> T:
         pass
     else:
         raise
+    reveal_type(x)  # N: Revealed type is "T`-1"
     return x
 [builtins fixtures/isinstance.pyi]

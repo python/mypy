@@ -21,6 +21,7 @@ from mypy.types import (
     Type,
     TypeOfAny,
     TypeType,
+    TypeVarType,
     UnionType,
     UnpackType,
     find_unpack_in_list,
@@ -247,8 +248,10 @@ class ConditionalTypeBinder:
                     type = possible_types[0]
                 else:
                     type = make_simplified_union(possible_types)
-                    # Legacy guard for corner case, e.g. when the original type is TypeVarType.
-                    if declaration_type is not None and not is_subtype(type, declaration_type):
+                    # Legacy guard for corner case when the original type is TypeVarType.
+                    if isinstance(declaration_type, TypeVarType) and not is_subtype(
+                        type, declaration_type
+                    ):
                         type = declaration_type
                     # Try simplifying resulting type for unions involving variadic tuples.
                     # Technically, everything is still valid without this step, but if we do
