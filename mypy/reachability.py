@@ -57,7 +57,6 @@ def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
             # The condition is considered always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
         elif result in (ALWAYS_TRUE, MYPY_TRUE):
-            s.has_pass1_always_true_block = True
             # This condition is considered always true, so all of the remaining
             # elif/else bodies should not be checked.
             if result == MYPY_TRUE:

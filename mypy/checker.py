@@ -3021,7 +3021,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # This block was marked as being unreachable during semantic analysis.
             # It turns out any blocks marked in this way are *intentionally* marked
             # as unreachable -- so we don't display an error.
-            self.binder.unreachable()
+            self.binder.unreachable(from_semanal=True)
             return
         for s in b.body:
             if self.binder.is_unreachable():
@@ -4870,14 +4870,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 if s.else_body:
                     self.accept(s.else_body)
-
-        # If this if-statement had a block that is considered always true for
-        # semantic reachability in semanal_pass1 and it has no else block;
-        # then we surpress unreachable warnings for code after the
-        # if-statement. These can be caused by early returns or raises and
-        # are only applicable on certain platforms or versions.
-        if s.has_pass1_always_true_block and s.else_body and (not s.else_body.body):
-            self.binder.suppress_unreachable_warnings()
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         """Type check a while statement."""

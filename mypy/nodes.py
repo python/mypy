@@ -1523,27 +1523,20 @@ class PassStmt(Statement):
 
 
 class IfStmt(Statement):
-    __slots__ = ("expr", "body", "else_body", "has_pass1_always_true_block")
+    __slots__ = ("expr", "body", "else_body")
 
-    __match_args__ = ("expr", "body", "else_body", "has_pass1_always_true_block")
+    __match_args__ = ("expr", "body", "else_body")
 
     expr: list[Expression]
     body: list[Block]
     else_body: Block | None
     pass1_always_true_block: bool
 
-    def __init__(
-        self,
-        expr: list[Expression],
-        body: list[Block],
-        else_body: Block | None,
-        has_pass1_always_true_block: bool = False,
-    ) -> None:
+    def __init__(self, expr: list[Expression], body: list[Block], else_body: Block | None) -> None:
         super().__init__()
         self.expr = expr
         self.body = body
         self.else_body = else_body
-        self.has_pass1_always_true_block = has_pass1_always_true_block
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_if_stmt(self)

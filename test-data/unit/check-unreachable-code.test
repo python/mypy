@@ -395,9 +395,7 @@ def foo() -> int:
 [builtins fixtures/ops.pyi]
 [out]
 
--- TODO: We currently suppress unreachability warnings past semantic
--- reachability checks. Need to decide if this should be fixed and enabled.
-[case testSysPlatformEarlyReturnActualUnreachableCodeNotForPlatform-skip]
+[case testSysPlatformEarlyReturnActualUnreachableCodeNotForPlatform]
 # flags: --warn-unreachable
 import sys
 
@@ -405,7 +403,8 @@ def foo() -> int:
     if sys.platform != 'fictional':
         return 1
     return 0
-    return 0 + 1  # E: Statement is unreachable
+    return 0 + 1  # Will not throw `Statement is unreachable` because we are
+                  # not on the fictional platform.
 [builtins fixtures/ops.pyi]
 [out]
 
