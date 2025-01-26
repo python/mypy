@@ -1537,7 +1537,7 @@ class IfStmt(Statement):
         expr: list[Expression],
         body: list[Block],
         else_body: Block | None,
-        has_pass1_always_true_block=False,
+        has_pass1_always_true_block: bool = False,
     ) -> None:
         super().__init__()
         self.expr = expr

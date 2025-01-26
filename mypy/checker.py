@@ -4876,7 +4876,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # then we undo any unreachablilty properties for frames after the
         # if-statement. These can be caused by early returns or raises and
         # are only applicable on certain platforms or versions.
-        if s.has_pass1_always_true_block and (not s.else_body.body):
+        if s.has_pass1_always_true_block and s.else_body and (not s.else_body.body):
             self.binder.frames[-1].unreachable = False
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
