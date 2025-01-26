@@ -717,9 +717,11 @@ of the above sections.
        test(bad, bar)
 
     In future more checks may be added to this flag if:
-    * the corresponding use cases are rare, thus not justifying a dedicated
+
+    * The corresponding use cases are rare, thus not justifying a dedicated
       strictness flag.
-    * the new check cannot be supported as an opt-in error code.
+
+    * The new check cannot be supported as an opt-in error code.
 
 .. option:: --strict
 
