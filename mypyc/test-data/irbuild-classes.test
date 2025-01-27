@@ -606,7 +606,7 @@ L0:
     r3 = CPyTagged_Add(r0, r2)
     return r3
 
-[case testCallClassMethodViaCls]
+[case testCallClassMethodViaCls_64bit]
 class C:
     @classmethod
     def f(cls, x: int) -> int:
@@ -647,14 +647,20 @@ def D.f(cls, x):
     cls :: object
     x :: int
     r0 :: str
-    r1, r2 :: object
-    r3 :: int
+    r1 :: object
+    r2 :: object[2]
+    r3 :: object_ptr
+    r4 :: object
+    r5 :: int
 L0:
     r0 = 'g'
     r1 = box(int, x)
-    r2 = CPyObject_CallMethodObjArgs(cls, r0, r1, 0)
-    r3 = unbox(int, r2)
-    return r3
+    r2 = [cls, r1]
+    r3 = load_address r2
+    r4 = PyObject_VectorcallMethod(r0, r3, 9223372036854775810, 0)
+    keep_alive cls, r1
+    r5 = unbox(int, r4)
+    return r5
 def D.g(cls, x):
     cls :: object
     x :: int
@@ -904,7 +910,7 @@ L0:
     r1 = unbox(bool, r0)
     return r1
 
-[case testEqDefinedLater]
+[case testEqDefinedLater_64bit]
 def f(a: 'Base', b: 'Base') -> bool:
     return a == b
 
@@ -951,13 +957,18 @@ L0:
 def fOpt2(a, b):
     a, b :: __main__.Derived
     r0 :: str
-    r1 :: object
-    r2 :: bool
+    r1 :: object[2]
+    r2 :: object_ptr
+    r3 :: object
+    r4 :: bool
 L0:
     r0 = '__ne__'
-    r1 = CPyObject_CallMethodObjArgs(a, r0, b, 0)
-    r2 = unbox(bool, r1)
-    return r2
+    r1 = [a, b]
+    r2 = load_address r1
+    r3 = PyObject_VectorcallMethod(r0, r2, 9223372036854775810, 0)
+    keep_alive a, b
+    r4 = unbox(bool, r3)
+    return r4
 def Derived.__eq__(self, other):
     self :: __main__.Derived
     other, r0 :: object
