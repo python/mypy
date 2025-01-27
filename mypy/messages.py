@@ -1992,7 +1992,7 @@ class MessageBuilder:
             code=codes.EXIT_RETURN,
         )
         self.note(
-            'Use "typing_extensions.Literal[False]" as the return type or change it to "None"',
+            'Use "typing.Literal[False]" as the return type or change it to "None"',
             context,
             code=codes.EXIT_RETURN,
         )
