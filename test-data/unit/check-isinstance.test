@@ -2660,6 +2660,33 @@ y: Any
 if type(y) is int:
     reveal_type(y) # N: Revealed type is "builtins.int"
 
+[case testTypeEqualsCheckUsingIsNonOverlapping]
+# flags: --warn-unreachable
+from typing import Union
+
+y: str
+if type(y) is int:  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+    y # E: Statement is unreachable
+else:
+    reveal_type(y) # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeEqualsCheckUsingIsNonOverlappingChild-xfail]
+# flags: --warn-unreachable
+from typing import Union
+
+class A: ...
+class B: ...
+class C(A): ...
+x: Union[B, C]
+# C instance cannot be exactly its parent A, we need reversed subtyping relationship
+# here (type(parent) is Child).
+if type(x) is A:
+    reveal_type(x)  # E: Statement is unreachable
+else:
+    reveal_type(x)  # N: Revealed type is "Union[__main__.B, __main__.C]"
+[builtins fixtures/isinstance.pyi]
+
 [case testTypeEqualsNarrowingUnionWithElse]
 from typing import Union
 
