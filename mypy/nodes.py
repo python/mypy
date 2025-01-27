@@ -181,7 +181,7 @@ class Node(Context):
         assert ans
         return ans
 
-    def accept(self, visitor: NodeVisitor[T]) -> T | None:
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
 
 
@@ -191,7 +191,7 @@ class Statement(Node):
 
     __slots__ = ()
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
 
 
@@ -201,7 +201,7 @@ class Expression(Node):
 
     __slots__ = ()
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
 
 
@@ -355,7 +355,7 @@ class MypyFile(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
-    def accept(self, visitor: NodeVisitor[T]) -> T | None:
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_mypy_file(self)
 
     def is_package_init_file(self) -> bool:
@@ -433,7 +433,7 @@ class Import(ImportBase):
         super().__init__()
         self.ids = ids
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import(self)
 
 
@@ -454,7 +454,7 @@ class ImportFrom(ImportBase):
         self.names = names
         self.relative = relative
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_from(self)
 
 
@@ -473,7 +473,7 @@ class ImportAll(ImportBase):
         self.id = id
         self.relative = relative
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
 
 
@@ -574,7 +574,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             assert self.impl is not None
             return self.impl.name
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
 
     def serialize(self) -> JsonDict:
@@ -807,7 +807,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     def name(self) -> str:
         return self._name
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_func_def(self)
 
     def serialize(self) -> JsonDict:
@@ -919,7 +919,7 @@ class Decorator(SymbolNode, Statement):
     def type(self) -> mypy.types.Type | None:
         return self.var.type
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_decorator(self)
 
     def serialize(self) -> JsonDict:
@@ -1065,7 +1065,7 @@ class Var(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
-    def accept(self, visitor: NodeVisitor[T]) -> T | None:
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
 
     def serialize(self) -> JsonDict:
@@ -1173,7 +1173,7 @@ class ClassDef(Statement):
     def fullname(self, v: str) -> None:
         self._fullname = v
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
 
     def is_generic(self) -> bool:
@@ -1218,7 +1218,7 @@ class GlobalDecl(Statement):
         super().__init__()
         self.names = names
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_global_decl(self)
 
 
@@ -1235,7 +1235,7 @@ class NonlocalDecl(Statement):
         super().__init__()
         self.names = names
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_nonlocal_decl(self)
 
 
@@ -1254,7 +1254,7 @@ class Block(Statement):
         # in those cases.
         self.is_unreachable = is_unreachable
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_block(self)
 
 
@@ -1274,7 +1274,7 @@ class ExpressionStmt(Statement):
         super().__init__()
         self.expr = expr
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_expression_stmt(self)
 
 
@@ -1341,7 +1341,7 @@ class AssignmentStmt(Statement):
         self.is_final_def = False
         self.invalid_recursive_alias = False
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assignment_stmt(self)
 
 
@@ -1362,7 +1362,7 @@ class OperatorAssignmentStmt(Statement):
         self.lvalue = lvalue
         self.rvalue = rvalue
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_operator_assignment_stmt(self)
 
 
@@ -1381,7 +1381,7 @@ class WhileStmt(Statement):
         self.body = body
         self.else_body = else_body
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_while_stmt(self)
 
 
@@ -1435,7 +1435,7 @@ class ForStmt(Statement):
         self.else_body = else_body
         self.is_async = False
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_for_stmt(self)
 
 
@@ -1450,7 +1450,7 @@ class ReturnStmt(Statement):
         super().__init__()
         self.expr = expr
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_return_stmt(self)
 
 
@@ -1467,7 +1467,7 @@ class AssertStmt(Statement):
         self.expr = expr
         self.msg = msg
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assert_stmt(self)
 
 
@@ -1482,28 +1482,28 @@ class DelStmt(Statement):
         super().__init__()
         self.expr = expr
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_del_stmt(self)
 
 
 class BreakStmt(Statement):
     __slots__ = ()
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_break_stmt(self)
 
 
 class ContinueStmt(Statement):
     __slots__ = ()
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_continue_stmt(self)
 
 
 class PassStmt(Statement):
     __slots__ = ()
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_pass_stmt(self)
 
 
@@ -1522,7 +1522,7 @@ class IfStmt(Statement):
         self.body = body
         self.else_body = else_body
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_if_stmt(self)
 
 
@@ -1540,7 +1540,7 @@ class RaiseStmt(Statement):
         self.expr = expr
         self.from_expr = from_expr
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_raise_stmt(self)
 
 
@@ -1577,7 +1577,7 @@ class TryStmt(Statement):
         self.finally_body = finally_body
         self.is_star = False
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_try_stmt(self)
 
 
@@ -1610,7 +1610,7 @@ class WithStmt(Statement):
         self.body = body
         self.is_async = False
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_with_stmt(self)
 
 
@@ -1638,7 +1638,7 @@ class MatchStmt(Statement):
         self.guards = guards
         self.bodies = bodies
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_match_stmt(self)
 
 
@@ -1661,7 +1661,7 @@ class TypeAliasStmt(Statement):
         self.invalid_recursive_alias = False
         self.alias_node = None
 
-    def accept(self, visitor: StatementVisitor[T]) -> T | None:
+    def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_type_alias_stmt(self)
 
 
@@ -1681,7 +1681,7 @@ class IntExpr(Expression):
         super().__init__()
         self.value = value
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_int_expr(self)
 
 
@@ -1704,7 +1704,7 @@ class StrExpr(Expression):
         super().__init__()
         self.value = value
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
 
 
@@ -1734,7 +1734,7 @@ class BytesExpr(Expression):
         super().__init__()
         self.value = value
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
 
 
@@ -1751,7 +1751,7 @@ class FloatExpr(Expression):
         super().__init__()
         self.value = value
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_float_expr(self)
 
 
@@ -1768,7 +1768,7 @@ class ComplexExpr(Expression):
         super().__init__()
         self.value = value
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_complex_expr(self)
 
 
@@ -1777,7 +1777,7 @@ class EllipsisExpr(Expression):
 
     __slots__ = ()
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_ellipsis(self)
 
 
@@ -1798,7 +1798,7 @@ class StarExpr(Expression):
         # Whether this starred expression is used in a tuple/list and as lvalue
         self.valid = False
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_star_expr(self)
 
 
@@ -1863,7 +1863,7 @@ class NameExpr(RefExpr):
         # Is this a l.h.s. of a special form assignment like typed dict or type variable?
         self.is_special_form = False
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
 
     def serialize(self) -> JsonDict:
@@ -1885,7 +1885,7 @@ class MemberExpr(RefExpr):
         # The nodes of other kinds of member expressions are resolved during type checking.
         self.def_var: Var | None = None
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_member_expr(self)
 
 
@@ -1961,7 +1961,7 @@ class CallExpr(Expression):
         # cast(...) this is a CastExpr.
         self.analyzed = analyzed
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_call_expr(self)
 
 
@@ -1976,7 +1976,7 @@ class YieldFromExpr(Expression):
         super().__init__()
         self.expr = expr
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_yield_from_expr(self)
 
 
@@ -1991,7 +1991,7 @@ class YieldExpr(Expression):
         super().__init__()
         self.expr = expr
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_yield_expr(self)
 
 
@@ -2020,7 +2020,7 @@ class IndexExpr(Expression):
         self.method_type = None
         self.analyzed = None
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
 
 
@@ -2042,7 +2042,7 @@ class UnaryExpr(Expression):
         self.expr = expr
         self.method_type = None
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_unary_expr(self)
 
 
@@ -2058,7 +2058,7 @@ class AssignmentExpr(Expression):
         self.target = target
         self.value = value
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_assignment_expr(self)
 
 
@@ -2104,7 +2104,7 @@ class OpExpr(Expression):
         self.right_unreachable = False
         self.analyzed = analyzed
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
 
 
@@ -2133,7 +2133,7 @@ class ComparisonExpr(Expression):
         for i, operator in enumerate(self.operators):
             yield operator, self.operands[i], self.operands[i + 1]
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
 
 
@@ -2162,7 +2162,7 @@ class SliceExpr(Expression):
         self.end_index = end_index
         self.stride = stride
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_slice_expr(self)
 
 
@@ -2181,7 +2181,7 @@ class CastExpr(Expression):
         self.expr = expr
         self.type = typ
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_cast_expr(self)
 
 
@@ -2200,7 +2200,7 @@ class AssertTypeExpr(Expression):
         self.expr = expr
         self.type = typ
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_assert_type_expr(self)
 
 
@@ -2228,7 +2228,7 @@ class RevealExpr(Expression):
         self.local_nodes = local_nodes
         self.is_imported = is_imported
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_reveal_expr(self)
 
 
@@ -2249,7 +2249,7 @@ class SuperExpr(Expression):
         self.call = call
         self.info = None
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_super_expr(self)
 
 
@@ -2270,7 +2270,7 @@ class LambdaExpr(FuncItem, Expression):
         assert expr is not None  # lambda can't have empty body
         return expr
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_lambda_expr(self)
 
     def is_dynamic(self) -> bool:
@@ -2290,7 +2290,7 @@ class ListExpr(Expression):
         super().__init__()
         self.items = items
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_list_expr(self)
 
 
@@ -2307,7 +2307,7 @@ class DictExpr(Expression):
         super().__init__()
         self.items = items
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dict_expr(self)
 
 
@@ -2326,7 +2326,7 @@ class TupleExpr(Expression):
         super().__init__()
         self.items = items
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_tuple_expr(self)
 
 
@@ -2343,7 +2343,7 @@ class SetExpr(Expression):
         super().__init__()
         self.items = items
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_set_expr(self)
 
 
@@ -2375,7 +2375,7 @@ class GeneratorExpr(Expression):
         self.indices = indices
         self.is_async = is_async
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_generator_expr(self)
 
 
@@ -2392,7 +2392,7 @@ class ListComprehension(Expression):
         super().__init__()
         self.generator = generator
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_list_comprehension(self)
 
 
@@ -2409,7 +2409,7 @@ class SetComprehension(Expression):
         super().__init__()
         self.generator = generator
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_set_comprehension(self)
 
 
@@ -2444,7 +2444,7 @@ class DictionaryComprehension(Expression):
         self.indices = indices
         self.is_async = is_async
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_dictionary_comprehension(self)
 
 
@@ -2465,7 +2465,7 @@ class ConditionalExpr(Expression):
         self.if_expr = if_expr
         self.else_expr = else_expr
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_conditional_expr(self)
 
 
@@ -2484,7 +2484,7 @@ class TypeApplication(Expression):
         self.expr = expr
         self.types = types
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_application(self)
 
 
@@ -2586,7 +2586,7 @@ class TypeVarExpr(TypeVarLikeExpr):
         super().__init__(name, fullname, upper_bound, default, variance, is_new_style, line=line)
         self.values = values
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)
 
     def serialize(self) -> JsonDict:
@@ -2618,7 +2618,7 @@ class ParamSpecExpr(TypeVarLikeExpr):
 
     __match_args__ = ("name", "upper_bound", "default")
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_paramspec_expr(self)
 
     def serialize(self) -> JsonDict:
@@ -2666,7 +2666,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
         super().__init__(name, fullname, upper_bound, default, variance, is_new_style, line=line)
         self.tuple_fallback = tuple_fallback
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_var_tuple_expr(self)
 
     def serialize(self) -> JsonDict:
@@ -2706,7 +2706,7 @@ class TypeAliasExpr(Expression):
         super().__init__()
         self.node = node
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)
 
 
@@ -2727,7 +2727,7 @@ class NamedTupleExpr(Expression):
         self.info = info
         self.is_typed = is_typed
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_namedtuple_expr(self)
 
 
@@ -2745,7 +2745,7 @@ class TypedDictExpr(Expression):
         super().__init__()
         self.info = info
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_typeddict_expr(self)
 
 
@@ -2768,7 +2768,7 @@ class EnumCallExpr(Expression):
         self.items = items
         self.values = values
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_enum_call_expr(self)
 
 
@@ -2783,7 +2783,7 @@ class PromoteExpr(Expression):
         super().__init__()
         self.type = type
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit__promote_expr(self)
 
 
@@ -2808,7 +2808,7 @@ class NewTypeExpr(Expression):
         self.old_type = old_type
         self.info = None
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_newtype_expr(self)
 
 
@@ -2825,7 +2825,7 @@ class AwaitExpr(Expression):
         super().__init__()
         self.expr = expr
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_await_expr(self)
 
 
@@ -2861,7 +2861,7 @@ class TempNode(Expression):
     def __repr__(self) -> str:
         return "TempNode:%d(%s)" % (self.line, str(self.type))
 
-    def accept(self, visitor: ExpressionVisitor[T]) -> T | None:
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_temp_node(self)
 
 
@@ -3705,7 +3705,7 @@ class TypeAlias(SymbolNode):
         }
         return data
 
-    def accept(self, visitor: NodeVisitor[T]) -> T | None:
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_type_alias(self)
 
     @classmethod
@@ -3802,7 +3802,7 @@ class PlaceholderNode(SymbolNode):
     def serialize(self) -> JsonDict:
         assert False, "PlaceholderNode can't be serialized"
 
-    def accept(self, visitor: NodeVisitor[T]) -> T | None:
+    def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_placeholder_node(self)
 
 

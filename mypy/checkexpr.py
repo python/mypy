@@ -5944,9 +5944,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             elif allow_none_return and isinstance(node, AwaitExpr):
                 typ = self.visit_await_expr(node, allow_none_return=True)
             else:
-                typ_ = node.accept(self)
-                assert typ_ is not None
-                typ = typ_
+                typ = node.accept(self)
         except Exception as err:
             report_internal_error(
                 err, self.chk.errors.file, node.line, self.chk.errors, self.chk.options

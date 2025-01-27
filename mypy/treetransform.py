@@ -695,7 +695,6 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def node(self, node: Node) -> Node:
         new = node.accept(self)
-        assert new is not None
         new.set_line(node)
         return new
 

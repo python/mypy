@@ -130,7 +130,6 @@ class PatternChecker(PatternVisitor[PatternType]):
         result = o.accept(self)
         self.type_context.pop()
 
-        assert result is not None
         return result
 
     def visit_as_pattern(self, o: AsPattern) -> PatternType:

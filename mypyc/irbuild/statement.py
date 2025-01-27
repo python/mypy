@@ -1048,7 +1048,6 @@ def transform_type_alias_stmt(builder: IRBuilder, s: TypeAliasStmt) -> None:
     # The value needs to be lazily computed to match Python runtime behavior, but
     # Python public APIs don't support this, so we use a C primitive.
     compute_fn = s.value.accept(builder.visitor)
-    assert compute_fn is not None
     builder.builder.primitive_op(set_type_alias_compute_function_op, [alias, compute_fn], line)
 
     target = builder.get_assignment_target(s.name)
