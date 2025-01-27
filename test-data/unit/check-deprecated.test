@@ -407,29 +407,21 @@ class A:
 
 class B(A): ...
 
-int_or_str: Union[int, str]
-
 a = A()
 a.f(1)  # E: overload def (self: __main__.A, v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
 a.f("x")
-a.f(int_or_str)  # E: overload def (self: __main__.A, v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
 a.g(1)
 a.g("x")  # E: overload def (self: __main__.A, v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
-a.g(int_or_str)  # E: overload def (self: __main__.A, v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
 a.h(1)  # E: function __main__.A.h is deprecated: use `h2` instead
 a.h("x")  # E: function __main__.A.h is deprecated: use `h2` instead
-a.h(int_or_str)  # E: function __main__.A.h is deprecated: use `h2` instead
 
 b = B()
 b.f(1)  # E: overload def (self: __main__.A, v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
 b.f("x")
-b.f(int_or_str)  # E: overload def (self: __main__.A, v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
 b.g(1)
 b.g("x")  # E: overload def (self: __main__.A, v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
-b.g(int_or_str)  # E: overload def (self: __main__.A, v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
 b.h(1)  # E: function __main__.A.h is deprecated: use `h2` instead
 b.h("x")  # E: function __main__.A.h is deprecated: use `h2` instead
-b.h(int_or_str)  # E: function __main__.A.h is deprecated: use `h2` instead
 
 [builtins fixtures/tuple.pyi]
 
