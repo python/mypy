@@ -2980,7 +2980,7 @@ class C(Base):
             sep = "a" if int() else "b"
             reveal_type(sep)  # N: Revealed type is "Union[Literal['a'], Literal['b']]"
         return super().feed_data(sep)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/primitives.pyi]
 
 [case testLiteralInsideAType]
 from typing_extensions import Literal
