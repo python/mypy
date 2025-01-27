@@ -322,24 +322,21 @@ def f(s):
     r16 :: bytes
     r17, r18 :: str
     r19 :: object
-    r20 :: str
-    r21 :: tuple
-    r22 :: dict
-    r23 :: object
+    r20 :: object[2]
+    r21 :: object_ptr
+    r22, r23 :: object
     r24 :: str
     r25 :: object
-    r26 :: str
-    r27 :: tuple
-    r28 :: dict
-    r29 :: object
+    r26 :: object[1]
+    r27 :: object_ptr
+    r28, r29 :: object
     r30 :: str
     r31 :: object
-    r32, r33 :: str
-    r34 :: tuple
-    r35 :: dict
-    r36 :: object
-    r37 :: str
-    r38 :: bytes
+    r32 :: object[2]
+    r33 :: object_ptr
+    r34, r35 :: object
+    r36 :: str
+    r37 :: bytes
 L0:
     r0 = PyUnicode_AsUTF8String(s)
     r1 = PyUnicode_AsUTF8String(s)
@@ -363,25 +360,27 @@ L0:
     r17 = 'utf8'
     r18 = 'encode'
     r19 = CPyObject_GetAttr(s, r18)
-    r20 = 'errors'
-    r21 = PyTuple_Pack(1, r17)
-    r22 = CPyDict_Build(1, r20, errors)
-    r23 = PyObject_Call(r19, r21, r22)
+    r20 = [r17, errors]
+    r21 = load_address r20
+    r22 = ('errors',)
+    r23 = PyObject_Vectorcall(r19, r21, 1, r22)
+    keep_alive r17, errors
     r24 = 'encode'
     r25 = CPyObject_GetAttr(s, r24)
-    r26 = 'errors'
-    r27 = PyTuple_Pack(0)
-    r28 = CPyDict_Build(1, r26, errors)
-    r29 = PyObject_Call(r25, r27, r28)
+    r26 = [errors]
+    r27 = load_address r26
+    r28 = ('errors',)
+    r29 = PyObject_Vectorcall(r25, r27, 0, r28)
+    keep_alive errors
     r30 = 'encode'
     r31 = CPyObject_GetAttr(s, r30)
-    r32 = 'encoding'
-    r33 = 'errors'
-    r34 = PyTuple_Pack(0)
-    r35 = CPyDict_Build(2, r32, encoding, r33, errors)
-    r36 = PyObject_Call(r31, r34, r35)
-    r37 = 'latin2'
-    r38 = CPy_Encode(s, r37, 0)
+    r32 = [encoding, errors]
+    r33 = load_address r32
+    r34 = ('encoding', 'errors')
+    r35 = PyObject_Vectorcall(r31, r33, 0, r34)
+    keep_alive encoding, errors
+    r36 = 'latin2'
+    r37 = CPy_Encode(s, r36, 0)
     return 1
 
 [case testOrd]
@@ -417,12 +416,18 @@ L0:
 def any_ord(x):
     x, r0 :: object
     r1 :: str
-    r2, r3 :: object
-    r4 :: int
+    r2 :: object
+    r3 :: object[1]
+    r4 :: object_ptr
+    r5 :: object
+    r6 :: int
 L0:
     r0 = builtins :: module
     r1 = 'ord'
     r2 = CPyObject_GetAttr(r0, r1)
-    r3 = PyObject_CallFunctionObjArgs(r2, x, 0)
-    r4 = unbox(int, r3)
-    return r4
+    r3 = [x]
+    r4 = load_address r3
+    r5 = PyObject_Vectorcall(r2, r4, 1, 0)
+    keep_alive x
+    r6 = unbox(int, r5)
+    return r6

@@ -23,7 +23,7 @@ L1:
     r4 = CPyObject_GetAttr(r2, r3)
     r5 = [r1]
     r6 = load_address r5
-    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
     keep_alive r1
     goto L3
 L2:
@@ -61,7 +61,7 @@ L3:
     r5 = CPyObject_GetAttr(r3, r4)
     r6 = [r2]
     r7 = load_address r6
-    r8 = _PyObject_Vectorcall(r5, r7, 1, 0)
+    r8 = PyObject_Vectorcall(r5, r7, 1, 0)
     keep_alive r2
     goto L5
 L4:
@@ -105,7 +105,7 @@ L5:
     r7 = CPyObject_GetAttr(r5, r6)
     r8 = [r4]
     r9 = load_address r8
-    r10 = _PyObject_Vectorcall(r7, r9, 1, 0)
+    r10 = PyObject_Vectorcall(r7, r9, 1, 0)
     keep_alive r4
     goto L7
 L6:
@@ -141,7 +141,7 @@ L1:
     r6 = CPyObject_GetAttr(r4, r5)
     r7 = [r3]
     r8 = load_address r7
-    r9 = _PyObject_Vectorcall(r6, r8, 1, 0)
+    r9 = PyObject_Vectorcall(r6, r8, 1, 0)
     keep_alive r3
     goto L3
 L2:
@@ -170,7 +170,7 @@ L1:
     r3 = CPyObject_GetAttr(r1, r2)
     r4 = [r0]
     r5 = load_address r4
-    r6 = _PyObject_Vectorcall(r3, r5, 1, 0)
+    r6 = PyObject_Vectorcall(r3, r5, 1, 0)
     keep_alive r0
     goto L3
 L2:
@@ -212,7 +212,7 @@ L1:
     r4 = CPyObject_GetAttr(r2, r3)
     r5 = [r1]
     r6 = load_address r5
-    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
     keep_alive r1
     goto L5
 L2:
@@ -225,7 +225,7 @@ L3:
     r12 = CPyObject_GetAttr(r10, r11)
     r13 = [r9]
     r14 = load_address r13
-    r15 = _PyObject_Vectorcall(r12, r14, 1, 0)
+    r15 = PyObject_Vectorcall(r12, r14, 1, 0)
     keep_alive r9
     goto L5
 L4:
@@ -278,7 +278,7 @@ L1:
     r4 = CPyObject_GetAttr(r2, r3)
     r5 = [r1]
     r6 = load_address r5
-    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
     keep_alive r1
     goto L9
 L2:
@@ -296,7 +296,7 @@ L5:
     r13 = CPyObject_GetAttr(r11, r12)
     r14 = [r10]
     r15 = load_address r14
-    r16 = _PyObject_Vectorcall(r13, r15, 1, 0)
+    r16 = PyObject_Vectorcall(r13, r15, 1, 0)
     keep_alive r10
     goto L9
 L6:
@@ -309,7 +309,7 @@ L7:
     r21 = CPyObject_GetAttr(r19, r20)
     r22 = [r18]
     r23 = load_address r22
-    r24 = _PyObject_Vectorcall(r21, r23, 1, 0)
+    r24 = PyObject_Vectorcall(r21, r23, 1, 0)
     keep_alive r18
     goto L9
 L8:
@@ -344,7 +344,7 @@ L2:
     r4 = CPyObject_GetAttr(r2, r3)
     r5 = [r1]
     r6 = load_address r5
-    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
     keep_alive r1
     goto L4
 L3:
@@ -400,7 +400,7 @@ L1:
     r6 = CPyObject_GetAttr(r4, r5)
     r7 = [r3]
     r8 = load_address r7
-    r9 = _PyObject_Vectorcall(r6, r8, 1, 0)
+    r9 = PyObject_Vectorcall(r6, r8, 1, 0)
     keep_alive r3
     goto L7
 L2:
@@ -415,7 +415,7 @@ L3:
     r16 = CPyObject_GetAttr(r14, r15)
     r17 = [r13]
     r18 = load_address r17
-    r19 = _PyObject_Vectorcall(r16, r18, 1, 0)
+    r19 = PyObject_Vectorcall(r16, r18, 1, 0)
     keep_alive r13
     goto L7
 L4:
@@ -430,7 +430,7 @@ L5:
     r26 = CPyObject_GetAttr(r24, r25)
     r27 = [r23]
     r28 = load_address r27
-    r29 = _PyObject_Vectorcall(r26, r28, 1, 0)
+    r29 = PyObject_Vectorcall(r26, r28, 1, 0)
     keep_alive r23
     goto L7
 L6:
@@ -471,7 +471,7 @@ L3:
     r7 = CPyObject_GetAttr(r5, r6)
     r8 = [r4]
     r9 = load_address r8
-    r10 = _PyObject_Vectorcall(r7, r9, 1, 0)
+    r10 = PyObject_Vectorcall(r7, r9, 1, 0)
     keep_alive r4
     goto L5
 L4:
@@ -504,7 +504,7 @@ L1:
     r4 = CPyObject_GetAttr(r2, r3)
     r5 = [x]
     r6 = load_address r5
-    r7 = _PyObject_Vectorcall(r4, r6, 1, 0)
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
     keep_alive x
     goto L3
 L2:
@@ -546,7 +546,7 @@ L3:
     r6 = CPyObject_GetAttr(r4, r5)
     r7 = [x]
     r8 = load_address r7
-    r9 = _PyObject_Vectorcall(r6, r8, 1, 0)
+    r9 = PyObject_Vectorcall(r6, r8, 1, 0)
     keep_alive x
     goto L5
 L4:
@@ -584,7 +584,7 @@ L2:
     r6 = box(int, i)
     r7 = [r6]
     r8 = load_address r7
-    r9 = _PyObject_Vectorcall(r5, r8, 1, 0)
+    r9 = PyObject_Vectorcall(r5, r8, 1, 0)
     keep_alive r6
     goto L4
 L3:
@@ -682,7 +682,7 @@ L4:
     r28 = CPyObject_GetAttr(r26, r27)
     r29 = [r25]
     r30 = load_address r29
-    r31 = _PyObject_Vectorcall(r28, r30, 1, 0)
+    r31 = PyObject_Vectorcall(r28, r30, 1, 0)
     keep_alive r25
     goto L6
 L5:
@@ -767,7 +767,7 @@ L4:
     r28 = CPyObject_GetAttr(r26, r27)
     r29 = [r25]
     r30 = load_address r29
-    r31 = _PyObject_Vectorcall(r28, r30, 1, 0)
+    r31 = PyObject_Vectorcall(r28, r30, 1, 0)
     keep_alive r25
     goto L6
 L5:
@@ -835,7 +835,7 @@ L4:
     r19 = CPyObject_GetAttr(r17, r18)
     r20 = [r16]
     r21 = load_address r20
-    r22 = _PyObject_Vectorcall(r19, r21, 1, 0)
+    r22 = PyObject_Vectorcall(r19, r21, 1, 0)
     keep_alive r16
     goto L6
 L5:
@@ -920,7 +920,7 @@ L4:
     r22 = CPyObject_GetAttr(r20, r21)
     r23 = [r19]
     r24 = load_address r23
-    r25 = _PyObject_Vectorcall(r22, r24, 1, 0)
+    r25 = PyObject_Vectorcall(r22, r24, 1, 0)
     keep_alive r19
     goto L6
 L5:
@@ -980,7 +980,7 @@ L2:
     r10 = CPyObject_GetAttr(r8, r9)
     r11 = [r7]
     r12 = load_address r11
-    r13 = _PyObject_Vectorcall(r10, r12, 1, 0)
+    r13 = PyObject_Vectorcall(r10, r12, 1, 0)
     keep_alive r7
     goto L4
 L3:
@@ -1015,7 +1015,7 @@ L1:
     r5 = CPyObject_GetAttr(r3, r4)
     r6 = [r2]
     r7 = load_address r6
-    r8 = _PyObject_Vectorcall(r5, r7, 1, 0)
+    r8 = PyObject_Vectorcall(r5, r7, 1, 0)
     keep_alive r2
     goto L3
 L2:
@@ -1072,7 +1072,7 @@ L3:
     r14 = CPyObject_GetAttr(r12, r13)
     r15 = [r11]
     r16 = load_address r15
-    r17 = _PyObject_Vectorcall(r14, r16, 1, 0)
+    r17 = PyObject_Vectorcall(r14, r16, 1, 0)
     keep_alive r11
     goto L5
 L4:
@@ -1111,7 +1111,7 @@ L2:
     r6 = CPyObject_GetAttr(r4, r5)
     r7 = [r3]
     r8 = load_address r7
-    r9 = _PyObject_Vectorcall(r6, r8, 1, 0)
+    r9 = PyObject_Vectorcall(r6, r8, 1, 0)
     keep_alive r3
     goto L4
 L3:
@@ -1176,7 +1176,7 @@ L4:
     r17 = CPyObject_GetAttr(r15, r16)
     r18 = [r14]
     r19 = load_address r18
-    r20 = _PyObject_Vectorcall(r17, r19, 1, 0)
+    r20 = PyObject_Vectorcall(r17, r19, 1, 0)
     keep_alive r14
     goto L6
 L5:
@@ -1218,7 +1218,7 @@ L2:
     r8 = CPyObject_GetAttr(r6, r7)
     r9 = [r5]
     r10 = load_address r9
-    r11 = _PyObject_Vectorcall(r8, r10, 1, 0)
+    r11 = PyObject_Vectorcall(r8, r10, 1, 0)
     keep_alive r5
     goto L4
 L3:
@@ -1284,7 +1284,7 @@ L4:
     r20 = CPyObject_GetAttr(r18, r19)
     r21 = [r17]
     r22 = load_address r21
-    r23 = _PyObject_Vectorcall(r20, r22, 1, 0)
+    r23 = PyObject_Vectorcall(r20, r22, 1, 0)
     keep_alive r17
     goto L6
 L5:
@@ -1350,7 +1350,7 @@ L4:
     r20 = CPyObject_GetAttr(r18, r19)
     r21 = [r17]
     r22 = load_address r21
-    r23 = _PyObject_Vectorcall(r20, r22, 1, 0)
+    r23 = PyObject_Vectorcall(r20, r22, 1, 0)
     keep_alive r17
     goto L6
 L5:
@@ -1424,7 +1424,7 @@ L5:
     r23 = CPyObject_GetAttr(r21, r22)
     r24 = [r20]
     r25 = load_address r24
-    r26 = _PyObject_Vectorcall(r23, r25, 1, 0)
+    r26 = PyObject_Vectorcall(r23, r25, 1, 0)
     keep_alive r20
     goto L7
 L6:
@@ -1505,7 +1505,7 @@ L5:
     r24 = CPyObject_GetAttr(r22, r23)
     r25 = [r21]
     r26 = load_address r25
-    r27 = _PyObject_Vectorcall(r24, r26, 1, 0)
+    r27 = PyObject_Vectorcall(r24, r26, 1, 0)
     keep_alive r21
     goto L7
 L6:
@@ -1584,7 +1584,7 @@ L5:
     r25 = CPyObject_GetAttr(r23, r24)
     r26 = [r22]
     r27 = load_address r26
-    r28 = _PyObject_Vectorcall(r25, r27, 1, 0)
+    r28 = PyObject_Vectorcall(r25, r27, 1, 0)
     keep_alive r22
     goto L7
 L6:
@@ -1623,7 +1623,7 @@ L2:
     r6 = CPyObject_GetAttr(r4, r5)
     r7 = [r3]
     r8 = load_address r7
-    r9 = _PyObject_Vectorcall(r6, r8, 1, 0)
+    r9 = PyObject_Vectorcall(r6, r8, 1, 0)
     keep_alive r3
     goto L4
 L3:
@@ -1673,7 +1673,7 @@ L3:
     r11 = CPyObject_GetAttr(r9, r10)
     r12 = [r8]
     r13 = load_address r12
-    r14 = _PyObject_Vectorcall(r11, r13, 1, 0)
+    r14 = PyObject_Vectorcall(r11, r13, 1, 0)
     keep_alive r8
     goto L5
 L4:
