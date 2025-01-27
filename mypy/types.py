@@ -130,6 +130,12 @@ LITERAL_TYPE_NAMES: Final = ("typing.Literal", "typing_extensions.Literal")
 # Supported Annotated type names.
 ANNOTATED_TYPE_NAMES: Final = ("typing.Annotated", "typing_extensions.Annotated")
 
+# Supported Concatenate type names.
+CONCATENATE_TYPE_NAMES: Final = ("typing.Concatenate", "typing_extensions.Concatenate")
+
+# Supported Unpack type names.
+UNPACK_TYPE_NAMES: Final = ("typing.Unpack", "typing_extensions.Unpack")
+
 # Supported @deprecated type names
 DEPRECATED_TYPE_NAMES: Final = ("warnings.deprecated", "typing_extensions.deprecated")
 
