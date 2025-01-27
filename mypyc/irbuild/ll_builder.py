@@ -162,11 +162,11 @@ from mypyc.primitives.list_ops import list_build_op, list_extend_op, list_items,
 from mypyc.primitives.misc_ops import (
     bool_op,
     buf_init_item,
+    debug_print_op,
     fast_isinstance_op,
     none_object_op,
     not_implemented_op,
     var_object_size,
-    debug_print_op,
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
