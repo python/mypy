@@ -7218,7 +7218,15 @@ class SemanticAnalyzer(
             if code is None:
                 code = msg.code
             msg = msg.value
-        self.errors.report(ctx.line, ctx.column, msg, blocker=blocker, code=code)
+        self.errors.report(
+            ctx.line,
+            ctx.column,
+            msg,
+            blocker=blocker,
+            code=code,
+            end_line=ctx.end_line,
+            end_column=ctx.end_column,
+        )
 
     def note(self, msg: str, ctx: Context, code: ErrorCode | None = None) -> None:
         if not self.in_checked_function():
