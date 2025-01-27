@@ -4,9 +4,9 @@ requires = [
     # and build-requirements.txt, because those are both needed for
     # self-typechecking :/
     "setuptools >= 75.1.0",
-    # the following is from mypy-requirements.txt/setup.py
+    # the following is from mypy-requirements.txt
     "typing_extensions>=4.6.0",
-    "mypy_extensions>=1.0.0",
+    "mypy_extensions>=1.0.0,<2",
     "tomli>=1.1.0; python_version<'3.11'",
     # the following is from build-requirements.txt
     "types-psutil",
@@ -48,7 +48,7 @@ requires-python = ">=3.9"
 dependencies = [
   # When changing this, also update build-system.requires and mypy-requirements.txt
   "typing_extensions>=4.6.0",
-  "mypy_extensions>=1.0.0",
+  "mypy_extensions>=1.0.0,<2",
   "tomli>=1.1.0; python_version<'3.11'",
 ]
 dynamic = ["version"]
