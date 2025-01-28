@@ -1938,7 +1938,7 @@ class D(C):  # E: Cannot extend enum with existing members: "C" \
     x: int   # E: Cannot assign to final name "x"
 [builtins fixtures/bool.pyi]
 
-[case testEnumNotFinalWithMethodsAndUninitializedValuesStubMemberAndNonMember]
+[case testEnumNotFinalWithMethodsAndUninitializedValuesStubMember]
 # flags: --python-version 3.11
 # This was added in 3.11
 import lib
