@@ -862,6 +862,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             ctx.line,
             ctx.column,
         )
+        instance.end_line = ctx.end_line
+        instance.end_column = ctx.end_column
         if len(info.type_vars) == 1 and info.has_param_spec_type:
             instance.args = tuple(self.pack_paramspec_args(instance.args))
 
@@ -2204,6 +2206,8 @@ def instantiate_type_alias(
         tp = Instance(node.target.type, args)
         tp.line = ctx.line
         tp.column = ctx.column
+        tp.end_line = ctx.end_line
+        tp.end_column = ctx.end_column
         return tp
     if node.tvar_tuple_index is None:
         if any(isinstance(a, UnpackType) for a in args):

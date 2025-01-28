@@ -4,21 +4,21 @@
 #
 #    pip-compile --allow-unsafe --output-file=test-requirements.txt --strip-extras test-requirements.in
 #
-attrs==24.2.0
+attrs==25.1.0
     # via -r test-requirements.in
 cfgv==3.4.0
     # via pre-commit
-coverage==7.6.1
+coverage==7.6.10
     # via pytest-cov
 distlib==0.3.9
     # via virtualenv
 execnet==2.1.1
     # via pytest-xdist
-filelock==3.16.1
+filelock==3.17.0
     # via
     #   -r test-requirements.in
     #   virtualenv
-identify==2.6.1
+identify==2.6.6
     # via pre-commit
 iniconfig==2.0.0
     # via pytest
@@ -28,38 +28,38 @@ mypy-extensions==1.0.0
     # via -r mypy-requirements.txt
 nodeenv==1.9.1
     # via pre-commit
-packaging==24.1
+packaging==24.2
     # via pytest
 platformdirs==4.3.6
     # via virtualenv
 pluggy==1.5.0
     # via pytest
-pre-commit==3.5.0
+pre-commit==4.1.0
     # via -r test-requirements.in
-psutil==6.0.0
+psutil==6.1.1
     # via -r test-requirements.in
-pytest==8.3.3
+pytest==8.3.4
     # via
     #   -r test-requirements.in
     #   pytest-cov
     #   pytest-xdist
-pytest-cov==5.0.0
+pytest-cov==6.0.0
     # via -r test-requirements.in
 pytest-xdist==3.6.1
     # via -r test-requirements.in
 pyyaml==6.0.2
     # via pre-commit
-tomli==2.0.2
+tomli==2.2.1
     # via -r test-requirements.in
-types-psutil==6.0.0.20241011
+types-psutil==6.1.0.20241221
     # via -r build-requirements.txt
-types-setuptools==75.1.0.20241014
+types-setuptools==75.8.0.20250110
     # via -r build-requirements.txt
 typing-extensions==4.12.2
     # via -r mypy-requirements.txt
-virtualenv==20.26.6
+virtualenv==20.29.1
     # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==75.1.0
+setuptools==75.8.0
     # via -r test-requirements.in

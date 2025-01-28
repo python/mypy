@@ -484,16 +484,22 @@ def f(x):
     x :: int
     r0 :: object
     r1 :: str
-    r2, r3, r4 :: object
-    r5 :: int
+    r2, r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: int
 L0:
     r0 = testmodule :: module
     r1 = 'factorial'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = box(int, x)
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
-    r5 = unbox(int, r4)
-    return r5
+    r4 = [r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
+    keep_alive r3
+    r7 = unbox(int, r6)
+    return r7
 
 [case testImport_toplevel]
 import sys
@@ -581,7 +587,7 @@ L2:
     r33 = single :: module
     r34 = 'hello'
     r35 = CPyObject_GetAttr(r33, r34)
-    r36 = PyObject_CallFunctionObjArgs(r35, 0)
+    r36 = PyObject_Vectorcall(r35, 0, 0, 0)
     return 1
 
 [case testFromImport_toplevel]
@@ -600,36 +606,42 @@ def f(x):
     x :: int
     r0 :: dict
     r1 :: str
-    r2, r3, r4 :: object
-    r5 :: int
-    r6 :: dict
-    r7 :: str
-    r8, r9 :: object
-    r10, r11 :: int
-    r12 :: dict
-    r13 :: str
-    r14, r15 :: object
-    r16, r17 :: int
+    r2, r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: int
+    r8 :: dict
+    r9 :: str
+    r10, r11 :: object
+    r12, r13 :: int
+    r14 :: dict
+    r15 :: str
+    r16, r17 :: object
+    r18, r19 :: int
 L0:
     r0 = __main__.globals :: static
     r1 = 'g'
     r2 = CPyDict_GetItem(r0, r1)
     r3 = box(int, x)
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
-    r5 = unbox(int, r4)
-    r6 = __main__.globals :: static
-    r7 = 'h'
-    r8 = CPyDict_GetItem(r6, r7)
-    r9 = PyObject_CallFunctionObjArgs(r8, 0)
-    r10 = unbox(int, r9)
-    r11 = CPyTagged_Add(r5, r10)
-    r12 = __main__.globals :: static
-    r13 = 'two'
-    r14 = CPyDict_GetItem(r12, r13)
-    r15 = PyObject_CallFunctionObjArgs(r14, 0)
-    r16 = unbox(int, r15)
-    r17 = CPyTagged_Add(r11, r16)
-    return r17
+    r4 = [r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
+    keep_alive r3
+    r7 = unbox(int, r6)
+    r8 = __main__.globals :: static
+    r9 = 'h'
+    r10 = CPyDict_GetItem(r8, r9)
+    r11 = PyObject_Vectorcall(r10, 0, 0, 0)
+    r12 = unbox(int, r11)
+    r13 = CPyTagged_Add(r7, r12)
+    r14 = __main__.globals :: static
+    r15 = 'two'
+    r16 = CPyDict_GetItem(r14, r15)
+    r17 = PyObject_Vectorcall(r16, 0, 0, 0)
+    r18 = unbox(int, r17)
+    r19 = CPyTagged_Add(r13, r18)
+    return r19
 def __top_level__():
     r0, r1 :: object
     r2 :: bit
@@ -673,13 +685,19 @@ def f(x):
     x :: int
     r0 :: object
     r1 :: str
-    r2, r3, r4 :: object
+    r2, r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
 L0:
     r0 = builtins :: module
     r1 = 'print'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = object 5
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
+    r4 = [r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
+    keep_alive r3
     return 1
 
 [case testPrint]
@@ -691,13 +709,19 @@ def f(x):
     x :: int
     r0 :: object
     r1 :: str
-    r2, r3, r4 :: object
+    r2, r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
 L0:
     r0 = builtins :: module
     r1 = 'print'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = object 5
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
+    r4 = [r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
+    keep_alive r3
     return 1
 
 [case testUnicodeLiteral]
@@ -726,7 +750,7 @@ L0:
     r1 = b'1234'
     return r1
 
-[case testPyMethodCall1]
+[case testPyMethodCall1_64bit]
 from typing import Any
 def f(x: Any) -> int:
     y: int = x.pop()
@@ -735,20 +759,30 @@ def f(x: Any) -> int:
 def f(x):
     x :: object
     r0 :: str
-    r1 :: object
-    r2, y :: int
-    r3 :: str
-    r4 :: object
-    r5 :: int
+    r1 :: object[1]
+    r2 :: object_ptr
+    r3 :: object
+    r4, y :: int
+    r5 :: str
+    r6 :: object[1]
+    r7 :: object_ptr
+    r8 :: object
+    r9 :: int
 L0:
     r0 = 'pop'
-    r1 = CPyObject_CallMethodObjArgs(x, r0, 0)
-    r2 = unbox(int, r1)
-    y = r2
-    r3 = 'pop'
-    r4 = CPyObject_CallMethodObjArgs(x, r3, 0)
-    r5 = unbox(int, r4)
-    return r5
+    r1 = [x]
+    r2 = load_address r1
+    r3 = PyObject_VectorcallMethod(r0, r2, 9223372036854775809, 0)
+    keep_alive x
+    r4 = unbox(int, r3)
+    y = r4
+    r5 = 'pop'
+    r6 = [x]
+    r7 = load_address r6
+    r8 = PyObject_VectorcallMethod(r5, r7, 9223372036854775809, 0)
+    keep_alive x
+    r9 = unbox(int, r8)
+    return r9
 
 [case testObjectType]
 def g(y: object) -> None:
@@ -1105,16 +1139,22 @@ def call_python_function(x):
     x :: int
     r0 :: dict
     r1 :: str
-    r2, r3, r4 :: object
-    r5 :: int
+    r2, r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: int
 L0:
     r0 = __main__.globals :: static
     r1 = 'f'
     r2 = CPyDict_GetItem(r0, r1)
     r3 = box(int, x)
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
-    r5 = unbox(int, r4)
-    return r5
+    r4 = [r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
+    keep_alive r3
+    r7 = unbox(int, r6)
+    return r7
 def return_float():
 L0:
     return 5.0
@@ -1133,11 +1173,11 @@ def call_callable_type():
 L0:
     r0 = return_callable_type()
     f = r0
-    r1 = PyObject_CallFunctionObjArgs(f, 0)
+    r1 = PyObject_Vectorcall(f, 0, 0, 0)
     r2 = unbox(float, r1)
     return r2
 
-[case testCallableTypesWithKeywordArgs]
+[case testCallableTypesWithKeywordArgs_64bit]
 from typing import List
 
 def call_python_function_with_keyword_arg(x: str) -> int:
@@ -1151,58 +1191,51 @@ def call_python_method_with_keyword_args(xs: List[int], first: int, second: int)
 [out]
 def call_python_function_with_keyword_arg(x):
     x :: str
-    r0 :: object
-    r1 :: str
-    r2 :: tuple
-    r3 :: object
-    r4 :: dict
-    r5 :: object
+    r0, r1 :: object
+    r2 :: object[2]
+    r3 :: object_ptr
+    r4, r5 :: object
     r6 :: int
 L0:
     r0 = load_address PyLong_Type
-    r1 = 'base'
-    r2 = PyTuple_Pack(1, x)
-    r3 = object 2
-    r4 = CPyDict_Build(1, r1, r3)
-    r5 = PyObject_Call(r0, r2, r4)
+    r1 = object 2
+    r2 = [x, r1]
+    r3 = load_address r2
+    r4 = ('base',)
+    r5 = PyObject_Vectorcall(r0, r3, 1, r4)
+    keep_alive x, r1
     r6 = unbox(int, r5)
     return r6
 def call_python_method_with_keyword_args(xs, first, second):
     xs :: list
     first, second :: int
     r0 :: str
-    r1 :: object
-    r2 :: str
-    r3 :: object
-    r4 :: tuple
-    r5 :: object
-    r6 :: dict
-    r7 :: object
-    r8 :: str
-    r9 :: object
-    r10, r11 :: str
-    r12 :: tuple
-    r13, r14 :: object
-    r15 :: dict
-    r16 :: object
+    r1, r2 :: object
+    r3 :: object[3]
+    r4 :: object_ptr
+    r5, r6 :: object
+    r7 :: str
+    r8, r9 :: object
+    r10 :: object[3]
+    r11 :: object_ptr
+    r12, r13 :: object
 L0:
     r0 = 'insert'
-    r1 = CPyObject_GetAttr(xs, r0)
-    r2 = 'x'
-    r3 = object 0
-    r4 = PyTuple_Pack(1, r3)
-    r5 = box(int, first)
-    r6 = CPyDict_Build(1, r2, r5)
-    r7 = PyObject_Call(r1, r4, r6)
-    r8 = 'insert'
-    r9 = CPyObject_GetAttr(xs, r8)
-    r10 = 'x'
-    r11 = 'i'
-    r12 = PyTuple_Pack(0)
-    r13 = box(int, second)
-    r14 = object 1
-    r15 = CPyDict_Build(2, r10, r13, r11, r14)
-    r16 = PyObject_Call(r9, r12, r15)
+    r1 = object 0
+    r2 = box(int, first)
+    r3 = [xs, r1, r2]
+    r4 = load_address r3
+    r5 = ('x',)
+    r6 = PyObject_VectorcallMethod(r0, r4, 9223372036854775810, r5)
+    keep_alive xs, r1, r2
+    r7 = 'insert'
+    r8 = box(int, second)
+    r9 = object 1
+    r10 = [xs, r8, r9]
+    r11 = load_address r10
+    r12 = ('x', 'i')
+    r13 = PyObject_VectorcallMethod(r7, r11, 9223372036854775809, r12)
+    keep_alive xs, r8, r9
     return xs
 
 [case testObjectAsBoolean]
@@ -1368,7 +1401,7 @@ L0:
     r0 = builtins :: module
     r1 = 'Exception'
     r2 = CPyObject_GetAttr(r0, r1)
-    r3 = PyObject_CallFunctionObjArgs(r2, 0)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
     CPy_Raise(r3)
     unreachable
 def bar():
@@ -1396,7 +1429,10 @@ def f():
     r3 :: int
     r4 :: object
     r5 :: str
-    r6, r7, r8 :: object
+    r6, r7 :: object
+    r8 :: object[1]
+    r9 :: object_ptr
+    r10 :: object
 L0:
     r0 = __main__.globals :: static
     r1 = 'x'
@@ -1406,7 +1442,10 @@ L0:
     r5 = 'print'
     r6 = CPyObject_GetAttr(r4, r5)
     r7 = box(int, r3)
-    r8 = PyObject_CallFunctionObjArgs(r6, r7, 0)
+    r8 = [r7]
+    r9 = load_address r8
+    r10 = PyObject_Vectorcall(r6, r9, 1, 0)
+    keep_alive r7
     return 1
 def __top_level__():
     r0, r1 :: object
@@ -1424,7 +1463,10 @@ def __top_level__():
     r13 :: int
     r14 :: object
     r15 :: str
-    r16, r17, r18 :: object
+    r16, r17 :: object
+    r18 :: object[1]
+    r19 :: object_ptr
+    r20 :: object
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -1448,7 +1490,10 @@ L2:
     r15 = 'print'
     r16 = CPyObject_GetAttr(r14, r15)
     r17 = box(int, r13)
-    r18 = PyObject_CallFunctionObjArgs(r16, r17, 0)
+    r18 = [r17]
+    r19 = load_address r18
+    r20 = PyObject_Vectorcall(r16, r19, 1, 0)
+    keep_alive r17
     return 1
 
 [case testCallOverloaded]
@@ -1465,16 +1510,22 @@ def f(x: str) -> int: ...
 def f():
     r0 :: object
     r1 :: str
-    r2, r3, r4 :: object
-    r5 :: str
+    r2, r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
 L0:
     r0 = m :: module
     r1 = 'f'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = object 1
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
-    r5 = cast(str, r4)
-    return r5
+    r4 = [r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
+    keep_alive r3
+    r7 = cast(str, r6)
+    return r7
 
 [case testCallOverloadedNative]
 from typing import overload, Union
@@ -2147,45 +2198,54 @@ def __top_level__():
     r19 :: object
     r20 :: dict
     r21 :: str
-    r22, r23 :: object
-    r24 :: dict
-    r25 :: str
-    r26 :: i32
-    r27 :: bit
-    r28 :: str
-    r29 :: dict
+    r22 :: object
+    r23 :: object[2]
+    r24 :: object_ptr
+    r25 :: object
+    r26 :: dict
+    r27 :: str
+    r28 :: i32
+    r29 :: bit
     r30 :: str
-    r31, r32, r33 :: object
-    r34 :: tuple
-    r35 :: dict
-    r36 :: str
-    r37 :: i32
-    r38 :: bit
+    r31 :: dict
+    r32 :: str
+    r33, r34 :: object
+    r35 :: object[2]
+    r36 :: object_ptr
+    r37 :: object
+    r38 :: tuple
     r39 :: dict
     r40 :: str
-    r41, r42, r43 :: object
-    r44 :: dict
-    r45 :: str
-    r46 :: i32
-    r47 :: bit
-    r48 :: str
-    r49 :: dict
-    r50 :: str
-    r51 :: object
-    r52 :: dict
-    r53 :: str
-    r54, r55 :: object
+    r41 :: i32
+    r42 :: bit
+    r43 :: dict
+    r44 :: str
+    r45, r46, r47 :: object
+    r48 :: dict
+    r49 :: str
+    r50 :: i32
+    r51 :: bit
+    r52 :: str
+    r53 :: dict
+    r54 :: str
+    r55 :: object
     r56 :: dict
     r57 :: str
-    r58 :: i32
-    r59 :: bit
-    r60 :: list
-    r61, r62, r63 :: object
-    r64 :: ptr
-    r65 :: dict
-    r66 :: str
-    r67 :: i32
-    r68 :: bit
+    r58 :: object
+    r59 :: object[2]
+    r60 :: object_ptr
+    r61 :: object
+    r62 :: dict
+    r63 :: str
+    r64 :: i32
+    r65 :: bit
+    r66 :: list
+    r67, r68, r69 :: object
+    r70 :: ptr
+    r71 :: dict
+    r72 :: str
+    r73 :: i32
+    r74 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -2215,56 +2275,65 @@ L2:
     r20 = __main__.globals :: static
     r21 = 'NamedTuple'
     r22 = CPyDict_GetItem(r20, r21)
-    r23 = PyObject_CallFunctionObjArgs(r22, r9, r19, 0)
-    r24 = __main__.globals :: static
-    r25 = 'Lol'
-    r26 = CPyDict_SetItem(r24, r25, r23)
-    r27 = r26 >= 0 :: signed
-    r28 = ''
-    r29 = __main__.globals :: static
-    r30 = 'Lol'
-    r31 = CPyDict_GetItem(r29, r30)
-    r32 = object 1
-    r33 = PyObject_CallFunctionObjArgs(r31, r32, r28, 0)
-    r34 = cast(tuple, r33)
-    r35 = __main__.globals :: static
-    r36 = 'x'
-    r37 = CPyDict_SetItem(r35, r36, r34)
-    r38 = r37 >= 0 :: signed
+    r23 = [r9, r19]
+    r24 = load_address r23
+    r25 = PyObject_Vectorcall(r22, r24, 2, 0)
+    keep_alive r9, r19
+    r26 = __main__.globals :: static
+    r27 = 'Lol'
+    r28 = CPyDict_SetItem(r26, r27, r25)
+    r29 = r28 >= 0 :: signed
+    r30 = ''
+    r31 = __main__.globals :: static
+    r32 = 'Lol'
+    r33 = CPyDict_GetItem(r31, r32)
+    r34 = object 1
+    r35 = [r34, r30]
+    r36 = load_address r35
+    r37 = PyObject_Vectorcall(r33, r36, 2, 0)
+    keep_alive r34, r30
+    r38 = cast(tuple, r37)
     r39 = __main__.globals :: static
-    r40 = 'List'
-    r41 = CPyDict_GetItem(r39, r40)
-    r42 = load_address PyLong_Type
-    r43 = PyObject_GetItem(r41, r42)
-    r44 = __main__.globals :: static
-    r45 = 'Foo'
-    r46 = CPyDict_SetItem(r44, r45, r43)
-    r47 = r46 >= 0 :: signed
-    r48 = 'Bar'
-    r49 = __main__.globals :: static
-    r50 = 'Foo'
-    r51 = CPyDict_GetItem(r49, r50)
-    r52 = __main__.globals :: static
-    r53 = 'NewType'
-    r54 = CPyDict_GetItem(r52, r53)
-    r55 = PyObject_CallFunctionObjArgs(r54, r48, r51, 0)
+    r40 = 'x'
+    r41 = CPyDict_SetItem(r39, r40, r38)
+    r42 = r41 >= 0 :: signed
+    r43 = __main__.globals :: static
+    r44 = 'List'
+    r45 = CPyDict_GetItem(r43, r44)
+    r46 = load_address PyLong_Type
+    r47 = PyObject_GetItem(r45, r46)
+    r48 = __main__.globals :: static
+    r49 = 'Foo'
+    r50 = CPyDict_SetItem(r48, r49, r47)
+    r51 = r50 >= 0 :: signed
+    r52 = 'Bar'
+    r53 = __main__.globals :: static
+    r54 = 'Foo'
+    r55 = CPyDict_GetItem(r53, r54)
     r56 = __main__.globals :: static
-    r57 = 'Bar'
-    r58 = CPyDict_SetItem(r56, r57, r55)
-    r59 = r58 >= 0 :: signed
-    r60 = PyList_New(3)
-    r61 = object 1
-    r62 = object 2
-    r63 = object 3
-    r64 = list_items r60
-    buf_init_item r64, 0, r61
-    buf_init_item r64, 1, r62
-    buf_init_item r64, 2, r63
-    keep_alive r60
-    r65 = __main__.globals :: static
-    r66 = 'y'
-    r67 = CPyDict_SetItem(r65, r66, r60)
-    r68 = r67 >= 0 :: signed
+    r57 = 'NewType'
+    r58 = CPyDict_GetItem(r56, r57)
+    r59 = [r52, r55]
+    r60 = load_address r59
+    r61 = PyObject_Vectorcall(r58, r60, 2, 0)
+    keep_alive r52, r55
+    r62 = __main__.globals :: static
+    r63 = 'Bar'
+    r64 = CPyDict_SetItem(r62, r63, r61)
+    r65 = r64 >= 0 :: signed
+    r66 = PyList_New(3)
+    r67 = object 1
+    r68 = object 2
+    r69 = object 3
+    r70 = list_items r66
+    buf_init_item r70, 0, r67
+    buf_init_item r70, 1, r68
+    buf_init_item r70, 2, r69
+    keep_alive r66
+    r71 = __main__.globals :: static
+    r72 = 'y'
+    r73 = CPyDict_SetItem(r71, r72, r66)
+    r74 = r73 >= 0 :: signed
     return 1
 
 [case testChainedConditional]
@@ -2378,25 +2447,37 @@ def g_a_obj.__call__(__mypyc_self__):
     r1 :: str
     r2 :: object
     r3 :: str
-    r4, r5, r6, r7 :: object
-    r8 :: str
-    r9 :: object
+    r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7, r8, r9 :: object
     r10 :: str
-    r11, r12 :: object
+    r11 :: object
+    r12 :: str
+    r13 :: object
+    r14 :: object[1]
+    r15 :: object_ptr
+    r16 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = 'Entering'
     r2 = builtins :: module
     r3 = 'print'
     r4 = CPyObject_GetAttr(r2, r3)
-    r5 = PyObject_CallFunctionObjArgs(r4, r1, 0)
-    r6 = r0.f
-    r7 = PyObject_CallFunctionObjArgs(r6, 0)
-    r8 = 'Exited'
-    r9 = builtins :: module
-    r10 = 'print'
-    r11 = CPyObject_GetAttr(r9, r10)
-    r12 = PyObject_CallFunctionObjArgs(r11, r8, 0)
+    r5 = [r1]
+    r6 = load_address r5
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
+    keep_alive r1
+    r8 = r0.f
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
+    r10 = 'Exited'
+    r11 = builtins :: module
+    r12 = 'print'
+    r13 = CPyObject_GetAttr(r11, r12)
+    r14 = [r10]
+    r15 = load_address r14
+    r16 = PyObject_Vectorcall(r13, r15, 1, 0)
+    keep_alive r10
     return 1
 def a(f):
     f :: object
@@ -2431,25 +2512,37 @@ def g_b_obj.__call__(__mypyc_self__):
     r1 :: str
     r2 :: object
     r3 :: str
-    r4, r5, r6, r7 :: object
-    r8 :: str
-    r9 :: object
+    r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7, r8, r9 :: object
     r10 :: str
-    r11, r12 :: object
+    r11 :: object
+    r12 :: str
+    r13 :: object
+    r14 :: object[1]
+    r15 :: object_ptr
+    r16 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = '---'
     r2 = builtins :: module
     r3 = 'print'
     r4 = CPyObject_GetAttr(r2, r3)
-    r5 = PyObject_CallFunctionObjArgs(r4, r1, 0)
-    r6 = r0.f
-    r7 = PyObject_CallFunctionObjArgs(r6, 0)
-    r8 = '---'
-    r9 = builtins :: module
-    r10 = 'print'
-    r11 = CPyObject_GetAttr(r9, r10)
-    r12 = PyObject_CallFunctionObjArgs(r11, r8, 0)
+    r5 = [r1]
+    r6 = load_address r5
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
+    keep_alive r1
+    r8 = r0.f
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
+    r10 = '---'
+    r11 = builtins :: module
+    r12 = 'print'
+    r13 = CPyObject_GetAttr(r11, r12)
+    r14 = [r10]
+    r15 = load_address r14
+    r16 = PyObject_Vectorcall(r13, r15, 1, 0)
+    keep_alive r10
     return 1
 def b(f):
     f :: object
@@ -2484,14 +2577,20 @@ def d_c_obj.__call__(__mypyc_self__):
     r1 :: str
     r2 :: object
     r3 :: str
-    r4, r5 :: object
+    r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = 'd'
     r2 = builtins :: module
     r3 = 'print'
     r4 = CPyObject_GetAttr(r2, r3)
-    r5 = PyObject_CallFunctionObjArgs(r4, r1, 0)
+    r5 = [r1]
+    r6 = load_address r5
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
+    keep_alive r1
     return 1
 def c():
     r0 :: __main__.c_env
@@ -2499,18 +2598,27 @@ def c():
     r2 :: bool
     r3 :: dict
     r4 :: str
-    r5, r6 :: object
-    r7 :: dict
-    r8 :: str
-    r9, r10, d :: object
-    r11 :: dict
-    r12 :: str
-    r13 :: i32
-    r14 :: bit
-    r15 :: str
-    r16 :: object
-    r17 :: str
-    r18, r19, r20 :: object
+    r5 :: object
+    r6 :: object[1]
+    r7 :: object_ptr
+    r8 :: object
+    r9 :: dict
+    r10 :: str
+    r11 :: object
+    r12 :: object[1]
+    r13 :: object_ptr
+    r14, d :: object
+    r15 :: dict
+    r16 :: str
+    r17 :: i32
+    r18 :: bit
+    r19 :: str
+    r20 :: object
+    r21 :: str
+    r22 :: object
+    r23 :: object[1]
+    r24 :: object_ptr
+    r25, r26 :: object
 L0:
     r0 = c_env()
     r1 = d_c_obj()
@@ -2518,22 +2626,31 @@ L0:
     r3 = __main__.globals :: static
     r4 = 'b'
     r5 = CPyDict_GetItem(r3, r4)
-    r6 = PyObject_CallFunctionObjArgs(r5, r1, 0)
-    r7 = __main__.globals :: static
-    r8 = 'a'
-    r9 = CPyDict_GetItem(r7, r8)
-    r10 = PyObject_CallFunctionObjArgs(r9, r6, 0)
-    d = r10
-    r11 = __main__.globals :: static
-    r12 = 'd'
-    r13 = CPyDict_SetItem(r11, r12, r10)
-    r14 = r13 >= 0 :: signed
-    r15 = 'c'
-    r16 = builtins :: module
-    r17 = 'print'
-    r18 = CPyObject_GetAttr(r16, r17)
-    r19 = PyObject_CallFunctionObjArgs(r18, r15, 0)
-    r20 = PyObject_CallFunctionObjArgs(d, 0)
+    r6 = [r1]
+    r7 = load_address r6
+    r8 = PyObject_Vectorcall(r5, r7, 1, 0)
+    keep_alive r1
+    r9 = __main__.globals :: static
+    r10 = 'a'
+    r11 = CPyDict_GetItem(r9, r10)
+    r12 = [r8]
+    r13 = load_address r12
+    r14 = PyObject_Vectorcall(r11, r13, 1, 0)
+    keep_alive r8
+    d = r14
+    r15 = __main__.globals :: static
+    r16 = 'd'
+    r17 = CPyDict_SetItem(r15, r16, r14)
+    r18 = r17 >= 0 :: signed
+    r19 = 'c'
+    r20 = builtins :: module
+    r21 = 'print'
+    r22 = CPyObject_GetAttr(r20, r21)
+    r23 = [r19]
+    r24 = load_address r23
+    r25 = PyObject_Vectorcall(r22, r24, 1, 0)
+    keep_alive r19
+    r26 = PyObject_Vectorcall(d, 0, 0, 0)
     return 1
 def __top_level__():
     r0, r1 :: object
@@ -2548,14 +2665,20 @@ def __top_level__():
     r11 :: object
     r12 :: dict
     r13 :: str
-    r14, r15 :: object
-    r16 :: dict
-    r17 :: str
-    r18, r19 :: object
-    r20 :: dict
-    r21 :: str
-    r22 :: i32
-    r23 :: bit
+    r14 :: object
+    r15 :: object[1]
+    r16 :: object_ptr
+    r17 :: object
+    r18 :: dict
+    r19 :: str
+    r20 :: object
+    r21 :: object[1]
+    r22 :: object_ptr
+    r23 :: object
+    r24 :: dict
+    r25 :: str
+    r26 :: i32
+    r27 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -2577,15 +2700,21 @@ L2:
     r12 = __main__.globals :: static
     r13 = 'b'
     r14 = CPyDict_GetItem(r12, r13)
-    r15 = PyObject_CallFunctionObjArgs(r14, r11, 0)
-    r16 = __main__.globals :: static
-    r17 = 'a'
-    r18 = CPyDict_GetItem(r16, r17)
-    r19 = PyObject_CallFunctionObjArgs(r18, r15, 0)
-    r20 = __main__.globals :: static
-    r21 = 'c'
-    r22 = CPyDict_SetItem(r20, r21, r19)
-    r23 = r22 >= 0 :: signed
+    r15 = [r11]
+    r16 = load_address r15
+    r17 = PyObject_Vectorcall(r14, r16, 1, 0)
+    keep_alive r11
+    r18 = __main__.globals :: static
+    r19 = 'a'
+    r20 = CPyDict_GetItem(r18, r19)
+    r21 = [r17]
+    r22 = load_address r21
+    r23 = PyObject_Vectorcall(r20, r22, 1, 0)
+    keep_alive r17
+    r24 = __main__.globals :: static
+    r25 = 'c'
+    r26 = CPyDict_SetItem(r24, r25, r23)
+    r27 = r26 >= 0 :: signed
     return 1
 
 [case testDecoratorsSimple_toplevel]
@@ -2618,25 +2747,37 @@ def g_a_obj.__call__(__mypyc_self__):
     r1 :: str
     r2 :: object
     r3 :: str
-    r4, r5, r6, r7 :: object
-    r8 :: str
-    r9 :: object
+    r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7, r8, r9 :: object
     r10 :: str
-    r11, r12 :: object
+    r11 :: object
+    r12 :: str
+    r13 :: object
+    r14 :: object[1]
+    r15 :: object_ptr
+    r16 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = 'Entering'
     r2 = builtins :: module
     r3 = 'print'
     r4 = CPyObject_GetAttr(r2, r3)
-    r5 = PyObject_CallFunctionObjArgs(r4, r1, 0)
-    r6 = r0.f
-    r7 = PyObject_CallFunctionObjArgs(r6, 0)
-    r8 = 'Exited'
-    r9 = builtins :: module
-    r10 = 'print'
-    r11 = CPyObject_GetAttr(r9, r10)
-    r12 = PyObject_CallFunctionObjArgs(r11, r8, 0)
+    r5 = [r1]
+    r6 = load_address r5
+    r7 = PyObject_Vectorcall(r4, r6, 1, 0)
+    keep_alive r1
+    r8 = r0.f
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
+    r10 = 'Exited'
+    r11 = builtins :: module
+    r12 = 'print'
+    r13 = CPyObject_GetAttr(r11, r12)
+    r14 = [r10]
+    r15 = load_address r14
+    r16 = PyObject_Vectorcall(r13, r15, 1, 0)
+    keep_alive r10
     return 1
 def a(f):
     f :: object
@@ -2757,10 +2898,13 @@ def call_sum(l, comparison):
     r0 :: int
     r1, r2 :: object
     r3, x :: int
-    r4, r5 :: object
-    r6, r7 :: bool
-    r8, r9 :: int
-    r10 :: bit
+    r4 :: object
+    r5 :: object[1]
+    r6 :: object_ptr
+    r7 :: object
+    r8, r9 :: bool
+    r10, r11 :: int
+    r12 :: bit
 L0:
     r0 = 0
     r1 = PyObject_GetIter(l)
@@ -2771,16 +2915,19 @@ L2:
     r3 = unbox(int, r2)
     x = r3
     r4 = box(int, x)
-    r5 = PyObject_CallFunctionObjArgs(comparison, r4, 0)
-    r6 = unbox(bool, r5)
-    r7 = r6 << 1
-    r8 = extend r7: builtins.bool to builtins.int
-    r9 = CPyTagged_Add(r0, r8)
-    r0 = r9
+    r5 = [r4]
+    r6 = load_address r5
+    r7 = PyObject_Vectorcall(comparison, r6, 1, 0)
+    keep_alive r4
+    r8 = unbox(bool, r7)
+    r9 = r8 << 1
+    r10 = extend r9: builtins.bool to builtins.int
+    r11 = CPyTagged_Add(r0, r10)
+    r0 = r11
 L3:
     goto L1
 L4:
-    r10 = CPy_NoErrOccurred()
+    r12 = CPy_NoErrOccurred()
 L5:
     return r0
 
@@ -3060,13 +3207,19 @@ def f(x):
     x :: int
     r0 :: object
     r1 :: str
-    r2, r3, r4 :: object
+    r2, r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
 L0:
     r0 = builtins :: module
     r1 = 'reveal_type'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = box(int, x)
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
+    r4 = [r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 1, 0)
+    keep_alive r3
     return 1
 
 [case testCallCWithStrJoinMethod]
@@ -3274,34 +3427,40 @@ def range_in_loop() -> None:
         sum += i
 [out]
 def range_object():
-    r0, r1, r2, r3, r4 :: object
-    r5, r :: range
+    r0, r1, r2, r3 :: object
+    r4 :: object[3]
+    r5 :: object_ptr
+    r6 :: object
+    r7, r :: range
     sum :: int
-    r6, r7 :: object
-    r8, i, r9 :: int
-    r10 :: bit
+    r8, r9 :: object
+    r10, i, r11 :: int
+    r12 :: bit
 L0:
     r0 = load_address PyRange_Type
     r1 = object 4
     r2 = object 12
     r3 = object 2
-    r4 = PyObject_CallFunctionObjArgs(r0, r1, r2, r3, 0)
-    r5 = cast(range, r4)
-    r = r5
+    r4 = [r1, r2, r3]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r0, r5, 3, 0)
+    keep_alive r1, r2, r3
+    r7 = cast(range, r6)
+    r = r7
     sum = 0
-    r6 = PyObject_GetIter(r)
+    r8 = PyObject_GetIter(r)
 L1:
-    r7 = PyIter_Next(r6)
-    if is_error(r7) goto L4 else goto L2
+    r9 = PyIter_Next(r8)
+    if is_error(r9) goto L4 else goto L2
 L2:
-    r8 = unbox(int, r7)
-    i = r8
-    r9 = CPyTagged_Add(sum, i)
-    sum = r9
+    r10 = unbox(int, r9)
+    i = r10
+    r11 = CPyTagged_Add(sum, i)
+    sum = r11
 L3:
     goto L1
 L4:
-    r10 = CPy_NoErrOccurred()
+    r12 = CPy_NoErrOccurred()
 L5:
     return 1
 def range_in_loop():

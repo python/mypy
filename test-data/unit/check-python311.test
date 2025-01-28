@@ -259,3 +259,47 @@ def foo():
                 continue  # E: "continue" not allowed in except* block
             return  # E: "return" not allowed in except* block
 [builtins fixtures/exception.pyi]
+
+[case testRedefineLocalWithinExceptStarTryClauses]
+# flags: --allow-redefinition
+def fn_str(_: str) -> int: ...
+def fn_int(_: int) -> None: ...
+def fn_exc(_: Exception) -> str: ...
+
+def in_block() -> None:
+    try:
+        a = ""
+        a = fn_str(a)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+        fn_int(a)  # E: Argument 1 to "fn_int" has incompatible type "str"; expected "int"
+    except* Exception:
+        b = ""
+        b = fn_str(b)
+        fn_int(b)
+    else:
+        c = ""
+        c = fn_str(c)
+        fn_int(c)
+    finally:
+        d = ""
+        d = fn_str(d)
+        fn_int(d)
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+    reveal_type(b)  # N: Revealed type is "builtins.int"
+    reveal_type(c)  # N: Revealed type is "builtins.int"
+    reveal_type(d)  # N: Revealed type is "builtins.int"
+
+def across_blocks() -> None:
+    try:
+        a = ""
+    except* Exception:
+        a = fn_str(a)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    else:
+        a = fn_str(a)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+
+def exc_name() -> None:
+    try:
+        pass
+    except* RuntimeError as e:
+        e = fn_exc(e)
+[builtins fixtures/exception.pyi]

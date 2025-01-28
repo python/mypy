@@ -64,7 +64,7 @@ m: A
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "A" and "B">1"
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "b.B">"
 [file b.py]
 class B: ...
 b: B
@@ -933,9 +933,9 @@ m: B
 
 match m:
     case A():
-        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">2"
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "__main__.B" and "__main__.A">"
     case A(i, j):
-        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">3"
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "__main__.B" and "__main__.A">"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternNonexistentKeyword]
@@ -1309,7 +1309,7 @@ m: A
 
 match m:
     case a if isinstance(a, B):
-        reveal_type(a)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+        reveal_type(a)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMatchUnreachablePatternGuard]
@@ -1749,10 +1749,10 @@ class C: pass
 def f(x: A) -> None:
     match x:
         case B() as y:
-            reveal_type(y)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+            reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
         case C() as y:
-            reveal_type(y)  # N: Revealed type is "__main__.<subclass of "A" and "C">"
-    reveal_type(y)  # N: Revealed type is "Union[__main__.<subclass of "A" and "B">, __main__.<subclass of "A" and "C">]"
+            reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.C">"
+    reveal_type(y)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.B">, __main__.<subclass of "__main__.A" and "__main__.C">]"
 
 [case testMatchWithBreakAndContinue]
 def f(x: int | str | None) -> None:

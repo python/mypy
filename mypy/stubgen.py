@@ -755,6 +755,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             elif fullname in DATACLASS_TRANSFORM_NAMES:
                 p = AliasPrinter(self)
                 self._decorators.append(f"@{decorator.accept(p)}")
+            elif isinstance(decorator, (NameExpr, MemberExpr)):
+                p = AliasPrinter(self)
+                self._decorators.append(f"@{decorator.accept(p)}")
 
     def get_fullname(self, expr: Expression) -> str:
         """Return the expression's full name."""

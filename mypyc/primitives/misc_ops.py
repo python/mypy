@@ -283,3 +283,11 @@ set_type_alias_compute_function_op = custom_primitive_op(
     return_type=void_rtype,
     error_kind=ERR_NEVER,
 )
+
+debug_print_op = custom_primitive_op(
+    name="debug_print",
+    c_function_name="CPyDebug_PrintObject",
+    arg_types=[object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+)

@@ -281,7 +281,7 @@ py_vectorcall_op = custom_op(
         object_rprimitive,
     ],  # Keyword arg names tuple (or NULL)
     return_type=object_rprimitive,
-    c_function_name="_PyObject_Vectorcall",
+    c_function_name="PyObject_Vectorcall",
     error_kind=ERR_MAGIC,
 )
 

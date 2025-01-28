@@ -647,6 +647,11 @@ def parse_mypy_comments(
         # method is to create a config parser.
         parser = configparser.RawConfigParser()
         options, parse_errors = mypy_comments_to_config_map(line, template)
+
+        if "python_version" in options:
+            errors.append((lineno, "python_version not supported in inline configuration"))
+            del options["python_version"]
+
         parser["dummy"] = options
         errors.extend((lineno, x) for x in parse_errors)
 

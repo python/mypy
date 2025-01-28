@@ -3472,3 +3472,51 @@ class Qux(Bar):
     def baz(self, x) -> None:
         pass
 [builtins fixtures/tuple.pyi]
+
+[case testDistinctFormatting]
+from typing import Awaitable, Callable, ParamSpec
+
+P = ParamSpec("P")
+
+class A: pass
+class B(A): pass
+
+def decorator(f: Callable[P, None]) -> Callable[[Callable[P, A]], None]:
+    return lambda _: None
+
+def key(x: int) -> None: ...
+def fn_b(b: int) -> B: ...
+
+decorator(key)(fn_b)  # E: Argument 1 has incompatible type "Callable[[Arg(int, 'b')], B]"; expected "Callable[[Arg(int, 'x')], A]"
+
+def decorator2(f: Callable[P, None]) -> Callable[
+    [Callable[P, Awaitable[None]]],
+    Callable[P, Awaitable[None]],
+]:
+    return lambda f: f
+
+def key2(x: int) -> None:
+    ...
+
+@decorator2(key2)  # E: Argument 1 has incompatible type "Callable[[Arg(int, 'y')], Coroutine[Any, Any, None]]"; expected "Callable[[Arg(int, 'x')], Awaitable[None]]"
+async def foo2(y: int) -> None:
+    ...
+
+class Parent:
+    def method_without(self) -> "Parent": ...
+    def method_with(self, param: str) -> "Parent": ...
+
+class Child(Parent):
+    method_without: Callable[["Child"], "Child"]
+    method_with: Callable[["Child", str], "Child"]  # E: Incompatible types in assignment (expression has type "Callable[[str], Child]", base class "Parent" defined the type as "Callable[[Arg(str, 'param')], Parent]")
+[builtins fixtures/tuple.pyi]
+
+[case testDistinctFormattingUnion]
+from typing import Callable, Union
+from mypy_extensions import Arg
+
+def f(x: Callable[[Arg(int, 'x')], None]) -> None: pass
+
+y: Callable[[Union[int, str]], None]
+f(y)  # E: Argument 1 to "f" has incompatible type "Callable[[Union[int, str]], None]"; expected "Callable[[Arg(int, 'x')], None]"
+[builtins fixtures/tuple.pyi]

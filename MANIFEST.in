@@ -42,7 +42,6 @@ graft test-data
 graft mypy/test
 include conftest.py
 include runtests.py
-include pytest.ini
 include tox.ini
 
 include LICENSE mypyc/README.md CHANGELOG.md

@@ -162,6 +162,7 @@ from mypyc.primitives.list_ops import list_build_op, list_extend_op, list_items,
 from mypyc.primitives.misc_ops import (
     bool_op,
     buf_init_item,
+    debug_print_op,
     fast_isinstance_op,
     none_object_op,
     not_implemented_op,
@@ -299,6 +300,11 @@ class LowLevelIRBuilder:
         if self.keep_alives:
             self.add(KeepAlive(self.keep_alives.copy()))
             self.keep_alives = []
+
+    def debug_print(self, toprint: str | Value) -> None:
+        if isinstance(toprint, str):
+            toprint = self.load_str(toprint)
+        self.primitive_op(debug_print_op, [toprint], -1)
 
     # Type conversions
 
