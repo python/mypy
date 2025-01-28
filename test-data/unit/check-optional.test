@@ -566,8 +566,8 @@ if int():
     x = f(1)
 if int():
     x = f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
-
-x.x = 1 # E: Item "None" of "Optional[Node[int]]" has no attribute "x"
+x.x = 1 # E: Item "None" of "Optional[Node[int]]" has no attribute "x" \
+        # N: # N: You can use 'if hasattr( x, 'x'):' to guard against missing attribute error
 if x is not None:
     x.x = 1 # OK here
 
@@ -620,7 +620,8 @@ A = None  # type: Any
 class C(A):
     pass
 x = None  # type: Optional[C]
-x.foo()  # E: Item "None" of "Optional[C]" has no attribute "foo"
+x.foo()  # E: Item "None" of "Optional[C]" has no attribute "foo" \
+         # N: You can use 'if hasattr( x, 'foo'):' to guard against missing attribute error
 
 [case testIsinstanceAndOptionalAndAnyBase]
 from typing import Any, Optional
