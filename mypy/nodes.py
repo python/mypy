@@ -3240,8 +3240,14 @@ class TypeInfo(SymbolNode):
                     and name not in EXCLUDED_ENUM_ATTRIBUTES
                     and not name.startswith("__")
                     and sym.node.has_explicit_value
-                    and not (isinstance(typ := mypy.types.get_proper_type(sym.node.type), mypy.types.Instance) and typ.type.fullname == "enum.nonmember")
-                ) or (
+                    and not (
+                        isinstance(
+                            typ := mypy.types.get_proper_type(sym.node.type), mypy.types.Instance
+                        )
+                        and typ.type.fullname == "enum.nonmember"
+                    )
+                )
+                or (
                     isinstance(sym.node, Decorator)
                     and any(
                         dec.fullname == "enum.member"
