@@ -1939,7 +1939,8 @@ PyLongWriter_Finish(PyLongWriter *writer)
 static inline FILE* Py_fopen(PyObject *path, const char *mode)
 {
 #if 0x030400A2 <= PY_VERSION_HEX && !defined(PYPY_VERSION)
-    extern FILE* _Py_fopen_obj(PyObject *path, const char *mode);
+    PyAPI_FUNC(FILE*) _Py_fopen_obj(PyObject *path, const char *mode);
+
     return _Py_fopen_obj(path, mode);
 #else
     FILE *f;
@@ -2109,7 +2110,8 @@ PyConfig_Get(const char *name)
             return Py_NewRef(value);
         }
 
-        extern const PyConfig* _Py_GetConfig(void);
+        PyAPI_FUNC(const PyConfig*) _Py_GetConfig(void);
+
         const PyConfig *config = _Py_GetConfig();
         void *member = (char *)config + spec->offset;
         switch (spec->type) {
