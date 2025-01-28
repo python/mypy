@@ -38,7 +38,6 @@ from mypy.nodes import (
     is_final_node,
 )
 from mypy.plugin import AttributeContext
-from mypy.semanal import refers_to_fullname
 from mypy.typeops import (
     bind_self,
     class_callable,
@@ -51,7 +50,6 @@ from mypy.typeops import (
     type_object_type_from_function,
 )
 from mypy.types import (
-    PROPERTY_DECORATOR_NAMES,
     AnyType,
     CallableType,
     DeletedType,
@@ -1112,18 +1110,10 @@ def analyze_class_attribute_access(
             #     C[int].x -> int
             t = erase_typevars(expand_type_by_instance(t, isuper), {tv.id for tv in def_vars})
 
-        if is_decorated:
-            property_deco_name = next(
-                (
-                    name
-                    for d in cast(Decorator, node.node).original_decorators
-                    for name in PROPERTY_DECORATOR_NAMES
-                    if refers_to_fullname(d, name)
-                ),
-                None,
-            )
-            if property_deco_name is not None:
-                return mx.named_type(property_deco_name)
+        if is_decorated and cast(Decorator, node.node).func.is_property:
+            property_type = mx.chk.get_property_instance(cast(Decorator, node.node))
+            if property_type is not None:
+                return property_type
 
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
             isinstance(node.node, FuncBase) and node.node.is_class

@@ -409,7 +409,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Reference to a module object.
             result = self.module_type(node)
         elif isinstance(node, Decorator):
-            result = self.analyze_var_ref(node.var, e)
+            property_type = self.chk.get_property_instance(node)
+            if property_type is not None:
+                result = property_type
+            else:
+                result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, TypeAlias):
             # Something that refers to a type alias appears in runtime context.
             # Note that we suppress bogus errors for alias redefinitions,

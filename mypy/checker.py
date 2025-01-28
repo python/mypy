@@ -170,6 +170,7 @@ from mypy.types import (
     ANY_STRATEGY,
     MYPYC_NATIVE_INT_NAMES,
     OVERLOAD_NAMES,
+    PROPERTY_DECORATOR_NAMES,
     AnyType,
     BoolTypeQuery,
     CallableType,
@@ -2147,6 +2148,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 defn.func,
                                 code=codes.OVERRIDE,
                             )
+            elif (
+                isinstance(defn, Decorator)
+                and isinstance(typ, Instance)
+                and typ.type.fullname == "builtins.property"
+            ):
+                self.msg.fail(
+                    "Property setter/deletter overrides are not supported.",
+                    defn.func,
+                    code=codes.MISC,
+                )
+                self.msg.note(
+                    "Consider overriding getter explicitly with super() call.", defn.func
+                )
+                return False
 
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
@@ -2214,6 +2229,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     defn.name, name, base.name, context, original=original_type, override=typ
                 )
         return False
+
+    def get_property_instance(self, method: Decorator) -> Instance | None:
+        property_deco_name = next(
+            (
+                name
+                for d in method.original_decorators
+                for name in PROPERTY_DECORATOR_NAMES
+                if refers_to_fullname(d, name)
+            ),
+            None,
+        )
+        if property_deco_name is not None:
+            return self.named_type(property_deco_name)
+        return None
 
     def bind_and_map_method(
         self, sym: SymbolTableNode, typ: FunctionLike, sub_info: TypeInfo, super_info: TypeInfo

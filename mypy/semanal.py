@@ -7153,6 +7153,8 @@ class SemanticAnalyzer(
         self.fail(
             f'{noun} "{unmangle(name)}" already defined{extra_msg}', ctx, code=codes.NO_REDEF
         )
+        if isinstance(node, Decorator) and node.func.is_property:
+            self.note("Property setter and deleter must be adjacent to the getter.", ctx)
 
     def name_already_defined(
         self, name: str, ctx: Context, original_ctx: SymbolTableNode | SymbolNode | None = None
