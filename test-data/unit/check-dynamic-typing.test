@@ -320,8 +320,10 @@ d = None # All ok
 d = t
 d = g
 d = A
-t = d
-f = d
+
+d1: Any
+t = d1
+f = d1
 [builtins fixtures/tuple.pyi]
 
 

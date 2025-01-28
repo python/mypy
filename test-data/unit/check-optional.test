@@ -723,9 +723,10 @@ def f():
 def g(x: Optional[int]) -> int:
     if x is None:
         reveal_type(x)  # N: Revealed type is "None"
+        # As a special case for Unions containing None, during
         x = f()
-        reveal_type(x)  # N: Revealed type is "Any"
-    reveal_type(x)  # N: Revealed type is "Union[Any, builtins.int]"
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
     return x
 [builtins fixtures/bool.pyi]
 
@@ -739,9 +740,10 @@ def g(x: Optional[int]) -> int:
         reveal_type(x)  # N: Revealed type is "None"
         x = 1
         reveal_type(x)  # N: Revealed type is "builtins.int"
+        # Same as above, even after we've assigned to x
         x = f()
-        reveal_type(x)  # N: Revealed type is "Any"
-    reveal_type(x)  # N: Revealed type is "Union[Any, builtins.int]"
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
     return x
 [builtins fixtures/bool.pyi]
 
@@ -754,11 +756,9 @@ def g(x: Optional[int]) -> int:
     if x is not None:
         return x
     reveal_type(x)  # N: Revealed type is "None"
-    if bool():
-        x = f()
-        reveal_type(x)  # N: Revealed type is "Any"
-        return x
-    return x  # E: Incompatible return value type (got "None", expected "int")
+    x = f()
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+    return x
 [builtins fixtures/bool.pyi]
 
 [case testStrictOptionalCovarianceCrossModule]

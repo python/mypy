@@ -528,7 +528,7 @@ x: Union[int, str]
 a: Any
 if bool():
     x = a
-    reveal_type(x)  # N: Revealed type is "Any"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/bool.pyi]
 

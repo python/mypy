@@ -1919,13 +1919,12 @@ if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
 from typing import Any
 
 def narrow_any_to_str_then_reassign_to_int() -> None:
-    v = 1 # type: Any
+    v: Any = 1
 
     if isinstance(v, str):
         reveal_type(v)  # N: Revealed type is "builtins.str"
         v = 2
-        reveal_type(v)  # N: Revealed type is "Any"
-
+        reveal_type(v)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowTypeAfterInList]
