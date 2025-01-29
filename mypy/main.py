@@ -93,6 +93,9 @@ def main(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
+    if options.allow_redefinition2 and not options.local_partial_types:
+        fail("error: --local-partial-types must be used if using --allow-redefinition2", stderr, options)
+
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
         fail("error: --install-types not supported in this mode of running mypy", stderr, options)
