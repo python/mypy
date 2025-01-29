@@ -4505,8 +4505,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
             if inferred is not None and lvalue is not None:
                 old_lvalue = lvalue_type
-                lvalue_type = make_simplified_union([inferred.type,
-                                                     remove_instance_last_known_values(rvalue_type)])
+                if not inferred.is_final:
+                    new_inferred = remove_instance_last_known_values(rvalue_type)
+                else:
+                    new_inferred = rvalue_type
+                lvalue_type = make_simplified_union([inferred.type, new_inferred])
                 # TODO: Do we really need to pass lvalue?
                 self.set_inferred_type(inferred, lvalue, lvalue_type)
                 self.binder.put(lvalue, rvalue_type)

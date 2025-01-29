@@ -145,3 +145,12 @@ def f4() -> None:
     a = b
     reveal_type(a) # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/list.pyi]
+
+[case testRedefine2FinalLiteral]
+# flags: --allow-redefinition2 --local-partial-types
+from typing_extensions import Final, Literal
+
+x: Final = "foo"
+reveal_type(x) # N: Revealed type is "Literal['foo']?"
+a: Literal["foo"] = x
+[builtins fixtures/tuple.pyi]
