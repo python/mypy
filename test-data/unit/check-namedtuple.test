@@ -1474,3 +1474,19 @@ def main(n: NT[T]) -> None:
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleOverlappingCheck]
+from typing import overload, NamedTuple, Union
+
+class A(NamedTuple): ...
+
+class B(NamedTuple): ...
+
+@overload
+def f(arg: A) -> A: ...
+@overload
+def f(arg: B) -> B: ...
+def f(arg: Union[A, B]) -> Union[A, B]: ...
+
+# no errors should be raised above.
+[builtins fixtures/tuple.pyi]
