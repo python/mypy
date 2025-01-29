@@ -2781,3 +2781,22 @@ gc.collect()
 [out]
 deleting C1...
 deleting C2...
+
+[case testDelException]
+# The error message in the expected output of this test does not match CPython's error message due to the way mypyc compiles Python classes. If the error message is fixed, the expected output of this test will also change.
+class F:
+    def __del__(self):
+        if True:
+            raise Exception("e2")
+
+[file driver.py]
+import native
+f = native.F()
+del f
+
+[out]
+Exception ignored in: <slot wrapper '__del__' of 'F' objects>
+Traceback (most recent call last):
+  File "native.py", line 5, in __del__
+    raise Exception("e2")
+Exception: e2

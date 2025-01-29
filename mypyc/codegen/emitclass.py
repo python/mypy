@@ -819,9 +819,19 @@ def generate_finalize_for_class(
             del_method.cname(emitter.names),
         )
     )
-    emitter.emit_line("if (type != NULL) {")
-    emitter.emit_line("PyErr_Restore(type, value, traceback);")
+    emitter.emit_line("if (PyErr_Occurred() != NULL) {")
+    emitter.emit_line('PyObject *class_obj = PyObject_GetAttrString(self, "__class__");')
+    emitter.emit_line('PyObject *del_method = PyObject_GetAttrString(class_obj, "__del__");')
+    # CPython interpreter uses PyErr_WriteUnraisable: https://docs.python.org/3/c-api/exceptions.html#c.PyErr_WriteUnraisable
+    # However, the message is slightly different due to the way mypyc compiles classes.
+    # CPython interpreter prints: Exception ignored in: <function F.__del__ at 0x100aed940>
+    # mypyc prints: Exception ignored in: <slot wrapper '__del__' of 'F' objects>
+    emitter.emit_line("PyErr_WriteUnraisable(del_method);")
+    emitter.emit_line("Py_DECREF(class_obj);")
+    emitter.emit_line("Py_XDECREF(del_method);")
     emitter.emit_line("}")
+    # PyErr_Restore also clears exception raised in __del__.
+    emitter.emit_line("PyErr_Restore(type, value, traceback);")
     emitter.emit_line("}")
 
 
