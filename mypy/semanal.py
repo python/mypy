@@ -1212,9 +1212,6 @@ class SemanticAnalyzer(
         self.statement = defn
         self.add_function_to_symbol_table(defn)
 
-        if not self.recurse_into_functions:
-            return
-
         # NB: Since _visit_overloaded_func_def will call accept on the
         # underlying FuncDefs, the function might get entered twice.
         # This is fine, though, because only the outermost function is
@@ -7157,7 +7154,12 @@ class SemanticAnalyzer(
         self.fail(
             f'{noun} "{unmangle(name)}" already defined{extra_msg}', ctx, code=codes.NO_REDEF
         )
-        if isinstance(ctx, Decorator) and isinstance(node, Decorator) and node.func.is_property:
+        if isinstance(ctx, Decorator) and (
+            isinstance(node, Decorator)
+            and node.func.is_property
+            or isinstance(node, OverloadedFuncDef)
+            and node.is_property
+        ):
             self.note("Property setter and deleter must be adjacent to the getter.", ctx)
 
     def name_already_defined(
