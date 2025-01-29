@@ -655,9 +655,7 @@ def are_tuples_overlapping(
     ):
         return True
     else:
-        return is_subtype(left.partial_fallback, right.partial_fallback) or is_subtype(
-            right.partial_fallback, left.partial_fallback
-        )
+        return is_overlapping(left.partial_fallback, right.partial_fallback)
 
 
 def expand_tuple_if_possible(tup: TupleType, target: int) -> TupleType:
