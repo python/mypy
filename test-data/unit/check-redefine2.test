@@ -182,3 +182,59 @@ class C:
         else:
             self.x = ""
         reveal_type(self.x) # N: Revealed type is "builtins.str"
+
+[case testRedefine2AnyType]
+# flags: --allow-redefinition2 --local-partial-types
+def a(): pass
+
+def f1() -> None:
+    if int():
+        x = ""
+    else:
+        x = a()
+        reveal_type(x) # N: Revealed type is "Any"
+    reveal_type(x) # N: Revealed type is "Union[builtins.str, Any]"
+    x = 1
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+def f2() -> None:
+    if int():
+        x = a()
+    else:
+        x = ""
+        reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "Union[Any, builtins.str]"
+    x = 1
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+def f3() -> None:
+    x = 1
+    x = a()
+    reveal_type(x) # N: Revealed type is "Any"
+    x = ""
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
+def f4() -> None:
+    x = a()
+    x = 1
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    x = a()
+    reveal_type(x) # N: Revealed type is "Any"
+
+def f5() -> None:
+    x = a()
+    if int():
+        x = 1
+        reveal_type(x) # N: Revealed type is "builtins.int"
+    elif int():
+        x = ""
+        reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "Union[Any, builtins.int, builtins.str]"
+
+def f6() -> None:
+    x = a()
+    if int():
+        x = 1
+    else:
+        x = ""
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
