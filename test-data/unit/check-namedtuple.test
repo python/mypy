@@ -1478,15 +1478,31 @@ def main(n: NT[T]) -> None:
 [case testNamedTupleOverlappingCheck]
 from typing import overload, NamedTuple, Union
 
-class A(NamedTuple): ...
+class AKey(NamedTuple):
+    k: str
 
-class B(NamedTuple): ...
+class A(NamedTuple):
+    key: AKey
+
+
+class BKey(NamedTuple):
+    k: str
+
+class B(NamedTuple):
+    key: BKey
 
 @overload
 def f(arg: A) -> A: ...
 @overload
 def f(arg: B) -> B: ...
 def f(arg: Union[A, B]) -> Union[A, B]: ...
+
+def g(x: Union[A, B, str]) -> Union[A, B, str]:
+    if isinstance(x, str):
+        return x
+    else:
+        reveal_type(x)  # N: Revealed type is "Union[Tuple[Tuple[builtins.str, fallback=__main__.AKey], fallback=__main__.A], Tuple[Tuple[builtins.str, fallback=__main__.BKey], fallback=__main__.B]]"
+        return x._replace()
 
 # no errors should be raised above.
 [builtins fixtures/tuple.pyi]
