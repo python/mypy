@@ -4740,7 +4740,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     value_type = self.expr_checker.accept(rvalue)
                     if (
                         is_valid_inferred_type(key_type, self.options)
-                        and is_valid_inferred_type(value_type)
+                        and is_valid_inferred_type(value_type, self.options)
                         and not self.current_node_deferred
                         and not (
                             typename == "collections.defaultdict"

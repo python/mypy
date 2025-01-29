@@ -1136,7 +1136,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if value_type is not None:
                 # Infer key type.
                 key_type = self.accept(index)
-                if mypy.checker.is_valid_inferred_type(key_type):
+                if mypy.checker.is_valid_inferred_type(key_type, self.chk.options):
                     # Store inferred partial type.
                     assert partial_type.type is not None
                     typename = partial_type.type.fullname
@@ -1188,7 +1188,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 arg_typename = arg_type.type.fullname
                 if arg_typename in self.container_args[typename][methodname]:
                     if all(
-                        mypy.checker.is_valid_inferred_type(item_type)
+                        mypy.checker.is_valid_inferred_type(item_type, self.chk.options)
                         for item_type in arg_type.args
                     ):
                         return self.chk.named_generic_type(typename, list(arg_type.args))
@@ -5830,7 +5830,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else_map, e.else_expr, context=ctx, allow_none_return=allow_none_return
         )
 
-        if not mypy.checker.is_valid_inferred_type(if_type):
+        if not mypy.checker.is_valid_inferred_type(if_type, self.chk.options):
             # Analyze the right branch disregarding the left branch.
             else_type = full_context_else_type
             # we want to keep the narrowest value of else_type for union'ing the branches
