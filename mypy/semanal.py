@@ -1212,6 +1212,9 @@ class SemanticAnalyzer(
         self.statement = defn
         self.add_function_to_symbol_table(defn)
 
+        if not self.recurse_into_functions:
+            return
+
         # NB: Since _visit_overloaded_func_def will call accept on the
         # underlying FuncDefs, the function might get entered twice.
         # This is fine, though, because only the outermost function is
@@ -1250,8 +1253,6 @@ class SemanticAnalyzer(
             assert isinstance(typ, CallableType)
             types = [typ]
         else:
-            if not self.recurse_into_functions:
-                return
             # This is an a normal overload. Find the item signatures, the
             # implementation (if outside a stub), and any missing @overload
             # decorators.
@@ -1268,9 +1269,6 @@ class SemanticAnalyzer(
                 defn.items = defn.items[:-1]
             elif not non_overload_indexes:
                 self.handle_missing_overload_implementation(defn)
-
-        if not self.recurse_into_functions:
-            return
 
         if types and not any(
             # If some overload items are decorated with other decorators, then
@@ -7159,13 +7157,29 @@ class SemanticAnalyzer(
         self.fail(
             f'{noun} "{unmangle(name)}" already defined{extra_msg}', ctx, code=codes.NO_REDEF
         )
-        if isinstance(ctx, Decorator) and (
-            isinstance(node, Decorator)
-            and node.func.is_property
-            or isinstance(node, OverloadedFuncDef)
-            and node.is_property
+
+        if (
+            isinstance(ctx, Decorator)
+            and node is not None
+            and self.maybe_property_definition(node)
         ):
             self.note("Property setter and deleter must be adjacent to the getter.", ctx)
+
+    def maybe_property_definition(self, node: SymbolNode) -> bool:
+        if isinstance(node, Decorator) and node.func.is_property:
+            return True
+        elif isinstance(node, OverloadedFuncDef):
+            if node.is_property:
+                # Already analyzed
+                return True
+            elif isinstance(node.items[0], Decorator):
+                for dec in node.items[0].decorators:
+                    if isinstance(dec, (NameExpr, MemberExpr)):
+                        if not dec.fullname:
+                            self.accept(dec)
+                        if dec.fullname in PROPERTY_DECORATOR_NAMES:
+                            return True
+        return False
 
     def name_already_defined(
         self, name: str, ctx: Context, original_ctx: SymbolTableNode | SymbolNode | None = None

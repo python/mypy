@@ -1803,8 +1803,7 @@ class A:
 
     @val.setter  # E: Name "val" already defined on line 4 \
                  # N: Property setter and deleter must be adjacent to the getter.
-    def val(self, val: int) -> None:
-        pass
+    def val(self, val: int) -> None: ...
 
     reveal_type(val)  # N: Revealed type is "builtins.property"
 
@@ -1812,19 +1811,16 @@ class B:
     @property
     def val(self) -> int:
         return 0
-
     @val.setter
-    def val(self, val: int) -> None:
-        pass
+    def val(self, val: int) -> None: ...
 
     reveal_type(val)  # N: Revealed type is "builtins.property"
 
     def _other(self) -> None: ...
 
-    @val.deleter  # E: Name "val" already defined on line 19 \
+    @val.deleter  # E: Name "val" already defined on line 18 \
                   # N: Property setter and deleter must be adjacent to the getter.
-    def val(self) -> None:
-        pass
+    def val(self) -> None: ...
 
     reveal_type(val)  # N: Revealed type is "builtins.property"
 
@@ -1835,12 +1831,27 @@ class C:
 
     reveal_type(val)  # N: Revealed type is "builtins.property"
 
+    def _other(self): ...
+
+    @val.setter  # E: Name "val" already defined on line 34 \
+                 # N: Property setter and deleter must be adjacent to the getter.
+    def val(self, new): ...
+
+    reveal_type(val)  # N: Revealed type is "builtins.property"
+
+class D:
+    @property
+    def val(self): ...
+    @val.setter
+    def val(self, val): ...
+
+    reveal_type(val)  # N: Revealed type is "builtins.property"
+
     def _other(self) -> None: ...
 
-    @val.setter  # E: Name "val" already defined on line 38 \
-                 # N: Property setter and deleter must be adjacent to the getter.
-    def val(self, val: int) -> None:
-        pass
+    @val.deleter  # E: Name "val" already defined on line 48 \
+                  # N: Property setter and deleter must be adjacent to the getter.
+    def val(self): ...
 
     reveal_type(val)  # N: Revealed type is "builtins.property"
 
