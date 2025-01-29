@@ -59,3 +59,54 @@ class C:
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 reveal_type(C.x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testRedefine2OptionalTypesSimple]
+# flags: --allow-redefinition2 --local-partial-types
+def f1() -> None:
+    x = None
+    if int():
+        x = ""
+    reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
+
+def f2() -> None:
+    if int():
+        x = None
+    elif int():
+        x = ""
+    else:
+        x = 1
+    reveal_type(x) # N: Revealed type is "Union[None, builtins.str, builtins.int]"
+
+def f3() -> None:
+    if int():
+        x = None
+    else:
+        x = ""
+    reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
+
+def f4() -> None:
+    x = None
+    reveal_type(x) # N: Revealed type is "None"
+
+y = None
+if int():
+    y = 1
+reveal_type(y) # N: Revealed type is "Union[None, builtins.int]"
+
+if int():
+    z = None
+elif int():
+    z = 1
+else:
+    z = ""
+reveal_type(z) # N: Revealed type is "Union[None, builtins.int, builtins.str]"
+
+[case testRedefine2OptionalTypeForInstanceVariabls]
+# flags: --allow-redefinition2 --local-partial-types
+class C:
+    def __init__(self) -> None:
+        self.x = None
+        if int():
+            self.x = 1
+            reveal_type(self.x) # N: Revealed type is "builtins.int"
+        reveal_type(self.x) # N: Revealed type is "Union[builtins.int, None]"

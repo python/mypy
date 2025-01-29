@@ -3220,7 +3220,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         return
 
                     var = lvalue_type.var
-                    if is_valid_inferred_type(rvalue_type, is_lvalue_final=var.is_final):
+                    if is_valid_inferred_type(rvalue_type, self.options, is_lvalue_final=var.is_final):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
@@ -3402,7 +3402,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue_type = self.expr_checker.accept(rvalue)
             rvalue_type = get_proper_type(rvalue_type)
             if isinstance(rvalue_type, Instance):
-                if rvalue_type.type == typ.type and is_valid_inferred_type(rvalue_type):
+                if rvalue_type.type == typ.type and is_valid_inferred_type(rvalue_type, self.options):
                     var.type = rvalue_type
                     del partial_types[var]
             elif isinstance(rvalue_type, AnyType):
@@ -4328,7 +4328,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
         elif (
-            not is_valid_inferred_type(init_type, is_lvalue_final=name.is_final)
+            not is_valid_inferred_type(init_type, self.options,
+                                       is_lvalue_final=name.is_final,
+                                       is_lvalue_member=isinstance(lvalue, MemberExpr))
             and not self.no_partial_types
         ):
             # We cannot use the type of the initialization expression for full type
@@ -4358,7 +4360,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
         init_type = get_proper_type(init_type)
-        if isinstance(init_type, NoneType):
+        if isinstance(init_type, NoneType) and (isinstance(lvalue, MemberExpr) or not self.options.allow_redefinition2):
             partial_type = PartialType(None, name)
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname
@@ -4527,7 +4529,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     not local_errors.has_new_errors()
                     # Skip Any type, since it is special cased in binder.
                     and not isinstance(get_proper_type(alt_rvalue_type), AnyType)
-                    and is_valid_inferred_type(alt_rvalue_type)
+                    and is_valid_inferred_type(alt_rvalue_type, self.options)
                     and is_proper_subtype(alt_rvalue_type, rvalue_type)
                 ):
                     rvalue_type = alt_rvalue_type
@@ -4737,7 +4739,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     key_type = self.expr_checker.accept(lvalue.index)
                     value_type = self.expr_checker.accept(rvalue)
                     if (
-                        is_valid_inferred_type(key_type)
+                        is_valid_inferred_type(key_type, self.options)
                         and is_valid_inferred_type(value_type)
                         and not self.current_node_deferred
                         and not (
@@ -8486,7 +8488,10 @@ def _find_inplace_method(inst: Instance, method: str, operator: str) -> str | No
     return None
 
 
-def is_valid_inferred_type(typ: Type, is_lvalue_final: bool = False) -> bool:
+def is_valid_inferred_type(typ: Type,
+                           options: Options,
+                           is_lvalue_final: bool = False,
+                           is_lvalue_member: bool = False) -> bool:
     """Is an inferred type valid and needs no further refinement?
 
     Examples of invalid types include the None type (when we are not assigning
@@ -8505,7 +8510,7 @@ def is_valid_inferred_type(typ: Type, is_lvalue_final: bool = False) -> bool:
         # type could either be NoneType or an Optional type, depending on
         # the context. This resolution happens in leave_partial_types when
         # we pop a partial types scope.
-        return is_lvalue_final
+        return is_lvalue_final or (not is_lvalue_member and options.allow_redefinition2)
     elif isinstance(proper_type, UninhabitedType):
         return False
     return not typ.accept(InvalidInferredTypes())

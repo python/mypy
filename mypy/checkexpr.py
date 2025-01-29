@@ -1176,7 +1176,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             and e.arg_kinds == [ARG_POS]
         ):
             item_type = self.accept(e.args[0])
-            if mypy.checker.is_valid_inferred_type(item_type):
+            if mypy.checker.is_valid_inferred_type(item_type, self.chk.options):
                 return self.chk.named_generic_type(typename, [item_type])
         elif (
             typename in self.container_args
