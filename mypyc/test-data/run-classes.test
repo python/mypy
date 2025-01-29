@@ -2737,11 +2737,47 @@ class C(B):
         print("deleting C...")
         super().__del__()
 
+class D(A):
+    pass
+
 [file driver.py]
 import native
 native.C()
+native.D()
 
 [out]
 deleting C...
 deleting B...
 deleting A...
+deleting A...
+
+[case testDelCircular]
+import dataclasses
+import typing
+
+i: int = 1
+
+@dataclasses.dataclass
+class C:
+    var: typing.Optional["C"] = dataclasses.field(default=None)
+
+    def __del__(self):
+        global i
+        print(f"deleting C{i}...")
+        i = i + 1
+
+[file driver.py]
+import native
+import gc
+
+c1 = native.C()
+c2 = native.C()
+c1.var = c2
+c2.var = c1
+del c1
+del c2
+gc.collect()
+
+[out]
+deleting C1...
+deleting C2...
