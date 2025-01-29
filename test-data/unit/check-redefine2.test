@@ -154,3 +154,31 @@ x: Final = "foo"
 reveal_type(x) # N: Revealed type is "Literal['foo']?"
 a: Literal["foo"] = x
 [builtins fixtures/tuple.pyi]
+
+[case testRedefine2AnnotatedVariable]
+# flags: --allow-redefinition2 --local-partial-types
+from typing import Optional
+
+def f1() -> None:
+    x: int = 0
+    if int():
+        x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        reveal_type(x) # N: Revealed type is "builtins.int"
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+def f2(x: Optional[str]) -> None:
+    if x is not None:
+        reveal_type(x) # N: Revealed type is "builtins.str"
+    else:
+        x = ""
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
+class C:
+    x: Optional[str]
+
+    def f(self) -> None:
+        if self.x is not None:
+            reveal_type(self.x) # N: Revealed type is "builtins.str"
+        else:
+            self.x = ""
+        reveal_type(self.x) # N: Revealed type is "builtins.str"
