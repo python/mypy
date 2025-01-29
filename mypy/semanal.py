@@ -1250,6 +1250,8 @@ class SemanticAnalyzer(
             assert isinstance(typ, CallableType)
             types = [typ]
         else:
+            if not self.recurse_into_functions:
+                return
             # This is an a normal overload. Find the item signatures, the
             # implementation (if outside a stub), and any missing @overload
             # decorators.
@@ -1266,6 +1268,9 @@ class SemanticAnalyzer(
                 defn.items = defn.items[:-1]
             elif not non_overload_indexes:
                 self.handle_missing_overload_implementation(defn)
+
+        if not self.recurse_into_functions:
+            return
 
         if types and not any(
             # If some overload items are decorated with other decorators, then
