@@ -782,7 +782,11 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
 
 
 def generate_dealloc_for_class(
-    cl: ClassIR, dealloc_func_name: str, clear_func_name: str, has_tp_finalize: bool, emitter: Emitter
+    cl: ClassIR,
+    dealloc_func_name: str,
+    clear_func_name: str,
+    has_tp_finalize: bool,
+    emitter: Emitter,
 ) -> None:
     emitter.emit_line("static void")
     emitter.emit_line(f"{dealloc_func_name}({cl.struct_name(emitter.names)} *self)")
