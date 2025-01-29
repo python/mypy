@@ -33,3 +33,16 @@ def g() -> None:
     else:
         x = None
     reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+
+[case testRedefine2GlobalVariableSimple]
+# flags: --allow-redefinition2
+if int():
+    x = 0
+    reveal_type(x) # N: Revealed type is "builtins.int"
+else:
+    x = ""
+    reveal_type(x) # N: Revealed type is "builtins.str"
+reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+def f() -> None:
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
