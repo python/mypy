@@ -3286,7 +3286,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             lvalue_type = make_optional_type(lvalue_type)
                             self.set_inferred_type(lvalue.node, lvalue, lvalue_type)
 
-                    rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, context=rvalue)
+                    rvalue_type = self.check_simple_assignment(
+                        lvalue_type, rvalue, context=rvalue, inferred=inferred, lvalue=lvalue)
+                    inferred = None
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
                 # variables with explicit type Type[A], where A is protocol or abstract.
@@ -4284,6 +4286,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, NameExpr):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
+            if isinstance(lvalue.node, Var) and lvalue.node.is_inferred and self.options.allow_redefinition2:
+                inferred = lvalue.node
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, (TupleExpr, ListExpr)):
             types = [
@@ -4484,6 +4488,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         rvalue_name: str = "expression",
         *,
         notes: list[str] | None = None,
+        lvalue: Expression | None = None,
+        inferred: Var| None = None,
     ) -> Type:
         if self.is_stub and isinstance(rvalue, EllipsisExpr):
             # '...' is always a valid initializer in a stub.
@@ -4495,6 +4501,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue_type = self.expr_checker.accept(
                 rvalue, lvalue_type, always_allow_any=always_allow_any
             )
+            if inferred is not None and lvalue is not None:
+                old_lvalue = lvalue_type
+                lvalue_type = make_simplified_union([inferred.type,
+                                                     remove_instance_last_known_values(rvalue_type)])
+                # TODO: Do we really need to pass lvalue?
+                self.set_inferred_type(inferred, lvalue, lvalue_type)
+                self.binder.put(lvalue, rvalue_type)
             if (
                 isinstance(get_proper_type(lvalue_type), UnionType)
                 # Skip literal types, as they have special logic (for better errors).

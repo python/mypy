@@ -7,3 +7,29 @@ def f() -> None:
     reveal_type(x) # N: Revealed type is "builtins.int"
     x = ''
     reveal_type(x) # N: Revealed type is "builtins.str"
+
+[case testRedefine2ConditionalLocalWithDifferentType]
+# flags: --allow-redefinition2
+def f() -> None:
+    if int():
+        x = 0
+        reveal_type(x) # N: Revealed type is "builtins.int"
+    else:
+        x = ''
+        reveal_type(x) # N: Revealed type is "builtins.str"
+
+[case testRedefine2MergeConditionalLocal1]
+# flags: --allow-redefinition2
+def f() -> None:
+    if int():
+        x = 0
+    else:
+        x = ''
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+def g() -> None:
+    if int():
+        x = 0
+    else:
+        x = None
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
