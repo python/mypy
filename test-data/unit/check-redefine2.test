@@ -238,3 +238,9 @@ def f6() -> None:
     else:
         x = ""
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+# TODO: declared type should take precedence
+#def f7() -> None:
+#    x: int
+#   x = a()
+#   reveal_type(x) # Revealed type is "builtins.int"
