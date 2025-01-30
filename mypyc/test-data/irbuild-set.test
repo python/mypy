@@ -686,7 +686,7 @@ def not_precomputed_nested_set(i):
     r1 :: object
     r2 :: i32
     r3 :: bit
-    r4 :: object
+    r4 :: frozenset
     r5 :: set
     r6 :: i32
     r7 :: bit
