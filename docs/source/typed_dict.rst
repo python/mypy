@@ -289,9 +289,9 @@ need to give each TypedDict the same key where each value has a unique
 :ref:`Literal type <literal_types>`. Then, check that key to distinguish
 between your TypedDicts.
 
-You can also use ``@final`` to indicate that an instance of TypedDict will not be
-reassigned or subclassed. This allows mypy to do type refinement based on unique
-properties of the TypedDict:
+You can also use ``@final`` to indicate that the TypedDict definition will not be
+subclassed. This allows mypy to do type refinement based on unique properties of
+the TypedDict:
 
 .. code-block:: python
 
