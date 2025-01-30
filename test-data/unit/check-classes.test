@@ -8593,6 +8593,7 @@ class B(__A): ...
 
 import enum as __enum
 class C(__enum.Flag): ...
+[builtins fixtures/tuple.pyi]
 
 [case testNameManglingAnnotationsPast]
 from typing import Generic, TypeVar
