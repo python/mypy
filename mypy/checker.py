@@ -4501,8 +4501,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 get_proper_type(lvalue_type), AnyType
             )
             rvalue_type = self.expr_checker.accept(
-                rvalue, lvalue_type, always_allow_any=always_allow_any
+                rvalue, type_context=None, always_allow_any=always_allow_any
             )
+            if (
+                lvalue_type is not None and
+                not is_valid_inferred_type(rvalue_type, self.options) # TODO
+            ):
+                rvalue_type = self.expr_checker.accept(
+                    rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
+                )
             if inferred is not None and lvalue is not None:
                 old_lvalue = lvalue_type
                 if not inferred.is_final:

@@ -122,11 +122,26 @@ def f2() -> None:
     a = []
     a.append(1)
     reveal_type(a) # N: Revealed type is "builtins.list[builtins.int]"
-    # Type context prevents type refinement
-    a = [""] # E: List item 0 has incompatible type "str"; expected "int"
-    reveal_type(a) # N: Revealed type is "builtins.list[builtins.int]"
+    a = [""]
+    reveal_type(a) # N: Revealed type is "builtins.list[builtins.str]"
 
 def f3() -> None:
+    a = []
+    a.append(1)
+    reveal_type(a) # N: Revealed type is "builtins.list[builtins.int]"
+    a = []
+    reveal_type(a) # N: Revealed type is "builtins.list[builtins.int]"
+
+def f4() -> None:
+    a = []
+    a.append(1)
+    reveal_type(a) # N: Revealed type is "builtins.list[builtins.int]"
+    # Partial types are currently not supported on reassignment
+    a = []
+    a.append("x") # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+    reveal_type(a) # N: Revealed type is "builtins.list[builtins.int]"
+
+def f5() -> None:
     if int():
         a = []
         a.append(1)
@@ -137,7 +152,7 @@ def f3() -> None:
         reveal_type(a) # N: Revealed type is "builtins.list[builtins.str]"
     reveal_type(a) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
 
-def f4() -> None:
+def f6() -> None:
     a = []
     a.append(1)
     reveal_type(a) # N: Revealed type is "builtins.list[builtins.int]"
