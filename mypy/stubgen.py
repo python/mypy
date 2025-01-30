@@ -145,6 +145,7 @@ from mypy.types import (
     DATACLASS_TRANSFORM_NAMES,
     OVERLOAD_NAMES,
     TPDICT_NAMES,
+    TYPE_VAR_LIKE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
     AnyType,
     CallableType,
@@ -1090,14 +1091,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         or module alias.
         """
         # Assignment of TypeVar(...)  and other typevar-likes are passed through
-        if isinstance(expr, CallExpr) and self.get_fullname(expr.callee) in (
-            "typing.TypeVar",
-            "typing_extensions.TypeVar",
-            "typing.ParamSpec",
-            "typing_extensions.ParamSpec",
-            "typing.TypeVarTuple",
-            "typing_extensions.TypeVarTuple",
-        ):
+        if isinstance(expr, CallExpr) and self.get_fullname(expr.callee) in TYPE_VAR_LIKE_NAMES:
             return True
         elif isinstance(expr, EllipsisExpr):
             return not top_level

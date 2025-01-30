@@ -62,10 +62,12 @@ from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
     ANNOTATED_TYPE_NAMES,
     ANY_STRATEGY,
+    CONCATENATE_TYPE_NAMES,
     FINAL_TYPE_NAMES,
     LITERAL_TYPE_NAMES,
     NEVER_NAMES,
     TYPE_ALIAS_NAMES,
+    UNPACK_TYPE_NAMES,
     AnyType,
     BoolTypeQuery,
     CallableArgument,
@@ -525,7 +527,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             elif node.fullname in TYPE_ALIAS_NAMES:
                 return AnyType(TypeOfAny.special_form)
             # Concatenate is an operator, no need for a proper type
-            elif node.fullname in ("typing_extensions.Concatenate", "typing.Concatenate"):
+            elif node.fullname in CONCATENATE_TYPE_NAMES:
                 # We check the return type further up the stack for valid use locations
                 return self.apply_concatenate_operator(t)
             else:
@@ -779,7 +781,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ):
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type("builtins.bool")
-        elif fullname in ("typing.Unpack", "typing_extensions.Unpack"):
+        elif fullname in UNPACK_TYPE_NAMES:
             if len(t.args) != 1:
                 self.fail("Unpack[...] requires exactly one type argument", t)
                 return AnyType(TypeOfAny.from_error)
@@ -1503,7 +1505,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return None
         if sym.node is None:
             return None
-        if sym.node.fullname not in ("typing_extensions.Concatenate", "typing.Concatenate"):
+        if sym.node.fullname not in CONCATENATE_TYPE_NAMES:
             return None
 
         tvar_def = self.anal_type(callable_args, allow_param_spec=True)
@@ -1652,7 +1654,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         return None
             elif (
                 isinstance(arg, UnboundType)
-                and self.refers_to_full_names(arg, ("typing_extensions.Unpack", "typing.Unpack"))
+                and self.refers_to_full_names(arg, UNPACK_TYPE_NAMES)
                 or isinstance(arg, UnpackType)
             ):
                 if seen_unpack:
