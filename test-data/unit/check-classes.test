@@ -1721,12 +1721,9 @@ Foo.bar(Foo())  # E: "cached_property[Any]" not callable
 # See https://github.com/python/mypy/issues/5936
 # Ideally we should support this, but at least be explicit that it isn't supported
 class Base:
-    def __init__(self, value: int) -> None:
-        self._value = value
-
     @property
     def value(self) -> int:
-        return self._value
+        return 0
 
     reveal_type(value)  # N: Revealed type is "builtins.property"
     reveal_type(value.setter)  # N: Revealed type is "def (def (Any, Any)) -> builtins.property"
@@ -1735,38 +1732,36 @@ class Base:
 
 class Sub(Base):
     @Base.value.setter
-    def value(self, value: int) -> None:  # E: Property setter/deletter overrides are not supported. \
+    def value(self, value: int) -> None:  # E: Property setter overrides are not supported. \
                                           # N: Consider overriding getter explicitly with super() call.
         self._value = value
 
 class Sub2(Base):
-    def value(self, value: int) -> None:  # E: Signature of "value" incompatible with supertype "Base" \
-                                          # N:      Superclass: \
-                                          # N:          int \
-                                          # N:      Subclass: \
-                                          # N:          def value(self, value: int) -> None
+    @Base.value.setter
+    def value(self, value: int) -> None:  # E: Property setter overrides are not supported. \
+                                          # N: Consider overriding getter explicitly with super() call.
         self._value = value
+    @Base.value.deleter  # E: Name "value" already defined on line 19
+    def value(self) -> None: ...
 
 reveal_type(Base.value)  # N: Revealed type is "builtins.property"
-reveal_type(Base(0).value)  # N: Revealed type is "builtins.int"
-Base(0).value = 2  # E: Property "value" defined in "Base" is read-only
+reveal_type(Base().value)  # N: Revealed type is "builtins.int"
+Base().value = 2  # E: Property "value" defined in "Base" is read-only
 
 reveal_type(Sub.value)  # N: Revealed type is "Any"
-reveal_type(Sub(0).value)  # N: Revealed type is "Any"
-Sub(0).value = 2
+reveal_type(Sub().value)  # N: Revealed type is "Any"
+Sub().value = 2
 [builtins fixtures/property-full.pyi]
 
 [case testPropertySetterOverrideInSubclass]
 # See https://github.com/python/mypy/issues/5936
 # Ideally we should support this, but at least be explicit that it isn't supported
 class Base:
-    def __init__(self, value: int) -> None:
-        self._value = value
+    _value: int
 
     @property
     def value(self) -> int:
         return self._value
-
     @value.setter
     def value(self, value: int) -> None:
         self._value = value
@@ -1776,17 +1771,71 @@ class Base:
 
 class Sub(Base):
     @Base.value.setter
-    def value(self, value: int) -> None:  # E: Property setter/deletter overrides are not supported. \
+    def value(self, value: int) -> None:  # E: Property setter overrides are not supported. \
                                           # N: Consider overriding getter explicitly with super() call.
         self._value = value
 
+class Sub2(Base):
+    @Base.value.setter
+    def value(self, value: int) -> None:  # E: Property setter overrides are not supported. \
+                                          # N: Consider overriding getter explicitly with super() call.
+        self._value = value
+    @Base.value.deleter  # E: Name "value" already defined on line 22
+    def value(self) -> None: ...
+
 reveal_type(Base.value)  # N: Revealed type is "builtins.property"
-reveal_type(Base(0).value)  # N: Revealed type is "builtins.int"
-Base(0).value = 2
+reveal_type(Base().value)  # N: Revealed type is "builtins.int"
+Base().value = 2
 
 reveal_type(Sub.value)  # N: Revealed type is "Any"
-reveal_type(Sub(0).value)  # N: Revealed type is "Any"
-Sub(0).value = 2
+reveal_type(Sub().value)  # N: Revealed type is "Any"
+Sub().value = 2
+[builtins fixtures/property-full.pyi]
+
+[case testUntypedPropertySetterOverrideInSubclass]
+# See https://github.com/python/mypy/issues/5936
+# Ideally we should support this, but at least be explicit that it isn't supported
+class Base:
+    _value: int
+
+    @property
+    def value(self):
+        return self._value
+    @value.setter
+    def value(self, value):
+        self._value = value
+
+    reveal_type(value)  # N: Revealed type is "builtins.property"
+    reveal_type(value.setter)  # N: Revealed type is "def (def (Any, Any)) -> builtins.property"
+
+class Sub(Base):
+    @Base.value.setter
+    def value(self, value):  # E: Property setter overrides are not supported. \
+                             # N: Consider overriding getter explicitly with super() call.
+        self._value = value
+
+class Sub2(Base):
+    @Base.value.deleter
+    def value(self):  # E: Property deleter overrides are not supported. \
+                      # N: Consider overriding getter explicitly with super() call.
+        self._value = value
+
+class Sub3(Base):
+    @Base.value.setter
+    def value(self, value):  # E: Property setter overrides are not supported. \
+                             # N: Consider overriding getter explicitly with super() call.
+        self._value = value
+    @Base.value.deleter  # E: Name "value" already defined on line 27
+    def value(self):
+        self._value = value
+
+reveal_type(Base.value)  # N: Revealed type is "builtins.property"
+reveal_type(Base().value)  # N: Revealed type is "Any"
+Base().value = 2
+
+reveal_type(Sub.value)  # N: Revealed type is "Any"
+reveal_type(Sub().value)  # N: Revealed type is "Any"
+Sub().value = 2
 [builtins fixtures/property-full.pyi]
 
 [case testPropertySetterNonAdjacent]
@@ -1855,9 +1904,21 @@ class D:
 
     reveal_type(val)  # N: Revealed type is "builtins.property"
 
-reveal_type(A.val)  # N: Revealed type is "builtins.property"
-reveal_type(A().val)  # N: Revealed type is "builtins.int"
-A().val = 1  # E: Property "val" defined in "A" is read-only
+class E:
+    @property
+    def val(self): ...
+
+    reveal_type(val)  # N: Revealed type is "builtins.property"
+
+    def _other(self) -> None: ...
+
+    @val.setter  # E: Name "val" already defined on line 63 \
+                 # N: Property setter and deleter must be adjacent to the getter.
+    def val(self, val): ...
+    @val.deleter  # E: Name "val" already defined on line 70
+    def val(self): ...
+
+    reveal_type(val)  # N: Revealed type is "builtins.property"
 [builtins fixtures/property-full.pyi]
 
 -- Descriptors

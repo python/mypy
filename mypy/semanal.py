@@ -7159,7 +7159,7 @@ class SemanticAnalyzer(
         )
 
         if (
-            isinstance(ctx, Decorator)
+            isinstance(ctx, (OverloadedFuncDef, Decorator))
             and node is not None
             and self.maybe_property_definition(node)
         ):
