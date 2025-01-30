@@ -4500,11 +4500,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             always_allow_any = lvalue_type is not None and not isinstance(
                 get_proper_type(lvalue_type), AnyType
             )
+            if inferred is None:
+                type_context = lvalue_type
+            else:
+                type_context = None
             rvalue_type = self.expr_checker.accept(
-                rvalue, type_context=None, always_allow_any=always_allow_any
+                rvalue, type_context=type_context, always_allow_any=always_allow_any
             )
             if (
-                lvalue_type is not None and
+                lvalue_type is not None and type_context is None and
                 not is_valid_inferred_type(rvalue_type, self.options) # TODO
             ):
                 rvalue_type = self.expr_checker.accept(

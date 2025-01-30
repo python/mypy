@@ -188,6 +188,12 @@ def f2(x: Optional[str]) -> None:
         x = ""
     reveal_type(x) # N: Revealed type is "builtins.str"
 
+def f3() -> None:
+    a: list[Optional[str]] = [""]
+    reveal_type(a) # N: Revealed type is "builtins.list[Union[builtins.str, None]]"
+    a = [""]
+    reveal_type(a) # N: Revealed type is "builtins.list[Union[builtins.str, None]]"
+
 class C:
     x: Optional[str]
 
