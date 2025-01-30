@@ -3,8 +3,18 @@ from __future__ import annotations
 import re
 import sys
 import warnings
-from collections.abc import Sequence
-from typing import Any, Callable, Final, Iterable, Literal, Optional, TypeVar, Union, cast, overload
+from collections.abc import Iterable, Sequence
+from typing import (
+    Any,
+    Callable,
+    Final,
+    Literal,
+    Optional,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 from mypy import defaults, errorcodes as codes, message_registry
 from mypy.errors import Errors
