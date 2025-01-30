@@ -7159,11 +7159,19 @@ class SemanticAnalyzer(
         )
 
         if (
-            isinstance(ctx, (OverloadedFuncDef, Decorator))
+            self.maybe_property_setter_or_deleter(ctx)
             and node is not None
             and self.maybe_property_definition(node)
         ):
             self.note("Property setter and deleter must be adjacent to the getter.", ctx)
+
+    def maybe_property_setter_or_deleter(self, node: SymbolNode) -> bool:
+        if isinstance(node, OverloadedFuncDef) and node.unanalyzed_items:
+            node = node.unanalyzed_items[0]
+        return isinstance(node, Decorator) and any(
+            isinstance(dec, MemberExpr) and dec.name in ("setter", "deleter")
+            for dec in node.decorators
+        )
 
     def maybe_property_definition(self, node: SymbolNode) -> bool:
         if isinstance(node, Decorator) and node.func.is_property:
