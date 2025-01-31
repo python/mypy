@@ -1,4 +1,4 @@
-.. _set-ops:
+.. _frozenset-ops:
 
 Native frozenset operations
 ======================
