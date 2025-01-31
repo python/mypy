@@ -183,6 +183,57 @@ def test_frozen_sets() -> None:
     with assertRaises(TypeError, "frozenset object expected; got set"):
         castFrozenSetError()
 
+[case testFrozenSetsFromIterables]
+from typing import FrozenSet
+
+def f(x: int) -> int:
+    return x
+
+def f1() -> FrozenSet[int]:
+    tmp_list = [1, 3, 5]
+    return frozenset(f(x) for x in tmp_list)
+
+def f2() -> FrozenSet[int]:
+    tmp_tuple = (1, 3, 5)
+    return frozenset(f(x) for x in tmp_tuple)
+
+def f3() -> FrozenSet[int]:
+    tmp_set = {1, 3, 5}
+    return frozenset(f(x) for x in tmp_set)
+
+def f4() -> FrozenSet[int]:
+    tmp_dict = {1: '1', 3: '3', 5: '5'}
+    return frozenset(f(x) for x in tmp_dict)
+
+def f5() -> FrozenSet[int]:
+    return frozenset(f(x) for x in range(1, 6, 2))
+
+def f6() -> FrozenSet[int]:
+    return frozenset((f(x) for x in range(1, 6, 2)))
+
+def g1(x: int) -> int:
+    return x
+
+def g2(x: int) -> int:
+    return x * 10
+
+def g3(x: int) -> int:
+    return x + 1
+
+def g4() -> FrozenSet[int]:
+    tmp_list = [1, 2, 3, 4, 5]
+    return frozenset(g3(x) for x in (g2(y) for y in (g1(z) for z in tmp_list if z < 4)))
+
+def test_frozen_sets_from_iterables() -> None:
+    val = frozenset({1, 3, 5})
+    assert f1() == val
+    assert f2() == val
+    assert f3() == val
+    assert f4() == val
+    assert f5() == val
+    assert f6() == val
+    assert g4() == frozenset({11, 21, 31})
+
 [case testPrecomputedFrozenSets]
 from typing import Any
 from typing_extensions import Final
