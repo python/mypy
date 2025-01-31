@@ -443,6 +443,7 @@ class StubgenUtilSuite(unittest.TestCase):
         This is an overloaded method.
         """
         sigs = infer_sig_from_docstring(docstring, name="func")
+        assert sigs is not None, "Expected two signatures"
         assert_equal(
             sigs[0], FunctionSig(name="func", args=[ArgSig(name="x", type="int")], ret_type="None")
         )
@@ -470,6 +471,7 @@ class StubgenUtilSuite(unittest.TestCase):
         This is an overloaded method.
         """
         sigs = infer_sig_from_docstring(docstring, name="func")
+        assert sigs is not None, "Expected two signatures"
         assert_equal(
             sigs[0], FunctionSig(name="func", args=[ArgSig(name="x", type="int")], ret_type="None")
         )
