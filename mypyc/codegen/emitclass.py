@@ -31,10 +31,6 @@ def native_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return f"{NATIVE_PREFIX}{fn.cname(emitter.names)}"
 
 
-def wrapper_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
-    return f"{PREFIX}{fn.cname(emitter.names)}"
-
-
 # We maintain a table from dunder function names to struct slots they
 # correspond to and functions that generate a wrapper (if necessary)
 # and return the function name to stick in the slot.
@@ -137,12 +133,7 @@ ALWAYS_FILL = {"__hash__"}
 
 
 def generate_call_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
-    if emitter.use_vectorcall():
-        # Use vectorcall wrapper if supported (PEP 590).
-        return "PyVectorcall_Call"
-    else:
-        # On older Pythons use the legacy wrapper.
-        return wrapper_slot(cl, fn, emitter)
+    return "PyVectorcall_Call"
 
 
 def slot_key(attr: str) -> str:
@@ -333,7 +324,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE"]
     if generate_full:
         flags.append("Py_TPFLAGS_HAVE_GC")
-    if cl.has_method("__call__") and emitter.use_vectorcall():
+    if cl.has_method("__call__"):
         fields["tp_vectorcall_offset"] = "offsetof({}, vectorcall)".format(
             cl.struct_name(emitter.names)
         )
@@ -381,7 +372,7 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     seen_attrs: set[tuple[str, RType]] = set()
     lines: list[str] = []
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
-    if cl.has_method("__call__") and emitter.use_vectorcall():
+    if cl.has_method("__call__"):
         lines.append("vectorcallfunc vectorcall;")
     bitmap_attrs = []
     for base in reversed(cl.base_mro):
@@ -576,7 +567,7 @@ def generate_setup_for_class(
         field = emitter.bitmap_field(i)
         emitter.emit_line(f"self->{field} = 0;")
 
-    if cl.has_method("__call__") and emitter.use_vectorcall():
+    if cl.has_method("__call__"):
         name = cl.method_decl("__call__").cname(emitter.names)
         emitter.emit_line(f"self->vectorcall = {PREFIX}{name};")
 

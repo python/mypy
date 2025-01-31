@@ -17,7 +17,6 @@ from mypyc.common import (
     REG_PREFIX,
     STATIC_PREFIX,
     TYPE_PREFIX,
-    use_vectorcall,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.ir.func_ir import FuncDecl
@@ -397,9 +396,6 @@ class Emitter:
             self.emit_line(f"{bitmap} |= {mask};")
         if value:
             self.emit_line("}")
-
-    def use_vectorcall(self) -> bool:
-        return use_vectorcall(self.capi_version)
 
     def emit_undefined_attr_check(
         self,
