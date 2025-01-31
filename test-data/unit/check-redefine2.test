@@ -265,3 +265,30 @@ def f6() -> None:
 #    x: int
 #   x = a()
 #   reveal_type(x) # Revealed type is "builtins.int"
+
+[case testRedefine2WhileLoopSimple]
+# flags: --allow-redefinition2 --local-partial-types
+def f() -> None:
+    while int():
+        x = ""
+        reveal_type(x) # N: Revealed type is "builtins.str"
+        x = 0
+        reveal_type(x) # N: Revealed type is "builtins.int"
+    reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int]"
+    while int():
+        x = None
+        reveal_type(x) # N: Revealed type is "None"
+        x = b""
+        reveal_type(x) # N: Revealed type is "builtins.bytes"
+    reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int, None, builtins.bytes]"
+    x = [1]
+    reveal_type(x) # N: Revealed type is "builtins.list[builtins.int]"
+
+[case testRedefine2WhileLoopOptional]
+# flags: --allow-redefinition2 --local-partial-types
+def f() -> None:
+    x = None
+    while int():
+        if int():
+            x = ""
+    reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
