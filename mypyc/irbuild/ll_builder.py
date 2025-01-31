@@ -99,6 +99,7 @@ from mypyc.ir.rtypes import (
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_frozenset_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -2219,7 +2220,7 @@ class LowLevelIRBuilder:
         size_value = None
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ) or is_bytes_rprimitive(typ):
             size_value = self.primitive_op(var_object_size, [val], line)
-        elif is_set_rprimitive(typ):
+        elif is_set_rprimitive(typ) or is_frozenset_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, "used"))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))
