@@ -56,7 +56,7 @@ These non-native classes can be used as base classes of native
 classes:
 
 * ``object``
-* ``dict`` (and ``Dict[k, v]``)
+* ``dict`` (and ``dict[k, v]``)
 * ``BaseException``
 * ``Exception``
 * ``ValueError``

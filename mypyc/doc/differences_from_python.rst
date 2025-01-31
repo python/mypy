@@ -107,7 +107,7 @@ performance.
 integer values. A side effect of this is that the exact runtime type of
 ``int`` values is lost. For example, consider this simple function::
 
-    def first_int(x: List[int]) -> int:
+    def first_int(x: list[int]) -> int:
         return x[0]
 
     print(first_int([True]))  # Output is 1, instead of True!
