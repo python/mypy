@@ -238,7 +238,7 @@ NameExpr(4) : Any
 NameExpr(5) : A
 NameExpr(5) : Any
 NameExpr(6) : A
-NameExpr(6) : A
+NameExpr(6) : Any
 
 [case testMemberAssignment]
 from typing import Any
