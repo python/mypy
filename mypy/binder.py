@@ -370,6 +370,13 @@ class ConditionalTypeBinder:
             else:
                 # In all other cases we don't narrow to Any to minimize false negatives.
                 self.put(expr, declared_type)
+        elif isinstance(p_declared, AnyType):
+            # Mirroring the first case above, we don't narrow to a precise type if the variable
+            # has an explicit `Any` type annotation.
+            if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_inferred:
+                self.put(expr, type)
+            else:
+                self.put(expr, declared_type)
         else:
             self.put(expr, type)
 
