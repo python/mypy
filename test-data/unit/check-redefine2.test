@@ -286,9 +286,27 @@ def f() -> None:
 
 [case testRedefine2WhileLoopOptional]
 # flags: --allow-redefinition2 --local-partial-types
-def f() -> None:
+def f1() -> None:
     x = None
     while int():
         if int():
             x = ""
     reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
+
+def f2() -> None:
+    x = None
+    while int():
+        reveal_type(x) # N: Revealed type is "None" \
+                       # N: Revealed type is "Union[None, builtins.str]"
+        if int():
+            x = ""
+    reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
+
+[case testRedefine2WhileLoopPartialType]
+# flags: --allow-redefinition2 --local-partial-types
+def f1() -> None:
+    x = []
+    while int():
+        x.append(1)
+    reveal_type(x) # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]

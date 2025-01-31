@@ -316,6 +316,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Vars for which partial type errors are already reported
     # (to avoid logically duplicate errors with different error context).
     partial_reported: set[Var]
+    # Short names of Var nodes whose previous inferred type has been widened via assignment
+    widened_vars: list[str]
     globals: SymbolTable
     modules: dict[str, MypyFile]
     # Nodes that couldn't be checked because some types weren't available. We'll run
@@ -384,6 +386,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.partial_reported = set()
         self.var_decl_frames = {}
         self.deferred_nodes = []
+        self.widened_vars = []
         self._type_maps = [{}]
         self.module_refs = set()
         self.pass_num = 0
@@ -523,6 +526,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True
 
     def check_partial(self, node: DeferredNodeType | FineGrainedDeferredNodeType) -> None:
+        self.widened_vars = []
         if isinstance(node, MypyFile):
             self.check_top_level(node)
         else:
@@ -592,6 +596,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Check for potential decreases in the number of partial types so as not to stop the
             # iteration too early:
             partials_old = sum(len(pts.map) for pts in self.partial_types)
+            widened_old = len(self.widened_vars)
 
             # Disable error types that we cannot safely identify in intermediate iteration steps:
             warn_unreachable = self.options.warn_unreachable
@@ -599,6 +604,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.options.warn_unreachable = False
             self.options.enabled_error_codes.discard(codes.REDUNDANT_EXPR)
 
+            iter = 1
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
                     if on_enter_body is not None:
@@ -606,9 +612,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                     self.accept(body)
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
-                if (partials_new == partials_old) and not self.binder.last_pop_changed:
+                widened_new = len(self.widened_vars)
+                if (partials_new == partials_old) and not self.binder.last_pop_changed and (widened_new == widened_old or iter > 1):
                     break
                 partials_old = partials_new
+                widened_old = widened_new
+                iter += 1
 
             # If necessary, reset the modified options and make up for the postponed error checks:
             self.options.warn_unreachable = warn_unreachable
@@ -4514,16 +4523,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type = self.expr_checker.accept(
                     rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
                 )
-            if inferred is not None and lvalue is not None:
-                old_lvalue = lvalue_type
+            if inferred is not None and lvalue is not None and inferred.type is not None:
                 if not inferred.is_final:
                     new_inferred = remove_instance_last_known_values(rvalue_type)
                 else:
                     new_inferred = rvalue_type
-                lvalue_type = make_simplified_union([inferred.type, new_inferred])
-                # TODO: Do we really need to pass lvalue?
-                self.set_inferred_type(inferred, lvalue, lvalue_type)
-                self.binder.put(lvalue, rvalue_type)
+                if not is_same_type(inferred.type, new_inferred):
+                    lvalue_type = make_simplified_union([inferred.type, new_inferred])
+                    if not is_same_type(lvalue_type, inferred.type):
+                        self.widened_vars.append(inferred.name)
+                        self.set_inferred_type(inferred, lvalue, lvalue_type)
+                        self.binder.put(lvalue, rvalue_type)
             if (
                 isinstance(get_proper_type(lvalue_type), UnionType)
                 # Skip literal types, as they have special logic (for better errors).
