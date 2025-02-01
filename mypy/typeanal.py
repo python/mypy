@@ -616,7 +616,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         """
         if fullname == "builtins.None":
             return NoneType()
-        elif fullname == "typing.Any" or fullname == "builtins.Any":
+        elif fullname == "typing.Any":
             return AnyType(TypeOfAny.explicit, line=t.line, column=t.column)
         elif fullname in FINAL_TYPE_NAMES:
             if self.prohibit_special_class_field_types:
