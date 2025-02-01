@@ -282,7 +282,6 @@ def add_overloaded_method_to_class(
             var = Var(func.name, func.type)
             var.set_line(func.line)
             func.is_decorated = True
-            func.deco_line = func.line
 
             deco = Decorator(func, [], var)
         else:

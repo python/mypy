@@ -594,18 +594,19 @@ Correct usage:
 When this code is enabled, using ``reveal_locals`` is always an error,
 because there's no way one can import it.
 
-.. _code-narrowed-type-not-subtype:
 
-Check that ``TypeIs`` narrows types [narrowed-type-not-subtype]
----------------------------------------------------------------
+.. _code-explicit-any:
 
-:pep:`742` requires that when ``TypeIs`` is used, the narrowed
-type must be a subtype of the original type::
+Check that explicit Any type annotations are not allowed [explicit-any]
+-----------------------------------------------------------------------
 
-    from typing_extensions import TypeIs
+If you use :option:`--disallow-any-explicit <mypy --disallow-any-explicit>`, mypy generates an error
+if you use an explicit ``Any`` type annotation.
 
-    def f(x: int) -> TypeIs[str]:  # Error, str is not a subtype of int
-        ...
+Example:
 
-    def g(x: object) -> TypeIs[str]:  # OK
-        ...
+.. code-block:: python
+
+    # mypy: disallow-any-explicit
+    from typing import Any
+    x: Any = 1  # Error: Explicit "Any" type annotation  [explicit-any]

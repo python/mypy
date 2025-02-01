@@ -77,6 +77,7 @@ mypyc = "mypyc.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["mypy*", "mypyc*", "*__mypyc*"]
+exclude = ["mypyc.test-data*"]
 namespaces = false
 
 [tool.setuptools.package-data]
@@ -88,6 +89,15 @@ mypy = [
   "xml/*.xsd",
   "xml/*.xslt",
   "xml/*.css",
+]
+[tool.setuptools.exclude-package-data]
+mypyc = [
+  "README.md",
+  "doc/**",
+  "external/**",
+  "lib-rt/test_capi.cc",
+  "lib-rt/setup.py",
+  "test-data/**",
 ]
 
 [tool.black]
@@ -102,7 +112,7 @@ force-exclude = '''
 
 [tool.ruff]
 line-length = 99
-target-version = "py38"
+target-version = "py39"
 fix = true
 
 extend-exclude = [
@@ -126,11 +136,13 @@ select = [
   "B",       # flake8-bugbear
   "I",       # isort
   "N",       # pep8-naming
+  "PIE",     # flake8-pie
+  "PLE",     # pylint error
   "RUF100",  # Unused noqa comments
   "PGH004",  # blanket noqa comments
   "UP",      # pyupgrade
   "C4",      # flake8-comprehensions
-  "SIM201", "SIM202",  # simplify comparisons involving not
+  "SIM201", "SIM202", "SIM222", "SIM223",  # flake8-simplify
   "ISC001",  # implicitly concatenated string
   "RET501", "RET502",  # better return None handling
 ]
@@ -149,7 +161,10 @@ ignore = [
   "N806",  # UPPER_CASE used for constant local variables
   "UP031", # Use format specifiers instead of percent format
   "UP032", # 'f-string always preferable to format' is controversial
+  "C409",  # https://github.com/astral-sh/ruff/issues/12912
+  "C420",  # reads a little worse. fromkeys predates dict comprehensions
   "C416",  # There are a few cases where it's nice to have names for the dict items
+  "PIE790", # there's nothing wrong with pass
 ]
 
 unfixable = [
@@ -158,6 +173,8 @@ unfixable = [
     "F602",  # automatic fix might obscure issue
     "B018",  # automatic fix might obscure issue
     "UP036", # sometimes it's better to just noqa this
+    "SIM222", # automatic fix might obscure issue
+    "SIM223", # automatic fix might obscure issue
 ]
 
 [tool.ruff.lint.per-file-ignores]

@@ -232,13 +232,6 @@ PyObject *CPyBool_Str(bool b) {
     return PyObject_Str(b ? Py_True : Py_False);
 }
 
-static void CPyLong_NormalizeUnsigned(PyLongObject *v) {
-    Py_ssize_t i = CPY_LONG_SIZE_UNSIGNED(v);
-    while (i > 0 && CPY_LONG_DIGIT(v, i - 1) == 0)
-        i--;
-    CPyLong_SetUnsignedSize(v, i);
-}
-
 // Bitwise op '&', '|' or '^' using the generic (slow) API
 static CPyTagged GenericBitwiseOp(CPyTagged a, CPyTagged b, char op) {
     PyObject *aobj = CPyTagged_AsObject(a);
@@ -302,7 +295,6 @@ CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op) {
     digit *adigits = GetIntDigits(a, &asize, abuf);
     digit *bdigits = GetIntDigits(b, &bsize, bbuf);
 
-    PyLongObject *r;
     if (unlikely(asize < 0 || bsize < 0)) {
         // Negative operand. This is slower, but bitwise ops on them are pretty rare.
         return GenericBitwiseOp(a, b, op);
@@ -317,31 +309,31 @@ CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op) {
         asize = bsize;
         bsize = tmp_size;
     }
-    r = _PyLong_New(op == '&' ? asize : bsize);
-    if (unlikely(r == NULL)) {
+    void *digits = NULL;
+    PyLongWriter *writer = PyLongWriter_Create(0, op == '&' ? asize : bsize, &digits);
+    if (unlikely(writer == NULL)) {
         CPyError_OutOfMemory();
     }
     Py_ssize_t i;
     if (op == '&') {
         for (i = 0; i < asize; i++) {
-            CPY_LONG_DIGIT(r, i) = adigits[i] & bdigits[i];
+            ((digit *)digits)[i] = adigits[i] & bdigits[i];
         }
     } else {
         if (op == '|') {
             for (i = 0; i < asize; i++) {
-                CPY_LONG_DIGIT(r, i) = adigits[i] | bdigits[i];
+                ((digit *)digits)[i] = adigits[i] | bdigits[i];
             }
         } else {
             for (i = 0; i < asize; i++) {
-                CPY_LONG_DIGIT(r, i) = adigits[i] ^ bdigits[i];
+                ((digit *)digits)[i] = adigits[i] ^ bdigits[i];
             }
         }
         for (; i < bsize; i++) {
-            CPY_LONG_DIGIT(r, i) = bdigits[i];
+            ((digit *)digits)[i] = bdigits[i];
         }
     }
-    CPyLong_NormalizeUnsigned(r);
-    return CPyTagged_StealFromObject((PyObject *)r);
+    return CPyTagged_StealFromObject(PyLongWriter_Finish(writer));
 }
 
 // Bitwise '~' slow path

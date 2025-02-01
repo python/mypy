@@ -41,6 +41,7 @@ generate fast code.
    dict_operations
    set_operations
    tuple_operations
+   frozenset_operations
 
 .. toctree::
    :maxdepth: 2

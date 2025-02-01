@@ -19,9 +19,11 @@ class int:
     def __init__(self, x: object = ..., base: int = ...) -> None: pass
     def __add__(self, i: int) -> int: pass
     def __rmul__(self, x: int) -> int: pass
+    def __bool__(self) -> bool: pass
 class float:
     def __float__(self) -> float: pass
     def __add__(self, x: float) -> float: pass
+    def hex(self) -> str: pass
 class complex:
     def __add__(self, x: complex) -> complex: pass
 class bool(int): pass

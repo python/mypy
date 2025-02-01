@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Callable, Final, Iterator, List, TypeVar, cast
+from typing import Any, Callable, Final, TypeVar, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.applytype
@@ -79,6 +80,7 @@ IS_SETTABLE: Final = 1
 IS_CLASSVAR: Final = 2
 IS_CLASS_OR_STATIC: Final = 3
 IS_VAR: Final = 4
+IS_EXPLICIT_SETTER: Final = 5
 
 TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool, "SubtypeContext"], bool]
 
@@ -499,7 +501,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             if type_state.is_cached_negative_subtype_check(self._subtype_kind, left, right):
                 return False
-            if not self.subtype_context.ignore_promotions:
+            if not self.subtype_context.ignore_promotions and not right.type.is_protocol:
                 for base in left.type.mro:
                     if base._promote and any(
                         self._is_subtype(p, self.right) for p in base._promote
@@ -1171,7 +1173,7 @@ def is_protocol_implementation(
             ignore_names = member != "__call__"  # __call__ can be passed kwargs
             # The third argument below indicates to what self type is bound.
             # We always bind self to the subtype. (Similarly to nominal types).
-            supertype = get_proper_type(find_member(member, right, left))
+            supertype = find_member(member, right, left)
             assert supertype is not None
 
             subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
@@ -1180,15 +1182,6 @@ def is_protocol_implementation(
             # print(member, 'of', right, 'has type', supertype)
             if not subtype:
                 return False
-            if isinstance(subtype, PartialType):
-                subtype = (
-                    NoneType()
-                    if subtype.type is None
-                    else Instance(
-                        subtype.type,
-                        [AnyType(TypeOfAny.unannotated)] * len(subtype.type.type_vars),
-                    )
-                )
             if not proper_subtype:
                 # Nominal check currently ignores arg names
                 # NOTE: If we ever change this, be sure to also change the call to
@@ -1200,15 +1193,28 @@ def is_protocol_implementation(
                 is_compat = is_proper_subtype(subtype, supertype)
             if not is_compat:
                 return False
-            if isinstance(subtype, NoneType) and isinstance(supertype, CallableType):
+            if isinstance(get_proper_type(subtype), NoneType) and isinstance(
+                get_proper_type(supertype), CallableType
+            ):
                 # We want __hash__ = None idiom to work even without --strict-optional
                 return False
             subflags = get_member_flags(member, left, class_obj=class_obj)
             superflags = get_member_flags(member, right)
             if IS_SETTABLE in superflags:
                 # Check opposite direction for settable attributes.
+                if IS_EXPLICIT_SETTER in superflags:
+                    supertype = find_member(member, right, left, is_lvalue=True)
+                if IS_EXPLICIT_SETTER in subflags:
+                    subtype = mypy.typeops.get_protocol_member(
+                        left, member, class_obj, is_lvalue=True
+                    )
+                # At this point we know attribute is present on subtype, otherwise we
+                # would return False above.
+                assert supertype is not None and subtype is not None
                 if not is_subtype(supertype, subtype, options=options):
                     return False
+            if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
+                return False
             if not class_obj:
                 if IS_SETTABLE not in superflags:
                     if IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
@@ -1222,8 +1228,6 @@ def is_protocol_implementation(
                 if IS_CLASSVAR in superflags:
                     # This can be never matched by a class object.
                     return False
-            if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
-                return False
             # This rule is copied from nominal check in checker.py
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 return False
@@ -1242,7 +1246,13 @@ def is_protocol_implementation(
 
 
 def find_member(
-    name: str, itype: Instance, subtype: Type, is_operator: bool = False, class_obj: bool = False
+    name: str,
+    itype: Instance,
+    subtype: Type,
+    *,
+    is_operator: bool = False,
+    class_obj: bool = False,
+    is_lvalue: bool = False,
 ) -> Type | None:
     """Find the type of member by 'name' in 'itype's TypeInfo.
 
@@ -1260,7 +1270,10 @@ def find_member(
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
-            return find_node_type(dec.var, itype, subtype, class_obj=class_obj)
+            # Pass on is_lvalue flag as this may be a property with different setter type.
+            return find_node_type(
+                dec.var, itype, subtype, class_obj=class_obj, is_lvalue=is_lvalue
+            )
         return find_node_type(method, itype, subtype, class_obj=class_obj)
     else:
         # don't have such method, maybe variable or decorator?
@@ -1325,7 +1338,10 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
             dec = method.items[0]
             assert isinstance(dec, Decorator)
             if dec.var.is_settable_property or setattr_meth:
-                return {IS_VAR, IS_SETTABLE}
+                flags = {IS_VAR, IS_SETTABLE}
+                if dec.var.setter_type is not None:
+                    flags.add(IS_EXPLICIT_SETTER)
+                return flags
             else:
                 return {IS_VAR}
         return set()  # Just a regular method
@@ -1356,7 +1372,11 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
 
 
 def find_node_type(
-    node: Var | FuncBase, itype: Instance, subtype: Type, class_obj: bool = False
+    node: Var | FuncBase,
+    itype: Instance,
+    subtype: Type,
+    class_obj: bool = False,
+    is_lvalue: bool = False,
 ) -> Type:
     """Find type of a variable or method 'node' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
@@ -1368,7 +1388,13 @@ def find_node_type(
             node, fallback=Instance(itype.type.mro[-1], [])
         )
     else:
-        typ = node.type
+        # This part and the one below are simply copies of the logic from checkmember.py.
+        if node.is_settable_property and is_lvalue:
+            typ = node.setter_type
+            if typ is None and node.is_ready:
+                typ = node.type
+        else:
+            typ = node.type
         if typ is not None:
             typ = expand_self_type(node, typ, subtype)
     p_typ = get_proper_type(typ)
@@ -1392,7 +1418,15 @@ def find_node_type(
             )
         if node.is_property and not class_obj:
             assert isinstance(signature, CallableType)
-            typ = signature.ret_type
+            if (
+                isinstance(node, Var)
+                and node.is_settable_property
+                and is_lvalue
+                and node.setter_type is not None
+            ):
+                typ = signature.arg_types[0]
+            else:
+                typ = signature.ret_type
         else:
             typ = signature
     itype = map_instance_to_supertype(itype, node.info)
@@ -1885,7 +1919,7 @@ def unify_generic_callable(
     )
     if None in inferred_vars:
         return None
-    non_none_inferred_vars = cast(List[Type], inferred_vars)
+    non_none_inferred_vars = cast(list[Type], inferred_vars)
     had_errors = False
 
     def report(*args: Any) -> None:
@@ -2040,6 +2074,7 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
                     # Special case to avoid false positives (and to pass conformance tests)
                     settable = False
 
+            # TODO: handle settable properties with setter type different from getter.
             typ = find_member(member, self_type, self_type)
             if typ:
                 # It's okay for a method in a generic class with a contravariant type

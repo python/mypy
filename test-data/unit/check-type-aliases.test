@@ -1243,31 +1243,22 @@ A = Union[int, List[A]]
 def func(x: A) -> int: ...
 [builtins fixtures/tuple.pyi]
 
-[case testAliasExplicitNoArgsBasic]
-from typing import Any, List, assert_type
+[case testAliasNonGeneric]
 from typing_extensions import TypeAlias
+class Foo: ...
 
-Implicit = List
-Explicit: TypeAlias = List
+ImplicitFoo = Foo
+ExplicitFoo: TypeAlias = Foo
 
-x1: Implicit[str]
-x2: Explicit[str]  # E: Bad number of arguments for type alias, expected 0, given 1
-assert_type(x1, List[str])
-assert_type(x2, List[Any])
-[builtins fixtures/tuple.pyi]
+x1: ImplicitFoo[str]  # E: "Foo" expects no type arguments, but 1 given
+x2: ExplicitFoo[str]  # E: "Foo" expects no type arguments, but 1 given
 
-[case testAliasExplicitNoArgsGenericClass]
-# flags: --python-version 3.9
-from typing import Any, assert_type
-from typing_extensions import TypeAlias
+def is_foo(x: object):
+    if isinstance(x, ImplicitFoo):
+        pass
+    if isinstance(x, ExplicitFoo):
+        pass
 
-Implicit = list
-Explicit: TypeAlias = list
-
-x1: Implicit[str]
-x2: Explicit[str]  # E: Bad number of arguments for type alias, expected 0, given 1
-assert_type(x1, list[str])
-assert_type(x2, list[Any])
 [builtins fixtures/tuple.pyi]
 
 [case testAliasExplicitNoArgsTuple]

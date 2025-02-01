@@ -14,7 +14,8 @@ import pickle
 import sys
 import time
 import traceback
-from typing import Any, Callable, Mapping, NoReturn
+from collections.abc import Mapping
+from typing import Any, Callable, NoReturn
 
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive, send

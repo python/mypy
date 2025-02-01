@@ -68,10 +68,11 @@ for full details, see :ref:`running-mypy`.
     checked. For instance, ``mypy --exclude '/setup.py$'
     but_still_check/setup.py``.
 
-    In particular, ``--exclude`` does not affect mypy's :ref:`import following
-    <follow-imports>`. You can use a per-module :confval:`follow_imports` config
-    option to additionally avoid mypy from following imports and checking code
-    you do not wish to be checked.
+    In particular, ``--exclude`` does not affect mypy's discovery of files
+    via :ref:`import following <follow-imports>`. You can use a per-module
+    :confval:`ignore_errors` config option to silence errors from a given module,
+    or a per-module :confval:`follow_imports` config option to additionally avoid
+    mypy from following imports and checking code you do not wish to be checked.
 
     Note that mypy will never recursively discover files and directories named
     "site-packages", "node_modules" or "__pycache__", or those whose name starts
@@ -691,9 +692,8 @@ of the above sections.
 .. option:: --extra-checks
 
     This flag enables additional checks that are technically correct but may be
-    impractical in real code. In particular, it prohibits partial overlap in
-    ``TypedDict`` updates, and makes arguments prepended via ``Concatenate``
-    positional-only. For example:
+    impractical. In particular, it prohibits partial overlap in ``TypedDict`` updates,
+    and makes arguments prepended via ``Concatenate`` positional-only. For example:
 
     .. code-block:: python
 
@@ -715,6 +715,13 @@ of the above sections.
            b: str
        bad: Bad = {"a": 0, "b": "no"}
        test(bad, bar)
+
+    In future more checks may be added to this flag if:
+
+    * The corresponding use cases are rare, thus not justifying a dedicated
+      strictness flag.
+
+    * The new check cannot be supported as an opt-in error code.
 
 .. option:: --strict
 

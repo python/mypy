@@ -5,8 +5,8 @@ import re
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 import filelock
 
@@ -23,8 +23,8 @@ class PEP561Suite(DataSuite):
     files = ["pep561.test"]
     base_path = "."
 
-    def run_case(self, test_case: DataDrivenTestCase) -> None:
-        test_pep561(test_case)
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
+        test_pep561(testcase)
 
 
 @contextmanager

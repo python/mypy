@@ -52,7 +52,8 @@ Summary of how this works for certain kinds of differences:
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.expandtype import expand_type
@@ -114,10 +115,10 @@ from mypy.util import get_prefix
 
 # Type snapshots are strict, they must be hashable and ordered (e.g. for Unions).
 Primitive: _TypeAlias = Union[str, float, int, bool]  # float is for Literal[3.14] support.
-SnapshotItem: _TypeAlias = Tuple[Union[Primitive, "SnapshotItem"], ...]
+SnapshotItem: _TypeAlias = tuple[Union[Primitive, "SnapshotItem"], ...]
 
 # Symbol snapshots can be more lenient.
-SymbolSnapshot: _TypeAlias = Tuple[object, ...]
+SymbolSnapshot: _TypeAlias = tuple[object, ...]
 
 
 def compare_symbol_table_snapshots(
@@ -244,6 +245,11 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             impl = node
         elif isinstance(node, OverloadedFuncDef) and node.impl:
             impl = node.impl.func if isinstance(node.impl, Decorator) else node.impl
+        setter_type = None
+        if isinstance(node, OverloadedFuncDef) and node.items:
+            first_item = node.items[0]
+            if isinstance(first_item, Decorator) and first_item.func.is_property:
+                setter_type = snapshot_optional_type(first_item.var.setter_type)
         is_trivial_body = impl.is_trivial_body if impl else False
         dataclass_transform_spec = find_dataclass_transform_spec(node)
         return (
@@ -257,6 +263,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             is_trivial_body,
             dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
             node.deprecated if isinstance(node, FuncDef) else None,
+            setter_type,  # multi-part properties are stored as OverloadedFuncDef
         )
     elif isinstance(node, Var):
         return ("Var", common, snapshot_optional_type(node.type), node.is_final)

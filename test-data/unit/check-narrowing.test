@@ -2095,11 +2095,11 @@ class Z: ...
 x: X
 
 if isinstance(x, (Y, Z)):
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
 if isinstance(x, (Y, NoneType)):
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">1"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
 if isinstance(x, (Y, Z, NoneType)):
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">2"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
 if isinstance(x, (Z, NoneType)):  # E: Subclass of "X" and "Z" cannot exist: "Z" is final \
                                   # E: Subclass of "X" and "NoneType" cannot exist: "NoneType" is final
     reveal_type(x)  # E: Statement is unreachable
@@ -2354,6 +2354,7 @@ def fn_while(arg: T) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testRefinePartialTypeWithinLoop]
+# flags: --no-local-partial-types
 
 x = None
 for _ in range(2):
@@ -2387,5 +2388,31 @@ class A:
                 if z:
                     z[0] + "v"  # E: Unsupported operand types for + ("int" and "str")
                 z.append(1)
+
+[builtins fixtures/primitives.pyi]
+
+[case testAvoidFalseUnreachableInLoop]
+# flags: --warn-unreachable --python-version 3.11
+
+def f() -> int | None: ...
+def b() -> bool: ...
+
+x: int | None
+x = 1
+while x is not None or b():
+    x = f()
+
+[builtins fixtures/bool.pyi]
+
+[case testAvoidFalseRedundantExprInLoop]
+# flags: --enable-error-code redundant-expr --python-version 3.11
+
+def f() -> int | None: ...
+def b() -> bool: ...
+
+x: int | None
+x = 1
+while x is not None and b():
+    x = f()
 
 [builtins fixtures/primitives.pyi]
