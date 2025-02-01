@@ -210,7 +210,7 @@ from mypy.types import (
 from mypy.types_utils import is_overlapping_none, remove_optional, store_argument_type, strip_type
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars, fill_typevars_with_any, has_no_typevars
-from mypy.util import is_dunder, is_sunder
+from mypy.util import maybe_mangled, is_dunder, is_sunder
 from mypy.visitor import NodeVisitor
 
 T = TypeVar("T")
@@ -2711,7 +2711,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # 4. If it is a method / descriptor like in `method = classmethod(func)`
         name = sym.node.name
         if (
-            (name.startswith(f"_{base.name}__") and not name.endswith("__"))
+            maybe_mangled(name, base.name)
             or is_dunder(name)
             or is_sunder(name)
             # TODO: make sure that `x = @class/staticmethod(func)`
