@@ -45,7 +45,6 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
     shared_lib_name,
     short_id_from_name,
-    use_vectorcall,
 )
 from mypyc.errors import Errors
 from mypyc.ir.func_ir import FuncIR
@@ -1106,7 +1105,7 @@ def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
     if fn.class_name is not None:
         if fn.name == "__call__":
             # We can use vectorcalls (PEP 590) when supported
-            return use_vectorcall(capi_version)
+            return True
         # TODO: Support fastcall for __init__.
         return fn.name != "__init__"
     return True

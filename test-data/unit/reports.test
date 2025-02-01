@@ -306,10 +306,7 @@ Total      1      11     90.91%
 
 [file i.py]
 from enum import Enum
-from mypy_extensions import TypedDict
-from typing import NewType, NamedTuple, TypeVar
-
-from typing import TypeVar
+from typing import NewType, NamedTuple, TypedDict, TypeVar
 
 T = TypeVar('T')  # no error
 

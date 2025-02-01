@@ -2095,11 +2095,11 @@ class Z: ...
 x: X
 
 if isinstance(x, (Y, Z)):
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
 if isinstance(x, (Y, NoneType)):
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">1"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
 if isinstance(x, (Y, Z, NoneType)):
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">2"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
 if isinstance(x, (Z, NoneType)):  # E: Subclass of "X" and "Z" cannot exist: "Z" is final \
                                   # E: Subclass of "X" and "NoneType" cannot exist: "NoneType" is final
     reveal_type(x)  # E: Statement is unreachable

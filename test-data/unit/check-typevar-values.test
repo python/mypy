@@ -732,3 +732,16 @@ def foo3(x: NT) -> None:
 def foo4(x: NT) -> None:
     p, q = 1, 2.0  # type: (int, float)
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarValuesNarrowing]
+from typing import TypeVar
+
+W = TypeVar("W", int, str)
+
+def fn(w: W) -> W:
+    if type(w) is str:
+        reveal_type(w)  # N: Revealed type is "builtins.str"
+    elif type(w) is int:
+        reveal_type(w)  # N: Revealed type is "builtins.int"
+    return w
+[builtins fixtures/isinstance.pyi]

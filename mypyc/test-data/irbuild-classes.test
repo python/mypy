@@ -209,53 +209,56 @@ def __top_level__():
     r13 :: str
     r14 :: dict
     r15 :: str
-    r16, r17 :: object
-    r18 :: dict
-    r19 :: str
-    r20 :: i32
-    r21 :: bit
-    r22 :: object
-    r23 :: str
-    r24, r25 :: object
-    r26 :: bool
-    r27 :: str
-    r28 :: tuple
-    r29 :: i32
-    r30 :: bit
-    r31 :: dict
-    r32 :: str
-    r33 :: i32
-    r34 :: bit
-    r35 :: object
-    r36 :: str
-    r37, r38 :: object
-    r39 :: str
-    r40 :: tuple
-    r41 :: i32
-    r42 :: bit
-    r43 :: dict
-    r44 :: str
-    r45 :: i32
-    r46 :: bit
-    r47, r48 :: object
-    r49 :: dict
-    r50 :: str
-    r51 :: object
-    r52 :: dict
-    r53 :: str
-    r54, r55 :: object
-    r56 :: tuple
-    r57 :: str
-    r58, r59 :: object
-    r60 :: bool
-    r61, r62 :: str
-    r63 :: tuple
-    r64 :: i32
-    r65 :: bit
-    r66 :: dict
-    r67 :: str
-    r68 :: i32
-    r69 :: bit
+    r16 :: object
+    r17 :: object[1]
+    r18 :: object_ptr
+    r19 :: object
+    r20 :: dict
+    r21 :: str
+    r22 :: i32
+    r23 :: bit
+    r24 :: object
+    r25 :: str
+    r26, r27 :: object
+    r28 :: bool
+    r29 :: str
+    r30 :: tuple
+    r31 :: i32
+    r32 :: bit
+    r33 :: dict
+    r34 :: str
+    r35 :: i32
+    r36 :: bit
+    r37 :: object
+    r38 :: str
+    r39, r40 :: object
+    r41 :: str
+    r42 :: tuple
+    r43 :: i32
+    r44 :: bit
+    r45 :: dict
+    r46 :: str
+    r47 :: i32
+    r48 :: bit
+    r49, r50 :: object
+    r51 :: dict
+    r52 :: str
+    r53 :: object
+    r54 :: dict
+    r55 :: str
+    r56, r57 :: object
+    r58 :: tuple
+    r59 :: str
+    r60, r61 :: object
+    r62 :: bool
+    r63, r64 :: str
+    r65 :: tuple
+    r66 :: i32
+    r67 :: bit
+    r68 :: dict
+    r69 :: str
+    r70 :: i32
+    r71 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -280,62 +283,65 @@ L2:
     r14 = __main__.globals :: static
     r15 = 'TypeVar'
     r16 = CPyDict_GetItem(r14, r15)
-    r17 = PyObject_CallFunctionObjArgs(r16, r13, 0)
-    r18 = __main__.globals :: static
-    r19 = 'T'
-    r20 = CPyDict_SetItem(r18, r19, r17)
-    r21 = r20 >= 0 :: signed
-    r22 = <error> :: object
-    r23 = '__main__'
-    r24 = __main__.C_template :: type
-    r25 = CPyType_FromTemplate(r24, r22, r23)
-    r26 = C_trait_vtable_setup()
-    r27 = '__mypyc_attrs__'
-    r28 = PyTuple_Pack(0)
-    r29 = PyObject_SetAttr(r25, r27, r28)
-    r30 = r29 >= 0 :: signed
-    __main__.C = r25 :: type
-    r31 = __main__.globals :: static
-    r32 = 'C'
-    r33 = CPyDict_SetItem(r31, r32, r25)
-    r34 = r33 >= 0 :: signed
-    r35 = <error> :: object
-    r36 = '__main__'
-    r37 = __main__.S_template :: type
-    r38 = CPyType_FromTemplate(r37, r35, r36)
-    r39 = '__mypyc_attrs__'
-    r40 = PyTuple_Pack(0)
-    r41 = PyObject_SetAttr(r38, r39, r40)
-    r42 = r41 >= 0 :: signed
-    __main__.S = r38 :: type
-    r43 = __main__.globals :: static
-    r44 = 'S'
-    r45 = CPyDict_SetItem(r43, r44, r38)
-    r46 = r45 >= 0 :: signed
-    r47 = __main__.C :: type
-    r48 = __main__.S :: type
-    r49 = __main__.globals :: static
-    r50 = 'Generic'
-    r51 = CPyDict_GetItem(r49, r50)
-    r52 = __main__.globals :: static
-    r53 = 'T'
-    r54 = CPyDict_GetItem(r52, r53)
-    r55 = PyObject_GetItem(r51, r54)
-    r56 = PyTuple_Pack(3, r47, r48, r55)
-    r57 = '__main__'
-    r58 = __main__.D_template :: type
-    r59 = CPyType_FromTemplate(r58, r56, r57)
-    r60 = D_trait_vtable_setup()
-    r61 = '__mypyc_attrs__'
-    r62 = '__dict__'
-    r63 = PyTuple_Pack(1, r62)
-    r64 = PyObject_SetAttr(r59, r61, r63)
-    r65 = r64 >= 0 :: signed
-    __main__.D = r59 :: type
-    r66 = __main__.globals :: static
-    r67 = 'D'
-    r68 = CPyDict_SetItem(r66, r67, r59)
-    r69 = r68 >= 0 :: signed
+    r17 = [r13]
+    r18 = load_address r17
+    r19 = PyObject_Vectorcall(r16, r18, 1, 0)
+    keep_alive r13
+    r20 = __main__.globals :: static
+    r21 = 'T'
+    r22 = CPyDict_SetItem(r20, r21, r19)
+    r23 = r22 >= 0 :: signed
+    r24 = <error> :: object
+    r25 = '__main__'
+    r26 = __main__.C_template :: type
+    r27 = CPyType_FromTemplate(r26, r24, r25)
+    r28 = C_trait_vtable_setup()
+    r29 = '__mypyc_attrs__'
+    r30 = PyTuple_Pack(0)
+    r31 = PyObject_SetAttr(r27, r29, r30)
+    r32 = r31 >= 0 :: signed
+    __main__.C = r27 :: type
+    r33 = __main__.globals :: static
+    r34 = 'C'
+    r35 = CPyDict_SetItem(r33, r34, r27)
+    r36 = r35 >= 0 :: signed
+    r37 = <error> :: object
+    r38 = '__main__'
+    r39 = __main__.S_template :: type
+    r40 = CPyType_FromTemplate(r39, r37, r38)
+    r41 = '__mypyc_attrs__'
+    r42 = PyTuple_Pack(0)
+    r43 = PyObject_SetAttr(r40, r41, r42)
+    r44 = r43 >= 0 :: signed
+    __main__.S = r40 :: type
+    r45 = __main__.globals :: static
+    r46 = 'S'
+    r47 = CPyDict_SetItem(r45, r46, r40)
+    r48 = r47 >= 0 :: signed
+    r49 = __main__.C :: type
+    r50 = __main__.S :: type
+    r51 = __main__.globals :: static
+    r52 = 'Generic'
+    r53 = CPyDict_GetItem(r51, r52)
+    r54 = __main__.globals :: static
+    r55 = 'T'
+    r56 = CPyDict_GetItem(r54, r55)
+    r57 = PyObject_GetItem(r53, r56)
+    r58 = PyTuple_Pack(3, r49, r50, r57)
+    r59 = '__main__'
+    r60 = __main__.D_template :: type
+    r61 = CPyType_FromTemplate(r60, r58, r59)
+    r62 = D_trait_vtable_setup()
+    r63 = '__mypyc_attrs__'
+    r64 = '__dict__'
+    r65 = PyTuple_Pack(1, r64)
+    r66 = PyObject_SetAttr(r61, r63, r65)
+    r67 = r66 >= 0 :: signed
+    __main__.D = r61 :: type
+    r68 = __main__.globals :: static
+    r69 = 'D'
+    r70 = CPyDict_SetItem(r68, r69, r61)
+    r71 = r70 >= 0 :: signed
     return 1
 
 [case testIsInstance]
@@ -600,7 +606,7 @@ L0:
     r3 = CPyTagged_Add(r0, r2)
     return r3
 
-[case testCallClassMethodViaCls]
+[case testCallClassMethodViaCls_64bit]
 class C:
     @classmethod
     def f(cls, x: int) -> int:
@@ -641,14 +647,20 @@ def D.f(cls, x):
     cls :: object
     x :: int
     r0 :: str
-    r1, r2 :: object
-    r3 :: int
+    r1 :: object
+    r2 :: object[2]
+    r3 :: object_ptr
+    r4 :: object
+    r5 :: int
 L0:
     r0 = 'g'
     r1 = box(int, x)
-    r2 = CPyObject_CallMethodObjArgs(cls, r0, r1, 0)
-    r3 = unbox(int, r2)
-    return r3
+    r2 = [cls, r1]
+    r3 = load_address r2
+    r4 = PyObject_VectorcallMethod(r0, r3, 9223372036854775810, 0)
+    keep_alive cls, r1
+    r5 = unbox(int, r4)
+    return r5
 def D.g(cls, x):
     cls :: object
     x :: int
@@ -747,18 +759,24 @@ def DictSubclass.__init__(self):
     self :: dict
     r0 :: object
     r1 :: str
-    r2, r3, r4 :: object
-    r5 :: str
-    r6, r7 :: object
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8, r9 :: object
 L0:
     r0 = builtins :: module
     r1 = 'super'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = __main__.DictSubclass :: type
-    r4 = PyObject_CallFunctionObjArgs(r2, r3, self, 0)
-    r5 = '__init__'
-    r6 = CPyObject_GetAttr(r4, r5)
-    r7 = PyObject_CallFunctionObjArgs(r6, 0)
+    r4 = [r3, self]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, self
+    r7 = '__init__'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = PyObject_Vectorcall(r8, 0, 0, 0)
     return 1
 
 [case testClassVariable]
@@ -892,7 +910,7 @@ L0:
     r1 = unbox(bool, r0)
     return r1
 
-[case testEqDefinedLater]
+[case testEqDefinedLater_64bit]
 def f(a: 'Base', b: 'Base') -> bool:
     return a == b
 
@@ -939,13 +957,18 @@ L0:
 def fOpt2(a, b):
     a, b :: __main__.Derived
     r0 :: str
-    r1 :: object
-    r2 :: bool
+    r1 :: object[2]
+    r2 :: object_ptr
+    r3 :: object
+    r4 :: bool
 L0:
     r0 = '__ne__'
-    r1 = CPyObject_CallMethodObjArgs(a, r0, b, 0)
-    r2 = unbox(bool, r1)
-    return r2
+    r1 = [a, b]
+    r2 = load_address r1
+    r3 = PyObject_VectorcallMethod(r0, r2, 9223372036854775810, 0)
+    keep_alive a, b
+    r4 = unbox(bool, r3)
+    return r4
 def Derived.__eq__(self, other):
     self :: __main__.Derived
     other, r0 :: object

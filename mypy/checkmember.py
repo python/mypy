@@ -658,7 +658,10 @@ def analyze_descriptor_access(
     if isinstance(descriptor_type, UnionType):
         # Map the access over union types
         return make_simplified_union(
-            [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
+            [
+                analyze_descriptor_access(typ, mx, assignment=assignment)
+                for typ in descriptor_type.items
+            ]
         )
     elif not isinstance(descriptor_type, Instance):
         return orig_descriptor_type
@@ -776,7 +779,13 @@ def analyze_var(
     # Found a member variable.
     original_itype = itype
     itype = map_instance_to_supertype(itype, var.info)
-    typ = var.type
+    if var.is_settable_property and mx.is_lvalue:
+        typ: Type | None = var.setter_type
+        if typ is None and var.is_ready:
+            # Existing synthetic properties may not set setter type. Fall back to getter.
+            typ = var.type
+    else:
+        typ = var.type
     if typ:
         if isinstance(typ, PartialType):
             return mx.chk.handle_partial_var_type(typ, mx.is_lvalue, var, mx.context)
@@ -834,7 +843,10 @@ def analyze_var(
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(expanded_signature, CallableType)
-                    result = expanded_signature.ret_type
+                    if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
+                        result = expanded_signature.arg_types[0]
+                    else:
+                        result = expanded_signature.ret_type
                 else:
                     result = expanded_signature
     else:

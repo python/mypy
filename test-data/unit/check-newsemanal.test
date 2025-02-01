@@ -229,7 +229,7 @@ class C(B):
 [targets b, a, b, a, __main__]
 
 [case testNewAnalyzerTypedDictClass]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 import a
 class T1(TypedDict):
     x: A
@@ -237,7 +237,7 @@ class A: pass
 reveal_type(T1(x=A())) # E
 
 [file a.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 from b import TD1 as TD2, TD3
 class T2(TD3):
     x: int
@@ -246,7 +246,8 @@ reveal_type(T2(x=2)) # E
 [file b.py]
 from a import TypedDict as TD1
 from a import TD2 as TD3
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [out]
 tmp/a.py:5: note: Revealed type is "TypedDict('a.T2', {'x': builtins.int})"
@@ -254,7 +255,7 @@ main:6: note: Revealed type is "TypedDict('__main__.T1', {'x': __main__.A})"
 
 
 [case testNewAnalyzerTypedDictClassInheritance]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class T2(T1):
     y: int
@@ -275,7 +276,8 @@ x: T2
 reveal_type(x) # N: Revealed type is "TypedDict('__main__.T2', {'x': builtins.str, 'y': builtins.int})"
 y: T4
 reveal_type(y) # N: Revealed type is "TypedDict('__main__.T4', {'x': builtins.str, 'y': __main__.A})"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNewAnalyzerRedefinitionAndDeferral1a]
 import a
@@ -1659,8 +1661,7 @@ tmp/a.py:10: error: Type argument "str" of "C" must be a subtype of "int"
 tmp/a.py:11: error: Type argument "str" of "C" must be a subtype of "int"
 
 [case testNewAnalyzerTypeArgBoundCheckDifferentNodes]
-from typing import TypeVar, Generic, NamedTuple, NewType, Union, Any, cast, overload
-from mypy_extensions import TypedDict
+from typing import TypeVar, TypedDict, Generic, NamedTuple, NewType, Union, Any, cast, overload
 
 T = TypeVar('T', bound=int)
 class C(Generic[T]): pass
@@ -1706,7 +1707,8 @@ def g(x: int) -> int: ...
 def g(x: Union[C[str], int]) -> int:  # E: Type argument "str" of "C" must be a subtype of "int"
     y: C[object]  # E: Type argument "object" of "C" must be a subtype of "int"
     return 0
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNewAnalyzerTypeArgBoundCheckWithStrictOptional]
 # flags: --config-file tmp/mypy.ini

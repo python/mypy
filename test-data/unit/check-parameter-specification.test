@@ -1345,8 +1345,8 @@ from typing import Callable, ParamSpec
 P1 = ParamSpec('P1')
 P2 = ParamSpec('P2')
 
-def f0(f: Callable[P1, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec "P2" is unbound \
-                                                                        # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f0(f: Callable[P1, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs" \
+                                                                        # E: ParamSpec "P2" is unbound
 
 def f1(*args: P1.args): ...  # E: ParamSpec "P1" is unbound
 def f2(**kwargs: P1.kwargs): ...  # E: ParamSpec "P1" is unbound

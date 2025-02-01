@@ -38,19 +38,23 @@ def f_obj.__call__(__mypyc_self__, arg):
     r8 :: str
     r9 :: object
     r10 :: dict
-    r11 :: object
-    r12 :: i32
-    r13 :: bit
-    r14 :: object
-    r15 :: ptr
+    r11 :: object[2]
+    r12 :: object_ptr
+    r13 :: object
+    r14 :: i32
+    r15 :: bit
     r16 :: object
-    r17 :: bit
-    r18 :: int
+    r17 :: ptr
+    r18 :: object
     r19 :: bit
     r20 :: int
-    r21 :: bool
-    r22 :: object
+    r21 :: bit
+    r22 :: int
     r23 :: bool
+    r24 :: object[1]
+    r25 :: object_ptr
+    r26 :: object
+    r27 :: bool
 L0:
     r0 = get_element_ptr arg ob_type :: PyObject
     r1 = load_mem r0 :: builtins.object*
@@ -68,31 +72,37 @@ L2:
     r8 = '_find_impl'
     r9 = CPyObject_GetAttr(r7, r8)
     r10 = __mypyc_self__.registry
-    r11 = PyObject_CallFunctionObjArgs(r9, r1, r10, 0)
-    r12 = CPyDict_SetItem(r2, r1, r11)
-    r13 = r12 >= 0 :: signed
-    r6 = r11
+    r11 = [r1, r10]
+    r12 = load_address r11
+    r13 = PyObject_Vectorcall(r9, r12, 2, 0)
+    keep_alive r1, r10
+    r14 = CPyDict_SetItem(r2, r1, r13)
+    r15 = r14 >= 0 :: signed
+    r6 = r13
 L3:
-    r14 = load_address PyLong_Type
-    r15 = get_element_ptr r6 ob_type :: PyObject
-    r16 = load_mem r15 :: builtins.object*
+    r16 = load_address PyLong_Type
+    r17 = get_element_ptr r6 ob_type :: PyObject
+    r18 = load_mem r17 :: builtins.object*
     keep_alive r6
-    r17 = r16 == r14
-    if r17 goto L4 else goto L7 :: bool
+    r19 = r18 == r16
+    if r19 goto L4 else goto L7 :: bool
 L4:
-    r18 = unbox(int, r6)
-    r19 = int_eq r18, 0
-    if r19 goto L5 else goto L6 :: bool
+    r20 = unbox(int, r6)
+    r21 = int_eq r20, 0
+    if r21 goto L5 else goto L6 :: bool
 L5:
-    r20 = unbox(int, arg)
-    r21 = g(r20)
-    return r21
+    r22 = unbox(int, arg)
+    r23 = g(r22)
+    return r23
 L6:
     unreachable
 L7:
-    r22 = PyObject_CallFunctionObjArgs(r6, arg, 0)
-    r23 = unbox(bool, r22)
-    return r23
+    r24 = [arg]
+    r25 = load_address r24
+    r26 = PyObject_Vectorcall(r6, r25, 1, 0)
+    keep_alive arg
+    r27 = unbox(bool, r26)
+    return r27
 def f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
     r1 :: bit
@@ -128,7 +138,6 @@ def g(arg):
     arg :: int
 L0:
     return 1
-
 
 [case testCallsToSingledispatchFunctionsAreNative]
 from functools import singledispatch
@@ -170,16 +179,20 @@ def f_obj.__call__(__mypyc_self__, x):
     r8 :: str
     r9 :: object
     r10 :: dict
-    r11 :: object
-    r12 :: i32
-    r13 :: bit
-    r14 :: object
-    r15 :: ptr
+    r11 :: object[2]
+    r12 :: object_ptr
+    r13 :: object
+    r14 :: i32
+    r15 :: bit
     r16 :: object
-    r17 :: bit
-    r18 :: int
-    r19 :: object
-    r20 :: None
+    r17 :: ptr
+    r18 :: object
+    r19 :: bit
+    r20 :: int
+    r21 :: object[1]
+    r22 :: object_ptr
+    r23 :: object
+    r24 :: None
 L0:
     r0 = get_element_ptr x ob_type :: PyObject
     r1 = load_mem r0 :: builtins.object*
@@ -197,24 +210,30 @@ L2:
     r8 = '_find_impl'
     r9 = CPyObject_GetAttr(r7, r8)
     r10 = __mypyc_self__.registry
-    r11 = PyObject_CallFunctionObjArgs(r9, r1, r10, 0)
-    r12 = CPyDict_SetItem(r2, r1, r11)
-    r13 = r12 >= 0 :: signed
-    r6 = r11
+    r11 = [r1, r10]
+    r12 = load_address r11
+    r13 = PyObject_Vectorcall(r9, r12, 2, 0)
+    keep_alive r1, r10
+    r14 = CPyDict_SetItem(r2, r1, r13)
+    r15 = r14 >= 0 :: signed
+    r6 = r13
 L3:
-    r14 = load_address PyLong_Type
-    r15 = get_element_ptr r6 ob_type :: PyObject
-    r16 = load_mem r15 :: builtins.object*
+    r16 = load_address PyLong_Type
+    r17 = get_element_ptr r6 ob_type :: PyObject
+    r18 = load_mem r17 :: builtins.object*
     keep_alive r6
-    r17 = r16 == r14
-    if r17 goto L4 else goto L5 :: bool
+    r19 = r18 == r16
+    if r19 goto L4 else goto L5 :: bool
 L4:
-    r18 = unbox(int, r6)
+    r20 = unbox(int, r6)
     unreachable
 L5:
-    r19 = PyObject_CallFunctionObjArgs(r6, x, 0)
-    r20 = unbox(None, r19)
-    return r20
+    r21 = [x]
+    r22 = load_address r21
+    r23 = PyObject_Vectorcall(r6, r22, 1, 0)
+    keep_alive x
+    r24 = unbox(None, r23)
+    return r24
 def f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
     r1 :: bit

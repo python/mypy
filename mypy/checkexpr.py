@@ -1485,7 +1485,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )
         proper_callee = get_proper_type(callee_type)
         if isinstance(e.callee, (NameExpr, MemberExpr)):
-            self.chk.warn_deprecated_overload_item(e.callee.node, e, target=callee_type)
+            node = e.callee.node
+            if node is None and member is not None and isinstance(object_type, Instance):
+                if (symbol := object_type.type.get(member)) is not None:
+                    node = symbol.node
+            self.chk.check_deprecated(node, e)
+            self.chk.warn_deprecated_overload_item(
+                node, e, target=callee_type, selftype=object_type
+            )
         if isinstance(e.callee, RefExpr) and isinstance(proper_callee, CallableType):
             # Cache it for find_isinstance_check()
             if proper_callee.type_guard is not None:
@@ -2906,16 +2913,37 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             elif all_same_types([erase_type(typ) for typ in return_types]):
                 self.chk.store_types(type_maps[0])
                 return erase_type(return_types[0]), erase_type(inferred_types[0])
-            else:
-                return self.check_call(
-                    callee=AnyType(TypeOfAny.special_form),
-                    args=args,
-                    arg_kinds=arg_kinds,
-                    arg_names=arg_names,
-                    context=context,
-                    callable_name=callable_name,
-                    object_type=object_type,
-                )
+            return self.check_call(
+                callee=AnyType(TypeOfAny.special_form),
+                args=args,
+                arg_kinds=arg_kinds,
+                arg_names=arg_names,
+                context=context,
+                callable_name=callable_name,
+                object_type=object_type,
+            )
+        elif not all_same_type_narrowers(matches):
+            # This is an example of how overloads can be:
+            #
+            # @overload
+            # def is_int(obj: float) -> TypeGuard[float]: ...
+            # @overload
+            # def is_int(obj: int) -> TypeGuard[int]: ...
+            #
+            # x: Any
+            # if is_int(x):
+            #     reveal_type(x)  # N: int | float
+            #
+            # So, we need to check that special case.
+            return self.check_call(
+                callee=self.combine_function_signatures(cast("list[ProperType]", matches)),
+                args=args,
+                arg_kinds=arg_kinds,
+                arg_names=arg_names,
+                context=context,
+                callable_name=callable_name,
+                object_type=object_type,
+            )
         else:
             # Success! No ambiguity; return the first match.
             self.chk.store_types(type_maps[0])
@@ -3130,6 +3158,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         new_args: list[list[Type]] = [[] for _ in range(len(callables[0].arg_types))]
         new_kinds = list(callables[0].arg_kinds)
         new_returns: list[Type] = []
+        new_type_guards: list[Type] = []
+        new_type_narrowers: list[Type] = []
 
         too_complex = False
         for target in callables:
@@ -3156,8 +3186,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for i, arg in enumerate(target.arg_types):
                 new_args[i].append(arg)
             new_returns.append(target.ret_type)
+            if target.type_guard:
+                new_type_guards.append(target.type_guard)
+            if target.type_is:
+                new_type_narrowers.append(target.type_is)
+
+        if new_type_guards and new_type_narrowers:
+            # They cannot be definined at the same time,
+            # declaring this function as too complex!
+            too_complex = True
+            union_type_guard = None
+            union_type_is = None
+        else:
+            union_type_guard = make_simplified_union(new_type_guards) if new_type_guards else None
+            union_type_is = (
+                make_simplified_union(new_type_narrowers) if new_type_narrowers else None
+            )
 
         union_return = make_simplified_union(new_returns)
+
         if too_complex:
             any = AnyType(TypeOfAny.special_form)
             return callables[0].copy_modified(
@@ -3167,6 +3214,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ret_type=union_return,
                 variables=variables,
                 implicit=True,
+                type_guard=union_type_guard,
+                type_is=union_type_is,
             )
 
         final_args = []
@@ -3180,6 +3229,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             ret_type=union_return,
             variables=variables,
             implicit=True,
+            type_guard=union_type_guard,
+            type_is=union_type_is,
         )
 
     def erased_signature_similarity(
@@ -6097,6 +6148,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             generic_generator_type = self.chk.named_generic_type(
                 "typing.Generator", [any_type, any_type, any_type]
             )
+            generic_generator_type.set_line(e)
             iter_type, _ = self.check_method_call_by_name(
                 "__iter__", subexpr_type, [], [], context=generic_generator_type
             )
@@ -6518,6 +6570,25 @@ def all_same_types(types: list[Type]) -> bool:
     if not types:
         return True
     return all(is_same_type(t, types[0]) for t in types[1:])
+
+
+def all_same_type_narrowers(types: list[CallableType]) -> bool:
+    if len(types) <= 1:
+        return True
+
+    type_guards: list[Type] = []
+    type_narrowers: list[Type] = []
+
+    for typ in types:
+        if typ.type_guard:
+            type_guards.append(typ.type_guard)
+        if typ.type_is:
+            type_narrowers.append(typ.type_is)
+    if type_guards and type_narrowers:
+        # Some overloads declare `TypeGuard` and some declare `TypeIs`,
+        # we cannot handle this in a union.
+        return False
+    return all_same_types(type_guards) and all_same_types(type_narrowers)
 
 
 def merge_typevars_in_callables_by_name(

@@ -2913,8 +2913,7 @@ class Wrapper(Generic[T]):
 [builtins fixtures/list.pyi]
 
 [case testOverloadTypedDictDifferentRequiredKeysMeansDictsAreDisjoint]
-from typing import overload
-from mypy_extensions import TypedDict
+from typing import TypedDict, overload
 
 A = TypedDict('A', {'x': int, 'y': int})
 B = TypedDict('B', {'x': int, 'y': str})
@@ -2925,10 +2924,10 @@ def f(x: A) -> int: ...
 def f(x: B) -> str: ...
 def f(x): pass
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testOverloadedTypedDictPartiallyOverlappingRequiredKeys]
-from typing import overload, Union
-from mypy_extensions import TypedDict
+from typing import overload, TypedDict, Union
 
 A = TypedDict('A', {'x': int, 'y': Union[int, str]})
 B = TypedDict('B', {'x': int, 'y': Union[str, float]})
@@ -2945,10 +2944,10 @@ def g(x: A) -> int: ...
 def g(x: B) -> object: ...
 def g(x): pass
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testOverloadedTypedDictFullyNonTotalDictsAreAlwaysPartiallyOverlapping]
-from typing import overload
-from mypy_extensions import TypedDict
+from typing import TypedDict, overload
 
 A = TypedDict('A', {'x': int, 'y': str}, total=False)
 B = TypedDict('B', {'a': bool}, total=False)
@@ -2966,10 +2965,10 @@ def g(x: A) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap wit
 def g(x: C) -> str: ...
 def g(x): pass
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testOverloadedTotalAndNonTotalTypedDictsCanPartiallyOverlap]
-from typing import overload, Union
-from mypy_extensions import TypedDict
+from typing import overload, TypedDict, Union
 
 A = TypedDict('A', {'x': int, 'y': str})
 B = TypedDict('B', {'x': Union[int, str], 'y': str, 'z': int}, total=False)
@@ -2987,10 +2986,10 @@ def f2(x: A) -> str: ...
 def f2(x): pass
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testOverloadedTypedDictsWithSomeOptionalKeysArePartiallyOverlapping]
-from typing import overload, Union
-from mypy_extensions import TypedDict
+from typing import overload, TypedDict, Union
 
 class A(TypedDict):
     x: int
@@ -3009,6 +3008,7 @@ def f(x: C) -> str: ...
 def f(x): pass
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testOverloadedPartiallyOverlappingInheritedTypes1]
 from typing import overload, List, Union, TypeVar, Generic
