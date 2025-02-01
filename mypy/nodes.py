@@ -14,7 +14,7 @@ from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.options import Options
-from mypy.util import maybe_mangled, is_dunder, is_typeshed_file, short_type
+from mypy.util import is_dunder, is_typeshed_file, maybe_mangled, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
 if TYPE_CHECKING:

@@ -303,7 +303,14 @@ from mypy.types import (
 )
 from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
-from mypy.util import correct_relative_import, maybe_mangled, is_dunder, module_prefix, unmangle, unnamed_function
+from mypy.util import (
+    correct_relative_import,
+    is_dunder,
+    maybe_mangled,
+    module_prefix,
+    unmangle,
+    unnamed_function,
+)
 from mypy.visitor import NodeVisitor
 
 T = TypeVar("T")

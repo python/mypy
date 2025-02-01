@@ -73,7 +73,7 @@ from mypy.types import (
     get_proper_type,
 )
 from mypy.typetraverser import TypeTraverserVisitor
-from mypy.util import maybe_mangled, is_dunder
+from mypy.util import is_dunder, maybe_mangled
 
 if TYPE_CHECKING:  # import for forward declaration only
     import mypy.checker
