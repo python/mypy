@@ -1389,8 +1389,8 @@ class B(A):
 
 [out]
 <m.A.(abstract)> -> <m.B.__init__>, m
-<m.A._A__mypy-replace> -> <m.B._A__mypy-replace>, m
-<m.A._B__mypy-replace> -> m.B._B__mypy-replace
+<m.A._A__m__mypy-replace> -> <m.B._A__m__mypy-replace>, m
+<m.A._B__m__mypy-replace> -> m.B._B__m__mypy-replace
 <m.A.__dataclass_fields__> -> <m.B.__dataclass_fields__>
 <m.A.__init__> -> <m.B.__init__>, m.B.__init__
 <m.A.__new__> -> <m.B.__new__>
@@ -1398,7 +1398,7 @@ class B(A):
 <m.A.y> -> <m.B.y>
 <m.A> -> m, m.A, m.B
 <m.A[wildcard]> -> m
-<m.B._B__mypy-replace> -> m
+<m.B._B__m__mypy-replace> -> m
 <m.B.y> -> m
 <m.B> -> m.B
 <m.Z> -> m
@@ -1422,8 +1422,8 @@ class B(A):
 
 [out]
 <m.A.(abstract)> -> <m.B.__init__>, m
-<m.A._A__mypy-replace> -> <m.B._A__mypy-replace>, m
-<m.A._B__mypy-replace> -> m.B._B__mypy-replace
+<m.A._A__m__mypy-replace> -> <m.B._A__m__mypy-replace>, m
+<m.A._B__m__mypy-replace> -> m.B._B__m__mypy-replace
 <m.A.__dataclass_fields__> -> <m.B.__dataclass_fields__>
 <m.A.__init__> -> <m.B.__init__>, m.B.__init__
 <m.A.__match_args__> -> <m.B.__match_args__>
@@ -1432,7 +1432,7 @@ class B(A):
 <m.A.y> -> <m.B.y>
 <m.A> -> m, m.A, m.B
 <m.A[wildcard]> -> m
-<m.B._B__mypy-replace> -> m
+<m.B._B__m__mypy-replace> -> m
 <m.B.y> -> m
 <m.B> -> m.B
 <m.Z> -> m
