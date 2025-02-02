@@ -364,9 +364,6 @@ class HasPlaceholders(BoolTypeQuery):
     def __init__(self) -> None:
         super().__init__(ANY_STRATEGY)
 
-    def visit_tuple_type(self, t: TupleType, /) -> bool:
-        return super().visit_tuple_type(t) or t.partial_fallback.accept(self)
-
     def visit_placeholder_type(self, t: PlaceholderType) -> bool:
         return True
 
