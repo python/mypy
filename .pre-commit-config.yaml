@@ -39,6 +39,14 @@ repos:
     rev: v1.0.1
     hooks:
       - id: zizmor
+  - repo: local
+    hooks:
+      - id: bad-pr-link
+        name: Bad PR link
+        description: Detect PR links text that don't match their URL
+        language: pygrep
+        entry: '\[(\d+)\]\(https://github.com/python/mypy/pull/(?!\1/?\))\d+/?\)'
+        files: CHANGELOG.md
   # Should be the last one:
   - repo: meta
     hooks:
