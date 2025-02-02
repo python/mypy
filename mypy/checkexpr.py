@@ -4688,7 +4688,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if (
             options.warn_redundant_casts
             and not isinstance(get_proper_type(target_type), AnyType)
-            and source_type == target_type
+            and is_same_type(source_type, target_type)
         ):
             self.msg.redundant_cast(target_type, expr)
         if options.disallow_any_unimported and has_any_from_unimported_type(target_type):
