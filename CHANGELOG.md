@@ -26,7 +26,7 @@ By default, mypy treats an annotation of ``bytes`` as permitting ``bytearray`` a
 [PEP 688](https://peps.python.org/pep-0688) specified the removal of this special case.
 Use this flag to disable this behavior. `--strict-bytes` will be enabled by default in **mypy 2.0**.
 
-Contributed by Ali Hamdan (PR [18137](https://github.com/python/mypy/pull/18263/)) and
+Contributed by Ali Hamdan (PR [18263](https://github.com/python/mypy/pull/18263)) and
 Shantanu Jain (PR [13952](https://github.com/python/mypy/pull/13952)).
 
 ### Improvements to reachability analysis and partial type handling in loops
@@ -36,7 +36,7 @@ issues it previously did not detect. In some cases, this change may require use 
 explicit annotation of a variable.
 
 Contributed by Christoph Tyralla (PR [18180](https://github.com/python/mypy/pull/18180),
-[PR](https://github.com/python/mypy/pull/18433)).
+PR [18433](https://github.com/python/mypy/pull/18433)).
 
 (Speaking of partial types, another reminder that mypy plans on enabling `--local-partial-types`
 by default in **mypy 2.0**).
@@ -49,7 +49,7 @@ configuration files. See the
 for more details.
 
 Contributed by Mikhail Shiryaev and Shantanu Jain
-(PR [16965](https://github.com/python/mypy/pull/16965), PR [18482](https://github.com/python/mypy/pull/18482)
+(PR [16965](https://github.com/python/mypy/pull/16965), PR [18482](https://github.com/python/mypy/pull/18482))
 
 ### Better line numbers for decorators and slice expressions
 
