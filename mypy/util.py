@@ -62,7 +62,7 @@ def is_dunder(name: str, exclude_special: bool = False) -> bool:
     """
     if exclude_special and name in SPECIAL_DUNDERS:
         return False
-    return name.startswith("__") and name.endswith("__") and name.replace("_", "")
+    return name.startswith("__") and name.endswith("__") and bool(name.replace("_", ""))
 
 
 def is_sunder(name: str) -> bool:
