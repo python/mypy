@@ -977,8 +977,9 @@ def _mangle_internal_sym_name(type_fullname: str, member_name: str) -> str:
     same name."""
     module_name, type_name = type_fullname.rsplit(".")
     module_name = module_name.replace(".", "-")
-    type_name = type_name.lstrip('_')
+    type_name = type_name.lstrip("_")
     return f"_{type_name}__{module_name}__{member_name}"
+
 
 def _get_transform_spec(reason: Expression) -> DataclassTransformSpec:
     """Find the relevant transform parameters from the decorator/parent class/metaclass that
