@@ -975,7 +975,7 @@ def _mangle_internal_sym_name(type_fullname: str, member_name: str) -> str:
     """Create an internal symbol name with the class name mangled in as usual, but that also
     contains the class module path to avoid false positives when subclassing a dataclass with
     same name."""
-    module_name, type_name = type_fullname.rsplit(".")
+    module_name, _, type_name = type_fullname.rpartition(".")
     module_name = module_name.replace(".", "-")
     type_name = type_name.lstrip("_")
     return f"_{type_name}__{module_name}__{member_name}"
