@@ -3892,4 +3892,5 @@ foo = [
     (1, ("a", "b")),
     (2, []),
 ]
+reveal_type(foo)  # N: Revealed type is "builtins.list[Tuple[builtins.int, typing.Sequence[builtins.str]]]"
 [builtins fixtures/tuple.pyi]
