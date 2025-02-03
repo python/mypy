@@ -131,7 +131,6 @@ Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/1749
  * Improve security of our GitHub Actions (sobolevn, PR [18413](https://github.com/python/mypy/pull/18413))
  * Unwrap `type[Union[...]]` when solving typevar constraints (Stanislav Terliakov, PR [18266](https://github.com/python/mypy/pull/18266))
  * Allow `Any` to match sequence patterns in match/case (Stanislav Terliakov, PR [18448](https://github.com/python/mypy/pull/18448))
- * Avoid false `unreachable` and `redundant-expr` warnings in loops (Christoph Tyralla, PR [18433](https://github.com/python/mypy/pull/18433))
  * Fix parent generics mapping when overriding generic attribute with property (Stanislav Terliakov, PR [18441](https://github.com/python/mypy/pull/18441))
  * Dedicated error code for explicit `Any` (Shantanu, PR [18398](https://github.com/python/mypy/pull/18398))
  * Reject invalid `ParamSpec` locations (Stanislav Terliakov, PR [18278](https://github.com/python/mypy/pull/18278))
