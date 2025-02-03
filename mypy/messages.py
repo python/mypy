@@ -3270,7 +3270,7 @@ def append_invariance_notes(
         and expected_type.type.fullname == "builtins.list"
         and is_subtype(arg_type.args[0], expected_type.args[0])
     ):
-        invariant_type = "List"
+        invariant_type = "list"
         covariant_suggestion = 'Consider using "Sequence" instead, which is covariant'
     elif (
         arg_type.type.fullname == "builtins.dict"
@@ -3278,7 +3278,7 @@ def append_invariance_notes(
         and is_same_type(arg_type.args[0], expected_type.args[0])
         and is_subtype(arg_type.args[1], expected_type.args[1])
     ):
-        invariant_type = "Dict"
+        invariant_type = "dict"
         covariant_suggestion = (
             'Consider using "Mapping" instead, which is covariant in the value type'
         )
