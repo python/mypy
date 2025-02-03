@@ -2719,3 +2719,32 @@ print(native.A(ints=[1, -17]).ints)
 
 [out]
 \[1, -17]
+
+[case testDataclassClassReference]
+from __future__ import annotations
+from dataclasses import dataclass
+
+class BackwardDefinedClass:
+    pass
+
+@dataclass
+class Data:
+    bitem: BackwardDefinedClass
+    bitems: 'BackwardDefinedClass'
+    fitem: ForwardDefinedClass
+    fitems: 'ForwardDefinedClass'
+
+class ForwardDefinedClass:
+    pass
+
+def test_function():
+    d = Data(
+        bitem=BackwardDefinedClass(),
+        bitems=BackwardDefinedClass(),
+        fitem=ForwardDefinedClass(),
+        fitems=ForwardDefinedClass(),
+    )
+    assert(isinstance(d.bitem, BackwardDefinedClass))
+    assert(isinstance(d.bitems, BackwardDefinedClass))
+    assert(isinstance(d.fitem, ForwardDefinedClass))
+    assert(isinstance(d.fitems, ForwardDefinedClass))
