@@ -355,7 +355,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_parameters(self, t: Parameters) -> ProperType:
         if isinstance(self.s, Parameters):
-            if len(t.arg_types) != len(self.s.arg_types):
+            if not is_similar_params(t, self.s):
+                # TODO: it would be prudent to return [*object, **object] instead of Any.
                 return self.default(self.s)
             from mypy.meet import meet_types
 
@@ -721,6 +722,15 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
         len(t.arg_types) == len(s.arg_types)
         and t.min_args == s.min_args
         and t.is_var_arg == s.is_var_arg
+    )
+
+
+def is_similar_params(t: Parameters, s: Parameters) -> bool:
+    # This matches the logic in is_similar_callables() above.
+    return (
+        len(t.arg_types) == len(s.arg_types)
+        and t.min_args == s.min_args
+        and (t.var_arg() is not None) == (s.var_arg() is not None)
     )
 
 

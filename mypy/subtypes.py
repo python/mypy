@@ -1719,11 +1719,16 @@ def are_parameters_compatible(
         ):
             return False
 
+    if trivial_suffix:
+        # For trivial right suffix we *only* check that every non-star right argument
+        # has a valid match on the left.
+        return True
+
     # Phase 1c: Check var args. Right has an infinite series of optional positional
     #           arguments. Get all further positional args of left, and make sure
     #           they're more general than the corresponding member in right.
     # TODO: are we handling UnpackType correctly here?
-    if right_star is not None and not trivial_suffix:
+    if right_star is not None:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)
         assert right_by_position is not None
@@ -1750,7 +1755,7 @@ def are_parameters_compatible(
     # Phase 1d: Check kw args. Right has an infinite series of optional named
     #           arguments. Get all further named args of left, and make sure
     #           they're more general than the corresponding member in right.
-    if right_star2 is not None and not trivial_suffix:
+    if right_star2 is not None:
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
         for name, kind in zip(left.arg_names, left.arg_kinds):
