@@ -2532,3 +2532,30 @@ class GenericWrapper(Generic[P]):
         def contains(c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
         def inherits(*args: P.args, **kwargs: P.kwargs) -> None: ...
 [builtins fixtures/paramspec.pyi]
+
+[case testCallbackProtocolClassObjectParamSpec]
+from typing import Any, Callable, Protocol, Optional, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+class App: ...
+
+class MiddlewareFactory(Protocol[P]):
+    def __call__(self, app: App, /, *args: P.args, **kwargs: P.kwargs) -> App:
+        ...
+
+class Capture(Generic[P]): ...
+
+class ServerErrorMiddleware(App):
+    def __init__(
+        self,
+        app: App,
+        handler: Optional[str] = None,
+        debug: bool = False,
+    ) -> None: ...
+
+def fn(f: MiddlewareFactory[P]) -> Capture[P]: ...
+
+reveal_type(fn(ServerErrorMiddleware))  # N: Revealed type is "__main__.Capture[[handler: Union[builtins.str, None] =, debug: builtins.bool =]]"
+[builtins fixtures/paramspec.pyi]

@@ -625,7 +625,16 @@ def add_non_ext_class_attr_ann(
     if get_type_info is not None:
         type_info = get_type_info(stmt)
         if type_info:
-            typ = load_type(builder, type_info, stmt.line)
+            # NOTE: Using string type information is similar to using
+            # `from __future__ import annotations` in standard python.
+            # NOTE: For string types we need to use the fullname since it
+            # includes the module. If string type doesn't have the module,
+            # @dataclass will try to get the current module and fail since the
+            # current module is not in sys.modules.
+            if builder.current_module == type_info.module_name and stmt.line < type_info.line:
+                typ = builder.load_str(type_info.fullname)
+            else:
+                typ = load_type(builder, type_info, stmt.line)
 
     if typ is None:
         # FIXME: if get_type_info is not provided, don't fall back to stmt.type?

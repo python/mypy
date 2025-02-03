@@ -105,16 +105,38 @@ if int():
     h = h
 
 [case testSubtypingFunctionsDoubleCorrespondence]
-
 def l(x) -> None: ...
-def r(__, *, x) -> None: ...
-r = l # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, NamedArg(Any, 'x')], None]")
+def r(__x, *, x) -> None: ...
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, NamedArg(Any, 'x')], None]")
+
+[case testSubtypingFunctionsDoubleCorrespondenceNamedOptional]
+def l(x) -> None: ...
+def r(__x, *, x = 1) -> None: ...
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, DefaultNamedArg(Any, 'x')], None]")
+
+[case testSubtypingFunctionsDoubleCorrespondenceBothNamedOptional]
+def l(x = 1) -> None: ...
+def r(__x, *, x = 1) -> None: ...
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, DefaultNamedArg(Any, 'x')], None]")
+
+[case testSubtypingFunctionsTrivialSuffixRequired]
+def l(__x) -> None: ...
+def r(x, *args, **kwargs) -> None: ...
+
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Arg(Any, 'x'), VarArg(Any), KwArg(Any)], None]")
+[builtins fixtures/dict.pyi]
+
+[case testSubtypingFunctionsTrivialSuffixOptional]
+def l(__x = 1) -> None: ...
+def r(x = 1, *args, **kwargs) -> None: ...
+
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[DefaultArg(Any)], None]", variable has type "Callable[[DefaultArg(Any, 'x'), VarArg(Any), KwArg(Any)], None]")
+[builtins fixtures/dict.pyi]
 
 [case testSubtypingFunctionsRequiredLeftArgNotPresent]
-
 def l(x, y) -> None: ...
 def r(x) -> None: ...
-r = l # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], None]", variable has type "Callable[[Any], None]")
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], None]", variable has type "Callable[[Any], None]")
 
 [case testSubtypingFunctionsImplicitNames]
 from typing import Any
