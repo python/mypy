@@ -1,10 +1,10 @@
 # Mypy Release Notes
 
-## Next release
+## Next Release
 
 ...
 
-## Mypy 1.15 (unreleased)
+## Mypy 1.15 (Unreleased)
 
 We’ve just uploaded mypy 1.15 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
 Mypy is a static type checker for Python. This release includes new features and bug fixes.
@@ -14,14 +14,14 @@ You can install it as follows:
 
 You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
 
-### Performance improvements
+### Performance Improvements
 
 Mypy may be 5-30% faster. This improvement comes largely from tuning the performance of the
 garbage collector.
 
 Contributed by Jukka Lehtosalo (PR [18306](https://github.com/python/mypy/pull/18306)).
 
-### Mypyc accelerated mypy wheels for aarch64
+### Mypyc Accelerated Mypy Wheels for `aarch64`
 
 Mypy can compile itself to C extension modules using mypyc. This makes mypy 3-5x faster
 than if mypy is interpreted with pure Python. We now build and upload mypyc accelerated
@@ -41,7 +41,7 @@ Use this flag to disable this behavior. `--strict-bytes` will be enabled by defa
 Contributed by Ali Hamdan (PR [18263](https://github.com/python/mypy/pull/18263)) and
 Shantanu Jain (PR [13952](https://github.com/python/mypy/pull/13952)).
 
-### Improvements to reachability analysis and partial type handling in loops
+### Improvements to Reachability Analysis and Partial Type Handling in Loops
 
 This change results in mypy better modelling control flow within loops and hence detecting several
 issues it previously did not detect. In some cases, this change may require use of an additional
@@ -53,7 +53,7 @@ PR [18433](https://github.com/python/mypy/pull/18433)).
 (Speaking of partial types, another reminder that mypy plans on enabling `--local-partial-types`
 by default in **mypy 2.0**).
 
-### Better discovery of configuration files
+### Better Discovery of Configuration Files
 
 Mypy will now walk up the filesystem (up until a repository or file system root) to discover
 configuration files. See the
@@ -63,7 +63,7 @@ for more details.
 Contributed by Mikhail Shiryaev and Shantanu Jain
 (PR [16965](https://github.com/python/mypy/pull/16965), PR [18482](https://github.com/python/mypy/pull/18482))
 
-### Better line numbers for decorators and slice expressions
+### Better Line Numbers for Decorators and Slice Expressions
 
 Mypy now uses more correct line numbers for decorators and slice expressions. In some cases, this
 may necessitate changing the location of a `# type: ignore` comment.
