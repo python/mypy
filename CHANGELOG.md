@@ -160,8 +160,6 @@ Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/1749
 
 Thanks to all mypy contributors who contributed to this release:
 
-​Thanks to all mypy contributors who contributed to this release:
-
 - Advait Dixit
 - Ali Hamdan
 - Brian Schubert
