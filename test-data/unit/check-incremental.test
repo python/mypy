@@ -6745,3 +6745,22 @@ from typing_extensions import TypeAlias
 IntOrStr: TypeAlias = int | str
 assert isinstance(1, IntOrStr)
 [builtins fixtures/type.pyi]
+
+[case testSerializeDeferredGenericNamedTuple]
+import pkg
+[file pkg/__init__.py]
+from .lib import NT
+[file pkg/lib.py]
+from typing import Generic, NamedTuple, TypeVar
+from pkg import does_not_exist  # type: ignore
+from pkg.missing import also_missing  # type: ignore
+
+T = TypeVar("T", bound=does_not_exist)
+class NT(NamedTuple, Generic[T]):
+    values: also_missing[T]
+[file pkg/__init__.py.2]
+# touch
+from .lib import NT
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]

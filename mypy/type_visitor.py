@@ -410,7 +410,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.arg_types + [t.ret_type])
 
     def visit_tuple_type(self, t: TupleType, /) -> T:
-        return self.query_types(t.items)
+        return self.query_types([t.partial_fallback] + t.items)
 
     def visit_typeddict_type(self, t: TypedDictType, /) -> T:
         return self.query_types(t.items.values())
@@ -550,7 +550,7 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
             return args and ret
 
     def visit_tuple_type(self, t: TupleType, /) -> bool:
-        return self.query_types(t.items)
+        return self.query_types([t.partial_fallback] + t.items)
 
     def visit_typeddict_type(self, t: TypedDictType, /) -> bool:
         return self.query_types(list(t.items.values()))
