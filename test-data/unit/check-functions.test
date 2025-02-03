@@ -105,16 +105,19 @@ if int():
     h = h
 
 [case testSubtypingFunctionsDoubleCorrespondence]
-
 def l(x) -> None: ...
-def r(__, *, x) -> None: ...
-r = l # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, NamedArg(Any, 'x')], None]")
+def r(__a, *, x) -> None: ...
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, NamedArg(Any, 'x')], None]")
+
+[case testSubtypingFunctionsDoubleCorrespondenceNamedOptional]
+def l(x) -> None: ...
+def r(__a, *, x = 1) -> None: ...
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, DefaultNamedArg(Any, 'x')], None]")
 
 [case testSubtypingFunctionsRequiredLeftArgNotPresent]
-
 def l(x, y) -> None: ...
 def r(x) -> None: ...
-r = l # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], None]", variable has type "Callable[[Any], None]")
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], None]", variable has type "Callable[[Any], None]")
 
 [case testSubtypingFunctionsImplicitNames]
 from typing import Any

@@ -1051,6 +1051,9 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     inst, erase_typevars(temp), ignore_pos_arg_names=True
                 ):
                     continue
+            # This exception matches the one in subtypes.py, see PR #14121 for context.
+            if member == "__call__" and instance.type.is_metaclass():
+                continue
             res.extend(infer_constraints(temp, inst, self.direction))
             if mypy.subtypes.IS_SETTABLE in mypy.subtypes.get_member_flags(member, protocol):
                 # Settable members are invariant, add opposite constraints

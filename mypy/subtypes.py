@@ -1796,12 +1796,12 @@ def are_parameters_compatible(
         )
 
         # If the left hand argument corresponds to two right-hand arguments,
-        # neither of them can be required.
+        # both of them can't be required.
         if (
             right_by_name is not None
             and right_by_pos is not None
             and right_by_name != right_by_pos
-            and (right_by_pos.required or right_by_name.required)
+            and (right_by_pos.required and right_by_name.required)
             and strict_concatenate_check
             and not right.imprecise_arg_kinds
         ):
