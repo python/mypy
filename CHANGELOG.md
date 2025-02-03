@@ -17,9 +17,12 @@ You can read the full documentation for this release on [Read the Docs](http://m
 ### Performance Improvements
 
 Mypy may be 5-30% faster. This improvement comes largely from tuning the performance of the
-garbage collector.
+garbage collector. Additionally, the release includes several micro-optimizations that may be
+impactful for very large projects.
 
-Contributed by Jukka Lehtosalo (PR [18306](https://github.com/python/mypy/pull/18306)).
+Contributed by Jukka Lehtosalo (PR [18306](https://github.com/python/mypy/pull/18306),
+PR [18302](https://github.com/python/mypy/pull/18302, PR [18298](https://github.com/python/mypy/pull/18298,
+PR [18299](https://github.com/python/mypy/pull/18299).
 
 ### Mypyc Accelerated Mypy Wheels for `aarch64`
 
@@ -151,9 +154,6 @@ Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/1749
  * Do not allow `type[]` to contain `Literal` types (sobolevn, PR [18276](https://github.com/python/mypy/pull/18276))
  * Allow bytearray/bytes comparisons with --disable-bytearray-promotion (Jukka Lehtosalo, PR [18255](https://github.com/python/mypy/pull/18255))
  * More LSP compatibility on arg names (Shantanu, PR [18363](https://github.com/python/mypy/pull/18363))
- * Speed up `State.finish_passes` (Jukka Lehtosalo, PR [18302](https://github.com/python/mypy/pull/18302))
- * Optimize type indirection visitor (Jukka Lehtosalo, PR [18298](https://github.com/python/mypy/pull/18298))
- * Speed up SCC dependency inference (Jukka Lehtosalo, PR [18299](https://github.com/python/mypy/pull/18299))
 
 ### Acknowledgements
 
