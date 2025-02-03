@@ -91,7 +91,7 @@ Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/1749
  * Fix iteration over `NamedTuple` objects (Advait Dixit, PR [18254](https://github.com/python/mypy/pull/18254))
  * Mark mypyc package with `py.typed` (bzoracler, PR [18253](https://github.com/python/mypy/pull/18253))
  * Update docstrings of IR builder classes (Jukka Lehtosalo, PR [18246](https://github.com/python/mypy/pull/18246))
- * Fix list index while checking for `Enum` class. (Advait Dixit, PR [18426](https://github.com/python/mypy/pull/18426))
+ * Fix list index while checking for `Enum` class (Advait Dixit, PR [18426](https://github.com/python/mypy/pull/18426))
  * Update `pythoncapi_compat.h` (Marc Mueller, PR [18340](https://github.com/python/mypy/pull/18340))
 
 ### Stubgen Improvements
@@ -131,7 +131,7 @@ Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/1749
  * Improve security of our GitHub Actions (sobolevn, PR [18413](https://github.com/python/mypy/pull/18413))
  * Unwrap `type[Union[...]]` when solving typevar constraints (Stanislav Terliakov, PR [18266](https://github.com/python/mypy/pull/18266))
  * Allow `Any` to match sequence patterns in match/case (Stanislav Terliakov, PR [18448](https://github.com/python/mypy/pull/18448))
- * Avoid false `unreachable` and `redundant-expr` warnings in loops. (Christoph Tyralla, PR [18433](https://github.com/python/mypy/pull/18433))
+ * Avoid false `unreachable` and `redundant-expr` warnings in loops (Christoph Tyralla, PR [18433](https://github.com/python/mypy/pull/18433))
  * Fix parent generics mapping when overriding generic attribute with property (Stanislav Terliakov, PR [18441](https://github.com/python/mypy/pull/18441))
  * Dedicated error code for explicit `Any` (Shantanu, PR [18398](https://github.com/python/mypy/pull/18398))
  * Reject invalid `ParamSpec` locations (Stanislav Terliakov, PR [18278](https://github.com/python/mypy/pull/18278))
@@ -140,7 +140,7 @@ Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/1749
  * Allow to use `Final` and `ClassVar` after Python 3.13 (정승원, PR [18358](https://github.com/python/mypy/pull/18358))
  * Update to include latest stubs in typeshed (Shantanu, PR [18366](https://github.com/python/mypy/pull/18366))
  * Fix `--install-types` masking failure details (wyattscarpenter, PR [17485](https://github.com/python/mypy/pull/17485))
- * Reject promotions when checking against protocols. (Christoph Tyralla, PR [18360](https://github.com/python/mypy/pull/18360))
+ * Reject promotions when checking against protocols (Christoph Tyralla, PR [18360](https://github.com/python/mypy/pull/18360))
  * Don't erase type object args in diagnostics (Shantanu, PR [18352](https://github.com/python/mypy/pull/18352))
  * Clarify status in `dmypy status` output (Kcornw, PR [18331](https://github.com/python/mypy/pull/18331))
  * Disallow no-args generic aliases when using PEP 613 explicit aliases (Brian Schubert, PR [18173](https://github.com/python/mypy/pull/18173))
