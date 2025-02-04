@@ -145,7 +145,7 @@ def format_changelog_entry(c: CommitInfo) -> str:
         s += f" (#{c.pr_number})"
     s += f" ({c.author})"
     """
-    s = f" * {c.title} ({c.author}"
+    s = f" * {c.title.removesuffix(".")} ({c.author}"
     if c.pr_number:
         s += f", PR [{c.pr_number}](https://github.com/python/mypy/pull/{c.pr_number})"
     s += ")"
