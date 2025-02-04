@@ -95,7 +95,7 @@ def convert(src: str) -> str:
     h = re.sub(r"`\*\*`", "<tt>**</tt>", h)
 
     # Paragraphs
-    h = re.sub(r"\n([A-Z])", r"\n<p>\1", h)
+    h = re.sub(r"\n\n([A-Z])", r"\n\n<p>\1", h)
 
     # Bullet lists
     h = format_lists(h)
