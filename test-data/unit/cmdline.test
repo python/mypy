@@ -832,7 +832,7 @@ y = []  # type: List[int]
 x = y
 [out]
 bad.py:4: error: Incompatible types in assignment (expression has type "List[int]", variable has type "List[float]")
-bad.py:4: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+bad.py:4: note: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 bad.py:4: note: Consider using "Sequence" instead, which is covariant
 Found 1 error in 1 file (checked 1 source file)
 
