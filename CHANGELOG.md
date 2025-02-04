@@ -137,7 +137,7 @@ Contributed by Marc Mueller (PR [17492](https://github.com/python/mypy/pull/1749
  * Fix parent generics mapping when overriding generic attribute with property (Stanislav Terliakov, PR [18441](https://github.com/python/mypy/pull/18441))
  * Add dedicated error code for explicit `Any` (Shantanu, PR [18398](https://github.com/python/mypy/pull/18398))
  * Reject invalid `ParamSpec` locations (Stanislav Terliakov, PR [18278](https://github.com/python/mypy/pull/18278))
- * Don't suggest stubs no longer in typeshed (Shantanu, PR [18373](https://github.com/python/mypy/pull/18373))
+ * Stop suggesting stubs that have been removed from typeshed (Shantanu, PR [18373](https://github.com/python/mypy/pull/18373))
  * Allow inverting `--local-partial-types` (Shantanu, PR [18377](https://github.com/python/mypy/pull/18377))
  * Allow to use `Final` and `ClassVar` after Python 3.13 (정승원, PR [18358](https://github.com/python/mypy/pull/18358))
  * Update suggestions to include latest stubs in typeshed (Shantanu, PR [18366](https://github.com/python/mypy/pull/18366))
