@@ -2420,9 +2420,7 @@ class TupleType(ProperType):
             if not isinstance(fallback.args[0], ProperType) or not isinstance(
                 fallback.args[0], AnyType
             ):
-                fallback = fallback.copy_modified(
-                    args=[AnyType(TypeOfAny.implementation_artifact)]
-                )
+                fallback = fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
         self.partial_fallback = fallback
         self.items = items
         self.implicit = implicit
