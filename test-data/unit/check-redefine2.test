@@ -345,3 +345,27 @@ def f() -> None:
         _ = ""
         reveal_type(_) # N: Revealed type is "builtins.str"
     reveal_type(_) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testRedefine2WithStatement]
+# flags: --allow-redefinition2 --local-partial-types
+class C:
+    def __enter__(self) -> int: ...
+    def __exit__(self, x, y, z): ...
+class D:
+    def __enter__(self) -> str: ...
+    def __exit__(self, x, y, z): ...
+
+def f1() -> None:
+    with C() as x:
+        reveal_type(x) # N: Revealed type is "builtins.int"
+    with D() as x:
+        reveal_type(x) # N: Revealed type is "builtins.str"
+
+def f2() -> None:
+    if int():
+        with C() as x:
+            reveal_type(x) # N: Revealed type is "builtins.int"
+    else:
+        with D() as x:
+            reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
