@@ -56,14 +56,10 @@ cmds = {
     # Self type check
     "self": [
         executable,
-        "-m",
-        "mypy",
-        "--config-file",
-        "mypy_self_check.ini",
-        "-p",
-        "mypy",
-        "-p",
-        "mypyc",
+        "-c",
+        "from mypy.main import main as mypy; "
+        "mypy(args=['--config-file', 'mypy_self_check.ini', '-p', 'mypy', '-p', 'mypyc']); "
+        "mypy(args=['--config-file', 'mypy_self_check.ini', 'setup.py'])"
     ],
     # Lint
     "lint": ["pre-commit", "run", "--all-files"],
