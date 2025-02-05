@@ -343,8 +343,9 @@ class C(Generic[P]):
         a = kwargs
         args = kwargs  # E: Incompatible types in assignment (expression has type "P.kwargs", variable has type "P.args")
         kwargs = args  # E: Incompatible types in assignment (expression has type "P.args", variable has type "P.kwargs")
-        args = a
-        kwargs = a
+        a1: Any
+        args = a1
+        kwargs = a1
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecSubtypeChecking2]

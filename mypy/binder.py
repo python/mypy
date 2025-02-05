@@ -7,10 +7,10 @@ from typing import NamedTuple, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
-from mypy.join import join_simple
 from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
 from mypy.subtypes import is_same_type, is_subtype
+from mypy.typeops import make_simplified_union
 from mypy.types import (
     AnyType,
     Instance,
@@ -21,6 +21,7 @@ from mypy.types import (
     Type,
     TypeOfAny,
     TypeType,
+    TypeVarType,
     UnionType,
     UnpackType,
     find_unpack_in_list,
@@ -237,9 +238,21 @@ class ConditionalTypeBinder:
                 ):
                     type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
-                for other in resulting_values[1:]:
-                    assert other is not None
-                    type = join_simple(self.declarations[key], type, other.type)
+                possible_types = []
+                for t in resulting_values:
+                    assert t is not None
+                    possible_types.append(t.type)
+                if len(possible_types) == 1:
+                    # This is to avoid calling get_proper_type() unless needed, as this may
+                    # interfere with our (hacky) TypeGuard support.
+                    type = possible_types[0]
+                else:
+                    type = make_simplified_union(possible_types)
+                    # Legacy guard for corner case when the original type is TypeVarType.
+                    if isinstance(declaration_type, TypeVarType) and not is_subtype(
+                        type, declaration_type
+                    ):
+                        type = declaration_type
                     # Try simplifying resulting type for unions involving variadic tuples.
                     # Technically, everything is still valid without this step, but if we do
                     # not do this, this may create long unions after exiting an if check like:
@@ -258,7 +271,7 @@ class ConditionalTypeBinder:
                         )
                         if simplified == self.declarations[key]:
                             type = simplified
-            if current_value is None or not is_same_type(type, current_value[0]):
+            if current_value is None or not is_same_type(type, current_value.type):
                 self._put(key, type, from_assignment=True)
                 changed = True
 
@@ -300,9 +313,7 @@ class ConditionalTypeBinder:
         yield self.type_assignments
         self.type_assignments = old_assignments
 
-    def assign_type(
-        self, expr: Expression, type: Type, declared_type: Type | None, restrict_any: bool = False
-    ) -> None:
+    def assign_type(self, expr: Expression, type: Type, declared_type: Type | None) -> None:
         # We should erase last known value in binder, because if we are using it,
         # it means that the target is not final, and therefore can't hold a literal.
         type = remove_instance_last_known_values(type)
@@ -333,41 +344,39 @@ class ConditionalTypeBinder:
 
         p_declared = get_proper_type(declared_type)
         p_type = get_proper_type(type)
-        enclosing_type = get_proper_type(self.most_recent_enclosing_type(expr, type))
-        if isinstance(enclosing_type, AnyType) and not restrict_any:
-            # If x is Any and y is int, after x = y we do not infer that x is int.
-            # This could be changed.
-            # Instead, since we narrowed type from Any in a recent frame (probably an
-            # isinstance check), but now it is reassigned, we broaden back
-            # to Any (which is the most recent enclosing type)
-            self.put(expr, enclosing_type)
-        # As a special case, when assigning Any to a variable with a
-        # declared Optional type that has been narrowed to None,
-        # replace all the Nones in the declared Union type with Any.
-        # This overrides the normal behavior of ignoring Any assignments to variables
-        # in order to prevent false positives.
-        # (See discussion in #3526)
-        elif (
-            isinstance(p_type, AnyType)
-            and isinstance(p_declared, UnionType)
-            and any(isinstance(get_proper_type(item), NoneType) for item in p_declared.items)
-            and isinstance(
-                get_proper_type(self.most_recent_enclosing_type(expr, NoneType())), NoneType
-            )
-        ):
-            # Replace any Nones in the union type with Any
-            new_items = [
-                type if isinstance(get_proper_type(item), NoneType) else item
-                for item in p_declared.items
-            ]
-            self.put(expr, UnionType(new_items))
-        elif isinstance(p_type, AnyType) and not (
-            isinstance(p_declared, UnionType)
-            and any(isinstance(get_proper_type(item), AnyType) for item in p_declared.items)
-        ):
-            # Assigning an Any value doesn't affect the type to avoid false negatives, unless
-            # there is an Any item in a declared union type.
-            self.put(expr, declared_type)
+        if isinstance(p_type, AnyType):
+            # Any type requires some special casing, for both historical reasons,
+            # and to optimise user experience without sacrificing correctness too much.
+            if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_inferred:
+                # First case: a local/global variable without explicit annotation,
+                # in this case we just assign Any (essentially following the SSA logic).
+                self.put(expr, type)
+            elif isinstance(p_declared, UnionType) and any(
+                isinstance(get_proper_type(item), NoneType) for item in p_declared.items
+            ):
+                # Second case: explicit optional type, in this case we optimize for a common
+                # pattern when an untyped value used as a fallback replacing None.
+                new_items = [
+                    type if isinstance(get_proper_type(item), NoneType) else item
+                    for item in p_declared.items
+                ]
+                self.put(expr, UnionType(new_items))
+            elif isinstance(p_declared, UnionType) and any(
+                isinstance(get_proper_type(item), AnyType) for item in p_declared.items
+            ):
+                # Third case: a union already containing Any (most likely from an un-imported
+                # name), in this case we allow assigning Any as well.
+                self.put(expr, type)
+            else:
+                # In all other cases we don't narrow to Any to minimize false negatives.
+                self.put(expr, declared_type)
+        elif isinstance(p_declared, AnyType):
+            # Mirroring the first case above, we don't narrow to a precise type if the variable
+            # has an explicit `Any` type annotation.
+            if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_inferred:
+                self.put(expr, type)
+            else:
+                self.put(expr, declared_type)
         else:
             self.put(expr, type)
 
@@ -388,19 +397,6 @@ class ConditionalTypeBinder:
         assert key is not None
         for dep in self.dependencies.get(key, set()):
             self._cleanse_key(dep)
-
-    def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Type | None:
-        type = get_proper_type(type)
-        if isinstance(type, AnyType):
-            return get_declaration(expr)
-        key = literal_hash(expr)
-        assert key is not None
-        enclosers = [get_declaration(expr)] + [
-            f.types[key].type
-            for f in self.frames
-            if key in f.types and is_subtype(type, f.types[key][0])
-        ]
-        return enclosers[-1]
 
     def allow_jump(self, index: int) -> None:
         # self.frames and self.options_on_return have different lengths

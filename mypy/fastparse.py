@@ -1106,7 +1106,9 @@ class ASTConverter:
         if argument_elide_name(arg.arg):
             pos_only = True
 
-        argument = Argument(Var(arg.arg, arg_type), arg_type, self.visit(default), kind, pos_only)
+        var = Var(arg.arg, arg_type)
+        var.is_inferred = False
+        argument = Argument(var, arg_type, self.visit(default), kind, pos_only)
         argument.set_line(
             arg.lineno,
             arg.col_offset,

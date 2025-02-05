@@ -728,7 +728,6 @@ def g(x: Optional[int]) -> int:
         reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
     reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
     return x
-
 [builtins fixtures/bool.pyi]
 
 [case testOptionalAssignAny2]
@@ -741,12 +740,11 @@ def g(x: Optional[int]) -> int:
         reveal_type(x)  # N: Revealed type is "None"
         x = 1
         reveal_type(x)  # N: Revealed type is "builtins.int"
-        # Since we've assigned to x, the special case None behavior shouldn't happen
+        # Same as above, even after we've assigned to x
         x = f()
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
-    return x  # E: Incompatible return value type (got "Optional[int]", expected "int")
-
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+    return x
 [builtins fixtures/bool.pyi]
 
 [case testOptionalAssignAny3]
@@ -758,11 +756,9 @@ def g(x: Optional[int]) -> int:
     if x is not None:
         return x
     reveal_type(x)  # N: Revealed type is "None"
-    if 1:
-        x = f()
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
-        return x
-
+    x = f()
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+    return x
 [builtins fixtures/bool.pyi]
 
 [case testStrictOptionalCovarianceCrossModule]

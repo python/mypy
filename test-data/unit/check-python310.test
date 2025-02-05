@@ -1487,11 +1487,13 @@ match m5:
     case _:
         reveal_type(m5)  # N: Revealed type is "Tuple[Literal[2], Union[Literal['a'], Literal['b']]]"
 
-match m5:
+m6: Tuple[Literal[1, 2], Literal["a", "b"]]
+
+match m6:
     case (1, "a"):
-        reveal_type(m5)  # N: Revealed type is "Tuple[Literal[1], Literal['a']]"
+        reveal_type(m6)  # N: Revealed type is "Tuple[Literal[1], Literal['a']]"
     case _:
-        reveal_type(m5)  # N: Revealed type is "Tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
+        reveal_type(m6)  # N: Revealed type is "Tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
 
 [builtins fixtures/tuple.pyi]
 
