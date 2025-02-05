@@ -2417,7 +2417,9 @@ class TupleType(ProperType):
         super().__init__(line, column)
         if fallback.type and fallback.type.fullname == "builtins.tuple":
             assert len(fallback.args) == 1
-            if not isinstance(fallback.args[0], AnyType):
+            if not isinstance(fallback.args[0], ProperType) or not isinstance(
+                fallback.args[0], AnyType
+            ):
                 fallback = fallback.copy_modified(
                     args=[AnyType(TypeOfAny.implementation_artifact)]
                 )
