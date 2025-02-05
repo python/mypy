@@ -204,7 +204,7 @@ class C:
             self.x = ""
         reveal_type(self.x) # N: Revealed type is "builtins.str"
 
-[case testRedefine2AnyType]
+[case testRedefine2AnyType1]
 # flags: --allow-redefinition2 --local-partial-types
 def a(): pass
 
@@ -260,11 +260,35 @@ def f6() -> None:
         x = ""
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
-# TODO: declared type should take precedence
-#def f7() -> None:
-#    x: int
-#   x = a()
-#   reveal_type(x) # Revealed type is "builtins.int"
+def f7() -> None:
+    x: int
+    x = a()
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+[case testRedefine2AnyType2]
+# flags: --allow-redefinition2 --local-partial-types
+from typing import Any
+
+def f1() -> None:
+    x: Any
+    x = int()
+    reveal_type(x) # N: Revealed type is "Any"
+
+def f2() -> None:
+    x: Any
+    if int():
+        x = 0
+        reveal_type(x) # N: Revealed type is "Any"
+    else:
+        x = ""
+        reveal_type(x) # N: Revealed type is "Any"
+    reveal_type(x) # N: Revealed type is "Any"
+
+def f3(x) -> None:
+    if int():
+        x = 0
+        reveal_type(x) # N: Revealed type is "Any"
+    reveal_type(x) # N: Revealed type is "Any"
 
 [case testRedefine2WhileLoopSimple]
 # flags: --allow-redefinition2 --local-partial-types
