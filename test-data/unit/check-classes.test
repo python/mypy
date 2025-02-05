@@ -3709,7 +3709,7 @@ def new(uc: Type[U]) -> U:
     if 1:
         u = uc(0)
         u.foo()
-        u = uc('')  # Error
+        uc('')  # Error
         u.foo(0)  # Error
         return uc()
 u = new(User)

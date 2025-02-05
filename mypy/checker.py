@@ -3284,7 +3284,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
                     # Don't use type binder for definitions of special forms, like named tuples.
                     if not (isinstance(lvalue, NameExpr) and lvalue.is_special_form):
-                        self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
+                        self.binder.assign_type(lvalue, rvalue_type, lvalue_type)
                         if (
                             isinstance(lvalue, NameExpr)
                             and isinstance(lvalue.node, Var)
@@ -4023,7 +4023,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(expr, StarExpr):
                 expr = expr.expr
 
-            # TODO: See todo in binder.py, ConditionalTypeBinder.assign_type
+            # TODO: See comment in binder.py, ConditionalTypeBinder.assign_type
             # It's unclear why the 'declared_type' param is sometimes 'None'
             clean_items: list[tuple[Type, Type]] = []
             for type, declared_type in items:
@@ -4035,7 +4035,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 expr,
                 make_simplified_union(list(types)),
                 make_simplified_union(list(declared_types)),
-                False,
             )
         for union, lv in zip(union_types, self.flatten_lvalues(lvalues)):
             # Properly store the inferred types.
@@ -5233,7 +5232,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
                     self.binder.assign_type(
-                        elt, DeletedType(source=elt.name), get_declaration(elt), False
+                        elt, DeletedType(source=elt.name), get_declaration(elt)
                     )
 
     def visit_decorator(self, e: Decorator) -> None:

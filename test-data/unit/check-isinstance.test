@@ -115,8 +115,8 @@ if int():
     x = B()
     x.z
     x = foo()
-    x.z          # E: "A" has no attribute "z"
-    x.y
+    reveal_type(x)  # N: Revealed type is "Any"
+reveal_type(x)  # N: Revealed type is "__main__.A"
 
 [case testSingleMultiAssignment]
 x = 'a'
@@ -1915,17 +1915,28 @@ if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
     reveal_type(x) # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstancelist.pyi]
 
-[case testIsinstanceNarrowAny]
+[case testIsinstanceNarrowAnyExplicit]
 from typing import Any
 
 def narrow_any_to_str_then_reassign_to_int() -> None:
-    v = 1 # type: Any
+    v: Any = 1
 
     if isinstance(v, str):
         reveal_type(v)  # N: Revealed type is "builtins.str"
         v = 2
         reveal_type(v)  # N: Revealed type is "Any"
+[builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceNarrowAnyImplicit]
+def foo(): ...
+
+def narrow_any_to_str_then_reassign_to_int() -> None:
+    v = foo()
+
+    if isinstance(v, str):
+        reveal_type(v)  # N: Revealed type is "builtins.str"
+        v = 2
+        reveal_type(v)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowTypeAfterInList]

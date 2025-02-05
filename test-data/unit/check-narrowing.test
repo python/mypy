@@ -2416,3 +2416,21 @@ while x is not None and b():
     x = f()
 
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowingTypeVarMultiple]
+from typing import TypeVar
+
+class A: ...
+class B: ...
+
+T = TypeVar("T")
+def foo(x: T) -> T:
+    if isinstance(x, A):
+        pass
+    elif isinstance(x, B):
+        pass
+    else:
+        raise
+    reveal_type(x)  # N: Revealed type is "T`-1"
+    return x
+[builtins fixtures/isinstance.pyi]
