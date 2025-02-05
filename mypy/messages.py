@@ -2008,7 +2008,6 @@ class MessageBuilder:
         if isinstance(typ, AnyType):
             self.fail("Function is untyped after decorator transformation", context)
         else:
-            breakpoint()
             self.fail(
                 f'Type of decorated function contains type "Any" ({format_type(typ, self.options)})',
                 context,
