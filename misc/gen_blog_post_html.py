@@ -95,7 +95,7 @@ def convert(src: str) -> str:
     h = re.sub(r"`\*\*`", "<tt>**</tt>", h)
 
     # Paragraphs
-    h = re.sub(r"\n([A-Z])", r"\n<p>\1", h)
+    h = re.sub(r"\n\n([A-Z])", r"\n\n<p>\1", h)
 
     # Bullet lists
     h = format_lists(h)
@@ -104,6 +104,7 @@ def convert(src: str) -> str:
     h = format_code(h)
 
     # Code fragments
+    h = re.sub(r"``([^`]+)``", r"<tt>\1</tt>", h)
     h = re.sub(r"`([^`]+)`", r"<tt>\1</tt>", h)
 
     # Remove **** noise
@@ -125,7 +126,9 @@ def convert(src: str) -> str:
         r'fixes issue <a href="https://github.com/python/mypy/issues/\1">\1</a>',
         h,
     )
-    h = re.sub(r"#([0-9]+)", r'PR <a href="https://github.com/python/mypy/pull/\1">\1</a>', h)
+    # Note the leading space to avoid stomping on strings that contain #\d in the middle (such as
+    # links to PRs in other repos)
+    h = re.sub(r" #([0-9]+)", r' PR <a href="https://github.com/python/mypy/pull/\1">\1</a>', h)
     h = re.sub(r"\) \(PR", ", PR", h)
 
     # Markdown links
