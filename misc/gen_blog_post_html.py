@@ -128,7 +128,7 @@ def convert(src: str) -> str:
     )
     # Note the leading space to avoid stomping on strings that contain #\d in the middle (such as
     # links to PRs in other repos)
-    h = re.sub(r" #([0-9]+)", r'PR <a href="https://github.com/python/mypy/pull/\1">\1</a>', h)
+    h = re.sub(r" #([0-9]+)", r' PR <a href="https://github.com/python/mypy/pull/\1">\1</a>', h)
     h = re.sub(r"\) \(PR", ", PR", h)
 
     # Markdown links
