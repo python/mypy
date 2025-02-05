@@ -2553,3 +2553,26 @@ class X(metaclass=DCMeta):
 class Y(X):
     a: int  # E: Covariant override of a mutable attribute (base class "X" defined the type as "Optional[int]", expression has type "int")
 [builtins fixtures/tuple.pyi]
+
+
+[case testFrozenWithFinal]
+from dataclasses import dataclass
+from typing import Final
+
+@dataclass(frozen=True)
+class My:
+    a: Final = 1
+    b: Final[int] = 2
+
+reveal_type(My.a)  # N: Revealed type is "Literal[1]?"
+reveal_type(My.b)  # N: Revealed type is "builtins.int"
+My.a = 1  # E: Cannot assign to final attribute "a"
+My.b = 2  # E: Cannot assign to final attribute "b"
+
+m = My()
+reveal_type(m.a)  # N: Revealed type is "Literal[1]?"
+reveal_type(m.b)  # N: Revealed type is "builtins.int"
+
+m.a = 1  # E: Cannot assign to final attribute "a"
+m.b = 2  # E: Cannot assign to final attribute "b"
+[builtins fixtures/tuple.pyi]
