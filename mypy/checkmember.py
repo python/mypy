@@ -755,10 +755,8 @@ def is_instance_var(var: Var) -> bool:
         var.name in var.info.names
         and var.info.names[var.name].node is var
         and not var.is_classvar
-        # variables without annotations are treated as classvar,
-        # but not when they are annotated as `a: Final = 1`,
-        # since it will be inferenced as `Literal[1]`
-        and not (var.is_inferred and not var.is_final)
+        # variables without annotations are treated as classvar
+        and not var.is_inferred
     )
 
 
