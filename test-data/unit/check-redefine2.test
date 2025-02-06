@@ -50,8 +50,16 @@ else:
     reveal_type(x) # N: Revealed type is "builtins.str"
 reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
-def f() -> None:
+def f1() -> None:
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+def f2() -> None:
+    global x
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    x = 0
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 [case testRedefine2ClassBody]
 # flags: --allow-redefinition2 --local-partial-types
