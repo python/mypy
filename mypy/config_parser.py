@@ -126,7 +126,7 @@ def split_and_match_files(paths: str) -> list[str]:
     Returns a list of file paths
     """
 
-    return split_and_match_files_list(paths.split(","))
+    return split_and_match_files_list(split_commas(paths))
 
 
 def check_follow_imports(choice: str) -> str:
