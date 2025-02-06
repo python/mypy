@@ -89,9 +89,14 @@ UNBOUND_IMPORTED: Final = 3
 REVEAL_TYPE: Final = 0
 REVEAL_LOCALS: Final = 1
 
-LITERAL_YES: Final = 2
-LITERAL_TYPE: Final = 1
-LITERAL_NO: Final = 0
+# Kinds of 'literal' expressions.
+#
+# Use the function mypy.literals.literal to calculate these.
+#
+# TODO: Can we make these less confusing?
+LITERAL_YES: Final = 2  # Value of expression known statically
+LITERAL_TYPE: Final = 1  # Type of expression can be narrowed (e.g. variable reference)
+LITERAL_NO: Final = 0  # None of the above
 
 node_kinds: Final = {LDEF: "Ldef", GDEF: "Gdef", MDEF: "Mdef", UNBOUND_IMPORTED: "UnboundImported"}
 inverse_node_kinds: Final = {_kind: _name for _name, _kind in node_kinds.items()}

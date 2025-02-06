@@ -41,12 +41,22 @@ class Frame:
     """A Frame represents a specific point in the execution of a program.
     It carries information about the current types of expressions at
     that point, arising either from assignments to those expressions
-    or the result of isinstance checks. It also records whether it is
-    possible to reach that point at all.
+    or the result of isinstance checks and other type narrowing
+    operations. It also records whether it is possible to reach that
+    point at all.
+
+    We add a new frame wherenever there is a new scope or control flow
+    branching.
 
     This information is not copied into a new Frame when it is pushed
     onto the stack, so a given Frame only has information about types
     that were assigned in that frame.
+
+    Expressions are stored in dicts using 'literal hashes' as keys (type
+    "Key"). These are hashable values derived from expression AST nodes
+    (only those that can be narrowed). literal_hash(expr) is used to
+    calculate the hashes. Note that this isn't directly related to literal
+    types -- the concept predates literal types.
     """
 
     def __init__(self, id: int, conditional_frame: bool = False) -> None:
@@ -66,22 +76,21 @@ Assigns = defaultdict[Expression, list[tuple[Type, Optional[Type]]]]
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables.
 
-    NB: Variables are tracked by literal expression, so it is possible
-    to confuse the binder; for example,
+    NB: Variables are tracked by literal hashes of expressions, so it is
+    possible to confuse the binder when there is aliasing. Example:
 
-    ```
-    class A:
-        a: Union[int, str] = None
-    x = A()
-    lst = [x]
-    reveal_type(x.a)      # Union[int, str]
-    x.a = 1
-    reveal_type(x.a)      # int
-    reveal_type(lst[0].a) # Union[int, str]
-    lst[0].a = 'a'
-    reveal_type(x.a)      # int
-    reveal_type(lst[0].a) # str
-    ```
+        class A:
+            a: int | str
+
+        x = A()
+        lst = [x]
+        reveal_type(x.a)      # int | str
+        x.a = 1
+        reveal_type(x.a)      # int
+        reveal_type(lst[0].a) # int | str
+        lst[0].a = 'a'
+        reveal_type(x.a)      # int
+        reveal_type(lst[0].a) # str
     """
 
     # Stored assignments for situations with tuple/list lvalue and rvalue of union type.
@@ -89,6 +98,7 @@ class ConditionalTypeBinder:
     type_assignments: Assigns | None = None
 
     def __init__(self) -> None:
+        # Each frame gets an increasing, distinct id.
         self.next_id = 1
 
         # The stack of frames currently used.  These map
@@ -116,6 +126,7 @@ class ConditionalTypeBinder:
         # Whether the last pop changed the newly top frame on exit
         self.last_pop_changed = False
 
+        # These are used to track control flow in try statements and loops.
         self.try_frames: set[int] = set()
         self.break_frames: list[int] = []
         self.continue_frames: list[int] = []
@@ -151,6 +162,10 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type, *, from_assignment: bool = True) -> None:
+        """Directly set the narrowed type of expression (if it supports it).
+
+        This is used for isinstance() etc. Assignments should go through assign_type().
+        """
         if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not literal(expr):
@@ -314,6 +329,13 @@ class ConditionalTypeBinder:
         self.type_assignments = old_assignments
 
     def assign_type(self, expr: Expression, type: Type, declared_type: Type | None) -> None:
+        """Narrow type of expression through an assignment.
+
+        Do nothing if the expression doesn't support narrowing.
+
+        When not narrowing though an assignment (isinstance() etc.), use put()
+        directly. This omits some special-casing logic for assignments.
+        """
         # We should erase last known value in binder, because if we are using it,
         # it means that the target is not final, and therefore can't hold a literal.
         type = remove_instance_last_known_values(type)
@@ -488,6 +510,11 @@ class ConditionalTypeBinder:
 
 
 def get_declaration(expr: BindableExpression) -> Type | None:
+    """Get the declared or inferred type of a RefExpr expression.
+
+    Return None if there is no type or the expression is not a RefExpr.
+    This can return None if the type hasn't been inferred yet.
+    """
     if isinstance(expr, RefExpr):
         if isinstance(expr.node, Var):
             type = expr.node.type
