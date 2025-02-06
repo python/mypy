@@ -2004,15 +2004,15 @@ reveal_type(x.related_resources)  # N: Revealed type is "__main__.ResourceRule"
 
 [case testPEP695TypeAliasRecursiveOuterClass]
 class A:
-    type X = X  # E: Cannot resolve name "X" (possible cyclic definition)
+    type X = X
 class X: ...
 
 class Y: ...
 class B:
-    type Y = Y  # OK
+    type Y = Y
 
 x: A.X
-reveal_type(x)  # N: Revealed type is "Any"
+reveal_type(x)  # N: Revealed type is "__main__.X"
 y: B.Y
 reveal_type(y)  # N: Revealed type is "__main__.Y"
 [builtins fixtures/tuple.pyi]

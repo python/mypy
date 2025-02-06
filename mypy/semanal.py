@@ -6340,7 +6340,11 @@ class SemanticAnalyzer(
             if node.name not in self.globals:
                 return True
             global_node = self.globals[node.name]
-            return not global_node.node or not self.is_textually_before_statement(global_node.node)
+            return (
+                isinstance(global_node.node, (TypeInfo, TypeAlias))
+                or isinstance(global_node.node, PlaceholderNode)
+                and global_node.node.becomes_typeinfo
+            )
         return False
 
     def is_textually_before_statement(self, node: SymbolNode) -> bool:
