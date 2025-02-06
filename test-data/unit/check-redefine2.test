@@ -99,6 +99,15 @@ def f2() -> None:
 
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
+[case testRedefine2AssignmentExpression]
+# flags: --allow-redefinition2 --local-partial-types
+def f() -> None:
+    if x := int():
+        reveal_type(x) # N: Revealed type is "builtins.int"
+    elif x := str():
+        reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
 [case testRedefine2OptionalTypesSimple]
 # flags: --allow-redefinition2 --local-partial-types
 def f1() -> None:
