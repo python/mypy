@@ -398,6 +398,32 @@ def f3(x) -> None:
         reveal_type(x) # N: Revealed type is "Any"
     reveal_type(x) # N: Revealed type is "Any"
 
+[case tetRedefine2Del]
+# flags: --allow-redefinition2 --local-partial-types
+def f1() -> None:
+    x = ""
+    reveal_type(x) # N: Revealed type is "builtins.str"
+    del x
+    reveal_type(x) # N: Revealed type is "<Deleted 'x'>"
+    x = 0
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+def f2() -> None:
+    if int():
+        x = 0
+        del x
+    else:
+        x = ""
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
+def f3() -> None:
+    if int():
+        x = 0
+    else:
+        x = ""
+        del x
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
 [case testRedefine2WhileLoopSimple]
 # flags: --allow-redefinition2 --local-partial-types
 def f() -> None:
