@@ -20,19 +20,25 @@ def f() -> None:
 
 [case testRedefine2MergeConditionalLocal1]
 # flags: --allow-redefinition2 --local-partial-types
-def f() -> None:
+def f1() -> None:
     if int():
         x = 0
     else:
         x = ''
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
-def g() -> None:
+def f2() -> None:
     if int():
         x = 0
     else:
         x = None
     reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+
+def f3() -> None:
+    if int():
+        x = 0
+        x = ""
+    reveal_type(x) # N: Revealed type is "builtins.str"
 
 [case testRedefine2GlobalVariableSimple]
 # flags: --allow-redefinition2 --local-partial-types
@@ -392,7 +398,7 @@ def f2() -> None:
     reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
     reveal_type(y) # N: Revealed type is "Union[builtins.str, builtins.int]"
 
-[case testRedefine2ForLoop]
+[case testRedefine2ForLoopBasics]
 # flags: --allow-redefinition2 --local-partial-types
 def f1() -> None:
     for x in [1]:
@@ -412,6 +418,15 @@ def f2() -> None:
 
     reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
     reveal_type(y) # N: Revealed type is "Union[builtins.str, builtins.int]"
+
+def l() -> list[int]:
+    return []
+
+def f3() -> None:
+    x = ""
+    for x in l():
+        reveal_type(x) # N: Revealed type is "builtins.int"
+    reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int]"
 [builtins fixtures/for.pyi]
 
 [case testRedefine2ForStatementIndexNarrowing]
@@ -435,3 +450,28 @@ for b in ("hourly", "daily"):
     reveal_type(b)  # N: Revealed type is "builtins.str"
     reveal_type(b.upper())  # N: Revealed type is "builtins.str"
 [builtins fixtures/for.pyi]
+
+[case testRedefine2ForLoopIndexWidening]
+# flags: --allow-redefinition2 --local-partial-types
+
+def f1() -> None:
+    for x in [1]:
+        reveal_type(x) # N: Revealed type is "builtins.int"
+        x = ""
+        reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
+def f2() -> None:
+    for x in [1]:
+        reveal_type(x) # N: Revealed type is "builtins.int"
+        if int():
+            break
+        x = ""
+        reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+def f3() -> None:
+    if int():
+        for x in [1]:
+            x = ""
+    reveal_type(x) # N: Revealed type is "builtins.str"
