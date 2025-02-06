@@ -2552,3 +2552,16 @@ def f(t: T) -> None:
         case T([K() as k]):
             reveal_type(k)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.K]"
 [builtins fixtures/tuple.pyi]
+
+[case testRedefine2MatchBasics]
+# flags: --allow-redefinition2 --local-partial-types
+
+def f1(x: int | str | list[bytes]) -> None:
+    match x:
+        case int():
+            reveal_type(x) # N: Revealed type is "builtins.int"
+        case str(y):
+            reveal_type(y) # N: Revealed type is "builtins.str"
+        case [y]:
+            reveal_type(y) # N: Revealed type is "builtins.bytes"
+    reveal_type(y) # N: Revealed type is "Union[builtins.str, builtins.bytes]"
