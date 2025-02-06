@@ -162,6 +162,10 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type, *, from_assignment: bool = True) -> None:
+        """Directly set the narrowed type of expression (if it supports it).
+
+        This is used for isinstance() etc. Assignments should go through assign_type().
+        """
         if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not literal(expr):
@@ -325,6 +329,13 @@ class ConditionalTypeBinder:
         self.type_assignments = old_assignments
 
     def assign_type(self, expr: Expression, type: Type, declared_type: Type | None) -> None:
+        """Narrow type of expression through an assignment.
+
+        Do nothing if the expression doesn't support narrowing.
+
+        When not narrowing though an assignment (isinstance() etc.), use put()
+        directly. This omits some special-casing logic for assignments.
+        """
         # We should erase last known value in binder, because if we are using it,
         # it means that the target is not final, and therefore can't hold a literal.
         type = remove_instance_last_known_values(type)
