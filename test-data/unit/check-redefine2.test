@@ -369,3 +369,69 @@ def f2() -> None:
         with D() as x:
             reveal_type(x) # N: Revealed type is "builtins.str"
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testRedefine2MultipleAssignment]
+# flags: --allow-redefinition2 --local-partial-types
+def f1() -> None:
+    x, y = 1, ""
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    reveal_type(y) # N: Revealed type is "builtins.str"
+    x, y = None, 2
+    reveal_type(x) # N: Revealed type is "None"
+    reveal_type(y) # N: Revealed type is "builtins.int"
+
+def f2() -> None:
+    if int():
+        x, y = 1, ""
+        reveal_type(x) # N: Revealed type is "builtins.int"
+        reveal_type(y) # N: Revealed type is "builtins.str"
+    else:
+        x, y = None, 2
+        reveal_type(x) # N: Revealed type is "None"
+        reveal_type(y) # N: Revealed type is "builtins.int"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "Union[builtins.str, builtins.int]"
+
+[case testRedefine2ForLoop]
+# flags: --allow-redefinition2 --local-partial-types
+def f1() -> None:
+    for x in [1]:
+        reveal_type(x) # N: Revealed type is "builtins.int"
+    for x in [""]:
+        reveal_type(x) # N: Revealed type is "builtins.str"
+
+def f2() -> None:
+    if int():
+        for x, y in [(1, "x")]:
+            reveal_type(x) # N: Revealed type is "builtins.int"
+            reveal_type(y) # N: Revealed type is "builtins.str"
+    else:
+        for x, y in [(None, 1)]:
+            reveal_type(x) # N: Revealed type is "None"
+            reveal_type(y) # N: Revealed type is "builtins.int"
+
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y) # N: Revealed type is "Union[builtins.str, builtins.int]"
+[builtins fixtures/for.pyi]
+
+[case testRedefine2ForStatementIndexNarrowing]
+# flags: --allow-redefinition2 --local-partial-types
+from typing_extensions import TypedDict
+
+class X(TypedDict):
+    hourly: int
+    daily: int
+
+x: X
+for a in ("hourly", "daily"):
+    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
+    reveal_type(x[a])  # N: Revealed type is "builtins.int"
+    reveal_type(a.upper())  # N: Revealed type is "builtins.str"
+    c = a
+    reveal_type(c)  # N: Revealed type is "builtins.str"
+
+b: str
+for b in ("hourly", "daily"):
+    reveal_type(b)  # N: Revealed type is "builtins.str"
+    reveal_type(b.upper())  # N: Revealed type is "builtins.str"
+[builtins fixtures/for.pyi]

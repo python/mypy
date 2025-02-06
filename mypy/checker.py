@@ -3328,6 +3328,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             and lvalue.node.is_inferred
                             and lvalue.node.is_index_var
                             and lvalue_type is not None
+                            and not self.options.allow_redefinition2 # TODO WHAT
                         ):
                             lvalue.node.type = remove_instance_last_known_values(lvalue_type)
 
