@@ -376,6 +376,28 @@ def f2() -> None:
             reveal_type(x) # N: Revealed type is "builtins.str"
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
+[case testRedefine2TryStatement]
+# flags: --allow-redefinition2 --local-partial-types
+class E(Exception): pass
+
+def g(): ...
+
+def f1() -> None:
+    try:
+        x = 1
+        g()
+        x = ""
+        reveal_type(x) # N: Revealed type is "builtins.str"
+    except RuntimeError as e:
+        reveal_type(e) # N: Revealed type is "builtins.RuntimeError"
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    except E as e:
+        reveal_type(e) # N: Revealed type is "__main__.E"
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(e) # N: Revealed type is "<Deleted 'e'>"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/exception.pyi]
+
 [case testRedefine2MultipleAssignment]
 # flags: --allow-redefinition2 --local-partial-types
 def f1() -> None:
