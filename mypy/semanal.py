@@ -6330,22 +6330,19 @@ class SemanticAnalyzer(
             or not self.is_defined_in_current_module(node.fullname)
         ):
             return True
-        if (
-            isinstance(node, (TypeInfo, TypeAlias))
-            or isinstance(node, PlaceholderNode)
-            and node.becomes_typeinfo
-        ):
+        if self.is_type_like(node):
             # Allow forward references to classes/type aliases (see docstring), but
             # a forward reference should never shadow an existing regular reference.
             if node.name not in self.globals:
                 return True
             global_node = self.globals[node.name]
-            return (
-                isinstance(global_node.node, (TypeInfo, TypeAlias))
-                or isinstance(global_node.node, PlaceholderNode)
-                and global_node.node.becomes_typeinfo
-            )
+            return not self.is_type_like(global_node.node)
         return False
+
+    def is_type_like(self, node: SymbolNode | None) -> bool:
+        return isinstance(node, (TypeInfo, TypeAlias)) or (
+            isinstance(node, PlaceholderNode) and node.becomes_typeinfo
+        )
 
     def is_textually_before_statement(self, node: SymbolNode) -> bool:
         """Check if a node is defined textually before the current statement
