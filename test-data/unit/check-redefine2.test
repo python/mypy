@@ -121,6 +121,41 @@ def f() -> None:
         reveal_type(x) # N: Revealed type is "builtins.str"
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
+[case testRedefine2ImportFrom]
+# flags: --allow-redefinition2 --local-partial-types
+if int():
+    from m import x
+else:
+    # TODO: This could be useful to allow
+    from m import y as x # E: Incompatible import of "x" (imported name has type "str", local name has type "int")
+reveal_type(x) # N: Revealed type is "builtins.int"
+
+if int():
+    from m import y
+else:
+    y = 1
+reveal_type(y) # N: Revealed type is "Union[builtins.str, builtins.int]"
+
+[file m.py]
+x = 1
+y = ""
+
+[case testRedefine2Import]
+# flags: --allow-redefinition2 --local-partial-types
+if int():
+    import m
+else:
+    import m2 as m # E: Name "m" already defined (by an import)
+m.x
+m.y # E: Module has no attribute "y"
+
+[file m.py]
+x = 1
+
+[file m2.py]
+y = ""
+[builtins fixtures/module.pyi]
+
 [case testRedefine2OptionalTypesSimple]
 # flags: --allow-redefinition2 --local-partial-types
 def f1() -> None:
