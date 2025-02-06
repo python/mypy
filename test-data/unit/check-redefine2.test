@@ -443,6 +443,31 @@ def f1() -> None:
     reveal_type(x) # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
+[case testRedefine2BreakAndContinue]
+# flags: --allow-redefinition2 --local-partial-types
+def b() -> None:
+    while int():
+        x = ""
+        if int():
+            x = 1
+            break
+        reveal_type(x) # N: Revealed type is "builtins.str"
+        x = None
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
+
+def c() -> None:
+    x = 0
+    while int():
+        reveal_type(x) # N: Revealed type is "builtins.int" \
+                       # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+        if int():
+            x = ""
+            continue
+        else:
+            x = None
+        reveal_type(x) # N: Revealed type is "None"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+
 [case testRedefine2Underscore]
 # flags: --allow-redefinition2 --local-partial-types
 def f() -> None:
