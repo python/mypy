@@ -66,6 +66,31 @@ class C:
 
 reveal_type(C.x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
+[case testRedefine2NestedFunctionBasics]
+# flags: --allow-redefinition2 --local-partial-types
+def f1() -> None:
+    if int():
+        x = 0
+    else:
+        x = ""
+
+    def nested() -> None:
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+def f2() -> None:
+    if int():
+        x = 0
+    else:
+        x = ""
+
+    def nested() -> None:
+        nonlocal x
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+        x = 0
+        reveal_type(x) # N: Revealed type is "builtins.int"
+
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
 [case testRedefine2OptionalTypesSimple]
 # flags: --allow-redefinition2 --local-partial-types
 def f1() -> None:
