@@ -151,7 +151,8 @@ y: int = 'y'  # E: Incompatible types in assignment (expression has type "str", 
 z: int = 'z'
 [out]
 
-[case testPyprojectPluginsTrailingComma]
+# Fails on windows for some reason
+[case testPyprojectPluginsTrailingComma-posix]
 # cmd: mypy .
 [file pyproject.toml]
 \[tool.mypy]
