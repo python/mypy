@@ -3894,3 +3894,11 @@ foo = [
 ]
 reveal_type(foo)  # N: Revealed type is "builtins.list[Tuple[builtins.int, typing.Sequence[builtins.str]]]"
 [builtins fixtures/tuple.pyi]
+
+[case testForLoopIndexVaribaleNarrowing]
+from typing import Union
+x: Union[int, str]
+x = "abc"
+for x in list[int]():
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"

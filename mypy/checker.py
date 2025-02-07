@@ -585,12 +585,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else_body: Statement | None = None,
         *,
         exit_condition: Expression | None = None,
+        on_enter_body: Callable[[], None] | None = None,
     ) -> None:
         """Repeatedly type check a loop body until the frame doesn't change."""
 
         # The outer frame accumulates the results of all iterations:
         with self.binder.frame_context(can_skip=False, conditional_frame=True):
-
             # Check for potential decreases in the number of partial types so as not to stop the
             # iteration too early:
             partials_old = sum(len(pts.map) for pts in self.partial_types)
@@ -603,6 +603,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
+                    if on_enter_body is not None:
+                        on_enter_body()
+
                     self.accept(body)
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
                 if (partials_new == partials_old) and not self.binder.last_pop_changed:
@@ -5119,8 +5122,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             iterator_type, item_type = self.analyze_iterable_item_type(s.expr)
         s.inferred_item_type = item_type
         s.inferred_iterator_type = iterator_type
-        self.analyze_index_variables(s.index, item_type, s.index_type is None, s)
-        self.accept_loop(s.body, s.else_body)
+
+        self.accept_loop(
+            s.body,
+            s.else_body,
+            on_enter_body=lambda: self.analyze_index_variables(
+                s.index, item_type, s.index_type is None, s
+            ),
+        )
 
     def analyze_async_iterable_item_type(self, expr: Expression) -> tuple[Type, Type]:
         """Analyse async iterable expression and return iterator and iterator item types."""
