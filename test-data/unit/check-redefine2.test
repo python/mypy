@@ -469,6 +469,24 @@ def f1() -> None:
     reveal_type(x) # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
+[case testRedefine2Return]
+# flags: --allow-redefinition2 --local-partial-types
+def f1() -> None:
+    if int():
+        x = 0
+        return
+    else:
+        x = ""
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
+def f2() -> None:
+    if int():
+        x = ""
+    else:
+        x = 0
+        return
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
 [case testRedefine2BreakAndContinue]
 # flags: --allow-redefinition2 --local-partial-types
 def b() -> None:
