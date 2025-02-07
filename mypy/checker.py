@@ -618,6 +618,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.options.enabled_error_codes.add(codes.REDUNDANT_EXPR)
             if warn_unreachable or warn_redundant:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
+                    if on_enter_body is not None:
+                        on_enter_body()
+
                     self.accept(body)
 
             # If exit_condition is set, assume it must be False on exit from the loop:
