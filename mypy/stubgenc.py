@@ -553,12 +553,12 @@ class InspectionStubGenerator(BaseStubGenerator):
 
     def is_classmethod(self, class_info: ClassInfo, name: str, obj: object) -> bool:
         if self.is_c_module:
-            return inspect.isbuiltin(obj) or type(obj).__name__ in (
-                "classmethod",
-                "classmethod_descriptor",
-            )
+            raw_lookup: Mapping[str, Any] = getattr(class_info.cls, "__dict__")  # noqa: B009
+            raw_value = raw_lookup.get(name, obj)
+            classmethod_descriptor = type(int.__dict__["from_bytes"])
+            return isinstance(raw_value, classmethod) or isinstance(raw_value, classmethod_descriptor)
         else:
-            return inspect.ismethod(obj)
+            return isinstance(inspect.getattr_static(class_info.cls, name), classmethod)
 
     def is_staticmethod(self, class_info: ClassInfo | None, name: str, obj: object) -> bool:
         if class_info is None:
