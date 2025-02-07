@@ -56,11 +56,10 @@ def try_split(v: str | Sequence[str], split_regex: str = "[,]") -> list[str]:
     """Split and trim a str or list of str into a list of str"""
     if isinstance(v, str):
         items = [p.strip() for p in re.split(split_regex, v)]
-    else:
-        items = [p.strip() for p in v]
-    if items and items[-1] == "":
-        items.pop(-1)
-    return items
+        if items and items[-1] == "":
+            items.pop(-1)
+        return items
+    return [p.strip() for p in v]
 
 
 def validate_codes(codes: list[str]) -> list[str]:
