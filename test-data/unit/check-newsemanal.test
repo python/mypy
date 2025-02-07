@@ -3140,6 +3140,22 @@ from typing import Final
 x: Final = 0
 x = x # E: Cannot assign to final name "x"
 
+[case testNewAnalyzerIdentityAssignmentClassImplicit]
+class C: ...
+class A:
+    C = C[str]  # E: "C" expects no type arguments, but 1 given
+[builtins fixtures/tuple.pyi]
+
+[case testNewAnalyzerIdentityAssignmentClassExplicit]
+from typing_extensions import TypeAlias
+
+class A:
+    C: TypeAlias = C
+class C: ...
+c: A.C
+reveal_type(c)  # N: Revealed type is "__main__.C"
+[builtins fixtures/tuple.pyi]
+
 [case testNewAnalyzerClassPropertiesInAllScopes]
 from abc import abstractmethod, ABCMeta
 
