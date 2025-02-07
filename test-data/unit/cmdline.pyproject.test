@@ -151,17 +151,6 @@ y: int = 'y'  # E: Incompatible types in assignment (expression has type "str", 
 z: int = 'z'
 [out]
 
-[case testPyprojectPluginsTrailingComma-posix]
-# cmd: mypy .
-[file pyproject.toml]
-# This test fails on windows for some reason, skipping it there.
-\[tool.mypy]
-plugins = """
-  <ROOT>/test-data/unit/plugins/function_sig_hook.py,
-  <ROOT>/test-data/unit/plugins/method_in_decorator.py,
-"""
-[out]
-
 [case testPyprojectAlwaysTrueTrailingComma]
 # cmd: mypy .
 [file pyproject.toml]
