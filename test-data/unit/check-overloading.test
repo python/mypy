@@ -6768,3 +6768,19 @@ class D(Generic[T]):
 a: D[str]  # E: Type argument "str" of "D" must be a subtype of "C"
 reveal_type(a.f(1))  # N: Revealed type is "builtins.int"
 reveal_type(a.f("x"))  # N: Revealed type is "builtins.str"
+
+[case testOverloadWithTwoRelevantArgsWithDifferentType]
+from typing import overload, Union
+
+@overload
+def set(year: int) -> None:
+    ...
+
+@overload
+def set() -> None:
+    ...
+
+# no error here:
+def set(*args: object, **kw: int) -> None:
+    pass
+[builtins fixtures/tuple.pyi]
