@@ -6784,3 +6784,18 @@ def set() -> None:
 def set(*args: object, **kw: int) -> None:
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testOverloadWithTwoRelevantOptionalArgs]
+from typing import overload
+
+@overload
+def set(year: int) -> None:
+    ...
+
+@overload
+def set() -> None:
+    ...
+
+# no error:
+def set(x: int = 42, year: int = 42) -> None:
+    pass
