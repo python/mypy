@@ -461,6 +461,11 @@ dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcou
 # Python set object (or an instance of a subclass of set).
 set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcounted=True)
 
+# Python frozenset object (or an instance of a subclass of frozenset).
+frozenset_rprimitive: Final = RPrimitive(
+    "builtins.frozenset", is_unboxed=False, is_refcounted=True
+)
+
 # Python str object. At the C layer, str is referred to as unicode
 # (PyUnicode).
 str_rprimitive: Final = RPrimitive("builtins.str", is_unboxed=False, is_refcounted=True)
@@ -563,6 +568,10 @@ def is_dict_rprimitive(rtype: RType) -> bool:
 
 def is_set_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.set"
+
+
+def is_frozenset_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == "builtins.frozenset"
 
 
 def is_str_rprimitive(rtype: RType) -> bool:

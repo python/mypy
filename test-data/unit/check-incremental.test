@@ -6829,3 +6829,22 @@ reveal_type(a.f)
 tmp/b.py:4: note: Revealed type is "builtins.int"
 tmp/b.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 tmp/b.py:6: note: Revealed type is "builtins.int"
+
+[case testSerializeDeferredGenericNamedTuple]
+import pkg
+[file pkg/__init__.py]
+from .lib import NT
+[file pkg/lib.py]
+from typing import Generic, NamedTuple, TypeVar
+from pkg import does_not_exist  # type: ignore
+from pkg.missing import also_missing  # type: ignore
+
+T = TypeVar("T", bound=does_not_exist)
+class NT(NamedTuple, Generic[T]):
+    values: also_missing[T]
+[file pkg/__init__.py.2]
+# touch
+from .lib import NT
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]

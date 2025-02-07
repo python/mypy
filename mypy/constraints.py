@@ -756,40 +756,40 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                         "__call__", template, actual, is_operator=True
                     )
                     assert call is not None
-                    if mypy.subtypes.is_subtype(actual, erase_typevars(call)):
-                        subres = infer_constraints(call, actual, self.direction)
-                        res.extend(subres)
+                    if (
+                        self.direction == SUPERTYPE_OF
+                        and mypy.subtypes.is_subtype(actual, erase_typevars(call))
+                        or self.direction == SUBTYPE_OF
+                        and mypy.subtypes.is_subtype(erase_typevars(call), actual)
+                    ):
+                        res.extend(infer_constraints(call, actual, self.direction))
                     template.type.inferring.pop()
         if isinstance(actual, CallableType) and actual.fallback is not None:
-            if actual.is_type_obj() and template.type.is_protocol:
+            if (
+                actual.is_type_obj()
+                and template.type.is_protocol
+                and self.direction == SUPERTYPE_OF
+            ):
                 ret_type = get_proper_type(actual.ret_type)
                 if isinstance(ret_type, TupleType):
                     ret_type = mypy.typeops.tuple_fallback(ret_type)
                 if isinstance(ret_type, Instance):
-                    if self.direction == SUBTYPE_OF:
-                        subtype = template
-                    else:
-                        subtype = ret_type
                     res.extend(
                         self.infer_constraints_from_protocol_members(
-                            ret_type, template, subtype, template, class_obj=True
+                            ret_type, template, ret_type, template, class_obj=True
                         )
                     )
             actual = actual.fallback
         if isinstance(actual, TypeType) and template.type.is_protocol:
-            if isinstance(actual.item, Instance):
-                if self.direction == SUBTYPE_OF:
-                    subtype = template
-                else:
-                    subtype = actual.item
-                res.extend(
-                    self.infer_constraints_from_protocol_members(
-                        actual.item, template, subtype, template, class_obj=True
-                    )
-                )
             if self.direction == SUPERTYPE_OF:
-                # Infer constraints for Type[T] via metaclass of T when it makes sense.
                 a_item = actual.item
+                if isinstance(a_item, Instance):
+                    res.extend(
+                        self.infer_constraints_from_protocol_members(
+                            a_item, template, a_item, template, class_obj=True
+                        )
+                    )
+                # Infer constraints for Type[T] via metaclass of T when it makes sense.
                 if isinstance(a_item, TypeVarType):
                     a_item = get_proper_type(a_item.upper_bound)
                 if isinstance(a_item, Instance) and a_item.type.metaclass_type:
@@ -1043,6 +1043,17 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                 return []  # See #11020
             # The above is safe since at this point we know that 'instance' is a subtype
             # of (erased) 'template', therefore it defines all protocol members
+            if class_obj:
+                # For class objects we must only infer constraints if possible, otherwise it
+                # can lead to confusion between class and instance, for example StrEnum is
+                # Iterable[str] for an instance, but Iterable[StrEnum] for a class object.
+                if not mypy.subtypes.is_subtype(
+                    inst, erase_typevars(temp), ignore_pos_arg_names=True
+                ):
+                    continue
+            # This exception matches the one in subtypes.py, see PR #14121 for context.
+            if member == "__call__" and instance.type.is_metaclass():
+                continue
             res.extend(infer_constraints(temp, inst, self.direction))
             if mypy.subtypes.IS_SETTABLE in mypy.subtypes.get_member_flags(member, protocol):
                 # Settable members are invariant, add opposite constraints

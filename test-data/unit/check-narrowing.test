@@ -2417,6 +2417,7 @@ while x is not None and b():
 
 [builtins fixtures/primitives.pyi]
 
+
 [case testNegativeNarrowingWithCustomEq]
 from typing import Union
 from typing_extensions import Literal
@@ -2440,3 +2441,21 @@ def g(v: Union[A, Literal["text"]]) -> Union[A, None]:
         reveal_type(v)  # N: Revealed type is "Union[__main__.A, Literal['text']]"
         return v  # E: Incompatible return value type (got "Union[A, Literal['text']]", expected "Optional[A]")
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowingTypeVarMultiple]
+from typing import TypeVar
+
+class A: ...
+class B: ...
+
+T = TypeVar("T")
+def foo(x: T) -> T:
+    if isinstance(x, A):
+        pass
+    elif isinstance(x, B):
+        pass
+    else:
+        raise
+    reveal_type(x)  # N: Revealed type is "T`-1"
+    return x
+[builtins fixtures/isinstance.pyi]

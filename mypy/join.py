@@ -183,55 +183,6 @@ class InstanceJoiner:
         return best
 
 
-def join_simple(declaration: Type | None, s: Type, t: Type) -> ProperType:
-    """Return a simple least upper bound given the declared type.
-
-    This function should be only used by binder, and should not recurse.
-    For all other uses, use `join_types()`.
-    """
-    declaration = get_proper_type(declaration)
-    s = get_proper_type(s)
-    t = get_proper_type(t)
-
-    if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
-        # if types are restricted in different ways, use the more general versions
-        s = mypy.typeops.true_or_false(s)
-        t = mypy.typeops.true_or_false(t)
-
-    if isinstance(s, AnyType):
-        return s
-
-    if isinstance(s, ErasedType):
-        return t
-
-    if is_proper_subtype(s, t, ignore_promotions=True):
-        return t
-
-    if is_proper_subtype(t, s, ignore_promotions=True):
-        return s
-
-    if isinstance(declaration, UnionType):
-        return mypy.typeops.make_simplified_union([s, t])
-
-    if isinstance(s, NoneType) and not isinstance(t, NoneType):
-        s, t = t, s
-
-    if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
-        s, t = t, s
-
-    # Meets/joins require callable type normalization.
-    s, t = normalize_callables(s, t)
-
-    if isinstance(s, UnionType) and not isinstance(t, UnionType):
-        s, t = t, s
-
-    value = t.accept(TypeJoinVisitor(s))
-    if declaration is None or is_subtype(value, declaration):
-        return value
-
-    return declaration
-
-
 def trivial_join(s: Type, t: Type) -> Type:
     """Return one of types (expanded) if it is a supertype of other, otherwise top type."""
     if is_subtype(s, t):
@@ -355,7 +306,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_parameters(self, t: Parameters) -> ProperType:
         if isinstance(self.s, Parameters):
-            if len(t.arg_types) != len(self.s.arg_types):
+            if not is_similar_params(t, self.s):
+                # TODO: it would be prudent to return [*object, **object] instead of Any.
                 return self.default(self.s)
             from mypy.meet import meet_types
 
@@ -721,6 +673,15 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
         len(t.arg_types) == len(s.arg_types)
         and t.min_args == s.min_args
         and t.is_var_arg == s.is_var_arg
+    )
+
+
+def is_similar_params(t: Parameters, s: Parameters) -> bool:
+    # This matches the logic in is_similar_callables() above.
+    return (
+        len(t.arg_types) == len(s.arg_types)
+        and t.min_args == s.min_args
+        and (t.var_arg() is not None) == (s.var_arg() is not None)
     )
 
 

@@ -21,8 +21,6 @@ from mypyc.common import (
     MIN_LITERAL_SHORT_INT,
     MIN_SHORT_INT,
     PLATFORM_SIZE,
-    use_method_vectorcall,
-    use_vectorcall,
 )
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -101,6 +99,7 @@ from mypyc.ir.rtypes import (
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_frozenset_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -898,11 +897,9 @@ class LowLevelIRBuilder:
 
         Use py_call_op or py_call_with_kwargs_op for Python function call.
         """
-        if use_vectorcall(self.options.capi_version):
-            # More recent Python versions support faster vectorcalls.
-            result = self._py_vector_call(function, arg_values, line, arg_kinds, arg_names)
-            if result is not None:
-                return result
+        result = self._py_vector_call(function, arg_values, line, arg_kinds, arg_names)
+        if result is not None:
+            return result
 
         # If all arguments are positional, we can use py_call_op.
         if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
@@ -977,13 +974,11 @@ class LowLevelIRBuilder:
         arg_names: Sequence[str | None] | None,
     ) -> Value:
         """Call a Python method (non-native and slow)."""
-        if use_method_vectorcall(self.options.capi_version):
-            # More recent Python versions support faster vectorcalls.
-            result = self._py_vector_method_call(
-                obj, method_name, arg_values, line, arg_kinds, arg_names
-            )
-            if result is not None:
-                return result
+        result = self._py_vector_method_call(
+            obj, method_name, arg_values, line, arg_kinds, arg_names
+        )
+        if result is not None:
+            return result
 
         if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
             # Use legacy method call API
@@ -2225,7 +2220,7 @@ class LowLevelIRBuilder:
         size_value = None
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ) or is_bytes_rprimitive(typ):
             size_value = self.primitive_op(var_object_size, [val], line)
-        elif is_set_rprimitive(typ):
+        elif is_set_rprimitive(typ) or is_frozenset_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, "used"))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))

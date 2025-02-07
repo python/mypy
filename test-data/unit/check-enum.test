@@ -2394,3 +2394,25 @@ def do_check(value: E) -> None:
 
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testStrEnumClassCorrectIterable]
+from enum import StrEnum
+from typing import Type, TypeVar
+
+class Choices(StrEnum):
+    LOREM = "lorem"
+    IPSUM = "ipsum"
+
+var = list(Choices)
+reveal_type(var)  # N: Revealed type is "builtins.list[__main__.Choices]"
+
+e: type[StrEnum]
+reveal_type(list(e))  # N: Revealed type is "builtins.list[enum.StrEnum]"
+
+T = TypeVar("T", bound=StrEnum)
+def list_vals(e: Type[T]) -> list[T]:
+    reveal_type(list(e))  # N: Revealed type is "builtins.list[T`-1]"
+    return list(e)
+
+reveal_type(list_vals(Choices))  # N: Revealed type is "builtins.list[__main__.Choices]"
+[builtins fixtures/enum.pyi]

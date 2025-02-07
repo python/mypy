@@ -254,7 +254,8 @@ def f() -> None:
     _, _ = 1, ''
     if 1:
         _, _ = '', 1
-        reveal_type(_) # N: Revealed type is "Any"
+        # This is unintentional but probably fine. No one is going to read _ value.
+        reveal_type(_) # N: Revealed type is "builtins.int"
 
 [case testRedefineWithBreakAndContinue]
 # flags: --allow-redefinition
@@ -381,7 +382,7 @@ def f() -> None:
     x = 1
     if int():
         x = ''
-    reveal_type(x) # N: Revealed type is "builtins.object"
+    reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int]"
     x = ''
     reveal_type(x) # N: Revealed type is "builtins.str"
     if int():

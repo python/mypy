@@ -1535,7 +1535,7 @@ if int():
 if int():
     a = x3 \
      # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]") \
-     # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+     # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -1558,7 +1558,7 @@ if int():
 if int():
     a = x3 \
      # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]") \
-     # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+     # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3886,3 +3886,11 @@ def a4(x: List[str], y: List[Never]) -> None:
     reveal_type(z2)  # N: Revealed type is "builtins.list[builtins.object]"
     z1[1].append("asdf")  # E: "object" has no attribute "append"
 [builtins fixtures/dict.pyi]
+
+[case testTupleJoinFallbackInference]
+foo = [
+    (1, ("a", "b")),
+    (2, []),
+]
+reveal_type(foo)  # N: Revealed type is "builtins.list[Tuple[builtins.int, typing.Sequence[builtins.str]]]"
+[builtins fixtures/tuple.pyi]
