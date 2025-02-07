@@ -4367,6 +4367,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             init_type = strip_type(init_type)
 
             self.set_inferred_type(name, lvalue, init_type)
+            if self.options.allow_redefinition2:
+                self.binder.assign_type(lvalue, init_type, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
         init_type = get_proper_type(init_type)
@@ -4535,6 +4537,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.widened_vars.append(inferred.name)
                         self.set_inferred_type(inferred, lvalue, lvalue_type)
                         self.binder.put(lvalue, rvalue_type)
+                        # TODO: hack, maybe integrate into put?
+                        self.binder.declarations[literal_hash(lvalue)] = lvalue_type
             if (
                 isinstance(get_proper_type(lvalue_type), UnionType)
                 # Skip literal types, as they have special logic (for better errors).

@@ -422,7 +422,7 @@ def f3() -> None:
     else:
         x = ""
         del x
-    reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "builtins.int"
 
 [case testRedefine2WhileLoopSimple]
 # flags: --allow-redefinition2 --local-partial-types

@@ -39,6 +39,7 @@ class CurrentType(NamedTuple):
 
 class Frame:
     """A Frame represents a specific point in the execution of a program.
+
     It carries information about the current types of expressions at
     that point, arising either from assignments to those expressions
     or the result of isinstance checks and other type narrowing
