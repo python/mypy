@@ -1122,6 +1122,24 @@ void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_valu
     obj->compute_value = compute_value;
 }
 
+PyObject *CPyImport_ImportNative(PyObject *module_name, PyObject *(*init_fn)(void)) {
+    PyObject *modobj = init_fn();
+    if (modobj == NULL) {
+        return NULL;
+    }
+
+    PyObject *module_dict = PyImport_GetModuleDict();
+    if (module_dict == NULL) {
+        return NULL;
+    }
+
+    if (PyObject_SetItem(module_dict, module_name, modobj) < 0) {
+        return NULL;
+    }
+
+    return modobj;
+}
+
 #endif
 
 #if CPY_3_14_FEATURES

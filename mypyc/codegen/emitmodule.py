@@ -1187,7 +1187,9 @@ class GroupGenerator:
         if not self.use_shared_lib:
             declaration = f"PyMODINIT_FUNC PyInit_{module_name}(void)"
         else:
-            declaration = f"PyObject *CPyInit_{exported_name(module_name)}(void)"
+            n = f"CPyInit_{exported_name(module_name)}"
+            declaration = f"PyObject *{n}(void)"
+            emitter.context.declarations[n] = HeaderDeclaration(declaration + ";")
         emitter.emit_lines(declaration, "{")
 
         if self.multi_phase_init:
@@ -1198,6 +1200,7 @@ class GroupGenerator:
 
         exec_func = f"CPyExec_{exported_name(module_name)}"
 
+        emitter.emit_line("PyObject* modname = NULL;")
         # Store the module reference in a static and return it when necessary.
         # This is separate from the *global* reference to the module that will
         # be populated when it is imported by a compiled module. We want that

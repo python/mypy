@@ -137,6 +137,15 @@ import_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+# Import a native module (plain)
+native_import_op = custom_op(
+    # (module name, C module init function)
+    arg_types=[str_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyImport_ImportNative",
+    error_kind=ERR_MAGIC,
+)
+
 # Table-driven import op.
 import_many_op = custom_op(
     arg_types=[

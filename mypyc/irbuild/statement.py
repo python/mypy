@@ -345,7 +345,7 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
     #
     # Every time we encounter the first import of a group, build IR to call a
     # helper function that will perform all of the group's imports in one go.
-    if not node.is_top_level:
+    if not node.is_top_level or True:
         # (*) Unless the import is within a function. In that case, prioritize
         # speed over codesize when generating IR.
         globals = builder.load_globals_dict()
