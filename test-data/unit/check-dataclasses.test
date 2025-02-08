@@ -2583,7 +2583,7 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 @dataclass
-class A(NamedTuple):  # E: A NamedTuple cannot be a dataclass.
+class A(NamedTuple):  # E: A NamedTuple cannot be a dataclass
     i: int
 
 class B1(NamedTuple):
