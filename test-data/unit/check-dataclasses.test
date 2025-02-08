@@ -2589,7 +2589,7 @@ class A(NamedTuple):  # E: A NamedTuple cannot be a dataclass
 class B1(NamedTuple):
     i: int
 @dataclass
-class B2(B1):  # E: A NamedTuple cannot be a dataclass.
+class B2(B1):  # E: A NamedTuple cannot be a dataclass
     pass
 
 [builtins fixtures/tuple.pyi]
