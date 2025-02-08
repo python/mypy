@@ -2487,3 +2487,29 @@ class C(Generic[P, R]):
 c: C[int, str]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
 reveal_type(c.fn)  # N: Revealed type is "def (*Any, **Any)"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleInstanceOverlap]
+# flags: --strict-equality
+from typing import TypeVarTuple, Unpack, Generic
+
+Ts = TypeVarTuple("Ts")
+
+class Foo(Generic[Unpack[Ts]]):
+    pass
+
+x1: Foo[Unpack[tuple[int, ...]]]
+y1: Foo[Unpack[tuple[str, ...]]]
+x1 is y1  # E: Non-overlapping identity check (left operand type: "Foo[Unpack[Tuple[int, ...]]]", right operand type: "Foo[Unpack[Tuple[str, ...]]]")
+
+x2: Foo[Unpack[tuple[int, ...]]]
+y2: Foo[Unpack[tuple[int, ...]]]
+x2 is y2
+
+x3: Foo[Unpack[tuple[int, ...]]]
+y3: Foo[Unpack[tuple[int, int]]]
+x3 is y3
+
+x4: Foo[Unpack[tuple[str, ...]]]
+y4: Foo[Unpack[tuple[int, int]]]
+x4 is y4  # E: Non-overlapping identity check (left operand type: "Foo[Unpack[Tuple[str, ...]]]", right operand type: "Foo[int, int]")
+[builtins fixtures/tuple.pyi]
