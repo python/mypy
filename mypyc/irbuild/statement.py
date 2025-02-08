@@ -345,38 +345,77 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
     #
     # Every time we encounter the first import of a group, build IR to call a
     # helper function that will perform all of the group's imports in one go.
-    if not node.is_top_level or True:
+
+    if not node.is_top_level:
         # (*) Unless the import is within a function. In that case, prioritize
         # speed over codesize when generating IR.
-        globals = builder.load_globals_dict()
-        for mod_id, as_name in node.ids:
-            builder.gen_import(mod_id, node.line)
-            globals_id, globals_name = import_globals_id_and_name(mod_id, as_name)
-            builder.gen_method_call(
-                globals,
-                "__setitem__",
-                [builder.load_str(globals_name), builder.get_module(globals_id, node.line)],
-                result_type=None,
-                line=node.line,
-            )
+        group = [(mod_id, as_id, node.line) for mod_id, as_id in node.ids]
+        transform_imports_without_grouping(builder, group)
         return
 
     if node not in builder.module_import_groups:
         return
 
+    group_nodes = builder.module_import_groups[node]
+    subgroups = split_import_group_to_python_and_native(builder, group_nodes)
+    for subgroup, is_native in subgroups:
+        if is_native:
+            transform_imports_without_grouping(builder, subgroup)
+        else:
+            transform_non_native_import_group(builder, subgroup)
+
+
+def split_import_group_to_python_and_native(
+    builder: IRBuilder, group: list[Import]
+) -> list[tuple[list[tuple[str, str | None, int]], bool]]:
+    flat_list = []
+    for imp in group:
+        for mod_id, as_name in imp.ids:
+            flat_list.append((mod_id, as_name, imp.line, builder.is_native_module(mod_id)))
+    result = []
+    i = 0
+    while i < len(flat_list):
+        i0 = i
+        is_native = flat_list[i][3]
+        i += 1
+        while i < len(flat_list) and flat_list[i][3] == is_native:
+            i += 1
+        result.append(([t[:3] for t in flat_list[i0:i]], is_native))
+    return result
+
+
+def transform_imports_without_grouping(
+    builder: IRBuilder, group: list[tuple[str, str | None, int]]
+) -> None:
+    globals = builder.load_globals_dict()
+    for mod_id, as_name, line in group:
+        builder.gen_import(mod_id, line)
+        globals_id, globals_name = import_globals_id_and_name(mod_id, as_name)
+        builder.gen_method_call(
+            globals,
+            "__setitem__",
+            [builder.load_str(globals_name), builder.get_module(globals_id, line)],
+            result_type=None,
+            line=line,
+        )
+
+
+def transform_non_native_import_group(
+    builder: IRBuilder, group: list[tuple[str, str | None, int]]
+) -> None:
+    """Transform a group of import statements that target non-native modules."""
     modules = []
     static_ptrs = []
     # To show the right line number on failure, we have to add the traceback
     # entry within the helper function (which is admittedly ugly). To drive
     # this, we need the line number corresponding to each module.
     mod_lines = []
-    for import_node in builder.module_import_groups[node]:
-        for mod_id, as_name in import_node.ids:
-            builder.imports[mod_id] = None
-            modules.append((mod_id, *import_globals_id_and_name(mod_id, as_name)))
-            mod_static = LoadStatic(object_rprimitive, mod_id, namespace=NAMESPACE_MODULE)
-            static_ptrs.append(builder.add(LoadAddress(object_pointer_rprimitive, mod_static)))
-            mod_lines.append(Integer(import_node.line, c_pyssize_t_rprimitive))
+    for mod_id, as_name, line in group:
+        builder.imports[mod_id] = None
+        modules.append((mod_id, *import_globals_id_and_name(mod_id, as_name)))
+        mod_static = LoadStatic(object_rprimitive, mod_id, namespace=NAMESPACE_MODULE)
+        static_ptrs.append(builder.add(LoadAddress(object_pointer_rprimitive, mod_static)))
+        mod_lines.append(Integer(line, c_pyssize_t_rprimitive))
 
     static_array_ptr = builder.builder.setup_rarray(
         object_pointer_rprimitive, static_ptrs, node.line

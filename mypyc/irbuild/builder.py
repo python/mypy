@@ -67,7 +67,6 @@ from mypyc.ir.ops import (
     NAMESPACE_MODULE,
     NAMESPACE_TYPE_VAR,
     NO_TRACEBACK_LINE_NO,
-    LoadGlobal,
     Assign,
     BasicBlock,
     Branch,
@@ -77,6 +76,7 @@ from mypyc.ir.ops import (
     InitStatic,
     Integer,
     IntOp,
+    LoadGlobal,
     LoadStatic,
     MethodCall,
     Op,
@@ -97,6 +97,7 @@ from mypyc.ir.rtypes import (
     bitmap_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
+    c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
@@ -108,7 +109,6 @@ from mypyc.ir.rtypes import (
     is_tuple_rprimitive,
     none_rprimitive,
     object_rprimitive,
-    c_pointer_rprimitive,
     str_rprimitive,
 )
 from mypyc.irbuild.constant_fold import constant_fold_expr
@@ -132,11 +132,17 @@ from mypyc.irbuild.targets import (
 )
 from mypyc.irbuild.util import bytes_from_str, is_constant
 from mypyc.irbuild.vec import vec_set_item
+from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
-from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op, native_import_op
+from mypyc.primitives.misc_ops import (
+    check_unpack_count_op,
+    get_module_dict_op,
+    import_op,
+    native_import_op,
+)
 from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.tuple_ops import tuple_get_item_unsafe_op
 
@@ -458,9 +464,8 @@ class IRBuilder:
 
         self.activate_block(needs_import)
         if self.is_native_module(module):
-            func = self.add(LoadGlobal(c_pointer_rprimitive, "CPyInit_t11"))
-            value = self.call_c(native_import_op, [self.load_str(module, line),
-                                                   func], line)
+            func = self.add(LoadGlobal(c_pointer_rprimitive, f"CPyInit_{exported_name(module)}"))
+            value = self.call_c(native_import_op, [self.load_str(module, line), func], line)
         else:
             value = self.call_c(import_op, [self.load_str(module, line)], line)
         self.add(InitStatic(value, module, namespace=NAMESPACE_MODULE))
