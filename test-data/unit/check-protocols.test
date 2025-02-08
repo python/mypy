@@ -4246,3 +4246,219 @@ class SupportsAdd(Protocol):
 
 x: SupportsAdd = NumpyFloat()
 [builtins fixtures/tuple.pyi]
+
+[case testSetterPropertyProtocolSubtypingBoth]
+from typing import Protocol
+
+class B1: ...
+class C1(B1): ...
+class B2: ...
+class C2(B2): ...
+
+class P1(Protocol):
+    @property
+    def foo(self) -> B1: ...
+    @foo.setter
+    def foo(self, x: C2) -> None: ...
+
+class P2(Protocol):
+    @property
+    def foo(self) -> B1: ...
+    @foo.setter
+    def foo(self, x: B2) -> None: ...
+
+class A1:
+    @property
+    def foo(self) -> B1: ...
+    @foo.setter
+    def foo(self, x: C2) -> None: ...
+
+class A2:
+    @property
+    def foo(self) -> C1: ...
+    @foo.setter
+    def foo(self, x: C2) -> None: ...
+
+class A3:
+    @property
+    def foo(self) -> C1: ...
+    @foo.setter
+    def foo(self, x: str) -> None: ...
+
+class A4:
+    @property
+    def foo(self) -> str: ...
+    @foo.setter
+    def foo(self, x: str) -> None: ...
+
+def f1(x: P1) -> None: ...
+def f2(x: P2) -> None: ...
+
+a1: A1
+a2: A2
+a3: A3
+a4: A4
+
+f1(a1)
+f1(a2)
+f1(a3)  # E: Argument 1 to "f1" has incompatible type "A3"; expected "P1" \
+        # N: Following member(s) of "A3" have conflicts: \
+        # N:     foo: expected setter type "C2", got "str"
+f1(a4)  # E: Argument 1 to "f1" has incompatible type "A4"; expected "P1" \
+        # N: Following member(s) of "A4" have conflicts: \
+        # N:     foo: expected "B1", got "str" \
+        # N:     foo: expected setter type "C2", got "str"
+
+f2(a1)  # E: Argument 1 to "f2" has incompatible type "A1"; expected "P2" \
+        # N: Following member(s) of "A1" have conflicts: \
+        # N:     foo: expected setter type "B2", got "C2" \
+        # N:     Setter types should behave contravariantly
+f2(a2)  # E: Argument 1 to "f2" has incompatible type "A2"; expected "P2" \
+        # N: Following member(s) of "A2" have conflicts: \
+        # N:     foo: expected setter type "B2", got "C2" \
+        # N:     Setter types should behave contravariantly
+f2(a3)  # E: Argument 1 to "f2" has incompatible type "A3"; expected "P2" \
+        # N: Following member(s) of "A3" have conflicts: \
+        # N:     foo: expected setter type "B2", got "str"
+f2(a4)  # E: Argument 1 to "f2" has incompatible type "A4"; expected "P2" \
+        # N: Following member(s) of "A4" have conflicts: \
+        # N:     foo: expected "B1", got "str" \
+        # N:     foo: expected setter type "B2", got "str"
+[builtins fixtures/property.pyi]
+
+[case testSetterPropertyProtocolSubtypingVarSuper]
+from typing import Protocol
+
+class B1: ...
+class C1(B1): ...
+
+class P1(Protocol):
+    foo: B1
+
+class P2(Protocol):
+    foo: C1
+
+class A1:
+    @property
+    def foo(self) -> B1: ...
+    @foo.setter
+    def foo(self, x: C1) -> None: ...
+
+class A2:
+    @property
+    def foo(self) -> C1: ...
+    @foo.setter
+    def foo(self, x: B1) -> None: ...
+
+class A3:
+    @property
+    def foo(self) -> C1: ...
+    @foo.setter
+    def foo(self, x: str) -> None: ...
+
+class A4:
+    @property
+    def foo(self) -> str: ...
+    @foo.setter
+    def foo(self, x: str) -> None: ...
+
+def f1(x: P1) -> None: ...
+def f2(x: P2) -> None: ...
+
+a1: A1
+a2: A2
+a3: A3
+a4: A4
+
+f1(a1)  # E: Argument 1 to "f1" has incompatible type "A1"; expected "P1" \
+        # N: Following member(s) of "A1" have conflicts: \
+        # N:     foo: expected setter type "B1", got "C1" \
+        # N:     Setter types should behave contravariantly
+f1(a2)
+f1(a3)  # E: Argument 1 to "f1" has incompatible type "A3"; expected "P1" \
+        # N: Following member(s) of "A3" have conflicts: \
+        # N:     foo: expected setter type "B1", got "str"
+f1(a4)  # E: Argument 1 to "f1" has incompatible type "A4"; expected "P1" \
+        # N: Following member(s) of "A4" have conflicts: \
+        # N:     foo: expected "B1", got "str"
+
+f2(a1)  # E: Argument 1 to "f2" has incompatible type "A1"; expected "P2" \
+        # N: Following member(s) of "A1" have conflicts: \
+        # N:     foo: expected "C1", got "B1"
+f2(a2)
+f2(a3)  # E: Argument 1 to "f2" has incompatible type "A3"; expected "P2" \
+        # N: Following member(s) of "A3" have conflicts: \
+        # N:     foo: expected setter type "C1", got "str"
+f2(a4)  # E: Argument 1 to "f2" has incompatible type "A4"; expected "P2" \
+        # N: Following member(s) of "A4" have conflicts: \
+        # N:     foo: expected "C1", got "str"
+[builtins fixtures/property.pyi]
+
+[case testSetterPropertyProtocolSubtypingVarSub]
+from typing import Protocol
+
+class B1: ...
+class C1(B1): ...
+class B2: ...
+class C2(B2): ...
+
+class P1(Protocol):
+    @property
+    def foo(self) -> B1: ...
+    @foo.setter
+    def foo(self, x: C2) -> None: ...
+
+class P2(Protocol):
+    @property
+    def foo(self) -> B1: ...
+    @foo.setter
+    def foo(self, x: C1) -> None: ...
+
+class A1:
+    foo: B1
+
+class A2:
+    foo: B2
+
+class A3:
+    foo: C2
+
+class A4:
+    foo: str
+
+def f1(x: P1) -> None: ...
+def f2(x: P2) -> None: ...
+
+a1: A1
+a2: A2
+a3: A3
+a4: A4
+
+f1(a1)  # E: Argument 1 to "f1" has incompatible type "A1"; expected "P1" \
+        # N: Following member(s) of "A1" have conflicts: \
+        # N:     foo: expected setter type "C2", got "B1"
+f1(a2)  # E: Argument 1 to "f1" has incompatible type "A2"; expected "P1" \
+        # N: Following member(s) of "A2" have conflicts: \
+        # N:     foo: expected "B1", got "B2"
+f1(a3)  # E: Argument 1 to "f1" has incompatible type "A3"; expected "P1" \
+        # N: Following member(s) of "A3" have conflicts: \
+        # N:     foo: expected "B1", got "C2"
+f1(a4)  # E: Argument 1 to "f1" has incompatible type "A4"; expected "P1" \
+        # N: Following member(s) of "A4" have conflicts: \
+        # N:     foo: expected "B1", got "str" \
+        # N:     foo: expected setter type "C2", got "str"
+
+f2(a1)
+f2(a2)  # E: Argument 1 to "f2" has incompatible type "A2"; expected "P2" \
+        # N: Following member(s) of "A2" have conflicts: \
+        # N:     foo: expected "B1", got "B2" \
+        # N:     foo: expected setter type "C1", got "B2"
+f2(a3)  # E: Argument 1 to "f2" has incompatible type "A3"; expected "P2" \
+        # N: Following member(s) of "A3" have conflicts: \
+        # N:     foo: expected "B1", got "C2" \
+        # N:     foo: expected setter type "C1", got "C2"
+f2(a4)  # E: Argument 1 to "f2" has incompatible type "A4"; expected "P2" \
+        # N: Following member(s) of "A4" have conflicts: \
+        # N:     foo: expected "B1", got "str" \
+        # N:     foo: expected setter type "C1", got "str"
+[builtins fixtures/property.pyi]

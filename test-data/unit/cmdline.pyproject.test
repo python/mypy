@@ -133,3 +133,96 @@ Neither is this!
 description = "Factory ⸻ A code generator 🏭"
 \[tool.mypy]
 [file x.py]
+
+[case testPyprojectFilesTrailingComma]
+# cmd: mypy
+[file pyproject.toml]
+\[tool.mypy]
+# We combine multiple tests in a single one here, because these tests are slow.
+files = """
+  a.py,
+  b.py,
+"""
+always_true = """
+  FLAG_A1,
+  FLAG_B1,
+"""
+always_false = """
+  FLAG_A2,
+  FLAG_B2,
+"""
+[file a.py]
+x: str = 'x'  # ok'
+
+# --always-true
+FLAG_A1 = False
+FLAG_B1 = False
+if not FLAG_A1:  # unreachable
+    x: int = 'x'
+if not FLAG_B1:  # unreachable
+    y: int = 'y'
+
+# --always-false
+FLAG_A2 = True
+FLAG_B2 = True
+if FLAG_A2:  # unreachable
+    x: int = 'x'
+if FLAG_B2:  # unreachable
+    y: int = 'y'
+[file b.py]
+y: int = 'y'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[file c.py]
+# This should not trigger any errors, because it is not included:
+z: int = 'z'
+[out]
+
+[case testPyprojectModulesTrailingComma]
+# cmd: mypy
+[file pyproject.toml]
+\[tool.mypy]
+# We combine multiple tests in a single one here, because these tests are slow.
+modules = """
+  a,
+  b,
+"""
+disable_error_code = """
+  operator,
+  import,
+"""
+enable_error_code = """
+  redundant-expr,
+  ignore-without-code,
+"""
+[file a.py]
+x: str = 'x'  # ok
+
+# --enable-error-code
+a: int = 'a'  # type: ignore
+
+# --disable-error-code
+'a' + 1
+[file b.py]
+y: int = 'y'
+[file c.py]
+# This should not trigger any errors, because it is not included:
+z: int = 'z'
+[out]
+b.py:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+a.py:4: error: "type: ignore" comment without error code (consider "type: ignore[assignment]" instead)
+
+[case testPyprojectPackagesTrailingComma]
+# cmd: mypy
+[file pyproject.toml]
+\[tool.mypy]
+packages = """
+  a,
+  b,
+"""
+[file a/__init__.py]
+x: str = 'x'  # ok
+[file b/__init__.py]
+y: int = 'y'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[file c/__init__.py]
+# This should not trigger any errors, because it is not included:
+z: int = 'z'
+[out]

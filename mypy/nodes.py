@@ -89,9 +89,14 @@ UNBOUND_IMPORTED: Final = 3
 REVEAL_TYPE: Final = 0
 REVEAL_LOCALS: Final = 1
 
-LITERAL_YES: Final = 2
-LITERAL_TYPE: Final = 1
-LITERAL_NO: Final = 0
+# Kinds of 'literal' expressions.
+#
+# Use the function mypy.literals.literal to calculate these.
+#
+# TODO: Can we make these less confusing?
+LITERAL_YES: Final = 2  # Value of expression known statically
+LITERAL_TYPE: Final = 1  # Type of expression can be narrowed (e.g. variable reference)
+LITERAL_NO: Final = 0  # None of the above
 
 node_kinds: Final = {LDEF: "Ldef", GDEF: "Gdef", MDEF: "Mdef", UNBOUND_IMPORTED: "UnboundImported"}
 inverse_node_kinds: Final = {_kind: _name for _name, _kind in node_kinds.items()}
@@ -977,6 +982,7 @@ class Var(SymbolNode):
         "_fullname",
         "info",
         "type",
+        "setter_type",
         "final_value",
         "is_self",
         "is_cls",
@@ -1011,6 +1017,8 @@ class Var(SymbolNode):
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
         self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
+        # The setter type for settable properties.
+        self.setter_type: mypy.types.CallableType | None = None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
         # Is this the first argument to a classmethod (typically "cls")?
@@ -1065,6 +1073,9 @@ class Var(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
+    def __repr__(self) -> str:
+        return f"<Var {self.fullname!r} at {hex(id(self))}>"
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
 
@@ -1076,6 +1087,7 @@ class Var(SymbolNode):
             "name": self._name,
             "fullname": self._fullname,
             "type": None if self.type is None else self.type.serialize(),
+            "setter_type": None if self.setter_type is None else self.setter_type.serialize(),
             "flags": get_flags(self, VAR_FLAGS),
         }
         if self.final_value is not None:
@@ -1087,7 +1099,18 @@ class Var(SymbolNode):
         assert data[".class"] == "Var"
         name = data["name"]
         type = None if data["type"] is None else mypy.types.deserialize_type(data["type"])
+        setter_type = (
+            None
+            if data["setter_type"] is None
+            else mypy.types.deserialize_type(data["setter_type"])
+        )
         v = Var(name, type)
+        assert (
+            setter_type is None
+            or isinstance(setter_type, mypy.types.ProperType)
+            and isinstance(setter_type, mypy.types.CallableType)
+        )
+        v.setter_type = setter_type
         v.is_ready = False  # Override True default set in __init__
         v._fullname = data["fullname"]
         set_flags(v, data["flags"])

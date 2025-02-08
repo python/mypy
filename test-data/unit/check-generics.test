@@ -3035,6 +3035,21 @@ def id(x: V) -> V:
 reveal_type(dec(id, id))  # N: Revealed type is "def [T] (T`1) -> Tuple[T`1, T`1]"
 [builtins fixtures/tuple.pyi]
 
+[case testInferenceAgainstGenericSecondary]
+from typing import TypeVar, Callable, List
+
+S = TypeVar('S')
+T = TypeVar('T')
+U = TypeVar('U')
+
+def dec(f: Callable[[List[T]], List[int]]) -> Callable[[T], T]: ...
+
+@dec
+def id(x: U) -> U:
+    ...
+reveal_type(id)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+[builtins fixtures/tuple.pyi]
+
 [case testInferenceAgainstGenericEllipsisSelfSpecialCase]
 # flags: --new-type-inference
 from typing import Self, Callable, TypeVar

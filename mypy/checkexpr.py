@@ -15,7 +15,12 @@ import mypy.checker
 import mypy.errorcodes as codes
 from mypy import applytype, erasetype, join, message_registry, nodes, operators, types
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.checkmember import analyze_member_access, freeze_all_type_vars, type_object_type
+from mypy.checkmember import (
+    analyze_member_access,
+    freeze_all_type_vars,
+    type_object_type,
+    typeddict_callable,
+)
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorWatcher, report_internal_error
@@ -955,20 +960,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Note it is not safe to move this to type_object_type() since it will crash
         on plugin-generated TypedDicts, that may not have the special_alias.
         """
-        assert info.special_alias is not None
-        target = info.special_alias.target
-        assert isinstance(target, ProperType) and isinstance(target, TypedDictType)
-        expected_types = list(target.items.values())
-        kinds = [ArgKind.ARG_NAMED] * len(expected_types)
-        names = list(target.items.keys())
-        return CallableType(
-            expected_types,
-            kinds,
-            names,
-            target,
-            self.named_type("builtins.type"),
-            variables=info.defn.type_vars,
-        )
+        return typeddict_callable(info, self.named_type)
 
     def typeddict_callable_from_context(self, callee: TypedDictType) -> CallableType:
         return CallableType(
@@ -1485,7 +1477,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )
         proper_callee = get_proper_type(callee_type)
         if isinstance(e.callee, (NameExpr, MemberExpr)):
-            self.chk.warn_deprecated_overload_item(e.callee.node, e, target=callee_type)
+            node = e.callee.node
+            if node is None and member is not None and isinstance(object_type, Instance):
+                if (symbol := object_type.type.get(member)) is not None:
+                    node = symbol.node
+            self.chk.check_deprecated(node, e)
+            self.chk.warn_deprecated_overload_item(
+                node, e, target=callee_type, selftype=object_type
+            )
         if isinstance(e.callee, RefExpr) and isinstance(proper_callee, CallableType):
             # Cache it for find_isinstance_check()
             if proper_callee.type_guard is not None:
@@ -6141,6 +6140,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             generic_generator_type = self.chk.named_generic_type(
                 "typing.Generator", [any_type, any_type, any_type]
             )
+            generic_generator_type.set_line(e)
             iter_type, _ = self.check_method_call_by_name(
                 "__iter__", subexpr_type, [], [], context=generic_generator_type
             )

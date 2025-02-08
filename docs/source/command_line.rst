@@ -692,9 +692,8 @@ of the above sections.
 .. option:: --extra-checks
 
     This flag enables additional checks that are technically correct but may be
-    impractical in real code. In particular, it prohibits partial overlap in
-    ``TypedDict`` updates, and makes arguments prepended via ``Concatenate``
-    positional-only. For example:
+    impractical. In particular, it prohibits partial overlap in ``TypedDict`` updates,
+    and makes arguments prepended via ``Concatenate`` positional-only. For example:
 
     .. code-block:: python
 
@@ -716,6 +715,13 @@ of the above sections.
            b: str
        bad: Bad = {"a": 0, "b": "no"}
        test(bad, bar)
+
+    In future more checks may be added to this flag if:
+
+    * The corresponding use cases are rare, thus not justifying a dedicated
+      strictness flag.
+
+    * The new check cannot be supported as an opt-in error code.
 
 .. option:: --strict
 

@@ -866,6 +866,7 @@ PyObject *CPyPickle_SetState(PyObject *obj, PyObject *state);
 PyObject *CPyPickle_GetState(PyObject *obj);
 CPyTagged CPyTagged_Id(PyObject *o);
 void CPyDebug_Print(const char *msg);
+void CPyDebug_PrintObject(PyObject *obj);
 void CPy_Init(void);
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, const char *, const char * const *, ...);

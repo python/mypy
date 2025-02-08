@@ -684,22 +684,18 @@ def g(x: str) -> int:
 [out]
 def g(x):
     x :: str
-    r0 :: object
-    r1 :: str
-    r2 :: tuple
-    r3 :: object
-    r4 :: dict
-    r5 :: object
+    r0, r1 :: object
+    r2 :: object[2]
+    r3 :: object_ptr
+    r4, r5 :: object
     r6 :: int
 L0:
     r0 = load_address PyLong_Type
-    r1 = 'base'
-    r2 = PyTuple_Pack(1, x)
-    r3 = object 2
-    r4 = CPyDict_Build(1, r1, r3)
-    r5 = PyObject_Call(r0, r2, r4)
-    dec_ref r2
-    dec_ref r4
+    r1 = object 2
+    r2 = [x, r1]
+    r3 = load_address r2
+    r4 = ('base',)
+    r5 = PyObject_Vectorcall(r0, r3, 1, r4)
     r6 = unbox(int, r5)
     dec_ref r5
     return r6
@@ -875,7 +871,7 @@ L11:
     xdec_ref y :: int
     goto L6
 
-[case testVectorcall_python3_8]
+[case testVectorcall]
 from typing import Any
 
 def call(f: Any, x: int) -> int:
@@ -894,13 +890,13 @@ L0:
     r0 = box(int, x)
     r1 = [r0]
     r2 = load_address r1
-    r3 = _PyObject_Vectorcall(f, r2, 1, 0)
+    r3 = PyObject_Vectorcall(f, r2, 1, 0)
     dec_ref r0
     r4 = unbox(int, r3)
     dec_ref r3
     return r4
 
-[case testVectorcallMethod_python3_9_64bit]
+[case testVectorcallMethod_64bit]
 from typing import Any
 
 def call(o: Any, x: int) -> int:

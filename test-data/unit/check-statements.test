@@ -1527,13 +1527,13 @@ from typing import Optional
 
 class InvalidReturn1:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         return False
 
 class InvalidReturn2:
     def __exit__(self, x, y, z) -> Optional[bool]:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         if int():
             return False
@@ -1542,7 +1542,7 @@ class InvalidReturn2:
 
 class InvalidReturn3:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         def nested() -> bool:
             return True
@@ -2182,8 +2182,7 @@ class M(N): pass
 [out]
 
 [case testForwardRefsInWithStatementImplicit]
-from typing import ContextManager, Any
-from mypy_extensions import TypedDict
+from typing import ContextManager, Any, TypedDict
 cm: ContextManager[N]
 
 with cm as g:
@@ -2191,12 +2190,11 @@ with cm as g:
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testForwardRefsInWithStatement]
-from typing import ContextManager, Any
-from mypy_extensions import TypedDict
+from typing import ContextManager, Any, TypedDict
 cm: ContextManager[Any]
 
 with cm as g:  # type: N
@@ -2204,7 +2202,7 @@ with cm as g:  # type: N
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testGlobalWithoutInitialization]
@@ -2281,6 +2279,20 @@ def get_strings(foo: bool) -> Iterator[str]:
     else:
         yield "bar1"
         yield "bar2"
+[builtins fixtures/tuple.pyi]
+
+[case testYieldFromInvalidType]
+from collections.abc import Iterator
+
+class A:
+    def list(self) -> None: ...
+
+    def foo(self) -> list[int]:  # E: Function "__main__.A.list" is not valid as a type \
+                                 # N: Perhaps you need "Callable[...]" or a callback protocol?
+        return []
+
+def fn() -> Iterator[int]:
+    yield from A().foo()  # E: "list?[builtins.int]" has no attribute "__iter__" (not iterable)
 [builtins fixtures/tuple.pyi]
 
 [case testNoCrashOnStarRightHandSide]

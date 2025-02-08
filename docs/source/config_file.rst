@@ -748,7 +748,7 @@ section of the command line docs.
    :type: boolean
    :default: False
 
-   This flag enables additional checks that are technically correct but may be impractical in real code.
+   This flag enables additional checks that are technically correct but may be impractical.
    See :option:`mypy --extra-checks` for more info.
 
 .. confval:: implicit_reexport
@@ -770,13 +770,6 @@ section of the command line docs.
        # This will also re-export bar
        from foo import bar
        __all__ = ['bar']
-
-.. confval:: strict_concatenate
-
-   :type: boolean
-   :default: False
-
-   Make arguments prepended via ``Concatenate`` be truly positional-only.
 
 .. confval:: strict_equality
 

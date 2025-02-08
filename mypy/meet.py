@@ -50,6 +50,7 @@ from mypy.types import (
     find_unpack_in_list,
     get_proper_type,
     get_proper_types,
+    is_named_instance,
     split_with_prefix_and_suffix,
 )
 
@@ -645,7 +646,16 @@ def are_tuples_overlapping(
 
     if len(left.items) != len(right.items):
         return False
-    return all(is_overlapping(l, r) for l, r in zip(left.items, right.items))
+    if not all(is_overlapping(l, r) for l, r in zip(left.items, right.items)):
+        return False
+
+    # Check that the tuples aren't from e.g. different NamedTuples.
+    if is_named_instance(right.partial_fallback, "builtins.tuple") or is_named_instance(
+        left.partial_fallback, "builtins.tuple"
+    ):
+        return True
+    else:
+        return is_overlapping(left.partial_fallback, right.partial_fallback)
 
 
 def expand_tuple_if_possible(tup: TupleType, target: int) -> TupleType:

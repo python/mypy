@@ -6,7 +6,7 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 24.10.0
+    rev: 25.1.0
     hooks:
       - id: black
         exclude: '^(test-data/)'
@@ -22,7 +22,7 @@ repos:
       - id: check-github-actions
       - id: check-readthedocs
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.6
+    rev: v1.7.7
     hooks:
       - id: actionlint
         args: [
@@ -39,6 +39,14 @@ repos:
     rev: v1.0.1
     hooks:
       - id: zizmor
+  - repo: local
+    hooks:
+      - id: bad-pr-link
+        name: Bad PR link
+        description: Detect PR links text that don't match their URL
+        language: pygrep
+        entry: '\[(\d+)\]\(https://github.com/python/mypy/pull/(?!\1/?\))\d+/?\)'
+        files: CHANGELOG.md
   # Should be the last one:
   - repo: meta
     hooks:

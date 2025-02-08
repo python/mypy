@@ -420,6 +420,9 @@ class IRBuilder:
     def new_tuple(self, items: list[Value], line: int) -> Value:
         return self.builder.new_tuple(items, line)
 
+    def debug_print(self, toprint: str | Value) -> None:
+        return self.builder.debug_print(toprint)
+
     # Helpers for IR building
 
     def add_to_non_ext_dict(

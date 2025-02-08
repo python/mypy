@@ -20,6 +20,7 @@ from mypy.nodes import (
     ARG_STAR2,
     EXCLUDED_ENUM_ATTRIBUTES,
     SYMBOL_FUNCBASE_TYPES,
+    ArgKind,
     Context,
     Decorator,
     FuncBase,
@@ -658,7 +659,10 @@ def analyze_descriptor_access(
     if isinstance(descriptor_type, UnionType):
         # Map the access over union types
         return make_simplified_union(
-            [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
+            [
+                analyze_descriptor_access(typ, mx, assignment=assignment)
+                for typ in descriptor_type.items
+            ]
         )
     elif not isinstance(descriptor_type, Instance):
         return orig_descriptor_type
@@ -776,7 +780,13 @@ def analyze_var(
     # Found a member variable.
     original_itype = itype
     itype = map_instance_to_supertype(itype, var.info)
-    typ = var.type
+    if var.is_settable_property and mx.is_lvalue:
+        typ: Type | None = var.setter_type
+        if typ is None and var.is_ready:
+            # Existing synthetic properties may not set setter type. Fall back to getter.
+            typ = var.type
+    else:
+        typ = var.type
     if typ:
         if isinstance(typ, PartialType):
             return mx.chk.handle_partial_var_type(typ, mx.is_lvalue, var, mx.context)
@@ -834,7 +844,10 @@ def analyze_var(
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(expanded_signature, CallableType)
-                    result = expanded_signature.ret_type
+                    if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
+                        result = expanded_signature.arg_types[0]
+                    else:
+                        result = expanded_signature.ret_type
                 else:
                     result = expanded_signature
     else:
@@ -1136,8 +1149,16 @@ def analyze_class_attribute_access(
         )
         return AnyType(TypeOfAny.from_error)
 
+    # TODO: some logic below duplicates analyze_ref_expr in checkexpr.py
     if isinstance(node.node, TypeInfo):
-        return type_object_type(node.node, mx.named_type)
+        if node.node.typeddict_type:
+            # We special-case TypedDict, because they don't define any constructor.
+            return typeddict_callable(node.node, mx.named_type)
+        elif node.node.fullname == "types.NoneType":
+            # We special case NoneType, because its stub definition is not related to None.
+            return TypeType(NoneType())
+        else:
+            return type_object_type(node.node, mx.named_type)
 
     if isinstance(node.node, MypyFile):
         # Reference to a module object.
@@ -1316,6 +1337,31 @@ def add_class_tvars(
     if isuper is not None:
         t = expand_type_by_instance(t, isuper)
     return t
+
+
+def typeddict_callable(info: TypeInfo, named_type: Callable[[str], Instance]) -> CallableType:
+    """Construct a reasonable type for a TypedDict type in runtime context.
+
+    If it appears as a callee, it will be special-cased anyway, e.g. it is
+    also allowed to accept a single positional argument if it is a dict literal.
+
+    Note it is not safe to move this to type_object_type() since it will crash
+    on plugin-generated TypedDicts, that may not have the special_alias.
+    """
+    assert info.special_alias is not None
+    target = info.special_alias.target
+    assert isinstance(target, ProperType) and isinstance(target, TypedDictType)
+    expected_types = list(target.items.values())
+    kinds = [ArgKind.ARG_NAMED] * len(expected_types)
+    names = list(target.items.keys())
+    return CallableType(
+        expected_types,
+        kinds,
+        names,
+        target,
+        named_type("builtins.type"),
+        variables=info.defn.type_vars,
+    )
 
 
 def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> ProperType:

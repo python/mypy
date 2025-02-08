@@ -768,6 +768,8 @@ class DataclassTransformer:
             if sym_node is not None:
                 var = sym_node.node
                 if isinstance(var, Var):
+                    if var.is_final:
+                        continue  # do not turn `Final` attrs to `@property`
                     var.is_property = True
             else:
                 var = attr.to_var(info)

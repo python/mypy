@@ -1106,7 +1106,9 @@ class ASTConverter:
         if argument_elide_name(arg.arg):
             pos_only = True
 
-        argument = Argument(Var(arg.arg, arg_type), arg_type, self.visit(default), kind, pos_only)
+        var = Var(arg.arg, arg_type)
+        var.is_inferred = False
+        argument = Argument(var, arg_type, self.visit(default), kind, pos_only)
         argument.set_line(
             arg.lineno,
             arg.col_offset,
@@ -2052,13 +2054,16 @@ class TypeConverter:
 
         value = self.visit(n.value)
         if isinstance(value, UnboundType) and not value.args:
-            return UnboundType(
+            result = UnboundType(
                 value.name,
                 params,
                 line=self.line,
                 column=value.column,
                 empty_tuple_index=empty_tuple_index,
             )
+            result.end_column = getattr(n, "end_col_offset", None)
+            result.end_line = getattr(n, "end_lineno", None)
+            return result
         else:
             return self.invalid_type(n)
 
@@ -2092,7 +2097,7 @@ class TypeConverter:
         before_dot = self.visit(n.value)
 
         if isinstance(before_dot, UnboundType) and not before_dot.args:
-            return UnboundType(f"{before_dot.name}.{n.attr}", line=self.line)
+            return UnboundType(f"{before_dot.name}.{n.attr}", line=self.line, column=n.col_offset)
         else:
             return self.invalid_type(n)
 

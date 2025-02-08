@@ -377,6 +377,171 @@ for i in a:  # E: function __main__.A.__iter__ is deprecated: no iteration
 [builtins fixtures/tuple.pyi]
 
 
+[case testDeprecatedOverloadedInstanceMethods]
+# flags: --enable-error-code=deprecated
+
+from typing import Iterator, Union
+from typing_extensions import deprecated, overload
+
+class A:
+    @overload
+    @deprecated("pass `str` instead")
+    def f(self, v: int) -> None: ...
+    @overload
+    def f(self, v: str) -> None: ...
+    def f(self, v: Union[int, str]) -> None: ...
+
+    @overload
+    def g(self, v: int) -> None: ...
+    @overload
+    @deprecated("pass `int` instead")
+    def g(self, v: str) -> None: ...
+    def g(self, v: Union[int, str]) -> None: ...
+
+    @overload
+    def h(self, v: int) -> A: ...
+    @overload
+    def h(self, v: str) -> A: ...
+    @deprecated("use `h2` instead")
+    def h(self, v: Union[int, str]) -> A: ...
+
+class B(A): ...
+
+a = A()
+a.f(1)  # E: overload def (self: __main__.A, v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
+a.f("x")
+a.g(1)
+a.g("x")  # E: overload def (self: __main__.A, v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
+a.h(1)  # E: function __main__.A.h is deprecated: use `h2` instead
+a.h("x")  # E: function __main__.A.h is deprecated: use `h2` instead
+
+b = B()
+b.f(1)  # E: overload def (self: __main__.A, v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
+b.f("x")
+b.g(1)
+b.g("x")  # E: overload def (self: __main__.A, v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
+b.h(1)  # E: function __main__.A.h is deprecated: use `h2` instead
+b.h("x")  # E: function __main__.A.h is deprecated: use `h2` instead
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedOverloadedClassMethods]
+# flags: --enable-error-code=deprecated
+
+from typing import Iterator, Union
+from typing_extensions import deprecated, overload
+
+class A:
+    @overload
+    @classmethod
+    @deprecated("pass `str` instead")
+    def f(cls, v: int) -> None: ...
+    @overload
+    @classmethod
+    def f(cls, v: str) -> None: ...
+    @classmethod
+    def f(cls, v: Union[int, str]) -> None: ...
+
+    @overload
+    @classmethod
+    def g(cls, v: int) -> None: ...
+    @overload
+    @classmethod
+    @deprecated("pass `int` instead")
+    def g(cls, v: str) -> None: ...
+    @classmethod
+    def g(cls, v: Union[int, str]) -> None: ...
+
+    @overload
+    @classmethod
+    def h(cls, v: int) -> A: ...
+    @overload
+    @classmethod
+    def h(cls, v: str) -> A: ...
+    @deprecated("use `h2`  instead")
+    @classmethod
+    def h(cls, v: Union[int, str]) -> A: ...
+
+class B(A): ...
+
+a = A()
+a.f(1)  # E: overload def (cls: type[__main__.A], v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
+a.f("x")
+a.g(1)
+a.g("x")  # E: overload def (cls: type[__main__.A], v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
+a.h(1)  # E: function __main__.A.h is deprecated: use `h2`  instead
+a.h("x")  # E: function __main__.A.h is deprecated: use `h2`  instead
+
+b = B()
+b.f(1)  # E: overload def (cls: type[__main__.A], v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
+b.f("x")
+b.g(1)
+b.g("x")  # E: overload def (cls: type[__main__.A], v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
+b.h(1)  # E: function __main__.A.h is deprecated: use `h2`  instead
+b.h("x")  # E: function __main__.A.h is deprecated: use `h2`  instead
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testDeprecatedOverloadedStaticMethods]
+# flags: --enable-error-code=deprecated
+
+from typing import Iterator, Union
+from typing_extensions import deprecated, overload
+
+class A:
+    @overload
+    @staticmethod
+    @deprecated("pass `str` instead")
+    def f(v: int) -> None: ...
+    @overload
+    @staticmethod
+    def f(v: str) -> None: ...
+    @staticmethod
+    def f(v: Union[int, str]) -> None: ...
+
+    @overload
+    @staticmethod
+    def g(v: int) -> None: ...
+    @overload
+    @staticmethod
+    @deprecated("pass `int` instead")
+    def g(v: str) -> None: ...
+    @staticmethod
+    def g(v: Union[int, str]) -> None: ...
+
+    @overload
+    @staticmethod
+    def h(v: int) -> A: ...
+    @overload
+    @staticmethod
+    def h(v: str) -> A: ...
+    @deprecated("use `h2`  instead")
+    @staticmethod
+    def h(v: Union[int, str]) -> A: ...
+
+class B(A): ...
+
+a = A()
+a.f(1)  # E: overload def (v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
+a.f("x")
+a.g(1)
+a.g("x")  # E: overload def (v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
+a.h(1)  # E: function __main__.A.h is deprecated: use `h2`  instead
+a.h("x")  # E: function __main__.A.h is deprecated: use `h2`  instead
+
+b = B()
+b.f(1)  # E: overload def (v: builtins.int) of function __main__.A.f is deprecated: pass `str` instead
+b.f("x")
+b.g(1)
+b.g("x")  # E: overload def (v: builtins.str) of function __main__.A.g is deprecated: pass `int` instead
+b.h(1)  # E: function __main__.A.h is deprecated: use `h2`  instead
+b.h("x")  # E: function __main__.A.h is deprecated: use `h2`  instead
+
+[builtins fixtures/classmethod.pyi]
+
+
 [case testDeprecatedOverloadedSpecialMethods]
 # flags: --enable-error-code=deprecated
 
