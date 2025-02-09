@@ -985,8 +985,7 @@ main:4: error: "A" not callable
 -- assert_type()
 
 [case testAssertType]
-from typing import assert_type, Any
-from typing_extensions import Literal
+from typing import assert_type, Any, Literal
 a: int = 1
 returned = assert_type(a, int)
 reveal_type(returned)  # N: Revealed type is "builtins.int"
@@ -998,8 +997,7 @@ assert_type(42, int)  # E: Expression is of type "Literal[42]", not "int"
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeGeneric]
-from typing import assert_type, TypeVar, Generic
-from typing_extensions import Literal
+from typing import assert_type, Literal, TypeVar, Generic
 T = TypeVar("T")
 def f(x: T) -> T: return x
 assert_type(f(1), int)
@@ -2283,7 +2281,8 @@ def f(x: T) -> T:
 
 [case testStrictEqualityWithALiteral]
 # flags: --strict-equality
-from typing_extensions import Literal, Final
+from typing import Literal
+from typing_extensions import Final
 
 def returns_a_or_b() -> Literal['a', 'b']:
     ...

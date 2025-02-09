@@ -1050,8 +1050,8 @@ class C(Generic[T]):
 [builtins fixtures/classmethod.pyi]
 
 [case testRecursiveAliasTuple]
-from typing_extensions import Literal, TypeAlias
-from typing import Tuple, Union
+from typing_extensions import TypeAlias
+from typing import Literal, Tuple, Union
 
 Expr: TypeAlias = Union[
     Tuple[Literal[123], int],

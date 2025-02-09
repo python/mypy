@@ -1187,7 +1187,8 @@ class Child(Parent):
     def __bar(self) -> None: ...
 
 [case testFinalWithoutBool]
-from typing_extensions import final, Literal
+from typing import Literal
+from typing_extensions import final
 
 class A:
     pass
@@ -1207,7 +1208,8 @@ reveal_type(C() and 42)  # N: Revealed type is "Literal[42]?"
 [builtins fixtures/bool.pyi]
 
 [case testFinalWithoutBoolButWithLen]
-from typing_extensions import final, Literal
+from typing import Literal
+from typing_extensions import final
 
 # Per Python data model, __len__ is called if __bool__ does not exist.
 # In a @final class, __bool__ would not exist.

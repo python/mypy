@@ -936,8 +936,7 @@ if last is not None:
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveAliasLiteral]
-from typing import Tuple
-from typing_extensions import Literal
+from typing import Literal, Tuple
 
 NotFilter = Tuple[Literal["not"], "NotFilter"]
 n: NotFilter
