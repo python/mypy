@@ -1424,9 +1424,13 @@ def wrong_name_constructor(b: bool) -> SomeClass:
     return SomeClass("a")
 
 func(SomeClass, constructor)
-reveal_type(func(SomeClass, wrong_constructor))  # N: Revealed type is "def (a: Never) -> __main__.SomeClass"
+reveal_type(func(SomeClass, wrong_constructor))  # N: Revealed type is "def (*builtins.object, **builtins.object) -> __main__.SomeClass" \
+                                                 # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "Callable[[VarArg(object), KwArg(object)], SomeClass]" \
+                                                 # E: Argument 2 to "func" has incompatible type "Callable[[bool], SomeClass]"; expected "Callable[[VarArg(object), KwArg(object)], SomeClass]"
 reveal_type(func_regular(SomeClass, wrong_constructor))  # N: Revealed type is "def (Never) -> __main__.SomeClass"
-reveal_type(func(SomeClass, wrong_name_constructor))  # N: Revealed type is "def (Never) -> __main__.SomeClass"
+reveal_type(func(SomeClass, wrong_name_constructor))  # N: Revealed type is "def (*builtins.object, **builtins.object) -> __main__.SomeClass" \
+                                                      # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "Callable[[VarArg(object), KwArg(object)], SomeClass]" \
+                                                      # E: Argument 2 to "func" has incompatible type "Callable[[bool], SomeClass]"; expected "Callable[[VarArg(object), KwArg(object)], SomeClass]"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecInTypeAliasBasic]
@@ -2559,4 +2563,48 @@ class ServerErrorMiddleware(App):
 def fn(f: MiddlewareFactory[P]) -> Capture[P]: ...
 
 reveal_type(fn(ServerErrorMiddleware))  # N: Revealed type is "__main__.Capture[[handler: Union[builtins.str, None] =, debug: builtins.bool =]]"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecJoin2]
+from typing import Callable, ParamSpec
+
+P = ParamSpec("P")
+
+def join(t: Callable[P, None], val: Callable[P, None]) -> Callable[P, None]:
+    pass
+
+def f1(x: str) -> None: ...
+def f2(y: str) -> None: ...
+def f3(x: int) -> None: ...
+def f4(x: int, /) -> None: ...
+def f5(x: str, /) -> None: ...
+def f6(x: str, y: int) -> None: ...
+def f7(x: str, *, y: int) -> None: ...
+def f8(*, x: str) -> None: ...
+def f9(*, y: str) -> None: ...
+def f10(x: str, *args: int) -> None: ...
+def f11(x: str, **kwargs: int) -> None: ...
+def f12(x: str, /, **kwargs: int) -> None: ...
+
+reveal_type(join(f1, f2))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(f1, f3))  # N: Revealed type is "def (*builtins.object, **builtins.object)" \
+                             # E: Argument 1 to "join" has incompatible type "Callable[[str], None]"; expected "Callable[[VarArg(object), KwArg(object)], None]" \
+                             # E: Argument 2 to "join" has incompatible type "Callable[[int], None]"; expected "Callable[[VarArg(object), KwArg(object)], None]"
+reveal_type(join(f1, f4))  # N: Revealed type is "def (*builtins.object, **builtins.object)" \
+                             # E: Argument 1 to "join" has incompatible type "Callable[[str], None]"; expected "Callable[[VarArg(object), KwArg(object)], None]" \
+                             # E: Argument 2 to "join" has incompatible type "Callable[[int], None]"; expected "Callable[[VarArg(object), KwArg(object)], None]"
+reveal_type(join(f1, f5))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(f1, f6))  # N: Revealed type is "def (*builtins.object, **builtins.object)" \
+                             # E: Argument 1 to "join" has incompatible type "Callable[[str], None]"; expected "Callable[[VarArg(object), KwArg(object)], None]" \
+                             # E: Argument 2 to "join" has incompatible type "Callable[[str, int], None]"; expected "Callable[[VarArg(object), KwArg(object)], None]"
+reveal_type(join(f1, f7))  # N: Revealed type is "def (*builtins.object, **builtins.object)" \
+                             # E: Argument 1 to "join" has incompatible type "Callable[[str], None]"; expected "Callable[[VarArg(object), KwArg(object)], None]" \
+                             # E: Argument 2 to "join" has incompatible type "Callable[[str, NamedArg(int, 'y')], None]"; expected "Callable[[VarArg(object), KwArg(object)], None]"
+reveal_type(join(f1, f8))  # N: Revealed type is "def (*, x: builtins.str)"
+reveal_type(join(f1, f9))  # N: Revealed type is "def (*builtins.object, **builtins.object)" \
+                             # E: Argument 1 to "join" has incompatible type "Callable[[str], None]"; expected "Callable[[VarArg(object), KwArg(object)], None]" \
+                             # E: Argument 2 to "join" has incompatible type "Callable[[NamedArg(str, 'y')], None]"; expected "Callable[[VarArg(object), KwArg(object)], None]"
+reveal_type(join(f1, f10))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(join(f1, f11))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(join(f1, f12))  # N: Revealed type is "def (builtins.str)"
 [builtins fixtures/paramspec.pyi]

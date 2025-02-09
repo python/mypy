@@ -789,7 +789,14 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_unpack_type(self, t: UnpackType) -> ProperType:
-        raise NotImplementedError
+        if isinstance(self.s, UnpackType):
+            res = UnpackType(
+                meet_types(self.s.type, t.type), from_star_syntax=self.s.from_star_syntax
+            )
+            res.set_line(self.s)
+            return res
+        else:
+            return self.default(self.s)
 
     def visit_parameters(self, t: Parameters) -> ProperType:
         if isinstance(self.s, Parameters):
@@ -889,10 +896,12 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
-        if isinstance(self.s, CallableType) and join.is_similar_callables(t, self.s):
+        if isinstance(self.s, CallableType):
             if is_equivalent(t, self.s):
                 return join.combine_similar_callables(t, self.s)
             result = meet_similar_callables(t, self.s)
+            if result is None:
+                return self.default(self.s)
             # We set the from_type_type flag to suppress error when a collection of
             # concrete class objects gets inferred as their common abstract superclass.
             if not (
@@ -1099,13 +1108,21 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 return NoneType()
 
 
-def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
-    from mypy.join import match_generic_callables, safe_join
+def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType | None:
+    from mypy.join import combine_parameters_with, match_generic_callables, safe_join
+
+    if s.param_spec() != t.param_spec():
+        return None
 
     t, s = match_generic_callables(t, s)
-    arg_types: list[Type] = []
-    for i in range(len(t.arg_types)):
-        arg_types.append(safe_join(t.arg_types[i], s.arg_types[i]))
+    joined_params = combine_parameters_with(
+        Parameters(t.arg_types, t.arg_kinds, t.arg_names),
+        Parameters(s.arg_types, s.arg_kinds, s.arg_names),
+        arg_transformer=safe_join,
+        allow_uninhabited=True,
+    )
+    if joined_params is None:
+        return None
     # TODO in combine_similar_callables also applies here (names and kinds)
     # The fallback type can be either 'function' or 'type'. The result should have 'function' as
     # fallback only if both operands have it as 'function'.
@@ -1114,7 +1131,9 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     else:
         fallback = s.fallback
     return t.copy_modified(
-        arg_types=arg_types,
+        arg_types=joined_params.arg_types,
+        arg_names=joined_params.arg_names,
+        arg_kinds=joined_params.arg_kinds,
         ret_type=meet_types(t.ret_type, s.ret_type),
         fallback=fallback,
         name=None,
