@@ -3184,7 +3184,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 new_type_narrowers.append(target.type_is)
 
         if new_type_guards and new_type_narrowers:
-            # They cannot be definined at the same time,
+            # They cannot be defined at the same time,
             # declaring this function as too complex!
             too_complex = True
             union_type_guard = None
