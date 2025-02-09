@@ -2576,3 +2576,20 @@ reveal_type(m.b)  # N: Revealed type is "builtins.int"
 m.a = 1  # E: Cannot assign to final attribute "a"
 m.b = 2  # E: Cannot assign to final attribute "b"
 [builtins fixtures/tuple.pyi]
+
+[case testNoCrashForDataclassNamedTupleCombination]
+# flags: --python-version 3.13
+from dataclasses import dataclass
+from typing import NamedTuple
+
+@dataclass
+class A(NamedTuple):  # E: A NamedTuple cannot be a dataclass
+    i: int
+
+class B1(NamedTuple):
+    i: int
+@dataclass
+class B2(B1):  # E: A NamedTuple cannot be a dataclass
+    pass
+
+[builtins fixtures/tuple.pyi]
