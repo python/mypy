@@ -633,8 +633,7 @@ def f(x: S) -> None:
     h(x)
 
 [case testTypeVarWithTypedDictBoundInIndexExpression]
-from typing import TypeVar
-from typing_extensions import TypedDict
+from typing import TypedDict, TypeVar
 
 class Data(TypedDict):
     x: int
@@ -645,11 +644,11 @@ T = TypeVar("T", bound=Data)
 
 def f(data: T) -> None:
     reveal_type(data["x"]) # N: Revealed type is "builtins.int"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypeVarWithUnionTypedDictBoundInIndexExpression]
-from typing import TypeVar, Union, Dict
-from typing_extensions import TypedDict
+from typing import TypedDict, TypeVar, Union, Dict
 
 class Data(TypedDict):
     x: int
@@ -661,10 +660,10 @@ T = TypeVar("T", bound=Union[Data, Dict[str, str]])
 def f(data: T) -> None:
     reveal_type(data["x"]) # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypeVarWithTypedDictValueInIndexExpression]
-from typing import TypeVar, Union, Dict
-from typing_extensions import TypedDict
+from typing import TypedDict, TypeVar, Union, Dict
 
 class Data(TypedDict):
     x: int
@@ -676,10 +675,10 @@ T = TypeVar("T", Data, Dict[str, str])
 def f(data: T) -> None:
     _: Union[str, int] = data["x"]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testSelfTypeVarIndexExpr]
-from typing import TypeVar, Union, Type
-from typing_extensions import TypedDict
+from typing import TypedDict, TypeVar, Union, Type
 
 T = TypeVar("T", bound="Indexable")
 
@@ -697,6 +696,7 @@ class Indexable:
     def m(self: T) -> T:
         return self["foo"]
 [builtins fixtures/classmethod.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypeVarWithValueDeferral]
 from typing import TypeVar, Callable

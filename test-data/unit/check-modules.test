@@ -2883,7 +2883,7 @@ CustomDict(foo="abc", bar="def")
 [file foo/__init__.py]
 [file foo/bar/__init__.py]
 [file foo/bar/custom_dict.py]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 CustomDict = TypedDict(
     "CustomDict",

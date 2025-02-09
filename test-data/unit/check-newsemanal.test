@@ -3233,15 +3233,15 @@ class User:
         self.name = name  # E: Cannot assign to a method
 
 [case testNewAnalyzerMemberNameMatchesTypedDict]
-from typing import Union, Any
-from typing_extensions import TypedDict
+from typing import TypedDict, Union, Any
 
 class T(TypedDict):
     b: b.T
 
 class b:
     T: Union[Any]
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNewAnalyzerMemberNameMatchesNamedTuple]
 from typing import Union, Any, NamedTuple

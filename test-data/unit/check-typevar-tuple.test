@@ -1130,8 +1130,8 @@ nt2 = A(fn=bad, val=42)  # E: Argument "fn" to "A" has incompatible type "Callab
 [builtins fixtures/tuple.pyi]
 
 [case testVariadicTypedDict]
-from typing import Tuple, Callable, Generic, TypeVar
-from typing_extensions import TypeVarTuple, Unpack, TypedDict
+from typing import Tuple, Callable, Generic, TypedDict, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
 
 T = TypeVar("T")
 Ts = TypeVarTuple("Ts")
@@ -1156,7 +1156,8 @@ reveal_type(td)  # N: Revealed type is "TypedDict('__main__.A', {'fn': def (buil
 
 def bad() -> int: ...
 td2 = A({"fn": bad, "val": 42})  # E: Incompatible types (expression has type "Callable[[], int]", TypedDict item "fn" has type "Callable[[], None]")
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testFixedUnpackWithRegularInstance]
 from typing import Tuple, Generic, TypeVar
@@ -2167,8 +2168,8 @@ reveal_type([f, h])  # N: Revealed type is "builtins.list[def (builtins.int, *Un
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleBothUnpacksSimple]
-from typing import Tuple
-from typing_extensions import Unpack, TypeVarTuple, TypedDict
+from typing import Tuple, TypedDict
+from typing_extensions import Unpack, TypeVarTuple
 
 class Keywords(TypedDict):
     a: str
@@ -2202,11 +2203,12 @@ def bad2(
      **kwargs: Unpack[Ints],  # E: Unpack item in ** argument must be a TypedDict
 ) -> None: ...
 reveal_type(bad2)  # N: Revealed type is "def (one: builtins.int, *args: Any, other: builtins.str =, **kwargs: Any)"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypeVarTupleBothUnpacksCallable]
-from typing import Callable, Tuple
-from typing_extensions import Unpack, TypedDict
+from typing import Callable, Tuple, TypedDict
+from typing_extensions import Unpack
 
 class Keywords(TypedDict):
     a: str
@@ -2229,11 +2231,12 @@ reveal_type(bad2)  # N: Revealed type is "def (*Any, **Unpack[TypedDict('__main_
 bad3: Callable[[Unpack[Keywords], Unpack[Ints]], None]  # E: "Keywords" cannot be unpacked (must be tuple or TypeVarTuple) \
                                                         # E: More than one Unpack in a type is not allowed
 reveal_type(bad3)  # N: Revealed type is "def (*Any)"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypeVarTupleBothUnpacksApplication]
-from typing import Callable, TypeVar, Optional
-from typing_extensions import Unpack, TypeVarTuple, TypedDict
+from typing import Callable, TypedDict, TypeVar, Optional
+from typing_extensions import Unpack, TypeVarTuple
 
 class Keywords(TypedDict):
     a: str
@@ -2262,7 +2265,8 @@ def test2(
         func(*args)  # E: Missing named argument "a" \
                      # E: Missing named argument "b"
     return func(*args, **kwargs)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackTupleSpecialCaseNoCrash]
 from typing import Tuple, TypeVar
