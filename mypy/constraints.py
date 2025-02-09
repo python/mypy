@@ -385,7 +385,7 @@ def _infer_constraints(
         res = []
         for a_item in actual.items:
             # `orig_template` has to be preserved intact in case it's recursive.
-            # If we unwraped ``type[...]`` previously, wrap the item back again,
+            # If we unwrapped ``type[...]`` previously, wrap the item back again,
             # as ``type[...]`` can't be removed from `orig_template`.
             if type_type_unwrapped:
                 a_item = TypeType.make_normalized(a_item)
