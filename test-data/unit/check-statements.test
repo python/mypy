@@ -1550,7 +1550,7 @@ class InvalidReturn3:
 [builtins fixtures/bool.pyi]
 
 [case testWithStmtBoolExitReturnOkay]
-from typing_extensions import Literal
+from typing import Literal
 
 class GoodReturn1:
     def __exit__(self, x, y, z) -> bool:

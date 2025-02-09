@@ -8715,10 +8715,10 @@ reveal_type(mod.x)
 [file mod.py]
 x = 1
 [file mod.py.2]
-from typing_extensions import Literal
+from typing import Literal
 x: Literal[1] = 1
 [file mod.py.3]
-from typing_extensions import Literal
+from typing import Literal
 x: Literal[1] = 2
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8735,10 +8735,10 @@ foo(3)
 [file mod.py]
 def foo(x: int) -> None: pass
 [file mod.py.2]
-from typing_extensions import Literal
+from typing import Literal
 def foo(x: Literal[3]) -> None: pass
 [file mod.py.3]
-from typing_extensions import Literal
+from typing import Literal
 def foo(x: Literal[4]) -> None: pass
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8752,10 +8752,10 @@ a: Alias = 1
 [file mod.py]
 Alias = int
 [file mod.py.2]
-from typing_extensions import Literal
+from typing import Literal
 Alias = Literal[1]
 [file mod.py.3]
-from typing_extensions import Literal
+from typing import Literal
 Alias = Literal[2]
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8767,16 +8767,14 @@ main:2: error: Incompatible types in assignment (expression has type "Literal[1]
 from mod import foo
 reveal_type(foo(4))
 [file mod.py]
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 @overload
 def foo(x: int) -> str: ...
 @overload
 def foo(x: Literal['bar']) -> int: ...
 def foo(x): pass
 [file mod.py.2]
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 @overload
 def foo(x: Literal[4]) -> Literal['foo']: ...
 @overload
@@ -8792,7 +8790,7 @@ main:2: note: Revealed type is "Literal['foo']"
 
 [case testLiteralFineGrainedChainedDefinitions]
 from mod1 import foo
-from typing_extensions import Literal
+from typing import Literal
 def expect_3(x: Literal[3]) -> None: pass
 expect_3(foo)
 [file mod1.py]
@@ -8801,10 +8799,10 @@ foo = bar
 [file mod2.py]
 from mod3 import qux as bar
 [file mod3.py]
-from typing_extensions import Literal
+from typing import Literal
 qux: Literal[3]
 [file mod3.py.2]
-from typing_extensions import Literal
+from typing import Literal
 qux: Literal[4]
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8813,7 +8811,7 @@ main:4: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expe
 
 [case testLiteralFineGrainedChainedAliases]
 from mod1 import Alias1
-from typing_extensions import Literal
+from typing import Literal
 x: Alias1
 def expect_3(x: Literal[3]) -> None: pass
 expect_3(x)
@@ -8824,10 +8822,10 @@ Alias1 = Alias2
 from mod3 import Alias3
 Alias2 = Alias3
 [file mod3.py]
-from typing_extensions import Literal
+from typing import Literal
 Alias3 = Literal[3]
 [file mod3.py.2]
-from typing_extensions import Literal
+from typing import Literal
 Alias3 = Literal[4]
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8836,7 +8834,7 @@ main:5: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expe
 
 [case testLiteralFineGrainedChainedFunctionDefinitions]
 from mod1 import func1
-from typing_extensions import Literal
+from typing import Literal
 def expect_3(x: Literal[3]) -> None: pass
 expect_3(func1())
 [file mod1.py]
@@ -8845,10 +8843,10 @@ from mod2 import func2 as func1
 from mod3 import func3
 func2 = func3
 [file mod3.py]
-from typing_extensions import Literal
+from typing import Literal
 def func3() -> Literal[3]: pass
 [file mod3.py.2]
-from typing_extensions import Literal
+from typing import Literal
 def func3() -> Literal[4]: pass
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8867,7 +8865,7 @@ foo = func(bar)
 [file mod2.py]
 bar = 3
 [file mod2.py.2]
-from typing_extensions import Literal
+from typing import Literal
 bar: Literal[3] = 3
 [builtins fixtures/tuple.pyi]
 [out]
@@ -8877,11 +8875,11 @@ main:2: note: Revealed type is "Literal[3]"
 
 [case testLiteralFineGrainedChainedViaFinal]
 from mod1 import foo
-from typing_extensions import Literal
+from typing import Literal
 def expect_3(x: Literal[3]) -> None: pass
 expect_3(foo)
 [file mod1.py]
-from typing_extensions import Final
+from typing import Final
 from mod2 import bar
 foo: Final = bar
 [file mod2.py]
@@ -8909,13 +8907,13 @@ reveal_type(foo)
 from mod2 import bar
 foo = bar()
 [file mod2.py]
-from typing_extensions import Literal
+from typing import Literal
 def bar() -> Literal["foo"]: pass
 [file mod2.py.2]
-from typing_extensions import Literal
+from typing import Literal
 def bar() -> Literal[u"foo"]: pass
 [file mod2.py.3]
-from typing_extensions import Literal
+from typing import Literal
 def bar() -> Literal[b"foo"]: pass
 [builtins fixtures/tuple.pyi]
 [out]

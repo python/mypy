@@ -1442,8 +1442,7 @@ def f(value: Literal[1] | Literal[2]) -> int:
 [typing fixtures/typing-medium.pyi]
 
 [case testMatchSequencePatternNegativeNarrowing]
-from typing import Union, Sequence, Tuple
-from typing_extensions import Literal
+from typing import Literal, Union, Sequence, Tuple
 
 m1: Sequence[int | str]
 
@@ -2476,7 +2475,7 @@ def nested_in_dict(d: dict[str, Any]) -> int:
 
 [case testMatchRebindsOuterFunctionName]
 # flags: --warn-unreachable
-from typing_extensions import Literal
+from typing import Literal
 
 def x() -> tuple[Literal["test"]]: ...
 

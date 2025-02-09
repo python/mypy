@@ -385,8 +385,7 @@ reveal_type(z2)  # E: Name "z2" is not defined  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testWalrusConditionalTypeBinder]
-from typing import Tuple, Union
-from typing_extensions import Literal
+from typing import Literal, Tuple, Union
 
 class Good:
     @property
@@ -469,8 +468,7 @@ reveal_type(x)  # N: Revealed type is "Literal[0]"
 
 [case testWalrusAssignmentAndConditionScopeForProperty]
 # flags: --warn-unreachable
-
-from typing_extensions import Literal
+from typing import Literal
 
 class PropertyWrapper:
     @property
@@ -497,8 +495,7 @@ reveal_type(y)  # N: Revealed type is "Literal[False]"
 
 [case testWalrusAssignmentAndConditionScopeForFunction]
 # flags: --warn-unreachable
-
-from typing_extensions import Literal
+from typing import Literal
 
 def f() -> str: ...
 

@@ -1651,8 +1651,8 @@ f: m.F
 reveal_type(f)
 
 [file m.pyi]
-from typing import Type, Callable
-from typing_extensions import Literal, TypeAlias
+from typing import Type, Callable, Literal
+from typing_extensions import TypeAlias
 
 Foo = Literal[1, 2]
 reveal_type(Foo)
