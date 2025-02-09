@@ -2583,3 +2583,19 @@ class C(Generic[Unpack[Ts]]):
 c: C[Unpack[tuple[int, ...]]]
 reveal_type(c.foo)  # N: Revealed type is "def (*args: builtins.int)"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleJoinInstanceTypeVar]
+from typing import Any, Unpack, TypeVarTuple, TypeVar
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+
+def join(x: T, y: T) -> T: ...
+def test(xs: tuple[Unpack[Ts]], xsi: tuple[int, Unpack[Ts]]) -> None:
+    a: tuple[Any, ...]
+    reveal_type(join(xs, a))  # N: Revealed type is "builtins.tuple[Any, ...]"
+    aa: tuple[Unpack[tuple[Any, ...]]]
+    reveal_type(join(xs, aa))  # N: Revealed type is "builtins.tuple[Any, ...]"
+    ai: tuple[int, Unpack[tuple[Any, ...]]]
+    reveal_type(join(xsi, ai))  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[Any, ...]]]"
+[builtins fixtures/tuple.pyi]

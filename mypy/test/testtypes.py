@@ -1021,7 +1021,7 @@ class JoinSuite(Suite):
         self.assert_join(
             self.tuple(self.fx.a, self.fx.a),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(self.fx.a, self.fx.a),
@@ -1049,12 +1049,12 @@ class JoinSuite(Suite):
             self.tuple(
                 self.fx.a, UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a
             ),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a),

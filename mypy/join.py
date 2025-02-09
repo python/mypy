@@ -299,6 +299,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
         if self.s == t:
             return t
+        if isinstance(self.s, Instance) and is_subtype(t.upper_bound, self.s):
+            # TODO: should we do this more generally and for all TypeVarLikeTypes?
+            return self.s
         return self.default(self.s)
 
     def visit_unpack_type(self, t: UnpackType) -> UnpackType:
@@ -350,6 +353,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return join_types(t, self.s)
         elif isinstance(self.s, LiteralType):
             return join_types(t, self.s)
+        elif isinstance(self.s, TypeVarTupleType) and is_subtype(self.s.upper_bound, t):
+            return t
         else:
             return self.default(self.s)
 
@@ -562,6 +567,10 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             assert isinstance(fallback, Instance)
             items = self.join_tuples(self.s, t)
             if items is not None:
+                if len(items) == 1 and isinstance(item := items[0], UnpackType):
+                    if isinstance(unpacked := get_proper_type(item.type), Instance):
+                        # Avoid double-wrapping tuple[*tuple[X, ...]]
+                        return unpacked
                 return TupleType(items, fallback)
             else:
                 # TODO: should this be a default fallback behaviour like for meet?
