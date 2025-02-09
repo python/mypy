@@ -2537,21 +2537,21 @@ reveal_type(command)  # N: Revealed type is "__main__.Built[()]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleSelfMappedPrefix]
-from typing import TypeVarTuple, Generic
+from typing import TypeVarTuple, Generic, Unpack
 
 Ts = TypeVarTuple("Ts")
-class Base(Generic[*Ts]):
-    attr: tuple[*Ts]
+class Base(Generic[Unpack[Ts]]):
+    attr: tuple[Unpack[Ts]]
 
     @property
-    def prop(self) -> tuple[*Ts]:
+    def prop(self) -> tuple[Unpack[Ts]]:
         return self.attr
 
-    def meth(self) -> tuple[*Ts]:
+    def meth(self) -> tuple[Unpack[Ts]]:
         return self.attr
 
 Ss = TypeVarTuple("Ss")
-class Derived(Base[str, *Ss]):
+class Derived(Base[str, Unpack[Ss]]):
     def test(self) -> None:
         reveal_type(self.attr)  # N: Revealed type is "Tuple[builtins.str, Unpack[Ss`1]]"
         reveal_type(self.prop)  # N: Revealed type is "Tuple[builtins.str, Unpack[Ss`1]]"
