@@ -797,5 +797,56 @@ def g(x: int) -> int: ...
 @overload
 def g(x: str) -> str: ...
 def g(x: Union[int, str]) -> Union[int, str]: ...
+[builtins fixtures/tuple.pyi]
 
+[case testDeprecatedExclude]
+# flags: --enable-error-code=deprecated --deprecated-calls-exclude=m.C --deprecated-calls-exclude=m.D --deprecated-calls-exclude=m.E.f --deprecated-calls-exclude=m.E.g --deprecated-calls-exclude=m.E.__add__
+from m import C, D, E
+
+[file m.py]
+from typing import Union, overload
+from typing_extensions import deprecated
+
+@deprecated("use C2 instead")
+class C:
+    def __init__(self) -> None: ...
+
+c: C
+C()
+C.__init__(c)
+
+class D:
+    @deprecated("use D.g instead")
+    def f(self) -> None: ...
+
+    def g(self) -> None: ...
+
+D.f
+D().f
+D().f()
+
+class E:
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    @deprecated("use E.f2 instead")
+    def f(self, x: Union[int, str]) -> Union[int, str]: ...
+
+    @deprecated("use E.h instead")
+    def g(self) -> None: ...
+
+    @overload
+    @deprecated("no A + int")
+    def __add__(self, v: int) -> None: ...
+    @overload
+    def __add__(self, v: str) -> None: ...
+    def __add__(self, v: Union[int, str]) -> None: ...
+
+E().f(1)
+E().f("x")
+
+e = E()
+e.g()
+e + 1
 [builtins fixtures/tuple.pyi]

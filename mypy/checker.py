@@ -7865,6 +7865,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo))
             and ((deprecated := node.deprecated) is not None)
             and not self.is_typeshed_stub
+            and not any(
+                node.fullname == p or node.fullname.startswith(f"{p}.")
+                for p in self.options.deprecated_calls_exclude
+            )
         ):
             warn = self.msg.note if self.options.report_deprecated_as_note else self.msg.fail
             warn(deprecated, context, code=codes.DEPRECATED)
