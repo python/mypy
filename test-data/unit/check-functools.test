@@ -640,3 +640,20 @@ hp = partial(h, 1)
 reveal_type(hp(1))  # N: Revealed type is "builtins.int"
 hp("a")  # E: Argument 1 to "h" has incompatible type "str"; expected "int"
 [builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialOverloadedCallableProtocol]
+from functools import partial
+from typing import Callable, Protocol, overload
+
+class P(Protocol):
+    @overload
+    def __call__(self, x: int) -> int: ...
+    @overload
+    def __call__(self, x: str) -> str: ...
+
+def f(x: P):
+    reveal_type(partial(x, 1)())  # N: Revealed type is "builtins.int"
+
+    # TODO: but this is incorrect, predating the functools.partial plugin
+    reveal_type(partial(x, "a")())  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
