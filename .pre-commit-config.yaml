@@ -21,6 +21,13 @@ repos:
       - id: check-github-workflows
       - id: check-github-actions
       - id: check-readthedocs
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        args:
+          - --ignore-words-list=HAX,ccompiler,ot,statics,whet,zar
+        exclude: ^(mypy/test/|mypy/typeshed/|mypyc/test-data/|test-data/).+$
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.7
     hooks:

@@ -557,7 +557,7 @@ class ASTConverter:
         ast3.Is: "is",
         ast3.IsNot: "is not",
         ast3.In: "in",
-        ast3.NotIn: "not in",
+        ast3.NotIn: "not in",  # codespell:ignore notin
     }
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
@@ -2169,7 +2169,7 @@ class FindAttributeAssign(TraverserVisitor):
 
 
 class FindYield(TraverserVisitor):
-    """Check if an AST contains yields or yield froms."""
+    """Check if an AST contains yields or yield froms."""  # codespell:ignore froms
 
     def __init__(self) -> None:
         self.found = False
