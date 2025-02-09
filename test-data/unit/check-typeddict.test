@@ -4118,3 +4118,23 @@ Func = TypedDict('Func', {
 })
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictNestedInClassAndInherited]
+from typing_extensions import TypedDict
+
+class Base:
+    class Params(TypedDict):
+        name: str
+
+class Derived(Base):
+    pass
+
+class DerivedOverride(Base):
+    class Params(Base.Params):
+        pass
+
+Base.Params(name="Robert")
+Derived.Params(name="Robert")
+DerivedOverride.Params(name="Robert")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

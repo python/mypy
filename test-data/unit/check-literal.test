@@ -947,7 +947,7 @@ a: List[Literal[1]]
 b: List[Literal[1, 2, 3]]
 
 foo(a)  # E: Argument 1 to "foo" has incompatible type "List[Literal[1]]"; expected "List[Literal[1, 2]]" \
-        # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+        # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
         # N: Consider using "Sequence" instead, which is covariant
 foo(b)  # E: Argument 1 to "foo" has incompatible type "List[Literal[1, 2, 3]]"; expected "List[Literal[1, 2]]"
 bar(a)
