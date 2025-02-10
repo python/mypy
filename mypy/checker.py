@@ -618,6 +618,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 partials_old = partials_new
                 widened_old = widened_new
                 iter += 1
+                if iter == 20:
+                    raise RuntimeError(f"Too many iterations when checking a loop")
 
             # If necessary, reset the modified options and make up for the postponed error checks:
             self.options.warn_unreachable = warn_unreachable
