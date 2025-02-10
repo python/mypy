@@ -7,7 +7,7 @@ from typing import NamedTuple, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
-from mypy.literals import Key, literal, literal_hash, subkeys, is_member_literal_hash
+from mypy.literals import Key, literal, literal_hash, subkeys, extract_var_from_literal_hash
 from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.typeops import make_simplified_union
@@ -229,7 +229,7 @@ class ConditionalTypeBinder:
         for key in keys:
             current_value = self._get(key)
             resulting_values = [f.types.get(key, current_value) for f in frames]
-            old_semantics = not self.bind_all or is_member_literal_hash(key)
+            old_semantics = not self.bind_all or extract_var_from_literal_hash(key) is None
             if old_semantics and any(x is None for x in resulting_values):
                 # We didn't know anything about key before
                 # (current_value must be None), and we still don't

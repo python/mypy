@@ -163,10 +163,6 @@ def extract_var_from_literal_hash(key: Key) -> Var | None:
     return None
 
 
-def is_member_literal_hash(key: Key) -> bool:
-    return key[0] == "Member"
-
-
 class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_int_expr(self, e: IntExpr) -> Key:
         return ("Literal", e.value)

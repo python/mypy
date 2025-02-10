@@ -797,6 +797,16 @@ def f1() -> None:
     reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int]"
 [builtins fixtures/for.pyi]
 
+[case testRedefine2ForLoop2]
+# flags: --allow-redefinition2 --local-partial-types
+from typing import Any
+
+def f(a: Any) -> None:
+    for d in a:
+        if isinstance(d["x"], str):
+            return
+[builtins fixtures/isinstance.pyi]
+
 [case testRedefine2ForStatementIndexNarrowing]
 # flags: --allow-redefinition2 --local-partial-types
 from typing_extensions import TypedDict
