@@ -2066,8 +2066,7 @@ v = {bad2: 2}  # E: Missing key "num" for TypedDict "Value" \
 
 [case testOperatorContainsNarrowsTypedDicts_unionWithList]
 from __future__ import annotations
-from typing import assert_type, TypedDict, Union
-from typing_extensions import final
+from typing import assert_type, final, TypedDict, Union
 
 @final
 class D(TypedDict):
@@ -2084,12 +2083,11 @@ else:
     assert_type(d_or_list, list[str])
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_total]
 from __future__ import annotations
-from typing import assert_type, Literal, TypedDict, TypeVar, Union
-from typing_extensions import final
+from typing import assert_type, final, Literal, TypedDict, TypeVar, Union
 
 @final
 class D1(TypedDict):
@@ -2135,13 +2133,12 @@ def f(arg: TD) -> None:
 
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_final]
 # flags: --warn-unreachable
 from __future__ import annotations
-from typing import assert_type, TypedDict, Union
-from typing_extensions import final
+from typing import assert_type, final, TypedDict, Union
 
 @final
 class DFinal(TypedDict):
@@ -2179,12 +2176,11 @@ else:
     assert_type(d_union, DNotFinal)
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse]
 from __future__ import annotations
-from typing import assert_type, Literal, TypedDict, Union
-from typing_extensions import final
+from typing import assert_type, final, Literal, TypedDict, Union
 
 @final
 class DTotal(TypedDict):
@@ -2215,12 +2211,12 @@ else:
     assert_type(d, Union[DTotal, DNotTotal])
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired]
 from __future__ import annotations
-from typing import assert_type, Required, NotRequired, TypedDict, Union
-from typing_extensions import final
+from typing import assert_type, final, TypedDict, Union
+from typing_extensions import Required, NotRequired
 
 @final
 class D1(TypedDict):
@@ -2247,11 +2243,10 @@ else:
     assert_type(d, Union[D1, D2])
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testCannotSubclassFinalTypedDict]
-from typing import TypedDict
-from typing_extensions import final
+from typing import TypedDict, final
 
 @final
 class DummyTypedDict(TypedDict):
@@ -2263,11 +2258,10 @@ class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedD
     pass
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testCannotSubclassFinalTypedDictWithForwardDeclarations]
-from typing import TypedDict
-from typing_extensions import final
+from typing import TypedDict, final
 
 @final
 class DummyTypedDict(TypedDict):
@@ -2279,7 +2273,7 @@ class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedD
 class ForwardDeclared: pass
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypedDictTypeNarrowingWithFinalKey]
 from typing import Final, Optional, TypedDict

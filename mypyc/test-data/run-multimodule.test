@@ -155,7 +155,7 @@ def f(c: C) -> int:
     c = cast(C, o)
     return a_global + c.x + c.f() + d.x + d.f() + 1
 [file other.py]
-from typing_extensions import Final
+from typing import Final
 a_global: Final = int('5')
 
 class C:
@@ -735,11 +735,11 @@ def foo() -> int:
     return X
 
 [file other.py]
-from typing_extensions import Final
+from typing import Final
 X: Final = 10
 
 [file other.py.2]
-from typing_extensions import Final
+from typing import Final
 X: Final = 20
 
 [file driver.py]

@@ -8889,13 +8889,13 @@ foo: Final = bar
 [file mod2.py]
 from mod3 import qux as bar
 [file mod3.py]
-from typing_extensions import Final
+from typing import Final
 qux: Final = 3
 [file mod3.py.2]
-from typing_extensions import Final
+from typing import Final
 qux: Final = 4
 [file mod3.py.3]
-from typing_extensions import Final
+from typing import Final
 qux: Final[int] = 4
 [builtins fixtures/tuple.pyi]
 [out]
