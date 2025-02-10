@@ -745,7 +745,8 @@ bar(*bad2)  # E: Expected iterable as variadic argument
 -- Keyword arguments unpacking
 
 [case testUnpackKwargsReveal]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -754,9 +755,11 @@ def foo(arg: bool, **kwargs: Unpack[Person]) -> None: ...
 
 reveal_type(foo)  # N: Revealed type is "def (arg: builtins.bool, **kwargs: Unpack[TypedDict('__main__.Person', {'name': builtins.str, 'age': builtins.int})])"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackOutsideOfKwargs]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 class Person(TypedDict):
     name: str
     age: int
@@ -768,6 +771,7 @@ def bar(x: int, *args: Unpack[Person]) -> None:  # E: "Person" cannot be unpacke
 def baz(**kwargs: Unpack[Person]) -> None:  # OK
     ...
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackWithoutTypedDict]
 from typing_extensions import Unpack
@@ -777,7 +781,8 @@ def foo(**kwargs: Unpack[dict]) -> None:  # E: Unpack item in ** argument must b
 [builtins fixtures/dict.pyi]
 
 [case testUnpackWithDuplicateKeywords]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -785,10 +790,11 @@ class Person(TypedDict):
 def foo(name: str, **kwargs: Unpack[Person]) -> None:  # E: Overlap between argument names and ** TypedDict items: "name"
     ...
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackWithDuplicateKeywordKwargs]
-from typing_extensions import Unpack, TypedDict
-from typing import Dict, List
+from typing_extensions import Unpack
+from typing import Dict, List, TypedDict
 
 class Spec(TypedDict):
     args: List[int]
@@ -797,9 +803,11 @@ def foo(**kwargs: Unpack[Spec]) -> None:  # Allowed
     ...
 foo(args=[1], kwargs={"2": 3})  # E: Dict entry 0 has incompatible type "str": "int"; expected "int": "int"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackKwargsNonIdentifier]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 Weird = TypedDict("Weird", {"@": int})
 
@@ -808,9 +816,11 @@ def foo(**kwargs: Unpack[Weird]) -> None:
 foo(**{"@": 42})
 foo(**{"no": "way"})  # E: Argument 1 to "foo" has incompatible type "**Dict[str, str]"; expected "int"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackKwargsEmpty]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 Empty = TypedDict("Empty", {})
 
@@ -819,9 +829,11 @@ def foo(**kwargs: Unpack[Empty]) -> None:  # N: "foo" defined here
 foo()
 foo(x=1)  # E: Unexpected keyword argument "x" for "foo"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackTypedDictTotality]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Circle(TypedDict, total=True):
     radius: int
@@ -841,9 +853,11 @@ def bar(**kwargs: Unpack[Square]):
     ...
 bar(side=12)
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackUnexpectedKeyword]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict, total=False):
     name: str
@@ -854,9 +868,11 @@ def foo(**kwargs: Unpack[Person]) -> None:  # N: "foo" defined here
 foo(name='John', age=42, department='Sales')  # E: Unexpected keyword argument "department" for "foo"
 foo(name='Jennifer', age=38)
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackKeywordTypes]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -867,9 +883,11 @@ def foo(**kwargs: Unpack[Person]):
 foo(name='John', age='42')  # E: Argument "age" to "foo" has incompatible type "str"; expected "int"
 foo(name='Jennifer', age=38)
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackKeywordTypesTypedDict]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -884,9 +902,11 @@ def foo(**kwargs: Unpack[Person]) -> None:
 lp = LegacyPerson(name="test", age="42")
 foo(**lp)  # E: Argument "age" to "foo" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testFunctionBodyWithUnpackedKwargs]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -898,9 +918,11 @@ def foo(**kwargs: Unpack[Person]) -> int:
     department: str = kwargs['department']  # E: TypedDict "Person" has no key "department"
     return kwargs['age']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackKwargsOverrides]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -915,9 +937,11 @@ class SubBad(Base):
     # N: This violates the Liskov substitution principle \
     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackKwargsOverridesTypedDict]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -940,10 +964,11 @@ class SubBad(Base):
     # N:      Subclass: \
     # N:          def foo(self, *, baz: int) -> None
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackKwargsGeneric]
-from typing import Generic, TypeVar
-from typing_extensions import Unpack, TypedDict
+from typing import Generic, TypedDict, TypeVar
+from typing_extensions import Unpack
 
 T = TypeVar("T")
 class Person(TypedDict, Generic[T]):
@@ -953,10 +978,11 @@ class Person(TypedDict, Generic[T]):
 def foo(**kwargs: Unpack[Person[T]]) -> T: ...
 reveal_type(foo(name="test", value=42))  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackKwargsInference]
-from typing import Generic, TypeVar, Protocol
-from typing_extensions import Unpack, TypedDict
+from typing import Generic, TypedDict, TypeVar, Protocol
+from typing_extensions import Unpack
 
 T_contra = TypeVar("T_contra", contravariant=True)
 class CBPerson(Protocol[T_contra]):
@@ -972,10 +998,11 @@ def test(cb: CBPerson[T]) -> T: ...
 def foo(*, name: str, value: int) -> None: ...
 reveal_type(test(foo))  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackKwargsOverload]
-from typing import Any, overload
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict, Any, overload
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -994,9 +1021,11 @@ def foo(**kwargs: Any) -> Any:
 
 reveal_type(foo(sort="test", taste=999))  # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackKwargsJoin]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -1008,10 +1037,11 @@ def bar(**kwargs: Unpack[Person]) -> None: ...
 reveal_type([foo, bar])  # N: Revealed type is "builtins.list[def (*, name: builtins.str, age: builtins.int)]"
 reveal_type([bar, foo])  # N: Revealed type is "builtins.list[def (*, name: builtins.str, age: builtins.int)]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackKwargsParamSpec]
-from typing import Callable, Any, TypeVar, List
-from typing_extensions import ParamSpec, Unpack, TypedDict
+from typing import Callable, Any, TypedDict, TypeVar, List
+from typing_extensions import ParamSpec, Unpack
 
 class Person(TypedDict):
     name: str
@@ -1027,10 +1057,11 @@ def g(**kwargs: Unpack[Person]) -> int: ...
 
 reveal_type(g)  # N: Revealed type is "def (*, name: builtins.str, age: builtins.int) -> builtins.list[builtins.int]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackGenericTypedDictImplicitAnyEnabled]
-from typing import Generic, TypeVar
-from typing_extensions import Unpack, TypedDict
+from typing import Generic, TypedDict, TypeVar
+from typing_extensions import Unpack
 
 T = TypeVar("T")
 class TD(TypedDict, Generic[T]):
@@ -1041,11 +1072,12 @@ def foo(**kwds: Unpack[TD]) -> None: ...  # Same as `TD[Any]`
 foo(key="yes", value=42)
 foo(key="yes", value="ok")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackGenericTypedDictImplicitAnyDisabled]
 # flags: --disallow-any-generics
-from typing import Generic, TypeVar
-from typing_extensions import Unpack, TypedDict
+from typing import Generic, TypedDict, TypeVar
+from typing_extensions import Unpack
 
 T = TypeVar("T")
 class TD(TypedDict, Generic[T]):
@@ -1056,6 +1088,7 @@ def foo(**kwds: Unpack[TD]) -> None: ...  # E: Missing type parameters for gener
 foo(key="yes", value=42)
 foo(key="yes", value="ok")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackNoCrashOnEmpty]
 from typing_extensions import Unpack
@@ -1067,8 +1100,8 @@ class D:
 [builtins fixtures/dict.pyi]
 
 [case testUnpackInCallableType]
-from typing import Callable
-from typing_extensions import Unpack, TypedDict
+from typing import Callable, TypedDict
+from typing_extensions import Unpack
 
 class TD(TypedDict):
     key: str
@@ -1080,3 +1113,4 @@ foo(key="yes", value="ok")
 
 bad: Callable[[*TD], None]  # E: "TD" cannot be unpacked (must be tuple or TypeVarTuple)
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

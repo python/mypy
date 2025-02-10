@@ -2691,8 +2691,7 @@ reveal_type(f(**{'a': 4, 'b': 4, 'c': 4}))   # N: Revealed type is "builtins.tup
 [builtins fixtures/dict.pyi]
 
 [case testOverloadKwargsSelectionWithTypedDict]
-from typing import overload, Tuple
-from typing_extensions import TypedDict
+from typing import overload, Tuple, TypedDict
 @overload
 def f(*, x: int) -> Tuple[int]: ...
 @overload
@@ -2713,6 +2712,7 @@ reveal_type(f(**a))  # N: Revealed type is "Tuple[builtins.int]"
 reveal_type(f(**b))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
 reveal_type(f(**c))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testOverloadVarargsAndKwargsSelection]
 from typing import overload, Any, Tuple, Dict

@@ -78,7 +78,7 @@ assert hasattr(c, 'x')
 
 [case testTypedDictWithFields]
 import collections
-from typing_extensions import TypedDict
+from typing import TypedDict
 class C(TypedDict):
     x: collections.deque
 [file driver.py]
@@ -86,6 +86,7 @@ from native import C
 from collections import deque
 
 print(C.__annotations__["x"] is deque)
+[typing fixtures/typing-full.pyi]
 [out]
 True
 

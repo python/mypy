@@ -3710,17 +3710,20 @@ b.py:4: error: Incompatible types in assignment (expression has type "str", vari
 [case testTypedDictUpdateReadOnly]
 import b
 [file a.py]
-from typing_extensions import TypedDict, ReadOnly
+from typing import TypedDict
+from typing_extensions import ReadOnly
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(x=1, y=2)
 [file a.py.2]
-from typing_extensions import TypedDict, ReadOnly
+from typing import TypedDict
+from typing_extensions import ReadOnly
 class Point(TypedDict):
     x: int
     y: ReadOnly[int]
 p = Point(x=1, y=2)
 [file a.py.3]
-from typing_extensions import TypedDict, ReadOnly
+from typing import TypedDict
+from typing_extensions import ReadOnly
 Point = TypedDict('Point', {'x': ReadOnly[int], 'y': int})
 p = Point(x=1, y=2)
 [file b.py]
@@ -3729,6 +3732,7 @@ def foo(x: Point) -> None:
     x['x'] = 1
     x['y'] = 2
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 b.py:4: error: ReadOnly TypedDict key "y" TypedDict is mutated
@@ -10060,14 +10064,14 @@ main:4: error: "C" expects no type arguments, but 2 given
 [case testUnpackKwargsUpdateFine]
 import m
 [file shared.py]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class Person(TypedDict):
     name: str
     age: int
 
 [file shared.py.2]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class Person(TypedDict):
     name: str
@@ -10084,6 +10088,7 @@ from lib import foo
 foo(name='Jennifer', age=38)
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 m.py:2: error: Argument "age" to "foo" has incompatible type "int"; expected "str"
@@ -10389,7 +10394,7 @@ import n
 import m
 x: m.TD
 [file m.py]
-from typing_extensions import TypedDict
+from typing import TypedDict
 from f import A
 
 class TD(TypedDict):
@@ -10402,6 +10407,7 @@ A = int
 [file f.py.2]
 A = str
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 m.py:5: error: Invalid statement in TypedDict definition; expected "field_name: field_type"
 ==

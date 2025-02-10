@@ -1,7 +1,6 @@
 [case testNarrowingParentWithStrsBasic]
 from dataclasses import dataclass
-from typing import Literal, NamedTuple, Tuple, Union
-from typing_extensions import TypedDict
+from typing import Literal, NamedTuple, Tuple, TypedDict, Union
 
 class Object1:
     key: Literal["A"]
@@ -80,12 +79,12 @@ if x5["key"] == "A":
 else:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict2', {'key': Literal['B'], 'foo': builtins.str})"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentWithEnumsBasic]
 from enum import Enum
 from dataclasses import dataclass
-from typing import Literal, NamedTuple, Tuple, Union
-from typing_extensions import TypedDict
+from typing import Literal, NamedTuple, Tuple, TypedDict, Union
 
 class Key(Enum):
     A = 1
@@ -168,12 +167,12 @@ if x5["key"] is Key.A:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key': Literal[__main__.Key.A], 'foo': builtins.int})"
 else:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict2', {'key': Literal[__main__.Key.B], 'foo': builtins.str})"
-[builtins fixtures/narrowing.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentWithIsInstanceBasic]
 from dataclasses import dataclass
-from typing import NamedTuple, Tuple, Union
-from typing_extensions import TypedDict
+from typing import NamedTuple, Tuple, TypedDict, Union
 
 class Object1:
     key: int
@@ -233,7 +232,8 @@ if isinstance(x5["key"], int):
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key': builtins.int})"
 else:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict2', {'key': builtins.str})"
-[builtins fixtures/narrowing.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentMultipleKeys]
 # flags: --warn-unreachable
@@ -270,8 +270,7 @@ else:
 
 [case testNarrowingTypedDictParentMultipleKeys]
 # flags: --warn-unreachable
-from typing import Literal, Union
-from typing_extensions import TypedDict
+from typing import Literal, TypedDict, Union
 
 class TypedDict1(TypedDict):
     key: Literal['A', 'C']
@@ -294,11 +293,11 @@ if x['key'] == 'D':
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingPartialTypedDictParentMultipleKeys]
 # flags: --warn-unreachable
-from typing import Literal, Union
-from typing_extensions import TypedDict
+from typing import Literal, TypedDict, Union
 
 class TypedDict1(TypedDict, total=False):
     key: Literal['A', 'C']
@@ -321,10 +320,10 @@ if x['key'] == 'D':
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingNestedTypedDicts]
-from typing import Literal, Union
-from typing_extensions import TypedDict
+from typing import Literal, TypedDict, Union
 
 class A(TypedDict):
     key: Literal['A']
@@ -349,6 +348,7 @@ if unknown['inner']['key'] == 'C':
     reveal_type(unknown)            # N: Revealed type is "TypedDict('__main__.Y', {'inner': Union[TypedDict('__main__.B', {'key': Literal['B']}), TypedDict('__main__.C', {'key': Literal['C']})]})"
     reveal_type(unknown['inner'])   # N: Revealed type is "TypedDict('__main__.C', {'key': Literal['C']})"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentWithMultipleParents]
 from enum import Enum
@@ -396,8 +396,7 @@ else:
 
 [case testNarrowingParentWithParentMixtures]
 from enum import Enum
-from typing import Literal, Union, NamedTuple
-from typing_extensions import TypedDict
+from typing import Literal, Union, NamedTuple, TypedDict
 
 class Key(Enum):
     A = 1
@@ -575,8 +574,7 @@ else:
 
 [case testNarrowingParentsHierarchyTypedDict]
 # flags: --warn-unreachable
-from typing import Literal, Union
-from typing_extensions import TypedDict
+from typing import Literal, TypedDict, Union
 from enum import Enum
 
 class Key(Enum):
@@ -613,12 +611,12 @@ if y["model"]["key"] is Key.C:
 else:
     reveal_type(y)              # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]}), 'bar': builtins.str})]"
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingParentsHierarchyTypedDictWithStr]
 # flags: --warn-unreachable
-from typing import Literal, Union
-from typing_extensions import TypedDict
+from typing import Literal, TypedDict, Union
 
 class Parent1(TypedDict):
     model: Model1
@@ -650,6 +648,7 @@ else:
     reveal_type(y)              # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal['A']}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal['B']}), 'bar': builtins.str})]"
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal['A']}), TypedDict('__main__.Model2', {'key': Literal['B']})]"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingExprPropagation]
 from typing import Literal, Union
@@ -1232,8 +1231,7 @@ reveal_type(x) # N: Revealed type is "builtins.bool"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypedDictUsingEnumLiteral]
-from typing import Literal, Union
-from typing_extensions import TypedDict
+from typing import Literal, TypedDict, Union
 from enum import Enum
 
 class E(Enum):
@@ -1253,6 +1251,7 @@ def f(d: Union[Foo, Bar]) -> None:
     d['x']
     reveal_type(d)  # N: Revealed type is "TypedDict('__main__.Foo', {'tag': Literal[__main__.E.FOO], 'x': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingUsingMetaclass]
 from typing import Type
@@ -1293,8 +1292,7 @@ def f(t: Type[T], a: A, b: B) -> None:
         reveal_type(b)  # N: Revealed type is "__main__.B"
 
 [case testNarrowingNestedUnionOfTypedDicts]
-from typing import Literal, Union
-from typing_extensions import TypedDict
+from typing import Literal, TypedDict, Union
 
 class A(TypedDict):
     tag: Literal["A"]
@@ -1318,9 +1316,8 @@ elif abc["tag"] == "C":
     reveal_type(abc) # N: Revealed type is "TypedDict('__main__.C', {'tag': Literal['C'], 'c': builtins.int})"
 else:
     reveal_type(abc) # N: Revealed type is "TypedDict('__main__.B', {'tag': Literal['B'], 'b': builtins.int})"
-
 [builtins fixtures/primitives.pyi]
-
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingRuntimeCover]
 from typing import Dict, List, Union

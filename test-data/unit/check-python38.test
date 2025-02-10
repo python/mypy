@@ -675,7 +675,8 @@ main:16: note:     def foo(cls, float, /) -> Any
 main:16: note:     def foo(cls, a: str) -> Any
 
 [case testUnpackWithDuplicateNamePositionalOnly]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -683,6 +684,7 @@ class Person(TypedDict):
 def foo(name: str, /, **kwargs: Unpack[Person]) -> None:  # Allowed
     ...
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testPossiblyUndefinedWithAssignmentExpr]
 # flags: --enable-error-code possibly-undefined

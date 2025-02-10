@@ -542,7 +542,7 @@ x: Any
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallAccessorsIndices]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class User(TypedDict):
     id: int
@@ -554,6 +554,7 @@ u: User
 def f() -> str: ...
 '{[f()]}'.format(u)  # E: Invalid index expression in format field accessor "[f()]"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testFormatCallFlags]
 from typing import Union

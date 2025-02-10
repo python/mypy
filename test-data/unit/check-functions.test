@@ -3399,8 +3399,7 @@ class Bar(Foo):
 [builtins fixtures/property.pyi]
 
 [case testNoCrashOnUnpackOverride]
-from typing import Unpack
-from typing_extensions import TypedDict
+from typing import TypedDict, Unpack
 
 class Params(TypedDict):
     x: int
@@ -3419,9 +3418,9 @@ class C(B):
                                                       # N:          def meth(*, x: int, y: str) -> None \
                                                       # N:      Subclass: \
                                                       # N:          def meth(*, x: int, y: int) -> None
-
         ...
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testOverrideErrorLocationNamed]
 class B:

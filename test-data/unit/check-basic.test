@@ -396,8 +396,7 @@ y = x # E: Incompatible types in assignment (expression has type "Dict[str, int]
 import b
 
 [file a.py]
-from typing import NamedTuple
-from typing_extensions import TypedDict
+from typing import NamedTuple, TypedDict
 from enum import Enum
 class A: pass
 N = NamedTuple('N', [('x', int)])
@@ -406,8 +405,8 @@ class B(Enum):
     b = 10
 
 [file b.py]
-from typing import List, Literal, Optional, Union, Sequence, NamedTuple, Tuple, Type
-from typing_extensions import Final, TypedDict
+from typing import List, Literal, Optional, Union, Sequence, NamedTuple, Tuple, Type, TypedDict
+from typing_extensions import Final
 from enum import Enum
 import a
 class A: pass
@@ -464,8 +463,8 @@ def typeddict() -> Sequence[D]:
 
 a = (a.A(), A())
 a.x  # E: "Tuple[a.A, b.A]" has no attribute "x"
-
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testReturnAnyFromFunctionDeclaredToReturnObject]
 # flags: --warn-return-any

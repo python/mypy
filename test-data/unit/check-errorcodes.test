@@ -449,7 +449,7 @@ y: Dict[int, int] = {1: ''}  # E: Dict entry 0 has incompatible type "int": "str
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeTypedDict]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class D(TypedDict):
     x: int
 class E(TypedDict):
@@ -472,7 +472,7 @@ a['y']  # E: TypedDict "D" has no key "y"  [typeddict-item]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testErrorCodeTypedDictNoteIgnore]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class A(TypedDict):
     one_commonpart: int
     two_commonparts: int
@@ -484,7 +484,7 @@ not_exist = a['not_exist'] # type: ignore[typeddict-item]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testErrorCodeTypedDictSubCodeIgnore]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class D(TypedDict):
     x: int
 d: D = {'x': 1, 'y': 2}  # type: ignore[typeddict-item]
@@ -831,10 +831,11 @@ Foo = NamedTuple("Bar", [])  # E: First argument to namedtuple() should be "Foo"
 [builtins fixtures/tuple.pyi]
 
 [case testTypedDictNameMismatch]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTruthyBool]
 # flags: --enable-error-code truthy-bool --no-local-partial-types
@@ -993,7 +994,7 @@ reveal_type(t)  # N: Revealed type is "__main__.TensorType"
 [builtins fixtures/tuple.pyi]
 
 [case testNoteAboutChangedTypedDictErrorCode]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class D(TypedDict):
     x: int
 
