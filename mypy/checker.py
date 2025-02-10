@@ -1388,6 +1388,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 new_frame = self.binder.push_frame()
                             new_frame.types[key] = narrowed_type
                             self.binder.declarations[key] = old_binder.declarations[key]
+
+                if self.options.allow_redefinition2 and not self.is_stub:
+                    # Add formal argument types to the binder.
+                    for arg in defn.arguments:
+                        # TODO: Add these directly using a fast path
+                        n = NameExpr("")
+                        v = arg.variable
+                        n.node = v
+                        self.binder.assign_type(n, v.type, v.type)
+
                 with self.scope.push_function(defn):
                     # We suppress reachability warnings for empty generator functions
                     # (return; yield) which have a "yield" that's unreachable by definition
@@ -3333,6 +3343,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             and not self.options.allow_redefinition2 # TODO WHAT
                         ):
                             lvalue.node.type = remove_instance_last_known_values(lvalue_type)
+                elif self.options.allow_redefinition2:
+                    self.binder.assign_type(lvalue, lvalue_type, lvalue_type)
 
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)

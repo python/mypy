@@ -118,15 +118,25 @@ def f2() -> None:
 
 reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
-[case testRedefine2DefaultArgument]
+[case testRedefine2ParameterTypes]
 # flags: --allow-redefinition2 --local-partial-types
 from typing import Optional
 
-def f(x: Optional[str] = None) -> None:
+def f1(x: Optional[str] = None) -> None:
     reveal_type(x) # N: Revealed type is "Union[builtins.str, None]"
     if x is None:
         x = ""
     reveal_type(x) # N: Revealed type is "builtins.str"
+
+def f2(*args: str, **kwargs: int) -> None:
+     reveal_type(args) # N: Revealed type is "builtins.tuple[builtins.str, ...]"
+     reveal_type(kwargs) # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+
+class C:
+    def m(self) -> None:
+        reveal_type(self) # N: Revealed type is "__main__.C"
+[builtins fixtures/dict.pyi]
+
 
 [case testRedefine2ClassBody]
 # flags: --allow-redefinition2 --local-partial-types
@@ -853,3 +863,28 @@ def f3() -> None:
         for x in [1]:
             x = ""
     reveal_type(x) # N: Revealed type is "builtins.str"
+
+[case testRedefine2VariableAnnotatedInLoop]
+# flags: --allow-redefinition2 --local-partial-types --enable-error-code=redundant-expr
+from typing import Optional
+
+def f1() -> None:
+    e: Optional[str] = None
+    for x in ["a"]:
+        if e is None and int():
+            e = x
+            continue
+        elif e is not None and int():
+            break
+        reveal_type(e) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(e) # N: Revealed type is "Union[builtins.str, None]"
+
+def f2(e: Optional[str]) -> None:
+    for x in ["a"]:
+        if e is None and int():
+            e = x
+            continue
+        elif e is not None and int():
+            break
+        reveal_type(e) # N: Revealed type is "Union[builtins.str, None]"
+    reveal_type(e) # N: Revealed type is "Union[builtins.str, None]"
