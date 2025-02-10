@@ -2415,14 +2415,6 @@ class TupleType(ProperType):
         implicit: bool = False,
     ) -> None:
         super().__init__(line, column)
-        if fallback.type and fallback.type.fullname == "builtins.tuple":
-            # We actively ignore type argument for plain tuple fallback, to avoid spurious errors,
-            # partial_fallback should never be used directly anyway, only via typeops.tuple_fallback().
-            assert len(fallback.args) == 1
-            if not isinstance(fallback.args[0], ProperType) or not isinstance(
-                fallback.args[0], AnyType
-            ):
-                fallback = fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
         self.partial_fallback = fallback
         self.items = items
         self.implicit = implicit
