@@ -1393,10 +1393,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # Add formal argument types to the binder.
                     for arg in defn.arguments:
                         # TODO: Add these directly using a fast path
-                        n = NameExpr("")
                         v = arg.variable
-                        n.node = v
-                        self.binder.assign_type(n, v.type, v.type)
+                        if v.type is not None:
+                            n = NameExpr("")
+                            n.node = v
+                            self.binder.assign_type(n, v.type, v.type)
 
                 with self.scope.push_function(defn):
                     # We suppress reachability warnings for empty generator functions
@@ -3343,7 +3344,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             and not self.options.allow_redefinition2 # TODO WHAT
                         ):
                             lvalue.node.type = remove_instance_last_known_values(lvalue_type)
-                elif self.options.allow_redefinition2:
+                elif self.options.allow_redefinition2 and lvalue_type is not None:
                     self.binder.assign_type(lvalue, lvalue_type, lvalue_type)
 
             elif index_lvalue:
@@ -4552,7 +4553,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.set_inferred_type(inferred, lvalue, lvalue_type)
                         self.binder.put(lvalue, rvalue_type)
                         # TODO: hack, maybe integrate into put?
-                        self.binder.declarations[literal_hash(lvalue)] = lvalue_type
+                        lit = literal_hash(lvalue)
+                        if lit is not None:
+                            self.binder.declarations[lit] = lvalue_type
             if (
                 isinstance(get_proper_type(lvalue_type), UnionType)
                 # Skip literal types, as they have special logic (for better errors).
