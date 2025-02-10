@@ -7,7 +7,7 @@ from typing import NamedTuple, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
-from mypy.literals import Key, literal, literal_hash, subkeys
+from mypy.literals import Key, literal, literal_hash, subkeys, is_member_literal_hash
 from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.typeops import make_simplified_union
@@ -98,7 +98,9 @@ class ConditionalTypeBinder:
     # This maps an expression to a list of bound types for every item in the union type.
     type_assignments: Assigns | None = None
 
-    def __init__(self) -> None:
+    def __init__(self, bind_all: bool) -> None:
+        self.bind_all = bind_all
+
         # Each frame gets an increasing, distinct id.
         self.next_id = 1
 
@@ -227,11 +229,14 @@ class ConditionalTypeBinder:
         for key in keys:
             current_value = self._get(key)
             resulting_values = [f.types.get(key, current_value) for f in frames]
-            if any(x is None for x in resulting_values):
+            old_semantics = not self.bind_all or is_member_literal_hash(key)
+            if old_semantics and any(x is None for x in resulting_values):
                 # We didn't know anything about key before
                 # (current_value must be None), and we still don't
                 # know anything about key in at least one possible frame.
                 continue
+
+            resulting_values = [x for x in resulting_values if x is not None]
 
             if all_reachable and all(
                 x is not None and not x.from_assignment for x in resulting_values

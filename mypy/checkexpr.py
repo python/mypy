@@ -1117,8 +1117,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             typ = self.try_infer_partial_value_type_from_call(e, callee.name, var)
             # Var may be deleted from partial_types in try_infer_partial_value_type_from_call
             if typ is not None and var in partial_types:
-                var.type = typ
-                del partial_types[var]
+                self.chk.replace_partial_type(var, typ, partial_types)
         elif isinstance(callee.expr, IndexExpr) and isinstance(callee.expr.base, RefExpr):
             # Call 'x[y].method(...)'; may infer type of 'x' if it's a partial defaultdict.
             if callee.expr.analyzed is not None:
@@ -1140,8 +1139,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # Store inferred partial type.
                     assert partial_type.type is not None
                     typename = partial_type.type.fullname
-                    var.type = self.chk.named_generic_type(typename, [key_type, value_type])
-                    del partial_types[var]
+                    new_type = self.chk.named_generic_type(typename, [key_type, value_type])
+                    self.chk.replace_partial_type(var, new_type, partial_types)
 
     def get_partial_var(self, ref: RefExpr) -> tuple[Var, dict[Var, Context]] | None:
         var = ref.node

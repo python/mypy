@@ -378,7 +378,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.plugin = plugin
         self.tscope = Scope()
         self.scope = CheckerScope(tree)
-        self.binder = ConditionalTypeBinder()
+        self.binder = ConditionalTypeBinder(bind_all=options.allow_redefinition2)
         self.globals = tree.names
         self.return_types = []
         self.dynamic_funcs = []
@@ -433,7 +433,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: verify this is still actually worth it over creating new checkers
         self.partial_reported.clear()
         self.module_refs.clear()
-        self.binder = ConditionalTypeBinder()
+        self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition2)
         self._type_maps[1:] = []
         self._type_maps[0].clear()
         self.temp_type_map = None
@@ -1198,7 +1198,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         original_typ = typ
         for item, typ in expanded:
             old_binder = self.binder
-            self.binder = ConditionalTypeBinder()
+            self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition2)
             with self.binder.top_frame_context():
                 defn.expanded.append(item)
 
@@ -2571,7 +2571,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
-            self.binder = ConditionalTypeBinder()
+            self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition2)
             with self.binder.top_frame_context():
                 with self.scope.push_class(defn.info):
                     self.accept(defn.defs)
@@ -3295,7 +3295,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             lvalue_type = make_optional_type(lvalue_type)
                             self.set_inferred_type(lvalue.node, lvalue, lvalue_type)
 
-                    rvalue_type = self.check_simple_assignment(
+                    rvalue_type, lvalue_type = self.check_simple_assignment(
                         lvalue_type, rvalue, context=rvalue, inferred=inferred, lvalue=lvalue)
                     inferred = None
 
@@ -4503,11 +4503,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         *,
         notes: list[str] | None = None,
         lvalue: Expression | None = None,
-        inferred: Var| None = None,
-    ) -> Type:
+        inferred: Var | None = None,
+    ) -> tuple[Type, Type | None]:
         if self.is_stub and isinstance(rvalue, EllipsisExpr):
             # '...' is always a valid initializer in a stub.
-            return AnyType(TypeOfAny.special_form)
+            return AnyType(TypeOfAny.special_form), lvalue_type
         else:
             always_allow_any = lvalue_type is not None and not isinstance(
                 get_proper_type(lvalue_type), AnyType
@@ -4578,7 +4578,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     f"{lvalue_name} has type",
                     notes=notes,
                 )
-            return rvalue_type
+            return rvalue_type, lvalue_type
 
     def check_member_assignment(
         self,
@@ -4605,7 +4605,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if (isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or isinstance(
             instance_type, TypeType
         ):
-            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
+            rvalue_type, _ = self.check_simple_assignment(attribute_type, rvalue, context)
             return rvalue_type, attribute_type, True
 
         with self.msg.filter_errors(filter_deprecated=True):
@@ -4616,7 +4616,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if not isinstance(attribute_type, Instance):
             # TODO: support __set__() for union types.
-            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
+            rvalue_type, _ = self.check_simple_assignment(attribute_type, rvalue, context)
             return rvalue_type, attribute_type, use_binder
 
         mx = MemberContext(
@@ -4635,7 +4635,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # the return type of __get__. This doesn't match the python semantics,
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
-            rvalue_type = self.check_simple_assignment(get_type, rvalue, context)
+            rvalue_type, _ = self.check_simple_assignment(get_type, rvalue, context)
             return rvalue_type, get_type, use_binder
 
         dunder_set = attribute_type.type.get_method("__set__")
@@ -4711,7 +4711,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
         # by this assignment. Technically, this is not safe, but in practice this is
         # what a user expects.
-        rvalue_type = self.check_simple_assignment(set_type, rvalue, context)
+        rvalue_type, _ = self.check_simple_assignment(set_type, rvalue, context)
         infer = is_subtype(rvalue_type, get_type) and is_subtype(get_type, set_type)
         return rvalue_type if infer else set_type, get_type, infer
 
@@ -4740,6 +4740,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         res_type = get_proper_type(res_type)
         if isinstance(res_type, UninhabitedType) and not res_type.ambiguous:
             self.binder.unreachable()
+
+    def replace_partial_type(self, var: Var, new_type: Type, partial_types: dict[Var, Context]) -> None:
+        var.type = new_type
+        del partial_types[var]
+        if self.options.allow_redefinition2:
+            n = NameExpr(var.name)
+            n.node = var
+            self.binder.assign_type(n, new_type, new_type)
 
     def try_infer_partial_type_from_indexed_assignment(
         self, lvalue: IndexExpr, rvalue: Expression
@@ -4777,8 +4785,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             and not is_equivalent(value_type, var.type.value_type)
                         )
                     ):
-                        var.type = self.named_generic_type(typename, [key_type, value_type])
-                        del partial_types[var]
+                        new_type = self.named_generic_type(typename, [key_type, value_type])
+                        self.replace_partial_type(var, new_type, partial_types)
 
     def type_requires_usage(self, typ: Type) -> tuple[str, ErrorCode] | None:
         """Some types require usage in all cases. The classic example is
