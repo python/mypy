@@ -733,10 +733,10 @@ def combine_parameters_with(
         if s_kind.is_star():
             continue
 
-        candidates = [t.argument_by_position(s_a.pos)]
+        raw_candidates = [t.argument_by_position(s_a.pos)]
         if s_a.name is not None and s_a.name not in spent_names:
-            candidates.append(t.argument_by_name(s_a.name))
-        candidates = [c for c in candidates if c is not None]
+            raw_candidates.append(t.argument_by_name(s_a.name))
+        candidates = [c for c in raw_candidates if c is not None]
         if not candidates:
             if s_a.required:
                 return None
@@ -782,10 +782,14 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType | N
     # TODO in combine_similar_callables also applies here (names and kinds; user metaclasses)
     # The fallback type can be either 'function', 'type', or some user-provided metaclass.
     # The result should always use 'function' as a fallback if either operands are using it.
+    fallback: ProperType
     if t.fallback.type.fullname == "builtins.function":
         fallback = t.fallback
-    else:
+    elif s.fallback.type.fullname == "builtins.function":
         fallback = s.fallback
+    else:
+        fallback = join_types(s.fallback, t.fallback)
+    assert isinstance(fallback, Instance)
     return t.copy_modified(
         arg_types=joined_params.arg_types,
         arg_names=joined_params.arg_names,
@@ -842,10 +846,14 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     # TODO what should happen if one fallback is 'type' and the other is a user-provided metaclass?
     # The fallback type can be either 'function', 'type', or some user-provided metaclass.
     # The result should always use 'function' as a fallback if either operands are using it.
+    fallback: ProperType
     if t.fallback.type.fullname == "builtins.function":
         fallback = t.fallback
-    else:
+    elif s.fallback.type.fullname == "builtins.function":
         fallback = s.fallback
+    else:
+        fallback = join_types(s.fallback, t.fallback)
+    assert isinstance(fallback, Instance)
     return t.copy_modified(
         arg_types=joined_params.arg_types,
         arg_names=joined_params.arg_names,

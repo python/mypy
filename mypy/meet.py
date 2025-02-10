@@ -1126,10 +1126,14 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType | N
     # TODO in combine_similar_callables also applies here (names and kinds)
     # The fallback type can be either 'function' or 'type'. The result should have 'function' as
     # fallback only if both operands have it as 'function'.
-    if t.fallback.type.fullname != "builtins.function":
+    fallback: ProperType
+    if t.fallback.type.fullname == "builtins.function":
+        fallback = s.fallback
+    elif s.fallback.type.fullname == "builtins.function":
         fallback = t.fallback
     else:
-        fallback = s.fallback
+        fallback = meet_types(s.fallback, t.fallback)
+    assert isinstance(fallback, Instance)
     return t.copy_modified(
         arg_types=joined_params.arg_types,
         arg_names=joined_params.arg_names,
