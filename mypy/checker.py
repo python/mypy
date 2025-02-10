@@ -8517,7 +8517,6 @@ class InvalidInferredTypes(BoolTypeQuery):
 
     def visit_tuple_type(self, t: TupleType, /) -> bool:
         # Exclude fallback to avoid bogus "need type annotation" errors
-        # TODO: Maybe erase plain tuples used as fallback in TupleType constructor?
         return self.query_types(t.items)
 
 
