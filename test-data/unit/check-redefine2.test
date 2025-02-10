@@ -118,6 +118,16 @@ def f2() -> None:
 
 reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
+[case testRedefine2DefaultArgument]
+# flags: --allow-redefinition2 --local-partial-types
+from typing import Optional
+
+def f(x: Optional[str] = None) -> None:
+    reveal_type(x) # N: Revealed type is "Union[builtins.str, None]"
+    if x is None:
+        x = ""
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
 [case testRedefine2ClassBody]
 # flags: --allow-redefinition2 --local-partial-types
 class C:
