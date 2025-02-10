@@ -519,8 +519,7 @@ def bar(x: Both, y: Both = ...) -> Both:
 [out]
 
 [case testEllipsisDefaultArgValueInNonStubsMethods]
-from typing import Generic, TypeVar
-from typing_extensions import Protocol
+from typing import Generic, Protocol, TypeVar
 from abc import abstractmethod
 
 T = TypeVar('T')

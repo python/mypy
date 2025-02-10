@@ -856,8 +856,7 @@ BadSub().get_item()  # E: Invalid self argument "BadSub" to attribute function "
 [builtins fixtures/list.pyi]
 
 [case testMixinAllowedWithProtocol]
-from typing import TypeVar
-from typing_extensions import Protocol
+from typing import Protocol, TypeVar
 
 class Resource(Protocol):
     def close(self) -> int: ...
@@ -908,8 +907,7 @@ class Bad:
 class CC(TweakFunc, Bad): pass  # E: Definition of "func" in base class "TweakFunc" is incompatible with definition in base class "Bad"
 
 [case testBadClassLevelDecoratorHack]
-from typing_extensions import Protocol
-from typing import TypeVar, Any
+from typing import Protocol, TypeVar, Any
 
 class FuncLike(Protocol):
     __call__: Any

@@ -652,7 +652,7 @@ def g() -> int:
 x: List[int]  # type: ignore[name-defined]
 
 [case testErrorCodeProtocolProblemsIgnore]
-from typing_extensions import Protocol
+from typing import Protocol
 
 class P(Protocol):
     def f(self, x: str) -> None: ...

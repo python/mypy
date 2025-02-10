@@ -2339,8 +2339,7 @@ main:19: note: Protocol member AllSettable.b expected settable variable, got rea
 main:19: note:     <2 more conflict(s) not shown>
 
 [case testProtocolsMoreConflictsNotShown]
-from typing_extensions import Protocol
-from typing import Generic, TypeVar
+from typing import Generic, Protocol, TypeVar
 
 T = TypeVar('T')
 
@@ -2862,7 +2861,7 @@ c1: SupportsClassGetItem = C()
 
 [case testNoneVsProtocol]
 # mypy: strict-optional
-from typing_extensions import Protocol
+from typing import Protocol
 
 class MyHashable(Protocol):
     def __hash__(self) -> int: ...
