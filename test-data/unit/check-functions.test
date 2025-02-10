@@ -3712,3 +3712,27 @@ reveal_type(join(base, bad2))  # E: Value of type variable "C" of "join" cannot 
 reveal_type(join(base, bad3))  # E: Value of type variable "C" of "join" cannot be "function" \
                                # N: Revealed type is "builtins.function"
 [builtins fixtures/tuple.pyi]
+
+[case testCallableJoin5]
+from typing import Callable, TypeVar
+
+C = TypeVar("C", bound=Callable[..., None])
+
+def join(t: C, val: C) -> C:
+    pass
+
+def less1(code, lang, style=None): ...
+def more1(code, lang, suffix="", style=None): ...
+reveal_type(join(less1, more1))  # N: Revealed type is "def (code: Any, lang: Any, Any =) -> Any"
+reveal_type(join(more1, less1))  # N: Revealed type is "def (code: Any, lang: Any, Any =) -> Any"
+
+def less2(code, lang, style: int = 0): ...
+def more2(code, lang, suffix: str = "", style: int = 0): ...
+reveal_type(join(less2, more2))  # N: Revealed type is "def (code: Any, lang: Any, *, style: builtins.int =) -> Any"
+reveal_type(join(more2, less2))  # N: Revealed type is "def (code: Any, lang: Any, *, style: builtins.int =) -> Any"
+
+def less3(code, lang, style: int = 0): ...
+def more3(code, lang, suffix: int = 0, style: str = ""): ...
+reveal_type(join(less3, more3))  # N: Revealed type is "def (code: Any, lang: Any, builtins.int =) -> Any"
+reveal_type(join(more3, less3))  # N: Revealed type is "def (code: Any, lang: Any, builtins.int =) -> Any"
+[builtins fixtures/tuple.pyi]

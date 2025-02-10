@@ -716,6 +716,7 @@ def combine_parameters_with(
         kwarg = arg_transformer(s_kw.typ, t_kw.typ)
         if isinstance(get_proper_type(kwarg), UninhabitedType):
             kwarg = None
+    spent_names: set[str] = set()
     for s_kind, s_a in zip(s.arg_kinds, s.formal_arguments(include_star_args=True)):
         if vararg is not None and s_kind == ArgKind.ARG_STAR:
             args_meet.append(vararg)
@@ -731,17 +732,30 @@ def combine_parameters_with(
             continue
         if s_kind.is_star():
             continue
-        t_a = t.argument_by_position(s_a.pos) or t.argument_by_name(s_a.name)
-        if t_a is None:
+
+        candidates = [t.argument_by_position(s_a.pos)]
+        if s_a.name is not None and s_a.name not in spent_names:
+            candidates.append(t.argument_by_name(s_a.name))
+        candidates = [c for c in candidates if c is not None]
+        if not candidates:
             if s_a.required:
                 return None
             continue
-        typ = arg_transformer(s_a.typ, t_a.typ)
-        if not allow_uninhabited and isinstance(get_proper_type(typ), UninhabitedType):
-            return None
+
+        for t_a in candidates:
+            typ = arg_transformer(s_a.typ, t_a.typ)
+            if not isinstance(get_proper_type(typ), UninhabitedType):
+                break
+        else:
+            if not s_a.required:
+                continue
+            if not allow_uninhabited:
+                return None
+        if t_a.name is not None:
+            spent_names.add(t_a.name)
         args_meet.append(typ)
         arg_names.append(s_a.name if s_a.name == t_a.name else None)
-        kinds = [ArgKind.ARG_POS, ArgKind.ARG_OPT, ArgKind.ARG_NAMED, ArgKind.ARG_NAMED_OPT]
+        kinds = [ArgKind.ARG_OPT, ArgKind.ARG_POS, ArgKind.ARG_NAMED_OPT, ArgKind.ARG_NAMED]
         if s_a.pos != t_a.pos or s_a.pos is None or t_a.pos is None:
             kinds = [k for k in kinds if not k.is_positional()]
         if s_a.name != t_a.name or s_a.name is None or t_a.name is None:
