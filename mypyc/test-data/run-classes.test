@@ -711,8 +711,7 @@ Traceback (most recent call last):
 AttributeError: attribute 'x' of 'X' undefined
 
 [case testClassMethods]
-from typing import ClassVar, Any
-from typing_extensions import final
+from typing import ClassVar, Any, final
 from mypy_extensions import mypyc_attr
 
 from interp import make_interpreted_subclass
