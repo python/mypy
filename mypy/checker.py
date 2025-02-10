@@ -2147,16 +2147,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # it can be checked for compatibility.
         original_type = get_proper_type(base_attr.type)
         original_node = base_attr.node
-        always_allow_covariant = False
-        if is_settable_property(defn) and (
-            is_settable_property(original_node) or isinstance(original_node, Var)
-        ):
-            if is_custom_settable_property(defn) or (is_custom_settable_property(original_node)):
-                always_allow_covariant = True
-                self.check_setter_type_override(defn, base_attr, base)
         # `original_type` can be partial if (e.g.) it is originally an
         # instance variable from an `__init__` block that becomes deferred.
+        supertype_ready = True
         if original_type is None or isinstance(original_type, PartialType):
+            supertype_ready = False
             if self.pass_num < self.last_pass:
                 # If there are passes left, defer this node until next pass,
                 # otherwise try reconstructing the method type from available information.
@@ -2179,6 +2174,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 # Will always fail to typecheck below, since we know the node is a method
                 original_type = NoneType()
+
+        always_allow_covariant = False
+        if is_settable_property(defn) and (
+            is_settable_property(original_node) or isinstance(original_node, Var)
+        ):
+            if is_custom_settable_property(defn) or (is_custom_settable_property(original_node)):
+                # Unlike with getter, where we try to construct some fallback type in case of
+                # deferral during last_pass, we can't make meaningful setter checks if the
+                # supertype is not known precisely.
+                if supertype_ready:
+                    always_allow_covariant = True
+                    self.check_setter_type_override(defn, base_attr, base)
+
         if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
             original_class_or_static = original_node.is_class or original_node.is_static
         elif isinstance(original_node, Decorator):
