@@ -805,6 +805,17 @@ def f1() -> None:
     for x in l():
         reveal_type(x) # N: Revealed type is "builtins.int"
     reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int]"
+
+def f2() -> None:
+    for x in [1, 2]:
+        x = [x]
+    reveal_type(x) # N: Revealed type is "builtins.list[builtins.int]"
+
+def f3() -> None:
+    for x in [1, 2]:
+        if int():
+            x = "x"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/for.pyi]
 
 [case testRedefine2ForLoop2]
@@ -832,6 +843,13 @@ for a in ("hourly", "daily"):
     reveal_type(a.upper())  # N: Revealed type is "builtins.str"
     c = a
     reveal_type(c)  # N: Revealed type is "builtins.str"
+    a = "monthly"
+    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
+    a = "yearly"
+    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
+    a = 1
+    reveal_type(a)  # N: Revealed type is "builtins.int"
+reveal_type(a) # N: Revealed type is "builtins.int"
 
 b: str
 for b in ("hourly", "daily"):
