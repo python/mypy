@@ -405,8 +405,7 @@ class B(Enum):
     b = 10
 
 [file b.py]
-from typing import List, Literal, Optional, Union, Sequence, NamedTuple, Tuple, Type, TypedDict
-from typing_extensions import Final
+from typing import Final, List, Literal, Optional, Union, Sequence, NamedTuple, Tuple, Type, TypedDict
 from enum import Enum
 import a
 class A: pass

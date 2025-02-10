@@ -672,8 +672,7 @@ if not (abo is None or abo.tag != "B"):
 
 [case testNarrowingEqualityFlipFlop]
 # flags: --warn-unreachable --strict-equality
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 from enum import Enum
 
 class State(Enum):
@@ -738,8 +737,7 @@ def test3(switch: FlipFlopEnum) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitStrLiteral]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 A_final: Final = "A"
 A_literal: Literal["A"]
@@ -785,8 +783,7 @@ reveal_type(x_union)      # N: Revealed type is "Union[Literal['A'], Literal['B'
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitEnumLiteral]
-from typing import Literal, Union
-from typing_extensions import Final
+from typing import Final, Literal, Union
 from enum import Enum
 
 class Foo(Enum):
@@ -1549,8 +1546,7 @@ if len(x) == len(y) == 3:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenFinal]
-from typing import Tuple, Union
-from typing_extensions import Final
+from typing import Final, Tuple, Union
 
 VarTuple = Union[Tuple[int, int], Tuple[int, int, int]]
 

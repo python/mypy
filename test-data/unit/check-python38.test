@@ -211,8 +211,7 @@ h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
 i(arg=0)  # E: Unexpected keyword argument "arg"
 
 [case testWalrus]
-from typing import NamedTuple, Optional, List
-from typing_extensions import Final
+from typing import Final, NamedTuple, Optional, List
 
 if a := 2:
     reveal_type(a)  # N: Revealed type is "builtins.int"

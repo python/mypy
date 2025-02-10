@@ -105,8 +105,7 @@ def f(x: int) -> int:
 # cmd: test.py
 
 [file test.py]
-from typing import List, Any, AsyncIterable
-from typing_extensions import Final
+from typing import Final, List, Any, AsyncIterable
 from mypy_extensions import trait, mypyc_attr
 from functools import singledispatch
 

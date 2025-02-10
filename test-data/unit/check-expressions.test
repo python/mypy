@@ -2281,8 +2281,7 @@ def f(x: T) -> T:
 
 [case testStrictEqualityWithALiteral]
 # flags: --strict-equality
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 def returns_a_or_b() -> Literal['a', 'b']:
     ...

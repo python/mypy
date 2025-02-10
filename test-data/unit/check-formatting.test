@@ -502,7 +502,7 @@ def better_snakecase(text: str) -> str:
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallFinal]
-from typing_extensions import Final
+from typing import Final
 
 FMT: Final = '{.x}, {:{:d}}'
 
@@ -511,7 +511,7 @@ FMT.format(1, 2, 'no')  # E: "int" has no attribute "x" \
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallFinalChar]
-from typing_extensions import Final
+from typing import Final
 
 GOOD: Final = 'c'
 BAD: Final = 'no'

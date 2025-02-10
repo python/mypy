@@ -31,7 +31,7 @@ reveal_type(Animal.DOG)  # N: Revealed type is "Literal[__main__.Animal.DOG]?"
 
 [case testEnumCreatedFromFinalValue]
 from enum import Enum
-from typing_extensions import Final
+from typing import Final
 
 x: Final['str'] = 'ANT BEE CAT DOG'
 Animal = Enum('Animal', x)
@@ -975,8 +975,7 @@ else:
 
 [case testEnumReachabilityChecksIndirect]
 from enum import Enum
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 class Foo(Enum):
     A = 1
@@ -1130,8 +1129,7 @@ reveal_type(x3) # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityPEP484ExampleWithFinal]
-from typing import Union
-from typing_extensions import Final
+from typing import Final, Union
 from enum import Enum
 
 class Empty(Enum):
@@ -1176,8 +1174,7 @@ def process(response: Union[str, Reason] = '') -> str:
 
 
 [case testEnumReachabilityPEP484ExampleSingleton]
-from typing import Union
-from typing_extensions import Final
+from typing import Final, Union
 from enum import Enum
 
 class Empty(Enum):
@@ -1200,8 +1197,7 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
 [builtins fixtures/primitives.pyi]
 
 [case testEnumReachabilityPEP484ExampleSingletonWithMethod]
-from typing import Union
-from typing_extensions import Final
+from typing import Final, Union
 from enum import Enum
 
 class Empty(Enum):
@@ -1331,8 +1327,7 @@ reveal_type(x)      # N: Revealed type is "__main__.Foo"
 [case testEnumReachabilityWithChainingDirectConflict]
 # flags: --warn-unreachable
 from enum import Enum
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 class Foo(Enum):
     A = 1
@@ -1367,8 +1362,7 @@ reveal_type(x)      # N: Revealed type is "__main__.Foo"
 [case testEnumReachabilityWithChainingBigDisjoints]
 # flags: --warn-unreachable
 from enum import Enum
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 class Foo(Enum):
     A = 1

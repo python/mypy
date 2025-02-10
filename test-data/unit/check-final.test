@@ -1120,7 +1120,7 @@ class B:
 [out]
 
 [case testFinalInDeferredMethod]
-from typing_extensions import Final
+from typing import Final
 
 class A:
     def __init__(self) -> None:

@@ -628,7 +628,7 @@ L0:
     return r0
 
 [case testOperatorInSetLiteral]
-from typing_extensions import Final
+from typing import Final
 
 CONST: Final = "daylily"
 non_const = 10
@@ -716,7 +716,7 @@ L0:
     return r14
 
 [case testForSetLiteral]
-from typing_extensions import Final
+from typing import Final
 
 CONST: Final = 10
 non_const = 20

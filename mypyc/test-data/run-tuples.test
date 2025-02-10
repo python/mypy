@@ -147,8 +147,7 @@ assert Record.__annotations__ == {
 }, Record.__annotations__
 
 [case testTupleOps]
-from typing import Tuple, List, Any, Optional
-from typing_extensions import Final
+from typing import Tuple, Final, List, Any, Optional
 
 def f() -> Tuple[()]:
     return ()

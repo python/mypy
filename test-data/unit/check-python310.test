@@ -1906,8 +1906,7 @@ match var:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchNamedAndKeywordsAreTheSame]
-from typing import Generic, TypeVar, Union
-from typing_extensions import Final
+from typing import Generic, Final, TypeVar, Union
 from dataclasses import dataclass
 
 T = TypeVar("T")

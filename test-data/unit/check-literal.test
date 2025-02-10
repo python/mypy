@@ -1892,8 +1892,7 @@ del d[c_key]                  # E: TypedDict "Outer" has no key "c"
 [out]
 
 [case testLiteralIntelligentIndexingUsingFinal]
-from typing import Literal, Tuple, NamedTuple, TypedDict
-from typing_extensions import Final
+from typing import Final, Literal, Tuple, NamedTuple, TypedDict
 
 int_key_good: Final = 0
 int_key_bad: Final = 3
@@ -1959,8 +1958,7 @@ tup2[idx_bad]                   # E: Tuple index out of range
 [out]
 
 [case testLiteralIntelligentIndexingTypedDictUnions]
-from typing import Literal, TypedDict
-from typing_extensions import Final
+from typing import Final, Literal, TypedDict
 
 class A: pass
 class B: pass
@@ -2049,8 +2047,7 @@ reveal_type(x.get(bad_keys, 3))     # N: Revealed type is "builtins.object"
 --
 
 [case testLiteralFinalInferredAsLiteral]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 var1: Final = 1
 var2: Final = "foo"
@@ -2105,8 +2102,7 @@ force4(reveal_type(f.instancevar4))  # N: Revealed type is "None"
 [out]
 
 [case testLiteralFinalDirectInstanceTypesSupersedeInferredLiteral]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 var1: Final[int] = 1
 var2: Final[str] = "foo"
@@ -2161,8 +2157,7 @@ force4(f.instancevar4)
 [out]
 
 [case testLiteralFinalDirectLiteralTypesForceLiteral]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 var1: Final[Literal[1]] = 1
 var2: Final[Literal["foo"]] = "foo"
@@ -2217,7 +2212,7 @@ force4(reveal_type(f.instancevar4))  # N: Revealed type is "None"
 [out]
 
 [case testLiteralFinalErasureInMutableDatastructures1]
-from typing_extensions import Final
+from typing import Final
 
 var1: Final = [0, None]
 var2: Final = (0, None)
@@ -2227,8 +2222,7 @@ reveal_type(var2)  # N: Revealed type is "Tuple[Literal[0]?, None]"
 [builtins fixtures/tuple.pyi]
 
 [case testLiteralFinalErasureInMutableDatastructures2]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 var1: Final = []
 var1.append(0)
@@ -2246,8 +2240,7 @@ reveal_type(var3)  # N: Revealed type is "builtins.list[Literal[0]]"
 [builtins fixtures/list.pyi]
 
 [case testLiteralFinalMismatchCausesError]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 var1: Final[Literal[4]]     = 1      # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[4]")
 var2: Final[Literal['bad']] = "foo"  # E: Incompatible types in assignment (expression has type "Literal['foo']", variable has type "Literal['bad']")
@@ -2277,8 +2270,7 @@ Foo().instancevar1 = 10  # E: Cannot assign to final attribute "instancevar1" \
 [out]
 
 [case testLiteralFinalGoesOnlyOneLevelDown]
-from typing import Literal, Tuple
-from typing_extensions import Final
+from typing import Final, Literal, Tuple
 
 a: Final = 1
 b: Final = (1, 2)
@@ -2295,8 +2287,7 @@ force2(b)  # ok
 [out]
 
 [case testLiteralFinalCollectionPropagation]
-from typing import List, Literal
-from typing_extensions import Final
+from typing import Final, List, Literal
 
 a: Final = 1
 implicit = [a]
@@ -2325,8 +2316,7 @@ force2(reveal_type(direct[0]))   # E: Argument 1 to "force2" has incompatible ty
 [out]
 
 [case testLiteralFinalStringTypesPython3]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 a: Final = u"foo"
 b: Final = "foo"
@@ -2349,8 +2339,7 @@ force_bytes(reveal_type(c))    # N: Revealed type is "Literal[b'foo']"
 [out]
 
 [case testLiteralFinalPropagatesThroughGenerics]
-from typing import TypeVar, Generic, Literal
-from typing_extensions import Final
+from typing import TypeVar, Generic, Final, Literal
 
 
 T = TypeVar('T')
@@ -2405,8 +2394,7 @@ over_literal(reveal_type(WrapperClass(var3)))   # N: Revealed type is "__main__.
 [out]
 
 [case testLiteralFinalUsedInLiteralType]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 a: Final[int] = 3
 b: Final = 3
 c: Final[Literal[3]] = 3
@@ -2420,8 +2408,7 @@ d_wrap: Literal[4, d]  # E: Parameter 2 of Literal[...] is invalid
 [out]
 
 [case testLiteralWithFinalPropagation]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 a: Final = 3
 b: Final = a
@@ -2435,8 +2422,7 @@ expect_3(c)  # E: Argument 1 to "expect_3" has incompatible type "int"; expected
 [out]
 
 [case testLiteralWithFinalPropagationIsNotLeaking]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 final_tuple_direct: Final = (2, 3)
 final_tuple_indirect: Final = final_tuple_direct
@@ -2627,8 +2613,7 @@ reveal_type(x)  # N: Revealed type is "Literal[__main__.Test.FOO]"
 [out]
 
 [case testLiteralUsingEnumAttributesInLiteralContexts]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 from enum import Enum
 
 class Test1(Enum):
@@ -2662,8 +2647,7 @@ expects_test2_foo(final2)
 [out]
 
 [case testLiteralUsingEnumAttributeNamesInLiteralContexts]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 from enum import Enum
 
 class Test1(Enum):
@@ -2742,8 +2726,7 @@ z: Literal[~0] = 0  # E: Invalid type: Literal[...] cannot contain arbitrary exp
 [builtins fixtures/ops.pyi]
 
 [case testNegativeIntLiteralWithFinal]
-from typing import Literal
-from typing_extensions import Final
+from typing import Final, Literal
 
 ONE: Final = 1
 x: Literal[-1] = -ONE
@@ -2851,8 +2834,7 @@ else:
 [case testLiteralAndInstanceSubtyping]
 # https://github.com/python/mypy/issues/7399
 # https://github.com/python/mypy/issues/11232
-from typing import Literal, Tuple, Union
-from typing_extensions import Final
+from typing import Final, Literal, Tuple, Union
 
 x: bool
 
