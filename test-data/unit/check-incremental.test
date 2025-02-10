@@ -5080,10 +5080,10 @@ plugins=<ROOT>/test-data/unit/plugins/config_data.py
 import mod
 reveal_type(mod.a)
 [file mod.py]
-from typing_extensions import Literal
+from typing import Literal
 a = 1
 [file mod.py.2]
-from typing_extensions import Literal
+from typing import Literal
 a: Literal[2] = 2
 [builtins fixtures/tuple.pyi]
 [out]

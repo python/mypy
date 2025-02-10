@@ -5267,8 +5267,7 @@ tmp/lib.pyi:3: error: Name "overload" is not defined
 main:3: note: Revealed type is "Any"
 
 [case testLiteralSubtypeOverlap]
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 
 class MyInt(int): ...
 

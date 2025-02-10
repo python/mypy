@@ -1153,7 +1153,7 @@ __main__.Diff
 __main__.Diff.x
 
 [case testLiteralTriggersVar]
-from typing_extensions import Literal
+from typing import Literal
 
 x: Literal[1] = 1
 y = 1
@@ -1171,7 +1171,7 @@ class C:
         self.same_instance: Literal[1] = 1
 
 [file next.py]
-from typing_extensions import Literal
+from typing import Literal
 
 x = 1
 y: Literal[1] = 1
@@ -1200,7 +1200,7 @@ __main__.y
 __main__.z
 
 [case testLiteralTriggersFunctions]
-from typing_extensions import Literal
+from typing import Literal
 
 def function_1() -> int: pass
 def function_2() -> Literal[1]: pass
@@ -1264,7 +1264,7 @@ class C:
     def staticmethod_same_2(x: Literal[1]) -> None: pass
 
 [file next.py]
-from typing_extensions import Literal
+from typing import Literal
 
 def function_1() -> Literal[1]: pass
 def function_2() -> int: pass
@@ -1354,7 +1354,7 @@ __main__.function_5
 __main__.function_6
 
 [case testLiteralTriggersProperty]
-from typing_extensions import Literal
+from typing import Literal
 
 class C:
     @property
@@ -1367,7 +1367,7 @@ class C:
     def same(self) -> Literal[1]: pass
 
 [file next.py]
-from typing_extensions import Literal
+from typing import Literal
 
 class C:
     @property
@@ -1384,8 +1384,7 @@ __main__.C.p1
 __main__.C.p2
 
 [case testLiteralsTriggersOverload]
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 
 @overload
 def func(x: str) -> str: ...
@@ -1417,8 +1416,7 @@ class C:
         pass
 
 [file next.py]
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 
 @overload
 def func(x: str) -> str: ...
@@ -1454,10 +1452,10 @@ __main__.C.method
 __main__.func
 
 [case testUnionOfLiterals]
-from typing_extensions import Literal
+from typing import Literal
 x: Literal[1, '2']
 [file next.py]
-from typing_extensions import Literal
+from typing import Literal
 x: Literal[1, 2]
 [builtins fixtures/tuple.pyi]
 [out]

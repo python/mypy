@@ -784,8 +784,7 @@ reveal_type(x)  # N: Revealed type is "__main__.SubP[Any]"
 y: SubP[str] = SubP(use_str=True)
 
 [file lib.pyi]
-from typing import TypeVar, Generic, overload, Tuple
-from typing_extensions import Literal
+from typing import Literal, TypeVar, Generic, overload, Tuple
 
 T = TypeVar('T')
 class P(Generic[T]):
@@ -809,8 +808,7 @@ xx = PFallBack(t)  # E: Need type annotation for "xx"
 yy = PFallBackAny(t)  # OK
 
 [file lib.pyi]
-from typing import TypeVar, Generic, overload, Tuple, Any
-from typing_extensions import Literal
+from typing import Literal, TypeVar, Generic, overload, Tuple, Any
 
 class PFallBack(Generic[T]):
     @overload

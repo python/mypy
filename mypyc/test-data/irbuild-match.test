@@ -1727,3 +1727,81 @@ L4:
 L5:
 L6:
     unreachable
+
+[case testMatchLiteralMatchArgs_python3_10]
+from typing_extensions import Literal
+
+class Foo:
+    __match_args__: tuple[Literal["foo"]] = ("foo",)
+    foo: str
+
+def f(x: Foo) -> None:
+    match x:
+        case Foo(foo):
+            print("foo")
+        case _:
+            assert False, "Unreachable"
+[out]
+def Foo.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.Foo
+    r0 :: str
+    r1 :: tuple[str]
+L0:
+    r0 = 'foo'
+    r1 = (r0)
+    __mypyc_self__.__match_args__ = r1
+    return 1
+def f(x):
+    x :: __main__.Foo
+    r0 :: object
+    r1 :: i32
+    r2 :: bit
+    r3 :: bool
+    r4 :: str
+    r5 :: object
+    r6, foo, r7 :: str
+    r8 :: object
+    r9 :: str
+    r10 :: object
+    r11 :: object[1]
+    r12 :: object_ptr
+    r13, r14 :: object
+    r15 :: i32
+    r16 :: bit
+    r17, r18 :: bool
+L0:
+    r0 = __main__.Foo :: type
+    r1 = PyObject_IsInstance(x, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: i32 to builtins.bool
+    if r3 goto L1 else goto L3 :: bool
+L1:
+    r4 = 'foo'
+    r5 = CPyObject_GetAttr(x, r4)
+    r6 = cast(str, r5)
+    foo = r6
+L2:
+    r7 = 'foo'
+    r8 = builtins :: module
+    r9 = 'print'
+    r10 = CPyObject_GetAttr(r8, r9)
+    r11 = [r7]
+    r12 = load_address r11
+    r13 = PyObject_Vectorcall(r10, r12, 1, 0)
+    keep_alive r7
+    goto L8
+L3:
+L4:
+    r14 = box(bool, 0)
+    r15 = PyObject_IsTrue(r14)
+    r16 = r15 >= 0 :: signed
+    r17 = truncate r15: i32 to builtins.bool
+    if r17 goto L6 else goto L5 :: bool
+L5:
+    r18 = raise AssertionError('Unreachable')
+    unreachable
+L6:
+    goto L8
+L7:
+L8:
+    return 1

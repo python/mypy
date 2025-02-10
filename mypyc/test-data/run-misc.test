@@ -612,8 +612,8 @@ for a in sorted(s):
 9     8   72
 
 [case testDummyTypes]
-from typing import Tuple, List, Dict, NamedTuple
-from typing_extensions import Literal, TypedDict, NewType
+from typing import Tuple, List, Dict, Literal, NamedTuple
+from typing_extensions import TypedDict, NewType
 
 class A:
     pass

@@ -2378,7 +2378,7 @@ if isinstance(y, B):
 # flags: --warn-unreachable
 
 from abc import abstractmethod
-from typing_extensions import Literal
+from typing import Literal
 
 class A0:
     def f(self) -> Literal[0]:

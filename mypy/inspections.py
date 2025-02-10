@@ -564,7 +564,7 @@ class InspectionEngine:
     ) -> dict[str, object]:
         """Top-level logic to inspect expression(s) at a location.
 
-        This can be re-used by various simple inspections.
+        This can be reused by various simple inspections.
         """
         try:
             file, pos = parse_location(location)
