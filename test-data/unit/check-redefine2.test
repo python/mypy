@@ -594,6 +594,53 @@ def f1() -> None:
     reveal_type(x) # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
+[case testRedefine2WhileLoopComplex1]
+# flags: --allow-redefinition2 --local-partial-types
+
+def f1() -> None:
+    while True:
+        try:
+            pass
+        except Exception as e:
+            continue
+[builtins fixtures/exception.pyi]
+
+[case testRedefine2WhileLoopComplex2]
+# flags: --allow-redefinition2 --local-partial-types
+
+class C:
+    def __enter__(self) -> str: ...
+    def __exit__(self, *args) -> str: ...
+
+def f1() -> None:
+    while True:
+        with C() as x:
+            continue
+
+def f2() -> None:
+    while True:
+        from m import y
+        if int():
+            continue
+
+[file m.py]
+y = ""
+[builtins fixtures/tuple.pyi]
+
+[case testRedefine2WhileLoopComplex3]
+# flags: --allow-redefinition2 --local-partial-types --python-version 3.10
+
+def f1() -> None:
+    while True:
+        x = object()
+        match x:
+            case str(y):
+                pass
+            case int():
+                pass
+        if int():
+            continue
+
 [case testRedefine2Return]
 # flags: --allow-redefinition2 --local-partial-types
 def f1() -> None:

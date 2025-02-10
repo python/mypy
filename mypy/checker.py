@@ -5112,8 +5112,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             # try/except block.
                             source = var.name
                             if isinstance(var.node, Var):
-                                var.node.type = DeletedType(source=source)
-                            self.binder.cleanse(var)
+                                new_type = DeletedType(source=source)
+                                var.node.type = new_type
+                                if self.options.allow_redefinition2:
+                                    self.binder.assign_type(var, new_type, new_type)
+                            if not self.options.allow_redefinition2:
+                                self.binder.cleanse(var)
             if s.else_body:
                 self.accept(s.else_body)
 
