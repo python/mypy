@@ -1729,7 +1729,7 @@ L6:
     unreachable
 
 [case testMatchLiteralMatchArgs_python3_10]
-from typing_extensions import Literal
+from typing import Literal
 
 class Foo:
     __match_args__: tuple[Literal["foo"]] = ("foo",)

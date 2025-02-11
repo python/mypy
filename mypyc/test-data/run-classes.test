@@ -1068,7 +1068,7 @@ assert b.z is None
 assert not hasattr(b, 'bogus')
 
 [case testProtocol]
-from typing_extensions import Protocol
+from typing import Protocol
 
 class Proto(Protocol):
     def foo(self, x: int) -> None:

@@ -380,8 +380,8 @@ for i in a:  # E: function __main__.A.__iter__ is deprecated: no iteration
 [case testDeprecatedOverloadedInstanceMethods]
 # flags: --enable-error-code=deprecated
 
-from typing import Iterator, Union
-from typing_extensions import deprecated, overload
+from typing import Iterator, Union, overload
+from typing_extensions import deprecated
 
 class A:
     @overload
@@ -429,8 +429,8 @@ b.h("x")  # E: function __main__.A.h is deprecated: use `h2` instead
 [case testDeprecatedOverloadedClassMethods]
 # flags: --enable-error-code=deprecated
 
-from typing import Iterator, Union
-from typing_extensions import deprecated, overload
+from typing import Iterator, Union, overload
+from typing_extensions import deprecated
 
 class A:
     @overload
@@ -487,8 +487,8 @@ b.h("x")  # E: function __main__.A.h is deprecated: use `h2`  instead
 [case testDeprecatedOverloadedStaticMethods]
 # flags: --enable-error-code=deprecated
 
-from typing import Iterator, Union
-from typing_extensions import deprecated, overload
+from typing import Iterator, Union, overload
+from typing_extensions import deprecated
 
 class A:
     @overload
@@ -545,8 +545,8 @@ b.h("x")  # E: function __main__.A.h is deprecated: use `h2`  instead
 [case testDeprecatedOverloadedSpecialMethods]
 # flags: --enable-error-code=deprecated
 
-from typing import Iterator, Union
-from typing_extensions import deprecated, overload
+from typing import Iterator, Union, overload
+from typing_extensions import deprecated
 
 class A:
     @overload
@@ -671,8 +671,8 @@ C().g = "x"  # E: function __main__.C.g is deprecated: use g2 instead \
 [case testDeprecatedDescriptor]
 # flags: --enable-error-code=deprecated
 
-from typing import Any, Optional, Union
-from typing_extensions import deprecated, overload
+from typing import Any, Optional, Union, overload
+from typing_extensions import deprecated
 
 @deprecated("use E1 instead")
 class D1:
@@ -725,8 +725,8 @@ c.d3 = "x"  # E: overload def (self: __main__.D3, obj: __main__.C, value: builti
 [case testDeprecatedOverloadedFunction]
 # flags: --enable-error-code=deprecated
 
-from typing import Union
-from typing_extensions import deprecated, overload
+from typing import Union, overload
+from typing_extensions import deprecated
 
 @overload
 def f(x: int) -> int: ...
@@ -788,8 +788,8 @@ m.g("x")
 
 [file m.py]
 
-from typing import Union
-from typing_extensions import deprecated, overload
+from typing import Union, overload
+from typing_extensions import deprecated
 
 @overload
 @deprecated("work with str instead")
