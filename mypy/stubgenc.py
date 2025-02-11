@@ -556,7 +556,7 @@ class InspectionStubGenerator(BaseStubGenerator):
             raw_lookup: Mapping[str, Any] = getattr(class_info.cls, "__dict__")  # noqa: B009
             raw_value = raw_lookup.get(name, obj)
             classmethod_descriptor = type(int.__dict__["from_bytes"])
-            return isinstance(raw_value, classmethod) or isinstance(raw_value, classmethod_descriptor)
+            return isinstance(raw_value, (classmethod, classmethod_descriptor))
         else:
             return isinstance(inspect.getattr_static(class_info.cls, name), classmethod)
 
