@@ -2,7 +2,7 @@
 
 ## Next Release
 
-### Different property getter and setter types
+### Different Property Getter and Setter Types
 
 Mypy now supports using different types for property getter and setter.
 ```python
@@ -22,7 +22,7 @@ class A:
 
 Contributed by Ivan Levkivskyi (PR [18510](https://github.com/python/mypy/pull/18510))
 
-### Selectively disable deprecated warnings
+### Selectively Disable Deprecated Warnings
 
 It's now possible to selectively disable warnings generated from
 [`warnings.deprecated`](https://docs.python.org/3/library/warnings.html#warnings.deprecated)
