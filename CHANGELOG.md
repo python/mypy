@@ -2,7 +2,48 @@
 
 ## Next Release
 
-...
+### Different Property Getter and Setter Types
+
+Mypy now supports using different types for property getter and setter.
+```python
+class A:
+    value: int
+
+    @property
+    def f(self) -> int:
+        return self.value
+    @f.setter
+    def f(self, x: str | int) -> None:
+        try:
+            self.value = int(x)
+        except ValueError:
+            raise Exception(f"'{x}' is not a valid value for 'f'")
+```
+
+Contributed by Ivan Levkivskyi (PR [18510](https://github.com/python/mypy/pull/18510))
+
+### Selectively Disable Deprecated Warnings
+
+It's now possible to selectively disable warnings generated from
+[`warnings.deprecated`](https://docs.python.org/3/library/warnings.html#warnings.deprecated)
+using the [`--deprecated-calls-exclude`](https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-deprecated-calls-exclude)
+option.
+
+```python
+# mypy --enable-error-code deprecated
+#      --deprecated-calls-exclude=foo.A
+import foo
+
+foo.A().func()  # OK, the deprecated warning is ignored
+
+# file foo.py
+from typing_extensions import deprecated
+class A:
+    @deprecated("Use A.func2 instead")
+    def func(self): pass
+```
+
+Contributed by Marc Mueller (PR [18641](https://github.com/python/mypy/pull/18641))
 
 ## Mypy 1.15
 
