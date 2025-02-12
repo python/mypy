@@ -4548,7 +4548,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     new_inferred = rvalue_type
                 if not is_same_type(inferred.type, new_inferred):
                     lvalue_type = make_simplified_union([inferred.type, new_inferred])
-                    if not is_same_type(lvalue_type, inferred.type):
+                    if not is_same_type(lvalue_type, inferred.type) and not isinstance(inferred.type, PartialType):
                         self.widened_vars.append(inferred.name)
                         self.set_inferred_type(inferred, lvalue, lvalue_type)
                         self.binder.put(lvalue, rvalue_type)

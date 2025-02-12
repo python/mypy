@@ -917,3 +917,20 @@ def f2(e: Optional[str]) -> None:
             break
         reveal_type(e) # N: Revealed type is "Union[builtins.str, None]"
     reveal_type(e) # N: Revealed type is "Union[builtins.str, None]"
+
+[case testRedefine2LoopAndPartialTypesSpecialCase]
+# flags: --allow-redefinition2 --local-partial-types
+def f() -> list[str]:
+    a = []  # type: ignore
+    o = []
+    for line in ["x"]:
+        if int():
+            continue
+        if int():
+            a = []
+        if int():
+            a.append(line)
+        else:
+            o.append(line)
+    return o
+[builtins fixtures/list.pyi]
