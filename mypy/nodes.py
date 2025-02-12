@@ -1073,7 +1073,8 @@ class Var(SymbolNode):
         return self._fullname
 
     def __repr__(self) -> str:
-        return f"<Var {self.fullname!r} at {hex(id(self))}>"
+        name = self.fullname or self.name
+        return f"<Var {name!r} at {hex(id(self))}>"
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
