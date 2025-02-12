@@ -770,6 +770,21 @@ match m:
         reveal_type(j)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchSequencePatternCaptureNamedTuple]
+from typing import NamedTuple
+
+class N(NamedTuple):
+    x: int
+    y: str
+
+a = N(1, "a")
+
+match a:
+    case [x, y]:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+        reveal_type(y)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchClassPatternCaptureGeneric]
 from typing import Generic, TypeVar
 
@@ -2522,3 +2537,18 @@ def fn2(x: Some | int | str) -> None:
         case Some(value):  # E: Incompatible types in capture pattern (pattern captures type "Union[int, str]", variable has type "Callable[[], str]")
             pass
 [builtins fixtures/dict.pyi]
+
+[case testMatchNamedTupleSequence]
+from typing import Any, NamedTuple
+
+class T(NamedTuple):
+    t: list[Any]
+
+class K(NamedTuple):
+    k: int
+
+def f(t: T) -> None:
+    match t:
+        case T([K() as k]):
+            reveal_type(k)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.K]"
+[builtins fixtures/tuple.pyi]
