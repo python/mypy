@@ -770,6 +770,21 @@ match m:
         reveal_type(j)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchSequencePatternCaptureNamedTuple]
+from typing import NamedTuple
+
+class N(NamedTuple):
+    x: int
+    y: str
+
+a = N(1, "a")
+
+match a:
+    case [x, y]:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+        reveal_type(y)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchClassPatternCaptureGeneric]
 from typing import Generic, TypeVar
 
