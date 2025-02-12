@@ -559,6 +559,23 @@ def f3() -> None:
         del x
     reveal_type(x) # N: Revealed type is "builtins.int"
 
+def f4() -> None:
+    while int():
+        if int():
+            x: int = 0
+        else:
+            del x
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+def f5() -> None:
+    while int():
+        if int():
+            x = 0
+        else:
+            del x
+            continue
+        x = ""
+    reveal_type(x) # N: Revealed type is "builtins.str"
 [case testRedefine2WhileLoopSimple]
 # flags: --allow-redefinition2 --local-partial-types
 def f() -> None:
