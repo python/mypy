@@ -1505,3 +1505,17 @@ def g(x: Union[A, B, str]) -> Union[A, B, str]:
 
 # no errors should be raised above.
 [builtins fixtures/tuple.pyi]
+
+[case testNamedTupleUnionAnyMethodCall]
+from collections import namedtuple
+from typing import Any, Union
+
+T = namedtuple("T", ["x"])
+
+class C(T):
+    def f(self) -> bool:
+        return True
+
+c: Union[C, Any]
+reveal_type(c.f())  # N: Revealed type is "Union[builtins.bool, Any]"
+[builtins fixtures/tuple.pyi]
