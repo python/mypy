@@ -760,7 +760,72 @@ def f1() -> None:
         reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
     reveal_type(e) # N: Revealed type is "<Deleted 'e'>"
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+def f2() -> None:
+    try:
+        x = 1
+        if int():
+            x = ""
+            return
+    except Exception:
+        # TODO: Too wide
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    # TODO: Too wide
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+def f3() -> None:
+    try:
+        x = 1
+        if int():
+            x = ""
+            return
+    finally:
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]" \
+            # N: Revealed type is "builtins.int"
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+def f4() -> None:
+    while int():
+        try:
+            x = 1
+            if int():
+                x = ""
+                break
+            if int():
+                while int():
+                    if int():
+                        x = None
+                        break
+        finally:
+            reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None]" \
+                # N: Revealed type is "Union[builtins.int, None]"
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/exception.pyi]
+
+[case testRedefine2RaiseStatement]
+# flags: --allow-redefinition2 --local-partial-types
+def f1() -> None:
+    if int():
+        x = ""
+    elif int():
+        x = None
+        raise Exception()
+    else:
+        x = 1
+    reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.int]"
+
+def f2() -> None:
+    try:
+        x = 1
+        if int():
+            x = ""
+            raise Exception()
+        reveal_type(x) # N: Revealed type is "builtins.int"
+    except Exception:
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/exception.pyi]
+
 
 [case testRedefine2MultipleAssignment]
 # flags: --allow-redefinition2 --local-partial-types
