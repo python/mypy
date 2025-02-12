@@ -1638,11 +1638,12 @@ class WithStmt(Statement):
 
 
 class MatchStmt(Statement):
-    __slots__ = ("subject", "patterns", "guards", "bodies")
+    __slots__ = ("subject", "subject_dummy", "patterns", "guards", "bodies")
 
     __match_args__ = ("subject", "patterns", "guards", "bodies")
 
     subject: Expression
+    subject_dummy: NameExpr | None
     patterns: list[Pattern]
     guards: list[Expression | None]
     bodies: list[Block]
@@ -1657,6 +1658,7 @@ class MatchStmt(Statement):
         super().__init__()
         assert len(patterns) == len(guards) == len(bodies)
         self.subject = subject
+        self.subject_dummy = None
         self.patterns = patterns
         self.guards = guards
         self.bodies = bodies

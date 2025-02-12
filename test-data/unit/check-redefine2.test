@@ -637,7 +637,7 @@ def f2() -> None:
 y = ""
 [builtins fixtures/tuple.pyi]
 
-[case testRedefine2WhileLoopComplex3]
+[case testRedefine2LoopWithMatch]
 # flags: --allow-redefinition2 --local-partial-types --python-version 3.10
 
 def f1() -> None:
@@ -650,6 +650,17 @@ def f1() -> None:
                 pass
         if int():
             continue
+
+def f2() -> None:
+    for x in [""]:
+        match str():
+            case "a":
+                y = ""
+            case "b":
+                y = 1
+                return
+    reveal_type(y) # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
 
 [case testRedefine2Return]
 # flags: --allow-redefinition2 --local-partial-types

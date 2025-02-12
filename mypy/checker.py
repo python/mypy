@@ -1395,7 +1395,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # TODO: Add these directly using a fast path
                         v = arg.variable
                         if v.type is not None:
-                            n = NameExpr("")
+                            n = NameExpr(v.name)
                             n.node = v
                             self.binder.assign_type(n, v.type, v.type)
 
@@ -5521,11 +5521,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Create a dummy subject expression to handle cases where a match statement's subject
             # is not a literal value. This lets us correctly narrow types and check exhaustivity
             # This is hack!
-            id = s.subject.callee.fullname if isinstance(s.subject.callee, RefExpr) else ""
-            name = "dummy-match-" + id
-            v = Var(name)
-            named_subject = NameExpr(name)
-            named_subject.node = v
+            if s.subject_dummy is None:
+                id = s.subject.callee.fullname if isinstance(s.subject.callee, RefExpr) else ""
+                name = "dummy-match-" + id
+                v = Var(name)
+                s.subject_dummy = NameExpr(name)
+                s.subject_dummy.node = v
+            named_subject = s.subject_dummy
         else:
             named_subject = s.subject
 
