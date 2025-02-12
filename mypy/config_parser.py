@@ -276,7 +276,7 @@ def _find_config_file(
             break
         current_dir = parent_dir
 
-    for config_file in map(os.path.expanduser, defaults.USER_CONFIG_FILES):
+    for config_file in defaults.USER_CONFIG_FILES:
         ret = _parse_individual_file(config_file, stderr)
         if ret is None:
             continue
