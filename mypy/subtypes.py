@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from typing import Any, Callable, Final, TypeVar, cast
 from typing_extensions import TypeAlias as _TypeAlias
@@ -413,6 +413,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if self.proper_subtype:
             return is_proper_subtype(left, right, subtype_context=self.subtype_context)
         return is_subtype(left, right, subtype_context=self.subtype_context)
+
+    def _all_subtypes(self, lefts: Iterable[Type], rights: Iterable[Type]) -> bool:
+        return all(self._is_subtype(li, ri) for (li, ri) in zip(lefts, rights))
 
     # visit_x(left) means: is left (which is an instance of X) a subtype of right?
 
@@ -856,11 +859,25 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # There are some items on the left that will never have a matching length
                 # on the right.
                 return False
+            left_prefix = left_unpack_index
+            left_suffix = len(left.items) - left_prefix - 1
             left_unpack = left.items[left_unpack_index]
             assert isinstance(left_unpack, UnpackType)
             left_unpacked = get_proper_type(left_unpack.type)
             if not isinstance(left_unpacked, Instance):
-                # *Ts unpacks can't be split.
+                # *Ts unpack can't be split, except if it is all mapped to Anys or objects.
+                if self.is_top_type(right_item):
+                    right_prefix_types, middle, right_suffix_types = split_with_prefix_and_suffix(
+                        tuple(right.items), left_prefix, left_suffix
+                    )
+                    if not all(
+                        self.is_top_type(ri) or isinstance(ri, UnpackType) for ri in middle
+                    ):
+                        return False
+                    # Also check the tails match as well.
+                    return self._all_subtypes(
+                        left.items[:left_prefix], right_prefix_types
+                    ) and self._all_subtypes(left.items[-left_suffix:], right_suffix_types)
                 return False
             assert left_unpacked.type.fullname == "builtins.tuple"
             left_item = left_unpacked.args[0]
@@ -871,8 +888,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # and then check subtyping for all finite overlaps.
             if not self._is_subtype(left_item, right_item):
                 return False
-            left_prefix = left_unpack_index
-            left_suffix = len(left.items) - left_prefix - 1
             max_overlap = max(0, right_prefix - left_prefix, right_suffix - left_suffix)
             for overlap in range(max_overlap + 1):
                 repr_items = left.items[:left_prefix] + [left_item] * overlap
@@ -882,6 +897,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if not self._is_subtype(left_repr, right):
                     return False
             return True
+
+    def is_top_type(self, typ: Type) -> bool:
+        if not self.proper_subtype and isinstance(get_proper_type(typ), AnyType):
+            return True
+        return is_named_instance(typ, "builtins.object")
 
     def visit_typeddict_type(self, left: TypedDictType) -> bool:
         right = self.right
@@ -1653,17 +1673,18 @@ def are_parameters_compatible(
         return True
     trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
 
+    trivial_vararg_suffix = False
     if (
-        right.arg_kinds == [ARG_STAR]
-        and isinstance(get_proper_type(right.arg_types[0]), AnyType)
+        right.arg_kinds[-1:] == [ARG_STAR]
+        and isinstance(get_proper_type(right.arg_types[-1]), AnyType)
         and not is_proper_subtype
+        and all(k.is_positional(star=True) for k in left.arg_kinds)
     ):
         # Similar to how (*Any, **Any) is considered a supertype of all callables, we consider
         # (*Any) a supertype of all callables with positional arguments. This is needed in
         # particular because we often refuse to try type inference if actual type is not
         # a subtype of erased template type.
-        if all(k.is_positional() for k in left.arg_kinds) and ignore_pos_arg_names:
-            return True
+        trivial_vararg_suffix = True
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
@@ -1697,7 +1718,11 @@ def are_parameters_compatible(
             return not allow_partial_overlap and not trivial_suffix
         return not is_compat(right_arg.typ, left_arg.typ)
 
-    if _incompatible(left_star, right_star) or _incompatible(left_star2, right_star2):
+    if (
+        _incompatible(left_star, right_star)
+        and not trivial_vararg_suffix
+        or _incompatible(left_star2, right_star2)
+    ):
         return False
 
     # Phase 1b: Check non-star args: for every arg right can accept, left must
@@ -1727,8 +1752,8 @@ def are_parameters_compatible(
     # Phase 1c: Check var args. Right has an infinite series of optional positional
     #           arguments. Get all further positional args of left, and make sure
     #           they're more general than the corresponding member in right.
-    # TODO: are we handling UnpackType correctly here?
-    if right_star is not None:
+    # TODO: handle suffix in UnpackType (i.e. *args: *Tuple[Ts, X, Y]).
+    if right_star is not None and not trivial_vararg_suffix:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)
         assert right_by_position is not None

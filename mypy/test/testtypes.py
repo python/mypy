@@ -1021,7 +1021,7 @@ class JoinSuite(Suite):
         self.assert_join(
             self.tuple(self.fx.a, self.fx.a),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(self.fx.a, self.fx.a),
@@ -1049,12 +1049,12 @@ class JoinSuite(Suite):
             self.tuple(
                 self.fx.a, UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a
             ),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a),
@@ -1584,11 +1584,12 @@ def make_call(*items: tuple[str, str | None]) -> CallExpr:
 class TestExpandTypeLimitGetProperType(TestCase):
     # WARNING: do not increase this number unless absolutely necessary,
     # and you understand what you are doing.
-    ALLOWED_GET_PROPER_TYPES = 9
+    ALLOWED_GET_PROPER_TYPES = 7
 
     @skipUnless(mypy.expandtype.__file__.endswith(".py"), "Skip for compiled mypy")
     def test_count_get_proper_type(self) -> None:
         with open(mypy.expandtype.__file__) as f:
             code = f.read()
-        get_proper_type_count = len(re.findall("get_proper_type", code))
+        get_proper_type_count = len(re.findall(r"get_proper_type\(", code))
+        get_proper_type_count -= len(re.findall(r"get_proper_type\(\)", code))
         assert get_proper_type_count == self.ALLOWED_GET_PROPER_TYPES

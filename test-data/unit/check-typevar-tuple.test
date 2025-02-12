@@ -2309,18 +2309,21 @@ def higher_order(f: _CallableValue) -> None: ...
 def good1(*args: int) -> None: ...
 def good2(*args: str) -> int: ...
 
-def bad1(a: str, b: int, /) -> None: ...
-def bad2(c: bytes, *args: int) -> str: ...
-def bad3(*, d: str) -> int: ...
-def bad4(**kwargs: None) -> None: ...
+# These are special-cased for *args: Any (as opposite to *args: object)
+def ok1(a: str, b: int, /) -> None: ...
+def ok2(c: bytes, *args: int) -> str: ...
+
+def bad1(*, d: str) -> int: ...
+def bad2(**kwargs: None) -> None: ...
 
 higher_order(good1)
 higher_order(good2)
 
-higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[str, int], None]"; expected "Callable[[VarArg(Any)], Any]"
-higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[bytes, VarArg(int)], str]"; expected "Callable[[VarArg(Any)], Any]"
-higher_order(bad3)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[NamedArg(str, 'd')], int]"; expected "Callable[[VarArg(Any)], Any]"
-higher_order(bad4)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[VarArg(Any)], Any]"
+higher_order(ok1)
+higher_order(ok2)
+
+higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[NamedArg(str, 'd')], int]"; expected "Callable[[VarArg(Any)], Any]"
+higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[VarArg(Any)], Any]"
 [builtins fixtures/tuple.pyi]
 
 [case testAliasToCallableWithUnpack2]
@@ -2516,4 +2519,90 @@ x3 is y3
 x4: Foo[Unpack[tuple[str, ...]]]
 y4: Foo[Unpack[tuple[int, int]]]
 x4 is y4  # E: Non-overlapping identity check (left operand type: "Foo[Unpack[Tuple[str, ...]]]", right operand type: "Foo[int, int]")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleErasureNormalized]
+from typing import TypeVarTuple, Unpack, Generic, Union
+from collections.abc import Callable
+
+Args = TypeVarTuple("Args")
+
+class Built(Generic[Unpack[Args]]):
+    pass
+
+def example(
+    fn: Union[Built[Unpack[Args]], Callable[[Unpack[Args]], None]]
+) -> Built[Unpack[Args]]: ...
+
+@example
+def command() -> None:
+    return
+reveal_type(command)  # N: Revealed type is "__main__.Built[()]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleSelfMappedPrefix]
+from typing import TypeVarTuple, Generic, Unpack
+
+Ts = TypeVarTuple("Ts")
+class Base(Generic[Unpack[Ts]]):
+    attr: tuple[Unpack[Ts]]
+
+    @property
+    def prop(self) -> tuple[Unpack[Ts]]:
+        return self.attr
+
+    def meth(self) -> tuple[Unpack[Ts]]:
+        return self.attr
+
+Ss = TypeVarTuple("Ss")
+class Derived(Base[str, Unpack[Ss]]):
+    def test(self) -> None:
+        reveal_type(self.attr)  # N: Revealed type is "Tuple[builtins.str, Unpack[Ss`1]]"
+        reveal_type(self.prop)  # N: Revealed type is "Tuple[builtins.str, Unpack[Ss`1]]"
+        reveal_type(self.meth())  # N: Revealed type is "Tuple[builtins.str, Unpack[Ss`1]]"
+[builtins fixtures/property.pyi]
+
+[case testTypeVarTupleProtocolPrefix]
+from typing import Protocol, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+class A(Protocol[Unpack[Ts]]):
+    def f(self, z: str, *args: Unpack[Ts]) -> None: ...
+
+class C:
+    def f(self, z: str, x: int) -> None: ...
+
+def f(x: A[Unpack[Ts]]) -> tuple[Unpack[Ts]]: ...
+
+reveal_type(f(C()))  # N: Revealed type is "Tuple[builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleHomogeneousCallableNormalized]
+from typing import Generic, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]):
+    def foo(self, *args: Unpack[Ts]) -> None: ...
+
+c: C[Unpack[tuple[int, ...]]]
+reveal_type(c.foo)  # N: Revealed type is "def (*args: builtins.int)"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleJoinInstanceTypeVar]
+from typing import Any, Unpack, TypeVarTuple, TypeVar
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+
+def join(x: T, y: T) -> T: ...
+def test(xs: tuple[Unpack[Ts]], xsi: tuple[int, Unpack[Ts]]) -> None:
+    a: tuple[Any, ...]
+    reveal_type(join(xs, a))  # N: Revealed type is "builtins.tuple[Any, ...]"
+    reveal_type(join(a, xs))  # N: Revealed type is "builtins.tuple[Any, ...]"
+    aa: tuple[Unpack[tuple[Any, ...]]]
+    reveal_type(join(xs, aa))  # N: Revealed type is "builtins.tuple[Any, ...]"
+    reveal_type(join(aa, xs))  # N: Revealed type is "builtins.tuple[Any, ...]"
+    ai: tuple[int, Unpack[tuple[Any, ...]]]
+    reveal_type(join(xsi, ai))  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[Any, ...]]]"
+    reveal_type(join(ai, xsi))  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[Any, ...]]]"
 [builtins fixtures/tuple.pyi]
