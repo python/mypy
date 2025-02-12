@@ -2522,3 +2522,18 @@ def fn2(x: Some | int | str) -> None:
         case Some(value):  # E: Incompatible types in capture pattern (pattern captures type "Union[int, str]", variable has type "Callable[[], str]")
             pass
 [builtins fixtures/dict.pyi]
+
+[case testMatchNamedTupleSequence]
+from typing import Any, NamedTuple
+
+class T(NamedTuple):
+    t: list[Any]
+
+class K(NamedTuple):
+    k: int
+
+def f(t: T) -> None:
+    match t:
+        case T([K() as k]):
+            reveal_type(k)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.K]"
+[builtins fixtures/tuple.pyi]
