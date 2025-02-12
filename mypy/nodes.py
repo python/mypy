@@ -176,15 +176,15 @@ class Node(Context):
     __slots__ = ()
 
     def __str__(self) -> str:
-        ans = self.accept(mypy.strconv.StrConv(options=Options()))
-        if ans is None:
+        a = self.accept(mypy.strconv.StrConv(options=Options()))
+        if a is None:
             return repr(self)
-        return ans
+        return a
 
     def str_with_options(self, options: Options) -> str:
-        ans = self.accept(mypy.strconv.StrConv(options=options))
-        assert ans
-        return ans
+        a = self.accept(mypy.strconv.StrConv(options=options))
+        assert a
+        return a
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
