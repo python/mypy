@@ -4600,10 +4600,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         bound_method = analyze_decorator_or_funcbase_access(
             defn=dunder_set,
             itype=attribute_type,
-            info=attribute_type.type,
-            self_type=attribute_type,
             name="__set__",
-            mx=mx,
+            mx=mx.copy_modified(self_type=attribute_type),
         )
         typ = map_instance_to_supertype(attribute_type, dunder_set.info)
         dunder_set_type = expand_type_by_instance(bound_method, typ)
