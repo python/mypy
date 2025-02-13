@@ -89,6 +89,18 @@ def test_rsplit() -> None:
     assert do_rsplit(ss, " ", 1) == ["abc abcd abcde", "abcdef"]  # different to do_split
     assert do_rsplit(ss, " ", 2) == ["abc abcd", "abcde", "abcdef"]  # different to do_split
 
+def splitlines(s: str, keepends: Optional[bool] = None) -> List[str]:
+    if keepends is not None:
+        return s.splitlines(keepends)
+    return s.splitlines()
+
+s_text = "This\nis\n\nsome\nlong\ntext.\n"
+
+def test_splitlines() -> None:
+    assert splitlines(s_text) == ["This", "is", "", "some", "long", "text."]
+    assert splitlines(s_text, False) == ["This", "is", "", "some", "long", "text."]
+    assert splitlines(s_text, True) == ["This\n", "is\n", "\n", "some\n", "long\n", "text.\n"]
+
 def getitem(s: str, index: int) -> str:
     return s[index]
 

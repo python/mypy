@@ -42,6 +42,8 @@ Methods
 * ``s.split()``
 * ``s.split(sep: str)``
 * ``s.split(sep: str, maxsplit: int)``
+* ``s.splitlines()``
+* ``s.splitlines(keepends: bool)``
 * ``s1.startswith(s2: str)``
 
 .. note::
