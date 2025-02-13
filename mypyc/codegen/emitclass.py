@@ -812,7 +812,9 @@ def generate_finalize_for_class(
     )
     emitter.emit_line("if (PyErr_Occurred() != NULL) {")
     emitter.emit_line('PyObject *del_str = PyUnicode_FromString("__del__");')
-    emitter.emit_line("PyObject *del_method = _PyType_Lookup(Py_TYPE(self), del_str);")
+    emitter.emit_line(
+        "PyObject *del_method = (del_str == NULL) ? NULL : _PyType_Lookup(Py_TYPE(self), del_str);"
+    )
     # CPython interpreter uses PyErr_WriteUnraisable: https://docs.python.org/3/c-api/exceptions.html#c.PyErr_WriteUnraisable
     # However, the message is slightly different due to the way mypyc compiles classes.
     # CPython interpreter prints: Exception ignored in: <function F.__del__ at 0x100aed940>
