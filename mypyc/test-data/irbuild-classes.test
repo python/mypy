@@ -1335,3 +1335,12 @@ def outer():
 if True:
     class OtherInner:  # E: Nested class definitions not supported
         pass
+
+[case testEnumClassAlias]
+from enum import Enum
+from typing import Literal
+
+class SomeEnum(Enum):
+    AVALUE = "a"
+
+ALIAS = Literal[SomeEnum.AVALUE]
