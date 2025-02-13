@@ -477,21 +477,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         return self._is_subtype(left, unpacked)
             if left.type.has_base(right.partial_fallback.type.fullname):
                 if not self.proper_subtype:
-                    # Special case to consider Foo[*tuple[Any, ...]] (i.e. bare Foo) a
-                    # subtype of Foo[<whatever>], when Foo is user defined variadic tuple type.
+                    # Special cases to consider:
+                    #   * Plain tuple[Any, ...] instance is a subtype of all tuple types.
+                    #   * Foo[*tuple[Any, ...]] (normalized) instance is a subtype of all
+                    #     tuples with fallback to Foo (e.g. for variadic NamedTuples).
                     mapped = map_instance_to_supertype(left, right.partial_fallback.type)
-                    for arg in map(get_proper_type, mapped.args):
-                        if isinstance(arg, UnpackType):
-                            unpacked = get_proper_type(arg.type)
-                            if not isinstance(unpacked, Instance):
-                                break
-                            assert unpacked.type.fullname == "builtins.tuple"
-                            if not isinstance(get_proper_type(unpacked.args[0]), AnyType):
-                                break
-                        elif not isinstance(arg, AnyType):
-                            break
-                    else:
-                        return True
+                    if is_erased_instance(mapped):
+                        if (
+                            mapped.type.fullname == "builtins.tuple"
+                            or mapped.type.has_type_var_tuple_type
+                        ):
+                            return True
             return False
         if isinstance(right, TypeVarTupleType):
             # tuple[Any, ...] is like Any in the world of tuples (see special case above).
@@ -559,19 +555,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     right_args = (
                         right_prefix + (TupleType(list(right_middle), fallback),) + right_suffix
                     )
-                    if not self.proper_subtype and t.args:
-                        for arg in map(get_proper_type, t.args):
-                            if isinstance(arg, UnpackType):
-                                unpacked = get_proper_type(arg.type)
-                                if not isinstance(unpacked, Instance):
-                                    break
-                                assert unpacked.type.fullname == "builtins.tuple"
-                                if not isinstance(get_proper_type(unpacked.args[0]), AnyType):
-                                    break
-                            elif not isinstance(arg, AnyType):
-                                break
-                        else:
-                            return True
+                    if not self.proper_subtype and is_erased_instance(t):
+                        return True
                     if len(left_args) != len(right_args):
                         return False
                     type_params = zip(left_args, right_args, right.type.defn.type_vars)
@@ -2176,3 +2161,20 @@ def erase_return_self_types(typ: Type, self_type: Instance) -> Type:
             ]
         )
     return typ
+
+
+def is_erased_instance(t: Instance) -> bool:
+    """Is this an instance where all args are Any types?"""
+    if not t.args:
+        return False
+    for arg in t.args:
+        if isinstance(arg, UnpackType):
+            unpacked = get_proper_type(arg.type)
+            if not isinstance(unpacked, Instance):
+                return False
+            assert unpacked.type.fullname == "builtins.tuple"
+            if not isinstance(get_proper_type(unpacked.args[0]), AnyType):
+                return False
+        elif not isinstance(get_proper_type(arg), AnyType):
+            return False
+    return True
