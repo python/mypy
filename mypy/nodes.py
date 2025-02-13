@@ -176,11 +176,7 @@ class Node(Context):
     __slots__ = ()
 
     def __str__(self) -> str:
-        a = self.accept(mypy.strconv.StrConv(options=Options()))
-        if a is None:
-            # Some visitors might have empty bodies and actually return `None`
-            return repr(self)  # type: ignore[unreachable]
-        return a
+        return self.accept(mypy.strconv.StrConv(options=Options()))
 
     def str_with_options(self, options: Options) -> str:
         a = self.accept(mypy.strconv.StrConv(options=options))
