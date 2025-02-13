@@ -2152,5 +2152,4 @@ def is_erased_instance(t: Instance) -> bool:
                 return False
         elif not isinstance(get_proper_type(arg), AnyType):
             return False
-    else:
-        return True
+    return True
