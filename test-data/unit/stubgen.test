@@ -338,10 +338,24 @@ class A: ...
 class B(A): ...
 
 [case testDecoratedFunction]
+import x
+
 @decorator
 def foo(x): ...
+
+@x.decorator
+def bar(x): ...
+
+@decorator(x=1, y={"a": 1})
+def foo_bar(x): ...
 [out]
+import x
+
+@decorator
 def foo(x) -> None: ...
+@x.decorator
+def bar(x) -> None: ...
+def foo_bar(x) -> None: ...
 
 [case testMultipleAssignment]
 x, y = 1, 2
@@ -4256,7 +4270,7 @@ class Y(missing.Base):
     generated_kwargs_: float
 
 [case testDataclassTransform]
-# dataclass_transform detection only works with sementic analysis.
+# dataclass_transform detection only works with semantic analysis.
 # Test stubgen doesn't break too badly without it.
 from typing_extensions import dataclass_transform
 

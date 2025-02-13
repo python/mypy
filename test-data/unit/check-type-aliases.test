@@ -1050,8 +1050,8 @@ class C(Generic[T]):
 [builtins fixtures/classmethod.pyi]
 
 [case testRecursiveAliasTuple]
-from typing_extensions import Literal, TypeAlias
-from typing import Tuple, Union
+from typing_extensions import TypeAlias
+from typing import Literal, Tuple, Union
 
 Expr: TypeAlias = Union[
     Tuple[Literal[123], int],
@@ -1285,4 +1285,32 @@ x1: Implicit[str]  # E: Bad number of arguments for type alias, expected 0, give
 x2: Explicit[str]  # E: Bad number of arguments for type alias, expected 0, given 1
 assert_type(x1, Callable[..., Any])
 assert_type(x2, Callable[..., Any])
+[builtins fixtures/tuple.pyi]
+
+[case testExplicitTypeAliasToSameNameOuterProhibited]
+from typing import TypeVar, Generic
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+class Foo(Generic[T]):
+    bar: Bar[T]
+
+class Bar(Generic[T]):
+    Foo: TypeAlias = Foo[T]  # E: Can't use bound type variable "T" to define generic alias
+[builtins fixtures/tuple.pyi]
+
+[case testExplicitTypeAliasToSameNameOuterAllowed]
+from typing import TypeVar, Generic
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+class Foo(Generic[T]):
+    bar: Bar[T]
+
+U = TypeVar("U")
+class Bar(Generic[T]):
+    Foo: TypeAlias = Foo[U]
+    var: Foo[T]
+x: Bar[int]
+reveal_type(x.var.bar)  # N: Revealed type is "__main__.Bar[builtins.int]"
 [builtins fixtures/tuple.pyi]

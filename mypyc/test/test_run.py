@@ -344,7 +344,7 @@ class TestRun(MypycDataSuite):
                     f'hint: Use "pytest -n0 -s --mypyc-debug={debugger} -k <name-substring>" to run test in debugger'
                 )
                 print("hint: You may need to build a debug version of Python first and use it")
-                print('hint: See also "Debuggging Segfaults" in mypyc/doc/dev-intro.md')
+                print('hint: See also "Debugging Segfaults" in mypyc/doc/dev-intro.md')
             copy_output_files(mypyc_output_dir)
 
         # Verify output.

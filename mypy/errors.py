@@ -38,7 +38,7 @@ HIDE_LINK_CODES: Final = {
     codes.OVERRIDE,
 }
 
-allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
+allowed_duplicates: Final = ["@overload", "Got:", "Expected:", "Expected setter type:"]
 
 BASE_RTD_URL: Final = "https://mypy.rtfd.io/en/stable/_refs.html#code"
 
@@ -171,10 +171,12 @@ class ErrorWatcher:
         *,
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
         save_filtered_errors: bool = False,
+        filter_deprecated: bool = False,
     ) -> None:
         self.errors = errors
         self._has_new_errors = False
         self._filter = filter_errors
+        self._filter_deprecated = filter_deprecated
         self._filtered: list[ErrorInfo] | None = [] if save_filtered_errors else None
 
     def __enter__(self) -> ErrorWatcher:
@@ -195,7 +197,8 @@ class ErrorWatcher:
         ErrorWatcher further down the stack and from being recorded by Errors
         """
         if info.code == codes.DEPRECATED:
-            return False
+            # Deprecated is not a type error, so it is handled on opt-in basis here.
+            return self._filter_deprecated
 
         self._has_new_errors = True
         if isinstance(self._filter, bool):

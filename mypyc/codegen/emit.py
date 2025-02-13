@@ -17,7 +17,6 @@ from mypyc.common import (
     REG_PREFIX,
     STATIC_PREFIX,
     TYPE_PREFIX,
-    use_vectorcall,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.ir.func_ir import FuncDecl
@@ -35,6 +34,7 @@ from mypyc.ir.rtypes import (
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_frozenset_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -398,9 +398,6 @@ class Emitter:
         if value:
             self.emit_line("}")
 
-    def use_vectorcall(self) -> bool:
-        return use_vectorcall(self.capi_version)
-
     def emit_undefined_attr_check(
         self,
         rtype: RType,
@@ -613,6 +610,7 @@ class Emitter:
             is_list_rprimitive(typ)
             or is_dict_rprimitive(typ)
             or is_set_rprimitive(typ)
+            or is_frozenset_rprimitive(typ)
             or is_str_rprimitive(typ)
             or is_range_rprimitive(typ)
             or is_float_rprimitive(typ)
@@ -629,6 +627,8 @@ class Emitter:
                 prefix = "PyDict"
             elif is_set_rprimitive(typ):
                 prefix = "PySet"
+            elif is_frozenset_rprimitive(typ):
+                prefix = "PyFrozenSet"
             elif is_str_rprimitive(typ):
                 prefix = "PyUnicode"
             elif is_range_rprimitive(typ):

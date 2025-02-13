@@ -343,8 +343,9 @@ class C(Generic[P]):
         a = kwargs
         args = kwargs  # E: Incompatible types in assignment (expression has type "P.kwargs", variable has type "P.args")
         kwargs = args  # E: Incompatible types in assignment (expression has type "P.args", variable has type "P.kwargs")
-        args = a
-        kwargs = a
+        a1: Any
+        args = a1
+        kwargs = a1
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecSubtypeChecking2]
@@ -1345,8 +1346,8 @@ from typing import Callable, ParamSpec
 P1 = ParamSpec('P1')
 P2 = ParamSpec('P2')
 
-def f0(f: Callable[P1, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec "P2" is unbound \
-                                                                        # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f0(f: Callable[P1, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs" \
+                                                                        # E: ParamSpec "P2" is unbound
 
 def f1(*args: P1.args): ...  # E: ParamSpec "P1" is unbound
 def f2(**kwargs: P1.kwargs): ...  # E: ParamSpec "P1" is unbound
@@ -2531,4 +2532,31 @@ class GenericWrapper(Generic[P]):
     def method(self) -> None:
         def contains(c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
         def inherits(*args: P.args, **kwargs: P.kwargs) -> None: ...
+[builtins fixtures/paramspec.pyi]
+
+[case testCallbackProtocolClassObjectParamSpec]
+from typing import Any, Callable, Protocol, Optional, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+class App: ...
+
+class MiddlewareFactory(Protocol[P]):
+    def __call__(self, app: App, /, *args: P.args, **kwargs: P.kwargs) -> App:
+        ...
+
+class Capture(Generic[P]): ...
+
+class ServerErrorMiddleware(App):
+    def __init__(
+        self,
+        app: App,
+        handler: Optional[str] = None,
+        debug: bool = False,
+    ) -> None: ...
+
+def fn(f: MiddlewareFactory[P]) -> Capture[P]: ...
+
+reveal_type(fn(ServerErrorMiddleware))  # N: Revealed type is "__main__.Capture[[handler: Union[builtins.str, None] =, debug: builtins.bool =]]"
 [builtins fixtures/paramspec.pyi]

@@ -666,6 +666,16 @@ section of the command line docs.
     Shows a warning when encountering any code inferred to be unreachable or
     redundant after performing type analysis.
 
+.. confval:: deprecated_calls_exclude
+
+    :type: comma-separated list of strings
+
+    Selectively excludes functions and methods defined in specific packages,
+    modules, and classes from the :ref:`deprecated<code-deprecated>` error code.
+    This also applies to all submodules of packages (i.e. everything inside
+    a given prefix). Note, this option does not support per-file configuration,
+    the exclusions list is defined globally for all your code.
+
 
 Suppressing errors
 ******************
@@ -748,7 +758,7 @@ section of the command line docs.
    :type: boolean
    :default: False
 
-   This flag enables additional checks that are technically correct but may be impractical in real code.
+   This flag enables additional checks that are technically correct but may be impractical.
    See :option:`mypy --extra-checks` for more info.
 
 .. confval:: implicit_reexport
@@ -770,13 +780,6 @@ section of the command line docs.
        # This will also re-export bar
        from foo import bar
        __all__ = ['bar']
-
-.. confval:: strict_concatenate
-
-   :type: boolean
-   :default: False
-
-   Make arguments prepended via ``Concatenate`` be truly positional-only.
 
 .. confval:: strict_equality
 

@@ -69,8 +69,7 @@ a.y = 5 # E: Property "y" defined in "X" is read-only
 
 
 [case testTypingNamedTupleAttributesAreReadOnly]
-from typing import NamedTuple
-from typing_extensions import Protocol
+from typing import NamedTuple, Protocol
 
 class HasX(Protocol):
     x: str
@@ -82,8 +81,8 @@ a: HasX = A("foo")
 a.x = "bar"
 [builtins fixtures/tuple.pyi]
 [out]
-main:10: error: Incompatible types in assignment (expression has type "A", variable has type "HasX")
-main:10: note: Protocol member HasX.x expected settable variable, got read-only attribute
+main:9: error: Incompatible types in assignment (expression has type "A", variable has type "HasX")
+main:9: note: Protocol member HasX.x expected settable variable, got read-only attribute
 
 
 [case testNamedTupleCreateWithPositionalArguments]
@@ -1474,3 +1473,49 @@ def main(n: NT[T]) -> None:
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleOverlappingCheck]
+from typing import overload, NamedTuple, Union
+
+class AKey(NamedTuple):
+    k: str
+
+class A(NamedTuple):
+    key: AKey
+
+
+class BKey(NamedTuple):
+    k: str
+
+class B(NamedTuple):
+    key: BKey
+
+@overload
+def f(arg: A) -> A: ...
+@overload
+def f(arg: B) -> B: ...
+def f(arg: Union[A, B]) -> Union[A, B]: ...
+
+def g(x: Union[A, B, str]) -> Union[A, B, str]:
+    if isinstance(x, str):
+        return x
+    else:
+        reveal_type(x)  # N: Revealed type is "Union[Tuple[Tuple[builtins.str, fallback=__main__.AKey], fallback=__main__.A], Tuple[Tuple[builtins.str, fallback=__main__.BKey], fallback=__main__.B]]"
+        return x._replace()
+
+# no errors should be raised above.
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleUnionAnyMethodCall]
+from collections import namedtuple
+from typing import Any, Union
+
+T = namedtuple("T", ["x"])
+
+class C(T):
+    def f(self) -> bool:
+        return True
+
+c: Union[C, Any]
+reveal_type(c.f())  # N: Revealed type is "Union[builtins.bool, Any]"
+[builtins fixtures/tuple.pyi]

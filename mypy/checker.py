@@ -7,7 +7,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence, Set as AbstractSet
 from contextlib import ExitStack, contextmanager
 from typing import Callable, Final, Generic, NamedTuple, Optional, TypeVar, Union, cast, overload
-from typing_extensions import TypeAlias as _TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, join, message_registry, nodes, operators
@@ -78,6 +78,7 @@ from mypy.nodes import (
     FuncBase,
     FuncDef,
     FuncItem,
+    GlobalDecl,
     IfStmt,
     Import,
     ImportAll,
@@ -93,6 +94,7 @@ from mypy.nodes import (
     MypyFile,
     NameExpr,
     Node,
+    NonlocalDecl,
     OperatorAssignmentStmt,
     OpExpr,
     OverloadedFuncDef,
@@ -584,12 +586,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else_body: Statement | None = None,
         *,
         exit_condition: Expression | None = None,
+        on_enter_body: Callable[[], None] | None = None,
     ) -> None:
         """Repeatedly type check a loop body until the frame doesn't change."""
 
         # The outer frame accumulates the results of all iterations:
         with self.binder.frame_context(can_skip=False, conditional_frame=True):
-
             # Check for potential decreases in the number of partial types so as not to stop the
             # iteration too early:
             partials_old = sum(len(pts.map) for pts in self.partial_types)
@@ -602,6 +604,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
+                    if on_enter_body is not None:
+                        on_enter_body()
+
                     self.accept(body)
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
                 if (partials_new == partials_old) and not self.binder.last_pop_changed:
@@ -614,6 +619,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.options.enabled_error_codes.add(codes.REDUNDANT_EXPR)
             if warn_unreachable or warn_redundant:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
+                    if on_enter_body is not None:
+                        on_enter_body()
+
                     self.accept(body)
 
             # If exit_condition is set, assume it must be False on exit from the loop:
@@ -648,6 +656,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # HACK: Infer the type of the property.
             assert isinstance(defn.items[0], Decorator)
             self.visit_decorator(defn.items[0])
+            if defn.items[0].var.is_settable_property:
+                assert isinstance(defn.items[1], Decorator)
+                self.visit_func_def(defn.items[1].func)
+                setter_type = self.function_type(defn.items[1].func)
+                assert isinstance(setter_type, CallableType)
+                if len(setter_type.arg_types) != 2:
+                    self.fail("Invalid property setter signature", defn.items[1].func)
+                    any_type = AnyType(TypeOfAny.from_error)
+                    setter_type = setter_type.copy_modified(
+                        arg_types=[any_type, any_type],
+                        arg_kinds=[ARG_POS, ARG_POS],
+                        arg_names=[None, None],
+                    )
+                defn.items[0].var.setter_type = setter_type
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
             if defn.is_property:
@@ -688,50 +710,57 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def extract_callable_type(self, inner_type: Type | None, ctx: Context) -> CallableType | None:
         """Get type as seen by an overload item caller."""
         inner_type = get_proper_type(inner_type)
-        outer_type: CallableType | None = None
-        if inner_type is not None and not isinstance(inner_type, AnyType):
-            if isinstance(inner_type, TypeVarLikeType):
-                inner_type = get_proper_type(inner_type.upper_bound)
-            if isinstance(inner_type, TypeType):
-                inner_type = get_proper_type(
-                    self.expr_checker.analyze_type_type_callee(inner_type.item, ctx)
-                )
+        outer_type: FunctionLike | None = None
+        if inner_type is None or isinstance(inner_type, AnyType):
+            return None
+        if isinstance(inner_type, TypeVarLikeType):
+            inner_type = get_proper_type(inner_type.upper_bound)
+        if isinstance(inner_type, TypeType):
+            inner_type = get_proper_type(
+                self.expr_checker.analyze_type_type_callee(inner_type.item, ctx)
+            )
 
-            if isinstance(inner_type, CallableType):
-                outer_type = inner_type
-            elif isinstance(inner_type, Instance):
-                inner_call = get_proper_type(
-                    analyze_member_access(
-                        name="__call__",
-                        typ=inner_type,
-                        context=ctx,
-                        is_lvalue=False,
-                        is_super=False,
-                        is_operator=True,
-                        msg=self.msg,
-                        original_type=inner_type,
-                        chk=self,
-                    )
+        if isinstance(inner_type, FunctionLike):
+            outer_type = inner_type
+        elif isinstance(inner_type, Instance):
+            inner_call = get_proper_type(
+                analyze_member_access(
+                    name="__call__",
+                    typ=inner_type,
+                    context=ctx,
+                    is_lvalue=False,
+                    is_super=False,
+                    is_operator=True,
+                    msg=self.msg,
+                    original_type=inner_type,
+                    chk=self,
                 )
-                if isinstance(inner_call, CallableType):
-                    outer_type = inner_call
-            elif isinstance(inner_type, UnionType):
-                union_type = make_simplified_union(inner_type.items)
-                if isinstance(union_type, UnionType):
-                    items = []
-                    for item in union_type.items:
-                        callable_item = self.extract_callable_type(item, ctx)
-                        if callable_item is None:
-                            break
-                        items.append(callable_item)
-                    else:
-                        joined_type = get_proper_type(join.join_type_list(items))
-                        if isinstance(joined_type, CallableType):
-                            outer_type = joined_type
+            )
+            if isinstance(inner_call, FunctionLike):
+                outer_type = inner_call
+        elif isinstance(inner_type, UnionType):
+            union_type = make_simplified_union(inner_type.items)
+            if isinstance(union_type, UnionType):
+                items = []
+                for item in union_type.items:
+                    callable_item = self.extract_callable_type(item, ctx)
+                    if callable_item is None:
+                        break
+                    items.append(callable_item)
                 else:
-                    return self.extract_callable_type(union_type, ctx)
-            if outer_type is None:
-                self.msg.not_callable(inner_type, ctx)
+                    joined_type = get_proper_type(join.join_type_list(items))
+                    if isinstance(joined_type, FunctionLike):
+                        outer_type = joined_type
+            else:
+                return self.extract_callable_type(union_type, ctx)
+
+        if outer_type is None:
+            self.msg.not_callable(inner_type, ctx)
+            return None
+        if isinstance(outer_type, Overloaded):
+            return None
+
+        assert isinstance(outer_type, CallableType)
         return outer_type
 
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
@@ -2043,6 +2072,44 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         return None
         return found_base_method
 
+    def check_setter_type_override(
+        self, defn: OverloadedFuncDef, base_attr: SymbolTableNode, base: TypeInfo
+    ) -> None:
+        """Check override of a setter type of a mutable attribute.
+
+        Currently, this should be only called when either base node or the current node
+        is a custom settable property (i.e. where setter type is different from getter type).
+        Note that this check is contravariant.
+        """
+        base_node = base_attr.node
+        assert isinstance(base_node, (OverloadedFuncDef, Var))
+        original_type, is_original_setter = get_raw_setter_type(base_node)
+        if isinstance(base_node, Var):
+            expanded_type = map_type_from_supertype(original_type, defn.info, base)
+            original_type = get_proper_type(
+                expand_self_type(base_node, expanded_type, fill_typevars(defn.info))
+            )
+        else:
+            assert isinstance(original_type, ProperType)
+            assert isinstance(original_type, CallableType)
+            original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
+            assert isinstance(original_type, CallableType)
+            if is_original_setter:
+                original_type = original_type.arg_types[0]
+            else:
+                original_type = original_type.ret_type
+
+        typ, is_setter = get_raw_setter_type(defn)
+        assert isinstance(typ, ProperType) and isinstance(typ, CallableType)
+        typ = bind_self(typ, self.scope.active_self_type())
+        if is_setter:
+            typ = typ.arg_types[0]
+        else:
+            typ = typ.ret_type
+
+        if not is_subtype(original_type, typ):
+            self.msg.incompatible_setter_override(defn.items[1], typ, original_type, base)
+
     def check_method_override_for_base_with_name(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, name: str, base: TypeInfo
     ) -> bool:
@@ -2051,169 +2118,187 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Return True if the supertype node was not analysed yet, and `defn` was deferred.
         """
         base_attr = base.names.get(name)
-        if base_attr:
-            # The name of the method is defined in the base class.
+        if not base_attr:
+            return False
+        # The name of the method is defined in the base class.
 
-            # Point errors at the 'def' line (important for backward compatibility
-            # of type ignores).
-            if not isinstance(defn, Decorator):
-                context = defn
-            else:
-                context = defn.func
+        # Point errors at the 'def' line (important for backward compatibility
+        # of type ignores).
+        if not isinstance(defn, Decorator):
+            context = defn
+        else:
+            context = defn.func
 
-            # Construct the type of the overriding method.
-            # TODO: this logic is much less complete than similar one in checkmember.py
-            if isinstance(defn, (FuncDef, OverloadedFuncDef)):
-                typ: Type = self.function_type(defn)
-                override_class_or_static = defn.is_class or defn.is_static
-                override_class = defn.is_class
-            else:
-                assert defn.var.is_ready
-                assert defn.var.type is not None
-                typ = defn.var.type
-                override_class_or_static = defn.func.is_class or defn.func.is_static
-                override_class = defn.func.is_class
-            typ = get_proper_type(typ)
-            if isinstance(typ, FunctionLike) and not is_static(context):
-                typ = bind_self(typ, self.scope.active_self_type(), is_classmethod=override_class)
-            # Map the overridden method type to subtype context so that
-            # it can be checked for compatibility.
-            original_type = get_proper_type(base_attr.type)
-            original_node = base_attr.node
-            # `original_type` can be partial if (e.g.) it is originally an
-            # instance variable from an `__init__` block that becomes deferred.
-            if original_type is None or isinstance(original_type, PartialType):
-                if self.pass_num < self.last_pass:
-                    # If there are passes left, defer this node until next pass,
-                    # otherwise try reconstructing the method type from available information.
-                    self.defer_node(defn, defn.info)
-                    return True
-                elif isinstance(original_node, (FuncDef, OverloadedFuncDef)):
-                    original_type = self.function_type(original_node)
-                elif isinstance(original_node, Decorator):
-                    original_type = self.function_type(original_node.func)
-                elif isinstance(original_node, Var):
-                    # Super type can define method as an attribute.
-                    # See https://github.com/python/mypy/issues/10134
-
-                    # We also check that sometimes `original_node.type` is None.
-                    # This is the case when we use something like `__hash__ = None`.
-                    if original_node.type is not None:
-                        original_type = get_proper_type(original_node.type)
-                    else:
-                        original_type = NoneType()
-                else:
-                    # Will always fail to typecheck below, since we know the node is a method
-                    original_type = NoneType()
-            if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
-                original_class_or_static = original_node.is_class or original_node.is_static
+        # Construct the type of the overriding method.
+        # TODO: this logic is much less complete than similar one in checkmember.py
+        if isinstance(defn, (FuncDef, OverloadedFuncDef)):
+            typ: Type = self.function_type(defn)
+            override_class_or_static = defn.is_class or defn.is_static
+            override_class = defn.is_class
+        else:
+            assert defn.var.is_ready
+            assert defn.var.type is not None
+            typ = defn.var.type
+            override_class_or_static = defn.func.is_class or defn.func.is_static
+            override_class = defn.func.is_class
+        typ = get_proper_type(typ)
+        if isinstance(typ, FunctionLike) and not is_static(context):
+            typ = bind_self(typ, self.scope.active_self_type(), is_classmethod=override_class)
+        # Map the overridden method type to subtype context so that
+        # it can be checked for compatibility.
+        original_type = get_proper_type(base_attr.type)
+        original_node = base_attr.node
+        # `original_type` can be partial if (e.g.) it is originally an
+        # instance variable from an `__init__` block that becomes deferred.
+        supertype_ready = True
+        if original_type is None or isinstance(original_type, PartialType):
+            supertype_ready = False
+            if self.pass_num < self.last_pass:
+                # If there are passes left, defer this node until next pass,
+                # otherwise try reconstructing the method type from available information.
+                self.defer_node(defn, defn.info)
+                return True
+            elif isinstance(original_node, (FuncDef, OverloadedFuncDef)):
+                original_type = self.function_type(original_node)
             elif isinstance(original_node, Decorator):
-                fdef = original_node.func
-                original_class_or_static = fdef.is_class or fdef.is_static
-            else:
-                original_class_or_static = False  # a variable can't be class or static
+                original_type = self.function_type(original_node.func)
+            elif isinstance(original_node, Var):
+                # Super type can define method as an attribute.
+                # See https://github.com/python/mypy/issues/10134
 
-            if isinstance(original_type, FunctionLike):
-                original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
-                if original_node and is_property(original_node):
-                    original_type = get_property_type(original_type)
-
-            if isinstance(original_node, Var):
-                expanded_type = map_type_from_supertype(original_type, defn.info, base)
-                expanded_type = expand_self_type(
-                    original_node, expanded_type, fill_typevars(defn.info)
-                )
-                original_type = get_proper_type(expanded_type)
-
-            if is_property(defn):
-                inner: FunctionLike | None
-                if isinstance(typ, FunctionLike):
-                    inner = typ
+                # We also check that sometimes `original_node.type` is None.
+                # This is the case when we use something like `__hash__ = None`.
+                if original_node.type is not None:
+                    original_type = get_proper_type(original_node.type)
                 else:
-                    inner = self.extract_callable_type(typ, context)
-                if inner is not None:
-                    typ = inner
-                    typ = get_property_type(typ)
-                    if (
-                        isinstance(original_node, Var)
-                        and not original_node.is_final
-                        and (not original_node.is_property or original_node.is_settable_property)
-                        and isinstance(defn, Decorator)
-                    ):
-                        # We only give an error where no other similar errors will be given.
-                        if not isinstance(original_type, AnyType):
-                            self.msg.fail(
-                                "Cannot override writeable attribute with read-only property",
-                                # Give an error on function line to match old behaviour.
-                                defn.func,
-                                code=codes.OVERRIDE,
-                            )
-
-            if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
-                pass
-            elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
-                # Check that the types are compatible.
-                ok = self.check_override(
-                    typ,
-                    original_type,
-                    defn.name,
-                    name,
-                    base.name,
-                    original_class_or_static,
-                    override_class_or_static,
-                    context,
-                )
-                # Check if this override is covariant.
-                if (
-                    ok
-                    and original_node
-                    and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
-                    and self.is_writable_attribute(original_node)
-                    and not is_subtype(original_type, typ, ignore_pos_arg_names=True)
-                ):
-                    base_str, override_str = format_type_distinctly(
-                        original_type, typ, options=self.options
-                    )
-                    msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
-                        f' (base class "{base.name}" defined the type as {base_str},'
-                        f" override has type {override_str})"
-                    )
-                    self.fail(msg, context)
-            elif isinstance(original_type, UnionType) and any(
-                is_subtype(typ, orig_typ, ignore_pos_arg_names=True)
-                for orig_typ in original_type.items
-            ):
-                # This method is a subtype of at least one union variant.
-                if (
-                    original_node
-                    and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
-                    and self.is_writable_attribute(original_node)
-                ):
-                    # Covariant override of mutable attribute.
-                    base_str, override_str = format_type_distinctly(
-                        original_type, typ, options=self.options
-                    )
-                    msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
-                        f' (base class "{base.name}" defined the type as {base_str},'
-                        f" override has type {override_str})"
-                    )
-                    self.fail(msg, context)
-            elif is_equivalent(original_type, typ):
-                # Assume invariance for a non-callable attribute here. Note
-                # that this doesn't affect read-only properties which can have
-                # covariant overrides.
-                pass
-            elif (
-                original_node
-                and not self.is_writable_attribute(original_node)
-                and is_subtype(typ, original_type)
-            ):
-                # If the attribute is read-only, allow covariance
-                pass
+                    original_type = NoneType()
             else:
-                self.msg.signature_incompatible_with_supertype(
-                    defn.name, name, base.name, context, original=original_type, override=typ
+                # Will always fail to typecheck below, since we know the node is a method
+                original_type = NoneType()
+
+        always_allow_covariant = False
+        if is_settable_property(defn) and (
+            is_settable_property(original_node) or isinstance(original_node, Var)
+        ):
+            if is_custom_settable_property(defn) or (is_custom_settable_property(original_node)):
+                # Unlike with getter, where we try to construct some fallback type in case of
+                # deferral during last_pass, we can't make meaningful setter checks if the
+                # supertype is not known precisely.
+                if supertype_ready:
+                    always_allow_covariant = True
+                    self.check_setter_type_override(defn, base_attr, base)
+
+        if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
+            original_class_or_static = original_node.is_class or original_node.is_static
+        elif isinstance(original_node, Decorator):
+            fdef = original_node.func
+            original_class_or_static = fdef.is_class or fdef.is_static
+        else:
+            original_class_or_static = False  # a variable can't be class or static
+
+        if isinstance(original_type, FunctionLike):
+            original_type = self.bind_and_map_method(base_attr, original_type, defn.info, base)
+            if original_node and is_property(original_node):
+                original_type = get_property_type(original_type)
+
+        if isinstance(original_node, Var):
+            expanded_type = map_type_from_supertype(original_type, defn.info, base)
+            expanded_type = expand_self_type(
+                original_node, expanded_type, fill_typevars(defn.info)
+            )
+            original_type = get_proper_type(expanded_type)
+
+        if is_property(defn):
+            inner: FunctionLike | None
+            if isinstance(typ, FunctionLike):
+                inner = typ
+            else:
+                inner = self.extract_callable_type(typ, context)
+            if inner is not None:
+                typ = inner
+                typ = get_property_type(typ)
+                if (
+                    isinstance(original_node, Var)
+                    and not original_node.is_final
+                    and (not original_node.is_property or original_node.is_settable_property)
+                    and isinstance(defn, Decorator)
+                ):
+                    # We only give an error where no other similar errors will be given.
+                    if not isinstance(original_type, AnyType):
+                        self.msg.fail(
+                            "Cannot override writeable attribute with read-only property",
+                            # Give an error on function line to match old behaviour.
+                            defn.func,
+                            code=codes.OVERRIDE,
+                        )
+
+        if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
+            pass
+        elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
+            # Check that the types are compatible.
+            ok = self.check_override(
+                typ,
+                original_type,
+                defn.name,
+                name,
+                base.name,
+                original_class_or_static,
+                override_class_or_static,
+                context,
+            )
+            # Check if this override is covariant.
+            if (
+                ok
+                and original_node
+                and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
+                and self.is_writable_attribute(original_node)
+                and not always_allow_covariant
+                and not is_subtype(original_type, typ, ignore_pos_arg_names=True)
+            ):
+                base_str, override_str = format_type_distinctly(
+                    original_type, typ, options=self.options
                 )
+                msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
+                    f' (base class "{base.name}" defined the type as {base_str},'
+                    f" override has type {override_str})"
+                )
+                self.fail(msg, context)
+        elif isinstance(original_type, UnionType) and any(
+            is_subtype(typ, orig_typ, ignore_pos_arg_names=True)
+            for orig_typ in original_type.items
+        ):
+            # This method is a subtype of at least one union variant.
+            if (
+                original_node
+                and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
+                and self.is_writable_attribute(original_node)
+                and not always_allow_covariant
+            ):
+                # Covariant override of mutable attribute.
+                base_str, override_str = format_type_distinctly(
+                    original_type, typ, options=self.options
+                )
+                msg = message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE.with_additional_msg(
+                    f' (base class "{base.name}" defined the type as {base_str},'
+                    f" override has type {override_str})"
+                )
+                self.fail(msg, context)
+        elif is_equivalent(original_type, typ):
+            # Assume invariance for a non-callable attribute here. Note
+            # that this doesn't affect read-only properties which can have
+            # covariant overrides.
+            pass
+        elif (
+            original_node
+            and (not self.is_writable_attribute(original_node) or always_allow_covariant)
+            and is_subtype(typ, original_type)
+        ):
+            # If the attribute is read-only, allow covariance
+            pass
+        else:
+            self.msg.signature_incompatible_with_supertype(
+                defn.name, name, base.name, context, original=original_type, override=typ
+            )
         return False
 
     def bind_and_map_method(
@@ -2834,6 +2919,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         # TODO: use more principled logic to decide is_subtype() vs is_equivalent().
         # We should rely on mutability of superclass node, not on types being Callable.
+        # (in particular handle settable properties with setter type different from getter).
 
         # start with the special case that Instance can be a subtype of FunctionLike
         call = None
@@ -3166,7 +3252,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ):  # Ignore member access to modules
                     instance_type = self.expr_checker.accept(lvalue.expr)
                     rvalue_type, lvalue_type, infer_lvalue_type = self.check_member_assignment(
-                        instance_type, lvalue_type, rvalue, context=rvalue
+                        lvalue, instance_type, lvalue_type, rvalue, context=rvalue
                     )
                 else:
                     # Hacky special case for assigning a literal None
@@ -3220,7 +3306,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
                     # Don't use type binder for definitions of special forms, like named tuples.
                     if not (isinstance(lvalue, NameExpr) and lvalue.is_special_form):
-                        self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
+                        self.binder.assign_type(lvalue, rvalue_type, lvalue_type)
                         if (
                             isinstance(lvalue, NameExpr)
                             and isinstance(lvalue.node, Var)
@@ -3354,17 +3440,36 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     continue
 
                 base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
+                custom_setter = is_custom_settable_property(base_node)
                 if isinstance(base_type, PartialType):
                     base_type = None
 
                 if base_type:
                     assert base_node is not None
                     if not self.check_compatibility_super(
-                        lvalue, lvalue_type, rvalue, base, base_type, base_node
+                        lvalue,
+                        lvalue_type,
+                        rvalue,
+                        base,
+                        base_type,
+                        base_node,
+                        always_allow_covariant=custom_setter,
                     ):
                         # Only show one error per variable; even if other
                         # base classes are also incompatible
                         return True
+                    if lvalue_type and custom_setter:
+                        base_type, _ = self.lvalue_type_from_base(
+                            lvalue_node, base, setter_type=True
+                        )
+                        # Setter type for a custom property must be ready if
+                        # the getter type is ready.
+                        assert base_type is not None
+                        if not is_subtype(base_type, lvalue_type):
+                            self.msg.incompatible_setter_override(
+                                lvalue, lvalue_type, base_type, base
+                            )
+                            return True
                     if base is last_immediate_base:
                         # At this point, the attribute was found to be compatible with all
                         # immediate parents.
@@ -3379,6 +3484,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         base: TypeInfo,
         base_type: Type,
         base_node: Node,
+        always_allow_covariant: bool,
     ) -> bool:
         lvalue_node = lvalue.node
         assert isinstance(lvalue_node, Var)
@@ -3438,6 +3544,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ok
                 and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
                 and self.is_writable_attribute(base_node)
+                and not always_allow_covariant
             ):
                 ok = self.check_subtype(
                     base_type,
@@ -3451,49 +3558,62 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return True
 
     def lvalue_type_from_base(
-        self, expr_node: Var, base: TypeInfo
-    ) -> tuple[Type | None, Node | None]:
-        """For a NameExpr that is part of a class, walk all base classes and try
-        to find the first class that defines a Type for the same name."""
+        self, expr_node: Var, base: TypeInfo, setter_type: bool = False
+    ) -> tuple[Type | None, SymbolNode | None]:
+        """Find a type for a variable name in base class.
+
+        Return the type found and the corresponding node defining the name or None
+        for both if the name is not defined in base or the node type is not known (yet).
+        The type returned is already properly mapped/bound to the subclass.
+        If setter_type is True, return setter types for settable properties (otherwise the
+        getter type is returned).
+        """
         expr_name = expr_node.name
         base_var = base.names.get(expr_name)
 
-        if base_var:
-            base_node = base_var.node
-            base_type = base_var.type
-            if isinstance(base_node, Var) and base_type is not None:
-                base_type = expand_self_type(base_node, base_type, fill_typevars(expr_node.info))
-            if isinstance(base_node, Decorator):
-                base_node = base_node.func
-                base_type = base_node.type
+        if not base_var:
+            return None, None
+        base_node = base_var.node
+        base_type = base_var.type
+        if isinstance(base_node, Var) and base_type is not None:
+            base_type = expand_self_type(base_node, base_type, fill_typevars(expr_node.info))
+        if isinstance(base_node, Decorator):
+            base_node = base_node.func
+            base_type = base_node.type
 
-            if base_type:
-                if not has_no_typevars(base_type):
-                    self_type = self.scope.active_self_type()
-                    assert self_type is not None, "Internal error: base lookup outside class"
-                    if isinstance(self_type, TupleType):
-                        instance = tuple_fallback(self_type)
-                    else:
-                        instance = self_type
-                    itype = map_instance_to_supertype(instance, base)
-                    base_type = expand_type_by_instance(base_type, itype)
+        if not base_type:
+            return None, None
+        if not has_no_typevars(base_type):
+            self_type = self.scope.active_self_type()
+            assert self_type is not None, "Internal error: base lookup outside class"
+            if isinstance(self_type, TupleType):
+                instance = tuple_fallback(self_type)
+            else:
+                instance = self_type
+            itype = map_instance_to_supertype(instance, base)
+            base_type = expand_type_by_instance(base_type, itype)
 
-                base_type = get_proper_type(base_type)
-                if isinstance(base_type, CallableType) and isinstance(base_node, FuncDef):
-                    # If we are a property, return the Type of the return
-                    # value, not the Callable
-                    if base_node.is_property:
-                        base_type = get_proper_type(base_type.ret_type)
-                if isinstance(base_type, FunctionLike) and isinstance(
-                    base_node, OverloadedFuncDef
-                ):
-                    # Same for properties with setter
-                    if base_node.is_property:
-                        base_type = base_type.items[0].ret_type
+        base_type = get_proper_type(base_type)
+        if isinstance(base_type, CallableType) and isinstance(base_node, FuncDef):
+            # If we are a property, return the Type of the return
+            # value, not the Callable
+            if base_node.is_property:
+                base_type = get_proper_type(base_type.ret_type)
+        if isinstance(base_type, FunctionLike) and isinstance(base_node, OverloadedFuncDef):
+            # Same for properties with setter
+            if base_node.is_property:
+                if setter_type:
+                    assert isinstance(base_node.items[0], Decorator)
+                    base_type = base_node.items[0].var.setter_type
+                    # This flag is True only for custom properties, so it is safe to assert.
+                    assert base_type is not None
+                    base_type = self.bind_and_map_method(base_var, base_type, expr_node.info, base)
+                    assert isinstance(base_type, CallableType)
+                    base_type = get_proper_type(base_type.arg_types[0])
+                else:
+                    base_type = base_type.items[0].ret_type
 
-                return base_type, base_node
-
-        return None, None
+        return base_type, base_node
 
     def check_compatibility_classvar_super(
         self, node: Var, base: TypeInfo, base_node: Node | None
@@ -3925,7 +4045,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(expr, StarExpr):
                 expr = expr.expr
 
-            # TODO: See todo in binder.py, ConditionalTypeBinder.assign_type
+            # TODO: See comment in binder.py, ConditionalTypeBinder.assign_type
             # It's unclear why the 'declared_type' param is sometimes 'None'
             clean_items: list[tuple[Type, Type]] = []
             for type, declared_type in items:
@@ -3937,7 +4057,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 expr,
                 make_simplified_union(list(types)),
                 make_simplified_union(list(declared_types)),
-                False,
             )
         for union, lv in zip(union_types, self.flatten_lvalues(lvalues)):
             # Properly store the inferred types.
@@ -4375,7 +4494,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if (
                 isinstance(get_proper_type(lvalue_type), UnionType)
                 # Skip literal types, as they have special logic (for better errors).
-                and not isinstance(get_proper_type(rvalue_type), LiteralType)
+                and not is_literal_type_like(rvalue_type)
                 and not self.simple_rvalue(rvalue)
             ):
                 # Try re-inferring r.h.s. in empty context, and use that if it
@@ -4414,7 +4533,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return rvalue_type
 
     def check_member_assignment(
-        self, instance_type: Type, attribute_type: Type, rvalue: Expression, context: Context
+        self,
+        lvalue: MemberExpr,
+        instance_type: Type,
+        attribute_type: Type,
+        rvalue: Expression,
+        context: Context,
     ) -> tuple[Type, Type, bool]:
         """Type member assignment.
 
@@ -4436,10 +4560,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
             return rvalue_type, attribute_type, True
 
+        with self.msg.filter_errors(filter_deprecated=True):
+            get_lvalue_type = self.expr_checker.analyze_ordinary_member_access(
+                lvalue, is_lvalue=False
+            )
+            use_binder = is_same_type(get_lvalue_type, attribute_type)
+
         if not isinstance(attribute_type, Instance):
             # TODO: support __set__() for union types.
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, attribute_type, True
+            return rvalue_type, attribute_type, use_binder
 
         mx = MemberContext(
             is_lvalue=False,
@@ -4458,7 +4588,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
             rvalue_type = self.check_simple_assignment(get_type, rvalue, context)
-            return rvalue_type, get_type, True
+            return rvalue_type, get_type, use_binder
 
         dunder_set = attribute_type.type.get_method("__set__")
         if dunder_set is None:
@@ -4473,10 +4603,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         bound_method = analyze_decorator_or_funcbase_access(
             defn=dunder_set,
             itype=attribute_type,
-            info=attribute_type.type,
-            self_type=attribute_type,
             name="__set__",
-            mx=mx,
+            mx=mx.copy_modified(self_type=attribute_type),
         )
         typ = map_instance_to_supertype(attribute_type, dunder_set.info)
         dunder_set_type = expand_type_by_instance(bound_method, typ)
@@ -5013,8 +5141,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             iterator_type, item_type = self.analyze_iterable_item_type(s.expr)
         s.inferred_item_type = item_type
         s.inferred_iterator_type = iterator_type
-        self.analyze_index_variables(s.index, item_type, s.index_type is None, s)
-        self.accept_loop(s.body, s.else_body)
+
+        self.accept_loop(
+            s.body,
+            s.else_body,
+            on_enter_body=lambda: self.analyze_index_variables(
+                s.index, item_type, s.index_type is None, s
+            ),
+        )
 
     def analyze_async_iterable_item_type(self, expr: Expression) -> tuple[Type, Type]:
         """Analyse async iterable expression and return iterator and iterator item types."""
@@ -5126,7 +5260,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
                     self.binder.assign_type(
-                        elt, DeletedType(source=elt.name), get_declaration(elt), False
+                        elt, DeletedType(source=elt.name), get_declaration(elt)
                     )
 
     def visit_decorator(self, e: Decorator) -> None:
@@ -5916,6 +6050,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         def combine_maps(list_maps: list[TypeMap]) -> TypeMap:
             """Combine all typemaps in list_maps into one typemap"""
+            if all(m is None for m in list_maps):
+                return None
             result_map = {}
             for d in list_maps:
                 if d is not None:
@@ -7750,6 +7886,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             isinstance(node, (FuncDef, OverloadedFuncDef, TypeInfo))
             and ((deprecated := node.deprecated) is not None)
             and not self.is_typeshed_stub
+            and not any(
+                node.fullname == p or node.fullname.startswith(f"{p}.")
+                for p in self.options.deprecated_calls_exclude
+            )
         ):
             warn = self.msg.note if self.options.report_deprecated_as_note else self.msg.fail
             warn(deprecated, context, code=codes.DEPRECATED)
@@ -7764,10 +7904,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(item, Decorator) and isinstance(
                     candidate := item.func.type, CallableType
                 ):
-                    if selftype is not None:
+                    if selftype is not None and not node.is_static:
                         candidate = bind_self(candidate, selftype)
                     if candidate == target:
                         self.warn_deprecated(item.func, context)
+
+    # leafs
+
+    def visit_pass_stmt(self, o: PassStmt, /) -> None:
+        return None
+
+    def visit_nonlocal_decl(self, o: NonlocalDecl, /) -> None:
+        return None
+
+    def visit_global_decl(self, o: GlobalDecl, /) -> None:
+        return None
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
@@ -8365,6 +8516,10 @@ class InvalidInferredTypes(BoolTypeQuery):
         # multi-step type inference.
         return t.id.is_meta_var()
 
+    def visit_tuple_type(self, t: TupleType, /) -> bool:
+        # Exclude fallback to avoid bogus "need type annotation" errors
+        return self.query_types(t.items)
+
 
 class SetNothingToAny(TypeTranslator):
     """Replace all ambiguous Uninhabited types with Any (to avoid spurious extra errors)."""
@@ -8702,6 +8857,60 @@ def is_property(defn: SymbolNode) -> bool:
         if defn.items and isinstance(defn.items[0], Decorator):
             return defn.items[0].func.is_property
     return False
+
+
+def is_settable_property(defn: SymbolNode | None) -> TypeGuard[OverloadedFuncDef]:
+    if isinstance(defn, OverloadedFuncDef):
+        if defn.items and isinstance(defn.items[0], Decorator):
+            return defn.items[0].func.is_property
+    return False
+
+
+def is_custom_settable_property(defn: SymbolNode | None) -> bool:
+    """Check if a node is a settable property with a non-trivial setter type.
+
+    By non-trivial here we mean that it is known (i.e. definition was already type
+    checked), it is not Any, and it is different from the property getter type.
+    """
+    if defn is None:
+        return False
+    if not is_settable_property(defn):
+        return False
+    first_item = defn.items[0]
+    assert isinstance(first_item, Decorator)
+    if not first_item.var.is_settable_property:
+        return False
+    var = first_item.var
+    if var.type is None or var.setter_type is None or isinstance(var.type, PartialType):
+        # The caller should defer in case of partial types or not ready variables.
+        return False
+    setter_type = var.setter_type.arg_types[1]
+    if isinstance(get_proper_type(setter_type), AnyType):
+        return False
+    return not is_same_type(get_property_type(get_proper_type(var.type)), setter_type)
+
+
+def get_raw_setter_type(defn: OverloadedFuncDef | Var) -> tuple[Type, bool]:
+    """Get an effective original setter type for a node.
+
+    For a variable it is simply its type. For a property it is the type
+    of the setter method (if not None), or the getter method (used as fallback
+    for the plugin generated properties).
+    Return the type and a flag indicating that we didn't fall back to getter.
+    """
+    if isinstance(defn, Var):
+        # This function should not be called if the var is not ready.
+        assert defn.type is not None
+        return defn.type, True
+    first_item = defn.items[0]
+    assert isinstance(first_item, Decorator)
+    var = first_item.var
+    # This function may be called on non-custom properties, so we need
+    # to handle the situation when it is synthetic (plugin generated).
+    if var.setter_type is not None:
+        return var.setter_type, True
+    assert var.type is not None
+    return var.type, False
 
 
 def get_property_type(t: ProperType) -> ProperType:

@@ -124,13 +124,6 @@ static inline CPyTagged CPyTagged_ShortFromSsize_t(Py_ssize_t x) {
 // Number of digits, assuming int is non-negative
 #define CPY_LONG_SIZE_UNSIGNED(o) CPY_LONG_SIZE(o)
 
-static inline void CPyLong_SetUnsignedSize(PyLongObject *o, Py_ssize_t n) {
-    if (n == 0)
-        o->long_value.lv_tag = CPY_SIGN_ZERO;
-    else
-        o->long_value.lv_tag = n << CPY_NON_SIZE_BITS;
-}
-
 #else
 
 #define CPY_LONG_DIGIT(o, n) ((o)->ob_digit[n])
@@ -138,13 +131,12 @@ static inline void CPyLong_SetUnsignedSize(PyLongObject *o, Py_ssize_t n) {
 #define CPY_LONG_SIZE_SIGNED(o) ((o)->ob_base.ob_size)
 #define CPY_LONG_SIZE_UNSIGNED(o) ((o)->ob_base.ob_size)
 
-static inline void CPyLong_SetUnsignedSize(PyLongObject *o, Py_ssize_t n) {
-    o->ob_base.ob_size = n;
-}
-
 #endif
 
 // Are we targeting Python 3.13 or newer?
 #define CPY_3_13_FEATURES (PY_VERSION_HEX >= 0x030d0000)
+
+// Are we targeting Python 3.14 or newer?
+#define CPY_3_14_FEATURES (PY_VERSION_HEX >= 0x030e0000)
 
 #endif

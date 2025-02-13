@@ -78,7 +78,7 @@ assert hasattr(c, 'x')
 
 [case testTypedDictWithFields]
 import collections
-from typing_extensions import TypedDict
+from typing import TypedDict
 class C(TypedDict):
     x: collections.deque
 [file driver.py]
@@ -86,6 +86,7 @@ from native import C
 from collections import deque
 
 print(C.__annotations__["x"] is deque)
+[typing fixtures/typing-full.pyi]
 [out]
 True
 
@@ -710,8 +711,7 @@ Traceback (most recent call last):
 AttributeError: attribute 'x' of 'X' undefined
 
 [case testClassMethods]
-from typing import ClassVar, Any
-from typing_extensions import final
+from typing import ClassVar, Any, final
 from mypy_extensions import mypyc_attr
 
 from interp import make_interpreted_subclass
@@ -1068,7 +1068,7 @@ assert b.z is None
 assert not hasattr(b, 'bogus')
 
 [case testProtocol]
-from typing_extensions import Protocol
+from typing import Protocol
 
 class Proto(Protocol):
     def foo(self, x: int) -> None:
@@ -2542,7 +2542,7 @@ class Derived(Base):
 assert Derived()() == 1
 
 [case testClassWithFinalAttribute]
-from typing_extensions import Final
+from typing import Final
 
 class C:
     A: Final = -1
@@ -2719,3 +2719,32 @@ print(native.A(ints=[1, -17]).ints)
 
 [out]
 \[1, -17]
+
+[case testDataclassClassReference]
+from __future__ import annotations
+from dataclasses import dataclass
+
+class BackwardDefinedClass:
+    pass
+
+@dataclass
+class Data:
+    bitem: BackwardDefinedClass
+    bitems: 'BackwardDefinedClass'
+    fitem: ForwardDefinedClass
+    fitems: 'ForwardDefinedClass'
+
+class ForwardDefinedClass:
+    pass
+
+def test_function():
+    d = Data(
+        bitem=BackwardDefinedClass(),
+        bitems=BackwardDefinedClass(),
+        fitem=ForwardDefinedClass(),
+        fitems=ForwardDefinedClass(),
+    )
+    assert(isinstance(d.bitem, BackwardDefinedClass))
+    assert(isinstance(d.bitems, BackwardDefinedClass))
+    assert(isinstance(d.fitem, ForwardDefinedClass))
+    assert(isinstance(d.fitems, ForwardDefinedClass))

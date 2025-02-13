@@ -1411,12 +1411,13 @@ class N:  # E: Name "N" already defined on line 2
 [out]
 
 [case testDuplicateDefTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 
 class Point:  # E: Name "Point" already defined on line 2
     pass
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [out]
 

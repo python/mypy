@@ -644,12 +644,13 @@ x = 1
 <pkg> -> m, pkg, pkg.mod
 
 [case testTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 def foo(x: Point) -> int:
     return x['x'] + x['y']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 <m.Point.__init__> -> m
 <m.Point.__new__> -> m
@@ -657,13 +658,14 @@ def foo(x: Point) -> int:
 <m.p> -> m
 
 [case testTypedDict2]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 Point = TypedDict('Point', {'x': int, 'y': A})
 p = Point(dict(x=42, y=A()))
 def foo(x: Point) -> int:
     return x['x']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 <m.A.__init__> -> m
 <m.A.__new__> -> m
@@ -674,7 +676,7 @@ def foo(x: Point) -> int:
 <m.p> -> m
 
 [case testTypedDict3]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 class Point(TypedDict):
     x: int
@@ -683,6 +685,7 @@ p = Point(dict(x=42, y=A()))
 def foo(x: Point) -> int:
     return x['x']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 <m.A.__init__> -> m
 <m.A.__new__> -> m

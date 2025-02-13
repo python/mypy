@@ -252,7 +252,7 @@ if int():
 if int():
     a = d.foo(a, a)
 d.x = a
-d.x.y.z  # E: "A" has no attribute "y"
+d.x.y.z
 
 class A: pass
 [out]
@@ -320,8 +320,10 @@ d = None # All ok
 d = t
 d = g
 d = A
-t = d
-f = d
+
+d1: Any
+t = d1
+f = d1
 [builtins fixtures/tuple.pyi]
 
 

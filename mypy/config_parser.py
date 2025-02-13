@@ -55,8 +55,10 @@ def parse_version(v: str | float) -> tuple[int, int]:
 def try_split(v: str | Sequence[str], split_regex: str = "[,]") -> list[str]:
     """Split and trim a str or list of str into a list of str"""
     if isinstance(v, str):
-        return [p.strip() for p in re.split(split_regex, v)]
-
+        items = [p.strip() for p in re.split(split_regex, v)]
+        if items and items[-1] == "":
+            items.pop(-1)
+        return items
     return [p.strip() for p in v]
 
 
@@ -126,7 +128,7 @@ def split_and_match_files(paths: str) -> list[str]:
     Returns a list of file paths
     """
 
-    return split_and_match_files_list(paths.split(","))
+    return split_and_match_files_list(split_commas(paths))
 
 
 def check_follow_imports(choice: str) -> str:
@@ -647,6 +649,11 @@ def parse_mypy_comments(
         # method is to create a config parser.
         parser = configparser.RawConfigParser()
         options, parse_errors = mypy_comments_to_config_map(line, template)
+
+        if "python_version" in options:
+            errors.append((lineno, "python_version not supported in inline configuration"))
+            del options["python_version"]
+
         parser["dummy"] = options
         errors.extend((lineno, x) for x in parse_errors)
 
