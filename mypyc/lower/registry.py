@@ -1,20 +1,22 @@
 from __future__ import annotations
 
-from typing import Callable, Final
+from typing import Callable, Final, Optional, TypeVar
 
 from mypyc.ir.ops import Value
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
 LowerFunc = Callable[[LowLevelIRBuilder, list[Value], int], Value]
+LowerFuncOpt = Callable[[LowLevelIRBuilder, list[Value], int], Optional[Value]]
+
+lowering_registry: Final[dict[str, LowerFuncOpt]] = {}
+
+LF = TypeVar("LF", LowerFunc, LowerFuncOpt)
 
 
-lowering_registry: Final[dict[str, LowerFunc]] = {}
-
-
-def lower_primitive_op(name: str) -> Callable[[LowerFunc], LowerFunc]:
+def lower_primitive_op(name: str) -> Callable[[LF], LF]:
     """Register a handler that generates low-level IR for a primitive op."""
 
-    def wrapper(f: LowerFunc) -> LowerFunc:
+    def wrapper(f: LF) -> LF:
         assert name not in lowering_registry
         lowering_registry[name] = f
         return f
