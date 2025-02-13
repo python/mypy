@@ -118,6 +118,24 @@ method_op(
     error_kind=ERR_NEVER,
 )
 
+# str.removeprefix(str)
+method_op(
+    name="removeprefix",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Removeprefix",
+    error_kind=ERR_NEVER,
+)
+
+# str.removesuffix(str)
+method_op(
+    name="removesuffix",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Removesuffix",
+    error_kind=ERR_NEVER,
+)
+
 # str.split(...)
 str_split_types: list[RType] = [str_rprimitive, str_rprimitive, int_rprimitive]
 str_split_functions = ["PyUnicode_Split", "PyUnicode_Split", "CPyStr_Split"]

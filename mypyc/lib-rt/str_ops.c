@@ -164,6 +164,26 @@ bool CPyStr_Endswith(PyObject *self, PyObject *subobj) {
     return PyUnicode_Tailmatch(self, subobj, start, end, 1);
 }
 
+PyObject *CPyStr_Removeprefix(PyObject *self, PyObject *prefix) {
+    Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    int match = PyUnicode_Tailmatch(self, prefix, 0, end, -1);
+    if (match) {
+        Py_ssize_t prefix_end = PyUnicode_GET_LENGTH(prefix);
+        return PyUnicode_Substring(self, prefix_end, end);
+    }
+    return Py_NewRef(self);
+}
+
+PyObject *CPyStr_Removesuffix(PyObject *self, PyObject *suffix) {
+    Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    int match = PyUnicode_Tailmatch(self, suffix, 0, end, 1);
+    if (match) {
+        Py_ssize_t suffix_end = PyUnicode_GET_LENGTH(suffix);
+        return PyUnicode_Substring(self, 0, end - suffix_end);
+    }
+    return Py_NewRef(self);
+}
+
 /* This does a dodgy attempt to append in place  */
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2) {
     PyUnicode_Append(&o1, o2);
