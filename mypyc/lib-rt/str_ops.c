@@ -142,6 +142,15 @@ PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split) {
     return PyUnicode_Split(str, sep, temp_max_split);
 }
 
+PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split) {
+    Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
+    if (temp_max_split == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return NULL;
+    }
+    return PyUnicode_RSplit(str, sep, temp_max_split);
+}
+
 PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr,
                          PyObject *new_substr, CPyTagged max_replace) {
     Py_ssize_t temp_max_replace = CPyTagged_AsSsize_t(max_replace);
