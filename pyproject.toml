@@ -143,6 +143,7 @@ select = [
   "UP",      # pyupgrade
   "C4",      # flake8-comprehensions
   "SIM201", "SIM202", "SIM222", "SIM223",  # flake8-simplify
+  "FURB188", # use str.remove(pre|suf)fix
   "ISC001",  # implicitly concatenated string
   "RET501", "RET502",  # better return None handling
 ]

@@ -176,8 +176,7 @@ class SourceFinder:
             return "", dir
 
         parent, name = os.path.split(dir)
-        if name.endswith("-stubs"):
-            name = name[:-6]  # PEP-561 stub-only directory
+        name = name.removesuffix("-stubs")  # PEP-561 stub-only directory
 
         # recurse if there's an __init__.py
         init_file = self.get_init_file(dir)
