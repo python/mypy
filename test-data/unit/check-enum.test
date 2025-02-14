@@ -1197,16 +1197,20 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
 [builtins fixtures/primitives.pyi]
 
 [case testEnumReachabilityPEP484ExampleSingletonWithMethod]
+# flags: --python-version 3.11
 from typing import Final, Union
-from enum import Enum
+from enum import Enum, member
 
 class Empty(Enum):
-    token = lambda x: x
+    # note, that without `member` we cannot tell that `token` is a member:
+    token = member(lambda x: x)
 
     def f(self) -> int:
         return 1
 
 _empty = Empty.token
+reveal_type(_empty)  # N: Revealed type is "__main__.Empty"
+reveal_type(Empty.f) # N: Revealed type is "def (self: __main__.Empty) -> builtins.int"
 
 def func(x: Union[int, None, Empty] = _empty) -> int:
     boom = x + 42       # E: Unsupported left operand type for + ("None") \
@@ -1615,6 +1619,65 @@ class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot extend enum with e
     pass
 [builtins fixtures/bool.pyi]
 
+[case testEnumImplicitlyFinalForSubclassingWithCallableMember]
+# flags: --python-version 3.11
+from enum import Enum, IntEnum, Flag, IntFlag, member
+
+class NonEmptyEnum(Enum):
+    @member
+    def call(self) -> None: ...
+class NonEmptyIntEnum(IntEnum):
+    @member
+    def call(self) -> None: ...
+class NonEmptyFlag(Flag):
+    @member
+    def call(self) -> None: ...
+class NonEmptyIntFlag(IntFlag):
+    @member
+    def call(self) -> None: ...
+
+class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot extend enum with existing members: "NonEmptyEnum"
+    pass
+class ErrorIntEnumWithoutValue(NonEmptyIntEnum):  # E: Cannot extend enum with existing members: "NonEmptyIntEnum"
+    pass
+class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot extend enum with existing members: "NonEmptyFlag"
+    pass
+class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot extend enum with existing members: "NonEmptyIntFlag"
+    pass
+[builtins fixtures/bool.pyi]
+
+[case testEnumCanExtendEnumsWithNonMembers]
+# flags: --python-version 3.11
+from enum import Enum, IntEnum, Flag, IntFlag, nonmember
+
+class NonEmptyEnum(Enum):
+    x = nonmember(1)
+class NonEmptyIntEnum(IntEnum):
+    x = nonmember(1)
+class NonEmptyFlag(Flag):
+    x = nonmember(1)
+class NonEmptyIntFlag(IntFlag):
+    x = nonmember(1)
+
+class ErrorEnumWithoutValue(NonEmptyEnum):
+    pass
+class ErrorIntEnumWithoutValue(NonEmptyIntEnum):
+    pass
+class ErrorFlagWithoutValue(NonEmptyFlag):
+    pass
+class ErrorIntFlagWithoutValue(NonEmptyIntFlag):
+    pass
+[builtins fixtures/bool.pyi]
+
+[case testLambdaIsNotEnumMember]
+from enum import Enum
+
+class My(Enum):
+    x = lambda a: a
+
+class Other(My): ...
+[builtins fixtures/bool.pyi]
+
 [case testSubclassingNonFinalEnums]
 from enum import Enum, IntEnum, Flag, IntFlag, EnumMeta
 
@@ -1839,6 +1902,10 @@ from enum import Enum
 class A(Enum):
     class Inner: pass
 class B(A): pass  # E: Cannot extend enum with existing members: "A"
+
+class A1(Enum):
+    class __Inner: pass
+class B1(A1): pass
 [builtins fixtures/bool.pyi]
 
 [case testEnumFinalSpecialProps]
@@ -1922,7 +1989,7 @@ from enum import Enum
 class A(Enum):  # E: Detected enum "lib.A" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership. If so, use `member = value` to mark an enum member, instead of `member: type` \
                 # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
     x: int
-class B(A):  # E: Cannot extend enum with existing members: "A"
+class B(A):
     x = 1    # E: Cannot override writable attribute "x" with a final one
 
 class C(Enum):

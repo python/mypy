@@ -2719,8 +2719,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.check_enum_new(defn)
 
     def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
-        for sym in base.names.values():
-            if self.is_final_enum_value(sym):
+        for _sym in base.names.values():
+            if base.enum_members:
                 self.fail(f'Cannot extend enum with existing members: "{base.name}"', defn)
                 break
 
