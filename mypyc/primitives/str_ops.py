@@ -111,14 +111,13 @@ method_op(
     error_kind=ERR_NEVER,
 )
 
-# str.startswith(tuple) (return -1/0/1)
+# str.startswith(tuple)
 method_op(
     name="startswith",
     arg_types=[str_rprimitive, tuple_rprimitive],
-    return_type=c_int_rprimitive,
+    return_type=bool_rprimitive,
     c_function_name="CPyStr_Startswith",
-    truncated_type=bool_rprimitive,
-    error_kind=ERR_NEG_INT,
+    error_kind=ERR_MAGIC,
 )
 
 # str.endswith(str)
@@ -131,14 +130,13 @@ method_op(
     error_kind=ERR_NEVER,
 )
 
-# str.endswith(tuple) (return -1/0/1)
+# str.endswith(tuple)
 method_op(
     name="endswith",
     arg_types=[str_rprimitive, tuple_rprimitive],
-    return_type=c_int_rprimitive,
+    return_type=bool_rprimitive,
     c_function_name="CPyStr_Endswith",
-    truncated_type=bool_rprimitive,
-    error_kind=ERR_NEG_INT,
+    error_kind=ERR_MAGIC,
 )
 
 # str.removeprefix(str)
