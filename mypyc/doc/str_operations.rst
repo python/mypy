@@ -31,6 +31,7 @@ Methods
 * ``s.encode(encoding: str)``
 * ``s.encode(encoding: str, errors: str)``
 * ``s1.endswith(s2: str)``
+* ``s1.endswith(t: tuple[str, ...])``
 * ``s.join(x: Iterable)``
 * ``s.removeprefix(prefix: str)``
 * ``s.removesuffix(suffix: str)``
@@ -43,6 +44,7 @@ Methods
 * ``s.split(sep: str)``
 * ``s.split(sep: str, maxsplit: int)``
 * ``s1.startswith(s2: str)``
+* ``s1.startswith(t: tuple[str, ...])``
 
 .. note::
 

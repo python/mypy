@@ -161,15 +161,51 @@ PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr,
     return PyUnicode_Replace(str, old_substr, new_substr, temp_max_replace);
 }
 
-bool CPyStr_Startswith(PyObject *self, PyObject *subobj) {
+int CPyStr_Startswith(PyObject *self, PyObject *subobj) {
     Py_ssize_t start = 0;
     Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    if (PyTuple_Check(subobj)) {
+        Py_ssize_t i;
+        for (i = 0; i < PyTuple_GET_SIZE(subobj); i++) {
+            PyObject *substring = PyTuple_GET_ITEM(subobj, i);
+            if (!PyUnicode_Check(substring)) {
+                PyErr_Format(PyExc_TypeError,
+                             "tuple for startswith must only contain str, "
+                             "not %.100s",
+                             Py_TYPE(substring)->tp_name);
+                return -1;
+            }
+            int result = PyUnicode_Tailmatch(self, substring, start, end, -1);
+            if (result) {
+                return 1;
+            }
+        }
+        return 0;
+    }
     return PyUnicode_Tailmatch(self, subobj, start, end, -1);
 }
 
-bool CPyStr_Endswith(PyObject *self, PyObject *subobj) {
+int CPyStr_Endswith(PyObject *self, PyObject *subobj) {
     Py_ssize_t start = 0;
     Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    if (PyTuple_Check(subobj)) {
+        Py_ssize_t i;
+        for (i = 0; i < PyTuple_GET_SIZE(subobj); i++) {
+            PyObject *substring = PyTuple_GET_ITEM(subobj, i);
+            if (!PyUnicode_Check(substring)) {
+                PyErr_Format(PyExc_TypeError,
+                             "tuple for endswith must only contain str, "
+                             "not %.100s",
+                             Py_TYPE(substring)->tp_name);
+                return -1;
+            }
+            int result = PyUnicode_Tailmatch(self, substring, start, end, 1);
+            if (result) {
+                return 1;
+            }
+        }
+        return 0;
+    }
     return PyUnicode_Tailmatch(self, subobj, start, end, 1);
 }
 

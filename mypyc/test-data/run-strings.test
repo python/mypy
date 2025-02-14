@@ -20,11 +20,13 @@ def eq(x: str) -> int:
     return 2
 def match(x: str, y: str) -> Tuple[bool, bool]:
     return (x.startswith(y), x.endswith(y))
+def match_tuple(x: str, y: Tuple[str, ...]) -> Tuple[bool, bool]:
+    return (x.startswith(y), x.endswith(y))
 def remove_prefix_suffix(x: str, y: str) -> Tuple[str, str]:
     return (x.removeprefix(y), x.removesuffix(y))
 
 [file driver.py]
-from native import f, g, tostr, booltostr, concat, eq, match, remove_prefix_suffix
+from native import f, g, tostr, booltostr, concat, eq, match, match_tuple, remove_prefix_suffix
 import sys
 
 assert f() == 'some string'
@@ -45,6 +47,10 @@ assert match('abc', '') == (True, True)
 assert match('abc', 'a') == (True, False)
 assert match('abc', 'c') == (False, True)
 assert match('', 'abc') == (False, False)
+assert match_tuple('abc', ('d', 'e')) == (False, False)
+assert match_tuple('abc', ('a', 'c')) == (True, True)
+assert match_tuple('abc', ('a',)) == (True, False)
+assert match_tuple('abc', ('c',)) == (False, True)
 
 assert remove_prefix_suffix('', '') == ('', '')
 assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
