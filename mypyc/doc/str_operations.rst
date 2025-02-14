@@ -33,10 +33,12 @@ Methods
 * ``s1.endswith(s2: str)``
 * ``s1.endswith(t: tuple[str, ...])``
 * ``s.join(x: Iterable)``
+* ``s.partition(sep: str)``
 * ``s.removeprefix(prefix: str)``
 * ``s.removesuffix(suffix: str)``
 * ``s.replace(old: str, new: str)``
 * ``s.replace(old: str, new: str, count: int)``
+* ``s.rpartition(sep: str)``
 * ``s.rsplit()``
 * ``s.rsplit(sep: str)``
 * ``s.rsplit(sep: str, maxsplit: int)``
