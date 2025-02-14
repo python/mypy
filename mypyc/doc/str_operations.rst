@@ -21,6 +21,7 @@ Operators
 * Slicing (``s[n:m]``, ``s[n:]``, ``s[:m]``)
 * Comparisons (``==``, ``!=``)
 * Augmented assignment (``s1 += s2``)
+* Containment (``s1 in s2``)
 
 .. _str-methods:
 

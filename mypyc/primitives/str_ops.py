@@ -84,6 +84,17 @@ str_slice_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+# item in str
+set_in_op = binary_op(
+    name="in",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="PyUnicode_Contains",
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0],
+)
+
 # str.join(obj)
 method_op(
     name="join",
