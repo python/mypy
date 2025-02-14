@@ -14,7 +14,7 @@ from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.options import Options
-from mypy.util import is_typeshed_file, short_type, is_sunder
+from mypy.util import is_sunder, is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
 if TYPE_CHECKING:
@@ -3282,12 +3282,11 @@ class TypeInfo(SymbolNode):
                         continue  # unannotated value not a member
 
                     typ = mypy.types.get_proper_type(sym.node.type)
-                    if (
-                        isinstance(typ, mypy.types.FunctionLike)  # explicit `@member` is required
-                        or (
-                            isinstance(typ, mypy.types.Instance)
-                            and typ.type.fullname == "enum.nonmember"
-                        )
+                    if isinstance(
+                        typ, mypy.types.FunctionLike
+                    ) or (  # explicit `@member` is required
+                        isinstance(typ, mypy.types.Instance)
+                        and typ.type.fullname == "enum.nonmember"
                     ):
                         continue  # name is not a member
 
