@@ -641,7 +641,7 @@ def _verify_arg_name(
         return
 
     def strip_prefix(s: str, prefix: str) -> str:
-        return s[len(prefix) :] if s.startswith(prefix) else s
+        return s.removeprefix(prefix)
 
     if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:
         return

@@ -1345,8 +1345,7 @@ class LowLevelIRBuilder:
             return self.translate_instance_contains(rreg, lreg, op, line)
         if is_fixed_width_rtype(ltype):
             if op in FIXED_WIDTH_INT_BINARY_OPS:
-                if op.endswith("="):
-                    op = op[:-1]
+                op = op.removesuffix("=")
                 if op != "//":
                     op_id = int_op_to_id[op]
                 else:
@@ -1372,8 +1371,7 @@ class LowLevelIRBuilder:
                     return self.comparison_op(lreg, self.coerce(rreg, ltype, line), op_id, line)
         elif is_fixed_width_rtype(rtype):
             if op in FIXED_WIDTH_INT_BINARY_OPS:
-                if op.endswith("="):
-                    op = op[:-1]
+                op = op.removesuffix("=")
                 if op != "//":
                     op_id = int_op_to_id[op]
                 else:
