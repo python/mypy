@@ -408,3 +408,17 @@ x[0]
 main:2:10:2:17: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:6:3:7:1: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 main:8:1:8:4: error: Value of type "int" is not indexable
+
+[case testEndColumnsWithTooManyTypeVars]
+# flags: --pretty
+import typing
+
+x1: typing.List[typing.List[int, int]]
+x2: list[list[int, int]]
+[out]
+main:4:17: error: "list" expects 1 type argument, but 2 given
+    x1: typing.List[typing.List[int, int]]
+                    ^~~~~~~~~~~~~~~~~~~~~
+main:5:10: error: "list" expects 1 type argument, but 2 given
+    x2: list[list[int, int]]
+             ^~~~~~~~~~~~~~

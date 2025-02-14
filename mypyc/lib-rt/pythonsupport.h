@@ -392,16 +392,6 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
 #define _CPyObject_HasAttrId _PyObject_HasAttrId
 #endif
 
-#if PY_VERSION_HEX < 0x03090000
-// OneArgs and NoArgs functions got added in 3.9
-#define _PyObject_CallMethodIdNoArgs(self, name) \
-    _PyObject_CallMethodIdObjArgs((self), (name), NULL)
-#define _PyObject_CallMethodIdOneArg(self, name, arg) \
-    _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
-#define PyObject_CallMethodOneArg(self, name, arg) \
-    PyObject_CallMethodObjArgs((self), (name), (arg), NULL)
-#endif
-
 #if CPY_3_12_FEATURES
 
 // These are copied from genobject.c in Python 3.12

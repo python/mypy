@@ -105,16 +105,38 @@ if int():
     h = h
 
 [case testSubtypingFunctionsDoubleCorrespondence]
-
 def l(x) -> None: ...
-def r(__, *, x) -> None: ...
-r = l # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, NamedArg(Any, 'x')], None]")
+def r(__x, *, x) -> None: ...
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, NamedArg(Any, 'x')], None]")
+
+[case testSubtypingFunctionsDoubleCorrespondenceNamedOptional]
+def l(x) -> None: ...
+def r(__x, *, x = 1) -> None: ...
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, DefaultNamedArg(Any, 'x')], None]")
+
+[case testSubtypingFunctionsDoubleCorrespondenceBothNamedOptional]
+def l(x = 1) -> None: ...
+def r(__x, *, x = 1) -> None: ...
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, DefaultNamedArg(Any, 'x')], None]")
+
+[case testSubtypingFunctionsTrivialSuffixRequired]
+def l(__x) -> None: ...
+def r(x, *args, **kwargs) -> None: ...
+
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Arg(Any, 'x'), VarArg(Any), KwArg(Any)], None]")
+[builtins fixtures/dict.pyi]
+
+[case testSubtypingFunctionsTrivialSuffixOptional]
+def l(__x = 1) -> None: ...
+def r(x = 1, *args, **kwargs) -> None: ...
+
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[DefaultArg(Any)], None]", variable has type "Callable[[DefaultArg(Any, 'x'), VarArg(Any), KwArg(Any)], None]")
+[builtins fixtures/dict.pyi]
 
 [case testSubtypingFunctionsRequiredLeftArgNotPresent]
-
 def l(x, y) -> None: ...
 def r(x) -> None: ...
-r = l # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], None]", variable has type "Callable[[Any], None]")
+r = l  # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], None]", variable has type "Callable[[Any], None]")
 
 [case testSubtypingFunctionsImplicitNames]
 from typing import Any
@@ -2481,14 +2503,14 @@ from typing import Union, Dict, List
 def f() -> List[Union[str, int]]:
     x = ['a']
     return x # E: Incompatible return value type (got "List[str]", expected "List[Union[str, int]]") \
-      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+      # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant \
       # N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[str, int]]"
 
 def g() -> Dict[str, Union[str, int]]:
     x = {'a': 'a'}
     return x # E: Incompatible return value type (got "Dict[str, str]", expected "Dict[str, Union[str, int]]") \
-      # N: "Dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+      # N: "dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Mapping" instead, which is covariant in the value type \
       # N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[str, Union[str, int]]"
 
@@ -2500,7 +2522,7 @@ def h() -> Dict[Union[str, int], str]:
 def i() -> List[Union[int, float]]:
     x: List[int] = [1]
     return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]") \
-      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+      # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 
 [builtins fixtures/dict.pyi]
@@ -3377,8 +3399,7 @@ class Bar(Foo):
 [builtins fixtures/property.pyi]
 
 [case testNoCrashOnUnpackOverride]
-from typing import Unpack
-from typing_extensions import TypedDict
+from typing import TypedDict, Unpack
 
 class Params(TypedDict):
     x: int
@@ -3397,9 +3418,9 @@ class C(B):
                                                       # N:          def meth(*, x: int, y: str) -> None \
                                                       # N:      Subclass: \
                                                       # N:          def meth(*, x: int, y: int) -> None
-
         ...
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testOverrideErrorLocationNamed]
 class B:

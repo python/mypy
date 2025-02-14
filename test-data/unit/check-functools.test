@@ -433,7 +433,8 @@ def foo(cls3: Type[B[T]]):
 [builtins fixtures/tuple.pyi]
 
 [case testFunctoolsPartialTypedDictUnpack]
-from typing_extensions import TypedDict, Unpack
+from typing import TypedDict
+from typing_extensions import Unpack
 from functools import partial
 
 class D1(TypedDict, total=False):
@@ -509,8 +510,8 @@ def main6(a2good: A2Good, a2bad: A2Bad, **d1: Unpack[D1]) -> None:
     partial(fn4, **d1)(a2="asdf")
     partial(fn4, **d1)(**a2good)
     partial(fn4, **d1)(**a2bad)  # E: Argument "a2" to "fn4" has incompatible type "int"; expected "str"
-
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 [case testFunctoolsPartialNestedGeneric]
@@ -639,4 +640,21 @@ gp("a")  # E: Argument 1 to "g" has incompatible type "str"; expected "int"
 hp = partial(h, 1)
 reveal_type(hp(1))  # N: Revealed type is "builtins.int"
 hp("a")  # E: Argument 1 to "h" has incompatible type "str"; expected "int"
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialOverloadedCallableProtocol]
+from functools import partial
+from typing import Callable, Protocol, overload
+
+class P(Protocol):
+    @overload
+    def __call__(self, x: int) -> int: ...
+    @overload
+    def __call__(self, x: str) -> str: ...
+
+def f(x: P):
+    reveal_type(partial(x, 1)())  # N: Revealed type is "builtins.int"
+
+    # TODO: but this is incorrect, predating the functools.partial plugin
+    reveal_type(partial(x, "a")())  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]

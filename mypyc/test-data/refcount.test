@@ -896,7 +896,7 @@ L0:
     dec_ref r3
     return r4
 
-[case testVectorcallMethod_python3_9_64bit]
+[case testVectorcallMethod_64bit]
 from typing import Any
 
 def call(o: Any, x: int) -> int:
@@ -1339,7 +1339,7 @@ L0:
     return r2
 
 [case testBorrowIntCompareFinal]
-from typing_extensions import Final
+from typing import Final
 
 X: Final = 10
 

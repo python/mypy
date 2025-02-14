@@ -1988,3 +1988,44 @@ bis: RK_functionBIS = ff
 res: int = bis(1.0, 2, 3)
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeAliasNotReadyClass]
+class CustomizeResponse:
+    related_resources: "ResourceRule"
+
+class ResourceRule: pass
+
+class DecoratorController:
+    type CustomizeResponse = CustomizeResponse
+
+x: DecoratorController.CustomizeResponse
+reveal_type(x.related_resources)  # N: Revealed type is "__main__.ResourceRule"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695TypeAliasRecursiveOuterClass]
+class A:
+    type X = X
+class X: ...
+
+class Y: ...
+class B:
+    type Y = Y
+
+x: A.X
+reveal_type(x)  # N: Revealed type is "__main__.X"
+y: B.Y
+reveal_type(y)  # N: Revealed type is "__main__.Y"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695TypeAliasRecursiveInvalid]
+type X = X  # E: Cannot resolve name "X" (possible cyclic definition)
+type Z = Z[int]  # E: Cannot resolve name "Z" (possible cyclic definition)
+def foo() -> None:
+    type X = X  # OK, refers to outer (invalid) X
+    x: X
+    reveal_type(x)  # N: Revealed type is "Any"
+    type Y = Y  # E: Cannot resolve name "Y" (possible cyclic definition) \
+                # N: Recursive types are not allowed at function scope
+class Z: ...  # E: Name "Z" already defined on line 2
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

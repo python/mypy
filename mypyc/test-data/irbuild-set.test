@@ -628,7 +628,7 @@ L0:
     return r0
 
 [case testOperatorInSetLiteral]
-from typing_extensions import Final
+from typing import Final
 
 CONST: Final = "daylily"
 non_const = 10
@@ -686,7 +686,7 @@ def not_precomputed_nested_set(i):
     r1 :: object
     r2 :: i32
     r3 :: bit
-    r4 :: object
+    r4 :: frozenset
     r5 :: set
     r6 :: i32
     r7 :: bit
@@ -716,7 +716,7 @@ L0:
     return r14
 
 [case testForSetLiteral]
-from typing_extensions import Final
+from typing import Final
 
 CONST: Final = 10
 non_const = 20
