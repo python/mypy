@@ -102,7 +102,8 @@ class str:
     def __getitem__(self, i: slice) -> str: pass
     def __contains__(self, item: str) -> bool: pass
     def __iter__(self) -> Iterator[str]: ...
-    def split(self, sep: Optional[str] = None, max: Optional[int] = None) -> List[str]: pass
+    def split(self, sep: Optional[str] = None, maxsplit: int = -1) -> List[str]: pass
+    def rsplit(self, sep: Optional[str] = None, maxsplit: int = -1) -> List[str]: pass
     def strip (self, item: str) -> str: pass
     def join(self, x: Iterable[str]) -> str: pass
     def format(self, *args: Any, **kwargs: Any) -> str: ...
