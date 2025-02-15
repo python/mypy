@@ -257,7 +257,9 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
         if isinstance(node, FuncDef):
             deprecated = node.deprecated
         elif isinstance(node, OverloadedFuncDef):
-            deprecated_list = [node.deprecated] + [i.func.deprecated for i in node.items]
+            deprecated_list = [node.deprecated] + [
+                i.func.deprecated for i in node.items if isinstance(i, Decorator)
+            ]
             deprecated_list_cleaned = [d for d in deprecated_list if d is not None]
             if deprecated_list_cleaned:
                 deprecated = ",".join(deprecated_list_cleaned)
