@@ -233,6 +233,7 @@ class Mapper:
         return module in self.group_map
 
     def is_native_ref_expr(self, expr: RefExpr) -> bool:
+        # TODO: What if native package has a non-native submodule?
         if expr.node is None:
             return False
         if "." in expr.node.fullname:

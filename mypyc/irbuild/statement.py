@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 from collections.abc import Callable, Sequence
+from typing import Final
 
 import mypy.nodes
 from mypy.nodes import (
@@ -452,21 +453,90 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
 
     names = [name for name, _ in node.names]
     as_names = [as_name or name for name, as_name in node.names]
-    names_literal = builder.add(LoadLiteral(tuple(names), object_rprimitive))
-    if as_names == names:
-        # Reuse names tuple to reduce verbosity.
-        as_names_literal = names_literal
+
+    if builder.is_native_module(id):
+        import_from_native(builder, id, names, as_names)
+        assert False
     else:
-        as_names_literal = builder.add(LoadLiteral(tuple(as_names), object_rprimitive))
-    # Note that we miscompile import from inside of functions here,
-    # since that case *shouldn't* load everything into the globals dict.
-    # This probably doesn't matter much and the code runs basically right.
-    module = builder.call_c(
-        import_from_many_op,
-        [builder.load_str(id), names_literal, as_names_literal, builder.load_globals_dict()],
-        node.line,
-    )
-    builder.add(InitStatic(module, id, namespace=NAMESPACE_MODULE))
+        names_literal = builder.add(LoadLiteral(tuple(names), object_rprimitive))
+        if as_names == names:
+            # Reuse names tuple to reduce verbosity.
+            as_names_literal = names_literal
+        else:
+            as_names_literal = builder.add(LoadLiteral(tuple(as_names), object_rprimitive))
+        # Note that we miscompile import from inside of functions here,
+        # since that case *shouldn't* load everything into the globals dict.
+        # This probably doesn't matter much and the code runs basically right.
+        module = builder.call_c(
+            import_from_many_op,
+            [builder.load_str(id), names_literal, as_names_literal, builder.load_globals_dict()],
+            node.line,
+        )
+        builder.add(InitStatic(module, id, namespace=NAMESPACE_MODULE))
+
+
+IMPORT_GROUP_NATIVE_MODULE: Final = 0
+IMPORT_GROUP_NATIVE_ATTR: Final = 1
+IMPORT_GROUP_NON_NATIVE: Final = 2
+
+
+class ImportFromGroup:
+    def __init__(self, kind: int, names: list[str], as_names: list[str]) -> None:
+        self.kind = kind
+        self.names = names
+        self.as_names = as_names
+
+
+def import_from_native(
+    builder: IRBuilder, module_id: str, names: list[str], as_names: list[str]
+) -> None:
+    # Imported names can each be one of three:
+    #   attribute of native module
+    #   native submodule
+    #   something else (i.e. non-native)
+    #
+    # For each we have a separate implementation for good efficiency. We group related things
+    # together.
+    groups = group_import_from_native(builder, module_id, names, as_names)
+    for group in groups:
+        if group.kind == IMPORT_GROUP_NATIVE_MODULE:
+            assert False
+        elif group.kind == IMPORT_GROUP_NATIVE_ATTR:
+            # TODO: Do it here
+            pass
+        else:
+            assert group.kind == IMPORT_GROUP_NON_NATIVE
+            assert False
+
+
+def group_import_from_native(
+    builder: IRBuilder, module_id: str, names: list[str], as_names: list[str]
+) -> list[ImportFromGroup]:
+    # First build a flat list of each import
+    flat_list = []
+    for name, as_name in zip(names, as_names):
+        if builder.is_native_module(f"{module_id}.name"):
+            kind = IMPORT_GROUP_NATIVE_MODULE
+        elif True:  # TODO: We should have a more precise check here?
+            kind = IMPORT_GROUP_NATIVE_ATTR
+        else:
+            kind = IMPORT_GROUP_NON_NATIVE
+        flat_list.append((kind, name, as_name))
+
+    # Group similar imports based on kinds
+    result = []
+    i = 0
+    while i < len(flat_list):
+        kind = flat_list[i][0]
+        i0 = i
+        i += 1
+        while i < len(flat_list) and flat_list[i][0] == kind:
+            i += 1
+        result.append(
+            ImportFromGroup(kind, [t[1] for t in flat_list[i0:i]], [t[2] for t in flat_list[i0:i]])
+        )
+
+    return result
 
 
 def transform_import_all(builder: IRBuilder, node: ImportAll) -> None:
