@@ -132,7 +132,6 @@ from mypy.typeanal import (
     validate_instance,
 )
 from mypy.typeops import (
-    bind_self,
     callable_type,
     custom_special_method,
     erase_to_union_or_bound,
@@ -2653,10 +2652,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     funcdef = sym.node
             else:
                 name_module, _, name = callable_name.rpartition(".")
-                if (
-                    (module := self.chk.modules.get(name_module)) is not None
-                    and (sym := module.names.get(name)) is not None
-                ):
+                if (module := self.chk.modules.get(name_module)) is not None and (
+                    sym := module.names.get(name)
+                ) is not None:
                     funcdef = sym.node
         if isinstance(funcdef, OverloadedFuncDef):
             for typ, defn in zip(callee.items, funcdef.items):

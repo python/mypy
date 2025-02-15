@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Callable, cast
 
+import mypy.errorcodes as codes
 from mypy import message_registry, subtypes
 from mypy.erasetype import erase_typevars
-import mypy.errorcodes as codes
 from mypy.expandtype import (
     expand_self_type,
     expand_type_by_instance,
