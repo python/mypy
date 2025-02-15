@@ -1476,15 +1476,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             object_type=object_type,
         )
         proper_callee = get_proper_type(callee_type)
-        if isinstance(e.callee, (NameExpr, MemberExpr)):
-            node = e.callee.node
-            if node is None and member is not None and isinstance(object_type, Instance):
-                if (symbol := object_type.type.get(member)) is not None:
-                    node = symbol.node
-            self.chk.check_deprecated(node, e)
-            self.chk.warn_deprecated_overload_item(
-                node, e, target=callee_type, selftype=object_type
-            )
         if isinstance(e.callee, RefExpr) and isinstance(proper_callee, CallableType):
             # Cache it for find_isinstance_check()
             if proper_callee.type_guard is not None:
@@ -2652,6 +2643,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         context: Context,
     ) -> tuple[Type, Type]:
         """Checks a call to an overloaded function."""
+
+        # The following hack tries to update the `definition` attribute of the given callable
+        # type's items with the related decorator symbols to allow checking for deprecations:
+        funcdef = None
+        if callable_name is not None:
+            if isinstance(inst := get_proper_type(object_type), Instance):
+                if (sym := inst.type.get(callable_name.rpartition(".")[-1])) is not None:
+                    funcdef = sym.node
+            else:
+                name_module, _, name = callable_name.rpartition(".")
+                if (
+                    (module := self.chk.modules.get(name_module)) is not None
+                    and (sym := module.names.get(name)) is not None
+                ):
+                    funcdef = sym.node
+        if isinstance(funcdef, OverloadedFuncDef):
+            for typ, defn in zip(callee.items, funcdef.items):
+                typ.definition = defn
+
         # Normalize unpacked kwargs before checking the call.
         callee = callee.with_unpacked_kwargs()
         arg_types = self.infer_arg_types_in_empty_context(args)
@@ -2714,7 +2724,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             object_type,
             context,
         )
-        # If any of checks succeed, stop early.
+        # If any of checks succeed, perform deprecation tests and stop early.
         if inferred_result is not None and unioned_result is not None:
             # Both unioned and direct checks succeeded, choose the more precise type.
             if (
@@ -2722,11 +2732,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 and not isinstance(get_proper_type(inferred_result[0]), AnyType)
                 and not none_type_var_overlap
             ):
-                return inferred_result
+                unioned_result = None
+            else:
+                inferred_result = None
+        if unioned_result is not None:
+            for inferred_type in inferred_types:
+                if isinstance(c := get_proper_type(inferred_type), CallableType):
+                    self.chk.warn_deprecated(c.definition, context)
             return unioned_result
-        elif unioned_result is not None:
-            return unioned_result
-        elif inferred_result is not None:
+        if inferred_result is not None:
+            if isinstance(c := get_proper_type(inferred_result[1]), CallableType):
+                self.chk.warn_deprecated(c.definition, context)
             return inferred_result
 
         # Step 4: Failure. At this point, we know there is no match. We fall back to trying
@@ -4077,21 +4093,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         results = []
         for name, method, obj, arg in variants:
             with self.msg.filter_errors(save_filtered_errors=True) as local_errors:
-                result = self.check_method_call(op_name, obj, method, [arg], [ARG_POS], context)
+                result = self.check_method_call(name, obj, method, [arg], [ARG_POS], context)
             if local_errors.has_new_errors():
                 errors.append(local_errors.filtered_errors())
                 results.append(result)
             else:
-                if isinstance(obj, Instance) and isinstance(
-                    defn := obj.type.get_method(name), OverloadedFuncDef
-                ):
-                    for item in defn.items:
-                        if (
-                            isinstance(item, Decorator)
-                            and isinstance(typ := item.func.type, CallableType)
-                            and bind_self(typ) == result[1]
-                        ):
-                            self.chk.check_deprecated(item.func, context)
                 return result
 
         # We finish invoking above operators and no early return happens. Therefore,

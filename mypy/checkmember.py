@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Callable, cast
 
 from mypy import message_registry, subtypes
 from mypy.erasetype import erase_typevars
+import mypy.errorcodes as codes
 from mypy.expandtype import (
     expand_self_type,
     expand_type_by_instance,
@@ -701,6 +702,10 @@ def analyze_descriptor_access(
         object_type=descriptor_type,
     )
 
+    deprecated_disabled = False
+    if assignment and codes.DEPRECATED in mx.chk.options.enabled_error_codes:
+        mx.chk.options.enabled_error_codes.remove(codes.DEPRECATED)
+        deprecated_disabled = True
     _, inferred_dunder_get_type = mx.chk.expr_checker.check_call(
         dunder_get_type,
         [
@@ -712,12 +717,10 @@ def analyze_descriptor_access(
         object_type=descriptor_type,
         callable_name=callable_name,
     )
-
+    if deprecated_disabled:
+        mx.chk.options.enabled_error_codes.add(codes.DEPRECATED)
     if not assignment:
         mx.chk.check_deprecated(dunder_get, mx.context)
-        mx.chk.warn_deprecated_overload_item(
-            dunder_get, mx.context, target=inferred_dunder_get_type, selftype=descriptor_type
-        )
 
     inferred_dunder_get_type = get_proper_type(inferred_dunder_get_type)
     if isinstance(inferred_dunder_get_type, AnyType):
