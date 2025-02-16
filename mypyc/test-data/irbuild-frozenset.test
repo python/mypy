@@ -1,0 +1,115 @@
+[case testNewFrozenSet]
+from typing import FrozenSet
+def f() -> FrozenSet[int]:
+    return frozenset({1, 2, 3})
+[out]
+def f():
+    r0 :: set
+    r1 :: object
+    r2 :: i32
+    r3 :: bit
+    r4 :: object
+    r5 :: i32
+    r6 :: bit
+    r7 :: object
+    r8 :: i32
+    r9 :: bit
+    r10 :: frozenset
+L0:
+    r0 = PySet_New(0)
+    r1 = object 1
+    r2 = PySet_Add(r0, r1)
+    r3 = r2 >= 0 :: signed
+    r4 = object 2
+    r5 = PySet_Add(r0, r4)
+    r6 = r5 >= 0 :: signed
+    r7 = object 3
+    r8 = PySet_Add(r0, r7)
+    r9 = r8 >= 0 :: signed
+    r10 = PyFrozenSet_New(r0)
+    return r10
+
+[case testNewEmptyFrozenSet]
+from typing import FrozenSet
+def f1() -> FrozenSet[int]:
+    return frozenset()
+
+def f2() -> FrozenSet[int]:
+    return frozenset(())
+[out]
+def f1():
+    r0 :: frozenset
+L0:
+    r0 = PyFrozenSet_New(0)
+    return r0
+def f2():
+    r0 :: tuple[]
+    r1 :: object
+    r2 :: frozenset
+L0:
+    r0 = ()
+    r1 = box(tuple[], r0)
+    r2 = PyFrozenSet_New(r1)
+    return r2
+
+[case testNewFrozenSetFromIterable]
+from typing import FrozenSet, List, TypeVar
+
+T = TypeVar("T")
+
+def f(l: List[T]) -> FrozenSet[T]:
+    return frozenset(l)
+[out]
+def f(l):
+    l :: list
+    r0 :: frozenset
+L0:
+    r0 = PyFrozenSet_New(l)
+    return r0
+
+[case testFrozenSetSize]
+from typing import FrozenSet
+def f() -> int:
+    return len(frozenset((1, 2, 3)))
+[out]
+def f():
+    r0 :: tuple[int, int, int]
+    r1 :: object
+    r2 :: frozenset
+    r3 :: ptr
+    r4 :: native_int
+    r5 :: short_int
+L0:
+    r0 = (2, 4, 6)
+    r1 = box(tuple[int, int, int], r0)
+    r2 = PyFrozenSet_New(r1)
+    r3 = get_element_ptr r2 used :: PySetObject
+    r4 = load_mem r3 :: native_int*
+    keep_alive r2
+    r5 = r4 << 1
+    return r5
+
+[case testFrozenSetContains]
+from typing import FrozenSet
+def f() -> bool:
+    x = frozenset((3, 4))
+    return (5 in x)
+[out]
+def f():
+    r0 :: tuple[int, int]
+    r1 :: object
+    r2, x :: frozenset
+    r3 :: object
+    r4 :: i32
+    r5 :: bit
+    r6 :: bool
+L0:
+    r0 = (6, 8)
+    r1 = box(tuple[int, int], r0)
+    r2 = PyFrozenSet_New(r1)
+    x = r2
+    r3 = object 5
+    r4 = PySet_Contains(x, r3)
+    r5 = r4 >= 0 :: signed
+    r6 = truncate r4: i32 to builtins.bool
+    return r6

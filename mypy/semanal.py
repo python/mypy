@@ -86,6 +86,7 @@ from mypy.nodes import (
     REVEAL_LOCALS,
     REVEAL_TYPE,
     RUNTIME_PROTOCOL_DECOS,
+    SYMBOL_FUNCBASE_TYPES,
     TYPE_VAR_KIND,
     TYPE_VAR_TUPLE_KIND,
     VARIANCE_NOT_READY,
@@ -3089,8 +3090,6 @@ class SemanticAnalyzer(
             for name, node in m.names.items():
                 fullname = i_id + "." + name
                 self.set_future_import_flags(fullname)
-                if node is None:
-                    continue
                 # if '__all__' exists, all nodes not included have had module_public set to
                 # False, and we can skip checking '_' because it's been explicitly included.
                 if node.module_public and (not name.startswith("_") or "__all__" in m.names):
@@ -4201,7 +4200,16 @@ class SemanticAnalyzer(
     ) -> None:
         """Prohibit and fix recursive type aliases that are invalid/unsupported."""
         messages = []
-        if is_invalid_recursive_alias({current_node}, current_node.target):
+        if (
+            isinstance(current_node.target, TypeAliasType)
+            and current_node.target.alias is current_node
+        ):
+            # We want to have consistent error messages, but not calling name_not_defined(),
+            # since it will do a bunch of unrelated things we don't want here.
+            messages.append(
+                f'Cannot resolve name "{current_node.name}" (possible cyclic definition)'
+            )
+        elif is_invalid_recursive_alias({current_node}, current_node.target):
             target = (
                 "tuple" if isinstance(get_proper_type(current_node.target), TupleType) else "union"
             )
@@ -5717,7 +5725,7 @@ class SemanticAnalyzer(
             reveal_type_node = self.lookup("reveal_type", expr, suppress_errors=True)
             if (
                 reveal_type_node
-                and isinstance(reveal_type_node.node, FuncBase)
+                and isinstance(reveal_type_node.node, SYMBOL_FUNCBASE_TYPES)
                 and reveal_type_node.fullname in IMPORTED_REVEAL_TYPE_NAMES
             ):
                 reveal_imported = True
@@ -6141,7 +6149,8 @@ class SemanticAnalyzer(
 
     def visit_lambda_expr(self, expr: LambdaExpr) -> None:
         self.analyze_arg_initializers(expr)
-        self.analyze_function_body(expr)
+        with self.inside_except_star_block_set(False, entering_loop=False):
+            self.analyze_function_body(expr)
 
     def visit_conditional_expr(self, expr: ConditionalExpr) -> None:
         expr.if_expr.accept(self)
@@ -6322,12 +6331,24 @@ class SemanticAnalyzer(
         if self.statement is None:
             # Assume it's fine -- don't have enough context to check
             return True
-        return (
+        if (
             node is None
             or self.is_textually_before_statement(node)
             or not self.is_defined_in_current_module(node.fullname)
-            or isinstance(node, (TypeInfo, TypeAlias))
-            or (isinstance(node, PlaceholderNode) and node.becomes_typeinfo)
+        ):
+            return True
+        if self.is_type_like(node):
+            # Allow forward references to classes/type aliases (see docstring), but
+            # a forward reference should never shadow an existing regular reference.
+            if node.name not in self.globals:
+                return True
+            global_node = self.globals[node.name]
+            return not self.is_type_like(global_node.node)
+        return False
+
+    def is_type_like(self, node: SymbolNode | None) -> bool:
+        return isinstance(node, (TypeInfo, TypeAlias)) or (
+            isinstance(node, PlaceholderNode) and node.becomes_typeinfo
         )
 
     def is_textually_before_statement(self, node: SymbolNode) -> bool:

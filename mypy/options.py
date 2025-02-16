@@ -182,6 +182,10 @@ class Options:
         # Report importing or using deprecated features as errors instead of notes.
         self.report_deprecated_as_note = False
 
+        # Allow deprecated calls from function coming from modules/packages
+        # in this list (each item effectively acts as a prefix match)
+        self.deprecated_calls_exclude: list[str] = []
+
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 

@@ -770,6 +770,8 @@ class DataclassTransformer:
             if sym_node is not None:
                 var = sym_node.node
                 if isinstance(var, Var):
+                    if var.is_final:
+                        continue  # do not turn `Final` attrs to `@property`
                     var.is_property = True
             else:
                 var = attr.to_var(info)
@@ -965,6 +967,9 @@ def dataclass_tag_callback(ctx: ClassDefContext) -> None:
 
 def dataclass_class_maker_callback(ctx: ClassDefContext) -> bool:
     """Hooks into the class typechecking process to add support for dataclasses."""
+    if any(i.is_named_tuple for i in ctx.cls.info.mro):
+        ctx.api.fail("A NamedTuple cannot be a dataclass", ctx=ctx.cls.info)
+        return True
     transformer = DataclassTransformer(
         ctx.cls, ctx.reason, _get_transform_spec(ctx.reason), ctx.api
     )

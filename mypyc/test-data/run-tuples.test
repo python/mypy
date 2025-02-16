@@ -97,8 +97,7 @@ assert f(Sub(3, 2)) == 3
 
 -- Ref: https://github.com/mypyc/mypyc/issues/924
 [case testNamedTupleClassSyntax]
-from typing import Dict, List, NamedTuple, Optional, Tuple, Union
-from typing_extensions import final
+from typing import Dict, List, NamedTuple, Optional, Tuple, Union, final
 
 class FuncIR: pass
 
@@ -147,8 +146,7 @@ assert Record.__annotations__ == {
 }, Record.__annotations__
 
 [case testTupleOps]
-from typing import Tuple, List, Any, Optional
-from typing_extensions import Final
+from typing import Tuple, Final, List, Any, Optional
 
 def f() -> Tuple[()]:
     return ()

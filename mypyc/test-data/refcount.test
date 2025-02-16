@@ -1339,7 +1339,7 @@ L0:
     return r2
 
 [case testBorrowIntCompareFinal]
-from typing_extensions import Final
+from typing import Final
 
 X: Final = 10
 

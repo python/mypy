@@ -106,16 +106,6 @@ def short_name(name: str) -> str:
     return name
 
 
-def use_vectorcall(capi_version: tuple[int, int]) -> bool:
-    # We can use vectorcalls to make calls on Python 3.8+ (PEP 590).
-    return capi_version >= (3, 8)
-
-
-def use_method_vectorcall(capi_version: tuple[int, int]) -> bool:
-    # We can use a dedicated vectorcall API to call methods on Python 3.9+.
-    return capi_version >= (3, 9)
-
-
 def get_id_from_name(name: str, fullname: str, line: int) -> str:
     """Create a unique id for a function.
 

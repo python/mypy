@@ -656,7 +656,7 @@ class ASTConverter:
         ast3.Is: "is",
         ast3.IsNot: "is not",
         ast3.In: "in",
-        ast3.NotIn: "not in",
+        ast3.NotIn: "not in",  # codespell:ignore notin
     }
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
@@ -1205,7 +1205,9 @@ class ASTConverter:
         if argument_elide_name(arg.arg):
             pos_only = True
 
-        argument = Argument(Var(arg.arg, arg_type), arg_type, self.visit(default), kind, pos_only)
+        var = Var(arg.arg, arg_type)
+        var.is_inferred = False
+        argument = Argument(var, arg_type, self.visit(default), kind, pos_only)
         argument.set_line(
             arg.lineno,
             arg.col_offset,
@@ -2274,7 +2276,7 @@ class FindAttributeAssign(TraverserVisitor):
 
 
 class FindYield(TraverserVisitor):
-    """Check if an AST contains yields or yield froms."""
+    """Check if an AST contains yields or yield froms."""  # codespell:ignore froms
 
     def __init__(self) -> None:
         self.found = False

@@ -16,7 +16,7 @@ from mypy.patterns import (
     ValuePattern,
 )
 from mypy.traverser import TraverserVisitor
-from mypy.types import Instance, TupleType, get_proper_type
+from mypy.types import Instance, LiteralType, TupleType, get_proper_type
 from mypyc.ir.ops import BasicBlock, Value
 from mypyc.ir.rtypes import object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
@@ -152,23 +152,7 @@ class MatchVisitor(TraverserVisitor):
 
             node = pattern.class_ref.node
             assert isinstance(node, TypeInfo)
-
-            ty = node.names.get("__match_args__")
-            assert ty
-
-            match_args_type = get_proper_type(ty.type)
-            assert isinstance(match_args_type, TupleType)
-
-            match_args: list[str] = []
-
-            for item in match_args_type.items:
-                proper_item = get_proper_type(item)
-                assert isinstance(proper_item, Instance) and proper_item.last_known_value
-
-                match_arg = proper_item.last_known_value.value
-                assert isinstance(match_arg, str)
-
-                match_args.append(match_arg)
+            match_args = extract_dunder_match_args_names(node)
 
             for i, expr in enumerate(pattern.positionals):
                 self.builder.activate_block(self.code_block)
@@ -355,3 +339,24 @@ def prep_sequence_pattern(
             patterns.append(pattern)
 
     return star_index, capture, patterns
+
+
+def extract_dunder_match_args_names(info: TypeInfo) -> list[str]:
+    ty = info.names.get("__match_args__")
+    assert ty
+    match_args_type = get_proper_type(ty.type)
+    assert isinstance(match_args_type, TupleType)
+
+    match_args: list[str] = []
+    for item in match_args_type.items:
+        proper_item = get_proper_type(item)
+
+        match_arg = None
+        if isinstance(proper_item, Instance) and proper_item.last_known_value:
+            match_arg = proper_item.last_known_value.value
+        elif isinstance(proper_item, LiteralType):
+            match_arg = proper_item.value
+        assert isinstance(match_arg, str), f"Unrecognized __match_args__ item: {item}"
+
+        match_args.append(match_arg)
+    return match_args

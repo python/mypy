@@ -826,6 +826,14 @@ def process_options(
         help="Report importing or using deprecated features as notes instead of errors",
         group=lint_group,
     )
+    lint_group.add_argument(
+        "--deprecated-calls-exclude",
+        metavar="MODULE",
+        action="append",
+        default=[],
+        help="Disable deprecated warnings for functions/methods coming"
+        " from specific package, module, or class",
+    )
 
     # Note: this group is intentionally added here even though we don't add
     # --strict to this group near the end.
@@ -1369,6 +1377,7 @@ def process_options(
         )
 
     validate_package_allow_list(options.untyped_calls_exclude)
+    validate_package_allow_list(options.deprecated_calls_exclude)
 
     options.process_error_codes(error_callback=parser.error)
     options.process_incomplete_features(error_callback=parser.error, warning_callback=print)

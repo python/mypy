@@ -20,9 +20,11 @@ def eq(x: str) -> int:
     return 2
 def match(x: str, y: str) -> Tuple[bool, bool]:
     return (x.startswith(y), x.endswith(y))
+def remove_prefix_suffix(x: str, y: str) -> Tuple[str, str]:
+    return (x.removeprefix(y), x.removesuffix(y))
 
 [file driver.py]
-from native import f, g, tostr, booltostr, concat, eq, match
+from native import f, g, tostr, booltostr, concat, eq, match, remove_prefix_suffix
 import sys
 
 assert f() == 'some string'
@@ -44,6 +46,10 @@ assert match('abc', 'a') == (True, False)
 assert match('abc', 'c') == (False, True)
 assert match('', 'abc') == (False, False)
 
+assert remove_prefix_suffix('', '') == ('', '')
+assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
+assert remove_prefix_suffix('abc', 'c') == ('abc', 'ab')
+
 [case testStringOps]
 from typing import List, Optional
 
@@ -55,6 +61,14 @@ def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None)
             return s.split(sep)
     return s.split()
 
+def do_rsplit(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
+    if sep is not None:
+        if max_split is not None:
+            return s.rsplit(sep, max_split)
+        else:
+            return s.rsplit(sep)
+    return s.rsplit()
+
 ss = "abc abcd abcde abcdef"
 
 def test_split() -> None:
@@ -65,6 +79,15 @@ def test_split() -> None:
     assert do_split(ss, " ", 0) == ["abc abcd abcde abcdef"]
     assert do_split(ss, " ", 1) == ["abc", "abcd abcde abcdef"]
     assert do_split(ss, " ", 2) == ["abc", "abcd", "abcde abcdef"]
+
+def test_rsplit() -> None:
+    assert do_rsplit(ss) == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, " ") == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, "-") == ["abc abcd abcde abcdef"]
+    assert do_rsplit(ss, " ", -1) == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, " ", 0) == ["abc abcd abcde abcdef"]
+    assert do_rsplit(ss, " ", 1) == ["abc abcd abcde", "abcdef"]  # different to do_split
+    assert do_rsplit(ss, " ", 2) == ["abc abcd", "abcde", "abcdef"]  # different to do_split
 
 def getitem(s: str, index: int) -> str:
     return s[index]

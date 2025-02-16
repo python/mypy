@@ -1514,11 +1514,11 @@ TypeInfo<0>(
 [case testLiteralMerge]
 import target
 [file target.py]
-from typing_extensions import Literal
+from typing import Literal
 def foo(x: Literal[3]) -> Literal['a']: pass
 bar: Literal[4] = 4
 [file target.py.next]
-from typing_extensions import Literal
+from typing import Literal
 def foo(x: Literal['3']) -> Literal['b']: pass
 bar: Literal[5] = 5
 [builtins fixtures/tuple.pyi]
@@ -1528,7 +1528,7 @@ MypyFile:1<0>(
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
-  ImportFrom:1(typing_extensions, [Literal])
+  ImportFrom:1(typing, [Literal])
   FuncDef:2<2>(
     foo
     Args(
@@ -1546,7 +1546,7 @@ MypyFile:1<0>(
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
-  ImportFrom:1(typing_extensions, [Literal])
+  ImportFrom:1(typing, [Literal])
   FuncDef:2<2>(
     foo
     Args(

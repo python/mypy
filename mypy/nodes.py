@@ -89,9 +89,14 @@ UNBOUND_IMPORTED: Final = 3
 REVEAL_TYPE: Final = 0
 REVEAL_LOCALS: Final = 1
 
-LITERAL_YES: Final = 2
-LITERAL_TYPE: Final = 1
-LITERAL_NO: Final = 0
+# Kinds of 'literal' expressions.
+#
+# Use the function mypy.literals.literal to calculate these.
+#
+# TODO: Can we make these less confusing?
+LITERAL_YES: Final = 2  # Value of expression known statically
+LITERAL_TYPE: Final = 1  # Type of expression can be narrowed (e.g. variable reference)
+LITERAL_NO: Final = 0  # None of the above
 
 node_kinds: Final = {LDEF: "Ldef", GDEF: "Gdef", MDEF: "Mdef", UNBOUND_IMPORTED: "UnboundImported"}
 inverse_node_kinds: Final = {_kind: _name for _name, _kind in node_kinds.items()}
@@ -171,15 +176,12 @@ class Node(Context):
     __slots__ = ()
 
     def __str__(self) -> str:
-        ans = self.accept(mypy.strconv.StrConv(options=Options()))
-        if ans is None:
-            return repr(self)
-        return ans
+        return self.accept(mypy.strconv.StrConv(options=Options()))
 
     def str_with_options(self, options: Options) -> str:
-        ans = self.accept(mypy.strconv.StrConv(options=options))
-        assert ans
-        return ans
+        a = self.accept(mypy.strconv.StrConv(options=options))
+        assert a
+        return a
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
@@ -870,7 +872,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
 
 # All types that are both SymbolNodes and FuncBases. See the FuncBase
 # docstring for the rationale.
-SYMBOL_FUNCBASE_TYPES = (OverloadedFuncDef, FuncDef)
+# See https://github.com/python/mypy/pull/13607#issuecomment-1236357236
+# TODO: we want to remove this at some point and just use `FuncBase` ideally.
+SYMBOL_FUNCBASE_TYPES: Final = (OverloadedFuncDef, FuncDef)
 
 
 class Decorator(SymbolNode, Statement):
@@ -1067,6 +1071,9 @@ class Var(SymbolNode):
     @property
     def fullname(self) -> str:
         return self._fullname
+
+    def __repr__(self) -> str:
+        return f"<Var {self.fullname!r} at {hex(id(self))}>"
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
@@ -2567,6 +2574,11 @@ class TypeVarLikeExpr(SymbolNode, Expression):
         return self._fullname
 
 
+# All types that are both SymbolNodes and Expressions.
+# Use when common children of them are needed.
+SYMBOL_NODE_EXPRESSION_TYPES: Final = (TypeVarLikeExpr,)
+
+
 class TypeVarExpr(TypeVarLikeExpr):
     """Type variable expression TypeVar(...).
 
@@ -3235,10 +3247,26 @@ class TypeInfo(SymbolNode):
             name
             for name, sym in self.names.items()
             if (
-                isinstance(sym.node, Var)
-                and name not in EXCLUDED_ENUM_ATTRIBUTES
-                and not (is_dunder(name) or maybe_mangled(name, self.name))
-                and sym.node.has_explicit_value
+                (
+                    isinstance(sym.node, Var)
+                    and name not in EXCLUDED_ENUM_ATTRIBUTES
+                    and not (is_dunder(name) or maybe_mangled(name, self.name))
+                    and sym.node.has_explicit_value
+                    and not (
+                        isinstance(
+                            typ := mypy.types.get_proper_type(sym.node.type), mypy.types.Instance
+                        )
+                        and typ.type.fullname == "enum.nonmember"
+                    )
+                )
+                or (
+                    isinstance(sym.node, Decorator)
+                    and any(
+                        dec.fullname == "enum.member"
+                        for dec in sym.node.decorators
+                        if isinstance(dec, RefExpr)
+                    )
+                )
             )
         ]
 
@@ -3265,7 +3293,7 @@ class TypeInfo(SymbolNode):
         for cls in self.mro:
             if name in cls.names:
                 node = cls.names[name].node
-                if isinstance(node, FuncBase):
+                if isinstance(node, SYMBOL_FUNCBASE_TYPES):
                     return node
                 elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
                     return node
@@ -4024,7 +4052,8 @@ class SymbolTable(dict[str, SymbolTableNode]):
                 ):
                     a.append("  " + str(key) + " : " + str(value))
             else:
-                a.append("  <invalid item>")
+                # Used in debugging:
+                a.append("  <invalid item>")  # type: ignore[unreachable]
         a = sorted(a)
         a.insert(0, "SymbolTable(")
         a[-1] += ")"

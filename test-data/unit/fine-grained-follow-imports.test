@@ -831,8 +831,7 @@ class A: ...
 import trio
 
 [file trio/__init__.py.2]
-from typing import TypeVar
-from typing_extensions import TypedDict
+from typing import TypedDict, TypeVar
 import trio
 from . import abc as abc
 
@@ -844,5 +843,6 @@ class C(TypedDict):
 import trio
 class A: ...
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==

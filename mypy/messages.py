@@ -215,7 +215,7 @@ class MessageBuilder:
     def prefer_simple_messages(self) -> bool:
         """Should we generate simple/fast error messages?
 
-        If errors aren't shown to the user, we don't want to waste cyles producing
+        If errors aren't shown to the user, we don't want to waste cycles producing
         complex error messages.
         """
         return self.errors.prefer_simple_messages()
@@ -2153,12 +2153,8 @@ class MessageBuilder:
         is_module = False
         skip = []
         if isinstance(subtype, TupleType):
-            if not isinstance(subtype.partial_fallback, Instance):
-                return
             subtype = subtype.partial_fallback
         elif isinstance(subtype, TypedDictType):
-            if not isinstance(subtype.fallback, Instance):
-                return
             subtype = subtype.fallback
         elif isinstance(subtype, TypeType):
             if not isinstance(subtype.item, Instance):
@@ -3272,7 +3268,7 @@ def append_invariance_notes(
         and expected_type.type.fullname == "builtins.list"
         and is_subtype(arg_type.args[0], expected_type.args[0])
     ):
-        invariant_type = "List"
+        invariant_type = "list"
         covariant_suggestion = 'Consider using "Sequence" instead, which is covariant'
     elif (
         arg_type.type.fullname == "builtins.dict"
@@ -3280,7 +3276,7 @@ def append_invariance_notes(
         and is_same_type(arg_type.args[0], expected_type.args[0])
         and is_subtype(arg_type.args[1], expected_type.args[1])
     ):
-        invariant_type = "Dict"
+        invariant_type = "dict"
         covariant_suggestion = (
             'Consider using "Mapping" instead, which is covariant in the value type'
         )

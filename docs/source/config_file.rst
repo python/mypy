@@ -666,6 +666,16 @@ section of the command line docs.
     Shows a warning when encountering any code inferred to be unreachable or
     redundant after performing type analysis.
 
+.. confval:: deprecated_calls_exclude
+
+    :type: comma-separated list of strings
+
+    Selectively excludes functions and methods defined in specific packages,
+    modules, and classes from the :ref:`deprecated<code-deprecated>` error code.
+    This also applies to all submodules of packages (i.e. everything inside
+    a given prefix). Note, this option does not support per-file configuration,
+    the exclusions list is defined globally for all your code.
+
 
 Suppressing errors
 ******************

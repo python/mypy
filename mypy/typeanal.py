@@ -617,7 +617,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         """
         if fullname == "builtins.None":
             return NoneType()
-        elif fullname == "typing.Any" or fullname == "builtins.Any":
+        elif fullname == "typing.Any":
             return AnyType(TypeOfAny.explicit, line=t.line, column=t.column)
         elif fullname in FINAL_TYPE_NAMES:
             if self.prohibit_special_class_field_types:
@@ -824,6 +824,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             (deprecated := info.deprecated)
             and not self.is_typeshed_stub
             and not (self.api.type and (self.api.type.fullname == info.fullname))
+            and not any(
+                info.fullname == p or info.fullname.startswith(f"{p}.")
+                for p in self.options.deprecated_calls_exclude
+            )
         ):
             for imp in self.cur_mod_node.imports:
                 if isinstance(imp, ImportFrom) and any(info.name == n[0] for n in imp.names):
