@@ -5335,6 +5335,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.options.disallow_untyped_decorators
             and is_typed_callable(func.type)
             and is_untyped_decorator(dec_type)
+            and not self.current_node_deferred
         ):
             self.msg.typed_function_untyped_decorator(func.name, dec_expr)
 
