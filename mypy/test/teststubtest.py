@@ -1022,7 +1022,7 @@ class StubtestUnit(unittest.TestCase):
             """,
             runtime="""
             from functools import cached_property
-            from typing import final
+            from typing_extensions import final
             class FinalBad:
                 @cached_property
                 @final
@@ -1579,10 +1579,10 @@ assert annotations
     @collect_cases
     def test_has_runtime_final_decorator(self) -> Iterator[Case]:
         yield Case(
-            stub="from typing import final",
+            stub="from typing_extensions import final",
             runtime="""
             import functools
-            from typing import final
+            from typing_extensions import final
             """,
             error=None,
         )
