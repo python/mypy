@@ -3089,7 +3089,7 @@ class TypeType(ProperType):
     assumption).
     """
 
-    __slots__ = ("item", "is_type_form",)
+    __slots__ = ("item", "is_type_form")
 
     # This can't be everything, but it can be a class reference,
     # a generic class instance, a union, Any, a type variable...
@@ -3115,7 +3115,9 @@ class TypeType(ProperType):
         self.is_type_form = is_type_form
 
     @staticmethod
-    def make_normalized(item: Type, *, line: int = -1, column: int = -1, is_type_form: bool = False) -> ProperType:
+    def make_normalized(
+        item: Type, *, line: int = -1, column: int = -1, is_type_form: bool = False
+    ) -> ProperType:
         item = get_proper_type(item)
         if is_type_form:
             # Don't convert TypeForm[X | Y] to (TypeForm[X] | TypeForm[Y])
@@ -3141,12 +3143,18 @@ class TypeType(ProperType):
         return self.item == other.item
 
     def serialize(self) -> JsonDict:
-        return {".class": "TypeType", "item": self.item.serialize(), "is_type_form": self.is_type_form}
+        return {
+            ".class": "TypeType",
+            "item": self.item.serialize(),
+            "is_type_form": self.is_type_form,
+        }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> Type:
         assert data[".class"] == "TypeType"
-        return TypeType.make_normalized(deserialize_type(data["item"]), is_type_form=data["is_type_form"])
+        return TypeType.make_normalized(
+            deserialize_type(data["item"]), is_type_form=data["is_type_form"]
+        )
 
 
 class PlaceholderType(ProperType):

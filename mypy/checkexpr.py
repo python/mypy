@@ -5947,9 +5947,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             elif allow_none_return and isinstance(node, AwaitExpr):
                 typ = self.visit_await_expr(node, allow_none_return=True)
             elif (
-                isinstance(p_type_context, TypeType) and
-                p_type_context.is_type_form and
-                node.as_type is not None
+                isinstance(p_type_context, TypeType)
+                and p_type_context.is_type_form
+                and node.as_type is not None
             ):
                 typ = TypeType.make_normalized(
                     node.as_type,

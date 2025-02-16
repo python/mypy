@@ -192,7 +192,7 @@ from mypy.nodes import (
     type_aliases_source_versions,
     typing_extensions_aliases,
 )
-from mypy.options import Options, TYPE_FORM
+from mypy.options import TYPE_FORM, Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -5799,9 +5799,7 @@ class SemanticAnalyzer(
             with self.allow_unbound_tvars_set():
                 for a in expr.args:
                     a.accept(self)
-        elif refers_to_fullname(
-            expr.callee, ("typing.TypeForm", "typing_extensions.TypeForm")
-        ):
+        elif refers_to_fullname(expr.callee, ("typing.TypeForm", "typing_extensions.TypeForm")):
             # Special form TypeForm(...).
             if not self.check_fixed_args(expr, 1, "TypeForm"):
                 return
@@ -7620,15 +7618,19 @@ class SemanticAnalyzer(
     def visit_singleton_pattern(self, o: SingletonPattern, /) -> None:
         return None
 
-    def try_parse_as_type_expression(self, maybe_type_expr: Expression) -> Type|None:
+    def try_parse_as_type_expression(self, maybe_type_expr: Expression) -> Type | None:
         """Try to parse maybe_type_expr as a type expression.
         If parsing fails return None and emit no errors."""
         # Save SemanticAnalyzer state
         original_errors = self.errors  # altered by fail()
-        original_num_incomplete_refs = self.num_incomplete_refs  # altered by record_incomplete_ref()
+        original_num_incomplete_refs = (
+            self.num_incomplete_refs
+        )  # altered by record_incomplete_ref()
         original_progress = self.progress  # altered by defer()
         original_deferred = self.deferred  # altered by defer()
-        original_deferral_debug_context_len = len(self.deferral_debug_context)  # altered by defer()
+        original_deferral_debug_context_len = len(
+            self.deferral_debug_context
+        )  # altered by defer()
 
         self.errors = Errors(Options())
         try:
@@ -7648,6 +7650,7 @@ class SemanticAnalyzer(
             self.deferred = original_deferred
             del self.deferral_debug_context[original_deferral_debug_context_len:]
         return t
+
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):

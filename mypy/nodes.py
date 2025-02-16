@@ -205,7 +205,7 @@ class Expression(Node):
     #       a different superclass with its own __slots__. A subclass in
     #       Python is not allowed to have multiple superclasses that define
     #       __slots__.
-    #__slots__ = ('as_type',)
+    # __slots__ = ('as_type',)
 
     # If this value expression can also be parsed as a valid type expression,
     # represents the type denoted by the type expression.

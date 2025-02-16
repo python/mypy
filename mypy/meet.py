@@ -172,10 +172,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
             # type object at least as narrow as Type[T]
             return narrow_declared_type(
                 TypeType.make_normalized(
-                    declared.item,
-                    line=declared.line,
-                    column=declared.column,
-                    is_type_form=False,
+                    declared.item, line=declared.line, column=declared.column, is_type_form=False
                 ),
                 original_narrowed,
             )
@@ -1090,9 +1087,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             typ = self.meet(t.item, self.s.item)
             if not isinstance(typ, NoneType):
                 typ = TypeType.make_normalized(
-                    typ,
-                    line=t.line,
-                    is_type_form=self.s.is_type_form and t.is_type_form,
+                    typ, line=t.line, is_type_form=self.s.is_type_form and t.is_type_form
                 )
             return typ
         elif isinstance(self.s, Instance) and self.s.type.fullname == "builtins.type":

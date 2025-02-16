@@ -49,7 +49,7 @@ from mypy.nodes import (
     check_arg_names,
     get_nongen_builtins,
 )
-from mypy.options import INLINE_TYPEDDICT, Options, TYPE_FORM
+from mypy.options import INLINE_TYPEDDICT, TYPE_FORM, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import (
     SemanticAnalyzerCoreInterface,
@@ -1363,7 +1363,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             try:
                 fallback = self.named_type("typing._TypedDict")
             except AssertionError as e:
-                if str(e) == 'typing._TypedDict':
+                if str(e) == "typing._TypedDict":
                     # Can happen when running mypy tests, typing._TypedDict
                     # is not defined by typing.pyi stubs, and
                     # try_parse_as_type_expression() is called on an dict
@@ -1453,7 +1453,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return AnyType(TypeOfAny.from_error)
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType.make_normalized(self.anal_type(t.item), line=t.line, is_type_form=t.is_type_form)
+        return TypeType.make_normalized(
+            self.anal_type(t.item), line=t.line, is_type_form=t.is_type_form
+        )
 
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
         n = (

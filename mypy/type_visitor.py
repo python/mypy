@@ -326,10 +326,7 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_type_type(self, t: TypeType, /) -> Type:
         return TypeType.make_normalized(
-            t.item.accept(self),
-            line=t.line,
-            column=t.column,
-            is_type_form=t.is_type_form,
+            t.item.accept(self), line=t.line, column=t.column, is_type_form=t.is_type_form
         )
 
     @abstractmethod
