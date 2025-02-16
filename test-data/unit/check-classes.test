@@ -8743,4 +8743,3 @@ class G(A):
 G().__x = 1  # E: "G" has no attribute "__x"
 G()._G__x = 1
 [builtins fixtures/dict.pyi]
-
