@@ -350,7 +350,7 @@ def choose_free(
 
     # For convenience with current type application machinery, we use a stable
     # choice that prefers the original type variables (not polymorphic ones) in SCC.
-    best = sorted(scc, key=lambda x: (x.id not in original_vars, x.id.raw_id))[0]
+    best = min(scc, key=lambda x: (x.id not in original_vars, x.id.raw_id))
     if isinstance(best, TypeVarType):
         return best.copy_modified(values=values, upper_bound=common_upper_bound)
     if is_trivial_bound(common_upper_bound_p, allow_tuple=True):
