@@ -163,6 +163,19 @@ for i in range(len(str_split_types)):
         error_kind=ERR_MAGIC,
     )
 
+# str.splitlines(...)
+str_splitlines_types: list[RType] = [str_rprimitive, bool_rprimitive]
+str_splitlines_constants: list[list[tuple[int, RType]]] = [[(0, c_int_rprimitive)], []]
+for i in range(2):
+    method_op(
+        name="splitlines",
+        arg_types=str_splitlines_types[0 : i + 1],
+        return_type=list_rprimitive,
+        c_function_name="PyUnicode_Splitlines",
+        extra_int_constants=str_splitlines_constants[i],
+        error_kind=ERR_NEVER,
+    )
+
 # str.replace(old, new)
 method_op(
     name="replace",
