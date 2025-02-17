@@ -288,7 +288,7 @@ section of the command line docs.
 
        See :ref:`using-a-pyproject-toml`.
 
-.. confval:: exclude
+.. confval:: exclude_gitignore
 
     :type: boolean
     :default: False
