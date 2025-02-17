@@ -52,6 +52,16 @@ y: Literal[43]
 y = 43
 [typing fixtures/typing-medium.pyi]
 
+[case testLiteralFromTypingExtensionsWorks]
+from typing_extensions import Literal
+
+x: Literal[42]
+x = 43  # E: Incompatible types in assignment (expression has type "Literal[43]", variable has type "Literal[42]")
+
+y: Literal[43]
+y = 43
+[builtins fixtures/tuple.pyi]
+
 [case testLiteralInsideOtherTypes]
 from typing import Literal, Tuple
 

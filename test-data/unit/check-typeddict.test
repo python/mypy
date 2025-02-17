@@ -3791,7 +3791,7 @@ x.update({"key": "abc"})  # E: ReadOnly TypedDict key "key" TypedDict is mutated
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictFromMypyExtensionsReadOnlyMutateMethods]
-from typing import TypedDict
+from mypy_extensions import TypedDict
 from typing_extensions import ReadOnly
 
 class TP(TypedDict):
@@ -4120,7 +4120,7 @@ Func = TypedDict('Func', {
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictNestedInClassAndInherited]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class Base:
     class Params(TypedDict):
