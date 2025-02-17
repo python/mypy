@@ -440,16 +440,13 @@ def f(x: int) -> None: pass
 def g(x: int, y: str) -> None: pass
 
 reveal_type(register(lambda: f(1)))  # N: Revealed type is "def ()"
-reveal_type(register(lambda x: f(x), x=1))  # N: Revealed type is "def (*, x: Literal[1]?)" \
-                                            # E: Cannot infer type of lambda
+reveal_type(register(lambda x: f(x), x=1))  # N: Revealed type is "def (x: Literal[1]?)"
 register(lambda x: f(x))  # E: Cannot infer type of lambda \
                           # E: Argument 1 to "register" has incompatible type "Callable[[Any], None]"; expected "Callable[[], None]"
-register(lambda x: f(x), y=1)  # E: Cannot infer type of lambda \
-                               # E: Argument 1 to "register" has incompatible type "Callable[[Any], None]"; expected "Callable[[NamedArg(int, 'y')], None]"
+register(lambda x: f(x), y=1)  # E: Argument 1 to "register" has incompatible type "Callable[[Arg(int, 'x')], None]"; expected "Callable[[Arg(int, 'y')], None]"
 reveal_type(register(lambda x: f(x), 1))  # N: Revealed type is "def (Literal[1]?)"
 reveal_type(register(lambda x, y: g(x, y), 1, "a"))  # N: Revealed type is "def (Literal[1]?, Literal['a']?)"
-reveal_type(register(lambda x, y: g(x, y), 1, y="a"))  # N: Revealed type is "def (Literal[1]?, *, y: Literal['a']?)" \
-                                                       # E: Cannot infer type of lambda
+reveal_type(register(lambda x, y: g(x, y), 1, y="a"))  # N: Revealed type is "def (Literal[1]?, y: Literal['a']?)"
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecInvalidCalls]
@@ -1681,7 +1678,7 @@ class Foo(Generic[P]):
 def test(*args: P.args, **kwargs: P.kwargs) -> Foo[P]: ...
 
 reveal_type(test(1, 2))  # N: Revealed type is "__main__.Foo[[Literal[1]?, Literal[2]?]]"
-reveal_type(test(x=1, y=2))  # N: Revealed type is "__main__.Foo[[*, x: Literal[1]?, y: Literal[2]?]]"
+reveal_type(test(x=1, y=2))  # N: Revealed type is "__main__.Foo[[x: Literal[1]?, y: Literal[2]?]]"
 ints = [1, 2, 3]
 reveal_type(test(*ints))  # N: Revealed type is "__main__.Foo[[*builtins.int]]"
 [builtins fixtures/paramspec.pyi]
@@ -1736,7 +1733,7 @@ apply(apply, test2, 42, "yes")
 apply(apply, test2, "no", 42)  # E: Argument 1 to "apply" has incompatible type "Callable[[Callable[P, T], **P], None]"; expected "Callable[[Callable[[int, str], None], str, int], None]"
 apply(apply, test2, x=42, y="yes")
 apply(apply, test2, y="yes", x=42)
-apply(apply, test2, y=42, x="no")  # E: Argument 1 to "apply" has incompatible type "Callable[[Callable[P, T], **P], None]"; expected "Callable[[Callable[[int, str], None], NamedArg(int, 'y'), NamedArg(str, 'x')], None]"
+apply(apply, test2, y=42, x="no")  # E: Argument 1 to "apply" has incompatible type "Callable[[Callable[P, T], **P], None]"; expected "Callable[[Callable[[int, str], None], int, str], None]"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecApplyPosVsNamedOptional]
@@ -2161,7 +2158,7 @@ reveal_type(submit(  # N: Revealed type is "__main__.Result"
     backend="asyncio",
 ))
 submit(
-    run,  # E: Argument 1 to "submit" has incompatible type "Callable[[Callable[[], R], VarArg(object), DefaultNamedArg(str, 'backend')], R]"; expected "Callable[[Callable[[], Result], NamedArg(int, 'backend')], Result]"
+    run,  # E: Argument 1 to "submit" has incompatible type "Callable[[Callable[[], R], VarArg(object), DefaultNamedArg(str, 'backend')], R]"; expected "Callable[[Callable[[], Result], int], Result]"
     run_portal,
     backend=int(),
 )
@@ -2535,24 +2532,6 @@ class GenericWrapper(Generic[P]):
     def method(self) -> None:
         def contains(c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
         def inherits(*args: P.args, **kwargs: P.kwargs) -> None: ...
-[builtins fixtures/paramspec.pyi]
-
-[case testParamSpecInferenceFromArgs]
-from typing_extensions import ParamSpec
-from typing import Any, Callable, Union
-
-P = ParamSpec("P")
-
-def into(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None:
-    return None
-
-class C:
-    def f(self, y: bool = False, *, x: int = 42) -> None:
-        return None
-
-ex: Union[C, Any] = C()
-
-into(ex.f, x=-1)
 [builtins fixtures/paramspec.pyi]
 
 [case testCallbackProtocolClassObjectParamSpec]
