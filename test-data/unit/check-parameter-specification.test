@@ -2560,3 +2560,21 @@ def fn(f: MiddlewareFactory[P]) -> Capture[P]: ...
 
 reveal_type(fn(ServerErrorMiddleware))  # N: Revealed type is "__main__.Capture[[handler: Union[builtins.str, None] =, debug: builtins.bool =]]"
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecInferenceWithAny]
+from typing_extensions import ParamSpec
+from typing import Any, Callable, Union
+
+P = ParamSpec("P")
+
+def into(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None:
+    return None
+
+class C:
+    def f(self, y: bool = False, *, x: int = 42) -> None:
+        return None
+
+ex: Union[C, Any] = C()
+
+into(ex.f, x=-1)
+[builtins fixtures/paramspec.pyi]
