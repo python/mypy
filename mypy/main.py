@@ -1252,6 +1252,15 @@ def process_options(
             "May be specified more than once, eg. --exclude a --exclude b"
         ),
     )
+    add_invertible_flag(
+        "--exclude-gitignore",
+        default=False,
+        help=(
+            "Use .gitignore file(s) to exclude files from checking "
+            "(in addition to any explicit --exclude if present)"
+        ),
+        group=code_group,
+    )
     code_group.add_argument(
         "-m",
         "--module",
