@@ -22,11 +22,16 @@ def match(x: str, y: str) -> Tuple[bool, bool]:
     return (x.startswith(y), x.endswith(y))
 def match_tuple(x: str, y: Tuple[str, ...]) -> Tuple[bool, bool]:
     return (x.startswith(y), x.endswith(y))
+def match_tuple_literal_args(x: str, y: str, z: str) -> Tuple[bool, bool]:
+    return (x.startswith((y, z)), x.endswith((y, z)))
 def remove_prefix_suffix(x: str, y: str) -> Tuple[str, str]:
     return (x.removeprefix(y), x.removesuffix(y))
 
 [file driver.py]
-from native import f, g, tostr, booltostr, concat, eq, match, match_tuple, remove_prefix_suffix
+from native import (
+    f, g, tostr, booltostr, concat, eq, match, match_tuple,
+    match_tuple_literal_args, remove_prefix_suffix
+)
 import sys
 from testutil import assertRaises
 
@@ -58,6 +63,8 @@ with assertRaises(TypeError, "tuple for startswith must only contain str"):
     assert match_tuple('abc', (None,))
 with assertRaises(TypeError, "tuple for endswith must only contain str"):
     assert match_tuple('abc', ('a', None))
+assert match_tuple_literal_args('abc', 'z', 'a') == (True, False)
+assert match_tuple_literal_args('abc', 'z', 'c') == (False, True)
 
 assert remove_prefix_suffix('', '') == ('', '')
 assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
