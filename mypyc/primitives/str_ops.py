@@ -197,6 +197,24 @@ for i in range(2):
         error_kind=ERR_NEVER,
     )
 
+# str.partition(str)
+method_op(
+    name="partition",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name="PyUnicode_Partition",
+    error_kind=ERR_MAGIC,
+)
+
+# str.rpartition(str)
+method_op(
+    name="rpartition",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name="PyUnicode_RPartition",
+    error_kind=ERR_MAGIC,
+)
+
 # str.replace(old, new)
 method_op(
     name="replace",

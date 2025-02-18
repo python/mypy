@@ -71,7 +71,8 @@ assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
 assert remove_prefix_suffix('abc', 'c') == ('abc', 'ab')
 
 [case testStringOps]
-from typing import List, Optional
+from typing import List, Optional, Tuple
+from testutil import assertRaises
 
 def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
     if sep is not None:
@@ -121,10 +122,26 @@ def test_splitlines() -> None:
     assert splitlines(s_text, False) == ["This", "is", "", "some", "long", "text."]
     assert splitlines(s_text, True) == ["This\n", "is\n", "\n", "some\n", "long\n", "text.\n"]
 
+s_partition = "Some long text"
+
+def partition(s: str, sep: str) -> Tuple[str, str, str]:
+    return s.partition(sep)
+
+def rpartition(s: str, sep: str) -> Tuple[str, str, str]:
+    return s.rpartition(sep)
+
+def test_partition() -> None:
+    assert partition(s_partition, " ") == ("Some", " ", "long text")
+    assert partition(s_partition, "Hello") == ("Some long text", "", "")
+    assert rpartition(s_partition, " ") == ("Some long", " ", "text")
+    assert rpartition(s_partition, "Hello") == ("", "", "Some long text")
+    with assertRaises(ValueError, "empty separator"):
+        partition(s_partition, "")
+    with assertRaises(ValueError, "empty separator"):
+        rpartition(s_partition, "")
+
 def getitem(s: str, index: int) -> str:
     return s[index]
-
-from testutil import assertRaises
 
 s = "abc"
 
