@@ -75,7 +75,6 @@ class FineGrainedSuite(DataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         if self.should_skip(testcase):
             pytest.skip()
-            return
 
         main_src = "\n".join(testcase.input)
         main_path = os.path.join(test_temp_dir, "main")
@@ -101,8 +100,8 @@ class FineGrainedSuite(DataSuite):
         if messages:
             a.extend(normalize_messages(messages))
 
-        assert testcase.tmpdir
-        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
+        assert testcase.tmpdir is not None
+        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir))
         a.extend(self.maybe_inspect(step, server, main_src))
 
         if server.fine_grained_manager:
@@ -248,8 +247,8 @@ class FineGrainedSuite(DataSuite):
         new_messages = normalize_messages(new_messages)
 
         a = new_messages
-        assert testcase.tmpdir
-        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
+        assert testcase.tmpdir is not None
+        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir))
         a.extend(self.maybe_inspect(step, server, main_src))
 
         return a, triggered

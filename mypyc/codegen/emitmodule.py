@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Iterable, List, Optional, Tuple, TypeVar
+from collections.abc import Iterable
+from typing import Optional, TypeVar
 
 from mypy.build import (
     BuildResult,
@@ -44,10 +45,8 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
     shared_lib_name,
     short_id_from_name,
-    use_vectorcall,
 )
 from mypyc.errors import Errors
-from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
@@ -84,11 +83,11 @@ from mypyc.transform.uninit import insert_uninit_checks
 # its modules along with the name of the group. (Which can be None
 # only if we are compiling only a single group with a single file in it
 # and not using shared libraries).
-Group = Tuple[List[BuildSource], Optional[str]]
-Groups = List[Group]
+Group = tuple[list[BuildSource], Optional[str]]
+Groups = list[Group]
 
 # A list of (file name, file contents) pairs.
-FileContents = List[Tuple[str, str]]
+FileContents = list[tuple[str, str]]
 
 
 class MarkedDeclaration:
@@ -1075,20 +1074,6 @@ class GroupGenerator:
             )
 
 
-def sort_classes(classes: list[tuple[str, ClassIR]]) -> list[tuple[str, ClassIR]]:
-    mod_name = {ir: name for name, ir in classes}
-    irs = [ir for _, ir in classes]
-    deps: dict[ClassIR, set[ClassIR]] = {}
-    for ir in irs:
-        if ir not in deps:
-            deps[ir] = set()
-        if ir.base:
-            deps[ir].add(ir.base)
-        deps[ir].update(ir.traits)
-    sorted_irs = toposort(deps)
-    return [(mod_name[ir], ir) for ir in sorted_irs]
-
-
 T = TypeVar("T")
 
 
@@ -1120,7 +1105,7 @@ def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
     if fn.class_name is not None:
         if fn.name == "__call__":
             # We can use vectorcalls (PEP 590) when supported
-            return use_vectorcall(capi_version)
+            return True
         # TODO: Support fastcall for __init__.
         return fn.name != "__init__"
     return True

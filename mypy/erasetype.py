@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Container, cast
+from collections.abc import Container
+from typing import Callable, cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypy.types import (
@@ -200,6 +201,14 @@ class TypeVarEraser(TypeTranslator):
                         # this essentially mimics the logic in tuple_fallback().
                         return result.partial_fallback.accept(self)
                     return unpacked
+        return result
+
+    def visit_callable_type(self, t: CallableType) -> Type:
+        result = super().visit_callable_type(t)
+        assert isinstance(result, ProperType) and isinstance(result, CallableType)
+        # Usually this is done in semanal_typeargs.py, but erasure can create
+        # a non-normal callable from normal one.
+        result.normalize_trivial_unpack()
         return result
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:

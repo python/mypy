@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, Iterator, Literal
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Final, Literal
 
 from mypy import errorcodes, message_registry
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -78,6 +79,8 @@ if TYPE_CHECKING:
 
 # The set of decorators that generate dataclasses.
 dataclass_makers: Final = {"dataclass", "dataclasses.dataclass"}
+# Default field specifiers for dataclasses
+DATACLASS_FIELD_SPECIFIERS: Final = ("dataclasses.Field", "dataclasses.field")
 
 
 SELF_TVAR_NAME: Final = "_DT"
@@ -86,7 +89,7 @@ _TRANSFORM_SPEC_FOR_DATACLASSES: Final = DataclassTransformSpec(
     order_default=False,
     kw_only_default=False,
     frozen_default=False,
-    field_specifiers=("dataclasses.Field", "dataclasses.field"),
+    field_specifiers=DATACLASS_FIELD_SPECIFIERS,
 )
 _INTERNAL_REPLACE_SYM_NAME: Final = "__mypy-replace"
 _INTERNAL_POST_INIT_SYM_NAME: Final = "__mypy-post_init"
@@ -400,7 +403,11 @@ class DataclassTransformer:
 
     def _add_dunder_replace(self, attributes: list[DataclassAttribute]) -> None:
         """Add a `__replace__` method to the class, which is used to replace attributes in the `copy` module."""
-        args = [attr.to_argument(self._cls.info, of="replace") for attr in attributes]
+        args = [
+            attr.to_argument(self._cls.info, of="replace")
+            for attr in attributes
+            if attr.is_in_init
+        ]
         type_vars = [tv for tv in self._cls.type_vars]
         add_method_to_class(
             self._api,
@@ -444,8 +451,7 @@ class DataclassTransformer:
             # This means that version is lower than `3.10`,
             # it is just a non-existent argument for `dataclass` function.
             self._api.fail(
-                'Keyword argument "slots" for "dataclass" '
-                "is only valid in Python 3.10 and higher",
+                'Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher',
                 self._reason,
             )
             return
@@ -762,6 +768,8 @@ class DataclassTransformer:
             if sym_node is not None:
                 var = sym_node.node
                 if isinstance(var, Var):
+                    if var.is_final:
+                        continue  # do not turn `Final` attrs to `@property`
                     var.is_property = True
             else:
                 var = attr.to_var(info)
@@ -957,6 +965,9 @@ def dataclass_tag_callback(ctx: ClassDefContext) -> None:
 
 def dataclass_class_maker_callback(ctx: ClassDefContext) -> bool:
     """Hooks into the class typechecking process to add support for dataclasses."""
+    if any(i.is_named_tuple for i in ctx.cls.info.mro):
+        ctx.api.fail("A NamedTuple cannot be a dataclass", ctx=ctx.cls.info)
+        return True
     transformer = DataclassTransformer(
         ctx.cls, ctx.reason, _get_transform_spec(ctx.reason), ctx.api
     )

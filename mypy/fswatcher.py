@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import AbstractSet, Iterable, NamedTuple
+from collections.abc import Iterable, Set as AbstractSet
+from typing import NamedTuple
 
 from mypy.fscache import FileSystemCache
 

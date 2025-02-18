@@ -20,9 +20,11 @@ def eq(x: str) -> int:
     return 2
 def match(x: str, y: str) -> Tuple[bool, bool]:
     return (x.startswith(y), x.endswith(y))
+def remove_prefix_suffix(x: str, y: str) -> Tuple[str, str]:
+    return (x.removeprefix(y), x.removesuffix(y))
 
 [file driver.py]
-from native import f, g, tostr, booltostr, concat, eq, match
+from native import f, g, tostr, booltostr, concat, eq, match, remove_prefix_suffix
 import sys
 
 assert f() == 'some string'
@@ -44,6 +46,10 @@ assert match('abc', 'a') == (True, False)
 assert match('abc', 'c') == (False, True)
 assert match('', 'abc') == (False, False)
 
+assert remove_prefix_suffix('', '') == ('', '')
+assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
+assert remove_prefix_suffix('abc', 'c') == ('abc', 'ab')
+
 [case testStringOps]
 from typing import List, Optional
 
@@ -55,6 +61,14 @@ def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None)
             return s.split(sep)
     return s.split()
 
+def do_rsplit(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
+    if sep is not None:
+        if max_split is not None:
+            return s.rsplit(sep, max_split)
+        else:
+            return s.rsplit(sep)
+    return s.rsplit()
+
 ss = "abc abcd abcde abcdef"
 
 def test_split() -> None:
@@ -65,6 +79,27 @@ def test_split() -> None:
     assert do_split(ss, " ", 0) == ["abc abcd abcde abcdef"]
     assert do_split(ss, " ", 1) == ["abc", "abcd abcde abcdef"]
     assert do_split(ss, " ", 2) == ["abc", "abcd", "abcde abcdef"]
+
+def test_rsplit() -> None:
+    assert do_rsplit(ss) == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, " ") == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, "-") == ["abc abcd abcde abcdef"]
+    assert do_rsplit(ss, " ", -1) == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, " ", 0) == ["abc abcd abcde abcdef"]
+    assert do_rsplit(ss, " ", 1) == ["abc abcd abcde", "abcdef"]  # different to do_split
+    assert do_rsplit(ss, " ", 2) == ["abc abcd", "abcde", "abcdef"]  # different to do_split
+
+def splitlines(s: str, keepends: Optional[bool] = None) -> List[str]:
+    if keepends is not None:
+        return s.splitlines(keepends)
+    return s.splitlines()
+
+s_text = "This\nis\n\nsome\nlong\ntext.\n"
+
+def test_splitlines() -> None:
+    assert splitlines(s_text) == ["This", "is", "", "some", "long", "text."]
+    assert splitlines(s_text, False) == ["This", "is", "", "some", "long", "text."]
+    assert splitlines(s_text, True) == ["This\n", "is\n", "\n", "some\n", "long\n", "text.\n"]
 
 def getitem(s: str, index: int) -> str:
     return s[index]
@@ -565,25 +600,32 @@ def test_chr() -> None:
     assert try_invalid(1114112)
 
 [case testOrd]
+from testutil import assertRaises
+
 def test_ord() -> None:
+    assert ord(' ') == 32
+    assert ord(' ' + str()) == 32
+    assert ord('\x00') == 0
+    assert ord('\x00' + str()) == 0
     assert ord('\ue000') == 57344
-    s = "a\xac\u1234\u20ac\U00008000"
-    # ^^^^ two-digit hex escape
-    #   ^^^^^^ four-digit Unicode escape
-    #           ^^^^^^^^^^ eight-digit Unicode escape
+    assert ord('\ue000' + str()) == 57344
+    s = "a\xac\u1234\u20ac\U00010000"
+    #     ^^^^ two-digit hex escape
+    #         ^^^^^^ four-digit Unicode escape
+    #                     ^^^^^^^^^^ eight-digit Unicode escape
     l1 = [ord(c) for c in s]
-    assert l1 == [97, 172, 4660, 8364, 32768]
+    assert l1 == [97, 172, 4660, 8364, 65536]
     u = 'abcdé'
     assert ord(u[-1]) == 233
     assert ord(b'a') == 97
     assert ord(b'a' + bytes()) == 97
-    u2 = '\U0010ffff'
+    u2 = '\U0010ffff' + str()
     assert ord(u2) == 1114111
-    try:
+    assert ord('\U0010ffff') == 1114111
+    with assertRaises(TypeError, "ord() expected a character, but a string of length 2 found"):
         ord('aa')
-        assert False
-    except TypeError:
-        pass
+    with assertRaises(TypeError):
+        ord('')
 
 [case testDecode]
 def test_decode() -> None:
@@ -639,3 +681,12 @@ def test_encode() -> None:
     assert u'\u00E1'.encode('latin1') == b'\xe1'
     with assertRaises(UnicodeEncodeError):
         u.encode('latin1')
+
+[case testUnicodeSurrogate]
+def f() -> str:
+    return "\ud800"
+
+def test_surrogate() -> None:
+    assert ord(f()) == 0xd800
+    assert ord("\udfff") == 0xdfff
+    assert repr("foobar\x00\xab\ud912\U00012345") == r"'foobar\x00«\ud912𒍅'"

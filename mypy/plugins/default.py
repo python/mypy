@@ -304,11 +304,12 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
         and len(ctx.arg_types) >= 1
         and len(ctx.arg_types[0]) == 1
     ):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        key_expr = ctx.args[0][0]
+        keys = try_getting_str_literals(key_expr, ctx.arg_types[0][0])
         if keys is None:
             ctx.api.fail(
                 message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
-                ctx.context,
+                key_expr,
                 code=codes.LITERAL_REQ,
             )
             return AnyType(TypeOfAny.from_error)
@@ -316,13 +317,13 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
         value_types = []
         for key in keys:
             if key in ctx.type.required_keys:
-                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, key_expr)
 
             value_type = ctx.type.items.get(key)
             if value_type:
                 value_types.append(value_type)
             else:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
                 return AnyType(TypeOfAny.from_error)
 
         if len(ctx.args[1]) == 0:
@@ -363,27 +364,29 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
         and len(ctx.arg_types[0]) == 1
         and len(ctx.arg_types[1]) == 1
     ):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        key_expr = ctx.args[0][0]
+        keys = try_getting_str_literals(key_expr, ctx.arg_types[0][0])
         if keys is None:
             ctx.api.fail(
                 message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
-                ctx.context,
+                key_expr,
                 code=codes.LITERAL_REQ,
             )
             return AnyType(TypeOfAny.from_error)
 
         assigned_readonly_keys = ctx.type.readonly_keys & set(keys)
         if assigned_readonly_keys:
-            ctx.api.msg.readonly_keys_mutated(assigned_readonly_keys, context=ctx.context)
+            ctx.api.msg.readonly_keys_mutated(assigned_readonly_keys, context=key_expr)
 
         default_type = ctx.arg_types[1][0]
+        default_expr = ctx.args[1][0]
 
         value_types = []
         for key in keys:
             value_type = ctx.type.items.get(key)
 
             if value_type is None:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
                 return AnyType(TypeOfAny.from_error)
 
             # The signature_callback above can't always infer the right signature
@@ -392,7 +395,7 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
             # default can be assigned to all key-value pairs we're updating.
             if not is_subtype(default_type, value_type):
                 ctx.api.msg.typeddict_setdefault_arguments_inconsistent(
-                    default_type, value_type, ctx.context
+                    default_type, value_type, default_expr
                 )
                 return AnyType(TypeOfAny.from_error)
 
@@ -409,20 +412,21 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
         and len(ctx.arg_types) == 1
         and len(ctx.arg_types[0]) == 1
     ):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+        key_expr = ctx.args[0][0]
+        keys = try_getting_str_literals(key_expr, ctx.arg_types[0][0])
         if keys is None:
             ctx.api.fail(
                 message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
-                ctx.context,
+                key_expr,
                 code=codes.LITERAL_REQ,
             )
             return AnyType(TypeOfAny.from_error)
 
         for key in keys:
             if key in ctx.type.required_keys or key in ctx.type.readonly_keys:
-                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, key_expr)
             elif key not in ctx.type.items:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
+                ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
     return ctx.default_return_type
 
 
@@ -550,7 +554,7 @@ def tuple_mul_callback(ctx: MethodContext) -> Type:
         value = arg_type.last_known_value.value
         if isinstance(value, int):
             return ctx.type.copy_modified(items=ctx.type.items * value)
-    elif isinstance(ctx.type, LiteralType):
+    elif isinstance(arg_type, LiteralType):
         value = arg_type.value
         if isinstance(value, int):
             return ctx.type.copy_modified(items=ctx.type.items * value)

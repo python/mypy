@@ -200,7 +200,7 @@ f().x = 0
 [out]
 main:6: error: Cannot assign to class variable "x" via instance
 
-[case testOverrideWithIncomatibleType]
+[case testOverrideWithIncompatibleType]
 from typing import ClassVar
 class A:
     x = None  # type: ClassVar[int]

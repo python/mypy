@@ -14,7 +14,8 @@ Also build a mapping from mypy TypeInfos to ClassIR objects.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, NamedTuple, Tuple
+from collections.abc import Iterable
+from typing import NamedTuple
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -94,6 +95,7 @@ def build_type_map(
         if not options.global_opts:
             class_ir.children = None
         mapper.type_to_ir[cdef.info] = class_ir
+        mapper.symbol_fullnames.add(class_ir.fullname)
 
     # Populate structural information in class IR for extension classes.
     for module, cdef in classes:
@@ -149,6 +151,7 @@ def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps)
             if isinstance(node.node, TypeInfo) and is_from_module(node.node, module):
                 ir = deser_ctx.classes[node.node.fullname]
                 mapper.type_to_ir[node.node] = ir
+                mapper.symbol_fullnames.add(node.node.fullname)
                 mapper.func_to_decl[node.node] = ir.ctor
 
     for module in modules:
@@ -522,7 +525,7 @@ def prepare_non_ext_class_def(
         )
 
 
-RegisterImplInfo = Tuple[TypeInfo, FuncDef]
+RegisterImplInfo = tuple[TypeInfo, FuncDef]
 
 
 class SingledispatchInfo(NamedTuple):

@@ -5,22 +5,9 @@ from __future__ import annotations
 import os
 from abc import abstractmethod
 from collections import defaultdict
+from collections.abc import Iterator, Sequence
 from enum import Enum, unique
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Final,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Final, Optional, TypeVar, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
@@ -81,7 +68,7 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
-JsonDict: _TypeAlias = Dict[str, Any]
+JsonDict: _TypeAlias = dict[str, Any]
 
 
 # Symbol table node kinds
@@ -102,9 +89,14 @@ UNBOUND_IMPORTED: Final = 3
 REVEAL_TYPE: Final = 0
 REVEAL_LOCALS: Final = 1
 
-LITERAL_YES: Final = 2
-LITERAL_TYPE: Final = 1
-LITERAL_NO: Final = 0
+# Kinds of 'literal' expressions.
+#
+# Use the function mypy.literals.literal to calculate these.
+#
+# TODO: Can we make these less confusing?
+LITERAL_YES: Final = 2  # Value of expression known statically
+LITERAL_TYPE: Final = 1  # Type of expression can be narrowed (e.g. variable reference)
+LITERAL_NO: Final = 0  # None of the above
 
 node_kinds: Final = {LDEF: "Ldef", GDEF: "Gdef", MDEF: "Mdef", UNBOUND_IMPORTED: "UnboundImported"}
 inverse_node_kinds: Final = {_kind: _name for _name, _kind in node_kinds.items()}
@@ -184,15 +176,12 @@ class Node(Context):
     __slots__ = ()
 
     def __str__(self) -> str:
-        ans = self.accept(mypy.strconv.StrConv(options=Options()))
-        if ans is None:
-            return repr(self)
-        return ans
+        return self.accept(mypy.strconv.StrConv(options=Options()))
 
     def str_with_options(self, options: Options) -> str:
-        ans = self.accept(mypy.strconv.StrConv(options=options))
-        assert ans
-        return ans
+        a = self.accept(mypy.strconv.StrConv(options=options))
+        assert a
+        return a
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
@@ -265,7 +254,7 @@ class SymbolNode(Node):
 
 
 # Items: fullname, related symbol table node, surrounding type (if any)
-Definition: _TypeAlias = Tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
+Definition: _TypeAlias = tuple[str, "SymbolTableNode", Optional["TypeInfo"]]
 
 
 class MypyFile(SymbolNode):
@@ -781,7 +770,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "is_conditional",
         "abstract_status",
         "original_def",
-        "deco_line",
         "is_trivial_body",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
@@ -811,8 +799,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_trivial_body = False
         # Original conditional definition
         self.original_def: None | FuncDef | Var | Decorator = None
-        # Used for error reporting (to keep backward compatibility with pre-3.8)
-        self.deco_line: int | None = None
         # Definitions that appear in if TYPE_CHECKING are marked with this flag.
         self.is_mypy_only = False
         self.dataclass_transform_spec: DataclassTransformSpec | None = None
@@ -886,7 +872,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
 
 # All types that are both SymbolNodes and FuncBases. See the FuncBase
 # docstring for the rationale.
-SYMBOL_FUNCBASE_TYPES = (OverloadedFuncDef, FuncDef)
+# See https://github.com/python/mypy/pull/13607#issuecomment-1236357236
+# TODO: we want to remove this at some point and just use `FuncBase` ideally.
+SYMBOL_FUNCBASE_TYPES: Final = (OverloadedFuncDef, FuncDef)
 
 
 class Decorator(SymbolNode, Statement):
@@ -993,6 +981,7 @@ class Var(SymbolNode):
         "_fullname",
         "info",
         "type",
+        "setter_type",
         "final_value",
         "is_self",
         "is_cls",
@@ -1027,6 +1016,8 @@ class Var(SymbolNode):
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
         self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
+        # The setter type for settable properties.
+        self.setter_type: mypy.types.CallableType | None = None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
         # Is this the first argument to a classmethod (typically "cls")?
@@ -1081,6 +1072,9 @@ class Var(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
+    def __repr__(self) -> str:
+        return f"<Var {self.fullname!r} at {hex(id(self))}>"
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
 
@@ -1092,6 +1086,7 @@ class Var(SymbolNode):
             "name": self._name,
             "fullname": self._fullname,
             "type": None if self.type is None else self.type.serialize(),
+            "setter_type": None if self.setter_type is None else self.setter_type.serialize(),
             "flags": get_flags(self, VAR_FLAGS),
         }
         if self.final_value is not None:
@@ -1103,7 +1098,18 @@ class Var(SymbolNode):
         assert data[".class"] == "Var"
         name = data["name"]
         type = None if data["type"] is None else mypy.types.deserialize_type(data["type"])
+        setter_type = (
+            None
+            if data["setter_type"] is None
+            else mypy.types.deserialize_type(data["setter_type"])
+        )
         v = Var(name, type)
+        assert (
+            setter_type is None
+            or isinstance(setter_type, mypy.types.ProperType)
+            and isinstance(setter_type, mypy.types.CallableType)
+        )
+        v.setter_type = setter_type
         v.is_ready = False  # Override True default set in __init__
         v._fullname = data["fullname"]
         set_flags(v, data["flags"])
@@ -1128,7 +1134,6 @@ class ClassDef(Statement):
         "keywords",
         "analyzed",
         "has_incompatible_baseclass",
-        "deco_line",
         "docstring",
         "removed_statements",
     )
@@ -1179,8 +1184,6 @@ class ClassDef(Statement):
         self.keywords = dict(keywords) if keywords else {}
         self.analyzed = None
         self.has_incompatible_baseclass = False
-        # Used for error reporting (to keep backwad compatibility with pre-3.8)
-        self.deco_line: int | None = None
         self.docstring: str | None = None
         self.removed_statements = []
 
@@ -1263,7 +1266,7 @@ class Block(Statement):
 
     __match_args__ = ("body", "is_unreachable")
 
-    def __init__(self, body: list[Statement]) -> None:
+    def __init__(self, body: list[Statement], *, is_unreachable: bool = False) -> None:
         super().__init__()
         self.body = body
         # True if we can determine that this block is not executed during semantic
@@ -1271,7 +1274,7 @@ class Block(Statement):
         # something like "if PY3:" when using Python 2. However, some code is
         # only considered unreachable during type checking and this is not true
         # in those cases.
-        self.is_unreachable = False
+        self.is_unreachable = is_unreachable
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_block(self)
@@ -1727,7 +1730,7 @@ class StrExpr(Expression):
         return visitor.visit_str_expr(self)
 
 
-def is_StrExpr_list(seq: list[Expression]) -> TypeGuard[list[StrExpr]]:
+def is_StrExpr_list(seq: list[Expression]) -> TypeGuard[list[StrExpr]]:  # noqa: N802
     return all(isinstance(item, StrExpr) for item in seq)
 
 
@@ -2571,6 +2574,11 @@ class TypeVarLikeExpr(SymbolNode, Expression):
         return self._fullname
 
 
+# All types that are both SymbolNodes and Expressions.
+# Use when common children of them are needed.
+SYMBOL_NODE_EXPRESSION_TYPES: Final = (TypeVarLikeExpr,)
+
+
 class TypeVarExpr(TypeVarLikeExpr):
     """Type variable expression TypeVar(...).
 
@@ -2902,6 +2910,10 @@ EXCLUDED_PROTOCOL_ATTRIBUTES: Final = frozenset(
     }
 )
 
+# Attributes that can optionally be defined in the body of a subclass of
+# enum.Enum but are removed from the class __dict__ by EnumMeta.
+EXCLUDED_ENUM_ATTRIBUTES: Final = frozenset({"_ignore_", "_order_", "__order__"})
+
 
 class TypeInfo(SymbolNode):
     """The type structure of a single class.
@@ -3229,6 +3241,35 @@ class TypeInfo(SymbolNode):
                     members.add(name)
         return sorted(members)
 
+    @property
+    def enum_members(self) -> list[str]:
+        return [
+            name
+            for name, sym in self.names.items()
+            if (
+                (
+                    isinstance(sym.node, Var)
+                    and name not in EXCLUDED_ENUM_ATTRIBUTES
+                    and not name.startswith("__")
+                    and sym.node.has_explicit_value
+                    and not (
+                        isinstance(
+                            typ := mypy.types.get_proper_type(sym.node.type), mypy.types.Instance
+                        )
+                        and typ.type.fullname == "enum.nonmember"
+                    )
+                )
+                or (
+                    isinstance(sym.node, Decorator)
+                    and any(
+                        dec.fullname == "enum.member"
+                        for dec in sym.node.decorators
+                        if isinstance(dec, RefExpr)
+                    )
+                )
+            )
+        ]
+
     def __getitem__(self, name: str) -> SymbolTableNode:
         n = self.get(name)
         if n:
@@ -3252,7 +3293,7 @@ class TypeInfo(SymbolNode):
         for cls in self.mro:
             if name in cls.names:
                 node = cls.names[name].node
-                if isinstance(node, FuncBase):
+                if isinstance(node, SYMBOL_FUNCBASE_TYPES):
                     return node
                 elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
                     return node
@@ -3576,7 +3617,7 @@ class TypeAlias(SymbolNode):
     type will be initially an instance type with wrong number of type arguments.
     Such instances are all fixed either during or after main semantic analysis passes.
     We therefore store the difference between `List` and `List[Any]` rvalues (targets)
-    using the `no_args` flag. See also TypeAliasExpr.no_args.
+    using the `no_args` flag.
 
     Meaning of other fields:
 
@@ -3727,7 +3768,7 @@ class TypeAlias(SymbolNode):
             fullname,
             line,
             column,
-            alias_tvars=cast(List[mypy.types.TypeVarLikeType], alias_tvars),
+            alias_tvars=cast(list[mypy.types.TypeVarLikeType], alias_tvars),
             no_args=no_args,
             normalized=normalized,
             python_3_12_type_alias=python_3_12_type_alias,
@@ -3992,7 +4033,7 @@ class SymbolTableNode:
         return stnode
 
 
-class SymbolTable(Dict[str, SymbolTableNode]):
+class SymbolTable(dict[str, SymbolTableNode]):
     """Static representation of a namespace dictionary.
 
     This is used for module, class and function namespaces.
@@ -4011,7 +4052,8 @@ class SymbolTable(Dict[str, SymbolTableNode]):
                 ):
                     a.append("  " + str(key) + " : " + str(value))
             else:
-                a.append("  <invalid item>")
+                # Used in debugging:
+                a.append("  <invalid item>")  # type: ignore[unreachable]
         a = sorted(a)
         a.insert(0, "SymbolTable(")
         a[-1] += ")"

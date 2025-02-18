@@ -823,7 +823,7 @@ class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
-_program.py:7: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Optional[Callable[[], str]]"
+_program.py:7: error: Argument 1 to "defaultdict" has incompatible type "Type[List[_T]]"; expected "Optional[Callable[[], str]]"
 _program.py:10: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
 _program.py:10: error: Incompatible types in assignment (expression has type "int", target has type "str")
 _program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[Never]]"; expected "defaultdict[int, List[Never]]"
@@ -1026,14 +1026,14 @@ reveal_type(g)
 with f('') as s:
     reveal_type(s)
 [out]
-_program.py:13: note: Revealed type is "def (x: builtins.int) -> contextlib._GeneratorContextManager[builtins.str]"
-_program.py:14: note: Revealed type is "def (*x: builtins.str) -> contextlib._GeneratorContextManager[builtins.int]"
+_program.py:13: note: Revealed type is "def (x: builtins.int) -> contextlib._GeneratorContextManager[builtins.str, None, None]"
+_program.py:14: note: Revealed type is "def (*x: builtins.str) -> contextlib._GeneratorContextManager[builtins.int, None, None]"
 _program.py:16: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 _program.py:17: note: Revealed type is "builtins.str"
 
 [case testTypedDictGet]
 # Test that TypedDict get plugin works with typeshed stubs
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
@@ -1054,7 +1054,7 @@ _testTypedDictGet.py:9: note:     def [_T] get(self, str, /, default: object) ->
 _testTypedDictGet.py:11: note: Revealed type is "builtins.object"
 
 [case testTypedDictMappingMethods]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Cell = TypedDict('Cell', {'value': int})
 c = Cell(value=42)
 for x in c:
@@ -1098,8 +1098,7 @@ def foo(mymap) -> Optional[MyNamedTuple]:
 [out]
 
 [case testCanConvertTypedDictToAnySuperclassOfMapping]
-from mypy_extensions import TypedDict
-from typing import Sized, Iterable, Container
+from typing import Sized, TypedDict, Iterable, Container
 
 Point = TypedDict('Point', {'x': int, 'y': int})
 
@@ -1110,12 +1109,12 @@ c: Container[str] = p
 o: object = p
 it2: Iterable[int] = p
 [out]
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note: Following member(s) of "Point" have conflicts:
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Expected:
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[int]
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Got:
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[str]
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note: Following member(s) of "Point" have conflicts:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:     Expected:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:         def __iter__(self) -> Iterator[int]
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:     Got:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:         def __iter__(self) -> Iterator[str]
 
 [case testAsyncioGatherPreciseType-xfail]
 # Mysteriously regressed in #11905
@@ -1507,24 +1506,24 @@ note: A user-defined top-level module with name "typing" is not supported
 # flags: --ignore-missing-imports
 import scribe  # No Python 3 stubs available for scribe
 from scribe import x
-import python2  # Python 3 stubs available for python2
+import pytz  # Python 3 stubs available for pytz
 import foobar_asdf
 import jack  # This has a stubs package but was never bundled with mypy, so ignoring works
 [out]
-_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "python2"
-_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-six"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "pytz"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-pytz"
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: (or run "mypy --install-types" to install all missing stub packages)
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testNoPython3StubAvailable]
 import scribe
 from scribe import x
-import python2
+import pytz
 [out]
 _testNoPython3StubAvailable.py:1: error: Cannot find implementation or library stub for module named "scribe"
 _testNoPython3StubAvailable.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "python2"
-_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-six"
+_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "pytz"
+_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-pytz"
 _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to install all missing stub packages)
 
 
@@ -1554,18 +1553,6 @@ if isinstance(obj, Awaitable):
 [out]
 _testSpecialTypingProtocols.py:6: note: Revealed type is "Tuple[builtins.int]"
 _testSpecialTypingProtocols.py:8: error: Statement is unreachable
-
-[case testEnumValueWithPlaceholderNodeType]
-# https://github.com/python/mypy/issues/11971
-from enum import Enum
-from typing import Callable, Dict
-class Foo(Enum):
-    Bar: Foo = Callable[[str], None]
-    Baz: Foo = Callable[[Dict[str, "Missing"]], None]
-[out]
-_testEnumValueWithPlaceholderNodeType.py:5: error: Incompatible types in assignment (expression has type "<typing special form>", variable has type "Foo")
-_testEnumValueWithPlaceholderNodeType.py:6: error: Incompatible types in assignment (expression has type "<typing special form>", variable has type "Foo")
-_testEnumValueWithPlaceholderNodeType.py:6: error: Name "Missing" is not defined
 
 [case testTypeshedRecursiveTypesExample]
 from typing import List, Union
@@ -1664,8 +1651,8 @@ f: m.F
 reveal_type(f)
 
 [file m.pyi]
-from typing import Type, Callable
-from typing_extensions import Literal, TypeAlias
+from typing import Type, Callable, Literal
+from typing_extensions import TypeAlias
 
 Foo = Literal[1, 2]
 reveal_type(Foo)
@@ -2175,3 +2162,31 @@ class C3[T1, T2](tuple[T1, ...]):
 
 def func3(p: C3[int, object]):
     x: C3[int, int] = p
+
+
+[case testDynamicClassAttribute]
+# Some things that can break if DynamicClassAttribute isn't handled properly
+from types import DynamicClassAttribute
+from enum import Enum
+
+class TestClass:
+    @DynamicClassAttribute
+    def name(self) -> str: ...
+
+class TestClass2(TestClass, Enum): ...
+
+class Status(Enum):
+    ABORTED = -1
+
+def imperfect(status: Status) -> str:
+    return status.name.lower()
+
+[case testUnpackIteratorBuiltins]
+# Regression test for https://github.com/python/mypy/issues/18320
+# Caused by https://github.com/python/typeshed/pull/12851
+x = [1, 2]
+reveal_type([*reversed(x)])
+reveal_type([*map(str, x)])
+[out]
+_testUnpackIteratorBuiltins.py:4: note: Revealed type is "builtins.list[builtins.int]"
+_testUnpackIteratorBuiltins.py:5: note: Revealed type is "builtins.list[builtins.str]"

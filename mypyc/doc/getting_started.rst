@@ -38,7 +38,7 @@ Installation
 ------------
 
 Mypyc is shipped as part of the mypy distribution. Install mypy like
-this (you need Python 3.8 or later):
+this (you need Python 3.9 or later):
 
 .. code-block::
 

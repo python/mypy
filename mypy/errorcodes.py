@@ -304,10 +304,15 @@ NARROWED_TYPE_NOT_SUBTYPE: Final[ErrorCode] = ErrorCode(
     "General",
 )
 
+EXPLICIT_ANY: Final = ErrorCode(
+    "explicit-any", "Warn about explicit Any type annotations", "General"
+)
+
 DEPRECATED: Final = ErrorCode(
     "deprecated",
     "Warn when importing or using deprecated (overloaded) functions, methods or classes",
     "General",
+    default_enabled=False,
 )
 
 # This copy will not include any error codes defined later in the plugins.
