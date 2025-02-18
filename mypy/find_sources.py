@@ -120,7 +120,9 @@ class SourceFinder:
 
             if matches_exclude(subpath, self.exclude, self.fscache, self.verbosity >= 2):
                 continue
-            if self.exclude_gitignore and matches_gitignore(subpath, self.verbosity >= 2):
+            if self.exclude_gitignore and matches_gitignore(
+                subpath, self.fscache, self.verbosity >= 2
+            ):
                 continue
 
             if self.fscache.isdir(subpath):

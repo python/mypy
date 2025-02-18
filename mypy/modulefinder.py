@@ -631,7 +631,7 @@ class FindModuleCache:
             if (
                 self.options
                 and self.options.exclude_gitignore
-                and matches_gitignore(subpath, self.options.verbosity >= 2)
+                and matches_gitignore(subpath, self.fscache, self.options.verbosity >= 2)
             ):
                 continue
 
@@ -673,11 +673,11 @@ def matches_exclude(
     return False
 
 
-def matches_gitignore(subpath: str, verbose: bool) -> bool:
+def matches_gitignore(subpath: str, fscache: FileSystemCache, verbose: bool) -> bool:
     dir, _ = os.path.split(subpath)
     for gi_path, gi_spec in find_gitignores(dir):
         relative_path = os.path.relpath(subpath, gi_path)
-        if os.path.isdir(relative_path):
+        if fscache.isdir(relative_path):
             relative_path = relative_path + "/"
         if gi_spec.match_file(relative_path):
             if verbose:
