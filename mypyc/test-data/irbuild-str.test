@@ -137,6 +137,38 @@ L4:
 L5:
     unreachable
 
+[case testStrStartswithEndswithTuple]
+from typing import Tuple
+
+def do_startswith(s1: str, s2: Tuple[str, ...]) -> bool:
+    return s1.startswith(s2)
+
+def do_endswith(s1: str, s2: Tuple[str, ...]) -> bool:
+    return s1.endswith(s2)
+[out]
+def do_startswith(s1, s2):
+    s1 :: str
+    s2 :: tuple
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = CPyStr_Startswith(s1, s2)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+def do_endswith(s1, s2):
+    s1 :: str
+    s2 :: tuple
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = CPyStr_Endswith(s1, s2)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+
 [case testStrToBool]
 def is_true(x: str) -> bool:
     if x:
