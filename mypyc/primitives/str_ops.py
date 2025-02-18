@@ -15,6 +15,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     pointer_rprimitive,
     str_rprimitive,
+    tuple_rprimitive,
 )
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
@@ -104,18 +105,40 @@ str_build_op = custom_op(
 method_op(
     name="startswith",
     arg_types=[str_rprimitive, str_rprimitive],
-    return_type=bool_rprimitive,
+    return_type=c_int_rprimitive,
     c_function_name="CPyStr_Startswith",
+    truncated_type=bool_rprimitive,
     error_kind=ERR_NEVER,
+)
+
+# str.startswith(tuple) (return -1/0/1)
+method_op(
+    name="startswith",
+    arg_types=[str_rprimitive, tuple_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyStr_Startswith",
+    truncated_type=bool_rprimitive,
+    error_kind=ERR_NEG_INT,
 )
 
 # str.endswith(str)
 method_op(
     name="endswith",
     arg_types=[str_rprimitive, str_rprimitive],
-    return_type=bool_rprimitive,
+    return_type=c_int_rprimitive,
     c_function_name="CPyStr_Endswith",
+    truncated_type=bool_rprimitive,
     error_kind=ERR_NEVER,
+)
+
+# str.endswith(tuple) (return -1/0/1)
+method_op(
+    name="endswith",
+    arg_types=[str_rprimitive, tuple_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyStr_Endswith",
+    truncated_type=bool_rprimitive,
+    error_kind=ERR_NEG_INT,
 )
 
 # str.removeprefix(str)

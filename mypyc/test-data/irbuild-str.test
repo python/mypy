@@ -137,6 +137,73 @@ L4:
 L5:
     unreachable
 
+[case testStrStartswithEndswithTuple]
+from typing import Tuple
+
+def do_startswith(s1: str, s2: Tuple[str, ...]) -> bool:
+    return s1.startswith(s2)
+
+def do_endswith(s1: str, s2: Tuple[str, ...]) -> bool:
+    return s1.endswith(s2)
+
+def do_tuple_literal_args(s1: str) -> None:
+    x = s1.startswith(("a", "b"))
+    y = s1.endswith(("a", "b"))
+[out]
+def do_startswith(s1, s2):
+    s1 :: str
+    s2 :: tuple
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = CPyStr_Startswith(s1, s2)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+def do_endswith(s1, s2):
+    s1 :: str
+    s2 :: tuple
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = CPyStr_Endswith(s1, s2)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+def do_tuple_literal_args(s1):
+    s1, r0, r1 :: str
+    r2 :: tuple[str, str]
+    r3 :: object
+    r4 :: i32
+    r5 :: bit
+    r6, x :: bool
+    r7, r8 :: str
+    r9 :: tuple[str, str]
+    r10 :: object
+    r11 :: i32
+    r12 :: bit
+    r13, y :: bool
+L0:
+    r0 = 'a'
+    r1 = 'b'
+    r2 = (r0, r1)
+    r3 = box(tuple[str, str], r2)
+    r4 = CPyStr_Startswith(s1, r3)
+    r5 = r4 >= 0 :: signed
+    r6 = truncate r4: i32 to builtins.bool
+    x = r6
+    r7 = 'a'
+    r8 = 'b'
+    r9 = (r7, r8)
+    r10 = box(tuple[str, str], r9)
+    r11 = CPyStr_Endswith(s1, r10)
+    r12 = r11 >= 0 :: signed
+    r13 = truncate r11: i32 to builtins.bool
+    y = r13
+    return 1
+
 [case testStrToBool]
 def is_true(x: str) -> bool:
     if x:
