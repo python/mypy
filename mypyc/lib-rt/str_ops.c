@@ -173,7 +173,7 @@ int CPyStr_Startswith(PyObject *self, PyObject *subobj) {
                              "tuple for startswith must only contain str, "
                              "not %.100s",
                              Py_TYPE(substring)->tp_name);
-                return -1;
+                return 2;
             }
             int result = PyUnicode_Tailmatch(self, substring, start, end, -1);
             if (result) {
@@ -197,7 +197,7 @@ int CPyStr_Endswith(PyObject *self, PyObject *subobj) {
                              "tuple for endswith must only contain str, "
                              "not %.100s",
                              Py_TYPE(substring)->tp_name);
-                return -1;
+                return 2;
             }
             int result = PyUnicode_Tailmatch(self, substring, start, end, 1);
             if (result) {
