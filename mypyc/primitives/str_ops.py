@@ -85,7 +85,7 @@ str_slice_op = custom_op(
 )
 
 # item in str
-set_in_op = binary_op(
+binary_op(
     name="in",
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=c_int_rprimitive,

@@ -152,6 +152,9 @@ def test_contains() -> None:
     assert contains(s, "a") is True
     assert contains(s, "abc") is True
     assert contains(s, "Hello") is False
+    assert contains(s, "bc") is True
+    assert contains(s, "abcd") is False
+    assert contains(s, "bb") is False
     assert contains(s, "") is True
     assert contains(s, " ") is False
 
