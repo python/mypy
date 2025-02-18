@@ -12,7 +12,8 @@ value has a type (RType). A value can hold various things, such as:
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Final, Generic, List, NamedTuple, Sequence, TypeVar, Union
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, Union
 
 from mypy_extensions import trait
 
@@ -625,7 +626,7 @@ class PrimitiveDescription:
             assert error_kind == ERR_NEVER
 
     def __repr__(self) -> str:
-        return f"<PrimitiveDescription {self.name}>"
+        return f"<PrimitiveDescription {self.name!r}: {self.arg_types}>"
 
 
 class PrimitiveOp(RegisterOp):
@@ -1024,7 +1025,7 @@ class RaiseStandardError(RegisterOp):
 
 
 # True steals all arguments, False steals none, a list steals those in matching positions
-StealsDescription = Union[bool, List[bool]]
+StealsDescription = Union[bool, list[bool]]
 
 
 class CallC(RegisterOp):

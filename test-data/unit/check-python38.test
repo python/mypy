@@ -17,8 +17,8 @@ def f(): ...  # E: Function is missing a return type annotation \
 # flags: --disallow-untyped-defs --warn-unused-ignores
 def d(f): ...  # type: ignore
 @d
-# type: ignore
-def f(): ...  # type: ignore  # E: Unused "type: ignore" comment
+# type: ignore  # E: Unused "type: ignore" comment
+def f(): ...  # type: ignore
 
 [case testIgnoreDecoratedFunction2]
 # flags: --disallow-untyped-defs
@@ -211,8 +211,7 @@ h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
 i(arg=0)  # E: Unexpected keyword argument "arg"
 
 [case testWalrus]
-from typing import NamedTuple, Optional, List
-from typing_extensions import Final
+from typing import Final, NamedTuple, Optional, List
 
 if a := 2:
     reveal_type(a)  # N: Revealed type is "builtins.int"
@@ -385,8 +384,7 @@ reveal_type(z2)  # E: Name "z2" is not defined  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testWalrusConditionalTypeBinder]
-from typing import Tuple, Union
-from typing_extensions import Literal
+from typing import Literal, Tuple, Union
 
 class Good:
     @property
@@ -463,14 +461,13 @@ def check_partial_list() -> None:
 if (x := 0):
     reveal_type(x)  # E: Statement is unreachable
 else:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
+    reveal_type(x)  # N: Revealed type is "Literal[0]"
 
-reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(x)  # N: Revealed type is "Literal[0]"
 
 [case testWalrusAssignmentAndConditionScopeForProperty]
 # flags: --warn-unreachable
-
-from typing_extensions import Literal
+from typing import Literal
 
 class PropertyWrapper:
     @property
@@ -483,7 +480,7 @@ wrapper = PropertyWrapper()
 if x := wrapper.f:
     reveal_type(x)  # N: Revealed type is "builtins.str"
 else:
-    reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(x)  # N: Revealed type is "Literal['']"
 
 reveal_type(x)  # N: Revealed type is "builtins.str"
 
@@ -497,15 +494,14 @@ reveal_type(y)  # N: Revealed type is "Literal[False]"
 
 [case testWalrusAssignmentAndConditionScopeForFunction]
 # flags: --warn-unreachable
-
-from typing_extensions import Literal
+from typing import Literal
 
 def f() -> str: ...
 
 if x := f():
     reveal_type(x)  # N: Revealed type is "builtins.str"
 else:
-    reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(x)  # N: Revealed type is "Literal['']"
 
 reveal_type(x)  # N: Revealed type is "builtins.str"
 
@@ -678,7 +674,8 @@ main:16: note:     def foo(cls, float, /) -> Any
 main:16: note:     def foo(cls, a: str) -> Any
 
 [case testUnpackWithDuplicateNamePositionalOnly]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -686,6 +683,7 @@ class Person(TypedDict):
 def foo(name: str, /, **kwargs: Unpack[Person]) -> None:  # Allowed
     ...
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testPossiblyUndefinedWithAssignmentExpr]
 # flags: --enable-error-code possibly-undefined

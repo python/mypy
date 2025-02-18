@@ -231,6 +231,46 @@ incorrect control flow or conditional checks that are accidentally always true o
         # Error: Statement is unreachable  [unreachable]
         print('unreachable')
 
+.. _code-deprecated:
+
+Check that imported or used feature is deprecated [deprecated]
+--------------------------------------------------------------
+
+If you use :option:`--enable-error-code deprecated <mypy --enable-error-code>`,
+mypy generates an error if your code imports a deprecated feature explicitly with a
+``from mod import depr`` statement or uses a deprecated feature imported otherwise or defined
+locally.  Features are considered deprecated when decorated with ``warnings.deprecated``, as
+specified in `PEP 702 <https://peps.python.org/pep-0702>`_.
+Use the :option:`--report-deprecated-as-note <mypy --report-deprecated-as-note>` option to
+turn all such errors into notes.
+Use :option:`--deprecated-calls-exclude <mypy --deprecated-calls-exclude>` to hide warnings
+for specific functions, classes and packages.
+
+.. note::
+
+    The ``warnings`` module provides the ``@deprecated`` decorator since Python 3.13.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+Examples:
+
+.. code-block:: python
+
+    # mypy: report-deprecated-as-error
+
+    # Error: abc.abstractproperty is deprecated: Deprecated, use 'property' with 'abstractmethod' instead
+    from abc import abstractproperty
+
+    from typing_extensions import deprecated
+
+    @deprecated("use new_function")
+    def old_function() -> None:
+        print("I am old")
+
+    # Error: __main__.old_function is deprecated: use new_function
+    old_function()
+    old_function()  # type: ignore[deprecated]
+
+
 .. _code-redundant-expr:
 
 Check that expression is redundant [redundant-expr]
@@ -270,7 +310,7 @@ example:
 
     # mypy: enable-error-code="possibly-undefined"
 
-    from typing import Iterable
+    from collections.abc import Iterable
 
     def test(values: Iterable[int], flag: bool) -> None:
         if flag:
@@ -318,7 +358,7 @@ Example:
 
 .. code-block:: python
 
-    from typing import Iterable
+    from collections.abc import Iterable
 
     def transform(items: Iterable[int]) -> list[int]:
         # Error: "items" has type "Iterable[int]" which can always be true in boolean context. Consider using "Collection[int]" instead.  [truthy-iterable]
@@ -556,18 +596,19 @@ Correct usage:
 When this code is enabled, using ``reveal_locals`` is always an error,
 because there's no way one can import it.
 
-.. _code-narrowed-type-not-subtype:
 
-Check that ``TypeIs`` narrows types [narrowed-type-not-subtype]
----------------------------------------------------------------
+.. _code-explicit-any:
 
-:pep:`742` requires that when ``TypeIs`` is used, the narrowed
-type must be a subtype of the original type::
+Check that explicit Any type annotations are not allowed [explicit-any]
+-----------------------------------------------------------------------
 
-    from typing_extensions import TypeIs
+If you use :option:`--disallow-any-explicit <mypy --disallow-any-explicit>`, mypy generates an error
+if you use an explicit ``Any`` type annotation.
 
-    def f(x: int) -> TypeIs[str]:  # Error, str is not a subtype of int
-        ...
+Example:
 
-    def g(x: object) -> TypeIs[str]:  # OK
-        ...
+.. code-block:: python
+
+    # mypy: disallow-any-explicit
+    from typing import Any
+    x: Any = 1  # Error: Explicit "Any" type annotation  [explicit-any]

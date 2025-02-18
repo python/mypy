@@ -196,8 +196,7 @@ TYPEVAR_VARIANCE_DEF: Final = 'TypeVar "{}" may only be a literal bool'
 TYPEVAR_ARG_MUST_BE_TYPE: Final = '{} "{}" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 UNBOUND_TYPEVAR: Final = (
-    "A function returning TypeVar should receive at least "
-    "one argument containing the same TypeVar"
+    "A function returning TypeVar should receive at least one argument containing the same TypeVar"
 )
 TYPE_PARAMETERS_SHOULD_BE_DECLARED: Final = (
     "All type parameters should be declared ({} not declared)"
@@ -242,7 +241,7 @@ CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
 
 # Enum
-ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN: Final = ErrorMessage(
+ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDDEN: Final = ErrorMessage(
     'Assigned "__members__" will be overridden by "Enum" internally'
 )
 
@@ -349,6 +348,10 @@ TYPE_VAR_NAMED_EXPRESSION_IN_BOUND: Final = ErrorMessage(
 
 TYPE_VAR_AWAIT_EXPRESSION_IN_BOUND: Final = ErrorMessage(
     "Await expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_GENERIC_CONSTRAINT_TYPE: Final = ErrorMessage(
+    "TypeVar constraint type cannot be parametrized by type variables", codes.MISC
 )
 
 TYPE_ALIAS_WITH_YIELD_EXPRESSION: Final = ErrorMessage(

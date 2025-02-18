@@ -34,13 +34,12 @@ Mypy supports the lookup of attributes in the metaclass:
 
 .. code-block:: python
 
-    from typing import Type, TypeVar, ClassVar
-    T = TypeVar('T')
+    from typing import ClassVar, Self
 
     class M(type):
         count: ClassVar[int] = 0
 
-        def make(cls: Type[T]) -> T:
+        def make(cls) -> Self:
             M.count += 1
             return cls()
 
@@ -55,6 +54,9 @@ Mypy supports the lookup of attributes in the metaclass:
 
     b: B = B.make()  # metaclasses are inherited
     print(B.count + " objects were created")  # Error: Unsupported operand types for + ("int" and "str")
+
+.. note::
+    In Python 3.10 and earlier, ``Self`` is available in ``typing_extensions``.
 
 .. _limitations:
 

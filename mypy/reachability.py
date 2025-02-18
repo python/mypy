@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Final, Tuple, TypeVar
+from typing import Final, TypeVar
 
 from mypy.literals import literal
 from mypy.nodes import (
@@ -254,7 +254,7 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
         return TRUTH_VALUE_UNKNOWN
 
 
-Targ = TypeVar("Targ", int, str, Tuple[int, ...])
+Targ = TypeVar("Targ", int, str, tuple[int, ...])
 
 
 def fixed_comparison(left: Targ, op: str, right: Targ) -> int:

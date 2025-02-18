@@ -347,13 +347,15 @@ static int _CPy_UpdateObjFromDict(PyObject *obj, PyObject *dict)
  *   tp: The class we are making a dataclass
  *   dict: The dictionary containing values that dataclasses needs
  *   annotations: The type annotation dictionary
+ *   dataclass_type: A str object with the return value of util.py:dataclass_type()
  */
 int
 CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
-                           PyObject *dict, PyObject *annotations) {
+                           PyObject *dict, PyObject *annotations,
+                           PyObject *dataclass_type) {
     PyTypeObject *ttp = (PyTypeObject *)tp;
     Py_ssize_t pos;
-    PyObject *res;
+    PyObject *res = NULL;
 
     /* Make a copy of the original class __dict__ */
     PyObject *orig_dict = PyDict_Copy(ttp->tp_dict);
@@ -365,7 +367,8 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
     pos = 0;
     PyObject *key;
     while (PyDict_Next(annotations, &pos, &key, NULL)) {
-        if (PyObject_DelAttr(tp, key) != 0) {
+        // Check and delete key. Key may be absent from tp for InitVar variables.
+        if (PyObject_HasAttr(tp, key) == 1 && PyObject_DelAttr(tp, key) != 0) {
             goto fail;
         }
     }
@@ -380,17 +383,37 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
     if (!res) {
         goto fail;
     }
-    Py_DECREF(res);
+    const char *dataclass_type_ptr = PyUnicode_AsUTF8(dataclass_type);
+    if (dataclass_type_ptr == NULL) {
+        goto fail;
+    }
+    if (strcmp(dataclass_type_ptr, "attr") == 0 ||
+        strcmp(dataclass_type_ptr, "attr-auto") == 0) {
+        // These attributes are added or modified by @attr.s(slots=True).
+        const char * const keys[] = {"__attrs_attrs__", "__attrs_own_setattr__", "__init__", ""};
+        for (const char * const *key_iter = keys; **key_iter != '\0'; key_iter++) {
+            PyObject *value = NULL;
+            int rv = PyObject_GetOptionalAttrString(res, *key_iter, &value);
+            if (rv == 1) {
+                PyObject_SetAttrString(tp, *key_iter, value);
+                Py_DECREF(value);
+            } else if (rv == -1) {
+              goto fail;
+            }
+        }
+    }
 
     /* Copy back the original contents of the dict */
     if (_CPy_UpdateObjFromDict(tp, orig_dict) != 0) {
         goto fail;
     }
 
+    Py_DECREF(res);
     Py_DECREF(orig_dict);
     return 1;
 
 fail:
+    Py_XDECREF(res);
     Py_XDECREF(orig_dict);
     return 0;
 }
@@ -512,6 +535,22 @@ void CPyDebug_Print(const char *msg) {
     fflush(stdout);
 }
 
+void CPyDebug_PrintObject(PyObject *obj) {
+    // Printing can cause errors. We don't want this to affect any existing
+    // state so we'll save any existing error and restore it at the end.
+    PyObject *exc_type, *exc_value, *exc_traceback;
+    PyErr_Fetch(&exc_type, &exc_value, &exc_traceback);
+
+    if (PyObject_Print(obj, stderr, 0) == -1) {
+        PyErr_Print();
+    } else {
+        fprintf(stderr, "\n");
+    }
+    fflush(stderr);
+
+    PyErr_Restore(exc_type, exc_value, exc_traceback);
+}
+
 int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected) {
     Py_ssize_t actual = Py_SIZE(sequence);
     if (unlikely(actual != expected)) {
@@ -563,7 +602,7 @@ int CPyStatics_Initialize(PyObject **statics,
             while (num-- > 0) {
                 size_t len;
                 data = parse_int(data, &len);
-                PyObject *obj = PyUnicode_FromStringAndSize(data, len);
+                PyObject *obj = PyUnicode_DecodeUTF8(data, len, "surrogatepass");
                 if (obj == NULL) {
                     return -1;
                 }
@@ -897,7 +936,7 @@ fail:
 
 }
 
-// Adapated from ceval.c GET_AITER
+// Adapted from ceval.c GET_AITER
 PyObject *CPy_GetAIter(PyObject *obj)
 {
     unaryfunc getter = NULL;
@@ -935,7 +974,7 @@ PyObject *CPy_GetAIter(PyObject *obj)
     return iter;
 }
 
-// Adapated from ceval.c GET_ANEXT
+// Adapted from ceval.c GET_ANEXT
 PyObject *CPy_GetANext(PyObject *aiter)
 {
     unaryfunc getter = NULL;

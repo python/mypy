@@ -1,7 +1,7 @@
 import sys
 from _collections_abc import dict_items, dict_keys, dict_values
 from _typeshed import SupportsItems, SupportsKeysAndGetItem, SupportsRichComparison, SupportsRichComparisonT
-from typing import Any, Generic, NoReturn, SupportsIndex, TypeVar, final, overload
+from typing import Any, ClassVar, Generic, NoReturn, SupportsIndex, TypeVar, final, overload
 from typing_extensions import Self
 
 if sys.version_info >= (3, 9):
@@ -17,7 +17,6 @@ if sys.version_info >= (3, 10):
         Mapping,
         MutableMapping,
         MutableSequence,
-        Reversible,
         Sequence,
         ValuesView,
     )
@@ -120,6 +119,7 @@ class UserList(MutableSequence[_T]):
     def __init__(self, initlist: None = None) -> None: ...
     @overload
     def __init__(self, initlist: Iterable[_T]) -> None: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
     def __lt__(self, other: list[_T] | UserList[_T]) -> bool: ...
     def __le__(self, other: list[_T] | UserList[_T]) -> bool: ...
     def __gt__(self, other: list[_T] | UserList[_T]) -> bool: ...
@@ -255,6 +255,7 @@ class deque(MutableSequence[_T]):
     def rotate(self, n: int = 1, /) -> None: ...
     def __copy__(self) -> Self: ...
     def __len__(self) -> int: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
     # These methods of deque don't take slices, unlike MutableSequence, hence the type: ignores
     def __getitem__(self, key: SupportsIndex, /) -> _T: ...  # type: ignore[override]
     def __setitem__(self, key: SupportsIndex, value: _T, /) -> None: ...  # type: ignore[override]
@@ -331,13 +332,13 @@ class Counter(dict[_T, int], Generic[_T]):
 
 # The pure-Python implementations of the "views" classes
 # These are exposed at runtime in `collections/__init__.py`
-class _OrderedDictKeysView(KeysView[_KT_co], Reversible[_KT_co]):
+class _OrderedDictKeysView(KeysView[_KT_co]):
     def __reversed__(self) -> Iterator[_KT_co]: ...
 
-class _OrderedDictItemsView(ItemsView[_KT_co, _VT_co], Reversible[tuple[_KT_co, _VT_co]]):
+class _OrderedDictItemsView(ItemsView[_KT_co, _VT_co]):
     def __reversed__(self) -> Iterator[tuple[_KT_co, _VT_co]]: ...
 
-class _OrderedDictValuesView(ValuesView[_VT_co], Reversible[_VT_co]):
+class _OrderedDictValuesView(ValuesView[_VT_co]):
     def __reversed__(self) -> Iterator[_VT_co]: ...
 
 # The C implementations of the "views" classes
@@ -345,18 +346,18 @@ class _OrderedDictValuesView(ValuesView[_VT_co], Reversible[_VT_co]):
 # but they are not exposed anywhere)
 # pyright doesn't have a specific error code for subclassing error!
 @final
-class _odict_keys(dict_keys[_KT_co, _VT_co], Reversible[_KT_co]):  # type: ignore[misc]  # pyright: ignore
+class _odict_keys(dict_keys[_KT_co, _VT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def __reversed__(self) -> Iterator[_KT_co]: ...
 
 @final
-class _odict_items(dict_items[_KT_co, _VT_co], Reversible[tuple[_KT_co, _VT_co]]):  # type: ignore[misc]  # pyright: ignore
+class _odict_items(dict_items[_KT_co, _VT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def __reversed__(self) -> Iterator[tuple[_KT_co, _VT_co]]: ...
 
 @final
-class _odict_values(dict_values[_KT_co, _VT_co], Reversible[_VT_co], Generic[_KT_co, _VT_co]):  # type: ignore[misc]  # pyright: ignore
+class _odict_values(dict_values[_KT_co, _VT_co]):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def __reversed__(self) -> Iterator[_VT_co]: ...
 
-class OrderedDict(dict[_KT, _VT], Reversible[_KT], Generic[_KT, _VT]):
+class OrderedDict(dict[_KT, _VT]):
     def popitem(self, last: bool = True) -> tuple[_KT, _VT]: ...
     def move_to_end(self, key: _KT, last: bool = True) -> None: ...
     def copy(self) -> Self: ...
@@ -475,7 +476,8 @@ class ChainMap(MutableMapping[_KT, _VT]):
     def pop(self, key: _KT, default: _T) -> _VT | _T: ...
     def copy(self) -> Self: ...
     __copy__ = copy
-    # All arguments to `fromkeys` are passed to `dict.fromkeys` at runtime, so the signature should be kept in line with `dict.fromkeys`.
+    # All arguments to `fromkeys` are passed to `dict.fromkeys` at runtime,
+    # so the signature should be kept in line with `dict.fromkeys`.
     @classmethod
     @overload
     def fromkeys(cls, iterable: Iterable[_T]) -> ChainMap[_T, Any | None]: ...

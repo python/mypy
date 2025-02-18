@@ -50,6 +50,7 @@ from mypy.types import (
     find_unpack_in_list,
     get_proper_type,
     get_proper_types,
+    is_named_instance,
     split_with_prefix_and_suffix,
 )
 
@@ -223,7 +224,11 @@ def get_possible_variants(typ: Type) -> list[Type]:
         else:
             return [typ.upper_bound]
     elif isinstance(typ, ParamSpecType):
-        return [typ.upper_bound]
+        # Extract 'object' from the final mro item
+        upper_bound = get_proper_type(typ.upper_bound)
+        if isinstance(upper_bound, Instance):
+            return [Instance(upper_bound.type.mro[-1], [])]
+        return [AnyType(TypeOfAny.implementation_artifact)]
     elif isinstance(typ, TypeVarTupleType):
         return [typ.upper_bound]
     elif isinstance(typ, UnionType):
@@ -243,8 +248,8 @@ def is_enum_overlapping_union(x: ProperType, y: ProperType) -> bool:
         and x.type.is_enum
         and isinstance(y, UnionType)
         and any(
-            isinstance(p, LiteralType) and x.type == p.fallback.type
-            for p in (get_proper_type(z) for z in y.relevant_items())
+            isinstance(p := get_proper_type(z), LiteralType) and x.type == p.fallback.type
+            for z in y.relevant_items()
         )
     )
 
@@ -548,7 +553,27 @@ def is_overlapping_types(
         else:
             return False
 
-        if len(left.args) == len(right.args):
+        if right.type.has_type_var_tuple_type:
+            # Similar to subtyping, we delegate the heavy lifting to the tuple overlap.
+            assert right.type.type_var_tuple_prefix is not None
+            assert right.type.type_var_tuple_suffix is not None
+            prefix = right.type.type_var_tuple_prefix
+            suffix = right.type.type_var_tuple_suffix
+            tvt = right.type.defn.type_vars[prefix]
+            assert isinstance(tvt, TypeVarTupleType)
+            fallback = tvt.tuple_fallback
+            left_prefix, left_middle, left_suffix = split_with_prefix_and_suffix(
+                left.args, prefix, suffix
+            )
+            right_prefix, right_middle, right_suffix = split_with_prefix_and_suffix(
+                right.args, prefix, suffix
+            )
+            left_args = left_prefix + (TupleType(list(left_middle), fallback),) + left_suffix
+            right_args = right_prefix + (TupleType(list(right_middle), fallback),) + right_suffix
+        else:
+            left_args = left.args
+            right_args = right.args
+        if len(left_args) == len(right_args):
             # Note: we don't really care about variance here, since the overlapping check
             # is symmetric and since we want to return 'True' even for partial overlaps.
             #
@@ -565,7 +590,7 @@ def is_overlapping_types(
             # to contain only instances of B at runtime.
             if all(
                 _is_overlapping_types(left_arg, right_arg)
-                for left_arg, right_arg in zip(left.args, right.args)
+                for left_arg, right_arg in zip(left_args, right_args)
             ):
                 return True
 
@@ -641,7 +666,16 @@ def are_tuples_overlapping(
 
     if len(left.items) != len(right.items):
         return False
-    return all(is_overlapping(l, r) for l, r in zip(left.items, right.items))
+    if not all(is_overlapping(l, r) for l, r in zip(left.items, right.items)):
+        return False
+
+    # Check that the tuples aren't from e.g. different NamedTuples.
+    if is_named_instance(right.partial_fallback, "builtins.tuple") or is_named_instance(
+        left.partial_fallback, "builtins.tuple"
+    ):
+        return True
+    else:
+        return is_overlapping(left.partial_fallback, right.partial_fallback)
 
 
 def expand_tuple_if_possible(tup: TupleType, target: int) -> TupleType:
@@ -687,7 +721,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def visit_unbound_type(self, t: UnboundType) -> ProperType:
         if isinstance(self.s, NoneType):
             if state.strict_optional:
-                return AnyType(TypeOfAny.special_form)
+                return UninhabitedType()
             else:
                 return self.s
         elif isinstance(self.s, UninhabitedType):
@@ -1017,7 +1051,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             items = dict(item_list)
             fallback = self.s.create_anonymous_fallback()
             required_keys = t.required_keys | self.s.required_keys
-            return TypedDictType(items, required_keys, fallback)
+            readonly_keys = t.readonly_keys | self.s.readonly_keys
+            return TypedDictType(items, required_keys, readonly_keys, fallback)
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
             return t
         else:
@@ -1139,6 +1174,9 @@ def typed_dict_mapping_overlap(
       - TypedDict(x=str, y=str, total=False) doesn't overlap with Dict[str, int]
       - TypedDict(x=int, y=str, total=False) overlaps with Dict[str, str]
 
+    * A TypedDict with at least one ReadOnly[] key does not overlap
+      with Dict or MutableMapping, because they assume mutable data.
+
     As usual empty, dictionaries lie in a gray area. In general, List[str] and List[str]
     are considered non-overlapping despite empty list belongs to both. However, List[int]
     and List[Never] are considered overlapping.
@@ -1158,6 +1196,12 @@ def typed_dict_mapping_overlap(
         assert isinstance(left, Instance)
         assert isinstance(right, TypedDictType)
         typed, other = right, left
+
+    mutable_mapping = next(
+        (base for base in other.type.mro if base.fullname == "typing.MutableMapping"), None
+    )
+    if mutable_mapping is not None and typed.readonly_keys:
+        return False
 
     mapping = next(base for base in other.type.mro if base.fullname == "typing.Mapping")
     other = map_instance_to_supertype(other, mapping)

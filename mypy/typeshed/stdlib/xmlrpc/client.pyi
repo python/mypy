@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime
 from io import BytesIO
 from types import TracebackType
-from typing import Any, Literal, Protocol, overload
+from typing import Any, ClassVar, Final, Literal, Protocol, overload
 from typing_extensions import Self, TypeAlias
 
 class _SupportsTimeTuple(Protocol):
@@ -34,22 +34,22 @@ _HostType: TypeAlias = tuple[str, dict[str, str]] | str
 
 def escape(s: str) -> str: ...  # undocumented
 
-MAXINT: int  # undocumented
-MININT: int  # undocumented
+MAXINT: Final[int]  # undocumented
+MININT: Final[int]  # undocumented
 
-PARSE_ERROR: int  # undocumented
-SERVER_ERROR: int  # undocumented
-APPLICATION_ERROR: int  # undocumented
-SYSTEM_ERROR: int  # undocumented
-TRANSPORT_ERROR: int  # undocumented
+PARSE_ERROR: Final[int]  # undocumented
+SERVER_ERROR: Final[int]  # undocumented
+APPLICATION_ERROR: Final[int]  # undocumented
+SYSTEM_ERROR: Final[int]  # undocumented
+TRANSPORT_ERROR: Final[int]  # undocumented
 
-NOT_WELLFORMED_ERROR: int  # undocumented
-UNSUPPORTED_ENCODING: int  # undocumented
-INVALID_ENCODING_CHAR: int  # undocumented
-INVALID_XMLRPC: int  # undocumented
-METHOD_NOT_FOUND: int  # undocumented
-INVALID_METHOD_PARAMS: int  # undocumented
-INTERNAL_ERROR: int  # undocumented
+NOT_WELLFORMED_ERROR: Final[int]  # undocumented
+UNSUPPORTED_ENCODING: Final[int]  # undocumented
+INVALID_ENCODING_CHAR: Final[int]  # undocumented
+INVALID_XMLRPC: Final[int]  # undocumented
+METHOD_NOT_FOUND: Final[int]  # undocumented
+INVALID_METHOD_PARAMS: Final[int]  # undocumented
+INTERNAL_ERROR: Final[int]  # undocumented
 
 class Error(Exception): ...
 
@@ -76,6 +76,7 @@ def _strftime(value: _XMLDate) -> str: ...  # undocumented
 class DateTime:
     value: str  # undocumented
     def __init__(self, value: int | str | datetime | time.struct_time | tuple[int, ...] = 0) -> None: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
     def __lt__(self, other: _DateTimeComparable) -> bool: ...
     def __le__(self, other: _DateTimeComparable) -> bool: ...
     def __gt__(self, other: _DateTimeComparable) -> bool: ...
@@ -95,10 +96,11 @@ class Binary:
     def decode(self, data: ReadableBuffer) -> None: ...
     def encode(self, out: SupportsWrite[str]) -> None: ...
     def __eq__(self, other: object) -> bool: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
 
 def _binary(data: ReadableBuffer) -> Binary: ...  # undocumented
 
-WRAPPERS: tuple[type[DateTime], type[Binary]]  # undocumented
+WRAPPERS: Final[tuple[type[DateTime], type[Binary]]]  # undocumented
 
 class ExpatParser:  # undocumented
     def __init__(self, target: Unmarshaller) -> None: ...
@@ -108,8 +110,7 @@ class ExpatParser:  # undocumented
 _WriteCallback: TypeAlias = Callable[[str], object]
 
 class Marshaller:
-    # TODO: Replace 'Any' with some kind of binding
-    dispatch: dict[type[Any], Callable[[Marshaller, Any, _WriteCallback], None]]
+    dispatch: dict[type[_Marshallable] | Literal["_arbitrary_instance"], Callable[[Marshaller, Any, _WriteCallback], None]]
     memo: dict[Any, None]
     data: None
     encoding: str | None
@@ -200,7 +201,7 @@ def dumps(
     allow_none: bool = False,
 ) -> str: ...
 def loads(
-    data: str, use_datetime: bool = False, use_builtin_types: bool = False
+    data: str | ReadableBuffer, use_datetime: bool = False, use_builtin_types: bool = False
 ) -> tuple[tuple[_Marshallable, ...], str | None]: ...
 def gzip_encode(data: ReadableBuffer) -> bytes: ...  # undocumented
 def gzip_decode(data: ReadableBuffer, max_decode: int = 20971520) -> bytes: ...  # undocumented

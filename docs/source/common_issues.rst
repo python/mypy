@@ -363,7 +363,8 @@ explicit type cast:
 
 .. code-block:: python
 
-  from typing import Sequence, cast
+  from collections.abc import Sequence
+  from typing import cast
 
   def find_first_str(a: Sequence[object]) -> str:
       index = next((i for i, s in enumerate(a) if isinstance(s, str)), -1)
@@ -426,8 +427,8 @@ More specifically, mypy will understand the use of :py:data:`sys.version_info` a
    import sys
 
    # Distinguishing between different versions of Python:
-   if sys.version_info >= (3, 8):
-       # Python 3.8+ specific definitions and imports
+   if sys.version_info >= (3, 13):
+       # Python 3.13+ specific definitions and imports
    else:
        # Other definitions and imports
 
@@ -454,7 +455,7 @@ Example:
    # The rest of this file doesn't apply to Windows.
 
 Some other expressions exhibit similar behavior; in particular,
-:py:data:`~typing.TYPE_CHECKING`, variables named ``MYPY``, and any variable
+:py:data:`~typing.TYPE_CHECKING`, variables named ``MYPY`` or ``TYPE_CHECKING``, and any variable
 whose name is passed to :option:`--always-true <mypy --always-true>` or :option:`--always-false <mypy --always-false>`.
 (However, ``True`` and ``False`` are not treated specially!)
 
@@ -700,7 +701,7 @@ This example demonstrates both safe and unsafe overrides:
 
 .. code-block:: python
 
-    from typing import Sequence, List, Iterable
+    from collections.abc import Sequence, Iterable
 
     class A:
         def test(self, t: Sequence[int]) -> Sequence[str]:
@@ -713,7 +714,7 @@ This example demonstrates both safe and unsafe overrides:
 
     class NarrowerArgument(A):
         # A more specific argument type isn't accepted
-        def test(self, t: List[int]) -> Sequence[str]:  # Error
+        def test(self, t: list[int]) -> Sequence[str]:  # Error
             ...
 
     class NarrowerReturn(A):
@@ -756,7 +757,7 @@ type check such code. Consider this example:
         x: int = 'abc'  # Unreachable -- no error
 
 It's easy to see that any statement after ``return`` is unreachable,
-and hence mypy will not complain about the mis-typed code below
+and hence mypy will not complain about the mistyped code below
 it. For a more subtle example, consider this code:
 
 .. code-block:: python
@@ -802,7 +803,7 @@ This is best understood via an example:
 
 .. code-block:: python
 
-    def foo(x: Optional[int]) -> Callable[[], int]:
+    def foo(x: int | None) -> Callable[[], int]:
         if x is None:
             x = 5
         print(x + 1)  # mypy correctly deduces x must be an int here
@@ -818,3 +819,30 @@ This is best understood via an example:
 To get this code to type check, you could assign ``y = x`` after ``x`` has been
 narrowed, and use ``y`` in the inner function, or add an assert in the inner
 function.
+
+.. _incorrect-self:
+
+Incorrect use of ``Self``
+-------------------------
+
+``Self`` is not the type of the current class; it's a type variable with upper
+bound of the current class. That is, it represents the type of the current class
+or of potential subclasses.
+
+.. code-block:: python
+
+    from typing import Self
+
+    class Foo:
+        @classmethod
+        def constructor(cls) -> Self:
+            # Instead, either call cls() or change the annotation to -> Foo
+            return Foo()  # error: Incompatible return value type (got "Foo", expected "Self")
+
+    class Bar(Foo):
+        ...
+
+    reveal_type(Foo.constructor())  # note: Revealed type is "Foo"
+    # In the context of the subclass Bar, the Self return type promises
+    # that the return value will be Bar
+    reveal_type(Bar.constructor())  # note: Revealed type is "Bar"

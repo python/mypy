@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from typing import Dict
 
 from mypy import build
 from mypy.defaults import PYTHON3_VERSION
@@ -199,7 +198,7 @@ class SemAnalTypeInfoSuite(DataSuite):
         )
 
 
-class TypeInfoMap(Dict[str, TypeInfo]):
+class TypeInfoMap(dict[str, TypeInfo]):
     def __str__(self) -> str:
         a: list[str] = ["TypeInfoMap("]
         for x, y in sorted(self.items()):

@@ -7,22 +7,30 @@ Mypy is very configurable. This is most useful when introducing typing to
 an existing codebase. See :ref:`existing-code` for concrete advice for
 that situation.
 
-Mypy supports reading configuration settings from a file with the following precedence order:
+Mypy supports reading configuration settings from a file. By default, mypy will
+discover configuration files by walking up the file system (up until the root of
+a repository or the root of the filesystem). In each directory, it will look for
+the following configuration files (in this order):
 
-    1. ``./mypy.ini``
-    2. ``./.mypy.ini``
-    3. ``./pyproject.toml``
-    4. ``./setup.cfg``
-    5. ``$XDG_CONFIG_HOME/mypy/config``
-    6. ``~/.config/mypy/config``
-    7. ``~/.mypy.ini``
+    1. ``mypy.ini``
+    2. ``.mypy.ini``
+    3. ``pyproject.toml`` (containing a ``[tool.mypy]`` section)
+    4. ``setup.cfg`` (containing a ``[mypy]`` section)
+
+If no configuration file is found by this method, mypy will then look for
+configuration files in the following locations (in this order):
+
+    1. ``$XDG_CONFIG_HOME/mypy/config``
+    2. ``~/.config/mypy/config``
+    3. ``~/.mypy.ini``
+
+The :option:`--config-file <mypy --config-file>` command-line flag has the
+highest precedence and must point towards a valid configuration file;
+otherwise mypy will report an error and exit. Without the command line option,
+mypy will look for configuration files in the precedence order above.
 
 It is important to understand that there is no merging of configuration
-files, as it would lead to ambiguity. The :option:`--config-file <mypy --config-file>`
-command-line flag has the highest precedence and
-must be correct; otherwise mypy will report an error and exit. Without the
-command line option, mypy will look for configuration files in the
-precedence order above.
+files, as it would lead to ambiguity.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
@@ -315,6 +323,24 @@ section of the command line docs.
     match the name of the *imported* module, not the module containing the
     import statement.
 
+.. confval:: follow_untyped_imports
+
+    :type: boolean
+    :default: False
+
+    Makes mypy analyze imports from installed packages even if missing a
+    :ref:`py.typed marker or stubs <installed-packages>`.
+
+    If this option is used in a per-module section, the module name should
+    match the name of the *imported* module, not the module containing the
+    import statement.
+
+    .. warning::
+
+        Note that analyzing all unannotated modules might result in issues
+        when analyzing code not designed to be type checked and may significantly
+        increase how long mypy takes to run.
+
 .. confval:: follow_imports
 
     :type: string
@@ -574,8 +600,8 @@ section of the command line docs.
     :type: boolean
     :default: False
 
-    Causes mypy to treat arguments with a ``None``
-    default value as having an implicit :py:data:`~typing.Optional` type.
+    Causes mypy to treat parameters with a ``None``
+    default value as having an implicit optional type (``T | None``).
 
     **Note:** This was True by default in mypy versions 0.980 and earlier.
 
@@ -584,7 +610,7 @@ section of the command line docs.
     :type: boolean
     :default: True
 
-    Effectively disables checking of :py:data:`~typing.Optional`
+    Effectively disables checking of optional
     types and ``None`` values. With this option, mypy doesn't
     generally check the use of ``None`` values -- it is treated
     as compatible with every type.
@@ -639,6 +665,16 @@ section of the command line docs.
 
     Shows a warning when encountering any code inferred to be unreachable or
     redundant after performing type analysis.
+
+.. confval:: deprecated_calls_exclude
+
+    :type: comma-separated list of strings
+
+    Selectively excludes functions and methods defined in specific packages,
+    modules, and classes from the :ref:`deprecated<code-deprecated>` error code.
+    This also applies to all submodules of packages (i.e. everything inside
+    a given prefix). Note, this option does not support per-file configuration,
+    the exclusions list is defined globally for all your code.
 
 
 Suppressing errors
@@ -717,6 +753,14 @@ section of the command line docs.
 
     Note: This option will override disabled error codes from the disable_error_code option.
 
+.. confval:: extra_checks
+
+   :type: boolean
+   :default: False
+
+   This flag enables additional checks that are technically correct but may be impractical.
+   See :option:`mypy --extra-checks` for more info.
+
 .. confval:: implicit_reexport
 
     :type: boolean
@@ -737,25 +781,26 @@ section of the command line docs.
        from foo import bar
        __all__ = ['bar']
 
-.. confval:: strict_concatenate
-
-    :type: boolean
-    :default: False
-
-    Make arguments prepended via ``Concatenate`` be truly positional-only.
-
 .. confval:: strict_equality
 
-    :type: boolean
-    :default: False
+   :type: boolean
+   :default: False
 
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
 
+.. confval:: strict_bytes
+
+   :type: boolean
+   :default: False
+
+   Disable treating ``bytearray`` and ``memoryview`` as subtypes of ``bytes``.
+   This will be enabled by default in *mypy 2.0*.
+
 .. confval:: strict
 
-    :type: boolean
-    :default: False
+   :type: boolean
+   :default: False
 
    Enable all optional error checking flags.  You can see the list of
    flags enabled by strict mode in the full :option:`mypy --help`

@@ -27,7 +27,7 @@ def bar() -> str:
 def untyped_function():
   return 42
 [outfile build/cobertura.xml]
-<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.7500" branch-rate="0">
+<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.7500" branch-rate="0" lines-covered="6" lines-valid="8">
   <sources>
     <source>$PWD</source>
   </sources>
@@ -81,7 +81,7 @@ def foo(a: int) -> MyDict:
     return {"a": a}
 md: MyDict = MyDict(**foo(42))
 [outfile build/cobertura.xml]
-<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="1.0000" branch-rate="0">
+<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="1.0000" branch-rate="0" lines-covered="6" lines-valid="6">
   <sources>
     <source>$PWD</source>
   </sources>
@@ -306,10 +306,7 @@ Total      1      11     90.91%
 
 [file i.py]
 from enum import Enum
-from mypy_extensions import TypedDict
-from typing import NewType, NamedTuple, TypeVar
-
-from typing import TypeVar
+from typing import NewType, NamedTuple, TypedDict, TypeVar
 
 T = TypeVar('T')  # no error
 

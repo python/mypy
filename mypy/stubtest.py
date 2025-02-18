@@ -25,10 +25,11 @@ import typing
 import typing_extensions
 import warnings
 from collections import defaultdict
+from collections.abc import Iterator, Set as AbstractSet
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import AbstractSet, Any, Generic, Iterator, TypeVar, Union
+from typing import Any, Final, Generic, TypeVar, Union
 from typing_extensions import get_origin, is_typeddict
 
 import mypy.build
@@ -51,7 +52,7 @@ class Missing:
         return "MISSING"
 
 
-MISSING: typing_extensions.Final = Missing()
+MISSING: Final = Missing()
 
 T = TypeVar("T")
 MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
@@ -64,10 +65,10 @@ class Unrepresentable:
         return "<unrepresentable>"
 
 
-UNREPRESENTABLE: typing_extensions.Final = Unrepresentable()
+UNREPRESENTABLE: Final = Unrepresentable()
 
 
-_formatter: typing_extensions.Final = FancyFormatter(sys.stdout, sys.stderr, False)
+_formatter: Final = FancyFormatter(sys.stdout, sys.stderr, False)
 
 
 def _style(message: str, **kwargs: Any) -> str:
@@ -133,7 +134,7 @@ class Error:
     def is_positional_only_related(self) -> bool:
         """Whether or not the error is for something being (or not being) positional-only."""
         # TODO: This is hacky, use error codes or something more resilient
-        return "leading double underscore" in self.message
+        return "should be positional" in self.message
 
     def get_description(self, concise: bool = False) -> str:
         """Returns a description of the error.
@@ -337,7 +338,8 @@ def verify_mypyfile(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
     if not isinstance(runtime, types.ModuleType):
-        yield Error(object_path, "is not a module", stub, runtime)
+        # Can possibly happen:
+        yield Error(object_path, "is not a module", stub, runtime)  # type: ignore[unreachable]
         return
 
     runtime_all_as_set: set[str] | None
@@ -348,6 +350,8 @@ def verify_mypyfile(
             # Only verify the contents of the stub's __all__
             # if the stub actually defines __all__
             yield from _verify_exported_names(object_path, stub, runtime_all_as_set)
+        else:
+            yield Error(object_path + ["__all__"], "is not present in stub", MISSING, runtime)
     else:
         runtime_all_as_set = None
 
@@ -521,7 +525,8 @@ def verify_typeinfo(
         yield Error(object_path, "is not present at runtime", stub, runtime, stub_desc=repr(stub))
         return
     if not isinstance(runtime, type):
-        yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
+        # Yes, some runtime objects can be not types, no way to tell mypy about that.
+        yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))  # type: ignore[unreachable]
         return
 
     yield from _verify_final(stub, runtime, object_path)
@@ -566,6 +571,13 @@ def verify_typeinfo(
             # Catch all exceptions in case the runtime raises an unexpected exception
             # from __getattr__ or similar.
             continue
+
+        # If it came from the metaclass, consider the runtime_attr to be MISSING
+        # for a more accurate message
+        if runtime_attr is not MISSING and type(runtime) is not runtime:
+            if getattr(runtime_attr, "__objclass__", None) is type(runtime):
+                runtime_attr = MISSING
+
         # Do not error for an object missing from the stub
         # If the runtime object is a types.WrapperDescriptorType object
         # and has a non-special dunder name.
@@ -629,7 +641,7 @@ def _verify_arg_name(
         return
 
     def strip_prefix(s: str, prefix: str) -> str:
-        return s[len(prefix) :] if s.startswith(prefix) else s
+        return s.removeprefix(prefix)
 
     if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:
         return
@@ -661,7 +673,7 @@ def _verify_arg_default_value(
     stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
 ) -> Iterator[str]:
     """Checks whether argument default values are compatible."""
-    if runtime_arg.default != inspect.Parameter.empty:
+    if runtime_arg.default is not inspect.Parameter.empty:
         if stub_arg.kind.is_required():
             yield (
                 f'runtime argument "{runtime_arg.name}" '
@@ -696,18 +708,26 @@ def _verify_arg_default_value(
                     stub_default is not UNKNOWN
                     and stub_default is not ...
                     and runtime_arg.default is not UNREPRESENTABLE
-                    and (
-                        stub_default != runtime_arg.default
-                        # We want the types to match exactly, e.g. in case the stub has
-                        # True and the runtime has 1 (or vice versa).
-                        or type(stub_default) is not type(runtime_arg.default)  # noqa: E721
-                    )
                 ):
-                    yield (
-                        f'runtime argument "{runtime_arg.name}" '
-                        f"has a default value of {runtime_arg.default!r}, "
-                        f"which is different from stub argument default {stub_default!r}"
-                    )
+                    defaults_match = True
+                    # We want the types to match exactly, e.g. in case the stub has
+                    # True and the runtime has 1 (or vice versa).
+                    if type(stub_default) is not type(runtime_arg.default):
+                        defaults_match = False
+                    else:
+                        try:
+                            defaults_match = bool(stub_default == runtime_arg.default)
+                        except Exception:
+                            # Exception can be raised in bool dunder method (e.g. numpy arrays)
+                            # At this point, consider the default to be different, it is probably
+                            # too complex to put in a stub anyway.
+                            defaults_match = False
+                    if not defaults_match:
+                        yield (
+                            f'runtime argument "{runtime_arg.name}" '
+                            f"has a default value of {runtime_arg.default!r}, "
+                            f"which is different from stub argument default {stub_default!r}"
+                        )
     else:
         if stub_arg.kind.is_optional():
             yield (
@@ -749,7 +769,7 @@ class Signature(Generic[T]):
 
         def has_default(arg: Any) -> bool:
             if isinstance(arg, inspect.Parameter):
-                return bool(arg.default != inspect.Parameter.empty)
+                return arg.default is not inspect.Parameter.empty
             if isinstance(arg, nodes.Argument):
                 return arg.kind.is_optional()
             raise AssertionError
@@ -909,7 +929,7 @@ def _verify_signature(
         ):
             yield (
                 f'stub argument "{stub_arg.variable.name}" should be positional-only '
-                f'(rename with a leading double underscore, i.e. "__{runtime_arg.name}")'
+                f'(add "/", e.g. "{runtime_arg.name}, /")'
             )
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
@@ -919,7 +939,7 @@ def _verify_signature(
         ):
             yield (
                 f'stub argument "{stub_arg.variable.name}" should be positional or keyword '
-                "(remove leading double underscore)"
+                '(remove "/")'
             )
 
     # Check unmatched positional args
@@ -1224,6 +1244,9 @@ def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[s
     if isinstance(runtime, property):
         yield from _verify_final_method(stub.func, runtime.fget, MISSING)
         return
+    if isinstance(runtime, functools.cached_property):
+        yield from _verify_final_method(stub.func, runtime.func, MISSING)
+        return
     if inspect.isdatadescriptor(runtime):
         # It's enough like a property...
         return
@@ -1426,7 +1449,7 @@ def verify_typealias(
 # ====================
 
 
-IGNORED_MODULE_DUNDERS: typing_extensions.Final = frozenset(
+IGNORED_MODULE_DUNDERS: Final = frozenset(
     {
         "__file__",
         "__doc__",
@@ -1448,7 +1471,7 @@ IGNORED_MODULE_DUNDERS: typing_extensions.Final = frozenset(
     }
 )
 
-IGNORABLE_CLASS_DUNDERS: typing_extensions.Final = frozenset(
+IGNORABLE_CLASS_DUNDERS: Final = frozenset(
     {
         # Special attributes
         "__dict__",
@@ -1514,6 +1537,7 @@ def is_probably_a_function(runtime: Any) -> bool:
         isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
         or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
+        or (isinstance(runtime, types.MethodWrapperType) and callable(runtime))
     )
 
 
@@ -1615,13 +1639,13 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> mypy.types.Type | None:
                 arg_names.append(
                     None if arg.kind == inspect.Parameter.POSITIONAL_ONLY else arg.name
                 )
-                has_default = arg.default == inspect.Parameter.empty
+                no_default = arg.default is inspect.Parameter.empty
                 if arg.kind == inspect.Parameter.POSITIONAL_ONLY:
-                    arg_kinds.append(nodes.ARG_POS if has_default else nodes.ARG_OPT)
+                    arg_kinds.append(nodes.ARG_POS if no_default else nodes.ARG_OPT)
                 elif arg.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
-                    arg_kinds.append(nodes.ARG_POS if has_default else nodes.ARG_OPT)
+                    arg_kinds.append(nodes.ARG_POS if no_default else nodes.ARG_OPT)
                 elif arg.kind == inspect.Parameter.KEYWORD_ONLY:
-                    arg_kinds.append(nodes.ARG_NAMED if has_default else nodes.ARG_NAMED_OPT)
+                    arg_kinds.append(nodes.ARG_NAMED if no_default else nodes.ARG_NAMED_OPT)
                 elif arg.kind == inspect.Parameter.VAR_POSITIONAL:
                     arg_kinds.append(nodes.ARG_STAR)
                 elif arg.kind == inspect.Parameter.VAR_KEYWORD:
@@ -1888,12 +1912,12 @@ class _Arguments:
     custom_typeshed_dir: str | None
     check_typeshed: bool
     version: str
+    show_traceback: bool
+    pdb: bool
 
 
 # typeshed added a stub for __main__, but that causes stubtest to check itself
-ANNOYING_STDLIB_MODULES: typing_extensions.Final = frozenset(
-    {"antigravity", "this", "__main__", "_ios_support"}
-)
+ANNOYING_STDLIB_MODULES: Final = frozenset({"antigravity", "this", "__main__", "_ios_support"})
 
 
 def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
@@ -1933,6 +1957,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
         options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
     options.config_file = args.mypy_config_file
     options.use_builtins_fixtures = use_builtins_fixtures
+    options.show_traceback = args.show_traceback
+    options.pdb = args.pdb
 
     if options.config_file:
 
@@ -1940,6 +1966,18 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
             return
 
         parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
+
+    def error_callback(msg: str) -> typing.NoReturn:
+        print(_style("error:", color="red", bold=True), msg)
+        sys.exit(1)
+
+    def warning_callback(msg: str) -> None:
+        print(_style("warning:", color="yellow", bold=True), msg)
+
+    options.process_error_codes(error_callback=error_callback)
+    options.process_incomplete_features(
+        error_callback=error_callback, warning_callback=warning_callback
+    )
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
@@ -2073,6 +2111,10 @@ def parse_options(args: list[str]) -> _Arguments:
     )
     parser.add_argument(
         "--version", action="version", version="%(prog)s " + mypy.version.__version__
+    )
+    parser.add_argument("--pdb", action="store_true", help="Invoke pdb on fatal error")
+    parser.add_argument(
+        "--show-traceback", "--tb", action="store_true", help="Show traceback on fatal error"
     )
 
     return parser.parse_args(args, namespace=_Arguments())

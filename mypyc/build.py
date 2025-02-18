@@ -25,7 +25,8 @@ import os.path
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, Union, cast
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, NoReturn, Union, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -87,7 +88,7 @@ def setup_mypycify_vars() -> None:
     # There has to be a better approach to this.
 
     # The vars can contain ints but we only work with str ones
-    vars = cast(Dict[str, str], sysconfig.get_config_vars())
+    vars = cast(dict[str, str], sysconfig.get_config_vars())
     if sys.platform == "darwin":
         # Disable building 32-bit binaries, since we generate too much code
         # for a 32-bit Mach-O object. There has to be a better way to do this.
@@ -470,6 +471,7 @@ def mypycify(
     skip_cgen_input: Any | None = None,
     target_dir: str | None = None,
     include_runtime_files: bool | None = None,
+    strict_dunder_typing: bool = False,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -509,6 +511,9 @@ def mypycify(
                                should be directly #include'd instead of linked
                                separately in order to reduce compiler invocations.
                                Defaults to False in multi_file mode, True otherwise.
+        strict_dunder_typing: If True, force dunder methods to have the return type
+                              of the method strictly, which can lead to more
+                              optimization opportunities. Defaults to False.
     """
 
     # Figure out our configuration
@@ -519,6 +524,7 @@ def mypycify(
         separate=separate is not False,
         target_dir=target_dir,
         include_runtime_files=include_runtime_files,
+        strict_dunder_typing=strict_dunder_typing,
     )
 
     # Generate all the actual important C code

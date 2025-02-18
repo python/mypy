@@ -1,6 +1,6 @@
 import _tkinter
 import tkinter
-from _typeshed import Incomplete
+from _typeshed import Incomplete, MaybeNone
 from collections.abc import Callable
 from tkinter.font import _FontDescription
 from typing import Any, Literal, TypedDict, overload
@@ -556,7 +556,9 @@ class Notebook(Widget):
         sticky: str = ...,  # consists of letters 'n', 's', 'w', 'e', no repeats, may be empty
         padding: _Padding = ...,
         text: str = ...,
-        image=...,  # Sequence of an image name, followed by zero or more (sequences of one or more state names followed by an image name)
+        # `image` is a sequence of an image name, followed by zero or more
+        # (sequences of one or more state names followed by an image name)
+        image=...,
         compound: tkinter._Compound = ...,
         underline: int = ...,
     ) -> None: ...
@@ -1040,7 +1042,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     @overload
     def heading(self, column: str | int, option: str) -> Any: ...
     @overload
-    def heading(self, column: str | int, option: None = None) -> _TreeviewHeaderDict: ...  # type: ignore[overload-overlap]
+    def heading(self, column: str | int, option: None = None) -> _TreeviewHeaderDict: ...
     @overload
     def heading(
         self,
@@ -1052,7 +1054,8 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         anchor: tkinter._Anchor = ...,
         command: str | Callable[[], object] = ...,
     ) -> None: ...
-    def identify(self, component, x, y): ...  # Internal Method. Leave untyped
+    # Internal Method. Leave untyped:
+    def identify(self, component, x, y): ...  # type: ignore[override]
     def identify_row(self, y: int) -> str: ...
     def identify_column(self, x: int) -> str: ...
     def identify_region(self, x: int, y: int) -> Literal["heading", "separator", "tree", "cell", "nothing"]: ...
@@ -1084,7 +1087,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     @overload
     def item(self, item: str | int, option: str) -> Any: ...
     @overload
-    def item(self, item: str | int, option: None = None) -> _TreeviewItemDict: ...  # type: ignore[overload-overlap]
+    def item(self, item: str | int, option: None = None) -> _TreeviewItemDict: ...
     @overload
     def item(
         self,
@@ -1097,7 +1100,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         open: bool = ...,
         tags: str | list[str] | tuple[str, ...] = ...,
     ) -> None: ...
-    def move(self, item: str | int, parent: str, index: int) -> None: ...
+    def move(self, item: str | int, parent: str, index: int | Literal["end"]) -> None: ...
     reattach = move
     def next(self, item: str | int) -> str: ...  # returning empty string means last item
     def parent(self, item: str | int) -> str: ...
@@ -1153,7 +1156,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         background: str = ...,
         font: _FontDescription = ...,
         image: tkinter._ImageSpec = ...,
-    ) -> _TreeviewTagDict | Any: ...  # can be None but annoying to check
+    ) -> _TreeviewTagDict | MaybeNone: ...  # can be None but annoying to check
     @overload
     def tag_has(self, tagname: str, item: None = None) -> tuple[str, ...]: ...
     @overload

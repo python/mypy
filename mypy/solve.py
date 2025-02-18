@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
@@ -139,7 +139,7 @@ def solve_with_dependent(
       * Find dependencies between type variables, group them in SCCs, and sort topologically
       * Check that all SCC are intrinsically linear, we can't solve (express) T <: List[T]
       * Variables in leaf SCCs that don't have constant bounds are free (choose one per SCC)
-      * Solve constraints iteratively starting from leafs, updating bounds after each step.
+      * Solve constraints iteratively starting from leaves, updating bounds after each step.
     """
     graph, lowers, uppers = transitive_closure(vars, constraints)
 

@@ -5,10 +5,11 @@ import unittest.result
 import unittest.suite
 from collections.abc import Iterable
 from types import ModuleType
-from typing import Any, Protocol
+from typing import Any, Final, Protocol
+from typing_extensions import deprecated
 
-MAIN_EXAMPLES: str
-MODULE_EXAMPLES: str
+MAIN_EXAMPLES: Final[str]
+MODULE_EXAMPLES: Final[str]
 
 class _TestRunner(Protocol):
     def run(self, test: unittest.suite.TestSuite | unittest.case.TestCase, /) -> unittest.result.TestResult: ...
@@ -61,7 +62,10 @@ class TestProgram:
             tb_locals: bool = False,
         ) -> None: ...
 
-    def usageExit(self, msg: Any = None) -> None: ...
+    if sys.version_info < (3, 13):
+        @deprecated("Deprecated in Python 3.11; removal scheduled for Python 3.13")
+        def usageExit(self, msg: Any = None) -> None: ...
+
     def parseArgs(self, argv: list[str]) -> None: ...
     def createTests(self, from_discovery: bool = False, Loader: unittest.loader.TestLoader | None = None) -> None: ...
     def runTests(self) -> None: ...  # undocumented

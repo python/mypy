@@ -118,9 +118,28 @@ method_op(
     error_kind=ERR_NEVER,
 )
 
-# str.split(...)
+# str.removeprefix(str)
+method_op(
+    name="removeprefix",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Removeprefix",
+    error_kind=ERR_NEVER,
+)
+
+# str.removesuffix(str)
+method_op(
+    name="removesuffix",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Removesuffix",
+    error_kind=ERR_NEVER,
+)
+
+# str.split(...) and str.rsplit(...)
 str_split_types: list[RType] = [str_rprimitive, str_rprimitive, int_rprimitive]
 str_split_functions = ["PyUnicode_Split", "PyUnicode_Split", "CPyStr_Split"]
+str_rsplit_functions = ["PyUnicode_RSplit", "PyUnicode_RSplit", "CPyStr_RSplit"]
 str_split_constants: list[list[tuple[int, RType]]] = [
     [(0, pointer_rprimitive), (-1, c_int_rprimitive)],
     [(-1, c_int_rprimitive)],
@@ -134,6 +153,27 @@ for i in range(len(str_split_types)):
         c_function_name=str_split_functions[i],
         extra_int_constants=str_split_constants[i],
         error_kind=ERR_MAGIC,
+    )
+    method_op(
+        name="rsplit",
+        arg_types=str_split_types[0 : i + 1],
+        return_type=list_rprimitive,
+        c_function_name=str_rsplit_functions[i],
+        extra_int_constants=str_split_constants[i],
+        error_kind=ERR_MAGIC,
+    )
+
+# str.splitlines(...)
+str_splitlines_types: list[RType] = [str_rprimitive, bool_rprimitive]
+str_splitlines_constants: list[list[tuple[int, RType]]] = [[(0, c_int_rprimitive)], []]
+for i in range(2):
+    method_op(
+        name="splitlines",
+        arg_types=str_splitlines_types[0 : i + 1],
+        return_type=list_rprimitive,
+        c_function_name="PyUnicode_Splitlines",
+        extra_int_constants=str_splitlines_constants[i],
+        error_kind=ERR_NEVER,
     )
 
 # str.replace(old, new)
@@ -219,11 +259,43 @@ method_op(
     extra_int_constants=[(0, pointer_rprimitive)],
 )
 
+# str.encode(encoding) - utf8 strict specialization
+str_encode_utf8_strict = custom_op(
+    arg_types=[str_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="PyUnicode_AsUTF8String",
+    error_kind=ERR_MAGIC,
+)
+
+# str.encode(encoding) - ascii strict specialization
+str_encode_ascii_strict = custom_op(
+    arg_types=[str_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="PyUnicode_AsASCIIString",
+    error_kind=ERR_MAGIC,
+)
+
+# str.encode(encoding) - latin1 strict specialization
+str_encode_latin1_strict = custom_op(
+    arg_types=[str_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="PyUnicode_AsLatin1String",
+    error_kind=ERR_MAGIC,
+)
+
 # str.encode(encoding, errors)
 method_op(
     name="encode",
     arg_types=[str_rprimitive, str_rprimitive, str_rprimitive],
     return_type=bytes_rprimitive,
     c_function_name="CPy_Encode",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
+    name="builtins.ord",
+    arg_types=[str_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyStr_Ord",
     error_kind=ERR_MAGIC,
 )

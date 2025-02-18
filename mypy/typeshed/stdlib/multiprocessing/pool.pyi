@@ -1,7 +1,8 @@
 import sys
 from collections.abc import Callable, Iterable, Iterator, Mapping
+from multiprocessing.context import DefaultContext, Process
 from types import TracebackType
-from typing import Any, Generic, Literal, TypeVar
+from typing import Any, Final, Generic, TypeVar
 from typing_extensions import Self
 
 if sys.version_info >= (3, 9):
@@ -53,6 +54,8 @@ class Pool:
         maxtasksperchild: int | None = None,
         context: Any | None = None,
     ) -> None: ...
+    @staticmethod
+    def Process(ctx: DefaultContext, *args: Any, **kwds: Any) -> Process: ...
     def apply(self, func: Callable[..., _T], args: Iterable[Any] = (), kwds: Mapping[str, Any] = {}) -> _T: ...
     def apply_async(
         self,
@@ -97,7 +100,7 @@ class ThreadPool(Pool):
     ) -> None: ...
 
 # undocumented
-INIT: Literal["INIT"]
-RUN: Literal["RUN"]
-CLOSE: Literal["CLOSE"]
-TERMINATE: Literal["TERMINATE"]
+INIT: Final = "INIT"
+RUN: Final = "RUN"
+CLOSE: Final = "CLOSE"
+TERMINATE: Final = "TERMINATE"

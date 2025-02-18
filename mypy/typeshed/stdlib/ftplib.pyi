@@ -4,16 +4,16 @@ from collections.abc import Callable, Iterable, Iterator
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Literal, TextIO
+from typing import Any, Final, Literal, TextIO
 from typing_extensions import Self
 
 __all__ = ["FTP", "error_reply", "error_temp", "error_perm", "error_proto", "all_errors", "FTP_TLS"]
 
-MSG_OOB: Literal[1]
-FTP_PORT: Literal[21]
-MAXLINE: Literal[8192]
-CRLF: Literal["\r\n"]
-B_CRLF: Literal[b"\r\n"]
+MSG_OOB: Final = 1
+FTP_PORT: Final = 21
+MAXLINE: Final = 8192
+CRLF: Final = "\r\n"
+B_CRLF: Final = b"\r\n"
 
 class Error(Exception): ...
 class error_reply(Error): ...
@@ -86,7 +86,7 @@ class FTP:
     def makeport(self) -> socket: ...
     def makepasv(self) -> tuple[str, int]: ...
     def login(self, user: str = "", passwd: str = "", acct: str = "") -> str: ...
-    # In practice, `rest` rest can actually be anything whose str() is an integer sequence, so to make it simple we allow integers.
+    # In practice, `rest` can actually be anything whose str() is an integer sequence, so to make it simple we allow integers
     def ntransfercmd(self, cmd: str, rest: int | str | None = None) -> tuple[socket, int | None]: ...
     def transfercmd(self, cmd: str, rest: int | str | None = None) -> socket: ...
     def retrbinary(

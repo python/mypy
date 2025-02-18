@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Dict, Generic, Iterable, Iterator, Set, Tuple, TypeVar
+from collections.abc import Iterable, Iterator
+from typing import Generic, TypeVar
 
-from mypyc.ir.func_ir import all_values
 from mypyc.ir.ops import (
     Assign,
     AssignMulti,
@@ -155,7 +155,7 @@ def cleanup_cfg(blocks: list[BasicBlock]) -> None:
 
 T = TypeVar("T")
 
-AnalysisDict = Dict[Tuple[BasicBlock, int], Set[T]]
+AnalysisDict = dict[tuple[BasicBlock, int], set[T]]
 
 
 class AnalysisResult(Generic[T]):
@@ -167,7 +167,7 @@ class AnalysisResult(Generic[T]):
         return f"before: {self.before}\nafter: {self.after}\n"
 
 
-GenAndKill = Tuple[Set[T], Set[T]]
+GenAndKill = tuple[set[T], set[T]]
 
 
 class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
@@ -435,27 +435,6 @@ class UndefinedVisitor(BaseAnalysisVisitor[Value]):
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
         return set(), set()
-
-
-def analyze_undefined_regs(
-    blocks: list[BasicBlock], cfg: CFG, initial_defined: set[Value]
-) -> AnalysisResult[Value]:
-    """Calculate potentially undefined registers at each CFG location.
-
-    A register is undefined if there is some path from initial block
-    where it has an undefined value.
-
-    Function arguments are assumed to be always defined.
-    """
-    initial_undefined = set(all_values([], blocks)) - initial_defined
-    return run_analysis(
-        blocks=blocks,
-        cfg=cfg,
-        gen_and_kill=UndefinedVisitor(),
-        initial=initial_undefined,
-        backward=False,
-        kind=MAYBE_ANALYSIS,
-    )
 
 
 def non_trivial_sources(op: Op) -> set[Value]:
