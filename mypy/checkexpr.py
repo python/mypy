@@ -4275,11 +4275,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif e.op == "or":
             left_map, right_map = self.chk.find_isinstance_check(e.left)
 
+        left_impossible = left_map is None or any(
+            isinstance(get_proper_type(v), UninhabitedType) for v in left_map.values()
+        )
+        right_impossible = right_map is None or any(
+            isinstance(get_proper_type(v), UninhabitedType) for v in right_map.values()
+        )
+
         # If left_map is None then we know mypy considers the left expression
         # to be redundant.
         if (
             codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes
-            and left_map is None
+            and left_impossible
             # don't report an error if it's intentional
             and not e.right_always
         ):
@@ -4287,7 +4294,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if (
             self.chk.should_report_unreachable_issues()
-            and right_map is None
+            and right_impossible
             # don't report an error if it's intentional
             and not e.right_unreachable
         ):
@@ -4295,14 +4302,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
 
-        if left_map is None and right_map is None:
+        if left_impossible and right_impossible:
             return UninhabitedType()
 
-        if right_map is None:
+        if right_impossible:
             # The boolean expression is statically known to be the left value
             assert left_map is not None
             return left_type
-        if left_map is None:
+        if left_impossible:
             # The boolean expression is statically known to be the right value
             assert right_map is not None
             return right_type

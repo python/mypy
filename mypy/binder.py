@@ -152,7 +152,7 @@ class ConditionalTypeBinder:
         return f
 
     def _put(self, key: Key, type: Type, from_assignment: bool, index: int = -1) -> None:
-        if isinstance(type, UninhabitedType):
+        if isinstance(get_proper_type(type), UninhabitedType):
             self.frames[index].unreachable = True
         self.frames[index].types[key] = CurrentType(type, from_assignment)
 
