@@ -3548,7 +3548,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     allow_reverse=False,
                 )
             else:
-                assert_never(use_reverse)
+                # TODO: fix this bug with enum narrowing
+                # somehow the `use_reverse is UseReverse.ALWAYS` doesn't narrow.
+                assert_never(use_reverse)  # type: ignore[arg-type]
             e.method_type = method_type
             return result
         else:
