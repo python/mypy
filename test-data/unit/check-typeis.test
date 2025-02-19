@@ -819,6 +819,7 @@ accept_typeguard(typeguard)
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsInOverloads]
+# flags: --warn-unreachable
 from typing import Any, overload, Union
 from typing_extensions import TypeIs
 
@@ -843,13 +844,15 @@ def func3(val: Union[int, str]):
     if func1(val):
         reveal_type(val)  # N: Revealed type is "Union[builtins.int, builtins.str]"
     else:
-        reveal_type(val)
+        reveal_type(val)  # E: Statement is unreachable \
+                          # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 def func4(val: int):
     if func1(val):
         reveal_type(val)  # N: Revealed type is "builtins.int"
     else:
-        reveal_type(val)
+        reveal_type(val)  # E: Statement is unreachable \
+                          # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsInOverloadsSameReturn]
