@@ -140,10 +140,23 @@ def test_partition() -> None:
     with assertRaises(ValueError, "empty separator"):
         rpartition(s_partition, "")
 
+def contains(s: str, o: str) -> bool:
+    return o in s
+
 def getitem(s: str, index: int) -> str:
     return s[index]
 
 s = "abc"
+
+def test_contains() -> None:
+    assert contains(s, "a") is True
+    assert contains(s, "abc") is True
+    assert contains(s, "Hello") is False
+    assert contains(s, "bc") is True
+    assert contains(s, "abcd") is False
+    assert contains(s, "bb") is False
+    assert contains(s, "") is True
+    assert contains(s, " ") is False
 
 def test_getitem() -> None:
     assert getitem(s, 0) == "a"
