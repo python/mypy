@@ -459,7 +459,8 @@ def check_partial_list() -> None:
 # flags: --warn-unreachable
 
 if (x := 0):
-    reveal_type(x)  # E: Statement is unreachable
+    reveal_type(x)  # E: Statement is unreachable \
+                    # N: Revealed type is "builtins.int"
 else:
     reveal_type(x)  # N: Revealed type is "Literal[0]"
 
@@ -485,7 +486,8 @@ else:
 reveal_type(x)  # N: Revealed type is "builtins.str"
 
 if y := wrapper.always_false:
-    reveal_type(y)  # E: Statement is unreachable
+    reveal_type(y)  # N: Revealed type is "Never"
+    _ = "unreachable"  # E: Statement is unreachable
 else:
     reveal_type(y)  # N: Revealed type is "Literal[False]"
 
@@ -508,7 +510,8 @@ reveal_type(x)  # N: Revealed type is "builtins.str"
 def always_false() -> Literal[False]: ...
 
 if y := always_false():
-    reveal_type(y)  # E: Statement is unreachable
+    reveal_type(y)  # N: Revealed type is "Never"
+    _ = "unreachable"  # E: Statement is unreachable
 else:
     reveal_type(y)  # N: Revealed type is "Literal[False]"
 
@@ -517,7 +520,8 @@ reveal_type(y)  # N: Revealed type is "Literal[False]"
 def always_false_with_parameter(x: int) -> Literal[False]: ...
 
 if z := always_false_with_parameter(5):
-    reveal_type(z)  # E: Statement is unreachable
+    reveal_type(z)  # N: Revealed type is "Never"
+    _ = "unreachable"  # E: Statement is unreachable
 else:
     reveal_type(z)  # N: Revealed type is "Literal[False]"
 

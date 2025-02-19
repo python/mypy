@@ -3705,7 +3705,7 @@ reveal_type(mymap(f3, seq))  # N: Revealed type is "Union[typing.Iterable[builti
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeNoStrictOptional1]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --warn-unreachable
 from typing import overload, Union, NoReturn
 
 @overload
@@ -3730,13 +3730,14 @@ def test_narrow_int() -> None:
     c: str
     if int():
         c = narrow_int(c)
-        reveal_type(c)  # Note: branch is now dead, so no type is revealed
-                        # TODO: maybe we should make mypy report a warning instead?
+        reveal_type(c)  # N: Revealed type is "Never"
+        _ = "unreachable"  # E: Statement is unreachable
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional1]
+# flags: --warn-unreachable
 from typing import overload, Union, NoReturn
 
 @overload
@@ -3761,14 +3762,14 @@ def test_narrow_int() -> None:
     c: str
     if int():
         c = narrow_int(c)
-        reveal_type(c)  # Note: branch is now dead, so no type is revealed
-                        # TODO: maybe we should make mypy report a warning instead?
+        reveal_type(c)  # N: Revealed type is "Never"
+        _ = "unreachable"  # E: Statement is unreachable
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeNoStrictOptional2]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --warn-unreachable
 from typing import overload, Union, TypeVar, NoReturn, Optional
 
 T = TypeVar('T')
@@ -3794,12 +3795,14 @@ def test_narrow_none() -> None:
     c: None
     if int():
         c = narrow_none(c)
-        reveal_type(c)  # Note: branch is now dead, so no type is revealed
+        reveal_type(c)  # N: Revealed type is "Never"
+        _ = "unreachable"  # E: Statement is unreachable
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional2]
+# flags: --warn-unreachable
 from typing import overload, Union, TypeVar, NoReturn, Optional
 
 T = TypeVar('T')
@@ -3825,14 +3828,15 @@ def test_narrow_none() -> None:
     c: None
     if int():
         c = narrow_none(c)
-        reveal_type(c)  # Branch is now dead
+        reveal_type(c)  # N: Revealed type is "Never"
+        _ = "unreachable"  # E: Statement is unreachable
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
 
 
 [case testOverloadsAndNoReturnNarrowTypeNoStrictOptional3]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --warn-unreachable
 from typing import overload, TypeVar, NoReturn, Optional
 
 @overload
@@ -3857,12 +3861,14 @@ def test_narrow_none_v2() -> None:
     c: None
     if int():
         c = narrow_none_v2(c)
-        reveal_type(c)  # Note: branch is now dead, so no type is revealed
+        reveal_type(c)  # N: Revealed type is "Never"
+        _ = "unreachable"  # E: Statement is unreachable
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional3]
+# flags: --warn-unreachable
 from typing import overload, TypeVar, NoReturn, Optional
 
 @overload
@@ -3887,12 +3893,14 @@ def test_narrow_none_v2() -> None:
     c: None
     if int():
         c = narrow_none_v2(c)
-        reveal_type(c)  # Note: branch is now dead, so no type is revealed
+        reveal_type(c)  # N: Revealed type is "Never"
+        _ = "unreachable"  # E: Statement is unreachable
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype]
+# flags: --warn-unreachable
 from typing import TypeVar, NoReturn, Union, overload
 
 class Parent: ...
@@ -3917,12 +3925,14 @@ def test() -> None:
     val2: A
     if int():
         val2 = narrow_to_not_a(val2)
-        reveal_type(val2)  # Branch now dead
+        reveal_type(val2)  # N: Revealed type is "Never"
+        _ = "unreachable"  # E: Statement is unreachable
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2]
+# flags: --warn-unreachable
 from typing import TypeVar, NoReturn, Union, overload
 
 class Parent: ...
@@ -3945,7 +3955,8 @@ def test_v2(val: Union[A, B], val2: A) -> None:
 
     if int():
         val2 = narrow_to_not_a_v2(val2)
-        reveal_type(val2)  # Branch now dead
+        reveal_type(val2)  # N: Revealed type is "Never"
+        _ = "unreachable"  # E: Statement is unreachable
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
