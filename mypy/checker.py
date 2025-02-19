@@ -6289,8 +6289,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if_type = true_only(vartype)
         else_type = false_only(vartype)
-        if_map = {node: if_type} if not isinstance(if_type, UninhabitedType) else None
-        else_map = {node: else_type} if not isinstance(else_type, UninhabitedType) else None
+        if_map = {node: if_type}  # if not isinstance(if_type, UninhabitedType) else None
+        else_map = {node: else_type}  # if not isinstance(else_type, UninhabitedType) else None
         return if_map, else_map
 
     def comparison_type_narrowing_helper(self, node: ComparisonExpr) -> tuple[TypeMap, TypeMap]:

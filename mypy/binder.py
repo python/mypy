@@ -22,6 +22,7 @@ from mypy.types import (
     TypeOfAny,
     TypeType,
     TypeVarType,
+    UninhabitedType,
     UnionType,
     UnpackType,
     find_unpack_in_list,
@@ -151,6 +152,8 @@ class ConditionalTypeBinder:
         return f
 
     def _put(self, key: Key, type: Type, from_assignment: bool, index: int = -1) -> None:
+        if isinstance(type, UninhabitedType):
+            self.frames[index].unreachable = True
         self.frames[index].types[key] = CurrentType(type, from_assignment)
 
     def _get(self, key: Key, index: int = -1) -> CurrentType | None:
