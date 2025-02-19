@@ -378,6 +378,7 @@ while 2:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionTryFinally5]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -391,7 +392,7 @@ while 2:
     finally:
         x.b    # E: "A" has no attribute "b"
         break
-        x.b
+        _ = "unreachable"  # E: Statement is unreachable
     x.b
 
 [case testUnionTryFinally6]
@@ -722,6 +723,7 @@ x + [1]               # E: Unsupported operand types for + ("int" and "List[int]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceThreeUnion3]
+# flags: --warn-unreachable
 from typing import Union, List
 
 while bool():
@@ -731,11 +733,14 @@ while bool():
     if isinstance(x, int):
         x + 1
         break
-    elif isinstance(x, str):
-        x + 'a'
+    # TODO: only report unreachability once
+    # TODO: narrow x to Never
+    elif isinstance(x, str):  # E: Statement is unreachable  \
+                              # E: Subclass of "int" and "str" cannot exist: would have incompatible method signatures
+        _ = "unreachable"  # E: Statement is unreachable
+        x + 'a'  # E: Unsupported operand types for + ("int" and "str")
         break
-    x + [1]           # These lines aren't reached because x was an int
-    x + 'a'
+    _ = "unreachable"  # E: Statement is unreachable
 x + [1]               # E: Unsupported operand types for + ("int" and "List[int]") \
                       # E: Unsupported operand types for + ("str" and "List[int]") \
                       # N: Left operand is of type "Union[int, str, List[int]]"

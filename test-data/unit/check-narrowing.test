@@ -263,7 +263,9 @@ else:
     reveal_type(x)  # N: Revealed type is "Union[__main__.Object1, __main__.Object2]"
 
 if x.key is Key.D:
-    reveal_type(x)  # E: Statement is unreachable
+    # TODO: this should narrow to Never
+    reveal_type(x)  # E: Statement is unreachable  \
+                    # N: Revealed type is "Union[__main__.Object1, __main__.Object2]"
 else:
     reveal_type(x)  # N: Revealed type is "Union[__main__.Object1, __main__.Object2]"
 [builtins fixtures/tuple.pyi]
@@ -289,7 +291,8 @@ else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]"
 
 if x['key'] == 'D':
-    reveal_type(x)  # E: Statement is unreachable
+    reveal_type(x)  # E: Statement is unreachable  \
+                    # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]"
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]"
 [builtins fixtures/primitives.pyi]
@@ -316,7 +319,8 @@ else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 
 if x['key'] == 'D':
-    reveal_type(x)  # E: Statement is unreachable
+    reveal_type(x)  # E: Statement is unreachable  \
+                    # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 [builtins fixtures/primitives.pyi]
@@ -606,8 +610,9 @@ else:
 
 y: Union[Parent1, Parent2]
 if y["model"]["key"] is Key.C:
-    reveal_type(y)              # E: Statement is unreachable
-    reveal_type(y["model"])
+    reveal_type(y)              # E: Statement is unreachable \
+                                # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]}), 'bar': builtins.str})]"
+    reveal_type(y["model"])  # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})]"
 else:
     reveal_type(y)              # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]}), 'bar': builtins.str})]"
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})]"
@@ -642,8 +647,9 @@ else:
 
 y: Union[Parent1, Parent2]
 if y["model"]["key"] == 'C':
-    reveal_type(y)              # E: Statement is unreachable
-    reveal_type(y["model"])
+    reveal_type(y)              # E: Statement is unreachable \
+                                # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal['A']}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal['B']}), 'bar': builtins.str})]"
+    reveal_type(y["model"])  # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal['A']}), TypedDict('__main__.Model2', {'key': Literal['B']})]"
 else:
     reveal_type(y)              # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal['A']}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal['B']}), 'bar': builtins.str})]"
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal['A']}), TypedDict('__main__.Model2', {'key': Literal['B']})]"
@@ -721,7 +727,8 @@ def test2(switch: FlipFlopEnum) -> None:
     switch.mutate()
 
     assert switch.state == State.B     # E: Non-overlapping equality check (left operand type: "Literal[State.A]", right operand type: "Literal[State.B]")
-    reveal_type(switch.state)          # E: Statement is unreachable
+    reveal_type(switch.state)          # E: Statement is unreachable \
+                                       # N: Revealed type is "Literal[__main__.State.A]"
 
 def test3(switch: FlipFlopEnum) -> None:
     # Same thing, but using 'is' comparisons. Previously mypy's behaviour differed
@@ -733,7 +740,8 @@ def test3(switch: FlipFlopEnum) -> None:
     switch.mutate()
 
     assert switch.state is State.B     # E: Non-overlapping identity check (left operand type: "Literal[State.A]", right operand type: "Literal[State.B]")
-    reveal_type(switch.state)          # E: Statement is unreachable
+    reveal_type(switch.state)          # E: Statement is unreachable \
+                                       # N: Revealed type is "Literal[__main__.State.A]"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitStrLiteral]
@@ -893,8 +901,9 @@ else:
 
 # No contamination here
 if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Optional[Literal[1, 2]]", right operand type: "Default")
-    reveal_type(x)   # E: Statement is unreachable
-    reveal_type(z)
+    reveal_type(x)   # E: Statement is unreachable \
+                     # N: Revealed type is "Union[Literal[1], Literal[2], None]"
+    reveal_type(z)  # N: Revealed type is "__main__.Default"
 else:
     reveal_type(x)   # N: Revealed type is "Union[Literal[1], Literal[2], None]"
     reveal_type(z)   # N: Revealed type is "__main__.Default"
@@ -909,9 +918,10 @@ b: Literal[1, 2]
 c: Literal[2, 3]
 
 if a == b == c:
-    reveal_type(a)  # E: Statement is unreachable
-    reveal_type(b)
-    reveal_type(c)
+    reveal_type(a)  # E: Statement is unreachable \
+                    # N: Revealed type is "Literal[1]"
+    reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
+    reveal_type(c)  # N: Revealed type is "Union[Literal[2], Literal[3]]"
 else:
     reveal_type(a)  # N: Revealed type is "Literal[1]"
     reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
@@ -920,7 +930,8 @@ else:
 if a == a == a:
     reveal_type(a)  # N: Revealed type is "Literal[1]"
 else:
-    reveal_type(a)  # E: Statement is unreachable
+    reveal_type(a)  # E: Statement is unreachable \
+                    # N: Revealed type is "Literal[1]"
 
 if a == a == b:
     reveal_type(a)  # N: Revealed type is "Literal[1]"
@@ -982,8 +993,9 @@ elif a == a == 4:
 else:
     # In contrast, this branch must be unreachable: we assume (maybe naively)
     # that 'a' won't be mutated in the middle of the expression.
-    reveal_type(a)  # E: Statement is unreachable
-    reveal_type(b)
+    reveal_type(a)  # E: Statement is unreachable \
+                    # N: Revealed type is "Literal[4]"
+    reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3], Literal[4]]"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingLiteralTruthiness]
@@ -1038,21 +1050,25 @@ f1: F1
 if isinstance(f1, F1):
     reveal_type(f1)  # N: Revealed type is "__main__.F1"
 else:
-    reveal_type(f1)  # E: Statement is unreachable
+    reveal_type(f1)  # E: Statement is unreachable \
+                     # N: Revealed type is "__main__.F1"
 
 if isinstance(n, F1):  # E: Subclass of "N" and "F1" cannot exist: "F1" is final
-    reveal_type(n)  # E: Statement is unreachable
+    reveal_type(n)  # E: Statement is unreachable \
+                    # N: Revealed type is "__main__.N"
 else:
     reveal_type(n)  # N: Revealed type is "__main__.N"
 
 if isinstance(f1, N):  # E: Subclass of "F1" and "N" cannot exist: "F1" is final
-    reveal_type(f1)  # E: Statement is unreachable
+    reveal_type(f1)  # E: Statement is unreachable \
+                     # N: Revealed type is "__main__.F1"
 else:
     reveal_type(f1)  # N: Revealed type is "__main__.F1"
 
 if isinstance(f1, F2):  # E: Subclass of "F1" and "F2" cannot exist: "F1" is final \
                         # E: Subclass of "F1" and "F2" cannot exist: "F2" is final
-    reveal_type(f1)  # E: Statement is unreachable
+    reveal_type(f1)  # E: Statement is unreachable \
+                     # N: Revealed type is "__main__.F1"
 else:
     reveal_type(f1)  # N: Revealed type is "__main__.F1"
 [builtins fixtures/isinstance.pyi]
@@ -1081,7 +1097,8 @@ else:
 if isinstance(n_f2, F1):  # E: Subclass of "N" and "F1" cannot exist: "F1" is final \
                           # E: Subclass of "F2" and "F1" cannot exist: "F2" is final \
                           # E: Subclass of "F2" and "F1" cannot exist: "F1" is final
-    reveal_type(n_f2)  # E: Statement is unreachable
+    reveal_type(n_f2)  # E: Statement is unreachable \
+                       # N: Revealed type is "Union[__main__.N, __main__.F2]"
 else:
     reveal_type(n_f2)  # N: Revealed type is "Union[__main__.N, __main__.F2]"
 
@@ -1106,10 +1123,11 @@ T = TypeVar("T", A, B)
 
 def f(cls: Type[T]) -> T:
     if issubclass(cls, A):
-        reveal_type(cls)  # N: Revealed type is "Type[__main__.A]"
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.A]" \
+                          # N: Revealed type is "Type[__main__.B]"
         x: bool
         if x:
-            return A()
+            return A()  # E: Incompatible return value type (got "A", expected "B")
         else:
             return B()  # E: Incompatible return value type (got "B", expected "A")
     assert False
@@ -1325,7 +1343,7 @@ def unreachable(x: Union[str, List[str]]) -> None:
     elif isinstance(x, list):
         reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
     else:
-        reveal_type(x)  # No output: this branch is unreachable
+        reveal_type(x)  # No output: this branch is unreachable  # N: Revealed type is "builtins.list[builtins.str]"
 
 def all_parts_covered(x: Union[str, List[str], List[int], int]) -> None:
     if isinstance(x, str):
@@ -1645,12 +1663,14 @@ from typing import Tuple, Union
 
 x: Union[Tuple[int, int], Tuple[int, int, int]]
 if len(x) >= 4:
-    reveal_type(x) # E: Statement is unreachable
+    reveal_type(x) # E: Statement is unreachable \
+                   # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
 else:
     reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
 
 if len(x) < 2:
-    reveal_type(x) # E: Statement is unreachable
+    reveal_type(x) # E: Statement is unreachable \
+                   # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
 else:
     reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/len.pyi]
@@ -1728,23 +1748,27 @@ from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple("Ts")
 def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
     if len(x) == 1:
-        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 
     if len(x) != 1:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
-        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 
 def bar(x: Tuple[int, Unpack[Ts], str]) -> None:
     if len(x) >= 2:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
-        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 
     if len(x) < 2:
-        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 [builtins fixtures/len.pyi]
@@ -1790,23 +1814,27 @@ from typing_extensions import Unpack
 
 def foo(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
     if len(x) == 1:
-        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
     else:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 
     if len(x) != 1:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
     else:
-        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 
 def bar(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
     if len(x) >= 2:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
     else:
-        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 
     if len(x) < 2:
-        reveal_type(x)  # E: Statement is unreachable
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
     else:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 [builtins fixtures/len.pyi]
@@ -2081,7 +2109,9 @@ if isinstance(x, (Y, Z, NoneType)):
     reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
 if isinstance(x, (Z, NoneType)):  # E: Subclass of "X" and "Z" cannot exist: "Z" is final \
                                   # E: Subclass of "X" and "NoneType" cannot exist: "NoneType" is final
-    reveal_type(x)  # E: Statement is unreachable
+    reveal_type(x)  # E: Statement is unreachable \
+                    # N: Revealed type is "__main__.X"
+
 
 [builtins fixtures/isinstance.pyi]
 
