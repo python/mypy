@@ -33,12 +33,18 @@ Methods
 * ``s.encode(encoding: str, errors: str)``
 * ``s1.endswith(s2: str)``
 * ``s1.endswith(t: tuple[str, ...])``
+* ``s1.find(s2: str)``
+* ``s1.find(s2: str, start: int)``
+* ``s1.find(s2: str, start: int, end: int)``
 * ``s.join(x: Iterable)``
 * ``s.partition(sep: str)``
 * ``s.removeprefix(prefix: str)``
 * ``s.removesuffix(suffix: str)``
 * ``s.replace(old: str, new: str)``
 * ``s.replace(old: str, new: str, count: int)``
+* ``s1.rfind(s2: str)``
+* ``s1.rfind(s2: str, start: int)``
+* ``s1.rfind(s2: str, start: int, end: int)``
 * ``s.rpartition(sep: str)``
 * ``s.rsplit()``
 * ``s.rsplit(sep: str)``

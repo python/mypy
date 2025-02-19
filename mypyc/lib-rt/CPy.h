@@ -720,6 +720,8 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
+CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction);
+CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace);

@@ -133,6 +133,29 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
     return res;
 }
 
+CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction) {
+    CPyTagged end = PyUnicode_GET_LENGTH(str) << 1;
+    return CPyStr_FindWithEnd(str, substr, start, end, direction);
+}
+
+CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction) {
+    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
+    if (temp_start == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return CPY_INT_TAG;
+    }
+    Py_ssize_t temp_end = CPyTagged_AsSsize_t(end);
+    if (temp_end == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return CPY_INT_TAG;
+    }
+    Py_ssize_t index = PyUnicode_Find(str, substr, temp_start, temp_end, direction);
+    if (unlikely(index == -2)) {
+        return CPY_INT_TAG;
+    }
+    return index << 1;
+}
+
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split) {
     Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
     if (temp_max_split == -1 && PyErr_Occurred()) {

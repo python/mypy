@@ -146,6 +146,20 @@ def contains(s: str, o: str) -> bool:
 def getitem(s: str, index: int) -> str:
     return s[index]
 
+def find(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
+    if start is not None:
+        if end is not None:
+            return s.find(substr, start, end)
+        return s.find(substr, start)
+    return s.find(substr)
+
+def rfind(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
+    if start is not None:
+        if end is not None:
+            return s.rfind(substr, start, end)
+        return s.rfind(substr, start)
+    return s.rfind(substr)
+
 s = "abc"
 
 def test_contains() -> None:
@@ -169,6 +183,26 @@ def test_getitem() -> None:
         getitem(s, 4)
     with assertRaises(IndexError, "string index out of range"):
         getitem(s, -4)
+
+def test_find() -> None:
+    s = "abcab"
+    assert find(s, "Hello") == -1
+    assert find(s, "abc") == 0
+    assert find(s, "b") == 1
+    assert find(s, "b", 1) == 1
+    assert find(s, "b", 1, 2) == 1
+    assert find(s, "b", 3) == 4
+    assert find(s, "b", 3, 5) == 4
+    assert find(s, "b", 3, 4) == -1
+
+    assert rfind(s, "Hello") == -1
+    assert rfind(s, "abc") == 0
+    assert rfind(s, "b") == 4
+    assert rfind(s, "b", 1) == 4
+    assert rfind(s, "b", 1, 2) == 1
+    assert rfind(s, "b", 3) == 4
+    assert rfind(s, "b", 3, 5) == 4
+    assert rfind(s, "b", 3, 4) == -1
 
 def str_to_int(s: str, base: Optional[int] = None) -> int:
     if base:
