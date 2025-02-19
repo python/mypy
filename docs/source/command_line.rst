@@ -81,6 +81,10 @@ for full details, see :ref:`running-mypy`.
     never recursively discover files with extensions other than ``.py`` or
     ``.pyi``.
 
+.. option:: --exclude-gitignore
+
+    This flag will add everything that matches ``.gitignore`` file(s) to :option:`--exclude`.
+
 
 Optional arguments
 ******************

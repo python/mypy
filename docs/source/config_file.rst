@@ -288,6 +288,14 @@ section of the command line docs.
 
        See :ref:`using-a-pyproject-toml`.
 
+.. confval:: exclude_gitignore
+
+    :type: boolean
+    :default: False
+
+    This flag will add everything that matches ``.gitignore`` file(s) to :confval:`exclude`.
+    This option may only be set in the global section (``[mypy]``).
+
 .. confval:: namespace_packages
 
     :type: boolean
