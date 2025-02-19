@@ -5417,7 +5417,7 @@ tmp/c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 [out2]
 tmp/c.py:2: note: Revealed type is "a.A"
 
-[case testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection]
+[case testIsInstanceAdHocIntersectionIncrementalUnreachableToIntersection]
 import c
 [file a.py]
 class A:
