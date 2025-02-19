@@ -2837,7 +2837,7 @@ w: Union[Truth, AlsoTruth]
 if w:
     reveal_type(w)  # N: Revealed type is "Union[__main__.Truth, __main__.AlsoTruth]"
 else:
-    reveal_type(w)  # E: Statement is unreachable
+    _ = "unreachable"  # E: Statement is unreachable
 
 [builtins fixtures/bool.pyi]
 
