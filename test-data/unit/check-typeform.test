@@ -515,9 +515,10 @@ reveal_type(as_instance(int))  # N: Revealed type is "Union[builtins.int, None]"
 
 [case testLinkTypeFormToTypeIsWithTypeVariable]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing import TypeForm, TypeVar
 from typing_extensions import TypeIs
-def isassignable[T](value: object, typx: TypeForm[T]) -> TypeIs[T]:
+T = TypeVar('T')
+def isassignable(value: object, typx: TypeForm[T]) -> TypeIs[T]:
     raise BaseException()
 count: int | str = 1
 if isassignable(count, int):
@@ -529,9 +530,10 @@ else:
 
 [case testLinkTypeFormToTypeGuardWithTypeVariable]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
-from typing import TypeForm
+from typing import TypeForm, TypeVar
 from typing_extensions import TypeGuard
-def isassignable[T](value: object, typx: TypeForm[T]) -> TypeGuard[T]:
+T = TypeVar('T')
+def isassignable(value: object, typx: TypeForm[T]) -> TypeGuard[T]:
     raise BaseException()
 count: int | str = 1
 if isassignable(count, int):
