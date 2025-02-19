@@ -1714,6 +1714,7 @@ if isinstance(x, Iterable):
 [typing fixtures/typing-full.pyi]
 
 [case testConcreteClassesInProtocolsIsInstance]
+# flags: --warn-unreachable
 from typing import Protocol, runtime_checkable, TypeVar, Generic
 
 T = TypeVar('T')
@@ -1742,25 +1743,29 @@ c = C()
 if isinstance(c, P1):
     reveal_type(c) # N: Revealed type is "__main__.C"
 else:
-    reveal_type(c) # Unreachable
+    reveal_type(c)  # E: Statement is unreachable \
+                    # N: Revealed type is "__main__.C"
 if isinstance(c, P):
     reveal_type(c) # N: Revealed type is "__main__.C"
 else:
-    reveal_type(c) # Unreachable
+    reveal_type(c)  # E: Statement is unreachable \
+                    # N: Revealed type is "__main__.C"
 
 c1i: C1[int]
 if isinstance(c1i, P1):
     reveal_type(c1i) # N: Revealed type is "__main__.C1[builtins.int]"
 else:
-    reveal_type(c1i) # Unreachable
+    reveal_type(c1i)  # E: Statement is unreachable \
+                      # N: Revealed type is "__main__.C1[builtins.int]"
 if isinstance(c1i, P):
     reveal_type(c1i) # N: Revealed type is "__main__.<subclass of "__main__.C1[builtins.int]" and "__main__.P">"
 else:
     reveal_type(c1i) # N: Revealed type is "__main__.C1[builtins.int]"
 
 c1s: C1[str]
-if isinstance(c1s, P1):
-    reveal_type(c1s) # Unreachable
+if isinstance(c1s, P1):  # E: Subclass of "C1[str]" and "P1" cannot exist: would have incompatible method signatures
+    reveal_type(c1s)  # E: Statement is unreachable \
+                      # N: Revealed type is "__main__.C1[builtins.str]"
 else:
     reveal_type(c1s) # N: Revealed type is "__main__.C1[builtins.str]"
 

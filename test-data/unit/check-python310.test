@@ -26,12 +26,14 @@ match m:
 [builtins fixtures/primitives.pyi]
 
 [case testMatchLiteralPatternUnreachable]
+# flags: --warn-unreachable
 # primitives are needed because otherwise mypy doesn't see that int and str are incompatible
 m: int
 
 match m:
     case "str":
-        reveal_type(m)
+        reveal_type(m)  # E: Statement is unreachable \
+                        # N: Revealed type is "builtins.int"
 [builtins fixtures/primitives.pyi]
 
 -- Value Pattern --
@@ -70,14 +72,16 @@ class B: ...
 b: B
 
 [case testMatchValuePatternUnreachable]
+# flags: --warn-unreachable
 # primitives are needed because otherwise mypy doesn't see that int and str are incompatible
 import b
 
 m: int
 
 match m:
-    case b.b:
-        reveal_type(m)
+    case b.b:  # E: Subclass of "int" and "str" cannot exist: would have incompatible method signatures
+        reveal_type(m)  # E: Statement is unreachable \
+                        # N: Revealed type is "builtins.int"
 [file b.py]
 b: str
 [builtins fixtures/primitives.pyi]
@@ -169,6 +173,7 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternMatches]
+# flags: --warn-unreachable
 import array, collections
 from typing import Sequence, Iterable
 
@@ -219,15 +224,21 @@ match m8:
 
 match m9:
     case [i]:
-        reveal_type(i)
+        reveal_type(i)  # E: Statement is unreachable \
+                        # E: Cannot determine type of "i" \
+                        # N: Revealed type is "Any"
 
 match m10:
     case [j]:
-        reveal_type(j)
+        reveal_type(j)  # E: Statement is unreachable \
+                        # E: Cannot determine type of "j" \
+                        # N: Revealed type is "Any"
 
 match m11:
     case [k]:
-        reveal_type(k)
+        reveal_type(k)  # E: Statement is unreachable \
+                        # E: Cannot determine type of "k" \
+                        # N: Revealed type is "Any"
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -244,24 +255,33 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleTooLong]
+# flags: --warn-unreachable
 from typing import Tuple
 m: Tuple[int, str]
 
 match m:
     case [a, b, c]:
-        reveal_type(a)
-        reveal_type(b)
-        reveal_type(c)
+        reveal_type(a)  # E: Statement is unreachable \
+                        # E: Cannot determine type of "a" \
+                        # N: Revealed type is "Any"
+        reveal_type(b)  # E: Cannot determine type of "b" \
+                        # N: Revealed type is "Any"
+        reveal_type(c)  # E: Cannot determine type of "c" \
+                        # N: Revealed type is "Any"
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleTooShort]
+# flags: --warn-unreachable
 from typing import Tuple
 m: Tuple[int, str, bool]
 
 match m:
     case [a, b]:
-        reveal_type(a)
-        reveal_type(b)
+        reveal_type(a)  # E: Statement is unreachable \
+                        # E: Cannot determine type of "a" \
+                        # N: Revealed type is "Any"
+        reveal_type(b)  # E: Cannot determine type of "b" \
+                        # N: Revealed type is "Any"
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleNarrows]
@@ -298,15 +318,20 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleStarredTooShort]
+# flags: --warn-unreachable
 from typing import Tuple
 m: Tuple[int]
 reveal_type(m)  # N: Revealed type is "Tuple[builtins.int]"
 
 match m:
     case [a, *b, c]:
-        reveal_type(a)
-        reveal_type(b)
-        reveal_type(c)
+        reveal_type(a)  # E: Statement is unreachable \
+                        # E: Cannot determine type of "a" \
+                        # N: Revealed type is "Any"
+        reveal_type(b)  # E: Cannot determine type of "b" \
+                        # N: Revealed type is "Any"
+        reveal_type(c)  # E: Cannot determine type of "c" \
+                        # N: Revealed type is "Any"
 [builtins fixtures/list.pyi]
 
 [case testMatchNonMatchingSequencePattern]
@@ -505,6 +530,7 @@ a: str
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMatchMappingPatternCapturesTypedDictUnreachable]
+# flags: --warn-unreachable
 # TypedDict keys are always str, so this is actually unreachable
 from typing import TypedDict
 import b
@@ -517,9 +543,11 @@ m: A
 
 match m:
     case {1: v}:
-        reveal_type(v)
+        reveal_type(v)  # E: Statement is unreachable \
+                        # N: Revealed type is "builtins.object"
     case {b.b: v2}:
-        reveal_type(v2)
+        reveal_type(v2)  # E: Statement is unreachable \
+                         # N: Revealed type is "builtins.object"
 [file b.py]
 b: int
 [typing fixtures/typing-typeddict.pyi]
@@ -831,6 +859,7 @@ match m:
         reveal_type(i)  # N: Revealed type is "builtins.int"
 
 [case testMatchClassPatternCaptureFilledGenericTypeAlias]
+# flags: --warn-unreachable
 from typing import Generic, TypeVar
 
 T = TypeVar('T')
@@ -844,7 +873,9 @@ m: object
 
 match m:
     case B(a=i):  # E: Class pattern class must not be a type alias with type parameters
-        reveal_type(i)
+        reveal_type(i)  # E: Statement is unreachable \
+                        # E: Cannot determine type of "i" \
+                        # N: Revealed type is "Any"
 
 [case testMatchClassPatternCaptureGenericTypeAlias]
 from typing import Generic, TypeVar
@@ -1003,13 +1034,17 @@ match m:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternIsNotType]
+# flags: --warn-unreachable
 a = 1
 m: object
 
 match m:
     case a(i, j):  # E: Expected type in class pattern; found "builtins.int"
-        reveal_type(i)
-        reveal_type(j)
+        reveal_type(i)  # E: Statement is unreachable \
+                        # E: Cannot determine type of "i" \
+                        # N: Revealed type is "Any"
+        reveal_type(j)  # E: Cannot determine type of "j" \
+                        # N: Revealed type is "Any"
 
 [case testMatchClassPatternAny]
 from typing import Any
@@ -1288,11 +1323,13 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.str"
 
 [case testMatchAlwaysFalsePatternGuard]
+# flags: --warn-unreachable
 m: str
 
 match m:
     case a if False:
-        reveal_type(a)
+        reveal_type(a)  # E: Statement is unreachable \
+                        # N: Revealed type is "builtins.str"
 
 [case testMatchRedefiningPatternGuard]
 m: str
@@ -1328,11 +1365,13 @@ match m:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMatchUnreachablePatternGuard]
+# flags: --warn-unreachable
 m: str
 
 match m:
-    case a if isinstance(a, int):
-        reveal_type(a)
+    case a if isinstance(a, int):  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+        reveal_type(a)  # E: Statement is unreachable \
+                        # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 -- Exhaustiveness --
@@ -1453,7 +1492,7 @@ def f(value: Literal[1] | Literal[2]) -> int:
         case 2:
             return 1
         case o:
-            assert_never(o)
+            assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "Literal[2]"; expected "Never"
 [typing fixtures/typing-medium.pyi]
 
 [case testMatchSequencePatternNegativeNarrowing]
@@ -1527,7 +1566,7 @@ def f(m: Medal) -> None:
             always_assigned = 1
             reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
         case _:
-            assert_never(m)
+            assert_never(m)  # E: Argument 1 to "assert_never" has incompatible type "Medal"; expected "Never"
 
     reveal_type(always_assigned)  # N: Revealed type is "builtins.int"
 [builtins fixtures/bool.pyi]
@@ -1593,7 +1632,7 @@ match m:
     case Medal.bronze:
         reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
     case _ as unreachable:
-        assert_never(unreachable)
+        assert_never(unreachable)  # E: Argument 1 to "assert_never" has incompatible type "Literal[Medal.bronze]"; expected "Never"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1613,7 +1652,7 @@ match m:
     case Medal.bronze:
         reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
     case _ as unreachable:
-        assert_never(unreachable)
+        assert_never(unreachable)  # E: Argument 1 to "assert_never" has incompatible type "Literal[Medal.bronze]"; expected "Never"
 [builtins fixtures/enum.pyi]
 
 [case testMatchLiteralPatternEnumCustomEquals-skip]
@@ -2297,6 +2336,7 @@ def f4(e: int | str | bytes) -> int:
 [builtins fixtures/primitives.pyi]
 
 [case testMatchSequencePatternVariadicTupleNotTooShort]
+# flags: --warn-unreachable
 from typing import Tuple
 from typing_extensions import Unpack
 
@@ -2310,8 +2350,11 @@ match fm1:
 fm2: Tuple[int, int, Unpack[Tuple[str, ...]], int]
 match fm2:
     case [fa2, fb2]:
-        reveal_type(fa2)
-        reveal_type(fb2)
+        reveal_type(fa2)  # E: Statement is unreachable \
+                          # E: Cannot determine type of "fa2" \
+                          # N: Revealed type is "Any"
+        reveal_type(fb2)  # E: Cannot determine type of "fb2" \
+                          # N: Revealed type is "Any"
 
 fm3: Tuple[int, int, Unpack[Tuple[str, ...]], int]
 match fm3:
@@ -2347,6 +2390,7 @@ match m3:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSequencePatternTypeVarTupleNotTooShort]
+# flags: --warn-unreachable
 from typing import Tuple
 from typing_extensions import Unpack, TypeVarTuple
 
@@ -2362,8 +2406,11 @@ def test(xs: Tuple[Unpack[Ts]]) -> None:
     fm2: Tuple[int, int, Unpack[Ts], int]
     match fm2:
         case [fa2, fb2]:
-            reveal_type(fa2)
-            reveal_type(fb2)
+            reveal_type(fa2)  # E: Statement is unreachable \
+                              # E: Cannot determine type of "fa2" \
+                              # N: Revealed type is "Any"
+            reveal_type(fb2)  # E: Cannot determine type of "fb2" \
+                              # N: Revealed type is "Any"
 
     fm3: Tuple[int, int, Unpack[Ts], int]
     match fm3:
