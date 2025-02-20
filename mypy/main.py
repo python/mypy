@@ -95,7 +95,7 @@ def main(
 
     if options.allow_redefinition_new and not options.local_partial_types:
         fail(
-            "error: --local-partial-types must be used if using --allow-redefinition-new",
+            "error: --local-partial-types must be enabled if using --allow-redefinition-new",
             stderr,
             options,
         )

@@ -4321,9 +4321,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(lvalue, NameExpr):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
             if (
-                isinstance(lvalue.node, Var)
+                self.options.allow_redefinition_new
+                and isinstance(lvalue.node, Var)
                 and lvalue.node.is_inferred
-                and self.options.allow_redefinition_new
             ):
                 inferred = lvalue.node
             self.store_type(lvalue, lvalue_type)
@@ -4406,6 +4406,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(init_type, NoneType) and (
             isinstance(lvalue, MemberExpr) or not self.options.allow_redefinition_new
         ):
+            # When using --allow-redefinition-new, None types aren't special
+            # when inferring simple variable types.
             partial_type = PartialType(None, name)
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname
@@ -4782,9 +4784,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def replace_partial_type(
         self, var: Var, new_type: Type, partial_types: dict[Var, Context]
     ) -> None:
+        """Replace the partial type of var with a non-partial type."""
         var.type = new_type
         del partial_types[var]
         if self.options.allow_redefinition_new:
+            # When using --allow-redefinition-new, binder tracks all types of
+            # simple variables.
             n = NameExpr(var.name)
             n.node = var
             self.binder.assign_type(n, new_type, new_type)
