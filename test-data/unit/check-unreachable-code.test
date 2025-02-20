@@ -624,9 +624,9 @@ class Child(Parent):
     def foo(self) -> int:
         reveal_type(self)       # N: Revealed type is "__main__.Child"
         if self is None:
-            reveal_type(self)  # N: Revealed type is "Never"
-            return None  # E: Statement is unreachable \
-                         # E: Incompatible return value type (got "None", expected "int")
+            reveal_type(self)  # E: Statement is unreachable \
+                               # N: Revealed type is "Never"
+            return None  # E: Incompatible return value type (got "None", expected "int")
         reveal_type(self)       # N: Revealed type is "__main__.Child"
         return 3
 
@@ -635,9 +635,9 @@ class Child(Parent):
             self = super(Child, self).something()
             reveal_type(self)       # N: Revealed type is "__main__.Child"
             if self is None:
-                reveal_type(self)  # N: Revealed type is "Never"
-                return None  # E: Statement is unreachable \
-                             # E: Incompatible return value type (got "None", expected "int")
+                reveal_type(self)  # E: Statement is unreachable \
+                                   # N: Revealed type is "Never"
+                return None  # E: Incompatible return value type (got "None", expected "int")
             reveal_type(self)       # N: Revealed type is "__main__.Child"
             return 3
 [builtins fixtures/isinstance.pyi]
@@ -719,7 +719,8 @@ a: int
 if isinstance(a, int):
     reveal_type(a)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(a)  # N: Revealed type is "Never"
+    reveal_type(a)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagWithBadControlFlow2]
@@ -728,7 +729,8 @@ b: int
 while isinstance(b, int):
     reveal_type(b)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(b)  # N: Revealed type is "Never"
+    reveal_type(b)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagWithBadControlFlow3]
@@ -736,7 +738,8 @@ else:
 def foo(c: int) -> None:
     reveal_type(c)  # N: Revealed type is "builtins.int"
     assert not isinstance(c, int)
-    reveal_type(c)  # N: Revealed type is "Never"
+    reveal_type(c)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagWithBadControlFlow4]
@@ -971,7 +974,8 @@ def test1(x: T1) -> T1:
     if isinstance(x, int):
         reveal_type(x)  # N: Revealed type is "T1`-1"
     else:
-        reveal_type(x)  # N: Revealed type is "Never"
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
     return x
 
 def test2(x: T2) -> T2:

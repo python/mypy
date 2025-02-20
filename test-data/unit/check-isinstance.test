@@ -1369,9 +1369,9 @@ x = B()
 if isinstance(x, A):
     reveal_type(x)  # N: Revealed type is "__main__.B"
 if not isinstance(x, A):
-    reveal_type(x)  # N: Revealed type is "Never"
-    x = A()  # E: Statement is unreachable \
-             # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    reveal_type(x)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
+    x = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 reveal_type(x)  # N: Revealed type is "__main__.B"
 [builtins fixtures/isinstance.pyi]
 
@@ -1888,7 +1888,8 @@ def f(x: Type[int]) -> None:
     if isinstance(x, type):
         reveal_type(x) # N: Revealed type is "Type[builtins.int]"
     else:
-        reveal_type(x)  # N: Revealed type is "Never"
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
     reveal_type(x) # N: Revealed type is "Type[builtins.int]"
 [builtins fixtures/isinstance.pyi]
 
@@ -2388,7 +2389,8 @@ class C:
 class Example(A, B): pass  # E: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 x: A
 if isinstance(x, B):  # E: Subclass of "A" and "B" cannot exist: would have incompatible method signatures
-    reveal_type(x)    # N: Revealed type is "Never"
+    reveal_type(x)    # E: Statement is unreachable \
+                      # N: Revealed type is "Never"
 else:
     reveal_type(x)    # N: Revealed type is "__main__.A"
 
@@ -2396,7 +2398,8 @@ y: C
 if isinstance(y, B):
     reveal_type(y)        # N: Revealed type is "__main__.<subclass of "__main__.C" and "__main__.B">"
     if isinstance(y, A):  # E: Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
-        reveal_type(y)    # N: Revealed type is "Never"
+        reveal_type(y)    # E: Statement is unreachable \
+                          # N: Revealed type is "Never"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionReversed]
@@ -2462,7 +2465,8 @@ class B:
 
 x: A[int]
 if isinstance(x, B):    # E: Subclass of "A[int]" and "B" cannot exist: would have incompatible method signatures
-    reveal_type(x)      # N: Revealed type is "Never"
+    reveal_type(x)      # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
 else:
     reveal_type(x)      # N: Revealed type is "__main__.A[builtins.int]"
 
@@ -2640,7 +2644,8 @@ class B(Y, X): pass
 
 foo: A
 if isinstance(foo, B):  # E: Subclass of "A" and "B" cannot exist: would have inconsistent method resolution order
-    reveal_type(foo)    # N: Revealed type is "Never"
+    reveal_type(foo)    # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionAmbiguousClass]

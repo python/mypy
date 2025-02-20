@@ -173,6 +173,7 @@ from mypy.types import (
     ANY_STRATEGY,
     MYPYC_NATIVE_INT_NAMES,
     OVERLOAD_NAMES,
+    REVEAL_TYPE_NAMES,
     AnyType,
     BoolTypeQuery,
     CallableType,
@@ -3081,7 +3082,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(s, ExpressionStmt):
             if isinstance(s.expr, EllipsisExpr):
                 return True
-            elif isinstance(s.expr, CallExpr):
+            elif isinstance(s.expr, CallExpr) and not refers_to_fullname(
+                s.expr.callee, REVEAL_TYPE_NAMES
+            ):
                 with self.expr_checker.msg.filter_errors():
                     typ = get_proper_type(
                         self.expr_checker.accept(

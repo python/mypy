@@ -3730,8 +3730,8 @@ def test_narrow_int() -> None:
     c: str
     if int():
         c = narrow_int(c)
-        reveal_type(c)  # N: Revealed type is "Never"
-        _ = "unreachable"  # E: Statement is unreachable
+        reveal_type(c)  # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3762,8 +3762,8 @@ def test_narrow_int() -> None:
     c: str
     if int():
         c = narrow_int(c)
-        reveal_type(c)  # N: Revealed type is "Never"
-        _ = "unreachable"  # E: Statement is unreachable
+        reveal_type(c)  # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3795,8 +3795,8 @@ def test_narrow_none() -> None:
     c: None
     if int():
         c = narrow_none(c)
-        reveal_type(c)  # N: Revealed type is "Never"
-        _ = "unreachable"  # E: Statement is unreachable
+        reveal_type(c)  # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3828,8 +3828,8 @@ def test_narrow_none() -> None:
     c: None
     if int():
         c = narrow_none(c)
-        reveal_type(c)  # N: Revealed type is "Never"
-        _ = "unreachable"  # E: Statement is unreachable
+        reveal_type(c)  # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3861,8 +3861,8 @@ def test_narrow_none_v2() -> None:
     c: None
     if int():
         c = narrow_none_v2(c)
-        reveal_type(c)  # N: Revealed type is "Never"
-        _ = "unreachable"  # E: Statement is unreachable
+        reveal_type(c)  # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3893,8 +3893,8 @@ def test_narrow_none_v2() -> None:
     c: None
     if int():
         c = narrow_none_v2(c)
-        reveal_type(c)  # N: Revealed type is "Never"
-        _ = "unreachable"  # E: Statement is unreachable
+        reveal_type(c)  # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3925,8 +3925,8 @@ def test() -> None:
     val2: A
     if int():
         val2 = narrow_to_not_a(val2)
-        reveal_type(val2)  # N: Revealed type is "Never"
-        _ = "unreachable"  # E: Statement is unreachable
+        reveal_type(val2)  # E: Statement is unreachable \
+                           # N: Revealed type is "Never"
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3955,8 +3955,8 @@ def test_v2(val: Union[A, B], val2: A) -> None:
 
     if int():
         val2 = narrow_to_not_a_v2(val2)
-        reveal_type(val2)  # N: Revealed type is "Never"
-        _ = "unreachable"  # E: Statement is unreachable
+        reveal_type(val2)  # E: Statement is unreachable \
+                           # N: Revealed type is "Never"
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
