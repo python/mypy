@@ -888,9 +888,8 @@ elif x is Foo.B:
 elif x is Foo.C:
     reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.C]"
 else:
-    # TODO: this should narrow to Never
-    reveal_type(x)  # E: Statement is unreachable  \
-                    # N: Revealed type is "Literal[__main__.Foo.C]"
+    reveal_type(x)  # N: Revealed type is "Never"
+    _ = "unreachable"  # E: Statement is unreachable
 reveal_type(x) # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
 
 if Foo.A is x:
@@ -900,8 +899,8 @@ elif Foo.B is x:
 elif Foo.C is x:
     reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.C]"
 else:
-    reveal_type(x)  # E: Statement is unreachable  \
-                    # N: Revealed type is "Literal[__main__.Foo.C]"
+    reveal_type(x)  # N: Revealed type is "Never"
+    _ = "unreachable"  # E: Statement is unreachable
 reveal_type(x) # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
 
 y: Foo
@@ -912,8 +911,7 @@ elif y is Foo.B:
 elif y is Foo.C:
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.C]"
 else:
-    reveal_type(y)  # E: Statement is unreachable  \
-                    # N: Revealed type is "Literal[__main__.Foo.C]"
+    reveal_type(y)  # N: Revealed type is "Never"
 reveal_type(y) # N: Revealed type is "__main__.Foo"
 
 if Foo.A is y:
@@ -923,8 +921,8 @@ elif Foo.B is y:
 elif Foo.C is y:
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.C]"
 else:
-    reveal_type(y)  # E: Statement is unreachable  \
-                    # N: Revealed type is "Literal[__main__.Foo.C]"
+    reveal_type(y)  # N: Revealed type is "Never"
+    _ = "unreachable"  # E: Statement is unreachable
 reveal_type(y) # N: Revealed type is "__main__.Foo"
 [builtins fixtures/bool.pyi]
 
@@ -946,8 +944,7 @@ if x is Foo.A:
 elif x is Foo.B:
     reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.B]"
 else:
-    reveal_type(x)  # E: Statement is unreachable  \
-                    # N: Revealed type is "Literal[__main__.Foo.B]"
+    reveal_type(x)  # N: Revealed type is "Never"
 
 class Bar(Enum):
     __order__ = "A B"
@@ -962,8 +959,7 @@ if y is Bar.A:
 elif y is Bar.B:
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Bar.B]"
 else:
-    reveal_type(y)  # E: Statement is unreachable  \
-                    # N: Revealed type is "Literal[__main__.Bar.B]"
+    reveal_type(y)  # N: Revealed type is "Never"
 
 x2: Foo
 if x2 is Foo.A:
@@ -971,8 +967,7 @@ if x2 is Foo.A:
 elif x2 is Foo.B:
     reveal_type(x2)  # N: Revealed type is "Literal[__main__.Foo.B]"
 else:
-    reveal_type(x2)  # E: Statement is unreachable  \
-                     # N: Revealed type is "Literal[__main__.Foo.B]"
+    reveal_type(x2)  # N: Revealed type is "Never"
 
 y2: Bar
 if y2 is Bar.A:
@@ -980,8 +975,7 @@ if y2 is Bar.A:
 elif y2 is Bar.B:
     reveal_type(y2)  # N: Revealed type is "Literal[__main__.Bar.B]"
 else:
-    reveal_type(y2)  # E: Statement is unreachable  \
-                     # N: Revealed type is "Literal[__main__.Bar.B]"
+    reveal_type(y2)  # N: Revealed type is "Never"
 [builtins fixtures/tuple.pyi]
 
 [case testEnumReachabilityChecksIndirect]
@@ -1039,17 +1033,17 @@ if y is z:
     reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
 else:
-    reveal_type(y)  # E: Statement is unreachable  \
-                    # N: Revealed type is "Literal[__main__.Foo.A]"
-    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
+    reveal_type(y)  # N: Revealed type is "Never"
+    reveal_type(z)  # E: Statement is unreachable \
+                    # N: Revealed type is "Literal[__main__.Foo.A]?"
 if z is y:
     reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
     reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
 else:
-    reveal_type(y)  # E: Statement is unreachable  \
+    reveal_type(y)  # E: Statement is unreachable \
                     # N: Revealed type is "Literal[__main__.Foo.A]"
-    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
+    reveal_type(z)  # N: Revealed type is "Never"
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityNoNarrowingForUnionMessiness]
@@ -2305,8 +2299,7 @@ if e == MyEnum.A:
 elif e == MyEnum.B:
     reveal_type(e)  # N: Revealed type is "Literal[__main__.MyEnum.B]"
 else:
-    reveal_type(e)  # E: Statement is unreachable \
-                    # N: Revealed type is "Literal[__main__.MyEnum.B]"
+    reveal_type(e)  # N: Revealed type is "Never"
 [builtins fixtures/dict.pyi]
 
 

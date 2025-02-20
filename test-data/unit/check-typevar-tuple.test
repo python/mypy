@@ -1273,8 +1273,7 @@ def test(d: A[int, str]) -> None:
     if isinstance(d, A):
         reveal_type(d)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.A[builtins.int, builtins.str]]"
     else:
-        reveal_type(d)  # E: Statement is unreachable \
-                        # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.A[builtins.int, builtins.str]]"
+        reveal_type(d)  # N: Revealed type is "Never"
 
 class B(Generic[Unpack[TP]]): ...
 
@@ -1282,8 +1281,7 @@ def test2(d: B[int, str]) -> None:
     if isinstance(d, B):
         reveal_type(d)  # N: Revealed type is "__main__.B[builtins.int, builtins.str]"
     else:
-        reveal_type(d)  # E: Statement is unreachable \
-                        # N: Revealed type is "__main__.B[builtins.int, builtins.str]"
+        reveal_type(d)  # N: Revealed type is "Never"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testVariadicTupleSubtyping]

@@ -1040,6 +1040,6 @@ def foo(x: Union[int, str]) -> None:
     elif isinstance(x, int):
         f = "bar"
     else:
-        assert_never(x)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "Never"
+        assert_never(x)
     f  # OK
 [builtins fixtures/tuple.pyi]

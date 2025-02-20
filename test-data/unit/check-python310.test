@@ -1370,8 +1370,7 @@ m: str
 
 match m:
     case a if isinstance(a, int):  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
-        reveal_type(a)  # E: Statement is unreachable \
-                        # N: Revealed type is "builtins.str"
+        reveal_type(a)  # N: Revealed type is "Never"
 [builtins fixtures/isinstancelist.pyi]
 
 -- Exhaustiveness --
@@ -1492,7 +1491,7 @@ def f(value: Literal[1] | Literal[2]) -> int:
         case 2:
             return 1
         case o:
-            assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "Literal[2]"; expected "Never"
+            assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "Literal[1, 2]"; expected "Never"
 [typing fixtures/typing-medium.pyi]
 
 [case testMatchSequencePatternNegativeNarrowing]
@@ -1566,7 +1565,7 @@ def f(m: Medal) -> None:
             always_assigned = 1
             reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
         case _:
-            assert_never(m)  # E: Argument 1 to "assert_never" has incompatible type "Medal"; expected "Never"
+            assert_never(m)
 
     reveal_type(always_assigned)  # N: Revealed type is "builtins.int"
 [builtins fixtures/bool.pyi]
@@ -1632,7 +1631,7 @@ match m:
     case Medal.bronze:
         reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
     case _ as unreachable:
-        assert_never(unreachable)  # E: Argument 1 to "assert_never" has incompatible type "Literal[Medal.bronze]"; expected "Never"
+        assert_never(unreachable)  # E: Argument 1 to "assert_never" has incompatible type "Medal"; expected "Never"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1652,7 +1651,7 @@ match m:
     case Medal.bronze:
         reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
     case _ as unreachable:
-        assert_never(unreachable)  # E: Argument 1 to "assert_never" has incompatible type "Literal[Medal.bronze]"; expected "Never"
+        assert_never(unreachable)  # E: Argument 1 to "assert_never" has incompatible type "Medal"; expected "Never"
 [builtins fixtures/enum.pyi]
 
 [case testMatchLiteralPatternEnumCustomEquals-skip]
@@ -2319,7 +2318,7 @@ def f3(e: int | str | bytes) -> int:
             return 0  # E: Statement is unreachable
         case str(x):
             return 0
-    reveal_type(e)  # N: Revealed type is "builtins.bytes"
+    reveal_type(e)  # N: Revealed type is "Union[builtins.int, builtins.bytes]"
     return 0
 
 def f4(e: int | str | bytes) -> int:
@@ -2330,7 +2329,7 @@ def f4(e: int | str | bytes) -> int:
             return 0  # E: Statement is unreachable
         case x if isinstance(x, str):
             return 0
-    reveal_type(e)  # N: Revealed type is "Union[builtins.int, builtins.bytes]"
+    reveal_type(e)  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.bytes]"
     return 0
 
 [builtins fixtures/primitives.pyi]

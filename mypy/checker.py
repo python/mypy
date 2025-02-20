@@ -8000,9 +8000,7 @@ def conditional_types_to_typemaps(
     maps: list[TypeMap] = []
     for typ in (yes_type, no_type):
         proper_type = get_proper_type(typ)
-        if isinstance(proper_type, UninhabitedType):
-            maps.append(None)
-        elif proper_type is None:
+        if proper_type is None:
             maps.append({})
         else:
             assert typ is not None

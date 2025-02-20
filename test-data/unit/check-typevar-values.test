@@ -737,10 +737,10 @@ W = TypeVar("W", int, str)
 
 def fn(w: W) -> W:
     if type(w) is str:
-        reveal_type(w)  # N: Revealed type is "builtins.int" \
+        reveal_type(w)  # N: Revealed type is "Never" \
                         # N: Revealed type is "builtins.str"
     elif type(w) is int:
         reveal_type(w)  # N: Revealed type is "builtins.int" \
-                        # N: Revealed type is "builtins.str"
+                        # N: Revealed type is "Never"
     return w
 [builtins fixtures/isinstance.pyi]

@@ -697,7 +697,7 @@ def f1() -> None:
         x = 1
 
     if (x := d[x]) is None:  # E: Name "x" may be undefined
-        y = x
+        y = x  # E: Need type annotation for "y"
     z = x
 [builtins fixtures/dict.pyi]
 

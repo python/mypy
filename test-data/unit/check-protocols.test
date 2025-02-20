@@ -1743,20 +1743,17 @@ c = C()
 if isinstance(c, P1):
     reveal_type(c) # N: Revealed type is "__main__.C"
 else:
-    reveal_type(c)  # E: Statement is unreachable \
-                    # N: Revealed type is "__main__.C"
+    reveal_type(c)  # N: Revealed type is "Never"
 if isinstance(c, P):
     reveal_type(c) # N: Revealed type is "__main__.C"
 else:
-    reveal_type(c)  # E: Statement is unreachable \
-                    # N: Revealed type is "__main__.C"
+    reveal_type(c)  # N: Revealed type is "Never"
 
 c1i: C1[int]
 if isinstance(c1i, P1):
     reveal_type(c1i) # N: Revealed type is "__main__.C1[builtins.int]"
 else:
-    reveal_type(c1i)  # E: Statement is unreachable \
-                      # N: Revealed type is "__main__.C1[builtins.int]"
+    reveal_type(c1i)  # N: Revealed type is "Never"
 if isinstance(c1i, P):
     reveal_type(c1i) # N: Revealed type is "__main__.<subclass of "__main__.C1[builtins.int]" and "__main__.P">"
 else:
@@ -1764,8 +1761,7 @@ else:
 
 c1s: C1[str]
 if isinstance(c1s, P1):  # E: Subclass of "C1[str]" and "P1" cannot exist: would have incompatible method signatures
-    reveal_type(c1s)  # E: Statement is unreachable \
-                      # N: Revealed type is "__main__.C1[builtins.str]"
+    reveal_type(c1s)  # N: Revealed type is "Never"
 else:
     reveal_type(c1s) # N: Revealed type is "__main__.C1[builtins.str]"
 

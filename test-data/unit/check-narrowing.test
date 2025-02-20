@@ -902,8 +902,8 @@ else:
 # No contamination here
 if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Optional[Literal[1, 2]]", right operand type: "Default")
     reveal_type(x)   # E: Statement is unreachable \
-                     # N: Revealed type is "Union[Literal[1], Literal[2], None]"
-    reveal_type(z)  # N: Revealed type is "__main__.Default"
+                     # N: Revealed type is "Literal[1]"
+    reveal_type(z)  # N: Revealed type is "Never"
 else:
     reveal_type(x)   # N: Revealed type is "Union[Literal[1], Literal[2], None]"
     reveal_type(z)   # N: Revealed type is "__main__.Default"
@@ -920,8 +920,8 @@ c: Literal[2, 3]
 if a == b == c:
     reveal_type(a)  # E: Statement is unreachable \
                     # N: Revealed type is "Literal[1]"
-    reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
-    reveal_type(c)  # N: Revealed type is "Union[Literal[2], Literal[3]]"
+    reveal_type(b)  # N: Revealed type is "Literal[1]"
+    reveal_type(c)  # N: Revealed type is "Never"
 else:
     reveal_type(a)  # N: Revealed type is "Literal[1]"
     reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
@@ -930,15 +930,14 @@ else:
 if a == a == a:
     reveal_type(a)  # N: Revealed type is "Literal[1]"
 else:
-    reveal_type(a)  # E: Statement is unreachable \
-                    # N: Revealed type is "Literal[1]"
+    reveal_type(a)  # N: Revealed type is "Never"
 
 if a == a == b:
     reveal_type(a)  # N: Revealed type is "Literal[1]"
     reveal_type(b)  # N: Revealed type is "Literal[1]"
 else:
     reveal_type(a)  # N: Revealed type is "Literal[1]"
-    reveal_type(b)  # N: Revealed type is "Literal[2]"
+    reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
 
 # In this case, it's ok for 'b' to narrow down to Literal[1] in the else case
 # since that's the only way 'b == 2' can be false
@@ -993,9 +992,10 @@ elif a == a == 4:
 else:
     # In contrast, this branch must be unreachable: we assume (maybe naively)
     # that 'a' won't be mutated in the middle of the expression.
-    reveal_type(a)  # E: Statement is unreachable \
-                    # N: Revealed type is "Literal[4]"
-    reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3], Literal[4]]"
+    reveal_type(a)  # N: Revealed type is "Never"
+    reveal_type(b)  # E: Statement is unreachable \
+                    # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3], Literal[4]]"
+
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingLiteralTruthiness]
@@ -1050,25 +1050,21 @@ f1: F1
 if isinstance(f1, F1):
     reveal_type(f1)  # N: Revealed type is "__main__.F1"
 else:
-    reveal_type(f1)  # E: Statement is unreachable \
-                     # N: Revealed type is "__main__.F1"
+    reveal_type(f1)  # N: Revealed type is "Never"
 
 if isinstance(n, F1):  # E: Subclass of "N" and "F1" cannot exist: "F1" is final
-    reveal_type(n)  # E: Statement is unreachable \
-                    # N: Revealed type is "__main__.N"
+    reveal_type(n)  # N: Revealed type is "Never"
 else:
     reveal_type(n)  # N: Revealed type is "__main__.N"
 
 if isinstance(f1, N):  # E: Subclass of "F1" and "N" cannot exist: "F1" is final
-    reveal_type(f1)  # E: Statement is unreachable \
-                     # N: Revealed type is "__main__.F1"
+    reveal_type(f1)  # N: Revealed type is "Never"
 else:
     reveal_type(f1)  # N: Revealed type is "__main__.F1"
 
 if isinstance(f1, F2):  # E: Subclass of "F1" and "F2" cannot exist: "F1" is final \
                         # E: Subclass of "F1" and "F2" cannot exist: "F2" is final
-    reveal_type(f1)  # E: Statement is unreachable \
-                     # N: Revealed type is "__main__.F1"
+    reveal_type(f1)  # N: Revealed type is "Never"
 else:
     reveal_type(f1)  # N: Revealed type is "__main__.F1"
 [builtins fixtures/isinstance.pyi]
@@ -1097,8 +1093,7 @@ else:
 if isinstance(n_f2, F1):  # E: Subclass of "N" and "F1" cannot exist: "F1" is final \
                           # E: Subclass of "F2" and "F1" cannot exist: "F2" is final \
                           # E: Subclass of "F2" and "F1" cannot exist: "F1" is final
-    reveal_type(n_f2)  # E: Statement is unreachable \
-                       # N: Revealed type is "Union[__main__.N, __main__.F2]"
+    reveal_type(n_f2)  # N: Revealed type is "Never"
 else:
     reveal_type(n_f2)  # N: Revealed type is "Union[__main__.N, __main__.F2]"
 
@@ -1343,7 +1338,7 @@ def unreachable(x: Union[str, List[str]]) -> None:
     elif isinstance(x, list):
         reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
     else:
-        reveal_type(x)  # No output: this branch is unreachable  # N: Revealed type is "builtins.list[builtins.str]"
+        reveal_type(x)  # No output: this branch is unreachable  # N: Revealed type is "Never"
 
 def all_parts_covered(x: Union[str, List[str], List[int], int]) -> None:
     if isinstance(x, str):
@@ -2109,8 +2104,7 @@ if isinstance(x, (Y, Z, NoneType)):
     reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.X" and "__main__.Y">"
 if isinstance(x, (Z, NoneType)):  # E: Subclass of "X" and "Z" cannot exist: "Z" is final \
                                   # E: Subclass of "X" and "NoneType" cannot exist: "NoneType" is final
-    reveal_type(x)  # E: Statement is unreachable \
-                    # N: Revealed type is "__main__.X"
+    reveal_type(x)  # N: Revealed type is "Never"
 
 
 [builtins fixtures/isinstance.pyi]
@@ -2368,7 +2362,7 @@ def fn_while(arg: T) -> None:
 x = None
 for _ in range(2):
     if x is not None:
-        reveal_type(x)  # N: Revealed type is "None" \
+        reveal_type(x)  # N: Revealed type is "Never" \
                         # N: Revealed type is "builtins.int"
     x = 1
 reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
