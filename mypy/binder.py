@@ -99,8 +99,6 @@ class ConditionalTypeBinder:
     type_assignments: Assigns | None = None
 
     def __init__(self, bind_all: bool) -> None:
-        self.bind_all = bind_all
-
         # Each frame gets an increasing, distinct id.
         self.next_id = 1
 
@@ -133,6 +131,11 @@ class ConditionalTypeBinder:
         self.try_frames: set[int] = set()
         self.break_frames: list[int] = []
         self.continue_frames: list[int] = []
+
+        # If True, initial assignment to a simple variable (e.g. "x", but not "x.y")
+        # is added to the binder. This allows more precise narrowing and more
+        # flexible inference of variable types.
+        self.bind_all = bind_all
 
     def _get_id(self) -> int:
         self.next_id += 1
