@@ -378,7 +378,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.plugin = plugin
         self.tscope = Scope()
         self.scope = CheckerScope(tree)
-        self.binder = ConditionalTypeBinder(bind_all=options.allow_redefinition_new)
+        self.binder = ConditionalTypeBinder(options)
         self.globals = tree.names
         self.return_types = []
         self.dynamic_funcs = []
@@ -433,7 +433,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: verify this is still actually worth it over creating new checkers
         self.partial_reported.clear()
         self.module_refs.clear()
-        self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition_new)
+        self.binder = ConditionalTypeBinder(self.options)
         self._type_maps[1:] = []
         self._type_maps[0].clear()
         self.temp_type_map = None
@@ -1200,7 +1200,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         original_typ = typ
         for item, typ in expanded:
             old_binder = self.binder
-            self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition_new)
+            self.binder = ConditionalTypeBinder(self.options)
             with self.binder.top_frame_context():
                 defn.expanded.append(item)
 
@@ -2584,7 +2584,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
-            self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition_new)
+            self.binder = ConditionalTypeBinder(self.options)
             with self.binder.top_frame_context():
                 with self.scope.push_class(defn.info):
                     self.accept(defn.defs)

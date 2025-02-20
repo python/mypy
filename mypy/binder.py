@@ -28,6 +28,7 @@ from mypy.types import (
     get_proper_type,
 )
 from mypy.typevars import fill_typevars_with_any
+from mypy.options import Options
 
 BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, NameExpr]
 
@@ -98,7 +99,7 @@ class ConditionalTypeBinder:
     # This maps an expression to a list of bound types for every item in the union type.
     type_assignments: Assigns | None = None
 
-    def __init__(self, bind_all: bool) -> None:
+    def __init__(self, options: Options) -> None:
         # Each frame gets an increasing, distinct id.
         self.next_id = 1
 
@@ -135,7 +136,7 @@ class ConditionalTypeBinder:
         # If True, initial assignment to a simple variable (e.g. "x", but not "x.y")
         # is added to the binder. This allows more precise narrowing and more
         # flexible inference of variable types.
-        self.bind_all = bind_all
+        self.bind_all = options.allow_redefinition_new
 
     def _get_id(self) -> int:
         self.next_id += 1
