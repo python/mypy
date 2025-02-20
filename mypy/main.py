@@ -93,8 +93,8 @@ def main(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
-    if options.allow_redefinition2 and not options.local_partial_types:
-        fail("error: --local-partial-types must be used if using --allow-redefinition2", stderr, options)
+    if options.allow_redefinition_new and not options.local_partial_types:
+        fail("error: --local-partial-types must be used if using --allow-redefinition-new", stderr, options)
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -859,15 +859,15 @@ def process_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
-        help="Allow unconditional variable redefinition with a new type",
+        help="Allow restricted, unconditional variable redefinition with a new type",
         group=strictness_group,
     )
 
     add_invertible_flag(
-        "--allow-redefinition2",
+        "--allow-redefinition-new",
         default=False,
         strict_flag=False,
-        help="Allow variable redefinition with a new type (including conditional)",
+        help="Allow flexible variable redefinition with a new type",
         group=strictness_group,
     )
 

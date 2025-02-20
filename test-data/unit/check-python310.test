@@ -2554,7 +2554,7 @@ def f(t: T) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testRedefine2MatchBasics]
-# flags: --allow-redefinition2 --local-partial-types
+# flags: --allow-redefinition-new --local-partial-types
 
 def f1(x: int | str | list[bytes]) -> None:
     match x:

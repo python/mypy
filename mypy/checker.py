@@ -378,7 +378,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.plugin = plugin
         self.tscope = Scope()
         self.scope = CheckerScope(tree)
-        self.binder = ConditionalTypeBinder(bind_all=options.allow_redefinition2)
+        self.binder = ConditionalTypeBinder(bind_all=options.allow_redefinition_new)
         self.globals = tree.names
         self.return_types = []
         self.dynamic_funcs = []
@@ -433,7 +433,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: verify this is still actually worth it over creating new checkers
         self.partial_reported.clear()
         self.module_refs.clear()
-        self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition2)
+        self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition_new)
         self._type_maps[1:] = []
         self._type_maps[0].clear()
         self.temp_type_map = None
@@ -1200,7 +1200,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         original_typ = typ
         for item, typ in expanded:
             old_binder = self.binder
-            self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition2)
+            self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition_new)
             with self.binder.top_frame_context():
                 defn.expanded.append(item)
 
@@ -1389,7 +1389,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             new_frame.types[key] = narrowed_type
                             self.binder.declarations[key] = old_binder.declarations[key]
 
-                if self.options.allow_redefinition2 and not self.is_stub:
+                if self.options.allow_redefinition_new and not self.is_stub:
                     # Add formal argument types to the binder.
                     for arg in defn.arguments:
                         # TODO: Add these directly using a fast path
@@ -2584,7 +2584,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
-            self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition2)
+            self.binder = ConditionalTypeBinder(bind_all=self.options.allow_redefinition_new)
             with self.binder.top_frame_context():
                 with self.scope.push_class(defn.info):
                     self.accept(defn.defs)
@@ -3341,10 +3341,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             and lvalue.node.is_inferred
                             and lvalue.node.is_index_var
                             and lvalue_type is not None
-                            and not self.options.allow_redefinition2 # TODO WHAT
+                            and not self.options.allow_redefinition_new # TODO WHAT
                         ):
                             lvalue.node.type = remove_instance_last_known_values(lvalue_type)
-                elif self.options.allow_redefinition2 and lvalue_type is not None:
+                elif self.options.allow_redefinition_new and lvalue_type is not None:
                     self.binder.assign_type(lvalue, lvalue_type, lvalue_type)
 
             elif index_lvalue:
@@ -4311,7 +4311,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, NameExpr):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
-            if isinstance(lvalue.node, Var) and lvalue.node.is_inferred and self.options.allow_redefinition2:
+            if isinstance(lvalue.node, Var) and lvalue.node.is_inferred and self.options.allow_redefinition_new:
                 inferred = lvalue.node
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, (TupleExpr, ListExpr)):
@@ -4382,12 +4382,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             init_type = strip_type(init_type)
 
             self.set_inferred_type(name, lvalue, init_type)
-            if self.options.allow_redefinition2:
+            if self.options.allow_redefinition_new:
                 self.binder.assign_type(lvalue, init_type, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
         init_type = get_proper_type(init_type)
-        if isinstance(init_type, NoneType) and (isinstance(lvalue, MemberExpr) or not self.options.allow_redefinition2):
+        if isinstance(init_type, NoneType) and (isinstance(lvalue, MemberExpr) or not self.options.allow_redefinition_new):
             partial_type = PartialType(None, name)
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname
@@ -4761,7 +4761,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def replace_partial_type(self, var: Var, new_type: Type, partial_types: dict[Var, Context]) -> None:
         var.type = new_type
         del partial_types[var]
-        if self.options.allow_redefinition2:
+        if self.options.allow_redefinition_new:
             n = NameExpr(var.name)
             n.node = var
             self.binder.assign_type(n, new_type, new_type)
@@ -5129,9 +5129,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if isinstance(var.node, Var):
                                 new_type = DeletedType(source=source)
                                 var.node.type = new_type
-                                if self.options.allow_redefinition2:
+                                if self.options.allow_redefinition_new:
                                     self.binder.assign_type(var, new_type, new_type)
-                            if not self.options.allow_redefinition2:
+                            if not self.options.allow_redefinition_new:
                                 self.binder.cleanse(var)
             if s.else_body:
                 self.accept(s.else_body)
@@ -8570,7 +8570,7 @@ def is_valid_inferred_type(typ: Type,
         # type could either be NoneType or an Optional type, depending on
         # the context. This resolution happens in leave_partial_types when
         # we pop a partial types scope.
-        return is_lvalue_final or (not is_lvalue_member and options.allow_redefinition2)
+        return is_lvalue_final or (not is_lvalue_member and options.allow_redefinition_new)
     elif isinstance(proper_type, UninhabitedType):
         return False
     return not typ.accept(InvalidInferredTypes())
