@@ -364,8 +364,6 @@ class NameMangler(ast3.NodeTransformer):
     _mangle_annotations: bool
     _unmangled_args: set[str]
 
-    _MANGLE_ARGS: bool = False  # ToDo: remove it or make it an option?
-
     def __init__(self, classname: str, mangle_annotations: bool) -> None:
         self._classname_complete = classname
         self._classname_trimmed = classname.lstrip("_")
@@ -407,8 +405,7 @@ class NameMangler(ast3.NodeTransformer):
 
     def _visit_funcdef(self, node: _T_FuncDef) -> _T_FuncDef:
         node.name = self._mangle_name(node.name)
-        if not self._MANGLE_ARGS:
-            self = NameMangler(self._classname_complete, self._mangle_annotations)
+        self = NameMangler(self._classname_complete, self._mangle_annotations)
         self.visit(node.args)
         for dec in node.decorator_list:
             self.visit(dec)
@@ -425,10 +422,7 @@ class NameMangler(ast3.NodeTransformer):
         return self._visit_funcdef(node)
 
     def visit_arg(self, node: ast3.arg) -> ast3.arg:
-        if self._MANGLE_ARGS:
-            node.arg = self._mangle_name(node.arg)
-        else:
-            self._unmangled_args.add(node.arg)
+        self._unmangled_args.add(node.arg)
         if self._mangle_annotations and (node.annotation is not None):
             self.visit(node.annotation)
         return node
@@ -447,7 +441,7 @@ class NameMangler(ast3.NodeTransformer):
         return node
 
     def visit_Name(self, node: Name) -> Name:
-        if self._MANGLE_ARGS or (node.id not in self._unmangled_args):
+        if node.id not in self._unmangled_args:
             node.id = self._mangle_name(node.id)
         return node
 
