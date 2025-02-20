@@ -867,7 +867,7 @@ def process_options(
         "--allow-redefinition-new",
         default=False,
         strict_flag=False,
-        help="Allow flexible variable redefinition with a new type",
+        help=argparse.SUPPRESS,  # This is still very experimental
         group=strictness_group,
     )
 
