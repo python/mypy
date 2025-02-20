@@ -2553,7 +2553,7 @@ def f(t: T) -> None:
             reveal_type(k)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.K]"
 [builtins fixtures/tuple.pyi]
 
-[case testRedefine2MatchBasics]
+[case testNewRedefineMatchBasics]
 # flags: --allow-redefinition-new --local-partial-types
 
 def f1(x: int | str | list[bytes]) -> None:
