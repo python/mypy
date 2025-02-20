@@ -406,7 +406,7 @@ def f6() -> None:
 
 [case testNewRedefineFinalLiteral]
 # flags: --allow-redefinition-new --local-partial-types
-from typing_extensions import Final, Literal
+from typing import Final, Literal
 
 x: Final = "foo"
 reveal_type(x) # N: Revealed type is "Literal['foo']?"
@@ -923,7 +923,7 @@ def f(a: Any) -> None:
 
 [case testNewRedefineForStatementIndexNarrowing]
 # flags: --allow-redefinition-new --local-partial-types
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class X(TypedDict):
     hourly: int
@@ -949,6 +949,7 @@ for b in ("hourly", "daily"):
     reveal_type(b)  # N: Revealed type is "builtins.str"
     reveal_type(b.upper())  # N: Revealed type is "builtins.str"
 [builtins fixtures/for.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testNewRedefineForLoopIndexWidening]
 # flags: --allow-redefinition-new --local-partial-types
@@ -1016,3 +1017,14 @@ def f() -> list[str]:
             o.append(line)
     return o
 [builtins fixtures/list.pyi]
+
+[case testNewRedefineFinalVariable]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import Final
+
+x: Final = "foo"
+x = 1 # E: Cannot assign to final name "x"
+
+class C:
+    y: Final = "foo"
+    y = 1 # E: Cannot assign to final name "y"
