@@ -201,19 +201,7 @@ class Statement(Node):
 class Expression(Node):
     """An expression node."""
 
-    # NOTE: Cannot use __slots__ because some subclasses also inherit from
-    #       a different superclass with its own __slots__. A subclass in
-    #       Python is not allowed to have multiple superclasses that define
-    #       __slots__.
-    # __slots__ = ('as_type',)
-
-    # If this value expression can also be parsed as a valid type expression,
-    # represents the type denoted by the type expression.
-    as_type: mypy.types.Type | None
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.as_type = None
+    __slots__ = ()
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
@@ -2110,6 +2098,7 @@ class OpExpr(Expression):
         "right_always",
         "right_unreachable",
         "analyzed",
+        "as_type",
     )
 
     __match_args__ = ("left", "op", "right")
@@ -2125,6 +2114,9 @@ class OpExpr(Expression):
     right_unreachable: bool
     # Used for expressions that represent a type "X | Y" in some contexts
     analyzed: TypeAliasExpr | None
+    # If this value expression can also be parsed as a valid type expression,
+    # represents the type denoted by the type expression.
+    as_type: mypy.types.Type | None
 
     def __init__(
         self, op: str, left: Expression, right: Expression, analyzed: TypeAliasExpr | None = None
@@ -2137,9 +2129,16 @@ class OpExpr(Expression):
         self.right_always = False
         self.right_unreachable = False
         self.analyzed = analyzed
+        self.as_type = None
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
+
+
+# Expression subtypes that could represent the root of a valid type expression.
+# Always contains an "as_type" attribute.
+# TODO: Make this into a Protocol if mypyc is OK with that.
+MaybeTypeExpression = OpExpr
 
 
 class ComparisonExpr(Expression):

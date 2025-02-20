@@ -136,6 +136,7 @@ from mypy.nodes import (
     ListExpr,
     Lvalue,
     MatchStmt,
+    MaybeTypeExpression,
     MemberExpr,
     MypyFile,
     NamedTupleExpr,
@@ -3541,7 +3542,7 @@ class SemanticAnalyzer(
 
     def analyze_rvalue_as_type_form(self, s: AssignmentStmt) -> None:
         if TYPE_FORM in self.options.enable_incomplete_feature:
-            s.rvalue.as_type = self.try_parse_as_type_expression(s.rvalue)
+            self.try_parse_as_type_expression(s.rvalue)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
         if not isinstance(s.rvalue, CallExpr):
@@ -5278,7 +5279,7 @@ class SemanticAnalyzer(
         if s.expr:
             s.expr.accept(self)
             if TYPE_FORM in self.options.enable_incomplete_feature:
-                s.expr.as_type = self.try_parse_as_type_expression(s.expr)
+                self.try_parse_as_type_expression(s.expr)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
         self.statement = s
@@ -5823,7 +5824,7 @@ class SemanticAnalyzer(
             for a in expr.args:
                 a.accept(self)
                 if calculate_type_forms:
-                    a.as_type = self.try_parse_as_type_expression(a)
+                    self.try_parse_as_type_expression(a)
 
             if (
                 isinstance(expr.callee, MemberExpr)
@@ -7618,9 +7619,16 @@ class SemanticAnalyzer(
     def visit_singleton_pattern(self, o: SingletonPattern, /) -> None:
         return None
 
-    def try_parse_as_type_expression(self, maybe_type_expr: Expression) -> Type | None:
-        """Try to parse maybe_type_expr as a type expression.
-        If parsing fails return None and emit no errors."""
+    def try_parse_as_type_expression(self, maybe_type_expr: Expression) -> None:
+        """Try to parse a value Expression as a type expression.
+        If success then annotate the Expression with the type that it spells.
+        If fails then emit no errors and take no further action.
+
+        A value expression that is parsable as a type expression may be used
+        where a TypeForm is expected to represent the spelled type."""
+        if not isinstance(maybe_type_expr, MaybeTypeExpression):
+            return
+
         # Save SemanticAnalyzer state
         original_errors = self.errors  # altered by fail()
         original_num_incomplete_refs = (
@@ -7649,7 +7657,8 @@ class SemanticAnalyzer(
             self.progress = original_progress
             self.deferred = original_deferred
             del self.deferral_debug_context[original_deferral_debug_context_len:]
-        return t
+
+        maybe_type_expr.as_type = t
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

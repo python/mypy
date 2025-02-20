@@ -1360,18 +1360,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     t,
                 )
             required_keys = req_keys
-            try:
-                fallback = self.named_type("typing._TypedDict")
-            except AssertionError as e:
-                if str(e) == "typing._TypedDict":
-                    # Can happen when running mypy tests, typing._TypedDict
-                    # is not defined by typing.pyi stubs, and
-                    # try_parse_as_type_expression() is called on an dict
-                    # expression that looks like an inline TypedDict type.
-                    self.fail("Internal error: typing._TypedDict not found", t)
-                    fallback = self.named_type("builtins.object")
-                else:
-                    raise
+            fallback = self.named_type("typing._TypedDict")
             for typ in t.extra_items_from:
                 analyzed = self.analyze_type(typ)
                 p_analyzed = get_proper_type(analyzed)

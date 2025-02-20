@@ -71,6 +71,7 @@ from mypy.nodes import (
     LambdaExpr,
     ListComprehension,
     ListExpr,
+    MaybeTypeExpression,
     MemberExpr,
     MypyFile,
     NamedTupleExpr,
@@ -5949,6 +5950,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             elif (
                 isinstance(p_type_context, TypeType)
                 and p_type_context.is_type_form
+                and isinstance(node, MaybeTypeExpression)
                 and node.as_type is not None
             ):
                 typ = TypeType.make_normalized(
