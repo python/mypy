@@ -94,7 +94,11 @@ def main(
     )
 
     if options.allow_redefinition_new and not options.local_partial_types:
-        fail("error: --local-partial-types must be used if using --allow-redefinition-new", stderr, options)
+        fail(
+            "error: --local-partial-types must be used if using --allow-redefinition-new",
+            stderr,
+            options,
+        )
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.

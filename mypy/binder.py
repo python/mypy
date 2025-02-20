@@ -7,8 +7,9 @@ from typing import NamedTuple, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
-from mypy.literals import Key, literal, literal_hash, subkeys, extract_var_from_literal_hash
+from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash, subkeys
 from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
+from mypy.options import Options
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.typeops import make_simplified_union
 from mypy.types import (
@@ -28,7 +29,6 @@ from mypy.types import (
     get_proper_type,
 )
 from mypy.typevars import fill_typevars_with_any
-from mypy.options import Options
 
 BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, NameExpr]
 

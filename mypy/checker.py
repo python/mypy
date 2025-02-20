@@ -613,13 +613,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.accept(body)
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
                 widened_new = len(self.widened_vars)
-                if (partials_new == partials_old) and not self.binder.last_pop_changed and (widened_new == widened_old or iter > 1):
+                if (
+                    (partials_new == partials_old)
+                    and not self.binder.last_pop_changed
+                    and (widened_new == widened_old or iter > 1)
+                ):
                     break
                 partials_old = partials_new
                 widened_old = widened_new
                 iter += 1
                 if iter == 20:
-                    raise RuntimeError(f"Too many iterations when checking a loop")
+                    raise RuntimeError("Too many iterations when checking a loop")
 
             # If necessary, reset the modified options and make up for the postponed error checks:
             self.options.warn_unreachable = warn_unreachable
@@ -3242,7 +3246,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         return
 
                     var = lvalue_type.var
-                    if is_valid_inferred_type(rvalue_type, self.options, is_lvalue_final=var.is_final):
+                    if is_valid_inferred_type(
+                        rvalue_type, self.options, is_lvalue_final=var.is_final
+                    ):
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
                             if not self.current_node_deferred:
@@ -3309,7 +3315,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             self.set_inferred_type(lvalue.node, lvalue, lvalue_type)
 
                     rvalue_type, lvalue_type = self.check_simple_assignment(
-                        lvalue_type, rvalue, context=rvalue, inferred=inferred, lvalue=lvalue)
+                        lvalue_type, rvalue, context=rvalue, inferred=inferred, lvalue=lvalue
+                    )
                     inferred = None
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
@@ -3341,7 +3348,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             and lvalue.node.is_inferred
                             and lvalue.node.is_index_var
                             and lvalue_type is not None
-                            and not self.options.allow_redefinition_new # TODO WHAT
+                            and not self.options.allow_redefinition_new  # TODO WHAT
                         ):
                             lvalue.node.type = remove_instance_last_known_values(lvalue_type)
                 elif self.options.allow_redefinition_new and lvalue_type is not None:
@@ -3427,7 +3434,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue_type = self.expr_checker.accept(rvalue)
             rvalue_type = get_proper_type(rvalue_type)
             if isinstance(rvalue_type, Instance):
-                if rvalue_type.type == typ.type and is_valid_inferred_type(rvalue_type, self.options):
+                if rvalue_type.type == typ.type and is_valid_inferred_type(
+                    rvalue_type, self.options
+                ):
                     var.type = rvalue_type
                     del partial_types[var]
             elif isinstance(rvalue_type, AnyType):
@@ -4311,7 +4320,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, NameExpr):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
-            if isinstance(lvalue.node, Var) and lvalue.node.is_inferred and self.options.allow_redefinition_new:
+            if (
+                isinstance(lvalue.node, Var)
+                and lvalue.node.is_inferred
+                and self.options.allow_redefinition_new
+            ):
                 inferred = lvalue.node
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, (TupleExpr, ListExpr)):
@@ -4353,9 +4366,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
         elif (
-            not is_valid_inferred_type(init_type, self.options,
-                                       is_lvalue_final=name.is_final,
-                                       is_lvalue_member=isinstance(lvalue, MemberExpr))
+            not is_valid_inferred_type(
+                init_type,
+                self.options,
+                is_lvalue_final=name.is_final,
+                is_lvalue_member=isinstance(lvalue, MemberExpr),
+            )
             and not self.no_partial_types
         ):
             # We cannot use the type of the initialization expression for full type
@@ -4387,7 +4403,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
         init_type = get_proper_type(init_type)
-        if isinstance(init_type, NoneType) and (isinstance(lvalue, MemberExpr) or not self.options.allow_redefinition_new):
+        if isinstance(init_type, NoneType) and (
+            isinstance(lvalue, MemberExpr) or not self.options.allow_redefinition_new
+        ):
             partial_type = PartialType(None, name)
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname
@@ -4535,8 +4553,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue, type_context=type_context, always_allow_any=always_allow_any
             )
             if (
-                lvalue_type is not None and type_context is None and
-                not is_valid_inferred_type(rvalue_type, self.options) # TODO
+                lvalue_type is not None
+                and type_context is None
+                and not is_valid_inferred_type(rvalue_type, self.options)  # TODO
             ):
                 rvalue_type = self.expr_checker.accept(
                     rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
@@ -4548,7 +4567,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     new_inferred = rvalue_type
                 if not is_same_type(inferred.type, new_inferred):
                     lvalue_type = make_simplified_union([inferred.type, new_inferred])
-                    if not is_same_type(lvalue_type, inferred.type) and not isinstance(inferred.type, PartialType):
+                    if not is_same_type(lvalue_type, inferred.type) and not isinstance(
+                        inferred.type, PartialType
+                    ):
                         self.widened_vars.append(inferred.name)
                         self.set_inferred_type(inferred, lvalue, lvalue_type)
                         self.binder.put(lvalue, rvalue_type)
@@ -4758,7 +4779,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(res_type, UninhabitedType) and not res_type.ambiguous:
             self.binder.unreachable()
 
-    def replace_partial_type(self, var: Var, new_type: Type, partial_types: dict[Var, Context]) -> None:
+    def replace_partial_type(
+        self, var: Var, new_type: Type, partial_types: dict[Var, Context]
+    ) -> None:
         var.type = new_type
         del partial_types[var]
         if self.options.allow_redefinition_new:
@@ -8548,10 +8571,9 @@ def _find_inplace_method(inst: Instance, method: str, operator: str) -> str | No
     return None
 
 
-def is_valid_inferred_type(typ: Type,
-                           options: Options,
-                           is_lvalue_final: bool = False,
-                           is_lvalue_member: bool = False) -> bool:
+def is_valid_inferred_type(
+    typ: Type, options: Options, is_lvalue_final: bool = False, is_lvalue_member: bool = False
+) -> bool:
     """Is an inferred type valid and needs no further refinement?
 
     Examples of invalid types include the None type (when we are not assigning
