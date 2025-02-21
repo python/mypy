@@ -736,7 +736,7 @@ while bool():
     # TODO: only report unreachability once
     elif isinstance(x, str):  # E: Statement is unreachable
         _ = "unreachable"  # E: Statement is unreachable
-        x + 'a'  # E: "Never" not callable
+        x + 'a'
         break
     _ = "unreachable"  # E: Statement is unreachable
 x + [1]               # E: Unsupported operand types for + ("int" and "List[int]") \
@@ -1273,8 +1273,7 @@ if isinstance(y, int) and isinstance(x, B):  # E: Subclass of "A" and "int" cann
                                              # E: Right operand of "and" is never evaluated
     _ = "unreachable"  # E: Statement is unreachable
 if isinstance(y, int) and y > 42:  # E: Subclass of "A" and "int" cannot exist: would have incompatible method signatures \
-                                   # E: Right operand of "and" is never evaluated \
-                                   # E: "Never" not callable
+                                   # E: Right operand of "and" is never evaluated
     _ = "unreachable"  # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
@@ -2427,8 +2426,7 @@ class B:
 
     def t0(self) -> None:
         if isinstance(self, A0):        # E: Subclass of "B" and "A0" cannot exist: would have incompatible method signatures
-            x0: Literal[0] = self.f()   # E: Statement is unreachable \
-                                        # E: "Never" not callable
+            x0: Literal[0] = self.f()   # E: Statement is unreachable
 
     def t1(self) -> None:
         if isinstance(self, A1):

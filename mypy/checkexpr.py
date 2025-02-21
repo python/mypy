@@ -1638,6 +1638,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 object_type,
                 original_type=callee,
             )
+        elif isinstance(callee, UninhabitedType):
+            self.infer_arg_types_in_empty_context(args)
+            return (UninhabitedType(), UninhabitedType())
         else:
             return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)
 

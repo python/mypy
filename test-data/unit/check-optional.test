@@ -585,7 +585,7 @@ x is not None and x + '42'  # E: Unsupported operand types for + ("int" and "str
 from typing import Optional
 
 x: None = None
-x is not None and x + 42  # E: "Never" not callable
+x is not None and x + 42
 [builtins fixtures/isinstance.pyi]
 
 [case testOptionalLambdaInference]

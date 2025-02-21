@@ -1506,7 +1506,7 @@ z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not retu
 from typing import TypeVar
 T = TypeVar("T", int, str)
 def foo(x: T) -> T:
-    return x + 1 if isinstance(x, int) else x + "a"  # E: "Never" not callable
+    return x + 1 if isinstance(x, int) else x + "a"
 [builtins fixtures/isinstancelist.pyi]
 
 -- Special cases
