@@ -596,6 +596,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Check for potential decreases in the number of partial types so as not to stop the
             # iteration too early:
             partials_old = sum(len(pts.map) for pts in self.partial_types)
+            # Check if assignment widened the inferred type of a variable; in this case we
+            # need to iterate again (we only do one extra iteration, since this could go
+            # on without bound otherwise)
             widened_old = len(self.widened_vars)
 
             # Disable error types that we cannot safely identify in intermediate iteration steps:
