@@ -949,9 +949,9 @@ for a in ("hourly", "daily"):
     c = a
     reveal_type(c)  # N: Revealed type is "builtins.str"
     a = "monthly"
-    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
+    reveal_type(a)  # N: Revealed type is "builtins.str"
     a = "yearly"
-    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
+    reveal_type(a)  # N: Revealed type is "builtins.str"
     a = 1
     reveal_type(a)  # N: Revealed type is "builtins.int"
 reveal_type(a) # N: Revealed type is "builtins.int"
