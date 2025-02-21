@@ -22,6 +22,7 @@ class BuildType:
 PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
     "allow_redefinition",
+    "allow_redefinition_new",
     "allow_untyped_globals",
     "always_false",
     "always_true",

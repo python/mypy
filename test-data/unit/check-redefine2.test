@@ -1047,3 +1047,23 @@ class C:
     y: Final = "foo"
     y = 1 # E: Cannot assign to final name "y" \
           # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testNewRedefineEnableUsingComment]
+# flags: --local-partial-types
+import a
+import b
+
+[file a.py]
+# mypy: allow-redefinition-new
+if int():
+    x = 0
+else:
+    x = ""
+reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[file b.py]
+if int():
+    x = 0
+else:
+    x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+reveal_type(x) # N: Revealed type is "builtins.int"
