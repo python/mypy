@@ -4566,11 +4566,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type = self.expr_checker.accept(
                     rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
                 )
-            if isinstance(lvalue, NameExpr) and inferred is not None and inferred.type is not None:
-                if not inferred.is_final:
-                    new_inferred = remove_instance_last_known_values(rvalue_type)
-                else:
-                    new_inferred = rvalue_type
+            if (
+                isinstance(lvalue, NameExpr)
+                and inferred is not None
+                and inferred.type is not None
+                and not inferred.is_final
+            ):
+                new_inferred = remove_instance_last_known_values(rvalue_type)
                 if not is_same_type(inferred.type, new_inferred):
                     # Should we widen the inferred type or the lvalue? We can only widen
                     # a variable type if the variable was defined in the current function.

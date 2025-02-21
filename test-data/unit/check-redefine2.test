@@ -423,6 +423,11 @@ from typing import Final, Literal
 x: Final = "foo"
 reveal_type(x) # N: Revealed type is "Literal['foo']?"
 a: Literal["foo"] = x
+
+class B:
+    x: Final = "bar"
+    a: Literal["bar"] = x
+reveal_type(B.x) # N: Revealed type is "Literal['bar']?"
 [builtins fixtures/tuple.pyi]
 
 [case testNewRedefineAnnotatedVariable]
@@ -1035,8 +1040,10 @@ def f() -> list[str]:
 from typing import Final
 
 x: Final = "foo"
-x = 1 # E: Cannot assign to final name "x"
+x = 1 # E: Cannot assign to final name "x" \
+      # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 class C:
     y: Final = "foo"
-    y = 1 # E: Cannot assign to final name "y"
+    y = 1 # E: Cannot assign to final name "y" \
+          # E: Incompatible types in assignment (expression has type "int", variable has type "str")
