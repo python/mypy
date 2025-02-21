@@ -216,7 +216,7 @@ from mypy.visitor import NodeVisitor
 
 T = TypeVar("T")
 
-DEFAULT_LAST_PASS: Final = 1  # Pass numbers start at 0
+DEFAULT_LAST_PASS: Final = 2  # Pass numbers start at 0
 
 # Maximum length of fixed tuple types inferred when narrowing from variadic tuples.
 MAX_PRECISE_TUPLE_SIZE: Final = 8
