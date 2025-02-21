@@ -136,6 +136,7 @@ class Options:
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
         self.exclude: list[str] = []
+        self.exclude_gitignore: bool = False
 
         # disallow_any options
         self.disallow_any_generics = False

@@ -34,10 +34,8 @@ def item_ok_for_pypi(name: str) -> bool:
     if not is_whl_or_tar(name):
         return False
 
-    if name.endswith(".tar.gz"):
-        name = name[:-7]
-    if name.endswith(".whl"):
-        name = name[:-4]
+    name = name.removesuffix(".tar.gz")
+    name = name.removesuffix(".whl")
 
     if name.endswith("wasm32"):
         return False
@@ -123,8 +121,7 @@ def upload_to_pypi(version: str, dry_run: bool = True) -> None:
     assert re.match(r"v?[1-9]\.[0-9]+\.[0-9](\+\S+)?$", version)
     if "dev" in version:
         assert dry_run, "Must use --dry-run with dev versions of mypy"
-    if version.startswith("v"):
-        version = version[1:]
+    version = version.removeprefix("v")
 
     target_dir = tempfile.mkdtemp()
     dist = Path(target_dir) / "dist"

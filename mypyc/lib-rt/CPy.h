@@ -720,12 +720,17 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
+CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction);
+CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
+PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace);
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
 PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
-bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
-bool CPyStr_Endswith(PyObject *self, PyObject *subobj);
+int CPyStr_Startswith(PyObject *self, PyObject *subobj);
+int CPyStr_Endswith(PyObject *self, PyObject *subobj);
+PyObject *CPyStr_Removeprefix(PyObject *self, PyObject *prefix);
+PyObject *CPyStr_Removesuffix(PyObject *self, PyObject *suffix);
 bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);

@@ -137,6 +137,57 @@ L4:
 L5:
     unreachable
 
+[case testStrStartswithEndswithTuple]
+from typing import Tuple
+
+def do_startswith(s1: str, s2: Tuple[str, ...]) -> bool:
+    return s1.startswith(s2)
+
+def do_endswith(s1: str, s2: Tuple[str, ...]) -> bool:
+    return s1.endswith(s2)
+
+def do_tuple_literal_args(s1: str) -> None:
+    x = s1.startswith(("a", "b"))
+    y = s1.endswith(("a", "b"))
+[out]
+def do_startswith(s1, s2):
+    s1 :: str
+    s2 :: tuple
+    r0 :: bool
+L0:
+    r0 = CPyStr_Startswith(s1, s2)
+    return r0
+def do_endswith(s1, s2):
+    s1 :: str
+    s2 :: tuple
+    r0 :: bool
+L0:
+    r0 = CPyStr_Endswith(s1, s2)
+    return r0
+def do_tuple_literal_args(s1):
+    s1, r0, r1 :: str
+    r2 :: tuple[str, str]
+    r3 :: object
+    r4, x :: bool
+    r5, r6 :: str
+    r7 :: tuple[str, str]
+    r8 :: object
+    r9, y :: bool
+L0:
+    r0 = 'a'
+    r1 = 'b'
+    r2 = (r0, r1)
+    r3 = box(tuple[str, str], r2)
+    r4 = CPyStr_Startswith(s1, r3)
+    x = r4
+    r5 = 'a'
+    r6 = 'b'
+    r7 = (r5, r6)
+    r8 = box(tuple[str, str], r7)
+    r9 = CPyStr_Endswith(s1, r8)
+    y = r9
+    return 1
+
 [case testStrToBool]
 def is_true(x: str) -> bool:
     if x:

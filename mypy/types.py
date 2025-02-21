@@ -3320,12 +3320,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return s
 
     def visit_type_var(self, t: TypeVarType, /) -> str:
-        if t.name is None:
-            # Anonymous type variable type (only numeric id).
-            s = f"`{t.id}"
-        else:
-            # Named type variable type.
-            s = f"{t.name}`{t.id}"
+        s = f"{t.name}`{t.id}"
         if self.id_mapper and t.upper_bound:
             s += f"(upper_bound={t.upper_bound.accept(self)})"
         if t.has_default():
@@ -3337,12 +3332,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         s = ""
         if t.prefix.arg_types:
             s += f"[{self.list_str(t.prefix.arg_types)}, **"
-        if t.name is None:
-            # Anonymous type variable type (only numeric id).
-            s += f"`{t.id}"
-        else:
-            # Named type variable type.
-            s += f"{t.name_with_suffix()}`{t.id}"
+        s += f"{t.name_with_suffix()}`{t.id}"
         if t.prefix.arg_types:
             s += "]"
         if t.has_default():
@@ -3379,12 +3369,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"[{s}]"
 
     def visit_type_var_tuple(self, t: TypeVarTupleType, /) -> str:
-        if t.name is None:
-            # Anonymous type variable type (only numeric id).
-            s = f"`{t.id}"
-        else:
-            # Named type variable type.
-            s = f"{t.name}`{t.id}"
+        s = f"{t.name}`{t.id}"
         if t.has_default():
             s += f" = {t.default.accept(self)}"
         return s
