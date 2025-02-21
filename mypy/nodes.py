@@ -1716,15 +1716,19 @@ class IntExpr(Expression):
 class StrExpr(Expression):
     """String literal"""
 
-    __slots__ = ("value",)
+    __slots__ = ("value", "as_type")
 
     __match_args__ = ("value",)
 
     value: str  # '' by default
+    # If this value expression can also be parsed as a valid type expression,
+    # represents the type denoted by the type expression.
+    as_type: mypy.types.Type | None
 
     def __init__(self, value: str) -> None:
         super().__init__()
         self.value = value
+        self.as_type = None
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -1875,15 +1879,20 @@ class NameExpr(RefExpr):
     This refers to a local name, global name or a module.
     """
 
-    __slots__ = ("name", "is_special_form")
+    __slots__ = ("name", "is_special_form", "as_type")
 
     __match_args__ = ("name", "node")
+
+    # If this value expression can also be parsed as a valid type expression,
+    # represents the type denoted by the type expression.
+    as_type: mypy.types.Type | None
 
     def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name  # Name referred to
         # Is this a l.h.s. of a special form assignment like typed dict or type variable?
         self.is_special_form = False
+        self.as_type = None
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
@@ -2023,7 +2032,7 @@ class IndexExpr(Expression):
     Also wraps type application such as List[int] as a special form.
     """
 
-    __slots__ = ("base", "index", "method_type", "analyzed")
+    __slots__ = ("base", "index", "method_type", "analyzed", "as_type")
 
     __match_args__ = ("base", "index")
 
@@ -2034,6 +2043,9 @@ class IndexExpr(Expression):
     # If not None, this is actually semantically a type application
     # Class[type, ...] or a type alias initializer.
     analyzed: TypeApplication | TypeAliasExpr | None
+    # If this value expression can also be parsed as a valid type expression,
+    # represents the type denoted by the type expression.
+    as_type: mypy.types.Type | None
 
     def __init__(self, base: Expression, index: Expression) -> None:
         super().__init__()
@@ -2041,6 +2053,7 @@ class IndexExpr(Expression):
         self.index = index
         self.method_type = None
         self.analyzed = None
+        self.as_type = None
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
@@ -2138,7 +2151,7 @@ class OpExpr(Expression):
 # Expression subtypes that could represent the root of a valid type expression.
 # Always contains an "as_type" attribute.
 # TODO: Make this into a Protocol if mypyc is OK with that.
-MaybeTypeExpression = OpExpr
+MaybeTypeExpression = Union[IndexExpr, NameExpr, OpExpr, StrExpr]
 
 
 class ComparisonExpr(Expression):
