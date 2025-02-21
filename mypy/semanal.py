@@ -3708,9 +3708,9 @@ class SemanticAnalyzer(
                     cur_node = self.type.names.get(lval.name, None)
                     if cur_node and isinstance(cur_node.node, Var) and cur_node.node.is_final:
                         assert self.function_stack
-                        top_function = self.function_stack[-1]
+                        current_function = self.function_stack[-1]
                         if (
-                            top_function.name == "__init__"
+                            current_function.name == "__init__"
                             and cur_node.node.final_unset_in_class
                             and not cur_node.node.final_set_in_init
                             and not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)

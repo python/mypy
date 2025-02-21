@@ -221,17 +221,17 @@ DEFAULT_LAST_PASS: Final = 1  # Pass numbers start at 0
 # Maximum length of fixed tuple types inferred when narrowing from variadic tuples.
 MAX_PRECISE_TUPLE_SIZE: Final = 8
 
-DeferredNodeType: _TypeAlias = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
+DeferredNodeType: _TypeAlias = Union[FuncDef, OverloadedFuncDef, Decorator]
 FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
 
 
 # A node which is postponed to be processed during the next pass.
 # In normal mode one can defer functions and methods (also decorated and/or overloaded)
-# and lambda expressions. Nested functions can't be deferred -- only top-level functions
+# but not lambda expressions. Nested functions can't be deferred -- only top-level functions
 # and methods of classes not defined within a function can be deferred.
 class DeferredNode(NamedTuple):
     node: DeferredNodeType
-    # And its TypeInfo (for semantic analysis self type handling
+    # And its TypeInfo (for semantic analysis self type handling)
     active_typeinfo: TypeInfo | None
 
 
@@ -528,10 +528,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             self.recurse_into_functions = True
             with self.binder.top_frame_context():
-                if isinstance(node, LambdaExpr):
-                    self.expr_checker.accept(node)
-                else:
-                    self.accept(node)
+                self.accept(node)
 
     def check_top_level(self, node: MypyFile) -> None:
         """Check only the top-level of a module, skipping function definitions."""
@@ -558,7 +555,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.deferred_nodes.append(DeferredNode(node, enclosing_class))
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        node = self.scope.top_non_lambda_function()
+        node = self.scope.top_level_function()
         if self.pass_num < self.last_pass and isinstance(node, FuncDef):
             # Don't report an error yet. Just defer. Note that we don't defer
             # lambdas because they are coupled to the surrounding function
@@ -4767,7 +4764,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.binder.unreachable()
 
     def check_return_stmt(self, s: ReturnStmt) -> None:
-        defn = self.scope.top_function()
+        defn = self.scope.current_function()
         if defn is not None:
             if defn.is_generator:
                 return_type = self.get_generator_return_type(
@@ -4779,7 +4776,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return_type = self.return_types[-1]
             return_type = get_proper_type(return_type)
 
-            is_lambda = isinstance(self.scope.top_function(), LambdaExpr)
+            is_lambda = isinstance(defn, LambdaExpr)
             if isinstance(return_type, UninhabitedType):
                 # Avoid extra error messages for failed inference in lambdas
                 if not is_lambda and not return_type.ambiguous:
@@ -8554,14 +8551,14 @@ class CheckerScope:
     def __init__(self, module: MypyFile) -> None:
         self.stack = [module]
 
-    def top_function(self) -> FuncItem | None:
+    def current_function(self) -> FuncItem | None:
         for e in reversed(self.stack):
             if isinstance(e, FuncItem):
                 return e
         return None
 
-    def top_non_lambda_function(self) -> FuncItem | None:
-        for e in reversed(self.stack):
+    def top_level_function(self) -> FuncItem | None:
+        for e in self.stack:
             if isinstance(e, FuncItem) and not isinstance(e, LambdaExpr):
                 return e
         return None
@@ -8573,7 +8570,7 @@ class CheckerScope:
 
     def enclosing_class(self) -> TypeInfo | None:
         """Is there a class *directly* enclosing this function?"""
-        top = self.top_function()
+        top = self.current_function()
         assert top, "This method must be called from inside a function"
         index = self.stack.index(top)
         assert index, "CheckerScope stack must always start with a module"
@@ -8589,7 +8586,7 @@ class CheckerScope:
         In particular, inside a function nested in method this returns None.
         """
         info = self.active_class()
-        if not info and self.top_function():
+        if not info and self.current_function():
             info = self.enclosing_class()
         if info:
             return fill_typevars(info)

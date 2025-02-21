@@ -3913,3 +3913,20 @@ x = "abc"
 for x in list[int]():
     reveal_type(x)  # N: Revealed type is "builtins.int"
 reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testNarrowInFunctionDefer]
+from typing import Optional, Callable, TypeVar
+
+def top() -> None:
+    x: Optional[int]
+    assert x is not None
+
+    def foo() -> None:
+        defer()
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], T]: ...
+
+@deco
+def defer() -> int: ...
