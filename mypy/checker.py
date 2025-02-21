@@ -561,7 +561,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # lambdas because they are coupled to the surrounding function
             # through the binder and the inferred type of the lambda, so it
             # would get messy.
-            enclosing_class = self.scope.enclosing_class()
+            enclosing_class = self.scope.enclosing_class(node)
             self.defer_node(node, enclosing_class)
             # Set a marker so that we won't infer additional types in this
             # function. Any inferred types could be bogus, because there's at
@@ -2153,7 +2153,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if self.pass_num < self.last_pass:
                 # If there are passes left, defer this node until next pass,
                 # otherwise try reconstructing the method type from available information.
-                self.defer_node(defn, defn.info)
+                # For consistency, defer an enclosing top-level function (if any).
+                top_level = self.scope.top_level_function()
+                if isinstance(top_level, FuncDef):
+                    self.defer_node(top_level, self.scope.enclosing_class(top_level))
+                else:
+                    # Specify enclosing class explicitly, as we check type override before
+                    # entering e.g. decorators or overloads.
+                    self.defer_node(defn, defn.info)
                 return True
             elif isinstance(original_node, (FuncDef, OverloadedFuncDef)):
                 original_type = self.function_type(original_node)
@@ -8558,6 +8565,7 @@ class CheckerScope:
         return None
 
     def top_level_function(self) -> FuncItem | None:
+        """Return top-level non-lambda function."""
         for e in self.stack:
             if isinstance(e, FuncItem) and not isinstance(e, LambdaExpr):
                 return e
@@ -8568,11 +8576,11 @@ class CheckerScope:
             return self.stack[-1]
         return None
 
-    def enclosing_class(self) -> TypeInfo | None:
+    def enclosing_class(self, func: FuncItem | None = None) -> TypeInfo | None:
         """Is there a class *directly* enclosing this function?"""
-        top = self.current_function()
-        assert top, "This method must be called from inside a function"
-        index = self.stack.index(top)
+        func = func or self.current_function()
+        assert func, "This method must be called from inside a function"
+        index = self.stack.index(func)
         assert index, "CheckerScope stack must always start with a module"
         enclosing = self.stack[index - 1]
         if isinstance(enclosing, TypeInfo):

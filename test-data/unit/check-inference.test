@@ -3930,3 +3930,18 @@ def deco(fn: Callable[[], T]) -> Callable[[], T]: ...
 
 @deco
 def defer() -> int: ...
+
+[case testDeferMethodOfNestedClass]
+from typing import Optional, Callable, TypeVar
+
+class Out:
+    def meth(self) -> None:
+        class In:
+            def meth(self) -> None:
+                reveal_type(defer())  # N: Revealed type is "builtins.int"
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], T]: ...
+
+@deco
+def defer() -> int: ...
