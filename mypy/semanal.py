@@ -3764,8 +3764,7 @@ class SemanticAnalyzer(
                     # decide here what to infer: int or Literal[42].
                     safe_literal_inference = self.type.mro[1].get(ref_expr.name) is None
                 if safe_literal_inference and ref_expr.is_inferred_def:
-                    if not self.options.allow_redefinition_new or s.is_final_def:
-                        s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
+                    s.type = self.analyze_simple_literal_type(s.rvalue, s.is_final_def)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
