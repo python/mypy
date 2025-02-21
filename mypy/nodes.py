@@ -2151,7 +2151,7 @@ class OpExpr(Expression):
 # Expression subtypes that could represent the root of a valid type expression.
 # Always contains an "as_type" attribute.
 # TODO: Make this into a Protocol if mypyc is OK with that.
-MaybeTypeExpression = Union[IndexExpr, NameExpr, OpExpr, StrExpr]
+MaybeTypeExpression = (IndexExpr, NameExpr, OpExpr, StrExpr)
 
 
 class ComparisonExpr(Expression):
