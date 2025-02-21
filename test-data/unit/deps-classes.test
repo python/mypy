@@ -84,19 +84,23 @@ class A: pass
 <a> -> m
 
 [case testIfFalseInClassBody]
+from typing import Any
+
 class A:
     if False:
-        x = None  # type: str
+        x: Any = None
         x.foo()
 [builtins fixtures/bool.pyi]
 [out]
 <m.A> -> m.A
 
 [case testAlwaysFalseIsinstanceInClassBody]
+from typing import Any
+
 class A:
     x: int
     if isinstance(x, str):
-        y: str = None
+        y: Any = None
         y.foo()
 [builtins fixtures/isinstance.pyi]
 [out]

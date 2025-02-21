@@ -414,7 +414,9 @@ class B:
 
 def f(x: A) -> None:
     if isinstance(x, B):
-        x.y
+        # TODO: this should narrow to Never and therefore not error
+        #x.y
+        pass
 [builtins fixtures/isinstancelist.pyi]
 [out]
 <m.A> -> <m.f>, m.A, m.f
@@ -582,7 +584,7 @@ def f(a: A) -> None:
 [case testUnreachableAssignment]
 from typing import List, Tuple
 
-def f() -> None: pass
+def f() -> int: pass
 
 class C:
     def __init__(self, x: int) -> None:

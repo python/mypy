@@ -173,6 +173,7 @@ from mypy.types import (
     ANY_STRATEGY,
     MYPYC_NATIVE_INT_NAMES,
     OVERLOAD_NAMES,
+    REVEAL_TYPE_NAMES,
     AnyType,
     BoolTypeQuery,
     CallableType,
@@ -459,15 +460,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
             with self.tscope.module_scope(self.tree.fullname):
                 with self.enter_partial_types(), self.binder.top_frame_context():
+                    reported_unreachable = False
                     for d in self.tree.defs:
-                        if self.binder.is_unreachable():
+                        if not reported_unreachable and self.binder.is_unreachable():
                             if not self.should_report_unreachable_issues():
-                                break
-                            if not self.is_noop_for_reachability(d):
+                                reported_unreachable = True
+                            elif not self.is_noop_for_reachability(d):
                                 self.msg.unreachable_statement(d)
-                                break
-                        else:
-                            self.accept(d)
+                                reported_unreachable = True
+                        self.accept(d)
 
                 assert not self.current_node_deferred
 
@@ -3048,18 +3049,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if b.is_unreachable:
             # This block was marked as being unreachable during semantic analysis.
             # It turns out any blocks marked in this way are *intentionally* marked
-            # as unreachable -- so we don't display an error.
+            # as unreachable -- so we don't display an error nor run type checking.
             self.binder.unreachable()
             return
+        reported_unreachable = False
         for s in b.body:
-            if self.binder.is_unreachable():
-                if not self.should_report_unreachable_issues():
+            if not reported_unreachable and self.binder.is_unreachable():
+                # TODO: should this guard against self.current_node_deferred too?
+                if self.binder.is_unreachable_warning_suppressed():
+                    # turns out in these cases we actually don't want to check code.
+                    # for instance, type var values
                     break
-                if not self.is_noop_for_reachability(s):
+                elif not self.should_report_unreachable_issues():
+                    reported_unreachable = True
+                elif not self.is_noop_for_reachability(s):
                     self.msg.unreachable_statement(s)
-                    break
-            else:
-                self.accept(s)
+                    reported_unreachable = True
+            self.accept(s)
 
     def should_report_unreachable_issues(self) -> bool:
         return (
@@ -3085,7 +3091,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(s, ExpressionStmt):
             if isinstance(s.expr, EllipsisExpr):
                 return True
-            elif isinstance(s.expr, CallExpr):
+            elif isinstance(s.expr, CallExpr) and not refers_to_fullname(
+                s.expr.callee, REVEAL_TYPE_NAMES
+            ):
                 with self.expr_checker.msg.filter_errors():
                     typ = get_proper_type(
                         self.expr_checker.accept(
@@ -6293,8 +6301,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if_type = true_only(vartype)
         else_type = false_only(vartype)
-        if_map = {node: if_type} if not isinstance(if_type, UninhabitedType) else None
-        else_map = {node: else_type} if not isinstance(else_type, UninhabitedType) else None
+        if_map = {node: if_type}  # if not isinstance(if_type, UninhabitedType) else None
+        else_map = {node: else_type}  # if not isinstance(else_type, UninhabitedType) else None
         return if_map, else_map
 
     def comparison_type_narrowing_helper(self, node: ComparisonExpr) -> tuple[TypeMap, TypeMap]:
@@ -8004,9 +8012,7 @@ def conditional_types_to_typemaps(
     maps: list[TypeMap] = []
     for typ in (yes_type, no_type):
         proper_type = get_proper_type(typ)
-        if isinstance(proper_type, UninhabitedType):
-            maps.append(None)
-        elif proper_type is None:
+        if proper_type is None:
             maps.append({})
         else:
             assert typ is not None
