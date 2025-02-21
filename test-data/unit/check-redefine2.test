@@ -118,6 +118,18 @@ def f2() -> None:
 
 reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
+[case testNewRedefineGlobalVariableNoneInit]
+# flags: --allow-redefinition-new --local-partial-types
+x = None
+
+def f() -> None:
+    global x
+    reveal_type(x) # N: Revealed type is "None"
+    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "None")
+    reveal_type(x) # N: Revealed type is "None"
+
+reveal_type(x) # N: Revealed type is "None"
+
 [case testNewRedefineParameterTypes]
 # flags: --allow-redefinition-new --local-partial-types
 from typing import Optional

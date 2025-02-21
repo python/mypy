@@ -4567,18 +4567,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     new_inferred = remove_instance_last_known_values(rvalue_type)
                 else:
                     new_inferred = rvalue_type
-                if not is_same_type(inferred.type, new_inferred):
-                    lvalue_type = make_simplified_union([inferred.type, new_inferred])
-                    if not is_same_type(lvalue_type, inferred.type) and not isinstance(
-                        inferred.type, PartialType
-                    ):
-                        self.widened_vars.append(inferred.name)
-                        self.set_inferred_type(inferred, lvalue, lvalue_type)
-                        self.binder.put(lvalue, rvalue_type)
-                        # TODO: hack, maybe integrate into put?
-                        lit = literal_hash(lvalue)
-                        if lit is not None:
-                            self.binder.declarations[lit] = lvalue_type
+                if isinstance(lvalue, NameExpr) and not is_same_type(inferred.type, new_inferred):
+                    # Should we widen the inferred type or the lvalue?
+                    different_scopes = (
+                        self.scope.top_function() is not None and lvalue.kind != LDEF
+                    )
+                    if not different_scopes:
+                        lvalue_type = make_simplified_union([inferred.type, new_inferred])
+                        if not is_same_type(lvalue_type, inferred.type) and not isinstance(
+                            inferred.type, PartialType
+                        ):
+                            self.widened_vars.append(inferred.name)
+                            self.set_inferred_type(inferred, lvalue, lvalue_type)
+                            self.binder.put(lvalue, rvalue_type)
+                            # TODO: hack, maybe integrate into put?
+                            lit = literal_hash(lvalue)
+                            if lit is not None:
+                                self.binder.declarations[lit] = lvalue_type
             if (
                 isinstance(get_proper_type(lvalue_type), UnionType)
                 # Skip literal types, as they have special logic (for better errors).
