@@ -658,6 +658,13 @@ class SemanticAnalyzer(
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
+        if self.options.allow_redefinition_new and not self.options.local_partial_types:
+            n = TempNode(AnyType(TypeOfAny.special_form))
+            n.line = 1
+            n.column = 0
+            n.end_line = 1
+            n.end_column = 0
+            self.fail("--local-partial-types must be enabled if using --allow-redefinition-new", n)
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:

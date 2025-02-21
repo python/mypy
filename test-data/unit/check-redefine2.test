@@ -1067,3 +1067,22 @@ if int():
 else:
     x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 reveal_type(x) # N: Revealed type is "builtins.int"
+
+[case testNewRedefineWithoutLocalPartialTypes]
+import a
+import b
+
+[file a.py]
+# mypy: local-partial-types, allow-redefinition-new
+x = 0
+if int():
+    x = ""
+
+[file b.py]
+# mypy: allow-redefinition-new
+x = 0
+if int():
+    x = ""
+
+[out]
+tmp/b.py:1: error: --local-partial-types must be enabled if using --allow-redefinition-new
