@@ -2505,30 +2505,25 @@ def f1(x: T1) -> T1:
             reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">" \
                             # N: Revealed type is "__main__.<subclass of "__main__.B" and "__main__.A">"
         else:
-            reveal_type(x)  # N: Revealed type is "__main__.A" \
-                            # N: Revealed type is "Never"
+            reveal_type(x)  # N: Revealed type is "__main__.A"
     else:
-        reveal_type(x)      # N: Revealed type is "Never" \
-                            # N: Revealed type is "__main__.B"
+        reveal_type(x)      # N: Revealed type is "__main__.B"
     return x
 
 T2 = TypeVar('T2', B, C)
 def f2(x: T2) -> T2:
     if isinstance(x, B):
-        reveal_type(x)      # N: Revealed type is "__main__.B" \
-                            # N: Revealed type is "Never"
+        reveal_type(x)      # N: Revealed type is "__main__.B"
         # Note: even though --warn-unreachable is set, we don't report
         # errors for the below: we don't yet have a way of filtering out
         # reachability errors that occur for only one variation of the
         # TypeVar yet.
         if isinstance(x, C):
-            reveal_type(x)  # N: Revealed type is "Never"
+            reveal_type(x)
         else:
-            reveal_type(x)  # N: Revealed type is "__main__.B" \
-                            # N: Revealed type is "Never"
+            reveal_type(x)  # N: Revealed type is "__main__.B"
     else:
-        reveal_type(x)      # N: Revealed type is "Never" \
-                            # N: Revealed type is "__main__.C"
+        reveal_type(x)      # N: Revealed type is "__main__.C"
     return x
 
 
@@ -2553,16 +2548,16 @@ def f1(x: T1) -> T1:
         # 'x' is a subclass of __main__.A and __main__.B
         return A()   # E: Incompatible return value type (got "A", expected "B")
     else:
-        return B()  # E: Incompatible return value type (got "B", expected "A")
+        return B()
 
 T2 = TypeVar('T2', B, C)
 def f2(x: T2) -> T2:
     if isinstance(x, B):
         # In contrast, it's impossible for a subclass of "B" and "C" to
         # exist, so this is fine
-        return B()  # E: Incompatible return value type (got "B", expected "C")
+        return B()
     else:
-        return C()  # E: Incompatible return value type (got "C", expected "B")
+        return C()
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionUsage]

@@ -2127,11 +2127,9 @@ TD = TypeVar('TD', D1, D2)
 def f(arg: TD) -> None:
     value: int
     if 'foo' in arg:
-        assert_type(arg['foo'], int)  # E: Expression is of type "Any", not "int" \
-                                      # E: TypedDict "D2" has no key "foo"
+        assert_type(arg['foo'], int)
     else:
-        assert_type(arg['bar'], int)  # E: Expression is of type "Any", not "int" \
-                                      # E: TypedDict "D1" has no key "bar"
+        assert_type(arg['bar'], int)
 
 
 [builtins fixtures/dict.pyi]

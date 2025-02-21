@@ -310,13 +310,12 @@ T = TypeVar('T', int, Callable[[], int], Union[str, Callable[[], str]])
 
 def f(t: T) -> None:
     if callable(t):
-        reveal_type(t())  # N: Revealed type is "Any"  \
-            # N: Revealed type is "builtins.int"  \
-            # N: Revealed type is "builtins.str"
+        reveal_type(t())  # N: Revealed type is "Any" \
+                          # N: Revealed type is "builtins.int" \
+                          # N: Revealed type is "builtins.str"
     else:
-        reveal_type(t)  # N: Revealed type is "builtins.int"  \
-            # N: Revealed type is "def () -> builtins.int"  \
-            # N: Revealed type is "builtins.str"
+        reveal_type(t)  # N: Revealed type is "builtins.int" \
+                        # N: Revealed type is "builtins.str"
 
 [builtins fixtures/callable.pyi]
 

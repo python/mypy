@@ -3051,7 +3051,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         reported_unreachable = False
         for s in b.body:
             if not reported_unreachable and self.binder.is_unreachable():
-                if not self.should_report_unreachable_issues():
+                # TODO: should this guard against self.current_node_deferred too?
+                if self.binder.is_unreachable_warning_suppressed():
+                    # turns out in these cases we actually don't want to check code.
+                    # for instance, type var values
+                    break
+                elif not self.should_report_unreachable_issues():
                     reported_unreachable = True
                 elif not self.is_noop_for_reachability(s):
                     self.msg.unreachable_statement(s)

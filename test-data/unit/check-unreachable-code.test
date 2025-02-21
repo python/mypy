@@ -980,19 +980,16 @@ def test1(x: T1) -> T1:
 
 def test2(x: T2) -> T2:
     if isinstance(x, int):
-        reveal_type(x)  # N: Revealed type is "builtins.int" \
-                        # N: Revealed type is "Never"
+        reveal_type(x)  # N: Revealed type is "builtins.int"
     else:
-        reveal_type(x)  # N: Revealed type is "Never" \
-                        # N: Revealed type is "builtins.str"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
 
     if False:
         # This is unreachable, but we don't report an error, unfortunately.
         # The presence of the TypeVar with values unfortunately currently shuts
         # down type-checking for this entire function.
         # TODO: Find a way of removing this limitation
-        reveal_type(x)  # N: Revealed type is "builtins.int" \
-                        # N: Revealed type is "builtins.str"
+        reveal_type(x)
 
     return x
 
@@ -1001,16 +998,13 @@ class Test3(Generic[T2]):
 
     def func(self) -> None:
         if isinstance(self.x, int):
-            reveal_type(self.x)  # N: Revealed type is "builtins.int" \
-                                 # N: Revealed type is "Never"
+            reveal_type(self.x)  # N: Revealed type is "builtins.int"
         else:
-            reveal_type(self.x)  # N: Revealed type is "Never" \
-                                 # N: Revealed type is "builtins.str"
+            reveal_type(self.x)  # N: Revealed type is "builtins.str"
 
         if False:
             # Same issue as above
-            reveal_type(self.x)  # N: Revealed type is "builtins.int" \
-                                 # N: Revealed type is "builtins.str"
+            reveal_type(self.x)
 
 
 class Test4(Generic[T3]):
