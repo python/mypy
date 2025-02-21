@@ -4559,18 +4559,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if (
                 lvalue_type is not None
                 and type_context is None
-                and not is_valid_inferred_type(rvalue_type, self.options)  # TODO
+                and not is_valid_inferred_type(rvalue_type, self.options)
             ):
+                # Inference in an empty type context didn't produce a valid type, so
+                # try using lvalue type as context instead.
                 rvalue_type = self.expr_checker.accept(
                     rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
                 )
-            if inferred is not None and lvalue is not None and inferred.type is not None:
+            if isinstance(lvalue, NameExpr) and inferred is not None and inferred.type is not None:
                 if not inferred.is_final:
                     new_inferred = remove_instance_last_known_values(rvalue_type)
                 else:
                     new_inferred = rvalue_type
-                if isinstance(lvalue, NameExpr) and not is_same_type(inferred.type, new_inferred):
-                    # Should we widen the inferred type or the lvalue?
+                if not is_same_type(inferred.type, new_inferred):
+                    # Should we widen the inferred type or the lvalue? We can only widen
+                    # a variable type if the variable was defined in the current function.
                     different_scopes = (
                         self.scope.top_function() is not None and lvalue.kind != LDEF
                     )
@@ -4579,6 +4582,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if not is_same_type(lvalue_type, inferred.type) and not isinstance(
                             inferred.type, PartialType
                         ):
+                            # Widen the type to the union of original and new type.
                             self.widened_vars.append(inferred.name)
                             self.set_inferred_type(inferred, lvalue, lvalue_type)
                             self.binder.put(lvalue, rvalue_type)
