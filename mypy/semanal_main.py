@@ -27,6 +27,7 @@ will be incomplete.
 from __future__ import annotations
 
 from contextlib import nullcontext
+from functools import cmp_to_key
 from typing import TYPE_CHECKING, Callable, Final, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
@@ -232,26 +233,48 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
         final_iteration = not any_progress
 
 
+def method_order_by_subclassing(left: FullTargetInfo, right: FullTargetInfo) -> int:
+    _, _, _, left_info = left
+    _, _, _, right_info = right
+    if left_info is None or right_info is None:
+        return 0
+    if left_info is right_info:
+        return 0
+    if left_info in right_info.mro:
+        return -1
+    if right_info in left_info.mro:
+        return 1
+    return 0
+
+
 def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
     # Process functions.
+    all_targets = []
     for module in scc:
         tree = graph[module].tree
         assert tree is not None
-        analyzer = graph[module].manager.semantic_analyzer
         # In principle, functions can be processed in arbitrary order,
         # but _methods_ must be processed in the order they are defined,
         # because some features (most notably partial types) depend on
         # order of definitions on self.
         #
         # There can be multiple generated methods per line. Use target
-        # name as the second sort key to get a repeatable sort order on
-        # Python 3.5, which doesn't preserve dictionary order.
+        # name as the second sort key to get a repeatable sort order.
         targets = sorted(get_all_leaf_targets(tree), key=lambda x: (x[1].line, x[0]))
-        for target, node, active_type in targets:
-            assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
-            process_top_level_function(
-                analyzer, graph[module], module, target, node, active_type, patches
-            )
+        all_targets.extend(
+            [(module, target, node, active_type) for target, node, active_type in targets]
+        )
+
+    # Additionally, we process superclass methods before subclass methods. Here we rely
+    # on stability of Python sort and just do a separate sort.
+    for module, target, node, active_type in sorted(
+        all_targets, key=cmp_to_key(method_order_by_subclassing)
+    ):
+        analyzer = graph[module].manager.semantic_analyzer
+        assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
+        process_top_level_function(
+            analyzer, graph[module], module, target, node, active_type, patches
+        )
 
 
 def process_top_level_function(
@@ -306,6 +329,11 @@ def process_top_level_function(
 
 TargetInfo: _TypeAlias = tuple[
     str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
+]
+
+# Same as above but includes module as first item.
+FullTargetInfo: _TypeAlias = tuple[
+    str, str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]
 ]
 
 

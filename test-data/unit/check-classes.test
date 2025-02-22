@@ -7007,11 +7007,10 @@ class C:
 [case testAttributeDefOrder2]
 class D(C):
     def g(self) -> None:
-        self.x = ''
+        self.x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
     def f(self) -> None:
-        # https://github.com/python/mypy/issues/7162
-        reveal_type(self.x) # N: Revealed type is "builtins.str"
+        reveal_type(self.x) # N: Revealed type is "builtins.int"
 
 
 class C:
@@ -7025,7 +7024,7 @@ class E(C):
     def f(self) -> None:
         reveal_type(self.x) # N: Revealed type is "builtins.int"
 
-[targets __main__, __main__, __main__.D.g, __main__.D.f, __main__.C.__init__, __main__.E.g, __main__.E.f]
+[targets __main__, __main__, __main__.C.__init__, __main__.D.g, __main__.D.f, __main__.E.g, __main__.E.f]
 
 [case testNewReturnType1]
 class A:
