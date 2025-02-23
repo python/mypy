@@ -325,6 +325,7 @@ class TypedDictAnalyzer:
                 self.fail(TPDICT_CLASS_ERROR, stmt)
             else:
                 name = stmt.lvalues[0].name
+                name = defn.mangled2unmangled.get(name, name)
                 if name in (oldfields or []):
                     self.fail(f'Overwriting TypedDict field "{name}" while extending', stmt)
                 if name in fields:

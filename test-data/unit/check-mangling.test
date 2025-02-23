@@ -275,3 +275,74 @@ class G(A):
 G().__x = 1  # E: "G" has no attribute "__x"
 G()._G__x = 1
 [builtins fixtures/dict.pyi]
+
+[case testNameManglingTypedDictBasics]
+from typing import TypedDict
+
+class A(TypedDict):
+    __a: int
+
+a: A
+reveal_type(a)  # N: Revealed type is "TypedDict('__main__.A', {'__a': builtins.int})"
+reveal_type(a["__a"])  # N: Revealed type is "builtins.int"
+a = {"__a": 1}
+a = {"_A__a": 1}  # E: Missing key "__a" for TypedDict "A" \
+                  # E: Extra key "_A__a" for TypedDict "A"
+
+class B(A):
+    __b: int
+
+b: B
+reveal_type(b)  # N: Revealed type is "TypedDict('__main__.B', {'__a': builtins.int, '__b': builtins.int})"
+reveal_type(b["__a"] + b["__b"])  # N: Revealed type is "builtins.int"
+b = {"__a": 1, "__b": 2}
+b = {"_A__a": 1, "_B__b": 2}  # E: Missing keys ("__a", "__b") for TypedDict "B" \
+                              # E: Extra keys ("_A__a", "_B__b") for TypedDict "B"
+
+class C(TypedDict):
+    __c: int
+
+class D(B, C):
+    pass
+
+d: D
+reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'__c': builtins.int, '__a': builtins.int, '__b': builtins.int})"
+reveal_type(d["__a"] + d["__b"] + d["__c"])  # N: Revealed type is "builtins.int"
+d = {"__a": 1, "__b": 2, "__c": 3}
+d = {"_A__a": 1, "_B__b": 2, "_C__c": 3}  # E: Missing keys ("__c", "__a", "__b") for TypedDict "D" \
+                                          # E: Extra keys ("_A__a", "_B__b", "_C__c") for TypedDict "D"
+
+class E(D):
+    __a: int  # E: Overwriting TypedDict field "__a" while extending
+    __b: int  # E: Overwriting TypedDict field "__b" while extending
+    __c: int  # E: Overwriting TypedDict field "__c" while extending
+
+[typing fixtures/typing-typeddict.pyi]
+
+[case testNameManglingTypedDictNotTotal]
+from typing import TypedDict
+
+class A(TypedDict, total=False):
+    __a: int
+
+a: A
+reveal_type(a)  # N: Revealed type is "TypedDict('__main__.A', {'__a'?: builtins.int})"
+reveal_type(a["__a"])  # N: Revealed type is "builtins.int"
+a = {"__a": 1}
+a = {"_A__a": 1}  # E: Extra key "_A__a" for TypedDict "A"
+
+[typing fixtures/typing-typeddict.pyi]
+
+[case testNameManglingTypedDictAlternativeSyntax]
+from typing import TypedDict
+
+A = TypedDict("A", {"__a": int})
+
+a: A
+reveal_type(a)  # N: Revealed type is "TypedDict('__main__.A', {'__a': builtins.int})"
+reveal_type(a["__a"])  # N: Revealed type is "builtins.int"
+a = {"__a": 1}
+a = {"_A__a": 1}  # E: Missing key "__a" for TypedDict "A" \
+                  # E: Extra key "_A__a" for TypedDict "A"
+
+[typing fixtures/typing-typeddict.pyi]

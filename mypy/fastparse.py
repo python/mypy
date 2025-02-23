@@ -359,12 +359,14 @@ _T_FuncDef = TypeVar("_T_FuncDef", ast3.FunctionDef, ast3.AsyncFunctionDef)
 class NameMangler(ast3.NodeTransformer):
     """Mangle (nearly) all private identifiers within a class body (including nested classes)."""
 
+    mangled2unmangled: dict[str, str]
     _classname_complete: str
     _classname_trimmed: str
     _mangle_annotations: bool
     _unmangled_args: set[str]
 
     def __init__(self, classname: str, mangle_annotations: bool) -> None:
+        self.mangled2unmangled = {}
         self._classname_complete = classname
         self._classname_trimmed = classname.lstrip("_")
         self._mangle_annotations = mangle_annotations
@@ -372,7 +374,9 @@ class NameMangler(ast3.NodeTransformer):
 
     def _mangle_name(self, name: str) -> str:
         if name.startswith("__") and not name.endswith("__"):
-            return f"_{self._classname_trimmed}{name}"
+            mangled = f"_{self._classname_trimmed}{name}"
+            self.mangled2unmangled[mangled] = name
+            return mangled
         return name
 
     def _mangle_slots(self, node: ast3.ClassDef) -> None:
@@ -1234,7 +1238,8 @@ class ASTConverter:
             and any(j[0] == "annotations" for j in i.names)
             for i in self.imports
         )
-        NameMangler(n.name, mangle_annotations).visit(n)
+        mangler = NameMangler(n.name, mangle_annotations)
+        mangler.visit(n)
 
         cdef = ClassDef(
             n.name,
@@ -1244,6 +1249,7 @@ class ASTConverter:
             metaclass=dict(keywords).get("metaclass"),
             keywords=keywords,
             type_args=explicit_type_params,
+            mangled2unmangled=mangler.mangled2unmangled,
         )
         cdef.decorators = self.translate_expr_list(n.decorator_list)
         self.set_line(cdef, n)
