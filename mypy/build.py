@@ -2322,6 +2322,7 @@ class State:
                 manager.plugin,
                 self.per_line_checking_time_ns,
             )
+            type_state.object_type = self._type_checker.named_type("builtins.object")
         return self._type_checker
 
     def type_map(self) -> dict[Expression, Type]:

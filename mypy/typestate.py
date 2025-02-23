@@ -97,10 +97,7 @@ class TypeState:
     # This is temporary and will be removed soon when new algorithm is more polished.
     infer_polymorphic: bool
 
-    # N.B: We do all of the accesses to these properties through
-    # TypeState, instead of making these classmethods and accessing
-    # via the cls parameter, since mypyc can optimize accesses to
-    # Final attributes of a directly referenced type.
+    object_type: Instance | None
 
     def __init__(self) -> None:
         self._subtype_caches = {}
@@ -114,6 +111,7 @@ class TypeState:
         self.inferring = []
         self.infer_unions = False
         self.infer_polymorphic = False
+        self.object_type = None
 
     def is_assumed_subtype(self, left: Type, right: Type) -> bool:
         for l, r in reversed(self._assuming):
@@ -140,6 +138,7 @@ class TypeState:
         """Completely reset all known subtype caches."""
         self._subtype_caches.clear()
         self._negative_subtype_caches.clear()
+        self.object_type = None
 
     def reset_subtype_caches_for(self, info: TypeInfo) -> None:
         """Reset subtype caches (if any) for a given supertype TypeInfo."""
