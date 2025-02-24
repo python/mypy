@@ -8,7 +8,6 @@ from mypy.nodes import (
     FuncDef,
     FuncItem,
     Import,
-    IndexExpr,
     LambdaExpr,
     MemberExpr,
     MypyFile,
