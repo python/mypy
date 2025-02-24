@@ -1405,6 +1405,9 @@ class IsValidTypeSuite(unittest.TestCase):
         assert is_valid_type("Literal[True]")
         assert is_valid_type("Literal[Color.RED]")
         assert is_valid_type("Literal[None]")
+        assert is_valid_type("str | int")
+        assert is_valid_type("dict[str, int] | int")
+        assert is_valid_type("tuple[str, ...]")
         assert is_valid_type(
             'Literal[26, 0x1A, "hello world", b"hello world", u"hello world", True, Color.RED, None]'
         )
