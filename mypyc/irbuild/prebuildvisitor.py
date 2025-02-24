@@ -97,7 +97,7 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
         # These are cases where mypy may not have types for certain expressions,
         # but mypyc needs some form type to exist.
-        if isinstance(stmt.rvalue, IndexExpr) and stmt.rvalue.analyzed:
+        if stmt.is_alias_def:
             stmt.rvalue.accept(self.missing_types_visitor)
         return super().visit_assignment_stmt(stmt)
 
