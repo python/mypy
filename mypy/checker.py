@@ -599,13 +599,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             partials_old = sum(len(pts.map) for pts in self.partial_types)
 
             # Disable error types that we cannot safely identify in intermediate iteration steps:
-            warn_unreachable = self.options.warn_unreachable
             warn_redundant = codes.REDUNDANT_EXPR in self.options.enabled_error_codes
-            self.options.warn_unreachable = False
             self.options.enabled_error_codes.discard(codes.REDUNDANT_EXPR)
 
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
+                    self.binder.suppress_unreachable_warnings()
                     if on_enter_body is not None:
                         on_enter_body()
 
@@ -616,10 +615,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 partials_old = partials_new
 
             # If necessary, reset the modified options and make up for the postponed error checks:
-            self.options.warn_unreachable = warn_unreachable
             if warn_redundant:
                 self.options.enabled_error_codes.add(codes.REDUNDANT_EXPR)
-            if warn_unreachable or warn_redundant:
+            if self.options.warn_unreachable or warn_redundant:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
                     if on_enter_body is not None:
                         on_enter_body()

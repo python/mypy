@@ -2369,8 +2369,7 @@ def fn_while(arg: T) -> None:
 x = None
 for _ in range(2):
     if x is not None:
-        reveal_type(x)  # N: Revealed type is "Never" \
-                        # N: Revealed type is "builtins.int"
+        reveal_type(x)  # N: Revealed type is "builtins.int"
     x = 1
 reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
 
