@@ -332,10 +332,11 @@ def parse_config_file(
 
             # Raise an error if there are any remaining empty strings
             if "" in files_split:
-                raise ValueError("Invalid config: Empty filenames are not allowed except for trailing commas.")
+                raise ValueError(
+                    "Invalid config: Empty filenames are not allowed except for trailing commas."
+                )
 
             options.files = files_split
-
 
         prefix = f"{file_read}: [mypy]: "
         updates, report_dirs = parse_section(

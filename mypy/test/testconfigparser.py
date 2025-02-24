@@ -1,8 +1,10 @@
 import os
 import tempfile
 from unittest import TestCase, main
-from mypy.options import Options
+
 from mypy.config_parser import parse_config_file
+from mypy.options import Options
+
 
 class TestConfigParser(TestCase):
     def test_parse_config_file_with_single_file(self) -> None:
@@ -20,13 +22,7 @@ class TestConfigParser(TestCase):
 
             options = Options()
 
-            parse_config_file(
-                options,
-                lambda: None,
-                config_path,
-                stdout=None,
-                stderr=None,
-            )
+            parse_config_file(options, lambda: None, config_path, stdout=None, stderr=None)
 
             self.assertEqual(options.files, ["file1.py"])
 
@@ -45,13 +41,7 @@ class TestConfigParser(TestCase):
 
             options = Options()
 
-            parse_config_file(
-                options,
-                lambda: None,
-                config_path,
-                stdout=None,
-                stderr=None,
-            )
+            parse_config_file(options, lambda: None, config_path, stdout=None, stderr=None)
 
             self.assertEqual(options.files, ["file1.py", "file2.py", "file3.py"])
 
@@ -64,19 +54,13 @@ class TestConfigParser(TestCase):
                 f.write(
                     """
                     [mypy]
-                    files =  file1.py ,   file2.py  ,   file3.py   
+                    files =  file1.py ,   file2.py  ,   file3.py
                     """
                 )
 
             options = Options()
 
-            parse_config_file(
-                options,
-                lambda: None,
-                config_path,
-                stdout=None,
-                stderr=None,
-            )
+            parse_config_file(options, lambda: None, config_path, stdout=None, stderr=None)
 
             self.assertEqual(options.files, ["file1.py", "file2.py", "file3.py"])
 
@@ -89,19 +73,13 @@ class TestConfigParser(TestCase):
                 f.write(
                     """
                     [mypy]
-                    files = 
+                    files =
                     """
                 )
 
             options = Options()
 
-            parse_config_file(
-                options,
-                lambda: None,
-                config_path,
-                stdout=None,
-                stderr=None,
-            )
+            parse_config_file(options, lambda: None, config_path, stdout=None, stderr=None)
 
             self.assertEqual(options.files, [])
 
@@ -121,13 +99,7 @@ class TestConfigParser(TestCase):
             options = Options()
 
             with self.assertRaises(ValueError) as cm:
-                parse_config_file(
-                    options,
-                    lambda: None,
-                    config_path,
-                    stdout=None,
-                    stderr=None,
-                )
+                parse_config_file(options, lambda: None, config_path, stdout=None, stderr=None)
 
             self.assertIn("Invalid config", str(cm.exception))
 
@@ -140,19 +112,13 @@ class TestConfigParser(TestCase):
                 f.write(
                     """
                     [mypy]
-                    files =    
+                    files =
                     """
                 )
 
             options = Options()
 
-            parse_config_file(
-                options,
-                lambda: None,
-                config_path,
-                stdout=None,
-                stderr=None,
-            )
+            parse_config_file(options, lambda: None, config_path, stdout=None, stderr=None)
 
             self.assertEqual(options.files, [])
 
@@ -172,13 +138,7 @@ class TestConfigParser(TestCase):
             options = Options()
 
             with self.assertRaises(ValueError) as cm:
-                parse_config_file(
-                    options,
-                    lambda: None,
-                    config_path,
-                    stdout=None,
-                    stderr=None,
-                )
+                parse_config_file(options, lambda: None, config_path, stdout=None, stderr=None)
 
             self.assertIn("Invalid config", str(cm.exception))
 
@@ -199,15 +159,10 @@ class TestConfigParser(TestCase):
 
             options = Options()
 
-            parse_config_file(
-                options,
-                lambda: None,
-                config_path,
-                stdout=None,
-                stderr=None,
-            )
+            parse_config_file(options, lambda: None, config_path, stdout=None, stderr=None)
 
             self.assertEqual(options.files, ["file1.py", "file2.py", "file3.py"])
+
 
 if __name__ == "__main__":
     main()
