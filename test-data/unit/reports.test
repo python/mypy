@@ -235,7 +235,8 @@ def bar(x):
 <span class="line-any" title="Any Types on this line:
 Explicit (x1)">    any_f(x)</span>
 <span class="line-precise" title="No Anys on this line!">    assert False</span>
-<span class="line-unanalyzed" title="No Anys on this line!">    any_f(x)</span>
+<span class="line-any" title="Any Types on this line:
+Explicit (x1)">    any_f(x)</span>
 </pre></td>
 </tr></tbody>
 </table>
@@ -296,10 +297,10 @@ def bar(x):
 [outfile report/any-exprs.txt]
  Name   Anys   Exprs   Coverage
 ---------------------------------
-    i      1       6     83.33%
+    i      0       8    100.00%
     j      0       5    100.00%
 ---------------------------------
-Total      1      11     90.91%
+Total      0      13    100.00%
 
 [case testAnyExprReportHigherKindedTypesAreNotAny]
 # cmd: mypy --any-exprs-report report i.py

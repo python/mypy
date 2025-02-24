@@ -347,11 +347,6 @@ def verify_typeinfo(stub: TypeInfo, a: MaybeMissing[Type[Any]], b: List[str]) ->
     yield Error('in TypeInfo')
     yield Error('hello')
 
-@verify.register(TypeVarExpr)
-def verify_typevarexpr(stub: TypeVarExpr, a: MaybeMissing[Any], b: List[str]) -> Iterator[Error]:
-    if False:
-        yield None
-
 def verify_list(stub, a, b) -> List[str]:
     """Helper function that converts iterator of errors to list of messages"""
     return list(err.msg for err in verify(stub, a, b))
@@ -361,7 +356,6 @@ def test_verify() -> None:
     assert verify_list(MypyFile(), MISSING, ['a', 'b']) == ["shouldn't be missing"]
     assert verify_list(MypyFile(), 5, ['a', 'b']) == ['in TypeInfo', 'hello']
     assert verify_list(TypeInfo(), str, ['a', 'b']) == ['in TypeInfo', 'hello']
-    assert verify_list(TypeVarExpr(), 'a', ['x', 'y']) == []
 
 
 [case testArgsInRegisteredImplNamedDifferentlyFromMainFunction]
