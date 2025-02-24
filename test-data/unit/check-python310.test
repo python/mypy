@@ -33,7 +33,7 @@ m: int
 match m:
     case "str":
         reveal_type(m)  # E: Statement is unreachable \
-                        # N: Revealed type is "builtins.int"
+                        # N: Revealed type is "Never"
 [builtins fixtures/primitives.pyi]
 
 -- Value Pattern --
@@ -81,7 +81,7 @@ m: int
 match m:
     case b.b:  # E: Subclass of "int" and "str" cannot exist: would have incompatible method signatures
         reveal_type(m)  # E: Statement is unreachable \
-                        # N: Revealed type is "builtins.int"
+                        # N: Revealed type is "Never"
 [file b.py]
 b: str
 [builtins fixtures/primitives.pyi]
@@ -1492,7 +1492,7 @@ def f(value: Literal[1] | Literal[2]) -> int:
         case 2:
             return 1
         case o:
-            assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "Literal[1, 2]"; expected "Never"
+            assert_never(o)
 [typing fixtures/typing-medium.pyi]
 
 [case testMatchSequencePatternNegativeNarrowing]
@@ -1632,7 +1632,7 @@ match m:
     case Medal.bronze:
         reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
     case _ as unreachable:
-        assert_never(unreachable)  # E: Argument 1 to "assert_never" has incompatible type "Medal"; expected "Never"
+        assert_never(unreachable)
 
 [builtins fixtures/tuple.pyi]
 
@@ -1652,7 +1652,7 @@ match m:
     case Medal.bronze:
         reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
     case _ as unreachable:
-        assert_never(unreachable)  # E: Argument 1 to "assert_never" has incompatible type "Medal"; expected "Never"
+        assert_never(unreachable)
 [builtins fixtures/enum.pyi]
 
 [case testMatchLiteralPatternEnumCustomEquals-skip]

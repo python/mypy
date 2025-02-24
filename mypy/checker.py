@@ -5485,24 +5485,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
                 pattern_type = self.pattern_checker.accept(p, current_subject_type)
                 with self.binder.frame_context(can_skip=True, fall_through=2):
-                    if b.is_unreachable or isinstance(
-                        get_proper_type(pattern_type.type), UninhabitedType
-                    ):
-                        self.push_type_map(None, from_assignment=False)
-                        else_map: TypeMap = {}
-                    else:
-                        pattern_map, else_map = conditional_types_to_typemaps(
-                            named_subject, pattern_type.type, pattern_type.rest_type
-                        )
-                        self.remove_capture_conflicts(pattern_type.captures, inferred_types)
-                        self.push_type_map(pattern_map, from_assignment=False)
-                        if pattern_map:
-                            for expr, typ in pattern_map.items():
-                                self.push_type_map(
-                                    self._get_recursive_sub_patterns_map(expr, typ),
-                                    from_assignment=False,
-                                )
-                        self.push_type_map(pattern_type.captures, from_assignment=False)
+                    # TODO: if this following code is necessary, find a failing test case.
+                    # if b.is_unreachable:
+                    #     self.push_type_map(None, from_assignment=False)
+                    #     else_map: TypeMap = {}
+                    # else:
+                    pattern_map, else_map = conditional_types_to_typemaps(
+                        named_subject, pattern_type.type, pattern_type.rest_type
+                    )
+                    self.remove_capture_conflicts(pattern_type.captures, inferred_types)
+                    self.push_type_map(pattern_map, from_assignment=False)
+                    if pattern_map:
+                        for expr, typ in pattern_map.items():
+                            self.push_type_map(
+                                self._get_recursive_sub_patterns_map(expr, typ),
+                                from_assignment=False,
+                            )
+                    self.push_type_map(pattern_type.captures, from_assignment=False)
+
                     if g is not None:
                         with self.binder.frame_context(can_skip=False, fall_through=3):
                             gt = get_proper_type(self.expr_checker.accept(g))
