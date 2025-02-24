@@ -4577,7 +4577,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # Should we widen the inferred type or the lvalue? We can only widen
                     # a variable type if the variable was defined in the current function.
                     different_scopes = (
-                        self.scope.top_function() is not None and lvalue.kind != LDEF
+                        self.scope.top_level_function() is not None and lvalue.kind != LDEF
                     )
                     if not different_scopes:
                         lvalue_type = make_simplified_union([inferred.type, new_inferred])
