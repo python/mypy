@@ -1403,9 +1403,8 @@ from typing import Literal
 def nope() -> Literal[False]: ...
 
 def f() -> None:
-    # TODO: this should be unreachable
     if nope():
-        x = 1
+        x = 1  # E: Statement is unreachable
 [builtins fixtures/dict.pyi]
 
 [case testUnreachableLiteralFrom__bool__]
@@ -1428,7 +1427,7 @@ else:
     x = 2  # E: Statement is unreachable
 
 if Lie():
-    x = 3
+    x = 3  # E: Statement is unreachable
 
 if Maybe():
     x = 4

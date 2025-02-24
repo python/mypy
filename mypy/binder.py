@@ -153,8 +153,6 @@ class ConditionalTypeBinder:
         return f
 
     def _put(self, key: Key, type: Type, from_assignment: bool, index: int = -1) -> None:
-        if isinstance(get_proper_type(type), UninhabitedType):
-            self.frames[index].unreachable = True
         self.frames[index].types[key] = CurrentType(type, from_assignment)
 
     def _get(self, key: Key, index: int = -1) -> CurrentType | None:
@@ -170,6 +168,9 @@ class ConditionalTypeBinder:
 
         This is used for isinstance() etc. Assignments should go through assign_type().
         """
+        if isinstance(get_proper_type(typ), UninhabitedType):
+            self.frames[-1].unreachable = True
+
         if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not literal(expr):
