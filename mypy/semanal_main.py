@@ -234,8 +234,8 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
 
 
 def method_order_by_subclassing(left: FullTargetInfo, right: FullTargetInfo) -> int:
-    _, _, _, left_info = left
-    _, _, _, right_info = right
+    left_info = left[3]
+    right_info = right[3]
     if left_info is None or right_info is None:
         return 0
     if left_info is right_info:
