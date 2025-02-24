@@ -4251,7 +4251,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     ) -> None:
         rvalue_type = get_proper_type(rvalue_type)
         if self.type_is_iterable(rvalue_type) and isinstance(
-            rvalue_type, (Instance, CallableType, TypeType, Overloaded)
+            rvalue_type, (Instance, CallableType, TypeType, Overloaded, UninhabitedType)
         ):
             item_type = self.iterable_item_type(rvalue_type, context)
             for lv in lvalues:
@@ -7556,7 +7556,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.msg.note(msg, context, offset=offset, code=code)
 
     def iterable_item_type(
-        self, it: Instance | CallableType | TypeType | Overloaded, context: Context
+        self,
+        it: Instance | CallableType | TypeType | Overloaded | UninhabitedType,
+        context: Context,
     ) -> Type:
         if isinstance(it, Instance):
             iterable = map_instance_to_supertype(it, self.lookup_typeinfo("typing.Iterable"))
