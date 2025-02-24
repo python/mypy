@@ -514,7 +514,7 @@ if callable():  # E: Missing positional argument "x" in call to "callable"
 fn = None
 if callable(fn):
     _ = "unreachable"  # E: Statement is unreachable
-    fn()  # E: "None" not callable
+    fn()
 
 [builtins fixtures/callable.pyi]
 

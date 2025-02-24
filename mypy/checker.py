@@ -5881,15 +5881,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         callables, uncallables = self.partition_by_callable(current_type, unsound_partition=False)
 
-        if callables and uncallables:
-            callable_map = {expr: UnionType.make_union(callables)} if callables else None
-            uncallable_map = {expr: UnionType.make_union(uncallables)} if uncallables else None
-            return callable_map, uncallable_map
-
-        elif callables:
-            return {}, None
-
-        return None, {}
+        callable_map = {expr: UnionType.make_union(callables) if callables else UninhabitedType()}
+        uncallable_map = {
+            expr: UnionType.make_union(uncallables) if uncallables else UninhabitedType()
+        }
+        return callable_map, uncallable_map
 
     def conditional_types_for_iterable(
         self, item_type: Type, iterable_type: Type
