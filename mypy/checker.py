@@ -467,6 +467,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 reported_unreachable = True
                             elif not self.is_noop_for_reachability(d):
                                 self.msg.unreachable_statement(d)
+                                self.binder.emitted_unreachable_warning()
                                 reported_unreachable = True
                         self.accept(d)
 
@@ -3060,6 +3061,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     reported_unreachable = True
                 elif not self.is_noop_for_reachability(s):
                     self.msg.unreachable_statement(s)
+                    self.binder.emitted_unreachable_warning()
                     reported_unreachable = True
             self.accept(s)
 
@@ -3069,6 +3071,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             and self.options.warn_unreachable
             and not self.current_node_deferred
             and not self.binder.is_unreachable_warning_suppressed()
+            and not self.binder.is_unreachable_warning_emitted()
         )
 
     def is_noop_for_reachability(self, s: Statement) -> bool:

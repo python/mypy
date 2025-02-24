@@ -393,7 +393,7 @@ while 2:
         x.b    # E: "A" has no attribute "b"
         break
         _ = "unreachable"  # E: Statement is unreachable
-    x.b  # E: Statement is unreachable
+    x.b
 
 [case testUnionTryFinally6]
 class A: pass
@@ -733,9 +733,8 @@ while bool():
     if isinstance(x, int):
         x + 1
         break
-    # TODO: only report unreachability once
     elif isinstance(x, str):  # E: Statement is unreachable
-        _ = "unreachable"  # E: Statement is unreachable
+        _ = "unreachable"
         x + 'a'
         break
     _ = "unreachable"  # E: Statement is unreachable
