@@ -122,7 +122,7 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
 
     def visit_type_type(self, t: TypeType) -> ProperType:
         # Use cast since the type annotations in TypeType are imprecise.
-        return self.copy_common(t, TypeType(cast(Any, t.item)))
+        return self.copy_common(t, TypeType(cast(Any, t.item), is_type_form=t.is_type_form))
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
         assert False, "only ProperTypes supported"
