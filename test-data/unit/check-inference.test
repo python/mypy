@@ -3945,3 +3945,21 @@ def deco(fn: Callable[[], T]) -> Callable[[], T]: ...
 
 @deco
 def defer() -> int: ...
+
+[case testVariableDeferredWithNestedFunction]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], T]: ...
+
+@deco
+def f() -> None:
+    x = 1
+    f()  # defer current node
+    x = x
+
+    def nested() -> None:
+        ...
+
+    # The type below should not be Any.
+    reveal_type(x)  # N: Revealed type is "builtins.int"
