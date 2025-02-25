@@ -308,6 +308,8 @@ from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
 from mypy.util import correct_relative_import, is_dunder, module_prefix, unmangle, unnamed_function
 from mypy.visitor import NodeVisitor
+import re
+from typing_extensions import assert_never
 
 T = TypeVar("T")
 
@@ -341,6 +343,15 @@ SCOPE_ANNOTATION: Final = 4  # Annotation scopes for type parameters and aliases
 
 # Used for tracking incomplete references
 Tag: _TypeAlias = int
+
+
+# Matches two words separated by whitespace, where each word lacks
+# any symbols which have special meaning in a type expression.
+#
+# Any string literal matching this common pattern cannot be a valid
+# type expression and can be ignored quickly when attempting to parse a
+# string literal as a type expression.
+_MULTIPLE_WORDS_NONTYPE_RE = re.compile(r'\s*[^\s.\'"|\[]+\s+[^\s.\'"|\[]')
 
 
 class SemanticAnalyzer(
@@ -7625,9 +7636,71 @@ class SemanticAnalyzer(
         If fails then emit no errors and take no further action.
 
         A value expression that is parsable as a type expression may be used
-        where a TypeForm is expected to represent the spelled type."""
+        where a TypeForm is expected to represent the spelled type.
+
+        Unlike ExpressionChecker.try_parse_as_type_expression()
+        (used in the later TypeChecker pass), this function can recognize
+        ALL kinds of type expressions, including type expressions containing
+        string annotations.
+
+        If the provided Expression will be parsable later in
+        ExpressionChecker.try_parse_as_type_expression(), this function will
+        skip parsing the Expression to improve performance, because the later
+        function is called many fewer times (i.e. only lazily in a rare TypeForm
+        type context) than this function is called (i.e. eagerly for EVERY
+        expression in certain syntactic positions).
+        """
+
+        # Bail ASAP if the Expression matches a common pattern that cannot possibly
+        # be a valid type expression, because this function is called very frequently
         if not isinstance(maybe_type_expr, MaybeTypeExpression):
             return
+        # Check types in order from most common to least common, for best performance
+        if isinstance(maybe_type_expr, (NameExpr, MemberExpr)):
+            # Defer parsing to the later TypeChecker pass,
+            # and only lazily in contexts where a TypeForm is expected
+            return
+        elif isinstance(maybe_type_expr, StrExpr):
+            # Filter out string literals with common patterns that could not
+            # possibly be in a type expression
+            if _MULTIPLE_WORDS_NONTYPE_RE.match(maybe_type_expr.value):
+                # A common pattern in string literals containing a sentence.
+                # But cannot be a type expression.
+                maybe_type_expr.as_type = None
+                return
+        elif isinstance(maybe_type_expr, IndexExpr):
+            if isinstance(maybe_type_expr.base, NameExpr):
+                if isinstance(maybe_type_expr.base.node, Var):
+                    # Leftmost part of IndexExpr refers to a Var. Not a valid type.
+                    maybe_type_expr.as_type = None
+                    return
+            elif isinstance(maybe_type_expr.base, MemberExpr):
+                next_leftmost = maybe_type_expr.base
+                while True:
+                    leftmost = next_leftmost.expr
+                    if not isinstance(leftmost, MemberExpr):
+                        break
+                    next_leftmost = leftmost
+                if isinstance(leftmost, NameExpr):
+                    if isinstance(leftmost.node, Var):
+                        # Leftmost part of IndexExpr refers to a Var. Not a valid type.
+                        maybe_type_expr.as_type = None
+                        return
+                else:
+                    # Leftmost part of IndexExpr is not a NameExpr. Not a valid type.
+                    maybe_type_expr.as_type = None
+                    return
+            else:
+                # IndexExpr base is neither a NameExpr nor MemberExpr. Not a valid type.
+                maybe_type_expr.as_type = None
+                return
+        elif isinstance(maybe_type_expr, OpExpr):
+            if maybe_type_expr.op != '|':
+                # Binary operators other than '|' never spell a valid type
+                maybe_type_expr.as_type = None
+                return
+        else:
+            assert_never(maybe_type_expr)
 
         # Save SemanticAnalyzer state
         original_errors = self.errors  # altered by fail()
@@ -7644,11 +7717,9 @@ class SemanticAnalyzer(
         try:
             t = self.expr_to_analyzed_type(maybe_type_expr)
             if self.errors.is_errors():
-                raise TypeTranslationError
-            if isinstance(t, (UnboundType, PlaceholderType)):  # type: ignore[misc]
-                raise TypeTranslationError
+                t = None
         except TypeTranslationError:
-            # Not a type expression. It must be a value expression.
+            # Not a type expression
             t = None
         finally:
             # Restore SemanticAnalyzer state

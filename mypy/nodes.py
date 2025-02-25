@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from abc import abstractmethod
+import builtins
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from enum import Enum, unique
@@ -20,6 +21,9 @@ from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 if TYPE_CHECKING:
     from mypy.patterns import Pattern
 
+    EllipsisType = builtins.ellipsis
+else:
+    EllipsisType = Any
 
 class Context:
     """Base type for objects that are valid as error message locations."""
@@ -1723,12 +1727,13 @@ class StrExpr(Expression):
     value: str  # '' by default
     # If this value expression can also be parsed as a valid type expression,
     # represents the type denoted by the type expression.
-    as_type: mypy.types.Type | None
+    # Ellipsis means "not parsed" and None means "is not a type expression".
+    as_type: EllipsisType | mypy.types.Type | None
 
     def __init__(self, value: str) -> None:
         super().__init__()
         self.value = value
-        self.as_type = None
+        self.as_type = Ellipsis
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -1879,20 +1884,15 @@ class NameExpr(RefExpr):
     This refers to a local name, global name or a module.
     """
 
-    __slots__ = ("name", "is_special_form", "as_type")
+    __slots__ = ("name", "is_special_form")
 
     __match_args__ = ("name", "node")
-
-    # If this value expression can also be parsed as a valid type expression,
-    # represents the type denoted by the type expression.
-    as_type: mypy.types.Type | None
 
     def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name  # Name referred to
         # Is this a l.h.s. of a special form assignment like typed dict or type variable?
         self.is_special_form = False
-        self.as_type = None
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_name_expr(self)
@@ -2045,7 +2045,8 @@ class IndexExpr(Expression):
     analyzed: TypeApplication | TypeAliasExpr | None
     # If this value expression can also be parsed as a valid type expression,
     # represents the type denoted by the type expression.
-    as_type: mypy.types.Type | None
+    # Ellipsis means "not parsed" and None means "is not a type expression".
+    as_type: EllipsisType | mypy.types.Type | None
 
     def __init__(self, base: Expression, index: Expression) -> None:
         super().__init__()
@@ -2053,7 +2054,7 @@ class IndexExpr(Expression):
         self.index = index
         self.method_type = None
         self.analyzed = None
-        self.as_type = None
+        self.as_type = Ellipsis
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
@@ -2129,7 +2130,8 @@ class OpExpr(Expression):
     analyzed: TypeAliasExpr | None
     # If this value expression can also be parsed as a valid type expression,
     # represents the type denoted by the type expression.
-    as_type: mypy.types.Type | None
+    # Ellipsis means "not parsed" and None means "is not a type expression".
+    as_type: EllipsisType | mypy.types.Type | None
 
     def __init__(
         self, op: str, left: Expression, right: Expression, analyzed: TypeAliasExpr | None = None
@@ -2142,16 +2144,17 @@ class OpExpr(Expression):
         self.right_always = False
         self.right_unreachable = False
         self.analyzed = analyzed
-        self.as_type = None
+        self.as_type = Ellipsis
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
 
 
 # Expression subtypes that could represent the root of a valid type expression.
-# Always contains an "as_type" attribute.
-# TODO: Make this into a Protocol if mypyc is OK with that.
-MaybeTypeExpression = (IndexExpr, NameExpr, OpExpr, StrExpr)
+#
+# May have an "as_type" attribute to hold the type for a type expression parsed
+# during the SemanticAnalyzer pass.
+MaybeTypeExpression = (IndexExpr, MemberExpr, NameExpr, OpExpr, StrExpr)
 
 
 class ComparisonExpr(Expression):

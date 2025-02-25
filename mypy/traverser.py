@@ -944,6 +944,39 @@ def has_return_statement(fdef: FuncBase) -> bool:
     return seeker.found
 
 
+class NameAndMemberCollector(TraverserVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.name_exprs: list[NameExpr] = []
+        self.member_exprs: list[MemberExpr] = []
+
+    def visit_name_expr(self, o: NameExpr, /) -> None:
+        self.name_exprs.append(o)
+
+    def visit_member_expr(self, o: MemberExpr, /) -> None:
+        self.member_exprs.append(o)
+
+
+def all_name_and_member_expressions(node: Expression) -> tuple[list[NameExpr], list[MemberExpr]]:
+    v = NameAndMemberCollector()
+    node.accept(v)
+    return (v.name_exprs, v.member_exprs)
+
+
+class StringSeeker(TraverserVisitor):
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_str_expr(self, o: StrExpr, /) -> None:
+        self.found = True
+
+
+def has_str_expression(node: Expression) -> bool:
+    v = StringSeeker()
+    node.accept(v)
+    return v.found
+
+
 class FuncCollectorBase(TraverserVisitor):
     def __init__(self) -> None:
         self.inside_func = False
