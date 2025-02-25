@@ -642,15 +642,15 @@ def g() -> Tuple[C, C]:
 [out]
 def f():
     r0 :: tuple[__main__.C, __main__.C]
-    r1, r2, x, r3, r4, y :: __main__.C
+    r1, r2, r3, x, r4, y :: __main__.C
     r5, r6, r7 :: int
 L0:
     r0 = g()
     r1 = borrow r0[0]
-    r2 = unborrow r1
-    x = r2
-    r3 = borrow r0[1]
-    r4 = unborrow r3
+    r2 = borrow r0[1]
+    r3 = unborrow r1
+    x = r3
+    r4 = unborrow r2
     y = r4
     r5 = borrow x.a
     r6 = borrow y.a
@@ -799,6 +799,31 @@ L2:
     goto L1
 L3:
     return 1
+
+[case testTupleUnpackUnused]
+from typing import Tuple
+
+def f(x: Tuple[str, int]) -> int:
+    a, xi = x
+    return 0
+[out]
+def f(x):
+    x :: tuple[str, int]
+    r0 :: str
+    r1 :: int
+    r2, a :: str
+    r3, xi :: int
+L0:
+    r0 = borrow x[0]
+    r1 = borrow x[1]
+    inc_ref x
+    r2 = unborrow r0
+    a = r2
+    dec_ref a
+    r3 = unborrow r1
+    xi = r3
+    dec_ref xi :: int
+    return 0
 
 [case testGetElementPtrLifeTime]
 from typing import List
