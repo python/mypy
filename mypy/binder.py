@@ -22,6 +22,7 @@ from mypy.types import (
     TypeOfAny,
     TypeType,
     TypeVarType,
+    UninhabitedType,
     UnionType,
     UnpackType,
     find_unpack_in_list,
@@ -65,6 +66,7 @@ class Frame:
         self.unreachable = False
         self.conditional_frame = conditional_frame
         self.suppress_unreachable_warnings = False
+        self.unreachable_warning_emitted = False
 
     def __repr__(self) -> str:
         return f"Frame({self.id}, {self.types}, {self.unreachable}, {self.conditional_frame})"
@@ -166,6 +168,9 @@ class ConditionalTypeBinder:
 
         This is used for isinstance() etc. Assignments should go through assign_type().
         """
+        if isinstance(get_proper_type(typ), UninhabitedType):
+            self.frames[-1].unreachable = True
+
         if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not literal(expr):
@@ -183,6 +188,9 @@ class ConditionalTypeBinder:
     def suppress_unreachable_warnings(self) -> None:
         self.frames[-1].suppress_unreachable_warnings = True
 
+    def emitted_unreachable_warning(self) -> None:
+        self.frames[-1].unreachable_warning_emitted = True
+
     def get(self, expr: Expression) -> Type | None:
         key = literal_hash(expr)
         assert key is not None, "Internal error: binder tried to get non-literal"
@@ -198,6 +206,9 @@ class ConditionalTypeBinder:
 
     def is_unreachable_warning_suppressed(self) -> bool:
         return any(f.suppress_unreachable_warnings for f in self.frames)
+
+    def is_unreachable_warning_emitted(self) -> bool:
+        return any(f.unreachable_warning_emitted for f in self.frames)
 
     def cleanse(self, expr: Expression) -> None:
         """Remove all references to a Node from the binder."""
