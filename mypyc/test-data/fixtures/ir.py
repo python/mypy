@@ -107,7 +107,9 @@ class str:
     def split(self, sep: Optional[str] = None, maxsplit: int = -1) -> List[str]: pass
     def rsplit(self, sep: Optional[str] = None, maxsplit: int = -1) -> List[str]: pass
     def splitlines(self, keepends: bool = False) -> List[str]: ...
-    def strip (self, item: str) -> str: pass
+    def strip (self, item: Optional[str] = None) -> str: pass
+    def lstrip(self, item: Optional[str] = None) -> str: pass
+    def rstrip(self, item: Optional[str] = None) -> str: pass
     def join(self, x: Iterable[str]) -> str: pass
     def format(self, *args: Any, **kwargs: Any) -> str: ...
     def upper(self) -> str: ...

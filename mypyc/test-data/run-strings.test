@@ -774,3 +774,16 @@ def test_surrogate() -> None:
     assert ord(f()) == 0xd800
     assert ord("\udfff") == 0xdfff
     assert repr("foobar\x00\xab\ud912\U00012345") == r"'foobar\x00«\ud912𒍅'"
+
+[case testStrip]
+# This is a negative test. strip variants without args does not use efficient primitives.
+def test_all_strips_default() -> None:
+    s = " a1\t"
+    assert s.lstrip() == "a1\t"
+    assert s.strip() == "a1"
+    assert s.rstrip() == " a1"
+def test_all_strips() -> None:
+    s = "xxb2yy"
+    assert s.lstrip("xy") == "b2yy"
+    assert s.strip("xy") == "b2"
+    assert s.rstrip("xy") == "xxb2"
