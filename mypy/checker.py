@@ -618,7 +618,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 widened_new = len(self.widened_vars)
                 if (
                     (partials_new == partials_old)
-                    and not self.binder.last_pop_changed
+                    and (not self.binder.last_pop_changed or iter > 3)
                     and (widened_new == widened_old or iter > 1)
                 ):
                     break

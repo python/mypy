@@ -1061,3 +1061,16 @@ if int():
 
 [out]
 tmp/b.py:1: error: --local-partial-types must be enabled if using --allow-redefinition-new
+
+[case testNewRedefineNestedLoopInfiniteExpansion]
+# flags: --allow-redefinition-new --local-partial-types
+def a(): ...
+
+def f() -> None:
+    while int():
+        x = a()
+
+        while int():
+            x = [x]
+
+    reveal_type(x) # N: Revealed type is "Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]], builtins.list[Union[Any, builtins.list[Any], builtins.list[Union[Any, builtins.list[Any]]]]]]]]"
