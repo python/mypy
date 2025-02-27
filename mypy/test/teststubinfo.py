@@ -15,12 +15,12 @@ class TestStubInfo(unittest.TestCase):
         assert not is_module_from_legacy_bundled_package("foobar_asdf")
         assert not is_module_from_legacy_bundled_package("PIL")
         assert is_module_from_legacy_bundled_package("pycurl")
-        assert is_module_from_legacy_bundled_package("dataclasses")
+        assert is_module_from_legacy_bundled_package("dateparser")
 
     def test_stub_distribution_name(self) -> None:
         assert stub_distribution_name("foobar_asdf") is None
         assert stub_distribution_name("pycurl") == "types-pycurl"
-        assert stub_distribution_name("babel") == "types-babel"
+        assert stub_distribution_name("bs4") == "types-beautifulsoup4"
         assert stub_distribution_name("google.cloud.ndb") == "types-google-cloud-ndb"
         assert stub_distribution_name("google.cloud.ndb.submodule") == "types-google-cloud-ndb"
         assert stub_distribution_name("google.cloud.unknown") is None

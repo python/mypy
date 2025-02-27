@@ -13,7 +13,8 @@ semanal_enum.py).
 
 from __future__ import annotations
 
-from typing import Final, Iterable, Sequence, TypeVar, cast
+from collections.abc import Iterable, Sequence
+from typing import Final, TypeVar, cast
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.nodes import TypeInfo
@@ -129,7 +130,7 @@ def _implements_new(info: TypeInfo) -> bool:
 
 
 def enum_member_callback(ctx: mypy.plugin.FunctionContext) -> Type:
-    """By default `member(1)` will be infered as `member[int]`,
+    """By default `member(1)` will be inferred as `member[int]`,
     we want to improve the inference to be `Literal[1]` here."""
     if ctx.arg_types or ctx.arg_types[0]:
         arg = get_proper_type(ctx.arg_types[0][0])

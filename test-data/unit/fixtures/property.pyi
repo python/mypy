@@ -13,7 +13,7 @@ class function: pass
 property = object()  # Dummy definition
 class classmethod: pass
 
-class list: pass
+class list(typing.Generic[_T]): pass
 class dict: pass
 class int: pass
 class float: pass

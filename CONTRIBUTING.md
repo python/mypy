@@ -18,7 +18,7 @@ articulated in the [Python Community Code of Conduct](https://www.python.org/psf
 
 #### (1) Fork the mypy repository
 
-Within Github, navigate to <https://github.com/python/mypy> and fork the repository.
+Within GitHub, navigate to <https://github.com/python/mypy> and fork the repository.
 
 #### (2) Clone the mypy repository and enter into it
 
@@ -51,7 +51,7 @@ hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
 
 > **Note**
-> You'll need Python 3.8 or higher to install all requirements listed in
+> You'll need Python 3.9 or higher to install all requirements listed in
 > test-requirements.txt
 
 ### Running tests

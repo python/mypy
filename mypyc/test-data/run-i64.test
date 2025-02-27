@@ -517,11 +517,10 @@ def test_isinstance() -> None:
     assert narrow2("foobar") == 6
 
 [case testI64ErrorValuesAndUndefined]
-from typing import Any, Tuple
+from typing import Any, Final, Tuple
 import sys
 
 from mypy_extensions import mypyc_attr, i64
-from typing_extensions import Final
 
 from testutil import assertRaises
 
@@ -905,8 +904,7 @@ def test_undefined_native_int_tuple_via_any() -> None:
     assert o.t == (-13, 45)
 
 [case testI64DefaultArgValues]
-from typing import Any, Iterator, Tuple
-from typing_extensions import Final
+from typing import Any, Final, Iterator, Tuple
 
 MAGIC: Final = -113
 
@@ -1206,7 +1204,7 @@ def test_magic_default() -> None:
     assert a(MAGIC) == MAGIC
 
 [case testI64UndefinedLocal]
-from typing_extensions import Final
+from typing import Final
 
 from mypy_extensions import i64, i32
 
@@ -1338,8 +1336,7 @@ def test_many_locals() -> None:
     assert a33 == 20
 
 [case testI64GlueMethodsAndInheritance]
-from typing import Any
-from typing_extensions import Final
+from typing import Final, Any
 
 from mypy_extensions import i64, trait
 

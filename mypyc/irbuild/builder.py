@@ -1,21 +1,13 @@
-"""Builder class used to transform a mypy AST to the IR form.
+"""Builder class to transform a mypy AST to the IR form.
 
-The IRBuilder class maintains transformation state and provides access
-to various helpers used to implement the transform.
-
-The top-level transform control logic is in mypyc.irbuild.main.
-
-mypyc.irbuild.visitor.IRBuilderVisitor is used to dispatch based on mypy
-AST node type to code that actually does the bulk of the work. For
-example, expressions are transformed in mypyc.irbuild.expression and
-functions are transformed in mypyc.irbuild.function.
+See the docstring of class IRBuilder for more information.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from typing import Any, Callable, Final, Iterator, Sequence, Union
-from typing_extensions import overload
+from typing import Any, Callable, Final, Union, overload
 
 from mypy.build import Graph
 from mypy.maptype import map_instance_to_supertype
@@ -60,6 +52,7 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeOfAny,
+    TypeVarLikeType,
     UninhabitedType,
     UnionType,
     get_proper_type,
@@ -154,6 +147,30 @@ SymbolTarget = Union[AssignmentTargetRegister, AssignmentTargetAttr]
 
 
 class IRBuilder:
+    """Builder class used to construct mypyc IR from a mypy AST.
+
+    The IRBuilder class maintains IR transformation state and provides access
+    to various helpers used to implement the transform.
+
+    mypyc.irbuild.visitor.IRBuilderVisitor is used to dispatch based on mypy
+    AST node type to code that actually does the bulk of the work. For
+    example, expressions are transformed in mypyc.irbuild.expression and
+    functions are transformed in mypyc.irbuild.function.
+
+    Use the "accept()" method to translate individual mypy AST nodes to IR.
+    Other methods are used to generate IR for various lower-level operations.
+
+    This class wraps the lower-level LowLevelIRBuilder class, an instance
+    of which is available through the "builder" attribute. The low-level
+    builder class doesn't have any knowledge of the mypy AST. Wrappers for
+    some LowLevelIRBuilder method are provided for convenience, but others
+    can also be accessed via the "builder" attribute.
+
+    See also:
+     * The mypyc IR is defined in the mypyc.ir package.
+     * The top-level IR transform control logic is in mypyc.irbuild.main.
+    """
+
     def __init__(
         self,
         current_module: str,
@@ -382,8 +399,14 @@ class IRBuilder:
     def call_c(self, desc: CFunctionDescription, args: list[Value], line: int) -> Value:
         return self.builder.call_c(desc, args, line)
 
-    def primitive_op(self, desc: PrimitiveDescription, args: list[Value], line: int) -> Value:
-        return self.builder.primitive_op(desc, args, line)
+    def primitive_op(
+        self,
+        desc: PrimitiveDescription,
+        args: list[Value],
+        line: int,
+        result_type: RType | None = None,
+    ) -> Value:
+        return self.builder.primitive_op(desc, args, line, result_type)
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.builder.int_op(type, lhs, rhs, op, line)
@@ -396,6 +419,9 @@ class IRBuilder:
 
     def new_tuple(self, items: list[Value], line: int) -> Value:
         return self.builder.new_tuple(items, line)
+
+    def debug_print(self, toprint: str | Value) -> None:
+        return self.builder.debug_print(toprint)
 
     # Helpers for IR building
 
@@ -743,7 +769,7 @@ class IRBuilder:
             item = target.items[i]
             index = self.builder.load_int(i)
             if is_list_rprimitive(rvalue.type):
-                item_value = self.call_c(list_get_item_unsafe_op, [rvalue, index], line)
+                item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
             else:
                 item_value = self.builder.gen_method_call(
                     rvalue, "__getitem__", [index], item.type, line
@@ -910,11 +936,22 @@ class IRBuilder:
             return RUnion.make_simplified_union(
                 [self.get_sequence_type_from_type(item) for item in target_type.items]
             )
-        assert isinstance(target_type, Instance), target_type
-        if target_type.type.fullname == "builtins.str":
-            return str_rprimitive
-        else:
-            return self.type_to_rtype(target_type.args[0])
+        elif isinstance(target_type, Instance):
+            if target_type.type.fullname == "builtins.str":
+                return str_rprimitive
+            else:
+                return self.type_to_rtype(target_type.args[0])
+        # This elif-blocks are needed for iterating over classes derived from NamedTuple.
+        elif isinstance(target_type, TypeVarLikeType):
+            return self.get_sequence_type_from_type(target_type.upper_bound)
+        elif isinstance(target_type, TupleType):
+            # Tuple might have elements of different types.
+            rtypes = {self.mapper.type_to_rtype(item) for item in target_type.items}
+            if len(rtypes) == 1:
+                return rtypes.pop()
+            else:
+                return RUnion.make_simplified_union(list(rtypes))
+        assert False, target_type
 
     def get_dict_base_type(self, expr: Expression) -> list[Instance]:
         """Find dict type of a dict-like expression.
