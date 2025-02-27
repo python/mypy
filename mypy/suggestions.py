@@ -27,9 +27,9 @@ from __future__ import annotations
 import itertools
 import json
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Callable, Iterator, NamedTuple, TypeVar, cast
-from typing_extensions import TypedDict
+from typing import Callable, NamedTuple, TypedDict, TypeVar, cast
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.build import Graph, State
@@ -454,7 +454,7 @@ class SuggestionEngine:
             pnode = parent.names.get(node.name)
             if pnode and isinstance(pnode.node, (FuncDef, Decorator)):
                 typ = get_proper_type(pnode.node.type)
-                # FIXME: Doesn't work right with generic tyeps
+                # FIXME: Doesn't work right with generic types
                 if isinstance(typ, CallableType) and len(typ.arg_types) == len(node.arguments):
                     # Return the first thing we find, since it probably doesn't make sense
                     # to grab things further up in the chain if an earlier parent has it.

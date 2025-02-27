@@ -1332,23 +1332,25 @@ MypyFile:1<1>(
 [case testMergeTypedDict_symtable]
 import target
 [file target.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 D = TypedDict('D', {'a': A})
 d: D
 [file target.py.next]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 D = TypedDict('D', {'a': A, 'b': int})
 d: D
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [out]
 __main__:
     target: MypyFile<0>
 target:
     A: TypeInfo<1>
     D: TypeInfo<2>
-    TypedDict: FuncDef<3>
+    TypedDict: Var<3>
     d: Var<4>(TypedDict('target.D', {'a': target.A<1>}))
 ==>
 __main__:
@@ -1356,7 +1358,7 @@ __main__:
 target:
     A: TypeInfo<1>
     D: TypeInfo<2>
-    TypedDict: FuncDef<3>
+    TypedDict: Var<3>
     d: Var<4>(TypedDict('target.D', {'a': target.A<1>, 'b': builtins.int<5>}))
 
 [case testNewType_symtable]
@@ -1512,11 +1514,11 @@ TypeInfo<0>(
 [case testLiteralMerge]
 import target
 [file target.py]
-from typing_extensions import Literal
+from typing import Literal
 def foo(x: Literal[3]) -> Literal['a']: pass
 bar: Literal[4] = 4
 [file target.py.next]
-from typing_extensions import Literal
+from typing import Literal
 def foo(x: Literal['3']) -> Literal['b']: pass
 bar: Literal[5] = 5
 [builtins fixtures/tuple.pyi]
@@ -1526,7 +1528,7 @@ MypyFile:1<0>(
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
-  ImportFrom:1(typing_extensions, [Literal])
+  ImportFrom:1(typing, [Literal])
   FuncDef:2<2>(
     foo
     Args(
@@ -1544,7 +1546,7 @@ MypyFile:1<0>(
   Import:1(target))
 MypyFile:1<1>(
   tmp/target.py
-  ImportFrom:1(typing_extensions, [Literal])
+  ImportFrom:1(typing, [Literal])
   FuncDef:2<2>(
     foo
     Args(

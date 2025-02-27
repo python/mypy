@@ -384,9 +384,9 @@ def guard(a: object) -> TypeIs[B]:
 
 a = A()
 if guard(a):
-    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
     a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
     a = A()
     reveal_type(a)  # N: Revealed type is "__main__.A"
 reveal_type(a)  # N: Revealed type is "__main__.A"
@@ -454,7 +454,7 @@ def g(x: object) -> None: ...
 def test(x: List[Any]) -> None:
     if not(f(x) or isinstance(x, A)):
         return
-    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "list" and "A">]"
+    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "List[Any]" and "__main__.A">]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsMultipleCondition]
@@ -473,13 +473,13 @@ def is_bar(item: object) -> TypeIs[Bar]:
 def foobar(x: object):
     if not isinstance(x, Foo) or not isinstance(x, Bar):
         return
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "Foo" and "Bar">"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.Foo" and "__main__.Bar">"
 
 def foobar_typeis(x: object):
     if not is_foo(x) or not is_bar(x):
         return
     # Looks like a typo but this is what our unique name generation produces
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "Foo" and "Bar">1"
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.Foo" and "__main__.Bar">"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsAsFunctionArgAsBoolSubtype]
@@ -816,4 +816,123 @@ accept_typeis(typeguard)  # E: Argument 1 to "accept_typeis" has incompatible ty
 accept_typeguard(typeis)  # E: Argument 1 to "accept_typeguard" has incompatible type "Callable[[object], TypeIs[str]]"; expected "Callable[[object], TypeGuard[str]]"
 accept_typeguard(typeguard)
 
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsInOverloads]
+from typing import Any, overload, Union
+from typing_extensions import TypeIs
+
+@overload
+def func1(x: str) -> TypeIs[str]:
+    ...
+
+@overload
+def func1(x: int) -> TypeIs[int]:
+    ...
+
+def func1(x: Any) -> Any:
+    return True
+
+def func2(val: Any):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+    else:
+        reveal_type(val)  # N: Revealed type is "Any"
+
+def func3(val: Union[int, str]):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    else:
+        reveal_type(val)
+
+def func4(val: int):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(val)
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsInOverloadsSameReturn]
+from typing import Any, overload, Union
+from typing_extensions import TypeIs
+
+@overload
+def func1(x: str) -> TypeIs[str]:
+    ...
+
+@overload
+def func1(x: int) -> TypeIs[str]:  # type: ignore
+    ...
+
+def func1(x: Any) -> Any:
+    return True
+
+def func2(val: Union[int, str]):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(val)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsInOverloadsUnionizeError]
+from typing import Any, overload, Union
+from typing_extensions import TypeIs, TypeGuard
+
+@overload
+def func1(x: str) -> TypeIs[str]:
+    ...
+
+@overload
+def func1(x: int) -> TypeGuard[int]:
+    ...
+
+def func1(x: Any) -> Any:
+    return True
+
+def func2(val: Union[int, str]):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    else:
+        reveal_type(val)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsInOverloadsUnionizeError2]
+from typing import Any, overload, Union
+from typing_extensions import TypeIs, TypeGuard
+
+@overload
+def func1(x: int) -> TypeGuard[int]:
+    ...
+
+@overload
+def func1(x: str) -> TypeIs[str]:
+    ...
+
+def func1(x: Any) -> Any:
+    return True
+
+def func2(val: Union[int, str]):
+    if func1(val):
+        reveal_type(val)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    else:
+        reveal_type(val)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeIsLikeIsDataclass]
+from typing import Any, overload, Union, Type
+from typing_extensions import TypeIs
+
+class DataclassInstance: ...
+
+@overload
+def is_dataclass(obj: type) -> TypeIs[Type[DataclassInstance]]: ...
+@overload
+def is_dataclass(obj: object) -> TypeIs[Union[DataclassInstance, Type[DataclassInstance]]]: ...
+
+def is_dataclass(obj: Union[type, object]) -> bool:
+    return False
+
+def func(arg: Any) -> None:
+    if is_dataclass(arg):
+        reveal_type(arg)  # N: Revealed type is "Union[Type[__main__.DataclassInstance], __main__.DataclassInstance]"
 [builtins fixtures/tuple.pyi]

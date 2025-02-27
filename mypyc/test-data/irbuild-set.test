@@ -157,7 +157,7 @@ L2:
 L3:
     goto L1
 L4:
-    r10 = CPy_NoErrOccured()
+    r10 = CPy_NoErrOccurred()
 L5:
     b = r1
     return 1
@@ -211,7 +211,7 @@ L3:
     r21 = CPyDict_CheckSize(tmp_dict, r10)
     goto L1
 L4:
-    r22 = CPy_NoErrOccured()
+    r22 = CPy_NoErrOccurred()
 L5:
     c = r7
     return 1
@@ -393,7 +393,7 @@ L8:
 L9:
     goto L7
 L10:
-    r30 = CPy_NoErrOccured()
+    r30 = CPy_NoErrOccurred()
 L11:
     r31 = PyObject_GetIter(r8)
     r32 = PyObject_GetIter(r31)
@@ -410,7 +410,7 @@ L13:
 L14:
     goto L12
 L15:
-    r39 = CPy_NoErrOccured()
+    r39 = CPy_NoErrOccurred()
 L16:
     a = r7
     return 1
@@ -628,7 +628,7 @@ L0:
     return r0
 
 [case testOperatorInSetLiteral]
-from typing_extensions import Final
+from typing import Final
 
 CONST: Final = "daylily"
 non_const = 10
@@ -686,7 +686,7 @@ def not_precomputed_nested_set(i):
     r1 :: object
     r2 :: i32
     r3 :: bit
-    r4 :: object
+    r4 :: frozenset
     r5 :: set
     r6 :: i32
     r7 :: bit
@@ -716,7 +716,7 @@ L0:
     return r14
 
 [case testForSetLiteral]
-from typing_extensions import Final
+from typing import Final
 
 CONST: Final = 10
 non_const = 20
@@ -752,7 +752,7 @@ L2:
 L3:
     goto L1
 L4:
-    r4 = CPy_NoErrOccured()
+    r4 = CPy_NoErrOccurred()
 L5:
     return 1
 def precomputed2():
@@ -770,7 +770,7 @@ L2:
 L3:
     goto L1
 L4:
-    r3 = CPy_NoErrOccured()
+    r3 = CPy_NoErrOccurred()
 L5:
     return 1
 def not_precomputed():
@@ -804,6 +804,6 @@ L2:
 L3:
     goto L1
 L4:
-    r11 = CPy_NoErrOccured()
+    r11 = CPy_NoErrOccurred()
 L5:
     return 1

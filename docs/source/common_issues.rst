@@ -427,8 +427,8 @@ More specifically, mypy will understand the use of :py:data:`sys.version_info` a
    import sys
 
    # Distinguishing between different versions of Python:
-   if sys.version_info >= (3, 8):
-       # Python 3.8+ specific definitions and imports
+   if sys.version_info >= (3, 13):
+       # Python 3.13+ specific definitions and imports
    else:
        # Other definitions and imports
 
@@ -455,7 +455,7 @@ Example:
    # The rest of this file doesn't apply to Windows.
 
 Some other expressions exhibit similar behavior; in particular,
-:py:data:`~typing.TYPE_CHECKING`, variables named ``MYPY``, and any variable
+:py:data:`~typing.TYPE_CHECKING`, variables named ``MYPY`` or ``TYPE_CHECKING``, and any variable
 whose name is passed to :option:`--always-true <mypy --always-true>` or :option:`--always-false <mypy --always-false>`.
 (However, ``True`` and ``False`` are not treated specially!)
 
@@ -757,7 +757,7 @@ type check such code. Consider this example:
         x: int = 'abc'  # Unreachable -- no error
 
 It's easy to see that any statement after ``return`` is unreachable,
-and hence mypy will not complain about the mis-typed code below
+and hence mypy will not complain about the mistyped code below
 it. For a more subtle example, consider this code:
 
 .. code-block:: python

@@ -303,6 +303,10 @@ class IPCServer(IPCBase):
     def connection_name(self) -> str:
         if sys.platform == "win32":
             return self.name
+        elif sys.platform == "gnu0":
+            # GNU/Hurd returns empty string from getsockname()
+            # for AF_UNIX sockets
+            return os.path.join(self.sock_directory, self.name)
         else:
             name = self.sock.getsockname()
             assert isinstance(name, str)

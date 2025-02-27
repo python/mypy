@@ -8,8 +8,8 @@ import os.path
 import sys
 from typing import TYPE_CHECKING, Any
 
-if sys.version_info < (3, 8, 0):  # noqa: UP036
-    sys.stderr.write("ERROR: You need Python 3.8 or later to use mypy.\n")
+if sys.version_info < (3, 9, 0):  # noqa: UP036, RUF100
+    sys.stderr.write("ERROR: You need Python 3.9 or later to use mypy.\n")
     exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path

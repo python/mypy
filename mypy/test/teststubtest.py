@@ -9,7 +9,8 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from typing import Any, Callable, Iterator
+from collections.abc import Iterator
+from typing import Any, Callable
 
 import mypy.stubtest
 from mypy import build, nodes
@@ -51,6 +52,11 @@ Callable: _SpecialForm = ...
 Generic: _SpecialForm = ...
 Protocol: _SpecialForm = ...
 Union: _SpecialForm = ...
+ClassVar: _SpecialForm = ...
+
+Final = 0
+Literal = 0
+TypedDict = 0
 
 class TypeVar:
     def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
@@ -74,6 +80,12 @@ class Match(Generic[AnyStr]): ...
 class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
 class NamedTuple(tuple[Any, ...]): ...
+class _TypedDict(Mapping[str, object]):
+    __required_keys__: ClassVar[frozenset[str]]
+    __optional_keys__: ClassVar[frozenset[str]]
+    __total__: ClassVar[bool]
+    __readonly_keys__: ClassVar[frozenset[str]]
+    __mutable_keys__: ClassVar[frozenset[str]]
 def overload(func: _T) -> _T: ...
 def type_check_only(func: _T) -> _T: ...
 def final(func: _T) -> _T: ...
@@ -97,6 +109,8 @@ class tuple(Sequence[T_co], Generic[T_co]):
     def __ge__(self, __other: tuple[T_co, ...]) -> bool: pass
 
 class dict(Mapping[KT, VT]): ...
+
+class frozenset(Generic[T]): ...
 
 class function: pass
 class ellipsis: pass
@@ -539,6 +553,18 @@ class StubtestUnit(unittest.TestCase):
             f11.__text_signature__ = "(text=<unrepresentable>)"
             """,
             error="f11",
+        )
+
+        # Simulate numpy ndarray.__bool__ that raises an error
+        yield Case(
+            stub="def f12(x=1): ...",
+            runtime="""
+            class _ndarray:
+                def __eq__(self, obj): return self
+                def __bool__(self): raise ValueError
+            def f12(x=_ndarray()) -> None: pass
+            """,
+            error="f12",
         )
 
     @collect_cases
@@ -1384,7 +1410,7 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
-            from typing_extensions import Final, Literal
+            from typing import Final, Literal
             class BytesEnum(bytes, enum.Enum):
                 a = b'foo'
             FOO: Literal[BytesEnum.a]
@@ -1484,6 +1510,16 @@ class StubtestUnit(unittest.TestCase):
             runtime="__all__ += ['Z']\nclass Z:\n  def __reduce__(self): return (Z,)",
             error=None,
         )
+        # __call__ exists on type, so it appears to exist on the class.
+        # This checks that we identify it as missing at runtime anyway.
+        yield Case(
+            stub="""
+            class ClassWithMetaclassOverride:
+                def __call__(*args, **kwds): ...
+            """,
+            runtime="class ClassWithMetaclassOverride: ...",
+            error="ClassWithMetaclassOverride.__call__",
+        )
 
     @collect_cases
     def test_missing_no_runtime_all(self) -> Iterator[Case]:
@@ -1547,12 +1583,11 @@ assert annotations
             runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
             error=None,
         )
-        if sys.version_info >= (3, 9):
-            yield Case(
-                stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
-                runtime="class D:\n  def __class_getitem__(cls, type): ...",
-                error=None,
-            )
+        yield Case(
+            stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
+            runtime="class D:\n  def __class_getitem__(cls, type): ...",
+            error=None,
+        )
 
     @collect_cases
     def test_not_subclassable(self) -> Iterator[Case]:
@@ -1917,7 +1952,7 @@ assert annotations
     def test_good_literal(self) -> Iterator[Case]:
         yield Case(
             stub=r"""
-            from typing_extensions import Literal
+            from typing import Literal
 
             import enum
             class Color(enum.Enum):
@@ -1949,7 +1984,7 @@ assert annotations
 
     @collect_cases
     def test_bad_literal(self) -> Iterator[Case]:
-        yield Case("from typing_extensions import Literal", "", None)  # dummy case
+        yield Case("from typing import Literal", "", None)  # dummy case
         yield Case(
             stub="INT_FLOAT_MISMATCH: Literal[1]",
             runtime="INT_FLOAT_MISMATCH = 1.0",
@@ -2000,7 +2035,7 @@ assert annotations
         )
         yield Case(
             stub="""
-            from typing_extensions import TypedDict
+            from typing import TypedDict
 
             class _Options(TypedDict):
                 a: str
@@ -2021,8 +2056,8 @@ assert annotations
     @collect_cases
     def test_runtime_typing_objects(self) -> Iterator[Case]:
         yield Case(
-            stub="from typing_extensions import Protocol, TypedDict",
-            runtime="from typing_extensions import Protocol, TypedDict",
+            stub="from typing import Protocol, TypedDict",
+            runtime="from typing import Protocol, TypedDict",
             error=None,
         )
         yield Case(
@@ -2387,8 +2422,8 @@ assert annotations
         )
         # The same is true for NamedTuples and TypedDicts:
         yield Case(
-            stub="from typing_extensions import NamedTuple, TypedDict",
-            runtime="from typing_extensions import NamedTuple, TypedDict",
+            stub="from typing import NamedTuple, TypedDict",
+            runtime="from typing import NamedTuple, TypedDict",
             error=None,
         )
         yield Case(
