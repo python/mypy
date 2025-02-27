@@ -58,6 +58,7 @@ from mypy.nodes import (
     OverloadedFuncDef,
     ParamSpecExpr,
     PassStmt,
+    PromoteExpr,
     RaiseStmt,
     ReturnStmt,
     RevealExpr,
@@ -67,6 +68,7 @@ from mypy.nodes import (
     StarExpr,
     StrExpr,
     SuperExpr,
+    TempNode,
     TryStmt,
     TupleExpr,
     TypeAlias,
@@ -77,6 +79,7 @@ from mypy.nodes import (
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
+    Var,
     WhileStmt,
     WithStmt,
     YieldExpr,
@@ -414,6 +417,85 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_import_from(self, o: ImportFrom, /) -> None:
         for a in o.assignments:
             a.accept(self)
+
+    # leaf nodes
+    def visit_name_expr(self, o: NameExpr, /) -> None:
+        return None
+
+    def visit_str_expr(self, o: StrExpr, /) -> None:
+        return None
+
+    def visit_int_expr(self, o: IntExpr, /) -> None:
+        return None
+
+    def visit_float_expr(self, o: FloatExpr, /) -> None:
+        return None
+
+    def visit_bytes_expr(self, o: BytesExpr, /) -> None:
+        return None
+
+    def visit_ellipsis(self, o: EllipsisExpr, /) -> None:
+        return None
+
+    def visit_var(self, o: Var, /) -> None:
+        return None
+
+    def visit_continue_stmt(self, o: ContinueStmt, /) -> None:
+        return None
+
+    def visit_pass_stmt(self, o: PassStmt, /) -> None:
+        return None
+
+    def visit_break_stmt(self, o: BreakStmt, /) -> None:
+        return None
+
+    def visit_temp_node(self, o: TempNode, /) -> None:
+        return None
+
+    def visit_nonlocal_decl(self, o: NonlocalDecl, /) -> None:
+        return None
+
+    def visit_global_decl(self, o: GlobalDecl, /) -> None:
+        return None
+
+    def visit_import_all(self, o: ImportAll, /) -> None:
+        return None
+
+    def visit_type_var_expr(self, o: TypeVarExpr, /) -> None:
+        return None
+
+    def visit_paramspec_expr(self, o: ParamSpecExpr, /) -> None:
+        return None
+
+    def visit_type_var_tuple_expr(self, o: TypeVarTupleExpr, /) -> None:
+        return None
+
+    def visit_type_alias_expr(self, o: TypeAliasExpr, /) -> None:
+        return None
+
+    def visit_type_alias(self, o: TypeAlias, /) -> None:
+        return None
+
+    def visit_namedtuple_expr(self, o: NamedTupleExpr, /) -> None:
+        return None
+
+    def visit_typeddict_expr(self, o: TypedDictExpr, /) -> None:
+        return None
+
+    def visit_newtype_expr(self, o: NewTypeExpr, /) -> None:
+        return None
+
+    def visit__promote_expr(self, o: PromoteExpr, /) -> None:
+        return None
+
+    def visit_complex_expr(self, o: ComplexExpr, /) -> None:
+        return None
+
+    def visit_enum_call_expr(self, o: EnumCallExpr, /) -> None:
+        return None
+
+    def visit_singleton_pattern(self, o: SingletonPattern, /) -> None:
+        return None
 
 
 class ExtendedTraverserVisitor(TraverserVisitor):

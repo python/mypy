@@ -15,7 +15,12 @@ import mypy.checker
 import mypy.errorcodes as codes
 from mypy import applytype, erasetype, join, message_registry, nodes, operators, types
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.checkmember import analyze_member_access, freeze_all_type_vars, type_object_type
+from mypy.checkmember import (
+    analyze_member_access,
+    freeze_all_type_vars,
+    type_object_type,
+    typeddict_callable,
+)
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorWatcher, report_internal_error
@@ -955,20 +960,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Note it is not safe to move this to type_object_type() since it will crash
         on plugin-generated TypedDicts, that may not have the special_alias.
         """
-        assert info.special_alias is not None
-        target = info.special_alias.target
-        assert isinstance(target, ProperType) and isinstance(target, TypedDictType)
-        expected_types = list(target.items.values())
-        kinds = [ArgKind.ARG_NAMED] * len(expected_types)
-        names = list(target.items.keys())
-        return CallableType(
-            expected_types,
-            kinds,
-            names,
-            target,
-            self.named_type("builtins.type"),
-            variables=info.defn.type_vars,
-        )
+        return typeddict_callable(info, self.named_type)
 
     def typeddict_callable_from_context(self, callee: TypedDictType) -> CallableType:
         return CallableType(
@@ -1485,7 +1477,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )
         proper_callee = get_proper_type(callee_type)
         if isinstance(e.callee, (NameExpr, MemberExpr)):
-            self.chk.warn_deprecated_overload_item(e.callee.node, e, target=callee_type)
+            node = e.callee.node
+            if node is None and member is not None and isinstance(object_type, Instance):
+                if (symbol := object_type.type.get(member)) is not None:
+                    node = symbol.node
+            self.chk.check_deprecated(node, e)
+            self.chk.warn_deprecated_overload_item(
+                node, e, target=callee_type, selftype=object_type
+            )
         if isinstance(e.callee, RefExpr) and isinstance(proper_callee, CallableType):
             # Cache it for find_isinstance_check()
             if proper_callee.type_guard is not None:
@@ -2581,8 +2580,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for actual, actual_type, actual_kind, callee_arg_type, callee_arg_kind in zip(
                 actuals, actual_types, actual_kinds, callee_arg_types, callee_arg_kinds
             ):
-                if actual_type is None:
-                    continue  # Some kind of error was already reported.
                 # Check that a *arg is valid as varargs.
                 expanded_actual = mapper.expand_actual_type(
                     actual_type,
@@ -3185,7 +3182,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 new_type_narrowers.append(target.type_is)
 
         if new_type_guards and new_type_narrowers:
-            # They cannot be definined at the same time,
+            # They cannot be defined at the same time,
             # declaring this function as too complex!
             too_complex = True
             union_type_guard = None
@@ -5526,7 +5523,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if type_info in mro:
             index = mro.index(type_info)
         else:
-            method = self.chk.scope.top_function()
+            method = self.chk.scope.current_function()
             # Mypy explicitly allows supertype upper bounds (and no upper bound at all)
             # for annotating self-types. However, if such an annotation is used for
             # checking super() we will still get an error. So to be consistent, we also
@@ -5601,7 +5598,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             type_type: ProperType = TypeType(current_type)
 
             # Use the type of the self argument, in case it was annotated
-            method = self.chk.scope.top_function()
+            method = self.chk.scope.current_function()
             assert method is not None
             if method.arguments:
                 instance_type: Type = method.arguments[0].variable.type or current_type

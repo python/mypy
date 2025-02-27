@@ -1098,3 +1098,15 @@ reveal_type(1)  # N: Revealed type is "Literal[1]?"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/custom_errorcode.py
+
+
+[case testPyprojectPluginsTrailingComma]
+# flags: --config-file tmp/pyproject.toml
+[file pyproject.toml]
+# This test checks that trailing commas in string-based `plugins` are allowed.
+\[tool.mypy]
+plugins = """
+  <ROOT>/test-data/unit/plugins/function_sig_hook.py,
+  <ROOT>/test-data/unit/plugins/method_in_decorator.py,
+"""
+[out]

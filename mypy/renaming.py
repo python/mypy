@@ -152,7 +152,21 @@ class VariableRenameVisitor(TraverserVisitor):
         # type checker which allows them to be always redefined, so no need to
         # do renaming here.
         with self.enter_try():
-            super().visit_try_stmt(stmt)
+            stmt.body.accept(self)
+
+        for var, tp, handler in zip(stmt.vars, stmt.types, stmt.handlers):
+            with self.enter_block():
+                # Handle except variable together with its body
+                if tp is not None:
+                    tp.accept(self)
+                if var is not None:
+                    self.handle_def(var)
+                for s in handler.body:
+                    s.accept(self)
+        if stmt.else_body is not None:
+            stmt.else_body.accept(self)
+        if stmt.finally_body is not None:
+            stmt.finally_body.accept(self)
 
     def visit_with_stmt(self, stmt: WithStmt) -> None:
         for expr in stmt.expr:

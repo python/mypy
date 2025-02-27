@@ -97,7 +97,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "commctrl": "types-pywin32",
     "commonmark": "types-commonmark",
     "consolemenu": "types-console-menu",
-    "corus": "types-corus",
+    "corus": "types-corus",  # codespell:ignore corus
     "cronlog": "types-python-crontab",
     "crontab": "types-python-crontab",
     "crontabs": "types-python-crontab",

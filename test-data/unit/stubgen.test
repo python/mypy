@@ -4270,7 +4270,7 @@ class Y(missing.Base):
     generated_kwargs_: float
 
 [case testDataclassTransform]
-# dataclass_transform detection only works with sementic analysis.
+# dataclass_transform detection only works with semantic analysis.
 # Test stubgen doesn't break too badly without it.
 from typing_extensions import dataclass_transform
 

@@ -3709,7 +3709,7 @@ def new(uc: Type[U]) -> U:
     if 1:
         u = uc(0)
         u.foo()
-        u = uc('')  # Error
+        uc('')  # Error
         u.foo(0)  # Error
         return uc()
 u = new(User)
@@ -8442,4 +8442,26 @@ class C:
     @x.deleter
     def x(self) -> None:
         pass
+[builtins fixtures/property.pyi]
+
+[case testPropertySetterSuperclassDeferred]
+from typing import Callable, TypeVar
+
+class B:
+    def __init__(self) -> None:
+        self.foo = f()
+
+class C(B):
+    @property
+    def foo(self) -> str: ...
+    @foo.setter  # E: Incompatible override of a setter type \
+                 # N:  (base class "B" defined the type as "str", \
+                 # N:  override has type "int")
+    def foo(self, x: int) -> None: ...
+
+T = TypeVar("T")
+def deco(fn: Callable[[], list[T]]) -> Callable[[], T]: ...
+
+@deco
+def f() -> list[str]: ...
 [builtins fixtures/property.pyi]

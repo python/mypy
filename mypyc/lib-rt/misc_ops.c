@@ -535,6 +535,22 @@ void CPyDebug_Print(const char *msg) {
     fflush(stdout);
 }
 
+void CPyDebug_PrintObject(PyObject *obj) {
+    // Printing can cause errors. We don't want this to affect any existing
+    // state so we'll save any existing error and restore it at the end.
+    PyObject *exc_type, *exc_value, *exc_traceback;
+    PyErr_Fetch(&exc_type, &exc_value, &exc_traceback);
+
+    if (PyObject_Print(obj, stderr, 0) == -1) {
+        PyErr_Print();
+    } else {
+        fprintf(stderr, "\n");
+    }
+    fflush(stderr);
+
+    PyErr_Restore(exc_type, exc_value, exc_traceback);
+}
+
 int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected) {
     Py_ssize_t actual = Py_SIZE(sequence);
     if (unlikely(actual != expected)) {
