@@ -347,7 +347,7 @@ def f() -> int:
 
 [case testNoReturnDisallowsReturn]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 def f() -> NoReturn:
   if bool():
@@ -358,7 +358,7 @@ def f() -> NoReturn:
 
 [case testNoReturnWithoutImplicitReturn]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 def no_return() -> NoReturn: pass
 def f() -> NoReturn:
@@ -367,7 +367,7 @@ def f() -> NoReturn:
 
 [case testNoReturnDisallowsImplicitReturn]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 def f() -> NoReturn:  # E: Implicit return in function which does not return
   non_trivial_function = 1
@@ -391,7 +391,7 @@ x = force_forward_reference()
 
 [case testNoReturnNoWarnNoReturn]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 def no_return() -> NoReturn: pass
 def f() -> int:
@@ -403,7 +403,7 @@ def f() -> int:
 
 [case testNoReturnInExpr]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 def no_return() -> NoReturn: pass
 def f() -> int:
@@ -413,14 +413,14 @@ reveal_type(f() or no_return())  # N: Revealed type is "builtins.int"
 
 [case testNoReturnVariable]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type "Never")
 [builtins fixtures/dict.pyi]
 
 [case testNoReturnAsync]
 # flags: --warn-no-return
-from mypy_extensions import NoReturn
+from typing import NoReturn
 
 async def f() -> NoReturn: ...
 
@@ -1082,25 +1082,25 @@ main:6: error: A type on this line becomes "Any" due to an unfollowed import
 
 [case testDisallowUnimportedAnyTypedDictSimple]
 # flags: --ignore-missing-imports --disallow-any-unimported
-from mypy_extensions import TypedDict
+from typing import TypedDict
 from x import Unchecked
 
 M = TypedDict('M', {'x': str, 'y': Unchecked})  # E: Type of a TypedDict key becomes "Any" due to an unfollowed import
 
 def f(m: M) -> M: pass  # no error
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testDisallowUnimportedAnyTypedDictGeneric]
 # flags: --ignore-missing-imports --disallow-any-unimported
-
-from mypy_extensions import TypedDict
-from typing import List
+from typing import List, TypedDict
 from x import Unchecked
 
 M = TypedDict('M', {'x': str, 'y': List[Unchecked]})  # E: Type of a TypedDict key becomes "List[Any]" due to an unfollowed import
 
 def f(m: M) -> M: pass  # no error
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testDisallowAnyDecoratedUnannotatedDecorator]
 # flags: --disallow-any-decorated
@@ -1337,13 +1337,14 @@ def k(s: E) -> None: pass
 
 [case testDisallowAnyExprTypedDict]
 # flags: --disallow-any-expr
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 Movie = TypedDict('Movie', {'name': str, 'year': int})
 
 def g(m: Movie) -> Movie:
     return m
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testDisallowIncompleteDefs]
 # flags: --disallow-incomplete-defs
@@ -1483,8 +1484,7 @@ n: N
 
 [case testCheckDisallowAnyGenericsTypedDict]
 # flags: --disallow-any-generics
-from typing import Dict, Any, Optional
-from mypy_extensions import TypedDict
+from typing import Dict, Any, Optional, TypedDict
 
 VarsDict = Dict[str, Any]
 HostsDict = Dict[str, Optional[VarsDict]]
@@ -1497,6 +1497,7 @@ GroupDataDict = TypedDict(
 
 GroupsDict = Dict[str, GroupDataDict]  # type: ignore
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 [case testCheckDisallowAnyGenericsStubOnly]
@@ -1829,51 +1830,51 @@ x: A  # E:4: Missing type parameters for generic type "A"
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitDefSignature]
-# flags: --disallow-any-explicit
+# flags: --disallow-any-explicit --show-error-codes
 
 from typing import Any, List
 
-def f(x: Any) -> None:  # E: Explicit "Any" is not allowed
+def f(x: Any) -> None:  # E: Explicit "Any" is not allowed  [explicit-any]
     pass
 
-def g() -> Any:  # E: Explicit "Any" is not allowed
+def g() -> Any:  # E: Explicit "Any" is not allowed  [explicit-any]
     pass
 
-def h() -> List[Any]:  # E: Explicit "Any" is not allowed
+def h() -> List[Any]:  # E: Explicit "Any" is not allowed  [explicit-any]
     pass
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitVarDeclaration]
-# flags: --disallow-any-explicit
+# flags: --disallow-any-explicit --show-error-codes
 from typing import Any
-v: Any = ''  # E: Explicit "Any" is not allowed
-w = ''  # type: Any  # E: Explicit "Any" is not allowed
+v: Any = ''  # E: Explicit "Any" is not allowed  [explicit-any]
+w = ''  # type: Any  # E: Explicit "Any" is not allowed  [explicit-any]
 class X:
-    y = ''  # type: Any  # E: Explicit "Any" is not allowed
+    y = ''  # type: Any  # E: Explicit "Any" is not allowed  [explicit-any]
 
 [case testDisallowAnyExplicitGenericVarDeclaration]
-# flags: --disallow-any-explicit
+# flags: --disallow-any-explicit --show-error-codes
 from typing import Any, List
-v: List[Any] = []  # E: Explicit "Any" is not allowed
+v: List[Any] = []  # E: Explicit "Any" is not allowed  [explicit-any]
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitInheritance]
-# flags: --disallow-any-explicit
+# flags: --disallow-any-explicit --show-error-codes
 from typing import Any, List
 
-class C(Any):  # E: Explicit "Any" is not allowed
+class C(Any):  # E: Explicit "Any" is not allowed  [explicit-any]
     pass
 
-class D(List[Any]):  # E: Explicit "Any" is not allowed
+class D(List[Any]):  # E: Explicit "Any" is not allowed  [explicit-any]
     pass
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitAlias]
-# flags: --disallow-any-explicit
+# flags: --disallow-any-explicit --show-error-codes
 from typing import Any, List
 
-X = Any  # E: Explicit "Any" is not allowed
-Y = List[Any]  # E: Explicit "Any" is not allowed
+X = Any  # E: Explicit "Any" is not allowed  [explicit-any]
+Y = List[Any]  # E: Explicit "Any" is not allowed  [explicit-any]
 
 def foo(x: X) -> Y:  # no error
     x.nonexistent()  # no error
@@ -1881,70 +1882,70 @@ def foo(x: X) -> Y:  # no error
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitGenericAlias]
-# flags: --disallow-any-explicit
+# flags: --disallow-any-explicit --show-error-codes
 from typing import Any, TypeVar, Tuple
 
 T = TypeVar('T')
 
-TupleAny = Tuple[Any, T]  # E: Explicit "Any" is not allowed
+TupleAny = Tuple[Any, T]  # E: Explicit "Any" is not allowed  [explicit-any]
 
 def foo(x: TupleAny[str]) -> None:  # no error
     pass
 
-def goo(x: TupleAny[Any]) -> None:  # E: Explicit "Any" is not allowed
+def goo(x: TupleAny[Any]) -> None:  # E: Explicit "Any" is not allowed  [explicit-any]
     pass
 [builtins fixtures/tuple.pyi]
 
 [case testDisallowAnyExplicitCast]
-# flags: --disallow-any-explicit
+# flags: --disallow-any-explicit --show-error-codes
 from typing import Any, List, cast
 
 x = 1
-y = cast(Any, x)  # E: Explicit "Any" is not allowed
-z = cast(List[Any], x)  # E: Explicit "Any" is not allowed
+y = cast(Any, x)  # E: Explicit "Any" is not allowed  [explicit-any]
+z = cast(List[Any], x)  # E: Explicit "Any" is not allowed  [explicit-any]
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitNamedTuple]
-# flags: --disallow-any-explicit
+# flags: --disallow-any-explicit --show-error-codes
 from typing import Any, List, NamedTuple
 
-Point = NamedTuple('Point', [('x', List[Any]), ('y', Any)])  # E: Explicit "Any" is not allowed
+Point = NamedTuple('Point', [('x', List[Any]), ('y', Any)])  # E: Explicit "Any" is not allowed  [explicit-any]
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitTypeVarConstraint]
-# flags: --disallow-any-explicit
+# flags: --disallow-any-explicit --show-error-codes
 from typing import Any, List, TypeVar
 
-T = TypeVar('T', Any, List[Any])  # E: Explicit "Any" is not allowed
+T = TypeVar('T', Any, List[Any])  # E: Explicit "Any" is not allowed  [explicit-any]
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitNewType]
-# flags: --disallow-any-explicit
+# flags: --disallow-any-explicit --show-error-codes
 from typing import Any, List, NewType
 
 # this error does not come from `--disallow-any-explicit` flag
-Baz = NewType('Baz', Any)  # E: Argument 2 to NewType(...) must be subclassable (got "Any")
-Bar = NewType('Bar', List[Any])  # E: Explicit "Any" is not allowed
+Baz = NewType('Baz', Any)  # E: Argument 2 to NewType(...) must be subclassable (got "Any")  [valid-newtype]
+Bar = NewType('Bar', List[Any])  # E: Explicit "Any" is not allowed  [explicit-any]
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitTypedDictSimple]
-# flags: --disallow-any-explicit
-from mypy_extensions import TypedDict
-from typing import Any
+# flags: --disallow-any-explicit --show-error-codes
+from typing import Any, TypedDict
 
-M = TypedDict('M', {'x': str, 'y': Any})  # E: Explicit "Any" is not allowed
+M = TypedDict('M', {'x': str, 'y': Any})  # E: Explicit "Any" is not allowed  [explicit-any]
 M(x='x', y=2)  # no error
 def f(m: M) -> None: pass  # no error
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testDisallowAnyExplicitTypedDictGeneric]
-# flags: --disallow-any-explicit
-from mypy_extensions import TypedDict
-from typing import Any, List
+# flags: --disallow-any-explicit --show-error-codes
+from typing import Any, List, TypedDict
 
-M = TypedDict('M', {'x': str, 'y': List[Any]})  # E: Explicit "Any" is not allowed
+M = TypedDict('M', {'x': str, 'y': List[Any]})  # E: Explicit "Any" is not allowed  [explicit-any]
 N = TypedDict('N', {'x': str, 'y': List})  # no error
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testDisallowAnyGenericsTupleNoTypeParams]
 # flags: --disallow-any-generics
@@ -2345,10 +2346,19 @@ x: int = ""  # E: Incompatible types in assignment (expression has type "str", v
 x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testDisableBytearrayPromotion]
-# flags: --disable-bytearray-promotion
+# flags: --disable-bytearray-promotion --strict-equality
 def f(x: bytes) -> None: ...
 f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
 f(memoryview(b"asdf"))
+ba = bytearray(b"")
+if ba == b"":
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if b"" == ba:
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if ba == bytes():
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if bytes() == ba:
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
 [builtins fixtures/primitives.pyi]
 
 [case testDisableMemoryviewPromotion]
@@ -2382,6 +2392,20 @@ def f(x: bytes, y: bytearray, z: memoryview) -> None:
     97 in z
     x in y
     x in z
+[builtins fixtures/primitives.pyi]
+
+[case testStrictBytes]
+# flags: --strict-bytes
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+[builtins fixtures/primitives.pyi]
+
+[case testNoStrictBytes]
+# flags: --no-strict-bytes
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))
+f(memoryview(b"asdf"))
 [builtins fixtures/primitives.pyi]
 
 [case testNoCrashFollowImportsForStubs]

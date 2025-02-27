@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Dict, Generic, Iterable, Iterator, Set, Tuple, TypeVar
+from collections.abc import Iterable, Iterator
+from typing import Generic, TypeVar
 
 from mypyc.ir.ops import (
     Assign,
@@ -154,7 +155,7 @@ def cleanup_cfg(blocks: list[BasicBlock]) -> None:
 
 T = TypeVar("T")
 
-AnalysisDict = Dict[Tuple[BasicBlock, int], Set[T]]
+AnalysisDict = dict[tuple[BasicBlock, int], set[T]]
 
 
 class AnalysisResult(Generic[T]):
@@ -166,7 +167,7 @@ class AnalysisResult(Generic[T]):
         return f"before: {self.before}\nafter: {self.after}\n"
 
 
-GenAndKill = Tuple[Set[T], Set[T]]
+GenAndKill = tuple[set[T], set[T]]
 
 
 class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):

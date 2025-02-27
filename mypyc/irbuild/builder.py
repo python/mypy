@@ -5,9 +5,9 @@ See the docstring of class IRBuilder for more information.
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from typing import Any, Callable, Final, Iterator, Sequence, Union
-from typing_extensions import overload
+from typing import Any, Callable, Final, Union, overload
 
 from mypy.build import Graph
 from mypy.maptype import map_instance_to_supertype
@@ -399,8 +399,14 @@ class IRBuilder:
     def call_c(self, desc: CFunctionDescription, args: list[Value], line: int) -> Value:
         return self.builder.call_c(desc, args, line)
 
-    def primitive_op(self, desc: PrimitiveDescription, args: list[Value], line: int) -> Value:
-        return self.builder.primitive_op(desc, args, line)
+    def primitive_op(
+        self,
+        desc: PrimitiveDescription,
+        args: list[Value],
+        line: int,
+        result_type: RType | None = None,
+    ) -> Value:
+        return self.builder.primitive_op(desc, args, line, result_type)
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.builder.int_op(type, lhs, rhs, op, line)
@@ -413,6 +419,9 @@ class IRBuilder:
 
     def new_tuple(self, items: list[Value], line: int) -> Value:
         return self.builder.new_tuple(items, line)
+
+    def debug_print(self, toprint: str | Value) -> None:
+        return self.builder.debug_print(toprint)
 
     # Helpers for IR building
 
@@ -760,7 +769,7 @@ class IRBuilder:
             item = target.items[i]
             index = self.builder.load_int(i)
             if is_list_rprimitive(rvalue.type):
-                item_value = self.call_c(list_get_item_unsafe_op, [rvalue, index], line)
+                item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
             else:
                 item_value = self.builder.gen_method_call(
                     rvalue, "__getitem__", [index], item.type, line

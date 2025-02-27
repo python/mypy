@@ -818,7 +818,7 @@ class I: pass
 <mod> -> a
 
 [case testAliasDepsTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 from mod import I
 A = I
 class P(TypedDict):
@@ -826,6 +826,7 @@ class P(TypedDict):
 [file mod.py]
 class I: pass
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 <m.A> -> m
 <m.P> -> m.P
@@ -836,7 +837,7 @@ class I: pass
 
 [case testAliasDepsTypedDictFunctional]
 # __dump_all__
-from mypy_extensions import TypedDict
+from typing import TypedDict
 import a
 P = TypedDict('P', {'x': a.A})
 [file a.py]
@@ -845,6 +846,7 @@ A = I
 [file mod.py]
 class I: pass
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 <a.A> -> m
 <a> -> m

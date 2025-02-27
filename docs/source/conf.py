@@ -35,7 +35,12 @@ from mypy.version import __version__ as mypy_version
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.intersphinx", "docs.source.html_builder", "myst_parser"]
+extensions = [
+    "sphinx.ext.intersphinx",
+    "sphinx_inline_tabs",
+    "docs.source.html_builder",
+    "myst_parser",
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

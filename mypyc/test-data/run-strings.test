@@ -20,10 +20,20 @@ def eq(x: str) -> int:
     return 2
 def match(x: str, y: str) -> Tuple[bool, bool]:
     return (x.startswith(y), x.endswith(y))
+def match_tuple(x: str, y: Tuple[str, ...]) -> Tuple[bool, bool]:
+    return (x.startswith(y), x.endswith(y))
+def match_tuple_literal_args(x: str, y: str, z: str) -> Tuple[bool, bool]:
+    return (x.startswith((y, z)), x.endswith((y, z)))
+def remove_prefix_suffix(x: str, y: str) -> Tuple[str, str]:
+    return (x.removeprefix(y), x.removesuffix(y))
 
 [file driver.py]
-from native import f, g, tostr, booltostr, concat, eq, match
+from native import (
+    f, g, tostr, booltostr, concat, eq, match, match_tuple,
+    match_tuple_literal_args, remove_prefix_suffix
+)
 import sys
+from testutil import assertRaises
 
 assert f() == 'some string'
 assert f() is sys.intern('some string')
@@ -43,9 +53,26 @@ assert match('abc', '') == (True, True)
 assert match('abc', 'a') == (True, False)
 assert match('abc', 'c') == (False, True)
 assert match('', 'abc') == (False, False)
+assert match_tuple('abc', ('d', 'e')) == (False, False)
+assert match_tuple('abc', ('a', 'c')) == (True, True)
+assert match_tuple('abc', ('a',)) == (True, False)
+assert match_tuple('abc', ('c',)) == (False, True)
+assert match_tuple('abc', ('x', 'y', 'z')) == (False, False)
+assert match_tuple('abc', ('x', 'y', 'z', 'a', 'c')) == (True, True)
+with assertRaises(TypeError, "tuple for startswith must only contain str"):
+    assert match_tuple('abc', (None,))
+with assertRaises(TypeError, "tuple for endswith must only contain str"):
+    assert match_tuple('abc', ('a', None))
+assert match_tuple_literal_args('abc', 'z', 'a') == (True, False)
+assert match_tuple_literal_args('abc', 'z', 'c') == (False, True)
+
+assert remove_prefix_suffix('', '') == ('', '')
+assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
+assert remove_prefix_suffix('abc', 'c') == ('abc', 'ab')
 
 [case testStringOps]
-from typing import List, Optional
+from typing import List, Optional, Tuple
+from testutil import assertRaises
 
 def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
     if sep is not None:
@@ -54,6 +81,14 @@ def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None)
         else:
             return s.split(sep)
     return s.split()
+
+def do_rsplit(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
+    if sep is not None:
+        if max_split is not None:
+            return s.rsplit(sep, max_split)
+        else:
+            return s.rsplit(sep)
+    return s.rsplit()
 
 ss = "abc abcd abcde abcdef"
 
@@ -66,12 +101,76 @@ def test_split() -> None:
     assert do_split(ss, " ", 1) == ["abc", "abcd abcde abcdef"]
     assert do_split(ss, " ", 2) == ["abc", "abcd", "abcde abcdef"]
 
+def test_rsplit() -> None:
+    assert do_rsplit(ss) == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, " ") == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, "-") == ["abc abcd abcde abcdef"]
+    assert do_rsplit(ss, " ", -1) == ["abc", "abcd", "abcde", "abcdef"]
+    assert do_rsplit(ss, " ", 0) == ["abc abcd abcde abcdef"]
+    assert do_rsplit(ss, " ", 1) == ["abc abcd abcde", "abcdef"]  # different to do_split
+    assert do_rsplit(ss, " ", 2) == ["abc abcd", "abcde", "abcdef"]  # different to do_split
+
+def splitlines(s: str, keepends: Optional[bool] = None) -> List[str]:
+    if keepends is not None:
+        return s.splitlines(keepends)
+    return s.splitlines()
+
+s_text = "This\nis\n\nsome\nlong\ntext.\n"
+
+def test_splitlines() -> None:
+    assert splitlines(s_text) == ["This", "is", "", "some", "long", "text."]
+    assert splitlines(s_text, False) == ["This", "is", "", "some", "long", "text."]
+    assert splitlines(s_text, True) == ["This\n", "is\n", "\n", "some\n", "long\n", "text.\n"]
+
+s_partition = "Some long text"
+
+def partition(s: str, sep: str) -> Tuple[str, str, str]:
+    return s.partition(sep)
+
+def rpartition(s: str, sep: str) -> Tuple[str, str, str]:
+    return s.rpartition(sep)
+
+def test_partition() -> None:
+    assert partition(s_partition, " ") == ("Some", " ", "long text")
+    assert partition(s_partition, "Hello") == ("Some long text", "", "")
+    assert rpartition(s_partition, " ") == ("Some long", " ", "text")
+    assert rpartition(s_partition, "Hello") == ("", "", "Some long text")
+    with assertRaises(ValueError, "empty separator"):
+        partition(s_partition, "")
+    with assertRaises(ValueError, "empty separator"):
+        rpartition(s_partition, "")
+
+def contains(s: str, o: str) -> bool:
+    return o in s
+
 def getitem(s: str, index: int) -> str:
     return s[index]
 
-from testutil import assertRaises
+def find(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
+    if start is not None:
+        if end is not None:
+            return s.find(substr, start, end)
+        return s.find(substr, start)
+    return s.find(substr)
+
+def rfind(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
+    if start is not None:
+        if end is not None:
+            return s.rfind(substr, start, end)
+        return s.rfind(substr, start)
+    return s.rfind(substr)
 
 s = "abc"
+
+def test_contains() -> None:
+    assert contains(s, "a") is True
+    assert contains(s, "abc") is True
+    assert contains(s, "Hello") is False
+    assert contains(s, "bc") is True
+    assert contains(s, "abcd") is False
+    assert contains(s, "bb") is False
+    assert contains(s, "") is True
+    assert contains(s, " ") is False
 
 def test_getitem() -> None:
     assert getitem(s, 0) == "a"
@@ -84,6 +183,26 @@ def test_getitem() -> None:
         getitem(s, 4)
     with assertRaises(IndexError, "string index out of range"):
         getitem(s, -4)
+
+def test_find() -> None:
+    s = "abcab"
+    assert find(s, "Hello") == -1
+    assert find(s, "abc") == 0
+    assert find(s, "b") == 1
+    assert find(s, "b", 1) == 1
+    assert find(s, "b", 1, 2) == 1
+    assert find(s, "b", 3) == 4
+    assert find(s, "b", 3, 5) == 4
+    assert find(s, "b", 3, 4) == -1
+
+    assert rfind(s, "Hello") == -1
+    assert rfind(s, "abc") == 0
+    assert rfind(s, "b") == 4
+    assert rfind(s, "b", 1) == 4
+    assert rfind(s, "b", 1, 2) == 1
+    assert rfind(s, "b", 3) == 4
+    assert rfind(s, "b", 3, 5) == 4
+    assert rfind(s, "b", 3, 4) == -1
 
 def str_to_int(s: str, base: Optional[int] = None) -> int:
     if base:

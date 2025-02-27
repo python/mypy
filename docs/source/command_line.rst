@@ -68,10 +68,11 @@ for full details, see :ref:`running-mypy`.
     checked. For instance, ``mypy --exclude '/setup.py$'
     but_still_check/setup.py``.
 
-    In particular, ``--exclude`` does not affect mypy's :ref:`import following
-    <follow-imports>`. You can use a per-module :confval:`follow_imports` config
-    option to additionally avoid mypy from following imports and checking code
-    you do not wish to be checked.
+    In particular, ``--exclude`` does not affect mypy's discovery of files
+    via :ref:`import following <follow-imports>`. You can use a per-module
+    :confval:`ignore_errors` config option to silence errors from a given module,
+    or a per-module :confval:`follow_imports` config option to additionally avoid
+    mypy from following imports and checking code you do not wish to be checked.
 
     Note that mypy will never recursively discover files and directories named
     "site-packages", "node_modules" or "__pycache__", or those whose name starts
@@ -79,6 +80,10 @@ for full details, see :ref:`running-mypy`.
     '/(site-packages|node_modules|__pycache__|\..*)/$'`` would. Mypy will also
     never recursively discover files with extensions other than ``.py`` or
     ``.pyi``.
+
+.. option:: --exclude-gitignore
+
+    This flag will add everything that matches ``.gitignore`` file(s) to :option:`--exclude`.
 
 
 Optional arguments
@@ -168,7 +173,14 @@ imports.
 
 .. option:: --follow-untyped-imports
 
-    This flag makes mypy analyze imports without stubs or a py.typed marker.
+    This flag makes mypy analyze imports from installed packages even if
+    missing a :ref:`py.typed marker or stubs <installed-packages>`.
+
+    .. warning::
+
+        Note that analyzing all unannotated modules might result in issues
+        when analyzing code not designed to be type checked and may significantly
+        increase how long mypy takes to run.
 
 .. option:: --follow-imports {normal,silent,skip,error}
 
@@ -548,6 +560,26 @@ potentially problematic or redundant in some way.
     notes, causing mypy to eventually finish with a zero exit code. Features
     are considered deprecated when decorated with ``warnings.deprecated``.
 
+.. option:: --deprecated-calls-exclude
+
+    This flag allows to selectively disable :ref:`deprecated<code-deprecated>` warnings
+    for functions and methods defined in specific packages, modules, or classes.
+    Note that each exclude entry acts as a prefix. For example (assuming ``foo.A.func`` is deprecated):
+
+    .. code-block:: python
+
+        # mypy --enable-error-code deprecated
+        #      --deprecated-calls-exclude=foo.A
+        import foo
+
+        foo.A().func()  # OK, the deprecated warning is ignored
+
+        # file foo.py
+        from typing_extensions import deprecated
+        class A:
+            @deprecated("Use A.func2 instead")
+            def func(self): pass
+
 .. _miscellaneous-strictness-flags:
 
 Miscellaneous strictness flags
@@ -652,12 +684,40 @@ of the above sections.
 
        assert text is not None  # OK, check against None is allowed as a special case.
 
+
+.. option:: --strict-bytes
+
+    By default, mypy treats ``bytearray`` and ``memoryview`` as subtypes of ``bytes`` which
+    is not true at runtime. Use this flag to disable this behavior. ``--strict-bytes`` will
+    be enabled by default in *mypy 2.0*.
+
+    .. code-block:: python
+
+       def f(buf: bytes) -> None:
+           assert isinstance(buf, bytes)  # Raises runtime AssertionError with bytearray/memoryview
+           with open("binary_file", "wb") as fp:
+               fp.write(buf)
+
+       f(bytearray(b""))  # error: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+       f(memoryview(b""))  # error: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+
+       # If `f` accepts any object that implements the buffer protocol, consider using:
+       from collections.abc import Buffer  # "from typing_extensions" in Python 3.11 and earlier
+
+       def f(buf: Buffer) -> None:
+           with open("binary_file", "wb") as fp:
+               fp.write(buf)
+
+       f(b"")  # Ok
+       f(bytearray(b""))  # Ok
+       f(memoryview(b""))  # Ok
+
+
 .. option:: --extra-checks
 
     This flag enables additional checks that are technically correct but may be
-    impractical in real code. In particular, it prohibits partial overlap in
-    ``TypedDict`` updates, and makes arguments prepended via ``Concatenate``
-    positional-only. For example:
+    impractical. In particular, it prohibits partial overlap in ``TypedDict`` updates,
+    and makes arguments prepended via ``Concatenate`` positional-only. For example:
 
     .. code-block:: python
 
@@ -679,6 +739,13 @@ of the above sections.
            b: str
        bad: Bad = {"a": 0, "b": "no"}
        test(bad, bar)
+
+    In future more checks may be added to this flag if:
+
+    * The corresponding use cases are rare, thus not justifying a dedicated
+      strictness flag.
+
+    * The new check cannot be supported as an opt-in error code.
 
 .. option:: --strict
 

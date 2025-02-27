@@ -241,7 +241,7 @@ CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
 
 # Enum
-ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN: Final = ErrorMessage(
+ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDDEN: Final = ErrorMessage(
     'Assigned "__members__" will be overridden by "Enum" internally'
 )
 

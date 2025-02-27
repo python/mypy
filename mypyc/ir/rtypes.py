@@ -26,7 +26,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeVar
 from typing_extensions import TypeGuard
 
-from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
+from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
@@ -69,6 +69,11 @@ class RType:
     def short_name(self) -> str:
         return short_name(self.name)
 
+    @property
+    @abstractmethod
+    def may_be_immortal(self) -> bool:
+        raise NotImplementedError
+
     def __str__(self) -> str:
         return short_name(self.name)
 
@@ -109,31 +114,31 @@ class RTypeVisitor(Generic[T]):
     """Generic visitor over RTypes (uses the visitor design pattern)."""
 
     @abstractmethod
-    def visit_rprimitive(self, typ: RPrimitive) -> T:
+    def visit_rprimitive(self, typ: RPrimitive, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rinstance(self, typ: RInstance) -> T:
+    def visit_rinstance(self, typ: RInstance, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_runion(self, typ: RUnion) -> T:
+    def visit_runion(self, typ: RUnion, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rtuple(self, typ: RTuple) -> T:
+    def visit_rtuple(self, typ: RTuple, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rstruct(self, typ: RStruct) -> T:
+    def visit_rstruct(self, typ: RStruct, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rarray(self, typ: RArray) -> T:
+    def visit_rarray(self, typ: RArray, /) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rvoid(self, typ: RVoid) -> T:
+    def visit_rvoid(self, typ: RVoid, /) -> T:
         raise NotImplementedError
 
 
@@ -150,6 +155,10 @@ class RVoid(RType):
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rvoid(self)
+
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
 
     def serialize(self) -> str:
         return "void"
@@ -193,6 +202,7 @@ class RPrimitive(RType):
         ctype: str = "PyObject *",
         size: int = PLATFORM_SIZE,
         error_overlap: bool = False,
+        may_be_immortal: bool = True,
     ) -> None:
         RPrimitive.primitive_map[name] = self
 
@@ -204,6 +214,7 @@ class RPrimitive(RType):
         self._ctype = ctype
         self.size = size
         self.error_overlap = error_overlap
+        self._may_be_immortal = may_be_immortal and HAVE_IMMORTAL
         if ctype == "CPyTagged":
             self.c_undefined = "CPY_INT_TAG"
         elif ctype in ("int16_t", "int32_t", "int64_t"):
@@ -229,6 +240,10 @@ class RPrimitive(RType):
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rprimitive(self)
+
+    @property
+    def may_be_immortal(self) -> bool:
+        return self._may_be_immortal
 
     def serialize(self) -> str:
         return self.name
@@ -433,14 +448,23 @@ none_rprimitive: Final = RPrimitive(
     "builtins.None", is_unboxed=True, is_refcounted=False, ctype="char", size=1
 )
 
-# Python list object (or an instance of a subclass of list).
-list_rprimitive: Final = RPrimitive("builtins.list", is_unboxed=False, is_refcounted=True)
+# Python list object (or an instance of a subclass of list). These could be
+# immortal, but since this is expected to be very rare, and the immortality checks
+# can be pretty expensive for lists, we treat lists as non-immortal.
+list_rprimitive: Final = RPrimitive(
+    "builtins.list", is_unboxed=False, is_refcounted=True, may_be_immortal=False
+)
 
 # Python dict object (or an instance of a subclass of dict).
 dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True)
 
 # Python set object (or an instance of a subclass of set).
 set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcounted=True)
+
+# Python frozenset object (or an instance of a subclass of frozenset).
+frozenset_rprimitive: Final = RPrimitive(
+    "builtins.frozenset", is_unboxed=False, is_refcounted=True
+)
 
 # Python str object. At the C layer, str is referred to as unicode
 # (PyUnicode).
@@ -546,6 +570,10 @@ def is_set_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.set"
 
 
+def is_frozenset_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == "builtins.frozenset"
+
+
 def is_str_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == "builtins.str"
 
@@ -641,6 +669,10 @@ class RTuple(RType):
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rtuple(self)
+
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
 
     def __str__(self) -> str:
         return "tuple[%s]" % ", ".join(str(typ) for typ in self.types)
@@ -763,6 +795,10 @@ class RStruct(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rstruct(self)
 
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
+
     def __str__(self) -> str:
         # if not tuple(unnamed structs)
         return "{}{{{}}}".format(
@@ -823,6 +859,10 @@ class RInstance(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rinstance(self)
 
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
+
     def struct_name(self, names: NameGenerator) -> str:
         return self.class_ir.struct_name(names)
 
@@ -882,6 +922,10 @@ class RUnion(RType):
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_runion(self)
+
+    @property
+    def may_be_immortal(self) -> bool:
+        return any(item.may_be_immortal for item in self.items)
 
     def __repr__(self) -> str:
         return "<RUnion %s>" % ", ".join(str(item) for item in self.items)
@@ -952,6 +996,10 @@ class RArray(RType):
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rarray(self)
+
+    @property
+    def may_be_immortal(self) -> bool:
+        return False
 
     def __str__(self) -> str:
         return f"{self.item_type}[{self.length}]"

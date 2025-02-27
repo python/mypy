@@ -1,12 +1,13 @@
 """A "low-level" IR builder class.
 
-See the docstring of class LowLevelIRBuiler for more information.
+See the docstring of class LowLevelIRBuilder for more information.
 
 """
 
 from __future__ import annotations
 
-from typing import Callable, Final, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Callable, Final, Optional
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
@@ -20,8 +21,6 @@ from mypyc.common import (
     MIN_LITERAL_SHORT_INT,
     MIN_SHORT_INT,
     PLATFORM_SIZE,
-    use_method_vectorcall,
-    use_vectorcall,
 )
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -100,6 +99,7 @@ from mypyc.ir.rtypes import (
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_frozenset_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -161,6 +161,7 @@ from mypyc.primitives.list_ops import list_build_op, list_extend_op, list_items,
 from mypyc.primitives.misc_ops import (
     bool_op,
     buf_init_item,
+    debug_print_op,
     fast_isinstance_op,
     none_object_op,
     not_implemented_op,
@@ -180,7 +181,7 @@ from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.sametype import is_same_type
 from mypyc.subtype import is_subtype
 
-DictEntry = Tuple[Optional[Value], Value]
+DictEntry = tuple[Optional[Value], Value]
 
 # If the number of items is less than the threshold when initializing
 # a list, we would inline the generate IR using SetMem and expanded
@@ -298,6 +299,11 @@ class LowLevelIRBuilder:
         if self.keep_alives:
             self.add(KeepAlive(self.keep_alives.copy()))
             self.keep_alives = []
+
+    def debug_print(self, toprint: str | Value) -> None:
+        if isinstance(toprint, str):
+            toprint = self.load_str(toprint)
+        self.primitive_op(debug_print_op, [toprint], -1)
 
     # Type conversions
 
@@ -439,7 +445,7 @@ class LowLevelIRBuilder:
 
         size = target_type.size
         if size < int_rprimitive.size:
-            # Add a range check when the target type is smaller than the source tyoe
+            # Add a range check when the target type is smaller than the source type
             fast2, fast3 = BasicBlock(), BasicBlock()
             upper_bound = 1 << (size * 8 - 1)
             if not target_type.is_signed:
@@ -509,10 +515,12 @@ class LowLevelIRBuilder:
         return res
 
     def coerce_short_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
-        if is_int64_rprimitive(target_type):
+        if is_int64_rprimitive(target_type) or (
+            PLATFORM_SIZE == 4 and is_int32_rprimitive(target_type)
+        ):
             return self.int_op(target_type, src, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
-        # TODO: i32
-        assert False, (src.type, target_type)
+        # TODO: i32 on 64-bit platform
+        assert False, (src.type, target_type, PLATFORM_SIZE)
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
         if (
@@ -889,11 +897,9 @@ class LowLevelIRBuilder:
 
         Use py_call_op or py_call_with_kwargs_op for Python function call.
         """
-        if use_vectorcall(self.options.capi_version):
-            # More recent Python versions support faster vectorcalls.
-            result = self._py_vector_call(function, arg_values, line, arg_kinds, arg_names)
-            if result is not None:
-                return result
+        result = self._py_vector_call(function, arg_values, line, arg_kinds, arg_names)
+        if result is not None:
+            return result
 
         # If all arguments are positional, we can use py_call_op.
         if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
@@ -968,13 +974,11 @@ class LowLevelIRBuilder:
         arg_names: Sequence[str | None] | None,
     ) -> Value:
         """Call a Python method (non-native and slow)."""
-        if use_method_vectorcall(self.options.capi_version):
-            # More recent Python versions support faster vectorcalls.
-            result = self._py_vector_method_call(
-                obj, method_name, arg_values, line, arg_kinds, arg_names
-            )
-            if result is not None:
-                return result
+        result = self._py_vector_method_call(
+            obj, method_name, arg_values, line, arg_kinds, arg_names
+        )
+        if result is not None:
+            return result
 
         if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
             # Use legacy method call API
@@ -1341,8 +1345,7 @@ class LowLevelIRBuilder:
             return self.translate_instance_contains(rreg, lreg, op, line)
         if is_fixed_width_rtype(ltype):
             if op in FIXED_WIDTH_INT_BINARY_OPS:
-                if op.endswith("="):
-                    op = op[:-1]
+                op = op.removesuffix("=")
                 if op != "//":
                     op_id = int_op_to_id[op]
                 else:
@@ -1368,8 +1371,7 @@ class LowLevelIRBuilder:
                     return self.comparison_op(lreg, self.coerce(rreg, ltype, line), op_id, line)
         elif is_fixed_width_rtype(rtype):
             if op in FIXED_WIDTH_INT_BINARY_OPS:
-                if op.endswith("="):
-                    op = op[:-1]
+                op = op.removesuffix("=")
                 if op != "//":
                     op_id = int_op_to_id[op]
                 else:
@@ -2216,7 +2218,7 @@ class LowLevelIRBuilder:
         size_value = None
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ) or is_bytes_rprimitive(typ):
             size_value = self.primitive_op(var_object_size, [val], line)
-        elif is_set_rprimitive(typ):
+        elif is_set_rprimitive(typ) or is_frozenset_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, "used"))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))
