@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import AbstractSet, Iterable, Iterator, TypeVar
+from collections.abc import Iterable, Iterator, Set as AbstractSet
+from typing import TypeVar
 
 T = TypeVar("T")
 

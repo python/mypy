@@ -6,8 +6,9 @@ This is conceptually part of mypy.semanal.
 from __future__ import annotations
 
 import keyword
+from collections.abc import Container, Iterator, Mapping
 from contextlib import contextmanager
-from typing import Container, Final, Iterator, List, Mapping, cast
+from typing import Final, cast
 
 from mypy.errorcodes import ARG_TYPE, ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -197,7 +198,7 @@ class NamedTupleAnalyzer:
                         # Something is incomplete. We need to defer this named tuple.
                         return None
                     types.append(analyzed)
-                # ...despite possible minor failures that allow further analyzis.
+                # ...despite possible minor failures that allow further analysis.
                 if name.startswith("_"):
                     self.fail(
                         f"NamedTuple field name cannot start with an underscore: {name}", stmt
@@ -604,7 +605,7 @@ class NamedTupleAnalyzer:
             items = [arg.variable.name for arg in args]
             arg_kinds = [arg.kind for arg in args]
             assert None not in types
-            signature = CallableType(cast(List[Type], types), arg_kinds, items, ret, function_type)
+            signature = CallableType(cast(list[Type], types), arg_kinds, items, ret, function_type)
             signature.variables = [self_type]
             func = FuncDef(funcname, args, Block([]))
             func.info = info

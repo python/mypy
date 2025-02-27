@@ -25,22 +25,19 @@ import stat
 import sys
 import time
 import types
+from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import (
     TYPE_CHECKING,
-    AbstractSet,
     Any,
     Callable,
     ClassVar,
-    Dict,
     Final,
-    Iterator,
-    Mapping,
     NamedTuple,
     NoReturn,
-    Sequence,
     TextIO,
+    TypedDict,
 )
-from typing_extensions import TypeAlias as _TypeAlias, TypedDict
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
@@ -120,7 +117,7 @@ CORE_BUILTIN_MODULES: Final = {
 }
 
 
-Graph: _TypeAlias = Dict[str, "State"]
+Graph: _TypeAlias = dict[str, "State"]
 
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
@@ -976,8 +973,10 @@ def write_deps_cache(
         if st.source_hash:
             hash = st.source_hash
         else:
-            assert st.meta, "Module must be either parsed or cached"
-            hash = st.meta.hash
+            if st.meta:
+                hash = st.meta.hash
+            else:
+                hash = ""
         meta_snapshot[id] = hash
 
     meta = {"snapshot": meta_snapshot, "deps_meta": fg_deps_meta}
@@ -1070,7 +1069,7 @@ def read_plugins_snapshot(manager: BuildManager) -> dict[str, str] | None:
     if snapshot is None:
         return None
     if not isinstance(snapshot, dict):
-        manager.log(f"Could not load plugins snapshot: cache is not a dict: {type(snapshot)}")
+        manager.log(f"Could not load plugins snapshot: cache is not a dict: {type(snapshot)}")  # type: ignore[unreachable]
         return None
     return snapshot
 
@@ -1286,7 +1285,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> CacheMeta | No
     if meta is None:
         return None
     if not isinstance(meta, dict):
-        manager.log(f"Could not load cache for {id}: meta cache is not a dict: {repr(meta)}")
+        manager.log(f"Could not load cache for {id}: meta cache is not a dict: {repr(meta)}")  # type: ignore[unreachable]
         return None
     m = cache_meta_from_dict(meta, data_json)
     t2 = time.time()

@@ -5,9 +5,9 @@ See the docstring of class IRBuilder for more information.
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from typing import Any, Callable, Final, Iterator, Sequence, Union
-from typing_extensions import overload
+from typing import Any, Callable, Final, Union, overload
 
 from mypy.build import Graph
 from mypy.maptype import map_instance_to_supertype
@@ -419,6 +419,9 @@ class IRBuilder:
 
     def new_tuple(self, items: list[Value], line: int) -> Value:
         return self.builder.new_tuple(items, line)
+
+    def debug_print(self, toprint: str | Value) -> None:
+        return self.builder.debug_print(toprint)
 
     # Helpers for IR building
 

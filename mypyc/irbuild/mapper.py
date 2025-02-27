@@ -33,6 +33,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     dict_rprimitive,
     float_rprimitive,
+    frozenset_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -89,6 +90,8 @@ class Mapper:
                 return dict_rprimitive
             elif typ.type.fullname == "builtins.set":
                 return set_rprimitive
+            elif typ.type.fullname == "builtins.frozenset":
+                return frozenset_rprimitive
             elif typ.type.fullname == "builtins.tuple":
                 return tuple_rprimitive  # Varying-length tuple
             elif typ.type.fullname == "builtins.range":

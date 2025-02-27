@@ -8,7 +8,8 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 from __future__ import annotations
 
 import itertools
-from typing import Any, Iterable, List, Sequence, TypeVar, cast
+from collections.abc import Iterable, Sequence
+from typing import Any, TypeVar, cast
 
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -647,9 +648,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
     return items
 
 
-def _get_type_method_ret_type(t: Type, *, name: str) -> Type | None:
-    t = get_proper_type(t)
-
+def _get_type_method_ret_type(t: ProperType, *, name: str) -> Type | None:
     # For Enum literals the ret_type can change based on the Enum
     # we need to check the type of the enum rather than the literal
     if isinstance(t, LiteralType) and t.is_enum_literal():
@@ -657,9 +656,6 @@ def _get_type_method_ret_type(t: Type, *, name: str) -> Type | None:
 
     if isinstance(t, Instance):
         sym = t.type.get(name)
-        # Fallback to the metaclass for the lookup when necessary
-        if not sym and (m := t.type.metaclass_type):
-            sym = m.type.get(name)
         if sym:
             sym_type = get_proper_type(sym.type)
             if isinstance(sym_type, CallableType):
@@ -732,7 +728,10 @@ def false_only(t: Type) -> ProperType:
         if ret_type:
             if not ret_type.can_be_false:
                 return UninhabitedType(line=t.line)
-        elif isinstance(t, Instance) and t.type.is_final:
+        elif isinstance(t, Instance):
+            if t.type.is_final or t.type.is_enum:
+                return UninhabitedType(line=t.line)
+        elif isinstance(t, LiteralType) and t.is_enum_literal():
             return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
@@ -956,7 +955,7 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
             FAILURE = 2
             UNKNOWN = 3
 
-    ...and if we call `try_expanding_enum_to_union(Union[Color, Status], 'module.Color')`,
+    ...and if we call `try_expanding_sum_type_to_union(Union[Color, Status], 'module.Color')`,
     this function will return Literal[Color.RED, Color.BLUE, Color.YELLOW, Status].
     """
     typ = get_proper_type(typ)
@@ -1050,7 +1049,7 @@ def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
     return tp.accept(TypeVarExtractor(include_all=True))
 
 
-class TypeVarExtractor(TypeQuery[List[TypeVarLikeType]]):
+class TypeVarExtractor(TypeQuery[list[TypeVarLikeType]]):
     def __init__(self, include_all: bool = False) -> None:
         super().__init__(self._merge)
         self.include_all = include_all
@@ -1148,7 +1147,9 @@ def fixup_partial_type(typ: Type) -> Type:
         return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
 
 
-def get_protocol_member(left: Instance, member: str, class_obj: bool) -> ProperType | None:
+def get_protocol_member(
+    left: Instance, member: str, class_obj: bool, is_lvalue: bool = False
+) -> Type | None:
     if member == "__call__" and class_obj:
         # Special case: class objects always have __call__ that is just the constructor.
         from mypy.checkmember import type_object_type
@@ -1165,4 +1166,13 @@ def get_protocol_member(left: Instance, member: str, class_obj: bool) -> ProperT
 
     from mypy.subtypes import find_member
 
-    return get_proper_type(find_member(member, left, left, class_obj=class_obj))
+    subtype = find_member(member, left, left, class_obj=class_obj, is_lvalue=is_lvalue)
+    if isinstance(subtype, PartialType):
+        subtype = (
+            NoneType()
+            if subtype.type is None
+            else Instance(
+                subtype.type, [AnyType(TypeOfAny.unannotated)] * len(subtype.type.type_vars)
+            )
+        )
+    return subtype

@@ -8,7 +8,9 @@ import re
 import shutil
 import sys
 import time
-from typing import IO, Any, Callable, Iterable, Iterator, Pattern
+from collections.abc import Iterable, Iterator
+from re import Pattern
+from typing import IO, Any, Callable
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
@@ -411,8 +413,7 @@ def check_test_output_files(
     testcase: DataDrivenTestCase, step: int, strip_prefix: str = ""
 ) -> None:
     for path, expected_content in testcase.output_files:
-        if path.startswith(strip_prefix):
-            path = path[len(strip_prefix) :]
+        path = path.removeprefix(strip_prefix)
         if not os.path.exists(path):
             raise AssertionError(
                 "Expected file {} was not produced by test case{}".format(

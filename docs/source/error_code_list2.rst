@@ -243,6 +243,8 @@ locally.  Features are considered deprecated when decorated with ``warnings.depr
 specified in `PEP 702 <https://peps.python.org/pep-0702>`_.
 Use the :option:`--report-deprecated-as-note <mypy --report-deprecated-as-note>` option to
 turn all such errors into notes.
+Use :option:`--deprecated-calls-exclude <mypy --deprecated-calls-exclude>` to hide warnings
+for specific functions, classes and packages.
 
 .. note::
 
@@ -594,18 +596,19 @@ Correct usage:
 When this code is enabled, using ``reveal_locals`` is always an error,
 because there's no way one can import it.
 
-.. _code-narrowed-type-not-subtype:
 
-Check that ``TypeIs`` narrows types [narrowed-type-not-subtype]
----------------------------------------------------------------
+.. _code-explicit-any:
 
-:pep:`742` requires that when ``TypeIs`` is used, the narrowed
-type must be a subtype of the original type::
+Check that explicit Any type annotations are not allowed [explicit-any]
+-----------------------------------------------------------------------
 
-    from typing_extensions import TypeIs
+If you use :option:`--disallow-any-explicit <mypy --disallow-any-explicit>`, mypy generates an error
+if you use an explicit ``Any`` type annotation.
 
-    def f(x: int) -> TypeIs[str]:  # Error, str is not a subtype of int
-        ...
+Example:
 
-    def g(x: object) -> TypeIs[str]:  # OK
-        ...
+.. code-block:: python
+
+    # mypy: disallow-any-explicit
+    from typing import Any
+    x: Any = 1  # Error: Explicit "Any" type annotation  [explicit-any]

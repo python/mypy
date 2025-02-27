@@ -1054,7 +1054,7 @@ reveal_type(C().a)
 reveal_type(C().b)
 reveal_type(C().c)
 [file ntcrash.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class C:
     def __init__(self) -> None:
         A = TypedDict('A', {'x': int})
@@ -1062,6 +1062,7 @@ class C:
         self.b = A(x=0)  # type: A
         self.c = A
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:2: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
 main:3: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
@@ -1075,10 +1076,11 @@ main:4: note: Revealed type is "def (*, x: builtins.int) -> TypedDict('ntcrash.C
 from m import d
 reveal_type(d)
 [file m.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str}, total=False)
 d: D
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out1]
 main:2: note: Revealed type is "TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})"
 [out2]

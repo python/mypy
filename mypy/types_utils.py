@@ -8,7 +8,8 @@ meet_types(), join_types() etc. We don't want to keep them in mypy/types.py for 
 
 from __future__ import annotations
 
-from typing import Callable, Iterable, cast
+from collections.abc import Iterable
+from typing import Callable, cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2, FuncItem, TypeAlias
 from mypy.types import (

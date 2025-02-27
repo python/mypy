@@ -105,8 +105,7 @@ def f(x: int) -> int:
 # cmd: test.py
 
 [file test.py]
-from typing import List, Any, AsyncIterable
-from typing_extensions import Final
+from typing import Final, List, Any, AsyncIterable
 from mypy_extensions import trait, mypyc_attr
 from functools import singledispatch
 
@@ -200,9 +199,9 @@ wtvr = next(i for i in range(10) if i == 5)
 
 d1 = {1: 2}
 
-# Make sure we can produce an error when we hit the awful None case
+# Since PR 18180, the following pattern should pose no problems anymore:
 def f(l: List[object]) -> None:
-    x = None  # E: Local variable "x" has inferred type None; add an annotation
+    x = None
     for i in l:
         if x is None:
             x = i

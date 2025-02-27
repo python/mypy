@@ -1130,7 +1130,7 @@ class frozenset(AbstractSet[_T_co]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
-class enumerate(Generic[_T]):
+class enumerate(Iterator[tuple[int, _T]]):
     def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> tuple[int, _T]: ...
@@ -1197,7 +1197,7 @@ def ascii(obj: object, /) -> str: ...
 def bin(number: int | SupportsIndex, /) -> str: ...
 def breakpoint(*args: Any, **kws: Any) -> None: ...
 def callable(obj: object, /) -> TypeIs[Callable[..., object]]: ...
-def chr(i: int, /) -> str: ...
+def chr(i: int | SupportsIndex, /) -> str: ...
 
 # We define this here instead of using os.PathLike to avoid import cycle issues.
 # See https://github.com/python/typeshed/pull/991#issuecomment-288160993
@@ -1324,7 +1324,7 @@ else:
 
 exit: _sitebuiltins.Quitter
 
-class filter(Generic[_T]):
+class filter(Iterator[_T]):
     @overload
     def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
     @overload
@@ -1389,20 +1389,20 @@ license: _sitebuiltins._Printer
 
 def locals() -> dict[str, Any]: ...
 
-class map(Generic[_S]):
+class map(Iterator[_S]):
     @overload
-    def __new__(cls, func: Callable[[_T1], _S], iter1: Iterable[_T1], /) -> Self: ...
+    def __new__(cls, func: Callable[[_T1], _S], iterable: Iterable[_T1], /) -> Self: ...
     @overload
-    def __new__(cls, func: Callable[[_T1, _T2], _S], iter1: Iterable[_T1], iter2: Iterable[_T2], /) -> Self: ...
+    def __new__(cls, func: Callable[[_T1, _T2], _S], iterable: Iterable[_T1], iter2: Iterable[_T2], /) -> Self: ...
     @overload
     def __new__(
-        cls, func: Callable[[_T1, _T2, _T3], _S], iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], /
+        cls, func: Callable[[_T1, _T2, _T3], _S], iterable: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], /
     ) -> Self: ...
     @overload
     def __new__(
         cls,
         func: Callable[[_T1, _T2, _T3, _T4], _S],
-        iter1: Iterable[_T1],
+        iterable: Iterable[_T1],
         iter2: Iterable[_T2],
         iter3: Iterable[_T3],
         iter4: Iterable[_T4],
@@ -1412,7 +1412,7 @@ class map(Generic[_S]):
     def __new__(
         cls,
         func: Callable[[_T1, _T2, _T3, _T4, _T5], _S],
-        iter1: Iterable[_T1],
+        iterable: Iterable[_T1],
         iter2: Iterable[_T2],
         iter3: Iterable[_T3],
         iter4: Iterable[_T4],
@@ -1423,7 +1423,7 @@ class map(Generic[_S]):
     def __new__(
         cls,
         func: Callable[..., _S],
-        iter1: Iterable[Any],
+        iterable: Iterable[Any],
         iter2: Iterable[Any],
         iter3: Iterable[Any],
         iter4: Iterable[Any],
@@ -1632,7 +1632,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
 
 quit: _sitebuiltins.Quitter
 
-class reversed(Generic[_T]):
+class reversed(Iterator[_T]):
     @overload
     def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
     @overload
@@ -1693,7 +1693,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
 @overload
 def vars(object: Any = ..., /) -> dict[str, Any]: ...
 
-class zip(Generic[_T_co]):
+class zip(Iterator[_T_co]):
     if sys.version_info >= (3, 10):
         @overload
         def __new__(cls, *, strict: bool = ...) -> zip[Any]: ...
@@ -1866,9 +1866,7 @@ class NameError(Exception):
 
 class ReferenceError(Exception): ...
 class RuntimeError(Exception): ...
-
-class StopAsyncIteration(Exception):
-    value: Any
+class StopAsyncIteration(Exception): ...
 
 class SyntaxError(Exception):
     msg: str
