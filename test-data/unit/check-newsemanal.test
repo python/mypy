@@ -3256,3 +3256,21 @@ class b:
 x = x[1]  # E: Cannot resolve name "x" (possible cyclic definition)
 y = 1[y]  # E: Value of type "int" is not indexable \
           # E: Cannot determine type of "y"
+
+[case testForwardBaseDeferAttr]
+from typing import Optional, Callable, TypeVar
+
+class C(B):
+    def a(self) -> None:
+        reveal_type(self._foo)  # N: Revealed type is "Union[builtins.int, None]"
+        self._foo = defer()
+
+class B:
+    def __init__(self) -> None:
+        self._foo: Optional[int] = None
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], T]: ...
+
+@deco
+def defer() -> int: ...
