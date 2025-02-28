@@ -14,7 +14,7 @@ from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.options import Options
-from mypy.util import is_typeshed_file, short_type
+from mypy.util import is_dunder, is_typeshed_file, maybe_mangled, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
 if TYPE_CHECKING:
@@ -1136,6 +1136,7 @@ class ClassDef(Statement):
         "has_incompatible_baseclass",
         "docstring",
         "removed_statements",
+        "mangled2unmangled",
     )
 
     __match_args__ = ("name", "defs")
@@ -1159,6 +1160,7 @@ class ClassDef(Statement):
     has_incompatible_baseclass: bool
     # Used by special forms like NamedTuple and TypedDict to store invalid statements
     removed_statements: list[Statement]
+    mangled2unmangled: Final[dict[str, str]]
 
     def __init__(
         self,
@@ -1169,6 +1171,7 @@ class ClassDef(Statement):
         metaclass: Expression | None = None,
         keywords: list[tuple[str, Expression]] | None = None,
         type_args: list[TypeParam] | None = None,
+        mangled2unmangled: dict[str, str] | None = None,
     ) -> None:
         super().__init__()
         self.name = name
@@ -1186,6 +1189,7 @@ class ClassDef(Statement):
         self.has_incompatible_baseclass = False
         self.docstring: str | None = None
         self.removed_statements = []
+        self.mangled2unmangled = mangled2unmangled or {}
 
     @property
     def fullname(self) -> str:
@@ -3250,7 +3254,7 @@ class TypeInfo(SymbolNode):
                 (
                     isinstance(sym.node, Var)
                     and name not in EXCLUDED_ENUM_ATTRIBUTES
-                    and not name.startswith("__")
+                    and not (is_dunder(name) or maybe_mangled(name, self.name))
                     and sym.node.has_explicit_value
                     and not (
                         isinstance(
