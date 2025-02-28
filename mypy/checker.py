@@ -1108,6 +1108,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
 
+        enclosing_node_deferred = self.current_node_deferred
         with self.enter_partial_types(is_function=True):
             typ = self.function_type(defn)
             if type_override:
@@ -1119,7 +1120,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 raise RuntimeError("Not supported")
 
         self.dynamic_funcs.pop()
-        self.current_node_deferred = False
+        self.current_node_deferred = enclosing_node_deferred
 
         if name == "__exit__":
             self.check__exit__return_type(defn)
@@ -5341,6 +5342,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.options.disallow_untyped_decorators
             and is_typed_callable(func.type)
             and is_untyped_decorator(dec_type)
+            and not self.current_node_deferred
         ):
             self.msg.typed_function_untyped_decorator(func.name, dec_expr)
 
