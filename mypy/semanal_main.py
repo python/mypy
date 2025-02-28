@@ -26,8 +26,9 @@ will be incomplete.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import nullcontext
-from functools import cmp_to_key
+from itertools import groupby
 from typing import TYPE_CHECKING, Callable, Final, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
@@ -233,18 +234,40 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
         final_iteration = not any_progress
 
 
-def method_order_by_subclassing(left: FullTargetInfo, right: FullTargetInfo) -> int:
-    left_info = left[3]
-    right_info = right[3]
-    if left_info is None or right_info is None:
-        return 0
-    if left_info is right_info:
-        return 0
-    if left_info in right_info.mro:
-        return -1
-    if right_info in left_info.mro:
-        return 1
-    return 0
+def order_by_subclassing(targets: list[FullTargetInfo]) -> Iterator[FullTargetInfo]:
+    """Make sure that superclass methods are always processed before subclass methods.
+
+    This algorithm is not very optimal, but it is simple and should work well for lists
+    that are already almost correctly ordered.
+    """
+
+    # First, group the targets by their TypeInfo (since targets are sorted by line,
+    # we know that each TypeInfo will appear as group key only once).
+    grouped = [(k, list(g)) for k, g in groupby(targets, key=lambda x: x[3])]
+    remaining_infos = {info for info, _ in grouped if info is not None}
+
+    next_group = 0
+    while grouped:
+        if next_group >= len(grouped):
+            # This should never happen, if there is an MRO cycle, it should be reported
+            # and fixed during top-level processing.
+            raise ValueError("Cannot order method targets by MRO")
+        next_info, group = grouped[next_group]
+        if next_info is None:
+            # Trivial case, not methods but functions, process them straight away.
+            yield from group
+            grouped.pop(next_group)
+            continue
+        if any(parent in remaining_infos for parent in next_info.mro[1:]):
+            # We cannot process this method group yet, try a next one.
+            next_group += 1
+            continue
+        yield from group
+        grouped.pop(next_group)
+        remaining_infos.discard(next_info)
+        # Each time after processing a method group we should retry from start,
+        # since there may be some groups that are not blocked on parents anymore.
+        next_group = 0
 
 
 def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
@@ -265,11 +288,7 @@ def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
             [(module, target, node, active_type) for target, node, active_type in targets]
         )
 
-    # Additionally, we process superclass methods before subclass methods. Here we rely
-    # on stability of Python sort and just do a separate sort.
-    for module, target, node, active_type in sorted(
-        all_targets, key=cmp_to_key(method_order_by_subclassing)
-    ):
+    for module, target, node, active_type in order_by_subclassing(all_targets):
         analyzer = graph[module].manager.semantic_analyzer
         assert isinstance(node, (FuncDef, OverloadedFuncDef, Decorator))
         process_top_level_function(
