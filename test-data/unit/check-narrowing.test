@@ -264,8 +264,8 @@ else:
 
 if x.key is Key.D:
     # TODO: this should narrow to Never
-    reveal_type(x)  # E: Statement is unreachable  \
-                    # N: Revealed type is "Union[__main__.Object1, __main__.Object2]"
+    reveal_type(x)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
 else:
     reveal_type(x)  # N: Revealed type is "Union[__main__.Object1, __main__.Object2]"
 [builtins fixtures/tuple.pyi]
@@ -291,8 +291,8 @@ else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]"
 
 if x['key'] == 'D':
-    reveal_type(x)  # E: Statement is unreachable  \
-                    # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]"
+    reveal_type(x)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]"
 [builtins fixtures/primitives.pyi]
@@ -319,8 +319,8 @@ else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 
 if x['key'] == 'D':
-    reveal_type(x)  # E: Statement is unreachable  \
-                    # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
+    reveal_type(x)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 [builtins fixtures/primitives.pyi]
@@ -611,8 +611,8 @@ else:
 y: Union[Parent1, Parent2]
 if y["model"]["key"] is Key.C:
     reveal_type(y)              # E: Statement is unreachable \
-                                # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]}), 'bar': builtins.str})]"
-    reveal_type(y["model"])  # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})]"
+                                # N: Revealed type is "Never"
+    reveal_type(y["model"])  # N: Revealed type is "Never"
 else:
     reveal_type(y)              # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]}), 'bar': builtins.str})]"
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})]"
@@ -648,8 +648,8 @@ else:
 y: Union[Parent1, Parent2]
 if y["model"]["key"] == 'C':
     reveal_type(y)              # E: Statement is unreachable \
-                                # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal['A']}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal['B']}), 'bar': builtins.str})]"
-    reveal_type(y["model"])  # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal['A']}), TypedDict('__main__.Model2', {'key': Literal['B']})]"
+                                # N: Revealed type is "Never"
+    reveal_type(y["model"])  # N: Revealed type is "Never"
 else:
     reveal_type(y)              # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal['A']}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal['B']}), 'bar': builtins.str})]"
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal['A']}), TypedDict('__main__.Model2', {'key': Literal['B']})]"
@@ -2445,3 +2445,16 @@ def foo(x: T) -> T:
     reveal_type(x)  # N: Revealed type is "T`-1"
     return x
 [builtins fixtures/isinstance.pyi]
+
+[case testNarrowingToClassWithNeverProperty]
+# flags: --warn-unreachable
+from typing import Never
+
+class X:
+    a: Never
+
+x: X
+if x.a is 5:
+    reveal_type(x)  # N: Revealed type is "__main__.X"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.X"

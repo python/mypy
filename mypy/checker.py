@@ -6093,7 +6093,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for example, some errors are suppressed.
 
         May return {}, {}.
-        Can return None, None in situations involving NoReturn.
+        Can return None, None in situations involving Never.
         """
         if_map, else_map = self.find_isinstance_check_helper(
             node, in_boolean_context=in_boolean_context
@@ -6628,6 +6628,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Take each element in the parent union and replay the original lookup procedure
             # to figure out which parents are compatible.
             new_parent_types = []
+            expr_type_p = get_proper_type(expr_type)
             for item in flatten_nested_unions(parent_type.items):
                 member_type = replay_lookup(get_proper_type(item))
                 if member_type is None:
@@ -6635,14 +6636,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # parent type entirely and abort.
                     return output
 
-                if is_overlapping_types(member_type, expr_type):
-                    new_parent_types.append(item)
+                # note: this is not unconditionally setting `UninhabitedType`
+                #       as there might be X.a which is a Never
+                if isinstance(expr_type_p, UninhabitedType):
+                    if isinstance(get_proper_type(member_type), UninhabitedType):
+                        new_parent_types.append(item)
 
-            # If none of the parent types overlap (if we derived an empty union), something
-            # went wrong. We should never hit this case, but deriving the uninhabited type or
-            # reporting an error both seem unhelpful. So we abort.
-            if not new_parent_types:
-                return output
+                elif is_overlapping_types(member_type, expr_type):
+                    new_parent_types.append(item)
 
             expr = parent_expr
             expr_type = output[parent_expr] = make_simplified_union(new_parent_types)
