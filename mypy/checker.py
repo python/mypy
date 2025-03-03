@@ -6704,7 +6704,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if target and not is_same_type(target, expr_type):
                 # We have multiple disjoint target types. So the 'if' branch
                 # must be unreachable.
-                return None, {}
+                return {operands[j]: UninhabitedType() for j in chain_indices}, {}
             target = expr_type
             possible_target_indices.append(i)
 
