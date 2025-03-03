@@ -1126,11 +1126,10 @@ T = TypeVar("T", A, B)
 
 def f(cls: Type[T]) -> T:
     if issubclass(cls, A):
-        reveal_type(cls)  # N: Revealed type is "Type[__main__.A]" \
-                          # N: Revealed type is "Type[__main__.B]"
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.A]"
         x: bool
         if x:
-            return A()  # E: Incompatible return value type (got "A", expected "B")
+            return A()
         else:
             return B()  # E: Incompatible return value type (got "B", expected "A")
     assert False

@@ -1534,7 +1534,8 @@ from typing import Type, Sequence, Union
 
 x: Type[str]
 if issubclass(x, int):  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
-    reveal_type(x)  # N: Revealed type is "Type[builtins.str]"
+    reveal_type(x)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
 
 class X: pass
 class Y(X): pass
@@ -1544,7 +1545,8 @@ a: Union[Type[Y], Type[Z]]
 if issubclass(a, X):
     reveal_type(a)  # N: Revealed type is "Union[Type[__main__.Y], Type[__main__.Z]]"
 else:
-    reveal_type(a)  # N: Revealed type is "Union[Type[__main__.Y], Type[__main__.Z]]"
+    reveal_type(a)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclasDestructuringUnions1]
@@ -2668,7 +2670,8 @@ x: Type[A]
 if issubclass(x, B):
     reveal_type(x)        # N: Revealed type is "Type[__main__.<subclass of "__main__.A" and "__main__.B">]"
     if issubclass(x, C):  # E: Subclass of "A", "B", and "C" cannot exist: would have incompatible method signatures
-        reveal_type(x)    # N: Revealed type is "Type[__main__.<subclass of "__main__.A" and "__main__.B">]"
+        reveal_type(x)    # E: Statement is unreachable \
+                          # N: Revealed type is "Never"
     else:
         reveal_type(x)    # N: Revealed type is "Type[__main__.<subclass of "__main__.A" and "__main__.B">]"
 else:

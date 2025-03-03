@@ -8221,11 +8221,16 @@ def convert_to_typetype(type_map: TypeMap) -> TypeMap:
         t = typ
         if isinstance(t, TypeVarType):
             t = t.upper_bound
+
+        if isinstance(get_proper_type(t), UninhabitedType):
+            converted_type_map[expr] = UninhabitedType()
+            continue
         # TODO: should we only allow unions of instances as per PEP 484?
-        if not isinstance(get_proper_type(t), (UnionType, Instance, NoneType)):
+        elif not isinstance(get_proper_type(t), (UnionType, Instance, NoneType)):
             # unknown type; error was likely reported earlier
             return {}
         converted_type_map[expr] = TypeType.make_normalized(typ)
+
     return converted_type_map
 
 
