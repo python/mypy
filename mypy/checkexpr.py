@@ -5808,9 +5808,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.chk.push_type_map(true_map)
 
                 if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
-                    if true_map is None:
+                    if true_map is None or any(
+                        isinstance(get_proper_type(t), UninhabitedType) for t in true_map.values()
+                    ):
                         self.msg.redundant_condition_in_comprehension(False, condition)
-                    elif false_map is None:
+                    elif false_map is None or any(
+                        isinstance(get_proper_type(t), UninhabitedType) for t in false_map.values()
+                    ):
                         self.msg.redundant_condition_in_comprehension(True, condition)
 
     def visit_conditional_expr(self, e: ConditionalExpr, allow_none_return: bool = False) -> Type:

@@ -2522,8 +2522,6 @@ def f2(x: T2) -> T2:
     else:
         reveal_type(x)      # N: Revealed type is "__main__.C"
     return x
-
-
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionGenericsWithValuesDirectReturn]
@@ -2537,7 +2535,6 @@ class B:
 class C:
     attr: str
 
-# TODO: these kinds of typevars play havoc with checking unreachable code
 T1 = TypeVar('T1', A, B)
 def f1(x: T1) -> T1:
     if isinstance(x, A):
