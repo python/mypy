@@ -2560,9 +2560,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for base in typ.mro[1:]:
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
-        with self.tscope.class_scope(defn.info), \
-                self.enter_partial_types(is_class=True), \
-                self.enter_class(defn.info):
+        with (
+            self.tscope.class_scope(defn.info),
+            self.enter_partial_types(is_class=True),
+            self.enter_class(defn.info),
+        ):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
             with self.binder.top_frame_context():
@@ -7946,6 +7948,7 @@ class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
     See ExpressionChecker.try_parse_as_type_expression() to understand how this
     class is used.
     """
+
     _chk: TypeChecker
     _names: dict[str, SymbolTableNode]
     did_fail: bool
@@ -7991,7 +7994,7 @@ class TypeCheckerAsSemanticAnalyzer(SemanticAnalyzerCoreInterface):
 
     def incomplete_feature_enabled(self, feature: str, ctx: Context) -> bool:
         if feature not in self._chk.options.enable_incomplete_feature:
-            self.fail('__ignored__', ctx)
+            self.fail("__ignored__", ctx)
             return False
         return True
 

@@ -30,7 +30,7 @@ from mypy.expandtype import (
     freshen_all_functions_type_vars,
     freshen_function_type_vars,
 )
-from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
+from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.infer import ArgumentInferContext, infer_function_type_arguments, infer_type_arguments
 from mypy.literals import literal
 from mypy.maptype import map_instance_to_supertype
@@ -47,6 +47,7 @@ from mypy.nodes import (
     LITERAL_TYPE,
     REVEAL_LOCALS,
     REVEAL_TYPE,
+    UNBOUND_IMPORTED,
     ArgKind,
     AssertTypeExpr,
     AssignmentExpr,
@@ -67,7 +68,6 @@ from mypy.nodes import (
     FloatExpr,
     FuncDef,
     GeneratorExpr,
-    get_member_expr_fullname,
     IndexExpr,
     IntExpr,
     LambdaExpr,
@@ -105,10 +105,10 @@ from mypy.nodes import (
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
-    UNBOUND_IMPORTED,
     Var,
     YieldExpr,
     YieldFromExpr,
+    get_member_expr_fullname,
 )
 from mypy.options import PRECISE_TUPLE_TYPES
 from mypy.plugin import (
@@ -127,16 +127,20 @@ from mypy.subtypes import (
     is_subtype,
     non_method_protocol_members,
 )
-from mypy.traverser import all_name_and_member_expressions, has_await_expression, has_str_expression
+from mypy.traverser import (
+    all_name_and_member_expressions,
+    has_await_expression,
+    has_str_expression,
+)
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typeanal import (
+    TypeAnalyser,
     check_for_explicit_any,
     fix_instance,
     has_any_from_unimported_type,
     instantiate_type_alias,
     make_optional_type,
     set_any_tvars,
-    TypeAnalyser,
     validate_instance,
 )
 from mypy.typeops import (
@@ -6335,8 +6339,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Check whether has already been parsed as a type expression
         # by SemanticAnalyzer.try_parse_as_type_expression(),
         # perhaps containing a string annotation
-        if (isinstance(maybe_type_expr, (StrExpr, IndexExpr, OpExpr))
-                and maybe_type_expr.as_type is not Ellipsis):
+        if (
+            isinstance(maybe_type_expr, (StrExpr, IndexExpr, OpExpr))
+            and maybe_type_expr.as_type is not Ellipsis
+        ):
             return maybe_type_expr.as_type
 
         # If is potentially a type expression containing a string annotation,
@@ -6344,8 +6350,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # available to the TypeChecker pass to resolve string annotations
         if has_str_expression(maybe_type_expr):
             self.chk.note(
-                'TypeForm containing a string annotation cannot be recognized here. '
-                'Try assigning the TypeForm to a variable and use the variable here instead.',
+                "TypeForm containing a string annotation cannot be recognized here. "
+                "Try assigning the TypeForm to a variable and use the variable here instead.",
                 maybe_type_expr,
             )
             return None
@@ -6354,13 +6360,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # to be looked up by TypeAnalyser when binding the
         # UnboundTypes corresponding to those expressions.
         (name_exprs, member_exprs) = all_name_and_member_expressions(maybe_type_expr)
-        sym_for_name = {
-            e.name:
-            SymbolTableNode(UNBOUND_IMPORTED, e.node)
-            for e in name_exprs
-        } | {
-            e_name:
-            SymbolTableNode(UNBOUND_IMPORTED, e.node)
+        sym_for_name = {e.name: SymbolTableNode(UNBOUND_IMPORTED, e.node) for e in name_exprs} | {
+            e_name: SymbolTableNode(UNBOUND_IMPORTED, e.node)
             for e in member_exprs
             if (e_name := get_member_expr_fullname(e)) is not None
         }
@@ -6377,7 +6378,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         try:
             typ1 = expr_to_unanalyzed_type(
-                maybe_type_expr, self.chk.options, self.chk.is_typeshed_stub,
+                maybe_type_expr, self.chk.options, self.chk.is_typeshed_stub
             )
             typ2 = typ1.accept(tpan)
             if chk_sem.did_fail:

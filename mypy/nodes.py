@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import builtins
 import os
 from abc import abstractmethod
-import builtins
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from enum import Enum, unique
@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     EllipsisType = builtins.ellipsis
 else:
     EllipsisType = Any
+
 
 class Context:
     """Base type for objects that are valid as error message locations."""

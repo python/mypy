@@ -50,10 +50,11 @@ Some important properties:
 
 from __future__ import annotations
 
+import re
 from collections.abc import Collection, Iterable, Iterator
 from contextlib import contextmanager
 from typing import Any, Callable, Final, TypeVar, cast
-from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
+from typing_extensions import TypeAlias as _TypeAlias, TypeGuard, assert_never
 
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
@@ -308,8 +309,6 @@ from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
 from mypy.util import correct_relative_import, is_dunder, module_prefix, unmangle, unnamed_function
 from mypy.visitor import NodeVisitor
-import re
-from typing_extensions import assert_never
 
 T = TypeVar("T")
 
@@ -7695,7 +7694,7 @@ class SemanticAnalyzer(
                 maybe_type_expr.as_type = None
                 return
         elif isinstance(maybe_type_expr, OpExpr):
-            if maybe_type_expr.op != '|':
+            if maybe_type_expr.op != "|":
                 # Binary operators other than '|' never spell a valid type
                 maybe_type_expr.as_type = None
                 return
