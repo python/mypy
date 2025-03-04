@@ -875,6 +875,8 @@ d = [x for x in lst if FOOBAR]
 [case testUnreachableFlagOkWithDeadStatements]
 # flags: --warn-unreachable
 from typing import NoReturn
+from typing_extensions import assert_never as typing_assert_never
+
 def assert_never(x: NoReturn) -> NoReturn:
     assert False
 
@@ -895,6 +897,7 @@ if False:
 
 if False:
     assert_never(x)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "Never"
+    typing_assert_never(x)
     reveal_type(x)  # E: Statement is unreachable \
                     # N: Revealed type is "builtins.int"
 
@@ -907,6 +910,14 @@ if False:
     # Ignore obvious type errors
     assert_never(expect_str(x))  # E: Argument 1 to "assert_never" has incompatible type "str"; expected "Never" \
                                  # E: Argument 1 to "expect_str" has incompatible type "int"; expected "str"
+    typing_assert_never(expect_str(x))
+    reveal_type(x)  # E: Statement is unreachable \
+                    # N: Revealed type is "builtins.int"
+
+if True:
+    typing_assert_never(x)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "Never"
+    assert_never(x)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "Never"
+    typing_assert_never(x)
     reveal_type(x)  # E: Statement is unreachable \
                     # N: Revealed type is "builtins.int"
 [builtins fixtures/exception.pyi]
