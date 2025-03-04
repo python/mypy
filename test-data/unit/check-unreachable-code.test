@@ -1550,12 +1550,7 @@ x = 0  # not unreachable
 [case testUnpackNever]
 x: str
 if isinstance(x, int):
-    # mypy wants a type annotation for y because it's `Never`.
-    # This doesn't make much sense in this case, but it's a
-    # requirement for composable behavior.
-    # (and `ys` should also get flagged.)
-
-    y, *ys = x  # E: Need type annotation for "y"
+    y, *ys = x
     reveal_type(y)  # N: Revealed type is "Never"
     reveal_type(ys)  # N: Revealed type is "builtins.list[Never]"
 [builtins fixtures/isinstancelist.pyi]

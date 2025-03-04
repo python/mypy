@@ -8500,7 +8500,7 @@ def is_valid_inferred_type(typ: Type, is_lvalue_final: bool = False) -> bool:
         # the context. This resolution happens in leave_partial_types when
         # we pop a partial types scope.
         return is_lvalue_final
-    elif isinstance(proper_type, UninhabitedType):
+    elif isinstance(proper_type, UninhabitedType) and proper_type.ambiguous:
         return False
     return not typ.accept(InvalidInferredTypes())
 

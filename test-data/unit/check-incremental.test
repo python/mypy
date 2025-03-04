@@ -5415,8 +5415,6 @@ reveal_type(z)
 [out]
 tmp/c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 [out2]
-tmp/a.py:7: error: Need type annotation for "y"
-tmp/b.py:2: error: Need type annotation for "z"
 tmp/c.py:2: note: Revealed type is "Never"
 
 [case testIsInstanceAdHocIntersectionIncrementalUnreachableToIntersection]
@@ -5448,8 +5446,6 @@ from b import z
 reveal_type(z)
 [builtins fixtures/isinstance.pyi]
 [out]
-tmp/a.py:7: error: Need type annotation for "y"
-tmp/b.py:2: error: Need type annotation for "z"
 tmp/c.py:2: note: Revealed type is "Never"
 [out2]
 tmp/c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
