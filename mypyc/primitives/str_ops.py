@@ -136,7 +136,6 @@ str_build_op = custom_op(
 )
 
 # str.strip, str.lstrip, str.rstrip
-# Order of iteration matters. It should correspond with LEFTSTRIP, RIGHTSTRIP and BOTHSTRIP macros defined in CPy.h.
 for strip_prefix in ["l", "r", ""]:
     method_op(
         name=f"{strip_prefix}strip",

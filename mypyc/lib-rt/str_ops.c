@@ -5,7 +5,7 @@
 #include <Python.h>
 #include "CPy.h"
 
-// Copied from cpython.git:Objects/unicodeobject.c.
+// Copied from cpython.git:Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
 #define BLOOM_MASK unsigned long
 #define BLOOM(mask, ch)     ((mask &  (1UL << ((ch) & (BLOOM_WIDTH - 1)))))
 #if LONG_BIT >= 128
@@ -18,7 +18,8 @@
 #error "LONG_BIT is smaller than 32"
 #endif
 
-// Copied from cpython.git:Objects/unicodeobject.c. This is needed for str.strip("...").
+// Copied from cpython.git:Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
+// This is needed for str.strip("...").
 static inline BLOOM_MASK
 make_bloom_mask(int kind, const void* ptr, Py_ssize_t len)
 {
@@ -226,13 +227,17 @@ PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split) {
     return PyUnicode_RSplit(str, sep, temp_max_split);
 }
 
-// This function has been copied from _PyUnicode_XStrip in cpython.git:Objects/unicodeobject.c.
+// This function has been copied from _PyUnicode_XStrip in cpython.git:Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
 static PyObject *_PyStr_XStrip(PyObject *self, int striptype, PyObject *sepobj) {
     const void *data;
     int kind;
     Py_ssize_t i, j, len;
     BLOOM_MASK sepmask;
     Py_ssize_t seplen;
+
+    // This check is needed from Python 3.9 and earlier.
+    if (PyUnicode_READY(self) == -1 || PyUnicode_READY(sepobj) == -1)
+        return NULL;
 
     kind = PyUnicode_KIND(self);
     data = PyUnicode_DATA(self);
@@ -272,10 +277,14 @@ static PyObject *_PyStr_XStrip(PyObject *self, int striptype, PyObject *sepobj) 
     return PyUnicode_Substring(self, i, j);
 }
 
-// Copied from do_strip function in cpython.git/Objects/unicodeobject.c.
+// Copied from do_strip function in cpython.git/Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
 PyObject *_CPyStr_Strip(PyObject *self, int strip_type, PyObject *sep) {
     if (sep == NULL || sep == Py_None) {
         Py_ssize_t len, i, j;
+
+        // This check is needed from Python 3.9 and earlier.
+        if (PyUnicode_READY(self) == -1)
+            return NULL;
 
         len = PyUnicode_GET_LENGTH(self);
 
