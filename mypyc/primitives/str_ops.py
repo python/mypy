@@ -135,6 +135,25 @@ str_build_op = custom_op(
     var_arg_type=str_rprimitive,
 )
 
+# str.strip, str.lstrip, str.rstrip
+for strip_prefix in ["l", "r", ""]:
+    method_op(
+        name=f"{strip_prefix}strip",
+        arg_types=[str_rprimitive, str_rprimitive],
+        return_type=str_rprimitive,
+        c_function_name=f"CPyStr_{strip_prefix.upper()}Strip",
+        error_kind=ERR_NEVER,
+    )
+    method_op(
+        name=f"{strip_prefix}strip",
+        arg_types=[str_rprimitive],
+        return_type=str_rprimitive,
+        c_function_name=f"CPyStr_{strip_prefix.upper()}Strip",
+        # This 0 below is implicitly treated as NULL in C.
+        extra_int_constants=[(0, c_int_rprimitive)],
+        error_kind=ERR_NEVER,
+    )
+
 # str.startswith(str)
 method_op(
     name="startswith",

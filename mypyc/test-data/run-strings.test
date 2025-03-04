@@ -774,3 +774,22 @@ def test_surrogate() -> None:
     assert ord(f()) == 0xd800
     assert ord("\udfff") == 0xdfff
     assert repr("foobar\x00\xab\ud912\U00012345") == r"'foobar\x00«\ud912𒍅'"
+
+[case testStrip]
+def test_all_strips_default() -> None:
+    s = " a1\t"
+    assert s.lstrip() == "a1\t"
+    assert s.strip() == "a1"
+    assert s.rstrip() == " a1"
+def test_all_strips() -> None:
+    s = "xxb2yy"
+    assert s.lstrip("xy") == "b2yy"
+    assert s.strip("xy") == "b2"
+    assert s.rstrip("xy") == "xxb2"
+def test_unicode_whitespace() -> None:
+    assert "\u200A\u000D\u2009\u2020\u000Dtt\u0085\u000A".strip() == "\u2020\u000Dtt"
+def test_unicode_range() -> None:
+    assert "\u2029 \U00107581 ".lstrip() == "\U00107581 "
+    assert "\u2029 \U0010AAAA\U00104444B\u205F ".strip() == "\U0010AAAA\U00104444B"
+    assert " \u3000\u205F ".strip() == ""
+    assert "\u2029 \U00102865\u205F ".rstrip() == "\u2029 \U00102865"
