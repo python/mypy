@@ -140,12 +140,11 @@ class PatternChecker(PatternVisitor[PatternType]):
         else:
             typ, rest_type, type_map = current_type, UninhabitedType(), {}
 
-        if not is_uninhabited(typ) and o.name is not None:
+        if o.name is not None:
             typ, _ = self.chk.conditional_types_with_intersection(
                 current_type, [get_type_range(typ)], o, default=current_type
             )
-            if not is_uninhabited(typ):
-                type_map[o.name] = typ
+            type_map[o.name] = typ
 
         return PatternType(typ, rest_type, type_map)
 

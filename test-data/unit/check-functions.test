@@ -1532,7 +1532,7 @@ def bar() -> None:
     if False:
         foo = 1
     else:
-        def foo(obj): ...
+        def foo(obj): ...  # E: Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "int")
 
 def baz() -> None:
     if False:
