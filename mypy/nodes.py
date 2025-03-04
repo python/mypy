@@ -21,9 +21,10 @@ from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 if TYPE_CHECKING:
     from mypy.patterns import Pattern
 
-    EllipsisType = builtins.ellipsis
-else:
-    EllipsisType = Any
+
+@unique
+class NotParsed(Enum):
+    VALUE = 'NotParsed'
 
 
 class Context:
@@ -1728,13 +1729,13 @@ class StrExpr(Expression):
     value: str  # '' by default
     # If this value expression can also be parsed as a valid type expression,
     # represents the type denoted by the type expression.
-    # Ellipsis means "not parsed" and None means "is not a type expression".
-    as_type: EllipsisType | mypy.types.Type | None
+    # None means "is not a type expression".
+    as_type: NotParsed | mypy.types.Type | None
 
     def __init__(self, value: str) -> None:
         super().__init__()
         self.value = value
-        self.as_type = Ellipsis
+        self.as_type = NotParsed.VALUE
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -2046,8 +2047,8 @@ class IndexExpr(Expression):
     analyzed: TypeApplication | TypeAliasExpr | None
     # If this value expression can also be parsed as a valid type expression,
     # represents the type denoted by the type expression.
-    # Ellipsis means "not parsed" and None means "is not a type expression".
-    as_type: EllipsisType | mypy.types.Type | None
+    # None means "is not a type expression".
+    as_type: NotParsed | mypy.types.Type | None
 
     def __init__(self, base: Expression, index: Expression) -> None:
         super().__init__()
@@ -2055,7 +2056,7 @@ class IndexExpr(Expression):
         self.index = index
         self.method_type = None
         self.analyzed = None
-        self.as_type = Ellipsis
+        self.as_type = NotParsed.VALUE
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_index_expr(self)
@@ -2131,8 +2132,8 @@ class OpExpr(Expression):
     analyzed: TypeAliasExpr | None
     # If this value expression can also be parsed as a valid type expression,
     # represents the type denoted by the type expression.
-    # Ellipsis means "not parsed" and None means "is not a type expression".
-    as_type: EllipsisType | mypy.types.Type | None
+    # None means "is not a type expression".
+    as_type: NotParsed | mypy.types.Type | None
 
     def __init__(
         self, op: str, left: Expression, right: Expression, analyzed: TypeAliasExpr | None = None
@@ -2145,7 +2146,7 @@ class OpExpr(Expression):
         self.right_always = False
         self.right_unreachable = False
         self.analyzed = analyzed
-        self.as_type = Ellipsis
+        self.as_type = NotParsed.VALUE
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)

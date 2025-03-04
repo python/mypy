@@ -79,6 +79,7 @@ from mypy.nodes import (
     NamedTupleExpr,
     NameExpr,
     NewTypeExpr,
+    NotParsed,
     OpExpr,
     OverloadedFuncDef,
     ParamSpecExpr,
@@ -6341,7 +6342,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # perhaps containing a string annotation
         if (
             isinstance(maybe_type_expr, (StrExpr, IndexExpr, OpExpr))
-            and maybe_type_expr.as_type is not Ellipsis
+            and maybe_type_expr.as_type != NotParsed.VALUE
         ):
             return maybe_type_expr.as_type
 
