@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import builtins
 import os
 from abc import abstractmethod
 from collections import defaultdict
@@ -24,7 +23,7 @@ if TYPE_CHECKING:
 
 @unique
 class NotParsed(Enum):
-    VALUE = 'NotParsed'
+    VALUE = "NotParsed"
 
 
 class Context:
