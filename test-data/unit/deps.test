@@ -414,9 +414,7 @@ class B:
 
 def f(x: A) -> None:
     if isinstance(x, B):
-        # TODO: this should narrow to Never and therefore not error
-        #x.y
-        pass
+        x.y
 [builtins fixtures/isinstancelist.pyi]
 [out]
 <m.A> -> <m.f>, m.A, m.f

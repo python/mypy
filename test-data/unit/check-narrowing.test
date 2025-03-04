@@ -263,7 +263,6 @@ else:
     reveal_type(x)  # N: Revealed type is "Union[__main__.Object1, __main__.Object2]"
 
 if x.key is Key.D:
-    # TODO: this should narrow to Never
     reveal_type(x)  # E: Statement is unreachable \
                     # N: Revealed type is "Never"
 else:
@@ -2448,13 +2447,19 @@ def foo(x: T) -> T:
 
 [case testNarrowingToClassWithNeverProperty]
 # flags: --warn-unreachable
-from typing import Never
+from typing import Never, Union
 
 class X:
     a: Never
 
-x: X
-if x.a is 5:
-    reveal_type(x)  # N: Revealed type is "__main__.X"
+class B:
+    a: str
+
+x: Union[X, B]
+# TODO: this should not be unreachable (`Never & int` is just `Never`)
+if isinstance(x.a, int):  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+    reveal_type(x)  # E: Statement is unreachable \
+                    # N: Revealed type is "__main__.X"
 else:
-    reveal_type(x)  # N: Revealed type is "__main__.X"
+    reveal_type(x)  # N: Revealed type is "Union[__main__.X, __main__.B]"
+[builtins fixtures/isinstancelist.pyi]

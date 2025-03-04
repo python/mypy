@@ -168,7 +168,8 @@ class ConditionalTypeBinder:
 
         This is used for isinstance() etc. Assignments should go through assign_type().
         """
-        if isinstance(get_proper_type(typ), UninhabitedType):
+        proper_typ = get_proper_type(typ)
+        if isinstance(proper_typ, UninhabitedType) and not proper_typ.ambiguous:
             self.frames[-1].unreachable = True
 
         if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
