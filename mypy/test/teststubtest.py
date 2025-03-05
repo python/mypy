@@ -339,6 +339,21 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""def dunder_name(__x: int) -> None: ...""",
+            runtime="""def dunder_name(__x: int) -> None: ...""",
+            error=None,
+        )
+        yield Case(
+            stub="""def dunder_name_posonly(__x: int, /) -> None: ...""",
+            runtime="""def dunder_name_posonly(__x: int) -> None: ...""",
+            error=None,
+        )
+        yield Case(
+            stub="""def dunder_name_bad(x: int) -> None: ...""",
+            runtime="""def dunder_name_bad(__x: int) -> None: ...""",
+            error="dunder_name_bad",
+        )
 
     @collect_cases
     def test_arg_kind(self) -> Iterator[Case]:
