@@ -654,7 +654,10 @@ def _verify_arg_name(
     if is_dunder(function_name, exclude_special=True):
         return
 
-    if stub_arg.variable.name == runtime_arg.name or stub_arg.variable.name.removeprefix("__") == runtime_arg.name:
+    if (
+        stub_arg.variable.name == runtime_arg.name
+        or stub_arg.variable.name.removeprefix("__") == runtime_arg.name
+    ):
         return
 
     nonspecific_names = {"object", "args"}

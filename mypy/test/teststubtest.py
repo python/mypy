@@ -355,7 +355,6 @@ class StubtestUnit(unittest.TestCase):
             error="dunder_name_bad",
         )
 
-
     @collect_cases
     def test_arg_kind(self) -> Iterator[Case]:
         yield Case(
