@@ -741,8 +741,6 @@ def test3(switch: FlipFlopEnum) -> None:
     assert switch.state is State.B     # E: Non-overlapping identity check (left operand type: "Literal[State.A]", right operand type: "Literal[State.B]")
     reveal_type(switch.state)          # E: Statement is unreachable \
                                        # N: Revealed type is "Never"
-
-
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitStrLiteral]
@@ -939,7 +937,7 @@ if a == a == b:
     reveal_type(b)  # N: Revealed type is "Literal[1]"
 else:
     reveal_type(a)  # N: Revealed type is "Literal[1]"
-    reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
+    reveal_type(b)  # N: Revealed type is "Literal[2]"
 
 # In this case, it's ok for 'b' to narrow down to Literal[1] in the else case
 # since that's the only way 'b == 2' can be false
@@ -1336,6 +1334,7 @@ else:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testNarrowingRuntimeCover]
+# flags: --warn-unreachable
 from typing import Dict, List, Union
 
 def unreachable(x: Union[str, List[str]]) -> None:
@@ -1344,7 +1343,8 @@ def unreachable(x: Union[str, List[str]]) -> None:
     elif isinstance(x, list):
         reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
     else:
-        reveal_type(x)  # No output: this branch is unreachable  # N: Revealed type is "Never"
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
 
 def all_parts_covered(x: Union[str, List[str], List[int], int]) -> None:
     if isinstance(x, str):

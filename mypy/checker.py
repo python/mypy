@@ -8136,6 +8136,7 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, use_meet: bool = False) -> Ty
     result = m2.copy()
     m2_keys = {literal_hash(n2) for n2 in m2}
     for n1 in m1:
+        # TODO: should this check for UninhabitedType as well as AnyType?
         if literal_hash(n1) not in m2_keys or isinstance(get_proper_type(m1[n1]), AnyType):
             result[n1] = m1[n1]
     if use_meet:
@@ -8156,9 +8157,9 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap, coalesce_any: bool = False) ->
     joining restrictions.
     """
 
-    if m1 is None:
+    if m1 is None or any(isinstance(get_proper_type(t1), UninhabitedType) for t1 in m1.values()):
         return m2
-    if m2 is None:
+    if m2 is None or any(isinstance(get_proper_type(t2), UninhabitedType) for t2 in m2.values()):
         return m1
     # Both conditions can be true. Combine information about
     # expressions whose type is refined by both conditions. (We do not

@@ -2319,7 +2319,7 @@ def f3(e: int | str | bytes) -> int:
             return 0  # E: Statement is unreachable
         case str(x):
             return 0
-    reveal_type(e)  # N: Revealed type is "Union[builtins.int, builtins.bytes]"
+    reveal_type(e)  # N: Revealed type is "builtins.bytes"
     return 0
 
 def f4(e: int | str | bytes) -> int:
@@ -2330,7 +2330,7 @@ def f4(e: int | str | bytes) -> int:
             return 0  # E: Statement is unreachable
         case x if isinstance(x, str):
             return 0
-    reveal_type(e)  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.bytes]"
+    reveal_type(e)  # N: Revealed type is "Union[builtins.int, builtins.bytes]"
     return 0
 
 [builtins fixtures/primitives.pyi]
