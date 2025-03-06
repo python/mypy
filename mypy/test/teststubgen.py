@@ -399,6 +399,28 @@ class StubgenUtilSuite(unittest.TestCase):
             None,
         )
 
+    def test_infer_sig_from_docstring_args_kwargs(self) -> None:
+        assert_equal(
+            infer_sig_from_docstring("func(*args, **kwargs) -> int", "func"),
+            [
+                FunctionSig(
+                    name="func",
+                    args=[ArgSig(name="*args"), ArgSig(name="**kwargs")],
+                    ret_type="int",
+                )
+            ],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(*args) -> int", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="*args")], ret_type="int")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(**kwargs) -> int", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="**kwargs")], ret_type="int")],
+        )
+
     def test_infer_sig_from_docstring_positional_only_arguments(self) -> None:
         assert_equal(
             infer_sig_from_docstring("func(self, /) -> str", "func"),

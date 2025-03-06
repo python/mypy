@@ -254,13 +254,21 @@ class DocStringParser:
                 self.arg_type = self.accumulator
                 self.state.pop()
             elif self.state[-1] == STATE_ARGUMENT_LIST:
-                self.arg_name = self.accumulator
-                if not (
-                    token.string == ")" and self.accumulator.strip() == ""
-                ) and not _ARG_NAME_RE.match(self.arg_name):
-                    # Invalid argument name.
-                    self.reset()
-                    return
+                if self.accumulator == "*":
+                    if self.keyword_only is not None:
+                        # Error condition: cannot have * twice
+                        self.reset()
+                        return
+                    self.keyword_only = len(self.args)
+                    self.accumulator = ""
+                else:
+                    self.arg_name = self.accumulator
+                    if not (
+                        token.string == ")" and self.accumulator.strip() == ""
+                    ) and not _ARG_NAME_RE.match(self.arg_name):
+                        # Invalid argument name.
+                        self.reset()
+                        return
 
             if token.string == ")":
                 if (
@@ -305,13 +313,10 @@ class DocStringParser:
                     self.reset()
                     return
                 self.pos_only = len(self.args)
+                self.state.append(STATE_ARGUMENT_TYPE)
+                self.accumulator = ""
             else:
-                if self.keyword_only is not None:
-                    # * is not allowed after *
-                    self.reset()
-                    return
-                self.keyword_only = len(self.args)
-            self.state.append(STATE_ARGUMENT_TYPE)
+                self.accumulator = "*"
 
         elif token.type == tokenize.OP and token.string == "->" and self.state[-1] == STATE_INIT:
             self.accumulator = ""
