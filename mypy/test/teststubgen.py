@@ -399,6 +399,79 @@ class StubgenUtilSuite(unittest.TestCase):
             None,
         )
 
+    def test_infer_sig_from_docstring_positional_only_arguments(self) -> None:
+        assert_equal(
+            infer_sig_from_docstring("func(self, /) -> str", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="self")], ret_type="str")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(self, x, /) -> str", "func"),
+            [
+                FunctionSig(
+                    name="func", args=[ArgSig(name="self"), ArgSig(name="x")], ret_type="str"
+                )
+            ],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(x, /, y) -> int", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="int")],
+        )
+
+    def test_infer_sig_from_docstring_keyword_only_arguments(self) -> None:
+        assert_equal(
+            infer_sig_from_docstring("func(*, x) -> str", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="x")], ret_type="str")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(x, *, y) -> str", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(*, x, y) -> str", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str")],
+        )
+
+    def test_infer_sig_from_docstring_pos_only_and_keyword_only_arguments(self) -> None:
+        assert_equal(
+            infer_sig_from_docstring("func(x, /, *, y) -> str", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(x,  /, y,  *, z) -> str", "func"),
+            [
+                FunctionSig(
+                    name="func",
+                    args=[ArgSig(name="x"), ArgSig(name="y"), ArgSig(name="z")],
+                    ret_type="str",
+                )
+            ],
+        )
+
+    def test_infer_sig_from_docstring_pos_only_and_keyword_only_arguments_errors(self) -> None:
+        # / as first argument
+        assert_equal(infer_sig_from_docstring("func(/, x) -> str", "func"), [])
+
+        # * as last argument
+        assert_equal(infer_sig_from_docstring("func(x, *) -> str", "func"), [])
+
+        # / after *
+        assert_equal(infer_sig_from_docstring("func(x, *, /,  y) -> str", "func"), [])
+
+        # Two /
+        assert_equal(infer_sig_from_docstring("func(x, /, /, *,  y) -> str", "func"), [])
+
+        assert_equal(infer_sig_from_docstring("func(x, /, y,  /, *,  z) -> str", "func"), [])
+
+        # Two *
+        assert_equal(infer_sig_from_docstring("func(x, /, *, *,  y) -> str", "func"), [])
+
+        assert_equal(infer_sig_from_docstring("func(x, /, *, y, *,  z) -> str", "func"), [])
+
     def test_infer_arg_sig_from_anon_docstring(self) -> None:
         assert_equal(
             infer_arg_sig_from_anon_docstring("(*args, **kwargs)"),

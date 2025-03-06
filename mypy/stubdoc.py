@@ -175,6 +175,8 @@ class DocStringParser:
         self.ret_type = "Any"
         self.found = False
         self.args: list[ArgSig] = []
+        self.pos_only: int | None = None
+        self.keyword_only: int | None = None
         # Valid signatures found so far.
         self.signatures: list[FunctionSig] = []
 
@@ -261,6 +263,15 @@ class DocStringParser:
                     return
 
             if token.string == ")":
+                if (
+                    self.state[-1] == STATE_ARGUMENT_LIST
+                    and self.keyword_only is not None
+                    and self.keyword_only == len(self.args)
+                    and not self.arg_name
+                ):
+                    # Error condition: * must be followed by arguments
+                    self.reset()
+                    return
                 self.state.pop()
 
             # arg_name is empty when there are no args. e.g. func()
@@ -280,6 +291,27 @@ class DocStringParser:
             self.arg_type = None
             self.arg_default = None
             self.accumulator = ""
+        elif (
+            token.type == tokenize.OP
+            and (token.string in {"*", "/"})
+            and self.state[-1] == STATE_ARGUMENT_LIST
+        ):
+            if token.string == "/":
+                if self.pos_only is not None or self.keyword_only is not None or not self.args:
+                    # Error cases:
+                    # - / shows up more than once
+                    # - / shows up after *
+                    # - / shows up before any arguments
+                    self.reset()
+                    return
+                self.pos_only = len(self.args)
+            else:
+                if self.keyword_only is not None:
+                    # * is not allowed after *
+                    self.reset()
+                    return
+                self.keyword_only = len(self.args)
+            self.state.append(STATE_ARGUMENT_TYPE)
 
         elif token.type == tokenize.OP and token.string == "->" and self.state[-1] == STATE_INIT:
             self.accumulator = ""
