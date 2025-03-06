@@ -1329,7 +1329,7 @@ m: str
 match m:
     case a if False:
         reveal_type(a)  # E: Statement is unreachable \
-                        # N: Revealed type is "builtins.str"
+                        # N: Revealed type is "Never"
 
 [case testMatchRedefiningPatternGuard]
 m: str

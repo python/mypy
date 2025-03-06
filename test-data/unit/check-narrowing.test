@@ -995,7 +995,6 @@ else:
     reveal_type(a)  # E: Statement is unreachable \
                     # N: Revealed type is "Never"
     reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3], Literal[4]]"
-
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingLiteralTruthiness]
@@ -2112,8 +2111,6 @@ if isinstance(x, (Z, NoneType)):  # E: Subclass of "X" and "Z" cannot exist: "Z"
                                   # E: Subclass of "X" and "NoneType" cannot exist: "NoneType" is final
     reveal_type(x)  # E: Statement is unreachable \
                     # N: Revealed type is "Never"
-
-
 [builtins fixtures/isinstance.pyi]
 
 [case testTypeNarrowingReachableNegative]

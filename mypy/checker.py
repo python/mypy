@@ -5515,6 +5515,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if isinstance(p, AsPattern):
                                 case_target = p.pattern or p.name
                                 if isinstance(case_target, NameExpr):
+                                    if guard_map is None:
+                                        guard_map = {case_target: UninhabitedType()}
+
                                     for type_map in (guard_map, else_map):
                                         if not type_map:
                                             continue
