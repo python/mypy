@@ -544,10 +544,10 @@ m: A
 match m:
     case {1: v}:
         reveal_type(v)  # E: Statement is unreachable \
-                        # N: Revealed type is "builtins.object"
+                        # N: Revealed type is "Never"
     case {b.b: v2}:
         reveal_type(v2)  # E: Statement is unreachable \
-                         # N: Revealed type is "builtins.object"
+                         # N: Revealed type is "Never"
 [file b.py]
 b: int
 [typing fixtures/typing-typeddict.pyi]

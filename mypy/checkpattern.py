@@ -469,14 +469,14 @@ class PatternChecker(PatternVisitor[PatternType]):
         captures: dict[Expression, Type] = {}
         for key, value in zip(o.keys, o.values):
             inner_type = self.get_mapping_item_type(o, current_type, key)
-            if inner_type is None:
+            if is_uninhabited(inner_type):
                 can_match = False
-                inner_type = self.chk.named_type("builtins.object")
+
             pattern_type = self.accept(value, inner_type)
             if is_uninhabited(pattern_type.type):
                 can_match = False
-            else:
-                self.update_type_map(captures, pattern_type.captures)
+
+            self.update_type_map(captures, pattern_type.captures)
 
         if o.rest is not None:
             mapping = self.chk.named_type("typing.Mapping")
@@ -501,13 +501,13 @@ class PatternChecker(PatternVisitor[PatternType]):
 
     def get_mapping_item_type(
         self, pattern: MappingPattern, mapping_type: Type, key: Expression
-    ) -> Type | None:
+    ) -> Type:
         mapping_type = get_proper_type(mapping_type)
         if isinstance(mapping_type, TypedDictType):
             with self.msg.filter_errors() as local_errors:
-                result: Type | None = self.chk.expr_checker.visit_typeddict_index_expr(
-                    mapping_type, key
-                )[0]
+                result: Type = self.chk.expr_checker.visit_typeddict_index_expr(mapping_type, key)[
+                    0
+                ]
                 has_local_errors = local_errors.has_new_errors()
             # If we can't determine the type statically fall back to treating it as a normal
             # mapping
@@ -516,7 +516,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                     result = self.get_simple_mapping_item_type(pattern, mapping_type, key)
 
                     if local_errors.has_new_errors():
-                        result = None
+                        result = UninhabitedType()
         else:
             with self.msg.filter_errors():
                 result = self.get_simple_mapping_item_type(pattern, mapping_type, key)
