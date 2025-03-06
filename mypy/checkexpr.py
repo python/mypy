@@ -1669,12 +1669,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(callable_node, RefExpr) and callable_node.fullname in ENUM_BASES:
             # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
             return callee.ret_type, callee
-        if (
-            isinstance(callable_node, RefExpr)
-            and callable_node.fullname in ("typing.assert_never", "typing_extensions.assert_never")
-            and self.chk.binder.is_unreachable()
-        ):
-            return callee.ret_type, callee
 
         if (
             callee.is_type_obj()
@@ -1804,9 +1798,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callable_name,
         )
 
-        self.check_argument_types(
-            arg_types, arg_kinds, args, callee, formal_to_actual, context, object_type=object_type
-        )
+        if not (
+            isinstance(callable_node, RefExpr)
+            and callable_node.fullname in ("typing.assert_never", "typing_extensions.assert_never")
+            and self.chk.binder.is_unreachable()
+        ):
+            self.check_argument_types(
+                arg_types,
+                arg_kinds,
+                args,
+                callee,
+                formal_to_actual,
+                context,
+                object_type=object_type,
+            )
 
         if (
             callee.is_type_obj()

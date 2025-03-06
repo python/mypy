@@ -910,7 +910,7 @@ if False:
     # Ignore obvious type errors
     assert_never(expect_str(x))  # E: Argument 1 to "assert_never" has incompatible type "str"; expected "Never" \
                                  # E: Argument 1 to "expect_str" has incompatible type "int"; expected "str"
-    typing_assert_never(expect_str(x))
+    typing_assert_never(expect_str(x))  # E: Argument 1 to "expect_str" has incompatible type "int"; expected "str"
     reveal_type(x)  # E: Statement is unreachable \
                     # N: Revealed type is "builtins.int"
 
@@ -1363,6 +1363,9 @@ def test_untyped_fn(obj):
 
     obj.update(prop=False)
     obj.reload()
+
+    reveal_type(obj.prop)  # N: Revealed type is "Any" \
+                           # N: 'reveal_type' always outputs 'Any' in unchecked functions
 
     assert obj.prop is False
     reveal_type(obj.prop)  # N: Revealed type is "Any" \

@@ -454,7 +454,10 @@ def g(x: object) -> None: ...
 def test(x: List[Any]) -> None:
     if not(f(x) or isinstance(x, A)):
         return
+
     g(reveal_type(x))  # N: Revealed type is "builtins.list[Any]"
+    # explanation: `if f(x): ...` is assumed always true!
+    # so there's no narrowing here.
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsMultipleCondition]
