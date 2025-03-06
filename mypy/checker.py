@@ -6228,12 +6228,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if if_condition_map is not None:
                 if_map.update(if_condition_map)
+            else:
+                if_map[node.target] = UninhabitedType()
+
             if else_condition_map is not None:
                 else_map.update(else_condition_map)
+            else:
+                else_map[node.target] = UninhabitedType()
 
             return (
-                (None if if_assignment_map is None or if_condition_map is None else if_map),
-                (None if else_assignment_map is None or else_condition_map is None else else_map),
+                (None if if_assignment_map is None else if_map),
+                (None if else_assignment_map is None else else_map),
             )
         elif isinstance(node, OpExpr) and node.op == "and":
             left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
