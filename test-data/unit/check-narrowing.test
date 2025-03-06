@@ -1665,13 +1665,13 @@ from typing import Tuple, Union
 x: Union[Tuple[int, int], Tuple[int, int, int]]
 if len(x) >= 4:
     reveal_type(x) # E: Statement is unreachable \
-                   # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+                   # N: Revealed type is "Never"
 else:
     reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
 
 if len(x) < 2:
     reveal_type(x) # E: Statement is unreachable \
-                   # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+                   # N: Revealed type is "Never"
 else:
     reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/len.pyi]
@@ -1750,7 +1750,7 @@ Ts = TypeVarTuple("Ts")
 def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
     if len(x) == 1:
         reveal_type(x)  # E: Statement is unreachable \
-                        # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+                        # N: Revealed type is "Never"
     else:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 
@@ -1758,18 +1758,18 @@ def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
         reveal_type(x)  # E: Statement is unreachable \
-                        # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+                        # N: Revealed type is "Never"
 
 def bar(x: Tuple[int, Unpack[Ts], str]) -> None:
     if len(x) >= 2:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
         reveal_type(x)  # E: Statement is unreachable \
-                        # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+                        # N: Revealed type is "Never"
 
     if len(x) < 2:
         reveal_type(x)  # E: Statement is unreachable \
-                        # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+                        # N: Revealed type is "Never"
     else:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 [builtins fixtures/len.pyi]
@@ -1816,7 +1816,7 @@ from typing_extensions import Unpack
 def foo(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
     if len(x) == 1:
         reveal_type(x)  # E: Statement is unreachable \
-                        # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+                        # N: Revealed type is "Never"
     else:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 
@@ -1824,18 +1824,18 @@ def foo(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
     else:
         reveal_type(x)  # E: Statement is unreachable \
-                        # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+                        # N: Revealed type is "Never"
 
 def bar(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
     if len(x) >= 2:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
     else:
         reveal_type(x)  # E: Statement is unreachable \
-                        # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+                        # N: Revealed type is "Never"
 
     if len(x) < 2:
         reveal_type(x)  # E: Statement is unreachable \
-                        # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
+                        # N: Revealed type is "Never"
     else:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 [builtins fixtures/len.pyi]

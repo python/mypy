@@ -6271,14 +6271,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         ):
             # Combine a `len(x) > 0` check with the default logic below.
             yes_type, no_type = self.narrow_with_len(self.lookup_type(node), ">", 0)
-            if yes_type is not None:
-                yes_type = true_only(yes_type)
-            else:
-                yes_type = UninhabitedType()
-            if no_type is not None:
-                no_type = false_only(no_type)
-            else:
-                no_type = UninhabitedType()
+            yes_type = true_only(yes_type)
+            no_type = false_only(no_type)
             if_map = {node: yes_type} if not isinstance(yes_type, UninhabitedType) else None
             else_map = {node: no_type} if not isinstance(no_type, UninhabitedType) else None
             return if_map, else_map
@@ -6952,8 +6946,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     continue
                 for tpl in tuples:
                     yes_type, no_type = self.narrow_with_len(self.lookup_type(tpl), op, size)
-                    yes_map = None if yes_type is None else {tpl: yes_type}
-                    no_map = None if no_type is None else {tpl: no_type}
+                    yes_map: TypeMap = {tpl: yes_type}
+                    no_map: TypeMap = {tpl: no_type}
                     type_maps.append((yes_map, no_map))
             else:
                 left, right = items
@@ -6970,12 +6964,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 yes_type, no_type = self.narrow_with_len(
                     self.lookup_type(left.args[0]), op, r_size
                 )
-                yes_map = None if yes_type is None else {left.args[0]: yes_type}
-                no_map = None if no_type is None else {left.args[0]: no_type}
+                yes_map = {left.args[0]: yes_type}
+                no_map = {left.args[0]: no_type}
                 type_maps.append((yes_map, no_map))
         return type_maps
 
-    def narrow_with_len(self, typ: Type, op: str, size: int) -> tuple[Type | None, Type | None]:
+    def narrow_with_len(self, typ: Type, op: str, size: int) -> tuple[Type, Type]:
         """Dispatch tuple type narrowing logic depending on the kind of type we got."""
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
@@ -6991,27 +6985,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     other_types.append(t)
                     continue
                 yt, nt = self.narrow_with_len(t, op, size)
-                if yt is not None:
-                    yes_types.append(yt)
-                if nt is not None:
-                    no_types.append(nt)
+                yes_types.append(yt)
+                no_types.append(nt)
+
             yes_types += other_types
             no_types += other_types
-            if yes_types:
-                yes_type = make_simplified_union(yes_types)
-            else:
-                yes_type = None
-            if no_types:
-                no_type = make_simplified_union(no_types)
-            else:
-                no_type = None
+
+            yes_type = make_simplified_union(yes_types)
+            no_type = make_simplified_union(no_types)
             return yes_type, no_type
         else:
             assert False, "Unsupported type for len narrowing"
 
-    def refine_tuple_type_with_len(
-        self, typ: TupleType, op: str, size: int
-    ) -> tuple[Type | None, Type | None]:
+    def refine_tuple_type_with_len(self, typ: TupleType, op: str, size: int) -> tuple[Type, Type]:
         """Narrow a TupleType using length restrictions."""
         unpack_index = find_unpack_in_list(typ.items)
         if unpack_index is None:
@@ -7019,8 +7005,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # depending on the current length, expected length, and the comparison op.
             method = int_op_to_method[op]
             if method(typ.length(), size):
-                return typ, None
-            return None, typ
+                return typ, UninhabitedType()
+            return UninhabitedType(), typ
         unpack = typ.items[unpack_index]
         assert isinstance(unpack, UnpackType)
         unpacked = get_proper_type(unpack.type)
@@ -7032,7 +7018,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if op in ("==", "is"):
                 if min_len <= size:
                     return typ, typ
-                return None, typ
+                return UninhabitedType(), typ
             elif op in ("<", "<="):
                 if op == "<=":
                     size += 1
@@ -7042,7 +7028,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # TODO: also record max_len to avoid false negatives?
                     unpack = UnpackType(unpacked.copy_modified(min_len=size - typ.length() + 1))
                     return typ, typ.copy_modified(items=prefix + [unpack] + suffix)
-                return None, typ
+                return UninhabitedType(), typ
             else:
                 yes_type, no_type = self.refine_tuple_type_with_len(typ, neg_ops[op], size)
                 return no_type, yes_type
@@ -7057,7 +7043,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if min_len <= size:
                 # TODO: return fixed union + prefixed variadic tuple for no_type?
                 return typ.copy_modified(items=prefix + [arg] * (size - min_len) + suffix), typ
-            return None, typ
+            return UninhabitedType(), typ
         elif op in ("<", "<="):
             if op == "<=":
                 size += 1
@@ -7072,14 +7058,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 for n in range(size - min_len):
                     yes_items.append(typ.copy_modified(items=prefix + [arg] * n + suffix))
                 return UnionType.make_union(yes_items, typ.line, typ.column), no_type
-            return None, typ
+            return UninhabitedType(), typ
         else:
             yes_type, no_type = self.refine_tuple_type_with_len(typ, neg_ops[op], size)
             return no_type, yes_type
 
     def refine_instance_type_with_len(
         self, typ: Instance, op: str, size: int
-    ) -> tuple[Type | None, Type | None]:
+    ) -> tuple[Type, Type]:
         """Narrow a homogeneous tuple using length restrictions."""
         base = map_instance_to_supertype(typ, self.lookup_typeinfo("builtins.tuple"))
         arg = base.args[0]
@@ -7095,14 +7081,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 size += 1
             if allow_precise:
                 unpack = UnpackType(self.named_generic_type("builtins.tuple", [arg]))
-                no_type: Type | None = TupleType(items=[arg] * size + [unpack], fallback=typ)
+                no_type: Type = TupleType(items=[arg] * size + [unpack], fallback=typ)
             else:
                 no_type = typ
             if allow_precise:
                 items = []
                 for n in range(size):
                     items.append(TupleType([arg] * n, fallback=typ))
-                yes_type: Type | None = UnionType.make_union(items, typ.line, typ.column)
+                yes_type: Type = UnionType.make_union(items, typ.line, typ.column)
             else:
                 yes_type = typ
             return yes_type, no_type
