@@ -1,8 +1,7 @@
 # Test cases for the math module (compile and run)
 
 [case testMathOps]
-from typing import Any, Callable
-from typing_extensions import Final
+from typing import Any, Callable, Final
 import math
 from math import pi, e, tau, inf, nan
 from testutil import assertRaises, float_vals, assertDomainError, assertMathRangeError

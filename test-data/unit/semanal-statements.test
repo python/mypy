@@ -1127,7 +1127,7 @@ MypyFile:1(
         IntExpr(1)))))
 
 [case testConstantFold1]
-from typing_extensions import Final
+from typing import Final
 add: Final = 15 + 47
 add_mul: Final = (2 + 3) * 5
 sub: Final = 7 - 11
@@ -1140,7 +1140,7 @@ lshift0: Final = 5 << 0
 rshift0: Final = 13 >> 0
 [out]
 MypyFile:1(
-  ImportFrom:1(typing_extensions, [Final])
+  ImportFrom:1(typing, [Final])
   AssignmentStmt:2(
     NameExpr(add [__main__.add] = 62)
     OpExpr:2(
@@ -1216,7 +1216,7 @@ MypyFile:1(
     Literal[13]?))
 
 [case testConstantFold2]
-from typing_extensions import Final
+from typing import Final
 neg1: Final = -5
 neg2: Final = --1
 neg3: Final = -0
@@ -1231,7 +1231,7 @@ p3: Final = 0**0
 s: Final = 'x' + 'y'
 [out]
 MypyFile:1(
-  ImportFrom:1(typing_extensions, [Final])
+  ImportFrom:1(typing, [Final])
   AssignmentStmt:2(
     NameExpr(neg1 [__main__.neg1] = -5)
     UnaryExpr:2(

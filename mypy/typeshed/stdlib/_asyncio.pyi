@@ -1,6 +1,6 @@
 import sys
 from asyncio.events import AbstractEventLoop
-from collections.abc import Awaitable, Callable, Coroutine, Generator
+from collections.abc import Awaitable, Callable, Coroutine, Generator, Iterable
 from contextvars import Context
 from types import FrameType
 from typing import Any, Literal, TextIO, TypeVar
@@ -13,7 +13,7 @@ _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _TaskYieldType: TypeAlias = Future[object] | None
 
-class Future(Awaitable[_T]):
+class Future(Awaitable[_T], Iterable[_T]):
     _state: str
     @property
     def _exception(self) -> BaseException | None: ...
@@ -65,7 +65,7 @@ class Task(Future[_T_co]):  # type: ignore[type-var]  # pyright: ignore[reportIn
             self,
             coro: _TaskCompatibleCoro[_T_co],
             *,
-            loop: AbstractEventLoop = ...,
+            loop: AbstractEventLoop | None = None,
             name: str | None = ...,
             context: Context | None = None,
             eager_start: bool = False,
@@ -75,13 +75,13 @@ class Task(Future[_T_co]):  # type: ignore[type-var]  # pyright: ignore[reportIn
             self,
             coro: _TaskCompatibleCoro[_T_co],
             *,
-            loop: AbstractEventLoop = ...,
+            loop: AbstractEventLoop | None = None,
             name: str | None = ...,
             context: Context | None = None,
         ) -> None: ...
     else:
         def __init__(
-            self, coro: _TaskCompatibleCoro[_T_co], *, loop: AbstractEventLoop = ..., name: str | None = ...
+            self, coro: _TaskCompatibleCoro[_T_co], *, loop: AbstractEventLoop | None = None, name: str | None = ...
         ) -> None: ...
 
     if sys.version_info >= (3, 12):

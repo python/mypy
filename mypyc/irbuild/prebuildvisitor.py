@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from mypy.nodes import (
+    AssignmentStmt,
     Block,
     Decorator,
     Expression,
@@ -16,7 +17,9 @@ from mypy.nodes import (
     Var,
 )
 from mypy.traverser import ExtendedTraverserVisitor
+from mypy.types import Type
 from mypyc.errors import Errors
+from mypyc.irbuild.missingtypevisitor import MissingTypesVisitor
 
 
 class PreBuildVisitor(ExtendedTraverserVisitor):
@@ -39,6 +42,7 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         errors: Errors,
         current_file: MypyFile,
         decorators_to_remove: dict[FuncDef, list[int]],
+        types: dict[Expression, Type],
     ) -> None:
         super().__init__()
         # Dict from a function to symbols defined directly in the
@@ -73,7 +77,7 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         self.decorators_to_remove: dict[FuncDef, list[int]] = decorators_to_remove
 
         # A mapping of import groups (a series of Import nodes with
-        # nothing inbetween) where each group is keyed by its first
+        # nothing in between) where each group is keyed by its first
         # import node.
         self.module_import_groups: dict[Import, list[Import]] = {}
         self._current_import_group: Import | None = None
@@ -82,10 +86,19 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
 
         self.current_file: MypyFile = current_file
 
+        self.missing_types_visitor = MissingTypesVisitor(types)
+
     def visit(self, o: Node) -> bool:
         if not isinstance(o, Import):
             self._current_import_group = None
         return True
+
+    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
+        # These are cases where mypy may not have types for certain expressions,
+        # but mypyc needs some form type to exist.
+        if stmt.is_alias_def:
+            stmt.rvalue.accept(self.missing_types_visitor)
+        return super().visit_assignment_stmt(stmt)
 
     def visit_block(self, block: Block) -> None:
         self._current_import_group = None

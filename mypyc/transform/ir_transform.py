@@ -119,6 +119,9 @@ class IRTransform(OpVisitor[Optional[Value]]):
         self.add(op)
 
     def visit_assign(self, op: Assign) -> Value | None:
+        if op.src in self.op_map and self.op_map[op.src] is None:
+            # Special case: allow removing register initialization assignments
+            return None
         return self.add(op)
 
     def visit_assign_multi(self, op: AssignMulti) -> Value | None:

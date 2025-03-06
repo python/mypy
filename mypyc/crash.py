@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import sys
 import traceback
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator, NoReturn
+from typing import NoReturn
 
 
 @contextmanager

@@ -9,6 +9,8 @@ Lowering of various primitive ops is implemented in the mypyc.lower
 package.
 """
 
+from __future__ import annotations
+
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.ops import PrimitiveOp, Value
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -25,7 +27,7 @@ def lower_ir(ir: FuncIR, options: CompilerOptions) -> None:
 
 
 class LoweringVisitor(IRTransform):
-    def visit_primitive_op(self, op: PrimitiveOp) -> Value:
+    def visit_primitive_op(self, op: PrimitiveOp) -> Value | None:
         # The lowering implementation functions of various primitive ops are stored
         # in a registry, which is populated using function decorators. The name
         # of op (such as "int_eq") is used as the key.

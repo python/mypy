@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Final, Iterator
+from typing import Final
 
 # These are global mutable state. Don't add anything here unless there's a very
 # good reason.

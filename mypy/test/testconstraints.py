@@ -62,7 +62,7 @@ class ConstraintsSuite(Suite):
             Constraint(type_var=fx.s, op=SUPERTYPE_OF, target=fx.d),
         }
 
-    def test_unpack_homogenous_tuple(self) -> None:
+    def test_unpack_homogeneous_tuple(self) -> None:
         fx = self.fx
         assert set(
             infer_constraints(
@@ -77,7 +77,7 @@ class ConstraintsSuite(Suite):
             Constraint(type_var=fx.t, op=SUBTYPE_OF, target=fx.b),
         }
 
-    def test_unpack_homogenous_tuple_with_prefix_and_suffix(self) -> None:
+    def test_unpack_homogeneous_tuple_with_prefix_and_suffix(self) -> None:
         fx = self.fx
         assert set(
             infer_constraints(

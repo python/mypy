@@ -8,8 +8,10 @@ import subprocess
 import sys
 import time
 from collections import defaultdict
+from collections.abc import Sequence
 from gettext import gettext
-from typing import IO, Any, Final, NoReturn, Sequence, TextIO
+from io import TextIOWrapper
+from typing import IO, TYPE_CHECKING, Any, Final, NoReturn, TextIO
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
@@ -33,6 +35,10 @@ from mypy.modulefinder import (
 from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
+
+if TYPE_CHECKING:
+    from _typeshed import SupportsWrite
+
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
@@ -73,6 +79,10 @@ def main(
     sys.setrecursionlimit(2**14)
     if args is None:
         args = sys.argv[1:]
+
+    # Write an escape sequence instead of raising an exception on encoding errors.
+    if isinstance(stdout, TextIOWrapper) and stdout.errors == "strict":
+        stdout.reconfigure(errors="backslashreplace")
 
     fscache = FileSystemCache()
     sources, options = process_options(args, stdout=stdout, stderr=stderr, fscache=fscache)
@@ -367,17 +377,17 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     # =====================
     # Help-printing methods
     # =====================
-    def print_usage(self, file: IO[str] | None = None) -> None:
+    def print_usage(self, file: SupportsWrite[str] | None = None) -> None:
         if file is None:
             file = self.stdout
         self._print_message(self.format_usage(), file)
 
-    def print_help(self, file: IO[str] | None = None) -> None:
+    def print_help(self, file: SupportsWrite[str] | None = None) -> None:
         if file is None:
             file = self.stdout
         self._print_message(self.format_help(), file)
 
-    def _print_message(self, message: str, file: IO[str] | None = None) -> None:
+    def _print_message(self, message: str, file: SupportsWrite[str] | None = None) -> None:
         if message:
             if file is None:
                 file = self.stderr
@@ -554,7 +564,7 @@ def process_options(
         "--config-file",
         help=(
             f"Configuration file, must have a [mypy] section "
-            f"(defaults to {', '.join(defaults.CONFIG_FILES)})"
+            f"(defaults to {', '.join(defaults.CONFIG_NAMES + defaults.SHARED_CONFIG_NAMES)})"
         ),
     )
     add_invertible_flag(
@@ -816,6 +826,14 @@ def process_options(
         help="Report importing or using deprecated features as notes instead of errors",
         group=lint_group,
     )
+    lint_group.add_argument(
+        "--deprecated-calls-exclude",
+        metavar="MODULE",
+        action="append",
+        default=[],
+        help="Disable deprecated warnings for functions/methods coming"
+        " from specific package, module, or class",
+    )
 
     # Note: this group is intentionally added here even though we don't add
     # --strict to this group near the end.
@@ -856,6 +874,14 @@ def process_options(
         default=False,
         strict_flag=True,
         help="Prohibit equality, identity, and container checks for non-overlapping types",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
+        "--strict-bytes",
+        default=False,
+        strict_flag=False,
+        help="Disable treating bytearray and memoryview as subtypes of bytes",
         group=strictness_group,
     )
 
@@ -1166,7 +1192,7 @@ def process_options(
     parser.add_argument("--test-env", action="store_true", help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
-    parser.add_argument("--local-partial-types", action="store_true", help=argparse.SUPPRESS)
+    add_invertible_flag("--local-partial-types", default=False, help=argparse.SUPPRESS)
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
     # type precision in a code base. It also _removes_ some deps, so this flag should be never
@@ -1225,6 +1251,15 @@ def process_options(
             "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'. "
             "May be specified more than once, eg. --exclude a --exclude b"
         ),
+    )
+    add_invertible_flag(
+        "--exclude-gitignore",
+        default=False,
+        help=(
+            "Use .gitignore file(s) to exclude files from checking "
+            "(in addition to any explicit --exclude if present)"
+        ),
+        group=code_group,
     )
     code_group.add_argument(
         "-m",
@@ -1351,6 +1386,7 @@ def process_options(
         )
 
     validate_package_allow_list(options.untyped_calls_exclude)
+    validate_package_allow_list(options.deprecated_calls_exclude)
 
     options.process_error_codes(error_callback=parser.error)
     options.process_incomplete_features(error_callback=parser.error, warning_callback=print)
@@ -1385,6 +1421,11 @@ def process_options(
             parser.error("--cache-map is incompatible with --sqlite-cache")
 
         process_cache_map(parser, special_opts, options)
+
+    # Process --strict-bytes
+    if options.strict_bytes:
+        options.disable_bytearray_promotion = True
+        options.disable_memoryview_promotion = True
 
     # An explicitly specified cache_fine_grained implies local_partial_types
     # (because otherwise the cache is not compatible with dmypy)
@@ -1552,8 +1593,9 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]
                 + "(and no cache from previous mypy run)\n"
             )
         else:
-            sys.stderr.write("error: --install-types failed (no mypy cache directory)\n")
-        sys.exit(2)
+            sys.stderr.write(
+                "error: --install-types failed (an error blocked analysis of which types to install)\n"
+            )
     fnam = build.missing_stubs_file(cache_dir)
     if not os.path.isfile(fnam):
         # No missing stubs.

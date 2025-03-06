@@ -4,7 +4,7 @@ from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.subtypes import is_subtype
 from mypy.test.helpers import Suite
 from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
-from mypy.types import Instance, Type, UninhabitedType, UnpackType
+from mypy.types import Instance, TupleType, Type, UninhabitedType, UnpackType
 
 
 class SubtypingSuite(Suite):
@@ -273,6 +273,9 @@ class SubtypingSuite(Suite):
             Instance(self.fx.gvi, [self.fx.a, self.fx.a]),
             Instance(self.fx.gvi, [UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))]),
         )
+
+    def test_fallback_not_subtype_of_tuple(self) -> None:
+        self.assert_not_subtype(self.fx.a, TupleType([self.fx.b], fallback=self.fx.a))
 
     # IDEA: Maybe add these test cases (they are tested pretty well in type
     #       checker tests already):

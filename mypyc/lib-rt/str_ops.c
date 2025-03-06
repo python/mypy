@@ -133,6 +133,29 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
     return res;
 }
 
+CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction) {
+    CPyTagged end = PyUnicode_GET_LENGTH(str) << 1;
+    return CPyStr_FindWithEnd(str, substr, start, end, direction);
+}
+
+CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction) {
+    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
+    if (temp_start == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return CPY_INT_TAG;
+    }
+    Py_ssize_t temp_end = CPyTagged_AsSsize_t(end);
+    if (temp_end == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return CPY_INT_TAG;
+    }
+    Py_ssize_t index = PyUnicode_Find(str, substr, temp_start, temp_end, direction);
+    if (unlikely(index == -2)) {
+        return CPY_INT_TAG;
+    }
+    return index << 1;
+}
+
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split) {
     Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
     if (temp_max_split == -1 && PyErr_Occurred()) {
@@ -140,6 +163,15 @@ PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split) {
         return NULL;
     }
     return PyUnicode_Split(str, sep, temp_max_split);
+}
+
+PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split) {
+    Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
+    if (temp_max_split == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return NULL;
+    }
+    return PyUnicode_RSplit(str, sep, temp_max_split);
 }
 
 PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr,
@@ -152,16 +184,72 @@ PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr,
     return PyUnicode_Replace(str, old_substr, new_substr, temp_max_replace);
 }
 
-bool CPyStr_Startswith(PyObject *self, PyObject *subobj) {
+int CPyStr_Startswith(PyObject *self, PyObject *subobj) {
     Py_ssize_t start = 0;
     Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    if (PyTuple_Check(subobj)) {
+        Py_ssize_t i;
+        for (i = 0; i < PyTuple_GET_SIZE(subobj); i++) {
+            PyObject *substring = PyTuple_GET_ITEM(subobj, i);
+            if (!PyUnicode_Check(substring)) {
+                PyErr_Format(PyExc_TypeError,
+                             "tuple for startswith must only contain str, "
+                             "not %.100s",
+                             Py_TYPE(substring)->tp_name);
+                return 2;
+            }
+            int result = PyUnicode_Tailmatch(self, substring, start, end, -1);
+            if (result) {
+                return 1;
+            }
+        }
+        return 0;
+    }
     return PyUnicode_Tailmatch(self, subobj, start, end, -1);
 }
 
-bool CPyStr_Endswith(PyObject *self, PyObject *subobj) {
+int CPyStr_Endswith(PyObject *self, PyObject *subobj) {
     Py_ssize_t start = 0;
     Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    if (PyTuple_Check(subobj)) {
+        Py_ssize_t i;
+        for (i = 0; i < PyTuple_GET_SIZE(subobj); i++) {
+            PyObject *substring = PyTuple_GET_ITEM(subobj, i);
+            if (!PyUnicode_Check(substring)) {
+                PyErr_Format(PyExc_TypeError,
+                             "tuple for endswith must only contain str, "
+                             "not %.100s",
+                             Py_TYPE(substring)->tp_name);
+                return 2;
+            }
+            int result = PyUnicode_Tailmatch(self, substring, start, end, 1);
+            if (result) {
+                return 1;
+            }
+        }
+        return 0;
+    }
     return PyUnicode_Tailmatch(self, subobj, start, end, 1);
+}
+
+PyObject *CPyStr_Removeprefix(PyObject *self, PyObject *prefix) {
+    Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    int match = PyUnicode_Tailmatch(self, prefix, 0, end, -1);
+    if (match) {
+        Py_ssize_t prefix_end = PyUnicode_GET_LENGTH(prefix);
+        return PyUnicode_Substring(self, prefix_end, end);
+    }
+    return Py_NewRef(self);
+}
+
+PyObject *CPyStr_Removesuffix(PyObject *self, PyObject *suffix) {
+    Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    int match = PyUnicode_Tailmatch(self, suffix, 0, end, 1);
+    if (match) {
+        Py_ssize_t suffix_end = PyUnicode_GET_LENGTH(suffix);
+        return PyUnicode_Substring(self, 0, end - suffix_end);
+    }
+    return Py_NewRef(self);
 }
 
 /* This does a dodgy attempt to append in place  */

@@ -1,5 +1,6 @@
 # ruff: noqa: PYI036 # This is the module declaring BaseException
 import _ast
+import _sitebuiltins
 import _typeshed
 import sys
 import types
@@ -9,7 +10,6 @@ from _typeshed import (
     ConvertibleToFloat,
     ConvertibleToInt,
     FileDescriptorOrPath,
-    MaybeNone,
     OpenBinaryMode,
     OpenBinaryModeReading,
     OpenBinaryModeUpdating,
@@ -46,7 +46,6 @@ from typing import (  # noqa: Y022
     Mapping,
     MutableMapping,
     MutableSequence,
-    NoReturn,
     Protocol,
     Sequence,
     SupportsAbs,
@@ -94,9 +93,14 @@ _SupportsAnextT = TypeVar("_SupportsAnextT", bound=SupportsAnext[Any], covariant
 _AwaitableT = TypeVar("_AwaitableT", bound=Awaitable[Any])
 _AwaitableT_co = TypeVar("_AwaitableT_co", bound=Awaitable[Any], covariant=True)
 _P = ParamSpec("_P")
-_StartT = TypeVar("_StartT", covariant=True, default=Any)
-_StopT = TypeVar("_StopT", covariant=True, default=Any)
-_StepT = TypeVar("_StepT", covariant=True, default=Any)
+
+# Type variables for slice
+_StartT_co = TypeVar("_StartT_co", covariant=True, default=Any)  # slice -> slice[Any, Any, Any]
+_StopT_co = TypeVar("_StopT_co", covariant=True, default=_StartT_co)  #  slice[A] -> slice[A, A, A]
+# NOTE: step could differ from start and stop, (e.g. datetime/timedelta)l
+#   the default (start|stop) is chosen to cater to the most common case of int/index slices.
+# FIXME: https://github.com/python/typing/issues/213 (replace step=start|stop with step=start&stop)
+_StepT_co = TypeVar("_StepT_co", covariant=True, default=_StartT_co | _StopT_co)  #  slice[A,B] -> slice[A, B, A|B]
 
 class object:
     __doc__: str | None
@@ -842,23 +846,35 @@ class bool(int):
     def __invert__(self) -> int: ...
 
 @final
-class slice(Generic[_StartT, _StopT, _StepT]):
+class slice(Generic[_StartT_co, _StopT_co, _StepT_co]):
     @property
-    def start(self) -> _StartT: ...
+    def start(self) -> _StartT_co: ...
     @property
-    def step(self) -> _StepT: ...
+    def step(self) -> _StepT_co: ...
     @property
-    def stop(self) -> _StopT: ...
+    def stop(self) -> _StopT_co: ...
+    # Note: __new__ overloads map `None` to `Any`, since users expect slice(x, None)
+    #  to be compatible with slice(None, x).
+    # generic slice --------------------------------------------------------------------
     @overload
-    def __new__(cls, stop: int | None, /) -> slice[int | MaybeNone, int | MaybeNone, int | MaybeNone]: ...
-    @overload
-    def __new__(
-        cls, start: int | None, stop: int | None, step: int | None = None, /
-    ) -> slice[int | MaybeNone, int | MaybeNone, int | MaybeNone]: ...
+    def __new__(cls, start: None, stop: None = None, step: None = None, /) -> slice[Any, Any, Any]: ...
+    # unary overloads ------------------------------------------------------------------
     @overload
     def __new__(cls, stop: _T2, /) -> slice[Any, _T2, Any]: ...
+    # binary overloads -----------------------------------------------------------------
     @overload
-    def __new__(cls, start: _T1, stop: _T2, /) -> slice[_T1, _T2, Any]: ...
+    def __new__(cls, start: _T1, stop: None, step: None = None, /) -> slice[_T1, Any, Any]: ...
+    @overload
+    def __new__(cls, start: None, stop: _T2, step: None = None, /) -> slice[Any, _T2, Any]: ...
+    @overload
+    def __new__(cls, start: _T1, stop: _T2, step: None = None, /) -> slice[_T1, _T2, Any]: ...
+    # ternary overloads ----------------------------------------------------------------
+    @overload
+    def __new__(cls, start: None, stop: None, step: _T3, /) -> slice[Any, Any, _T3]: ...
+    @overload
+    def __new__(cls, start: _T1, stop: None, step: _T3, /) -> slice[_T1, Any, _T3]: ...
+    @overload
+    def __new__(cls, start: None, stop: _T2, step: _T3, /) -> slice[Any, _T2, _T3]: ...
     @overload
     def __new__(cls, start: _T1, stop: _T2, step: _T3, /) -> slice[_T1, _T2, _T3]: ...
     def __eq__(self, value: object, /) -> bool: ...
@@ -1130,7 +1146,7 @@ class frozenset(AbstractSet[_T_co]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
-class enumerate(Generic[_T]):
+class enumerate(Iterator[tuple[int, _T]]):
     def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> tuple[int, _T]: ...
@@ -1197,7 +1213,7 @@ def ascii(obj: object, /) -> str: ...
 def bin(number: int | SupportsIndex, /) -> str: ...
 def breakpoint(*args: Any, **kws: Any) -> None: ...
 def callable(obj: object, /) -> TypeIs[Callable[..., object]]: ...
-def chr(i: int, /) -> str: ...
+def chr(i: int | SupportsIndex, /) -> str: ...
 
 # We define this here instead of using os.PathLike to avoid import cycle issues.
 # See https://github.com/python/typeshed/pull/991#issuecomment-288160993
@@ -1264,8 +1280,10 @@ def compile(
     *,
     _feature_version: int = -1,
 ) -> Any: ...
-def copyright() -> None: ...
-def credits() -> None: ...
+
+copyright: _sitebuiltins._Printer
+credits: _sitebuiltins._Printer
+
 def delattr(obj: object, name: str, /) -> None: ...
 def dir(o: object = ..., /) -> list[str]: ...
 @overload
@@ -1320,9 +1338,9 @@ else:
         /,
     ) -> None: ...
 
-def exit(code: sys._ExitCode = None) -> NoReturn: ...
+exit: _sitebuiltins.Quitter
 
-class filter(Generic[_T]):
+class filter(Iterator[_T]):
     @overload
     def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
     @overload
@@ -1354,7 +1372,9 @@ def getattr(o: object, name: str, default: _T, /) -> Any | _T: ...
 def globals() -> dict[str, Any]: ...
 def hasattr(obj: object, name: str, /) -> bool: ...
 def hash(obj: object, /) -> int: ...
-def help(request: object = ...) -> None: ...
+
+help: _sitebuiltins._Helper
+
 def hex(number: int | SupportsIndex, /) -> str: ...
 def id(obj: object, /) -> int: ...
 def input(prompt: object = "", /) -> str: ...
@@ -1380,23 +1400,25 @@ else:
 def isinstance(obj: object, class_or_tuple: _ClassInfo, /) -> bool: ...
 def issubclass(cls: type, class_or_tuple: _ClassInfo, /) -> bool: ...
 def len(obj: Sized, /) -> int: ...
-def license() -> None: ...
+
+license: _sitebuiltins._Printer
+
 def locals() -> dict[str, Any]: ...
 
-class map(Generic[_S]):
+class map(Iterator[_S]):
     @overload
-    def __new__(cls, func: Callable[[_T1], _S], iter1: Iterable[_T1], /) -> Self: ...
+    def __new__(cls, func: Callable[[_T1], _S], iterable: Iterable[_T1], /) -> Self: ...
     @overload
-    def __new__(cls, func: Callable[[_T1, _T2], _S], iter1: Iterable[_T1], iter2: Iterable[_T2], /) -> Self: ...
+    def __new__(cls, func: Callable[[_T1, _T2], _S], iterable: Iterable[_T1], iter2: Iterable[_T2], /) -> Self: ...
     @overload
     def __new__(
-        cls, func: Callable[[_T1, _T2, _T3], _S], iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], /
+        cls, func: Callable[[_T1, _T2, _T3], _S], iterable: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], /
     ) -> Self: ...
     @overload
     def __new__(
         cls,
         func: Callable[[_T1, _T2, _T3, _T4], _S],
-        iter1: Iterable[_T1],
+        iterable: Iterable[_T1],
         iter2: Iterable[_T2],
         iter3: Iterable[_T3],
         iter4: Iterable[_T4],
@@ -1406,7 +1428,7 @@ class map(Generic[_S]):
     def __new__(
         cls,
         func: Callable[[_T1, _T2, _T3, _T4, _T5], _S],
-        iter1: Iterable[_T1],
+        iterable: Iterable[_T1],
         iter2: Iterable[_T2],
         iter3: Iterable[_T3],
         iter4: Iterable[_T4],
@@ -1417,7 +1439,7 @@ class map(Generic[_S]):
     def __new__(
         cls,
         func: Callable[..., _S],
-        iter1: Iterable[Any],
+        iterable: Iterable[Any],
         iter2: Iterable[Any],
         iter3: Iterable[Any],
         iter4: Iterable[Any],
@@ -1623,9 +1645,10 @@ def pow(base: _SupportsPow3[_E, _M, _T_co], exp: _E, mod: _M) -> _T_co: ...
 def pow(base: _SupportsSomeKindOfPow, exp: float, mod: None = None) -> Any: ...
 @overload
 def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex: ...
-def quit(code: sys._ExitCode = None) -> NoReturn: ...
 
-class reversed(Generic[_T]):
+quit: _sitebuiltins.Quitter
+
+class reversed(Iterator[_T]):
     @overload
     def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
     @overload
@@ -1686,7 +1709,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
 @overload
 def vars(object: Any = ..., /) -> dict[str, Any]: ...
 
-class zip(Generic[_T_co]):
+class zip(Iterator[_T_co]):
     if sys.version_info >= (3, 10):
         @overload
         def __new__(cls, *, strict: bool = ...) -> zip[Any]: ...
@@ -1859,9 +1882,7 @@ class NameError(Exception):
 
 class ReferenceError(Exception): ...
 class RuntimeError(Exception): ...
-
-class StopAsyncIteration(Exception):
-    value: Any
+class StopAsyncIteration(Exception): ...
 
 class SyntaxError(Exception):
     msg: str

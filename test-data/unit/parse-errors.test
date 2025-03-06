@@ -55,7 +55,7 @@ file:1: error: invalid syntax
 [case testUnexpectedEof]
 if 1:
 [out]
-file:1: error: unexpected EOF while parsing
+file:1: error: expected an indented block
 
 [case testInvalidKeywordArguments1]
 f(x=y, z)
@@ -434,7 +434,7 @@ file:1: error: invalid syntax
 [case testSmartQuotes]
 foo = ‘bar’
 [out]
-file:1: error: invalid character in identifier
+file:1: error: invalid character '‘' (U+2018)
 
 [case testExceptCommaInPython3]
 try:

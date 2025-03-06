@@ -64,7 +64,7 @@ m: A
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "A" and "B">1"
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "b.B">"
 [file b.py]
 class B: ...
 b: B
@@ -770,6 +770,21 @@ match m:
         reveal_type(j)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchSequencePatternCaptureNamedTuple]
+from typing import NamedTuple
+
+class N(NamedTuple):
+    x: int
+    y: str
+
+a = N(1, "a")
+
+match a:
+    case [x, y]:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+        reveal_type(y)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchClassPatternCaptureGeneric]
 from typing import Generic, TypeVar
 
@@ -933,9 +948,9 @@ m: B
 
 match m:
     case A():
-        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">2"
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "__main__.B" and "__main__.A">"
     case A(i, j):
-        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">3"
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "__main__.B" and "__main__.A">"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternNonexistentKeyword]
@@ -1309,7 +1324,7 @@ m: A
 
 match m:
     case a if isinstance(a, B):
-        reveal_type(a)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+        reveal_type(a)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMatchUnreachablePatternGuard]
@@ -1442,8 +1457,7 @@ def f(value: Literal[1] | Literal[2]) -> int:
 [typing fixtures/typing-medium.pyi]
 
 [case testMatchSequencePatternNegativeNarrowing]
-from typing import Union, Sequence, Tuple
-from typing_extensions import Literal
+from typing import Literal, Union, Sequence, Tuple
 
 m1: Sequence[int | str]
 
@@ -1487,11 +1501,13 @@ match m5:
     case _:
         reveal_type(m5)  # N: Revealed type is "Tuple[Literal[2], Union[Literal['a'], Literal['b']]]"
 
-match m5:
+m6: Tuple[Literal[1, 2], Literal["a", "b"]]
+
+match m6:
     case (1, "a"):
-        reveal_type(m5)  # N: Revealed type is "Tuple[Literal[1], Literal['a']]"
+        reveal_type(m6)  # N: Revealed type is "Tuple[Literal[1], Literal['a']]"
     case _:
-        reveal_type(m5)  # N: Revealed type is "Tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
+        reveal_type(m6)  # N: Revealed type is "Tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1749,10 +1765,10 @@ class C: pass
 def f(x: A) -> None:
     match x:
         case B() as y:
-            reveal_type(y)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+            reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.B">"
         case C() as y:
-            reveal_type(y)  # N: Revealed type is "__main__.<subclass of "A" and "C">"
-    reveal_type(y)  # N: Revealed type is "Union[__main__.<subclass of "A" and "B">, __main__.<subclass of "A" and "C">]"
+            reveal_type(y)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.C">"
+    reveal_type(y)  # N: Revealed type is "Union[__main__.<subclass of "__main__.A" and "__main__.B">, __main__.<subclass of "__main__.A" and "__main__.C">]"
 
 [case testMatchWithBreakAndContinue]
 def f(x: int | str | None) -> None:
@@ -1905,8 +1921,7 @@ match var:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchNamedAndKeywordsAreTheSame]
-from typing import Generic, TypeVar, Union
-from typing_extensions import Final
+from typing import Generic, Final, TypeVar, Union
 from dataclasses import dataclass
 
 T = TypeVar("T")
@@ -1915,7 +1930,7 @@ class Regular:
     x: str
     y: int
     __match_args__ = ("x",)
-class ReveresedOrder:
+class ReversedOrder:
     x: int
     y: str
     __match_args__ = ("y",)
@@ -1933,7 +1948,7 @@ class GenericDataclass(Generic[T]):
 
 input_arg: Union[
     Regular,
-    ReveresedOrder,
+    ReversedOrder,
     GenericRegular[str],
     GenericWithFinal[str],
     RegularSubtype,
@@ -1944,7 +1959,7 @@ input_arg: Union[
 match input_arg:
     case Regular(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
-    case ReveresedOrder(a):
+    case ReversedOrder(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
     case GenericWithFinal(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
@@ -1959,7 +1974,7 @@ match input_arg:
 match input_arg:
     case Regular(x=a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
-    case ReveresedOrder(x=b):  # Order is different
+    case ReversedOrder(x=b):  # Order is different
         reveal_type(b)  # N: Revealed type is "builtins.int"
     case GenericWithFinal(x=a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
@@ -2439,3 +2454,101 @@ def foo(x: T) -> T:
     return out
 
 [builtins fixtures/isinstance.pyi]
+
+[case testMatchSequenceReachableFromAny]
+# flags: --warn-unreachable
+from typing import Any
+
+def maybe_list(d: Any) -> int:
+    match d:
+        case []:
+            return 0
+        case [[_]]:
+            return 1
+        case [_]:
+            return 1
+        case _:
+            return 2
+
+def with_guard(d: Any) -> None:
+    match d:
+        case [s] if isinstance(s, str):
+            reveal_type(s)  # N: Revealed type is "builtins.str"
+    match d:
+        case (s,) if isinstance(s, str):
+            reveal_type(s)  # N: Revealed type is "builtins.str"
+
+def nested_in_dict(d: dict[str, Any]) -> int:
+    match d:
+        case {"src": ["src"]}:
+            return 1
+        case _:
+            return 0
+
+[builtins fixtures/dict.pyi]
+
+[case testMatchRebindsOuterFunctionName]
+# flags: --warn-unreachable
+from typing import Literal
+
+def x() -> tuple[Literal["test"]]: ...
+
+match x():
+    case (x,) if x == "test":  # E: Incompatible types in capture pattern (pattern captures type "Literal['test']", variable has type "Callable[[], Tuple[Literal['test']]]")
+        reveal_type(x)  # N: Revealed type is "def () -> Tuple[Literal['test']]"
+    case foo:
+        foo
+
+[builtins fixtures/dict.pyi]
+
+[case testMatchRebindsInnerFunctionName]
+# flags: --warn-unreachable
+class Some:
+    value: int | str
+    __match_args__ = ("value",)
+
+def fn1(x: Some | int | str) -> None:
+    match x:
+        case int():
+            def value():
+                return 1
+            reveal_type(value)  # N: Revealed type is "def () -> Any"
+        case str():
+            def value():
+                return 1
+            reveal_type(value)  # N: Revealed type is "def () -> Any"
+        case Some(value):  # E: Incompatible types in capture pattern (pattern captures type "Union[int, str]", variable has type "Callable[[], Any]")
+            pass
+
+def fn2(x: Some | int | str) -> None:
+    match x:
+        case int():
+            def value() -> str:
+                return ""
+            reveal_type(value)  # N: Revealed type is "def () -> builtins.str"
+        case str():
+            def value() -> int:  # E: All conditional function variants must have identical signatures \
+                                 # N: Original: \
+                                 # N:     def value() -> str \
+                                 # N: Redefinition: \
+                                 # N:     def value() -> int
+                return 1
+            reveal_type(value)  # N: Revealed type is "def () -> builtins.str"
+        case Some(value):  # E: Incompatible types in capture pattern (pattern captures type "Union[int, str]", variable has type "Callable[[], str]")
+            pass
+[builtins fixtures/dict.pyi]
+
+[case testMatchNamedTupleSequence]
+from typing import Any, NamedTuple
+
+class T(NamedTuple):
+    t: list[Any]
+
+class K(NamedTuple):
+    k: int
+
+def f(t: T) -> None:
+    match t:
+        case T([K() as k]):
+            reveal_type(k)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.K]"
+[builtins fixtures/tuple.pyi]

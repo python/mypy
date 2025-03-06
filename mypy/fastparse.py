@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import copy
 import re
 import sys
 import warnings
-from typing import Any, Callable, Final, List, Optional, Sequence, TypeVar, Union, cast
-from typing_extensions import Literal, overload
+from collections.abc import Sequence
+from typing import Any, Callable, Final, Literal, Optional, TypeVar, Union, cast, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
 from mypy.errors import Errors
@@ -241,13 +240,6 @@ def parse(
             path=fnam,
         ).visit(ast)
     except SyntaxError as e:
-        # alias to please mypyc
-        is_py38_or_earlier = sys.version_info < (3, 9)
-        if is_py38_or_earlier and e.filename == "<fstring>":
-            # In Python 3.8 and earlier, syntax errors in f-strings have lineno relative to the
-            # start of the f-string. This would be misleading, as mypy will report the error as the
-            # lineno within the file.
-            e.lineno = None
         message = e.msg
         if feature_version > sys.version_info.minor and message.startswith("invalid syntax"):
             python_version_str = f"{options.python_version[0]}.{options.python_version[1]}"
@@ -432,7 +424,7 @@ class ASTConverter:
         return res
 
     def translate_expr_list(self, l: Sequence[AST]) -> list[Expression]:
-        return cast(List[Expression], self.translate_opt_expr_list(l))
+        return cast(list[Expression], self.translate_opt_expr_list(l))
 
     def get_lineno(self, node: ast3.expr | ast3.stmt) -> int:
         if (
@@ -565,7 +557,7 @@ class ASTConverter:
         ast3.Is: "is",
         ast3.IsNot: "is not",
         ast3.In: "in",
-        ast3.NotIn: "not in",
+        ast3.NotIn: "not in",  # codespell:ignore notin
     }
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
@@ -675,7 +667,7 @@ class ASTConverter:
                         current_overload.append(last_if_overload)
                     last_if_stmt, last_if_overload = None, None
                 if isinstance(if_block_with_overload.body[-1], OverloadedFuncDef):
-                    skipped_if_stmts.extend(cast(List[IfStmt], if_block_with_overload.body[:-1]))
+                    skipped_if_stmts.extend(cast(list[IfStmt], if_block_with_overload.body[:-1]))
                     current_overload.extend(if_block_with_overload.body[-1].items)
                 else:
                     current_overload.append(
@@ -722,7 +714,7 @@ class ASTConverter:
                     last_if_stmt_overload_name = None
                     if if_block_with_overload is not None:
                         skipped_if_stmts.extend(
-                            cast(List[IfStmt], if_block_with_overload.body[:-1])
+                            cast(list[IfStmt], if_block_with_overload.body[:-1])
                         )
                         last_if_overload = cast(
                             Union[Decorator, FuncDef, OverloadedFuncDef],
@@ -946,7 +938,7 @@ class ASTConverter:
                         self.errors, line=lineno, override_column=n.col_offset
                     ).translate_expr_list(func_type_ast.argtypes)
                     # Use a cast to work around `list` invariance
-                    arg_types = cast(List[Optional[Type]], translated_args)
+                    arg_types = cast(list[Optional[Type]], translated_args)
                 return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
@@ -1017,28 +1009,22 @@ class ASTConverter:
             func_def.is_coroutine = True
         if func_type is not None:
             func_type.definition = func_def
-            func_type.line = lineno
+            func_type.set_line(lineno)
 
         if n.decorator_list:
-            # Set deco_line to the old pre-3.8 lineno, in order to keep
-            # existing "# type: ignore" comments working:
-            deco_line = n.decorator_list[0].lineno
-
             var = Var(func_def.name)
             var.is_ready = False
             var.set_line(lineno)
 
             func_def.is_decorated = True
-            func_def.deco_line = deco_line
-            func_def.set_line(lineno, n.col_offset, end_line, end_column)
+            self.set_line(func_def, n)
 
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             first = n.decorator_list[0]
             deco.set_line(first.lineno, first.col_offset, end_line, end_column)
             retval: FuncDef | Decorator = deco
         else:
-            # FuncDef overrides set_line -- can't use self.set_line
-            func_def.set_line(lineno, n.col_offset, end_line, end_column)
+            self.set_line(func_def, n)
             retval = func_def
         if self.options.include_docstrings:
             func_def.docstring = ast3.get_docstring(n, clean=False)
@@ -1058,7 +1044,7 @@ class ASTConverter:
     ) -> list[Argument]:
         new_args = []
         names: list[ast3.arg] = []
-        posonlyargs = getattr(args, "posonlyargs", cast(List[ast3.arg], []))
+        posonlyargs = getattr(args, "posonlyargs", cast(list[ast3.arg], []))
         args_args = posonlyargs + args.args
         args_defaults = args.defaults
         num_no_defaults = len(args_args) - len(args_defaults)
@@ -1120,7 +1106,9 @@ class ASTConverter:
         if argument_elide_name(arg.arg):
             pos_only = True
 
-        argument = Argument(Var(arg.arg, arg_type), arg_type, self.visit(default), kind, pos_only)
+        var = Var(arg.arg, arg_type)
+        var.is_inferred = False
+        argument = Argument(var, arg_type, self.visit(default), kind, pos_only)
         argument.set_line(
             arg.lineno,
             arg.col_offset,
@@ -1157,10 +1145,7 @@ class ASTConverter:
             type_args=explicit_type_params,
         )
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        # Set lines to match the old mypy 0.700 lines, in order to keep
-        # existing "# type: ignore" comments working:
-        cdef.line = n.lineno
-        cdef.deco_line = n.decorator_list[0].lineno if n.decorator_list else None
+        self.set_line(cdef, n)
 
         if self.options.include_docstrings:
             cdef.docstring = ast3.get_docstring(n, clean=False)
@@ -1255,8 +1240,7 @@ class ASTConverter:
         line = n.lineno
         if n.value is None:  # always allow 'x: int'
             rvalue: Expression = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)
-            rvalue.line = line
-            rvalue.column = n.col_offset
+            self.set_line(rvalue, n)
         else:
             rvalue = self.visit(n.value)
         typ = TypeConverter(self.errors, line=line).visit(n.annotation)
@@ -1596,7 +1580,7 @@ class ASTConverter:
             self.visit(n.func),
             arg_types,
             arg_kinds,
-            cast("List[Optional[str]]", [None] * len(args)) + keyword_names,
+            cast("list[Optional[str]]", [None] * len(args)) + keyword_names,
         )
         return self.set_line(e, n)
 
@@ -1683,19 +1667,7 @@ class ASTConverter:
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
-        self.set_line(e, n)
-        # alias to please mypyc
-        is_py38_or_earlier = sys.version_info < (3, 9)
-        if isinstance(n.slice, ast3.Slice) or (
-            is_py38_or_earlier and isinstance(n.slice, ast3.ExtSlice)
-        ):
-            # Before Python 3.9, Slice has no line/column in the raw ast. To avoid incompatibility
-            # visit_Slice doesn't set_line, even in Python 3.9 on.
-            # ExtSlice also has no line/column info. In Python 3.9 on, line/column is set for
-            # e.index when visiting n.slice.
-            e.index.line = e.line
-            e.index.column = e.column
-        return e
+        return self.set_line(e, n)
 
     # Starred(expr value, expr_context ctx)
     def visit_Starred(self, n: Starred) -> StarExpr:
@@ -1726,7 +1698,8 @@ class ASTConverter:
 
     # Slice(expr? lower, expr? upper, expr? step)
     def visit_Slice(self, n: ast3.Slice) -> SliceExpr:
-        return SliceExpr(self.visit(n.lower), self.visit(n.upper), self.visit(n.step))
+        e = SliceExpr(self.visit(n.lower), self.visit(n.upper), self.visit(n.step))
+        return self.set_line(e, n)
 
     # ExtSlice(slice* dims)
     def visit_ExtSlice(self, n: ast3.ExtSlice) -> TupleExpr:
@@ -2069,50 +2042,28 @@ class TypeConverter:
     def visit_Slice(self, n: ast3.Slice) -> Type:
         return self.invalid_type(n, note="did you mean to use ',' instead of ':' ?")
 
-    # Subscript(expr value, slice slice, expr_context ctx)  # Python 3.8 and before
     # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
-        if sys.version_info >= (3, 9):  # Really 3.9a5 or later
-            sliceval: Any = n.slice
-        # Python 3.8 or earlier use a different AST structure for subscripts
-        elif isinstance(n.slice, ast3.Index):
-            sliceval: Any = n.slice.value
-        elif isinstance(n.slice, ast3.Slice):
-            sliceval = copy.deepcopy(n.slice)  # so we don't mutate passed AST
-            if getattr(sliceval, "col_offset", None) is None:
-                # Fix column information so that we get Python 3.9+ message order
-                sliceval.col_offset = sliceval.lower.col_offset
-        else:
-            assert isinstance(n.slice, ast3.ExtSlice)
-            dims = cast(List[ast3.expr], copy.deepcopy(n.slice.dims))
-            for s in dims:
-                # These fields don't actually have a col_offset attribute but we add
-                # it manually.
-                if getattr(s, "col_offset", None) is None:
-                    if isinstance(s, ast3.Index):
-                        s.col_offset = s.value.col_offset
-                    elif isinstance(s, ast3.Slice):
-                        assert s.lower is not None
-                        s.col_offset = s.lower.col_offset
-            sliceval = ast3.Tuple(dims, n.ctx)
-
         empty_tuple_index = False
-        if isinstance(sliceval, ast3.Tuple):
-            params = self.translate_expr_list(sliceval.elts)
-            if len(sliceval.elts) == 0:
+        if isinstance(n.slice, ast3.Tuple):
+            params = self.translate_expr_list(n.slice.elts)
+            if len(n.slice.elts) == 0:
                 empty_tuple_index = True
         else:
-            params = [self.visit(sliceval)]
+            params = [self.visit(n.slice)]
 
         value = self.visit(n.value)
         if isinstance(value, UnboundType) and not value.args:
-            return UnboundType(
+            result = UnboundType(
                 value.name,
                 params,
                 line=self.line,
                 column=value.column,
                 empty_tuple_index=empty_tuple_index,
             )
+            result.end_column = getattr(n, "end_col_offset", None)
+            result.end_line = getattr(n, "end_lineno", None)
+            return result
         else:
             return self.invalid_type(n)
 
@@ -2146,7 +2097,7 @@ class TypeConverter:
         before_dot = self.visit(n.value)
 
         if isinstance(before_dot, UnboundType) and not before_dot.args:
-            return UnboundType(f"{before_dot.name}.{n.attr}", line=self.line)
+            return UnboundType(f"{before_dot.name}.{n.attr}", line=self.line, column=n.col_offset)
         else:
             return self.invalid_type(n)
 
@@ -2218,7 +2169,7 @@ class FindAttributeAssign(TraverserVisitor):
 
 
 class FindYield(TraverserVisitor):
-    """Check if an AST contains yields or yield froms."""
+    """Check if an AST contains yields or yield froms."""  # codespell:ignore froms
 
     def __init__(self) -> None:
         self.found = False

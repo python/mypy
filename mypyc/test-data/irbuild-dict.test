@@ -186,7 +186,7 @@ L3:
     r14 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
-    r15 = CPy_NoErrOccured()
+    r15 = CPy_NoErrOccurred()
 L5:
     return d
 
@@ -218,8 +218,7 @@ L0:
     return r2
 
 [case testDictIterationMethods]
-from typing import Dict, Union
-from typing_extensions import TypedDict
+from typing import Dict, TypedDict, Union
 
 class Person(TypedDict):
     name: str
@@ -239,6 +238,7 @@ def typeddict(d: Person) -> None:
     for k, v in d.items():
         if k == "name":
             name = v
+[typing fixtures/typing-full.pyi]
 [out]
 def print_dict_methods(d1, d2):
     d1, d2 :: dict
@@ -295,7 +295,7 @@ L5:
     r13 = CPyDict_CheckSize(d1, r2)
     goto L1
 L6:
-    r14 = CPy_NoErrOccured()
+    r14 = CPy_NoErrOccurred()
 L7:
     r15 = 0
     r16 = PyDict_Size(d2)
@@ -325,7 +325,7 @@ L10:
     r33 = CPyDict_CheckSize(d2, r17)
     goto L8
 L11:
-    r34 = CPy_NoErrOccured()
+    r34 = CPy_NoErrOccurred()
 L12:
     return 1
 def union_of_dicts(d):
@@ -342,11 +342,14 @@ def union_of_dicts(d):
     r11 :: union[int, str]
     k :: str
     v :: union[int, str]
-    r12, r13 :: object
-    r14 :: int
+    r12 :: object
+    r13 :: object[1]
+    r14 :: object_ptr
     r15 :: object
-    r16 :: i32
-    r17, r18, r19 :: bit
+    r16 :: int
+    r17 :: object
+    r18 :: i32
+    r19, r20, r21 :: bit
 L0:
     r0 = PyDict_New()
     new = r0
@@ -368,16 +371,19 @@ L2:
     k = r10
     v = r11
     r12 = load_address PyLong_Type
-    r13 = PyObject_CallFunctionObjArgs(r12, v, 0)
-    r14 = unbox(int, r13)
-    r15 = box(int, r14)
-    r16 = CPyDict_SetItem(new, k, r15)
-    r17 = r16 >= 0 :: signed
+    r13 = [v]
+    r14 = load_address r13
+    r15 = PyObject_Vectorcall(r12, r14, 1, 0)
+    keep_alive v
+    r16 = unbox(int, r15)
+    r17 = box(int, r16)
+    r18 = CPyDict_SetItem(new, k, r17)
+    r19 = r18 >= 0 :: signed
 L3:
-    r18 = CPyDict_CheckSize(d, r3)
+    r20 = CPyDict_CheckSize(d, r3)
     goto L1
 L4:
-    r19 = CPy_NoErrOccured()
+    r21 = CPy_NoErrOccurred()
 L5:
     return 1
 def typeddict(d):
@@ -436,7 +442,7 @@ L8:
     r17 = CPyDict_CheckSize(d, r2)
     goto L1
 L9:
-    r18 = CPy_NoErrOccured()
+    r18 = CPy_NoErrOccurred()
 L10:
     return 1
 

@@ -18,6 +18,9 @@ package_path = os.path.join(PREFIX, "test-data", "packages")
 # It is also hard-coded in numerous places, so don't change it.
 test_temp_dir = "tmp"
 
+# Mypyc tests may write intermediate files (e.g. generated C) here on failure
+mypyc_output_dir = os.path.join(PREFIX, ".mypyc_test_output")
+
 # The PEP 561 tests do a bunch of pip installs which, even though they operate
 # on distinct temporary virtual environments, run into race conditions on shared
 # file-system state. To make this work reliably in parallel mode, we'll use a

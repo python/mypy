@@ -159,13 +159,14 @@ def foo():
 [case testSuggestInferTypedDict]
 # suggest: foo.foo
 [file foo.py]
-from typing_extensions import TypedDict
+from typing import TypedDict
 TD = TypedDict('TD', {'x': int})
 def foo():
     return bar()
 
 def bar() -> TD: ...
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 () -> foo.TD
 ==

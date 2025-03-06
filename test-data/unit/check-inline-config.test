@@ -323,3 +323,7 @@ class Foo:
 foo = Foo()
 if foo: ...
 42 + "no"  # type: ignore
+
+
+[case testInlinePythonVersion]
+# mypy: python-version=3.10  # E: python_version not supported in inline configuration

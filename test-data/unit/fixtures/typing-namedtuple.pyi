@@ -8,6 +8,7 @@ Optional = 0
 Self = 0
 Tuple = 0
 ClassVar = 0
+Final = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)

@@ -17,6 +17,7 @@ venv/
 test-data/packages/.pip_lock
 dmypy.json
 .dmypy.json
+/.mypyc_test_output
 
 # Packages
 *.egg

@@ -2,7 +2,7 @@
 
 Simple usage:
 
-  python misc/perf_compare.py my-branch master ...
+  python misc/perf_compare.py master my-branch ...
 
 What this does:
 
@@ -25,8 +25,8 @@ import shutil
 import statistics
 import subprocess
 import sys
-import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def heading(s: str) -> None:
@@ -39,6 +39,7 @@ def build_mypy(target_dir: str) -> None:
     env = os.environ.copy()
     env["CC"] = "clang"
     env["MYPYC_OPT_LEVEL"] = "2"
+    env["PYTHONHASHSEED"] = "1"
     cmd = [sys.executable, "setup.py", "--use-mypyc", "build_ext", "--inplace"]
     subprocess.run(cmd, env=env, check=True, cwd=target_dir)
 
@@ -54,22 +55,35 @@ def clone(target_dir: str, commit: str | None) -> None:
         subprocess.run(["git", "checkout", commit], check=True, cwd=target_dir)
 
 
-def run_benchmark(compiled_dir: str, check_dir: str) -> float:
+def edit_python_file(fnam: str) -> None:
+    with open(fnam) as f:
+        data = f.read()
+    data += "\n#"
+    with open(fnam, "w") as f:
+        f.write(data)
+
+
+def run_benchmark(
+    compiled_dir: str, check_dir: str, *, incremental: bool, code: str | None
+) -> float:
     cache_dir = os.path.join(compiled_dir, ".mypy_cache")
-    if os.path.isdir(cache_dir):
+    if os.path.isdir(cache_dir) and not incremental:
         shutil.rmtree(cache_dir)
     env = os.environ.copy()
     env["PYTHONPATH"] = os.path.abspath(compiled_dir)
+    env["PYTHONHASHSEED"] = "1"
     abschk = os.path.abspath(check_dir)
-    cmd = [
-        sys.executable,
-        "-m",
-        "mypy",
-        "--config-file",
-        os.path.join(abschk, "mypy_self_check.ini"),
-    ]
-    cmd += glob.glob(os.path.join(abschk, "mypy/*.py"))
-    cmd += glob.glob(os.path.join(abschk, "mypy/*/*.py"))
+    cmd = [sys.executable, "-m", "mypy"]
+    if code:
+        cmd += ["-c", code]
+    else:
+        cmd += ["--config-file", os.path.join(abschk, "mypy_self_check.ini")]
+        cmd += glob.glob(os.path.join(abschk, "mypy/*.py"))
+        cmd += glob.glob(os.path.join(abschk, "mypy/*/*.py"))
+        if incremental:
+            # Update a few files to force non-trivial incremental run
+            edit_python_file(os.path.join(abschk, "mypy/__main__.py"))
+            edit_python_file(os.path.join(abschk, "mypy/test/testcheck.py"))
     t0 = time.time()
     # Ignore errors, since some commits being measured may generate additional errors.
     subprocess.run(cmd, cwd=compiled_dir, env=env)
@@ -78,23 +92,49 @@ def run_benchmark(compiled_dir: str, check_dir: str) -> float:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("commit", nargs="+")
+    parser.add_argument(
+        "--incremental",
+        default=False,
+        action="store_true",
+        help="measure incremental run (fully cached)",
+    )
+    parser.add_argument(
+        "--num-runs",
+        metavar="N",
+        default=15,
+        type=int,
+        help="set number of measurements to perform (default=15)",
+    )
+    parser.add_argument(
+        "-j",
+        metavar="N",
+        default=8,
+        type=int,
+        help="set maximum number of parallel builds (default=8)",
+    )
+    parser.add_argument(
+        "-c",
+        metavar="CODE",
+        default=None,
+        type=str,
+        help="measure time to type check Python code fragment instead of mypy self-check",
+    )
+    parser.add_argument("commit", nargs="+", help="git revision to measure (e.g. branch name)")
     args = parser.parse_args()
+    incremental: bool = args.incremental
     commits = args.commit
-    num_runs = 16
+    num_runs: int = args.num_runs + 1
+    max_workers: int = args.j
+    code: str | None = args.c
 
     if not (os.path.isdir(".git") and os.path.isdir("mypyc")):
         sys.exit("error: Run this the mypy repo root")
 
-    build_threads = []
     target_dirs = []
     for i, commit in enumerate(commits):
         target_dir = f"mypy.{i}.tmpdir"
         target_dirs.append(target_dir)
         clone(target_dir, commit)
-        t = threading.Thread(target=lambda: build_mypy(target_dir))
-        t.start()
-        build_threads.append(t)
 
     self_check_dir = "mypy.self.tmpdir"
     clone(self_check_dir, commits[0])
@@ -102,8 +142,10 @@ def main() -> None:
     heading("Compiling mypy")
     print("(This will take a while...)")
 
-    for t in build_threads:
-        t.join()
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(build_mypy, target_dir) for target_dir in target_dirs]
+        for future in as_completed(futures):
+            future.result()
 
     print(f"Finished compiling mypy ({len(commits)} builds)")
 
@@ -118,7 +160,7 @@ def main() -> None:
         items = list(enumerate(commits))
         random.shuffle(items)
         for i, commit in items:
-            tt = run_benchmark(target_dirs[i], self_check_dir)
+            tt = run_benchmark(target_dirs[i], self_check_dir, incremental=incremental, code=code)
             # Don't record the first warm-up run
             if n > 0:
                 print(f"{commit}: t={tt:.3f}s")

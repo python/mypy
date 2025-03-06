@@ -219,7 +219,7 @@ L0:
     return r0
 
 [case testFloatFinalConstant]
-from typing_extensions import Final
+from typing import Final
 
 X: Final = 123.0
 Y: Final = -1.0

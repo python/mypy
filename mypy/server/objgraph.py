@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import types
 import weakref
-from collections.abc import Iterable
-from typing import Final, Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
+from typing import Final
 
 method_descriptor_type: Final = type(object.__dir__)
 method_wrapper_type: Final = type(object().__ne__)

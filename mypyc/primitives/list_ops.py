@@ -134,10 +134,10 @@ method_op(
 
 # This is unsafe because it assumes that the index is a non-negative short integer
 # that is in-bounds for the list.
-list_get_item_unsafe_op = custom_op(
+list_get_item_unsafe_op = custom_primitive_op(
+    name="list_get_item_unsafe",
     arg_types=[list_rprimitive, short_int_rprimitive],
     return_type=object_rprimitive,
-    c_function_name="CPyList_GetItemUnsafe",
     error_kind=ERR_NEVER,
 )
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
@@ -139,7 +139,7 @@ def solve_with_dependent(
       * Find dependencies between type variables, group them in SCCs, and sort topologically
       * Check that all SCC are intrinsically linear, we can't solve (express) T <: List[T]
       * Variables in leaf SCCs that don't have constant bounds are free (choose one per SCC)
-      * Solve constraints iteratively starting from leafs, updating bounds after each step.
+      * Solve constraints iteratively starting from leaves, updating bounds after each step.
     """
     graph, lowers, uppers = transitive_closure(vars, constraints)
 
@@ -350,7 +350,7 @@ def choose_free(
 
     # For convenience with current type application machinery, we use a stable
     # choice that prefers the original type variables (not polymorphic ones) in SCC.
-    best = sorted(scc, key=lambda x: (x.id not in original_vars, x.id.raw_id))[0]
+    best = min(scc, key=lambda x: (x.id not in original_vars, x.id.raw_id))
     if isinstance(best, TypeVarType):
         return best.copy_modified(values=values, upper_bound=common_upper_bound)
     if is_trivial_bound(common_upper_bound_p, allow_tuple=True):

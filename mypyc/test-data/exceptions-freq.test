@@ -97,7 +97,7 @@ L2:
 hot blocks: [0, 1]
 
 [case testRareBranch_freq]
-from typing_extensions import Final
+from typing import Final
 
 x: Final = str()
 

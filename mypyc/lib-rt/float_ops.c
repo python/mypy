@@ -16,6 +16,24 @@ static double CPy_MathRangeError(void) {
     return CPY_FLOAT_ERROR;
 }
 
+static double CPy_MathExpectedNonNegativeInputError(double x) {
+    char *buf = PyOS_double_to_string(x, 'r', 0, Py_DTSF_ADD_DOT_0, NULL);
+    if (buf) {
+        PyErr_Format(PyExc_ValueError, "expected a nonnegative input, got %s", buf);
+        PyMem_Free(buf);
+    }
+    return CPY_FLOAT_ERROR;
+}
+
+static double CPy_MathExpectedPositiveInputError(double x) {
+    char *buf = PyOS_double_to_string(x, 'r', 0, Py_DTSF_ADD_DOT_0, NULL);
+    if (buf) {
+        PyErr_Format(PyExc_ValueError, "expected a positive input, got %s", buf);
+        PyMem_Free(buf);
+    }
+    return CPY_FLOAT_ERROR;
+}
+
 double CPyFloat_FromTagged(CPyTagged x) {
     if (CPyTagged_CheckShort(x)) {
         return CPyTagged_ShortAsSsize_t(x);
@@ -52,7 +70,11 @@ double CPyFloat_Tan(double x) {
 
 double CPyFloat_Sqrt(double x) {
     if (x < 0.0) {
+#if CPY_3_14_FEATURES
+        return CPy_MathExpectedNonNegativeInputError(x);
+#else
         return CPy_DomainError();
+#endif
     }
     return sqrt(x);
 }
@@ -67,7 +89,11 @@ double CPyFloat_Exp(double x) {
 
 double CPyFloat_Log(double x) {
     if (x <= 0.0) {
+#if CPY_3_14_FEATURES
+        return CPy_MathExpectedPositiveInputError(x);
+#else
         return CPy_DomainError();
+#endif
     }
     return log(x);
 }

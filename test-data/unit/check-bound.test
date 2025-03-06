@@ -46,7 +46,7 @@ z = G(B())
 
 
 [case testBoundVoid]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --no-local-partial-types
 from typing import TypeVar, Generic
 T = TypeVar('T', bound=int)
 class C(Generic[T]):
@@ -75,7 +75,7 @@ z: C
 
 
 [case testBoundHigherOrderWithVoid]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --no-local-partial-types
 from typing import TypeVar, Callable
 class A: pass
 T = TypeVar('T', bound=A)

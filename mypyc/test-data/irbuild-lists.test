@@ -341,7 +341,7 @@ L1:
     r5 = int_lt r2, r4
     if r5 goto L2 else goto L4 :: bool
 L2:
-    r6 = CPyList_GetItemUnsafe(source, r2)
+    r6 = list_get_item_unsafe source, r2
     r7 = unbox(int, r6)
     x = r7
     r8 = CPyTagged_Add(x, 2)
@@ -362,7 +362,7 @@ L5:
     r17 = int_lt r14, r16
     if r17 goto L6 else goto L8 :: bool
 L6:
-    r18 = CPyList_GetItemUnsafe(source, r14)
+    r18 = list_get_item_unsafe source, r14
     r19 = unbox(int, r18)
     x_2 = r19
     r20 = CPyTagged_Add(x_2, 2)
@@ -403,7 +403,7 @@ L1:
     r3 = int_lt r0, r2
     if r3 goto L2 else goto L4 :: bool
 L2:
-    r4 = CPyList_GetItemUnsafe(x, r0)
+    r4 = list_get_item_unsafe x, r0
     r5 = unbox(int, r4)
     i = r5
     r6 = box(int, i)
@@ -476,7 +476,7 @@ L1:
     r3 = int_lt r0, r2
     if r3 goto L2 else goto L4 :: bool
 L2:
-    r4 = CPyList_GetItemUnsafe(a, r0)
+    r4 = list_get_item_unsafe a, r0
     r5 = cast(union[str, bytes], r4)
     x = r5
 L3:
@@ -502,7 +502,7 @@ L1:
     r3 = int_lt r0, r2
     if r3 goto L2 else goto L4 :: bool
 L2:
-    r4 = CPyList_GetItemUnsafe(a, r0)
+    r4 = list_get_item_unsafe a, r0
     r5 = cast(union[str, None], r4)
     x = r5
 L3:

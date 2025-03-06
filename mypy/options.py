@@ -4,7 +4,9 @@ import pprint
 import re
 import sys
 import sysconfig
-from typing import Any, Callable, Final, Mapping, Pattern
+from collections.abc import Mapping
+from re import Pattern
+from typing import Any, Callable, Final
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
@@ -67,6 +69,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "plugins",
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
+        "strict_bytes",
     }
 ) - {"debug_cache"}
 
@@ -133,6 +136,7 @@ class Options:
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
         self.exclude: list[str] = []
+        self.exclude_gitignore: bool = False
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -179,6 +183,10 @@ class Options:
         # Report importing or using deprecated features as errors instead of notes.
         self.report_deprecated_as_note = False
 
+        # Allow deprecated calls from function coming from modules/packages
+        # in this list (each item effectively acts as a prefix match)
+        self.deprecated_calls_exclude: list[str] = []
+
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
@@ -214,6 +222,9 @@ class Options:
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
+
+        # Disable treating bytearray and memoryview as subtypes of bytes
+        self.strict_bytes = False
 
         # Deprecated, use extra_checks instead.
         self.strict_concatenate = False

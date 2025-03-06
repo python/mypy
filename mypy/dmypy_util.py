@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import io
 import json
+from collections.abc import Iterable, Iterator
 from types import TracebackType
-from typing import Any, Final, Iterable, Iterator, TextIO
+from typing import Any, Final, TextIO
 
 from mypy.ipc import IPCBase
 

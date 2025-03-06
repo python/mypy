@@ -118,7 +118,7 @@ from typing import dataclass_transform, Type
 
 BOOLEAN_CONSTANT = True
 
-@dataclass_transform(nonexistant=True) # E: Unrecognized dataclass_transform parameter "nonexistant"
+@dataclass_transform(nonexistent=True) # E: Unrecognized dataclass_transform parameter "nonexistent"
 def foo(cls: Type) -> Type:
     return cls
 

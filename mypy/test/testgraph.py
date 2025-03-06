@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import AbstractSet
+from collections.abc import Set as AbstractSet
 
 from mypy.build import BuildManager, BuildSourceSet, State, order_ascc, sorted_components
 from mypy.errors import Errors

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from mypyc.common import PLATFORM_SIZE
-from mypyc.ir.ops import GetElementPtr, Integer, IntOp, LoadMem, SetMem, Value
+from mypyc.ir.ops import GetElementPtr, IncRef, Integer, IntOp, LoadMem, SetMem, Value
 from mypyc.ir.rtypes import (
     PyListObject,
     c_pyssize_t_rprimitive,
@@ -43,3 +43,31 @@ def buf_init_item(builder: LowLevelIRBuilder, args: list[Value], line: int) -> V
 def list_items(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
     ob_item_ptr = builder.add(GetElementPtr(args[0], PyListObject, "ob_item", line))
     return builder.add(LoadMem(pointer_rprimitive, ob_item_ptr, line))
+
+
+def list_item_ptr(builder: LowLevelIRBuilder, obj: Value, index: Value, line: int) -> Value:
+    """Get a pointer to a list item (index must be valid and non-negative).
+
+    Type of index must be c_pyssize_t_rprimitive, and obj must refer to a list object.
+    """
+    # List items are represented as an array of pointers. Pointer to the item obj[index] is
+    # <pointer to first item> + index * <pointer size>.
+    items = list_items(builder, [obj], line)
+    delta = builder.add(
+        IntOp(
+            c_pyssize_t_rprimitive,
+            index,
+            Integer(PLATFORM_SIZE, c_pyssize_t_rprimitive),
+            IntOp.MUL,
+        )
+    )
+    return builder.add(IntOp(pointer_rprimitive, items, delta, IntOp.ADD))
+
+
+@lower_primitive_op("list_get_item_unsafe")
+def list_get_item_unsafe(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
+    index = builder.coerce(args[1], c_pyssize_t_rprimitive, line)
+    item_ptr = list_item_ptr(builder, args[0], index, line)
+    value = builder.add(LoadMem(object_rprimitive, item_ptr, line))
+    builder.add(IncRef(value))
+    return value

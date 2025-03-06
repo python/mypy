@@ -166,8 +166,7 @@ IfConditionalAndNonConditional1: [x]
 IfConditionalAndNonConditional2: []
 
 [case testAlwaysDefinedExpressions]
-from typing import Dict, List, Set, Optional, cast
-from typing_extensions import Final
+from typing import Dict, Final, List, Set, Optional, cast
 
 import other
 
@@ -307,7 +306,7 @@ def f() -> int:
 
 [file other.py]
 # Not compiled
-from typing_extensions import Final
+from typing import Final
 
 Y: Final = 3
 

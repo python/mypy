@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 import re
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 import mypy.nodes
 from mypy.options import Options

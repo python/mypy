@@ -985,8 +985,7 @@ main:4: error: "A" not callable
 -- assert_type()
 
 [case testAssertType]
-from typing import assert_type, Any
-from typing_extensions import Literal
+from typing import assert_type, Any, Literal
 a: int = 1
 returned = assert_type(a, int)
 reveal_type(returned)  # N: Revealed type is "builtins.int"
@@ -998,8 +997,7 @@ assert_type(42, int)  # E: Expression is of type "Literal[42]", not "int"
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeGeneric]
-from typing import assert_type, TypeVar, Generic
-from typing_extensions import Literal
+from typing import assert_type, Literal, TypeVar, Generic
 T = TypeVar("T")
 def f(x: T) -> T: return x
 assert_type(f(1), int)
@@ -1012,25 +1010,23 @@ y: Gen[Literal[1]] = assert_type(Gen(1), Gen[Literal[1]])
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeUncheckedFunction]
-from typing import assert_type
-from typing_extensions import Literal
+from typing import Literal, assert_type
 def f():
     x = 42
     assert_type(x, Literal[42])
 [out]
-main:5: error: Expression is of type "Any", not "Literal[42]"
-main:5: note: "assert_type" expects everything to be "Any" in unchecked functions
+main:4: error: Expression is of type "Any", not "Literal[42]"
+main:4: note: "assert_type" expects everything to be "Any" in unchecked functions
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeUncheckedFunctionWithUntypedCheck]
 # flags: --check-untyped-defs
-from typing import assert_type
-from typing_extensions import Literal
+from typing import Literal, assert_type
 def f():
     x = 42
     assert_type(x, Literal[42])
 [out]
-main:6: error: Expression is of type "int", not "Literal[42]"
+main:5: error: Expression is of type "int", not "Literal[42]"
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeNoPromoteUnion]
@@ -1505,6 +1501,13 @@ y = ""
 x.append(y) if bool() else x.append(y)
 z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not return a value (it only ever returns None)
 [builtins fixtures/list.pyi]
+
+[case testConditionalExpressionWithUnreachableBranches]
+from typing import TypeVar
+T = TypeVar("T", int, str)
+def foo(x: T) -> T:
+    return x + 1 if isinstance(x, int) else x + "a"
+[builtins fixtures/isinstancelist.pyi]
 
 -- Special cases
 -- -------------
@@ -2276,7 +2279,7 @@ def f(x: T) -> T:
 
 [case testStrictEqualityWithALiteral]
 # flags: --strict-equality
-from typing_extensions import Literal, Final
+from typing import Final, Literal
 
 def returns_a_or_b() -> Literal['a', 'b']:
     ...

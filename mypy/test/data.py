@@ -10,15 +10,17 @@ import shutil
 import sys
 import tempfile
 from abc import abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Iterator, NamedTuple, NoReturn, Pattern, Union
+from re import Pattern
+from typing import Any, Final, NamedTuple, NoReturn, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 import pytest
 
 from mypy import defaults
-from mypy.test.config import PREFIX, test_data_prefix, test_temp_dir
+from mypy.test.config import PREFIX, mypyc_output_dir, test_data_prefix, test_temp_dir
 
 root_dir = os.path.normpath(PREFIX)
 
@@ -244,7 +246,7 @@ class DataDrivenTestCase(pytest.Item):
     """Holds parsed data-driven test cases, and handles directory setup and teardown."""
 
     # Override parent member type
-    parent: DataSuiteCollector
+    parent: DataFileCollector
 
     input: list[str]
     output: list[str]  # Output for the first pass
@@ -275,7 +277,7 @@ class DataDrivenTestCase(pytest.Item):
 
     def __init__(
         self,
-        parent: DataSuiteCollector,
+        parent: DataFileCollector,
         suite: DataSuite,
         *,
         file: str,
@@ -289,6 +291,7 @@ class DataDrivenTestCase(pytest.Item):
         data: str,
         line: int,
     ) -> None:
+        assert isinstance(parent, DataFileCollector)
         super().__init__(name, parent)
         self.suite = suite
         self.file = file
@@ -582,6 +585,13 @@ def fix_cobertura_filename(line: str) -> str:
 # pytest setup
 #
 ##
+
+
+def pytest_sessionstart(session: Any) -> None:
+    # Clean up directory where mypyc tests write intermediate files on failure
+    # to avoid any confusion between test runs
+    if os.path.isdir(mypyc_output_dir):
+        shutil.rmtree(mypyc_output_dir)
 
 
 # This function name is special to pytest.  See

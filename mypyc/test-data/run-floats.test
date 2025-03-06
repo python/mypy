@@ -2,8 +2,7 @@
 
 [case testFloatOps]
 from __future__ import annotations
-from typing import Any, cast
-from typing_extensions import Final
+from typing import Final, Any, cast
 from testutil import assertRaises, float_vals, FLOAT_MAGIC
 import math
 
@@ -348,8 +347,7 @@ def test_tuples() -> None:
     assert t2 == tuple([5.0, 1.5, -7.0, -113.0])
 
 [case testFloatGlueMethodsAndInheritance]
-from typing import Any
-from typing_extensions import Final
+from typing import Final, Any
 
 from mypy_extensions import trait
 

@@ -41,7 +41,7 @@ reraise_exception_op = custom_op(
 no_err_occurred_op = custom_op(
     arg_types=[],
     return_type=bit_rprimitive,
-    c_function_name="CPy_NoErrOccured",
+    c_function_name="CPy_NoErrOccurred",
     error_kind=ERR_FALSE,
 )
 

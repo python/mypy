@@ -116,7 +116,7 @@ L0:
     return r0
 
 [case testFinalConstantFolding]
-from typing_extensions import Final
+from typing import Final
 
 X: Final = -1
 Y: Final = -(1 + 3*2)

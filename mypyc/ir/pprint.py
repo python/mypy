@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Final, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Final, Union
 
 from mypyc.common import short_name
 from mypyc.ir.func_ir import FuncIR, all_values_full

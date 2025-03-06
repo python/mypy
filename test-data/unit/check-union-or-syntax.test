@@ -45,9 +45,10 @@ reveal_type(f)  # N: Revealed type is "def (x: Union[__main__.A, __main__.B, __m
 
 [case testUnionOrSyntaxWithLiteral]
 # flags: --python-version 3.10
-from typing_extensions import Literal
+from typing import Literal
 reveal_type(Literal[4] | str)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testUnionOrSyntaxWithBadOperator]
 # flags: --python-version 3.10

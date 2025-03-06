@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import DefaultDict, Iterator, List, NamedTuple, Optional, Tuple, Union
+from typing import NamedTuple, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
-from mypy.join import join_simple
 from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
 from mypy.subtypes import is_same_type, is_subtype
+from mypy.typeops import make_simplified_union
 from mypy.types import (
     AnyType,
     Instance,
@@ -20,6 +21,7 @@ from mypy.types import (
     Type,
     TypeOfAny,
     TypeType,
+    TypeVarType,
     UnionType,
     UnpackType,
     find_unpack_in_list,
@@ -39,12 +41,22 @@ class Frame:
     """A Frame represents a specific point in the execution of a program.
     It carries information about the current types of expressions at
     that point, arising either from assignments to those expressions
-    or the result of isinstance checks. It also records whether it is
-    possible to reach that point at all.
+    or the result of isinstance checks and other type narrowing
+    operations. It also records whether it is possible to reach that
+    point at all.
+
+    We add a new frame wherenever there is a new scope or control flow
+    branching.
 
     This information is not copied into a new Frame when it is pushed
     onto the stack, so a given Frame only has information about types
     that were assigned in that frame.
+
+    Expressions are stored in dicts using 'literal hashes' as keys (type
+    "Key"). These are hashable values derived from expression AST nodes
+    (only those that can be narrowed). literal_hash(expr) is used to
+    calculate the hashes. Note that this isn't directly related to literal
+    types -- the concept predates literal types.
     """
 
     def __init__(self, id: int, conditional_frame: bool = False) -> None:
@@ -58,28 +70,27 @@ class Frame:
         return f"Frame({self.id}, {self.types}, {self.unreachable}, {self.conditional_frame})"
 
 
-Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
+Assigns = defaultdict[Expression, list[tuple[Type, Optional[Type]]]]
 
 
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables.
 
-    NB: Variables are tracked by literal expression, so it is possible
-    to confuse the binder; for example,
+    NB: Variables are tracked by literal hashes of expressions, so it is
+    possible to confuse the binder when there is aliasing. Example:
 
-    ```
-    class A:
-        a: Union[int, str] = None
-    x = A()
-    lst = [x]
-    reveal_type(x.a)      # Union[int, str]
-    x.a = 1
-    reveal_type(x.a)      # int
-    reveal_type(lst[0].a) # Union[int, str]
-    lst[0].a = 'a'
-    reveal_type(x.a)      # int
-    reveal_type(lst[0].a) # str
-    ```
+        class A:
+            a: int | str
+
+        x = A()
+        lst = [x]
+        reveal_type(x.a)      # int | str
+        x.a = 1
+        reveal_type(x.a)      # int
+        reveal_type(lst[0].a) # int | str
+        lst[0].a = 'a'
+        reveal_type(x.a)      # int
+        reveal_type(lst[0].a) # str
     """
 
     # Stored assignments for situations with tuple/list lvalue and rvalue of union type.
@@ -87,6 +98,7 @@ class ConditionalTypeBinder:
     type_assignments: Assigns | None = None
 
     def __init__(self) -> None:
+        # Each frame gets an increasing, distinct id.
         self.next_id = 1
 
         # The stack of frames currently used.  These map
@@ -114,6 +126,7 @@ class ConditionalTypeBinder:
         # Whether the last pop changed the newly top frame on exit
         self.last_pop_changed = False
 
+        # These are used to track control flow in try statements and loops.
         self.try_frames: set[int] = set()
         self.break_frames: list[int] = []
         self.continue_frames: list[int] = []
@@ -149,6 +162,10 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type, *, from_assignment: bool = True) -> None:
+        """Directly set the narrowed type of expression (if it supports it).
+
+        This is used for isinstance() etc. Assignments should go through assign_type().
+        """
         if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not literal(expr):
@@ -236,9 +253,21 @@ class ConditionalTypeBinder:
                 ):
                     type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
-                for other in resulting_values[1:]:
-                    assert other is not None
-                    type = join_simple(self.declarations[key], type, other.type)
+                possible_types = []
+                for t in resulting_values:
+                    assert t is not None
+                    possible_types.append(t.type)
+                if len(possible_types) == 1:
+                    # This is to avoid calling get_proper_type() unless needed, as this may
+                    # interfere with our (hacky) TypeGuard support.
+                    type = possible_types[0]
+                else:
+                    type = make_simplified_union(possible_types)
+                    # Legacy guard for corner case when the original type is TypeVarType.
+                    if isinstance(declaration_type, TypeVarType) and not is_subtype(
+                        type, declaration_type
+                    ):
+                        type = declaration_type
                     # Try simplifying resulting type for unions involving variadic tuples.
                     # Technically, everything is still valid without this step, but if we do
                     # not do this, this may create long unions after exiting an if check like:
@@ -257,7 +286,7 @@ class ConditionalTypeBinder:
                         )
                         if simplified == self.declarations[key]:
                             type = simplified
-            if current_value is None or not is_same_type(type, current_value[0]):
+            if current_value is None or not is_same_type(type, current_value.type):
                 self._put(key, type, from_assignment=True)
                 changed = True
 
@@ -299,9 +328,14 @@ class ConditionalTypeBinder:
         yield self.type_assignments
         self.type_assignments = old_assignments
 
-    def assign_type(
-        self, expr: Expression, type: Type, declared_type: Type | None, restrict_any: bool = False
-    ) -> None:
+    def assign_type(self, expr: Expression, type: Type, declared_type: Type | None) -> None:
+        """Narrow type of expression through an assignment.
+
+        Do nothing if the expression doesn't support narrowing.
+
+        When not narrowing though an assignment (isinstance() etc.), use put()
+        directly. This omits some special-casing logic for assignments.
+        """
         # We should erase last known value in binder, because if we are using it,
         # it means that the target is not final, and therefore can't hold a literal.
         type = remove_instance_last_known_values(type)
@@ -332,41 +366,39 @@ class ConditionalTypeBinder:
 
         p_declared = get_proper_type(declared_type)
         p_type = get_proper_type(type)
-        enclosing_type = get_proper_type(self.most_recent_enclosing_type(expr, type))
-        if isinstance(enclosing_type, AnyType) and not restrict_any:
-            # If x is Any and y is int, after x = y we do not infer that x is int.
-            # This could be changed.
-            # Instead, since we narrowed type from Any in a recent frame (probably an
-            # isinstance check), but now it is reassigned, we broaden back
-            # to Any (which is the most recent enclosing type)
-            self.put(expr, enclosing_type)
-        # As a special case, when assigning Any to a variable with a
-        # declared Optional type that has been narrowed to None,
-        # replace all the Nones in the declared Union type with Any.
-        # This overrides the normal behavior of ignoring Any assignments to variables
-        # in order to prevent false positives.
-        # (See discussion in #3526)
-        elif (
-            isinstance(p_type, AnyType)
-            and isinstance(p_declared, UnionType)
-            and any(isinstance(get_proper_type(item), NoneType) for item in p_declared.items)
-            and isinstance(
-                get_proper_type(self.most_recent_enclosing_type(expr, NoneType())), NoneType
-            )
-        ):
-            # Replace any Nones in the union type with Any
-            new_items = [
-                type if isinstance(get_proper_type(item), NoneType) else item
-                for item in p_declared.items
-            ]
-            self.put(expr, UnionType(new_items))
-        elif isinstance(p_type, AnyType) and not (
-            isinstance(p_declared, UnionType)
-            and any(isinstance(get_proper_type(item), AnyType) for item in p_declared.items)
-        ):
-            # Assigning an Any value doesn't affect the type to avoid false negatives, unless
-            # there is an Any item in a declared union type.
-            self.put(expr, declared_type)
+        if isinstance(p_type, AnyType):
+            # Any type requires some special casing, for both historical reasons,
+            # and to optimise user experience without sacrificing correctness too much.
+            if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_inferred:
+                # First case: a local/global variable without explicit annotation,
+                # in this case we just assign Any (essentially following the SSA logic).
+                self.put(expr, type)
+            elif isinstance(p_declared, UnionType) and any(
+                isinstance(get_proper_type(item), NoneType) for item in p_declared.items
+            ):
+                # Second case: explicit optional type, in this case we optimize for a common
+                # pattern when an untyped value used as a fallback replacing None.
+                new_items = [
+                    type if isinstance(get_proper_type(item), NoneType) else item
+                    for item in p_declared.items
+                ]
+                self.put(expr, UnionType(new_items))
+            elif isinstance(p_declared, UnionType) and any(
+                isinstance(get_proper_type(item), AnyType) for item in p_declared.items
+            ):
+                # Third case: a union already containing Any (most likely from an un-imported
+                # name), in this case we allow assigning Any as well.
+                self.put(expr, type)
+            else:
+                # In all other cases we don't narrow to Any to minimize false negatives.
+                self.put(expr, declared_type)
+        elif isinstance(p_declared, AnyType):
+            # Mirroring the first case above, we don't narrow to a precise type if the variable
+            # has an explicit `Any` type annotation.
+            if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_inferred:
+                self.put(expr, type)
+            else:
+                self.put(expr, declared_type)
         else:
             self.put(expr, type)
 
@@ -387,19 +419,6 @@ class ConditionalTypeBinder:
         assert key is not None
         for dep in self.dependencies.get(key, set()):
             self._cleanse_key(dep)
-
-    def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Type | None:
-        type = get_proper_type(type)
-        if isinstance(type, AnyType):
-            return get_declaration(expr)
-        key = literal_hash(expr)
-        assert key is not None
-        enclosers = [get_declaration(expr)] + [
-            f.types[key].type
-            for f in self.frames
-            if key in f.types and is_subtype(type, f.types[key][0])
-        ]
-        return enclosers[-1]
 
     def allow_jump(self, index: int) -> None:
         # self.frames and self.options_on_return have different lengths
@@ -491,6 +510,11 @@ class ConditionalTypeBinder:
 
 
 def get_declaration(expr: BindableExpression) -> Type | None:
+    """Get the declared or inferred type of a RefExpr expression.
+
+    Return None if there is no type or the expression is not a RefExpr.
+    This can return None if the type hasn't been inferred yet.
+    """
     if isinstance(expr, RefExpr):
         if isinstance(expr.node, Var):
             type = expr.node.type

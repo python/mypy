@@ -1,8 +1,7 @@
 [case testU8BasicOps]
-from typing import Any, Tuple
+from typing import Any, Final, Tuple
 
 from mypy_extensions import u8, i16, i32, i64
-from typing_extensions import Final
 
 from testutil import assertRaises
 

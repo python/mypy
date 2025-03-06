@@ -22,9 +22,11 @@ def lookup_fully_qualified(
     This function should *not* be used to find a module. Those should be looked
     in the modules dictionary.
     """
-    head = name
+    # 1. Exclude the names of ad hoc instance intersections from step 2.
+    i = name.find("<subclass ")
+    head = name if i == -1 else name[:i]
     rest = []
-    # 1. Find a module tree in modules dictionary.
+    # 2. Find a module tree in modules dictionary.
     while True:
         if "." not in head:
             if raise_on_missing:
@@ -36,12 +38,14 @@ def lookup_fully_qualified(
         if mod is not None:
             break
     names = mod.names
-    # 2. Find the symbol in the module tree.
+    # 3. Find the symbol in the module tree.
     if not rest:
         # Looks like a module, don't use this to avoid confusions.
         if raise_on_missing:
             assert rest, f"Cannot find {name}, got a module symbol"
         return None
+    if i != -1:
+        rest[0] += name[i:]
     while True:
         key = rest.pop()
         if key not in names:

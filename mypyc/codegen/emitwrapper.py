@@ -12,7 +12,7 @@ or methods in a single compilation unit.
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
@@ -24,7 +24,6 @@ from mypyc.common import (
     NATIVE_PREFIX,
     PREFIX,
     bitmap_name,
-    use_vectorcall,
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR, RuntimeArg
@@ -173,7 +172,7 @@ def generate_wrapper_function(
         arg_ptrs += [f"&obj_{groups[ARG_STAR2][0].name}" if groups[ARG_STAR2] else "NULL"]
     arg_ptrs += [f"&obj_{arg.name}" for arg in reordered_args]
 
-    if fn.name == "__call__" and use_vectorcall(emitter.capi_version):
+    if fn.name == "__call__":
         nargs = "PyVectorcall_NARGS(nargs)"
     else:
         nargs = "nargs"

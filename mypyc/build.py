@@ -25,7 +25,8 @@ import os.path
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, Union, cast
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, NoReturn, Union, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -87,7 +88,7 @@ def setup_mypycify_vars() -> None:
     # There has to be a better approach to this.
 
     # The vars can contain ints but we only work with str ones
-    vars = cast(Dict[str, str], sysconfig.get_config_vars())
+    vars = cast(dict[str, str], sysconfig.get_config_vars())
     if sys.platform == "darwin":
         # Disable building 32-bit binaries, since we generate too much code
         # for a 32-bit Mach-O object. There has to be a better way to do this.

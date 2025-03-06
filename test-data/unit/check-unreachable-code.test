@@ -1013,8 +1013,7 @@ def foo(x: T) -> T:
 [case testUnreachableFlagContextManagersNoSuppress]
 # flags: --warn-unreachable
 from contextlib import contextmanager
-from typing import Optional, Iterator, Any
-from typing_extensions import Literal
+from typing import Literal, Optional, Iterator, Any
 class DoesNotSuppress1:
     def __enter__(self) -> int: ...
     def __exit__(self, exctype: object, excvalue: object, traceback: object) -> Optional[bool]: ...
@@ -1078,8 +1077,7 @@ def f_no_suppress_5() -> int:
 [case testUnreachableFlagContextManagersSuppressed]
 # flags: --warn-unreachable
 from contextlib import contextmanager
-from typing import Optional, Iterator, Any
-from typing_extensions import Literal
+from typing import Optional, Iterator, Literal, Any
 
 class DoesNotSuppress:
     def __enter__(self) -> int: ...
@@ -1125,8 +1123,7 @@ def f_mix() -> int:         # E: Missing return statement
 [case testUnreachableFlagContextManagersSuppressedNoStrictOptional]
 # flags: --warn-unreachable --no-strict-optional
 from contextlib import contextmanager
-from typing import Optional, Iterator, Any
-from typing_extensions import Literal
+from typing import Optional, Iterator, Literal, Any
 
 class DoesNotSuppress1:
     def __enter__(self) -> int: ...
@@ -1167,8 +1164,7 @@ def f_suppress() -> int:  # E: Missing return statement
 [case testUnreachableFlagContextAsyncManagersNoSuppress]
 # flags: --warn-unreachable
 from contextlib import asynccontextmanager
-from typing import Optional, AsyncIterator, Any
-from typing_extensions import Literal
+from typing import Optional, AsyncIterator, Literal, Any
 
 class DoesNotSuppress1:
     async def __aenter__(self) -> int: ...
@@ -1233,8 +1229,7 @@ async def f_no_suppress_5() -> int:
 [case testUnreachableFlagContextAsyncManagersSuppressed]
 # flags: --warn-unreachable
 from contextlib import asynccontextmanager
-from typing import Optional, AsyncIterator, Any
-from typing_extensions import Literal
+from typing import Optional, AsyncIterator, Literal, Any
 
 class DoesNotSuppress:
     async def __aenter__(self) -> int: ...
@@ -1280,8 +1275,7 @@ async def f_mix() -> int:         # E: Missing return statement
 [case testUnreachableFlagContextAsyncManagersAbnormal]
 # flags: --warn-unreachable
 from contextlib import asynccontextmanager
-from typing import Optional, AsyncIterator, Any
-from typing_extensions import Literal
+from typing import Optional, AsyncIterator, Literal, Any
 
 class RegularManager:
     def __enter__(self) -> int: ...
@@ -1380,7 +1374,7 @@ def f(t: T) -> None:
 
 [case testUnreachableLiteral]
 # flags: --warn-unreachable
-from typing_extensions import Literal
+from typing import Literal
 
 def nope() -> Literal[False]: ...
 
@@ -1391,7 +1385,7 @@ def f() -> None:
 
 [case testUnreachableLiteralFrom__bool__]
 # flags: --warn-unreachable
-from typing_extensions import Literal
+from typing import Literal
 
 class Truth:
     def __bool__(self) -> Literal[True]: ...
