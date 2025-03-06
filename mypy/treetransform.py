@@ -559,9 +559,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_assignment_expr(self, node: AssignmentExpr) -> AssignmentExpr:
-        target = self.expr(node.target)
-        assert isinstance(target, NameExpr)
-        return AssignmentExpr(target, self.expr(node.value))
+        return AssignmentExpr(self.duplicate_name(node.target), self.expr(node.value))
 
     def visit_unary_expr(self, node: UnaryExpr) -> UnaryExpr:
         new = UnaryExpr(node.op, self.expr(node.expr))
