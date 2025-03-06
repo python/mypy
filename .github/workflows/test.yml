@@ -33,7 +33,7 @@ jobs:
         # the oldest and newest supported Python versions
         - name: Test suite with py39-ubuntu, mypyc-compiled
           python: '3.9'
-          os: ubuntu-22.04-arm
+          os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
@@ -44,31 +44,31 @@ jobs:
           tox_extra_args: "-n 4"
         - name: Test suite with py310-ubuntu
           python: '3.10'
-          os: ubuntu-22.04-arm
+          os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
         - name: Test suite with py311-ubuntu, mypyc-compiled
           python: '3.11'
-          os: ubuntu-22.04-arm
+          os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
         - name: Test suite with py312-ubuntu, mypyc-compiled
           python: '3.12'
-          os: ubuntu-22.04-arm
+          os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
         - name: Test suite with py313-ubuntu, mypyc-compiled
           python: '3.13'
-          os: ubuntu-22.04-arm
+          os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
 
         # - name: Test suite with py314-dev-ubuntu
         #   python: '3.14-dev'
-        #   os: ubuntu-22.04-arm
+        #   os: ubuntu-24.04-arm
         #   toxenv: py
         #   tox_extra_args: "-n 4"
         #   allow_failure: true

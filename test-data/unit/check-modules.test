@@ -1388,14 +1388,14 @@ import b
 import b
 class C:
     def f1(self) -> None:
-        self.x2
+        reveal_type(self.x2)
     def f2(self) -> None:
         self.x2 = b.b
 [file b.py]
 import a
 b = 1 + int()
 [out]
-tmp/a.py:4: error: Cannot determine type of "x2"
+tmp/a.py:4: note: Revealed type is "builtins.int"
 
 [case testErrorInPassTwo1]
 import b

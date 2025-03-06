@@ -5523,7 +5523,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if type_info in mro:
             index = mro.index(type_info)
         else:
-            method = self.chk.scope.top_function()
+            method = self.chk.scope.current_function()
             # Mypy explicitly allows supertype upper bounds (and no upper bound at all)
             # for annotating self-types. However, if such an annotation is used for
             # checking super() we will still get an error. So to be consistent, we also
@@ -5598,7 +5598,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             type_type: ProperType = TypeType(current_type)
 
             # Use the type of the self argument, in case it was annotated
-            method = self.chk.scope.top_function()
+            method = self.chk.scope.current_function()
             assert method is not None
             if method.arguments:
                 instance_type: Type = method.arguments[0].variable.type or current_type
