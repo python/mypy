@@ -740,3 +740,24 @@ def fn(w: W) -> W:
         reveal_type(w)  # N: Revealed type is "builtins.int"
     return w
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeVarValuesPropagateUnreachabilitySilence]
+# flags: --warn-unreachable
+from typing import Any, Callable, TypeVar
+
+from typing_extensions import Concatenate, ParamSpec
+
+T = TypeVar("T", int, str)
+P = ParamSpec("P")
+
+def accepts_mapping(
+    func: Callable[P, Any]
+) -> Callable[Concatenate[T, P], T]:
+    def wrapper(data: T, /, *args: P.args, **kwargs: P.kwargs) -> T:
+        if isinstance(data, str):
+            return ""
+        else:
+            return 1
+
+    return wrapper
+[builtins fixtures/isinstance.pyi]

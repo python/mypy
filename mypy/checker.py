@@ -1193,6 +1193,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for item, typ in expanded:
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
+            if old_binder.is_unreachable_warning_suppressed():
+                self.binder.suppress_unreachable_warnings()
+
             with self.binder.top_frame_context():
                 defn.expanded.append(item)
 
@@ -1380,6 +1383,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 new_frame = self.binder.push_frame()
                             new_frame.types[key] = narrowed_type
                             self.binder.declarations[key] = old_binder.declarations[key]
+
                 with self.scope.push_function(defn):
                     # We suppress reachability warnings for empty generator functions
                     # (return; yield) which have a "yield" that's unreachable by definition
