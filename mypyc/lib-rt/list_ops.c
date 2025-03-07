@@ -34,7 +34,7 @@ PyObject *CPyList_Copy(PyObject *list) {
         return PyList_GetSlice(list, 0, PyList_GET_SIZE(list));
     }
     _Py_IDENTIFIER(copy);
-    return _PyObject_CallMethodIdNoArgs(list, &PyID_copy);
+    return _PyObject_CallMethodIdNoArgs(list, &PyId_copy);
 }
 
 PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
