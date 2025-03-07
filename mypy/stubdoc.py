@@ -262,6 +262,8 @@ class DocStringParser:
                     self.keyword_only = len(self.args)
                     self.accumulator = ""
                 else:
+                    if self.accumulator.startswith("*"):
+                        self.keyword_only = len(self.args) + 1
                     self.arg_name = self.accumulator
                     if not (
                         token.string == ")" and self.accumulator.strip() == ""
@@ -301,7 +303,7 @@ class DocStringParser:
             self.accumulator = ""
         elif (
             token.type == tokenize.OP
-            and (token.string in {"*", "/"})
+            and token.string == "/"
             and self.state[-1] == STATE_ARGUMENT_LIST
         ):
             if token.string == "/":
@@ -315,8 +317,6 @@ class DocStringParser:
                 self.pos_only = len(self.args)
                 self.state.append(STATE_ARGUMENT_TYPE)
                 self.accumulator = ""
-            else:
-                self.accumulator = "*"
 
         elif token.type == tokenize.OP and token.string == "->" and self.state[-1] == STATE_INIT:
             self.accumulator = ""
