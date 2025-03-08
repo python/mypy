@@ -77,7 +77,7 @@ def test_list_copy() -> None:
     assert l2 != l1
     l1 = [1, 2, 3]
     assert l1.copy() == l2.copy()
-    
+
 [case testSieve]
 from typing import List
 
