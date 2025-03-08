@@ -15,6 +15,7 @@ from mypy.subtypes import is_subtype
 from mypy.typeops import get_all_type_vars
 from mypy.types import (
     AnyType,
+    CallableType,
     Instance,
     NoneType,
     ParamSpecType,
@@ -576,6 +577,8 @@ def pre_validate_solutions(
 
 def is_callable_protocol(t: Type) -> bool:
     proper_t = get_proper_type(t)
+    if isinstance(proper_t, CallableType) and proper_t.is_ellipsis_args:
+        return True
     if isinstance(proper_t, Instance) and proper_t.type.is_protocol:
         return "__call__" in proper_t.type.protocol_members
     return False
