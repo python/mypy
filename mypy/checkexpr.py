@@ -1638,6 +1638,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 object_type,
                 original_type=callee,
             )
+        elif isinstance(callee, UninhabitedType):
+            self.infer_arg_types_in_empty_context(args)
+            return (UninhabitedType(), UninhabitedType())
         else:
             return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)
 
@@ -1795,9 +1798,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callable_name,
         )
 
-        self.check_argument_types(
-            arg_types, arg_kinds, args, callee, formal_to_actual, context, object_type=object_type
-        )
+        if not (
+            isinstance(callable_node, RefExpr)
+            and callable_node.fullname in ("typing.assert_never", "typing_extensions.assert_never")
+            and self.chk.binder.is_unreachable()
+        ):
+            self.check_argument_types(
+                arg_types,
+                arg_kinds,
+                args,
+                callee,
+                formal_to_actual,
+                context,
+                object_type=object_type,
+            )
 
         if (
             callee.is_type_obj()
@@ -4273,11 +4287,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif e.op == "or":
             left_map, right_map = self.chk.find_isinstance_check(e.left)
 
+        left_impossible = left_map is None or any(
+            isinstance(get_proper_type(v), UninhabitedType) for v in left_map.values()
+        )
+        right_impossible = right_map is None or any(
+            isinstance(get_proper_type(v), UninhabitedType) for v in right_map.values()
+        )
+
         # If left_map is None then we know mypy considers the left expression
         # to be redundant.
         if (
             codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes
-            and left_map is None
+            and left_impossible
             # don't report an error if it's intentional
             and not e.right_always
         ):
@@ -4285,7 +4306,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if (
             self.chk.should_report_unreachable_issues()
-            and right_map is None
+            and right_impossible
             # don't report an error if it's intentional
             and not e.right_unreachable
         ):
@@ -4293,14 +4314,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
 
-        if left_map is None and right_map is None:
+        if left_impossible and right_impossible:
             return UninhabitedType()
 
-        if right_map is None:
+        if right_impossible:
             # The boolean expression is statically known to be the left value
             assert left_map is not None
             return left_type
-        if left_map is None:
+        if left_impossible:
             # The boolean expression is statically known to be the right value
             assert right_map is not None
             return right_type
@@ -5798,9 +5819,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.chk.push_type_map(true_map)
 
                 if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
-                    if true_map is None:
+                    if true_map is None or any(
+                        isinstance(get_proper_type(t), UninhabitedType) for t in true_map.values()
+                    ):
                         self.msg.redundant_condition_in_comprehension(False, condition)
-                    elif false_map is None:
+                    elif false_map is None or any(
+                        isinstance(get_proper_type(t), UninhabitedType) for t in false_map.values()
+                    ):
                         self.msg.redundant_condition_in_comprehension(True, condition)
 
     def visit_conditional_expr(self, e: ConditionalExpr, allow_none_return: bool = False) -> Type:

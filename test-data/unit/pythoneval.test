@@ -1481,8 +1481,10 @@ if isinstance(x, int):
 [out]
 _testIsInstanceAdHocIntersectionWithStrAndBytes.py:3: error: Subclass of "str" and "bytes" cannot exist: would have incompatible method signatures
 _testIsInstanceAdHocIntersectionWithStrAndBytes.py:4: error: Statement is unreachable
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:4: note: Revealed type is "Never"
 _testIsInstanceAdHocIntersectionWithStrAndBytes.py:6: error: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
 _testIsInstanceAdHocIntersectionWithStrAndBytes.py:7: error: Statement is unreachable
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:7: note: Revealed type is "Never"
 
 [case testAsyncioFutureWait]
 # mypy: strict-optional
@@ -1553,6 +1555,7 @@ if isinstance(obj, Awaitable):
 [out]
 _testSpecialTypingProtocols.py:6: note: Revealed type is "Tuple[builtins.int]"
 _testSpecialTypingProtocols.py:8: error: Statement is unreachable
+_testSpecialTypingProtocols.py:8: note: Revealed type is "Never"
 
 [case testTypeshedRecursiveTypesExample]
 from typing import List, Union
