@@ -80,7 +80,7 @@ def test_list_copy() -> None:
     assert l2 != l1
     l1 = [1, 2, 3]
     assert l1.copy() == l2.copy()
-    
+
 =======
 >>>>>>> e276f33f1 (Add test check_listcopy.test)
 =======
