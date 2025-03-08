@@ -17,7 +17,6 @@
 #ifndef Py_BUILD_CORE
 #define Py_BUILD_CORE
 #endif
-#include "internal/pycore_call.h"  // _PyObject_CallMethodIdNoArgs, _PyObject_CallMethodIdOneArg
 #include "internal/pycore_genobject.h"  // _PyGen_FetchStopIterationValue
 #include "internal/pycore_pyerrors.h"  // _PyErr_FormatFromCause, _PyErr_SetKeyError
 #include "internal/pycore_setobject.h"  // _PySet_Update

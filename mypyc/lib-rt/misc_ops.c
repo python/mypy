@@ -24,11 +24,15 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 {
     // Do a send, or a next if second arg is None.
     // (This behavior is to match the PEP 380 spec for yield from.)
-    _Py_IDENTIFIER(send);
     if (Py_IsNone(val)) {
         return CPyIter_Next(iter);
     } else {
-        return _PyObject_CallMethodIdOneArg(iter, &PyId_send, val);
+        _Py_IDENTIFIER(send);
+        PyObject *name = _PyUnicode_FromId(&PyId_send); /* borrowed */
+        if (name == NULL) {
+            return NULL;
+        }
+        return PyObject_CallMethodOneArg(iter, name, val);
     }
 }
 
