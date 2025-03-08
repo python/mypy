@@ -5,6 +5,59 @@
 #include <Python.h>
 #include "CPy.h"
 
+// Copied from cpython.git:Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
+#define BLOOM_MASK unsigned long
+#define BLOOM(mask, ch)     ((mask &  (1UL << ((ch) & (BLOOM_WIDTH - 1)))))
+#if LONG_BIT >= 128
+#define BLOOM_WIDTH 128
+#elif LONG_BIT >= 64
+#define BLOOM_WIDTH 64
+#elif LONG_BIT >= 32
+#define BLOOM_WIDTH 32
+#else
+#error "LONG_BIT is smaller than 32"
+#endif
+
+// Copied from cpython.git:Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
+// This is needed for str.strip("...").
+static inline BLOOM_MASK
+make_bloom_mask(int kind, const void* ptr, Py_ssize_t len)
+{
+#define BLOOM_UPDATE(TYPE, MASK, PTR, LEN)             \
+    do {                                               \
+        TYPE *data = (TYPE *)PTR;                      \
+        TYPE *end = data + LEN;                        \
+        Py_UCS4 ch;                                    \
+        for (; data != end; data++) {                  \
+            ch = *data;                                \
+            MASK |= (1UL << (ch & (BLOOM_WIDTH - 1))); \
+        }                                              \
+        break;                                         \
+    } while (0)
+
+    /* calculate simple bloom-style bitmask for a given unicode string */
+
+    BLOOM_MASK mask;
+
+    mask = 0;
+    switch (kind) {
+    case PyUnicode_1BYTE_KIND:
+        BLOOM_UPDATE(Py_UCS1, mask, ptr, len);
+        break;
+    case PyUnicode_2BYTE_KIND:
+        BLOOM_UPDATE(Py_UCS2, mask, ptr, len);
+        break;
+    case PyUnicode_4BYTE_KIND:
+        BLOOM_UPDATE(Py_UCS4, mask, ptr, len);
+        break;
+    default:
+        Py_UNREACHABLE();
+    }
+    return mask;
+
+#undef BLOOM_UPDATE
+}
+
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
     if (PyUnicode_READY(str) != -1) {
         if (CPyTagged_CheckShort(index)) {
@@ -172,6 +225,124 @@ PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split) {
         return NULL;
     }
     return PyUnicode_RSplit(str, sep, temp_max_split);
+}
+
+// This function has been copied from _PyUnicode_XStrip in cpython.git:Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
+static PyObject *_PyStr_XStrip(PyObject *self, int striptype, PyObject *sepobj) {
+    const void *data;
+    int kind;
+    Py_ssize_t i, j, len;
+    BLOOM_MASK sepmask;
+    Py_ssize_t seplen;
+
+    // This check is needed from Python 3.9 and earlier.
+    if (PyUnicode_READY(self) == -1 || PyUnicode_READY(sepobj) == -1)
+        return NULL;
+
+    kind = PyUnicode_KIND(self);
+    data = PyUnicode_DATA(self);
+    len = PyUnicode_GET_LENGTH(self);
+    seplen = PyUnicode_GET_LENGTH(sepobj);
+    sepmask = make_bloom_mask(PyUnicode_KIND(sepobj),
+                              PyUnicode_DATA(sepobj),
+                              seplen);
+
+    i = 0;
+    if (striptype != RIGHTSTRIP) {
+        while (i < len) {
+            Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+            if (!BLOOM(sepmask, ch))
+                break;
+            if (PyUnicode_FindChar(sepobj, ch, 0, seplen, 1) < 0)
+                break;
+            i++;
+        }
+    }
+
+    j = len;
+    if (striptype != LEFTSTRIP) {
+        j--;
+        while (j >= i) {
+            Py_UCS4 ch = PyUnicode_READ(kind, data, j);
+            if (!BLOOM(sepmask, ch))
+                break;
+            if (PyUnicode_FindChar(sepobj, ch, 0, seplen, 1) < 0)
+                break;
+            j--;
+        }
+
+        j++;
+    }
+
+    return PyUnicode_Substring(self, i, j);
+}
+
+// Copied from do_strip function in cpython.git/Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
+PyObject *_CPyStr_Strip(PyObject *self, int strip_type, PyObject *sep) {
+    if (sep == NULL || sep == Py_None) {
+        Py_ssize_t len, i, j;
+
+        // This check is needed from Python 3.9 and earlier.
+        if (PyUnicode_READY(self) == -1)
+            return NULL;
+
+        len = PyUnicode_GET_LENGTH(self);
+
+        if (PyUnicode_IS_ASCII(self)) {
+            const Py_UCS1 *data = PyUnicode_1BYTE_DATA(self);
+
+            i = 0;
+            if (strip_type != RIGHTSTRIP) {
+                while (i < len) {
+                    Py_UCS1 ch = data[i];
+                    if (!_Py_ascii_whitespace[ch])
+                        break;
+                    i++;
+                }
+            }
+
+            j = len;
+            if (strip_type != LEFTSTRIP) {
+                j--;
+                while (j >= i) {
+                    Py_UCS1 ch = data[j];
+                    if (!_Py_ascii_whitespace[ch])
+                        break;
+                    j--;
+                }
+                j++;
+            }
+        }
+        else {
+            int kind = PyUnicode_KIND(self);
+            const void *data = PyUnicode_DATA(self);
+
+            i = 0;
+            if (strip_type != RIGHTSTRIP) {
+                while (i < len) {
+                    Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+                    if (!Py_UNICODE_ISSPACE(ch))
+                        break;
+                    i++;
+                }
+            }
+
+            j = len;
+            if (strip_type != LEFTSTRIP) {
+                j--;
+                while (j >= i) {
+                    Py_UCS4 ch = PyUnicode_READ(kind, data, j);
+                    if (!Py_UNICODE_ISSPACE(ch))
+                        break;
+                    j--;
+                }
+                j++;
+            }
+        }
+
+        return PyUnicode_Substring(self, i, j);
+    }
+    return _PyStr_XStrip(self, strip_type, sep);
 }
 
 PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr,

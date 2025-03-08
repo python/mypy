@@ -717,6 +717,10 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 
 // Str operations
 
+// Macros for strip type. These values are copied from CPython.
+#define LEFTSTRIP  0
+#define RIGHTSTRIP 1
+#define BOTHSTRIP  2
 
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
@@ -724,6 +728,16 @@ CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int dire
 CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split);
+PyObject *_CPyStr_Strip(PyObject *self, int strip_type, PyObject *sep);
+static inline PyObject *CPyStr_Strip(PyObject *self, PyObject *sep) {
+    return _CPyStr_Strip(self, BOTHSTRIP, sep);
+}
+static inline PyObject *CPyStr_LStrip(PyObject *self, PyObject *sep) {
+    return _CPyStr_Strip(self, LEFTSTRIP, sep);
+}
+static inline PyObject *CPyStr_RStrip(PyObject *self, PyObject *sep) {
+    return _CPyStr_Strip(self, RIGHTSTRIP, sep);
+}
 PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace);
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
 PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
