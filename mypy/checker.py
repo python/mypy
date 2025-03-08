@@ -655,13 +655,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.visit_decorator(defn.items[0])
             if defn.items[0].var.is_settable_property:
                 assert isinstance(defn.items[1], Decorator)
-                self.visit_func_def(defn.items[1].func)
-                setter_type = self.function_type(defn.items[1].func)
-                assert isinstance(setter_type, CallableType)
-                if len(setter_type.arg_types) != 2:
+                # Perform a reduced visit just to infer the actual setter type.
+                self.visit_decorator_inner(defn.items[1], skip_first_item=True)
+                setter_type = get_proper_type(defn.items[1].var.type)
+                if not isinstance(setter_type, CallableType) or len(setter_type.arg_types) != 2:
                     self.fail("Invalid property setter signature", defn.items[1].func)
                     any_type = AnyType(TypeOfAny.from_error)
-                    setter_type = setter_type.copy_modified(
+                    fallback_setter_type = self.function_type(defn.items[1].func)
+                    assert isinstance(fallback_setter_type, CallableType)
+                    setter_type = fallback_setter_type.copy_modified(
                         arg_types=[any_type, any_type],
                         arg_kinds=[ARG_POS, ARG_POS],
                         arg_names=[None, None],
@@ -692,6 +694,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         item_types.append(item_type)
                 if item_types:
                     defn.type = Overloaded(item_types)
+        elif defn.type is None:
+            # We store the getter type as an overall overload type, as some
+            # code paths are getting property type this way.
+            assert isinstance(defn.items[0], Decorator)
+            var_type = get_proper_type(defn.items[0].var.type)
+            assert isinstance(var_type, CallableType)
+            defn.type = Overloaded([var_type])
         # Check override validity after we analyzed current definition.
         if defn.info:
             found_method_base_classes = self.check_method_override(defn)
@@ -5277,7 +5286,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return
         self.visit_decorator_inner(e)
 
-    def visit_decorator_inner(self, e: Decorator, allow_empty: bool = False) -> None:
+    def visit_decorator_inner(
+        self, e: Decorator, allow_empty: bool = False, skip_first_item: bool = False
+    ) -> None:
         if self.recurse_into_functions:
             with self.tscope.function_scope(e.func):
                 self.check_func_item(e.func, name=e.func.name, allow_empty=allow_empty)
@@ -5285,7 +5296,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Process decorators from the inside out to determine decorated signature, which
         # may be different from the declared signature.
         sig: Type = self.function_type(e.func)
-        for d in reversed(e.decorators):
+        # For settable properties skip the first decorator (that is @foo.setter).
+        for d in reversed(e.decorators[1:] if skip_first_item else e.decorators):
+            if refers_to_fullname(d, "abc.abstractmethod"):
+                # This is a hack to avoid spurious errors because of incomplete type
+                # of @abstractmethod in the test fixtures.
+                continue
             if refers_to_fullname(d, OVERLOAD_NAMES):
                 if not allow_empty:
                     self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
@@ -5314,8 +5330,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if len([k for k in sig.arg_kinds if k.is_required()]) > 1:
                     self.msg.fail("Too many arguments for property", e)
             self.check_incompatible_property_override(e)
-        # For overloaded functions we already checked override for overload as a whole.
-        if allow_empty:
+        # For overloaded functions/properties we already checked override for overload as a whole.
+        if allow_empty or skip_first_item:
             return
         if e.func.info and not e.func.is_dynamic() and not e.is_overload:
             found_method_base_classes = self.check_method_override(e)
