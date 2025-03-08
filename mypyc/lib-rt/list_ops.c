@@ -29,6 +29,15 @@ PyObject *CPyList_Build(Py_ssize_t len, ...) {
     return res;
 }
 
+PyObject *CPyList_Copy(PyObject *list) {
+    if(PyList_CheckExact(list)) {
+        return PyList_GetSlice(list, 0, PyList_GET_SIZE(list));
+    }
+    _Py_IDENTIFIER(copy);
+    return _PyObject_CallMethodIdNoArgs(list, &PyId_copy);
+}
+
+
 PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
     Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
     PyObject *result = PyList_GET_ITEM(list, n);
