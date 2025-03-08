@@ -658,22 +658,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Perform a reduced visit just to infer the actual setter type.
                 self.visit_decorator_inner(defn.items[1], skip_first_item=True)
                 setter_type = get_proper_type(defn.items[1].var.type)
-                if not isinstance(setter_type, CallableType) or len(setter_type.arg_types) != 2:
+                # Check if the setter can accept two positional arguments.
+                any_type = AnyType(TypeOfAny.special_form)
+                fallback_setter_type = CallableType(
+                    arg_types=[any_type, any_type],
+                    arg_kinds=[ARG_POS, ARG_POS],
+                    arg_names=[None, None],
+                    ret_type=any_type,
+                    fallback=self.named_type("builtins.function"),
+                )
+                if setter_type and not is_subtype(setter_type, fallback_setter_type):
                     self.fail("Invalid property setter signature", defn.items[1].func)
-                    any_type = AnyType(TypeOfAny.from_error)
-                    fallback_setter_type = self.function_type(defn.items[1].func)
-                    assert isinstance(fallback_setter_type, CallableType)
-                    setter_type = fallback_setter_type.copy_modified(
-                        arg_types=[any_type, any_type],
-                        arg_kinds=[ARG_POS, ARG_POS],
-                        arg_names=[None, None],
-                    )
+                if not isinstance(setter_type, CallableType) or len(setter_type.arg_types) != 2:
+                    # TODO: keep precise type for callables with tricky but valid signatures.
+                    setter_type = fallback_setter_type
                 defn.items[0].var.setter_type = setter_type
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
-            if defn.is_property:
-                self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
-            else:
+            if not defn.is_property:
                 # Perform full check for real overloads to infer type of all decorated
                 # overload variants.
                 self.visit_decorator_inner(fdef, allow_empty=True)
@@ -5296,6 +5298,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Process decorators from the inside out to determine decorated signature, which
         # may be different from the declared signature.
         sig: Type = self.function_type(e.func)
+        non_trivial_decorator = False
         # For settable properties skip the first decorator (that is @foo.setter).
         for d in reversed(e.decorators[1:] if skip_first_item else e.decorators):
             if refers_to_fullname(d, "abc.abstractmethod"):
@@ -5306,12 +5309,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if not allow_empty:
                     self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
+            non_trivial_decorator = True
             dec = self.expr_checker.accept(d)
             temp = self.temp_node(sig, context=d)
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname or None
-            # if this is a expression like @b.a where b is an object, get the type of b
+            # if this is an expression like @b.a where b is an object, get the type of b,
             # so we can pass it the method hook in the plugins
             object_type: Type | None = None
             if fullname is None and isinstance(d, MemberExpr) and self.has_type(d.expr):
@@ -5321,7 +5325,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             sig, t2 = self.expr_checker.check_call(
                 dec, [temp], [nodes.ARG_POS], e, callable_name=fullname, object_type=object_type
             )
-        self.check_untyped_after_decorator(sig, e.func)
+        if non_trivial_decorator:
+            self.check_untyped_after_decorator(sig, e.func)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
