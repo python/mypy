@@ -329,7 +329,10 @@ class Options:
         self.dump_type_stats = False
         self.dump_inference_stats = False
         self.dump_build_stats = False
-        self.enable_incomplete_feature: list[str] = []
+        # FIXME: Temporarily TypeForm support by default so that mypy_primer
+        #        can check how enabling it by default would affect typechecker
+        #        for projects that are already trying to use TypeForm.
+        self.enable_incomplete_feature: list[str] = [TYPE_FORM]
         self.timing_stats: str | None = None
         self.line_checking_stats: str | None = None
 
