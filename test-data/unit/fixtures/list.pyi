@@ -25,6 +25,7 @@ class list(Sequence[T]):
     def __setitem__(self, x: int, v: T) -> None: pass
     def append(self, x: T) -> None: pass
     def extend(self, x: Iterable[T]) -> None: pass
+    def copy(self) -> list[T]: pass
 
 class tuple(Generic[T]): pass
 class function: pass
