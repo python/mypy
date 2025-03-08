@@ -4138,3 +4138,56 @@ Derived.Params(name="Robert")
 DerivedOverride.Params(name="Robert")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+
+[case testRefinementReadOnlyField]
+from typing_extensions import TypedDict, ReadOnly, Literal
+
+class A(TypedDict):
+    a: ReadOnly[str]
+
+class B(A):
+    a: Literal["foo"] # E: Overwriting TypedDict ReadOnly field "a" with non-ReadOnly type
+
+class C(TypedDict):
+    a: str
+
+class D(C):
+    a: Literal["foo"] # E: Overwriting TypedDict field "a" while extending
+
+class F(TypedDict):
+    a: ReadOnly[str]
+
+class G(F):
+    a: str # E: Overwriting TypedDict ReadOnly field "a" with non-ReadOnly type
+
+class H(TypedDict):
+    a: ReadOnly[str]
+
+class E(H):
+    a: ReadOnly[int] # E: Overwriting TypedDict ReadOnly field "a" with incompatible type
+
+
+class S(str): pass
+class I(TypedDict):
+    a: ReadOnly[str]
+
+class J(I):
+    a: ReadOnly[S]
+
+
+def f(a: A, b: B) -> None:
+    reveal_type(a['a']) # N: Revealed type is "builtins.str"
+    reveal_type(b['a']) # N: Revealed type is "Literal['foo']"
+
+def g(i: I, j: J) -> None:
+    reveal_type(i['a']) # N: Revealed type is "builtins.str"
+    reveal_type(j['a']) # N: Revealed type is "__main__.S"
+
+def mutate_dictA(d: A) -> None:
+    d["a"] = "bar"  # E: ReadOnly TypedDict key "a" TypedDict is mutated
+
+def mutate_dictB(d: B) -> None:
+    d["a"] = "bar"  # E: ReadOnly TypedDict key "a" TypedDict is mutated # E: Value of "a" has incompatible type "Literal['bar']"; expected "Literal['foo']"
+
+[builtins fixtures/primitives.pyi]
