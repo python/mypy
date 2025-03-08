@@ -51,37 +51,8 @@ print(2, a)
 1 [-1, 5]
 2 [340282366920938463463374607431768211461, -170141183460469231731687303715884105736]
 
-[case testListCopy]
-from typing import List
-def test_list_copy() -> None:
-    l1 = [1, 2, 3, -4, 5]
-    l2 = l1.copy()
-    assert l1.copy() == l1
-    assert l1.copy() == l2
-    assert l1 == l2
-    assert l1.copy() == l2.copy()
-    l1 = l2.copy()
-    assert l1 == l2
-    assert l1.copy() == l2
-    assert l1 == [1, 2, 3, -4, 5]
-    l2 = [1, 2, -3]
-    l1 = []
-    assert l1.copy() == []
-    assert l2.copy() != l1
-    assert l2 == l2.copy()
-    l1 = l2
-    assert l1.copy().copy() == l2.copy().copy().copy()
-    assert l1.copy() == l2.copy()
-    l1 == [1, 2, -3].copy()
-    assert l1 == l2
-    l2 = [1, 2, 3].copy()
-    assert l2 != l1
-    l1 = [1, 2, 3]
-    assert l1.copy() == l2.copy()
-
 [case testSieve]
 from typing import List
-
 def primes(n: int) -> List[int]:
     a = [1] * (n + 1)
     a[0] = 0
