@@ -1444,7 +1444,8 @@ if isinstance(x2, A) or isinstance(x2, C):  # E: Right operand of "or" is never 
     f = x2.flag # E: "A" has no attribute "flag"
 else:
     # unreachable
-    _ = "unreachable"  # E: Statement is unreachable
+    reveal_type(x2)  # E: Statement is unreachable \
+                     # N: Revealed type is "Never"
 reveal_type(x2) # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
 

@@ -5836,9 +5836,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # but only for the current expression
         if_map, else_map = self.chk.find_isinstance_check(e.cond)
         if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
-            if if_map is None:
+            if if_map is None or any(
+                isinstance(get_proper_type(t), UninhabitedType) for t in if_map.values()
+            ):
                 self.msg.redundant_condition_in_if(False, e.cond)
-            elif else_map is None:
+            elif else_map is None or any(
+                isinstance(get_proper_type(t), UninhabitedType) for t in else_map.values()
+            ):
                 self.msg.redundant_condition_in_if(True, e.cond)
 
         if_type = self.analyze_cond_branch(
@@ -5915,17 +5919,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         node: Expression,
         context: Type | None,
         allow_none_return: bool = False,
-        suppress_unreachable_errors: bool = True,
+        suppress_unreachable_errors: bool | None = None,
     ) -> Type:
+        # TODO: default based on flag (default to `True` if flag is not passed)
+        unreachable_errors_suppressed = (
+            suppress_unreachable_errors
+            if suppress_unreachable_errors is not None
+            else self.chk.binder.is_unreachable_warning_suppressed()
+        )
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
-            if map is None:
+            self.chk.push_type_map(map)
+
+            if map is None or any(
+                isinstance(get_proper_type(t), UninhabitedType) for t in map.values()
+            ):
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later. Since the branch was
                 # determined to be unreachable, any errors should be suppressed.
-                with self.msg.filter_errors(filter_errors=suppress_unreachable_errors):
+
+                with self.msg.filter_errors(filter_errors=unreachable_errors_suppressed):
                     self.accept(node, type_context=context, allow_none_return=allow_none_return)
                 return UninhabitedType()
-            self.chk.push_type_map(map)
+
             return self.accept(node, type_context=context, allow_none_return=allow_none_return)
 
     #

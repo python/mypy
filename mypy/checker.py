@@ -8134,8 +8134,9 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, use_meet: bool = False) -> Ty
     result = m2.copy()
     m2_keys = {literal_hash(n2) for n2 in m2}
     for n1 in m1:
-        # TODO: should this check for UninhabitedType as well as AnyType?
-        if literal_hash(n1) not in m2_keys or isinstance(get_proper_type(m1[n1]), AnyType):
+        if literal_hash(n1) not in m2_keys or isinstance(
+            get_proper_type(m1[n1]), (UninhabitedType, AnyType)
+        ):
             result[n1] = m1[n1]
     if use_meet:
         # For now, meet common keys only if specifically requested.

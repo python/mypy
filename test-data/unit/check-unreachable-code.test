@@ -962,7 +962,8 @@ k = [x for x in lst if isinstance(x, int) or foo()]  # E: Right operand of "or" 
 
 class Case1:
     def test1(self) -> bool:
-        return False and self.missing()  # E: Right operand of "and" is never evaluated
+        return False and self.missing()  # E: Right operand of "and" is never evaluated \
+                                         # E: "Case1" has no attribute "missing"
 
     def test2(self) -> bool:
         return not self.property_decorator_missing and self.missing()  # E: Function "property_decorator_missing" could always be true in boolean context \
@@ -1556,4 +1557,10 @@ if isinstance(x, int):
     y, *ys = x
     reveal_type(y)  # N: Revealed type is "Never"
     reveal_type(ys)  # N: Revealed type is "builtins.list[Never]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnusedConditionalBranchesDoNotAffectType]
+# flags: --enable-error-code redundant-expr
+def foo(var: str) -> str:
+    return "aa" if isinstance(var, str) else 0  # E: If condition is always true
 [builtins fixtures/isinstancelist.pyi]
