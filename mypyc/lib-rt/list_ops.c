@@ -34,7 +34,12 @@ PyObject *CPyList_Copy(PyObject *list) {
         return PyList_GetSlice(list, 0, PyList_GET_SIZE(list));
     }
     _Py_IDENTIFIER(copy);
-    return _PyObject_CallMethodIdNoArgs(list, &PyId_copy);
+
+    PyObject *name = _PyUnicode_FromId(&PyId_copy);
+    if (name == NULL) {
+        return NULL;
+    }
+    return PyObject_CallMethodNoArgs(list, name);
 }
 
 
