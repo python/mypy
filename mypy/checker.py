@@ -654,6 +654,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             assert isinstance(defn.items[0], Decorator)
             self.visit_decorator(defn.items[0])
             if defn.items[0].var.is_settable_property:
+                # TODO: here and elsewhere we assume setter immediately follows getter.
                 assert isinstance(defn.items[1], Decorator)
                 # Perform a reduced visit just to infer the actual setter type.
                 self.visit_decorator_inner(defn.items[1], skip_first_item=True)
@@ -673,9 +674,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # TODO: keep precise type for callables with tricky but valid signatures.
                     setter_type = fallback_setter_type
                 defn.items[0].var.setter_type = setter_type
-        for fdef in defn.items:
+        for i, fdef in enumerate(defn.items):
             assert isinstance(fdef, Decorator)
-            if not defn.is_property:
+            if defn.is_property:
+                assert isinstance(defn.items[0], Decorator)
+                settable = defn.items[0].var.is_settable_property
+                # Do not visit the second time the items we checked above.
+                if (settable and i > 1) or (not settable and i > 0):
+                    self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
+            else:
                 # Perform full check for real overloads to infer type of all decorated
                 # overload variants.
                 self.visit_decorator_inner(fdef, allow_empty=True)
