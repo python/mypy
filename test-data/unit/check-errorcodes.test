@@ -519,6 +519,11 @@ if int() != str():  # E: Non-overlapping equality check (left operand type: "int
     pass
 if int() is str():  # E: Non-overlapping identity check (left operand type: "int", right operand type: "str")  [comparison-overlap]
     pass
+
+x = int()
+while True:
+    if x is str():  # E: Non-overlapping identity check (left operand type: "int", right operand type: "str")  [comparison-overlap]
+        pass
 [builtins fixtures/primitives.pyi]
 
 [case testErrorCodeMissingModule]
