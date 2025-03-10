@@ -262,6 +262,15 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# list.copy()
+method_op(
+    name="copy",
+    arg_types=[list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="CPyList_Copy",
+    error_kind=ERR_MAGIC,
+)
+
 # list * int
 binary_op(
     name="*",
