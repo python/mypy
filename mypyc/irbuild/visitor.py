@@ -73,6 +73,7 @@ from mypy.nodes import (
     TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
@@ -386,6 +387,9 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_cast_expr(self, o: CastExpr) -> Value:
         assert False, "CastExpr should have been handled in CallExpr"
+
+    def visit_type_form_expr(self, o: TypeFormExpr) -> Value:
+        assert False, "TypeFormExpr should have been handled in CallExpr"
 
     def visit_assert_type_expr(self, o: AssertTypeExpr) -> Value:
         assert False, "AssertTypeExpr should have been handled in CallExpr"
