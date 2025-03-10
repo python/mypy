@@ -2606,3 +2606,15 @@ def test(xs: tuple[Unpack[Ts]], xsi: tuple[int, Unpack[Ts]]) -> None:
     reveal_type(join(xsi, ai))  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[Any, ...]]]"
     reveal_type(join(ai, xsi))  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[Any, ...]]]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleInferAgainstAnyCallableSuffix]
+from typing import Any, Callable, TypeVar, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+R = TypeVar("R")
+def deco(func: Callable[[*Ts, int], R]) -> Callable[[*Ts], R]:
+    ...
+
+untyped: Any
+reveal_type(deco(untyped))  # N: Revealed type is "def (*Any) -> Any"
+[builtins fixtures/tuple.pyi]
