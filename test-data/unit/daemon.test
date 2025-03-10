@@ -463,8 +463,7 @@ $ dmypy inspect foo.py:1:2:3:4
 Can't find expression at span 1:2:3:4
 == Return code: 1
 $ dmypy inspect foo.py:17:5:17:5
-No known type available for "NameExpr" (maybe unreachable or try --force-reload)
-== Return code: 1
+"int"
 
 [file foo.py]
 from typing import Optional
@@ -523,9 +522,8 @@ $ dmypy inspect foo.py:1:2
 Can't find any expressions at position 1:2
 == Return code: 1
 $ dmypy inspect foo.py:11:5 --force-reload
-No known type available for "NameExpr" (maybe unreachable)
-No known type available for "OpExpr" (maybe unreachable)
-== Return code: 1
+"int"
+"int"
 
 [file foo.py]
 from typing import Optional
@@ -547,8 +545,7 @@ $ dmypy check foo.py bar.py --export-types
 $ dmypy inspect foo.py:9:1 --show attrs --include-span --include-kind -vv
 NameExpr:9:1:9:1 -> {"foo.C": ["a", "x", "y"], "foo.B": ["a", "b"]}
 $ dmypy inspect foo.py:11:10 --show attrs
-No known type available for "StrExpr" (maybe unreachable or try --force-reload)
-== Return code: 1
+{"str": ["__add__", "__contains__", "__eq__", "__ge__", "__getitem__", "__getnewargs__", "__gt__", "__hash__", "__iter__", "__le__", "__len__", "__lt__", "__mod__", "__mul__", "__ne__", "__new__", "__rmul__", "capitalize", "casefold", "center", "count", "encode", "endswith", "expandtabs", "find", "format", "format_map", "index", "isalnum", "isalpha", "isascii", "isdecimal", "isdigit", "isidentifier", "islower", "isnumeric", "isprintable", "isspace", "istitle", "isupper", "join", "ljust", "lower", "lstrip", "maketrans", "partition", "removeprefix", "removesuffix", "replace", "rfind", "rindex", "rjust", "rpartition", "rsplit", "rstrip", "split", "splitlines", "startswith", "strip", "swapcase", "title", "translate", "upper", "zfill"], "Sequence": ["__contains__", "__getitem__", "__iter__", "__reversed__", "count", "index"], "Reversible": ["__reversed__"], "Collection": ["__len__"], "Iterable": ["__iter__"], "Container": ["__contains__"]}
 $ dmypy inspect foo.py:1:1 --show attrs
 Can't find any expressions at position 1:1
 == Return code: 1

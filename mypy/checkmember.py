@@ -70,6 +70,7 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
+    UninhabitedType,
     UnionType,
     get_proper_type,
 )
@@ -253,6 +254,8 @@ def _analyze_member_access(
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
         return AnyType(TypeOfAny.from_error)
+    elif isinstance(typ, UninhabitedType):
+        return UninhabitedType()
     return report_missing_attribute(mx.original_type, typ, name, mx)
 
 
