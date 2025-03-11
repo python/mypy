@@ -8486,7 +8486,7 @@ class C:
 [builtins fixtures/property.pyi]
 
 [case testPropertySetterDecorated]
-from typing import Callable, TypeVar
+from typing import Callable, TypeVar, Generic
 
 class B:
     def __init__(self) -> None:
@@ -8514,12 +8514,23 @@ class C(B):
     @deco_untyped
     def baz(self, x: int) -> None: ...
 
+    @property
+    def tricky(self) -> int: ...
+    @baz.setter
+    @deco_instance
+    def tricky(self, x: int) -> None: ...
+
 c: C
 c.baz = "yes"  # OK, because of untyped decorator
+c.tricky = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "List[int]")
 
 T = TypeVar("T")
 def deco(fn: Callable[[T, int, int], None]) -> Callable[[T, int], None]: ...
 def deco_untyped(fn): ...
+
+class Wrapper(Generic[T]):
+    def __call__(self, s: T, x: list[int]) -> None: ...
+def deco_instance(fn: Callable[[T, int], None]) -> Wrapper[T]: ...
 [builtins fixtures/property.pyi]
 
 [case testPropertyDeleterBodyChecked]
@@ -8537,4 +8548,41 @@ class C:
     @bar.deleter
     def bar(self) -> None:
         1()  # E: "int" not callable
+[builtins fixtures/property.pyi]
+
+[case testSettablePropertyGetterDecorated]
+from typing import Callable, TypeVar, Generic
+
+class C:
+    @property
+    @deco
+    def foo(self, ok: int) -> str: ...
+    @foo.setter
+    def foo(self, x: str) -> None: ...
+
+    @property
+    @deco_instance
+    def bar(self, ok: int) -> int: ...
+    @bar.setter
+    def bar(self, x: int) -> None: ...
+
+    @property
+    @deco_untyped
+    def baz(self) -> int: ...
+    @baz.setter
+    def baz(self, x: int) -> None: ...
+
+c: C
+reveal_type(c.foo)  # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(c.bar)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(c.baz)  # N: Revealed type is "Any"
+
+T = TypeVar("T")
+R = TypeVar("R")
+def deco(fn: Callable[[T, int], R]) -> Callable[[T], list[R]]: ...
+def deco_untyped(fn): ...
+
+class Wrapper(Generic[T, R]):
+    def __call__(self, s: T) -> list[R]: ...
+def deco_instance(fn: Callable[[T, int], R]) -> Wrapper[T, R]: ...
 [builtins fixtures/property.pyi]

@@ -658,7 +658,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert isinstance(defn.items[1], Decorator)
                 # Perform a reduced visit just to infer the actual setter type.
                 self.visit_decorator_inner(defn.items[1], skip_first_item=True)
-                setter_type = get_proper_type(defn.items[1].var.type)
+                setter_type = defn.items[1].var.type
                 # Check if the setter can accept two positional arguments.
                 any_type = AnyType(TypeOfAny.special_form)
                 fallback_setter_type = CallableType(
@@ -670,6 +670,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
                 if setter_type and not is_subtype(setter_type, fallback_setter_type):
                     self.fail("Invalid property setter signature", defn.items[1].func)
+                setter_type = self.extract_callable_type(setter_type, defn)
                 if not isinstance(setter_type, CallableType) or len(setter_type.arg_types) != 2:
                     # TODO: keep precise type for callables with tricky but valid signatures.
                     setter_type = fallback_setter_type
@@ -707,8 +708,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # We store the getter type as an overall overload type, as some
             # code paths are getting property type this way.
             assert isinstance(defn.items[0], Decorator)
-            var_type = get_proper_type(defn.items[0].var.type)
-            assert isinstance(var_type, CallableType)
+            var_type = self.extract_callable_type(defn.items[0].var.type, defn)
+            if not isinstance(var_type, CallableType):
+                # Construct a fallback type, invalid types should be already reported.
+                any_type = AnyType(TypeOfAny.special_form)
+                var_type = CallableType(
+                    arg_types=[any_type],
+                    arg_kinds=[ARG_POS],
+                    arg_names=[None],
+                    ret_type=any_type,
+                    fallback=self.named_type("builtins.function"),
+                )
             defn.type = Overloaded([var_type])
         # Check override validity after we analyzed current definition.
         if defn.info:
