@@ -681,6 +681,7 @@ def deco(func: Callable[P, int]) -> Callable[P, int]:
         can_listcomp = [x for x in args]
         can_dictcomp = {k: v for k, v in kwargs.items()}
         can_iter = list(kwargs)
+        can_use_keys = list(kwargs.keys())
         can_use_values = list(kwargs.values())
         return func(*args, **kwargs)
 
@@ -734,16 +735,16 @@ def inner_deco_obj.__call__(__mypyc_self__, args, kwargs):
     r21 :: i32
     r22, r23, r24 :: bit
     can_dictcomp :: dict
-    r25, can_iter, r26, can_use_values :: list
-    r27 :: object
-    r28 :: list
-    r29 :: object
-    r30 :: dict
-    r31 :: i32
-    r32 :: bit
-    r33 :: tuple
-    r34 :: object
-    r35 :: int
+    r25, can_iter, r26, can_use_keys, r27, can_use_values :: list
+    r28 :: object
+    r29 :: list
+    r30 :: object
+    r31 :: dict
+    r32 :: i32
+    r33 :: bit
+    r34 :: tuple
+    r35 :: object
+    r36 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = var_object_size args
@@ -792,18 +793,20 @@ L9:
     can_dictcomp = r10
     r25 = PySequence_List(kwargs)
     can_iter = r25
-    r26 = CPyDict_Values(kwargs)
-    can_use_values = r26
-    r27 = r0.func
-    r28 = PyList_New(0)
-    r29 = CPyList_Extend(r28, args)
-    r30 = PyDict_New()
-    r31 = CPyDict_UpdateInDisplay(r30, kwargs)
-    r32 = r31 >= 0 :: signed
-    r33 = PyList_AsTuple(r28)
-    r34 = PyObject_Call(r27, r33, r30)
-    r35 = unbox(int, r34)
-    return r35
+    r26 = CPyDict_Keys(kwargs)
+    can_use_keys = r26
+    r27 = CPyDict_Values(kwargs)
+    can_use_values = r27
+    r28 = r0.func
+    r29 = PyList_New(0)
+    r30 = CPyList_Extend(r29, args)
+    r31 = PyDict_New()
+    r32 = CPyDict_UpdateInDisplay(r31, kwargs)
+    r33 = r32 >= 0 :: signed
+    r34 = PyList_AsTuple(r29)
+    r35 = PyObject_Call(r28, r34, r31)
+    r36 = unbox(int, r35)
+    return r36
 def deco(func):
     func :: object
     r0 :: __main__.deco_env
