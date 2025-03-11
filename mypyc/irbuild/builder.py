@@ -47,6 +47,7 @@ from mypy.types import (
     AnyType,
     DeletedType,
     Instance,
+    ParamSpecType,
     ProperType,
     TupleType,
     Type,
@@ -970,6 +971,12 @@ class IRBuilder:
                 t = t.fallback
                 dict_base = next(base for base in t.type.mro if base.fullname == "typing.Mapping")
             else:
+                if isinstance(t, ParamSpecType):
+                    # Since `ParamSpec(upper_bound=...)` is not defined yet, we know that
+                    # `bound` is set to `dict[str, object]`. In any future sane implementation
+                    # it still has to be exactly a `dict` as that's how kwargs work
+                    # at runtime.
+                    t = get_proper_type(t.upper_bound)
                 assert isinstance(t, Instance), t
                 dict_base = next(base for base in t.type.mro if base.fullname == "builtins.dict")
             dict_types.append(map_instance_to_supertype(t, dict_base))
