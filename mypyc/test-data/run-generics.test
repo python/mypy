@@ -76,7 +76,8 @@ fn_typeddict(td)
 {'foo': 1}
 
 [case testParamSpecComponentsAreUsable]
-from typing import Callable, ParamSpec
+from typing import Callable
+from typing_extensions import ParamSpec
 
 P = ParamSpec("P")
 
