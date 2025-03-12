@@ -45,6 +45,14 @@ class A:
 
 Contributed by Marc Mueller (PR [18641](https://github.com/python/mypy/pull/18641))
 
+### Other Notable Fixes and Improvements
+
+*   Pattern matching on discriminant attributes and keys in union types
+    (such as `tag` fields in `TypedDict`s or classes) now correctly narrows
+    the subject type within each `case` block. Previously, mypy would fail
+    to narrow the parent type when matching on expressions like `match d["tag"]`
+    or `match d.tag`. This fixes issue [#16286](https://github.com/python/mypy/issues/16286).
+
 ## Mypy 1.15
 
 We’ve just uploaded mypy 1.15 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).

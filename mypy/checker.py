@@ -5527,6 +5527,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         pattern_map, else_map = conditional_types_to_typemaps(
                             named_subject, pattern_type.type, pattern_type.rest_type
                         )
+                        # Also refine the parent expression of the subject.
+                        # For example, if the subject is an index or attribute expression like
+                        # ``d["key"]`` or ``d.attr``, propagate any narrowing information about
+                        # the subject back up to ``d`` (and recursively, to further parents).
+                        # This mirrors the behavior of our conditional (``if``) binder,
+                        # which calls ``propagate_up_typemap_info`` when handling comparisons.
+                        pattern_map = self.propagate_up_typemap_info(pattern_map)
+                        else_map = self.propagate_up_typemap_info(else_map)
                         self.remove_capture_conflicts(pattern_type.captures, inferred_types)
                         self.push_type_map(pattern_map, from_assignment=False)
                         if pattern_map:
