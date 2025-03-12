@@ -3364,6 +3364,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         ):
                             lvalue.node.type = remove_instance_last_known_values(lvalue_type)
                 elif self.options.allow_redefinition_new and lvalue_type is not None:
+                    # TODO: Can we use put() here?
                     self.binder.assign_type(lvalue, lvalue_type, lvalue_type)
 
             elif index_lvalue:
@@ -5188,6 +5189,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 new_type = DeletedType(source=source)
                                 var.node.type = new_type
                                 if self.options.allow_redefinition_new:
+                                    # TODO: Should we use put() here?
                                     self.binder.assign_type(var, new_type, new_type)
                             if not self.options.allow_redefinition_new:
                                 self.binder.cleanse(var)
