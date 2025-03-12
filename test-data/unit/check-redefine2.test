@@ -34,6 +34,23 @@ def f2() -> None:
         x = None
     reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
 
+[case testNewRedefineMergeConditionalLocal2]
+# flags: --allow-redefinition-new --local-partial-types
+def nested_ifs() -> None:
+    if int():
+        if int():
+            x = 0
+        else:
+            x = ''
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+    else:
+        if int():
+            x = None
+        else:
+            x = b""
+        reveal_type(x) # N: Revealed type is "Union[None, builtins.bytes]"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None, builtins.bytes]"
+
 [case testNewRedefineUninitializedCodePath1]
 # flags: --allow-redefinition-new --local-partial-types
 def f1() -> None:

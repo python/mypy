@@ -135,7 +135,7 @@ class ConditionalTypeBinder:
 
         # If True, initial assignment to a simple variable (e.g. "x", but not "x.y")
         # is added to the binder. This allows more precise narrowing and more
-        # flexible inference of variable types.
+        # flexible inference of variable types (--allow-redefinition-new).
         self.bind_all = options.allow_redefinition_new
 
     def _get_id(self) -> int:
@@ -233,6 +233,11 @@ class ConditionalTypeBinder:
         for key in keys:
             current_value = self._get(key)
             resulting_values = [f.types.get(key, current_value) for f in frames]
+            # Keys can be narrowed using two different semantics. The new semantics
+            # is enabled for plain variables when bind_all is true, and it allows
+            # variable types to be widened using subsequent assignments. This is
+            # tricky to support for instance attributes (primarily due to deferrals),
+            # so we don't use it for them.
             old_semantics = not self.bind_all or extract_var_from_literal_hash(key) is None
             if old_semantics and any(x is None for x in resulting_values):
                 # We didn't know anything about key before

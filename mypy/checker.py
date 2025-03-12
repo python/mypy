@@ -4594,7 +4594,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             self.widened_vars.append(inferred.name)
                             self.set_inferred_type(inferred, lvalue, lvalue_type)
                             self.binder.put(lvalue, rvalue_type)
-                            # TODO: hack, maybe integrate into put?
+                            # TODO: A bit hacky, maybe add a binder method that does put and
+                            #       updates declaration?
                             lit = literal_hash(lvalue)
                             if lit is not None:
                                 self.binder.declarations[lit] = lvalue_type
