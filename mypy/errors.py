@@ -944,7 +944,7 @@ class Errors:
                 return i[1]
         return None
 
-    def new_messages(self) -> list[str]:
+    def new_messages(self, formatter: ErrorFormatter = None) -> list[str]:
         """Return a string list of new error messages.
 
         Use a form suitable for displaying to the user.
@@ -954,7 +954,7 @@ class Errors:
         msgs = []
         for path in self.error_info_map.keys():
             if path not in self.flushed_files:
-                msgs.extend(self.file_messages(path))
+                msgs.extend(self.file_messages(path, formatter=formatter))
         return msgs
 
     def targets(self) -> set[str]:

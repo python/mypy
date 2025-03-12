@@ -296,7 +296,7 @@ class FineGrainedBuildManager:
                 if not changed_modules:
                     # Preserve state needed for the next update.
                     self.previous_targets_with_errors = self.manager.errors.targets()
-                    messages = self.manager.errors.new_messages()
+                    messages = self.manager.errors.new_messages(formatter=self.manager.error_formatter)
                     break
 
         messages = sort_messages_preserving_file_order(messages, self.previous_messages)
@@ -320,7 +320,7 @@ class FineGrainedBuildManager:
         )
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = self.manager.errors.targets()
-        self.previous_messages = self.manager.errors.new_messages().copy()
+        self.previous_messages = self.manager.errors.new_messages(formatter=self.manager.error_formatter).copy()
         return self.update(changed_modules, [])
 
     def flush_cache(self) -> None:
