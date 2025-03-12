@@ -316,7 +316,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Vars for which partial type errors are already reported
     # (to avoid logically duplicate errors with different error context).
     partial_reported: set[Var]
-    # Short names of Var nodes whose previous inferred type has been widened via assignment
+    # Short names of Var nodes whose previous inferred type has been widened via assignment.
+    # NOTE: The names might not be unique, they are only for debugging purposes.
     widened_vars: list[str]
     globals: SymbolTable
     modules: dict[str, MypyFile]
@@ -616,6 +617,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.accept(body)
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
                 widened_new = len(self.widened_vars)
+                # Perform multiple iterations if something changed that might affect
+                # inferred types. Also limit the number of iterations. The limits are
+                # somewhat arbitrary, but they were chosen to 1) avoid slowdown from
+                # multiple iterations in common cases and 2) support common, valid use
+                # cases. Limits are needed since otherwise we could infer infinitely
+                # complex types.
                 if (
                     (partials_new == partials_old)
                     and (not self.binder.last_pop_changed or iter > 3)
@@ -3320,6 +3327,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     rvalue_type, lvalue_type = self.check_simple_assignment(
                         lvalue_type, rvalue, context=rvalue, inferred=inferred, lvalue=lvalue
                     )
+                    # The above call may update inferred variable type. Prevent further
+                    # inference.
                     inferred = None
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
