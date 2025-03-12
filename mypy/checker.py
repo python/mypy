@@ -1406,7 +1406,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if self.options.allow_redefinition_new and not self.is_stub:
                     # Add formal argument types to the binder.
                     for arg in defn.arguments:
-                        # TODO: Add these directly using a fast path
+                        # TODO: Add these directly using a fast path (possibly "put")
                         v = arg.variable
                         if v.type is not None:
                             n = NameExpr(v.name)
@@ -3304,7 +3304,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # unpleasant, and a generalization of this would
                     # be an improvement!
                     if (
-                        is_literal_none(rvalue)
+                        not self.options.allow_redefinition_new
+                        and is_literal_none(rvalue)
                         and isinstance(lvalue, NameExpr)
                         and lvalue.kind == LDEF
                         and isinstance(lvalue.node, Var)
