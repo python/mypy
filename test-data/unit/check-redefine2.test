@@ -1100,12 +1100,23 @@ def func() -> None:
         ...
 [builtins fixtures/tuple.pyi]
 
-[case testNewRedefineAsteriskAssignment]
+[case testNewRedefinePartialTypeForUnderscore]
 # flags: --allow-redefinition-new --local-partial-types --warn-unreachable
 
-def blah() -> tuple[int]:
+def t() -> tuple[int]:
     return (42,)
 
-def main() -> None:
-    x, *_ = blah()  # E: Need type annotation for "_" (hint: "_: list[<type>] = ...")
+def f1() -> None:
+    # Underscore is slightly special to preserve backward compatibility
+    x, *_ = t()
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+def f2() -> None:
+    x, *y = t() # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")
+
+def f3() -> None:
+    x, _ = 1, []
+
+def f4() -> None:
+    a, b = 1, [] # E: Need type annotation for "b" (hint: "b: List[<type>] = ...")
 [builtins fixtures/tuple.pyi]
