@@ -1081,8 +1081,10 @@ def func() -> None:
     l = None
 
     if int():
-        l = []
+        l = [] # E: Need type annotation for "l"
         l.append(1)
+    reveal_type(l) # N: Revealed type is "Union[None, builtins.list[Any]]"
+[builtins fixtures/list.pyi]
 
 [case testNewRedefineNarrowingSpecialCase]
 # flags: --allow-redefinition-new --local-partial-types --warn-unreachable

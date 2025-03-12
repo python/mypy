@@ -4566,6 +4566,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type = self.expr_checker.accept(
                     rvalue, type_context=lvalue_type, always_allow_any=always_allow_any
                 )
+                if not is_valid_inferred_type(rvalue_type, self.options) and inferred is not None:
+                    self.msg.need_annotation_for_var(
+                        inferred, context, self.options.python_version
+                    )
+                    rvalue_type = rvalue_type.accept(SetNothingToAny())
+
             if (
                 isinstance(lvalue, NameExpr)
                 and inferred is not None
