@@ -958,38 +958,44 @@ class IRBuilder:
 
         This is useful for dict subclasses like SymbolTable.
         """
-        target_type = get_proper_type(self.types[expr])
-        if isinstance(target_type, UnionType):
-            types = [get_proper_type(item) for item in target_type.items]
-        else:
-            types = [target_type]
+        return self.get_dict_base_type_from_type(self.types[expr])
 
-        dict_types = []
-        for t in types:
-            if isinstance(t, TypedDictType):
-                t = t.fallback
-                dict_base = next(base for base in t.type.mro if base.fullname == "typing.Mapping")
-            else:
-                assert isinstance(t, Instance), t
-                dict_base = next(base for base in t.type.mro if base.fullname == "builtins.dict")
-            dict_types.append(map_instance_to_supertype(t, dict_base))
-        return dict_types
+    def get_dict_base_type_from_type(self, target_type: Type) -> list[Instance]:
+        target_type = get_proper_type(target_type)
+        if isinstance(target_type, UnionType):
+            return [
+                inner
+                for item in target_type.items
+                for inner in self.get_dict_base_type_from_type(item)
+            ]
+        if isinstance(target_type, TypeVarLikeType):
+            # Match behaviour of self.node_type
+            # We can only reach this point if `target_type` was a TypeVar(bound=dict[...])
+            # or a ParamSpec.
+            return self.get_dict_base_type_from_type(target_type.upper_bound)
+
+        if isinstance(target_type, TypedDictType):
+            target_type = target_type.fallback
+            dict_base = next(
+                base for base in target_type.type.mro if base.fullname == "typing.Mapping"
+            )
+        elif isinstance(target_type, Instance):
+            dict_base = next(
+                base for base in target_type.type.mro if base.fullname == "builtins.dict"
+            )
+        else:
+            assert False, f"Failed to extract dict base from {target_type}"
+        return [map_instance_to_supertype(target_type, dict_base)]
 
     def get_dict_key_type(self, expr: Expression) -> RType:
         dict_base_types = self.get_dict_base_type(expr)
-        if len(dict_base_types) == 1:
-            return self.type_to_rtype(dict_base_types[0].args[0])
-        else:
-            rtypes = [self.type_to_rtype(t.args[0]) for t in dict_base_types]
-            return RUnion.make_simplified_union(rtypes)
+        rtypes = [self.type_to_rtype(t.args[0]) for t in dict_base_types]
+        return RUnion.make_simplified_union(rtypes)
 
     def get_dict_value_type(self, expr: Expression) -> RType:
         dict_base_types = self.get_dict_base_type(expr)
-        if len(dict_base_types) == 1:
-            return self.type_to_rtype(dict_base_types[0].args[1])
-        else:
-            rtypes = [self.type_to_rtype(t.args[1]) for t in dict_base_types]
-            return RUnion.make_simplified_union(rtypes)
+        rtypes = [self.type_to_rtype(t.args[1]) for t in dict_base_types]
+        return RUnion.make_simplified_union(rtypes)
 
     def get_dict_item_type(self, expr: Expression) -> RType:
         key_type = self.get_dict_key_type(expr)
