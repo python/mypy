@@ -4580,8 +4580,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ):
                 new_inferred = remove_instance_last_known_values(rvalue_type)
                 if not is_same_type(inferred.type, new_inferred):
-                    # Should we widen the inferred type or the lvalue? We can only widen
-                    # a variable type if the variable was defined in the current function.
+                    # Should we widen the inferred type or the lvalue? Variables defined
+                    # at module level or class bodies can't be widened in functions.
                     different_scopes = (
                         self.scope.top_level_function() is not None and lvalue.kind != LDEF
                     )
