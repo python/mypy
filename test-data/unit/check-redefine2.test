@@ -1090,18 +1090,18 @@ from typing import Any, Union
 
 def get() -> Union[tuple[Any, Any], tuple[None, None]]: ...
 
-def func() -> None:
+def f() -> None:
     x, _ = get()
     reveal_type(x) # N: Revealed type is "Union[Any, None]"
     if x and int():
-        ...
+        reveal_type(x) # N: Revealed type is "Any"
     reveal_type(x) # N: Revealed type is "Union[Any, None]"
     if x and int():
-        ...
+        reveal_type(x) # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testNewRedefinePartialTypeForUnderscore]
-# flags: --allow-redefinition-new --local-partial-types --warn-unreachable
+# flags: --allow-redefinition-new --local-partial-types
 
 def t() -> tuple[int]:
     return (42,)

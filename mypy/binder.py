@@ -288,7 +288,7 @@ class ConditionalTypeBinder:
                     # still equivalent to such type).
                     if isinstance(type, UnionType):
                         type = collapse_variadic_union(type)
-                    if isinstance(type, ProperType) and isinstance(type, UnionType):
+                    if old_semantics and isinstance(type, ProperType) and isinstance(type, UnionType):
                         # Simplify away any extra Any's that were added to the declared
                         # type when popping a frame.
                         simplified = UnionType.make_union(
