@@ -1564,3 +1564,12 @@ if isinstance(x, int):
 def foo(var: str) -> str:
     return "aa" if isinstance(var, str) else 0  # E: If condition is always true
 [builtins fixtures/isinstancelist.pyi]
+
+[case testMypyDoesntNarrowBasedOnLies]
+x: int
+if isinstance(x, int):
+    assert False
+
+reveal_type(x)  # N: Revealed type is "builtins.int"
+# mypy should not narrow this ^
+[builtins fixtures/isinstancelist.pyi]
