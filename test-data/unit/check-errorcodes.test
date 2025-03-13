@@ -645,7 +645,7 @@ def g() -> int:
 
 '{}'.format(b'abc')  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes  [str-bytes-safe]
 '%s' % b'abc'  # E: If x = b'abc' then "%s" % x produces "b'abc'", not "abc". If this is desired behavior use "%r" % x. Otherwise, decode the bytes  [str-bytes-safe]
-'{:>2}'.format(None)  # E: alignment types do not support string formatting [str-format]
+'{:>2}'.format(None)  # E: alignment format specs are not supported on NoneType [str-format]
 
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
