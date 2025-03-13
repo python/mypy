@@ -67,10 +67,9 @@ def enum_name_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     enum_names = ctx.type.type.enum_members
     if enum_names:
         str_type = ctx.api.named_generic_type("builtins.str", [])
-        return make_simplified_union([
-            LiteralType(enum_name, fallback=str_type)
-            for enum_name in enum_names
-        ])
+        return make_simplified_union(
+            [LiteralType(enum_name, fallback=str_type) for enum_name in enum_names]
+        )
 
     return ctx.default_attr_type
 
