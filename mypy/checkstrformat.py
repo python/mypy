@@ -1076,9 +1076,9 @@ class StringFormatterChecker:
         elif p.startswith(("<", ">", "=", "^")):
             return UnionType(
                 [
-                    self.named_type("builtins.int"), 
-                    self.named_type("builtins.float"), 
-                    self.named_type("builtins.str")
+                    self.named_type("builtins.int"),
+                    self.named_type("builtins.float"),
+                    self.named_type("builtins.str"),
                 ]
             )
         else:
