@@ -944,7 +944,7 @@ class Errors:
                 return i[1]
         return None
 
-    def new_messages(self, formatter: ErrorFormatter = None) -> list[str]:
+    def new_messages(self, formatter: ErrorFormatter | None = None) -> list[str]:
         """Return a string list of new error messages.
 
         Use a form suitable for displaying to the user.
