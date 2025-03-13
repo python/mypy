@@ -711,7 +711,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Get type as seen by an overload item caller."""
         inner_type = get_proper_type(inner_type)
         outer_type: FunctionLike | None = None
-        if inner_type is None or isinstance(inner_type, AnyType):
+        if inner_type is None or isinstance(inner_type, (AnyType, UninhabitedType)):
             return None
         if isinstance(inner_type, TypeVarLikeType):
             inner_type = get_proper_type(inner_type.upper_bound)
