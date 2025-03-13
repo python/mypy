@@ -54,13 +54,25 @@ def enum_name_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     This plugin assumes that the provided context is an attribute access
     matching one of the strings found in 'ENUM_NAME_ACCESS'.
     """
+    # This might be `SomeEnum.Field.name` case:
     enum_field_name = _extract_underlying_field_name(ctx.type)
-    if enum_field_name is None:
-        return ctx.default_attr_type
-    else:
+    if enum_field_name is not None:
         str_type = ctx.api.named_generic_type("builtins.str", [])
         literal_type = LiteralType(enum_field_name, fallback=str_type)
         return str_type.copy_modified(last_known_value=literal_type)
+
+    # Or `field: SomeEnum = SomeEnum.field; field.name` case:
+    if not isinstance(ctx.type, Instance) or not ctx.type.type.is_enum:
+        return ctx.default_attr_type
+    enum_names = ctx.type.type.enum_members
+    if enum_names:
+        str_type = ctx.api.named_generic_type("builtins.str", [])
+        return make_simplified_union([
+            LiteralType(enum_name, fallback=str_type)
+            for enum_name in enum_names
+        ])
+
+    return ctx.default_attr_type
 
 
 _T = TypeVar("_T")
