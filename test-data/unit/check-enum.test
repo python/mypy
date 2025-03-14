@@ -126,6 +126,18 @@ e: Empty
 reveal_type(e.name)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
+[case testEnumNameValueOnUnionOfLiteral]
+from enum import Enum
+from typing import Literal
+class Colors(Enum):
+    red = 1
+    blue = 2
+    green = 3
+
+color: Literal[Colors.red, Colors.blue]
+reveal_type(color.name)  # N: Revealed type is "Union[Literal['red'], Literal['blue']]"
+[builtins fixtures/tuple.pyi]
+
 [case testEnumValueExtended]
 from enum import Enum
 class Truth(Enum):
