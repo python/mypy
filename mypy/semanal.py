@@ -309,6 +309,7 @@ from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
 from mypy.util import correct_relative_import, is_dunder, module_prefix, unmangle, unnamed_function
 from mypy.visitor import NodeVisitor
+import warnings
 
 T = TypeVar("T")
 
@@ -7714,7 +7715,11 @@ class SemanticAnalyzer(
 
         self.errors = Errors(Options())
         try:
-            t = self.expr_to_analyzed_type(maybe_type_expr)
+            # Ignore warnings that look like:
+            # <type_comment>:1: SyntaxWarning: invalid escape sequence '\('
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=SyntaxWarning)
+                t = self.expr_to_analyzed_type(maybe_type_expr)
             if self.errors.is_errors():
                 t = None
         except TypeTranslationError:
