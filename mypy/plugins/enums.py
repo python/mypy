@@ -27,10 +27,9 @@ from mypy.types import (
     LiteralType,
     ProperType,
     Type,
+    UnionType,
     get_proper_type,
     is_named_instance,
-    UnionType,
-    LiteralType,
 )
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
@@ -65,7 +64,9 @@ def enum_name_callback(ctx: mypy.plugin.AttributeContext) -> Type:
 
     # Or `field: SomeEnum = SomeEnum.field; field.name` case,
     # Or `field: Literal[Some.A, Some.B]; field.name` case:
-    enum_names = _extract_enum_names_from_type(ctx.type) or _extract_enum_names_from_literal_union(ctx.type)
+    enum_names = _extract_enum_names_from_type(ctx.type) or _extract_enum_names_from_literal_union(
+        ctx.type
+    )
     if enum_names:
         str_type = ctx.api.named_generic_type("builtins.str", [])
         return make_simplified_union(
