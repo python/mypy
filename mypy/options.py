@@ -22,6 +22,7 @@ class BuildType:
 PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
     "allow_redefinition",
+    "allow_redefinition_new",
     "allow_untyped_globals",
     "always_false",
     "always_true",
@@ -219,6 +220,10 @@ class Options:
         # and the same nesting level as the initialization
         self.allow_redefinition = False
 
+        # Allow flexible variable redefinition with an arbitrary type, in different
+        # blocks and and at different nesting levels
+        self.allow_redefinition_new = True
+
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
@@ -356,7 +361,7 @@ class Options:
         self.dump_deps = False
         self.logical_deps = False
         # If True, partial types can't span a module top level and a function
-        self.local_partial_types = False
+        self.local_partial_types = True
         # Some behaviors are changed when using Bazel (https://bazel.build).
         self.bazel = False
         # If True, export inferred types for all expressions as BuildResult.types

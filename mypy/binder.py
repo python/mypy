@@ -7,8 +7,9 @@ from typing import NamedTuple, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
-from mypy.literals import Key, literal, literal_hash, subkeys
+from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash, subkeys
 from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
+from mypy.options import Options
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.typeops import make_simplified_union
 from mypy.types import (
@@ -39,6 +40,7 @@ class CurrentType(NamedTuple):
 
 class Frame:
     """A Frame represents a specific point in the execution of a program.
+
     It carries information about the current types of expressions at
     that point, arising either from assignments to those expressions
     or the result of isinstance checks and other type narrowing
@@ -97,7 +99,7 @@ class ConditionalTypeBinder:
     # This maps an expression to a list of bound types for every item in the union type.
     type_assignments: Assigns | None = None
 
-    def __init__(self) -> None:
+    def __init__(self, options: Options) -> None:
         # Each frame gets an increasing, distinct id.
         self.next_id = 1
 
@@ -130,6 +132,11 @@ class ConditionalTypeBinder:
         self.try_frames: set[int] = set()
         self.break_frames: list[int] = []
         self.continue_frames: list[int] = []
+
+        # If True, initial assignment to a simple variable (e.g. "x", but not "x.y")
+        # is added to the binder. This allows more precise narrowing and more
+        # flexible inference of variable types (--allow-redefinition-new).
+        self.bind_all = options.allow_redefinition_new
 
     def _get_id(self) -> int:
         self.next_id += 1
@@ -226,11 +233,19 @@ class ConditionalTypeBinder:
         for key in keys:
             current_value = self._get(key)
             resulting_values = [f.types.get(key, current_value) for f in frames]
-            if any(x is None for x in resulting_values):
+            # Keys can be narrowed using two different semantics. The new semantics
+            # is enabled for plain variables when bind_all is true, and it allows
+            # variable types to be widened using subsequent assignments. This is
+            # tricky to support for instance attributes (primarily due to deferrals),
+            # so we don't use it for them.
+            old_semantics = not self.bind_all or extract_var_from_literal_hash(key) is None
+            if old_semantics and any(x is None for x in resulting_values):
                 # We didn't know anything about key before
                 # (current_value must be None), and we still don't
                 # know anything about key in at least one possible frame.
                 continue
+
+            resulting_values = [x for x in resulting_values if x is not None]
 
             if all_reachable and all(
                 x is not None and not x.from_assignment for x in resulting_values
@@ -278,7 +293,11 @@ class ConditionalTypeBinder:
                     # still equivalent to such type).
                     if isinstance(type, UnionType):
                         type = collapse_variadic_union(type)
-                    if isinstance(type, ProperType) and isinstance(type, UnionType):
+                    if (
+                        old_semantics
+                        and isinstance(type, ProperType)
+                        and isinstance(type, UnionType)
+                    ):
                         # Simplify away any extra Any's that were added to the declared
                         # type when popping a frame.
                         simplified = UnionType.make_union(

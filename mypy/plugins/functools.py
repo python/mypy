@@ -276,7 +276,7 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
     for i, actuals in enumerate(formal_to_actual):
         if len(bound.arg_types) == len(fn_type.arg_types):
             arg_type = bound.arg_types[i]
-            if not mypy.checker.is_valid_inferred_type(arg_type):
+            if not mypy.checker.is_valid_inferred_type(arg_type, ctx.api.options):
                 arg_type = fn_type.arg_types[i]  # bit of a hack
         else:
             # TODO: I assume that bound and fn_type have the same arguments. It appears this isn't
@@ -301,7 +301,7 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
             partial_names.append(fn_type.arg_names[i])
 
     ret_type = bound.ret_type
-    if not mypy.checker.is_valid_inferred_type(ret_type):
+    if not mypy.checker.is_valid_inferred_type(ret_type, ctx.api.options):
         ret_type = fn_type.ret_type  # same kind of hack as above
 
     partially_applied = fn_type.copy_modified(
