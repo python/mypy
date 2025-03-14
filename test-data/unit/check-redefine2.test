@@ -1140,3 +1140,10 @@ def f() -> None:
         td = {"x": 5}
     reveal_type(td) # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.int})"
 [typing fixtures/typing-typeddict.pyi]
+
+[case testNewRedefineEmptyGeneratorUsingUnderscore]
+# flags: --allow-redefinition-new --local-partial-types
+def f() -> None:
+    gen = (_ for _ in ())
+    reveal_type(gen) # N: Revealed type is "typing.Generator[Any, None, None]"
+[builtins fixtures/tuple.pyi]

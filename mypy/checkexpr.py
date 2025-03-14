@@ -5786,6 +5786,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 _, sequence_type = self.chk.analyze_async_iterable_item_type(sequence)
             else:
                 _, sequence_type = self.chk.analyze_iterable_item_type(sequence)
+                if (
+                    isinstance(sequence_type, UninhabitedType)
+                    and isinstance(index, NameExpr)
+                    and index.name == "_"
+                ):
+                    # To preserve backward compatibility, avoid inferring Never for "_"
+                    sequence_type = AnyType(TypeOfAny.special_form)
+
             self.chk.analyze_index_variables(index, sequence_type, True, e)
             for condition in conditions:
                 self.accept(condition)
