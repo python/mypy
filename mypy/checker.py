@@ -4560,7 +4560,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             always_allow_any = lvalue_type is not None and not isinstance(
                 get_proper_type(lvalue_type), AnyType
             )
-            if inferred is None:
+            if inferred is None or is_typeddict_type_context(lvalue_type):
                 type_context = lvalue_type
             else:
                 type_context = None
@@ -9233,3 +9233,10 @@ def _ambiguous_enum_variants(types: list[Type]) -> set[str]:
         else:
             result.add("<other>")
     return result
+
+
+def is_typeddict_type_context(lvalue_type: Type | None) -> bool:
+    if lvalue_type is None:
+        return False
+    lvalue_proper = get_proper_type(lvalue_type)
+    return isinstance(lvalue_proper, TypedDictType)

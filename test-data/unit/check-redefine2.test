@@ -1126,3 +1126,17 @@ def f3() -> None:
 def f4() -> None:
     a, b = 1, [] # E: Need type annotation for "b" (hint: "b: List[<type>] = ...")
 [builtins fixtures/tuple.pyi]
+
+[case testNewRedefineUseInferredTypedDictTypeForContext]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import TypedDict
+
+class TD(TypedDict):
+    x: int
+
+def f() -> None:
+    td = TD(x=1)
+    if int():
+        td = {"x": 5}
+    reveal_type(td) # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.int})"
+[typing fixtures/typing-typeddict.pyi]
