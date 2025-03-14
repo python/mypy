@@ -51,6 +51,7 @@ Some important properties:
 from __future__ import annotations
 
 import re
+import warnings
 from collections.abc import Collection, Iterable, Iterator
 from contextlib import contextmanager
 from typing import Any, Callable, Final, TypeVar, cast
@@ -309,7 +310,6 @@ from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
 from mypy.util import correct_relative_import, is_dunder, module_prefix, unmangle, unnamed_function
 from mypy.visitor import NodeVisitor
-import warnings
 
 T = TypeVar("T")
 
