@@ -5787,7 +5787,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 _, sequence_type = self.chk.analyze_iterable_item_type(sequence)
                 if (
-                    isinstance(sequence_type, UninhabitedType)
+                    isinstance(get_proper_type(sequence_type), UninhabitedType)
                     and isinstance(index, NameExpr)
                     and index.name == "_"
                 ):
