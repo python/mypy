@@ -126,14 +126,21 @@ def get_mypyc_attrs(stmt: ClassDef | Decorator) -> dict[str, Any]:
 
 
 def is_extension_class(cdef: ClassDef) -> bool:
-    if any(
-        not is_trait_decorator(d)
-        and not is_dataclass_decorator(d)
-        and not get_mypyc_attr_call(d)
-        and not is_final_decorator(d)
-        for d in cdef.decorators
-    ):
-        return False
+    for d in cdef.decorators:
+        mypyc_attr_call = get_mypyc_attr_call(d)
+        # Classes decorated with "@mypyc_attr(non_extension_class=True)" are not extension classes
+        if mypyc_attr_call and "non_extension_class" in mypyc_attr_call.arg_names:
+            return False
+
+        # Classes that have any decorator other than supported decorators, are not extension classes
+        if (
+            not is_trait_decorator(d)
+            and not is_dataclass_decorator(d)
+            and not mypyc_attr_call
+            and not is_final_decorator(d)
+        ):
+            return False
+
     if cdef.info.typeddict_type:
         return False
     if cdef.info.is_named_tuple:
