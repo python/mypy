@@ -1,4 +1,3 @@
-# ruff: noqa: PYI036 # This is the module declaring BaseException
 import _ast
 import _sitebuiltins
 import _typeshed
@@ -63,6 +62,7 @@ from typing import (  # noqa: Y022
 from typing_extensions import (  # noqa: Y023
     Concatenate,
     Literal,
+    LiteralString,
     ParamSpec,
     Self,
     TypeAlias,
@@ -88,8 +88,8 @@ _T2 = TypeVar("_T2")
 _T3 = TypeVar("_T3")
 _T4 = TypeVar("_T4")
 _T5 = TypeVar("_T5")
-_SupportsNextT = TypeVar("_SupportsNextT", bound=SupportsNext[Any], covariant=True)
-_SupportsAnextT = TypeVar("_SupportsAnextT", bound=SupportsAnext[Any], covariant=True)
+_SupportsNextT_co = TypeVar("_SupportsNextT_co", bound=SupportsNext[Any], covariant=True)
+_SupportsAnextT_co = TypeVar("_SupportsAnextT_co", bound=SupportsAnext[Any], covariant=True)
 _AwaitableT = TypeVar("_AwaitableT", bound=Awaitable[Any])
 _AwaitableT_co = TypeVar("_AwaitableT_co", bound=Awaitable[Any], covariant=True)
 _P = ParamSpec("_P")
@@ -445,16 +445,31 @@ class str(Sequence[str]):
     def __new__(cls, object: object = ...) -> Self: ...
     @overload
     def __new__(cls, object: ReadableBuffer, encoding: str = ..., errors: str = ...) -> Self: ...
+    @overload
+    def capitalize(self: LiteralString) -> LiteralString: ...
+    @overload
     def capitalize(self) -> str: ...  # type: ignore[misc]
+    @overload
+    def casefold(self: LiteralString) -> LiteralString: ...
+    @overload
     def casefold(self) -> str: ...  # type: ignore[misc]
+    @overload
+    def center(self: LiteralString, width: SupportsIndex, fillchar: LiteralString = " ", /) -> LiteralString: ...
+    @overload
     def center(self, width: SupportsIndex, fillchar: str = " ", /) -> str: ...  # type: ignore[misc]
     def count(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
     def encode(self, encoding: str = "utf-8", errors: str = "strict") -> bytes: ...
     def endswith(
         self, suffix: str | tuple[str, ...], start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /
     ) -> bool: ...
+    @overload
+    def expandtabs(self: LiteralString, tabsize: SupportsIndex = 8) -> LiteralString: ...
+    @overload
     def expandtabs(self, tabsize: SupportsIndex = 8) -> str: ...  # type: ignore[misc]
     def find(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
+    @overload
+    def format(self: LiteralString, *args: LiteralString, **kwargs: LiteralString) -> LiteralString: ...
+    @overload
     def format(self, *args: object, **kwargs: object) -> str: ...
     def format_map(self, mapping: _FormatMapMapping, /) -> str: ...
     def index(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
@@ -470,35 +485,99 @@ class str(Sequence[str]):
     def isspace(self) -> bool: ...
     def istitle(self) -> bool: ...
     def isupper(self) -> bool: ...
+    @overload
+    def join(self: LiteralString, iterable: Iterable[LiteralString], /) -> LiteralString: ...
+    @overload
     def join(self, iterable: Iterable[str], /) -> str: ...  # type: ignore[misc]
+    @overload
+    def ljust(self: LiteralString, width: SupportsIndex, fillchar: LiteralString = " ", /) -> LiteralString: ...
+    @overload
     def ljust(self, width: SupportsIndex, fillchar: str = " ", /) -> str: ...  # type: ignore[misc]
+    @overload
+    def lower(self: LiteralString) -> LiteralString: ...
+    @overload
     def lower(self) -> str: ...  # type: ignore[misc]
+    @overload
+    def lstrip(self: LiteralString, chars: LiteralString | None = None, /) -> LiteralString: ...
+    @overload
     def lstrip(self, chars: str | None = None, /) -> str: ...  # type: ignore[misc]
+    @overload
+    def partition(self: LiteralString, sep: LiteralString, /) -> tuple[LiteralString, LiteralString, LiteralString]: ...
+    @overload
     def partition(self, sep: str, /) -> tuple[str, str, str]: ...  # type: ignore[misc]
     if sys.version_info >= (3, 13):
+        @overload
+        def replace(
+            self: LiteralString, old: LiteralString, new: LiteralString, /, count: SupportsIndex = -1
+        ) -> LiteralString: ...
+        @overload
         def replace(self, old: str, new: str, /, count: SupportsIndex = -1) -> str: ...  # type: ignore[misc]
     else:
+        @overload
+        def replace(
+            self: LiteralString, old: LiteralString, new: LiteralString, count: SupportsIndex = -1, /
+        ) -> LiteralString: ...
+        @overload
         def replace(self, old: str, new: str, count: SupportsIndex = -1, /) -> str: ...  # type: ignore[misc]
     if sys.version_info >= (3, 9):
+        @overload
+        def removeprefix(self: LiteralString, prefix: LiteralString, /) -> LiteralString: ...
+        @overload
         def removeprefix(self, prefix: str, /) -> str: ...  # type: ignore[misc]
+        @overload
+        def removesuffix(self: LiteralString, suffix: LiteralString, /) -> LiteralString: ...
+        @overload
         def removesuffix(self, suffix: str, /) -> str: ...  # type: ignore[misc]
 
     def rfind(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
     def rindex(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
+    @overload
+    def rjust(self: LiteralString, width: SupportsIndex, fillchar: LiteralString = " ", /) -> LiteralString: ...
+    @overload
     def rjust(self, width: SupportsIndex, fillchar: str = " ", /) -> str: ...  # type: ignore[misc]
+    @overload
+    def rpartition(self: LiteralString, sep: LiteralString, /) -> tuple[LiteralString, LiteralString, LiteralString]: ...
+    @overload
     def rpartition(self, sep: str, /) -> tuple[str, str, str]: ...  # type: ignore[misc]
+    @overload
+    def rsplit(self: LiteralString, sep: LiteralString | None = None, maxsplit: SupportsIndex = -1) -> list[LiteralString]: ...
+    @overload
     def rsplit(self, sep: str | None = None, maxsplit: SupportsIndex = -1) -> list[str]: ...  # type: ignore[misc]
+    @overload
+    def rstrip(self: LiteralString, chars: LiteralString | None = None, /) -> LiteralString: ...
+    @overload
     def rstrip(self, chars: str | None = None, /) -> str: ...  # type: ignore[misc]
+    @overload
+    def split(self: LiteralString, sep: LiteralString | None = None, maxsplit: SupportsIndex = -1) -> list[LiteralString]: ...
+    @overload
     def split(self, sep: str | None = None, maxsplit: SupportsIndex = -1) -> list[str]: ...  # type: ignore[misc]
+    @overload
+    def splitlines(self: LiteralString, keepends: bool = False) -> list[LiteralString]: ...
+    @overload
     def splitlines(self, keepends: bool = False) -> list[str]: ...  # type: ignore[misc]
     def startswith(
         self, prefix: str | tuple[str, ...], start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /
     ) -> bool: ...
+    @overload
+    def strip(self: LiteralString, chars: LiteralString | None = None, /) -> LiteralString: ...
+    @overload
     def strip(self, chars: str | None = None, /) -> str: ...  # type: ignore[misc]
+    @overload
+    def swapcase(self: LiteralString) -> LiteralString: ...
+    @overload
     def swapcase(self) -> str: ...  # type: ignore[misc]
+    @overload
+    def title(self: LiteralString) -> LiteralString: ...
+    @overload
     def title(self) -> str: ...  # type: ignore[misc]
     def translate(self, table: _TranslateTable, /) -> str: ...
+    @overload
+    def upper(self: LiteralString) -> LiteralString: ...
+    @overload
     def upper(self) -> str: ...  # type: ignore[misc]
+    @overload
+    def zfill(self: LiteralString, width: SupportsIndex, /) -> LiteralString: ...
+    @overload
     def zfill(self, width: SupportsIndex, /) -> str: ...  # type: ignore[misc]
     @staticmethod
     @overload
@@ -509,21 +588,39 @@ class str(Sequence[str]):
     @staticmethod
     @overload
     def maketrans(x: str, y: str, z: str, /) -> dict[int, int | None]: ...
+    @overload
+    def __add__(self: LiteralString, value: LiteralString, /) -> LiteralString: ...
+    @overload
     def __add__(self, value: str, /) -> str: ...  # type: ignore[misc]
     # Incompatible with Sequence.__contains__
     def __contains__(self, key: str, /) -> bool: ...  # type: ignore[override]
     def __eq__(self, value: object, /) -> bool: ...
     def __ge__(self, value: str, /) -> bool: ...
-    def __getitem__(self, key: SupportsIndex | slice, /) -> str: ...
+    @overload
+    def __getitem__(self: LiteralString, key: SupportsIndex | slice, /) -> LiteralString: ...
+    @overload
+    def __getitem__(self, key: SupportsIndex | slice, /) -> str: ...  # type: ignore[misc]
     def __gt__(self, value: str, /) -> bool: ...
     def __hash__(self) -> int: ...
+    @overload
+    def __iter__(self: LiteralString) -> Iterator[LiteralString]: ...
+    @overload
     def __iter__(self) -> Iterator[str]: ...  # type: ignore[misc]
     def __le__(self, value: str, /) -> bool: ...
     def __len__(self) -> int: ...
     def __lt__(self, value: str, /) -> bool: ...
+    @overload
+    def __mod__(self: LiteralString, value: LiteralString | tuple[LiteralString, ...], /) -> LiteralString: ...
+    @overload
     def __mod__(self, value: Any, /) -> str: ...
+    @overload
+    def __mul__(self: LiteralString, value: SupportsIndex, /) -> LiteralString: ...
+    @overload
     def __mul__(self, value: SupportsIndex, /) -> str: ...  # type: ignore[misc]
     def __ne__(self, value: object, /) -> bool: ...
+    @overload
+    def __rmul__(self: LiteralString, value: SupportsIndex, /) -> LiteralString: ...
+    @overload
     def __rmul__(self, value: SupportsIndex, /) -> str: ...  # type: ignore[misc]
     def __getnewargs__(self) -> tuple[str]: ...
 
@@ -772,7 +869,11 @@ class memoryview(Sequence[_I]):
     def __new__(cls, obj: ReadableBuffer) -> Self: ...
     def __enter__(self) -> Self: ...
     def __exit__(
-        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None, /
+        self,
+        exc_type: type[BaseException] | None,  # noqa: PYI036 # This is the module declaring BaseException
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+        /,
     ) -> None: ...
     @overload
     def cast(self, format: Literal["c", "@c"], shape: list[int] | tuple[int, ...] = ...) -> memoryview[bytes]: ...
@@ -1042,7 +1143,7 @@ class dict(MutableMapping[_KT, _VT]):
     def fromkeys(cls, iterable: Iterable[_T], value: _S, /) -> dict[_T, _S]: ...
     # Positional-only in dict, but not in MutableMapping
     @overload  # type: ignore[override]
-    def get(self, key: _KT, /) -> _VT | None: ...
+    def get(self, key: _KT, default: None = None, /) -> _VT | None: ...
     @overload
     def get(self, key: _KT, default: _VT, /) -> _VT: ...
     @overload
@@ -1146,7 +1247,7 @@ class frozenset(AbstractSet[_T_co]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
-class enumerate(Iterator[tuple[int, _T]]):
+class enumerate(Generic[_T]):
     def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> tuple[int, _T]: ...
@@ -1221,7 +1322,7 @@ class _PathLike(Protocol[AnyStr_co]):
     def __fspath__(self) -> AnyStr_co: ...
 
 if sys.version_info >= (3, 10):
-    def aiter(async_iterable: SupportsAiter[_SupportsAnextT], /) -> _SupportsAnextT: ...
+    def aiter(async_iterable: SupportsAiter[_SupportsAnextT_co], /) -> _SupportsAnextT_co: ...
 
     class _SupportsSynchronousAnext(Protocol[_AwaitableT_co]):
         def __anext__(self) -> _AwaitableT_co: ...
@@ -1340,7 +1441,7 @@ else:
 
 exit: _sitebuiltins.Quitter
 
-class filter(Iterator[_T]):
+class filter(Generic[_T]):
     @overload
     def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
     @overload
@@ -1383,7 +1484,7 @@ class _GetItemIterable(Protocol[_T_co]):
     def __getitem__(self, i: int, /) -> _T_co: ...
 
 @overload
-def iter(object: SupportsIter[_SupportsNextT], /) -> _SupportsNextT: ...
+def iter(object: SupportsIter[_SupportsNextT_co], /) -> _SupportsNextT_co: ...
 @overload
 def iter(object: _GetItemIterable[_T], /) -> Iterator[_T]: ...
 @overload
@@ -1405,7 +1506,7 @@ license: _sitebuiltins._Printer
 
 def locals() -> dict[str, Any]: ...
 
-class map(Iterator[_S]):
+class map(Generic[_S]):
     @overload
     def __new__(cls, func: Callable[[_T1], _S], iterable: Iterable[_T1], /) -> Self: ...
     @overload
@@ -1590,17 +1691,17 @@ def print(
     *values: object, sep: str | None = " ", end: str | None = "\n", file: _SupportsWriteAndFlush[str] | None = None, flush: bool
 ) -> None: ...
 
-_E = TypeVar("_E", contravariant=True)
-_M = TypeVar("_M", contravariant=True)
+_E_contra = TypeVar("_E_contra", contravariant=True)
+_M_contra = TypeVar("_M_contra", contravariant=True)
 
-class _SupportsPow2(Protocol[_E, _T_co]):
-    def __pow__(self, other: _E, /) -> _T_co: ...
+class _SupportsPow2(Protocol[_E_contra, _T_co]):
+    def __pow__(self, other: _E_contra, /) -> _T_co: ...
 
-class _SupportsPow3NoneOnly(Protocol[_E, _T_co]):
-    def __pow__(self, other: _E, modulo: None = None, /) -> _T_co: ...
+class _SupportsPow3NoneOnly(Protocol[_E_contra, _T_co]):
+    def __pow__(self, other: _E_contra, modulo: None = None, /) -> _T_co: ...
 
-class _SupportsPow3(Protocol[_E, _M, _T_co]):
-    def __pow__(self, other: _E, modulo: _M, /) -> _T_co: ...
+class _SupportsPow3(Protocol[_E_contra, _M_contra, _T_co]):
+    def __pow__(self, other: _E_contra, modulo: _M_contra, /) -> _T_co: ...
 
 _SupportsSomeKindOfPow = (  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs are fixed
     _SupportsPow2[Any, Any] | _SupportsPow3NoneOnly[Any, Any] | _SupportsPow3[Any, Any, Any]
@@ -1636,11 +1737,11 @@ def pow(base: float, exp: complex | _SupportsSomeKindOfPow, mod: None = None) ->
 @overload
 def pow(base: complex, exp: complex | _SupportsSomeKindOfPow, mod: None = None) -> complex: ...
 @overload
-def pow(base: _SupportsPow2[_E, _T_co], exp: _E, mod: None = None) -> _T_co: ...  # type: ignore[overload-overlap]
+def pow(base: _SupportsPow2[_E_contra, _T_co], exp: _E_contra, mod: None = None) -> _T_co: ...  # type: ignore[overload-overlap]
 @overload
-def pow(base: _SupportsPow3NoneOnly[_E, _T_co], exp: _E, mod: None = None) -> _T_co: ...  # type: ignore[overload-overlap]
+def pow(base: _SupportsPow3NoneOnly[_E_contra, _T_co], exp: _E_contra, mod: None = None) -> _T_co: ...  # type: ignore[overload-overlap]
 @overload
-def pow(base: _SupportsPow3[_E, _M, _T_co], exp: _E, mod: _M) -> _T_co: ...
+def pow(base: _SupportsPow3[_E_contra, _M_contra, _T_co], exp: _E_contra, mod: _M_contra) -> _T_co: ...
 @overload
 def pow(base: _SupportsSomeKindOfPow, exp: float, mod: None = None) -> Any: ...
 @overload
@@ -1648,7 +1749,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
 
 quit: _sitebuiltins.Quitter
 
-class reversed(Iterator[_T]):
+class reversed(Generic[_T]):
     @overload
     def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
     @overload
@@ -1696,7 +1797,7 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
 # without creating many false-positive errors (see #7578).
 # Instead, we special-case the most common examples of this: bool and literal integers.
 @overload
-def sum(iterable: Iterable[bool], /, start: int = 0) -> int: ...
+def sum(iterable: Iterable[bool | _LiteralInteger], /, start: int = 0) -> int: ...
 @overload
 def sum(iterable: Iterable[_SupportsSumNoDefaultT], /) -> _SupportsSumNoDefaultT | Literal[0]: ...
 @overload
@@ -1709,7 +1810,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
 @overload
 def vars(object: Any = ..., /) -> dict[str, Any]: ...
 
-class zip(Iterator[_T_co]):
+class zip(Generic[_T_co]):
     if sys.version_info >= (3, 10):
         @overload
         def __new__(cls, *, strict: bool = ...) -> zip[Any]: ...
