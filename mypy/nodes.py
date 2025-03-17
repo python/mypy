@@ -2075,7 +2075,7 @@ class AssignmentExpr(Expression):
 
     __match_args__ = ("target", "value")
 
-    def __init__(self, target: Expression, value: Expression) -> None:
+    def __init__(self, target: NameExpr, value: Expression) -> None:
         super().__init__()
         self.target = target
         self.value = value

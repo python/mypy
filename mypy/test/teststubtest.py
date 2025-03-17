@@ -339,6 +339,21 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""def dunder_name(__x: int) -> None: ...""",
+            runtime="""def dunder_name(__x: int) -> None: ...""",
+            error=None,
+        )
+        yield Case(
+            stub="""def dunder_name_posonly(__x: int, /) -> None: ...""",
+            runtime="""def dunder_name_posonly(__x: int) -> None: ...""",
+            error=None,
+        )
+        yield Case(
+            stub="""def dunder_name_bad(x: int) -> None: ...""",
+            runtime="""def dunder_name_bad(__x: int) -> None: ...""",
+            error="dunder_name_bad",
+        )
 
     @collect_cases
     def test_arg_kind(self) -> Iterator[Case]:
@@ -1495,6 +1510,24 @@ class StubtestUnit(unittest.TestCase):
             """,
             runtime="class ClassWithMetaclassOverride: ...",
             error="ClassWithMetaclassOverride.__call__",
+        )
+        # Test that we ignore object.__setattr__ and object.__delattr__ inheritance
+        yield Case(
+            stub="""
+            from typing import Any
+            class FakeSetattrClass:
+                def __setattr__(self, name: str, value: Any, /) -> None: ...
+            """,
+            runtime="class FakeSetattrClass: ...",
+            error="FakeSetattrClass.__setattr__",
+        )
+        yield Case(
+            stub="""
+            class FakeDelattrClass:
+                def __delattr__(self, name: str, /) -> None: ...
+            """,
+            runtime="class FakeDelattrClass: ...",
+            error="FakeDelattrClass.__delattr__",
         )
 
     @collect_cases

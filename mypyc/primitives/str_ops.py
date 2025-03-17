@@ -84,6 +84,40 @@ str_slice_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+# item in str
+binary_op(
+    name="in",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="PyUnicode_Contains",
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0],
+)
+
+# str.find(...) and str.rfind(...)
+str_find_types: list[RType] = [str_rprimitive, str_rprimitive, int_rprimitive, int_rprimitive]
+str_find_functions = ["CPyStr_Find", "CPyStr_Find", "CPyStr_FindWithEnd"]
+str_find_constants: list[list[tuple[int, RType]]] = [[(0, c_int_rprimitive)], [], []]
+str_rfind_constants: list[list[tuple[int, RType]]] = [[(0, c_int_rprimitive)], [], []]
+for i in range(len(str_find_types) - 1):
+    method_op(
+        name="find",
+        arg_types=str_find_types[0 : i + 2],
+        return_type=int_rprimitive,
+        c_function_name=str_find_functions[i],
+        extra_int_constants=str_find_constants[i] + [(1, c_int_rprimitive)],
+        error_kind=ERR_MAGIC,
+    )
+    method_op(
+        name="rfind",
+        arg_types=str_find_types[0 : i + 2],
+        return_type=int_rprimitive,
+        c_function_name=str_find_functions[i],
+        extra_int_constants=str_rfind_constants[i] + [(-1, c_int_rprimitive)],
+        error_kind=ERR_MAGIC,
+    )
+
 # str.join(obj)
 method_op(
     name="join",
@@ -100,6 +134,25 @@ str_build_op = custom_op(
     error_kind=ERR_MAGIC,
     var_arg_type=str_rprimitive,
 )
+
+# str.strip, str.lstrip, str.rstrip
+for strip_prefix in ["l", "r", ""]:
+    method_op(
+        name=f"{strip_prefix}strip",
+        arg_types=[str_rprimitive, str_rprimitive],
+        return_type=str_rprimitive,
+        c_function_name=f"CPyStr_{strip_prefix.upper()}Strip",
+        error_kind=ERR_NEVER,
+    )
+    method_op(
+        name=f"{strip_prefix}strip",
+        arg_types=[str_rprimitive],
+        return_type=str_rprimitive,
+        c_function_name=f"CPyStr_{strip_prefix.upper()}Strip",
+        # This 0 below is implicitly treated as NULL in C.
+        extra_int_constants=[(0, c_int_rprimitive)],
+        error_kind=ERR_NEVER,
+    )
 
 # str.startswith(str)
 method_op(

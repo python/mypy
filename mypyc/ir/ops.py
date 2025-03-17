@@ -1532,12 +1532,12 @@ class Unborrow(RegisterOp):
       # t is a 2-tuple
       r0 = borrow t[0]
       r1 = borrow t[1]
+      keep_alive steal t
       r2 = unborrow r0
       r3 = unborrow r1
-      # now (r2, r3) represent the tuple as separate items, and the
-      # original tuple can be considered dead and available to be
-      # stolen
-      keep_alive steal t
+      # now (r2, r3) represent the tuple as separate items, that are
+      # managed again. (Note we need to steal before unborrow, to avoid
+      # refcount briefly touching zero if r2 or r3 are unused.)
 
     Be careful with this -- this can easily cause double freeing.
     """

@@ -144,6 +144,7 @@ select = [
   "PGH004",  # blanket noqa comments
   "UP",      # pyupgrade
   "C4",      # flake8-comprehensions
+  "SIM101",  # merge duplicate isinstance calls
   "SIM201", "SIM202", "SIM222", "SIM223",  # flake8-simplify
   "FURB188", # use str.remove(pre|suf)fix
   "ISC001",  # implicitly concatenated string

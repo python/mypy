@@ -217,22 +217,22 @@ from mypy.visitor import NodeVisitor
 
 T = TypeVar("T")
 
-DEFAULT_LAST_PASS: Final = 1  # Pass numbers start at 0
+DEFAULT_LAST_PASS: Final = 2  # Pass numbers start at 0
 
 # Maximum length of fixed tuple types inferred when narrowing from variadic tuples.
 MAX_PRECISE_TUPLE_SIZE: Final = 8
 
-DeferredNodeType: _TypeAlias = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
+DeferredNodeType: _TypeAlias = Union[FuncDef, OverloadedFuncDef, Decorator]
 FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
 
 
 # A node which is postponed to be processed during the next pass.
 # In normal mode one can defer functions and methods (also decorated and/or overloaded)
-# and lambda expressions. Nested functions can't be deferred -- only top-level functions
+# but not lambda expressions. Nested functions can't be deferred -- only top-level functions
 # and methods of classes not defined within a function can be deferred.
 class DeferredNode(NamedTuple):
     node: DeferredNodeType
-    # And its TypeInfo (for semantic analysis self type handling
+    # And its TypeInfo (for semantic analysis self type handling)
     active_typeinfo: TypeInfo | None
 
 
@@ -530,10 +530,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             self.recurse_into_functions = True
             with self.binder.top_frame_context():
-                if isinstance(node, LambdaExpr):
-                    self.expr_checker.accept(node)
-                else:
-                    self.accept(node)
+                self.accept(node)
 
     def check_top_level(self, node: MypyFile) -> None:
         """Check only the top-level of a module, skipping function definitions."""
@@ -560,13 +557,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.deferred_nodes.append(DeferredNode(node, enclosing_class))
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        node = self.scope.top_non_lambda_function()
+        node = self.scope.top_level_function()
         if self.pass_num < self.last_pass and isinstance(node, FuncDef):
             # Don't report an error yet. Just defer. Note that we don't defer
             # lambdas because they are coupled to the surrounding function
             # through the binder and the inferred type of the lambda, so it
             # would get messy.
-            enclosing_class = self.scope.enclosing_class()
+            enclosing_class = self.scope.enclosing_class(node)
             self.defer_node(node, enclosing_class)
             # Set a marker so that we won't infer additional types in this
             # function. Any inferred types could be bogus, because there's at
@@ -657,23 +654,35 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             assert isinstance(defn.items[0], Decorator)
             self.visit_decorator(defn.items[0])
             if defn.items[0].var.is_settable_property:
+                # TODO: here and elsewhere we assume setter immediately follows getter.
                 assert isinstance(defn.items[1], Decorator)
-                self.visit_func_def(defn.items[1].func)
-                setter_type = self.function_type(defn.items[1].func)
-                assert isinstance(setter_type, CallableType)
-                if len(setter_type.arg_types) != 2:
+                # Perform a reduced visit just to infer the actual setter type.
+                self.visit_decorator_inner(defn.items[1], skip_first_item=True)
+                setter_type = defn.items[1].var.type
+                # Check if the setter can accept two positional arguments.
+                any_type = AnyType(TypeOfAny.special_form)
+                fallback_setter_type = CallableType(
+                    arg_types=[any_type, any_type],
+                    arg_kinds=[ARG_POS, ARG_POS],
+                    arg_names=[None, None],
+                    ret_type=any_type,
+                    fallback=self.named_type("builtins.function"),
+                )
+                if setter_type and not is_subtype(setter_type, fallback_setter_type):
                     self.fail("Invalid property setter signature", defn.items[1].func)
-                    any_type = AnyType(TypeOfAny.from_error)
-                    setter_type = setter_type.copy_modified(
-                        arg_types=[any_type, any_type],
-                        arg_kinds=[ARG_POS, ARG_POS],
-                        arg_names=[None, None],
-                    )
+                setter_type = self.extract_callable_type(setter_type, defn)
+                if not isinstance(setter_type, CallableType) or len(setter_type.arg_types) != 2:
+                    # TODO: keep precise type for callables with tricky but valid signatures.
+                    setter_type = fallback_setter_type
                 defn.items[0].var.setter_type = setter_type
-        for fdef in defn.items:
+        for i, fdef in enumerate(defn.items):
             assert isinstance(fdef, Decorator)
             if defn.is_property:
-                self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
+                assert isinstance(defn.items[0], Decorator)
+                settable = defn.items[0].var.is_settable_property
+                # Do not visit the second time the items we checked above.
+                if (settable and i > 1) or (not settable and i > 0):
+                    self.check_func_item(fdef.func, name=fdef.func.name, allow_empty=True)
             else:
                 # Perform full check for real overloads to infer type of all decorated
                 # overload variants.
@@ -695,6 +704,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         item_types.append(item_type)
                 if item_types:
                     defn.type = Overloaded(item_types)
+        elif defn.type is None:
+            # We store the getter type as an overall overload type, as some
+            # code paths are getting property type this way.
+            assert isinstance(defn.items[0], Decorator)
+            var_type = self.extract_callable_type(defn.items[0].var.type, defn)
+            if not isinstance(var_type, CallableType):
+                # Construct a fallback type, invalid types should be already reported.
+                any_type = AnyType(TypeOfAny.special_form)
+                var_type = CallableType(
+                    arg_types=[any_type],
+                    arg_kinds=[ARG_POS],
+                    arg_names=[None],
+                    ret_type=any_type,
+                    fallback=self.named_type("builtins.function"),
+                )
+            defn.type = Overloaded([var_type])
         # Check override validity after we analyzed current definition.
         if defn.info:
             found_method_base_classes = self.check_method_override(defn)
@@ -1111,6 +1136,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
 
+        enclosing_node_deferred = self.current_node_deferred
         with self.enter_partial_types(is_function=True):
             typ = self.function_type(defn)
             if type_override:
@@ -1122,7 +1148,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 raise RuntimeError("Not supported")
 
         self.dynamic_funcs.pop()
-        self.current_node_deferred = False
+        self.current_node_deferred = enclosing_node_deferred
 
         if name == "__exit__":
             self.check__exit__return_type(defn)
@@ -2160,7 +2186,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if self.pass_num < self.last_pass:
                 # If there are passes left, defer this node until next pass,
                 # otherwise try reconstructing the method type from available information.
-                self.defer_node(defn, defn.info)
+                # For consistency, defer an enclosing top-level function (if any).
+                top_level = self.scope.top_level_function()
+                if isinstance(top_level, FuncDef):
+                    self.defer_node(top_level, self.scope.enclosing_class(top_level))
+                else:
+                    # Specify enclosing class explicitly, as we check type override before
+                    # entering e.g. decorators or overloads.
+                    self.defer_node(defn, defn.info)
                 return True
             elif isinstance(original_node, (FuncDef, OverloadedFuncDef)):
                 original_type = self.function_type(original_node)
@@ -4780,7 +4813,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.binder.unreachable()
 
     def check_return_stmt(self, s: ReturnStmt) -> None:
-        defn = self.scope.top_function()
+        defn = self.scope.current_function()
         if defn is not None:
             if defn.is_generator:
                 return_type = self.get_generator_return_type(
@@ -4792,7 +4825,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return_type = self.return_types[-1]
             return_type = get_proper_type(return_type)
 
-            is_lambda = isinstance(self.scope.top_function(), LambdaExpr)
+            is_lambda = isinstance(defn, LambdaExpr)
             if isinstance(return_type, UninhabitedType):
                 # Avoid extra error messages for failed inference in lambdas
                 if not is_lambda and not return_type.ambiguous:
@@ -5285,7 +5318,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return
         self.visit_decorator_inner(e)
 
-    def visit_decorator_inner(self, e: Decorator, allow_empty: bool = False) -> None:
+    def visit_decorator_inner(
+        self, e: Decorator, allow_empty: bool = False, skip_first_item: bool = False
+    ) -> None:
         if self.recurse_into_functions:
             with self.tscope.function_scope(e.func):
                 self.check_func_item(e.func, name=e.func.name, allow_empty=allow_empty)
@@ -5293,17 +5328,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Process decorators from the inside out to determine decorated signature, which
         # may be different from the declared signature.
         sig: Type = self.function_type(e.func)
-        for d in reversed(e.decorators):
+        non_trivial_decorator = False
+        # For settable properties skip the first decorator (that is @foo.setter).
+        for d in reversed(e.decorators[1:] if skip_first_item else e.decorators):
+            if refers_to_fullname(d, "abc.abstractmethod"):
+                # This is a hack to avoid spurious errors because of incomplete type
+                # of @abstractmethod in the test fixtures.
+                continue
             if refers_to_fullname(d, OVERLOAD_NAMES):
                 if not allow_empty:
                     self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
+            non_trivial_decorator = True
             dec = self.expr_checker.accept(d)
             temp = self.temp_node(sig, context=d)
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname or None
-            # if this is a expression like @b.a where b is an object, get the type of b
+            # if this is an expression like @b.a where b is an object, get the type of b,
             # so we can pass it the method hook in the plugins
             object_type: Type | None = None
             if fullname is None and isinstance(d, MemberExpr) and self.has_type(d.expr):
@@ -5313,7 +5355,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             sig, t2 = self.expr_checker.check_call(
                 dec, [temp], [nodes.ARG_POS], e, callable_name=fullname, object_type=object_type
             )
-        self.check_untyped_after_decorator(sig, e.func)
+        if non_trivial_decorator:
+            self.check_untyped_after_decorator(sig, e.func)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
@@ -5322,8 +5365,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if len([k for k in sig.arg_kinds if k.is_required()]) > 1:
                     self.msg.fail("Too many arguments for property", e)
             self.check_incompatible_property_override(e)
-        # For overloaded functions we already checked override for overload as a whole.
-        if allow_empty:
+        # For overloaded functions/properties we already checked override for overload as a whole.
+        if allow_empty or skip_first_item:
             return
         if e.func.info and not e.func.is_dynamic() and not e.is_overload:
             found_method_base_classes = self.check_method_override(e)
@@ -5350,6 +5393,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.options.disallow_untyped_decorators
             and is_typed_callable(func.type)
             and is_untyped_decorator(dec_type)
+            and not self.current_node_deferred
         ):
             self.msg.typed_function_untyped_decorator(func.name, dec_expr)
 
@@ -5489,12 +5533,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 with self.binder.frame_context(can_skip=True, fall_through=2):
                     # TODO: if this following code is necessary, find a failing test case.
                     # if b.is_unreachable:
-                    #     self.push_type_map(None, from_assignment=False)
-                    #     else_map: TypeMap = {}
+                    #    self.push_type_map(None, from_assignment=False)
+                    #    else_map: TypeMap = {}
                     # else:
                     pattern_map, else_map = conditional_types_to_typemaps(
                         named_subject, pattern_type.type, pattern_type.rest_type
                     )
+                    pattern_map = self.propagate_up_typemap_info(pattern_map)
+                    else_map = self.propagate_up_typemap_info(else_map)
                     self.remove_capture_conflicts(pattern_type.captures, inferred_types)
                     self.push_type_map(pattern_map, from_assignment=False)
                     if pattern_map:
@@ -5504,7 +5550,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 from_assignment=False,
                             )
                     self.push_type_map(pattern_type.captures, from_assignment=False)
-
                     if g is not None:
                         with self.binder.frame_context(can_skip=False, fall_through=3):
                             gt = get_proper_type(self.expr_checker.accept(g))
@@ -8565,14 +8610,15 @@ class CheckerScope:
     def __init__(self, module: MypyFile) -> None:
         self.stack = [module]
 
-    def top_function(self) -> FuncItem | None:
+    def current_function(self) -> FuncItem | None:
         for e in reversed(self.stack):
             if isinstance(e, FuncItem):
                 return e
         return None
 
-    def top_non_lambda_function(self) -> FuncItem | None:
-        for e in reversed(self.stack):
+    def top_level_function(self) -> FuncItem | None:
+        """Return top-level non-lambda function."""
+        for e in self.stack:
             if isinstance(e, FuncItem) and not isinstance(e, LambdaExpr):
                 return e
         return None
@@ -8582,11 +8628,11 @@ class CheckerScope:
             return self.stack[-1]
         return None
 
-    def enclosing_class(self) -> TypeInfo | None:
+    def enclosing_class(self, func: FuncItem | None = None) -> TypeInfo | None:
         """Is there a class *directly* enclosing this function?"""
-        top = self.top_function()
-        assert top, "This method must be called from inside a function"
-        index = self.stack.index(top)
+        func = func or self.current_function()
+        assert func, "This method must be called from inside a function"
+        index = self.stack.index(func)
         assert index, "CheckerScope stack must always start with a module"
         enclosing = self.stack[index - 1]
         if isinstance(enclosing, TypeInfo):
@@ -8600,7 +8646,7 @@ class CheckerScope:
         In particular, inside a function nested in method this returns None.
         """
         info = self.active_class()
-        if not info and self.top_function():
+        if not info and self.current_function():
             info = self.enclosing_class()
         if info:
             return fill_typevars(info)
