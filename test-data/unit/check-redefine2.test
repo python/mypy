@@ -1147,3 +1147,47 @@ def f() -> None:
     gen = (_ for _ in ())
     reveal_type(gen) # N: Revealed type is "typing.Generator[Any, None, None]"
 [builtins fixtures/tuple.pyi]
+
+[case testNewRedefineCannotWidenImportedVariable]
+# flags: --allow-redefinition-new --local-partial-types
+import a
+import b
+reveal_type(a.x) # N: Revealed type is "builtins.str"
+
+[file a.py]
+from b import x
+if int():
+    x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
+
+[file b.py]
+x = "a"
+
+[case testNewRedefineCannotWidenGlobalOrClassVariableWithMemberRef]
+# flags: --allow-redefinition-new --local-partial-types
+from typing import ClassVar
+import a
+
+a.x = None # E: Incompatible types in assignment (expression has type "None", variable has type "str")
+reveal_type(a.x) # N: Revealed type is "builtins.str"
+
+class C:
+    x = ""
+    y: ClassVar[str] = ""
+
+C.x = None # E: Incompatible types in assignment (expression has type "None", variable has type "str")
+reveal_type(C.x) # N: Revealed type is "builtins.str"
+C.y = None # E: Incompatible types in assignment (expression has type "None", variable has type "str")
+reveal_type(C.y) # N: Revealed type is "builtins.str"
+
+[file a.py]
+x = "a"
+
+[case testNewRedefineWidenGlobalInInitModule]
+# flags: --allow-redefinition-new --local-partial-types
+import pkg
+
+[file pkg/__init__.py]
+x = 0
+if int():
+    x = ""
+reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"

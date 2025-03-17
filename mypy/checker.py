@@ -4592,11 +4592,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 new_inferred = remove_instance_last_known_values(rvalue_type)
                 if not is_same_type(inferred.type, new_inferred):
                     # Should we widen the inferred type or the lvalue? Variables defined
-                    # at module level or class bodies can't be widened in functions.
-                    different_scopes = (
-                        self.scope.top_level_function() is not None and lvalue.kind != LDEF
-                    )
-                    if not different_scopes:
+                    # at module level or class bodies can't be widened in functions, or
+                    # in another module.
+                    if not self.refers_to_different_scope(lvalue):
                         lvalue_type = make_simplified_union([inferred.type, new_inferred])
                         if not is_same_type(lvalue_type, inferred.type) and not isinstance(
                             inferred.type, PartialType
@@ -4650,6 +4648,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     notes=notes,
                 )
             return rvalue_type, lvalue_type
+
+    def refers_to_different_scope(self, name: NameExpr) -> bool:
+        if name.kind == LDEF:
+            # TODO: Consider reference to outer function as a different scope?
+            return False
+        elif self.scope.top_level_function() is not None:
+            # A non-local reference from within a function must refer to a different scope
+            return True
+        elif name.kind == GDEF and name.fullname.rpartition(".")[0] != self.tree.fullname:
+            # Reference to global definition from another module
+            return True
+        return False
 
     def check_member_assignment(
         self,
