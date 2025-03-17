@@ -66,7 +66,6 @@ jobs:
             --num-shards 5 --shard-index ${{ matrix.shard-index }} \
             --debug \
             --additional-flags="--debug-serialize" \
-            --additional-flags="--local-partial-types" \
             --output concise \
             | tee diff_${{ matrix.shard-index }}.txt
           ) || [ $? -eq 1 ]
