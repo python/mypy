@@ -218,16 +218,29 @@ dict_with_typx_keys[int | str] += 1
 [case testTypeExpressionWithStringAnnotationNotRecognizedInOtherSyntacticLocations]
 # flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
 from typing import Dict, List, TypeForm
-list_of_typx: List[TypeForm] = ['int | str']  # N: TypeForm containing a string annotation cannot be recognized here. Try assigning the TypeForm to a variable and use the variable here instead. \
+list_of_typx: List[TypeForm] = ['int | str']  # N: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize. \
                                               # E: List item 0 has incompatible type "str"; expected "TypeForm[Any]"
 dict_with_typx_keys: Dict[TypeForm, int] = {
-    'int | str': 1,  # N: TypeForm containing a string annotation cannot be recognized here. Try assigning the TypeForm to a variable and use the variable here instead. \
+    'int | str': 1,  # N: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize. \
                      # E: Dict entry 0 has incompatible type "str": "int"; expected "TypeForm[Any]": "int"
-    'str | None': 2,  # N: TypeForm containing a string annotation cannot be recognized here. Try assigning the TypeForm to a variable and use the variable here instead. \
+    'str | None': 2,  # N: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize. \
                       # E: Dict entry 1 has incompatible type "str": "int"; expected "TypeForm[Any]": "int"
 }
-dict_with_typx_keys['int | str'] += 1  # N: TypeForm containing a string annotation cannot be recognized here. Try assigning the TypeForm to a variable and use the variable here instead. \
+dict_with_typx_keys['int | str'] += 1  # N: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize. \
                                        # E: Invalid index type "str" for "Dict[TypeForm[Any], int]"; expected type "TypeForm[Any]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testValueExpressionWithStringInTypeFormContextEmitsConservativeWarning]
+from typing import Any, Dict, List, TypeForm
+types: Dict[str, TypeForm] = {'any': Any}
+# Ensure warning can be ignored if does not apply.
+list_of_typx1: List[TypeForm] = [types['any']]  # N: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.
+list_of_typx2: List[TypeForm] = [types['any']]  # type: ignore[maybe-unrecognized-str-typeform]
+# Ensure warning can be fixed using the suggested fix in the warning message.
+list_of_typx3: List[TypeForm] = ['Any']  # N: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize. \
+                                         # E: List item 0 has incompatible type "str"; expected "TypeForm[Any]"
+list_of_typx4: List[TypeForm] = [TypeForm('Any')]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
