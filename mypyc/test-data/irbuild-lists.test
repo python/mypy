@@ -182,6 +182,18 @@ L0:
     r1 = r0 << 1
     return r1
 
+[case testListCopy]
+from typing import List
+from typing import Any
+def f(a: List[Any]) -> List[Any]:
+    return a.copy()
+[out]
+def f(a):
+    a, r0 :: list
+L0:
+    r0 = CPyList_Copy(a)
+    return r0
+
 [case testListAppend]
 from typing import List
 def f(a: List[int], x: int) -> None:
