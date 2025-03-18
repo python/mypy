@@ -51,6 +51,55 @@ print(2, a)
 1 [-1, 5]
 2 [340282366920938463463374607431768211461, -170141183460469231731687303715884105736]
 
+[case testListCopy]
+from typing import List
+from copysubclass import subc
+
+def test_list_copy() -> None:
+    l1 = [1, 2, 3, -4, 5]
+    l2 = l1.copy()
+    assert l1.copy() == l1
+    assert l1.copy() == l2
+    assert l1 == l2
+    assert l1.copy() == l2.copy()
+    l1 = l2.copy()
+    assert l1 == l2
+    assert l1.copy() == l2
+    assert l1 == [1, 2, 3, -4, 5]
+    l2 = [1, 2, -3]
+    l1 = []
+    assert l1.copy() == []
+    assert l2.copy() != l1
+    assert l2 == l2.copy()
+    l1 = l2
+    assert l1.copy().copy() == l2.copy().copy().copy()
+    assert l1.copy() == l2.copy()
+    l1 == [1, 2, -3].copy()
+    assert l1 == l2
+    l2 = [1, 2, 3].copy()
+    assert l2 != l1
+    l1 = [1, 2, 3]
+    assert l1.copy() == l2.copy()
+    l3 = [1, 2 , 3, "abcdef"]
+    assert l3 == l3.copy()
+    l4 = ["abc", 5, 10]
+    l4 = l3.copy()
+    assert l4 == l3
+    #subclass testing
+    l5: subc = subc([1, 2, 3])
+    l6 = l5.copy()
+    assert l6 == l5
+    l6 = [1, 2, "3", 4, 5]
+    l5 = subc([1,2,"3",4,5])
+    assert l5.copy() == l6.copy()
+    l6 = l5.copy()
+    assert l5 == l6
+
+[file copysubclass.py]
+from typing import Any
+class subc(list[Any]):
+    pass
+
 [case testSieve]
 from typing import List
 
