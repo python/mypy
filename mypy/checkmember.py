@@ -95,7 +95,6 @@ class MemberContext:
         is_operator: bool,
         original_type: Type,
         context: Context,
-        msg: MessageBuilder,
         chk: mypy.checker.TypeChecker,
         self_type: Type | None,
         module_symbol_table: SymbolTable | None = None,
@@ -108,8 +107,8 @@ class MemberContext:
         self.original_type = original_type
         self.self_type = self_type or original_type
         self.context = context  # Error context
-        self.msg = msg
         self.chk = chk
+        self.msg = chk.msg
         self.module_symbol_table = module_symbol_table
         self.no_deferral = no_deferral
         self.is_self = is_self
@@ -123,7 +122,6 @@ class MemberContext:
     def copy_modified(
         self,
         *,
-        messages: MessageBuilder | None = None,
         self_type: Type | None = None,
         is_lvalue: bool | None = None,
         original_type: Type | None = None,
@@ -134,14 +132,11 @@ class MemberContext:
             is_operator=self.is_operator,
             original_type=self.original_type,
             context=self.context,
-            msg=self.msg,
             chk=self.chk,
             self_type=self.self_type,
             module_symbol_table=self.module_symbol_table,
             no_deferral=self.no_deferral,
         )
-        if messages is not None:
-            mx.msg = messages
         if self_type is not None:
             mx.self_type = self_type
         if is_lvalue is not None:
@@ -159,7 +154,6 @@ def analyze_member_access(
     is_lvalue: bool,
     is_super: bool,
     is_operator: bool,
-    msg: MessageBuilder,
     original_type: Type,
     chk: mypy.checker.TypeChecker,
     override_info: TypeInfo | None = None,
@@ -198,7 +192,6 @@ def analyze_member_access(
         is_operator=is_operator,
         original_type=original_type,
         context=context,
-        msg=msg,
         chk=chk,
         self_type=self_type,
         module_symbol_table=module_symbol_table,

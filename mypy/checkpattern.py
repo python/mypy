@@ -598,7 +598,6 @@ class PatternChecker(PatternVisitor[PatternType]):
                         is_lvalue=False,
                         is_super=False,
                         is_operator=False,
-                        msg=self.msg,
                         original_type=typ,
                         chk=self.chk,
                     )
@@ -664,7 +663,6 @@ class PatternChecker(PatternVisitor[PatternType]):
                         is_lvalue=False,
                         is_super=False,
                         is_operator=False,
-                        msg=self.msg,
                         original_type=new_type,
                         chk=self.chk,
                     )
