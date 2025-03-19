@@ -40,6 +40,7 @@ from mypyc.errors import Errors
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
+from mypyc.report import generate_report
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
@@ -252,6 +253,9 @@ def generate_c(
 
     if compiler_options.verbose:
         print(f"Compiled to C in {t2 - t1:.3f}s")
+
+    if options.mypyc_report:
+        generate_report(result, modules)
 
     return ctext, "\n".join(format_modules(modules))
 

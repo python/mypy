@@ -406,6 +406,8 @@ class Options:
         # Sets custom output format
         self.output: str | None = None
 
+        self.mypyc_report = False
+
     def use_lowercase_names(self) -> bool:
         if self.python_version >= (3, 9):
             return not self.force_uppercase_builtins

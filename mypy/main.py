@@ -1122,6 +1122,7 @@ def process_options(
                 metavar="DIR",
                 dest=f"special-opts:{report_type}_report",
             )
+    report_group.add_argument("--mypyc-report", action="store_true", help=argparse.SUPPRESS)
 
     other_group = parser.add_argument_group(title="Miscellaneous")
     other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
