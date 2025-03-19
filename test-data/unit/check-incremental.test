@@ -6855,3 +6855,14 @@ from .lib import NT
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
+
+[case testNewRedefineAffectsCache]
+# flags: --local-partial-types --allow-redefinition-new
+# flags2: --local-partial-types
+# flags3: --local-partial-types --allow-redefinition-new
+x = 0
+if int():
+    x = ""
+[out]
+[out2]
+main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
