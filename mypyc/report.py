@@ -1,5 +1,6 @@
 import os.path
 import sys
+from html import escape
 
 from mypy.build import BuildResult
 from mypy.nodes import MypyFile
@@ -33,11 +34,18 @@ def generate_annotations(path: str, tree: MypyFile, ir: ModuleIR) -> AnnotatedSo
     return AnnotatedSource(path, {})
 
 
-def generate_html_report(annotations: list[AnnotatedSource]) -> str:
+def generate_html_report(sources: list[AnnotatedSource]) -> str:
     html = []
     html.append("<html><head></head>\n")
     html.append("<body>\n")
-    html.append("<h1>Mypyc Report\n")
+    html.append("<h1>Mypyc Report</h1>\n")
+    for src in sources:
+        html.append(f"<h2>{src.path}</h2>\n")
+        html.append("<pre>")
+        with open(src.path) as f:
+            text = f.read()
+        html.append(escape(text))
+        html.append("</pre>")
+
     html.append("</body></html>\n")
     return "".join(html)
-
