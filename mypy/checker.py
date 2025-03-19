@@ -17,7 +17,6 @@ from mypy.checkmember import (
     analyze_decorator_or_funcbase_access,
     analyze_descriptor_access,
     analyze_member_access,
-    type_object_type,
 )
 from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
@@ -168,6 +167,7 @@ from mypy.typeops import (
     try_getting_str_literals,
     try_getting_str_literals_from_type,
     tuple_fallback,
+    type_object_type,
 )
 from mypy.types import (
     ANY_STRATEGY,
