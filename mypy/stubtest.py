@@ -858,7 +858,7 @@ class Signature(Generic[T]):
 
         all_args: dict[str, list[tuple[nodes.Argument, int]]] = {}
         for func in map(_resolve_funcitem_from_decorator, stub.items):
-            assert func is not None
+            assert func is not None, "Failed to resolve decorated overload"
             args = maybe_strip_cls(stub.name, func.arguments)
             for index, arg in enumerate(args):
                 # For positional-only args, we allow overloads to have different names for the same
