@@ -4735,7 +4735,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             original_type=instance_type,
             context=context,
             self_type=None,
-            msg=self.msg,
             chk=self,
         )
         get_type = analyze_descriptor_access(attribute_type, mx, assignment=True)
