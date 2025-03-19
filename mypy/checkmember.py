@@ -496,7 +496,8 @@ def analyze_member_var_access(
     original_type is the type of E in the expression E.var
     """
     # It was not a method. Try looking up a variable.
-    v = lookup_member_var_or_accessor(info, name, mx.is_lvalue)
+    node = info.get(name)
+    v = node.node if node else None
 
     mx.chk.warn_deprecated(v, mx.context)
 
@@ -896,16 +897,6 @@ class FreezeTypeVarsVisitor(TypeTraverserVisitor):
         for v in t.variables:
             v.id.meta_level = 0
         super().visit_callable_type(t)
-
-
-def lookup_member_var_or_accessor(info: TypeInfo, name: str, is_lvalue: bool) -> SymbolNode | None:
-    """Find the attribute/accessor node that refers to a member of a type."""
-    # TODO handle lvalues
-    node = info.get(name)
-    if node:
-        return node.node
-    else:
-        return None
 
 
 def check_self_arg(
