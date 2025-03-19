@@ -1330,6 +1330,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
         if (
             decorator.fullname in ("builtins.staticmethod", "abc.abstractmethod")
             or decorator.fullname in mypy.types.OVERLOAD_NAMES
+            or decorator.fullname in mypy.types.OVERRIDE_DECORATOR_NAMES
             or decorator.fullname in mypy.types.FINAL_DECORATOR_NAMES
         ):
             return func
