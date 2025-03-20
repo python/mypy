@@ -14,7 +14,7 @@ from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Literal, Protocol, TypeVar, overload
 from typing_extensions import Self, TypeAlias, TypeVarTuple, Unpack, deprecated
 
-from . import _AwaitableLike, _CoroutineLike
+from . import _AwaitableLike, _CoroutineLike, _TaskCompatibleCoro
 from .base_events import Server
 from .futures import Future
 from .protocols import BaseProtocol
@@ -66,8 +66,20 @@ _ExceptionHandler: TypeAlias = Callable[[AbstractEventLoop, _Context], object]
 _ProtocolFactory: TypeAlias = Callable[[], BaseProtocol]
 _SSLContext: TypeAlias = bool | None | ssl.SSLContext
 
-class _TaskFactory(Protocol):
-    def __call__(self, loop: AbstractEventLoop, factory: _CoroutineLike[_T], /) -> Future[_T]: ...
+if sys.python_version >= (3, 13, 2):
+    class _TaskFactory(Protocol):
+        def __call__(
+            self,
+            loop: AbstractEventLoop,
+            coro: _TaskCompatibleCoro[_T_co],
+            /,
+            *,
+            name: str | None = ...,
+            context: Context | None = None,
+            eager_start: bool = False,
+        ) -> Task[_T]: ...
+    class _TaskFactory(Protocol):
+        def __call__(self, loop: AbstractEventLoop, coro: _CoroutineLike[_T], /) -> Task[_T]: ...
 
 class Handle:
     _cancelled: bool
@@ -164,7 +176,12 @@ class AbstractEventLoop:
     @abstractmethod
     def create_future(self) -> Future[Any]: ...
     # Tasks methods
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 13, 2):
+        @abstractmethod
+        def create_task(
+            self, coro: _TaskCompatibleCoro[_T], *, name: str | None = None, context: Context | None = None, eager_start: bool | None = None
+        ) -> Task[_T]: ...
+    elif sys.version_info >= (3, 11):
         @abstractmethod
         def create_task(
             self, coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None
