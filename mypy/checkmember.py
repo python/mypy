@@ -93,7 +93,6 @@ class MemberContext:
         is_operator: bool,
         original_type: Type,
         context: Context,
-        msg: MessageBuilder,
         chk: mypy.checker.TypeChecker,
         self_type: Type | None,
         module_symbol_table: SymbolTable | None = None,
@@ -106,8 +105,8 @@ class MemberContext:
         self.original_type = original_type
         self.self_type = self_type or original_type
         self.context = context  # Error context
-        self.msg = msg
         self.chk = chk
+        self.msg = chk.msg
         self.module_symbol_table = module_symbol_table
         self.no_deferral = no_deferral
         self.is_self = is_self
@@ -121,7 +120,6 @@ class MemberContext:
     def copy_modified(
         self,
         *,
-        messages: MessageBuilder | None = None,
         self_type: Type | None = None,
         is_lvalue: bool | None = None,
         original_type: Type | None = None,
@@ -132,14 +130,11 @@ class MemberContext:
             is_operator=self.is_operator,
             original_type=self.original_type,
             context=self.context,
-            msg=self.msg,
             chk=self.chk,
             self_type=self.self_type,
             module_symbol_table=self.module_symbol_table,
             no_deferral=self.no_deferral,
         )
-        if messages is not None:
-            mx.msg = messages
         if self_type is not None:
             mx.self_type = self_type
         if is_lvalue is not None:
@@ -157,7 +152,6 @@ def analyze_member_access(
     is_lvalue: bool,
     is_super: bool,
     is_operator: bool,
-    msg: MessageBuilder,
     original_type: Type,
     chk: mypy.checker.TypeChecker,
     override_info: TypeInfo | None = None,
@@ -196,7 +190,6 @@ def analyze_member_access(
         is_operator=is_operator,
         original_type=original_type,
         context=context,
-        msg=msg,
         chk=chk,
         self_type=self_type,
         module_symbol_table=module_symbol_table,
@@ -494,7 +487,8 @@ def analyze_member_var_access(
     original_type is the type of E in the expression E.var
     """
     # It was not a method. Try looking up a variable.
-    v = lookup_member_var_or_accessor(info, name, mx.is_lvalue)
+    node = info.get(name)
+    v = node.node if node else None
 
     mx.chk.warn_deprecated(v, mx.context)
 
@@ -883,16 +877,6 @@ def expand_self_type_if_needed(
         return expand_self_type(var, t, itype.type.self_type)
     else:
         return t
-
-
-def lookup_member_var_or_accessor(info: TypeInfo, name: str, is_lvalue: bool) -> SymbolNode | None:
-    """Find the attribute/accessor node that refers to a member of a type."""
-    # TODO handle lvalues
-    node = info.get(name)
-    if node:
-        return node.node
-    else:
-        return None
 
 
 def check_self_arg(
