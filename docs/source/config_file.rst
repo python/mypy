@@ -432,7 +432,7 @@ Platform configuration
 
     Specifies the Python version used to parse and check the target
     program.  The string should be in the format ``MAJOR.MINOR`` --
-    for example ``2.7``.  The default is the version of the Python
+    for example ``3.9``.  The default is the version of the Python
     interpreter used to run mypy.
 
     This option may only be set in the global section (``[mypy]``).
@@ -1196,7 +1196,7 @@ of your repo (or append it to the end of an existing ``pyproject.toml`` file) an
     # mypy global options:
 
     [tool.mypy]
-    python_version = "2.7"
+    python_version = "3.9"
     warn_return_any = true
     warn_unused_configs = true
     exclude = [
