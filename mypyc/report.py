@@ -11,6 +11,37 @@ from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.ops import CallC
 
 
+CSS = """\
+.collapsible {
+    cursor: pointer;
+}
+
+.content {
+    display: none;
+    margin-top: 10px;
+}
+
+.hint {
+    display: inline;
+    border: 1px solid #ccc;
+    padding: 5px;
+}
+"""
+
+JS = """\
+document.querySelectorAll('.collapsible').forEach(function(collapsible) {
+    collapsible.addEventListener('click', function() {
+        const content = this.nextElementSibling;
+        if (content.style.display === 'none' || content.style.display === '') {
+            content.style.display = 'block';
+        } else {
+            content.style.display = 'none';
+        }
+    });
+});
+"""
+
+
 class AnnotatedSource:
     def __init__(self, path: str, annotations: dict[int, str]) -> None:
         self.path = path
@@ -48,14 +79,16 @@ def function_annotations(func_ir: FuncIR) -> dict[int, str]:
             if isinstance(op, CallC):
                 name = op.function_name
                 if name == "CPyObject_GetAttr":
-                    anns[op.line] = "bad"
+                    anns[op.line] = "Dynamic attribute lookup"
                     print(op.line, op.function_name)
     return anns
 
 
 def generate_html_report(sources: list[AnnotatedSource]) -> str:
     html = []
-    html.append("<html><head></head>\n")
+    html.append("<html>\n<head>\n")
+    html.append(f"<style>\n{CSS}\n</style>")
+    html.append("</head>\n")
     html.append("<body>\n")
     for src in sources:
         html.append(f"<h2><tt>{src.path}</tt></h2>\n")
@@ -67,14 +100,21 @@ def generate_html_report(sources: list[AnnotatedSource]) -> str:
             s = escape(s)
             line = i + 1
             if line in anns:
-                s = colorize_line(s)
+                hint = anns[line]
+                s = colorize_line(s, hint_html=hint)
             html.append(s)
         html.append("</pre>")
+
+    html.append("<script>")
+    html.append(JS)
+    html.append("</script>")
 
     html.append("</body></html>\n")
     return "".join(html)
 
 
-def colorize_line(s: str) -> str:
+def colorize_line(s: str, hint_html: str) -> str:
     init = re.match("[ \t]*", s).group()
-    return init + f'<span style="background-color: #fcc">{s[len(init):]}</span>'
+    line_span = f'<span class="collapsible" style="background-color: #fcc">{s[len(init):]}</span>'
+    hint_div = f'<div class="content">{init}<div class="hint">{hint_html}</div></div>'
+    return init + f'<span>{line_span}{hint_div}</span>'
