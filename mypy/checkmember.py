@@ -28,7 +28,6 @@ from mypy.nodes import (
     MypyFile,
     NameExpr,
     OverloadedFuncDef,
-    SymbolNode,
     SymbolTable,
     TempNode,
     TypeAlias,
