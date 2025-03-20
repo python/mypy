@@ -781,7 +781,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     is_lvalue=False,
                     is_super=False,
                     is_operator=True,
-                    msg=self.msg,
                     original_type=inner_type,
                     chk=self,
                 )
@@ -4736,7 +4735,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             original_type=instance_type,
             context=context,
             self_type=None,
-            msg=self.msg,
             chk=self,
         )
         get_type = analyze_descriptor_access(attribute_type, mx, assignment=True)
@@ -6746,7 +6744,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             is_lvalue=False,
                             is_super=False,
                             is_operator=False,
-                            msg=self.msg,
                             original_type=new_parent_type,
                             chk=self,
                             in_literal_context=False,
@@ -8044,7 +8041,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 is_lvalue=False,
                 is_super=False,
                 is_operator=False,
-                msg=self.msg,
                 original_type=typ,
                 chk=self,
                 # This is not a real attribute lookup so don't mess with deferring nodes.
