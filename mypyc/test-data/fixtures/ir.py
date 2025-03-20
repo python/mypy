@@ -107,7 +107,9 @@ class str:
     def split(self, sep: Optional[str] = None, maxsplit: int = -1) -> List[str]: pass
     def rsplit(self, sep: Optional[str] = None, maxsplit: int = -1) -> List[str]: pass
     def splitlines(self, keepends: bool = False) -> List[str]: ...
-    def strip (self, item: str) -> str: pass
+    def strip (self, item: Optional[str] = None) -> str: pass
+    def lstrip(self, item: Optional[str] = None) -> str: pass
+    def rstrip(self, item: Optional[str] = None) -> str: pass
     def join(self, x: Iterable[str]) -> str: pass
     def format(self, *args: Any, **kwargs: Any) -> str: ...
     def upper(self) -> str: ...
@@ -231,6 +233,7 @@ class list(Generic[_T], Sequence[_T], Iterable[_T]):
     def reverse(self) -> None: pass
     def remove(self, o: _T) -> None: pass
     def index(self, o: _T) -> int: pass
+    def copy(self) -> List[_T]: pass
 
 class dict(Mapping[_K, _V]):
     @overload

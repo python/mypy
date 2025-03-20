@@ -11,7 +11,7 @@ repos:
       - id: black
         exclude: '^(test-data/)'
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.6
+    rev: v0.9.10
     hooks:
       - id: ruff
         args: [--exit-non-zero-on-fix]

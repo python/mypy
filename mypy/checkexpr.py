@@ -1117,8 +1117,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             typ = self.try_infer_partial_value_type_from_call(e, callee.name, var)
             # Var may be deleted from partial_types in try_infer_partial_value_type_from_call
             if typ is not None and var in partial_types:
-                var.type = typ
-                del partial_types[var]
+                self.chk.replace_partial_type(var, typ, partial_types)
         elif isinstance(callee.expr, IndexExpr) and isinstance(callee.expr.base, RefExpr):
             # Call 'x[y].method(...)'; may infer type of 'x' if it's a partial defaultdict.
             if callee.expr.analyzed is not None:
@@ -1136,12 +1135,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if value_type is not None:
                 # Infer key type.
                 key_type = self.accept(index)
-                if mypy.checker.is_valid_inferred_type(key_type):
+                if mypy.checker.is_valid_inferred_type(key_type, self.chk.options):
                     # Store inferred partial type.
                     assert partial_type.type is not None
                     typename = partial_type.type.fullname
-                    var.type = self.chk.named_generic_type(typename, [key_type, value_type])
-                    del partial_types[var]
+                    new_type = self.chk.named_generic_type(typename, [key_type, value_type])
+                    self.chk.replace_partial_type(var, new_type, partial_types)
 
     def get_partial_var(self, ref: RefExpr) -> tuple[Var, dict[Var, Context]] | None:
         var = ref.node
@@ -1176,7 +1175,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             and e.arg_kinds == [ARG_POS]
         ):
             item_type = self.accept(e.args[0])
-            if mypy.checker.is_valid_inferred_type(item_type):
+            if mypy.checker.is_valid_inferred_type(item_type, self.chk.options):
                 return self.chk.named_generic_type(typename, [item_type])
         elif (
             typename in self.container_args
@@ -1188,7 +1187,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 arg_typename = arg_type.type.fullname
                 if arg_typename in self.container_args[typename][methodname]:
                     if all(
-                        mypy.checker.is_valid_inferred_type(item_type)
+                        mypy.checker.is_valid_inferred_type(item_type, self.chk.options)
                         for item_type in arg_type.args
                     ):
                         return self.chk.named_generic_type(typename, list(arg_type.args))
@@ -5787,6 +5786,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 _, sequence_type = self.chk.analyze_async_iterable_item_type(sequence)
             else:
                 _, sequence_type = self.chk.analyze_iterable_item_type(sequence)
+                if (
+                    isinstance(get_proper_type(sequence_type), UninhabitedType)
+                    and isinstance(index, NameExpr)
+                    and index.name == "_"
+                ):
+                    # To preserve backward compatibility, avoid inferring Never for "_"
+                    sequence_type = AnyType(TypeOfAny.special_form)
+
             self.chk.analyze_index_variables(index, sequence_type, True, e)
             for condition in conditions:
                 self.accept(condition)
@@ -5830,7 +5837,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else_map, e.else_expr, context=ctx, allow_none_return=allow_none_return
         )
 
-        if not mypy.checker.is_valid_inferred_type(if_type):
+        if not mypy.checker.is_valid_inferred_type(if_type, self.chk.options):
             # Analyze the right branch disregarding the left branch.
             else_type = full_context_else_type
             # we want to keep the narrowest value of else_type for union'ing the branches

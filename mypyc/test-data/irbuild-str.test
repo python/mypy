@@ -481,3 +481,26 @@ L0:
     keep_alive x
     r6 = unbox(int, r5)
     return r6
+
+[case testStrip]
+def do_strip(s: str) -> None:
+    s.lstrip("x")
+    s.strip("y")
+    s.rstrip("z")
+    s.lstrip()
+    s.strip()
+    s.rstrip()
+[out]
+def do_strip(s):
+    s, r0, r1, r2, r3, r4, r5, r6, r7, r8 :: str
+L0:
+    r0 = 'x'
+    r1 = CPyStr_LStrip(s, r0)
+    r2 = 'y'
+    r3 = CPyStr_Strip(s, r2)
+    r4 = 'z'
+    r5 = CPyStr_RStrip(s, r4)
+    r6 = CPyStr_LStrip(s, 0)
+    r7 = CPyStr_Strip(s, 0)
+    r8 = CPyStr_RStrip(s, 0)
+    return 1
