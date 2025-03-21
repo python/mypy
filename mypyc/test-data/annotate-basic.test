@@ -1,4 +1,4 @@
-[case testReportNonNativeAttribute]
+[case testAnnotateNonNativeAttribute]
 def f(x):
     return x.foo
 
@@ -8,4 +8,19 @@ class C:
 def g(x: C) -> int:
     return x.foo
 [out]
-2: Get non-native attribute "foo"
+2: Get non-native attribute "foo".
+
+[case testAnnotateGenericAdd]
+def f(x):
+    return x + 1
+
+def g(x: int) -> int:
+    return x + 1
+[out]
+2: Generic "+" operation.
+
+[case testAnnotateTwoOperationsOnLine]
+def f(x):
+    return x.foo + 1
+[out]
+2: Get non-native attribute "foo". Generic "+" operation.

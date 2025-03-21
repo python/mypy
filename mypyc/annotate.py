@@ -7,7 +7,7 @@ from mypy.nodes import MypyFile
 from mypy.util import FancyFormatter
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
-from mypyc.ir.ops import CallC, Value, LoadLiteral
+from mypyc.ir.ops import CallC, LoadLiteral, Value
 
 CSS = """\
 .collapsible {
@@ -42,7 +42,7 @@ document.querySelectorAll('.collapsible').forEach(function(collapsible) {
 
 
 class AnnotatedSource:
-    def __init__(self, path: str, annotations: dict[int, str]) -> None:
+    def __init__(self, path: str, annotations: dict[int, list[str]]) -> None:
         self.path = path
         self.annotations = annotations
 
@@ -72,20 +72,24 @@ def generate_annotations(path: str, tree: MypyFile, ir: ModuleIR) -> AnnotatedSo
     return AnnotatedSource(path, anns)
 
 
-def function_annotations(func_ir: FuncIR) -> dict[int, str]:
+def function_annotations(func_ir: FuncIR) -> dict[int, list[str]]:
     # TODO: check if func_ir.line is -1
     anns = {}
     for block in func_ir.blocks:
         for op in block.ops:
             if isinstance(op, CallC):
                 name = op.function_name
+                ann = None
                 if name == "CPyObject_GetAttr":
                     attr_name = get_str_literal(op.args[1])
                     if attr_name:
-                        ann = f'Get non-native attribute "{attr_name}"'
+                        ann = f'Get non-native attribute "{attr_name}".'
                     else:
-                        ann = "Dynamic attribute lookup"
-                    anns[op.line] = ann
+                        ann = "Dynamic attribute lookup."
+                elif name == "PyNumber_Add":
+                    ann = 'Generic "+" operation.'
+                if ann:
+                    anns.setdefault(op.line, []).append(ann)
     return anns
 
 
@@ -112,7 +116,7 @@ def generate_html_report(sources: list[AnnotatedSource]) -> str:
             line = i + 1
             linenum = "%5d" % line
             if line in anns:
-                hint = anns[line]
+                hint = " ".join(anns[line])
                 s = colorize_line(linenum, s, hint_html=hint)
             else:
                 s = linenum + "  " + s

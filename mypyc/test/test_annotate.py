@@ -41,7 +41,8 @@ class TestReport(MypycDataSuite):
             else:
                 annotations = generate_annotations("native.py", tree, ir)
                 actual = []
-                for line, str in annotations.annotations.items():
-                    actual.append(f"{line}: {str}")
+                for line, line_anns in annotations.annotations.items():
+                    s = " ".join(line_anns)
+                    actual.append(f"{line}: {s}")
 
             assert_test_output(testcase, actual, "Invalid source code output", expected_output)
