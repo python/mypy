@@ -1,0 +1,11 @@
+[case testReportNonNativeAttribute]
+def f(x):
+    return x.foo
+
+class C:
+    foo: int
+
+def g(x: C) -> int:
+    return x.foo
+[out]
+2: Dynamic attribute lookup
