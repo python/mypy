@@ -40,7 +40,7 @@ from mypyc.errors import Errors
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
-from mypyc.report import generate_report
+from mypyc.annotate import generate_annotated_html
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
@@ -255,8 +255,8 @@ def generate_c(
         print(f"Compiled to C in {t2 - t1:.3f}s")
 
     if options.mypyc_annotation_file:
-        generate_report(options.mypyc_annotation_file, result, modules)
-
+        generate_annotated_html(options.mypyc_annotation_file, result, modules)
+        
     return ctext, "\n".join(format_modules(modules))
 
 

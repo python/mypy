@@ -1,5 +1,4 @@
 import os.path
-import re
 import sys
 from html import escape
 
@@ -49,7 +48,7 @@ class AnnotatedSource:
         self.annotations = annotations
 
 
-def generate_report(html_fnam: str, result: BuildResult, modules: dict[str, ModuleIR]) -> None:
+def generate_annotated_html(html_fnam: str, result: BuildResult, modules: dict[str, ModuleIR]) -> None:
     annotations = []
     for mod, mod_ir in modules.items():
         path = result.graph[mod].path

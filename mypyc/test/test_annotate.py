@@ -1,4 +1,4 @@
-"""Test cases for report generation."""
+"""Test cases for annotating source code to highlight inefficiencies."""
 
 from __future__ import annotations
 
@@ -7,8 +7,6 @@ import os.path
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
-from mypyc.common import TOP_LEVEL_NAME
-from mypyc.ir.pprint import format_func
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
     MypycDataSuite,
@@ -18,10 +16,10 @@ from mypyc.test.testutil import (
     remove_comment_lines,
     use_custom_builtins,
 )
-from mypyc.report import generate_annotations
+from mypyc.annotate import generate_annotations
 
 files = [
-    "report-basic.test",
+    "annotate-basic.test",
 ]
 
 
@@ -38,7 +36,6 @@ class TestReport(MypycDataSuite):
             return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
-            name = testcase.name
             try:
                 ir, tree = build_ir_for_single_file2(testcase.input, options)
             except CompileError as e:
