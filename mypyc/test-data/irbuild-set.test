@@ -736,10 +736,8 @@ def not_precomputed() -> None:
 [out]
 def precomputed():
     r0 :: set
-    r1, r2 :: object
-    r3 :: str
-    _ :: object
-    r4 :: bit
+    r1, r2, _ :: object
+    r3 :: bit
 L0:
     r0 = frozenset({'False', 'None', 'True'})
     r1 = PyObject_GetIter(r0)
@@ -747,12 +745,11 @@ L1:
     r2 = PyIter_Next(r1)
     if is_error(r2) goto L4 else goto L2
 L2:
-    r3 = cast(str, r2)
-    _ = r3
+    _ = r2
 L3:
     goto L1
 L4:
-    r4 = CPy_NoErrOccurred()
+    r3 = CPy_NoErrOccurred()
 L5:
     return 1
 def precomputed2():

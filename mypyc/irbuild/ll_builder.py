@@ -2317,15 +2317,15 @@ class LowLevelIRBuilder:
                 rest_items.append(item)
         exit_block = BasicBlock()
         result = Register(result_type)
-        for i, item in enumerate(fast_items):
+        for i, inst in enumerate(fast_items):
             more_types = i < len(fast_items) - 1 or rest_items
             if more_types:
                 # We are not at the final item so we need one more branch
-                op = self.isinstance_native(obj, item.class_ir, line)
+                op = self.isinstance_native(obj, inst.class_ir, line)
                 true_block, false_block = BasicBlock(), BasicBlock()
                 self.add_bool_branch(op, true_block, false_block)
                 self.activate_block(true_block)
-            coerced = self.coerce(obj, item, line)
+            coerced = self.coerce(obj, inst, line)
             temp = process_item(coerced)
             temp2 = self.coerce(temp, result_type, line)
             self.add(Assign(result, temp2))

@@ -1149,11 +1149,11 @@ for x, (y, z) in [(A(), (B(), C()))]:
     a = x
     b = y
     c = z
-for xx, yy, zz in [(A(), B())]: # E: Need more than 2 values to unpack (3 expected)
+for x2, y2, z2 in [(A(), B())]: # E: Need more than 2 values to unpack (3 expected)
     pass
-for xx, (yy, zz) in [(A(), B())]: # E: "B" object is not iterable
+for x3, (y3, z3) in [(A(), B())]: # E: "B" object is not iterable
     pass
-for xxx, yyy in [(None, None)]:
+for x4, y4 in [(None, None)]:
     pass
 [builtins fixtures/for.pyi]
 
