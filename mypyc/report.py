@@ -17,8 +17,9 @@ CSS = """\
 }
 
 .content {
-    display: none;
+    display: block;
     margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 .hint {
@@ -32,7 +33,7 @@ JS = """\
 document.querySelectorAll('.collapsible').forEach(function(collapsible) {
     collapsible.addEventListener('click', function() {
         const content = this.nextElementSibling;
-        if (content.style.display === 'none' || content.style.display === '') {
+        if (content.style.display === 'none') {
             content.style.display = 'block';
         } else {
             content.style.display = 'none';
@@ -79,7 +80,6 @@ def function_annotations(func_ir: FuncIR) -> dict[int, str]:
                 name = op.function_name
                 if name == "CPyObject_GetAttr":
                     anns[op.line] = "Dynamic attribute lookup"
-                    print(op.line, op.function_name)
     return anns
 
 
@@ -98,9 +98,12 @@ def generate_html_report(sources: list[AnnotatedSource]) -> str:
         for i, s in enumerate(lines):
             s = escape(s)
             line = i + 1
+            linenum = "%5d" % line
             if line in anns:
                 hint = anns[line]
-                s = colorize_line(s, hint_html=hint)
+                s = colorize_line(linenum, s, hint_html=hint)
+            else:
+                s = linenum + "  " + s
             html.append(s)
         html.append("</pre>")
 
@@ -112,8 +115,8 @@ def generate_html_report(sources: list[AnnotatedSource]) -> str:
     return "".join(html)
 
 
-def colorize_line(s: str, hint_html: str) -> str:
-    init = re.match("[ \t]*", s).group()
-    line_span = f'<span class="collapsible" style="background-color: #fcc">{s[len(init):]}</span>'
-    hint_div = f'<div class="content">{init}<div class="hint">{hint_html}</div></div>'
-    return init + f'<span>{line_span}{hint_div}</span>'
+def colorize_line(linenum: str, s: str, hint_html: str) -> str:
+    hint_prefix = " " * len(linenum) + "  "
+    line_span = f'<div class="collapsible" style="background-color: #fcc">{linenum}  {s}</div>'
+    hint_div = f'<div class="content">{hint_prefix}<div class="hint">{hint_html}</div></div>'
+    return f'<span>{line_span}{hint_div}</span>'
