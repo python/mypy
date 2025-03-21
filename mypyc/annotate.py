@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os.path
 import sys
 from html import escape
@@ -74,7 +76,7 @@ def generate_annotations(path: str, tree: MypyFile, ir: ModuleIR) -> AnnotatedSo
 
 def function_annotations(func_ir: FuncIR) -> dict[int, list[str]]:
     # TODO: check if func_ir.line is -1
-    anns = {}
+    anns: dict[int, list[str]] = {}
     for block in func_ir.blocks:
         for op in block.ops:
             if isinstance(op, CallC):
