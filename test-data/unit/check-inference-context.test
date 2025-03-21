@@ -1495,3 +1495,12 @@ def g(b: Optional[str]) -> None:
         z: Callable[[], str] = lambda: reveal_type(b)  # N: Revealed type is "builtins.str"
         f2(lambda: reveal_type(b))  # N: Revealed type is "builtins.str"
         lambda: reveal_type(b)  # N: Revealed type is "builtins.str"
+
+[case testInferenceForForLoops]
+from typing import Literal
+
+def func2() -> None:
+    b: Literal["foo", "bar", "baz"]
+    for b in ["foo", "bar"]:
+        # TODO: this should narrow to "foo" | "bar" ideally?
+        reveal_type(b)  # N: Revealed type is "Union[Literal['foo'], Literal['bar'], Literal['baz']]"

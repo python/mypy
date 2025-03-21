@@ -5309,10 +5309,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def visit_for_stmt(self, s: ForStmt) -> None:
         """Type check a for statement."""
-        if s.is_async:
-            iterator_type, item_type = self.analyze_async_iterable_item_type(s.expr)
+        lvalue_type, b, c = self.check_lvalue(s.index)
+        if lvalue_type is not None:
+            context: Type | None = self.named_generic_type("typing.Iterable", [lvalue_type])
         else:
-            iterator_type, item_type = self.analyze_iterable_item_type(s.expr)
+            context = None
+
+        if s.is_async:
+            iterator_type, item_type = self.analyze_async_iterable_item_type(s.expr, context)
+        else:
+            iterator_type, item_type = self.analyze_iterable_item_type(s.expr, context)
         s.inferred_item_type = item_type
         s.inferred_iterator_type = iterator_type
 
@@ -5324,10 +5330,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ),
         )
 
-    def analyze_async_iterable_item_type(self, expr: Expression) -> tuple[Type, Type]:
+    def analyze_async_iterable_item_type(
+        self, expr: Expression, context: Type | None = None
+    ) -> tuple[Type, Type]:
         """Analyse async iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
-        iterable = echk.accept(expr)
+        iterable = echk.accept(expr, context)
         iterator = echk.check_method_call_by_name("__aiter__", iterable, [], [], expr)[0]
         awaitable = echk.check_method_call_by_name("__anext__", iterator, [], [], expr)[0]
         item_type = echk.check_awaitable_expr(
@@ -5335,10 +5343,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
         return iterator, item_type
 
-    def analyze_iterable_item_type(self, expr: Expression) -> tuple[Type, Type]:
+    def analyze_iterable_item_type(
+        self, expr: Expression, context: Type | None = None
+    ) -> tuple[Type, Type]:
         """Analyse iterable expression and return iterator and iterator item types."""
         iterator, iterable = self.analyze_iterable_item_type_without_expression(
-            self.expr_checker.accept(expr), context=expr
+            self.expr_checker.accept(expr, context), context=expr
         )
         int_type = self.analyze_range_native_int_type(expr)
         if int_type:
