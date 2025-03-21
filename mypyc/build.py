@@ -254,8 +254,8 @@ def generate_c(
     if compiler_options.verbose:
         print(f"Compiled to C in {t2 - t1:.3f}s")
 
-    if options.mypyc_report:
-        generate_report(result, modules)
+    if options.mypyc_annotation_file:
+        generate_report(options.mypyc_annotation_file, result, modules)
 
     return ctext, "\n".join(format_modules(modules))
 
