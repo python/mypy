@@ -19,7 +19,6 @@ from mypy.nodes import (
     ARG_STAR,
     EXCLUDED_ENUM_ATTRIBUTES,
     SYMBOL_FUNCBASE_TYPES,
-    ArgKind,
     Context,
     Decorator,
     FuncBase,
@@ -1094,7 +1093,7 @@ def analyze_class_attribute_access(
     if isinstance(node.node, TypeInfo):
         if node.node.typeddict_type:
             # We special-case TypedDict, because they don't define any constructor.
-            return typeddict_callable(node.node, mx.named_type)
+            return mx.chk.expr_checker.typeddict_callable(node.node)
         elif node.node.fullname == "types.NoneType":
             # We special case NoneType, because its stub definition is not related to None.
             return TypeType(NoneType())
@@ -1278,31 +1277,6 @@ def add_class_tvars(
     if isuper is not None:
         t = expand_type_by_instance(t, isuper)
     return t
-
-
-def typeddict_callable(info: TypeInfo, named_type: Callable[[str], Instance]) -> CallableType:
-    """Construct a reasonable type for a TypedDict type in runtime context.
-
-    If it appears as a callee, it will be special-cased anyway, e.g. it is
-    also allowed to accept a single positional argument if it is a dict literal.
-
-    Note it is not safe to move this to type_object_type() since it will crash
-    on plugin-generated TypedDicts, that may not have the special_alias.
-    """
-    assert info.special_alias is not None
-    target = info.special_alias.target
-    assert isinstance(target, ProperType) and isinstance(target, TypedDictType)
-    expected_types = list(target.items.values())
-    kinds = [ArgKind.ARG_NAMED] * len(expected_types)
-    names = list(target.items.keys())
-    return CallableType(
-        expected_types,
-        kinds,
-        names,
-        target,
-        named_type("builtins.type"),
-        variables=info.defn.type_vars,
-    )
 
 
 def analyze_decorator_or_funcbase_access(

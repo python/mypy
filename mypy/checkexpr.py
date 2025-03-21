@@ -15,7 +15,7 @@ import mypy.checker
 import mypy.errorcodes as codes
 from mypy import applytype, erasetype, join, message_registry, nodes, operators, types
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.checkmember import analyze_member_access, typeddict_callable
+from mypy.checkmember import analyze_member_access
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorWatcher, report_internal_error
@@ -957,7 +957,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Note it is not safe to move this to type_object_type() since it will crash
         on plugin-generated TypedDicts, that may not have the special_alias.
         """
-        return typeddict_callable(info, self.named_type)
+        assert info.special_alias is not None
+        target = info.special_alias.target
+        assert isinstance(target, ProperType) and isinstance(target, TypedDictType)
+        expected_types = list(target.items.values())
+        kinds = [ArgKind.ARG_NAMED] * len(expected_types)
+        names = list(target.items.keys())
+        return CallableType(
+            expected_types,
+            kinds,
+            names,
+            target,
+            self.named_type("builtins.type"),
+            variables=info.defn.type_vars,
+        )
 
     def typeddict_callable_from_context(self, callee: TypedDictType) -> CallableType:
         return CallableType(
