@@ -7,6 +7,7 @@ import os.path
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
+from mypyc.annotate import generate_annotations
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
     MypycDataSuite,
@@ -16,11 +17,8 @@ from mypyc.test.testutil import (
     remove_comment_lines,
     use_custom_builtins,
 )
-from mypyc.annotate import generate_annotations
 
-files = [
-    "annotate-basic.test",
-]
+files = ["annotate-basic.test"]
 
 
 class TestReport(MypycDataSuite):

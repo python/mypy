@@ -12,8 +12,8 @@ from typing import Callable
 
 from mypy import build
 from mypy.errors import CompileError
-from mypy.options import Options
 from mypy.nodes import MypyFile
+from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal

@@ -5,10 +5,9 @@ from html import escape
 from mypy.build import BuildResult
 from mypy.nodes import MypyFile
 from mypy.util import FancyFormatter
-from mypyc.ir.module_ir import ModuleIR
 from mypyc.ir.func_ir import FuncIR
+from mypyc.ir.module_ir import ModuleIR
 from mypyc.ir.ops import CallC
-
 
 CSS = """\
 .collapsible {
@@ -48,7 +47,9 @@ class AnnotatedSource:
         self.annotations = annotations
 
 
-def generate_annotated_html(html_fnam: str, result: BuildResult, modules: dict[str, ModuleIR]) -> None:
+def generate_annotated_html(
+    html_fnam: str, result: BuildResult, modules: dict[str, ModuleIR]
+) -> None:
     annotations = []
     for mod, mod_ir in modules.items():
         path = result.graph[mod].path
@@ -119,4 +120,4 @@ def colorize_line(linenum: str, s: str, hint_html: str) -> str:
     hint_prefix = " " * len(linenum) + "  "
     line_span = f'<div class="collapsible" style="background-color: #fcc">{linenum}  {s}</div>'
     hint_div = f'<div class="content">{hint_prefix}<div class="hint">{hint_html}</div></div>'
-    return f'<span>{line_span}{hint_div}</span>'
+    return f"<span>{line_span}{hint_div}</span>"

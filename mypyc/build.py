@@ -34,13 +34,13 @@ from mypy.fscache import FileSystemCache
 from mypy.main import process_options
 from mypy.options import Options
 from mypy.util import write_junit_xml
+from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
 from mypyc.common import RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
-from mypyc.annotate import generate_annotated_html
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
@@ -256,7 +256,7 @@ def generate_c(
 
     if options.mypyc_annotation_file:
         generate_annotated_html(options.mypyc_annotation_file, result, modules)
-        
+
     return ctext, "\n".join(format_modules(modules))
 
 

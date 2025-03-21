@@ -1124,7 +1124,9 @@ def process_options(
             )
 
     # Undocumented mypyc feature: generate annotated HTML source file
-    report_group.add_argument("-a", dest="mypyc_annotation_file", type=str, default=None, help=argparse.SUPPRESS)
+    report_group.add_argument(
+        "-a", dest="mypyc_annotation_file", type=str, default=None, help=argparse.SUPPRESS
+    )
 
     other_group = parser.add_argument_group(title="Miscellaneous")
     other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
