@@ -28,6 +28,7 @@ from mypy.nodes import (
     StarExpr,
     TupleExpr,
     TypeApplication,
+    TypeFormExpr,
     UnaryExpr,
     YieldExpr,
     YieldFromExpr,
@@ -121,6 +122,10 @@ class SubexpressionFinder(TraverserVisitor):
     def visit_cast_expr(self, e: CastExpr) -> None:
         self.add(e)
         super().visit_cast_expr(e)
+
+    def visit_type_form_expr(self, e: TypeFormExpr) -> None:
+        self.add(e)
+        super().visit_type_form_expr(e)
 
     def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
         self.add(e)
