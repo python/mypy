@@ -7,7 +7,7 @@ from mypy.nodes import MypyFile
 from mypy.util import FancyFormatter
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
-from mypyc.ir.ops import CallC
+from mypyc.ir.ops import CallC, Value, LoadLiteral
 
 CSS = """\
 .collapsible {
@@ -80,8 +80,19 @@ def function_annotations(func_ir: FuncIR) -> dict[int, str]:
             if isinstance(op, CallC):
                 name = op.function_name
                 if name == "CPyObject_GetAttr":
-                    anns[op.line] = "Dynamic attribute lookup"
+                    attr_name = get_str_literal(op.args[1])
+                    if attr_name:
+                        ann = f'Get non-native attribute "{attr_name}"'
+                    else:
+                        ann = "Dynamic attribute lookup"
+                    anns[op.line] = ann
     return anns
+
+
+def get_str_literal(v: Value) -> str | None:
+    if isinstance(v, LoadLiteral) and isinstance(v.value, str):
+        return v.value
+    return None
 
 
 def generate_html_report(sources: list[AnnotatedSource]) -> str:

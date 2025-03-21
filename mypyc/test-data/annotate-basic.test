@@ -8,4 +8,4 @@ class C:
 def g(x: C) -> int:
     return x.foo
 [out]
-2: Dynamic attribute lookup
+2: Get non-native attribute "foo"
