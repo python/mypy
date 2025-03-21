@@ -406,6 +406,9 @@ class Options:
         # Sets custom output format
         self.output: str | None = None
 
+        # Output html file for mypyc -a
+        self.mypyc_annotation_file: str | None = None
+
     def use_lowercase_names(self) -> bool:
         if self.python_version >= (3, 9):
             return not self.force_uppercase_builtins
