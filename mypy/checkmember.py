@@ -759,7 +759,7 @@ def analyze_descriptor_assign(descriptor_type: Instance, mx: MemberContext) -> T
         defn=dunder_set,
         itype=descriptor_type,
         name="__set__",
-        mx=mx.copy_modified(self_type=descriptor_type),
+        mx=mx.copy_modified(is_lvalue=False, self_type=descriptor_type),
     )
     typ = map_instance_to_supertype(descriptor_type, dunder_set.info)
     dunder_set_type = expand_type_by_instance(bound_method, typ)
@@ -879,7 +879,7 @@ def analyze_var(
                 if var.is_property:
                     if not var.is_settable_property:
                         mx.msg.read_only_property(name, itype.type, mx.context)
-                elif name != "__set__":
+                else:
                     mx.msg.cant_assign_to_method(mx.context)
 
             if not var.is_staticmethod:
