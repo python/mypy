@@ -913,7 +913,7 @@ def analyze_var(
         result = AnyType(TypeOfAny.special_form)
     fullname = f"{var.info.fullname}.{name}"
     hook = mx.chk.plugin.get_attribute_hook(fullname)
-    if result and not implicit:
+    if result and not (implicit or var.info.is_protocol):
         result = analyze_descriptor_access(result, mx)
     if hook:
         result = hook(
