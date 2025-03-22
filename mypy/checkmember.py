@@ -21,6 +21,7 @@ from mypy.nodes import (
     SYMBOL_FUNCBASE_TYPES,
     Context,
     Decorator,
+    Expression,
     FuncBase,
     FuncDef,
     IndexExpr,
@@ -96,6 +97,7 @@ class MemberContext:
         module_symbol_table: SymbolTable | None = None,
         no_deferral: bool = False,
         is_self: bool = False,
+        rvalue: Expression | None = None,
     ) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -108,6 +110,9 @@ class MemberContext:
         self.module_symbol_table = module_symbol_table
         self.no_deferral = no_deferral
         self.is_self = is_self
+        if rvalue is not None:
+            assert is_lvalue
+        self.rvalue = rvalue
 
     def named_type(self, name: str) -> Instance:
         return self.chk.named_type(name)
@@ -132,6 +137,7 @@ class MemberContext:
             self_type=self.self_type,
             module_symbol_table=self.module_symbol_table,
             no_deferral=self.no_deferral,
+            rvalue=self.rvalue,
         )
         if self_type is not None:
             mx.self_type = self_type
@@ -158,6 +164,7 @@ def analyze_member_access(
     module_symbol_table: SymbolTable | None = None,
     no_deferral: bool = False,
     is_self: bool = False,
+    rvalue: Expression | None = None,
 ) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
@@ -176,11 +183,14 @@ def analyze_member_access(
     of 'original_type'. 'original_type' is always preserved as the 'typ' type used in
     the initial, non-recursive call. The 'self_type' is a component of 'original_type'
     to which generic self should be bound (a narrower type that has a fallback to instance).
-    Currently this is used only for union types.
+    Currently, this is used only for union types.
 
-    'module_symbol_table' is passed to this function if 'typ' is actually a module
+    'module_symbol_table' is passed to this function if 'typ' is actually a module,
     and we want to keep track of the available attributes of the module (since they
     are not available via the type object directly)
+
+    'rvalue' can be provided optionally to infer better setter type when is_lvalue is True,
+    most notably this helps for descriptors with overloaded __set__() method.
     """
     mx = MemberContext(
         is_lvalue=is_lvalue,
@@ -193,6 +203,7 @@ def analyze_member_access(
         module_symbol_table=module_symbol_table,
         no_deferral=no_deferral,
         is_self=is_self,
+        rvalue=rvalue,
     )
     result = _analyze_member_access(name, typ, mx, override_info)
     possible_literal = get_proper_type(result)
@@ -619,9 +630,7 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
             msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 
-def analyze_descriptor_access(
-    descriptor_type: Type, mx: MemberContext, *, assignment: bool = False
-) -> Type:
+def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     """Type check descriptor access.
 
     Arguments:
@@ -629,7 +638,7 @@ def analyze_descriptor_access(
             (the type of ``f`` in ``a.f`` when ``f`` is a descriptor).
         mx: The current member access context.
     Return:
-        The return type of the appropriate ``__get__`` overload for the descriptor.
+        The return type of the appropriate ``__get__/__set__`` overload for the descriptor.
     """
     instance_type = get_proper_type(mx.self_type)
     orig_descriptor_type = descriptor_type
@@ -638,15 +647,24 @@ def analyze_descriptor_access(
     if isinstance(descriptor_type, UnionType):
         # Map the access over union types
         return make_simplified_union(
-            [
-                analyze_descriptor_access(typ, mx, assignment=assignment)
-                for typ in descriptor_type.items
-            ]
+            [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
         )
     elif not isinstance(descriptor_type, Instance):
         return orig_descriptor_type
 
-    if not descriptor_type.type.has_readable_member("__get__"):
+    if not mx.is_lvalue and not descriptor_type.type.has_readable_member("__get__"):
+        return orig_descriptor_type
+
+    # We do this check first to accommodate for descriptors with only __set__ method.
+    # If there is no __set__, we type-check that the assigned value matches
+    # the return type of __get__. This doesn't match the python semantics,
+    # (which allow you to override the descriptor with any value), but preserves
+    # the type of accessing the attribute (even after the override).
+    if mx.is_lvalue and descriptor_type.type.has_readable_member("__set__"):
+        return analyze_descriptor_assign(descriptor_type, mx)
+
+    if mx.is_lvalue and not descriptor_type.type.has_readable_member("__get__"):
+        # This turned out to be not a descriptor after all.
         return orig_descriptor_type
 
     dunder_get = descriptor_type.type.get_method("__get__")
@@ -703,11 +721,10 @@ def analyze_descriptor_access(
         callable_name=callable_name,
     )
 
-    if not assignment:
-        mx.chk.check_deprecated(dunder_get, mx.context)
-        mx.chk.warn_deprecated_overload_item(
-            dunder_get, mx.context, target=inferred_dunder_get_type, selftype=descriptor_type
-        )
+    mx.chk.check_deprecated(dunder_get, mx.context)
+    mx.chk.warn_deprecated_overload_item(
+        dunder_get, mx.context, target=inferred_dunder_get_type, selftype=descriptor_type
+    )
 
     inferred_dunder_get_type = get_proper_type(inferred_dunder_get_type)
     if isinstance(inferred_dunder_get_type, AnyType):
@@ -724,6 +741,79 @@ def analyze_descriptor_access(
         return AnyType(TypeOfAny.from_error)
 
     return inferred_dunder_get_type.ret_type
+
+
+def analyze_descriptor_assign(descriptor_type: Instance, mx: MemberContext) -> Type:
+    instance_type = get_proper_type(mx.self_type)
+    dunder_set = descriptor_type.type.get_method("__set__")
+    if dunder_set is None:
+        mx.chk.fail(
+            message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(
+                descriptor_type.str_with_options(mx.msg.options)
+            ),
+            mx.context,
+        )
+        return AnyType(TypeOfAny.from_error)
+
+    bound_method = analyze_decorator_or_funcbase_access(
+        defn=dunder_set,
+        itype=descriptor_type,
+        name="__set__",
+        mx=mx.copy_modified(is_lvalue=False, self_type=descriptor_type),
+    )
+    typ = map_instance_to_supertype(descriptor_type, dunder_set.info)
+    dunder_set_type = expand_type_by_instance(bound_method, typ)
+
+    callable_name = mx.chk.expr_checker.method_fullname(descriptor_type, "__set__")
+    rvalue = mx.rvalue or TempNode(AnyType(TypeOfAny.special_form), context=mx.context)
+    dunder_set_type = mx.chk.expr_checker.transform_callee_type(
+        callable_name,
+        dunder_set_type,
+        [TempNode(instance_type, context=mx.context), rvalue],
+        [ARG_POS, ARG_POS],
+        mx.context,
+        object_type=descriptor_type,
+    )
+
+    # For non-overloaded setters, the result should be type-checked like a regular assignment.
+    # Hence, we first only try to infer the type by using the rvalue as type context.
+    type_context = rvalue
+    with mx.msg.filter_errors():
+        _, inferred_dunder_set_type = mx.chk.expr_checker.check_call(
+            dunder_set_type,
+            [TempNode(instance_type, context=mx.context), type_context],
+            [ARG_POS, ARG_POS],
+            mx.context,
+            object_type=descriptor_type,
+            callable_name=callable_name,
+        )
+
+    # And now we in fact type check the call, to show errors related to wrong arguments
+    # count, etc., replacing the type context for non-overloaded setters only.
+    inferred_dunder_set_type = get_proper_type(inferred_dunder_set_type)
+    if isinstance(inferred_dunder_set_type, CallableType):
+        type_context = TempNode(AnyType(TypeOfAny.special_form), context=mx.context)
+    mx.chk.expr_checker.check_call(
+        dunder_set_type,
+        [TempNode(instance_type, context=mx.context), type_context],
+        [ARG_POS, ARG_POS],
+        mx.context,
+        object_type=descriptor_type,
+        callable_name=callable_name,
+    )
+
+    # Search for possible deprecations:
+    mx.chk.check_deprecated(dunder_set, mx.context)
+    mx.chk.warn_deprecated_overload_item(
+        dunder_set, mx.context, target=inferred_dunder_set_type, selftype=descriptor_type
+    )
+
+    # In the following cases, a message already will have been recorded in check_call.
+    if (not isinstance(inferred_dunder_set_type, CallableType)) or (
+        len(inferred_dunder_set_type.arg_types) < 2
+    ):
+        return AnyType(TypeOfAny.from_error)
+    return inferred_dunder_set_type.arg_types[1]
 
 
 def is_instance_var(var: Var) -> bool:
@@ -810,6 +900,7 @@ def analyze_var(
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(expanded_signature, CallableType)
                     if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
+                        # TODO: use check_call() to infer better type, same as for __set__().
                         result = expanded_signature.arg_types[0]
                     else:
                         result = expanded_signature.ret_type
@@ -822,7 +913,7 @@ def analyze_var(
         result = AnyType(TypeOfAny.special_form)
     fullname = f"{var.info.fullname}.{name}"
     hook = mx.chk.plugin.get_attribute_hook(fullname)
-    if result and not mx.is_lvalue and not implicit:
+    if result and not (implicit or var.info.is_protocol and is_instance_var(var)):
         result = analyze_descriptor_access(result, mx)
     if hook:
         result = hook(
@@ -1075,6 +1166,7 @@ def analyze_class_attribute_access(
         result = add_class_tvars(
             t, isuper, is_classmethod, is_staticmethod, mx.self_type, original_vars=original_vars
         )
+        # __set__ is not called on class objects.
         if not mx.is_lvalue:
             result = analyze_descriptor_access(result, mx)
 
