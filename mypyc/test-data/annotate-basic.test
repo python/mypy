@@ -213,3 +213,33 @@ def use_islice() -> None:
     for x in islice([1, 2, 3], 1, 2):  # A: "itertools.islice" is inefficient in compiled code (hint: replace with for loop over index range).
         pass
 
+[case testAnnotateGenericForLoop]
+from typing import Iterable, Sequence, Iterator, List
+
+def f1(a):
+    for x in a:  # A: For loop uses generic operations (iterable has type "Any").
+        pass
+
+def f2(a: Iterable[str]) -> None:
+    for x in a:  # A: For loop uses generic operations (iterable has the abstract type "typing.Iterable").
+        pass
+
+def f3(a: Sequence[str]) -> None:
+    for x in a:  # A: For loop uses generic operations (iterable has the abstract type "typing.Sequence").
+        pass
+
+def f4(a: Iterator[str]) -> None:
+    for x in a:  # A: For loop uses generic operations (iterable has the abstract type "typing.Iterator").
+        pass
+
+def good1(a: List[str]) -> None:
+    for x in a:
+        pass
+
+class C:
+    def __iter__(self) -> Iterator[str]:
+        assert False
+
+def good2(a: List[str]) -> None:
+    for x in a:
+        pass

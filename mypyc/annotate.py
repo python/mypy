@@ -6,7 +6,8 @@ from html import escape
 from typing import Final
 
 from mypy.build import BuildResult
-from mypy.nodes import MypyFile, FuncDef, Node, LambdaExpr, Var, NameExpr, MemberExpr
+from mypy.nodes import MypyFile, FuncDef, Node, LambdaExpr, Var, NameExpr, MemberExpr, ForStmt, Expression
+from mypy.types import Type, AnyType, TypeOfAny, ProperType, get_proper_type, Instance
 from mypy.util import FancyFormatter
 from mypy.traverser import TraverserVisitor
 from mypyc.ir.func_ir import FuncIR
@@ -97,7 +98,7 @@ def generate_annotated_html(
         path = result.graph[mod].path
         tree = result.graph[mod].tree
         assert tree is not None
-        annotations.append(generate_annotations(path or "<source>", tree, mod_ir))
+        annotations.append(generate_annotations(path or "<source>", tree, mod_ir, result.types))
     html = generate_html_report(annotations)
     with open(html_fnam, "w") as f:
         f.write(html)
@@ -107,11 +108,11 @@ def generate_annotated_html(
     print(f"\nWrote {formatted} -- open in browser to view\n")
 
 
-def generate_annotations(path: str, tree: MypyFile, ir: ModuleIR) -> AnnotatedSource:
+def generate_annotations(path: str, tree: MypyFile, ir: ModuleIR, type_map: dict[Expression, Type]) -> AnnotatedSource:
     anns = {}
     for func_ir in ir.functions:
         anns.update(function_annotations(func_ir, tree))
-    visitor = ASTAnnotateVisitor()
+    visitor = ASTAnnotateVisitor(type_map)
     for defn in tree.defs:
         defn.accept(visitor)
     anns.update(visitor.anns)
@@ -143,7 +144,7 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
                 elif name in ("CPyDict_GetItem", "CPyDict_SetItem"):
                     if isinstance(op.args[0], LoadStatic) and isinstance(op.args[1], LoadLiteral) and func_ir.name != "__top_level__":
                         load = op.args[0]
-                        name = op.args[1].value
+                        name = str(op.args[1].value)
                         sym = tree.names.get(name)
                         if sym and sym.node and load.namespace == "static" and load.identifier == "globals":
                             if sym.node.fullname in stdlib_hints:
@@ -160,9 +161,10 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
 
 
 class ASTAnnotateVisitor(TraverserVisitor):
-    def __init__(self) -> None:
+    def __init__(self, type_map: dict[Expression, Type]) -> None:
         self.anns: dict[int, list[Annotation]] = {}
         self.func_depth = 0
+        self.type_map = type_map
 
     def visit_func_def(self, o: FuncDef, /) -> None:
         if self.func_depth > 0:
@@ -170,6 +172,14 @@ class ASTAnnotateVisitor(TraverserVisitor):
         self.func_depth += 1
         super().visit_func_def(o)
         self.func_depth -= 1
+
+    def visit_for_stmt(self, o: ForStmt, /) -> None:
+        typ = self.get_type(o.expr)
+        if isinstance(typ, AnyType):
+            self.annotate(o.expr, 'For loop uses generic operations (iterable has type "Any").')
+        elif isinstance(typ, Instance) and typ.type.fullname in ("typing.Iterable", "typing.Iterator", "typing.Sequence", "typing.MutableSequence"):
+            self.annotate(o.expr, f'For loop uses generic operations (iterable has the abstract type "{typ.type.fullname}").')
+        super().visit_for_stmt(o)
 
     def visit_name_expr(self, o: NameExpr, /) -> None:
         if ann := stdlib_hints.get(o.fullname):
@@ -188,6 +198,12 @@ class ASTAnnotateVisitor(TraverserVisitor):
         if isinstance(ann, str):
             ann = Annotation(ann)
         self.anns.setdefault(o.line, []).append(ann)
+
+    def get_type(self, e: Expression)-> ProperType:
+        t = self.type_map.get(e)
+        if t:
+            return get_proper_type(t)
+        return AnyType(TypeOfAny.unannotated)
 
 
 def get_str_literal(v: Value) -> str | None:

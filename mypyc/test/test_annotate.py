@@ -50,18 +50,18 @@ class TestReport(MypycDataSuite):
 
             ir = None
             try:
-                ir, tree = build_ir_for_single_file2(testcase.input, options)
+                ir, tree, type_map = build_ir_for_single_file2(testcase.input, options)
             except CompileError as e:
                 actual = e.messages
             else:
-                annotations = generate_annotations("native.py", tree, ir)
+                annotations = generate_annotations("native.py", tree, ir, type_map)
                 actual = []
                 for line_num, line_anns in annotations.annotations.items():
                     anns = get_max_prio(line_anns)
                     str_anns = [a.message for a in anns]
                     s = " ".join(str_anns)
                     actual.append(f"main:{line_num}: {s}")
-                    
+
             try:
                 assert_test_output(testcase, actual, "Invalid source code output", expected_output)
             except BaseException:
