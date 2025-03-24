@@ -30,6 +30,8 @@ op_hints: Final = {
     "PySequence_Contains": 'Generic "in" operation.',
     "PyObject_Call": 'Generic call operation.',
     "PyObject_RichCompare": "Generic comparison operation.",
+    "PyObject_GetItem": "Generic indexing operation.",
+    "PyObject_SetItem": "Generic indexed assignment.",
 }
 
 CSS = """\

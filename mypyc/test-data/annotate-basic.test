@@ -148,3 +148,25 @@ def f1() -> None:
 def f2() -> int:
     l = lambda: 1  # A: A new object is allocated for lambda each time it is evaluated. A module-level function would be faster.
     return l()
+
+[case testAnnotateGetSetItem]
+from typing import List, Dict
+
+def f1(x, y):
+    return x[y]  # A: Generic indexing operation.
+
+def f2(x, y, z):
+    x[y] = z  # A: Generic indexed assignment.
+
+def list_get_item(x: List[int], y: int) -> int:
+    return x[y]
+
+def list_set_item(x: List[int], y: int) -> None:
+    x[y] = 5
+
+def dict_get_item(d: Dict[str, str]) -> str:
+    return d['x']
+
+def dict_set_item(d: Dict[str, str]) -> None:
+    d['x'] = 'y'
+
