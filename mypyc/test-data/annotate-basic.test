@@ -181,7 +181,7 @@ def islower(x: str) -> bool:
 import functools
 import itertools
 from functools import partial
-from itertools import chain, groupby
+from itertools import chain, groupby, islice
 
 def f(x: int, y: int) -> None: pass
 
@@ -208,3 +208,8 @@ def use_groupby1() -> None:
 def use_groupby2() -> None:
     for a, b in itertools.groupby([('A', 'B')]):  # A: "itertools.groupby" is inefficient in compiled code.
         pass
+
+def use_islice() -> None:
+    for x in islice([1, 2, 3], 1, 2):  # A: "itertools.islice" is inefficient in compiled code (hint: replace with for loop over index range).
+        pass
+

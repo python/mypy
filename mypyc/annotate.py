@@ -48,6 +48,7 @@ stdlib_hints: Final = {
     "functools.partial": Annotation('"functools.partial" is inefficient in compiled code.', priority=2),
     "itertools.chain": Annotation('"itertools.chain" is inefficient in compiled code (hint: replace with for loops).', priority=2),
     "itertools.groupby": Annotation('"itertools.groupby" is inefficient in compiled code.', priority=2),
+    "itertools.islice": Annotation('"itertools.islice" is inefficient in compiled code (hint: replace with for loop over index range).', priority=2),
 }
 
 CSS = """\
