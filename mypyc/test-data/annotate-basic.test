@@ -13,12 +13,54 @@ class C:
 def f3(x: C) -> int:
     return x.foo
 
-[case testAnnotateGenericAdd]
-def f(x):
+[case testAnnotateGenericBinaryOperations]
+def generic_add(x):
     return x + 1  # A: Generic "+" operation.
 
-def g(x: int) -> int:
-    return x + 1
+def generic_sub(x):
+    return x - 1  # A: Generic "-" operation.
+
+def generic_mul(x):
+    return x * 1  # A: Generic "*" operation.
+
+def generic_div(x):
+    return x / 1  # A: Generic "/" operation.
+
+def generic_floor_div(x):
+    return x // 1  # A: Generic "//" operation.
+
+def generic_unary_plus(x):
+    return +x  # A: Generic unary "+" operation.
+
+def generic_unary_minus(x):
+    return -x  # A: Generic unary "-" operation.
+
+def native_int_ops(x: int, y: int) -> int:
+    a = x + 1 - y
+    return x * a // y
+
+[case testAnnotateGenericBitwiseOperations]
+def generic_and(x):
+    return x & 1  # A: Generic "&" operation.
+
+def generic_or(x):
+    return x | 1  # A: Generic "|" operation.
+
+def generic_xor(x):
+    return x ^ 1  # A: Generic "^" operation.
+
+def generic_left_shift(x):
+    return x << 1  # A: Generic "<<" operation.
+
+def generic_right_shift(x):
+    return x >> 1  # A: Generic ">>" operation.
+
+def generic_invert(x):
+    return ~x  # A: Generic "~" operation.
+
+def native_int_ops(x: int, y: int) -> int:
+    a = (x & 1) << y
+    return (x | a) >> (y ^ 1)
 
 [case testAnnotateTwoOperationsOnLine]
 def f(x):

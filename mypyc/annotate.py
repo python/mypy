@@ -15,6 +15,19 @@ from mypyc.ir.ops import CallC, LoadLiteral, Value, LoadStatic, LoadLiteral
 
 op_hints: Final = {
     "PyNumber_Add": 'Generic "+" operation.',
+    "PyNumber_Subtract": 'Generic "-" operation.',
+    "PyNumber_Multiply": 'Generic "*" operation.',
+    "PyNumber_TrueDivide": 'Generic "/" operation.',
+    "PyNumber_FloorDivide": 'Generic "//" operation.',
+    "PyNumber_Positive": 'Generic unary "+" operation.',
+    "PyNumber_Negative": 'Generic unary "-" operation.',
+    "PyNumber_And": 'Generic "&" operation.',
+    "PyNumber_Or": 'Generic "|" operation.',
+    "PyNumber_Xor": 'Generic "^" operation.',
+    "PyNumber_Lshift": 'Generic "<<" operation.',
+    "PyNumber_Rshift": 'Generic ">>" operation.',
+    "PyNumber_Invert": 'Generic "~" operation.',
+    "PySequence_Contains": 'Generic "in" operation.',
     "PyObject_Call": 'Generic call operation.',
 }
 
