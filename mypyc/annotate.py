@@ -6,7 +6,8 @@ from html import escape
 from typing import Final
 
 from mypy.build import BuildResult
-from mypy.nodes import MypyFile, FuncDef, Node, LambdaExpr, Var, NameExpr, MemberExpr, ForStmt, Expression
+from mypy.nodes import MypyFile, FuncDef, Node, LambdaExpr, Var, NameExpr, MemberExpr, ForStmt, \
+    Expression, CallExpr, RefExpr, TypeInfo, TupleExpr
 from mypy.types import Type, AnyType, TypeOfAny, ProperType, get_proper_type, Instance
 from mypy.util import FancyFormatter
 from mypy.traverser import TraverserVisitor
@@ -129,7 +130,11 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
                 ann: str | Annotation | None = None
                 if name == "CPyObject_GetAttr":
                     attr_name = get_str_literal(op.args[1])
-                    if attr_name:
+                    if attr_name == "__prepare__":
+                        # These attributes are internal to mypyc/CPython, and the user has
+                        # little control over them.
+                        ann = None
+                    elif attr_name:
                         ann = f'Get non-native attribute "{attr_name}".'
                     else:
                         ann = "Dynamic attribute lookup."
@@ -189,6 +194,20 @@ class ASTAnnotateVisitor(TraverserVisitor):
         super().visit_member_expr(o)
         if ann := stdlib_hints.get(o.fullname):
             self.annotate(o, ann)
+
+    def visit_call_expr(self, o: CallExpr, /) -> None:
+        super().visit_call_expr(o)
+        if isinstance(o.callee, RefExpr) and o.callee.fullname == "builtins.isinstance" and len(o.args) == 2:
+            arg = o.args[1]
+            self.check_isinstance_arg(arg)
+
+    def check_isinstance_arg(self, arg: Expression) -> None:
+        if isinstance(arg, RefExpr):
+            if isinstance(arg.node, TypeInfo) and arg.node.is_protocol:
+                self.annotate(arg, f'Expensive isinstance() check against protocol "{arg.node.name}".')
+        elif isinstance(arg, TupleExpr):
+            for item in arg.items:
+                self.check_isinstance_arg(item)
 
     def visit_lambda_expr(self, o: LambdaExpr, /) -> None:
         self.annotate(o, "A new object is allocated for lambda each time it is evaluated. " + "A module-level function would be faster.")

@@ -243,3 +243,33 @@ class C:
 def good2(a: List[str]) -> None:
     for x in a:
         pass
+
+[case testAnnotateIsinstance]
+from typing import Protocol, runtime_checkable, Union
+
+@runtime_checkable
+class P(Protocol):
+    def foo(self) -> None: ...
+
+class C: pass
+
+class D(C):
+    def bar(self) -> None: pass
+
+def bad1(x: object) -> bool:
+    return isinstance(x, P)  # A: Expensive isinstance() check against protocol "P".
+
+def bad2(x: object) -> bool:
+    return isinstance(x, (str, P))  # A: Expensive isinstance() check against protocol "P".
+
+def good1(x: C) -> bool:
+    if isinstance(x, D):
+        x.bar()
+    return isinstance(x, D)
+
+def good2(x: Union[int, str]) -> int:
+    if isinstance(x, int):
+        return x + 1
+    else:
+        return int(x + "1")
+[typing fixtures/typing-full.pyi]
