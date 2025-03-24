@@ -6,7 +6,7 @@ from html import escape
 from typing import Final
 
 from mypy.build import BuildResult
-from mypy.nodes import MypyFile, FuncDef, Node, LambdaExpr, Var
+from mypy.nodes import MypyFile, FuncDef, Node, LambdaExpr, Var, NameExpr, MemberExpr
 from mypy.util import FancyFormatter
 from mypy.traverser import TraverserVisitor
 from mypyc.ir.func_ir import FuncIR
@@ -45,9 +45,9 @@ op_hints: Final = {
 }
 
 stdlib_hints: Final = {
-    "functools.partial": Annotation('"functools.partial" is inefficient.', priority=2),
-    "itertools.chain": Annotation('"itertools.chain" is inefficient (hint: replace with for loops).', priority=2),
-    "itertools.groupby": Annotation('"itertools.groupby" is inefficient.', priority=2),
+    "functools.partial": Annotation('"functools.partial" is inefficient in compiled code.', priority=2),
+    "itertools.chain": Annotation('"itertools.chain" is inefficient in compiled code (hint: replace with for loops).', priority=2),
+    "itertools.groupby": Annotation('"itertools.groupby" is inefficient in compiled code.', priority=2),
 }
 
 CSS = """\
@@ -169,6 +169,15 @@ class ASTAnnotateVisitor(TraverserVisitor):
         self.func_depth += 1
         super().visit_func_def(o)
         self.func_depth -= 1
+
+    def visit_name_expr(self, o: NameExpr, /) -> None:
+        if ann := stdlib_hints.get(o.fullname):
+            self.annotate(o, ann)
+
+    def visit_member_expr(self, o: MemberExpr, /) -> None:
+        super().visit_member_expr(o)
+        if ann := stdlib_hints.get(o.fullname):
+            self.annotate(o, ann)
 
     def visit_lambda_expr(self, o: LambdaExpr, /) -> None:
         self.annotate(o, "A new object is allocated for lambda each time it is evaluated. " + "A module-level function would be faster.")

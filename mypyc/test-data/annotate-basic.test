@@ -178,19 +178,33 @@ def islower(x: str) -> bool:
     return x.islower()  # A: Call non-native method "islower".
 
 [case testAnnotateSpecificStdlibFeatures]
+import functools
+import itertools
 from functools import partial
 from itertools import chain, groupby
 
 def f(x: int, y: int) -> None: pass
 
-def use_partial() -> None:
-    p = partial(f, 1)  # A: "functools.partial" is inefficient.
+def use_partial1() -> None:
+    p = partial(f, 1)  # A: "functools.partial" is inefficient in compiled code.
     p(2)
 
-def use_chain() -> None:
-    for x in chain([1, 3], [4, 5]):  # A: "itertools.chain" is inefficient (hint: replace with for loops).
+def use_partial2() -> None:
+    p = functools.partial(f, 1)  # A: "functools.partial" is inefficient in compiled code.
+    p(2)
+
+def use_chain1() -> None:
+    for x in chain([1, 3], [4, 5]):  # A: "itertools.chain" is inefficient in compiled code (hint: replace with for loops).
         pass
 
-def use_groupby() -> None:
-    for a, b in groupby([('A', 'B')]):  # A: "itertools.groupby" is inefficient.
+def use_chain2() -> None:
+    for x in itertools.chain([1, 3], [4, 5]):  # A: "itertools.chain" is inefficient in compiled code (hint: replace with for loops).
+        pass
+
+def use_groupby1() -> None:
+    for a, b in groupby([('A', 'B')]):  # A: "itertools.groupby" is inefficient in compiled code.
+        pass
+
+def use_groupby2() -> None:
+    for a, b in itertools.groupby([('A', 'B')]):  # A: "itertools.groupby" is inefficient in compiled code.
         pass
