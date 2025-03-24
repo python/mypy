@@ -34,6 +34,7 @@ from mypy.fscache import FileSystemCache
 from mypy.main import process_options
 from mypy.options import Options
 from mypy.util import write_junit_xml
+from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
 from mypyc.common import RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
@@ -252,6 +253,9 @@ def generate_c(
 
     if compiler_options.verbose:
         print(f"Compiled to C in {t2 - t1:.3f}s")
+
+    if options.mypyc_annotation_file:
+        generate_annotated_html(options.mypyc_annotation_file, result, modules)
 
     return ctext, "\n".join(format_modules(modules))
 
