@@ -8,6 +8,7 @@ from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypyc.annotate import generate_annotations
+from mypyc.ir.pprint import format_func
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
     MypycDataSuite,
@@ -39,8 +40,9 @@ class TestReport(MypycDataSuite):
             for i, line in enumerate(testcase.input):
                 if "# A:" in line:
                     msg = line.rpartition("# A:")[2].strip()
-                    expected_output.append(f"{i + 1}: {msg}")
+                    expected_output.append(f"main:{i + 1}: {msg}")
 
+            ir = None
             try:
                 ir, tree = build_ir_for_single_file2(testcase.input, options)
             except CompileError as e:
@@ -50,6 +52,16 @@ class TestReport(MypycDataSuite):
                 actual = []
                 for line_num, line_anns in annotations.annotations.items():
                     s = " ".join(line_anns)
-                    actual.append(f"{line_num}: {s}")
+                    actual.append(f"main:{line_num}: {s}")
 
-            assert_test_output(testcase, actual, "Invalid source code output", expected_output)
+            try:
+                assert_test_output(testcase, actual, "Invalid source code output", expected_output)
+            except BaseException:
+                if ir:
+                    print("Generated IR:\n")
+                    for fn in ir.functions:
+                        if fn.name == "__top_level__":
+                            continue
+                        for s in format_func(fn):
+                            print(s)
+                raise
