@@ -10,7 +10,7 @@ from mypy.nodes import MypyFile
 from mypy.util import FancyFormatter
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
-from mypyc.ir.ops import CallC, LoadLiteral, Value
+from mypyc.ir.ops import CallC, LoadLiteral, Value, LoadStatic, LoadLiteral
 
 op_hints: Final = {
     "PyNumber_Add": 'Generic "+" operation.',
@@ -102,6 +102,11 @@ def function_annotations(func_ir: FuncIR) -> dict[int, list[str]]:
                         ann = "Dynamic method call."
                 elif name in op_hints:
                     ann = op_hints[name]
+                elif name in ("CPyDict_GetItem", "CPyDict_SetItem"):
+                    if isinstance(op.args[0], LoadStatic) and isinstance(op.args[1], LoadLiteral) and func_ir.name != "__top_level__":
+                        load = op.args[0]
+                        if load.namespace == "static" and load.identifier == "globals":
+                            ann = f'Access global "{op.args[1].value}" through namespace ' + 'dictionary (hint: access is faster if you can make it Final).'
                 if ann:
                     anns.setdefault(op.line, []).append(ann)
     return anns

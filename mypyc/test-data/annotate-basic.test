@@ -44,3 +44,26 @@ class C:
 
 def g(c: C) -> int:
     return c.foo()
+
+[case testAnnotateGlobalVariableAccess]
+from typing import Final
+import nonnative
+
+x = 0
+y: Final = 0
+
+def read() -> int:
+    return x  # A: Access global "x" through namespace dictionary (hint: access is faster if you can make it Final).
+
+def assign(a: int) -> None:
+    global x
+    x = a  # A: Access global "x" through namespace dictionary (hint: access is faster if you can make it Final).
+
+def read_final() -> int:
+    return y
+
+def read_nonnative() -> int:
+    return nonnative.z  # A: Get non-native attribute "z".
+
+[file nonnative.py]
+z = 2
