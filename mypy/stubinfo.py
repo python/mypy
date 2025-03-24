@@ -291,6 +291,7 @@ non_bundled_packages_flat: dict[str, str] = {
     # for additions here
     "pandas": "pandas-stubs",  # https://github.com/pandas-dev/pandas-stubs
     "lxml": "lxml-stubs",  # https://github.com/lxml/lxml-stubs
+    "scipy": "scipy-stubs",  # https://github.com/scipy/scipy-stubs
 }
 
 
