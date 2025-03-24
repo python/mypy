@@ -34,6 +34,13 @@ class TestReport(MypycDataSuite):
             return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
+
+            # Parse "# A: <message>" comments.
+            for i, line in enumerate(testcase.input):
+                if "# A:" in line:
+                    msg = line.rpartition("# A:")[2].strip()
+                    expected_output.append(f"{i + 1}: {msg}")
+
             try:
                 ir, tree = build_ir_for_single_file2(testcase.input, options)
             except CompileError as e:
@@ -41,8 +48,8 @@ class TestReport(MypycDataSuite):
             else:
                 annotations = generate_annotations("native.py", tree, ir)
                 actual = []
-                for line, line_anns in annotations.annotations.items():
+                for line_num, line_anns in annotations.annotations.items():
                     s = " ".join(line_anns)
-                    actual.append(f"{line}: {s}")
+                    actual.append(f"{line_num}: {s}")
 
             assert_test_output(testcase, actual, "Invalid source code output", expected_output)
