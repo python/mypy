@@ -3170,7 +3170,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
         else:
             self.try_infer_partial_generic_type_from_assignment(lvalue, rvalue, "=")
-            lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
+            lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue, rvalue)
             # If we're assigning to __getattr__ or similar methods, check that the signature is
             # valid.
             if isinstance(lvalue, NameExpr) and lvalue.node:
@@ -4263,7 +4263,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             self.msg.type_not_iterable(rvalue_type, context)
 
-    def check_lvalue(self, lvalue: Lvalue) -> tuple[Type | None, IndexExpr | None, Var | None]:
+    def check_lvalue(
+        self, lvalue: Lvalue, rvalue: Expression | None = None
+    ) -> tuple[Type | None, IndexExpr | None, Var | None]:
         lvalue_type = None
         index_lvalue = None
         inferred = None
@@ -4281,7 +4283,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(lvalue, IndexExpr):
             index_lvalue = lvalue
         elif isinstance(lvalue, MemberExpr):
-            lvalue_type = self.expr_checker.analyze_ordinary_member_access(lvalue, True)
+            lvalue_type = self.expr_checker.analyze_ordinary_member_access(lvalue, True, rvalue)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, NameExpr):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
@@ -4552,12 +4554,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Return the inferred rvalue_type, inferred lvalue_type, and whether to use the binder
         for this assignment.
-
-        Note: this method exists here and not in checkmember.py, because we need to take
-        care about interaction between binder and __set__().
         """
         instance_type = get_proper_type(instance_type)
-        attribute_type = get_proper_type(attribute_type)
         # Descriptors don't participate in class-attribute access
         if (isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or isinstance(
             instance_type, TypeType
@@ -4569,8 +4567,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             get_lvalue_type = self.expr_checker.analyze_ordinary_member_access(
                 lvalue, is_lvalue=False
             )
-            use_binder = is_same_type(get_lvalue_type, attribute_type)
 
+<<<<<<< HEAD
         if not isinstance(attribute_type, Instance):
             # TODO: support __set__() for union types.
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
@@ -4664,13 +4662,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return AnyType(TypeOfAny.from_error), get_type, False
 
         set_type = inferred_dunder_set_type.arg_types[1]
+=======
+>>>>>>> df9ddfcac (Consolidate descriptor handling in checkmember.py (#18831))
         # Special case: if the rvalue_type is a subtype of both '__get__' and '__set__' types,
         # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
         # by this assignment. Technically, this is not safe, but in practice this is
         # what a user expects.
+<<<<<<< HEAD
         rvalue_type = self.check_simple_assignment(set_type, rvalue, context)
         infer = is_subtype(rvalue_type, get_type) and is_subtype(get_type, set_type)
         return rvalue_type if infer else set_type, get_type, infer
+=======
+        rvalue_type, _ = self.check_simple_assignment(attribute_type, rvalue, context)
+        infer = is_subtype(rvalue_type, get_lvalue_type) and is_subtype(
+            get_lvalue_type, attribute_type
+        )
+        return rvalue_type if infer else attribute_type, attribute_type, infer
+>>>>>>> df9ddfcac (Consolidate descriptor handling in checkmember.py (#18831))
 
     def check_indexed_assignment(
         self, lvalue: IndexExpr, rvalue: Expression, context: Context
