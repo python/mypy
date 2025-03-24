@@ -3,6 +3,7 @@ from __future__ import annotations
 import os.path
 import sys
 from html import escape
+from typing import Final
 
 from mypy.build import BuildResult
 from mypy.nodes import MypyFile
@@ -10,6 +11,11 @@ from mypy.util import FancyFormatter
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
 from mypyc.ir.ops import CallC, LoadLiteral, Value
+
+op_hints: Final = {
+    "PyNumber_Add": 'Generic "+" operation.',
+    "PyObject_Call": 'Generic call operation.',
+}
 
 CSS = """\
 .collapsible {
@@ -88,8 +94,14 @@ def function_annotations(func_ir: FuncIR) -> dict[int, list[str]]:
                         ann = f'Get non-native attribute "{attr_name}".'
                     else:
                         ann = "Dynamic attribute lookup."
-                elif name == "PyNumber_Add":
-                    ann = 'Generic "+" operation.'
+                elif name == "PyObject_VectorcallMethod":
+                    method_name = get_str_literal(op.args[0])
+                    if method_name:
+                        ann = f'Call non-native method "{method_name}".'
+                    else:
+                        ann = "Dynamic method call."
+                elif name in op_hints:
+                    ann = op_hints[name]
                 if ann:
                     anns.setdefault(op.line, []).append(ann)
     return anns

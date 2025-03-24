@@ -1,11 +1,16 @@
 [case testAnnotateNonNativeAttribute]
-def f(x):
+from typing import Any
+
+def f1(x):
+    return x.foo  # A: Get non-native attribute "foo".
+
+def f2(x: Any) -> object:
     return x.foo  # A: Get non-native attribute "foo".
 
 class C:
     foo: int
 
-def g(x: C) -> int:
+def f3(x: C) -> int:
     return x.foo
 
 [case testAnnotateGenericAdd]
@@ -18,3 +23,24 @@ def g(x: int) -> int:
 [case testAnnotateTwoOperationsOnLine]
 def f(x):
     return x.foo + 1  # A: Get non-native attribute "foo". Generic "+" operation.
+
+[case testAnnotateNonNativeMethod]
+from typing import Any
+
+def f1(x):
+    return x.foo()  # A: Call non-native method "foo".
+
+def f2(x: Any) -> None:
+    x.foo(1)  # A: Call non-native method "foo".
+    x.foo(a=1)  # A: Call non-native method "foo".
+    t = (1, 'x')
+    x.foo(*t)  # A: Get non-native attribute "foo". Generic call operation.
+    d = {"a": 1}
+    x.foo(*d)  # A: Get non-native attribute "foo". Generic call operation.
+
+class C:
+    def foo(self) -> int:
+        return 0
+
+def g(c: C) -> int:
+    return c.foo()
