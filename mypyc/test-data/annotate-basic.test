@@ -62,6 +62,34 @@ def native_int_ops(x: int, y: int) -> int:
     a = (x & 1) << y
     return (x | a) >> (y ^ 1)
 
+[case testAnnotateGenericComparisonOperations]
+def generic_eq(x, y):
+    return x == y  # A: Generic comparison operation.
+
+def generic_ne(x, y):
+    return x != y  # A: Generic comparison operation.
+
+def generic_lt(x, y):
+    return x < y  # A: Generic comparison operation.
+
+def generic_le(x, y):
+    return x <= y  # A: Generic comparison operation.
+
+def generic_gt(x, y):
+    return x > y  # A: Generic comparison operation.
+
+def generic_ge(x, y):
+    return x >= y  # A: Generic comparison operation.
+
+def int_comparisons(x: int, y: int) -> int:
+    if x == y:
+        return 0
+    if x < y:
+        return 1
+    if x > y:
+        return 2
+    return 3
+
 [case testAnnotateTwoOperationsOnLine]
 def f(x):
     return x.foo + 1  # A: Get non-native attribute "foo". Generic "+" operation.

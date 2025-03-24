@@ -29,6 +29,7 @@ op_hints: Final = {
     "PyNumber_Invert": 'Generic "~" operation.',
     "PySequence_Contains": 'Generic "in" operation.',
     "PyObject_Call": 'Generic call operation.',
+    "PyObject_RichCompare": "Generic comparison operation.",
 }
 
 CSS = """\
