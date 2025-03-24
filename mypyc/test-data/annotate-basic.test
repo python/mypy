@@ -67,3 +67,14 @@ def read_nonnative() -> int:
 
 [file nonnative.py]
 z = 2
+
+[case testAnnotateNestedFunction]
+def f1() -> None:
+    def g() -> None:  # A: A nested function object is allocated each time statement is executed. A module-level function would be faster.
+        pass
+
+    g()
+
+def f2() -> int:
+    l = lambda: 1  # A: A new object is allocated for lambda each time it is evaluated. A module-level function would be faster.
+    return l()

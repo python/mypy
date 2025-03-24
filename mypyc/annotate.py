@@ -6,8 +6,9 @@ from html import escape
 from typing import Final
 
 from mypy.build import BuildResult
-from mypy.nodes import MypyFile
+from mypy.nodes import MypyFile, FuncDef, Node, LambdaExpr
 from mypy.util import FancyFormatter
+from mypy.traverser import TraverserVisitor
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
 from mypyc.ir.ops import CallC, LoadLiteral, Value, LoadStatic, LoadLiteral
@@ -77,6 +78,10 @@ def generate_annotations(path: str, tree: MypyFile, ir: ModuleIR) -> AnnotatedSo
     anns = {}
     for func_ir in ir.functions:
         anns.update(function_annotations(func_ir))
+    visitor = ASTAnnotateVisitor()
+    for defn in tree.defs:
+        defn.accept(visitor)
+    anns.update(visitor.anns)
     return AnnotatedSource(path, anns)
 
 
@@ -110,6 +115,26 @@ def function_annotations(func_ir: FuncIR) -> dict[int, list[str]]:
                 if ann:
                     anns.setdefault(op.line, []).append(ann)
     return anns
+
+
+class ASTAnnotateVisitor(TraverserVisitor):
+    def __init__(self) -> None:
+        self.anns: dict[int, list[str]] = {}
+        self.func_depth = 0
+
+    def visit_func_def(self, o: FuncDef, /) -> None:
+        if self.func_depth > 0:
+            self.annotate(o, "A nested function object is allocated each time statement is executed. " + "A module-level function would be faster.")
+        self.func_depth += 1
+        super().visit_func_def(o)
+        self.func_depth -= 1
+
+    def visit_lambda_expr(self, o: LambdaExpr, /) -> None:
+        self.annotate(o, "A new object is allocated for lambda each time it is evaluated. " + "A module-level function would be faster.")
+        super().visit_lambda_expr(o)
+
+    def annotate(self, o: Node, ann: str) -> None:
+        self.anns.setdefault(o.line, []).append(ann)
 
 
 def get_str_literal(v: Value) -> str | None:
