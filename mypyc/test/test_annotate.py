@@ -7,8 +7,14 @@ import os.path
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
+<<<<<<< HEAD
 from mypyc.annotate import generate_annotations
 from mypyc.ir.pprint import format_func
+||||||| parent of b9482aed6 (Add priority to annotations and add annotations for some stdlib features)
+from mypyc.annotate import generate_annotations
+=======
+from mypyc.annotate import generate_annotations, get_max_prio
+>>>>>>> b9482aed6 (Add priority to annotations and add annotations for some stdlib features)
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
     MypycDataSuite,
@@ -51,9 +57,11 @@ class TestReport(MypycDataSuite):
                 annotations = generate_annotations("native.py", tree, ir)
                 actual = []
                 for line_num, line_anns in annotations.annotations.items():
-                    s = " ".join(line_anns)
+                    anns = get_max_prio(line_anns)
+                    str_anns = [a.message for a in anns]
+                    s = " ".join(str_anns)
                     actual.append(f"main:{line_num}: {s}")
-
+                    
             try:
                 assert_test_output(testcase, actual, "Invalid source code output", expected_output)
             except BaseException:

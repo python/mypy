@@ -170,3 +170,27 @@ def dict_get_item(d: Dict[str, str]) -> str:
 def dict_set_item(d: Dict[str, str]) -> None:
     d['x'] = 'y'
 
+[case testAnnotateStrMethods]
+def startswith(x: str) -> bool:
+    return x.startswith('foo')
+
+def islower(x: str) -> bool:
+    return x.islower()  # A: Call non-native method "islower".
+
+[case testAnnotateSpecificStdlibFeatures]
+from functools import partial
+from itertools import chain, groupby
+
+def f(x: int, y: int) -> None: pass
+
+def use_partial() -> None:
+    p = partial(f, 1)  # A: "functools.partial" is inefficient.
+    p(2)
+
+def use_chain() -> None:
+    for x in chain([1, 3], [4, 5]):  # A: "itertools.chain" is inefficient (hint: replace with for loops).
+        pass
+
+def use_groupby() -> None:
+    for a, b in groupby([('A', 'B')]):  # A: "itertools.groupby" is inefficient.
+        pass

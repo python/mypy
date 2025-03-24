@@ -6,32 +6,48 @@ from html import escape
 from typing import Final
 
 from mypy.build import BuildResult
-from mypy.nodes import MypyFile, FuncDef, Node, LambdaExpr
+from mypy.nodes import MypyFile, FuncDef, Node, LambdaExpr, Var
 from mypy.util import FancyFormatter
 from mypy.traverser import TraverserVisitor
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
 from mypyc.ir.ops import CallC, LoadLiteral, Value, LoadStatic, LoadLiteral
 
+
+class Annotation:
+    def __init__(self, message: str, priority: int = 1) -> None:
+        self.message = message
+        # If multiple annotations are generated for a single line, only report
+        # the highest-priority ones. Some structure generate multiple different
+        # annotations, and this can be used to reduce verbosity by only showing
+        # some of them.
+        self.priority = priority
+
+
 op_hints: Final = {
-    "PyNumber_Add": 'Generic "+" operation.',
-    "PyNumber_Subtract": 'Generic "-" operation.',
-    "PyNumber_Multiply": 'Generic "*" operation.',
-    "PyNumber_TrueDivide": 'Generic "/" operation.',
-    "PyNumber_FloorDivide": 'Generic "//" operation.',
-    "PyNumber_Positive": 'Generic unary "+" operation.',
-    "PyNumber_Negative": 'Generic unary "-" operation.',
-    "PyNumber_And": 'Generic "&" operation.',
-    "PyNumber_Or": 'Generic "|" operation.',
-    "PyNumber_Xor": 'Generic "^" operation.',
-    "PyNumber_Lshift": 'Generic "<<" operation.',
-    "PyNumber_Rshift": 'Generic ">>" operation.',
-    "PyNumber_Invert": 'Generic "~" operation.',
-    "PySequence_Contains": 'Generic "in" operation.',
-    "PyObject_Call": 'Generic call operation.',
-    "PyObject_RichCompare": "Generic comparison operation.",
-    "PyObject_GetItem": "Generic indexing operation.",
-    "PyObject_SetItem": "Generic indexed assignment.",
+    "PyNumber_Add": Annotation('Generic "+" operation.'),
+    "PyNumber_Subtract": Annotation('Generic "-" operation.'),
+    "PyNumber_Multiply": Annotation('Generic "*" operation.'),
+    "PyNumber_TrueDivide": Annotation('Generic "/" operation.'),
+    "PyNumber_FloorDivide": Annotation('Generic "//" operation.'),
+    "PyNumber_Positive": Annotation('Generic unary "+" operation.'),
+    "PyNumber_Negative": Annotation('Generic unary "-" operation.'),
+    "PyNumber_And": Annotation('Generic "&" operation.'),
+    "PyNumber_Or": Annotation('Generic "|" operation.'),
+    "PyNumber_Xor": Annotation('Generic "^" operation.'),
+    "PyNumber_Lshift": Annotation('Generic "<<" operation.'),
+    "PyNumber_Rshift": Annotation('Generic ">>" operation.'),
+    "PyNumber_Invert": Annotation('Generic "~" operation.'),
+    "PyObject_Call": Annotation('Generic call operation.'),
+    "PyObject_RichCompare": Annotation('Generic comparison operation.'),
+    "PyObject_GetItem": Annotation('Generic indexing operation.'),
+    "PyObject_SetItem": Annotation('Generic indexed assignment.'),
+}
+
+stdlib_hints: Final = {
+    "functools.partial": Annotation('"functools.partial" is inefficient.', priority=2),
+    "itertools.chain": Annotation('"itertools.chain" is inefficient (hint: replace with for loops).', priority=2),
+    "itertools.groupby": Annotation('"itertools.groupby" is inefficient.', priority=2),
 }
 
 CSS = """\
@@ -67,7 +83,7 @@ document.querySelectorAll('.collapsible').forEach(function(collapsible) {
 
 
 class AnnotatedSource:
-    def __init__(self, path: str, annotations: dict[int, list[str]]) -> None:
+    def __init__(self, path: str, annotations: dict[int, list[Annotation]]) -> None:
         self.path = path
         self.annotations = annotations
 
@@ -93,7 +109,7 @@ def generate_annotated_html(
 def generate_annotations(path: str, tree: MypyFile, ir: ModuleIR) -> AnnotatedSource:
     anns = {}
     for func_ir in ir.functions:
-        anns.update(function_annotations(func_ir))
+        anns.update(function_annotations(func_ir, tree))
     visitor = ASTAnnotateVisitor()
     for defn in tree.defs:
         defn.accept(visitor)
@@ -101,14 +117,14 @@ def generate_annotations(path: str, tree: MypyFile, ir: ModuleIR) -> AnnotatedSo
     return AnnotatedSource(path, anns)
 
 
-def function_annotations(func_ir: FuncIR) -> dict[int, list[str]]:
+def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Annotation]]:
     # TODO: check if func_ir.line is -1
-    anns: dict[int, list[str]] = {}
+    anns: dict[int, list[Annotation]] = {}
     for block in func_ir.blocks:
         for op in block.ops:
             if isinstance(op, CallC):
                 name = op.function_name
-                ann = None
+                ann: str | Annotation | None = None
                 if name == "CPyObject_GetAttr":
                     attr_name = get_str_literal(op.args[1])
                     if attr_name:
@@ -126,16 +142,25 @@ def function_annotations(func_ir: FuncIR) -> dict[int, list[str]]:
                 elif name in ("CPyDict_GetItem", "CPyDict_SetItem"):
                     if isinstance(op.args[0], LoadStatic) and isinstance(op.args[1], LoadLiteral) and func_ir.name != "__top_level__":
                         load = op.args[0]
-                        if load.namespace == "static" and load.identifier == "globals":
-                            ann = f'Access global "{op.args[1].value}" through namespace ' + 'dictionary (hint: access is faster if you can make it Final).'
+                        name = op.args[1].value
+                        sym = tree.names.get(name)
+                        if sym and sym.node and load.namespace == "static" and load.identifier == "globals":
+                            if sym.node.fullname in stdlib_hints:
+                                ann = stdlib_hints[sym.node.fullname]
+                            elif isinstance(sym.node, Var):
+                                ann = f'Access global "{name}" through namespace ' + 'dictionary (hint: access is faster if you can make it Final).'
+                            else:
+                                ann = f'Access "{name}" through global namespace dictionary.'
                 if ann:
+                    if isinstance(ann, str):
+                        ann = Annotation(ann)
                     anns.setdefault(op.line, []).append(ann)
     return anns
 
 
 class ASTAnnotateVisitor(TraverserVisitor):
     def __init__(self) -> None:
-        self.anns: dict[int, list[str]] = {}
+        self.anns: dict[int, list[Annotation]] = {}
         self.func_depth = 0
 
     def visit_func_def(self, o: FuncDef, /) -> None:
@@ -149,7 +174,9 @@ class ASTAnnotateVisitor(TraverserVisitor):
         self.annotate(o, "A new object is allocated for lambda each time it is evaluated. " + "A module-level function would be faster.")
         super().visit_lambda_expr(o)
 
-    def annotate(self, o: Node, ann: str) -> None:
+    def annotate(self, o: Node, ann: str | Annotation) -> None:
+        if isinstance(ann, str):
+            ann = Annotation(ann)
         self.anns.setdefault(o.line, []).append(ann)
 
 
@@ -157,6 +184,11 @@ def get_str_literal(v: Value) -> str | None:
     if isinstance(v, LoadLiteral) and isinstance(v.value, str):
         return v.value
     return None
+
+
+def get_max_prio(anns: list[Annotation]) -> list[Annotation]:
+    max_prio = max(a.priority for a in anns)
+    return [a for a in anns if a.priority == max_prio]
 
 
 def generate_html_report(sources: list[AnnotatedSource]) -> str:
@@ -168,15 +200,17 @@ def generate_html_report(sources: list[AnnotatedSource]) -> str:
     for src in sources:
         html.append(f"<h2><tt>{src.path}</tt></h2>\n")
         html.append("<pre>")
-        anns = src.annotations
+        src_anns = src.annotations
         with open(src.path) as f:
             lines = f.readlines()
         for i, s in enumerate(lines):
             s = escape(s)
             line = i + 1
             linenum = "%5d" % line
-            if line in anns:
-                hint = " ".join(anns[line])
+            if line in src_anns:
+                anns = get_max_prio(src_anns[line])
+                ann_strs = [a.message for a in anns]
+                hint = " ".join(ann_strs)
                 s = colorize_line(linenum, s, hint_html=hint)
             else:
                 s = linenum + "  " + s
