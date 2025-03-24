@@ -3334,8 +3334,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.chk.warn_deprecated(e.node, e)
         return narrowed
 
-    def analyze_ordinary_member_access(self, e: MemberExpr, is_lvalue: bool) -> Type:
-        """Analyse member expression or member lvalue."""
+    def analyze_ordinary_member_access(
+        self, e: MemberExpr, is_lvalue: bool, rvalue: Expression | None = None
+    ) -> Type:
+        """Analyse member expression or member lvalue.
+
+        An rvalue can be provided optionally to infer better setter type when is_lvalue is True.
+        """
         if e.kind is not None:
             # This is a reference to a module attribute.
             return self.analyze_ref_expr(e)
@@ -3366,6 +3371,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 in_literal_context=self.is_literal_context(),
                 module_symbol_table=module_symbol_table,
                 is_self=is_self,
+                rvalue=rvalue,
             )
 
             return member_type
