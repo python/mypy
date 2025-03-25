@@ -12,12 +12,12 @@ from typing import Callable
 
 from mypy import build
 from mypy.errors import CompileError
-from mypy.nodes import MypyFile, Expression
-from mypy.types import Type
+from mypy.nodes import Expression, MypyFile
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
+from mypy.types import Type
 from mypyc.analysis.ircheck import assert_func_ir_valid
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
 from mypyc.errors import Errors

@@ -9,7 +9,6 @@ from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypyc.annotate import generate_annotations, get_max_prio
 from mypyc.ir.pprint import format_func
-
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
     MypycDataSuite,

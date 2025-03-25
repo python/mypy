@@ -6,14 +6,27 @@ from html import escape
 from typing import Final
 
 from mypy.build import BuildResult
-from mypy.nodes import MypyFile, FuncDef, Node, LambdaExpr, Var, NameExpr, MemberExpr, ForStmt, \
-    Expression, CallExpr, RefExpr, TypeInfo, TupleExpr
-from mypy.types import Type, AnyType, TypeOfAny, ProperType, get_proper_type, Instance
-from mypy.util import FancyFormatter
+from mypy.nodes import (
+    CallExpr,
+    Expression,
+    ForStmt,
+    FuncDef,
+    LambdaExpr,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    Node,
+    RefExpr,
+    TupleExpr,
+    TypeInfo,
+    Var,
+)
 from mypy.traverser import TraverserVisitor
+from mypy.types import AnyType, Instance, ProperType, Type, TypeOfAny, get_proper_type
+from mypy.util import FancyFormatter
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
-from mypyc.ir.ops import CallC, LoadLiteral, Value, LoadStatic, LoadLiteral
+from mypyc.ir.ops import CallC, LoadLiteral, LoadStatic, Value
 
 
 class Annotation:
@@ -40,17 +53,27 @@ op_hints: Final = {
     "PyNumber_Lshift": Annotation('Generic "<<" operation.'),
     "PyNumber_Rshift": Annotation('Generic ">>" operation.'),
     "PyNumber_Invert": Annotation('Generic "~" operation.'),
-    "PyObject_Call": Annotation('Generic call operation.'),
-    "PyObject_RichCompare": Annotation('Generic comparison operation.'),
-    "PyObject_GetItem": Annotation('Generic indexing operation.'),
-    "PyObject_SetItem": Annotation('Generic indexed assignment.'),
+    "PyObject_Call": Annotation("Generic call operation."),
+    "PyObject_RichCompare": Annotation("Generic comparison operation."),
+    "PyObject_GetItem": Annotation("Generic indexing operation."),
+    "PyObject_SetItem": Annotation("Generic indexed assignment."),
 }
 
 stdlib_hints: Final = {
-    "functools.partial": Annotation('"functools.partial" is inefficient in compiled code.', priority=2),
-    "itertools.chain": Annotation('"itertools.chain" is inefficient in compiled code (hint: replace with for loops).', priority=2),
-    "itertools.groupby": Annotation('"itertools.groupby" is inefficient in compiled code.', priority=2),
-    "itertools.islice": Annotation('"itertools.islice" is inefficient in compiled code (hint: replace with for loop over index range).', priority=2),
+    "functools.partial": Annotation(
+        '"functools.partial" is inefficient in compiled code.', priority=2
+    ),
+    "itertools.chain": Annotation(
+        '"itertools.chain" is inefficient in compiled code (hint: replace with for loops).',
+        priority=2,
+    ),
+    "itertools.groupby": Annotation(
+        '"itertools.groupby" is inefficient in compiled code.', priority=2
+    ),
+    "itertools.islice": Annotation(
+        '"itertools.islice" is inefficient in compiled code (hint: replace with for loop over index range).',
+        priority=2,
+    ),
 }
 
 CSS = """\
@@ -109,7 +132,9 @@ def generate_annotated_html(
     print(f"\nWrote {formatted} -- open in browser to view\n")
 
 
-def generate_annotations(path: str, tree: MypyFile, ir: ModuleIR, type_map: dict[Expression, Type]) -> AnnotatedSource:
+def generate_annotations(
+    path: str, tree: MypyFile, ir: ModuleIR, type_map: dict[Expression, Type]
+) -> AnnotatedSource:
     anns = {}
     for func_ir in ir.functions:
         anns.update(function_annotations(func_ir, tree))
@@ -147,15 +172,27 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
                 elif name in op_hints:
                     ann = op_hints[name]
                 elif name in ("CPyDict_GetItem", "CPyDict_SetItem"):
-                    if isinstance(op.args[0], LoadStatic) and isinstance(op.args[1], LoadLiteral) and func_ir.name != "__top_level__":
+                    if (
+                        isinstance(op.args[0], LoadStatic)
+                        and isinstance(op.args[1], LoadLiteral)
+                        and func_ir.name != "__top_level__"
+                    ):
                         load = op.args[0]
                         name = str(op.args[1].value)
                         sym = tree.names.get(name)
-                        if sym and sym.node and load.namespace == "static" and load.identifier == "globals":
+                        if (
+                            sym
+                            and sym.node
+                            and load.namespace == "static"
+                            and load.identifier == "globals"
+                        ):
                             if sym.node.fullname in stdlib_hints:
                                 ann = stdlib_hints[sym.node.fullname]
                             elif isinstance(sym.node, Var):
-                                ann = f'Access global "{name}" through namespace ' + 'dictionary (hint: access is faster if you can make it Final).'
+                                ann = (
+                                    f'Access global "{name}" through namespace '
+                                    + "dictionary (hint: access is faster if you can make it Final)."
+                                )
                             else:
                                 ann = f'Access "{name}" through global namespace dictionary.'
                 if ann:
@@ -173,7 +210,11 @@ class ASTAnnotateVisitor(TraverserVisitor):
 
     def visit_func_def(self, o: FuncDef, /) -> None:
         if self.func_depth > 0:
-            self.annotate(o, "A nested function object is allocated each time statement is executed. " + "A module-level function would be faster.")
+            self.annotate(
+                o,
+                "A nested function object is allocated each time statement is executed. "
+                + "A module-level function would be faster.",
+            )
         self.func_depth += 1
         super().visit_func_def(o)
         self.func_depth -= 1
@@ -182,8 +223,16 @@ class ASTAnnotateVisitor(TraverserVisitor):
         typ = self.get_type(o.expr)
         if isinstance(typ, AnyType):
             self.annotate(o.expr, 'For loop uses generic operations (iterable has type "Any").')
-        elif isinstance(typ, Instance) and typ.type.fullname in ("typing.Iterable", "typing.Iterator", "typing.Sequence", "typing.MutableSequence"):
-            self.annotate(o.expr, f'For loop uses generic operations (iterable has the abstract type "{typ.type.fullname}").')
+        elif isinstance(typ, Instance) and typ.type.fullname in (
+            "typing.Iterable",
+            "typing.Iterator",
+            "typing.Sequence",
+            "typing.MutableSequence",
+        ):
+            self.annotate(
+                o.expr,
+                f'For loop uses generic operations (iterable has the abstract type "{typ.type.fullname}").',
+            )
         super().visit_for_stmt(o)
 
     def visit_name_expr(self, o: NameExpr, /) -> None:
@@ -197,20 +246,30 @@ class ASTAnnotateVisitor(TraverserVisitor):
 
     def visit_call_expr(self, o: CallExpr, /) -> None:
         super().visit_call_expr(o)
-        if isinstance(o.callee, RefExpr) and o.callee.fullname == "builtins.isinstance" and len(o.args) == 2:
+        if (
+            isinstance(o.callee, RefExpr)
+            and o.callee.fullname == "builtins.isinstance"
+            and len(o.args) == 2
+        ):
             arg = o.args[1]
             self.check_isinstance_arg(arg)
 
     def check_isinstance_arg(self, arg: Expression) -> None:
         if isinstance(arg, RefExpr):
             if isinstance(arg.node, TypeInfo) and arg.node.is_protocol:
-                self.annotate(arg, f'Expensive isinstance() check against protocol "{arg.node.name}".')
+                self.annotate(
+                    arg, f'Expensive isinstance() check against protocol "{arg.node.name}".'
+                )
         elif isinstance(arg, TupleExpr):
             for item in arg.items:
                 self.check_isinstance_arg(item)
 
     def visit_lambda_expr(self, o: LambdaExpr, /) -> None:
-        self.annotate(o, "A new object is allocated for lambda each time it is evaluated. " + "A module-level function would be faster.")
+        self.annotate(
+            o,
+            "A new object is allocated for lambda each time it is evaluated. "
+            + "A module-level function would be faster.",
+        )
         super().visit_lambda_expr(o)
 
     def annotate(self, o: Node, ann: str | Annotation) -> None:
@@ -218,7 +277,7 @@ class ASTAnnotateVisitor(TraverserVisitor):
             ann = Annotation(ann)
         self.anns.setdefault(o.line, []).append(ann)
 
-    def get_type(self, e: Expression)-> ProperType:
+    def get_type(self, e: Expression) -> ProperType:
         t = self.type_map.get(e)
         if t:
             return get_proper_type(t)
