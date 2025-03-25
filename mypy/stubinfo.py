@@ -47,7 +47,6 @@ legacy_bundled_packages: dict[str, str] = {
     "mock": "types-mock",
     "OpenSSL": "types-pyOpenSSL",
     "paramiko": "types-paramiko",
-    "pkg_resources": "types-setuptools",
     "polib": "types-polib",
     "pycurl": "types-pycurl",
     "pymysql": "types-PyMySQL",
