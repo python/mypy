@@ -7,14 +7,9 @@ import os.path
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
-<<<<<<< HEAD
-from mypyc.annotate import generate_annotations
-from mypyc.ir.pprint import format_func
-||||||| parent of b9482aed6 (Add priority to annotations and add annotations for some stdlib features)
-from mypyc.annotate import generate_annotations
-=======
 from mypyc.annotate import generate_annotations, get_max_prio
->>>>>>> b9482aed6 (Add priority to annotations and add annotations for some stdlib features)
+from mypyc.ir.pprint import format_func
+
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
     MypycDataSuite,
