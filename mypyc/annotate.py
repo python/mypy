@@ -1,3 +1,9 @@
+"""Generate source code formatted as HTML, with bottlenecks annotated and highlighted.
+
+Various heuristics are used to detect common issues that cause slower than
+expected performance.
+"""
+
 from __future__ import annotations
 
 import os.path
@@ -30,12 +36,16 @@ from mypyc.ir.ops import CallC, LoadLiteral, LoadStatic, Value
 
 
 class Annotation:
+    """HTML annotation for compiled source code"""
+
     def __init__(self, message: str, priority: int = 1) -> None:
+        # Message as HTML that describes an issue and/or how to fix it.
+        # Multiple messages on a line may be concatenated.
         self.message = message
         # If multiple annotations are generated for a single line, only report
-        # the highest-priority ones. Some structure generate multiple different
-        # annotations, and this can be used to reduce verbosity by only showing
-        # some of them.
+        # the highest-priority ones. Some use cases generate multiple annotations,
+        # and this can be used to reduce verbosity by hiding the lower-priority
+        # ones.
         self.priority = priority
 
 
@@ -109,6 +119,8 @@ document.querySelectorAll('.collapsible').forEach(function(collapsible) {
 
 
 class AnnotatedSource:
+    """Annotations for a single compiled source file."""
+
     def __init__(self, path: str, annotations: dict[int, list[Annotation]]) -> None:
         self.path = path
         self.annotations = annotations
@@ -146,6 +158,7 @@ def generate_annotations(
 
 
 def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Annotation]]:
+    """Generate annotations based on mypyc IR."""
     # TODO: check if func_ir.line is -1
     anns: dict[int, list[Annotation]] = {}
     for block in func_ir.blocks:
@@ -203,6 +216,8 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
 
 
 class ASTAnnotateVisitor(TraverserVisitor):
+    """Generate annotations from mypy AST and inferred types."""
+
     def __init__(self, type_map: dict[Expression, Type]) -> None:
         self.anns: dict[int, list[Annotation]] = {}
         self.func_depth = 0
