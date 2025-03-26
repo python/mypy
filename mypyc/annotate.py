@@ -14,6 +14,7 @@ from typing import Final
 from mypy.build import BuildResult
 from mypy.nodes import (
     CallExpr,
+    Decorator,
     Expression,
     ForStmt,
     FuncDef,
@@ -26,6 +27,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeInfo,
     Var,
+    WithStmt,
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import AnyType, Instance, ProperType, Type, TypeOfAny, get_proper_type
@@ -171,9 +173,10 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
                 ann: str | Annotation | None = None
                 if name == "CPyObject_GetAttr":
                     attr_name = get_str_literal(op.args[1])
-                    if attr_name == "__prepare__":
-                        # These attributes are internal to mypyc/CPython, and the user has
-                        # little control over them.
+                    if attr_name in ("__prepare__", "GeneratorExit", "StopIteration"):
+                        # These attributes are internal to mypyc/CPython, and/or accessed
+                        # implicitly in generated code. The user has little control over
+                        # them.
                         ann = None
                     elif attr_name:
                         ann = f'Get non-native attribute "{attr_name}".'
@@ -262,6 +265,24 @@ class ASTAnnotateVisitor(TraverserVisitor):
             )
         super().visit_for_stmt(o)
 
+    def visit_with_stmt(self, o: WithStmt, /) -> None:
+        for expr in o.expr:
+            if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
+                node = expr.callee.node
+                if isinstance(node, Decorator):
+                    if any(
+                        isinstance(d, RefExpr) and d.node.fullname == "contextlib.contextmanager"
+                        for d in node.decorators
+                    ):
+                        self.annotate(
+                            expr,
+                            f'"{node.name}" uses @contextmanager, which is slow '
+                            + "in compiled code. Use a native class with "
+                            + '"__enter__" and "__exit__" methods instead.',
+                            priority=2,
+                        )
+        super().visit_with_stmt(o)
+
     def visit_name_expr(self, o: NameExpr, /) -> None:
         if ann := stdlib_hints.get(o.fullname):
             self.annotate(o, ann)
@@ -299,9 +320,9 @@ class ASTAnnotateVisitor(TraverserVisitor):
         )
         super().visit_lambda_expr(o)
 
-    def annotate(self, o: Node, ann: str | Annotation) -> None:
+    def annotate(self, o: Node, ann: str | Annotation, priority: int = 1) -> None:
         if isinstance(ann, str):
-            ann = Annotation(ann)
+            ann = Annotation(ann, priority=priority)
         self.anns.setdefault(o.line, []).append(ann)
 
     def get_type(self, e: Expression) -> ProperType:

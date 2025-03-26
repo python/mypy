@@ -284,3 +284,22 @@ import copy
 def f(x: Any) -> Any:
     return copy.deepcopy(x)  # A: "copy.deepcopy" tends to be slow. Make a shallow copy if possible.
 
+[case testAnnotateContextManager]
+from typing import Iterator
+from contextlib import contextmanager
+
+@contextmanager
+def slow_ctx_manager() -> Iterator[None]:
+    yield
+
+class FastCtxManager:
+    def __enter__(self) -> None: pass
+    def __exit__(self, a, b, c) -> None: pass
+
+def f1(x) -> None:
+    with slow_ctx_manager():  # A: "slow_ctx_manager" uses @contextmanager, which is slow in compiled code. Use a native class with "__enter__" and "__exit__" methods instead.
+        x.foo  # A: Get non-native attribute "foo".
+
+def f2(x) -> None:
+    with FastCtxManager():
+        x.foo  # A: Get non-native attribute "foo".
