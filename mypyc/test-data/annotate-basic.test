@@ -273,3 +273,11 @@ def good2(x: Union[int, str]) -> int:
     else:
         return int(x + "1")
 [typing fixtures/typing-full.pyi]
+
+[case testAnnotateDeepcopy]
+from typing import Any
+import copy
+
+def f(x: Any) -> Any:
+    return copy.deepcopy(x)  # A: "copy.deepcopy" tends to be slow. Make a shallow copy if possible.
+

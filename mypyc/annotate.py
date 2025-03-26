@@ -84,6 +84,9 @@ stdlib_hints: Final = {
         '"itertools.islice" is inefficient in compiled code (hint: replace with for loop over index range).',
         priority=2,
     ),
+    "copy.deepcopy": Annotation(
+        '"copy.deepcopy" tends to be slow. Make a shallow copy if possible.', priority=2
+    ),
 }
 
 CSS = """\
