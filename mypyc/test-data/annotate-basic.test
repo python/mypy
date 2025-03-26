@@ -7,10 +7,13 @@ def f1(x):
 def f2(x: Any) -> object:
     return x.foo  # A: Get non-native attribute "foo".
 
+def f3(x):
+    x.bar = 1  # A: Set non-native attribute "bar".
+
 class C:
     foo: int
 
-def f3(x: C) -> int:
+def good1(x: C) -> int:
     return x.foo
 
 [case testAnnotateGenericBinaryOperations]

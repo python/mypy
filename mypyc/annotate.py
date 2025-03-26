@@ -179,6 +179,15 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
                         ann = f'Get non-native attribute "{attr_name}".'
                     else:
                         ann = "Dynamic attribute lookup."
+                elif name == "PyObject_SetAttr":
+                    attr_name = get_str_literal(op.args[1])
+                    if attr_name == "__mypyc_attrs__":
+                        # This is set implicitly and can't be avoided.
+                        ann = None
+                    elif attr_name:
+                        ann = f'Set non-native attribute "{attr_name}".'
+                    else:
+                        ann = "Dynamic attribute set."
                 elif name == "PyObject_VectorcallMethod":
                     method_name = get_str_literal(op.args[0])
                     if method_name:
