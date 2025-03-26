@@ -1260,7 +1260,7 @@ type must be a subtype of the original type::
 .. _code-maybe-unrecognized-str-typeform:
 
 String appears in a context which expects a TypeForm [maybe-unrecognized-str-typeform]
--------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------
 
 TypeForm literals may contain string annotations:
 
