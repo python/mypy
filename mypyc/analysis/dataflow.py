@@ -542,7 +542,7 @@ def run_analysis(
     # Set up initial state for worklist algorithm.
     worklist = list(blocks)
     if not backward:
-        worklist = worklist[::-1]  # Reverse for a small performance improvement
+        worklist.reverse()  # Reverse for a small performance improvement
     workset = set(worklist)
     before: dict[BasicBlock, set[T]] = {}
     after: dict[BasicBlock, set[T]] = {}
