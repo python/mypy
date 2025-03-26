@@ -12,11 +12,12 @@ from typing import Callable
 
 from mypy import build
 from mypy.errors import CompileError
-from mypy.nodes import MypyFile
+from mypy.nodes import Expression, MypyFile
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
+from mypy.types import Type
 from mypyc.analysis.ircheck import assert_func_ir_valid
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
 from mypyc.errors import Errors
@@ -99,7 +100,7 @@ def build_ir_for_single_file(
 
 def build_ir_for_single_file2(
     input_lines: list[str], compiler_options: CompilerOptions | None = None
-) -> tuple[ModuleIR, MypyFile]:
+) -> tuple[ModuleIR, MypyFile, dict[Expression, Type]]:
     program_text = "\n".join(input_lines)
 
     # By default generate IR compatible with the earliest supported Python C API.
@@ -140,7 +141,7 @@ def build_ir_for_single_file2(
         assert_func_ir_valid(fn)
     tree = result.graph[module.fullname].tree
     assert tree is not None
-    return module, tree
+    return module, tree, result.types
 
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: list[str]) -> None:

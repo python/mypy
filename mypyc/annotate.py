@@ -1,15 +1,90 @@
+"""Generate source code formatted as HTML, with bottlenecks annotated and highlighted.
+
+Various heuristics are used to detect common issues that cause slower than
+expected performance.
+"""
+
 from __future__ import annotations
 
 import os.path
 import sys
 from html import escape
+from typing import Final
 
 from mypy.build import BuildResult
-from mypy.nodes import MypyFile
+from mypy.nodes import (
+    CallExpr,
+    Expression,
+    ForStmt,
+    FuncDef,
+    LambdaExpr,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    Node,
+    RefExpr,
+    TupleExpr,
+    TypeInfo,
+    Var,
+)
+from mypy.traverser import TraverserVisitor
+from mypy.types import AnyType, Instance, ProperType, Type, TypeOfAny, get_proper_type
 from mypy.util import FancyFormatter
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
-from mypyc.ir.ops import CallC, LoadLiteral, Value
+from mypyc.ir.ops import CallC, LoadLiteral, LoadStatic, Value
+
+
+class Annotation:
+    """HTML annotation for compiled source code"""
+
+    def __init__(self, message: str, priority: int = 1) -> None:
+        # Message as HTML that describes an issue and/or how to fix it.
+        # Multiple messages on a line may be concatenated.
+        self.message = message
+        # If multiple annotations are generated for a single line, only report
+        # the highest-priority ones. Some use cases generate multiple annotations,
+        # and this can be used to reduce verbosity by hiding the lower-priority
+        # ones.
+        self.priority = priority
+
+
+op_hints: Final = {
+    "PyNumber_Add": Annotation('Generic "+" operation.'),
+    "PyNumber_Subtract": Annotation('Generic "-" operation.'),
+    "PyNumber_Multiply": Annotation('Generic "*" operation.'),
+    "PyNumber_TrueDivide": Annotation('Generic "/" operation.'),
+    "PyNumber_FloorDivide": Annotation('Generic "//" operation.'),
+    "PyNumber_Positive": Annotation('Generic unary "+" operation.'),
+    "PyNumber_Negative": Annotation('Generic unary "-" operation.'),
+    "PyNumber_And": Annotation('Generic "&" operation.'),
+    "PyNumber_Or": Annotation('Generic "|" operation.'),
+    "PyNumber_Xor": Annotation('Generic "^" operation.'),
+    "PyNumber_Lshift": Annotation('Generic "<<" operation.'),
+    "PyNumber_Rshift": Annotation('Generic ">>" operation.'),
+    "PyNumber_Invert": Annotation('Generic "~" operation.'),
+    "PyObject_Call": Annotation("Generic call operation."),
+    "PyObject_RichCompare": Annotation("Generic comparison operation."),
+    "PyObject_GetItem": Annotation("Generic indexing operation."),
+    "PyObject_SetItem": Annotation("Generic indexed assignment."),
+}
+
+stdlib_hints: Final = {
+    "functools.partial": Annotation(
+        '"functools.partial" is inefficient in compiled code.', priority=2
+    ),
+    "itertools.chain": Annotation(
+        '"itertools.chain" is inefficient in compiled code (hint: replace with for loops).',
+        priority=2,
+    ),
+    "itertools.groupby": Annotation(
+        '"itertools.groupby" is inefficient in compiled code.', priority=2
+    ),
+    "itertools.islice": Annotation(
+        '"itertools.islice" is inefficient in compiled code (hint: replace with for loop over index range).',
+        priority=2,
+    ),
+}
 
 CSS = """\
 .collapsible {
@@ -44,7 +119,9 @@ document.querySelectorAll('.collapsible').forEach(function(collapsible) {
 
 
 class AnnotatedSource:
-    def __init__(self, path: str, annotations: dict[int, list[str]]) -> None:
+    """Annotations for a single compiled source file."""
+
+    def __init__(self, path: str, annotations: dict[int, list[Annotation]]) -> None:
         self.path = path
         self.annotations = annotations
 
@@ -57,7 +134,7 @@ def generate_annotated_html(
         path = result.graph[mod].path
         tree = result.graph[mod].tree
         assert tree is not None
-        annotations.append(generate_annotations(path or "<source>", tree, mod_ir))
+        annotations.append(generate_annotations(path or "<source>", tree, mod_ir, result.types))
     html = generate_html_report(annotations)
     with open(html_fnam, "w") as f:
         f.write(html)
@@ -67,38 +144,170 @@ def generate_annotated_html(
     print(f"\nWrote {formatted} -- open in browser to view\n")
 
 
-def generate_annotations(path: str, tree: MypyFile, ir: ModuleIR) -> AnnotatedSource:
+def generate_annotations(
+    path: str, tree: MypyFile, ir: ModuleIR, type_map: dict[Expression, Type]
+) -> AnnotatedSource:
     anns = {}
     for func_ir in ir.functions:
-        anns.update(function_annotations(func_ir))
+        anns.update(function_annotations(func_ir, tree))
+    visitor = ASTAnnotateVisitor(type_map)
+    for defn in tree.defs:
+        defn.accept(visitor)
+    anns.update(visitor.anns)
     return AnnotatedSource(path, anns)
 
 
-def function_annotations(func_ir: FuncIR) -> dict[int, list[str]]:
+def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Annotation]]:
+    """Generate annotations based on mypyc IR."""
     # TODO: check if func_ir.line is -1
-    anns: dict[int, list[str]] = {}
+    anns: dict[int, list[Annotation]] = {}
     for block in func_ir.blocks:
         for op in block.ops:
             if isinstance(op, CallC):
                 name = op.function_name
-                ann = None
+                ann: str | Annotation | None = None
                 if name == "CPyObject_GetAttr":
                     attr_name = get_str_literal(op.args[1])
-                    if attr_name:
+                    if attr_name == "__prepare__":
+                        # These attributes are internal to mypyc/CPython, and the user has
+                        # little control over them.
+                        ann = None
+                    elif attr_name:
                         ann = f'Get non-native attribute "{attr_name}".'
                     else:
                         ann = "Dynamic attribute lookup."
-                elif name == "PyNumber_Add":
-                    ann = 'Generic "+" operation.'
+                elif name == "PyObject_VectorcallMethod":
+                    method_name = get_str_literal(op.args[0])
+                    if method_name:
+                        ann = f'Call non-native method "{method_name}".'
+                    else:
+                        ann = "Dynamic method call."
+                elif name in op_hints:
+                    ann = op_hints[name]
+                elif name in ("CPyDict_GetItem", "CPyDict_SetItem"):
+                    if (
+                        isinstance(op.args[0], LoadStatic)
+                        and isinstance(op.args[1], LoadLiteral)
+                        and func_ir.name != "__top_level__"
+                    ):
+                        load = op.args[0]
+                        name = str(op.args[1].value)
+                        sym = tree.names.get(name)
+                        if (
+                            sym
+                            and sym.node
+                            and load.namespace == "static"
+                            and load.identifier == "globals"
+                        ):
+                            if sym.node.fullname in stdlib_hints:
+                                ann = stdlib_hints[sym.node.fullname]
+                            elif isinstance(sym.node, Var):
+                                ann = (
+                                    f'Access global "{name}" through namespace '
+                                    + "dictionary (hint: access is faster if you can make it Final)."
+                                )
+                            else:
+                                ann = f'Access "{name}" through global namespace dictionary.'
                 if ann:
+                    if isinstance(ann, str):
+                        ann = Annotation(ann)
                     anns.setdefault(op.line, []).append(ann)
     return anns
+
+
+class ASTAnnotateVisitor(TraverserVisitor):
+    """Generate annotations from mypy AST and inferred types."""
+
+    def __init__(self, type_map: dict[Expression, Type]) -> None:
+        self.anns: dict[int, list[Annotation]] = {}
+        self.func_depth = 0
+        self.type_map = type_map
+
+    def visit_func_def(self, o: FuncDef, /) -> None:
+        if self.func_depth > 0:
+            self.annotate(
+                o,
+                "A nested function object is allocated each time statement is executed. "
+                + "A module-level function would be faster.",
+            )
+        self.func_depth += 1
+        super().visit_func_def(o)
+        self.func_depth -= 1
+
+    def visit_for_stmt(self, o: ForStmt, /) -> None:
+        typ = self.get_type(o.expr)
+        if isinstance(typ, AnyType):
+            self.annotate(o.expr, 'For loop uses generic operations (iterable has type "Any").')
+        elif isinstance(typ, Instance) and typ.type.fullname in (
+            "typing.Iterable",
+            "typing.Iterator",
+            "typing.Sequence",
+            "typing.MutableSequence",
+        ):
+            self.annotate(
+                o.expr,
+                f'For loop uses generic operations (iterable has the abstract type "{typ.type.fullname}").',
+            )
+        super().visit_for_stmt(o)
+
+    def visit_name_expr(self, o: NameExpr, /) -> None:
+        if ann := stdlib_hints.get(o.fullname):
+            self.annotate(o, ann)
+
+    def visit_member_expr(self, o: MemberExpr, /) -> None:
+        super().visit_member_expr(o)
+        if ann := stdlib_hints.get(o.fullname):
+            self.annotate(o, ann)
+
+    def visit_call_expr(self, o: CallExpr, /) -> None:
+        super().visit_call_expr(o)
+        if (
+            isinstance(o.callee, RefExpr)
+            and o.callee.fullname == "builtins.isinstance"
+            and len(o.args) == 2
+        ):
+            arg = o.args[1]
+            self.check_isinstance_arg(arg)
+
+    def check_isinstance_arg(self, arg: Expression) -> None:
+        if isinstance(arg, RefExpr):
+            if isinstance(arg.node, TypeInfo) and arg.node.is_protocol:
+                self.annotate(
+                    arg, f'Expensive isinstance() check against protocol "{arg.node.name}".'
+                )
+        elif isinstance(arg, TupleExpr):
+            for item in arg.items:
+                self.check_isinstance_arg(item)
+
+    def visit_lambda_expr(self, o: LambdaExpr, /) -> None:
+        self.annotate(
+            o,
+            "A new object is allocated for lambda each time it is evaluated. "
+            + "A module-level function would be faster.",
+        )
+        super().visit_lambda_expr(o)
+
+    def annotate(self, o: Node, ann: str | Annotation) -> None:
+        if isinstance(ann, str):
+            ann = Annotation(ann)
+        self.anns.setdefault(o.line, []).append(ann)
+
+    def get_type(self, e: Expression) -> ProperType:
+        t = self.type_map.get(e)
+        if t:
+            return get_proper_type(t)
+        return AnyType(TypeOfAny.unannotated)
 
 
 def get_str_literal(v: Value) -> str | None:
     if isinstance(v, LoadLiteral) and isinstance(v.value, str):
         return v.value
     return None
+
+
+def get_max_prio(anns: list[Annotation]) -> list[Annotation]:
+    max_prio = max(a.priority for a in anns)
+    return [a for a in anns if a.priority == max_prio]
 
 
 def generate_html_report(sources: list[AnnotatedSource]) -> str:
@@ -110,15 +319,17 @@ def generate_html_report(sources: list[AnnotatedSource]) -> str:
     for src in sources:
         html.append(f"<h2><tt>{src.path}</tt></h2>\n")
         html.append("<pre>")
-        anns = src.annotations
+        src_anns = src.annotations
         with open(src.path) as f:
             lines = f.readlines()
         for i, s in enumerate(lines):
             s = escape(s)
             line = i + 1
             linenum = "%5d" % line
-            if line in anns:
-                hint = " ".join(anns[line])
+            if line in src_anns:
+                anns = get_max_prio(src_anns[line])
+                ann_strs = [a.message for a in anns]
+                hint = " ".join(ann_strs)
                 s = colorize_line(linenum, s, hint_html=hint)
             else:
                 s = linenum + "  " + s
