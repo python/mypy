@@ -13,8 +13,16 @@ def f3(x):
 class C:
     foo: int
 
+    def method(self) -> int:
+        return self.foo
+
 def good1(x: C) -> int:
     return x.foo
+
+[case testAnnotateMethod]
+class C:
+    def method(self, x):
+        return x + "y"  # A: Generic "+" operation.
 
 [case testAnnotateGenericBinaryOperations]
 def generic_add(x):
@@ -303,3 +311,16 @@ def f1(x) -> None:
 def f2(x) -> None:
     with FastCtxManager():
         x.foo  # A: Get non-native attribute "foo".
+
+[case testAnnotateAvoidNoiseAtTopLevel]
+from typing import Final
+
+class C(object):
+    x = "s"
+    y: Final = 1
+
+x = "s"
+y: Final = 1
+
+def f1() -> None:
+    x = object  # A: Get non-native attribute "object".

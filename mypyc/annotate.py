@@ -13,7 +13,9 @@ from typing import Final
 
 from mypy.build import BuildResult
 from mypy.nodes import (
+    AssignmentStmt,
     CallExpr,
+    ClassDef,
     Decorator,
     Expression,
     ForStmt,
@@ -159,6 +161,9 @@ def generate_annotations(
     for defn in tree.defs:
         defn.accept(visitor)
     anns.update(visitor.anns)
+    for line in visitor.ignored_lines:
+        if line in anns:
+            del anns[line]
     return AnnotatedSource(path, anns)
 
 
@@ -235,6 +240,7 @@ class ASTAnnotateVisitor(TraverserVisitor):
 
     def __init__(self, type_map: dict[Expression, Type]) -> None:
         self.anns: dict[int, list[Annotation]] = {}
+        self.ignored_lines: set[int] = set()
         self.func_depth = 0
         self.type_map = type_map
 
@@ -265,6 +271,18 @@ class ASTAnnotateVisitor(TraverserVisitor):
             )
         super().visit_for_stmt(o)
 
+    def visit_class_def(self, o: ClassDef, /) -> None:
+        super().visit_class_def(o)
+        if self.func_depth == 0:
+            # Don't complain about base classes at top level
+            for base in o.base_type_exprs:
+                self.ignored_lines.add(base.line)
+
+            for s in o.defs.body:
+                if isinstance(s, AssignmentStmt):
+                    # Don't complain about attribute initializers
+                    self.ignored_lines.add(s.line)
+                    
     def visit_with_stmt(self, o: WithStmt, /) -> None:
         for expr in o.expr:
             if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
