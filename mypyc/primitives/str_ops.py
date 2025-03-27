@@ -38,6 +38,15 @@ str_op = function_op(
     error_kind=ERR_MAGIC,
 )
 
+# repr(obj)
+function_op(
+    name="builtins.repr",
+    arg_types=[object_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="PyObject_Repr",
+    error_kind=ERR_MAGIC,
+)
+
 # str1 + str2
 binary_op(
     name="+",
