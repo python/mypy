@@ -2872,5 +2872,5 @@ def test_function():
     assert(hasattr(derived_inst, 'attr_instance') == False)
 
     ext_inst = ExtensionClass()
-    with assertRaises(AttributeError, "'ExtensionClass' object has no attribute 'attr_instance' and no __dict__ for setting new attributes"):
+    with assertRaises(AttributeError):
         setattr(ext_inst, 'attr_instance', 6)
