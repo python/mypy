@@ -44,11 +44,11 @@ class TestReport(MypycDataSuite):
 
             ir = None
             try:
-                ir, tree, type_map = build_ir_for_single_file2(testcase.input, options)
+                ir, tree, type_map, mapper = build_ir_for_single_file2(testcase.input, options)
             except CompileError as e:
                 actual = e.messages
             else:
-                annotations = generate_annotations("native.py", tree, ir, type_map)
+                annotations = generate_annotations("native.py", tree, ir, type_map, mapper)
                 actual = []
                 for line_num, line_anns in annotations.annotations.items():
                     anns = get_max_prio(line_anns)

@@ -37,6 +37,7 @@ from mypy.util import FancyFormatter
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
 from mypyc.ir.ops import CallC, LoadLiteral, LoadStatic, Value
+from mypyc.irbuild.mapper import Mapper
 
 
 class Annotation:
@@ -75,18 +76,18 @@ op_hints: Final = {
 
 stdlib_hints: Final = {
     "functools.partial": Annotation(
-        '"functools.partial" is inefficient in compiled code.', priority=2
+        '"functools.partial" is inefficient in compiled code.', priority=3
     ),
     "itertools.chain": Annotation(
         '"itertools.chain" is inefficient in compiled code (hint: replace with for loops).',
-        priority=2,
+        priority=3,
     ),
     "itertools.groupby": Annotation(
-        '"itertools.groupby" is inefficient in compiled code.', priority=2
+        '"itertools.groupby" is inefficient in compiled code.', priority=3
     ),
     "itertools.islice": Annotation(
         '"itertools.islice" is inefficient in compiled code (hint: replace with for loop over index range).',
-        priority=2,
+        priority=3,
     ),
     "copy.deepcopy": Annotation(
         '"copy.deepcopy" tends to be slow. Make a shallow copy if possible.', priority=2
@@ -134,14 +135,16 @@ class AnnotatedSource:
 
 
 def generate_annotated_html(
-    html_fnam: str, result: BuildResult, modules: dict[str, ModuleIR]
+    html_fnam: str, result: BuildResult, modules: dict[str, ModuleIR], mapper: Mapper
 ) -> None:
     annotations = []
     for mod, mod_ir in modules.items():
         path = result.graph[mod].path
         tree = result.graph[mod].tree
         assert tree is not None
-        annotations.append(generate_annotations(path or "<source>", tree, mod_ir, result.types))
+        annotations.append(
+            generate_annotations(path or "<source>", tree, mod_ir, result.types, mapper)
+        )
     html = generate_html_report(annotations)
     with open(html_fnam, "w") as f:
         f.write(html)
@@ -152,12 +155,12 @@ def generate_annotated_html(
 
 
 def generate_annotations(
-    path: str, tree: MypyFile, ir: ModuleIR, type_map: dict[Expression, Type]
+    path: str, tree: MypyFile, ir: ModuleIR, type_map: dict[Expression, Type], mapper: Mapper
 ) -> AnnotatedSource:
     anns = {}
     for func_ir in ir.functions:
         anns.update(function_annotations(func_ir, tree))
-    visitor = ASTAnnotateVisitor(type_map)
+    visitor = ASTAnnotateVisitor(type_map, mapper)
     for defn in tree.defs:
         defn.accept(visitor)
     anns.update(visitor.anns)
@@ -238,11 +241,12 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
 class ASTAnnotateVisitor(TraverserVisitor):
     """Generate annotations from mypy AST and inferred types."""
 
-    def __init__(self, type_map: dict[Expression, Type]) -> None:
+    def __init__(self, type_map: dict[Expression, Type], mapper: Mapper) -> None:
         self.anns: dict[int, list[Annotation]] = {}
         self.ignored_lines: set[int] = set()
         self.func_depth = 0
         self.type_map = type_map
+        self.mapper = mapper
 
     def visit_func_def(self, o: FuncDef, /) -> None:
         if self.func_depth > 0:
@@ -282,14 +286,16 @@ class ASTAnnotateVisitor(TraverserVisitor):
                 if isinstance(s, AssignmentStmt):
                     # Don't complain about attribute initializers
                     self.ignored_lines.add(s.line)
-                    
+
     def visit_with_stmt(self, o: WithStmt, /) -> None:
         for expr in o.expr:
             if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
                 node = expr.callee.node
                 if isinstance(node, Decorator):
                     if any(
-                        isinstance(d, RefExpr) and d.node.fullname == "contextlib.contextmanager"
+                        isinstance(d, RefExpr)
+                        and d.node
+                        and d.node.fullname == "contextlib.contextmanager"
                         for d in node.decorators
                     ):
                         self.annotate(
@@ -319,6 +325,24 @@ class ASTAnnotateVisitor(TraverserVisitor):
         ):
             arg = o.args[1]
             self.check_isinstance_arg(arg)
+        elif isinstance(o.callee, RefExpr) and isinstance(o.callee.node, TypeInfo):
+            info = o.callee.node
+            class_ir = self.mapper.type_to_ir.get(info)
+            if (class_ir and not class_ir.is_ext_class) or (
+                class_ir is None and not info.fullname.startswith("builtins.")
+            ):
+                self.annotate(
+                    o, f'Creating an instance of non-native class "{info.name}" ' + "is slow.", 2
+                )
+            elif class_ir and class_ir.is_augmented:
+                self.annotate(
+                    o,
+                    f'Class "{info.name}" is only partially native, and '
+                    + "constructing an instance is slow.",
+                    2,
+                )
+
+            print(o.callee.node.fullname, info in self.mapper.type_to_ir)
 
     def check_isinstance_arg(self, arg: Expression) -> None:
         if isinstance(arg, RefExpr):

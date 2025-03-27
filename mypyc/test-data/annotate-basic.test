@@ -324,3 +324,50 @@ y: Final = 1
 
 def f1() -> None:
     x = object  # A: Get non-native attribute "object".
+
+[case testAnnotateCreateNonNativeInstance]
+from typing import NamedTuple
+from dataclasses import dataclass
+
+from nonnative import C
+
+def f1() -> None:
+    c = C()  # A: Creating an instance of non-native class "C" is slow.
+    c.foo()  # A: Call non-native method "foo".
+
+class NT(NamedTuple):
+    x: int
+    y: str
+
+def f2() -> int:
+    o = NT(1, "x")  # A: Creating an instance of non-native class "NT" is slow.
+    return o.x
+
+def f3() -> int:
+    o = NT(x=1, y="x")  # A: Creating an instance of non-native class "NT" is slow.
+    a, b = o
+    return a
+
+@dataclass
+class D:
+    x: int
+
+def f4() -> int:
+    o = D(1)  # A: Class "D" is only partially native, and constructing an instance is slow.
+    return o.x
+
+class Nat:
+    x: int
+
+class Deriv(Nat):
+    def __init__(self, y: int) -> None:
+        self.y = y
+
+def good1() -> int:
+    n = Nat()
+    d = Deriv(y=1)
+    return n.x + d.x + d.y
+
+[file nonnative.py]
+class C:
+    def foo(self) -> None: pass

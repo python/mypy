@@ -242,7 +242,7 @@ def generate_c(
         print(f"Parsed and typechecked in {t1 - t0:.3f}s")
 
     errors = Errors(options)
-    modules, ctext = emitmodule.compile_modules_to_c(
+    modules, ctext, mapper = emitmodule.compile_modules_to_c(
         result, compiler_options=compiler_options, errors=errors, groups=groups
     )
     t2 = time.time()
@@ -255,7 +255,7 @@ def generate_c(
         print(f"Compiled to C in {t2 - t1:.3f}s")
 
     if options.mypyc_annotation_file:
-        generate_annotated_html(options.mypyc_annotation_file, result, modules)
+        generate_annotated_html(options.mypyc_annotation_file, result, modules, mapper)
 
     return ctext, "\n".join(format_modules(modules))
 

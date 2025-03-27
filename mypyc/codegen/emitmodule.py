@@ -397,7 +397,7 @@ def load_scc_from_cache(
 
 def compile_modules_to_c(
     result: BuildResult, compiler_options: CompilerOptions, errors: Errors, groups: Groups
-) -> tuple[ModuleIRs, list[FileContents]]:
+) -> tuple[ModuleIRs, list[FileContents], Mapper]:
     """Compile Python module(s) to the source of Python C extension modules.
 
     This generates the source code for the "shared library" module
@@ -427,12 +427,12 @@ def compile_modules_to_c(
 
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
     if errors.num_errors > 0:
-        return {}, []
+        return {}, [], Mapper({})
 
     ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
     write_cache(modules, result, group_map, ctext)
 
-    return modules, [ctext[name] for _, name in groups]
+    return modules, [ctext[name] for _, name in groups], mapper
 
 
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
