@@ -2834,14 +2834,14 @@ Exception: e2
 from mypy_extensions import mypyc_attr
 from testutil import assertRaises
 
-@mypyc_attr(non_extension_class=True)
+@mypyc_attr(native_class=False)
 class AnnontatedNonExtensionClass:
     pass
 
 class DerivedClass(AnnontatedNonExtensionClass):
     pass
 
-class ExtensionClass():
+class ImplicitExtensionClass():
     pass
 
 def test_function():
@@ -2871,6 +2871,6 @@ def test_function():
     delattr(derived_inst, 'attr_instance')
     assert(hasattr(derived_inst, 'attr_instance') == False)
 
-    ext_inst = ExtensionClass()
+    ext_inst = ImplicitExtensionClass()
     with assertRaises(AttributeError):
         setattr(ext_inst, 'attr_instance', 6)
