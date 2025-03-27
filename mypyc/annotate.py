@@ -17,9 +17,11 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     Decorator,
+    DictionaryComprehension,
     Expression,
     ForStmt,
     FuncDef,
+    GeneratorExpr,
     LambdaExpr,
     MemberExpr,
     MypyFile,
@@ -260,20 +262,32 @@ class ASTAnnotateVisitor(TraverserVisitor):
         self.func_depth -= 1
 
     def visit_for_stmt(self, o: ForStmt, /) -> None:
-        typ = self.get_type(o.expr)
-        if isinstance(typ, AnyType):
-            self.annotate(o.expr, 'For loop uses generic operations (iterable has type "Any").')
-        elif isinstance(typ, Instance) and typ.type.fullname in (
-            "typing.Iterable",
-            "typing.Iterator",
-            "typing.Sequence",
-            "typing.MutableSequence",
-        ):
-            self.annotate(
-                o.expr,
-                f'For loop uses generic operations (iterable has the abstract type "{typ.type.fullname}").',
-            )
+        self.check_iteration([o.expr], "For loop")
         super().visit_for_stmt(o)
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension, /) -> None:
+        self.check_iteration(o.sequences, "Comprehension")
+        super().visit_dictionary_comprehension(o)
+
+    def visit_generator_expr(self, o: GeneratorExpr, /) -> None:
+        self.check_iteration(o.sequences, "Comprehension or generator")
+        super().visit_generator_expr(o)
+
+    def check_iteration(self, expressions: list[Expression], kind: str) -> None:
+        for expr in expressions:
+            typ = self.get_type(expr)
+            if isinstance(typ, AnyType):
+                self.annotate(expr, f'{kind} uses generic operations (iterable has type "Any").')
+            elif isinstance(typ, Instance) and typ.type.fullname in (
+                "typing.Iterable",
+                "typing.Iterator",
+                "typing.Sequence",
+                "typing.MutableSequence",
+            ):
+                self.annotate(
+                    expr,
+                    f'{kind} uses generic operations (iterable has the abstract type "{typ.type.fullname}").',
+                )
 
     def visit_class_def(self, o: ClassDef, /) -> None:
         super().visit_class_def(o)

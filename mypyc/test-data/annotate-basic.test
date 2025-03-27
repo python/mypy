@@ -255,6 +255,24 @@ def good2(a: List[str]) -> None:
     for x in a:
         pass
 
+[case testAnnotateGenericComprehensionOrGenerator]
+from typing import List, Iterable
+
+def f1(a):
+    return [x for x in a]  # A: Comprehension or generator uses generic operations (iterable has type "Any").
+
+def f2(a: Iterable[int]):
+    return {x for x in a}  # A: Comprehension or generator uses generic operations (iterable has the abstract type "typing.Iterable").
+
+def f3(a):
+    return {x: 1 for x in a}  # A: Comprehension uses generic operations (iterable has type "Any").
+
+def f4(a):
+    return (x for x in a)  # A: Comprehension or generator uses generic operations (iterable has type "Any").
+
+def good1(a: List[int]) -> List[int]:
+    return [x + 1 for x in a]
+
 [case testAnnotateIsinstance]
 from typing import Protocol, runtime_checkable, Union
 
