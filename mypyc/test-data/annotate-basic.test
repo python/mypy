@@ -389,3 +389,10 @@ def good1() -> int:
 [file nonnative.py]
 class C:
     def foo(self) -> None: pass
+
+[case testAnnotateGetAttrAndSetAttrBuiltins]
+def f1(x, s: str):
+    return getattr("x", s)  # A: Dynamic attribute lookup.
+
+def f2(x, s: str):
+    setattr(x, s, None)  # A: Dynamic attribute set.
