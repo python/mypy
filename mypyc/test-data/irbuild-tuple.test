@@ -384,3 +384,15 @@ L3:
 L4:
     a = r1
     return 1
+
+[case testTupleAdd]
+from typing import Tuple
+def f(a: Tuple[int, ...], b: Tuple[int, ...]) -> None:
+    c = a + b
+[out]
+def f(a, b):
+    a, b, r0, c :: tuple
+L0:
+    r0 = PySequence_Concat(a, b)
+    c = r0
+    return 1
