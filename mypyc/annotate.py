@@ -334,7 +334,7 @@ class ASTAnnotateVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, o: AssignmentStmt, /) -> None:
         special_form = False
         if self.func_depth == 0:
-            analyzed = o.rvalue
+            analyzed: Expression | None = o.rvalue
             if isinstance(o.rvalue, (CallExpr, IndexExpr, OpExpr)):
                 analyzed = o.rvalue.analyzed
             if o.is_alias_def or isinstance(
