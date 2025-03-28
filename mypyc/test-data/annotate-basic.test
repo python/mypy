@@ -433,3 +433,46 @@ class C:
 def f2() -> None:
     c = C()
     c.d()  # A: Call non-native method "d" (it may be defined in a non-native class, or decorated).
+
+[case testAnnotateCallDifferentKindsOfMethods]
+from abc import ABC, abstractmethod
+
+class C:
+    @staticmethod
+    def s() -> None: ...
+
+    @classmethod
+    def c(cls) -> None: ...
+
+    @property
+    def p(self) -> int:
+        return 0
+
+    @property
+    def p2(self) -> int:
+        return 0
+
+    @p2.setter
+    def p2(self, x: int) -> None:
+        pass
+
+def f1() -> int:
+    c = C()
+    c.s()
+    c.c()
+    c.p2 = 1
+    return c.p + c.p2
+
+class A(ABC):
+    @abstractmethod
+    def m(self) -> int:
+        raise NotImplementedError  # A: Get non-native attribute "NotImplementedError".
+
+class D(A):
+    def m(self) -> int:
+        return 1
+
+def f2() -> int:
+    d = D()
+    return d.m()
+
