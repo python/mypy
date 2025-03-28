@@ -13,19 +13,31 @@ from typing import Final
 
 from mypy.build import BuildResult
 from mypy.nodes import (
+    AssignmentStmt,
     CallExpr,
+    ClassDef,
+    Decorator,
+    DictionaryComprehension,
     Expression,
     ForStmt,
     FuncDef,
+    GeneratorExpr,
+    IndexExpr,
     LambdaExpr,
     MemberExpr,
     MypyFile,
+    NamedTupleExpr,
     NameExpr,
+    NewTypeExpr,
     Node,
+    OpExpr,
     RefExpr,
     TupleExpr,
+    TypedDictExpr,
     TypeInfo,
+    TypeVarExpr,
     Var,
+    WithStmt,
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import AnyType, Instance, ProperType, Type, TypeOfAny, get_proper_type
@@ -33,6 +45,7 @@ from mypy.util import FancyFormatter
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
 from mypyc.ir.ops import CallC, LoadLiteral, LoadStatic, Value
+from mypyc.irbuild.mapper import Mapper
 
 
 class Annotation:
@@ -71,18 +84,21 @@ op_hints: Final = {
 
 stdlib_hints: Final = {
     "functools.partial": Annotation(
-        '"functools.partial" is inefficient in compiled code.', priority=2
+        '"functools.partial" is inefficient in compiled code.', priority=3
     ),
     "itertools.chain": Annotation(
         '"itertools.chain" is inefficient in compiled code (hint: replace with for loops).',
-        priority=2,
+        priority=3,
     ),
     "itertools.groupby": Annotation(
-        '"itertools.groupby" is inefficient in compiled code.', priority=2
+        '"itertools.groupby" is inefficient in compiled code.', priority=3
     ),
     "itertools.islice": Annotation(
         '"itertools.islice" is inefficient in compiled code (hint: replace with for loop over index range).',
-        priority=2,
+        priority=3,
+    ),
+    "copy.deepcopy": Annotation(
+        '"copy.deepcopy" tends to be slow. Make a shallow copy if possible.', priority=2
     ),
 }
 
@@ -127,14 +143,16 @@ class AnnotatedSource:
 
 
 def generate_annotated_html(
-    html_fnam: str, result: BuildResult, modules: dict[str, ModuleIR]
+    html_fnam: str, result: BuildResult, modules: dict[str, ModuleIR], mapper: Mapper
 ) -> None:
     annotations = []
     for mod, mod_ir in modules.items():
         path = result.graph[mod].path
         tree = result.graph[mod].tree
         assert tree is not None
-        annotations.append(generate_annotations(path or "<source>", tree, mod_ir, result.types))
+        annotations.append(
+            generate_annotations(path or "<source>", tree, mod_ir, result.types, mapper)
+        )
     html = generate_html_report(annotations)
     with open(html_fnam, "w") as f:
         f.write(html)
@@ -145,15 +163,18 @@ def generate_annotated_html(
 
 
 def generate_annotations(
-    path: str, tree: MypyFile, ir: ModuleIR, type_map: dict[Expression, Type]
+    path: str, tree: MypyFile, ir: ModuleIR, type_map: dict[Expression, Type], mapper: Mapper
 ) -> AnnotatedSource:
     anns = {}
     for func_ir in ir.functions:
         anns.update(function_annotations(func_ir, tree))
-    visitor = ASTAnnotateVisitor(type_map)
+    visitor = ASTAnnotateVisitor(type_map, mapper)
     for defn in tree.defs:
         defn.accept(visitor)
     anns.update(visitor.anns)
+    for line in visitor.ignored_lines:
+        if line in anns:
+            del anns[line]
     return AnnotatedSource(path, anns)
 
 
@@ -168,18 +189,28 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
                 ann: str | Annotation | None = None
                 if name == "CPyObject_GetAttr":
                     attr_name = get_str_literal(op.args[1])
-                    if attr_name == "__prepare__":
-                        # These attributes are internal to mypyc/CPython, and the user has
-                        # little control over them.
+                    if attr_name in ("__prepare__", "GeneratorExit", "StopIteration"):
+                        # These attributes are internal to mypyc/CPython, and/or accessed
+                        # implicitly in generated code. The user has little control over
+                        # them.
                         ann = None
                     elif attr_name:
                         ann = f'Get non-native attribute "{attr_name}".'
                     else:
                         ann = "Dynamic attribute lookup."
+                elif name == "PyObject_SetAttr":
+                    attr_name = get_str_literal(op.args[1])
+                    if attr_name == "__mypyc_attrs__":
+                        # This is set implicitly and can't be avoided.
+                        ann = None
+                    elif attr_name:
+                        ann = f'Set non-native attribute "{attr_name}".'
+                    else:
+                        ann = "Dynamic attribute set."
                 elif name == "PyObject_VectorcallMethod":
                     method_name = get_str_literal(op.args[0])
                     if method_name:
-                        ann = f'Call non-native method "{method_name}".'
+                        ann = f'Call non-native method "{method_name}" (it may be defined in a non-native class, or decorated).'
                     else:
                         ann = "Dynamic method call."
                 elif name in op_hints:
@@ -218,10 +249,12 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
 class ASTAnnotateVisitor(TraverserVisitor):
     """Generate annotations from mypy AST and inferred types."""
 
-    def __init__(self, type_map: dict[Expression, Type]) -> None:
+    def __init__(self, type_map: dict[Expression, Type], mapper: Mapper) -> None:
         self.anns: dict[int, list[Annotation]] = {}
+        self.ignored_lines: set[int] = set()
         self.func_depth = 0
         self.type_map = type_map
+        self.mapper = mapper
 
     def visit_func_def(self, o: FuncDef, /) -> None:
         if self.func_depth > 0:
@@ -235,20 +268,83 @@ class ASTAnnotateVisitor(TraverserVisitor):
         self.func_depth -= 1
 
     def visit_for_stmt(self, o: ForStmt, /) -> None:
-        typ = self.get_type(o.expr)
-        if isinstance(typ, AnyType):
-            self.annotate(o.expr, 'For loop uses generic operations (iterable has type "Any").')
-        elif isinstance(typ, Instance) and typ.type.fullname in (
-            "typing.Iterable",
-            "typing.Iterator",
-            "typing.Sequence",
-            "typing.MutableSequence",
-        ):
-            self.annotate(
-                o.expr,
-                f'For loop uses generic operations (iterable has the abstract type "{typ.type.fullname}").',
-            )
+        self.check_iteration([o.expr], "For loop")
         super().visit_for_stmt(o)
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension, /) -> None:
+        self.check_iteration(o.sequences, "Comprehension")
+        super().visit_dictionary_comprehension(o)
+
+    def visit_generator_expr(self, o: GeneratorExpr, /) -> None:
+        self.check_iteration(o.sequences, "Comprehension or generator")
+        super().visit_generator_expr(o)
+
+    def check_iteration(self, expressions: list[Expression], kind: str) -> None:
+        for expr in expressions:
+            typ = self.get_type(expr)
+            if isinstance(typ, AnyType):
+                self.annotate(expr, f'{kind} uses generic operations (iterable has type "Any").')
+            elif isinstance(typ, Instance) and typ.type.fullname in (
+                "typing.Iterable",
+                "typing.Iterator",
+                "typing.Sequence",
+                "typing.MutableSequence",
+            ):
+                self.annotate(
+                    expr,
+                    f'{kind} uses generic operations (iterable has the abstract type "{typ.type.fullname}").',
+                )
+
+    def visit_class_def(self, o: ClassDef, /) -> None:
+        super().visit_class_def(o)
+        if self.func_depth == 0:
+            # Don't complain about base classes at top level
+            for base in o.base_type_exprs:
+                self.ignored_lines.add(base.line)
+
+            for s in o.defs.body:
+                if isinstance(s, AssignmentStmt):
+                    # Don't complain about attribute initializers
+                    self.ignored_lines.add(s.line)
+                elif isinstance(s, Decorator):
+                    # Don't complain about decorator definitions that generate some
+                    # dynamic operations. This is a bit heavy-handed.
+                    self.ignored_lines.add(s.func.line)
+
+    def visit_with_stmt(self, o: WithStmt, /) -> None:
+        for expr in o.expr:
+            if isinstance(expr, CallExpr) and isinstance(expr.callee, RefExpr):
+                node = expr.callee.node
+                if isinstance(node, Decorator):
+                    if any(
+                        isinstance(d, RefExpr)
+                        and d.node
+                        and d.node.fullname == "contextlib.contextmanager"
+                        for d in node.decorators
+                    ):
+                        self.annotate(
+                            expr,
+                            f'"{node.name}" uses @contextmanager, which is slow '
+                            + "in compiled code. Use a native class with "
+                            + '"__enter__" and "__exit__" methods instead.',
+                            priority=3,
+                        )
+        super().visit_with_stmt(o)
+
+    def visit_assignment_stmt(self, o: AssignmentStmt, /) -> None:
+        special_form = False
+        if self.func_depth == 0:
+            analyzed: Expression | None = o.rvalue
+            if isinstance(o.rvalue, (CallExpr, IndexExpr, OpExpr)):
+                analyzed = o.rvalue.analyzed
+            if o.is_alias_def or isinstance(
+                analyzed, (TypeVarExpr, NamedTupleExpr, TypedDictExpr, NewTypeExpr)
+            ):
+                special_form = True
+            if special_form:
+                # TODO: Ignore all lines if multi-line
+                self.ignored_lines.add(o.line)
+        super().visit_assignment_stmt(o)
 
     def visit_name_expr(self, o: NameExpr, /) -> None:
         if ann := stdlib_hints.get(o.fullname):
@@ -268,6 +364,30 @@ class ASTAnnotateVisitor(TraverserVisitor):
         ):
             arg = o.args[1]
             self.check_isinstance_arg(arg)
+        elif isinstance(o.callee, RefExpr) and isinstance(o.callee.node, TypeInfo):
+            info = o.callee.node
+            class_ir = self.mapper.type_to_ir.get(info)
+            if (class_ir and not class_ir.is_ext_class) or (
+                class_ir is None and not info.fullname.startswith("builtins.")
+            ):
+                self.annotate(
+                    o, f'Creating an instance of non-native class "{info.name}" ' + "is slow.", 2
+                )
+            elif class_ir and class_ir.is_augmented:
+                self.annotate(
+                    o,
+                    f'Class "{info.name}" is only partially native, and '
+                    + "constructing an instance is slow.",
+                    2,
+                )
+        elif isinstance(o.callee, RefExpr) and isinstance(o.callee.node, Decorator):
+            decorator = o.callee.node
+            if self.mapper.is_native_ref_expr(o.callee):
+                self.annotate(
+                    o,
+                    f'Calling a decorated function ("{decorator.name}") is inefficient, even if it\'s native.',
+                    2,
+                )
 
     def check_isinstance_arg(self, arg: Expression) -> None:
         if isinstance(arg, RefExpr):
@@ -287,9 +407,9 @@ class ASTAnnotateVisitor(TraverserVisitor):
         )
         super().visit_lambda_expr(o)
 
-    def annotate(self, o: Node, ann: str | Annotation) -> None:
+    def annotate(self, o: Node, ann: str | Annotation, priority: int = 1) -> None:
         if isinstance(ann, str):
-            ann = Annotation(ann)
+            ann = Annotation(ann, priority=priority)
         self.anns.setdefault(o.line, []).append(ann)
 
     def get_type(self, e: Expression) -> ProperType:
