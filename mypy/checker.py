@@ -3639,7 +3639,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         mx = MemberContext(
             is_lvalue=setter_type,
             is_super=False,
-            is_operator=False,
+            is_operator=mypy.checkexpr.is_operator_method(expr_name),
             original_type=self_type,
             context=expr_node,
             chk=self,
