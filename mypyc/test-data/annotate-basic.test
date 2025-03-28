@@ -475,4 +475,3 @@ class D(A):
 def f2() -> int:
     d = D()
     return d.m()
-
