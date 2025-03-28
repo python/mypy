@@ -22,14 +22,20 @@ from mypy.nodes import (
     ForStmt,
     FuncDef,
     GeneratorExpr,
+    IndexExpr,
     LambdaExpr,
     MemberExpr,
     MypyFile,
+    NamedTupleExpr,
     NameExpr,
+    NewTypeExpr,
     Node,
+    OpExpr,
     RefExpr,
     TupleExpr,
+    TypedDictExpr,
     TypeInfo,
+    TypeVarExpr,
     Var,
     WithStmt,
 )
@@ -204,7 +210,7 @@ def function_annotations(func_ir: FuncIR, tree: MypyFile) -> dict[int, list[Anno
                 elif name == "PyObject_VectorcallMethod":
                     method_name = get_str_literal(op.args[0])
                     if method_name:
-                        ann = f'Call non-native method "{method_name}".'
+                        ann = f'Call non-native method "{method_name}" (it may be defined in a non-native class, or decorated).'
                     else:
                         ann = "Dynamic method call."
                 elif name in op_hints:
@@ -300,6 +306,10 @@ class ASTAnnotateVisitor(TraverserVisitor):
                 if isinstance(s, AssignmentStmt):
                     # Don't complain about attribute initializers
                     self.ignored_lines.add(s.line)
+                elif isinstance(s, Decorator):
+                    # Don't complain about decorator definitions that generate some
+                    # dynamic operations. This is a bit heavy-handed.
+                    self.ignored_lines.add(s.func.line)
 
     def visit_with_stmt(self, o: WithStmt, /) -> None:
         for expr in o.expr:
@@ -317,9 +327,24 @@ class ASTAnnotateVisitor(TraverserVisitor):
                             f'"{node.name}" uses @contextmanager, which is slow '
                             + "in compiled code. Use a native class with "
                             + '"__enter__" and "__exit__" methods instead.',
-                            priority=2,
+                            priority=3,
                         )
         super().visit_with_stmt(o)
+
+    def visit_assignment_stmt(self, o: AssignmentStmt, /) -> None:
+        special_form = False
+        if self.func_depth == 0:
+            analyzed = o.rvalue
+            if isinstance(o.rvalue, (CallExpr, IndexExpr, OpExpr)):
+                analyzed = o.rvalue.analyzed
+            if o.is_alias_def or isinstance(
+                analyzed, (TypeVarExpr, NamedTupleExpr, TypedDictExpr, NewTypeExpr)
+            ):
+                special_form = True
+            if special_form:
+                # TODO: Ignore all lines if multi-line
+                self.ignored_lines.add(o.line)
+        super().visit_assignment_stmt(o)
 
     def visit_name_expr(self, o: NameExpr, /) -> None:
         if ann := stdlib_hints.get(o.fullname):
@@ -355,8 +380,14 @@ class ASTAnnotateVisitor(TraverserVisitor):
                     + "constructing an instance is slow.",
                     2,
                 )
-
-            print(o.callee.node.fullname, info in self.mapper.type_to_ir)
+        elif isinstance(o.callee, RefExpr) and isinstance(o.callee.node, Decorator):
+            decorator = o.callee.node
+            if self.mapper.is_native_ref_expr(o.callee):
+                self.annotate(
+                    o,
+                    f'Calling a decorated function ("{decorator.name}") is inefficient, even if it\'s native.',
+                    2,
+                )
 
     def check_isinstance_arg(self, arg: Expression) -> None:
         if isinstance(arg, RefExpr):

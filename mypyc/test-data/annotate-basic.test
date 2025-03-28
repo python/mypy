@@ -109,11 +109,11 @@ def f(x):
 from typing import Any
 
 def f1(x):
-    return x.foo()  # A: Call non-native method "foo".
+    return x.foo()  # A: Call non-native method "foo" (it may be defined in a non-native class, or decorated).
 
 def f2(x: Any) -> None:
-    x.foo(1)  # A: Call non-native method "foo".
-    x.foo(a=1)  # A: Call non-native method "foo".
+    x.foo(1)  # A: Call non-native method "foo" (it may be defined in a non-native class, or decorated).
+    x.foo(a=1)  # A: Call non-native method "foo" (it may be defined in a non-native class, or decorated).
     t = (1, 'x')
     x.foo(*t)  # A: Get non-native attribute "foo". Generic call operation.
     d = {"a": 1}
@@ -186,7 +186,7 @@ def startswith(x: str) -> bool:
     return x.startswith('foo')
 
 def islower(x: str) -> bool:
-    return x.islower()  # A: Call non-native method "islower".
+    return x.islower()  # A: Call non-native method "islower" (it may be defined in a non-native class, or decorated).
 
 [case testAnnotateSpecificStdlibFeatures]
 import functools
@@ -351,7 +351,7 @@ from nonnative import C
 
 def f1() -> None:
     c = C()  # A: Creating an instance of non-native class "C" is slow.
-    c.foo()  # A: Call non-native method "foo".
+    c.foo()  # A: Call non-native method "foo" (it may be defined in a non-native class, or decorated).
 
 class NT(NamedTuple):
     x: int
@@ -396,3 +396,40 @@ def f1(x, s: str):
 
 def f2(x, s: str):
     setattr(x, s, None)  # A: Dynamic attribute set.
+
+[case testAnnotateSpecialAssignments]
+from typing import TypeVar, NamedTuple, List, TypedDict, NewType
+
+# Even though these are slow, we don't complain about them since there is generally
+# no better way (and at module top level these are very unlikely to be bottlenecks)
+A = List[int]
+T = TypeVar("T", bound=List[int])
+NT = NamedTuple("NT", [("x", List[int])])
+TD = TypedDict("TD", {"x": List[int]})
+New = NewType("New", List[int])
+[typing fixtures/typing-full.pyi]
+
+[case testAnnotateCallDecoratedNativeFunctionOrMethod]
+from typing import TypeVar, Callable, Any
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def mydeco(f: F) -> F:
+    return f
+
+@mydeco
+def d(x: int) -> int:
+    return x
+
+def f1() -> int:
+    return d(1)  # A: Calling a decorated function ("d") is inefficient, even if it's native.
+
+class C:
+    @mydeco
+    def d(self) -> None:
+        pass
+
+
+def f2() -> None:
+    c = C()
+    c.d()  # A: Call non-native method "d" (it may be defined in a non-native class, or decorated).
