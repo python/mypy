@@ -14,7 +14,7 @@ from mypy import errorcodes as codes, join, message_registry, nodes, operators
 from mypy.binder import ConditionalTypeBinder, Frame, get_declaration
 from mypy.checkmember import (
     MemberContext,
-    analyze_descriptor_access,
+    analyze_class_attribute_access,
     analyze_instance_member_access,
     analyze_member_access,
 )
@@ -3261,16 +3261,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if active_class and dataclasses_plugin.is_processed_dataclass(active_class):
                         self.fail(message_registry.DATACLASS_POST_INIT_MUST_BE_A_FUNCTION, rvalue)
 
-            # Defer PartialType's super type checking.
-            if (
-                isinstance(lvalue, RefExpr)
-                and not (isinstance(lvalue_type, PartialType) and lvalue_type.type is None)
-                and not (isinstance(lvalue, NameExpr) and lvalue.name == "__match_args__")
-            ):
-                if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
-                    # We hit an error on this line; don't check for any others
-                    return
-
             if isinstance(lvalue, MemberExpr) and lvalue.name == "__match_args__":
                 self.fail(message_registry.CANNOT_MODIFY_MATCH_ARGS, lvalue)
 
@@ -3302,12 +3292,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Try to infer a partial type. No need to check the return value, as
                         # an error will be reported elsewhere.
                         self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
-                    # Handle None PartialType's super type checking here, after it's resolved.
-                    if isinstance(lvalue, RefExpr) and self.check_compatibility_all_supers(
-                        lvalue, lvalue_type, rvalue
-                    ):
-                        # We hit an error on this line; don't check for any others
-                        return
                 elif (
                     is_literal_none(rvalue)
                     and isinstance(lvalue, NameExpr)
@@ -3399,7 +3383,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
             if inferred:
-                type_context = self.get_variable_type_context(inferred)
+                type_context = self.get_variable_type_context(inferred, rvalue)
                 rvalue_type = self.expr_checker.accept(rvalue, type_context=type_context)
                 if not (
                     inferred.is_final
@@ -3409,15 +3393,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
             self.check_assignment_to_slots(lvalue)
+            if isinstance(lvalue, RefExpr) and not (
+                isinstance(lvalue, NameExpr) and lvalue.name == "__match_args__"
+            ):
+                # We check override here at the end after storing the inferred type, since
+                # override check will try to access the current attribute via symbol tables
+                # (like a regular attribute access).
+                self.check_compatibility_all_supers(lvalue, rvalue)
 
     # (type, operator) tuples for augmented assignments supported with partial types
     partial_type_augmented_ops: Final = {("builtins.list", "+"), ("builtins.set", "|")}
 
-    def get_variable_type_context(self, inferred: Var) -> Type | None:
+    def get_variable_type_context(self, inferred: Var, rvalue: Expression) -> Type | None:
         type_contexts = []
         if inferred.info:
             for base in inferred.info.mro[1:]:
-                base_type, base_node = self.lvalue_type_from_base(inferred, base)
+                # For inference within class body, get supertype attribute as it would look on
+                # a class object for lambdas overriding methods.
+                base_type, base_node = self.lvalue_type_from_base(
+                    inferred, base, is_class=isinstance(rvalue, LambdaExpr)
+                )
                 if (
                     base_type
                     and not (isinstance(base_node, Var) and base_node.invalid_partial_type)
@@ -3484,15 +3479,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 var.type = fill_typevars_with_any(typ.type)
                 del partial_types[var]
 
-    def check_compatibility_all_supers(
-        self, lvalue: RefExpr, lvalue_type: Type | None, rvalue: Expression
-    ) -> bool:
+    def check_compatibility_all_supers(self, lvalue: RefExpr, rvalue: Expression) -> None:
         lvalue_node = lvalue.node
         # Check if we are a class variable with at least one base class
         if (
             isinstance(lvalue_node, Var)
-            and lvalue.kind in (MDEF, None)
-            and len(lvalue_node.info.bases) > 0  # None for Vars defined via self
+            # If we have explicit annotation, there is no point in checking the override
+            # for each assignment, so we check only for the first one.
+            # TODO: for some reason annotated attributes on self are stored as inferred vars.
+            and (
+                lvalue_node.line == lvalue.line
+                or lvalue_node.is_inferred
+                and not lvalue_node.explicit_self_type
+            )
+            and lvalue.kind in (MDEF, None)  # None for Vars defined via self
+            and len(lvalue_node.info.bases) > 0
         ):
             for base in lvalue_node.info.mro[1:]:
                 tnode = base.names.get(lvalue_node.name)
@@ -3507,6 +3508,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             direct_bases = lvalue_node.info.direct_base_classes()
             last_immediate_base = direct_bases[-1] if direct_bases else None
+
+            # The historical behavior for inferred vars was to compare rvalue type against
+            # the type declared in a superclass. To preserve this behavior, we temporarily
+            # store the rvalue type on the variable.
+            actual_lvalue_type = None
+            if lvalue_node.is_inferred and not lvalue_node.explicit_self_type:
+                rvalue_type = self.expr_checker.accept(rvalue, lvalue_node.type)
+                actual_lvalue_type = lvalue_node.type
+                lvalue_node.type = rvalue_type
+            lvalue_type, _ = self.lvalue_type_from_base(lvalue_node, lvalue_node.info)
+            if lvalue_node.is_inferred and not lvalue_node.explicit_self_type:
+                lvalue_node.type = actual_lvalue_type
+
+            if not lvalue_type:
+                return
 
             for base in lvalue_node.info.mro[1:]:
                 # The type of "__slots__" and some other attributes usually doesn't need to
@@ -3528,7 +3544,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if base_type:
                     assert base_node is not None
                     if not self.check_compatibility_super(
-                        lvalue,
                         lvalue_type,
                         rvalue,
                         base,
@@ -3538,7 +3553,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     ):
                         # Only show one error per variable; even if other
                         # base classes are also incompatible
-                        return True
+                        return
                     if lvalue_type and custom_setter:
                         base_type, _ = self.lvalue_type_from_base(
                             lvalue_node, base, setter_type=True
@@ -3550,104 +3565,49 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             self.msg.incompatible_setter_override(
                                 lvalue, lvalue_type, base_type, base
                             )
-                            return True
+                            return
                     if base is last_immediate_base:
                         # At this point, the attribute was found to be compatible with all
                         # immediate parents.
                         break
-        return False
 
     def check_compatibility_super(
         self,
-        lvalue: RefExpr,
-        lvalue_type: Type | None,
+        compare_type: Type,
         rvalue: Expression,
         base: TypeInfo,
         base_type: Type,
         base_node: Node,
         always_allow_covariant: bool,
     ) -> bool:
-        lvalue_node = lvalue.node
-        assert isinstance(lvalue_node, Var)
-
-        # Do not check whether the rvalue is compatible if the
-        # lvalue had a type defined; this is handled by other
-        # parts, and all we have to worry about in that case is
-        # that lvalue is compatible with the base class.
-        compare_node = None
-        if lvalue_type:
-            compare_type = lvalue_type
-            compare_node = lvalue.node
-        else:
-            compare_type = self.expr_checker.accept(rvalue, base_type)
-            if isinstance(rvalue, NameExpr):
-                compare_node = rvalue.node
-                if isinstance(compare_node, Decorator):
-                    compare_node = compare_node.func
-
-        base_type = get_proper_type(base_type)
-        compare_type = get_proper_type(compare_type)
-        if compare_type:
-            # Unlike for base_type, where we use the full analyze_member_access(), we know
-            # that subclass node is an assignment, so we use a much simpler logic: just bind
-            # self or invoke descriptors. Although this may not cover some niche corner
-            # cases, it is faster, and works with current logic where we check overrides
-            # before storing inferred variable type.
-            if isinstance(compare_type, CallableType):
-                compare_static = is_node_static(compare_node)
-                # Since this method may be called before storing inferred type,
-                # fall back to rvalue to obtain the static method flag.
-                if compare_static is None and compare_type.definition:
-                    compare_static = is_node_static(compare_type.definition)
-                # Compare against False, as is_node_static can return None
-                if compare_static is False:
-                    # TODO: handle aliases to class methods (similarly).
-                    compare_type = bind_self(compare_type, self.scope.active_self_type())
-
-            elif isinstance(compare_type, Instance):
-                self_type = self.scope.active_self_type()
-                assert self_type is not None, "Internal error: base lookup outside class"
-                mx = MemberContext(
-                    is_lvalue=False,
-                    is_super=False,
-                    is_operator=False,
-                    original_type=self_type,
-                    context=lvalue,
-                    chk=self,
-                    suppress_errors=True,
-                )
-                with self.msg.filter_errors():
-                    compare_type = analyze_descriptor_access(compare_type, mx)
-
-            # TODO: check __set__() type override for custom descriptors.
-            # TODO: for descriptors check also class object access override.
+        # TODO: check __set__() type override for custom descriptors.
+        # TODO: for descriptors check also class object access override.
+        ok = self.check_subtype(
+            compare_type,
+            base_type,
+            rvalue,
+            message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+            "expression has type",
+            f'base class "{base.name}" defined the type as',
+        )
+        if (
+            ok
+            and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
+            and self.is_writable_attribute(base_node)
+            and not always_allow_covariant
+        ):
             ok = self.check_subtype(
-                compare_type,
                 base_type,
+                compare_type,
                 rvalue,
-                message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
-                "expression has type",
+                message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE,
                 f'base class "{base.name}" defined the type as',
+                "expression has type",
             )
-            if (
-                ok
-                and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
-                and self.is_writable_attribute(base_node)
-                and not always_allow_covariant
-            ):
-                ok = self.check_subtype(
-                    base_type,
-                    compare_type,
-                    rvalue,
-                    message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE,
-                    f'base class "{base.name}" defined the type as',
-                    "expression has type",
-                )
-            return ok
-        return True
+        return ok
 
     def lvalue_type_from_base(
-        self, expr_node: Var, base: TypeInfo, setter_type: bool = False
+        self, expr_node: Var, base: TypeInfo, setter_type: bool = False, is_class: bool = False
     ) -> tuple[Type | None, SymbolNode | None]:
         """Find a type for a variable name in base class.
 
@@ -3661,10 +3621,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         base_var = base.names.get(expr_name)
 
         # TODO: defer current node if the superclass node is not ready.
-        if not base_var or not base_var.type:
+        if (
+            not base_var
+            or not base_var.type
+            or isinstance(base_var.type, PartialType)
+            and base_var.type.type is not None
+        ):
             return None, None
 
-        self_type = self.scope.active_self_type()
+        self_type = self.scope.current_self_type()
         assert self_type is not None, "Internal error: base lookup outside class"
         if isinstance(self_type, TupleType):
             instance = tuple_fallback(self_type)
@@ -3681,8 +3646,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             suppress_errors=True,
         )
         # TODO: we should not filter "cannot determine type" errors here.
-        with self.msg.filter_errors():
-            base_type = analyze_instance_member_access(expr_name, instance, mx, base)
+        with self.msg.filter_errors(filter_deprecated=True):
+            if is_class:
+                fallback = instance.type.metaclass_type or mx.named_type("builtins.type")
+                base_type = analyze_class_attribute_access(
+                    instance, expr_name, mx, mcs_fallback=fallback, override_info=base
+                )
+            else:
+                base_type = analyze_instance_member_access(expr_name, instance, mx, base)
         return base_type, base_var.node
 
     def check_compatibility_classvar_super(
@@ -4522,6 +4493,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.store_type(lvalue, type)
             p_type = get_proper_type(type)
             if isinstance(p_type, CallableType) and is_node_static(p_type.definition):
+                # TODO: handle aliases to class methods (similarly).
                 var.is_staticmethod = True
 
     def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type) -> None:
@@ -8683,6 +8655,13 @@ class CheckerScope:
             info = self.enclosing_class()
         if info:
             return fill_typevars(info)
+        return None
+
+    def current_self_type(self) -> Instance | TupleType | None:
+        """Same as active_self_type() but handle functions nested in methods."""
+        for item in reversed(self.stack):
+            if isinstance(item, TypeInfo):
+                return fill_typevars(item)
         return None
 
     @contextmanager

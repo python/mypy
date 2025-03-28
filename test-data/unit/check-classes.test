@@ -4650,22 +4650,20 @@ class B(A):
 class A:
     x = 1
 class B(A):
-    x = "a"
+    x = "a"  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 class C(B):
-    x = object()
-[out]
-main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-main:6: error: Incompatible types in assignment (expression has type "object", base class "A" defined the type as "int")
+    x = object()  # E: Incompatible types in assignment (expression has type "object", base class "B" defined the type as "str")
 
 [case testClassOneErrorPerLine]
 class A:
-  x = 1
+    x = 1
 class B(A):
-  x = ""
-  x = 1.0
-[out]
-main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-main:5: error: Incompatible types in assignment (expression has type "float", base class "A" defined the type as "int")
+    x: str = ""  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+    x = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "str")
+class BInfer(A):
+    x = ""  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+    x = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "str") \
+             # E: Incompatible types in assignment (expression has type "float", base class "A" defined the type as "int")
 
 [case testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored]
 class A:
@@ -4673,8 +4671,7 @@ class A:
 class B(A):
     x = ''  # type: ignore
 class C(B):
-    x = ''  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-[out]
+    x = ''
 
 [case testClassIgnoreType_RedefinedAttributeTypeIgnoredInChildren]
 class A:
@@ -4683,7 +4680,6 @@ class B(A):
     x = ''  # type: ignore
 class C(B):
     x = ''  # type: ignore
-[out]
 
 [case testInvalidMetaclassStructure]
 class X(type): pass
@@ -8608,3 +8604,27 @@ class Derived(Base):
 class BadDerived(BadBase):
     id = StrProperty()  # E: Incompatible types in assignment (expression has type "str", base class "BadBase" defined the type as "int")
 [builtins fixtures/property.pyi]
+
+[case testLambdaInOverrideInference]
+class B:
+    def f(self, x: int) -> int: ...
+class C(B):
+    f = lambda s, x: x
+
+reveal_type(C().f)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
+
+[case testClassVarOverrideWithSubclass]
+class A: ...
+class B(A): ...
+class AA:
+    cls = A
+class BB(AA):
+    cls = B
+
+[case testSelfReferenceWithinMethodFunction]
+class B:
+    x: str
+class C(B):
+    def meth(self) -> None:
+        def cb() -> None:
+            self.x: int = 1  # E: Incompatible types in assignment (expression has type "int", base class "B" defined the type as "str")

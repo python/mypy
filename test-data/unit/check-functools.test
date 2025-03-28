@@ -28,8 +28,8 @@ from typing import Any, Callable, ClassVar
 
 @total_ordering
 class Ord:
-    __eq__: Callable[[Any, object], bool] = lambda self, other: False
-    __lt__: Callable[[Any, "Ord"], bool] = lambda self, other: False
+    __eq__: ClassVar[Callable[[Any, object], bool]] = lambda self, other: False
+    __lt__: ClassVar[Callable[[Any, "Ord"], bool]] = lambda self, other: False
 
 reveal_type(Ord() < Ord())  # N: Revealed type is "builtins.bool"
 reveal_type(Ord() <= Ord())  # N: Revealed type is "builtins.bool"
