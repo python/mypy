@@ -2830,7 +2830,7 @@ Traceback (most recent call last):
     raise Exception("e2")
 Exception: e2
 
-[case testNonExtensionClassAttr]
+[case testMypycAttrNativeClass]
 from mypy_extensions import mypyc_attr
 from testutil import assertRaises
 
@@ -2842,6 +2842,10 @@ class DerivedClass(AnnontatedNonExtensionClass):
     pass
 
 class ImplicitExtensionClass():
+    pass
+
+@mypyc_attr(native_class=True)
+class AnnotatedExtensionClass():
     pass
 
 def test_function():
@@ -2874,3 +2878,7 @@ def test_function():
     ext_inst = ImplicitExtensionClass()
     with assertRaises(AttributeError):
         setattr(ext_inst, 'attr_instance', 6)
+
+    explicit_ext_inst = AnnotatedExtensionClass()
+    with assertRaises(AttributeError):
+        setattr(explicit_ext_inst, 'attr_instance', 6)
