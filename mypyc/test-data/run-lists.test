@@ -267,7 +267,7 @@ print(g())
 7
 
 [case testListOps]
-from typing import Any
+from typing import Any, cast
 from testutil import assertRaises
 
 def test_slicing() -> None:
@@ -301,7 +301,12 @@ def test_add() -> None:
     res = [1, 2, 3, 4]
     assert [1, 2] + [3, 4] == res
     with assertRaises(TypeError, 'can only concatenate list (not "tuple") to list'):
-        assert [1, 2] + (3, 4) == res  # type: ignore[operator]
+        assert [1, 2] + cast(Any, (3, 4)) == res
+    l1 = [1, 2]
+    id_l1 = id(l1)
+    l1 += [3, 4]
+    assert l1 == res
+    assert id_l1 == id(l1)
     assert in_place_add([3, 4]) == res
     assert in_place_add((3, 4)) == res
     assert in_place_add({3, 4}) == res
