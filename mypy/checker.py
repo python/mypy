@@ -12,13 +12,18 @@ from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 import mypy.checkexpr
 from mypy import errorcodes as codes, join, message_registry, nodes, operators
 from mypy.binder import ConditionalTypeBinder, Frame, get_declaration
-from mypy.checkmember import analyze_member_access
+from mypy.checkmember import (
+    MemberContext,
+    analyze_descriptor_access,
+    analyze_instance_member_access,
+    analyze_member_access,
+)
 from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
 from mypy.errors import Errors, ErrorWatcher, report_internal_error
-from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
+from mypy.expandtype import expand_self_type, expand_type
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_erased_types, is_overlapping_types, meet_types
@@ -3583,31 +3588,39 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         base_type = get_proper_type(base_type)
         compare_type = get_proper_type(compare_type)
         if compare_type:
-            if isinstance(base_type, CallableType) and isinstance(compare_type, CallableType):
-                base_static = is_node_static(base_node)
+            # Unlike for base_type, where we use the full analyze_member_access(), we know
+            # that subclass node is an assignment, so we use a much simpler logic: just bind
+            # self or invoke descriptors. Although this may not cover some niche corner
+            # cases, it is faster, and works with current logic where we check overrides
+            # before storing inferred variable type.
+            if isinstance(compare_type, CallableType):
                 compare_static = is_node_static(compare_node)
-
-                # In case compare_static is unknown, also check
-                # if 'definition' is set. The most common case for
-                # this is with TempNode(), where we lose all
-                # information about the real rvalue node (but only get
-                # the rvalue type)
+                # Since this method may be called before storing inferred type,
+                # fall back to rvalue to obtain the static method flag.
                 if compare_static is None and compare_type.definition:
                     compare_static = is_node_static(compare_type.definition)
-
                 # Compare against False, as is_node_static can return None
-                if base_static is False and compare_static is False:
-                    # Class-level function objects and classmethods become bound
-                    # methods: the former to the instance, the latter to the
-                    # class
-                    base_type = bind_self(base_type, self.scope.active_self_type())
+                if compare_static is False:
+                    # TODO: handle aliases to class methods (similarly).
                     compare_type = bind_self(compare_type, self.scope.active_self_type())
 
-                # If we are a static method, ensure to also tell the
-                # lvalue it now contains a static method
-                if base_static and compare_static:
-                    lvalue_node.is_staticmethod = True
+            elif isinstance(compare_type, Instance):
+                self_type = self.scope.active_self_type()
+                assert self_type is not None, "Internal error: base lookup outside class"
+                mx = MemberContext(
+                    is_lvalue=False,
+                    is_super=False,
+                    is_operator=False,
+                    original_type=self_type,
+                    context=lvalue,
+                    chk=self,
+                    suppress_errors=True,
+                )
+                with self.msg.filter_errors():
+                    compare_type = analyze_descriptor_access(compare_type, mx)
 
+            # TODO: check __set__() type override for custom descriptors.
+            # TODO: for descriptors check also class object access override.
             ok = self.check_subtype(
                 compare_type,
                 base_type,
@@ -3647,49 +3660,30 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         expr_name = expr_node.name
         base_var = base.names.get(expr_name)
 
-        if not base_var:
+        # TODO: defer current node if the superclass node is not ready.
+        if not base_var or not base_var.type:
             return None, None
-        base_node = base_var.node
-        base_type = base_var.type
-        if isinstance(base_node, Var) and base_type is not None:
-            base_type = expand_self_type(base_node, base_type, fill_typevars(expr_node.info))
-        if isinstance(base_node, Decorator):
-            base_node = base_node.func
-            base_type = base_node.type
 
-        if not base_type:
-            return None, None
-        if not has_no_typevars(base_type):
-            self_type = self.scope.active_self_type()
-            assert self_type is not None, "Internal error: base lookup outside class"
-            if isinstance(self_type, TupleType):
-                instance = tuple_fallback(self_type)
-            else:
-                instance = self_type
-            itype = map_instance_to_supertype(instance, base)
-            base_type = expand_type_by_instance(base_type, itype)
+        self_type = self.scope.active_self_type()
+        assert self_type is not None, "Internal error: base lookup outside class"
+        if isinstance(self_type, TupleType):
+            instance = tuple_fallback(self_type)
+        else:
+            instance = self_type
 
-        base_type = get_proper_type(base_type)
-        if isinstance(base_type, CallableType) and isinstance(base_node, FuncDef):
-            # If we are a property, return the Type of the return
-            # value, not the Callable
-            if base_node.is_property:
-                base_type = get_proper_type(base_type.ret_type)
-        if isinstance(base_type, FunctionLike) and isinstance(base_node, OverloadedFuncDef):
-            # Same for properties with setter
-            if base_node.is_property:
-                if setter_type:
-                    assert isinstance(base_node.items[0], Decorator)
-                    base_type = base_node.items[0].var.setter_type
-                    # This flag is True only for custom properties, so it is safe to assert.
-                    assert base_type is not None
-                    base_type = self.bind_and_map_method(base_var, base_type, expr_node.info, base)
-                    assert isinstance(base_type, CallableType)
-                    base_type = get_proper_type(base_type.arg_types[0])
-                else:
-                    base_type = base_type.items[0].ret_type
-
-        return base_type, base_node
+        mx = MemberContext(
+            is_lvalue=setter_type,
+            is_super=False,
+            is_operator=False,
+            original_type=self_type,
+            context=expr_node,
+            chk=self,
+            suppress_errors=True,
+        )
+        # TODO: we should not filter "cannot determine type" errors here.
+        with self.msg.filter_errors():
+            base_type = analyze_instance_member_access(expr_name, instance, mx, base)
+        return base_type, base_var.node
 
     def check_compatibility_classvar_super(
         self, node: Var, base: TypeInfo, base_node: Node | None
@@ -4515,6 +4509,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         refers to the variable (lvalue). If var is None, do nothing.
         """
         if var and not self.current_node_deferred:
+            # TODO: should we also set 'is_ready = True' here?
             var.type = type
             var.is_inferred = True
             if var not in self.var_decl_frames:
@@ -4525,12 +4520,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if lvalue.def_var is not None:
                     self.inferred_attribute_types[lvalue.def_var] = type
             self.store_type(lvalue, type)
+            p_type = get_proper_type(type)
+            if isinstance(p_type, CallableType) and is_node_static(p_type.definition):
+                var.is_staticmethod = True
 
     def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type) -> None:
         """Store best known type for variable if type inference failed.
 
         If a program ignores error on type inference error, the variable should get some
-        inferred type so that if can used later on in the program. Example:
+        inferred type so that it can used later on in the program. Example:
 
           x = []  # type: ignore
           x.append(1)   # Should be ok!
