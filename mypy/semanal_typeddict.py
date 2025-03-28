@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection
 from typing import Final
 
 from mypy import errorcodes as codes, message_registry
@@ -40,6 +39,7 @@ from mypy.semanal_shared import (
     require_bool_literal_argument,
 )
 from mypy.state import state
+from mypy.subtypes import is_subtype
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.types import (
     TPDICT_NAMES,
@@ -166,7 +166,9 @@ class TypedDictAnalyzer:
                 base, field_types, required_keys, readonly_keys, defn
             )
         (new_field_types, new_statements, new_required_keys, new_readonly_keys) = (
-            self.analyze_typeddict_classdef_fields(defn, oldfields=field_types)
+            self.analyze_typeddict_classdef_fields(
+                defn, oldfields=field_types, oldreadonly_keys=readonly_keys
+            )
         )
         if new_field_types is None:
             return True, None  # Defer
@@ -280,7 +282,10 @@ class TypedDictAnalyzer:
         return mapped_items
 
     def analyze_typeddict_classdef_fields(
-        self, defn: ClassDef, oldfields: Collection[str] | None = None
+        self,
+        defn: ClassDef,
+        oldfields: dict[str, Type] | None = None,
+        oldreadonly_keys: set[str] | None = None,
     ) -> tuple[dict[str, Type] | None, list[Statement], set[str], set[str]]:
         """Analyze fields defined in a TypedDict class definition.
 
@@ -325,8 +330,6 @@ class TypedDictAnalyzer:
                 self.fail(TPDICT_CLASS_ERROR, stmt)
             else:
                 name = stmt.lvalues[0].name
-                if name in (oldfields or []):
-                    self.fail(f'Overwriting TypedDict field "{name}" while extending', stmt)
                 if name in fields:
                     self.fail(f'Duplicate TypedDict key "{name}"', stmt)
                     continue
@@ -351,6 +354,26 @@ class TypedDictAnalyzer:
                         stmt.type = self.extract_meta_info(analyzed, stmt)[0]
 
                 field_type, required, readonly = self.extract_meta_info(field_type)
+
+                if oldfields and name in oldfields:
+                    # Refinements are only allowed on readonly keys
+                    if name not in (oldreadonly_keys or set()):
+                        self.fail(f'Overwriting TypedDict field "{name}" while extending', stmt)
+                    else:
+                        # Refinements must be ReadOnly too
+                        if not readonly:
+                            self.fail(
+                                f'Overwriting TypedDict ReadOnly field "{name}" with non-ReadOnly type',
+                                stmt,
+                            )
+
+                        # Refinements must be type compatible
+                        if not is_subtype(field_type, oldfields[name]):
+                            self.fail(
+                                f'Overwriting TypedDict ReadOnly field "{name}" with incompatible type',
+                                stmt,
+                            )
+
                 fields[name] = field_type
 
                 if (total or required is True) and required is not False:
