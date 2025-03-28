@@ -128,42 +128,53 @@ def get_mypyc_attrs(stmt: ClassDef | Decorator) -> dict[str, Any]:
 
 def is_extension_class(path: str, cdef: ClassDef, errors: Errors) -> bool:
     # Check for @mypyc_attr(native_class=True/False) decorator.
+    explicit_native_class = get_explicit_native_class(path, cdef, errors)
+
     # Classes with native_class=False are explicitly marked as non extension.
-    # Classes with native_class=True should be extension classes, but they might
-    # not be able to be due to other reasons. Print an error in that case.
-    forced_native_class = False
-    for d in cdef.decorators:
-        mypyc_attr_call = get_mypyc_attr_call(d)
-        if mypyc_attr_call:
-            for i, name in enumerate(mypyc_attr_call.arg_names):
-                if name != "native_class":
-                    continue
-
-                if not isinstance(mypyc_attr_call.args[i], NameExpr):
-                    errors.error(
-                        "native_class must be used with True or False only", path, cdef.line
-                    )
-                    break
-
-                if mypyc_attr_call.args[i].name == "False":
-                    return False
-                elif mypyc_attr_call.args[i].name == "True":
-                    forced_native_class = True
-                    break
-                else:
-                    errors.error(
-                        "native_class must be used with True or False only", path, cdef.line
-                    )
-                    break
+    if explicit_native_class is False:
+        return False
 
     implicit_extension_class = is_implicit_extension_class(cdef)
 
-    if forced_native_class and not implicit_extension_class:
+    # Classes with native_class=True should be extension classes, but they might
+    # not be able to be due to other reasons. Print an error in that case.
+    if explicit_native_class is True and not implicit_extension_class:
         errors.error(
             "Class is marked as native_class=True but it can't be a native class", path, cdef.line
         )
 
     return implicit_extension_class
+
+
+def get_explicit_native_class(path: str, cdef: ClassDef, errors: Errors) -> bool | None:
+    """Return value of @mypyc_attr(native_class=True/False) decorator.
+
+    Look for a @mypyc_attr decorator with native_class=True/False and return
+    the value assigned or None if it doesn't exist. Other values are an error.
+    """
+
+    for d in cdef.decorators:
+        mypyc_attr_call = get_mypyc_attr_call(d)
+        if not mypyc_attr_call:
+            continue
+
+        for i, name in enumerate(mypyc_attr_call.arg_names):
+            if name != "native_class":
+                continue
+
+            arg = mypyc_attr_call.args[i]
+            if not isinstance(arg, NameExpr):
+                errors.error("native_class must be used with True or False only", path, cdef.line)
+                return None
+
+            if arg.name == "False":
+                return False
+            elif arg.name == "True":
+                return True
+            else:
+                errors.error("native_class must be used with True or False only", path, cdef.line)
+                return None
+    return None
 
 
 def is_implicit_extension_class(cdef: ClassDef) -> bool:
