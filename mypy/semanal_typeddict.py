@@ -30,6 +30,7 @@ from mypy.nodes import (
     StrExpr,
     TempNode,
     TupleExpr,
+    TypeAlias,
     TypedDictExpr,
     TypeInfo,
 )
@@ -50,6 +51,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarLikeType,
+    get_proper_type,
 )
 
 TPDICT_CLASS_ERROR: Final = (
@@ -137,23 +139,18 @@ class TypedDictAnalyzer:
                     typeddict_bases_set.add("TypedDict")
                 else:
                     self.fail('Duplicate base class "TypedDict"', defn)
-            elif isinstance(expr, RefExpr) and self.is_typeddict(expr):
-                assert expr.fullname
-                if expr.fullname not in typeddict_bases_set:
-                    typeddict_bases_set.add(expr.fullname)
+            elif (
+                isinstance(expr, RefExpr)
+                and self.is_typeddict(expr)
+                or isinstance(expr, IndexExpr)
+                and self.is_typeddict(expr.base)
+            ):
+                info = self._parse_typeddict_base(expr, defn)
+                if info.fullname not in typeddict_bases_set:
+                    typeddict_bases_set.add(info.fullname)
                     typeddict_bases.append(expr)
                 else:
-                    assert isinstance(expr.node, TypeInfo)
-                    self.fail(f'Duplicate base class "{expr.node.name}"', defn)
-            elif isinstance(expr, IndexExpr) and self.is_typeddict(expr.base):
-                assert isinstance(expr.base, RefExpr)
-                assert expr.base.fullname
-                if expr.base.fullname not in typeddict_bases_set:
-                    typeddict_bases_set.add(expr.base.fullname)
-                    typeddict_bases.append(expr)
-                else:
-                    assert isinstance(expr.base.node, TypeInfo)
-                    self.fail(f'Duplicate base class "{expr.base.node.name}"', defn)
+                    self.fail(f'Duplicate base class "{info.name}"', defn)
             else:
                 self.fail("All bases of a new TypedDict must be TypedDict types", defn)
 
@@ -190,22 +187,13 @@ class TypedDictAnalyzer:
         readonly_keys: set[str],
         ctx: Context,
     ) -> None:
+        info = self._parse_typeddict_base(base, ctx)
         base_args: list[Type] = []
-        if isinstance(base, RefExpr):
-            assert isinstance(base.node, TypeInfo)
-            info = base.node
-        elif isinstance(base, IndexExpr):
-            assert isinstance(base.base, RefExpr)
-            assert isinstance(base.base.node, TypeInfo)
-            info = base.base.node
+        if isinstance(base, IndexExpr):
             args = self.analyze_base_args(base, ctx)
             if args is None:
                 return
             base_args = args
-        else:
-            assert isinstance(base, CallExpr)
-            assert isinstance(base.analyzed, TypedDictExpr)
-            info = base.analyzed.info
 
         assert info.typeddict_type is not None
         base_typed_dict = info.typeddict_type
@@ -230,6 +218,26 @@ class TypedDictAnalyzer:
         field_types.update(valid_items)
         required_keys.update(base_typed_dict.required_keys)
         readonly_keys.update(base_typed_dict.readonly_keys)
+
+    def _parse_typeddict_base(self, base: Expression, ctx: Context) -> TypeInfo:
+        if isinstance(base, RefExpr):
+            if isinstance(base.node, TypeInfo):
+                return base.node
+            elif isinstance(base.node, TypeAlias):
+                # Only old TypeAlias / plain assignment, PEP695 `type` stmt
+                # cannot be used as a base class
+                target = get_proper_type(base.node.target)
+                assert isinstance(target, TypedDictType)
+                return target.fallback.type
+            else:
+                assert False
+        elif isinstance(base, IndexExpr):
+            assert isinstance(base.base, RefExpr)
+            return self._parse_typeddict_base(base.base, ctx)
+        else:
+            assert isinstance(base, CallExpr)
+            assert isinstance(base.analyzed, TypedDictExpr)
+            return base.analyzed.info
 
     def analyze_base_args(self, base: IndexExpr, ctx: Context) -> list[Type] | None:
         """Analyze arguments of base type expressions as types.
@@ -527,7 +535,7 @@ class TypedDictAnalyzer:
                 return "", [], [], True, [], False
         dictexpr = args[1]
         tvar_defs = self.api.get_and_bind_all_tvars([t for k, t in dictexpr.items])
-        res = self.parse_typeddict_fields_with_types(dictexpr.items, call)
+        res = self.parse_typeddict_fields_with_types(dictexpr.items)
         if res is None:
             # One of the types is not ready, defer.
             return None
@@ -536,7 +544,7 @@ class TypedDictAnalyzer:
         return args[0].value, items, types, total, tvar_defs, ok
 
     def parse_typeddict_fields_with_types(
-        self, dict_items: list[tuple[Expression | None, Expression]], context: Context
+        self, dict_items: list[tuple[Expression | None, Expression]]
     ) -> tuple[list[str], list[Type], bool] | None:
         """Parse typed dict items passed as pairs (name expression, type expression).
 
@@ -609,10 +617,11 @@ class TypedDictAnalyzer:
     # Helpers
 
     def is_typeddict(self, expr: Expression) -> bool:
-        return (
-            isinstance(expr, RefExpr)
-            and isinstance(expr.node, TypeInfo)
+        return isinstance(expr, RefExpr) and (
+            isinstance(expr.node, TypeInfo)
             and expr.node.typeddict_type is not None
+            or isinstance(expr.node, TypeAlias)
+            and isinstance(get_proper_type(expr.node.target), TypedDictType)
         )
 
     def fail(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -> None:
