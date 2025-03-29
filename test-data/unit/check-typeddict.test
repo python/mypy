@@ -4162,22 +4162,77 @@ c23: Child2 = {"foo": 0, "bar": 1, "baz": "error"}  # E: Extra key "baz" for Typ
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testTypedDictAliasMultiple]
+[case testTypedDictAliasInheritance]
 from typing import TypedDict
+from typing_extensions import TypeAlias
 
-class A(TypedDict, total=False):
+class A(TypedDict):
+    x: str
+class B(TypedDict):
     y: int
-class B(TypedDict, total=False):
+
+B1 = B
+B2: TypeAlias = B
+
+class C(A, B1):
+    pass
+c1: C = {"y": 1}  # E: Missing key "x" for TypedDict "C"
+c2: C = {"x": "x", "y": 2}
+c3: C = {"x": 1, "y": 2}  # E: Incompatible types (expression has type "int", TypedDict item "x" has type "str")
+
+class D(A, B2):
+    pass
+d1: D = {"y": 1}  # E: Missing key "x" for TypedDict "D"
+d2: D = {"x": "x", "y": 2}
+d3: D = {"x": 1, "y": 2}  # E: Incompatible types (expression has type "int", TypedDict item "x" has type "str")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAliasDuplicateBases]
+from typing import TypedDict
+from typing_extensions import TypeAlias
+
+class A(TypedDict):
     x: str
 
-D = B
+A1 = A
+A2 = A
+A3: TypeAlias = A
 
-class C(A, D):
-    pass
+class E(A1, A2): pass  # E: Duplicate base class "A"
+class F(A1, A3): pass # E: Duplicate base class "A"
+class G(A, A1): pass # E: Duplicate base class "A"
 
-c1: C = {}
-c2: C = {"x": "x"}
-c3: C = {"y": 1}
-c4: C = {"x": "x", "y": 2}
+class H(A, list): pass  # E: All bases of a new TypedDict must be TypedDict types
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAliasGeneric]
+from typing import Generic, TypedDict, TypeVar
+from typing_extensions import TypeAlias
+
+_T = TypeVar("_T")
+
+class A(Generic[_T], TypedDict):
+    x: _T
+
+A1 = A[_T]
+A2: TypeAlias = A[_T]
+Aint = A[int]
+
+class C(A1[_T]):
+    y: str
+c1: C[int] = {"x": 0, "y": "a"}
+c2: C[int] = {"x": "no", "y": "a"}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+
+class D(A2[_T]):
+    y: str
+d1: D[int] = {"x": 0, "y": "a"}
+d2: D[int] = {"x": "no", "y": "a"}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+
+class E(Aint):
+    y: str
+e1: E = {"x": 0, "y": "a"}
+e2: E = {"x": "no", "y": "a"}
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
