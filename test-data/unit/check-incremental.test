@@ -5235,11 +5235,7 @@ class Sub(Base):
 
 [builtins fixtures/property.pyi]
 [out]
-tmp/a.py:3: error: Cannot determine type of "foo"
-tmp/a.py:4: error: Cannot determine type of "foo"
 [out2]
-tmp/a.py:3: error: Cannot determine type of "foo"
-tmp/a.py:4: error: Cannot determine type of "foo"
 
 [case testRedefinitionClass]
 import b

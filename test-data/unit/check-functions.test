@@ -3528,8 +3528,8 @@ class Parent:
     def method_with(self, param: str) -> "Parent": ...
 
 class Child(Parent):
-    method_without: Callable[["Child"], "Child"]
-    method_with: Callable[["Child", str], "Child"]  # E: Incompatible types in assignment (expression has type "Callable[[str], Child]", base class "Parent" defined the type as "Callable[[Arg(str, 'param')], Parent]")
+    method_without: Callable[[], "Child"]
+    method_with: Callable[[str], "Child"]  # E: Incompatible types in assignment (expression has type "Callable[[str], Child]", base class "Parent" defined the type as "Callable[[Arg(str, 'param')], Parent]")
 [builtins fixtures/tuple.pyi]
 
 [case testDistinctFormattingUnion]
