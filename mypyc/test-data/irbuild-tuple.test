@@ -384,3 +384,37 @@ L3:
 L4:
     a = r1
     return 1
+
+[case testTupleAdd]
+from typing import Tuple
+def f(a: Tuple[int, ...], b: Tuple[int, ...]) -> None:
+    c = a + b
+    d = a + (1, 2)
+def g(a: Tuple[int, int], b: Tuple[int, int]) -> None:
+    c = a + b
+[out]
+def f(a, b):
+    a, b, r0, c :: tuple
+    r1 :: tuple[int, int]
+    r2 :: object
+    r3, d :: tuple
+L0:
+    r0 = PySequence_Concat(a, b)
+    c = r0
+    r1 = (2, 4)
+    r2 = box(tuple[int, int], r1)
+    r3 = PySequence_Concat(a, r2)
+    d = r3
+    return 1
+def g(a, b):
+    a, b :: tuple[int, int]
+    r0, r1 :: object
+    r2 :: tuple
+    r3, c :: tuple[int, int, int, int]
+L0:
+    r0 = box(tuple[int, int], a)
+    r1 = box(tuple[int, int], b)
+    r2 = PySequence_Concat(r0, r1)
+    r3 = unbox(tuple[int, int, int, int], r2)
+    c = r3
+    return 1

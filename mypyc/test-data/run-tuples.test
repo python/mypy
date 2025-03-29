@@ -146,7 +146,8 @@ assert Record.__annotations__ == {
 }, Record.__annotations__
 
 [case testTupleOps]
-from typing import Tuple, Final, List, Any, Optional
+from typing import Tuple, Final, List, Any, Optional, cast
+from testutil import assertRaises
 
 def f() -> Tuple[()]:
     return ()
@@ -254,3 +255,9 @@ TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
 def test_final_boxed_tuple() -> None:
     t = TUPLE
     assert t == ('x', 'y')
+
+def test_add() -> None:
+    res = (1, 2, 3, 4)
+    assert (1, 2) + (3, 4) == res
+    with assertRaises(TypeError, 'can only concatenate tuple (not "list") to tuple'):
+        assert (1, 2) + cast(Any, [3, 4]) == res

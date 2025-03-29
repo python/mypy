@@ -145,6 +145,32 @@ L0:
     x = r10
     return 1
 
+[case testListAdd]
+from typing import List
+def f(a: List[int], b: List[int]) -> None:
+    c = a + b
+[out]
+def f(a, b):
+    a, b, r0, c :: list
+L0:
+    r0 = PySequence_Concat(a, b)
+    c = r0
+    return 1
+
+[case testListIAdd]
+from typing import List, Any
+def f(a: List[int], b: Any) -> None:
+    a += b
+[out]
+def f(a, b):
+    a :: list
+    b :: object
+    r0 :: list
+L0:
+    r0 = PySequence_InPlaceConcat(a, b)
+    a = r0
+    return 1
+
 [case testListMultiply]
 from typing import List
 def f(a: List[int]) -> None:

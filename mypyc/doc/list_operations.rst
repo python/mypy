@@ -32,6 +32,7 @@ Operators
 
 * ``lst[n]`` (get item by integer index)
 * ``lst[n:m]``, ``lst[n:]``, ``lst[:m]``, ``lst[:]`` (slicing)
+* ``lst1 + lst2``, ``lst += iter``
 * ``lst * n``, ``n * lst``
 * ``obj in lst``
 
