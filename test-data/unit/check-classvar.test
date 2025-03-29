@@ -269,6 +269,19 @@ class A(metaclass=ABCMeta):
 class B(A):
     x = 0  # type: ClassVar[int]
 
+[case testOverrideWithPropertyDecorator]
+from typing import ClassVar
+
+class A:
+    x: ClassVar[int]
+class B(A):
+    @property
+    def x(self) -> int: ...
+[builtins fixtures/property.pyi]
+[out]
+main:7: error: Cannot override class variable (previously declared on base class "A") with instance variable
+main:7: error: Cannot override writeable attribute with read-only property
+
 [case testAcrossModules]
 import m
 reveal_type(m.A().x)
