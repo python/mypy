@@ -2280,6 +2280,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if inner is not None:
                 typ = inner
                 typ = get_property_type(typ)
+
+                if (
+                    isinstance(original_node, Var)
+                    and original_node.is_classvar
+                    and defn.name == original_node.name
+                    and isinstance(defn, Decorator)
+                ):
+                    self.fail(
+                        message_registry.CANNOT_OVERRIDE_CLASS_VAR.format(base.name), defn.func
+                    )
+
                 if (
                     isinstance(original_node, Var)
                     and not original_node.is_final
