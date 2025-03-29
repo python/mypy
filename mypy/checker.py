@@ -2285,11 +2285,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     isinstance(original_node, Var)
                     and original_node.is_classvar
                     and defn.name == original_node.name
-                    and isinstance(defn, Decorator)
+                    and (isinstance(defn, (Decorator, OverloadedFuncDef)))
                 ):
-                    self.fail(
-                        message_registry.CANNOT_OVERRIDE_CLASS_VAR.format(base.name), defn.func
-                    )
+                    decorator_func = None
+                    if isinstance(defn, Decorator):
+                        decorator_func = defn.func
+                    elif isinstance(defn.items[0], Decorator):
+                        decorator_func = defn.items[0].func
+
+                    if decorator_func:
+                        self.fail(
+                            message_registry.CANNOT_OVERRIDE_CLASS_VAR.format(base.name),
+                            decorator_func,
+                        )
 
                 if (
                     isinstance(original_node, Var)

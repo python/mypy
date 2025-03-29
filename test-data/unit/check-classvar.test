@@ -277,10 +277,12 @@ class A:
 class B(A):
     @property
     def x(self) -> int: ...
+
+    @x.setter
+    def x(self, value: int) -> None: ...
 [builtins fixtures/property.pyi]
 [out]
 main:7: error: Cannot override class variable (previously declared on base class "A") with instance variable
-main:7: error: Cannot override writeable attribute with read-only property
 
 [case testAcrossModules]
 import m
