@@ -20,7 +20,11 @@ T = TypeVar("T")
 
 # Show error codes for some note-level messages (these usually appear alone
 # and not as a comment for a previous error-level message).
-SHOW_NOTE_CODES: Final = {codes.ANNOTATION_UNCHECKED, codes.DEPRECATED}
+SHOW_NOTE_CODES: Final = {
+    codes.ANNOTATION_UNCHECKED,
+    codes.DEPRECATED,
+    codes.MAYBE_UNRECOGNIZED_STR_TYPEFORM,
+}
 
 # Do not add notes with links to error code docs to errors with these codes.
 # We can tweak this set as we get more experience about what is helpful and what is not.

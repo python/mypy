@@ -75,6 +75,9 @@ class _NodeEvaluator(ExpressionVisitor[object]):
     def visit_cast_expr(self, o: mypy.nodes.CastExpr) -> object:
         return o.expr.accept(self)
 
+    def visit_type_form_expr(self, o: mypy.nodes.TypeFormExpr) -> object:
+        return UNKNOWN
+
     def visit_assert_type_expr(self, o: mypy.nodes.AssertTypeExpr) -> object:
         return o.expr.accept(self)
 
