@@ -4216,6 +4216,11 @@ _T = TypeVar("_T")
 class A(Generic[_T], TypedDict):
     x: _T
 
+# This is by design - no_args aliases are only supported for instances
+A0 = A
+class B(A0[str]):  # E: Bad number of arguments for type alias, expected 0, given 1
+    y: int
+
 A1 = A[_T]
 A2: TypeAlias = A[_T]
 Aint = A[int]
