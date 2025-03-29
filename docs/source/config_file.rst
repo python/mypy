@@ -288,6 +288,14 @@ section of the command line docs.
 
        See :ref:`using-a-pyproject-toml`.
 
+.. confval:: exclude_gitignore
+
+    :type: boolean
+    :default: False
+
+    This flag will add everything that matches ``.gitignore`` file(s) to :confval:`exclude`.
+    This option may only be set in the global section (``[mypy]``).
+
 .. confval:: namespace_packages
 
     :type: boolean
@@ -424,7 +432,7 @@ Platform configuration
 
     Specifies the Python version used to parse and check the target
     program.  The string should be in the format ``MAJOR.MINOR`` --
-    for example ``2.7``.  The default is the version of the Python
+    for example ``3.9``.  The default is the version of the Python
     interpreter used to run mypy.
 
     This option may only be set in the global section (``[mypy]``).
@@ -665,6 +673,16 @@ section of the command line docs.
 
     Shows a warning when encountering any code inferred to be unreachable or
     redundant after performing type analysis.
+
+.. confval:: deprecated_calls_exclude
+
+    :type: comma-separated list of strings
+
+    Selectively excludes functions and methods defined in specific packages,
+    modules, and classes from the :ref:`deprecated<code-deprecated>` error code.
+    This also applies to all submodules of packages (i.e. everything inside
+    a given prefix). Note, this option does not support per-file configuration,
+    the exclusions list is defined globally for all your code.
 
 
 Suppressing errors
@@ -1178,7 +1196,7 @@ of your repo (or append it to the end of an existing ``pyproject.toml`` file) an
     # mypy global options:
 
     [tool.mypy]
-    python_version = "2.7"
+    python_version = "3.9"
     warn_return_any = true
     warn_unused_configs = true
     exclude = [

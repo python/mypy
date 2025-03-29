@@ -7,7 +7,7 @@ from unittest import TestCase, skipUnless
 
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.join import join_simple, join_types
+from mypy.join import join_types
 from mypy.meet import meet_types, narrow_declared_type
 from mypy.nodes import (
     ARG_NAMED,
@@ -817,12 +817,12 @@ class JoinSuite(Suite):
             self.assert_join(t, self.fx.anyt, self.fx.anyt)
 
     def test_mixed_truth_restricted_type_simple(self) -> None:
-        # join_simple against differently restricted truthiness types drops restrictions.
+        # make_simplified_union against differently restricted truthiness types drops restrictions.
         true_a = true_only(self.fx.a)
         false_o = false_only(self.fx.o)
-        j = join_simple(self.fx.o, true_a, false_o)
-        assert j.can_be_true
-        assert j.can_be_false
+        u = make_simplified_union([true_a, false_o])
+        assert u.can_be_true
+        assert u.can_be_false
 
     def test_mixed_truth_restricted_type(self) -> None:
         # join_types against differently restricted truthiness types drops restrictions.
@@ -1021,7 +1021,7 @@ class JoinSuite(Suite):
         self.assert_join(
             self.tuple(self.fx.a, self.fx.a),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(self.fx.a, self.fx.a),
@@ -1049,12 +1049,12 @@ class JoinSuite(Suite):
             self.tuple(
                 self.fx.a, UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a
             ),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
-            self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))),
+            Instance(self.fx.std_tuplei, [self.fx.a]),
         )
         self.assert_join(
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a),
@@ -1584,11 +1584,12 @@ def make_call(*items: tuple[str, str | None]) -> CallExpr:
 class TestExpandTypeLimitGetProperType(TestCase):
     # WARNING: do not increase this number unless absolutely necessary,
     # and you understand what you are doing.
-    ALLOWED_GET_PROPER_TYPES = 9
+    ALLOWED_GET_PROPER_TYPES = 7
 
     @skipUnless(mypy.expandtype.__file__.endswith(".py"), "Skip for compiled mypy")
     def test_count_get_proper_type(self) -> None:
         with open(mypy.expandtype.__file__) as f:
             code = f.read()
-        get_proper_type_count = len(re.findall("get_proper_type", code))
+        get_proper_type_count = len(re.findall(r"get_proper_type\(", code))
+        get_proper_type_count -= len(re.findall(r"get_proper_type\(\)", code))
         assert get_proper_type_count == self.ALLOWED_GET_PROPER_TYPES

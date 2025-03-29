@@ -8,7 +8,13 @@ from collections.abc import Sequence
 from typing import Final
 
 from mypy.fscache import FileSystemCache
-from mypy.modulefinder import PYTHON_EXTENSIONS, BuildSource, matches_exclude, mypy_path
+from mypy.modulefinder import (
+    PYTHON_EXTENSIONS,
+    BuildSource,
+    matches_exclude,
+    matches_gitignore,
+    mypy_path,
+)
 from mypy.options import Options
 
 PY_EXTENSIONS: Final = tuple(PYTHON_EXTENSIONS)
@@ -94,6 +100,7 @@ class SourceFinder:
         self.explicit_package_bases = get_explicit_package_bases(options)
         self.namespace_packages = options.namespace_packages
         self.exclude = options.exclude
+        self.exclude_gitignore = options.exclude_gitignore
         self.verbosity = options.verbosity
 
     def is_explicit_package_base(self, path: str) -> bool:
@@ -112,6 +119,10 @@ class SourceFinder:
             subpath = os.path.join(path, name)
 
             if matches_exclude(subpath, self.exclude, self.fscache, self.verbosity >= 2):
+                continue
+            if self.exclude_gitignore and matches_gitignore(
+                subpath, self.fscache, self.verbosity >= 2
+            ):
                 continue
 
             if self.fscache.isdir(subpath):
@@ -176,8 +187,7 @@ class SourceFinder:
             return "", dir
 
         parent, name = os.path.split(dir)
-        if name.endswith("-stubs"):
-            name = name[:-6]  # PEP-561 stub-only directory
+        name = name.removesuffix("-stubs")  # PEP-561 stub-only directory
 
         # recurse if there's an __init__.py
         init_file = self.get_init_file(dir)

@@ -243,6 +243,8 @@ locally.  Features are considered deprecated when decorated with ``warnings.depr
 specified in `PEP 702 <https://peps.python.org/pep-0702>`_.
 Use the :option:`--report-deprecated-as-note <mypy --report-deprecated-as-note>` option to
 turn all such errors into notes.
+Use :option:`--deprecated-calls-exclude <mypy --deprecated-calls-exclude>` to hide warnings
+for specific functions, classes and packages.
 
 .. note::
 

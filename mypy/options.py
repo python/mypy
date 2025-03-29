@@ -22,6 +22,7 @@ class BuildType:
 PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
     "allow_redefinition",
+    "allow_redefinition_new",
     "allow_untyped_globals",
     "always_false",
     "always_true",
@@ -136,6 +137,7 @@ class Options:
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
         self.exclude: list[str] = []
+        self.exclude_gitignore: bool = False
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -182,6 +184,10 @@ class Options:
         # Report importing or using deprecated features as errors instead of notes.
         self.report_deprecated_as_note = False
 
+        # Allow deprecated calls from function coming from modules/packages
+        # in this list (each item effectively acts as a prefix match)
+        self.deprecated_calls_exclude: list[str] = []
+
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
@@ -213,6 +219,10 @@ class Options:
         # Allow variable to be redefined with an arbitrary type in the same block
         # and the same nesting level as the initialization
         self.allow_redefinition = False
+
+        # Allow flexible variable redefinition with an arbitrary type, in different
+        # blocks and and at different nesting levels
+        self.allow_redefinition_new = False
 
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
@@ -395,6 +405,9 @@ class Options:
 
         # Sets custom output format
         self.output: str | None = None
+
+        # Output html file for mypyc -a
+        self.mypyc_annotation_file: str | None = None
 
     def use_lowercase_names(self) -> bool:
         if self.python_version >= (3, 9):

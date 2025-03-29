@@ -332,6 +332,54 @@ match [SubClass("a"), SubClass("b")]:
         reveal_type(rest)  # N: Revealed type is "builtins.list[__main__.Example]"
 [builtins fixtures/tuple.pyi]
 
+# Narrowing union-based values via a literal pattern on an indexed/attribute subject
+# -------------------------------------------------------------------------------
+# Literal patterns against a union of types can be used to narrow the subject
+# itself, not just the expression being matched. Previously, the patterns below
+# failed to narrow the `d` variable, leading to errors for missing members; we
+# now propagate the type information up to the parent.
+
+[case testMatchNarrowingUnionTypedDictViaIndex]
+from typing import Literal, TypedDict
+
+class A(TypedDict):
+    tag: Literal["a"]
+    name: str
+
+class B(TypedDict):
+    tag: Literal["b"]
+    num: int
+
+d: A | B
+match d["tag"]:
+    case "a":
+        reveal_type(d)  # N: Revealed type is "TypedDict('__main__.A', {'tag': Literal['a'], 'name': builtins.str})"
+        reveal_type(d["name"])  # N: Revealed type is "builtins.str"
+    case "b":
+        reveal_type(d)  # N: Revealed type is "TypedDict('__main__.B', {'tag': Literal['b'], 'num': builtins.int})"
+        reveal_type(d["num"])  # N: Revealed type is "builtins.int"
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMatchNarrowingUnionClassViaAttribute]
+from typing import Literal
+
+class A:
+    tag: Literal["a"]
+    name: str
+
+class B:
+    tag: Literal["b"]
+    num: int
+
+d: A | B
+match d.tag:
+    case "a":
+        reveal_type(d)  # N: Revealed type is "__main__.A"
+        reveal_type(d.name)  # N: Revealed type is "builtins.str"
+    case "b":
+        reveal_type(d)  # N: Revealed type is "__main__.B"
+        reveal_type(d.num)  # N: Revealed type is "builtins.int"
+
 [case testMatchSequenceUnion-skip]
 from typing import List, Union
 m: Union[List[List[str]], str]
@@ -768,6 +816,21 @@ match m:
     case A(i, j):
         reveal_type(i)  # N: Revealed type is "builtins.str"
         reveal_type(j)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSequencePatternCaptureNamedTuple]
+from typing import NamedTuple
+
+class N(NamedTuple):
+    x: int
+    y: str
+
+a = N(1, "a")
+
+match a:
+    case [x, y]:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+        reveal_type(y)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternCaptureGeneric]
@@ -1442,8 +1505,7 @@ def f(value: Literal[1] | Literal[2]) -> int:
 [typing fixtures/typing-medium.pyi]
 
 [case testMatchSequencePatternNegativeNarrowing]
-from typing import Union, Sequence, Tuple
-from typing_extensions import Literal
+from typing import Literal, Union, Sequence, Tuple
 
 m1: Sequence[int | str]
 
@@ -1487,11 +1549,13 @@ match m5:
     case _:
         reveal_type(m5)  # N: Revealed type is "Tuple[Literal[2], Union[Literal['a'], Literal['b']]]"
 
-match m5:
+m6: Tuple[Literal[1, 2], Literal["a", "b"]]
+
+match m6:
     case (1, "a"):
-        reveal_type(m5)  # N: Revealed type is "Tuple[Literal[1], Literal['a']]"
+        reveal_type(m6)  # N: Revealed type is "Tuple[Literal[1], Literal['a']]"
     case _:
-        reveal_type(m5)  # N: Revealed type is "Tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
+        reveal_type(m6)  # N: Revealed type is "Tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1905,8 +1969,7 @@ match var:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchNamedAndKeywordsAreTheSame]
-from typing import Generic, TypeVar, Union
-from typing_extensions import Final
+from typing import Generic, Final, TypeVar, Union
 from dataclasses import dataclass
 
 T = TypeVar("T")
@@ -2474,7 +2537,7 @@ def nested_in_dict(d: dict[str, Any]) -> int:
 
 [case testMatchRebindsOuterFunctionName]
 # flags: --warn-unreachable
-from typing_extensions import Literal
+from typing import Literal
 
 def x() -> tuple[Literal["test"]]: ...
 
@@ -2605,3 +2668,56 @@ match 0:
         i  # E: Statement is unreachable
     case other:
         other  # E: Statement is unreachable
+
+[case testMatchNamedTupleSequence]
+from typing import Any, NamedTuple
+
+class T(NamedTuple):
+    t: list[Any]
+
+class K(NamedTuple):
+    k: int
+
+def f(t: T) -> None:
+    match t:
+        case T([K() as k]):
+            reveal_type(k)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.K]"
+[builtins fixtures/tuple.pyi]
+
+[case testNewRedefineMatchBasics]
+# flags: --allow-redefinition-new --local-partial-types
+
+def f1(x: int | str | list[bytes]) -> None:
+    match x:
+        case int():
+            reveal_type(x) # N: Revealed type is "builtins.int"
+        case str(y):
+            reveal_type(y) # N: Revealed type is "builtins.str"
+        case [y]:
+            reveal_type(y) # N: Revealed type is "builtins.bytes"
+    reveal_type(y) # N: Revealed type is "Union[builtins.str, builtins.bytes]"
+
+[case testNewRedefineLoopWithMatch]
+# flags: --allow-redefinition-new --local-partial-types
+
+def f1() -> None:
+    while True:
+        x = object()
+        match x:
+            case str(y):
+                pass
+            case int():
+                pass
+        if int():
+            continue
+
+def f2() -> None:
+    for x in [""]:
+        match str():
+            case "a":
+                y = ""
+            case "b":
+                y = 1
+                return
+    reveal_type(y) # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]

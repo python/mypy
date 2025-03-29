@@ -81,6 +81,10 @@ for full details, see :ref:`running-mypy`.
     never recursively discover files with extensions other than ``.py`` or
     ``.pyi``.
 
+.. option:: --exclude-gitignore
+
+    This flag will add everything that matches ``.gitignore`` file(s) to :option:`--exclude`.
+
 
 Optional arguments
 ******************
@@ -555,6 +559,26 @@ potentially problematic or redundant in some way.
     imports or uses deprecated features. This flag converts such errors to
     notes, causing mypy to eventually finish with a zero exit code. Features
     are considered deprecated when decorated with ``warnings.deprecated``.
+
+.. option:: --deprecated-calls-exclude
+
+    This flag allows to selectively disable :ref:`deprecated<code-deprecated>` warnings
+    for functions and methods defined in specific packages, modules, or classes.
+    Note that each exclude entry acts as a prefix. For example (assuming ``foo.A.func`` is deprecated):
+
+    .. code-block:: python
+
+        # mypy --enable-error-code deprecated
+        #      --deprecated-calls-exclude=foo.A
+        import foo
+
+        foo.A().func()  # OK, the deprecated warning is ignored
+
+        # file foo.py
+        from typing_extensions import deprecated
+        class A:
+            @deprecated("Use A.func2 instead")
+            def func(self): pass
 
 .. _miscellaneous-strictness-flags:
 

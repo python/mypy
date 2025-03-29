@@ -1239,7 +1239,7 @@ class B: pass
 [out]
 
 [case testForStatementIndexNarrowing]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class X(TypedDict):
     hourly: int
@@ -1266,6 +1266,7 @@ for b in ("hourly", "daily"):
     reveal_type(b)  # N: Revealed type is "builtins.str"
     reveal_type(b.upper())  # N: Revealed type is "builtins.str"
 [builtins fixtures/for.pyi]
+[typing fixtures/typing-full.pyi]
 
 
 -- Regression tests
@@ -1535,7 +1536,7 @@ if int():
 if int():
     a = x3 \
      # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]") \
-     # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+     # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -1558,7 +1559,7 @@ if int():
 if int():
     a = x3 \
      # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]") \
-     # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+     # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3886,3 +3887,79 @@ def a4(x: List[str], y: List[Never]) -> None:
     reveal_type(z2)  # N: Revealed type is "builtins.list[builtins.object]"
     z1[1].append("asdf")  # E: "object" has no attribute "append"
 [builtins fixtures/dict.pyi]
+
+[case testTupleJoinFallbackInference]
+foo = [
+    (1, ("a", "b")),
+    (2, []),
+]
+reveal_type(foo)  # N: Revealed type is "builtins.list[Tuple[builtins.int, typing.Sequence[builtins.str]]]"
+[builtins fixtures/tuple.pyi]
+
+[case testForLoopIndexVaribaleNarrowing1]
+# flags: --local-partial-types
+from typing import Union
+x: Union[int, str]
+x = "abc"
+for x in list[int]():
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testForLoopIndexVaribaleNarrowing2]
+# flags: --enable-error-code=redundant-expr
+from typing import Union
+x: Union[int, str]
+x = "abc"
+for x in list[int]():
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testNarrowInFunctionDefer]
+from typing import Optional, Callable, TypeVar
+
+def top() -> None:
+    x: Optional[int]
+    assert x is not None
+
+    def foo() -> None:
+        defer()
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], T]: ...
+
+@deco
+def defer() -> int: ...
+
+[case testDeferMethodOfNestedClass]
+from typing import Optional, Callable, TypeVar
+
+class Out:
+    def meth(self) -> None:
+        class In:
+            def meth(self) -> None:
+                reveal_type(defer())  # N: Revealed type is "builtins.int"
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], T]: ...
+
+@deco
+def defer() -> int: ...
+
+[case testVariableDeferredWithNestedFunction]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], T]: ...
+
+@deco
+def f() -> None:
+    x = 1
+    f()  # defer current node
+    x = x
+
+    def nested() -> None:
+        ...
+
+    # The type below should not be Any.
+    reveal_type(x)  # N: Revealed type is "builtins.int"
