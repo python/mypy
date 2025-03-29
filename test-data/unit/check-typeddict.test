@@ -4138,3 +4138,46 @@ Derived.Params(name="Robert")
 DerivedOverride.Params(name="Robert")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAlias]
+from typing import NotRequired, TypedDict
+from typing_extensions import TypeAlias
+
+class Base(TypedDict):
+    foo: int
+
+Base1 = Base
+class Child1(Base1):
+    bar: NotRequired[int]
+c11: Child1 = {"foo": 0}
+c12: Child1 = {"foo": 0, "bar": 1}
+c13: Child1 = {"foo": 0, "bar": 1, "baz": "error"}  # E: Extra key "baz" for TypedDict "Child1"
+
+Base2: TypeAlias = Base
+class Child2(Base2):
+    bar: NotRequired[int]
+c21: Child2 = {"foo": 0}
+c22: Child2 = {"foo": 0, "bar": 1}
+c23: Child2 = {"foo": 0, "bar": 1, "baz": "error"}  # E: Extra key "baz" for TypedDict "Child2"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAliasMultiple]
+from typing import TypedDict
+
+class A(TypedDict, total=False):
+    y: int
+class B(TypedDict, total=False):
+    x: str
+
+D = B
+
+class C(A, D):
+    pass
+
+c1: C = {}
+c2: C = {"x": "x"}
+c3: C = {"y": 1}
+c4: C = {"x": "x", "y": 2}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

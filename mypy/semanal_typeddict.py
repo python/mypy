@@ -30,6 +30,7 @@ from mypy.nodes import (
     StrExpr,
     TempNode,
     TupleExpr,
+    TypeAlias,
     TypedDictExpr,
     TypeInfo,
 )
@@ -50,6 +51,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarLikeType,
+    get_proper_type,
 )
 
 TPDICT_CLASS_ERROR: Final = (
@@ -192,8 +194,16 @@ class TypedDictAnalyzer:
     ) -> None:
         base_args: list[Type] = []
         if isinstance(base, RefExpr):
-            assert isinstance(base.node, TypeInfo)
-            info = base.node
+            if isinstance(base.node, TypeAlias):
+                # Only old TypeAlias / plain assignment, PEP695 `type` stmt
+                # cannot be used as a base class
+                target = get_proper_type(base.node.target)
+                assert isinstance(target, TypedDictType)
+                info = target.fallback.type
+            elif isinstance(base.node, TypeInfo):
+                info = base.node
+            else:
+                assert False
         elif isinstance(base, IndexExpr):
             assert isinstance(base.base, RefExpr)
             assert isinstance(base.base.node, TypeInfo)
@@ -609,10 +619,11 @@ class TypedDictAnalyzer:
     # Helpers
 
     def is_typeddict(self, expr: Expression) -> bool:
-        return (
-            isinstance(expr, RefExpr)
-            and isinstance(expr.node, TypeInfo)
+        return isinstance(expr, RefExpr) and (
+            isinstance(expr.node, TypeInfo)
             and expr.node.typeddict_type is not None
+            or isinstance(expr.node, TypeAlias)
+            and isinstance(get_proper_type(expr.node.target), TypedDictType)
         )
 
     def fail(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -> None:
