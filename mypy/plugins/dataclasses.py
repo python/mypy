@@ -291,11 +291,7 @@ class DataclassTransformer:
                 self._api, self._cls, "__init__", args=args, return_type=NoneType()
             )
 
-        if (
-            decorator_arguments["eq"]
-            and info.get("__eq__") is None
-            or decorator_arguments["order"]
-        ):
+        if decorator_arguments["eq"] and info.get("__eq__") is None:
             # Type variable for self types in generated methods.
             obj_type = self._api.named_type("builtins.object")
             self_tvar_expr = TypeVarExpr(
