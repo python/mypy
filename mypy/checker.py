@@ -17,6 +17,7 @@ from mypy.checkmember import (
     analyze_class_attribute_access,
     analyze_instance_member_access,
     analyze_member_access,
+    is_instance_var,
 )
 from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
@@ -3408,10 +3409,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         type_contexts = []
         if inferred.info:
             for base in inferred.info.mro[1:]:
+                if inferred.name not in base.names:
+                    continue
                 # For inference within class body, get supertype attribute as it would look on
-                # a class object for lambdas overriding methods.
-                base_type, base_node = self.lvalue_type_from_base(
-                    inferred, base, is_class=isinstance(rvalue, LambdaExpr)
+                # a class object for lambdas overriding methods, etc.
+                base_node = base.names[inferred.name].node
+                base_type, _ = self.lvalue_type_from_base(
+                    inferred,
+                    base,
+                    is_class=is_method(base_node)
+                    or isinstance(base_node, Var)
+                    and not is_instance_var(base_node),
                 )
                 if (
                     base_type
@@ -9167,3 +9175,11 @@ def is_typeddict_type_context(lvalue_type: Type | None) -> bool:
         return False
     lvalue_proper = get_proper_type(lvalue_type)
     return isinstance(lvalue_proper, TypedDictType)
+
+
+def is_method(node: SymbolNode | None) -> bool:
+    if isinstance(node, OverloadedFuncDef):
+        return not node.is_property
+    if isinstance(node, Decorator):
+        return not node.var.is_property
+    return isinstance(node, FuncDef)

@@ -8613,6 +8613,26 @@ class C(B):
 
 reveal_type(C().f)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
 
+[case testGenericDecoratorInOverrideInference]
+from typing import Any, Callable, TypeVar
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+T = TypeVar("T")
+def wrap(f: Callable[Concatenate[Any, P], T]) -> Callable[Concatenate[Any, P], T]: ...
+
+class Base:
+    def g(self, a: int) -> int:
+        return a + 1
+
+class Derived(Base):
+    def _g(self, a: int) -> int:
+        return a + 2
+    g = wrap(_g)
+
+reveal_type(Derived().g)  # N: Revealed type is "def (a: builtins.int) -> builtins.int"
+[builtins fixtures/paramspec.pyi]
+
 [case testClassVarOverrideWithSubclass]
 class A: ...
 class B(A): ...
