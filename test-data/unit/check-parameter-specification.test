@@ -2458,20 +2458,6 @@ def run_bad4(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.
                         # E: Argument 1 has incompatible type "int"; expected "P.args"
     return func2(**kwargs)  # E: Too few arguments
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 [builtins fixtures/paramspec.pyi]
 
 [case testOtherVarArgs]
@@ -2490,11 +2476,6 @@ def run(func: Callable[Concatenate[int, str, P], T], *args: P.args, **kwargs: P.
                                 # E: Argument 1 has incompatible type "*P.args"; expected "str" \
                                 # E: Argument 2 has incompatible type "*Tuple[int, str]"; expected "P.args"
     return func2(*args_prefix, *args)
-
-
-
-
-
 
 [builtins fixtures/paramspec.pyi]
 
