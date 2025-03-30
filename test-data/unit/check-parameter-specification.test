@@ -2560,3 +2560,26 @@ def fn(f: MiddlewareFactory[P]) -> Capture[P]: ...
 
 reveal_type(fn(ServerErrorMiddleware))  # N: Revealed type is "__main__.Capture[[handler: Union[builtins.str, None] =, debug: builtins.bool =]]"
 [builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecDuplicateArgsKwargs]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable
+
+_P = ParamSpec("_P")
+
+def run(predicate: Callable[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    predicate(*args, *args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(*args, **kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once
+    predicate(*args, *args, **kwargs, **kwargs)  # E: ParamSpec.args should only be passed once \
+                                                 # E: ParamSpec.kwargs should only be passed once
+
+def run2(predicate: Callable[Concatenate[int, _P], None], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    predicate(*args, *args, **kwargs)  # E: ParamSpec.args should only be passed once \
+                                       # E: Argument 1 has incompatible type "*_P.args"; expected "int"
+    predicate(*args, **kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once \
+                                          # E: Argument 1 has incompatible type "*_P.args"; expected "int"
+    predicate(1, *args, *args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(1, *args, **kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once
+    predicate(1, *args, *args, **kwargs, **kwargs)  # E: ParamSpec.args should only be passed once \
+                                                    # E: ParamSpec.kwargs should only be passed once
+[builtins fixtures/paramspec.pyi]
