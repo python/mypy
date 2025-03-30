@@ -2389,10 +2389,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.msg.too_few_arguments(callee, context, actual_names)
                     ok = False
                 elif len(mapped_args) > 1:
-                    if actual_kinds[mapped_args[0]] == nodes.ARG_STAR:
+                    paramspec_entries = sum(
+                        isinstance(get_proper_type(actual_types[k]), ParamSpecType)
+                        for k in mapped_args
+                    )
+                    if actual_kinds[mapped_args[0]] == nodes.ARG_STAR and paramspec_entries > 1:
                         self.msg.fail("ParamSpec.args should only be passed once", context)
                         ok = False
-                    if actual_kinds[mapped_args[0]] == nodes.ARG_STAR2:
+                    if actual_kinds[mapped_args[0]] == nodes.ARG_STAR2 and paramspec_entries > 1:
                         self.msg.fail("ParamSpec.kwargs should only be passed once", context)
                         ok = False
         return ok

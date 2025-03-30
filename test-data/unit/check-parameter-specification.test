@@ -2413,10 +2413,8 @@ def run2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwar
     func2(1, 2, *p)  # E: Too few arguments \
                      # E: Argument 2 has incompatible type "int"; expected "P.args" \
                      # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
-    func2(1, *args, *p)  # E: ParamSpec.args should only be passed once \
-                         # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
-    func2(1, *p, *args)  # E: ParamSpec.args should only be passed once \
-                         # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
+    func2(1, *args, *p)  # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
+    func2(1, *p, *args)  # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
     return func2(1, *args)
 
 def run3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
@@ -2466,6 +2464,14 @@ def run_bad4(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.
 
 
 
+
+
+
+
+
+
+
+
 [builtins fixtures/paramspec.pyi]
 
 [case testOtherVarArgs]
@@ -2480,11 +2486,13 @@ def run(func: Callable[Concatenate[int, str, P], T], *args: P.args, **kwargs: P.
     func2 = partial(func, **kwargs)
     args_prefix: Tuple[int, str] = (1, 'a')
     func2(*args_prefix)  # E: Too few arguments
-    func2(*args, *args_prefix)  # E: ParamSpec.args should only be passed once \
-                                # E: Argument 1 has incompatible type "*P.args"; expected "int" \
+    func2(*args, *args_prefix)  # E: Argument 1 has incompatible type "*P.args"; expected "int" \
                                 # E: Argument 1 has incompatible type "*P.args"; expected "str" \
                                 # E: Argument 2 has incompatible type "*Tuple[int, str]"; expected "P.args"
     return func2(*args_prefix, *args)
+
+
+
 
 
 
@@ -2574,7 +2582,7 @@ reveal_type(fn(ServerErrorMiddleware))  # N: Revealed type is "__main__.Capture[
 
 [case testRunParamSpecDuplicateArgsKwargs]
 from typing_extensions import ParamSpec, Concatenate
-from typing import Callable
+from typing import Callable, Union
 
 _P = ParamSpec("_P")
 
@@ -2593,4 +2601,12 @@ def run2(predicate: Callable[Concatenate[int, _P], None], *args: _P.args, **kwar
     predicate(1, *args, **kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once
     predicate(1, *args, *args, **kwargs, **kwargs)  # E: ParamSpec.args should only be passed once \
                                                     # E: ParamSpec.kwargs should only be passed once
+
+def run3(predicate: Callable[Concatenate[int, str, _P], None], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    base_ok: tuple[int, str]
+    predicate(*base_ok, *args, **kwargs)
+    base_bad: tuple[Union[int, str], ...]
+    predicate(*base_bad, *args, **kwargs)  # E: Argument 1 has incompatible type "*Tuple[Union[int, str], ...]"; expected "int" \
+                                           # E: Argument 1 has incompatible type "*Tuple[Union[int, str], ...]"; expected "str" \
+                                           # E: Argument 1 has incompatible type "*Tuple[Union[int, str], ...]"; expected "_P.args"
 [builtins fixtures/paramspec.pyi]
