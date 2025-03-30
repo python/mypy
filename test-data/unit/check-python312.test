@@ -2035,7 +2035,10 @@ class Z: ...  # E: Name "Z" already defined on line 2
 class A[*Ts]: ...
 
 A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
+a: A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
+def foo(a: A[*tuple[int, ...], *tuple[int, ...]]): ...  # E: More than one Unpack in a type is not allowed
 
+tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
 b: tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
