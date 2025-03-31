@@ -40,7 +40,6 @@ from mypy.nodes import (
     TempNode,
     TypeAlias,
     TypeInfo,
-    TypeVarExpr,
     Var,
 )
 from mypy.plugin import ClassDefContext, FunctionSigContext, SemanticAnalyzerPluginInterface
