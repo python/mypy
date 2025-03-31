@@ -56,7 +56,12 @@ from mypy.plugins.common import (
 )
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
-from mypy.typeops import get_type_vars, make_simplified_union, map_type_from_supertype
+from mypy.typeops import (
+    get_type_vars,
+    make_simplified_union,
+    map_type_from_supertype,
+    type_object_type,
+)
 from mypy.types import (
     AnyType,
     CallableType,
@@ -726,8 +731,6 @@ def _parse_converter(
         ):
             converter_type = converter_expr.node.type
         elif isinstance(converter_expr.node, TypeInfo):
-            from mypy.checkmember import type_object_type  # To avoid import cycle.
-
             converter_type = type_object_type(converter_expr.node, ctx.api.named_type)
     elif (
         isinstance(converter_expr, IndexExpr)
@@ -736,8 +739,6 @@ def _parse_converter(
         and isinstance(converter_expr.base.node, TypeInfo)
     ):
         # The converter is a generic type.
-        from mypy.checkmember import type_object_type  # To avoid import cycle.
-
         converter_type = type_object_type(converter_expr.base.node, ctx.api.named_type)
         if isinstance(converter_type, CallableType):
             converter_type = apply_generic_arguments(

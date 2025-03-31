@@ -2240,8 +2240,10 @@ class State:
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if not self.tree.is_stub:
-            # Always perform some low-key variable renaming
-            self.tree.accept(LimitedVariableRenameVisitor())
+            if not self.options.allow_redefinition_new:
+                # Perform some low-key variable renaming when assignments can't
+                # widen inferred types
+                self.tree.accept(LimitedVariableRenameVisitor())
             if options.allow_redefinition:
                 # Perform more renaming across the AST to allow variable redefinitions
                 self.tree.accept(VariableRenameVisitor())

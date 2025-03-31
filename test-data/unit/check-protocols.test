@@ -332,7 +332,7 @@ class MyHashable(Protocol):
 
 class C(MyHashable):
     __my_hash__ = None  # E: Incompatible types in assignment \
-(expression has type "None", base class "MyHashable" defined the type as "Callable[[MyHashable], int]")
+(expression has type "None", base class "MyHashable" defined the type as "Callable[[], int]")
 
 [case testProtocolsWithNoneAndStrictOptional]
 from typing import Protocol

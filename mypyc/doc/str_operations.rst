@@ -12,6 +12,8 @@ Construction
 * String literal
 * ``str(x: int)``
 * ``str(x: object)``
+* ``repr(x: int)``
+* ``repr(x: object)``
 
 Operators
 ---------

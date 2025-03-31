@@ -145,7 +145,7 @@ class Base:
         pass
 
 class Derived(Base):
-    __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
+    __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[], int]")
 
 [case testOverridePartialAttributeWithMethod]
 # This was crashing: https://github.com/python/mypy/issues/11686.
@@ -4453,7 +4453,7 @@ class A:
     def a(self) -> None: pass
     b = 1
 class B(A):
-    a = 1  # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "Callable[[A], None]")
+    a = 1  # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "Callable[[], None]")
     def b(self) -> None: pass  # E: Signature of "b" incompatible with supertype "A" \
                                # N:      Superclass: \
                                # N:          int \
@@ -4546,20 +4546,20 @@ main:7: error: Incompatible types in assignment (expression has type "Callable[[
 [case testClassSpec]
 from typing import Callable
 class A():
-    b = None  # type: Callable[[A, int], int]
+    b = None  # type: Callable[[int], int]
 class B(A):
     def c(self, a: int) -> int: pass
     b = c
+reveal_type(A().b)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+reveal_type(B().b)  # N: Revealed type is "def (a: builtins.int) -> builtins.int"
 
 [case testClassSpecError]
 from typing import Callable
 class A():
-    b = None  # type: Callable[[A, int], int]
+    b = None  # type: Callable[[int], int]
 class B(A):
     def c(self, a: str) -> int: pass
-    b = c
-[out]
-main:6: error: Incompatible types in assignment (expression has type "Callable[[str], int]", base class "A" defined the type as "Callable[[int], int]")
+    b = c  # E: Incompatible types in assignment (expression has type "Callable[[str], int]", base class "A" defined the type as "Callable[[int], int]")
 
 [case testClassStaticMethod]
 class A():
@@ -4581,10 +4581,11 @@ class A():
 class B(A):
     @staticmethod
     def b(a: str) -> None: pass
-    c = b
+    c = b  # E: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "A" defined the type as "Callable[[int], None]")
+a: A
+reveal_type(a.a)  # N: Revealed type is "def (a: builtins.int)"
+reveal_type(a.c)  # N: Revealed type is "def (a: builtins.int)"
 [builtins fixtures/staticmethod.pyi]
-[out]
-main:8: error: Incompatible types in assignment (expression has type "Callable[[str], None]", base class "A" defined the type as "Callable[[int], None]")
 
 [case testClassStaticMethodSubclassing]
 class A:
@@ -4649,22 +4650,20 @@ class B(A):
 class A:
     x = 1
 class B(A):
-    x = "a"
+    x = "a"  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
 class C(B):
-    x = object()
-[out]
-main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-main:6: error: Incompatible types in assignment (expression has type "object", base class "A" defined the type as "int")
+    x = object()  # E: Incompatible types in assignment (expression has type "object", base class "B" defined the type as "str")
 
 [case testClassOneErrorPerLine]
 class A:
-  x = 1
+    x = 1
 class B(A):
-  x = ""
-  x = 1.0
-[out]
-main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-main:5: error: Incompatible types in assignment (expression has type "float", base class "A" defined the type as "int")
+    x: str = ""  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+    x = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "str")
+class BInfer(A):
+    x = ""  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+    x = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "str") \
+             # E: Incompatible types in assignment (expression has type "float", base class "A" defined the type as "int")
 
 [case testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored]
 class A:
@@ -4672,8 +4671,7 @@ class A:
 class B(A):
     x = ''  # type: ignore
 class C(B):
-    x = ''  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-[out]
+    x = ''
 
 [case testClassIgnoreType_RedefinedAttributeTypeIgnoredInChildren]
 class A:
@@ -4682,7 +4680,6 @@ class B(A):
     x = ''  # type: ignore
 class C(B):
     x = ''  # type: ignore
-[out]
 
 [case testInvalidMetaclassStructure]
 class X(type): pass
@@ -8586,3 +8583,68 @@ class Wrapper(Generic[T, R]):
     def __call__(self, s: T) -> list[R]: ...
 def deco_instance(fn: Callable[[T, int], R]) -> Wrapper[T, R]: ...
 [builtins fixtures/property.pyi]
+
+[case testOverridePropertyWithDescriptor]
+from typing import Any
+
+class StrProperty:
+    def __get__(self, instance: Any, owner: Any) -> str: ...
+
+class Base:
+    @property
+    def id(self) -> str: ...
+
+class BadBase:
+    @property
+    def id(self) -> int: ...
+
+class Derived(Base):
+    id = StrProperty()
+
+class BadDerived(BadBase):
+    id = StrProperty()  # E: Incompatible types in assignment (expression has type "str", base class "BadBase" defined the type as "int")
+[builtins fixtures/property.pyi]
+
+[case testLambdaInOverrideInference]
+class B:
+    def f(self, x: int) -> int: ...
+class C(B):
+    f = lambda s, x: x
+
+reveal_type(C().f)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
+
+[case testGenericDecoratorInOverrideInference]
+from typing import Any, Callable, TypeVar
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+T = TypeVar("T")
+def wrap(f: Callable[Concatenate[Any, P], T]) -> Callable[Concatenate[Any, P], T]: ...
+
+class Base:
+    def g(self, a: int) -> int:
+        return a + 1
+
+class Derived(Base):
+    def _g(self, a: int) -> int:
+        return a + 2
+    g = wrap(_g)
+
+reveal_type(Derived().g)  # N: Revealed type is "def (a: builtins.int) -> builtins.int"
+[builtins fixtures/paramspec.pyi]
+
+[case testClassVarOverrideWithSubclass]
+class A: ...
+class B(A): ...
+class AA:
+    cls = A
+class BB(AA):
+    cls = B
+
+[case testSelfReferenceWithinMethodFunction]
+class B:
+    x: str
+class C(B):
+    def meth(self) -> None:
+        def cb() -> None:
+            self.x: int = 1  # E: Incompatible types in assignment (expression has type "int", base class "B" defined the type as "str")

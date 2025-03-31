@@ -2829,3 +2829,56 @@ Traceback (most recent call last):
   File "native.py", line 5, in __del__
     raise Exception("e2")
 Exception: e2
+
+[case testMypycAttrNativeClass]
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+
+@mypyc_attr(native_class=False)
+class AnnontatedNonExtensionClass:
+    pass
+
+class DerivedClass(AnnontatedNonExtensionClass):
+    pass
+
+class ImplicitExtensionClass():
+    pass
+
+@mypyc_attr(native_class=True)
+class AnnotatedExtensionClass():
+    pass
+
+def test_function():
+    setattr(AnnontatedNonExtensionClass, 'attr_class', 5)
+    assert(hasattr(AnnontatedNonExtensionClass, 'attr_class') == True)
+    assert(getattr(AnnontatedNonExtensionClass, 'attr_class') == 5)
+    delattr(AnnontatedNonExtensionClass, 'attr_class')
+    assert(hasattr(AnnontatedNonExtensionClass, 'attr_class') == False)
+
+    inst = AnnontatedNonExtensionClass()
+    setattr(inst, 'attr_instance', 6)
+    assert(hasattr(inst, 'attr_instance') == True)
+    assert(getattr(inst, 'attr_instance') == 6)
+    delattr(inst, 'attr_instance')
+    assert(hasattr(inst, 'attr_instance') == False)
+
+    setattr(DerivedClass, 'attr_class', 5)
+    assert(hasattr(DerivedClass, 'attr_class') == True)
+    assert(getattr(DerivedClass, 'attr_class') == 5)
+    delattr(DerivedClass, 'attr_class')
+    assert(hasattr(DerivedClass, 'attr_class') == False)
+
+    derived_inst = DerivedClass()
+    setattr(derived_inst, 'attr_instance', 6)
+    assert(hasattr(derived_inst, 'attr_instance') == True)
+    assert(getattr(derived_inst, 'attr_instance') == 6)
+    delattr(derived_inst, 'attr_instance')
+    assert(hasattr(derived_inst, 'attr_instance') == False)
+
+    ext_inst = ImplicitExtensionClass()
+    with assertRaises(AttributeError):
+        setattr(ext_inst, 'attr_instance', 6)
+
+    explicit_ext_inst = AnnotatedExtensionClass()
+    with assertRaises(AttributeError):
+        setattr(explicit_ext_inst, 'attr_instance', 6)

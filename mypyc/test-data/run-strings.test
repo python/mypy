@@ -2,6 +2,11 @@
 
 [case testStrBasics]
 from typing import Tuple
+class A:
+    def __str__(self) -> str:
+        return "A-str"
+    def __repr__(self) -> str:
+        return "A-repr"
 def f() -> str:
     return 'some string'
 def g() -> str:
@@ -10,6 +15,14 @@ def tostr(x: int) -> str:
     return str(x)
 def booltostr(x: bool) -> str:
     return str(x)
+def clstostr(x: A) -> str:
+    return str(x)
+def torepr(x: int) -> str:
+    return repr(x)
+def booltorepr(x: bool) -> str:
+    return repr(x)
+def clstorepr(x: A) -> str:
+    return repr(x)
 def concat(x: str, y: str) -> str:
     return x + y
 def eq(x: str) -> int:
@@ -29,8 +42,9 @@ def remove_prefix_suffix(x: str, y: str) -> Tuple[str, str]:
 
 [file driver.py]
 from native import (
-    f, g, tostr, booltostr, concat, eq, match, match_tuple,
-    match_tuple_literal_args, remove_prefix_suffix
+    f, g, A, tostr, booltostr, clstostr, concat, eq, match, match_tuple,
+    match_tuple_literal_args, remove_prefix_suffix,
+    torepr, booltorepr, clstorepr
 )
 import sys
 from testutil import assertRaises
@@ -42,12 +56,20 @@ assert tostr(57) == '57'
 assert concat('foo', 'bar') == 'foobar'
 assert booltostr(True) == 'True'
 assert booltostr(False) == 'False'
+assert clstostr(A()) == "A-str"
 assert eq('foo') == 0
 assert eq('zar') == 1
 assert eq('bar') == 2
 
+assert torepr(57) == '57'
+assert booltorepr(True) == 'True'
+assert booltorepr(False) == 'False'
+assert clstorepr(A()) == "A-repr"
+
 assert int(tostr(0)) == 0
 assert int(tostr(20)) == 20
+assert int(torepr(0)) == 0
+assert int(torepr(20)) == 20
 assert match('', '') == (True, True)
 assert match('abc', '') == (True, True)
 assert match('abc', 'a') == (True, False)
