@@ -2285,6 +2285,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     #   run(test, 1, 2)
                     # we will use `test` for inference, since it will allow to infer also
                     # argument *names* for P <: [x: int, y: int].
+                    if isinstance(p_actual, UnionType):
+                        new_items = []
+                        for item in p_actual.items:
+                            # narrow the union based on some approximations
+                            p_item = get_proper_type(item)
+                            if isinstance(p_item, CallableType) or (
+                                isinstance(p_item, Instance)
+                                and find_member("__call__", p_item, p_item, is_operator=True)
+                                is not None
+                            ):
+                                new_items.append(p_item)
+                                if len(new_items) == 2:
+                                    break
+
+                        if len(new_items) == 1:
+                            p_actual = new_items[0]
                     if isinstance(p_actual, Instance):
                         call_method = find_member("__call__", p_actual, p_actual, is_operator=True)
                         if call_method is not None:
