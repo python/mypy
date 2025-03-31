@@ -1674,12 +1674,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
             return callee.ret_type, callee
 
-        if (
-            callee.is_type_obj()
-            and callee.type_object().is_protocol
-            # Exception for Type[...]
-            and not callee.from_type_type
-        ):
+        if callee.is_type_obj() and callee.type_object().is_protocol:
             self.chk.fail(
                 message_registry.CANNOT_INSTANTIATE_PROTOCOL.format(callee.type_object().name),
                 context,
@@ -1687,8 +1682,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif (
             callee.is_type_obj()
             and callee.type_object().is_abstract
-            # Exception for Type[...]
-            and not callee.from_type_type
             and not callee.type_object().fallback_to_any
         ):
             type = callee.type_object()
