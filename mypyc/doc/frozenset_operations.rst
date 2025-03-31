@@ -1,7 +1,7 @@
 .. _frozenset-ops:
 
 Native frozenset operations
-======================
+===========================
 
 These ``frozenset`` operations have fast, optimized implementations. Other
 frozenset operations use generic implementations that are often slower.

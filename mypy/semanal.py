@@ -658,6 +658,13 @@ class SemanticAnalyzer(
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
+        if self.options.allow_redefinition_new and not self.options.local_partial_types:
+            n = TempNode(AnyType(TypeOfAny.special_form))
+            n.line = 1
+            n.column = 0
+            n.end_line = 1
+            n.end_column = 0
+            self.fail("--local-partial-types must be enabled if using --allow-redefinition-new", n)
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
@@ -1247,7 +1254,9 @@ class SemanticAnalyzer(
             first_item.accept(self)
 
         bare_setter_type = None
+        is_property = False
         if isinstance(first_item, Decorator) and first_item.func.is_property:
+            is_property = True
             # This is a property.
             first_item.func.is_overload = True
             bare_setter_type = self.analyze_property_with_multi_part_definition(defn)
@@ -1255,7 +1264,7 @@ class SemanticAnalyzer(
             assert isinstance(typ, CallableType)
             types = [typ]
         else:
-            # This is an a normal overload. Find the item signatures, the
+            # This is a normal overload. Find the item signatures, the
             # implementation (if outside a stub), and any missing @overload
             # decorators.
             types, impl, non_overload_indexes = self.analyze_overload_sigs_and_impl(defn)
@@ -1275,8 +1284,10 @@ class SemanticAnalyzer(
         if types and not any(
             # If some overload items are decorated with other decorators, then
             # the overload type will be determined during type checking.
-            isinstance(it, Decorator) and len(it.decorators) > 1
-            for it in defn.items
+            # Note: bare @property is removed in visit_decorator().
+            isinstance(it, Decorator)
+            and len(it.decorators) > (1 if i > 0 or not is_property else 0)
+            for i, it in enumerate(defn.items)
         ):
             # TODO: should we enforce decorated overloads consistency somehow?
             # Some existing code uses both styles:
@@ -4352,8 +4363,10 @@ class SemanticAnalyzer(
                 else:
                     lvalue.fullname = lvalue.name
                 if self.is_func_scope():
-                    if unmangle(name) == "_":
+                    if unmangle(name) == "_" and not self.options.allow_redefinition_new:
                         # Special case for assignment to local named '_': always infer 'Any'.
+                        # This isn't needed with --allow-redefinition-new, since arbitrary
+                        # types can be assigned to '_' anyway.
                         typ = AnyType(TypeOfAny.special_form)
                         self.store_declared_types(lvalue, typ)
             if is_final and self.is_final_redefinition(kind, name):
@@ -6058,6 +6071,8 @@ class SemanticAnalyzer(
                 return None
             types.append(analyzed)
 
+        if allow_unpack:
+            types = self.type_analyzer().check_unpacks_in_list(types)
         if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
             single_any = len(types) == 1 and isinstance(first_arg, AnyType)

@@ -1345,3 +1345,28 @@ class SomeEnum(Enum):
 
 ALIAS = Literal[SomeEnum.AVALUE]
 ALIAS2 = Union[Literal[SomeEnum.AVALUE], None]
+
+[case testMypycAttrNativeClassErrors]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class AnnontatedNonExtensionClass:
+    pass
+
+@mypyc_attr(native_class=False)
+class DerivedExplicitNonNativeClass(AnnontatedNonExtensionClass):
+    pass
+
+
+def decorator(cls):
+    return cls
+
+@mypyc_attr(native_class=True)
+@decorator
+class NonNativeClassContradiction():  # E: Class is marked as native_class=True but it can't be a native class
+    pass
+
+
+@mypyc_attr(native_class="yes")
+class BadUse():  # E: native_class must be used with True or False only
+    pass

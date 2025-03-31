@@ -249,10 +249,8 @@ class ArgTypeExpander:
                     formal_name = (set(actual_type.items.keys()) - self.kwargs_used).pop()
                 self.kwargs_used.add(formal_name)
                 return actual_type.items[formal_name]
-            elif (
-                isinstance(actual_type, Instance)
-                and len(actual_type.args) > 1
-                and is_subtype(actual_type, self.context.mapping_type)
+            elif isinstance(actual_type, Instance) and is_subtype(
+                actual_type, self.context.mapping_type
             ):
                 # Only `Mapping` type can be unpacked with `**`.
                 # Other types will produce an error somewhere else.

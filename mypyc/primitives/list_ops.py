@@ -262,6 +262,33 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# list.copy()
+method_op(
+    name="copy",
+    arg_types=[list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="CPyList_Copy",
+    error_kind=ERR_MAGIC,
+)
+
+# list + list
+binary_op(
+    name="+",
+    arg_types=[list_rprimitive, list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="PySequence_Concat",
+    error_kind=ERR_MAGIC,
+)
+
+# list += list
+binary_op(
+    name="+=",
+    arg_types=[list_rprimitive, object_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="PySequence_InPlaceConcat",
+    error_kind=ERR_MAGIC,
+)
+
 # list * int
 binary_op(
     name="*",

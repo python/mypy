@@ -4520,9 +4520,9 @@ x = 0
 x = ''
 [builtins fixtures/tuple.pyi]
 [out]
-b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], object], int]")
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[object], int]")
 ==
-b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], object], int]")
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[object], int]")
 
 [case testReprocessEllipses1]
 import a
