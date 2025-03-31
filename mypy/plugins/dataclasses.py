@@ -291,18 +291,6 @@ class DataclassTransformer:
                 self._api, self._cls, "__init__", args=args, return_type=NoneType()
             )
 
-        if decorator_arguments["eq"] and info.get("__eq__") is None:
-            # Type variable for self types in generated methods.
-            obj_type = self._api.named_type("builtins.object")
-            self_tvar_expr = TypeVarExpr(
-                SELF_TVAR_NAME,
-                info.fullname + "." + SELF_TVAR_NAME,
-                [],
-                obj_type,
-                AnyType(TypeOfAny.from_omitted_generics),
-            )
-            info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
-
         # Add <, >, <=, >=, but only if the class has an eq method.
         if decorator_arguments["order"]:
             if not decorator_arguments["eq"]:
