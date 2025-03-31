@@ -6071,6 +6071,8 @@ class SemanticAnalyzer(
                 return None
             types.append(analyzed)
 
+        if allow_unpack:
+            types = self.type_analyzer().check_unpacks_in_list(types)
         if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
             single_any = len(types) == 1 and isinstance(first_arg, AnyType)
