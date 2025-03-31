@@ -1519,3 +1519,14 @@ class C(T):
 c: Union[C, Any]
 reveal_type(c.f())  # N: Revealed type is "Union[builtins.bool, Any]"
 [builtins fixtures/tuple.pyi]
+
+[case testNamedTupleAsClassMemberNoCrash]
+# https://github.com/python/mypy/issues/18736
+from collections import namedtuple
+
+class Base:
+    def __init__(self, namespace: tuple[str, ...]) -> None:
+        # Not a bug: trigger defer
+        names = [name for name in namespace if fail]  # E: Name "fail" is not defined
+        self.n = namedtuple("n", names)  # E: NamedTuple type as an attribute is not supported
+[builtins fixtures/tuple.pyi]
