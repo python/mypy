@@ -3541,3 +3541,197 @@ def f(x: Callable[[Arg(int, 'x')], None]) -> None: pass
 y: Callable[[Union[int, str]], None]
 f(y)  # E: Argument 1 to "f" has incompatible type "Callable[[Union[int, str]], None]"; expected "Callable[[Arg(int, 'x')], None]"
 [builtins fixtures/tuple.pyi]
+
+[case testCallableJoin1]
+from typing import Callable, TypeVar
+
+C = TypeVar("C", bound=Callable[..., None])
+
+def join(t: C, val: C) -> C:
+    pass
+
+def base(x: str) -> None: ...
+
+def ok1(y: str) -> None: ...
+def ok2(x: str, /) -> None: ...
+def ok3(x: str, *args: int) -> None: ...
+def ok4(x: str, **kwargs: int) -> None: ...
+def ok5(x: str, /, **kwargs: int) -> None: ...
+def ok6(*, x: str) -> None: ...
+
+def bad1(x: int) -> None: ...
+def bad2(x: int, /) -> None: ...
+def bad3(x: str, y: int) -> None: ...
+def bad4(x: str, *, y: int) -> None: ...
+def bad5(*, y: str) -> None: ...
+
+reveal_type(join(base, base))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(join(base, ok1))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok2))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok3))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(join(base, ok4))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(join(base, ok5))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok6))  # N: Revealed type is "def (*, x: builtins.str)"
+
+reveal_type(join(base, bad1))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad2))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad3))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad4))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad5))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+[builtins fixtures/tuple.pyi]
+
+[case testCallableJoin2]
+from typing import Callable, TypeVar
+
+C = TypeVar("C", bound=Callable[..., None])
+
+def join(t: C, val: C) -> C:
+    pass
+
+def base(x: str, /) -> None: ...
+
+def ok1(y: str) -> None: ...
+def ok2(x: str) -> None: ...
+def ok3(x: str, *args: int) -> None: ...
+def ok4(x: str, **kwargs: int) -> None: ...
+def ok5(x: str, /, **kwargs: int) -> None: ...
+
+def bad1(x: int) -> None: ...
+def bad2(x: int, /) -> None: ...
+def bad3(x: str, y: int) -> None: ...
+def bad4(x: str, *, y: int) -> None: ...
+def bad5(*, x: str) -> None: ...
+def bad6(*, y: str) -> None: ...
+
+reveal_type(join(base, base))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok1))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok2))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok3))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok4))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok5))  # N: Revealed type is "def (builtins.str)"
+
+reveal_type(join(base, bad1))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad2))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad3))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad4))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad5))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad6))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+[builtins fixtures/tuple.pyi]
+
+[case testCallableJoin3]
+from typing import Callable, TypeVar
+
+C = TypeVar("C", bound=Callable[..., None])
+
+def join(t: C, val: C) -> C:
+    pass
+
+def base(x: str, *args: int) -> None: ...
+
+def ok1(y: str) -> None: ...
+def ok2(x: str) -> None: ...
+def ok3(x: str, y: int) -> None: ...
+def ok4(x: str, **kwargs: int) -> None: ...
+def ok5(x: str, /, **kwargs: int) -> None: ...
+def ok6(x: str, *args: str) -> None: ...
+def ok7(*, x: str) -> None: ...
+
+def bad1(x: int) -> None: ...
+def bad2(x: int, /) -> None: ...
+def bad3(x: str, *, y: int) -> None: ...
+def bad4(*, y: str) -> None: ...
+
+reveal_type(join(base, base))  # N: Revealed type is "def (x: builtins.str, *builtins.int)"
+reveal_type(join(base, ok1))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok2))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(join(base, ok3))  # N: Revealed type is "def (x: builtins.str, builtins.int)"
+reveal_type(join(base, ok4))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(join(base, ok5))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok6))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(join(base, ok7))  # N: Revealed type is "def (*, x: builtins.str)"
+
+reveal_type(join(base, bad1))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad2))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad3))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad4))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+[builtins fixtures/tuple.pyi]
+
+[case testCallableJoin4]
+from typing import Callable, TypeVar
+
+C = TypeVar("C", bound=Callable[..., None])
+
+def join(t: C, val: C) -> C:
+    pass
+
+def base(x: str, **kwargs: int) -> None: ...
+
+def ok1(y: str) -> None: ...
+def ok2(x: str) -> None: ...
+def ok3(x: str, y: int) -> None: ...
+def ok4(x: str, *, y: int) -> None: ...
+def ok5(x: str, *args: int) -> None: ...
+def ok6(x: str, /, *args: int) -> None: ...
+def ok7(x: str, **kwargs: str) -> None: ...
+def ok8(*, x: str) -> None: ...
+
+def bad1(x: int) -> None: ...
+def bad2(x: int, /) -> None: ...
+def bad3(*, y: str) -> None: ...
+
+reveal_type(join(base, base))  # N: Revealed type is "def (x: builtins.str, **builtins.int)"
+reveal_type(join(base, ok1))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok2))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(join(base, ok3))  # N: Revealed type is "def (x: builtins.str, *, y: builtins.int)"
+reveal_type(join(base, ok4))  # N: Revealed type is "def (x: builtins.str, *, y: builtins.int)"
+reveal_type(join(base, ok5))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(join(base, ok6))  # N: Revealed type is "def (builtins.str)"
+reveal_type(join(base, ok7))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(join(base, ok8))  # N: Revealed type is "def (*, x: builtins.str)"
+
+reveal_type(join(base, bad1))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad2))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+reveal_type(join(base, bad3))  # E: Value of type variable "C" of "join" cannot be "function" \
+                               # N: Revealed type is "builtins.function"
+[builtins fixtures/tuple.pyi]
+
+[case testCallableJoin5]
+from typing import Callable, TypeVar
+
+C = TypeVar("C", bound=Callable[..., None])
+
+def join(t: C, val: C) -> C:
+    pass
+
+def less1(code, lang, style=None): ...
+def more1(code, lang, suffix="", style=None): ...
+reveal_type(join(less1, more1))  # N: Revealed type is "def (code: Any, lang: Any, Any =) -> Any"
+reveal_type(join(more1, less1))  # N: Revealed type is "def (code: Any, lang: Any, Any =) -> Any"
+
+def less2(code, lang, style: int = 0): ...
+def more2(code, lang, suffix: str = "", style: int = 0): ...
+reveal_type(join(less2, more2))  # N: Revealed type is "def (code: Any, lang: Any, *, style: builtins.int =) -> Any"
+reveal_type(join(more2, less2))  # N: Revealed type is "def (code: Any, lang: Any, *, style: builtins.int =) -> Any"
+
+def less3(code, lang, style: int = 0): ...
+def more3(code, lang, suffix: int = 0, style: str = ""): ...
+reveal_type(join(less3, more3))  # N: Revealed type is "def (code: Any, lang: Any, builtins.int =) -> Any"
+reveal_type(join(more3, less3))  # N: Revealed type is "def (code: Any, lang: Any, builtins.int =) -> Any"
+[builtins fixtures/tuple.pyi]

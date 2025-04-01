@@ -1109,8 +1109,10 @@ def f(*, x: int) -> int: ...
 def g(*, y: int) -> int: ...
 def h(*, x: int) -> int: ...
 
-list_1 = [f, g]  # E: List item 0 has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[NamedArg(int, 'y')], int]"
+list_1 = [f, g]
 list_2 = [f, h]
+reveal_type(list_1)  # N: Revealed type is "builtins.list[builtins.function]"
+reveal_type(list_2)  # N: Revealed type is "builtins.list[def (*, x: builtins.int) -> builtins.int]"
 [builtins fixtures/list.pyi]
 
 
