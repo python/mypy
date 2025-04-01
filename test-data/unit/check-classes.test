@@ -3135,7 +3135,8 @@ from typing import Any
 class Test:
     def __setattr__() -> None: ...  # E: Method must have at least one argument. Did you forget the "self" argument? # E: Invalid signature "Callable[[], None]" for "__setattr__"
 t = Test()
-t.crash = 'test'  # E: "Test" has no attribute "crash"
+t.crash = 'test'  # E: Attribute function "__setattr__" with type "Callable[[], None]" does not accept self argument \
+                  # E: "Test" has no attribute "crash"
 
 class A:
     def __setattr__(self): ...  # E: Invalid signature "Callable[[A], Any]" for "__setattr__"
@@ -8648,3 +8649,34 @@ class C(B):
     def meth(self) -> None:
         def cb() -> None:
             self.x: int = 1  # E: Incompatible types in assignment (expression has type "int", base class "B" defined the type as "str")
+
+[case testOverloadedDescriptorSelected]
+from typing import Generic, TypeVar, Any, overload
+
+T_co = TypeVar("T_co", covariant=True)
+class Field(Generic[T_co]):
+    @overload
+    def __get__(self: Field[bool], instance: None, owner: Any) -> BoolField: ...
+    @overload
+    def __get__(self: Field[int], instance: None, owner: Any) -> NumField: ...
+    @overload
+    def __get__(self: Field[Any], instance: None, owner: Any) -> AnyField[T_co]: ...
+    @overload
+    def __get__(self, instance: Any, owner: Any) -> T_co: ...
+
+    def __get__(self, instance: Any, owner: Any) -> Any:
+        pass
+
+class BoolField(Field[bool]): ...
+class NumField(Field[int]): ...
+class AnyField(Field[T_co]): ...
+class Custom: ...
+
+class Fields:
+    bool_f: Field[bool]
+    int_f: Field[int]
+    custom_f: Field[Custom]
+
+reveal_type(Fields.bool_f)  # N: Revealed type is "__main__.BoolField"
+reveal_type(Fields.int_f)  # N: Revealed type is "__main__.NumField"
+reveal_type(Fields.custom_f)  # N: Revealed type is "__main__.AnyField[__main__.Custom]"
