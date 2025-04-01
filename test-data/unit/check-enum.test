@@ -2512,3 +2512,15 @@ def list_vals(e: Type[T]) -> list[T]:
 
 reveal_type(list_vals(Choices))  # N: Revealed type is "builtins.list[__main__.Choices]"
 [builtins fixtures/enum.pyi]
+
+[case testEnumAsClassMemberNoCrash]
+# https://github.com/python/mypy/issues/18736
+from enum import Enum
+
+class Base:
+    def __init__(self, namespace: tuple[str, ...]) -> None:
+        # Not a bug: trigger defer
+        names = [name for name in namespace if fail]  # E: Name "fail" is not defined
+        self.o = Enum("o", names)  # E: Enum type as attribute is not supported \
+                                   # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
+[builtins fixtures/tuple.pyi]
