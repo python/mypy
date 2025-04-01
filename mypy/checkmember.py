@@ -559,6 +559,8 @@ def analyze_member_var_access(
     elif isinstance(v, MypyFile):
         mx.chk.module_refs.add(v.fullname)
         return mx.chk.expr_checker.module_type(v)
+    elif isinstance(v, TypeVarExpr):
+        return mx.chk.named_type("typing.TypeVar")
     elif (
         not v
         and name not in ["__getattr__", "__setattr__", "__getattribute__"]

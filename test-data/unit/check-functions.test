@@ -2837,8 +2837,7 @@ class not_a_decorator:
 class BadChild2(Base):
     @property
     @not_a_decorator
-    def foo(self) -> int:  # E: "not_a_decorator" not callable \
-                           # E: Signature of "foo" incompatible with supertype "Base" \
+    def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "Base" \
                            # N:      Superclass: \
                            # N:          int \
                            # N:      Subclass: \
