@@ -4138,3 +4138,16 @@ Derived.Params(name="Robert")
 DerivedOverride.Params(name="Robert")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testEnumAsClassMemberNoCrash]
+# https://github.com/python/mypy/issues/18736
+from typing import TypedDict
+
+class Base:
+    def __init__(self, namespace: dict[str, str]) -> None:
+        # Not a bug: trigger defer
+        names = {n: n for n in namespace if fail}  # E: Name "fail" is not defined
+        self.d = TypedDict("d", names)  # E: TypedDict type as attribute is not supported \
+                                        # E: TypedDict() expects a dictionary literal as the second argument
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
