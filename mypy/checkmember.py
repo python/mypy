@@ -42,6 +42,7 @@ from mypy.typeops import (
     erase_to_bound,
     freeze_all_type_vars,
     function_type,
+    get_all_type_vars,
     get_type_vars,
     make_simplified_union,
     supported_self_type,
@@ -1020,7 +1021,14 @@ def check_self_arg(
             # This level of erasure matches the one in checker.check_func_def(),
             # better keep these two checks consistent.
             if subtypes.is_subtype(
-                dispatched_arg_type, erase_typevars(erase_to_bound(selfarg)), always_covariant=True
+                dispatched_arg_type,
+                erase_typevars(erase_to_bound(selfarg)),
+                # This is to work around the fact that erased ParamSpec and TypeVarTuple
+                # callables are not always compatible with non-erased ones both ways.
+                always_covariant=any(
+                    not isinstance(tv, TypeVarType) for tv in get_all_type_vars(selfarg)
+                ),
+                ignore_pos_arg_names=True,
             ):
                 new_items.append(item)
             elif isinstance(selfarg, ParamSpecType):
@@ -1154,6 +1162,7 @@ def analyze_class_attribute_access(
             def_vars = set(node.node.info.defn.type_vars)
             if not node.node.is_classvar and node.node.info.self_type:
                 def_vars.add(node.node.info.self_type)
+            # TODO: should we include ParamSpec etc. here (i.e. use get_all_type_vars)?
             typ_vars = set(get_type_vars(t))
             if def_vars & typ_vars:
                 # Exception: access on Type[...], including first argument of class methods is OK.
