@@ -334,3 +334,12 @@ class C:
 c:C
 c.foo()  # E: Too few arguments \
          # N: "foo" is considered instance variable, to make it class variable use ClassVar[...]
+
+[case testClassVarUnionBoundOnInstance]
+from typing import Union, Callable, ClassVar
+
+class C:
+    def f(self) -> int: ...
+    g: ClassVar[Union[Callable[[C], int], int]] = f
+
+reveal_type(C().g)  # N: Revealed type is "Union[def () -> builtins.int, builtins.int]"
