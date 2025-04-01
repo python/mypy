@@ -2865,7 +2865,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         matches: list[CallableType] = []
         return_types: list[Type] = []
         inferred_types: list[Type] = []
-        args_contain_any = any(map(has_any_type, arg_types))
+        args_contain_any = any(has_any_type(a, include_special_form=True) for a in arg_types)
         type_maps: list[dict[Expression, Type]] = []
 
         for typ in plausible_targets:
@@ -5977,7 +5977,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ):
             self.msg.disallowed_any_type(typ, node)
 
-        if not self.chk.in_checked_function() or self.chk.current_node_deferred:
+        if not self.chk.in_checked_function():
             result: Type = AnyType(TypeOfAny.unannotated)
         else:
             result = typ
@@ -6311,18 +6311,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )
 
 
-def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
+def has_any_type(
+    t: Type, ignore_in_type_obj: bool = False, include_special_form: bool = False
+) -> bool:
     """Whether t contains an Any type"""
-    return t.accept(HasAnyType(ignore_in_type_obj))
+    return t.accept(HasAnyType(ignore_in_type_obj, include_special_form))
 
 
 class HasAnyType(types.BoolTypeQuery):
-    def __init__(self, ignore_in_type_obj: bool) -> None:
+    def __init__(self, ignore_in_type_obj: bool, include_special_form: bool) -> None:
         super().__init__(types.ANY_STRATEGY)
         self.ignore_in_type_obj = ignore_in_type_obj
+        self.include_special_form = include_special_form
 
     def visit_any(self, t: AnyType) -> bool:
+        if self.include_special_form:
+            return True
         return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
+
+    def visit_tuple_type(self, t: TupleType) -> bool:
+        # TODO: should we use tuple_fallback() in (Bool)TypeQuery itself?
+        # Using partial_fallback is error prone as it may be bogus (hence the name).
+        return self.query_types(t.items + [tuple_fallback(t)])
 
     def visit_callable_type(self, t: CallableType) -> bool:
         if self.ignore_in_type_obj and t.is_type_obj():
@@ -6547,7 +6557,7 @@ def any_causes_overload_ambiguity(
         # We ignore Anys in type object callables as ambiguity
         # creators, since that can lead to falsely claiming ambiguity
         # for overloads between Type and Callable.
-        if has_any_type(arg_type, ignore_in_type_obj=True):
+        if has_any_type(arg_type, ignore_in_type_obj=True, include_special_form=True):
             matching_formals_unfiltered = [
                 (item_idx, lookup[arg_idx])
                 for item_idx, lookup in enumerate(actual_to_formal)

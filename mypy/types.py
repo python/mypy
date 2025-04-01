@@ -1160,6 +1160,15 @@ class AnyType(ProperType):
     def is_from_error(self) -> bool:
         return self.type_of_any == TypeOfAny.from_error
 
+    @property
+    def is_special_form(self) -> bool:
+        if self.type_of_any == TypeOfAny.special_form:
+            return True
+        if self.type_of_any == TypeOfAny.from_another_any:
+            assert self.source_any is not None
+            return self.source_any.type_of_any == TypeOfAny.special_form
+        return False
+
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_any(self)
 
