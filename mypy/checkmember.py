@@ -42,6 +42,7 @@ from mypy.typeops import (
     erase_to_bound,
     freeze_all_type_vars,
     function_type,
+    get_all_type_vars,
     get_type_vars,
     make_simplified_union,
     supported_self_type,
@@ -604,7 +605,10 @@ def analyze_member_var_access(
             setattr_meth = info.get_method("__setattr__")
             if setattr_meth and setattr_meth.info.fullname != "builtins.object":
                 bound_type = analyze_decorator_or_funcbase_access(
-                    defn=setattr_meth, itype=itype, name=name, mx=mx.copy_modified(is_lvalue=False)
+                    defn=setattr_meth,
+                    itype=itype,
+                    name="__setattr__",
+                    mx=mx.copy_modified(is_lvalue=False),
                 )
                 typ = map_instance_to_supertype(itype, setattr_meth.info)
                 setattr_type = get_proper_type(expand_type_by_instance(bound_type, typ))
@@ -1031,7 +1035,16 @@ def check_self_arg(
             selfarg = get_proper_type(item.arg_types[0])
             # This level of erasure matches the one in checker.check_func_def(),
             # better keep these two checks consistent.
-            if subtypes.is_subtype(dispatched_arg_type, erase_typevars(erase_to_bound(selfarg))):
+            if subtypes.is_subtype(
+                dispatched_arg_type,
+                erase_typevars(erase_to_bound(selfarg)),
+                # This is to work around the fact that erased ParamSpec and TypeVarTuple
+                # callables are not always compatible with non-erased ones both ways.
+                always_covariant=any(
+                    not isinstance(tv, TypeVarType) for tv in get_all_type_vars(selfarg)
+                ),
+                ignore_pos_arg_names=True,
+            ):
                 new_items.append(item)
             elif isinstance(selfarg, ParamSpecType):
                 # TODO: This is not always right. What's the most reasonable thing to do here?
@@ -1164,6 +1177,7 @@ def analyze_class_attribute_access(
             def_vars = set(node.node.info.defn.type_vars)
             if not node.node.is_classvar and node.node.info.self_type:
                 def_vars.add(node.node.info.self_type)
+            # TODO: should we include ParamSpec etc. here (i.e. use get_all_type_vars)?
             typ_vars = set(get_type_vars(t))
             if def_vars & typ_vars:
                 # Exception: access on Type[...], including first argument of class methods is OK.
@@ -1405,6 +1419,6 @@ def analyze_decorator_or_funcbase_access(
     """
     if isinstance(defn, Decorator):
         return analyze_var(name, defn.var, itype, mx)
-    return bind_self(
-        function_type(defn, mx.chk.named_type("builtins.function")), original_type=mx.self_type
-    )
+    typ = function_type(defn, mx.chk.named_type("builtins.function"))
+    typ = check_self_arg(typ, mx.self_type, defn.is_class, mx.context, name, mx.msg)
+    return bind_self(typ, original_type=mx.self_type, is_classmethod=defn.is_class)
