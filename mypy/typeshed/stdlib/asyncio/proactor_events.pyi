@@ -1,8 +1,7 @@
 import sys
 from collections.abc import Mapping
 from socket import socket
-from typing import Any, ClassVar
-from typing_extensions import Literal
+from typing import Any, ClassVar, Literal
 
 from . import base_events, constants, events, futures, streams, transports
 
@@ -63,3 +62,4 @@ class _ProactorSocketTransport(_ProactorReadPipeTransport, _ProactorBaseWritePip
 
 class BaseProactorEventLoop(base_events.BaseEventLoop):
     def __init__(self, proactor: Any) -> None: ...
+    async def sock_recv(self, sock: socket, n: int) -> bytes: ...

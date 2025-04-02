@@ -1,61 +1,31 @@
 import ssl
 import sys
-from _typeshed import StrPath
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Sequence
-from typing import Any
-from typing_extensions import Self, SupportsIndex, TypeAlias
+from _typeshed import ReadableBuffer, StrPath
+from collections.abc import Awaitable, Callable, Iterable, Sequence, Sized
+from types import ModuleType
+from typing import Any, Protocol, SupportsIndex
+from typing_extensions import Self, TypeAlias
 
 from . import events, protocols, transports
 from .base_events import Server
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.platform == "win32":
-    if sys.version_info >= (3, 8):
-        __all__ = ("StreamReader", "StreamWriter", "StreamReaderProtocol", "open_connection", "start_server")
-    else:
-        __all__ = (
-            "StreamReader",
-            "StreamWriter",
-            "StreamReaderProtocol",
-            "open_connection",
-            "start_server",
-            "IncompleteReadError",
-            "LimitOverrunError",
-        )
+    __all__ = ("StreamReader", "StreamWriter", "StreamReaderProtocol", "open_connection", "start_server")
 else:
-    if sys.version_info >= (3, 8):
-        __all__ = (
-            "StreamReader",
-            "StreamWriter",
-            "StreamReaderProtocol",
-            "open_connection",
-            "start_server",
-            "open_unix_connection",
-            "start_unix_server",
-        )
-    else:
-        __all__ = (
-            "StreamReader",
-            "StreamWriter",
-            "StreamReaderProtocol",
-            "open_connection",
-            "start_server",
-            "IncompleteReadError",
-            "LimitOverrunError",
-            "open_unix_connection",
-            "start_unix_server",
-        )
+    __all__ = (
+        "StreamReader",
+        "StreamWriter",
+        "StreamReaderProtocol",
+        "open_connection",
+        "start_server",
+        "open_unix_connection",
+        "start_unix_server",
+    )
 
 _ClientConnectedCallback: TypeAlias = Callable[[StreamReader, StreamWriter], Awaitable[None] | None]
 
-if sys.version_info < (3, 8):
-    class IncompleteReadError(EOFError):
-        expected: int | None
-        partial: bytes
-        def __init__(self, partial: bytes, expected: int | None) -> None: ...
-
-    class LimitOverrunError(Exception):
-        consumed: int
-        def __init__(self, message: str, consumed: int) -> None: ...
+class _ReaduntilBuffer(ReadableBuffer, Sized, Protocol): ...
 
 if sys.version_info >= (3, 10):
     async def open_connection(
@@ -162,10 +132,13 @@ class StreamWriter:
         async def start_tls(
             self, sslcontext: ssl.SSLContext, *, server_hostname: str | None = None, ssl_handshake_timeout: float | None = None
         ) -> None: ...
-    if sys.version_info >= (3, 11):
+
+    if sys.version_info >= (3, 13):
+        def __del__(self, warnings: ModuleType = ...) -> None: ...
+    elif sys.version_info >= (3, 11):
         def __del__(self) -> None: ...
 
-class StreamReader(AsyncIterator[bytes]):
+class StreamReader:
     def __init__(self, limit: int = 65536, loop: events.AbstractEventLoop | None = None) -> None: ...
     def exception(self) -> Exception: ...
     def set_exception(self, exc: Exception) -> None: ...
@@ -174,8 +147,11 @@ class StreamReader(AsyncIterator[bytes]):
     def at_eof(self) -> bool: ...
     def feed_data(self, data: Iterable[SupportsIndex]) -> None: ...
     async def readline(self) -> bytes: ...
-    # Can be any buffer that supports len(); consider changing to a Protocol if PEP 688 is accepted
-    async def readuntil(self, separator: bytes | bytearray | memoryview = b"\n") -> bytes: ...
+    if sys.version_info >= (3, 13):
+        async def readuntil(self, separator: _ReaduntilBuffer | tuple[_ReaduntilBuffer, ...] = b"\n") -> bytes: ...
+    else:
+        async def readuntil(self, separator: _ReaduntilBuffer = b"\n") -> bytes: ...
+
     async def read(self, n: int = -1) -> bytes: ...
     async def readexactly(self, n: int) -> bytes: ...
     def __aiter__(self) -> Self: ...

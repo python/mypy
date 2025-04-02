@@ -24,7 +24,7 @@ from setuptools import setup
 from mypyc.build import mypycify
 
 setup(name='mypyc_output',
-      ext_modules=mypycify({}, opt_level="{}", debug_level="{}"),
+      ext_modules=mypycify({}, opt_level="{}", debug_level="{}", strict_dunder_typing={}),
 )
 """
 
@@ -38,10 +38,11 @@ def main() -> None:
 
     opt_level = os.getenv("MYPYC_OPT_LEVEL", "3")
     debug_level = os.getenv("MYPYC_DEBUG_LEVEL", "1")
+    strict_dunder_typing = bool(int(os.getenv("MYPYC_STRICT_DUNDER_TYPING", "0")))
 
     setup_file = os.path.join(build_dir, "setup.py")
     with open(setup_file, "w") as f:
-        f.write(setup_format.format(sys.argv[1:], opt_level, debug_level))
+        f.write(setup_format.format(sys.argv[1:], opt_level, debug_level, strict_dunder_typing))
 
     # We don't use run_setup (like we do in the test suite) because it throws
     # away the error code from distutils, and we don't care about the slight

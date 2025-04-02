@@ -80,6 +80,43 @@ Traceback (most recent call last):
   File "native.py", line 23, in __init__
     raise Exception
 Exception
+[out version>=3.13]
+Traceback (most recent call last):
+  File "driver.py", line 4, in <module>
+    f([])
+    ~^^^^
+  File "native.py", line 3, in f
+    g(x)
+  File "native.py", line 6, in g
+    x[5] = 2
+IndexError: list assignment index out of range
+Traceback (most recent call last):
+  File "driver.py", line 8, in <module>
+    r1()
+    ~~^^
+  File "native.py", line 10, in r1
+    q1()
+  File "native.py", line 13, in q1
+    raise Exception("test")
+Exception: test
+Traceback (most recent call last):
+  File "driver.py", line 12, in <module>
+    r2()
+    ~~^^
+  File "native.py", line 16, in r2
+    q2()
+  File "native.py", line 19, in q2
+    raise Exception
+Exception
+Traceback (most recent call last):
+  File "driver.py", line 16, in <module>
+    hey()
+    ~~~^^
+  File "native.py", line 26, in hey
+    A()
+  File "native.py", line 23, in __init__
+    raise Exception
+Exception
 
 [case testTryExcept]
 from typing import Any, Iterator
@@ -241,6 +278,55 @@ During handling of the above exception, another exception occurred:
 Traceback (most recent call last):
   File "driver.py", line 12, in <module>
     k()
+  File "native.py", line 61, in k
+    r(0)
+  File "native.py", line 15, in r
+    [0][1]
+IndexError: list index out of range
+== g ==
+caught!
+caught!
+== f ==
+hi
+None
+list index out of range
+None
+== h ==
+gonna break
+None
+== j ==
+lookup!
+lookup!
+attr! -- 'object' object has no attribute 'lol'
+out!
+== l ==
+key! -- 0
+[out version>=3.13]
+== i ==
+<class 'IndexError'>
+Traceback (most recent call last):
+  File "driver.py", line 6, in <module>
+    i()
+    ~^^
+  File "native.py", line 44, in i
+    r(0)
+  File "native.py", line 15, in r
+    [0][1]
+IndexError: list index out of range
+== k ==
+Traceback (most recent call last):
+  File "native.py", line 59, in k
+    r(1)
+  File "native.py", line 17, in r
+    raise Exception('hi')
+Exception: hi
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "driver.py", line 12, in <module>
+    k()
+    ~^^
   File "native.py", line 61, in k
     r(0)
   File "native.py", line 15, in r

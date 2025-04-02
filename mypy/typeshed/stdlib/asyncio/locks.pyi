@@ -4,8 +4,8 @@ from _typeshed import Unused
 from collections import deque
 from collections.abc import Callable, Generator
 from types import TracebackType
-from typing import Any, TypeVar
-from typing_extensions import Literal, Self
+from typing import Any, Literal, TypeVar
+from typing_extensions import Self
 
 from .events import AbstractEventLoop
 from .futures import Future
@@ -15,6 +15,7 @@ if sys.version_info >= (3, 10):
 else:
     _LoopBoundMixin = object
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 11):
     __all__ = ("Lock", "Event", "Condition", "Semaphore", "BoundedSemaphore", "Barrier")
 else:
@@ -47,6 +48,7 @@ else:
         ) -> None: ...
 
 class Lock(_ContextManagerMixin, _LoopBoundMixin):
+    _waiters: deque[Future[Any]] | None
     if sys.version_info >= (3, 10):
         def __init__(self) -> None: ...
     else:
@@ -57,6 +59,7 @@ class Lock(_ContextManagerMixin, _LoopBoundMixin):
     def release(self) -> None: ...
 
 class Event(_LoopBoundMixin):
+    _waiters: deque[Future[Any]]
     if sys.version_info >= (3, 10):
         def __init__(self) -> None: ...
     else:
@@ -68,6 +71,7 @@ class Event(_LoopBoundMixin):
     async def wait(self) -> Literal[True]: ...
 
 class Condition(_ContextManagerMixin, _LoopBoundMixin):
+    _waiters: deque[Future[Any]]
     if sys.version_info >= (3, 10):
         def __init__(self, lock: Lock | None = None) -> None: ...
     else:
@@ -83,7 +87,7 @@ class Condition(_ContextManagerMixin, _LoopBoundMixin):
 
 class Semaphore(_ContextManagerMixin, _LoopBoundMixin):
     _value: int
-    _waiters: deque[Future[Any]]
+    _waiters: deque[Future[Any]] | None
     if sys.version_info >= (3, 10):
         def __init__(self, value: int = 1) -> None: ...
     else:
@@ -98,10 +102,10 @@ class BoundedSemaphore(Semaphore): ...
 
 if sys.version_info >= (3, 11):
     class _BarrierState(enum.Enum):  # undocumented
-        FILLING: str
-        DRAINING: str
-        RESETTING: str
-        BROKEN: str
+        FILLING = "filling"
+        DRAINING = "draining"
+        RESETTING = "resetting"
+        BROKEN = "broken"
 
     class Barrier(_LoopBoundMixin):
         def __init__(self, parties: int) -> None: ...

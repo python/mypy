@@ -1,20 +1,13 @@
-"""Builder class used to transform a mypy AST to the IR form.
+"""Builder class to transform a mypy AST to the IR form.
 
-The IRBuilder class maintains transformation state and provides access
-to various helpers used to implement the transform.
-
-The top-level transform control logic is in mypyc.irbuild.main.
-
-mypyc.irbuild.visitor.IRBuilderVisitor is used to dispatch based on mypy
-AST node type to code that actually does the bulk of the work. For
-example, expressions are transformed in mypyc.irbuild.expression and
-functions are transformed in mypyc.irbuild.function.
+See the docstring of class IRBuilder for more information.
 """
+
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from typing import Any, Callable, Final, Iterator, Sequence, Union
-from typing_extensions import overload
+from typing import Any, Callable, Final, Union, overload
 
 from mypy.build import Graph
 from mypy.maptype import map_instance_to_supertype
@@ -23,6 +16,9 @@ from mypy.nodes import (
     ARG_POS,
     GDEF,
     LDEF,
+    PARAM_SPEC_KIND,
+    TYPE_VAR_KIND,
+    TYPE_VAR_TUPLE_KIND,
     ArgKind,
     CallExpr,
     Decorator,
@@ -43,6 +39,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeAlias,
     TypeInfo,
+    TypeParam,
     UnaryExpr,
     Var,
 )
@@ -55,11 +52,12 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeOfAny,
+    TypeVarLikeType,
     UninhabitedType,
     UnionType,
     get_proper_type,
 )
-from mypy.util import split_target
+from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypyc.common import BITMAP_BITS, SELF_NAME, TEMP_ATTR_NAME
 from mypyc.crash import catch_errors
@@ -68,6 +66,7 @@ from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import INVALID_FUNC_DEF, FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
+    NAMESPACE_TYPE_VAR,
     Assign,
     BasicBlock,
     Branch,
@@ -78,6 +77,7 @@ from mypyc.ir.ops import (
     IntOp,
     LoadStatic,
     Op,
+    PrimitiveDescription,
     RaiseStandardError,
     Register,
     SetAttr,
@@ -147,6 +147,30 @@ SymbolTarget = Union[AssignmentTargetRegister, AssignmentTargetAttr]
 
 
 class IRBuilder:
+    """Builder class used to construct mypyc IR from a mypy AST.
+
+    The IRBuilder class maintains IR transformation state and provides access
+    to various helpers used to implement the transform.
+
+    mypyc.irbuild.visitor.IRBuilderVisitor is used to dispatch based on mypy
+    AST node type to code that actually does the bulk of the work. For
+    example, expressions are transformed in mypyc.irbuild.expression and
+    functions are transformed in mypyc.irbuild.function.
+
+    Use the "accept()" method to translate individual mypy AST nodes to IR.
+    Other methods are used to generate IR for various lower-level operations.
+
+    This class wraps the lower-level LowLevelIRBuilder class, an instance
+    of which is available through the "builder" attribute. The low-level
+    builder class doesn't have any knowledge of the mypy AST. Wrappers for
+    some LowLevelIRBuilder method are provided for convenience, but others
+    can also be accessed via the "builder" attribute.
+
+    See also:
+     * The mypyc IR is defined in the mypyc.ir package.
+     * The top-level IR transform control logic is in mypyc.irbuild.main.
+    """
+
     def __init__(
         self,
         current_module: str,
@@ -159,7 +183,7 @@ class IRBuilder:
         options: CompilerOptions,
         singledispatch_impls: dict[FuncDef, list[RegisterImplInfo]],
     ) -> None:
-        self.builder = LowLevelIRBuilder(current_module, errors, mapper, options)
+        self.builder = LowLevelIRBuilder(errors, options)
         self.builders = [self.builder]
         self.symtables: list[dict[SymbolNode, SymbolTarget]] = [{}]
         self.runtime_args: list[list[RuntimeArg]] = [[]]
@@ -178,6 +202,7 @@ class IRBuilder:
         self.function_names: set[tuple[str | None, str]] = set()
         self.classes: list[ClassIR] = []
         self.final_names: list[tuple[str, RType]] = []
+        self.type_var_names: list[str] = []
         self.callable_class_names: set[str] = set()
         self.options = options
 
@@ -231,12 +256,10 @@ class IRBuilder:
         self.builder.set_module(module_name, module_path)
 
     @overload
-    def accept(self, node: Expression, *, can_borrow: bool = False) -> Value:
-        ...
+    def accept(self, node: Expression, *, can_borrow: bool = False) -> Value: ...
 
     @overload
-    def accept(self, node: Statement) -> None:
-        ...
+    def accept(self, node: Statement) -> None: ...
 
     def accept(self, node: Statement | Expression, *, can_borrow: bool = False) -> Value | None:
         """Transform an expression or a statement.
@@ -376,11 +399,17 @@ class IRBuilder:
     def call_c(self, desc: CFunctionDescription, args: list[Value], line: int) -> Value:
         return self.builder.call_c(desc, args, line)
 
+    def primitive_op(
+        self,
+        desc: PrimitiveDescription,
+        args: list[Value],
+        line: int,
+        result_type: RType | None = None,
+    ) -> Value:
+        return self.builder.primitive_op(desc, args, line, result_type)
+
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.builder.int_op(type, lhs, rhs, op, line)
-
-    def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
-        return self.builder.compare_tagged(lhs, rhs, op, line)
 
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tuples(lhs, rhs, op, line)
@@ -391,6 +420,9 @@ class IRBuilder:
     def new_tuple(self, items: list[Value], line: int) -> Value:
         return self.builder.new_tuple(items, line)
 
+    def debug_print(self, toprint: str | Value) -> None:
+        return self.builder.debug_print(toprint)
+
     # Helpers for IR building
 
     def add_to_non_ext_dict(
@@ -398,7 +430,7 @@ class IRBuilder:
     ) -> None:
         # Add an attribute entry into the class dict of a non-extension class.
         key_unicode = self.load_str(key)
-        self.call_c(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
+        self.primitive_op(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
@@ -429,7 +461,7 @@ class IRBuilder:
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
         mod_dict = self.call_c(get_module_dict_op, [], line)
         # Get module object from modules dict.
-        return self.call_c(dict_get_item_op, [mod_dict, self.load_str(module)], line)
+        return self.primitive_op(dict_get_item_op, [mod_dict, self.load_str(module)], line)
 
     def get_module_attr(self, module: str, attr: str, line: int) -> Value:
         """Look up an attribute of a module without storing it in the local namespace.
@@ -545,6 +577,21 @@ class IRBuilder:
             error_msg=f'value for final name "{error_name}" was not set',
         )
 
+    def init_type_var(self, value: Value, name: str, line: int) -> None:
+        unique_name = name + "___" + str(line)
+        self.type_var_names.append(unique_name)
+        self.add(InitStatic(value, unique_name, self.module_name, namespace=NAMESPACE_TYPE_VAR))
+
+    def load_type_var(self, name: str, line: int) -> Value:
+        return self.add(
+            LoadStatic(
+                object_rprimitive,
+                name + "___" + str(line),
+                self.module_name,
+                namespace=NAMESPACE_TYPE_VAR,
+            )
+        )
+
     def load_literal_value(self, val: int | str | bytes | float | complex | bool) -> Value:
         """Load value of a final name, class-level attribute, or constant folded expression."""
         if isinstance(val, bool):
@@ -577,7 +624,7 @@ class IRBuilder:
             if isinstance(symbol, Decorator):
                 symbol = symbol.func
             if symbol is None:
-                # New semantic analyzer doesn't create ad-hoc Vars for special forms.
+                # Semantic analyzer doesn't create ad-hoc Vars for special forms.
                 assert lvalue.is_special_form
                 symbol = Var(lvalue.name)
             if not for_read and isinstance(symbol, Var) and symbol.is_cls:
@@ -674,7 +721,7 @@ class IRBuilder:
             else:
                 key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
-                self.call_c(py_setattr_op, [target.obj, key, boxed_reg], line)
+                self.primitive_op(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.gen_method_call(
                 target.base, "__setitem__", [target.index, rvalue_reg], None, line
@@ -722,7 +769,7 @@ class IRBuilder:
             item = target.items[i]
             index = self.builder.load_int(i)
             if is_list_rprimitive(rvalue.type):
-                item_value = self.call_c(list_get_item_unsafe_op, [rvalue, index], line)
+                item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
             else:
                 item_value = self.builder.gen_method_call(
                     rvalue, "__getitem__", [index], item.type, line
@@ -751,7 +798,7 @@ class IRBuilder:
     def process_iterator_tuple_assignment(
         self, target: AssignmentTargetTuple, rvalue_reg: Value, line: int
     ) -> None:
-        iterator = self.call_c(iter_op, [rvalue_reg], line)
+        iterator = self.primitive_op(iter_op, [rvalue_reg], line)
 
         # This may be the whole lvalue list if there is no starred value
         split_idx = target.star_idx if target.star_idx is not None else len(target.items)
@@ -777,7 +824,7 @@ class IRBuilder:
         # Assign the starred value and all values after it
         if target.star_idx is not None:
             post_star_vals = target.items[split_idx + 1 :]
-            iter_list = self.call_c(to_list, [iterator], line)
+            iter_list = self.primitive_op(to_list, [iterator], line)
             iter_list_len = self.builtin_len(iter_list, line)
             post_star_len = Integer(len(post_star_vals))
             condition = self.binary_op(post_star_len, iter_list_len, "<=", line)
@@ -796,7 +843,7 @@ class IRBuilder:
             self.activate_block(ok_block)
 
             for litem in reversed(post_star_vals):
-                ritem = self.call_c(list_pop_last, [iter_list], line)
+                ritem = self.primitive_op(list_pop_last, [iter_list], line)
                 self.assign(litem, ritem, line)
 
             # Assign the starred value
@@ -889,49 +936,66 @@ class IRBuilder:
             return RUnion.make_simplified_union(
                 [self.get_sequence_type_from_type(item) for item in target_type.items]
             )
-        assert isinstance(target_type, Instance), target_type
-        if target_type.type.fullname == "builtins.str":
-            return str_rprimitive
-        else:
-            return self.type_to_rtype(target_type.args[0])
+        elif isinstance(target_type, Instance):
+            if target_type.type.fullname == "builtins.str":
+                return str_rprimitive
+            else:
+                return self.type_to_rtype(target_type.args[0])
+        # This elif-blocks are needed for iterating over classes derived from NamedTuple.
+        elif isinstance(target_type, TypeVarLikeType):
+            return self.get_sequence_type_from_type(target_type.upper_bound)
+        elif isinstance(target_type, TupleType):
+            # Tuple might have elements of different types.
+            rtypes = {self.mapper.type_to_rtype(item) for item in target_type.items}
+            if len(rtypes) == 1:
+                return rtypes.pop()
+            else:
+                return RUnion.make_simplified_union(list(rtypes))
+        assert False, target_type
 
     def get_dict_base_type(self, expr: Expression) -> list[Instance]:
         """Find dict type of a dict-like expression.
 
         This is useful for dict subclasses like SymbolTable.
         """
-        target_type = get_proper_type(self.types[expr])
-        if isinstance(target_type, UnionType):
-            types = [get_proper_type(item) for item in target_type.items]
-        else:
-            types = [target_type]
+        return self.get_dict_base_type_from_type(self.types[expr])
 
-        dict_types = []
-        for t in types:
-            if isinstance(t, TypedDictType):
-                t = t.fallback
-                dict_base = next(base for base in t.type.mro if base.fullname == "typing.Mapping")
-            else:
-                assert isinstance(t, Instance), t
-                dict_base = next(base for base in t.type.mro if base.fullname == "builtins.dict")
-            dict_types.append(map_instance_to_supertype(t, dict_base))
-        return dict_types
+    def get_dict_base_type_from_type(self, target_type: Type) -> list[Instance]:
+        target_type = get_proper_type(target_type)
+        if isinstance(target_type, UnionType):
+            return [
+                inner
+                for item in target_type.items
+                for inner in self.get_dict_base_type_from_type(item)
+            ]
+        if isinstance(target_type, TypeVarLikeType):
+            # Match behaviour of self.node_type
+            # We can only reach this point if `target_type` was a TypeVar(bound=dict[...])
+            # or a ParamSpec.
+            return self.get_dict_base_type_from_type(target_type.upper_bound)
+
+        if isinstance(target_type, TypedDictType):
+            target_type = target_type.fallback
+            dict_base = next(
+                base for base in target_type.type.mro if base.fullname == "typing.Mapping"
+            )
+        elif isinstance(target_type, Instance):
+            dict_base = next(
+                base for base in target_type.type.mro if base.fullname == "builtins.dict"
+            )
+        else:
+            assert False, f"Failed to extract dict base from {target_type}"
+        return [map_instance_to_supertype(target_type, dict_base)]
 
     def get_dict_key_type(self, expr: Expression) -> RType:
         dict_base_types = self.get_dict_base_type(expr)
-        if len(dict_base_types) == 1:
-            return self.type_to_rtype(dict_base_types[0].args[0])
-        else:
-            rtypes = [self.type_to_rtype(t.args[0]) for t in dict_base_types]
-            return RUnion.make_simplified_union(rtypes)
+        rtypes = [self.type_to_rtype(t.args[0]) for t in dict_base_types]
+        return RUnion.make_simplified_union(rtypes)
 
     def get_dict_value_type(self, expr: Expression) -> RType:
         dict_base_types = self.get_dict_base_type(expr)
-        if len(dict_base_types) == 1:
-            return self.type_to_rtype(dict_base_types[0].args[1])
-        else:
-            rtypes = [self.type_to_rtype(t.args[1]) for t in dict_base_types]
-            return RUnion.make_simplified_union(rtypes)
+        rtypes = [self.type_to_rtype(t.args[1]) for t in dict_base_types]
+        return RUnion.make_simplified_union(rtypes)
 
     def get_dict_item_type(self, expr: Expression) -> RType:
         key_type = self.get_dict_key_type(expr)
@@ -962,17 +1026,13 @@ class IRBuilder:
 
     def is_native_module(self, module: str) -> bool:
         """Is the given module one compiled by mypyc?"""
-        return module in self.mapper.group_map
+        return self.mapper.is_native_module(module)
 
     def is_native_ref_expr(self, expr: RefExpr) -> bool:
-        if expr.node is None:
-            return False
-        if "." in expr.node.fullname:
-            return self.is_native_module(expr.node.fullname.rpartition(".")[0])
-        return True
+        return self.mapper.is_native_ref_expr(expr)
 
     def is_native_module_ref_expr(self, expr: RefExpr) -> bool:
-        return self.is_native_ref_expr(expr) and expr.kind == GDEF
+        return self.mapper.is_native_module_ref_expr(expr)
 
     def is_synthetic_type(self, typ: TypeInfo) -> bool:
         """Is a type something other than just a class we've created?"""
@@ -1024,7 +1084,7 @@ class IRBuilder:
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
             return self.load_literal_value(final_var.final_value)
-        elif native:
+        elif native and module_prefix(self.graph, fullname):
             return self.load_final_static(fullname, self.mapper.type_to_rtype(typ), line, name)
         else:
             return None
@@ -1038,9 +1098,9 @@ class IRBuilder:
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname and expr.arg_kinds == [ARG_POS] * len(arg_values):
             fullname = get_call_target_fullname(callee)
-            call_c_ops_candidates = function_ops.get(fullname, [])
-            target = self.builder.matching_call_c(
-                call_c_ops_candidates, arg_values, expr.line, self.node_type(expr)
+            primitive_candidates = function_ops.get(fullname, [])
+            target = self.builder.matching_primitive_op(
+                primitive_candidates, arg_values, expr.line, self.node_type(expr)
             )
             if target:
                 return target
@@ -1112,9 +1172,7 @@ class IRBuilder:
     def enter(self, fn_info: FuncInfo | str = "") -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
-        self.builder = LowLevelIRBuilder(
-            self.current_module, self.errors, self.mapper, self.options
-        )
+        self.builder = LowLevelIRBuilder(self.errors, self.options)
         self.builder.set_module(self.module_name, self.module_path)
         self.builders.append(self.builder)
         self.symtables.append({})
@@ -1247,14 +1305,15 @@ class IRBuilder:
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
-        self.fn_info.env_class.attributes[var.name] = rtype
-        attr_target = AssignmentTargetAttr(base.curr_env_reg, var.name)
+        name = remangle_redefinition_name(var.name)
+        self.fn_info.env_class.attributes[name] = rtype
+        attr_target = AssignmentTargetAttr(base.curr_env_reg, name)
 
         if reassign:
             # Read the local definition of the variable, and set the corresponding attribute of
             # the environment class' variable to be that value.
             reg = self.read(self.lookup(var), self.fn_info.fitem.line)
-            self.add(SetAttr(base.curr_env_reg, var.name, reg, self.fn_info.fitem.line))
+            self.add(SetAttr(base.curr_env_reg, name, reg, self.fn_info.fitem.line))
 
         # Override the local definition of the variable to instead point at the variable in
         # the environment class.
@@ -1286,7 +1345,7 @@ class IRBuilder:
     def load_global_str(self, name: str, line: int) -> Value:
         _globals = self.load_globals_dict()
         reg = self.load_str(name)
-        return self.call_c(dict_get_item_op, [_globals, reg], line)
+        return self.primitive_op(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
         return self.add(LoadStatic(dict_rprimitive, "globals", self.module_name))
@@ -1397,3 +1456,45 @@ def get_call_target_fullname(ref: RefExpr) -> str:
         if isinstance(target, Instance):
             return target.type.fullname
     return ref.fullname
+
+
+def create_type_params(
+    builder: IRBuilder, typing_mod: Value, type_args: list[TypeParam], line: int
+) -> list[Value]:
+    """Create objects representing various kinds of Python 3.12 type parameters.
+
+    The "typing_mod" argument is the "_typing" module object. The type objects
+    are looked up from it.
+
+    The returned list has one item for each "type_args" item, in the same order.
+    Each item is either a TypeVar, TypeVarTuple or ParamSpec instance.
+    """
+    tvs = []
+    type_var_imported: Value | None = None
+    for type_param in type_args:
+        if type_param.kind == TYPE_VAR_KIND:
+            if type_var_imported:
+                # Reuse previously imported value as a minor optimization
+                tvt = type_var_imported
+            else:
+                tvt = builder.py_get_attr(typing_mod, "TypeVar", line)
+                type_var_imported = tvt
+        elif type_param.kind == TYPE_VAR_TUPLE_KIND:
+            tvt = builder.py_get_attr(typing_mod, "TypeVarTuple", line)
+        else:
+            assert type_param.kind == PARAM_SPEC_KIND
+            tvt = builder.py_get_attr(typing_mod, "ParamSpec", line)
+        if type_param.kind != TYPE_VAR_TUPLE_KIND:
+            # To match runtime semantics, pass infer_variance=True
+            tv = builder.py_call(
+                tvt,
+                [builder.load_str(type_param.name), builder.true()],
+                line,
+                arg_kinds=[ARG_POS, ARG_NAMED],
+                arg_names=[None, "infer_variance"],
+            )
+        else:
+            tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
+        builder.init_type_var(tv, type_param.name, line)
+        tvs.append(tv)
+    return tvs

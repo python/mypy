@@ -8,6 +8,15 @@ techniques which are supported by mypy.
 
 Type narrowing is when you convince a type checker that a broader type is actually more specific, for instance, that an object of type ``Shape`` is actually of the narrower type ``Square``.
 
+The following type narrowing techniques are available:
+
+- :ref:`type-narrowing-expressions`
+- :ref:`casts`
+- :ref:`type-guards`
+- :ref:`typeis`
+
+
+.. _type-narrowing-expressions:
 
 Type narrowing expressions
 --------------------------
@@ -114,7 +123,7 @@ So, we know what ``callable()`` will return. For example:
 
 .. code-block:: python
 
-  from typing import Callable
+  from collections.abc import Callable
 
   x: Callable[[], int]
 
@@ -123,14 +132,14 @@ So, we know what ``callable()`` will return. For example:
   else:
       ...  # Will never be executed and will raise error with `--warn-unreachable`
 
-``callable`` function can even split ``Union`` type
-for callable and non-callable parts:
+The ``callable`` function can even split union types into
+callable and non-callable parts:
 
 .. code-block:: python
 
-  from typing import Callable, Union
+  from collections.abc import Callable
 
-  x: Union[int, Callable[[], int]]
+  x: int | Callable[[], int]
 
   if callable(x):
       reveal_type(x)  # N: Revealed type is "def () -> builtins.int"
@@ -255,16 +264,13 @@ to the type specified as the first type parameter (``list[str]``).
 Generic TypeGuards
 ~~~~~~~~~~~~~~~~~~
 
-``TypeGuard`` can also work with generic types:
+``TypeGuard`` can also work with generic types (Python 3.12 syntax):
 
 .. code-block:: python
 
-  from typing import TypeVar
   from typing import TypeGuard  # use `typing_extensions` for `python<3.10`
 
-  _T = TypeVar("_T")
-
-  def is_two_element_tuple(val: tuple[_T, ...]) -> TypeGuard[tuple[_T, _T]]:
+  def is_two_element_tuple[T](val: tuple[T, ...]) -> TypeGuard[tuple[T, T]]:
       return len(val) == 2
 
   def func(names: tuple[str, ...]):
@@ -276,16 +282,13 @@ Generic TypeGuards
 TypeGuards with parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Type guard functions can accept extra arguments:
+Type guard functions can accept extra arguments (Python 3.12 syntax):
 
 .. code-block:: python
 
-  from typing import Type, TypeVar
   from typing import TypeGuard  # use `typing_extensions` for `python<3.10`
 
-  _T = TypeVar("_T")
-
-  def is_set_of(val: set[Any], type: Type[_T]) -> TypeGuard[set[_T]]:
+  def is_set_of[T](val: set[Any], type: type[T]) -> TypeGuard[set[T]]:
       return all(isinstance(x, type) for x in val)
 
   items: set[Any]
@@ -362,20 +365,191 @@ What happens here?
 
   The same will work with ``isinstance(x := a, float)`` as well.
 
+
+.. _typeis:
+
+TypeIs
+------
+
+Mypy supports TypeIs (:pep:`742`).
+
+A `TypeIs narrowing function <https://typing.readthedocs.io/en/latest/spec/narrowing.html#typeis>`_
+allows you to define custom type checks that can narrow the type of a variable
+in `both the if and else <https://docs.python.org/3.13/library/typing.html#typing.TypeIs>`_
+branches of a conditional, similar to how the built-in isinstance() function works.
+
+TypeIs is new in Python 3.13 — for use in older Python versions, use the backport
+from `typing_extensions <https://typing-extensions.readthedocs.io/en/latest/>`_
+
+Consider the following example using TypeIs:
+
+.. code-block:: python
+
+    from typing import TypeIs
+
+    def is_str(x: object) -> TypeIs[str]:
+        return isinstance(x, str)
+
+    def process(x: int | str) -> None:
+        if is_str(x):
+            reveal_type(x)  # Revealed type is 'str'
+            print(x.upper())  # Valid: x is str
+        else:
+            reveal_type(x)  # Revealed type is 'int'
+            print(x + 1)  # Valid: x is int
+
+In this example, the function is_str is a type narrowing function
+that returns TypeIs[str]. When used in an if statement, x is narrowed
+to str in the if branch and to int in the else branch.
+
+Key points:
+
+
+- The function must accept at least one positional argument.
+
+- The return type is annotated as ``TypeIs[T]``, where ``T`` is the type you
+  want to narrow to.
+
+- The function must return a ``bool`` value.
+
+- In the ``if`` branch (when the function returns ``True``), the type of the
+  argument is narrowed to the intersection of its original type and ``T``.
+
+- In the ``else`` branch (when the function returns ``False``), the type of
+  the argument is narrowed to the intersection of its original type and the
+  complement of ``T``.
+
+
+TypeIs vs TypeGuard
+~~~~~~~~~~~~~~~~~~~
+
+While both TypeIs and TypeGuard allow you to define custom type narrowing
+functions, they differ in important ways:
+
+- **Type narrowing behavior**: TypeIs narrows the type in both the if and else branches,
+  whereas TypeGuard narrows only in the if branch.
+
+- **Compatibility requirement**: TypeIs requires that the narrowed type T be
+  compatible with the input type of the function. TypeGuard does not have this restriction.
+
+- **Type inference**: With TypeIs, the type checker may infer a more precise type by
+  combining existing type information with T.
+
+Here's an example demonstrating the behavior with TypeGuard:
+
+.. code-block:: python
+
+    from typing import TypeGuard, reveal_type
+
+    def is_str(x: object) -> TypeGuard[str]:
+        return isinstance(x, str)
+
+    def process(x: int | str) -> None:
+        if is_str(x):
+            reveal_type(x)  # Revealed type is "builtins.str"
+            print(x.upper())  # ok: x is str
+        else:
+            reveal_type(x)  # Revealed type is "Union[builtins.int, builtins.str]"
+            print(x + 1)  # ERROR: Unsupported operand types for + ("str" and "int")  [operator]
+
+Generic TypeIs
+~~~~~~~~~~~~~~
+
+``TypeIs`` functions can also work with generic types:
+
+.. code-block:: python
+
+    from typing import TypeVar, TypeIs
+
+    T = TypeVar('T')
+
+    def is_two_element_tuple(val: tuple[T, ...]) -> TypeIs[tuple[T, T]]:
+        return len(val) == 2
+
+    def process(names: tuple[str, ...]) -> None:
+        if is_two_element_tuple(names):
+            reveal_type(names)  # Revealed type is 'tuple[str, str]'
+        else:
+            reveal_type(names)  # Revealed type is 'tuple[str, ...]'
+
+
+TypeIs with Additional Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TypeIs functions can accept additional parameters beyond the first.
+The type narrowing applies only to the first argument.
+
+.. code-block:: python
+
+    from typing import Any, TypeVar, reveal_type, TypeIs
+
+    T = TypeVar('T')
+
+    def is_instance_of(val: Any, typ: type[T]) -> TypeIs[T]:
+        return isinstance(val, typ)
+
+    def process(x: Any) -> None:
+        if is_instance_of(x, int):
+            reveal_type(x)  # Revealed type is 'int'
+            print(x + 1)  # ok
+        else:
+            reveal_type(x)  # Revealed type is 'Any'
+
+TypeIs in Methods
+~~~~~~~~~~~~~~~~~
+
+A method can also serve as a ``TypeIs`` function. Note that in instance or
+class methods, the type narrowing applies to the second parameter
+(after ``self`` or ``cls``).
+
+.. code-block:: python
+
+    class Validator:
+        def is_valid(self, instance: object) -> TypeIs[str]:
+            return isinstance(instance, str)
+
+        def process(self, to_validate: object) -> None:
+            if Validator().is_valid(to_validate):
+                reveal_type(to_validate)  # Revealed type is 'str'
+                print(to_validate.upper())  # ok: to_validate is str
+
+
+Assignment Expressions with TypeIs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can use the assignment expression operator ``:=`` with ``TypeIs`` to create a new variable and narrow its type simultaneously.
+
+.. code-block:: python
+
+    from typing import TypeIs, reveal_type
+
+    def is_float(x: object) -> TypeIs[float]:
+        return isinstance(x, float)
+
+    def main(a: object) -> None:
+        if is_float(x := a):
+            reveal_type(x)  # Revealed type is 'float'
+            # x is narrowed to float in this block
+            print(x + 1.0)
+
+
 Limitations
 -----------
 
 Mypy's analysis is limited to individual symbols and it will not track
 relationships between symbols. For example, in the following code
 it's easy to deduce that if :code:`a` is None then :code:`b` must not be,
-therefore :code:`a or b` will always be a string, but Mypy will not be able to tell that:
+therefore :code:`a or b` will always be an instance of :code:`C`,
+but Mypy will not be able to tell that:
 
 .. code-block:: python
 
-    def f(a: str | None, b: str | None) -> str:
+    class C:
+        pass
+
+    def f(a: C | None, b: C | None) -> C:
         if a is not None or b is not None:
-            return a or b  # Incompatible return value type (got "str | None", expected "str")
-        return 'spam'
+            return a or b  # Incompatible return value type (got "C | None", expected "C")
+        return C()
 
 Tracking these sort of cross-variable conditions in a type checker would add significant complexity
 and performance overhead.
@@ -385,9 +559,9 @@ or rewrite the function to be slightly more verbose:
 
 .. code-block:: python
 
-    def f(a: str | None, b: str | None) -> str:
+    def f(a: C | None, b: C | None) -> C:
         if a is not None:
             return a
         elif b is not None:
             return b
-        return 'spam'
+        return C()

@@ -1,6 +1,7 @@
 import abc
 import pathlib
 import sys
+import types
 from _collections_abc import dict_keys, dict_values
 from _typeshed import StrPath
 from collections.abc import Iterable, Iterator, Mapping
@@ -10,7 +11,7 @@ from os import PathLike
 from pathlib import Path
 from re import Pattern
 from typing import Any, ClassVar, Generic, NamedTuple, TypeVar, overload
-from typing_extensions import Self
+from typing_extensions import Self, TypeAlias
 
 _T = TypeVar("_T")
 _KT = TypeVar("_KT")
@@ -33,16 +34,24 @@ if sys.version_info >= (3, 10):
     __all__ += ["PackageMetadata", "packages_distributions"]
 
 if sys.version_info >= (3, 10):
-    from importlib.metadata._meta import PackageMetadata as PackageMetadata
+    from importlib.metadata._meta import PackageMetadata as PackageMetadata, SimplePath
     def packages_distributions() -> Mapping[str, list[str]]: ...
+
+    _SimplePath: TypeAlias = SimplePath
+
+else:
+    _SimplePath: TypeAlias = Path
 
 class PackageNotFoundError(ModuleNotFoundError):
     @property
     def name(self) -> str: ...  # type: ignore[override]
 
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 13):
+    _EntryPointBase = object
+elif sys.version_info >= (3, 11):
     class DeprecatedTuple:
         def __getitem__(self, item: int) -> str: ...
+
     _EntryPointBase = DeprecatedTuple
 else:
     class _EntryPointBase(NamedTuple):
@@ -130,7 +139,7 @@ if sys.version_info >= (3, 10) and sys.version_info < (3, 12):
     class Deprecated(Generic[_KT, _VT]):
         def __getitem__(self, name: _KT) -> _VT: ...
         @overload
-        def get(self, name: _KT) -> _VT | None: ...
+        def get(self, name: _KT, default: None = None) -> _VT | None: ...
         @overload
         def get(self, name: _KT, default: _T) -> _VT | _T: ...
         def __iter__(self) -> Iterator[_KT]: ...
@@ -146,7 +155,7 @@ if sys.version_info >= (3, 10) and sys.version_info < (3, 12):
         @property
         def names(self) -> set[str]: ...
         @overload
-        def select(self) -> Self: ...  # type: ignore[misc]
+        def select(self) -> Self: ...
         @overload
         def select(
             self,
@@ -183,7 +192,7 @@ class Distribution(_distribution_parent):
     @abc.abstractmethod
     def read_text(self, filename: str) -> str | None: ...
     @abc.abstractmethod
-    def locate_file(self, path: StrPath) -> PathLike[str]: ...
+    def locate_file(self, path: StrPath) -> _SimplePath: ...
     @classmethod
     def from_name(cls, name: str) -> Distribution: ...
     @overload
@@ -217,6 +226,9 @@ class Distribution(_distribution_parent):
     if sys.version_info >= (3, 10):
         @property
         def name(self) -> str: ...
+    if sys.version_info >= (3, 13):
+        @property
+        def origin(self) -> types.SimpleNamespace: ...
 
 class DistributionFinder(MetaPathFinder):
     class Context:
@@ -231,15 +243,18 @@ class DistributionFinder(MetaPathFinder):
 class MetadataPathFinder(DistributionFinder):
     @classmethod
     def find_distributions(cls, context: DistributionFinder.Context = ...) -> Iterable[PathDistribution]: ...
-    if sys.version_info >= (3, 10):
-        # Yes, this is an instance method that has argumend named "cls"
+    if sys.version_info >= (3, 11):
+        @classmethod
+        def invalidate_caches(cls) -> None: ...
+    elif sys.version_info >= (3, 10):
+        # Yes, this is an instance method that has a parameter named "cls"
         def invalidate_caches(cls) -> None: ...
 
 class PathDistribution(Distribution):
-    _path: Path
-    def __init__(self, path: Path) -> None: ...
-    def read_text(self, filename: StrPath) -> str: ...
-    def locate_file(self, path: StrPath) -> PathLike[str]: ...
+    _path: _SimplePath
+    def __init__(self, path: _SimplePath) -> None: ...
+    def read_text(self, filename: StrPath) -> str | None: ...
+    def locate_file(self, path: StrPath) -> _SimplePath: ...
 
 def distribution(distribution_name: str) -> Distribution: ...
 @overload
@@ -262,7 +277,7 @@ if sys.version_info >= (3, 12):
 
 elif sys.version_info >= (3, 10):
     @overload
-    def entry_points() -> SelectableGroups: ...  # type: ignore[overload-overlap]
+    def entry_points() -> SelectableGroups: ...
     @overload
     def entry_points(
         *, name: str = ..., value: str = ..., group: str = ..., module: str = ..., attr: str = ..., extras: list[str] = ...

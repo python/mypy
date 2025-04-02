@@ -246,12 +246,12 @@ assert run_generator(another_triple()()) == ((1,), None)
 assert run_generator(outer()) == ((0, 1, 2, 3, 4), None)
 
 [case testYieldThrow]
-from typing import Generator, Iterable, Any
+from typing import Generator, Iterable, Any, Union
 from traceback import print_tb
 from contextlib import contextmanager
 import wrapsys
 
-def generator() -> Iterable[int]:
+def generator() -> Generator[int, None, Union[int, None]]:
     try:
         yield 1
         yield 2
@@ -264,6 +264,7 @@ def generator() -> Iterable[int]:
         else:
             print('caught exception without value')
         return 0
+    return None
 
 def no_except() -> Iterable[int]:
     yield 1
@@ -355,11 +356,11 @@ with ctx_manager() as c:
     raise Exception
   File "native.py", line 10, in generator
     yield 3
-  File "native.py", line 30, in wrapper
+  File "native.py", line 31, in wrapper
     return (yield from x)
   File "native.py", line 9, in generator
     yield 2
-  File "native.py", line 30, in wrapper
+  File "native.py", line 31, in wrapper
     return (yield from x)
 caught exception without value
 caught exception with value some string

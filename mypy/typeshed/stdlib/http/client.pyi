@@ -3,10 +3,10 @@ import io
 import ssl
 import sys
 import types
-from _typeshed import ReadableBuffer, SupportsRead, WriteableBuffer
+from _typeshed import MaybeNone, ReadableBuffer, SupportsRead, SupportsReadline, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from socket import socket
-from typing import Any, BinaryIO, TypeVar, overload
+from typing import BinaryIO, Literal, TypeVar, overload
 from typing_extensions import Self, TypeAlias
 
 __all__ = [
@@ -33,92 +33,101 @@ __all__ = [
 
 _DataType: TypeAlias = SupportsRead[bytes] | Iterable[ReadableBuffer] | ReadableBuffer
 _T = TypeVar("_T")
+_MessageT = TypeVar("_MessageT", bound=email.message.Message)
+_HeaderValue: TypeAlias = ReadableBuffer | str | int
 
 HTTP_PORT: int
 HTTPS_PORT: int
 
-CONTINUE: int
-SWITCHING_PROTOCOLS: int
-PROCESSING: int
+# Keep these global constants in sync with http.HTTPStatus (http/__init__.pyi).
+# They are present for backward compatibility reasons.
+CONTINUE: Literal[100]
+SWITCHING_PROTOCOLS: Literal[101]
+PROCESSING: Literal[102]
+if sys.version_info >= (3, 9):
+    EARLY_HINTS: Literal[103]
 
-OK: int
-CREATED: int
-ACCEPTED: int
-NON_AUTHORITATIVE_INFORMATION: int
-NO_CONTENT: int
-RESET_CONTENT: int
-PARTIAL_CONTENT: int
-MULTI_STATUS: int
-IM_USED: int
+OK: Literal[200]
+CREATED: Literal[201]
+ACCEPTED: Literal[202]
+NON_AUTHORITATIVE_INFORMATION: Literal[203]
+NO_CONTENT: Literal[204]
+RESET_CONTENT: Literal[205]
+PARTIAL_CONTENT: Literal[206]
+MULTI_STATUS: Literal[207]
+ALREADY_REPORTED: Literal[208]
+IM_USED: Literal[226]
 
-MULTIPLE_CHOICES: int
-MOVED_PERMANENTLY: int
-FOUND: int
-SEE_OTHER: int
-NOT_MODIFIED: int
-USE_PROXY: int
-TEMPORARY_REDIRECT: int
+MULTIPLE_CHOICES: Literal[300]
+MOVED_PERMANENTLY: Literal[301]
+FOUND: Literal[302]
+SEE_OTHER: Literal[303]
+NOT_MODIFIED: Literal[304]
+USE_PROXY: Literal[305]
+TEMPORARY_REDIRECT: Literal[307]
+PERMANENT_REDIRECT: Literal[308]
 
-BAD_REQUEST: int
-UNAUTHORIZED: int
-PAYMENT_REQUIRED: int
-FORBIDDEN: int
-NOT_FOUND: int
-METHOD_NOT_ALLOWED: int
-NOT_ACCEPTABLE: int
-PROXY_AUTHENTICATION_REQUIRED: int
-REQUEST_TIMEOUT: int
-CONFLICT: int
-GONE: int
-LENGTH_REQUIRED: int
-PRECONDITION_FAILED: int
-REQUEST_ENTITY_TOO_LARGE: int
-REQUEST_URI_TOO_LONG: int
-UNSUPPORTED_MEDIA_TYPE: int
-REQUESTED_RANGE_NOT_SATISFIABLE: int
-EXPECTATION_FAILED: int
-UNPROCESSABLE_ENTITY: int
-LOCKED: int
-FAILED_DEPENDENCY: int
-UPGRADE_REQUIRED: int
-PRECONDITION_REQUIRED: int
-TOO_MANY_REQUESTS: int
-REQUEST_HEADER_FIELDS_TOO_LARGE: int
+BAD_REQUEST: Literal[400]
+UNAUTHORIZED: Literal[401]
+PAYMENT_REQUIRED: Literal[402]
+FORBIDDEN: Literal[403]
+NOT_FOUND: Literal[404]
+METHOD_NOT_ALLOWED: Literal[405]
+NOT_ACCEPTABLE: Literal[406]
+PROXY_AUTHENTICATION_REQUIRED: Literal[407]
+REQUEST_TIMEOUT: Literal[408]
+CONFLICT: Literal[409]
+GONE: Literal[410]
+LENGTH_REQUIRED: Literal[411]
+PRECONDITION_FAILED: Literal[412]
+if sys.version_info >= (3, 13):
+    CONTENT_TOO_LARGE: Literal[413]
+REQUEST_ENTITY_TOO_LARGE: Literal[413]
+if sys.version_info >= (3, 13):
+    URI_TOO_LONG: Literal[414]
+REQUEST_URI_TOO_LONG: Literal[414]
+UNSUPPORTED_MEDIA_TYPE: Literal[415]
+if sys.version_info >= (3, 13):
+    RANGE_NOT_SATISFIABLE: Literal[416]
+REQUESTED_RANGE_NOT_SATISFIABLE: Literal[416]
+EXPECTATION_FAILED: Literal[417]
+if sys.version_info >= (3, 9):
+    IM_A_TEAPOT: Literal[418]
+MISDIRECTED_REQUEST: Literal[421]
+if sys.version_info >= (3, 13):
+    UNPROCESSABLE_CONTENT: Literal[422]
+UNPROCESSABLE_ENTITY: Literal[422]
+LOCKED: Literal[423]
+FAILED_DEPENDENCY: Literal[424]
+if sys.version_info >= (3, 9):
+    TOO_EARLY: Literal[425]
+UPGRADE_REQUIRED: Literal[426]
+PRECONDITION_REQUIRED: Literal[428]
+TOO_MANY_REQUESTS: Literal[429]
+REQUEST_HEADER_FIELDS_TOO_LARGE: Literal[431]
+UNAVAILABLE_FOR_LEGAL_REASONS: Literal[451]
 
-INTERNAL_SERVER_ERROR: int
-NOT_IMPLEMENTED: int
-BAD_GATEWAY: int
-SERVICE_UNAVAILABLE: int
-GATEWAY_TIMEOUT: int
-HTTP_VERSION_NOT_SUPPORTED: int
-INSUFFICIENT_STORAGE: int
-NOT_EXTENDED: int
-NETWORK_AUTHENTICATION_REQUIRED: int
+INTERNAL_SERVER_ERROR: Literal[500]
+NOT_IMPLEMENTED: Literal[501]
+BAD_GATEWAY: Literal[502]
+SERVICE_UNAVAILABLE: Literal[503]
+GATEWAY_TIMEOUT: Literal[504]
+HTTP_VERSION_NOT_SUPPORTED: Literal[505]
+VARIANT_ALSO_NEGOTIATES: Literal[506]
+INSUFFICIENT_STORAGE: Literal[507]
+LOOP_DETECTED: Literal[508]
+NOT_EXTENDED: Literal[510]
+NETWORK_AUTHENTICATION_REQUIRED: Literal[511]
 
 responses: dict[int, str]
 
-class HTTPMessage(email.message.Message):
+class HTTPMessage(email.message.Message[str, str]):
     def getallmatchingheaders(self, name: str) -> list[str]: ...  # undocumented
-    # override below all of Message's methods that use `_HeaderType` / `_HeaderTypeParam` with `str`
-    # `HTTPMessage` breaks the Liskov substitution principle by only intending for `str` headers
-    # This is easier than making `Message` generic
-    def __getitem__(self, name: str) -> str | None: ...
-    def __setitem__(self, name: str, val: str) -> None: ...  # type: ignore[override]
-    def values(self) -> list[str]: ...
-    def items(self) -> list[tuple[str, str]]: ...
-    @overload
-    def get(self, name: str, failobj: None = None) -> str | None: ...
-    @overload
-    def get(self, name: str, failobj: _T) -> str | _T: ...
-    @overload
-    def get_all(self, name: str, failobj: None = None) -> list[str] | None: ...
-    @overload
-    def get_all(self, name: str, failobj: _T) -> list[str] | _T: ...
-    def replace_header(self, _name: str, _value: str) -> None: ...  # type: ignore[override]
-    def set_raw(self, name: str, value: str) -> None: ...  # type: ignore[override]
-    def raw_items(self) -> Iterator[tuple[str, str]]: ...
 
-def parse_headers(fp: io.BufferedIOBase, _class: Callable[[], email.message.Message] = ...) -> HTTPMessage: ...
+@overload
+def parse_headers(fp: SupportsReadline[bytes], _class: Callable[[], _MessageT]) -> _MessageT: ...
+@overload
+def parse_headers(fp: SupportsReadline[bytes]) -> HTTPMessage: ...
 
 class HTTPResponse(io.BufferedIOBase, BinaryIO):  # type: ignore[misc]  # incompatible method definitions in the base classes
     msg: HTTPMessage
@@ -167,7 +176,7 @@ class HTTPConnection:
     timeout: float | None
     host: str
     port: int
-    sock: socket | Any  # can be `None` if `.connect()` was not called
+    sock: socket | MaybeNone  # can be `None` if `.connect()` was not called
     def __init__(
         self,
         host: str,
@@ -181,7 +190,7 @@ class HTTPConnection:
         method: str,
         url: str,
         body: _DataType | str | None = None,
-        headers: Mapping[str, str] = {},
+        headers: Mapping[str, _HeaderValue] = {},
         *,
         encode_chunked: bool = False,
     ) -> None: ...
@@ -194,13 +203,13 @@ class HTTPConnection:
     def connect(self) -> None: ...
     def close(self) -> None: ...
     def putrequest(self, method: str, url: str, skip_host: bool = False, skip_accept_encoding: bool = False) -> None: ...
-    def putheader(self, header: str | bytes, *argument: str | bytes) -> None: ...
+    def putheader(self, header: str | bytes, *values: _HeaderValue) -> None: ...
     def endheaders(self, message_body: _DataType | None = None, *, encode_chunked: bool = False) -> None: ...
     def send(self, data: _DataType | str) -> None: ...
 
 class HTTPSConnection(HTTPConnection):
     # Can be `None` if `.connect()` was not called:
-    sock: ssl.SSLSocket | Any
+    sock: ssl.SSLSocket | MaybeNone
     if sys.version_info >= (3, 12):
         def __init__(
             self,

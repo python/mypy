@@ -4,10 +4,10 @@ import types
 from _typeshed import ReadableBuffer, StrPath
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterator, Mapping, Sequence
+from importlib import _bootstrap_external
 from importlib.machinery import ModuleSpec
 from io import BufferedReader
-from typing import IO, Any, Protocol, overload, runtime_checkable
-from typing_extensions import Literal
+from typing import IO, Any, Literal, Protocol, overload, runtime_checkable
 
 if sys.version_info >= (3, 11):
     __all__ = [
@@ -57,7 +57,7 @@ class ExecutionLoader(InspectLoader):
     @abstractmethod
     def get_filename(self, fullname: str) -> str: ...
 
-class SourceLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
+class SourceLoader(_bootstrap_external.SourceLoader, ResourceLoader, ExecutionLoader, metaclass=ABCMeta):  # type: ignore[misc]  # incompatible definitions of source_to_code in the base classes
     def path_mtime(self, path: str) -> float: ...
     def set_data(self, path: str, data: bytes) -> None: ...
     def get_source(self, fullname: str) -> str | None: ...
@@ -65,7 +65,7 @@ class SourceLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
 
 # The base classes differ starting in 3.10:
 if sys.version_info >= (3, 10):
-    # Please keep in sync with sys._MetaPathFinder
+    # Please keep in sync with _typeshed.importlib.MetaPathFinderProtocol
     class MetaPathFinder(metaclass=ABCMeta):
         if sys.version_info < (3, 12):
             def find_module(self, fullname: str, path: Sequence[str] | None) -> Loader | None: ...
@@ -73,7 +73,7 @@ if sys.version_info >= (3, 10):
         def invalidate_caches(self) -> None: ...
         # Not defined on the actual class, but expected to exist.
         def find_spec(
-            self, __fullname: str, __path: Sequence[str] | None, __target: types.ModuleType | None = ...
+            self, fullname: str, path: Sequence[str] | None, target: types.ModuleType | None = ..., /
         ) -> ModuleSpec | None: ...
 
     class PathEntryFinder(metaclass=ABCMeta):
@@ -86,13 +86,13 @@ if sys.version_info >= (3, 10):
         def find_spec(self, fullname: str, target: types.ModuleType | None = ...) -> ModuleSpec | None: ...
 
 else:
-    # Please keep in sync with sys._MetaPathFinder
+    # Please keep in sync with _typeshed.importlib.MetaPathFinderProtocol
     class MetaPathFinder(Finder):
         def find_module(self, fullname: str, path: Sequence[str] | None) -> Loader | None: ...
         def invalidate_caches(self) -> None: ...
         # Not defined on the actual class, but expected to exist.
         def find_spec(
-            self, __fullname: str, __path: Sequence[str] | None, __target: types.ModuleType | None = ...
+            self, fullname: str, path: Sequence[str] | None, target: types.ModuleType | None = ..., /
         ) -> ModuleSpec | None: ...
 
     class PathEntryFinder(Finder):
@@ -102,7 +102,7 @@ else:
         # Not defined on the actual class, but expected to exist.
         def find_spec(self, fullname: str, target: types.ModuleType | None = ...) -> ModuleSpec | None: ...
 
-class FileLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
+class FileLoader(_bootstrap_external.FileLoader, ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     name: str
     path: str
     def __init__(self, fullname: str, path: str) -> None: ...
@@ -139,25 +139,25 @@ if sys.version_info >= (3, 9):
             def joinpath(self, *descendants: str) -> Traversable: ...
         else:
             @abstractmethod
-            def joinpath(self, __child: str) -> Traversable: ...
+            def joinpath(self, child: str, /) -> Traversable: ...
 
         # The documentation and runtime protocol allows *args, **kwargs arguments,
         # but this would mean that all implementers would have to support them,
         # which is not the case.
         @overload
         @abstractmethod
-        def open(self, __mode: Literal["r"] = "r", *, encoding: str | None = None, errors: str | None = None) -> IO[str]: ...
+        def open(self, mode: Literal["r"] = "r", *, encoding: str | None = None, errors: str | None = None) -> IO[str]: ...
         @overload
         @abstractmethod
-        def open(self, __mode: Literal["rb"]) -> IO[bytes]: ...
+        def open(self, mode: Literal["rb"]) -> IO[bytes]: ...
         @property
         @abstractmethod
         def name(self) -> str: ...
         if sys.version_info >= (3, 10):
-            def __truediv__(self, __child: str) -> Traversable: ...
+            def __truediv__(self, child: str, /) -> Traversable: ...
         else:
             @abstractmethod
-            def __truediv__(self, __child: str) -> Traversable: ...
+            def __truediv__(self, child: str, /) -> Traversable: ...
 
         @abstractmethod
         def read_bytes(self) -> bytes: ...

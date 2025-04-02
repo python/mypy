@@ -1,124 +1,131 @@
 import sys
 from _typeshed import ReadableBuffer
 from collections.abc import Sequence
-from typing import Any, NoReturn, overload
-from typing_extensions import Literal, final
+from typing import Any, Final, Literal, NoReturn, final, overload
 
 if sys.platform == "win32":
-    ABOVE_NORMAL_PRIORITY_CLASS: Literal[0x8000]
-    BELOW_NORMAL_PRIORITY_CLASS: Literal[0x4000]
+    ABOVE_NORMAL_PRIORITY_CLASS: Final = 0x8000
+    BELOW_NORMAL_PRIORITY_CLASS: Final = 0x4000
 
-    CREATE_BREAKAWAY_FROM_JOB: Literal[0x1000000]
-    CREATE_DEFAULT_ERROR_MODE: Literal[0x4000000]
-    CREATE_NO_WINDOW: Literal[0x8000000]
-    CREATE_NEW_CONSOLE: Literal[0x10]
-    CREATE_NEW_PROCESS_GROUP: Literal[0x200]
+    CREATE_BREAKAWAY_FROM_JOB: Final = 0x1000000
+    CREATE_DEFAULT_ERROR_MODE: Final = 0x4000000
+    CREATE_NO_WINDOW: Final = 0x8000000
+    CREATE_NEW_CONSOLE: Final = 0x10
+    CREATE_NEW_PROCESS_GROUP: Final = 0x200
 
-    DETACHED_PROCESS: Literal[8]
-    DUPLICATE_CLOSE_SOURCE: Literal[1]
-    DUPLICATE_SAME_ACCESS: Literal[2]
+    DETACHED_PROCESS: Final = 8
+    DUPLICATE_CLOSE_SOURCE: Final = 1
+    DUPLICATE_SAME_ACCESS: Final = 2
 
-    ERROR_ALREADY_EXISTS: Literal[183]
-    ERROR_BROKEN_PIPE: Literal[109]
-    ERROR_IO_PENDING: Literal[997]
-    ERROR_MORE_DATA: Literal[234]
-    ERROR_NETNAME_DELETED: Literal[64]
-    ERROR_NO_DATA: Literal[232]
-    ERROR_NO_SYSTEM_RESOURCES: Literal[1450]
-    ERROR_OPERATION_ABORTED: Literal[995]
-    ERROR_PIPE_BUSY: Literal[231]
-    ERROR_PIPE_CONNECTED: Literal[535]
-    ERROR_SEM_TIMEOUT: Literal[121]
+    ERROR_ALREADY_EXISTS: Final = 183
+    ERROR_BROKEN_PIPE: Final = 109
+    ERROR_IO_PENDING: Final = 997
+    ERROR_MORE_DATA: Final = 234
+    ERROR_NETNAME_DELETED: Final = 64
+    ERROR_NO_DATA: Final = 232
+    ERROR_NO_SYSTEM_RESOURCES: Final = 1450
+    ERROR_OPERATION_ABORTED: Final = 995
+    ERROR_PIPE_BUSY: Final = 231
+    ERROR_PIPE_CONNECTED: Final = 535
+    ERROR_SEM_TIMEOUT: Final = 121
 
-    FILE_FLAG_FIRST_PIPE_INSTANCE: Literal[0x80000]
-    FILE_FLAG_OVERLAPPED: Literal[0x40000000]
+    FILE_FLAG_FIRST_PIPE_INSTANCE: Final = 0x80000
+    FILE_FLAG_OVERLAPPED: Final = 0x40000000
 
-    FILE_GENERIC_READ: Literal[1179785]
-    FILE_GENERIC_WRITE: Literal[1179926]
+    FILE_GENERIC_READ: Final = 1179785
+    FILE_GENERIC_WRITE: Final = 1179926
 
-    if sys.version_info >= (3, 8):
-        FILE_MAP_ALL_ACCESS: Literal[983071]
-        FILE_MAP_COPY: Literal[1]
-        FILE_MAP_EXECUTE: Literal[32]
-        FILE_MAP_READ: Literal[4]
-        FILE_MAP_WRITE: Literal[2]
+    FILE_MAP_ALL_ACCESS: Final = 983071
+    FILE_MAP_COPY: Final = 1
+    FILE_MAP_EXECUTE: Final = 32
+    FILE_MAP_READ: Final = 4
+    FILE_MAP_WRITE: Final = 2
 
-    FILE_TYPE_CHAR: Literal[2]
-    FILE_TYPE_DISK: Literal[1]
-    FILE_TYPE_PIPE: Literal[3]
-    FILE_TYPE_REMOTE: Literal[32768]
-    FILE_TYPE_UNKNOWN: Literal[0]
+    FILE_TYPE_CHAR: Final = 2
+    FILE_TYPE_DISK: Final = 1
+    FILE_TYPE_PIPE: Final = 3
+    FILE_TYPE_REMOTE: Final = 32768
+    FILE_TYPE_UNKNOWN: Final = 0
 
-    GENERIC_READ: Literal[0x80000000]
-    GENERIC_WRITE: Literal[0x40000000]
-    HIGH_PRIORITY_CLASS: Literal[0x80]
-    INFINITE: Literal[0xFFFFFFFF]
-    if sys.version_info >= (3, 8):
-        # Ignore the Flake8 error -- flake8-pyi assumes
-        # most numbers this long will be implementation details,
-        # but here we can see that it's a power of 2
-        INVALID_HANDLE_VALUE: Literal[0xFFFFFFFFFFFFFFFF]  # noqa: Y054
-    IDLE_PRIORITY_CLASS: Literal[0x40]
-    NORMAL_PRIORITY_CLASS: Literal[0x20]
-    REALTIME_PRIORITY_CLASS: Literal[0x100]
-    NMPWAIT_WAIT_FOREVER: Literal[0xFFFFFFFF]
+    GENERIC_READ: Final = 0x80000000
+    GENERIC_WRITE: Final = 0x40000000
+    HIGH_PRIORITY_CLASS: Final = 0x80
+    INFINITE: Final = 0xFFFFFFFF
+    # Ignore the Flake8 error -- flake8-pyi assumes
+    # most numbers this long will be implementation details,
+    # but here we can see that it's a power of 2
+    INVALID_HANDLE_VALUE: Final = 0xFFFFFFFFFFFFFFFF  # noqa: Y054
+    IDLE_PRIORITY_CLASS: Final = 0x40
+    NORMAL_PRIORITY_CLASS: Final = 0x20
+    REALTIME_PRIORITY_CLASS: Final = 0x100
+    NMPWAIT_WAIT_FOREVER: Final = 0xFFFFFFFF
 
-    if sys.version_info >= (3, 8):
-        MEM_COMMIT: Literal[0x1000]
-        MEM_FREE: Literal[0x10000]
-        MEM_IMAGE: Literal[0x1000000]
-        MEM_MAPPED: Literal[0x40000]
-        MEM_PRIVATE: Literal[0x20000]
-        MEM_RESERVE: Literal[0x2000]
+    MEM_COMMIT: Final = 0x1000
+    MEM_FREE: Final = 0x10000
+    MEM_IMAGE: Final = 0x1000000
+    MEM_MAPPED: Final = 0x40000
+    MEM_PRIVATE: Final = 0x20000
+    MEM_RESERVE: Final = 0x2000
 
-    NULL: Literal[0]
-    OPEN_EXISTING: Literal[3]
+    NULL: Final = 0
+    OPEN_EXISTING: Final = 3
 
-    PIPE_ACCESS_DUPLEX: Literal[3]
-    PIPE_ACCESS_INBOUND: Literal[1]
-    PIPE_READMODE_MESSAGE: Literal[2]
-    PIPE_TYPE_MESSAGE: Literal[4]
-    PIPE_UNLIMITED_INSTANCES: Literal[255]
-    PIPE_WAIT: Literal[0]
+    PIPE_ACCESS_DUPLEX: Final = 3
+    PIPE_ACCESS_INBOUND: Final = 1
+    PIPE_READMODE_MESSAGE: Final = 2
+    PIPE_TYPE_MESSAGE: Final = 4
+    PIPE_UNLIMITED_INSTANCES: Final = 255
+    PIPE_WAIT: Final = 0
 
-    if sys.version_info >= (3, 8):
-        PAGE_EXECUTE: Literal[0x10]
-        PAGE_EXECUTE_READ: Literal[0x20]
-        PAGE_EXECUTE_READWRITE: Literal[0x40]
-        PAGE_EXECUTE_WRITECOPY: Literal[0x80]
-        PAGE_GUARD: Literal[0x100]
-        PAGE_NOACCESS: Literal[0x1]
-        PAGE_NOCACHE: Literal[0x200]
-        PAGE_READONLY: Literal[0x2]
-        PAGE_READWRITE: Literal[0x4]
-        PAGE_WRITECOMBINE: Literal[0x400]
-        PAGE_WRITECOPY: Literal[0x8]
+    PAGE_EXECUTE: Final = 0x10
+    PAGE_EXECUTE_READ: Final = 0x20
+    PAGE_EXECUTE_READWRITE: Final = 0x40
+    PAGE_EXECUTE_WRITECOPY: Final = 0x80
+    PAGE_GUARD: Final = 0x100
+    PAGE_NOACCESS: Final = 0x1
+    PAGE_NOCACHE: Final = 0x200
+    PAGE_READONLY: Final = 0x2
+    PAGE_READWRITE: Final = 0x4
+    PAGE_WRITECOMBINE: Final = 0x400
+    PAGE_WRITECOPY: Final = 0x8
 
-    PROCESS_ALL_ACCESS: Literal[0x1FFFFF]
-    PROCESS_DUP_HANDLE: Literal[0x40]
+    PROCESS_ALL_ACCESS: Final = 0x1FFFFF
+    PROCESS_DUP_HANDLE: Final = 0x40
 
-    if sys.version_info >= (3, 8):
-        SEC_COMMIT: Literal[0x8000000]
-        SEC_IMAGE: Literal[0x1000000]
-        SEC_LARGE_PAGES: Literal[0x80000000]
-        SEC_NOCACHE: Literal[0x10000000]
-        SEC_RESERVE: Literal[0x4000000]
-        SEC_WRITECOMBINE: Literal[0x40000000]
+    SEC_COMMIT: Final = 0x8000000
+    SEC_IMAGE: Final = 0x1000000
+    SEC_LARGE_PAGES: Final = 0x80000000
+    SEC_NOCACHE: Final = 0x10000000
+    SEC_RESERVE: Final = 0x4000000
+    SEC_WRITECOMBINE: Final = 0x40000000
 
-    STARTF_USESHOWWINDOW: Literal[0x1]
-    STARTF_USESTDHANDLES: Literal[0x100]
+    if sys.version_info >= (3, 13):
+        STARTF_FORCEOFFFEEDBACK: Final = 0x80
+        STARTF_FORCEONFEEDBACK: Final = 0x40
+        STARTF_PREVENTPINNING: Final = 0x2000
+        STARTF_RUNFULLSCREEN: Final = 0x20
+        STARTF_TITLEISAPPID: Final = 0x1000
+        STARTF_TITLEISLINKNAME: Final = 0x800
+        STARTF_UNTRUSTEDSOURCE: Final = 0x8000
+        STARTF_USECOUNTCHARS: Final = 0x8
+        STARTF_USEFILLATTRIBUTE: Final = 0x10
+        STARTF_USEHOTKEY: Final = 0x200
+        STARTF_USEPOSITION: Final = 0x4
+        STARTF_USESIZE: Final = 0x2
 
-    STD_ERROR_HANDLE: Literal[0xFFFFFFF4]
-    STD_OUTPUT_HANDLE: Literal[0xFFFFFFF5]
-    STD_INPUT_HANDLE: Literal[0xFFFFFFF6]
+    STARTF_USESHOWWINDOW: Final = 0x1
+    STARTF_USESTDHANDLES: Final = 0x100
 
-    STILL_ACTIVE: Literal[259]
-    SW_HIDE: Literal[0]
-    if sys.version_info >= (3, 8):
-        SYNCHRONIZE: Literal[0x100000]
-    WAIT_ABANDONED_0: Literal[128]
-    WAIT_OBJECT_0: Literal[0]
-    WAIT_TIMEOUT: Literal[258]
+    STD_ERROR_HANDLE: Final = 0xFFFFFFF4
+    STD_OUTPUT_HANDLE: Final = 0xFFFFFFF5
+    STD_INPUT_HANDLE: Final = 0xFFFFFFF6
+
+    STILL_ACTIVE: Final = 259
+    SW_HIDE: Final = 0
+    SYNCHRONIZE: Final = 0x100000
+    WAIT_ABANDONED_0: Final = 128
+    WAIT_OBJECT_0: Final = 0
+    WAIT_TIMEOUT: Final = 258
 
     if sys.version_info >= (3, 10):
         LOCALE_NAME_INVARIANT: str
@@ -138,34 +145,34 @@ if sys.platform == "win32":
         LCMAP_UPPERCASE: int
 
     if sys.version_info >= (3, 12):
-        COPYFILE2_CALLBACK_CHUNK_STARTED: Literal[1]
-        COPYFILE2_CALLBACK_CHUNK_FINISHED: Literal[2]
-        COPYFILE2_CALLBACK_STREAM_STARTED: Literal[3]
-        COPYFILE2_CALLBACK_STREAM_FINISHED: Literal[4]
-        COPYFILE2_CALLBACK_POLL_CONTINUE: Literal[5]
-        COPYFILE2_CALLBACK_ERROR: Literal[6]
+        COPYFILE2_CALLBACK_CHUNK_STARTED: Final = 1
+        COPYFILE2_CALLBACK_CHUNK_FINISHED: Final = 2
+        COPYFILE2_CALLBACK_STREAM_STARTED: Final = 3
+        COPYFILE2_CALLBACK_STREAM_FINISHED: Final = 4
+        COPYFILE2_CALLBACK_POLL_CONTINUE: Final = 5
+        COPYFILE2_CALLBACK_ERROR: Final = 6
 
-        COPYFILE2_PROGRESS_CONTINUE: Literal[0]
-        COPYFILE2_PROGRESS_CANCEL: Literal[1]
-        COPYFILE2_PROGRESS_STOP: Literal[2]
-        COPYFILE2_PROGRESS_QUIET: Literal[3]
-        COPYFILE2_PROGRESS_PAUSE: Literal[4]
+        COPYFILE2_PROGRESS_CONTINUE: Final = 0
+        COPYFILE2_PROGRESS_CANCEL: Final = 1
+        COPYFILE2_PROGRESS_STOP: Final = 2
+        COPYFILE2_PROGRESS_QUIET: Final = 3
+        COPYFILE2_PROGRESS_PAUSE: Final = 4
 
-        COPY_FILE_FAIL_IF_EXISTS: Literal[0x1]
-        COPY_FILE_RESTARTABLE: Literal[0x2]
-        COPY_FILE_OPEN_SOURCE_FOR_WRITE: Literal[0x4]
-        COPY_FILE_ALLOW_DECRYPTED_DESTINATION: Literal[0x8]
-        COPY_FILE_COPY_SYMLINK: Literal[0x800]
-        COPY_FILE_NO_BUFFERING: Literal[0x1000]
-        COPY_FILE_REQUEST_SECURITY_PRIVILEGES: Literal[0x2000]
-        COPY_FILE_RESUME_FROM_PAUSE: Literal[0x4000]
-        COPY_FILE_NO_OFFLOAD: Literal[0x40000]
-        COPY_FILE_REQUEST_COMPRESSED_TRAFFIC: Literal[0x10000000]
+        COPY_FILE_FAIL_IF_EXISTS: Final = 0x1
+        COPY_FILE_RESTARTABLE: Final = 0x2
+        COPY_FILE_OPEN_SOURCE_FOR_WRITE: Final = 0x4
+        COPY_FILE_ALLOW_DECRYPTED_DESTINATION: Final = 0x8
+        COPY_FILE_COPY_SYMLINK: Final = 0x800
+        COPY_FILE_NO_BUFFERING: Final = 0x1000
+        COPY_FILE_REQUEST_SECURITY_PRIVILEGES: Final = 0x2000
+        COPY_FILE_RESUME_FROM_PAUSE: Final = 0x4000
+        COPY_FILE_NO_OFFLOAD: Final = 0x40000
+        COPY_FILE_REQUEST_COMPRESSED_TRAFFIC: Final = 0x10000000
 
-        ERROR_ACCESS_DENIED: Literal[5]
-        ERROR_PRIVILEGE_NOT_HELD: Literal[1314]
+        ERROR_ACCESS_DENIED: Final = 5
+        ERROR_PRIVILEGE_NOT_HELD: Final = 1314
 
-    def CloseHandle(__handle: int) -> None: ...
+    def CloseHandle(handle: int, /) -> None: ...
     @overload
     def ConnectNamedPipe(handle: int, overlapped: Literal[True]) -> Overlapped: ...
     @overload
@@ -173,59 +180,63 @@ if sys.platform == "win32":
     @overload
     def ConnectNamedPipe(handle: int, overlapped: bool) -> Overlapped | None: ...
     def CreateFile(
-        __file_name: str,
-        __desired_access: int,
-        __share_mode: int,
-        __security_attributes: int,
-        __creation_disposition: int,
-        __flags_and_attributes: int,
-        __template_file: int,
+        file_name: str,
+        desired_access: int,
+        share_mode: int,
+        security_attributes: int,
+        creation_disposition: int,
+        flags_and_attributes: int,
+        template_file: int,
+        /,
     ) -> int: ...
-    def CreateJunction(__src_path: str, __dst_path: str) -> None: ...
+    def CreateJunction(src_path: str, dst_path: str, /) -> None: ...
     def CreateNamedPipe(
-        __name: str,
-        __open_mode: int,
-        __pipe_mode: int,
-        __max_instances: int,
-        __out_buffer_size: int,
-        __in_buffer_size: int,
-        __default_timeout: int,
-        __security_attributes: int,
+        name: str,
+        open_mode: int,
+        pipe_mode: int,
+        max_instances: int,
+        out_buffer_size: int,
+        in_buffer_size: int,
+        default_timeout: int,
+        security_attributes: int,
+        /,
     ) -> int: ...
-    def CreatePipe(__pipe_attrs: Any, __size: int) -> tuple[int, int]: ...
+    def CreatePipe(pipe_attrs: Any, size: int, /) -> tuple[int, int]: ...
     def CreateProcess(
-        __application_name: str | None,
-        __command_line: str | None,
-        __proc_attrs: Any,
-        __thread_attrs: Any,
-        __inherit_handles: bool,
-        __creation_flags: int,
-        __env_mapping: dict[str, str],
-        __current_directory: str | None,
-        __startup_info: Any,
+        application_name: str | None,
+        command_line: str | None,
+        proc_attrs: Any,
+        thread_attrs: Any,
+        inherit_handles: bool,
+        creation_flags: int,
+        env_mapping: dict[str, str],
+        current_directory: str | None,
+        startup_info: Any,
+        /,
     ) -> tuple[int, int, int, int]: ...
     def DuplicateHandle(
-        __source_process_handle: int,
-        __source_handle: int,
-        __target_process_handle: int,
-        __desired_access: int,
-        __inherit_handle: bool,
-        __options: int = 0,
+        source_process_handle: int,
+        source_handle: int,
+        target_process_handle: int,
+        desired_access: int,
+        inherit_handle: bool,
+        options: int = 0,
+        /,
     ) -> int: ...
-    def ExitProcess(__ExitCode: int) -> NoReturn: ...
+    def ExitProcess(ExitCode: int, /) -> NoReturn: ...
     def GetACP() -> int: ...
     def GetFileType(handle: int) -> int: ...
     def GetCurrentProcess() -> int: ...
-    def GetExitCodeProcess(__process: int) -> int: ...
+    def GetExitCodeProcess(process: int, /) -> int: ...
     def GetLastError() -> int: ...
-    def GetModuleFileName(__module_handle: int) -> str: ...
-    def GetStdHandle(__std_handle: int) -> int: ...
+    def GetModuleFileName(module_handle: int, /) -> str: ...
+    def GetStdHandle(std_handle: int, /) -> int: ...
     def GetVersion() -> int: ...
-    def OpenProcess(__desired_access: int, __inherit_handle: bool, __process_id: int) -> int: ...
-    def PeekNamedPipe(__handle: int, __size: int = 0) -> tuple[int, int] | tuple[bytes, int, int]: ...
+    def OpenProcess(desired_access: int, inherit_handle: bool, process_id: int, /) -> int: ...
+    def PeekNamedPipe(handle: int, size: int = 0, /) -> tuple[int, int] | tuple[bytes, int, int]: ...
     if sys.version_info >= (3, 10):
         def LCMapStringEx(locale: str, flags: int, src: str) -> str: ...
-        def UnmapViewOfFile(__address: int) -> None: ...
+        def UnmapViewOfFile(address: int, /) -> None: ...
 
     @overload
     def ReadFile(handle: int, size: int, overlapped: Literal[True]) -> tuple[Overlapped, int]: ...
@@ -234,12 +245,12 @@ if sys.platform == "win32":
     @overload
     def ReadFile(handle: int, size: int, overlapped: int | bool) -> tuple[Any, int]: ...
     def SetNamedPipeHandleState(
-        __named_pipe: int, __mode: int | None, __max_collection_count: int | None, __collect_data_timeout: int | None
+        named_pipe: int, mode: int | None, max_collection_count: int | None, collect_data_timeout: int | None, /
     ) -> None: ...
-    def TerminateProcess(__handle: int, __exit_code: int) -> None: ...
-    def WaitForMultipleObjects(__handle_seq: Sequence[int], __wait_flag: bool, __milliseconds: int = 0xFFFFFFFF) -> int: ...
-    def WaitForSingleObject(__handle: int, __milliseconds: int) -> int: ...
-    def WaitNamedPipe(__name: str, __timeout: int) -> None: ...
+    def TerminateProcess(handle: int, exit_code: int, /) -> None: ...
+    def WaitForMultipleObjects(handle_seq: Sequence[int], wait_flag: bool, milliseconds: int = 0xFFFFFFFF, /) -> int: ...
+    def WaitForSingleObject(handle: int, milliseconds: int, /) -> int: ...
+    def WaitNamedPipe(name: str, timeout: int, /) -> None: ...
     @overload
     def WriteFile(handle: int, buffer: ReadableBuffer, overlapped: Literal[True]) -> tuple[Overlapped, int]: ...
     @overload
@@ -249,10 +260,24 @@ if sys.platform == "win32":
     @final
     class Overlapped:
         event: int
-        def GetOverlappedResult(self, __wait: bool) -> tuple[int, int]: ...
+        def GetOverlappedResult(self, wait: bool, /) -> tuple[int, int]: ...
         def cancel(self) -> None: ...
         def getbuffer(self) -> bytes | None: ...
 
+    if sys.version_info >= (3, 13):
+        def BatchedWaitForMultipleObjects(
+            handle_seq: Sequence[int], wait_all: bool, milliseconds: int = 0xFFFFFFFF
+        ) -> list[int]: ...
+        def CreateEventW(security_attributes: int, manual_reset: bool, initial_state: bool, name: str | None) -> int: ...
+        def CreateMutexW(security_attributes: int, initial_owner: bool, name: str) -> int: ...
+        def GetLongPathName(path: str) -> str: ...
+        def GetShortPathName(path: str) -> str: ...
+        def OpenEventW(desired_access: int, inherit_handle: bool, name: str) -> int: ...
+        def OpenMutexW(desired_access: int, inherit_handle: bool, name: str) -> int: ...
+        def ReleaseMutex(mutex: int) -> None: ...
+        def ResetEvent(event: int) -> None: ...
+        def SetEvent(event: int) -> None: ...
+
     if sys.version_info >= (3, 12):
         def CopyFile2(existing_file_name: str, new_file_name: str, flags: int, progress_routine: int | None = None) -> int: ...
-        def NeedCurrentDirectoryForExePath(__exe_name: str) -> bool: ...
+        def NeedCurrentDirectoryForExePath(exe_name: str, /) -> bool: ...

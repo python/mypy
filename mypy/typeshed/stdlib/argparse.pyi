@@ -1,9 +1,9 @@
 import sys
-from _typeshed import sentinel
+from _typeshed import SupportsWrite, sentinel
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
-from typing import IO, Any, Generic, NewType, NoReturn, Protocol, TypeVar, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, ClassVar, Final, Generic, NewType, NoReturn, Protocol, TypeVar, overload
+from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
     "ArgumentParser",
@@ -32,25 +32,17 @@ _T = TypeVar("_T")
 _ActionT = TypeVar("_ActionT", bound=Action)
 _ArgumentParserT = TypeVar("_ArgumentParserT", bound=ArgumentParser)
 _N = TypeVar("_N")
-# more precisely, Literal["store", "store_const", "store_true",
-# "store_false", "append", "append_const", "count", "help", "version",
-# "extend"], but using this would make it hard to annotate callers
-# that don't use a literal argument
-_ActionStr: TypeAlias = str
-# more precisely, Literal["?", "*", "+", "...", "A...",
-# "==SUPPRESS=="], but using this would make it hard to annotate
-# callers that don't use a literal argument
-_NArgsStr: TypeAlias = str
+_ActionType: TypeAlias = Callable[[str], Any] | FileType | str
 
-ONE_OR_MORE: Literal["+"]
-OPTIONAL: Literal["?"]
-PARSER: Literal["A..."]
-REMAINDER: Literal["..."]
+ONE_OR_MORE: Final = "+"
+OPTIONAL: Final = "?"
+PARSER: Final = "A..."
+REMAINDER: Final = "..."
 _SUPPRESS_T = NewType("_SUPPRESS_T", str)
 SUPPRESS: _SUPPRESS_T | str  # not using Literal because argparse sometimes compares SUPPRESS with is
 # the | str is there so that foo = argparse.SUPPRESS; foo = "test" checks out in mypy
-ZERO_OR_MORE: Literal["*"]
-_UNRECOGNIZED_ARGS_ATTR: str  # undocumented
+ZERO_OR_MORE: Final = "*"
+_UNRECOGNIZED_ARGS_ATTR: Final = "_unrecognized_args"  # undocumented
 
 class ArgumentError(Exception):
     argument_name: str | None
@@ -85,11 +77,16 @@ class _ActionsContainer:
     def add_argument(
         self,
         *name_or_flags: str,
-        action: _ActionStr | type[Action] = ...,
-        nargs: int | _NArgsStr | _SUPPRESS_T | None = None,
+        # str covers predefined actions ("store_true", "count", etc.)
+        # and user registered actions via the `register` method.
+        action: str | type[Action] = ...,
+        # more precisely, Literal["?", "*", "+", "...", "A...", "==SUPPRESS=="],
+        # but using this would make it hard to annotate callers that don't use a
+        # literal argument and for subclasses to override this method.
+        nargs: int | str | _SUPPRESS_T | None = None,
         const: Any = ...,
         default: Any = ...,
-        type: Callable[[str], _T] | FileType = ...,
+        type: _ActionType = ...,
         choices: Iterable[_T] | None = ...,
         required: bool = ...,
         help: str | None = ...,
@@ -181,33 +178,33 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     def add_subparsers(
         self: _ArgumentParserT,
         *,
-        title: str = ...,
-        description: str | None = ...,
-        prog: str = ...,
+        title: str = "subcommands",
+        description: str | None = None,
+        prog: str | None = None,
         action: type[Action] = ...,
         option_string: str = ...,
-        dest: str | None = ...,
-        required: bool = ...,
-        help: str | None = ...,
-        metavar: str | None = ...,
+        dest: str | None = None,
+        required: bool = False,
+        help: str | None = None,
+        metavar: str | None = None,
     ) -> _SubParsersAction[_ArgumentParserT]: ...
     @overload
     def add_subparsers(
         self,
         *,
-        title: str = ...,
-        description: str | None = ...,
-        prog: str = ...,
+        title: str = "subcommands",
+        description: str | None = None,
+        prog: str | None = None,
         parser_class: type[_ArgumentParserT],
         action: type[Action] = ...,
         option_string: str = ...,
-        dest: str | None = ...,
-        required: bool = ...,
-        help: str | None = ...,
-        metavar: str | None = ...,
+        dest: str | None = None,
+        required: bool = False,
+        help: str | None = None,
+        metavar: str | None = None,
     ) -> _SubParsersAction[_ArgumentParserT]: ...
-    def print_usage(self, file: IO[str] | None = None) -> None: ...
-    def print_help(self, file: IO[str] | None = None) -> None: ...
+    def print_usage(self, file: SupportsWrite[str] | None = None) -> None: ...
+    def print_help(self, file: SupportsWrite[str] | None = None) -> None: ...
     def format_usage(self) -> str: ...
     def format_help(self) -> str: ...
     @overload
@@ -236,7 +233,13 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     # undocumented
     def _get_optional_actions(self) -> list[Action]: ...
     def _get_positional_actions(self) -> list[Action]: ...
-    def _parse_known_args(self, arg_strings: list[str], namespace: Namespace) -> tuple[Namespace, list[str]]: ...
+    if sys.version_info >= (3, 12):
+        def _parse_known_args(
+            self, arg_strings: list[str], namespace: Namespace, intermixed: bool
+        ) -> tuple[Namespace, list[str]]: ...
+    else:
+        def _parse_known_args(self, arg_strings: list[str], namespace: Namespace) -> tuple[Namespace, list[str]]: ...
+
     def _read_args_from_files(self, arg_strings: list[str]) -> list[str]: ...
     def _match_argument(self, action: Action, arg_strings_pattern: str) -> int: ...
     def _match_arguments_partial(self, actions: Sequence[Action], arg_strings_pattern: str) -> list[int]: ...
@@ -247,7 +250,7 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     def _get_value(self, action: Action, arg_string: str) -> Any: ...
     def _check_value(self, action: Action, value: Any) -> None: ...
     def _get_formatter(self) -> HelpFormatter: ...
-    def _print_message(self, message: str, file: IO[str] | None = None) -> None: ...
+    def _print_message(self, message: str, file: SupportsWrite[str] | None = None) -> None: ...
 
 class HelpFormatter:
     # undocumented
@@ -313,24 +316,41 @@ class Action(_AttributeHolder):
     nargs: int | str | None
     const: Any
     default: Any
-    type: Callable[[str], Any] | FileType | None
+    type: _ActionType | None
     choices: Iterable[Any] | None
     required: bool
     help: str | None
     metavar: str | tuple[str, ...] | None
-    def __init__(
-        self,
-        option_strings: Sequence[str],
-        dest: str,
-        nargs: int | str | None = None,
-        const: _T | None = None,
-        default: _T | str | None = None,
-        type: Callable[[str], _T] | FileType | None = None,
-        choices: Iterable[_T] | None = None,
-        required: bool = False,
-        help: str | None = None,
-        metavar: str | tuple[str, ...] | None = None,
-    ) -> None: ...
+    if sys.version_info >= (3, 13):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            nargs: int | str | None = None,
+            const: _T | None = None,
+            default: _T | str | None = None,
+            type: Callable[[str], _T] | FileType | None = None,
+            choices: Iterable[_T] | None = None,
+            required: bool = False,
+            help: str | None = None,
+            metavar: str | tuple[str, ...] | None = None,
+            deprecated: bool = False,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            nargs: int | str | None = None,
+            const: _T | None = None,
+            default: _T | str | None = None,
+            type: Callable[[str], _T] | FileType | None = None,
+            choices: Iterable[_T] | None = None,
+            required: bool = False,
+            help: str | None = None,
+            metavar: str | tuple[str, ...] | None = None,
+        ) -> None: ...
+
     def __call__(
         self, parser: ArgumentParser, namespace: Namespace, values: str | Sequence[Any] | None, option_string: str | None = None
     ) -> None: ...
@@ -339,25 +359,86 @@ class Action(_AttributeHolder):
 
 if sys.version_info >= (3, 12):
     class BooleanOptionalAction(Action):
-        def __init__(
-            self,
-            option_strings: Sequence[str],
-            dest: str,
-            default: _T | str | None = None,
-            type: Callable[[str], _T] | FileType | None = sentinel,
-            choices: Iterable[_T] | None = sentinel,
-            required: bool = False,
-            help: str | None = None,
-            metavar: str | tuple[str, ...] | None = sentinel,
-        ) -> None: ...
+        if sys.version_info >= (3, 14):
+            def __init__(
+                self,
+                option_strings: Sequence[str],
+                dest: str,
+                default: bool | None = None,
+                required: bool = False,
+                help: str | None = None,
+                deprecated: bool = False,
+            ) -> None: ...
+        elif sys.version_info >= (3, 13):
+            @overload
+            def __init__(
+                self,
+                option_strings: Sequence[str],
+                dest: str,
+                default: bool | None = None,
+                *,
+                required: bool = False,
+                help: str | None = None,
+                deprecated: bool = False,
+            ) -> None: ...
+            @overload
+            @deprecated("The `type`, `choices`, and `metavar` parameters are ignored and will be removed in Python 3.14.")
+            def __init__(
+                self,
+                option_strings: Sequence[str],
+                dest: str,
+                default: _T | bool | None = None,
+                type: Callable[[str], _T] | FileType | None = sentinel,
+                choices: Iterable[_T] | None = sentinel,
+                required: bool = False,
+                help: str | None = None,
+                metavar: str | tuple[str, ...] | None = sentinel,
+                deprecated: bool = False,
+            ) -> None: ...
+        else:
+            @overload
+            def __init__(
+                self,
+                option_strings: Sequence[str],
+                dest: str,
+                default: bool | None = None,
+                *,
+                required: bool = False,
+                help: str | None = None,
+            ) -> None: ...
+            @overload
+            @deprecated("The `type`, `choices`, and `metavar` parameters are ignored and will be removed in Python 3.14.")
+            def __init__(
+                self,
+                option_strings: Sequence[str],
+                dest: str,
+                default: _T | bool | None = None,
+                type: Callable[[str], _T] | FileType | None = sentinel,
+                choices: Iterable[_T] | None = sentinel,
+                required: bool = False,
+                help: str | None = None,
+                metavar: str | tuple[str, ...] | None = sentinel,
+            ) -> None: ...
 
 elif sys.version_info >= (3, 9):
     class BooleanOptionalAction(Action):
+        @overload
         def __init__(
             self,
             option_strings: Sequence[str],
             dest: str,
-            default: _T | str | None = None,
+            default: bool | None = None,
+            *,
+            required: bool = False,
+            help: str | None = None,
+        ) -> None: ...
+        @overload
+        @deprecated("The `type`, `choices`, and `metavar` parameters are ignored and will be removed in Python 3.14.")
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: _T | bool | None = None,
             type: Callable[[str], _T] | FileType | None = None,
             choices: Iterable[_T] | None = None,
             required: bool = False,
@@ -368,9 +449,10 @@ elif sys.version_info >= (3, 9):
 class Namespace(_AttributeHolder):
     def __init__(self, **kwargs: Any) -> None: ...
     def __getattr__(self, name: str) -> Any: ...
-    def __setattr__(self, __name: str, __value: Any) -> None: ...
+    def __setattr__(self, name: str, value: Any, /) -> None: ...
     def __contains__(self, key: str) -> bool: ...
     def __eq__(self, other: object) -> bool: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
 
 class FileType:
     # undocumented
@@ -407,7 +489,19 @@ class _StoreAction(Action): ...
 
 # undocumented
 class _StoreConstAction(Action):
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 13):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            const: Any | None = None,
+            default: Any = None,
+            required: bool = False,
+            help: str | None = None,
+            metavar: str | tuple[str, ...] | None = None,
+            deprecated: bool = False,
+        ) -> None: ...
+    elif sys.version_info >= (3, 11):
         def __init__(
             self,
             option_strings: Sequence[str],
@@ -432,26 +526,59 @@ class _StoreConstAction(Action):
 
 # undocumented
 class _StoreTrueAction(_StoreConstAction):
-    def __init__(
-        self, option_strings: Sequence[str], dest: str, default: bool = False, required: bool = False, help: str | None = None
-    ) -> None: ...
+    if sys.version_info >= (3, 13):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: bool = False,
+            required: bool = False,
+            help: str | None = None,
+            deprecated: bool = False,
+        ) -> None: ...
+    else:
+        def __init__(
+            self, option_strings: Sequence[str], dest: str, default: bool = False, required: bool = False, help: str | None = None
+        ) -> None: ...
 
 # undocumented
 class _StoreFalseAction(_StoreConstAction):
-    def __init__(
-        self, option_strings: Sequence[str], dest: str, default: bool = True, required: bool = False, help: str | None = None
-    ) -> None: ...
+    if sys.version_info >= (3, 13):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: bool = True,
+            required: bool = False,
+            help: str | None = None,
+            deprecated: bool = False,
+        ) -> None: ...
+    else:
+        def __init__(
+            self, option_strings: Sequence[str], dest: str, default: bool = True, required: bool = False, help: str | None = None
+        ) -> None: ...
 
 # undocumented
 class _AppendAction(Action): ...
 
 # undocumented
-if sys.version_info >= (3, 8):
-    class _ExtendAction(_AppendAction): ...
+class _ExtendAction(_AppendAction): ...
 
 # undocumented
 class _AppendConstAction(Action):
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 13):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            const: Any | None = None,
+            default: Any = None,
+            required: bool = False,
+            help: str | None = None,
+            metavar: str | tuple[str, ...] | None = None,
+            deprecated: bool = False,
+        ) -> None: ...
+    elif sys.version_info >= (3, 11):
         def __init__(
             self,
             option_strings: Sequence[str],
@@ -476,27 +603,72 @@ class _AppendConstAction(Action):
 
 # undocumented
 class _CountAction(Action):
-    def __init__(
-        self, option_strings: Sequence[str], dest: str, default: Any = None, required: bool = False, help: str | None = None
-    ) -> None: ...
+    if sys.version_info >= (3, 13):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: Any = None,
+            required: bool = False,
+            help: str | None = None,
+            deprecated: bool = False,
+        ) -> None: ...
+    else:
+        def __init__(
+            self, option_strings: Sequence[str], dest: str, default: Any = None, required: bool = False, help: str | None = None
+        ) -> None: ...
 
 # undocumented
 class _HelpAction(Action):
-    def __init__(
-        self, option_strings: Sequence[str], dest: str = "==SUPPRESS==", default: str = "==SUPPRESS==", help: str | None = None
-    ) -> None: ...
+    if sys.version_info >= (3, 13):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str = "==SUPPRESS==",
+            default: str = "==SUPPRESS==",
+            help: str | None = None,
+            deprecated: bool = False,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str = "==SUPPRESS==",
+            default: str = "==SUPPRESS==",
+            help: str | None = None,
+        ) -> None: ...
 
 # undocumented
 class _VersionAction(Action):
     version: str | None
-    def __init__(
-        self,
-        option_strings: Sequence[str],
-        version: str | None = None,
-        dest: str = "==SUPPRESS==",
-        default: str = "==SUPPRESS==",
-        help: str = "show program's version number and exit",
-    ) -> None: ...
+    if sys.version_info >= (3, 13):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            version: str | None = None,
+            dest: str = "==SUPPRESS==",
+            default: str = "==SUPPRESS==",
+            help: str | None = None,
+            deprecated: bool = False,
+        ) -> None: ...
+    elif sys.version_info >= (3, 11):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            version: str | None = None,
+            dest: str = "==SUPPRESS==",
+            default: str = "==SUPPRESS==",
+            help: str | None = None,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            version: str | None = None,
+            dest: str = "==SUPPRESS==",
+            default: str = "==SUPPRESS==",
+            help: str = "show program's version number and exit",
+        ) -> None: ...
 
 # undocumented
 class _SubParsersAction(Action, Generic[_ArgumentParserT]):
@@ -519,7 +691,31 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
 
     # Note: `add_parser` accepts all kwargs of `ArgumentParser.__init__`. It also
     # accepts its own `help` and `aliases` kwargs.
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 13):
+        def add_parser(
+            self,
+            name: str,
+            *,
+            deprecated: bool = False,
+            help: str | None = ...,
+            aliases: Sequence[str] = ...,
+            # Kwargs from ArgumentParser constructor
+            prog: str | None = ...,
+            usage: str | None = ...,
+            description: str | None = ...,
+            epilog: str | None = ...,
+            parents: Sequence[_ArgumentParserT] = ...,
+            formatter_class: _FormatterClass = ...,
+            prefix_chars: str = ...,
+            fromfile_prefix_chars: str | None = ...,
+            argument_default: Any = ...,
+            conflict_handler: str = ...,
+            add_help: bool = ...,
+            allow_abbrev: bool = ...,
+            exit_on_error: bool = ...,
+            **kwargs: Any,  # Accepting any additional kwargs for custom parser classes
+        ) -> _ArgumentParserT: ...
+    elif sys.version_info >= (3, 9):
         def add_parser(
             self,
             name: str,
@@ -540,6 +736,7 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
             add_help: bool = ...,
             allow_abbrev: bool = ...,
             exit_on_error: bool = ...,
+            **kwargs: Any,  # Accepting any additional kwargs for custom parser classes
         ) -> _ArgumentParserT: ...
     else:
         def add_parser(
@@ -561,6 +758,7 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
             conflict_handler: str = ...,
             add_help: bool = ...,
             allow_abbrev: bool = ...,
+            **kwargs: Any,  # Accepting any additional kwargs for custom parser classes
         ) -> _ArgumentParserT: ...
 
     def _get_subactions(self) -> list[Action]: ...

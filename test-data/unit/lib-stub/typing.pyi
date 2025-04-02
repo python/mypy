@@ -11,7 +11,7 @@
 cast = 0
 assert_type = 0
 overload = 0
-Any = 0
+Any = object()
 Union = 0
 Optional = 0
 TypeVar = 0
@@ -23,6 +23,7 @@ NamedTuple = 0
 Type = 0
 ClassVar = 0
 Final = 0
+Literal = 0
 NoReturn = 0
 Never = 0
 NewType = 0
@@ -63,3 +64,5 @@ class Coroutine(Awaitable[V], Generic[T, U, V]): pass
 def final(meth: T) -> T: pass
 
 def reveal_type(__obj: T) -> T: pass
+
+class _SpecialForm: pass

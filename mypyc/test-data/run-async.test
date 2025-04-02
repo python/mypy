@@ -143,3 +143,31 @@ async def foo() -> AsyncIterable[int]:
 yields, val = run_generator(async_iter(foo()))
 assert yields == (0,1,2), yields
 assert val == 'lol no', val
+
+[case testAsyncWithVarReuse]
+class ConMan:
+    async def __aenter__(self) -> int:
+        return 1
+    async def __aexit__(self, *exc: object):
+        pass
+
+class ConManB:
+    async def __aenter__(self) -> int:
+        return 2
+    async def __aexit__(self, *exc: object):
+        pass
+
+async def x() -> None:
+    value = 2
+    async with ConMan() as f:
+        value += f
+    assert value == 3, value
+    async with ConManB() as f:
+        value += f
+    assert value == 5, value
+
+[typing fixtures/typing-full.pyi]
+[file driver.py]
+import asyncio
+import native
+asyncio.run(native.x())

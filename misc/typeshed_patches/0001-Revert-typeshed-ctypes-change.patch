@@ -1,0 +1,32 @@
+From 61a490091d7c941780919660dc4fdfa88ae6474a Mon Sep 17 00:00:00 2001
+From: AlexWaygood <alex.waygood@gmail.com>
+Date: Mon, 1 May 2023 20:34:55 +0100
+Subject: [PATCH] Revert typeshed ctypes change Since the plugin provides
+ superior type checking:
+ https://github.com/python/mypy/pull/13987#issuecomment-1310863427 A manual
+ cherry-pick of e437cdf.
+
+---
+ mypy/typeshed/stdlib/_ctypes.pyi | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/mypy/typeshed/stdlib/_ctypes.pyi b/mypy/typeshed/stdlib/_ctypes.pyi
+index 60bbc51d9..cf9cb81a4 100644
+--- a/mypy/typeshed/stdlib/_ctypes.pyi
++++ b/mypy/typeshed/stdlib/_ctypes.pyi
+@@ -169,11 +169,7 @@ class Array(_CData, Generic[_CT]):
+     def _type_(self) -> type[_CT]: ...
+     @_type_.setter
+     def _type_(self, value: type[_CT]) -> None: ...
+-    # Note: only available if _CT == c_char
+-    @property
+-    def raw(self) -> bytes: ...
+-    @raw.setter
+-    def raw(self, value: ReadableBuffer) -> None: ...
++    raw: bytes  # Note: only available if _CT == c_char
+     value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
+     # TODO These methods cannot be annotated correctly at the moment.
+     # All of these "Any"s stand for the array's element type, but it's not possible to use _CT
+-- 
+2.39.3 (Apple Git-146)
+

@@ -6,7 +6,7 @@ if sys.version_info >= (3, 9):
     __all__ = ["dnd_start", "DndHandler"]
 
 class _DndSource(Protocol):
-    def dnd_end(self, __target: Widget | None, __event: Event[Misc] | None) -> None: ...
+    def dnd_end(self, target: Widget | None, event: Event[Misc] | None, /) -> None: ...
 
 class DndHandler:
     root: ClassVar[Tk | None]

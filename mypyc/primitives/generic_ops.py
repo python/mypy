@@ -178,7 +178,7 @@ function_op(
 )
 
 # obj1[obj2]
-method_op(
+py_get_item_op = method_op(
     name="__getitem__",
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
@@ -281,7 +281,7 @@ py_vectorcall_op = custom_op(
         object_rprimitive,
     ],  # Keyword arg names tuple (or NULL)
     return_type=object_rprimitive,
-    c_function_name="_PyObject_Vectorcall",
+    c_function_name="PyObject_Vectorcall",
     error_kind=ERR_MAGIC,
 )
 

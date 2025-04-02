@@ -102,8 +102,8 @@ Structural subtyping can be thought of as "static duck typing".
 Some argue that structural subtyping is better suited for languages with duck
 typing such as Python. Mypy however primarily uses nominal subtyping,
 leaving structural subtyping mostly opt-in (except for built-in protocols
-such as :py:class:`~typing.Iterable` that always support structural subtyping). Here are some
-reasons why:
+such as :py:class:`~collections.abc.Iterable` that always support structural
+subtyping). Here are some reasons why:
 
 1. It is easy to generate short and informative error messages when
    using a nominal type system. This is especially important when
@@ -140,13 +140,14 @@ How are mypy programs different from normal Python?
 Since you use a vanilla Python implementation to run mypy programs,
 mypy programs are also Python programs. The type checker may give
 warnings for some valid Python code, but the code is still always
-runnable. Also, some Python features and syntax are still not
+runnable. Also, a few Python features are still not
 supported by mypy, but this is gradually improving.
 
 The obvious difference is the availability of static type
 checking. The section :ref:`common_issues` mentions some
 modifications to Python code that may be required to make code type
-check without errors. Also, your code must make attributes explicit.
+check without errors. Also, your code must make defined
+attributes explicit.
 
 Mypy supports modular, efficient type checking, and this seems to
 rule out type checking some language features, such as arbitrary

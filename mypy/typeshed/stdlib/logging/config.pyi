@@ -1,17 +1,17 @@
 import sys
 from _typeshed import StrOrBytesPath
-from collections.abc import Callable, Hashable, Iterable, Sequence
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from configparser import RawConfigParser
 from re import Pattern
 from threading import Thread
-from typing import IO, Any, overload
-from typing_extensions import Literal, Required, SupportsIndex, TypeAlias, TypedDict
+from typing import IO, Any, Final, Literal, SupportsIndex, TypedDict, overload
+from typing_extensions import Required, TypeAlias
 
 from . import Filter, Filterer, Formatter, Handler, Logger, _FilterType, _FormatStyle, _Level
 
 DEFAULT_LOGGING_CONFIG_PORT: int
-RESET_ERROR: int  # undocumented
-IDENTIFIER: Pattern[str]  # undocumented
+RESET_ERROR: Final[int]  # undocumented
+IDENTIFIER: Final[Pattern[str]]  # undocumented
 
 if sys.version_info >= (3, 11):
     class _RootLoggerConfiguration(TypedDict, total=False):
@@ -28,16 +28,9 @@ else:
 class _LoggerConfiguration(_RootLoggerConfiguration, TypedDict, total=False):
     propagate: bool
 
-if sys.version_info >= (3, 8):
-    _FormatterConfigurationTypedDict = TypedDict(
-        "_FormatterConfigurationTypedDict", {"class": str, "format": str, "datefmt": str, "style": _FormatStyle}, total=False
-    )
-else:
-    _FormatterConfigurationTypedDict = TypedDict(
-        "_FormatterConfigurationTypedDict",
-        {"class": str, "format": str, "datefmt": str, "style": _FormatStyle, "validate": bool},
-        total=False,
-    )
+_FormatterConfigurationTypedDict = TypedDict(
+    "_FormatterConfigurationTypedDict", {"class": str, "format": str, "datefmt": str, "style": _FormatStyle}, total=False
+)
 
 class _FilterConfigurationTypedDict(TypedDict):
     name: str
@@ -70,7 +63,7 @@ def dictConfig(config: _DictConfigArgs | dict[str, Any]) -> None: ...
 if sys.version_info >= (3, 10):
     def fileConfig(
         fname: StrOrBytesPath | IO[str] | RawConfigParser,
-        defaults: dict[str, str] | None = None,
+        defaults: Mapping[str, str] | None = None,
         disable_existing_loggers: bool = True,
         encoding: str | None = None,
     ) -> None: ...
@@ -78,7 +71,7 @@ if sys.version_info >= (3, 10):
 else:
     def fileConfig(
         fname: StrOrBytesPath | IO[str] | RawConfigParser,
-        defaults: dict[str, str] | None = None,
+        defaults: Mapping[str, str] | None = None,
         disable_existing_loggers: bool = True,
     ) -> None: ...
 
@@ -123,7 +116,7 @@ class BaseConfigurator:  # undocumented
     def cfg_convert(self, value: str) -> Any: ...
     def convert(self, value: Any) -> Any: ...
     def configure_custom(self, config: dict[str, Any]) -> Any: ...
-    def as_tuple(self, value: list[Any] | tuple[Any]) -> tuple[Any]: ...
+    def as_tuple(self, value: list[Any] | tuple[Any, ...]) -> tuple[Any, ...]: ...
 
 class DictConfigurator(BaseConfigurator):
     def configure(self) -> None: ...  # undocumented

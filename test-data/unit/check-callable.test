@@ -525,7 +525,6 @@ else:
 [builtins fixtures/callable.pyi]
 
 [case testBuiltinsTypeAsCallable]
-# flags: --python-version 3.7
 from __future__ import annotations
 
 reveal_type(type)  # N: Revealed type is "def (x: Any) -> builtins.type"

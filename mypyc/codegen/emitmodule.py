@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Iterable, List, Optional, Tuple, TypeVar
+from collections.abc import Iterable
+from typing import Optional, TypeVar
 
 from mypy.build import (
     BuildResult,
@@ -24,7 +25,7 @@ from mypy.fscache import FileSystemCache
 from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
-from mypy.util import hash_digest
+from mypy.util import hash_digest, json_dumps
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
 from mypyc.codegen.emitclass import generate_class, generate_class_type_decl
@@ -41,12 +42,11 @@ from mypyc.common import (
     PREFIX,
     RUNTIME_C_FILES,
     TOP_LEVEL_NAME,
+    TYPE_VAR_PREFIX,
     shared_lib_name,
     short_id_from_name,
-    use_vectorcall,
 )
 from mypyc.errors import Errors
-from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
@@ -56,7 +56,10 @@ from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
+from mypyc.transform.copy_propagation import do_copy_propagation
 from mypyc.transform.exceptions import insert_exception_handling
+from mypyc.transform.flag_elimination import do_flag_elimination
+from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.uninit import insert_uninit_checks
 
@@ -80,11 +83,11 @@ from mypyc.transform.uninit import insert_uninit_checks
 # its modules along with the name of the group. (Which can be None
 # only if we are compiling only a single group with a single file in it
 # and not using shared libraries).
-Group = Tuple[List[BuildSource], Optional[str]]
-Groups = List[Group]
+Group = tuple[list[BuildSource], Optional[str]]
+Groups = list[Group]
 
 # A list of (file name, file contents) pairs.
-FileContents = List[Tuple[str, str]]
+FileContents = list[tuple[str, str]]
 
 
 class MarkedDeclaration:
@@ -150,7 +153,7 @@ class MypycPlugin(Plugin):
         ir_data = json.loads(ir_json)
 
         # Check that the IR cache matches the metadata cache
-        if compute_hash(meta_json) != ir_data["meta_hash"]:
+        if hash_digest(meta_json) != ir_data["meta_hash"]:
             return None
 
         # Check that all of the source files are present and as
@@ -225,18 +228,19 @@ def compile_scc_to_ir(
     if errors.num_errors > 0:
         return modules
 
-    # Insert uninit checks.
     for module in modules.values():
         for fn in module.functions:
+            # Insert uninit checks.
             insert_uninit_checks(fn)
-    # Insert exception handling.
-    for module in modules.values():
-        for fn in module.functions:
+            # Insert exception handling.
             insert_exception_handling(fn)
-    # Insert refcount handling.
-    for module in modules.values():
-        for fn in module.functions:
+            # Insert refcount handling.
             insert_ref_count_opcodes(fn)
+            # Switch to lower abstraction level IR.
+            lower_ir(fn, compiler_options)
+            # Perform optimizations.
+            do_copy_propagation(fn, compiler_options)
+            do_flag_elimination(fn, compiler_options)
 
     return modules
 
@@ -364,11 +368,11 @@ def write_cache(
         newpath = get_state_ir_cache_name(st)
         ir_data = {
             "ir": module.serialize(),
-            "meta_hash": compute_hash(meta_data),
+            "meta_hash": hash_digest(meta_data),
             "src_hashes": hashes[group_map[id]],
         }
 
-        result.manager.metastore.write(newpath, json.dumps(ir_data, separators=(",", ":")))
+        result.manager.metastore.write(newpath, json_dumps(ir_data))
 
     result.manager.metastore.commit()
 
@@ -393,7 +397,7 @@ def load_scc_from_cache(
 
 def compile_modules_to_c(
     result: BuildResult, compiler_options: CompilerOptions, errors: Errors, groups: Groups
-) -> tuple[ModuleIRs, list[FileContents]]:
+) -> tuple[ModuleIRs, list[FileContents], Mapper]:
     """Compile Python module(s) to the source of Python C extension modules.
 
     This generates the source code for the "shared library" module
@@ -422,12 +426,13 @@ def compile_modules_to_c(
     )
 
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
+    if errors.num_errors > 0:
+        return {}, [], Mapper({})
+
     ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
+    write_cache(modules, result, group_map, ctext)
 
-    if errors.num_errors == 0:
-        write_cache(modules, result, group_map, ctext)
-
-    return modules, [ctext[name] for _, name in groups]
+    return modules, [ctext[name] for _, name in groups], mapper
 
 
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
@@ -585,6 +590,7 @@ class GroupGenerator:
             self.declare_finals(module_name, module.final_names, declarations)
             for cl in module.classes:
                 generate_class_type_decl(cl, emitter, ext_declarations, declarations)
+            self.declare_type_vars(module_name, module.type_var_names, declarations)
             for fn in module.functions:
                 generate_function_declaration(fn, declarations)
 
@@ -1058,19 +1064,14 @@ class GroupGenerator:
         symbol = emitter.static_name(identifier, None)
         self.declare_global("PyObject *", symbol)
 
-
-def sort_classes(classes: list[tuple[str, ClassIR]]) -> list[tuple[str, ClassIR]]:
-    mod_name = {ir: name for name, ir in classes}
-    irs = [ir for _, ir in classes]
-    deps: dict[ClassIR, set[ClassIR]] = {}
-    for ir in irs:
-        if ir not in deps:
-            deps[ir] = set()
-        if ir.base:
-            deps[ir].add(ir.base)
-        deps[ir].update(ir.traits)
-    sorted_irs = toposort(deps)
-    return [(mod_name[ir], ir) for ir in sorted_irs]
+    def declare_type_vars(self, module: str, type_var_names: list[str], emitter: Emitter) -> None:
+        for name in type_var_names:
+            static_name = emitter.static_name(name, module, prefix=TYPE_VAR_PREFIX)
+            emitter.context.declarations[static_name] = HeaderDeclaration(
+                f"PyObject *{static_name};",
+                [f"PyObject *{static_name} = NULL;"],
+                needs_export=False,
+            )
 
 
 T = TypeVar("T")
@@ -1104,7 +1105,7 @@ def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
     if fn.class_name is not None:
         if fn.name == "__call__":
             # We can use vectorcalls (PEP 590) when supported
-            return use_vectorcall(capi_version)
+            return True
         # TODO: Support fastcall for __init__.
         return fn.name != "__init__"
     return True

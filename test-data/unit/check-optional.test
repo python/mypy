@@ -53,14 +53,14 @@ x = None  # type:  Optional[int]
 if x:
   reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
-  reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
+  reveal_type(x)  # N: Revealed type is "Union[Literal[0], None]"
 [builtins fixtures/bool.pyi]
 
 [case testIfNotCases]
 from typing import Optional
 x = None  # type:  Optional[int]
 if not x:
-  reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
+  reveal_type(x)  # N: Revealed type is "Union[Literal[0], None]"
 else:
   reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/bool.pyi]
@@ -109,13 +109,13 @@ reveal_type(z2)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
 from typing import Optional
 x = None  # type: Optional[str]
 y1 = x and 'b'
-reveal_type(y1)  # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(y1)  # N: Revealed type is "Union[Literal[''], None, builtins.str]"
 y2 = x and 1  # x could be '', so...
-reveal_type(y2)  # N: Revealed type is "Union[builtins.str, None, builtins.int]"
+reveal_type(y2)  # N: Revealed type is "Union[Literal[''], None, builtins.int]"
 z1 = 'b' and x
 reveal_type(z1)  # N: Revealed type is "Union[builtins.str, None]"
 z2 = int() and x
-reveal_type(z2)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+reveal_type(z2)  # N: Revealed type is "Union[Literal[0], builtins.str, None]"
 
 [case testLambdaReturningNone]
 f = lambda: None
@@ -321,9 +321,12 @@ def f() -> Generator[None, None, None]:
 [out]
 
 [case testNoneAndStringIsNone]
-a = None
+a: None = None
 b = "foo"
 reveal_type(a and b)  # N: Revealed type is "None"
+
+c = None
+reveal_type(c and b)  # N: Revealed type is "None"
 
 [case testNoneMatchesObjectInOverload]
 import a
@@ -395,7 +398,7 @@ def lookup_field(name, obj):
         attr = None
 
 [case testTernaryWithNone]
-reveal_type(None if bool() else 0)  # N: Revealed type is "Union[Literal[0]?, None]"
+reveal_type(None if bool() else 0)  # N: Revealed type is "Union[None, Literal[0]?]"
 [builtins fixtures/bool.pyi]
 
 [case testListWithNone]
@@ -581,7 +584,7 @@ x is not None and x + '42'  # E: Unsupported operand types for + ("int" and "str
 [case testInvalidBooleanBranchIgnored]
 from typing import Optional
 
-x = None
+x: None = None
 x is not None and x + 42
 [builtins fixtures/isinstance.pyi]
 
@@ -725,7 +728,6 @@ def g(x: Optional[int]) -> int:
         reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
     reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
     return x
-
 [builtins fixtures/bool.pyi]
 
 [case testOptionalAssignAny2]
@@ -738,12 +740,11 @@ def g(x: Optional[int]) -> int:
         reveal_type(x)  # N: Revealed type is "None"
         x = 1
         reveal_type(x)  # N: Revealed type is "builtins.int"
-        # Since we've assigned to x, the special case None behavior shouldn't happen
+        # Same as above, even after we've assigned to x
         x = f()
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
-    return x  # E: Incompatible return value type (got "Optional[int]", expected "int")
-
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+    return x
 [builtins fixtures/bool.pyi]
 
 [case testOptionalAssignAny3]
@@ -755,11 +756,9 @@ def g(x: Optional[int]) -> int:
     if x is not None:
         return x
     reveal_type(x)  # N: Revealed type is "None"
-    if 1:
-        x = f()
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
-        return x
-
+    x = f()
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, Any]"
+    return x
 [builtins fixtures/bool.pyi]
 
 [case testStrictOptionalCovarianceCrossModule]
@@ -783,7 +782,7 @@ asdf(x)
 strict_optional = False
 [out]
 main:4: error: Argument 1 to "asdf" has incompatible type "List[str]"; expected "List[Optional[str]]"
-main:4: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+main:4: note: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 main:4: note: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 

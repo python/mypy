@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 from mypyc.common import JsonDict
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR
@@ -21,12 +19,17 @@ class ModuleIR:
         functions: list[FuncIR],
         classes: list[ClassIR],
         final_names: list[tuple[str, RType]],
+        type_var_names: list[str],
     ) -> None:
         self.fullname = fullname
         self.imports = imports.copy()
         self.functions = functions
         self.classes = classes
         self.final_names = final_names
+        # Names of C statics used for Python 3.12 type variable objects.
+        # These are only visible in the module that defined them, so no need
+        # to serialize.
+        self.type_var_names = type_var_names
 
     def serialize(self) -> JsonDict:
         return {
@@ -45,6 +48,7 @@ class ModuleIR:
             [ctx.functions[FuncDecl.get_id_from_json(f)] for f in data["functions"]],
             [ClassIR.deserialize(c, ctx) for c in data["classes"]],
             [(k, deserialize_type(t, ctx)) for k, t in data["final_names"]],
+            [],
         )
 
 
@@ -85,4 +89,4 @@ def deserialize_modules(data: dict[str, JsonDict], ctx: DeserMaps) -> dict[str, 
 
 # ModulesIRs should also always be an *OrderedDict*, but if we
 # declared it that way we would need to put it in quotes everywhere...
-ModuleIRs = Dict[str, ModuleIR]
+ModuleIRs = dict[str, ModuleIR]

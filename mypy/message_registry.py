@@ -138,6 +138,7 @@ INVALID_TYPEDDICT_ARGS: Final = ErrorMessage(
 TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = ErrorMessage(
     "Expected TypedDict key to be string literal"
 )
+TYPEDDICT_OVERRIDE_MERGE: Final = 'Overwriting TypedDict field "{}" while merging'
 MALFORMED_ASSERT: Final = ErrorMessage("Assertion is always true, perhaps remove parentheses?")
 DUPLICATE_TYPE_SIGNATURES: Final = ErrorMessage("Function has duplicate type signatures")
 DESCRIPTOR_SET_NOT_CALLABLE: Final = ErrorMessage("{}.__set__ is not callable")
@@ -180,6 +181,10 @@ IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
 )
 INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
 INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
+INVALID_PARAM_SPEC_LOCATION: Final = "Invalid location for ParamSpec {}"
+INVALID_PARAM_SPEC_LOCATION_NOTE: Final = (
+    'You can use ParamSpec as the first argument to Callable, e.g., "Callable[{}, int]"'
+)
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
@@ -191,8 +196,10 @@ TYPEVAR_VARIANCE_DEF: Final = 'TypeVar "{}" may only be a literal bool'
 TYPEVAR_ARG_MUST_BE_TYPE: Final = '{} "{}" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 UNBOUND_TYPEVAR: Final = (
-    "A function returning TypeVar should receive at least "
-    "one argument containing the same TypeVar"
+    "A function returning TypeVar should receive at least one argument containing the same TypeVar"
+)
+TYPE_PARAMETERS_SHOULD_BE_DECLARED: Final = (
+    "All type parameters should be declared ({} not declared)"
 )
 
 # Super
@@ -234,7 +241,7 @@ CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
 
 # Enum
-ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN: Final = ErrorMessage(
+ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDDEN: Final = ErrorMessage(
     'Assigned "__members__" will be overridden by "Enum" internally'
 )
 
@@ -262,7 +269,7 @@ TOO_MANY_UNION_COMBINATIONS: Final = ErrorMessage(
 
 CONTIGUOUS_ITERABLE_EXPECTED: Final = ErrorMessage("Contiguous iterable with same type expected")
 ITERABLE_TYPE_EXPECTED: Final = ErrorMessage("Invalid type '{}' for *expr (iterable expected)")
-TYPE_GUARD_POS_ARG_REQUIRED: Final = ErrorMessage("Type guard requires positional argument")
+TYPE_GUARD_POS_ARG_REQUIRED: Final = ErrorMessage("Type {} requires positional argument")
 
 # Match Statement
 MISSING_MATCH_ARGS: Final = 'Class "{}" doesn\'t define "__match_args__"'
@@ -323,4 +330,38 @@ ARG_CONSTRUCTOR_UNEXPECTED_ARG: Final = ErrorMessage(
 )
 ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
     "Expected string literal for argument name, got {}", codes.SYNTAX
+)
+NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorMessage(
+    "Narrowed type {} is not a subtype of input type {}", codes.NARROWED_TYPE_NOT_SUBTYPE
+)
+TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES: Final = ErrorMessage(
+    "Type variable must have at least two constrained types", codes.MISC
+)
+
+TYPE_VAR_YIELD_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Yield expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_NAMED_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Named expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_AWAIT_EXPRESSION_IN_BOUND: Final = ErrorMessage(
+    "Await expression cannot be used as a type variable bound", codes.SYNTAX
+)
+
+TYPE_VAR_GENERIC_CONSTRAINT_TYPE: Final = ErrorMessage(
+    "TypeVar constraint type cannot be parametrized by type variables", codes.MISC
+)
+
+TYPE_ALIAS_WITH_YIELD_EXPRESSION: Final = ErrorMessage(
+    "Yield expression cannot be used within a type alias", codes.SYNTAX
+)
+
+TYPE_ALIAS_WITH_NAMED_EXPRESSION: Final = ErrorMessage(
+    "Named expression cannot be used within a type alias", codes.SYNTAX
+)
+
+TYPE_ALIAS_WITH_AWAIT_EXPRESSION: Final = ErrorMessage(
+    "Await expression cannot be used within a type alias", codes.SYNTAX
 )

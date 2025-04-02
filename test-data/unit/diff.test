@@ -566,6 +566,7 @@ A = Enum('A', 'x')
 B = Enum('B', 'y')
 C = IntEnum('C', 'x')
 D = IntEnum('D', 'x y')
+[builtins fixtures/enum.pyi]
 [out]
 __main__.B.x
 __main__.B.y
@@ -605,6 +606,7 @@ class D(Enum):
     Y = 'b'
 class F(Enum):
     X = 0
+[builtins fixtures/enum.pyi]
 [out]
 __main__.B.Y
 __main__.B.Z
@@ -615,57 +617,61 @@ __main__.E
 __main__.F
 
 [case testTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 [file next.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': str})
 p = Point(dict(x=42, y='lurr'))
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 __main__.Point
 __main__.p
 
 [case testTypedDict2]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class Point(TypedDict):
     x: int
     y: int
 p = Point(dict(x=42, y=1337))
 [file next.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class Point(TypedDict):
     x: int
     y: str
 p = Point(dict(x=42, y='lurr'))
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 __main__.Point
 __main__.p
 
 [case testTypedDict3]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 [file next.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int})
 p = Point(dict(x=42))
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 __main__.Point
 __main__.p
 
 [case testTypedDict4]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 [file next.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int}, total=False)
 p = Point(dict(x=42, y=1337))
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 __main__.Point
 __main__.p
@@ -1147,7 +1153,7 @@ __main__.Diff
 __main__.Diff.x
 
 [case testLiteralTriggersVar]
-from typing_extensions import Literal
+from typing import Literal
 
 x: Literal[1] = 1
 y = 1
@@ -1165,7 +1171,7 @@ class C:
         self.same_instance: Literal[1] = 1
 
 [file next.py]
-from typing_extensions import Literal
+from typing import Literal
 
 x = 1
 y: Literal[1] = 1
@@ -1194,7 +1200,7 @@ __main__.y
 __main__.z
 
 [case testLiteralTriggersFunctions]
-from typing_extensions import Literal
+from typing import Literal
 
 def function_1() -> int: pass
 def function_2() -> Literal[1]: pass
@@ -1258,7 +1264,7 @@ class C:
     def staticmethod_same_2(x: Literal[1]) -> None: pass
 
 [file next.py]
-from typing_extensions import Literal
+from typing import Literal
 
 def function_1() -> Literal[1]: pass
 def function_2() -> int: pass
@@ -1348,7 +1354,7 @@ __main__.function_5
 __main__.function_6
 
 [case testLiteralTriggersProperty]
-from typing_extensions import Literal
+from typing import Literal
 
 class C:
     @property
@@ -1361,7 +1367,7 @@ class C:
     def same(self) -> Literal[1]: pass
 
 [file next.py]
-from typing_extensions import Literal
+from typing import Literal
 
 class C:
     @property
@@ -1378,8 +1384,7 @@ __main__.C.p1
 __main__.C.p2
 
 [case testLiteralsTriggersOverload]
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 
 @overload
 def func(x: str) -> str: ...
@@ -1411,8 +1416,7 @@ class C:
         pass
 
 [file next.py]
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 
 @overload
 def func(x: str) -> str: ...
@@ -1448,10 +1452,10 @@ __main__.C.method
 __main__.func
 
 [case testUnionOfLiterals]
-from typing_extensions import Literal
+from typing import Literal
 x: Literal[1, '2']
 [file next.py]
-from typing_extensions import Literal
+from typing import Literal
 x: Literal[1, 2]
 [builtins fixtures/tuple.pyi]
 [out]
@@ -1530,3 +1534,102 @@ class C:
 [out]
 __main__.C.get_by_team_and_id
 __main__.Optional
+
+[case testPEP695TypeAlias]
+# flags: --python-version=3.12
+from typing_extensions import TypeAlias, TypeAliasType
+type A = int
+type B = str
+type C = int
+D = int
+E: TypeAlias = int
+F = TypeAliasType("F", int)
+G = TypeAliasType("G", int)
+type H = int
+
+[file next.py]
+# flags: --python-version=3.12
+from typing_extensions import TypeAlias, TypeAliasType
+type A = str
+type B = str
+type C[T] = int
+type D = int
+type E = int
+type F = int
+type G = str
+type H[T] = int
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+__main__.A
+__main__.C
+__main__.D
+__main__.E
+__main__.G
+__main__.H
+
+[case testPEP695TypeAlias2]
+# flags: --python-version=3.12
+type A[T: int] = list[T]
+type B[T: int] = list[T]
+type C[T: (int, str)] = list[T]
+type D[T: (int, str)] = list[T]
+type E[T: int] = list[T]
+type F[T: (int, str)] = list[T]
+
+[file next.py]
+# flags: --python-version=3.12
+type A[T] = list[T]
+type B[T: str] = list[T]
+type C[T: (int, None)] = list[T]
+type D[T] = list[T]
+type E[T: int] = list[T]
+type F[T: (int, str)] = list[T]
+
+[out]
+__main__.A
+__main__.B
+__main__.C
+__main__.D
+
+[case testPEP695GenericFunction]
+# flags: --python-version=3.12
+def f[T](x: T) -> T:
+    return x
+def g[T](x: T, y: T) -> T:
+    return x
+[file next.py]
+# flags: --python-version=3.12
+def f[T](x: T) -> T:
+    return x
+def g[T, S](x: T, y: S) -> S:
+    return y
+[out]
+__main__.g
+
+[case testPEP695GenericClass]
+# flags: --python-version=3.12
+class C[T]:
+    pass
+class D[T]:
+    pass
+class E[T]:
+    pass
+class F[T]:
+    def f(self, x: object) -> T: ...
+[file next.py]
+# flags: --python-version=3.12
+class C[T]:
+    pass
+class D[T: int]:
+    pass
+class E:
+    pass
+class F[T]:
+    def f(self, x: T) -> T: ...
+[out]
+__main__.D
+__main__.E
+__main__.F
+__main__.F.f

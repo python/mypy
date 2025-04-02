@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import os
 from collections import Counter
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Final, Iterator
+from typing import Final
 
 from mypy import nodes
 from mypy.argmap import map_formals_to_actuals
@@ -203,7 +204,11 @@ class StatisticsVisitor(TraverserVisitor):
             # Type variable definition -- not a real assignment.
             return
         if o.type:
+            # If there is an explicit type, don't visit the l.h.s. as an expression
+            # to avoid double-counting and mishandling special forms.
             self.type(o.type)
+            o.rvalue.accept(self)
+            return
         elif self.inferred and not self.all_nodes:
             # if self.all_nodes is set, lvalues will be visited later
             for lvalue in o.lvalues:

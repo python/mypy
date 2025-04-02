@@ -3,8 +3,13 @@ class Empty: pass
 
 def f(e: Empty) -> Empty:
     return e
+
+class EmptyEllipsis: ...
+
+def g(e: EmptyEllipsis) -> EmptyEllipsis:
+    return e
 [file driver.py]
-from native import Empty, f
+from native import Empty, EmptyEllipsis, f, g
 
 print(isinstance(Empty, type))
 print(Empty)
@@ -12,10 +17,21 @@ print(str(Empty())[:20])
 
 e = Empty()
 print(f(e) is e)
+
+print(isinstance(EmptyEllipsis, type))
+print(EmptyEllipsis)
+print(str(EmptyEllipsis())[:28])
+
+e2 = EmptyEllipsis()
+print(g(e2) is e2)
 [out]
 True
 <class 'native.Empty'>
 <native.Empty object
+True
+True
+<class 'native.EmptyEllipsis'>
+<native.EmptyEllipsis object
 True
 
 [case testClassWithFields]
@@ -59,6 +75,20 @@ assert hasattr(c, 'x')
 1000000000000000000000000000000
 1000000000000000000000000000001
 1000000000000000000000000000002
+
+[case testTypedDictWithFields]
+import collections
+from typing import TypedDict
+class C(TypedDict):
+    x: collections.deque
+[file driver.py]
+from native import C
+from collections import deque
+
+print(C.__annotations__["x"] is deque)
+[typing fixtures/typing-full.pyi]
+[out]
+True
 
 [case testClassWithDeletableAttributes]
 from typing import Any, cast
@@ -254,8 +284,8 @@ from enum import Enum
 
 class TestEnum(Enum):
     _order_ = "a b"
-    a : int = 1
-    b : int = 2
+    a = 1
+    b = 2
 
     @classmethod
     def test(cls) -> int:
@@ -437,6 +467,25 @@ from native import A, foo
 a = A(10)
 assert a.foo() == 11
 assert foo() == 21
+
+[case testClassKwargs]
+class X:
+    def __init__(self, msg: str, **variables: int) -> None:
+         self.msg = msg
+         self.variables = variables
+
+[file driver.py]
+import traceback
+from native import X
+x = X('hello', a=0, b=1)
+assert x.msg == 'hello'
+assert x.variables == {'a': 0, 'b': 1}
+try:
+    X('hello', msg='hello')
+except TypeError as e:
+    print(f"{type(e).__name__}: {e}")
+[out]
+TypeError: argument for __init__() given by name ('msg') and position (1)
 
 [case testGenericClass]
 from typing import TypeVar, Generic, Sequence
@@ -662,8 +711,7 @@ Traceback (most recent call last):
 AttributeError: attribute 'x' of 'X' undefined
 
 [case testClassMethods]
-from typing import ClassVar, Any
-from typing_extensions import final
+from typing import ClassVar, Any, final
 from mypy_extensions import mypyc_attr
 
 from interp import make_interpreted_subclass
@@ -1020,7 +1068,7 @@ assert b.z is None
 assert not hasattr(b, 'bogus')
 
 [case testProtocol]
-from typing_extensions import Protocol
+from typing import Protocol
 
 class Proto(Protocol):
     def foo(self, x: int) -> None:
@@ -2494,7 +2542,7 @@ class Derived(Base):
 assert Derived()() == 1
 
 [case testClassWithFinalAttribute]
-from typing_extensions import Final
+from typing import Final
 
 class C:
     A: Final = -1
@@ -2503,3 +2551,334 @@ class C:
 def test_final_attribute() -> None:
     assert C.A == -1
     assert C.a == [-1]
+
+[case testClassWithFinalDecorator]
+from typing import final
+
+@final
+class C:
+    def a(self) -> int:
+        return 1
+
+def test_class_final_attribute() -> None:
+    assert C().a() == 1
+
+
+[case testClassWithFinalDecoratorCtor]
+from typing import final
+
+@final
+class C:
+    def __init__(self) -> None:
+        self.a = 1
+
+    def b(self) -> int:
+        return 2
+
+    @property
+    def c(self) -> int:
+        return 3
+
+def test_class_final_attribute() -> None:
+    assert C().a == 1
+    assert C().b() == 2
+    assert C().c == 3
+
+[case testClassWithFinalDecoratorInheritedWithProperties]
+from typing import final
+
+class B:
+    def a(self) -> int:
+        return 2
+
+    @property
+    def b(self) -> int:
+        return self.a() + 2
+
+    @property
+    def c(self) -> int:
+        return 3
+
+def test_class_final_attribute_basic() -> None:
+    assert B().a() == 2
+    assert B().b == 4
+    assert B().c == 3
+
+@final
+class C(B):
+    def a(self) -> int:
+        return 1
+
+    @property
+    def b(self) -> int:
+        return self.a() + 1
+
+def fn(cl: B) -> int:
+    return cl.a()
+
+def test_class_final_attribute_inherited() -> None:
+    assert C().a() == 1
+    assert fn(C()) == 1
+    assert B().a() == 2
+    assert fn(B()) == 2
+
+    assert B().b == 4
+    assert C().b == 2
+    assert B().c == 3
+    assert C().c == 3
+
+[case testClassWithFinalAttributeAccess]
+from typing import Final
+
+class C:
+    a: Final = {'x': 'y'}
+    b: Final = C.a
+
+def test_final_attribute() -> None:
+    assert C.a['x'] == 'y'
+    assert C.b['x'] == 'y'
+    assert C.a is C.b
+
+[case testClassDerivedFromIntEnum]
+from enum import IntEnum, auto
+
+class Player(IntEnum):
+    MIN = auto()
+
+print(f'{Player.MIN = }')
+[file driver.py]
+from native import Player
+[out]
+Player.MIN = <Player.MIN: 1>
+
+[case testStaticCallsWithUnpackingArgs]
+from typing import Tuple
+
+class Foo:
+  @staticmethod
+  def static(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return (c+1, a+2, b+3)
+
+  @classmethod
+  def clsmethod(cls, a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return (c+1, a+2, b+3)
+
+
+print(Foo.static(*[10, 20, 30]))
+print(Foo.static(*(40, 50), *[60]))
+assert Foo.static(70, 80, *[90]) == Foo.clsmethod(70, *(80, 90))
+
+[file driver.py]
+import native
+
+[out]
+(31, 12, 23)
+(61, 42, 53)
+
+[case testDataclassInitVar]
+import dataclasses
+
+@dataclasses.dataclass
+class C:
+    init_v: dataclasses.InitVar[int]
+    v: float = dataclasses.field(init=False)
+
+    def __post_init__(self, init_v):
+        self.v = init_v + 0.1
+
+[file driver.py]
+import native
+print(native.C(22).v)
+
+[out]
+22.1
+
+[case testLastParentEnum]
+from enum import Enum
+
+class ColorCode(str, Enum):
+    OKGREEN = "okgreen"
+
+[file driver.py]
+import native
+print(native.ColorCode.OKGREEN.value)
+
+[out]
+okgreen
+
+[case testAttrWithSlots]
+import attr
+
+@attr.s(slots=True)
+class A:
+    ints: list[int] = attr.ib()
+
+[file driver.py]
+import native
+print(native.A(ints=[1, -17]).ints)
+
+[out]
+\[1, -17]
+
+[case testDataclassClassReference]
+from __future__ import annotations
+from dataclasses import dataclass
+
+class BackwardDefinedClass:
+    pass
+
+@dataclass
+class Data:
+    bitem: BackwardDefinedClass
+    bitems: 'BackwardDefinedClass'
+    fitem: ForwardDefinedClass
+    fitems: 'ForwardDefinedClass'
+
+class ForwardDefinedClass:
+    pass
+
+def test_function():
+    d = Data(
+        bitem=BackwardDefinedClass(),
+        bitems=BackwardDefinedClass(),
+        fitem=ForwardDefinedClass(),
+        fitems=ForwardDefinedClass(),
+    )
+    assert(isinstance(d.bitem, BackwardDefinedClass))
+    assert(isinstance(d.bitems, BackwardDefinedClass))
+    assert(isinstance(d.fitem, ForwardDefinedClass))
+    assert(isinstance(d.fitems, ForwardDefinedClass))
+
+[case testDel]
+class A:
+    def __del__(self):
+        print("deleting A...")
+
+class B:
+    def __del__(self):
+        print("deleting B...")
+
+class C(B):
+    def __init__(self):
+        self.a = A()
+
+    def __del__(self):
+        print("deleting C...")
+        super().__del__()
+
+class D(A):
+    pass
+
+[file driver.py]
+import native
+native.C()
+native.D()
+
+[out]
+deleting C...
+deleting B...
+deleting A...
+deleting A...
+
+[case testDelCircular]
+import dataclasses
+import typing
+
+i: int = 1
+
+@dataclasses.dataclass
+class C:
+    var: typing.Optional["C"] = dataclasses.field(default=None)
+
+    def __del__(self):
+        global i
+        print(f"deleting C{i}...")
+        i = i + 1
+
+[file driver.py]
+import native
+import gc
+
+c1 = native.C()
+c2 = native.C()
+c1.var = c2
+c2.var = c1
+del c1
+del c2
+gc.collect()
+
+[out]
+deleting C1...
+deleting C2...
+
+[case testDelException]
+# The error message in the expected output of this test does not match CPython's error message due to the way mypyc compiles Python classes. If the error message is fixed, the expected output of this test will also change.
+class F:
+    def __del__(self):
+        if True:
+            raise Exception("e2")
+
+[file driver.py]
+import native
+f = native.F()
+del f
+
+[out]
+Exception ignored in: <slot wrapper '__del__' of 'F' objects>
+Traceback (most recent call last):
+  File "native.py", line 5, in __del__
+    raise Exception("e2")
+Exception: e2
+
+[case testMypycAttrNativeClass]
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+
+@mypyc_attr(native_class=False)
+class AnnontatedNonExtensionClass:
+    pass
+
+class DerivedClass(AnnontatedNonExtensionClass):
+    pass
+
+class ImplicitExtensionClass():
+    pass
+
+@mypyc_attr(native_class=True)
+class AnnotatedExtensionClass():
+    pass
+
+def test_function():
+    setattr(AnnontatedNonExtensionClass, 'attr_class', 5)
+    assert(hasattr(AnnontatedNonExtensionClass, 'attr_class') == True)
+    assert(getattr(AnnontatedNonExtensionClass, 'attr_class') == 5)
+    delattr(AnnontatedNonExtensionClass, 'attr_class')
+    assert(hasattr(AnnontatedNonExtensionClass, 'attr_class') == False)
+
+    inst = AnnontatedNonExtensionClass()
+    setattr(inst, 'attr_instance', 6)
+    assert(hasattr(inst, 'attr_instance') == True)
+    assert(getattr(inst, 'attr_instance') == 6)
+    delattr(inst, 'attr_instance')
+    assert(hasattr(inst, 'attr_instance') == False)
+
+    setattr(DerivedClass, 'attr_class', 5)
+    assert(hasattr(DerivedClass, 'attr_class') == True)
+    assert(getattr(DerivedClass, 'attr_class') == 5)
+    delattr(DerivedClass, 'attr_class')
+    assert(hasattr(DerivedClass, 'attr_class') == False)
+
+    derived_inst = DerivedClass()
+    setattr(derived_inst, 'attr_instance', 6)
+    assert(hasattr(derived_inst, 'attr_instance') == True)
+    assert(getattr(derived_inst, 'attr_instance') == 6)
+    delattr(derived_inst, 'attr_instance')
+    assert(hasattr(derived_inst, 'attr_instance') == False)
+
+    ext_inst = ImplicitExtensionClass()
+    with assertRaises(AttributeError):
+        setattr(ext_inst, 'attr_instance', 6)
+
+    explicit_ext_inst = AnnotatedExtensionClass()
+    with assertRaises(AttributeError):
+        setattr(explicit_ext_inst, 'attr_instance', 6)

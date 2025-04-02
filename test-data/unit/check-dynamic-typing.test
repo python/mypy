@@ -252,7 +252,7 @@ if int():
 if int():
     a = d.foo(a, a)
 d.x = a
-d.x.y.z  # E: "A" has no attribute "y"
+d.x.y.z
 
 class A: pass
 [out]
@@ -320,8 +320,10 @@ d = None # All ok
 d = t
 d = g
 d = A
-t = d
-f = d
+
+d1: Any
+t = d1
+f = d1
 [builtins fixtures/tuple.pyi]
 
 
@@ -755,6 +757,21 @@ main:5: note:      Superclass:
 main:5: note:          def f(self, x: A) -> None
 main:5: note:      Subclass:
 main:5: note:          def f(self, x: Any, y: Any) -> None
+
+[case testInvalidOverrideArgumentCountWithImplicitSignature4]
+# flags: --check-untyped-defs
+import typing
+class B:
+    def f(self, x: A) -> None: pass
+class A(B):
+    def f(self, x, y):
+        x()
+[out]
+main:6: error: Signature of "f" incompatible with supertype "B"
+main:6: note:      Superclass:
+main:6: note:          def f(self, x: A) -> None
+main:6: note:      Subclass:
+main:6: note:          def f(self, x: Any, y: Any) -> Any
 
 [case testInvalidOverrideWithImplicitSignatureAndClassMethod1]
 class B:

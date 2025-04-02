@@ -6,12 +6,13 @@ import json
 import os
 import os.path
 from collections import Counter
-from typing import Any, Dict, Final, Iterable
+from collections.abc import Iterable
+from typing import Any, Final
 from typing_extensions import TypeAlias as _TypeAlias
 
 ROOT: Final = ".mypy_cache/3.5"
 
-JsonDict: _TypeAlias = Dict[str, Any]
+JsonDict: _TypeAlias = dict[str, Any]
 
 
 class CacheData:

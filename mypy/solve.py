@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
@@ -139,7 +139,7 @@ def solve_with_dependent(
       * Find dependencies between type variables, group them in SCCs, and sort topologically
       * Check that all SCC are intrinsically linear, we can't solve (express) T <: List[T]
       * Variables in leaf SCCs that don't have constant bounds are free (choose one per SCC)
-      * Solve constraints iteratively starting from leafs, updating bounds after each step.
+      * Solve constraints iteratively starting from leaves, updating bounds after each step.
     """
     graph, lowers, uppers = transitive_closure(vars, constraints)
 
@@ -350,7 +350,7 @@ def choose_free(
 
     # For convenience with current type application machinery, we use a stable
     # choice that prefers the original type variables (not polymorphic ones) in SCC.
-    best = sorted(scc, key=lambda x: (x.id not in original_vars, x.id.raw_id))[0]
+    best = min(scc, key=lambda x: (x.id not in original_vars, x.id.raw_id))
     if isinstance(best, TypeVarType):
         return best.copy_modified(values=values, upper_bound=common_upper_bound)
     if is_trivial_bound(common_upper_bound_p, allow_tuple=True):
@@ -514,7 +514,8 @@ def skip_reverse_union_constraints(cs: list[Constraint]) -> list[Constraint]:
     is a linear constraint. This is however not true in presence of union types, for example
     T :> Union[S, int] vs S <: T. Trying to solve such constraints would be detected ambiguous
     as (T, S) form a non-linear SCC. However, simply removing the linear part results in a valid
-    solution T = Union[S, int], S = <free>.
+    solution T = Union[S, int], S = <free>. A similar scenario is when we get T <: Union[T, int],
+    such constraints carry no information, and will equally confuse linearity check.
 
     TODO: a cleaner solution may be to avoid inferring such constraints in first place, but
     this would require passing around a flag through all infer_constraints() calls.
@@ -525,7 +526,13 @@ def skip_reverse_union_constraints(cs: list[Constraint]) -> list[Constraint]:
         if isinstance(p_target, UnionType):
             for item in p_target.items:
                 if isinstance(item, TypeVarType):
+                    if item == c.origin_type_var and c.op == SUBTYPE_OF:
+                        reverse_union_cs.add(c)
+                        continue
+                    # These two forms are semantically identical, but are different from
+                    # the point of view of Constraint.__eq__().
                     reverse_union_cs.add(Constraint(item, neg_op(c.op), c.origin_type_var))
+                    reverse_union_cs.add(Constraint(c.origin_type_var, c.op, item))
     return [c for c in cs if c not in reverse_union_cs]
 
 
@@ -546,6 +553,11 @@ def pre_validate_solutions(
     """
     new_solutions: list[Type | None] = []
     for t, s in zip(original_vars, solutions):
+        if is_callable_protocol(t.upper_bound):
+            # This is really ad-hoc, but a proper fix would be much more complex,
+            # and otherwise this may cause crash in a relatively common scenario.
+            new_solutions.append(s)
+            continue
         if s is not None and not is_subtype(s, t.upper_bound):
             bound_satisfies_all = True
             for c in constraints:
@@ -560,3 +572,10 @@ def pre_validate_solutions(
                 continue
         new_solutions.append(s)
     return new_solutions
+
+
+def is_callable_protocol(t: Type) -> bool:
+    proper_t = get_proper_type(t)
+    if isinstance(proper_t, Instance) and proper_t.type.is_protocol:
+        return "__call__" in proper_t.type.protocol_members
+    return False

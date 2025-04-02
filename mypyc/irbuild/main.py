@@ -73,7 +73,7 @@ def build_ir(
 
     for module in modules:
         # First pass to determine free symbols.
-        pbv = PreBuildVisitor(errors, module, singledispatch_info.decorators_to_remove)
+        pbv = PreBuildVisitor(errors, module, singledispatch_info.decorators_to_remove, types)
         module.accept(pbv)
 
         # Construct and configure builder objects (cyclic runtime dependency).
@@ -99,6 +99,7 @@ def build_ir(
             builder.functions,
             builder.classes,
             builder.final_names,
+            builder.type_var_names,
         )
         result[module.fullname] = module_ir
         class_irs.extend(builder.classes)

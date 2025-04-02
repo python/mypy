@@ -1,7 +1,7 @@
 -- Test cases for generic aliases
 
 [case testGenericBuiltinWarning]
-# flags: --python-version 3.7
+# flags: --python-version 3.8
 t1: list
 t2: list[int]  # E: "list" is not subscriptable, use "typing.List" instead
 t3: list[str]  # E: "list" is not subscriptable, use "typing.List" instead
@@ -21,14 +21,14 @@ t11: type[int]  # E: "type" expects no type arguments, but 1 given
 
 
 [case testGenericBuiltinSetWarning]
-# flags: --python-version 3.7
+# flags: --python-version 3.8
 t1: set
 t2: set[int]  # E: "set" is not subscriptable, use "typing.Set" instead
 [builtins fixtures/set.pyi]
 
 
 [case testGenericCollectionsWarning]
-# flags: --python-version 3.7
+# flags: --python-version 3.8
 import collections
 
 t01: collections.deque
@@ -44,7 +44,6 @@ t10: collections.ChainMap[int, str]  # E: "ChainMap" is not subscriptable, use "
 
 
 [case testGenericBuiltinFutureAnnotations]
-# flags: --python-version 3.7
 from __future__ import annotations
 t1: list
 t2: list[int]
@@ -64,7 +63,6 @@ t11: type[int]
 
 
 [case testGenericCollectionsFutureAnnotations]
-# flags: --python-version 3.7
 from __future__ import annotations
 import collections
 

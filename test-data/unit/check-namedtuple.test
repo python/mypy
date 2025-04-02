@@ -22,10 +22,13 @@ a, b, c = x # E: Need more than 2 values to unpack (3 expected)
 x[2] # E: Tuple index out of range
 [builtins fixtures/tuple.pyi]
 
-[case testNamedTupleNoUnderscoreFields]
+[case testNamedTupleInvalidFields]
 from collections import namedtuple
 
-X = namedtuple('X', 'x, _y, _z')  # E: "namedtuple()" field names cannot start with an underscore: _y, _z
+X = namedtuple('X', 'x, _y')  # E: "namedtuple()" field name "_y" starts with an underscore
+Y = namedtuple('Y', ['x', '1'])  # E: "namedtuple()" field name "1" is not a valid identifier
+Z = namedtuple('Z', ['x', 'def'])  # E: "namedtuple()" field name "def" is a keyword
+A = namedtuple('A', ['x', 'x'])  # E: "namedtuple()" has duplicate field name "x"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleAccessingAttributes]
@@ -66,8 +69,7 @@ a.y = 5 # E: Property "y" defined in "X" is read-only
 
 
 [case testTypingNamedTupleAttributesAreReadOnly]
-from typing import NamedTuple
-from typing_extensions import Protocol
+from typing import NamedTuple, Protocol
 
 class HasX(Protocol):
     x: str
@@ -79,8 +81,8 @@ a: HasX = A("foo")
 a.x = "bar"
 [builtins fixtures/tuple.pyi]
 [out]
-main:10: error: Incompatible types in assignment (expression has type "A", variable has type "HasX")
-main:10: note: Protocol member HasX.x expected settable variable, got read-only attribute
+main:9: error: Incompatible types in assignment (expression has type "A", variable has type "HasX")
+main:9: note: Protocol member HasX.x expected settable variable, got read-only attribute
 
 
 [case testNamedTupleCreateWithPositionalArguments]
@@ -125,13 +127,14 @@ E = namedtuple('E', 'a b', 0)
 [builtins fixtures/bool.pyi]
 
 [out]
+main:4: error: Boolean literal expected as the "rename" argument to namedtuple()
+main:5: error: Boolean literal expected as the "rename" argument to namedtuple()
 main:5: error: Argument "rename" to "namedtuple" has incompatible type "str"; expected "int"
 main:6: error: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
 <ROOT>/test-data/unit/lib-stub/collections.pyi:3: note: "namedtuple" defined here
 main:7: error: Too many positional arguments for "namedtuple"
 
 [case testNamedTupleDefaults]
-# flags: --python-version 3.7
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'], defaults=(1,))
@@ -143,6 +146,23 @@ X(0, 1, 2)  # E: Too many arguments for "X"
 
 Y = namedtuple('Y', ['x', 'y'], defaults=(1, 2, 3))  # E: Too many defaults given in call to "namedtuple()"
 Z = namedtuple('Z', ['x', 'y'], defaults='not a tuple')  # E: List or tuple literal expected as the defaults argument to namedtuple()  # E: Argument "defaults" to "namedtuple" has incompatible type "str"; expected "Optional[Iterable[Any]]"
+
+[builtins fixtures/list.pyi]
+
+[case testNamedTupleRename]
+from collections import namedtuple
+
+X = namedtuple('X', ['abc', 'def'], rename=False)  # E: "namedtuple()" field name "def" is a keyword
+Y = namedtuple('Y', ['x', 'x', 'def', '42', '_x'], rename=True)
+y = Y(x=0, _1=1, _2=2, _3=3, _4=4)
+reveal_type(y.x)  # N: Revealed type is "Any"
+reveal_type(y._1)  # N: Revealed type is "Any"
+reveal_type(y._2)  # N: Revealed type is "Any"
+reveal_type(y._3)  # N: Revealed type is "Any"
+reveal_type(y._4)  # N: Revealed type is "Any"
+y._0  # E: "Y" has no attribute "_0"
+y._5  # E: "Y" has no attribute "_5"
+y._x  # E: "Y" has no attribute "_x"
 
 [builtins fixtures/list.pyi]
 
@@ -528,7 +548,7 @@ b = B._make([''])  # type: B
 [case testNamedTupleIncompatibleRedefinition]
 from typing import NamedTuple
 class Crash(NamedTuple):
-    count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], object], int]")
+    count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[object], int]")
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleInClassNamespace]
@@ -1222,7 +1242,7 @@ nti: NT[int]
 reveal_type(nti * x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 nts: NT[str]
-reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1283,9 +1303,9 @@ reveal_type(foo(nti, nts))  # N: Revealed type is "Tuple[builtins.int, builtins.
 reveal_type(foo(nts, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
 
 reveal_type(foo(nti, x))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 reveal_type(foo(x, nti))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[Union[builtins.int, builtins.str], ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -1371,3 +1391,142 @@ class Test3(NamedTuple, metaclass=type):  # E: Unexpected keyword argument "meta
     ...
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+
+[case testNamedTupleDunderReplace]
+# flags: --python-version 3.13
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: int
+
+A(x=0).__replace__(x=1)
+A(x=0).__replace__(x="asdf")  # E: Argument "x" to "__replace__" of "A" has incompatible type "str"; expected "int"
+A(x=0).__replace__(y=1)  # E: Unexpected keyword argument "y" for "__replace__" of "A"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testUnpackSelfNamedTuple]
+import typing
+
+class Foo(typing.NamedTuple):
+    bar: int
+    def baz(self: typing.Self) -> None:
+        x, = self
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNameErrorInNamedTupleNestedInFunction1]
+from typing import NamedTuple
+
+def bar() -> None:
+    class MyNamedTuple(NamedTuple):
+        a: int
+        def foo(self) -> None:
+            ...
+    int_set: Set[int]  # E: Name "Set" is not defined \
+                       # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Set")
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNameErrorInNamedTupleNestedInFunction2]
+from typing import NamedTuple
+
+def bar() -> None:
+    class MyNamedTuple(NamedTuple):
+        a: int
+        def foo(self) -> None:
+            misspelled_var_name  # E: Name "misspelled_var_name" is not defined
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+
+[case testNamedTupleFinalAndClassVar]
+from typing import NamedTuple, Final, ClassVar
+
+class My(NamedTuple):
+    a: Final      # E: Final[...] can't be used inside a NamedTuple
+    b: Final[int] # E: Final[...] can't be used inside a NamedTuple
+    c: ClassVar       # E: ClassVar[...] can't be used inside a NamedTuple
+    d: ClassVar[int]  # E: ClassVar[...] can't be used inside a NamedTuple
+
+Func = NamedTuple('Func', [
+    ('a', Final),         # E: Final[...] can't be used inside a NamedTuple
+    ('b', Final[int]),    # E: Final[...] can't be used inside a NamedTuple
+    ('c', ClassVar),      # E: ClassVar[...] can't be used inside a NamedTuple
+    ('d', ClassVar[int]), # E: ClassVar[...] can't be used inside a NamedTuple
+])
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleRecursiveBound]
+from typing import Generic, NamedTuple, TypeVar
+T = TypeVar("T", bound="NT")
+class NT(NamedTuple, Generic[T]):
+    parent: T
+    item: int
+
+def main(n: NT[T]) -> None:
+    reveal_type(n.parent)  # N: Revealed type is "T`-1"
+    reveal_type(n.item)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleOverlappingCheck]
+from typing import overload, NamedTuple, Union
+
+class AKey(NamedTuple):
+    k: str
+
+class A(NamedTuple):
+    key: AKey
+
+
+class BKey(NamedTuple):
+    k: str
+
+class B(NamedTuple):
+    key: BKey
+
+@overload
+def f(arg: A) -> A: ...
+@overload
+def f(arg: B) -> B: ...
+def f(arg: Union[A, B]) -> Union[A, B]: ...
+
+def g(x: Union[A, B, str]) -> Union[A, B, str]:
+    if isinstance(x, str):
+        return x
+    else:
+        reveal_type(x)  # N: Revealed type is "Union[Tuple[Tuple[builtins.str, fallback=__main__.AKey], fallback=__main__.A], Tuple[Tuple[builtins.str, fallback=__main__.BKey], fallback=__main__.B]]"
+        return x._replace()
+
+# no errors should be raised above.
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleUnionAnyMethodCall]
+from collections import namedtuple
+from typing import Any, Union
+
+T = namedtuple("T", ["x"])
+
+class C(T):
+    def f(self) -> bool:
+        return True
+
+c: Union[C, Any]
+reveal_type(c.f())  # N: Revealed type is "Union[builtins.bool, Any]"
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleAsClassMemberNoCrash]
+# https://github.com/python/mypy/issues/18736
+from collections import namedtuple
+
+class Base:
+    def __init__(self, namespace: tuple[str, ...]) -> None:
+        # Not a bug: trigger defer
+        names = [name for name in namespace if fail]  # E: Name "fail" is not defined
+        self.n = namedtuple("n", names)  # E: NamedTuple type as an attribute is not supported
+[builtins fixtures/tuple.pyi]

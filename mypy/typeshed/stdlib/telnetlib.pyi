@@ -1,5 +1,5 @@
 import socket
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, MutableSequence, Sequence
 from re import Match, Pattern
 from types import TracebackType
 from typing import Any
@@ -88,6 +88,7 @@ NOOPT: bytes
 
 class Telnet:
     host: str | None  # undocumented
+    sock: socket.socket | None  # undocumented
     def __init__(self, host: str | None = None, port: int = 0, timeout: float = ...) -> None: ...
     def open(self, host: str, port: int = 0, timeout: float = ...) -> None: ...
     def msg(self, msg: str, *args: Any) -> None: ...
@@ -113,7 +114,7 @@ class Telnet:
     def mt_interact(self) -> None: ...
     def listener(self) -> None: ...
     def expect(
-        self, list: Sequence[Pattern[bytes] | bytes], timeout: float | None = None
+        self, list: MutableSequence[Pattern[bytes] | bytes] | Sequence[Pattern[bytes]], timeout: float | None = None
     ) -> tuple[int, Match[bytes] | None, bytes]: ...
     def __enter__(self) -> Self: ...
     def __exit__(

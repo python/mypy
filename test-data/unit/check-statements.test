@@ -85,7 +85,7 @@ def f() -> Generator[int, None, None]:
 from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
-    return "foo"
+    return "foo" # E: No return value expected
 [out]
 
 
@@ -518,6 +518,13 @@ if object():
 if object():
     raise BaseException from f # E: Exception must be derived from BaseException
 [builtins fixtures/exception.pyi]
+
+[case testRaiseNotImplementedFails]
+if object():
+    raise NotImplemented    # E: Exception must be derived from BaseException; did you mean "NotImplementedError"?
+if object():
+    raise NotImplemented()  # E: NotImplemented? not callable
+[builtins fixtures/notimplemented.pyi]
 
 [case testTryFinallyStatement]
 import typing
@@ -1339,7 +1346,7 @@ from typing import Generator
 def g() -> Generator[int, None, None]:
     yield from ()
     yield from (0, 1, 2)
-    yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "object", expected type "int")
+    yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "Union[int, str]", expected type "int")
     yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int")
 [builtins fixtures/tuple.pyi]
 
@@ -1520,13 +1527,13 @@ from typing import Optional
 
 class InvalidReturn1:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         return False
 
 class InvalidReturn2:
     def __exit__(self, x, y, z) -> Optional[bool]:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         if int():
             return False
@@ -1535,7 +1542,7 @@ class InvalidReturn2:
 
 class InvalidReturn3:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         def nested() -> bool:
             return True
@@ -1543,7 +1550,7 @@ class InvalidReturn3:
 [builtins fixtures/bool.pyi]
 
 [case testWithStmtBoolExitReturnOkay]
-from typing_extensions import Literal
+from typing import Literal
 
 class GoodReturn1:
     def __exit__(self, x, y, z) -> bool:
@@ -2175,8 +2182,7 @@ class M(N): pass
 [out]
 
 [case testForwardRefsInWithStatementImplicit]
-from typing import ContextManager, Any
-from mypy_extensions import TypedDict
+from typing import ContextManager, Any, TypedDict
 cm: ContextManager[N]
 
 with cm as g:
@@ -2184,12 +2190,11 @@ with cm as g:
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testForwardRefsInWithStatement]
-from typing import ContextManager, Any
-from mypy_extensions import TypedDict
+from typing import ContextManager, Any, TypedDict
 cm: ContextManager[Any]
 
 with cm as g:  # type: N
@@ -2197,7 +2202,7 @@ with cm as g:  # type: N
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testGlobalWithoutInitialization]
@@ -2231,6 +2236,65 @@ class B: pass
 def foo(x: int) -> Union[Generator[A, None, None], Generator[B, None, None]]:
     yield x  # E: Incompatible types in "yield" (actual type "int", expected type "Union[A, B]")
 
+[case testYieldFromUnionOfGenerators]
+from typing import Generator, Union
+
+class T: pass
+
+def foo(arg: Union[Generator[int, None, T], Generator[str, None, T]]) -> Generator[Union[int, str], None, T]:
+    return (yield from arg)
+
+[case testYieldFromInvalidUnionReturn]
+from typing import Generator, Union
+
+class A: pass
+class B: pass
+
+def foo(arg: Union[A, B]) -> Generator[Union[int, str], None, A]:
+    return (yield from arg) # E: "yield from" can't be applied to "Union[A, B]"
+
+[case testYieldFromUnionOfGeneratorWithIterableStr]
+from typing import Generator, Union, Iterable, Optional
+
+def foo(arg: Union[Generator[int, None, bytes], Iterable[str]]) -> Generator[Union[int, str], None, Optional[bytes]]:
+    return (yield from arg)
+
+def bar(arg: Generator[str, None, str]) -> Generator[str, None, str]:
+    return foo(arg)  # E: Incompatible return value type (got "Generator[Union[int, str], None, Optional[bytes]]", expected "Generator[str, None, str]")
+
+def launder(arg: Iterable[str]) -> Generator[Union[int, str], None, Optional[bytes]]:
+    return foo(arg)
+
+def baz(arg: Generator[str, None, str]) -> Generator[Union[int, str], None, Optional[bytes]]:
+    # this is unsound, the Generator return type will actually be str
+    return launder(arg)
+[builtins fixtures/tuple.pyi]
+
+[case testYieldIteratorReturn]
+from typing import Iterator
+
+def get_strings(foo: bool) -> Iterator[str]:
+    if foo:
+        return ["foo1", "foo2"]  # E: No return value expected
+    else:
+        yield "bar1"
+        yield "bar2"
+[builtins fixtures/tuple.pyi]
+
+[case testYieldFromInvalidType]
+from collections.abc import Iterator
+
+class A:
+    def list(self) -> None: ...
+
+    def foo(self) -> list[int]:  # E: Function "__main__.A.list" is not valid as a type \
+                                 # N: Perhaps you need "Callable[...]" or a callback protocol?
+        return []
+
+def fn() -> Iterator[int]:
+    yield from A().foo()  # E: "list?[builtins.int]" has no attribute "__iter__" (not iterable)
+[builtins fixtures/tuple.pyi]
+
 [case testNoCrashOnStarRightHandSide]
 x = *(1, 2, 3)  # E: can't use starred expression here
 [builtins fixtures/tuple.pyi]
@@ -2262,3 +2326,38 @@ class Outer:
         class Inner:
             break  # E: "break" outside loop
 [builtins fixtures/list.pyi]
+
+[case testCallableInstanceOverlapAllowed]
+# flags: --warn-unreachable
+from typing import Any, Callable, List
+
+class CAny:
+    def __call__(self) -> Any: ...
+class CNone:
+    def __call__(self) -> None: ...
+class CWrong:
+    def __call__(self, x: int) -> None: ...
+
+def describe(func: Callable[[], None]) -> str:
+    if isinstance(func, CAny):
+        return "CAny"
+    elif isinstance(func, CNone):
+        return "CNone"
+    elif isinstance(func, CWrong):
+        return "CWrong"  # E: Statement is unreachable
+    else:
+        return "other"
+
+class C(CAny):
+    def __call__(self) -> None: ...
+
+def f():
+    pass
+
+describe(CAny())
+describe(C())
+describe(CNone())
+describe(CWrong())  # E: Argument 1 to "describe" has incompatible type "CWrong"; expected "Callable[[], None]" \
+                    # N: "CWrong.__call__" has type "Callable[[Arg(int, 'x')], None]"
+describe(f)
+[builtins fixtures/isinstancelist.pyi]

@@ -117,7 +117,8 @@ class NodeFixer(NodeVisitor[None]):
     # NOTE: This method *definitely* isn't part of the NodeVisitor API.
     def visit_symbol_table(self, symtab: SymbolTable, table_fullname: str) -> None:
         # Copy the items because we may mutate symtab.
-        for key, value in list(symtab.items()):
+        for key in list(symtab):
+            value = symtab[key]
             cross_ref = value.cross_ref
             if cross_ref is not None:  # Fix up cross-reference.
                 value.cross_ref = None
@@ -209,6 +210,8 @@ class NodeFixer(NodeVisitor[None]):
             v.info = self.current_info
         if v.type is not None:
             v.type.accept(self.type_fixer)
+        if v.setter_type is not None:
+            v.setter_type.accept(self.type_fixer)
 
     def visit_type_alias(self, a: TypeAlias) -> None:
         a.target.accept(self.type_fixer)
@@ -239,6 +242,9 @@ class TypeFixer(TypeVisitor[None]):
             a.accept(self)
         if inst.last_known_value is not None:
             inst.last_known_value.accept(self)
+        if inst.extra_attrs:
+            for v in inst.extra_attrs.attrs.values():
+                v.accept(self)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         type_ref = t.type_ref
@@ -270,6 +276,8 @@ class TypeFixer(TypeVisitor[None]):
                 arg.accept(self)
         if ct.type_guard is not None:
             ct.type_guard.accept(self)
+        if ct.type_is is not None:
+            ct.type_is.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items:

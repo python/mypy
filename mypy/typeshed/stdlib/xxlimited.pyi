@@ -1,6 +1,5 @@
 import sys
-from typing import Any
-from typing_extensions import final
+from typing import Any, ClassVar, final
 
 class Str(str): ...
 
@@ -10,7 +9,7 @@ class Xxo:
     if sys.version_info >= (3, 11) and sys.platform != "win32":
         x_exports: int
 
-def foo(__i: int, __j: int) -> Any: ...
+def foo(i: int, j: int, /) -> Any: ...
 def new() -> Xxo: ...
 
 if sys.version_info >= (3, 10):
@@ -18,6 +17,8 @@ if sys.version_info >= (3, 10):
 
 else:
     class error(Exception): ...
-    class Null: ...
 
-    def roj(__b: Any) -> None: ...
+    class Null:
+        __hash__: ClassVar[None]  # type: ignore[assignment]
+
+    def roj(b: Any, /) -> None: ...
