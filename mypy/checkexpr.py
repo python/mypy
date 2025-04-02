@@ -6327,7 +6327,7 @@ class HasAnyType(types.BoolTypeQuery):
     def visit_any(self, t: AnyType) -> bool:
         if self.include_special_form:
             return True
-        return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
+        return not t.is_special_form  # special forms are not real Any types
 
     def visit_tuple_type(self, t: TupleType) -> bool:
         types = t.items.copy()
