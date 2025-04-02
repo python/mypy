@@ -93,6 +93,13 @@ def main(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
+    if options.allow_redefinition_new and not options.local_partial_types:
+        fail(
+            "error: --local-partial-types must be enabled if using --allow-redefinition-new",
+            stderr,
+            options,
+        )
+
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
         fail("error: --install-types not supported in this mode of running mypy", stderr, options)
@@ -856,7 +863,15 @@ def process_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
-        help="Allow unconditional variable redefinition with a new type",
+        help="Allow restricted, unconditional variable redefinition with a new type",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
+        "--allow-redefinition-new",
+        default=False,
+        strict_flag=False,
+        help=argparse.SUPPRESS,  # This is still very experimental
         group=strictness_group,
     )
 
@@ -1107,6 +1122,11 @@ def process_options(
                 metavar="DIR",
                 dest=f"special-opts:{report_type}_report",
             )
+
+    # Undocumented mypyc feature: generate annotated HTML source file
+    report_group.add_argument(
+        "-a", dest="mypyc_annotation_file", type=str, default=None, help=argparse.SUPPRESS
+    )
 
     other_group = parser.add_argument_group(title="Miscellaneous")
     other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)

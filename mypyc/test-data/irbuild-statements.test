@@ -492,19 +492,21 @@ def from_any(a: Any) -> None:
 [out]
 def from_tuple(t):
     t :: tuple[int, object]
-    r0, r1 :: int
-    r2, x, r3, r4 :: object
+    r0 :: int
+    r1 :: object
+    r2 :: int
+    r3, x, r4 :: object
     r5, y :: int
 L0:
     r0 = borrow t[0]
-    r1 = unborrow r0
-    r2 = box(int, r1)
-    x = r2
-    r3 = borrow t[1]
-    r4 = unborrow r3
+    r1 = borrow t[1]
+    keep_alive steal t
+    r2 = unborrow r0
+    r3 = box(int, r2)
+    x = r3
+    r4 = unborrow r1
     r5 = unbox(int, r4)
     y = r5
-    keep_alive steal t
     return 1
 def from_any(a):
     a, r0, r1 :: object

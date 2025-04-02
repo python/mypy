@@ -6,6 +6,7 @@ The public interface is via the mypy.stubgen module.
 
 from __future__ import annotations
 
+import enum
 import glob
 import importlib
 import inspect
@@ -211,6 +212,9 @@ class CFunctionStub:
         pass
 
 
+_Missing = enum.Enum("_Missing", "VALUE")
+
+
 class InspectionStubGenerator(BaseStubGenerator):
     """Stub generator that does not parse code.
 
@@ -310,12 +314,12 @@ class InspectionStubGenerator(BaseStubGenerator):
 
         # Add the arguments to the signature
         def add_args(
-            args: list[str], get_default_value: Callable[[int, str], object | None]
+            args: list[str], get_default_value: Callable[[int, str], object | _Missing]
         ) -> None:
             for i, arg in enumerate(args):
                 # Check if the argument has a default value
                 default_value = get_default_value(i, arg)
-                if default_value is not None:
+                if default_value is not _Missing.VALUE:
                     if arg in annotations:
                         argtype = annotations[arg]
                     else:
@@ -330,11 +334,11 @@ class InspectionStubGenerator(BaseStubGenerator):
                 else:
                     arglist.append(ArgSig(arg, get_annotation(arg), default=False))
 
-        def get_pos_default(i: int, _arg: str) -> Any | None:
+        def get_pos_default(i: int, _arg: str) -> Any | _Missing:
             if defaults and i >= len(args) - len(defaults):
                 return defaults[i - (len(args) - len(defaults))]
             else:
-                return None
+                return _Missing.VALUE
 
         add_args(args, get_pos_default)
 
@@ -345,11 +349,11 @@ class InspectionStubGenerator(BaseStubGenerator):
         elif kwonlyargs:
             arglist.append(ArgSig("*"))
 
-        def get_kw_default(_i: int, arg: str) -> Any | None:
-            if kwonlydefaults:
-                return kwonlydefaults.get(arg)
+        def get_kw_default(_i: int, arg: str) -> Any | _Missing:
+            if kwonlydefaults and arg in kwonlydefaults:
+                return kwonlydefaults[arg]
             else:
-                return None
+                return _Missing.VALUE
 
         add_args(kwonlyargs, get_kw_default)
 
