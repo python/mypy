@@ -6330,9 +6330,10 @@ class HasAnyType(types.BoolTypeQuery):
         return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
 
     def visit_tuple_type(self, t: TupleType) -> bool:
-        # TODO: should we use tuple_fallback() in (Bool)TypeQuery itself?
-        # Using partial_fallback is error prone as it may be bogus (hence the name).
-        return self.query_types(t.items + [tuple_fallback(t)])
+        types = t.items.copy()
+        if t.partial_fallback.type.fullname != "builtins.tuple":
+            types += [t.partial_fallback]
+        return self.query_types(types)
 
     def visit_callable_type(self, t: CallableType) -> bool:
         if self.ignore_in_type_obj and t.is_type_obj():
