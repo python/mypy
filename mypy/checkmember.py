@@ -42,6 +42,7 @@ from mypy.typeops import (
     erase_to_bound,
     freeze_all_type_vars,
     function_type,
+    get_all_type_vars,
     get_type_vars,
     make_simplified_union,
     supported_self_type,
@@ -606,7 +607,10 @@ def analyze_member_var_access(
             setattr_meth = info.get_method("__setattr__")
             if setattr_meth and setattr_meth.info.fullname != "builtins.object":
                 bound_type = analyze_decorator_or_funcbase_access(
-                    defn=setattr_meth, itype=itype, name=name, mx=mx.copy_modified(is_lvalue=False)
+                    defn=setattr_meth,
+                    itype=itype,
+                    name="__setattr__",
+                    mx=mx.copy_modified(is_lvalue=False),
                 )
                 typ = map_instance_to_supertype(itype, setattr_meth.info)
                 setattr_type = get_proper_type(expand_type_by_instance(bound_type, typ))
@@ -872,15 +876,13 @@ def analyze_var(
                 mx.msg.read_only_property(name, itype.type, mx.context)
             if var.is_classvar:
                 mx.msg.cant_assign_to_classvar(name, mx.context)
-        t = freshen_all_functions_type_vars(typ)
-        t = expand_self_type_if_needed(t, mx, var, original_itype)
-        t = expand_type_by_instance(t, itype)
-        freeze_all_type_vars(t)
-        result = t
-        typ = get_proper_type(typ)
+        # This is the most common case for variables, so start with this.
+        result = expand_without_binding(typ, var, itype, original_itype, mx)
 
+        # A non-None value indicates that we should actually bind self for this variable.
         call_type: ProperType | None = None
         if var.is_initialized_in_class and (not is_instance_var(var) or mx.is_operator):
+            typ = get_proper_type(typ)
             if isinstance(typ, FunctionLike) and not typ.is_type_obj():
                 call_type = typ
             elif var.is_property:
@@ -890,37 +892,23 @@ def analyze_var(
             else:
                 call_type = typ
 
+        # Bound variables with callable types are treated like methods
+        # (these are usually method aliases like __rmul__ = __mul__).
         if isinstance(call_type, FunctionLike) and not call_type.is_type_obj():
-            if mx.is_lvalue and not mx.suppress_errors:
-                if var.is_property and not var.is_settable_property:
-                    mx.msg.read_only_property(name, itype.type, mx.context)
-                elif not var.is_property:
-                    mx.msg.cant_assign_to_method(mx.context)
+            if mx.is_lvalue and not var.is_property and not mx.suppress_errors:
+                mx.msg.cant_assign_to_method(mx.context)
 
-            if not var.is_staticmethod:
-                # Class-level function objects and classmethods become bound methods:
-                # the former to the instance, the latter to the class.
-                functype: FunctionLike = call_type
-                signature = freshen_all_functions_type_vars(functype)
-                bound = get_proper_type(expand_self_type(var, signature, mx.original_type))
-                assert isinstance(bound, FunctionLike)
-                signature = bound
-                signature = check_self_arg(
-                    signature, mx.self_type, var.is_classmethod, mx.context, name, mx.msg
-                )
-                signature = bind_self(signature, mx.self_type, var.is_classmethod)
-                expanded_signature = expand_type_by_instance(signature, itype)
-                freeze_all_type_vars(expanded_signature)
-                if var.is_property:
-                    # A property cannot have an overloaded type => the cast is fine.
-                    assert isinstance(expanded_signature, CallableType)
-                    if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
-                        # TODO: use check_call() to infer better type, same as for __set__().
-                        result = expanded_signature.arg_types[0]
-                    else:
-                        result = expanded_signature.ret_type
+        # Bind the self type for each callable component (when needed).
+        if call_type and not var.is_staticmethod:
+            bound_items = []
+            for ct in call_type.items if isinstance(call_type, UnionType) else [call_type]:
+                p_ct = get_proper_type(ct)
+                if isinstance(p_ct, FunctionLike) and not p_ct.is_type_obj():
+                    item = expand_and_bind_callable(p_ct, var, itype, name, mx)
                 else:
-                    result = expanded_signature
+                    item = expand_without_binding(ct, var, itype, original_itype, mx)
+                bound_items.append(item)
+            result = UnionType.make_union(bound_items)
     else:
         if not var.is_ready and not mx.no_deferral:
             mx.not_ready_callback(var.name, mx.context)
@@ -937,6 +925,37 @@ def analyze_var(
             )
         )
     return result
+
+
+def expand_without_binding(
+    typ: Type, var: Var, itype: Instance, original_itype: Instance, mx: MemberContext
+) -> Type:
+    typ = freshen_all_functions_type_vars(typ)
+    typ = expand_self_type_if_needed(typ, mx, var, original_itype)
+    expanded = expand_type_by_instance(typ, itype)
+    freeze_all_type_vars(expanded)
+    return expanded
+
+
+def expand_and_bind_callable(
+    functype: FunctionLike, var: Var, itype: Instance, name: str, mx: MemberContext
+) -> Type:
+    functype = freshen_all_functions_type_vars(functype)
+    typ = get_proper_type(expand_self_type(var, functype, mx.original_type))
+    assert isinstance(typ, FunctionLike)
+    typ = check_self_arg(typ, mx.self_type, var.is_classmethod, mx.context, name, mx.msg)
+    typ = bind_self(typ, mx.self_type, var.is_classmethod)
+    expanded = expand_type_by_instance(typ, itype)
+    freeze_all_type_vars(expanded)
+    if not var.is_property:
+        return expanded
+    # TODO: a decorated property can result in Overloaded here.
+    assert isinstance(expanded, CallableType)
+    if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
+        # TODO: use check_call() to infer better type, same as for __set__().
+        return expanded.arg_types[0]
+    else:
+        return expanded.ret_type
 
 
 def expand_self_type_if_needed(
@@ -1018,7 +1037,16 @@ def check_self_arg(
             selfarg = get_proper_type(item.arg_types[0])
             # This level of erasure matches the one in checker.check_func_def(),
             # better keep these two checks consistent.
-            if subtypes.is_subtype(dispatched_arg_type, erase_typevars(erase_to_bound(selfarg))):
+            if subtypes.is_subtype(
+                dispatched_arg_type,
+                erase_typevars(erase_to_bound(selfarg)),
+                # This is to work around the fact that erased ParamSpec and TypeVarTuple
+                # callables are not always compatible with non-erased ones both ways.
+                always_covariant=any(
+                    not isinstance(tv, TypeVarType) for tv in get_all_type_vars(selfarg)
+                ),
+                ignore_pos_arg_names=True,
+            ):
                 new_items.append(item)
             elif isinstance(selfarg, ParamSpecType):
                 # TODO: This is not always right. What's the most reasonable thing to do here?
@@ -1151,6 +1179,7 @@ def analyze_class_attribute_access(
             def_vars = set(node.node.info.defn.type_vars)
             if not node.node.is_classvar and node.node.info.self_type:
                 def_vars.add(node.node.info.self_type)
+            # TODO: should we include ParamSpec etc. here (i.e. use get_all_type_vars)?
             typ_vars = set(get_type_vars(t))
             if def_vars & typ_vars:
                 # Exception: access on Type[...], including first argument of class methods is OK.
@@ -1392,6 +1421,6 @@ def analyze_decorator_or_funcbase_access(
     """
     if isinstance(defn, Decorator):
         return analyze_var(name, defn.var, itype, mx)
-    return bind_self(
-        function_type(defn, mx.chk.named_type("builtins.function")), original_type=mx.self_type
-    )
+    typ = function_type(defn, mx.chk.named_type("builtins.function"))
+    typ = check_self_arg(typ, mx.self_type, defn.is_class, mx.context, name, mx.msg)
+    return bind_self(typ, original_type=mx.self_type, is_classmethod=defn.is_class)
