@@ -1512,7 +1512,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
 
                 if self.options.warn_no_return:
-                    if not isinstance(return_type, (NoneType, AnyType)) and show_error:
+                    if (
+                        not self.current_node_deferred
+                        and not isinstance(return_type, (NoneType, AnyType))
+                        and show_error
+                    ):
                         # Control flow fell off the end of a function that was
                         # declared to return a non-None type.
                         if isinstance(return_type, UninhabitedType):
@@ -3124,6 +3128,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return (
             self.in_checked_function()
             and self.options.warn_unreachable
+            and not self.current_node_deferred
             and not self.binder.is_unreachable_warning_suppressed()
         )
 
