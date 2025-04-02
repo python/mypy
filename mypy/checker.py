@@ -2174,7 +2174,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             override_class_or_static = defn.func.is_class or defn.func.is_static
         typ, _ = self.node_type_from_base(defn, defn.info)
-        # TODO: defer if current node is a decorator that is not ready yet.
         assert typ is not None
 
         original_node = base_attr.node
