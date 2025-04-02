@@ -2819,6 +2819,8 @@ class Child(Base):
     @decorator
     def foo(self) -> int:
         return 42
+reveal_type(Child().foo)  # N: Revealed type is "builtins.int"
+Child().foo = 1  # E: Property "foo" defined in "Child" is read-only
 
 reveal_type(Child().foo)  # N: Revealed type is "builtins.int"
 
@@ -2835,15 +2837,13 @@ class not_a_decorator:
     def __init__(self, fn): ...
 
 class BadChild2(Base):
+    # Override error not shown as accessing 'foo' on BadChild2 returns Any.
     @property
     @not_a_decorator
-    def foo(self) -> int:  # E: "not_a_decorator" not callable \
-                           # E: Signature of "foo" incompatible with supertype "Base" \
-                           # N:      Superclass: \
-                           # N:          int \
-                           # N:      Subclass: \
-                           # N:          not_a_decorator
+    def foo(self) -> int:
         return 42
+reveal_type(BadChild2().foo)  # E: "not_a_decorator" not callable \
+                              # N: Revealed type is "Any"
 [builtins fixtures/property.pyi]
 
 [case explicitOverride]

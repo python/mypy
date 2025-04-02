@@ -160,12 +160,7 @@ class C(A[int]):
     def f(self) -> int: ...
 
 class D(A[str]):
-    def f(self) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
-                             # N:      Superclass:            \
-                             # N:          @overload          \
-                             # N:          def f(self) -> str \
-                             # N:      Subclass:              \
-                             # N:          def f(self) -> int
+    def f(self) -> int: ...  # E: Return type "int" of "f" incompatible with return type "str" in supertype "A"
 
 class E(A[T]):
     def f(self) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
@@ -201,7 +196,6 @@ class I(A[int]):
 class J(A[int]):
     def f(self, arg) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
                                   # N:      Superclass:            \
-                                  # N:          @overload          \
                                   # N:          def f(self) -> int \
                                   # N:      Subclass:              \
                                   # N:          def f(self, arg: Any) -> int
@@ -224,12 +218,10 @@ class B(A[int]):
     def f(self, s: int) -> int: ...
 
 class C(A[None]):
-    def f(self, s: int) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
-                                     # N:      Superclass:            \
-                                     # N:          @overload          \
-                                     # N:          def f(self, s: None) -> None \
-                                     # N:      Subclass:              \
-                                     # N:          def f(self, s: int) -> int
+    def f(self, s: int) -> int: ...  # E: Return type "int" of "f" incompatible with return type "None" in supertype "A" \
+                                     # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "None" \
+                                     # N: This violates the Liskov substitution principle \
+                                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [builtins fixtures/tuple.pyi]
 
 [case testSelfTypeOverrideCompatibilityTypeVar]

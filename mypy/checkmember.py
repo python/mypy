@@ -560,6 +560,8 @@ def analyze_member_var_access(
     elif isinstance(v, MypyFile):
         mx.chk.module_refs.add(v.fullname)
         return mx.chk.expr_checker.module_type(v)
+    elif isinstance(v, TypeVarExpr):
+        return mx.chk.named_type("typing.TypeVar")
     elif (
         not v
         and name not in ["__getattr__", "__setattr__", "__getattribute__"]
@@ -884,9 +886,8 @@ def analyze_var(
             if isinstance(typ, FunctionLike) and not typ.is_type_obj():
                 call_type = typ
             elif var.is_property:
-                call_type = get_proper_type(
-                    _analyze_member_access("__call__", typ, mx.copy_modified(self_type=typ))
-                )
+                deco_mx = mx.copy_modified(original_type=typ, self_type=typ, is_lvalue=False)
+                call_type = get_proper_type(_analyze_member_access("__call__", typ, deco_mx))
             else:
                 call_type = typ
 

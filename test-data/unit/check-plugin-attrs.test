@@ -990,10 +990,10 @@ class C(A, B): pass
 @attr.s
 class D(A): pass
 
-reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`5, other: _AT`5) -> builtins.bool"
-reveal_type(B.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`6, other: _AT`6) -> builtins.bool"
-reveal_type(C.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`7, other: _AT`7) -> builtins.bool"
-reveal_type(D.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`8, other: _AT`8) -> builtins.bool"
+reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`29, other: _AT`29) -> builtins.bool"
+reveal_type(B.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`30, other: _AT`30) -> builtins.bool"
+reveal_type(C.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`31, other: _AT`31) -> builtins.bool"
+reveal_type(D.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`32, other: _AT`32) -> builtins.bool"
 
 A() < A()
 B() < B()
