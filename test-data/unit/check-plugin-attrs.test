@@ -1836,6 +1836,7 @@ class B:
 class AB(A, B):
     pass
 [builtins fixtures/plugin_attrs.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAttrsForwardReferenceInTypeVarBound]
 from typing import TypeVar, Generic
