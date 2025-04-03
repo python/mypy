@@ -2618,3 +2618,13 @@ def deco(func: Callable[[*Ts, int], R]) -> Callable[[*Ts], R]:
 untyped: Any
 reveal_type(deco(untyped))  # N: Revealed type is "def (*Any) -> Any"
 [builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnNonNormalUnpackInCallable]
+from typing import Callable, Unpack, TypeVar
+
+T = TypeVar("T")
+def fn(f: Callable[[*tuple[T]], int]) -> Callable[[*tuple[T]], int]: ...
+
+def test(*args: Unpack[tuple[T]]) -> int: ...
+reveal_type(fn(test))  # N: Revealed type is "def [T] (T`1) -> builtins.int"
+[builtins fixtures/tuple.pyi]

@@ -148,6 +148,7 @@ select = [
   "SIM201", "SIM202", "SIM222", "SIM223",  # flake8-simplify
   "FURB168", # Prefer is operator over isinstance for None checks
   "FURB169", # Do not use is comparison with type(None). Use None
+  "FURB187", # avoid list reverse copy
   "FURB188", # use str.remove(pre|suf)fix
   "ISC001",  # implicitly concatenated string
   "RET501", "RET502",  # better return None handling

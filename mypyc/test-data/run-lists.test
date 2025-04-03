@@ -267,6 +267,9 @@ print(g())
 7
 
 [case testListOps]
+from typing import Any, cast
+from testutil import assertRaises
+
 def test_slicing() -> None:
     # Use dummy adds to avoid constant folding
     zero = int()
@@ -288,6 +291,27 @@ def test_slicing() -> None:
     assert s[1:long_int] == ["o", "o", "b", "a", "r"]
     assert s[long_int:] == []
     assert s[-long_int:-1] == ["f", "o", "o", "b", "a"]
+
+def in_place_add(l2: Any) -> list[Any]:
+    l1 = [1, 2]
+    l1 += l2
+    return l1
+
+def test_add() -> None:
+    res = [1, 2, 3, 4]
+    assert [1, 2] + [3, 4] == res
+    with assertRaises(TypeError, 'can only concatenate list (not "tuple") to list'):
+        assert [1, 2] + cast(Any, (3, 4)) == res
+    l1 = [1, 2]
+    id_l1 = id(l1)
+    l1 += [3, 4]
+    assert l1 == res
+    assert id_l1 == id(l1)
+    assert in_place_add([3, 4]) == res
+    assert in_place_add((3, 4)) == res
+    assert in_place_add({3, 4}) == res
+    assert in_place_add({3: "", 4: ""}) == res
+    assert in_place_add(range(3, 5)) == res
 
 [case testOperatorInExpression]
 

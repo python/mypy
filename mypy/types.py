@@ -2210,7 +2210,7 @@ class CallableType(FunctionLike):
                     new_unpack = nested_unpacked.args[0]
                 else:
                     if not isinstance(nested_unpacked, TypeVarTupleType):
-                        # We found a non-nomralized tuple type, this means this method
+                        # We found a non-normalized tuple type, this means this method
                         # is called during semantic analysis (e.g. from get_proper_type())
                         # there is no point in normalizing callables at this stage.
                         return self
