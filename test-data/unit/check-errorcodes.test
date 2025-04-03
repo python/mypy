@@ -105,6 +105,19 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 # flags: --warn-unused-ignores
 "x" # type: ignore[name-defined] # E: Unused "type: ignore" comment  [unused-ignore]
 
+[case testErrorCodeWarnUnusedIgnores7_WarnWhenErrorCodeDisabled]
+# flags: --warn-unused-ignores --disable-error-code name-defined
+x              # type: ignore                              # E: Unused "type: ignore" comment  [unused-ignore]
+x              # type: ignore[name-defined]                # E: Unused "type: ignore" comment  [unused-ignore]
+"x".foobar(y)  # type: ignore[name-defined, attr-defined]  # E: Unused "type: ignore[name-defined]" comment  [unused-ignore]
+
+[case testErrorCodeWarnUnusedIgnores8_IgnoreUnusedIgnore]
+# flags: --warn-unused-ignores --disable-error-code name-defined
+"x"  # type: ignore[unused-ignore]
+"x"  # type: ignore[name-defined, unused-ignore]
+"x"  # type: ignore[xyz, unused-ignore]
+x    # type: ignore[name-defined, unused-ignore]
+
 [case testErrorCodeMissingWhenRequired]
 # flags: --enable-error-code ignore-without-code
 "x" # type: ignore # E: "type: ignore" comment without error code  [ignore-without-code]
