@@ -12,6 +12,7 @@ from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 import mypy.checkexpr
 from mypy import errorcodes as codes, join, message_registry, nodes, operators
 from mypy.binder import ConditionalTypeBinder, Frame, get_declaration
+from mypy.checker_shared import CheckerScope, TypeCheckerSharedApi, TypeRange
 from mypy.checkmember import (
     MemberContext,
     analyze_class_attribute_access,
@@ -126,7 +127,7 @@ from mypy.nodes import (
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
 from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.patterns import AsPattern, StarredPattern
-from mypy.plugin import CheckerPluginInterface, Plugin
+from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
@@ -258,13 +259,6 @@ class FineGrainedDeferredNode(NamedTuple):
 TypeMap: _TypeAlias = Optional[dict[Expression, Type]]
 
 
-# An object that represents either a precise type or a type with an upper bound;
-# it is important for correct type inference with isinstance.
-class TypeRange(NamedTuple):
-    item: Type
-    is_upper_bound: bool  # False => precise type
-
-
 # Keeps track of partial types in a single scope. In fine-grained incremental
 # mode partial types initially defined at the top level cannot be completed in
 # a function, and we use the 'is_function' attribute to enforce this.
@@ -274,7 +268,7 @@ class PartialTypeScope(NamedTuple):
     is_local: bool
 
 
-class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
+class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     """Mypy type checker.
 
     Type check mypy source files that have been semantically analyzed.
@@ -301,7 +295,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Helper for managing conditional types
     binder: ConditionalTypeBinder
     # Helper for type checking expressions
-    expr_checker: mypy.checkexpr.ExpressionChecker
+    _expr_checker: mypy.checkexpr.ExpressionChecker
 
     pattern_checker: PatternChecker
 
@@ -416,14 +410,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.allow_abstract_call = False
 
         # Child checker objects for specific AST node types
-        self.expr_checker = mypy.checkexpr.ExpressionChecker(
+        self._expr_checker = mypy.checkexpr.ExpressionChecker(
             self, self.msg, self.plugin, per_line_checking_time_ns
         )
         self.pattern_checker = PatternChecker(self, self.msg, self.plugin, options)
 
     @property
+    def expr_checker(self) -> mypy.checkexpr.ExpressionChecker:
+        return self._expr_checker
+
+    @property
     def type_context(self) -> list[Type | None]:
-        return self.expr_checker.type_context
+        return self._expr_checker.type_context
 
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
@@ -8525,75 +8523,6 @@ def is_node_static(node: Node | None) -> bool | None:
         return node.is_staticmethod
 
     return None
-
-
-class CheckerScope:
-    # We keep two stacks combined, to maintain the relative order
-    stack: list[TypeInfo | FuncItem | MypyFile]
-
-    def __init__(self, module: MypyFile) -> None:
-        self.stack = [module]
-
-    def current_function(self) -> FuncItem | None:
-        for e in reversed(self.stack):
-            if isinstance(e, FuncItem):
-                return e
-        return None
-
-    def top_level_function(self) -> FuncItem | None:
-        """Return top-level non-lambda function."""
-        for e in self.stack:
-            if isinstance(e, FuncItem) and not isinstance(e, LambdaExpr):
-                return e
-        return None
-
-    def active_class(self) -> TypeInfo | None:
-        if isinstance(self.stack[-1], TypeInfo):
-            return self.stack[-1]
-        return None
-
-    def enclosing_class(self, func: FuncItem | None = None) -> TypeInfo | None:
-        """Is there a class *directly* enclosing this function?"""
-        func = func or self.current_function()
-        assert func, "This method must be called from inside a function"
-        index = self.stack.index(func)
-        assert index, "CheckerScope stack must always start with a module"
-        enclosing = self.stack[index - 1]
-        if isinstance(enclosing, TypeInfo):
-            return enclosing
-        return None
-
-    def active_self_type(self) -> Instance | TupleType | None:
-        """An instance or tuple type representing the current class.
-
-        This returns None unless we are in class body or in a method.
-        In particular, inside a function nested in method this returns None.
-        """
-        info = self.active_class()
-        if not info and self.current_function():
-            info = self.enclosing_class()
-        if info:
-            return fill_typevars(info)
-        return None
-
-    def current_self_type(self) -> Instance | TupleType | None:
-        """Same as active_self_type() but handle functions nested in methods."""
-        for item in reversed(self.stack):
-            if isinstance(item, TypeInfo):
-                return fill_typevars(item)
-        return None
-
-    @contextmanager
-    def push_function(self, item: FuncItem) -> Iterator[None]:
-        self.stack.append(item)
-        yield
-        self.stack.pop()
-
-    @contextmanager
-    def push_class(self, info: TypeInfo) -> Iterator[None]:
-        self.stack.append(info)
-        yield
-        self.stack.pop()
 
 
 TKey = TypeVar("TKey")
