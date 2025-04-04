@@ -181,7 +181,7 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
 
     # Reverse order of the scc so the first modules in the original list will be
     # be processed first. This helps with performance.
-    scc = list(reversed(scc))
+    scc = list(reversed(scc))  # noqa: FURB187 intentional copy
 
     # Initialize ASTs and symbol tables.
     for id in scc:

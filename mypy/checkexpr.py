@@ -15,6 +15,7 @@ import mypy.checker
 import mypy.errorcodes as codes
 from mypy import applytype, erasetype, join, message_registry, nodes, operators, types
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
+from mypy.checker_shared import ExpressionCheckerSharedApi
 from mypy.checkmember import analyze_member_access
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
@@ -296,7 +297,7 @@ USE_REVERSE_ALWAYS: Final = UseReverse.ALWAYS
 USE_REVERSE_NEVER: Final = UseReverse.NEVER
 
 
-class ExpressionChecker(ExpressionVisitor[Type]):
+class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     """Expression type checker.
 
     This class works closely together with checker.TypeChecker.
@@ -338,7 +339,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # TODO: refactor this to use a pattern similar to one in
         # multiassign_from_union, or maybe even combine the two?
         self.type_overrides: dict[Expression, Type] = {}
-        self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
+        self.strfrm_checker = StringFormatterChecker(self.chk, self.msg)
 
         self.resolved_type = {}
 
@@ -2357,7 +2358,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # Check for too many or few values for formals.
         for i, kind in enumerate(callee.arg_kinds):
-            if kind.is_required() and not formal_to_actual[i] and not is_unexpected_arg_error:
+            mapped_args = formal_to_actual[i]
+            if kind.is_required() and not mapped_args and not is_unexpected_arg_error:
                 # No actual for a mandatory formal
                 if kind.is_positional():
                     self.msg.too_few_arguments(callee, context, actual_names)
@@ -2368,28 +2370,36 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.msg.missing_named_argument(callee, context, argname)
                 ok = False
             elif not kind.is_star() and is_duplicate_mapping(
-                formal_to_actual[i], actual_types, actual_kinds
+                mapped_args, actual_types, actual_kinds
             ):
                 if self.chk.in_checked_function() or isinstance(
-                    get_proper_type(actual_types[formal_to_actual[i][0]]), TupleType
+                    get_proper_type(actual_types[mapped_args[0]]), TupleType
                 ):
                     self.msg.duplicate_argument_value(callee, i, context)
                     ok = False
             elif (
                 kind.is_named()
-                and formal_to_actual[i]
-                and actual_kinds[formal_to_actual[i][0]] not in [nodes.ARG_NAMED, nodes.ARG_STAR2]
+                and mapped_args
+                and actual_kinds[mapped_args[0]] not in [nodes.ARG_NAMED, nodes.ARG_STAR2]
             ):
                 # Positional argument when expecting a keyword argument.
                 self.msg.too_many_positional_arguments(callee, context)
                 ok = False
-            elif (
-                callee.param_spec() is not None
-                and not formal_to_actual[i]
-                and callee.special_sig != "partial"
-            ):
-                self.msg.too_few_arguments(callee, context, actual_names)
-                ok = False
+            elif callee.param_spec() is not None:
+                if not mapped_args and callee.special_sig != "partial":
+                    self.msg.too_few_arguments(callee, context, actual_names)
+                    ok = False
+                elif len(mapped_args) > 1:
+                    paramspec_entries = sum(
+                        isinstance(get_proper_type(actual_types[k]), ParamSpecType)
+                        for k in mapped_args
+                    )
+                    if actual_kinds[mapped_args[0]] == nodes.ARG_STAR and paramspec_entries > 1:
+                        self.msg.fail("ParamSpec.args should only be passed once", context)
+                        ok = False
+                    if actual_kinds[mapped_args[0]] == nodes.ARG_STAR2 and paramspec_entries > 1:
+                        self.msg.fail("ParamSpec.kwargs should only be passed once", context)
+                        ok = False
         return ok
 
     def check_for_extra_actual_arguments(
