@@ -12,7 +12,7 @@ from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 import mypy.checkexpr
 from mypy import errorcodes as codes, join, message_registry, nodes, operators
 from mypy.binder import ConditionalTypeBinder, Frame, get_declaration
-from mypy.checker_shared import CheckerScope, TypeCheckerSharedApi, TypeRange
+from mypy.checker_shared import CheckerScope, TypeCheckerSharedApi, TypeRange, ExpressionCheckerSharedApi
 from mypy.checkmember import (
     MemberContext,
     analyze_class_attribute_access,
@@ -296,7 +296,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
     # Helper for managing conditional types
     binder: ConditionalTypeBinder
     # Helper for type checking expressions
-    expr_checker: mypy.checkexpr.ExpressionChecker
+    _expr_checker: mypy.checkexpr.ExpressionChecker
 
     pattern_checker: PatternChecker
 
@@ -411,14 +411,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self.allow_abstract_call = False
 
         # Child checker objects for specific AST node types
-        self.expr_checker = mypy.checkexpr.ExpressionChecker(
+        self._expr_checker = mypy.checkexpr.ExpressionChecker(
             self, self.msg, self.plugin, per_line_checking_time_ns
         )
         self.pattern_checker = PatternChecker(self, self.msg, self.plugin, options)
 
     @property
+    def expr_checker(self) -> mypy.checkexpr.ExpressionChecker:
+        return self._expr_checker
+
+    @property
     def type_context(self) -> list[Type | None]:
-        return self.expr_checker.type_context
+        return self._expr_checker.type_context
 
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
