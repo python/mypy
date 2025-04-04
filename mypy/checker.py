@@ -5452,6 +5452,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         pattern_map, else_map = conditional_types_to_typemaps(
                             named_subject, pattern_type.type, pattern_type.rest_type
                         )
+                        # Maybe the subject type can be inferred from constraints on
+                        # its attribute/item?
                         if pattern_map and named_subject in pattern_map:
                             pattern_map[s.subject] = pattern_map[named_subject]
                         if else_map and named_subject in else_map:
