@@ -1665,7 +1665,7 @@ a.f = a.f # E: Property "f" defined in "A" is read-only
 a.f.x # E: "int" has no attribute "x"
 [builtins fixtures/property.pyi]
 
-[case testPropertyWithTupleUnionAndNonUnionMismatchReturnValueType]
+[case testPropertyReturnTypeMismatchUnion]
 from typing import Tuple, Union
 class A:
     a: str
@@ -1704,7 +1704,7 @@ main:18: note: Expression tuple item 7 has type "Union[str, float]"; "str" expec
 main:18: note: Expression tuple item 8 has type "Optional[str]"; "str" expected;
 [builtins fixtures/property.pyi]
 
-[case testPropertyWithTupleUnionAndNonUnionMismatchReturnValueType_wider_expeced_return]
+[case testPropertyTupleReturnTypeMismatchUnionWiderExpected]
 from typing import Tuple, Union
 class A:
     a: str
