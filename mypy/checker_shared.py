@@ -194,6 +194,23 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         outer_context: Context | None = None,
     ) -> bool: ...
 
+    # Unfortunately, mypyc doesn't support abstract overloads yet.
+    @abstractmethod
+    def check_subtype(
+        self,
+        subtype: Type,
+        supertype: Type,
+        context: Context,
+        msg: str | ErrorMessage,
+        subtype_label: str | None = None,
+        supertype_label: str | None = None,
+        *,
+        notes: list[str] | None = None,
+        code: ErrorCode | None = None,
+        outer_context: Context | None = None,
+    ) -> bool:
+        raise NotImplementedError
+
     @abstractmethod
     def get_final_context(self) -> bool:
         raise NotImplementedError
@@ -213,6 +230,17 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
     def conditional_types_with_intersection(
         self, expr_type: Type, type_ranges: list[TypeRange] | None, ctx: Context, default: Type
     ) -> tuple[Type, Type]: ...
+
+    # Unfortunately, mypyc doesn't support abstract overloads yet.
+    @abstractmethod
+    def conditional_types_with_intersection(
+        self,
+        expr_type: Type,
+        type_ranges: list[TypeRange] | None,
+        ctx: Context,
+        default: Type | None = None,
+    ) -> tuple[Type | None, Type | None]:
+        raise NotImplementedError
 
     @abstractmethod
     def check_deprecated(self, node: Node | None, context: Context) -> None:
