@@ -823,7 +823,11 @@ def load_type(builder: IRBuilder, typ: TypeInfo, unbounded_type: Type | None, li
         builtin_addr_type, src = builtin_names[typ.fullname]
         class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
     # This elif-condition finds the longest import that matches the load_attr_path.
-    elif module_name := max((i for i in builder.imports if load_attr_path.startswith(i)), key=len):
+    elif module_name := max(
+        (i for i in builder.imports if load_attr_path == i or load_attr_path.startswith(f"{i}.")),
+        default="",
+        key=len,
+    ):
         # Load the imported module.
         loaded_module = builder.load_module(module_name)
         # Recursively load attributes of the imported module. These may be submodules, classes or any other object.
