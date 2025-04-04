@@ -24,7 +24,7 @@ from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
 from mypy.errors import Errors, ErrorWatcher, report_internal_error
-from mypy.expandtype import expand_self_type, expand_type
+from mypy.expandtype import expand_type
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_erased_types, is_overlapping_types, meet_types
@@ -161,7 +161,6 @@ from mypy.typeops import (
     is_literal_type_like,
     is_singleton_type,
     make_simplified_union,
-    map_type_from_supertype,
     true_only,
     try_expanding_sum_type_to_union,
     try_getting_int_literals_from_type,
@@ -2141,8 +2140,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         is a custom settable property (i.e. where setter type is different from getter type).
         Note that this check is contravariant.
         """
-        typ, _ = self.node_type_from_base(defn, defn.info, setter_type=True)
-        original_type, _ = self.node_type_from_base(defn, base, setter_type=True)
+        typ, _ = self.node_type_from_base(defn.name, defn.info, defn, setter_type=True)
+        original_type, _ = self.node_type_from_base(defn.name, base, defn, setter_type=True)
         # The caller should handle deferrals.
         assert typ is not None and original_type is not None
 
@@ -2173,14 +2172,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             override_class_or_static = defn.is_class or defn.is_static
         else:
             override_class_or_static = defn.func.is_class or defn.func.is_static
-        typ, _ = self.node_type_from_base(defn, defn.info)
+        typ, _ = self.node_type_from_base(defn.name, defn.info, defn)
         assert typ is not None
 
         original_node = base_attr.node
         # `original_type` can be partial if (e.g.) it is originally an
         # instance variable from an `__init__` block that becomes deferred.
         supertype_ready = True
-        original_type, _ = self.node_type_from_base(defn, base, name_override=name)
+        original_type, _ = self.node_type_from_base(name, base, defn)
         if original_type is None:
             supertype_ready = False
             if self.pass_num < self.last_pass:
@@ -2320,51 +2319,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 defn.name, name, base.name, context, original=original_type, override=typ
             )
         return False
-
-    def bind_and_map_method(
-        self, sym: SymbolTableNode, typ: FunctionLike, sub_info: TypeInfo, super_info: TypeInfo
-    ) -> FunctionLike:
-        """Bind self-type and map type variables for a method.
-
-        Arguments:
-            sym: a symbol that points to method definition
-            typ: method type on the definition
-            sub_info: class where the method is used
-            super_info: class where the method was defined
-        """
-        if isinstance(sym.node, (FuncDef, OverloadedFuncDef, Decorator)) and not is_static(
-            sym.node
-        ):
-            if isinstance(sym.node, Decorator):
-                is_class_method = sym.node.func.is_class
-            else:
-                is_class_method = sym.node.is_class
-
-            mapped_typ = cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
-            active_self_type = fill_typevars(sub_info)
-            if isinstance(mapped_typ, Overloaded):
-                # If we have an overload, filter to overloads that match the self type.
-                # This avoids false positives for concrete subclasses of generic classes,
-                # see testSelfTypeOverrideCompatibility for an example.
-                filtered_items = []
-                for item in mapped_typ.items:
-                    if not item.arg_types:
-                        filtered_items.append(item)
-                    item_arg = item.arg_types[0]
-                    if isinstance(item_arg, TypeVarType):
-                        item_arg = item_arg.upper_bound
-                    if is_subtype(active_self_type, item_arg):
-                        filtered_items.append(item)
-                # If we don't have any filtered_items, maybe it's always a valid override
-                # of the superclass? However if you get to that point you're in murky type
-                # territory anyway, so we just preserve the type and have the behaviour match
-                # that of older versions of mypy.
-                if filtered_items:
-                    mapped_typ = Overloaded(filtered_items)
-
-            return bind_self(mapped_typ, active_self_type, is_class_method)
-        else:
-            return cast(FunctionLike, map_type_from_supertype(typ, sub_info, super_info))
 
     def get_op_other_domain(self, tp: FunctionLike) -> Type | None:
         if isinstance(tp, CallableType):
@@ -2882,6 +2836,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.check_compatibility(name, base, base2, typ)
 
     def determine_type_of_member(self, sym: SymbolTableNode) -> Type | None:
+        # TODO: this duplicates both checkmember.py and analyze_ref_expr(), delete.
         if sym.type is not None:
             return sym.type
         if isinstance(sym.node, SYMBOL_FUNCBASE_TYPES):
@@ -2901,7 +2856,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Suppress any errors, they will be given when analyzing the corresponding node.
                 # Here we may have incorrect options and location context.
                 return self.expr_checker.alias_type_in_runtime_context(sym.node, ctx=sym.node)
-        # TODO: handle more node kinds here.
         return None
 
     def check_compatibility(
@@ -2932,50 +2886,47 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         first = base1.names[name]
         second = base2.names[name]
-        first_type = get_proper_type(self.determine_type_of_member(first))
-        second_type = get_proper_type(self.determine_type_of_member(second))
+        # Specify current_class explicitly as this function is called after leaving the class.
+        first_type, _ = self.node_type_from_base(name, base1, ctx, current_class=ctx)
+        second_type, _ = self.node_type_from_base(name, base2, ctx, current_class=ctx)
 
         # TODO: use more principled logic to decide is_subtype() vs is_equivalent().
         # We should rely on mutability of superclass node, not on types being Callable.
         # (in particular handle settable properties with setter type different from getter).
 
-        # start with the special case that Instance can be a subtype of FunctionLike
-        call = None
-        if isinstance(first_type, Instance):
-            call = find_member("__call__", first_type, first_type, is_operator=True)
-        if call and isinstance(second_type, FunctionLike):
-            second_sig = self.bind_and_map_method(second, second_type, ctx, base2)
-            ok = is_subtype(call, second_sig, ignore_pos_arg_names=True)
-        elif isinstance(first_type, FunctionLike) and isinstance(second_type, FunctionLike):
-            if first_type.is_type_obj() and second_type.is_type_obj():
+        p_first_type = get_proper_type(first_type)
+        p_second_type = get_proper_type(second_type)
+        if isinstance(p_first_type, FunctionLike) and isinstance(p_second_type, FunctionLike):
+            if p_first_type.is_type_obj() and p_second_type.is_type_obj():
                 # For class objects only check the subtype relationship of the classes,
                 # since we allow incompatible overrides of '__init__'/'__new__'
                 ok = is_subtype(
-                    left=fill_typevars_with_any(first_type.type_object()),
-                    right=fill_typevars_with_any(second_type.type_object()),
+                    left=fill_typevars_with_any(p_first_type.type_object()),
+                    right=fill_typevars_with_any(p_second_type.type_object()),
                 )
             else:
-                # First bind/map method types when necessary.
-                first_sig = self.bind_and_map_method(first, first_type, ctx, base1)
-                second_sig = self.bind_and_map_method(second, second_type, ctx, base2)
-                ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
+                assert first_type and second_type
+                ok = is_subtype(first_type, second_type, ignore_pos_arg_names=True)
         elif first_type and second_type:
-            if isinstance(first.node, Var):
-                first_type = get_proper_type(map_type_from_supertype(first_type, ctx, base1))
-                first_type = expand_self_type(first.node, first_type, fill_typevars(ctx))
-            if isinstance(second.node, Var):
-                second_type = get_proper_type(map_type_from_supertype(second_type, ctx, base2))
-                second_type = expand_self_type(second.node, second_type, fill_typevars(ctx))
-            ok = is_equivalent(first_type, second_type)
-            if not ok:
-                second_node = base2[name].node
+            if second.node is not None and not self.is_writable_attribute(second.node):
+                ok = is_subtype(first_type, second_type)
+            else:
+                ok = is_equivalent(first_type, second_type)
+            if ok:
                 if (
-                    isinstance(second_type, FunctionLike)
-                    and second_node is not None
-                    and is_property(second_node)
+                    first.node
+                    and second.node
+                    and self.is_writable_attribute(second.node)
+                    and is_property(first.node)
+                    and isinstance(first.node, Decorator)
+                    and not isinstance(p_second_type, AnyType)
                 ):
-                    second_type = get_property_type(second_type)
-                    ok = is_subtype(first_type, second_type)
+                    self.msg.fail(
+                        f'Cannot override writeable attribute "{name}" in base "{base2.name}"'
+                        f' with read-only property in base "{base1.name}"',
+                        ctx,
+                        code=codes.OVERRIDE,
+                    )
         else:
             if first_type is None:
                 self.msg.cannot_determine_type_in_base(name, base1.name, ctx)
@@ -3364,8 +3315,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # a class object for lambdas overriding methods, etc.
                 base_node = base.names[inferred.name].node
                 base_type, _ = self.node_type_from_base(
-                    inferred,
+                    inferred.name,
                     base,
+                    inferred,
                     is_class=is_method(base_node)
                     or isinstance(base_node, Var)
                     and not is_instance_var(base_node),
@@ -3474,7 +3426,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type = self.expr_checker.accept(rvalue, lvalue_node.type)
                 actual_lvalue_type = lvalue_node.type
                 lvalue_node.type = rvalue_type
-            lvalue_type, _ = self.node_type_from_base(lvalue_node, lvalue_node.info)
+            lvalue_type, _ = self.node_type_from_base(lvalue_node.name, lvalue_node.info, lvalue)
             if lvalue_node.is_inferred and not lvalue_node.explicit_self_type:
                 lvalue_node.type = actual_lvalue_type
 
@@ -3493,7 +3445,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if is_private(lvalue_node.name):
                     continue
 
-                base_type, base_node = self.node_type_from_base(lvalue_node, base)
+                base_type, base_node = self.node_type_from_base(lvalue_node.name, base, lvalue)
                 custom_setter = is_custom_settable_property(base_node)
                 if isinstance(base_type, PartialType):
                     base_type = None
@@ -3513,7 +3465,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         return
                     if lvalue_type and custom_setter:
                         base_type, _ = self.node_type_from_base(
-                            lvalue_node, base, setter_type=True
+                            lvalue_node.name, base, lvalue, setter_type=True
                         )
                         # Setter type for a custom property must be ready if
                         # the getter type is ready.
@@ -3565,12 +3517,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def node_type_from_base(
         self,
-        node: SymbolNode,
+        name: str,
         base: TypeInfo,
+        context: Context,
         *,
         setter_type: bool = False,
         is_class: bool = False,
-        name_override: str | None = None,
+        current_class: TypeInfo | None = None,
     ) -> tuple[Type | None, SymbolNode | None]:
         """Find a type for a name in base class.
 
@@ -3580,20 +3533,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         If setter_type is True, return setter types for settable properties (otherwise the
         getter type is returned).
         """
-        name = name_override or node.name
         base_node = base.names.get(name)
 
         # TODO: defer current node if the superclass node is not ready.
         if (
             not base_node
-            or isinstance(base_node.node, Var)
+            or isinstance(base_node.node, (Var, Decorator))
             and not base_node.type
             or isinstance(base_node.type, PartialType)
             and base_node.type.type is not None
         ):
             return None, None
 
-        self_type = self.scope.current_self_type()
+        if current_class is None:
+            self_type = self.scope.current_self_type()
+        else:
+            self_type = fill_typevars(current_class)
         assert self_type is not None, "Internal error: base lookup outside class"
         if isinstance(self_type, TupleType):
             instance = tuple_fallback(self_type)
@@ -3605,7 +3560,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             is_super=False,
             is_operator=mypy.checkexpr.is_operator_method(name),
             original_type=self_type,
-            context=node,
+            context=context,
             chk=self,
             suppress_errors=True,
         )

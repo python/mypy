@@ -990,7 +990,6 @@ class Mixin:
 class C(Mixin, A):
     pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testMixinSubtypedProperty]
 class X:
@@ -1006,7 +1005,6 @@ class Mixin:
 class C(Mixin, A):
     pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testMixinTypedPropertyReversed]
 class A:
@@ -1015,10 +1013,9 @@ class A:
         return "no"
 class Mixin:
     foo = "foo"
-class C(A, Mixin): # E: Definition of "foo" in base class "A" is incompatible with definition in base class "Mixin"
+class C(A, Mixin): # E: Cannot override writeable attribute "foo" in base "Mixin" with read-only property in base "A"
     pass
 [builtins fixtures/property.pyi]
-[out]
 
 -- Special cases
 -- -------------
