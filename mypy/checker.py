@@ -5565,6 +5565,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         pattern_map, else_map = conditional_types_to_typemaps(
                             named_subject, pattern_type.type, pattern_type.rest_type
                         )
+                        if pattern_map and named_subject in pattern_map:
+                            pattern_map[s.subject] = pattern_map[named_subject]
+                        if else_map and named_subject in else_map:
+                            else_map[s.subject] = else_map[named_subject]
                         pattern_map = self.propagate_up_typemap_info(pattern_map)
                         else_map = self.propagate_up_typemap_info(else_map)
                         self.remove_capture_conflicts(pattern_type.captures, inferred_types)
