@@ -12,11 +12,7 @@ from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 import mypy.checkexpr
 from mypy import errorcodes as codes, join, message_registry, nodes, operators
 from mypy.binder import ConditionalTypeBinder, Frame, get_declaration
-from mypy.checker_shared import (
-    CheckerScope,
-    TypeCheckerSharedApi,
-    TypeRange,
-)
+from mypy.checker_shared import CheckerScope, TypeCheckerSharedApi, TypeRange
 from mypy.checkmember import (
     MemberContext,
     analyze_class_attribute_access,
