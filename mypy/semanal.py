@@ -1461,12 +1461,8 @@ class SemanticAnalyzer(
                         item.func.abstract_status = IS_ABSTRACT
                     else:
                         item.abstract_status = IS_ABSTRACT
-            elif all(
-                isinstance(item, Decorator) and item.func.abstract_status == IS_ABSTRACT
-                for item in defn.items
-            ):
-                pass
             else:
+                # TODO: also allow omitting an implementation for abstract methods in ABCs?
                 self.fail(
                     "An overloaded function outside a stub file must have an implementation",
                     defn,
