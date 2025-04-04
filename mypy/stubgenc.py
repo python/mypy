@@ -765,7 +765,7 @@ class InspectionStubGenerator(BaseStubGenerator):
 
     def get_type_fullname(self, typ: type) -> str:
         """Given a type, return a string representation"""
-        if typ is Any:  # type: ignore[comparison-overlap]
+        if typ is Any:
             return "Any"
         typename = getattr(typ, "__qualname__", typ.__name__)
         module_name = self.get_obj_module(typ)

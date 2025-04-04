@@ -265,7 +265,7 @@ else:
         GraphicsExpose = "13"
         Gravity = "24"
         KeyPress = "2"
-        Key = "2"
+        Key = KeyPress
         KeyRelease = "3"
         Keymap = "11"
         Leave = "8"
