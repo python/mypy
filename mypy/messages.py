@@ -2439,11 +2439,7 @@ class MessageBuilder:
         error_cnt = 0
         notes: list[str] = []
         for i, (lhs_t, rhs_t) in enumerate(zip(lhs_types, rhs_types)):
-            # If `lhs_t` is a subtype of `rhs_t`, ensure it's not strictly equal
-            # to capture both union and non-union mismatches.
-            # Example: is_subtype(str, str | None) -> True, but this should still be an error
-            # as is_same_type(str, str | None) -> False
-            if not is_subtype(lhs_t, rhs_t) or not is_same_type(lhs_t, rhs_t):
+            if not is_subtype(rhs_t, lhs_t):
                 if error_cnt < 3:
                     notes.append(
                         "Expression tuple item {} has type {}; {} expected; ".format(
