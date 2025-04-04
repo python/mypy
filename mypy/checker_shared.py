@@ -135,11 +135,15 @@ class ExpressionCheckerSharedApi:
 
 @trait
 class TypeCheckerSharedApi(CheckerPluginInterface):
-    expr_checker: ExpressionCheckerSharedApi
     plugin: Plugin
     module_refs: set[str]
     scope: CheckerScope
     checking_missing_await: bool
+
+    @property
+    @abstractmethod
+    def expr_checker(self) -> ExpressionCheckerSharedApi:
+        raise NotImplementedError
 
     @abstractmethod
     def named_type(self, name: str) -> Instance:
