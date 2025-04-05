@@ -2585,6 +2585,7 @@ class TypedDictType(ProperType):
 
     extra_items_from: list[ProperType]  # only used during semantic analysis
     to_be_mutated: bool  # only used in a plugin for `.update`, `|=`, etc
+    is_pep764: bool
 
     def __init__(
         self,

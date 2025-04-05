@@ -819,15 +819,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
                 return AnyType(TypeOfAny.from_error)
             item = t.args[0]
-            if not isinstance(get_proper_type(item), TypedDictType):
+            if not isinstance(item, TypedDictType):  # type: ignore[misc]
                 self.fail(
                     "Argument to TypedDict[] must be a literal dictionary mapping item names to types",
                     t,
                     code=codes.VALID_TYPE,
                 )
                 return AnyType(TypeOfAny.from_error)
-            else:
-                item.is_pep764 = True
+            item.is_pep764 = True
             return self.anal_type(item, allow_typed_dict_special_forms=True)
         return None
 
