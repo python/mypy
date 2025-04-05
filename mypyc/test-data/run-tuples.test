@@ -261,3 +261,12 @@ def test_add() -> None:
     assert (1, 2) + (3, 4) == res
     with assertRaises(TypeError, 'can only concatenate tuple (not "list") to tuple'):
         assert (1, 2) + cast(Any, [3, 4]) == res
+
+def multiply(a: Tuple[Any, ...], b: int) -> Tuple[Any, ...]:
+    return a * b
+
+def test_multiply() -> None:
+    res = (1, 1, 1)
+    assert (1,) * 3 == res
+    assert 3 * (1,) == res
+    assert multiply((1,), 3) == res
