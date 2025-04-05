@@ -2043,7 +2043,7 @@ b: tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a typ
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testPEP695TypeVarDefaultAliases]
+[case testPEP695TypeVarConstraintsDefaultAliases]
 from typing_extensions import TypeVar
 
 type K = int
