@@ -127,8 +127,16 @@ class Inextensible(NamedTuple):
     x: int
 
 [file driver.py]
-from typing import ForwardRef, Optional
+import sys
+from typing import Optional
 from native import ClassIR, FuncIR, Record
+
+if sys.version_info >= (3, 14):
+    from test.support import EqualToForwardRef
+    type_forward_ref = EqualToForwardRef
+else:
+    from typing import ForwardRef
+    type_forward_ref = ForwardRef
 
 assert Record.__annotations__ == {
     'st_mtime': float,
@@ -136,7 +144,7 @@ assert Record.__annotations__ == {
     'is_borrowed': bool,
     'hash': str,
     'python_path': tuple,
-    'type': ForwardRef('ClassIR'),
+    'type': type_forward_ref('ClassIR'),
     'method': FuncIR,
     'shadow_method': type,
     'classes': dict,
