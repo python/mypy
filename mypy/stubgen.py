@@ -78,17 +78,21 @@ from mypy.nodes import (
     Block,
     BytesExpr,
     CallExpr,
+    CastExpr,
     ClassDef,
     ComparisonExpr,
     ComplexExpr,
+    ConditionalExpr,
     Decorator,
     DictExpr,
+    DictionaryComprehension,
     EllipsisExpr,
     Expression,
     ExpressionStmt,
     FloatExpr,
     FuncBase,
     FuncDef,
+    GeneratorExpr,
     IfStmt,
     Import,
     ImportAll,
@@ -96,12 +100,14 @@ from mypy.nodes import (
     IndexExpr,
     IntExpr,
     LambdaExpr,
+    ListComprehension,
     ListExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
     OpExpr,
     OverloadedFuncDef,
+    SetComprehension,
     SetExpr,
     SliceExpr,
     StarExpr,
@@ -396,14 +402,26 @@ class AliasPrinter(NodeVisitor[str]):
         # Something we do not understand.
         return self.stubgen.add_name("_typeshed.Incomplete")
 
-    visit_comparison_expr = _visit_unsupported_expr
-    visit_cast_expr = _visit_unsupported_expr
-    visit_conditional_expr = _visit_unsupported_expr
+    def visit_comparison_expr(self, o: ComparisonExpr) -> str:
+        return self._visit_unsupported_expr(o)
 
-    visit_list_comprehension = _visit_unsupported_expr
-    visit_set_comprehension = _visit_unsupported_expr
-    visit_dictionary_comprehension = _visit_unsupported_expr
-    visit_generator_expr = _visit_unsupported_expr
+    def visit_cast_expr(self, o: CastExpr) -> str:
+        return self._visit_unsupported_expr(o)
+
+    def visit_conditional_expr(self, o: ConditionalExpr) -> str:
+        return self._visit_unsupported_expr(o)
+
+    def visit_list_comprehension(self, o: ListComprehension) -> str:
+        return self._visit_unsupported_expr(o)
+
+    def visit_set_comprehension(self, o: SetComprehension) -> str:
+        return self._visit_unsupported_expr(o)
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> str:
+        return self._visit_unsupported_expr(o)
+
+    def visit_generator_expr(self, o: GeneratorExpr) -> str:
+        return self._visit_unsupported_expr(o)
 
 
 def find_defined_names(file: MypyFile) -> set[str]:
