@@ -49,7 +49,7 @@ from mypy.nodes import (
     check_arg_names,
     get_nongen_builtins,
 )
-from mypy.options import INLINE_TYPEDDICT, Options
+from mypy.options import INLINE_TYPEDDICT, NEW_INLINE_TYPEDDICT, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import (
     SemanticAnalyzerCoreInterface,
@@ -66,6 +66,7 @@ from mypy.types import (
     FINAL_TYPE_NAMES,
     LITERAL_TYPE_NAMES,
     NEVER_NAMES,
+    TPDICT_NAMES,
     TYPE_ALIAS_NAMES,
     UNPACK_TYPE_NAMES,
     AnyType,
@@ -125,6 +126,7 @@ type_constructors: Final = {
     "typing.Union",
     *LITERAL_TYPE_NAMES,
     *ANNOTATED_TYPE_NAMES,
+    *TPDICT_NAMES,
 }
 
 ARG_KINDS_BY_CONSTRUCTOR: Final = {
@@ -810,6 +812,22 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # TODO: verify this is unreachable and replace with an assert?
             self.fail("Unexpected Self type", t)
             return AnyType(TypeOfAny.from_error)
+        elif fullname in TPDICT_NAMES:
+            if len(t.args) != 1:
+                self.fail(
+                    "TypedDict[] must have exactly one type argument", t, code=codes.VALID_TYPE
+                )
+                return AnyType(TypeOfAny.from_error)
+            item = t.args[0]
+            if not isinstance(item, TypedDictType):
+                self.fail(
+                    "Argument to TypedDict[] must be a literal dictionary mapping item names to types",
+                    t,
+                    code=codes.VALID_TYPE,
+                )
+                return AnyType(TypeOfAny.from_error)
+            item.is_pep764 = True
+            return self.anal_type(item, allow_typed_dict_special_forms=True)
         return None
 
     def get_omitted_any(self, typ: Type, fullname: str | None = None) -> AnyType:
@@ -1336,14 +1354,26 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 analyzed = analyzed.item
             items[item_name] = analyzed
         if t.fallback.type is MISSING_FALLBACK:  # anonymous/inline TypedDict
-            if INLINE_TYPEDDICT not in self.options.enable_incomplete_feature:
+            if not t.is_pep764 and INLINE_TYPEDDICT not in self.options.enable_incomplete_feature:
                 self.fail(
-                    "Inline TypedDict is experimental,"
-                    " must be enabled with --enable-incomplete-feature=InlineTypedDict",
+                    "Legacy inline TypedDict is experimental,"
+                    f" must be enabled with --enable-incomplete-feature={INLINE_TYPEDDICT}",
+                    t,
+                )
+                self.note("Did you mean TypedDict[...]?", t)
+            if t.is_pep764 and NEW_INLINE_TYPEDDICT not in self.options.enable_incomplete_feature:
+                self.fail(
+                    "PEP-764 inline TypedDict is experimental,"
+                    f" must be enabled with --enable-incomplete-feature={NEW_INLINE_TYPEDDICT}",
                     t,
                 )
             required_keys = req_keys
             fallback = self.named_type("typing._TypedDict")
+            if t.is_pep764 and t.extra_items_from:
+                self.fail(
+                    "PEP-764 inline TypedDict does not support merge-in", t, code=codes.VALID_TYPE
+                )
+                return AnyType(TypeOfAny.from_error)
             for typ in t.extra_items_from:
                 analyzed = self.analyze_type(typ)
                 p_analyzed = get_proper_type(analyzed)
@@ -1363,6 +1393,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         else:
             required_keys = t.required_keys
             fallback = t.fallback
+        if not t.is_pep764 and not t.items:
+            self.fail(
+                "Legacy inline TypedDict must have at least one item", t, code=codes.VALID_TYPE
+            )
+            return AnyType(TypeOfAny.from_error)
         return TypedDictType(items, required_keys, readonly_keys, fallback, t.line, t.column)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:

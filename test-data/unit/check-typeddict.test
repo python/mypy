@@ -3659,7 +3659,7 @@ reveal_type(x)  # N:  # N: Revealed type is "TypedDict({'int': builtins.int, 'st
 
 [case testTypedDictInlineNoEmpty]
 # flags: --enable-incomplete-feature=InlineTypedDict
-x: {}  # E: Invalid type comment or annotation
+x: {}  # E: Legacy inline TypedDict must have at least one item
 reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -3707,6 +3707,119 @@ reveal_type(x)  # N: Revealed type is "TypedDict({'a': builtins.int, 'b': builti
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictInlinePEP764OldStyleAlias]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import TypedDict
+X = TypedDict[{"int": int, "str": str}]
+x: X
+reveal_type(x)  # N: Revealed type is "TypedDict({'int': builtins.int, 'str': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlinePEP764MidStyleAlias]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import TypedDict
+from typing_extensions import TypeAlias
+X: TypeAlias = TypedDict[{"int": int, "str": str}]
+x: X
+reveal_type(x)  # N: Revealed type is "TypedDict({'int': builtins.int, 'str': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlinePEP764OYesEmpty]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import TypedDict
+x: TypedDict[{}]
+reveal_type(x)  # N: Revealed type is "TypedDict({})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictInlinePEP764NotRequired]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import NotRequired, TypedDict
+
+x: TypedDict[{"one": int, "other": NotRequired[int]}]
+x = {"one": 1}  # OK
+y: TypedDict[{"one": int, "other": int}]
+y = {"one": 1}  # E: Expected TypedDict keys ("one", "other") but found only key "one"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlinePEP764ReadOnly]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import ReadOnly, TypedDict
+
+x: TypedDict[{"one": int, "other": ReadOnly[int]}]
+x["one"] = 1  # ok
+x["other"] = 1  # E: ReadOnly TypedDict key "other" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlinePEP764NestedSchema]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import TypedDict
+def nested() -> TypedDict[{"one": str, "other": TypedDict[{"a": int, "b": int}]}]:
+    if bool():
+        return {"one": "yes", "other": {"a": 1, "b": 2}}  # OK
+    else:
+        return {"one": "no", "other": {"a": 1, "b": "2"}}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlinePEP764MergeAnother]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import TypeVar, TypedDict
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+X: TypeAlias = TypedDict[{"item": T}]
+x: TypedDict[{"a": int, **X[str], "b": int}]  # E: PEP-764 inline TypedDict does not support merge-in
+reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictInlinePEP764BadArg]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import TypedDict
+x: TypedDict[int]       # E: Argument to TypedDict[] must be a literal dictionary mapping item names to types
+reveal_type(x)          # N: Revealed type is "Any"
+y: TypedDict[{1: str}]  # E: Argument to TypedDict[] must be a literal dictionary mapping item names to types
+reveal_type(y)          # N: Revealed type is "Any"
+z: TypedDict[{"a": 1}]  # E: Invalid type: try using Literal[1] instead?
+reveal_type(z)          # N: Revealed type is "TypedDict({'a': Any})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlinePEP764TooManyArgs]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import TypedDict
+x: TypedDict[{"a": int}, "foo"]  # E: TypedDict[] must have exactly one type argument
+reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlinePEP764TypeVarValid]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import Generic, TypeVar, TypedDict
+T = TypeVar("T")
+class X(Generic[T]):
+    attr: TypedDict[{'name': T}]
+def f(arg: T) -> TypedDict[{'name': T}]: ...
+Y = TypedDict[{'name': T}]
+reveal_type(X[int]().attr['name'])  # N: Revealed type is "builtins.int"
+reveal_type(f('a')['name'])  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlinePEP764TypeVarInvalid]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import TypeVar, TypedDict
+T = TypeVar('T')
+def f():
+    X = TypedDict[{'name': T}]  # TODO: emit error - this is invalid per PEP-764
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 # ReadOnly
 # See: https://peps.python.org/pep-0705

@@ -294,8 +294,8 @@ Inline TypedDict types
 
 .. note::
 
-    This is an experimental (non-standard) feature. Use
-    ``--enable-incomplete-feature=InlineTypedDict`` to enable.
+    This is an experimental feature proposed by :pep:`764`. Use
+    ``--enable-incomplete-feature=NewInlineTypedDict`` to enable.
 
 Sometimes you may want to define a complex nested JSON schema, or annotate
 a one-off function that returns a TypedDict. In such cases it may be convenient
@@ -303,26 +303,36 @@ to use inline TypedDict syntax. For example:
 
 .. code-block:: python
 
-    def test_values() -> {"int": int, "str": str}:
+    def test_values() -> TypedDict[{"int": int, "str": str}]:
         return {"int": 42, "str": "test"}
 
     class Response(TypedDict):
         status: int
         msg: str
         # Using inline syntax here avoids defining two additional TypedDicts.
-        content: {"items": list[{"key": str, "value": str}]}
+        content: TypedDict[{"items": list[TypedDict[{"key": str, "value": str}]]}]
 
-Inline TypedDicts can also by used as targets of type aliases, but due to
-ambiguity with a regular variables it is only allowed for (newer) explicit
-type alias forms:
+.. note::
 
-.. code-block:: python
+    Mypy also supports a legacy syntax for inline TypedDicts that pre-dates :pep:`764`:
 
-    from typing import TypeAlias
+    .. code-block:: python
 
-    X = {"a": int, "b": int}  # creates a variable with type dict[str, type[int]]
-    Y: TypeAlias = {"a": int, "b": int}  # creates a type alias
-    type Z = {"a": int, "b": int}  # same as above (Python 3.12+ only)
+        def test_values() -> {"int": int, "str": str}:
+            return {"int": 42, "str": "test"}
 
-Also, due to incompatibility with runtime type-checking it is strongly recommended
-to *not* use inline syntax in union types.
+    This legacy syntax can be enabled using ``--enable-incomplete-feature=InlineTypedDict``.
+    Due to ambiguity with a regular variables, the legacy syntax may only be used in
+    type aliases when using (newer) explicit type alias forms:
+
+    .. code-block:: python
+
+        from typing import TypeAlias
+
+        X = {"a": int, "b": int}  # creates a variable with type dict[str, type[int]]
+        Y: TypeAlias = {"a": int, "b": int}  # creates a type alias
+        type Z = {"a": int, "b": int}  # same as above (Python 3.12+ only)
+
+    This restriction does not apply to the :pep:`764` syntax.
+    Also, due to incompatibility with runtime type-checking it is strongly recommended
+    to *not* use legacy inline syntax in union types.

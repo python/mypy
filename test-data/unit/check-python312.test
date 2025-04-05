@@ -1733,6 +1733,17 @@ type Y[T] = {"item": T, **Y[T]}  # E: Overwriting TypedDict field "item" while m
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictInlinePEP764YesNewStyleAlias]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import TypedDict
+type X[T] = TypedDict[{"item": T, "other": X[T] | None}]
+x: X[str]
+reveal_type(x)  # N: Revealed type is "TypedDict({'item': builtins.str, 'other': Union[..., None]})"
+if x["other"] is not None:
+    reveal_type(x["other"]["item"])  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testPEP695UsingIncorrectExpressionsInTypeVariableBound]
 type X[T: (yield 1)] = Any  # E: Yield expression cannot be used as a type variable bound
 type Y[T: (yield from [])] = Any # E: Yield expression cannot be used as a type variable bound
