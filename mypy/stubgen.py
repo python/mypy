@@ -103,6 +103,7 @@ from mypy.nodes import (
     OpExpr,
     OverloadedFuncDef,
     SetExpr,
+    SliceExpr,
     StarExpr,
     Statement,
     StrExpr,
@@ -355,6 +356,9 @@ class AliasPrinter(NodeVisitor[str]):
     def visit_list_expr(self, node: ListExpr) -> str:
         return f"[{', '.join(n.accept(self) for n in node.items)}]"
 
+    def visit_set_expr(self, node: SetExpr) -> str:
+        return f"{{{', '.join(n.accept(self) for n in node.items)}}}"
+
     def visit_dict_expr(self, o: DictExpr) -> str:
         dict_items = []
         for key, value in o.items:
@@ -369,12 +373,37 @@ class AliasPrinter(NodeVisitor[str]):
     def visit_op_expr(self, o: OpExpr) -> str:
         return f"{o.left.accept(self)} {o.op} {o.right.accept(self)}"
 
+    def visit_unary_expr(self, o: UnaryExpr, /) -> str:
+        return f"{o.op}{o.expr.accept(self)}"
+
+    def visit_slice_expr(self, o: SliceExpr, /) -> str:
+        blocks = [
+            o.begin_index.accept(self) if o.begin_index is not None else "",
+            o.end_index.accept(self) if o.end_index is not None else "",
+        ]
+        if o.stride is not None:
+            blocks.append(o.stride.accept(self))
+        return ":".join(blocks)
+
     def visit_star_expr(self, o: StarExpr) -> str:
         return f"*{o.expr.accept(self)}"
 
     def visit_lambda_expr(self, o: LambdaExpr) -> str:
         # TODO: Required for among other things dataclass.field default_factory
         return self.stubgen.add_name("_typeshed.Incomplete")
+
+    def _visit_unsupported_expr(self, o: object) -> str:
+        # Something we do not understand.
+        return self.stubgen.add_name("_typeshed.Incomplete")
+
+    visit_comparison_expr = _visit_unsupported_expr
+    visit_cast_expr = _visit_unsupported_expr
+    visit_conditional_expr = _visit_unsupported_expr
+
+    visit_list_comprehension = _visit_unsupported_expr
+    visit_set_comprehension = _visit_unsupported_expr
+    visit_dictionary_comprehension = _visit_unsupported_expr
+    visit_generator_expr = _visit_unsupported_expr
 
 
 def find_defined_names(file: MypyFile) -> set[str]:
