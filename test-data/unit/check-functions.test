@@ -3541,3 +3541,28 @@ def f(x: Callable[[Arg(int, 'x')], None]) -> None: pass
 y: Callable[[Union[int, str]], None]
 f(y)  # E: Argument 1 to "f" has incompatible type "Callable[[Union[int, str]], None]"; expected "Callable[[Arg(int, 'x')], None]"
 [builtins fixtures/tuple.pyi]
+
+[case testAbstractOverloadsWithoutImplementationAllowed]
+from abc import abstractmethod
+from typing import overload, Union
+
+class Foo:
+    @overload
+    @abstractmethod
+    def foo(self, value: int) -> int:
+        ...
+    @overload
+    @abstractmethod
+    def foo(self, value: str) -> str:
+        ...
+
+class Bar(Foo):
+    @overload
+    def foo(self, value: int) -> int:
+        ...
+    @overload
+    def foo(self, value: str) -> str:
+        ...
+
+    def foo(self, value: Union[int, str]) -> Union[int, str]:
+        return super().foo(value)  # E: Call to abstract method "foo" of "Foo" with trivial body via super() is unsafe

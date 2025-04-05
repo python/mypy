@@ -382,8 +382,12 @@ def prepare_methods_and_attributes(
 
             # Handle case for regular function overload
             else:
-                assert node.node.impl
-                prepare_method_def(ir, module_name, cdef, mapper, node.node.impl, options)
+                if not node.node.impl:
+                    errors.error(
+                        "Overloads without implementation are not supported", path, cdef.line
+                    )
+                else:
+                    prepare_method_def(ir, module_name, cdef, mapper, node.node.impl, options)
 
     if ir.builtin_base:
         ir.attributes.clear()
