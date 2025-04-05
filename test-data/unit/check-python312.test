@@ -2042,3 +2042,15 @@ tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type i
 b: tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeVarDefaultAliases]
+from typing_extensions import TypeVar
+
+type K = int
+type V = int
+type L = list[int]
+
+T1 = TypeVar("T1", str, K, default=K)
+T2 = TypeVar("T2", str, K, default=V)
+T3 = TypeVar("T3", str, L, default=L)
+[builtins fixtures/tuple.pyi]
