@@ -313,6 +313,13 @@ def test_add() -> None:
     assert in_place_add({3: "", 4: ""}) == res
     assert in_place_add(range(3, 5)) == res
 
+def test_multiply() -> None:
+    l1 = [1]
+    assert l1 * 3 == [1, 1, 1]
+    assert 3 * l1 == [1, 1, 1]
+    l1 *= 3
+    assert l1 == [1, 1, 1]
+
 [case testOperatorInExpression]
 
 def tuple_in_int0(i: int) -> bool:

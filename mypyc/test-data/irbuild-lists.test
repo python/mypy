@@ -194,6 +194,18 @@ L0:
     b = r4
     return 1
 
+[case testListIMultiply]
+from typing import List
+def f(a: List[int]) -> None:
+    a *= 2
+[out]
+def f(a):
+    a, r0 :: list
+L0:
+    r0 = CPySequence_InPlaceMultiply(a, 4)
+    a = r0
+    return 1
+
 [case testListLen]
 from typing import List
 def f(a: List[int]) -> int:

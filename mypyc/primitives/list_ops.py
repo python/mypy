@@ -307,6 +307,15 @@ binary_op(
     error_kind=ERR_MAGIC,
 )
 
+# list *= int
+binary_op(
+    name="*=",
+    arg_types=[list_rprimitive, int_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="CPySequence_InPlaceMultiply",
+    error_kind=ERR_MAGIC,
+)
+
 # list[begin:end]
 list_slice_op = custom_op(
     arg_types=[list_rprimitive, int_rprimitive, int_rprimitive],

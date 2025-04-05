@@ -331,6 +331,14 @@ PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq) {
     return CPySequence_Multiply(seq, t_size);
 }
 
+PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size) {
+    Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
+    if (size == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    return PySequence_InPlaceRepeat(seq, size);
+}
+
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     if (likely(PyList_CheckExact(obj)
                && CPyTagged_CheckShort(start) && CPyTagged_CheckShort(end))) {
