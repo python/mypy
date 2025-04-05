@@ -826,7 +826,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     code=codes.VALID_TYPE,
                 )
                 return AnyType(TypeOfAny.from_error)
-            item.is_pep764 = True
+            else:
+                item.is_pep764 = True
             return self.anal_type(item, allow_typed_dict_special_forms=True)
         return None
 
