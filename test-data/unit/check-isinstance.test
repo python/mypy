@@ -378,6 +378,7 @@ while 2:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionTryFinally5]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -391,7 +392,7 @@ while 2:
     finally:
         x.b    # E: "A" has no attribute "b"
         break
-        x.b
+        _ = "unreachable"  # E: Statement is unreachable
     x.b
 
 [case testUnionTryFinally6]
@@ -722,6 +723,7 @@ x + [1]               # E: Unsupported operand types for + ("int" and "List[int]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceThreeUnion3]
+# flags: --warn-unreachable
 from typing import Union, List
 
 while bool():
@@ -731,11 +733,11 @@ while bool():
     if isinstance(x, int):
         x + 1
         break
-    elif isinstance(x, str):
+    elif isinstance(x, str):  # E: Statement is unreachable
+        _ = "unreachable"
         x + 'a'
         break
-    x + [1]           # These lines aren't reached because x was an int
-    x + 'a'
+    _ = "unreachable"  # E: Statement is unreachable
 x + [1]               # E: Unsupported operand types for + ("int" and "List[int]") \
                       # E: Unsupported operand types for + ("str" and "List[int]") \
                       # N: Left operand is of type "Union[int, str, List[int]]"
@@ -1048,9 +1050,10 @@ def last(x: LinkedList) -> Nil:
 [builtins fixtures/isinstance.pyi]
 
 [case testReturnAndFlow]
+# flags: --warn-unreachable
 def foo() -> int:
     return 1 and 2
-    return 'a'
+    _ = "unreachable"  # E: Statement is unreachable
 [case testCastIsinstance]
 from typing import Union
 
@@ -1066,15 +1069,17 @@ x + 'a'   # E: Unsupported operand types for + ("int" and "str")
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableCode]
+# flags: --warn-unreachable
 x = 1 # type: int
 
 while bool():
     x = 'a'           # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     break
-    x = 'a'           # Note: no error because unreachable code
+    _ = "unreachable"  # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableCode2]
+# flags: --warn-unreachable
 x = 1
 while bool():
     try:
@@ -1083,50 +1088,56 @@ while bool():
         continue
     else:
         continue
-    x + 'a'
+    _ = "unreachable"  # E: Statement is unreachable
 [builtins fixtures/isinstance.pyi]
 
 [case testUnreachableWhileTrue]
+# flags: --warn-unreachable
 def f(x: int) -> None:
     while True:
         if x:
             return
-    1()
+    _ = "unreachable"  # E: Statement is unreachable
 [builtins fixtures/bool.pyi]
 
 [case testUnreachableAssertFalse]
+# flags: --warn-unreachable
 def f() -> None:
     assert False
-    1()
+    _ = "unreachable"  # E: Statement is unreachable
 [builtins fixtures/bool.pyi]
 
 [case testUnreachableAssertFalse2]
+# flags: --warn-unreachable
 def f() -> None:
     # The old parser doesn't understand the syntax below
     assert False, "hi"
-    1()
+    _ = "unreachable"  # E: Statement is unreachable
 [builtins fixtures/bool.pyi]
 
 [case testUnreachableReturnOrAssertFalse]
+# flags: --warn-unreachable
 def f(x: int) -> int:
     if x:
         return x
     else:
         assert False
-    1()
+    _ = "unreachable"  # E: Statement is unreachable
 [builtins fixtures/bool.pyi]
 
 [case testUnreachableTryExcept]
+# flags: --warn-unreachable
 def f() -> None:
     try:
         f()
         return
     except BaseException:
         return
-    1()
+    _ = "unreachable"  # E: Statement is unreachable
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableTryExceptElse]
+# flags: --warn-unreachable
 def f() -> None:
     try:
         f()
@@ -1134,39 +1145,43 @@ def f() -> None:
         return
     else:
         return
-    1()
+    _ = "unreachable"  # E: Statement is unreachable
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableTryReturnFinally1]
+# flags: --warn-unreachable
 def f() -> None:
     try:
         return
     finally:
         pass
-    1()
+    _ = "unreachable"  # E: Statement is unreachable
 
 [case testUnreachableTryReturnFinally2]
+# flags: --warn-unreachable
 def f() -> None:
     try:
         pass
     finally:
         return
-    1()
+    _ = "unreachable"  # E: Statement is unreachable
 
 [case testUnreachableTryReturnExceptRaise]
+# flags: --warn-unreachable
 def f() -> None:
     try:
         return
     except:
         raise
-    1()
+    _ = "unreachable"  # E: Statement is unreachable
 
 [case testUnreachableReturnLambda]
+# flags: --warn-unreachable
 from typing import Callable
 def g(t: Callable[[int], int]) -> int: pass
 def f() -> int:
     return g(lambda x: x)
-    1()
+    _ = "unreachable"  # E: Statement is unreachable
 
 [case testIsinstanceAnd]
 class A: pass
@@ -1236,6 +1251,7 @@ else:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceMultiAndSpecialCase]
+# flags: --warn-unreachable
 class A:
     # Ensure A.__add__ and int.__add__ are different to
     # force 'isinstance(y, int)' checks below to never succeed.
@@ -1250,12 +1266,14 @@ class C(A):
 x = B() # type: A
 y = C() # type: A
 
-if isinstance(x, B) and isinstance(y, int):
-    1() # type checking skipped
-if isinstance(y, int) and isinstance(x, B):
-    1() # type checking skipped
-if isinstance(y, int) and y > 42:
-    1() # type checking skipped
+if isinstance(x, B) and isinstance(y, int):  # E: Subclass of "A" and "int" cannot exist: would have incompatible method signatures
+    _ = "unreachable"  # E: Statement is unreachable
+if isinstance(y, int) and isinstance(x, B):  # E: Subclass of "A" and "int" cannot exist: would have incompatible method signatures \
+                                             # E: Right operand of "and" is never evaluated
+    _ = "unreachable"  # E: Statement is unreachable
+if isinstance(y, int) and y > 42:  # E: Subclass of "A" and "int" cannot exist: would have incompatible method signatures \
+                                   # E: Right operand of "and" is never evaluated
+    _ = "unreachable"  # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testReturnWithCallExprAndIsinstance]
@@ -1341,6 +1359,7 @@ def f2(x: Union[FloatLike, IntLike]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceOfSuperclass]
+# flags: --warn-unreachable
 class A: pass
 class B(A): pass
 
@@ -1348,8 +1367,9 @@ x = B()
 if isinstance(x, A):
     reveal_type(x)  # N: Revealed type is "__main__.B"
 if not isinstance(x, A):
-    reveal_type(x)  # unreachable
-    x = A()
+    reveal_type(x)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
+    x = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 reveal_type(x)  # N: Revealed type is "__main__.B"
 [builtins fixtures/isinstance.pyi]
 
@@ -1401,6 +1421,7 @@ def f(x: Union[List[int], str]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceOrIsinstance]
+# flags: --warn-unreachable
 class A: pass
 
 class B(A):
@@ -1418,12 +1439,13 @@ else:
     f = 0
 reveal_type(x1) # N: Revealed type is "__main__.A"
 x2 = A()
-if isinstance(x2, A) or isinstance(x2, C):
+if isinstance(x2, A) or isinstance(x2, C):  # E: Right operand of "or" is never evaluated
     reveal_type(x2) # N: Revealed type is "__main__.A"
     f = x2.flag # E: "A" has no attribute "flag"
 else:
     # unreachable
-    1()
+    reveal_type(x2)  # E: Statement is unreachable \
+                     # N: Revealed type is "Never"
 reveal_type(x2) # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
 
@@ -1508,11 +1530,13 @@ def f(x: Union[int, A], a: Type[A]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclassUnreachable]
+# flags: --warn-unreachable
 from typing import Type, Sequence, Union
 
 x: Type[str]
-if issubclass(x, int):
-    reveal_type(x)  # unreachable block
+if issubclass(x, int):  # E: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+    reveal_type(x)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
 
 class X: pass
 class Y(X): pass
@@ -1522,7 +1546,8 @@ a: Union[Type[Y], Type[Z]]
 if issubclass(a, X):
     reveal_type(a)  # N: Revealed type is "Union[Type[__main__.Y], Type[__main__.Z]]"
 else:
-    reveal_type(a)  # unreachable block
+    reveal_type(a)  # E: Statement is unreachable \
+                    # N: Revealed type is "Never"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIssubclasDestructuringUnions1]
@@ -1858,12 +1883,14 @@ def f(x: T) -> T:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndTypeType]
+# flags: --warn-unreachable
 from typing import Type
 def f(x: Type[int]) -> None:
     if isinstance(x, type):
         reveal_type(x) # N: Revealed type is "Type[builtins.int]"
     else:
-        reveal_type(x)  # Unreachable
+        reveal_type(x)  # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
     reveal_type(x) # N: Revealed type is "Type[builtins.int]"
 [builtins fixtures/isinstance.pyi]
 
@@ -2363,7 +2390,8 @@ class C:
 class Example(A, B): pass  # E: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 x: A
 if isinstance(x, B):  # E: Subclass of "A" and "B" cannot exist: would have incompatible method signatures
-    reveal_type(x)    # E: Statement is unreachable
+    reveal_type(x)    # E: Statement is unreachable \
+                      # N: Revealed type is "Never"
 else:
     reveal_type(x)    # N: Revealed type is "__main__.A"
 
@@ -2371,7 +2399,8 @@ y: C
 if isinstance(y, B):
     reveal_type(y)        # N: Revealed type is "__main__.<subclass of "__main__.C" and "__main__.B">"
     if isinstance(y, A):  # E: Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
-        reveal_type(y)    # E: Statement is unreachable
+        reveal_type(y)    # E: Statement is unreachable \
+                          # N: Revealed type is "Never"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionReversed]
@@ -2436,7 +2465,8 @@ class B:
 
 x: A[int]
 if isinstance(x, B):    # E: Subclass of "A[int]" and "B" cannot exist: would have incompatible method signatures
-    reveal_type(x)      # E: Statement is unreachable
+    reveal_type(x)      # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
 else:
     reveal_type(x)      # N: Revealed type is "__main__.A[builtins.int]"
 
@@ -2606,7 +2636,8 @@ class B(Y, X): pass
 
 foo: A
 if isinstance(foo, B):  # E: Subclass of "A" and "B" cannot exist: would have inconsistent method resolution order
-    reveal_type(foo)    # E: Statement is unreachable
+    reveal_type(foo)    # E: Statement is unreachable \
+                        # N: Revealed type is "Never"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionAmbiguousClass]
@@ -2640,7 +2671,8 @@ x: Type[A]
 if issubclass(x, B):
     reveal_type(x)        # N: Revealed type is "Type[__main__.<subclass of "__main__.A" and "__main__.B">]"
     if issubclass(x, C):  # E: Subclass of "A", "B", and "C" cannot exist: would have incompatible method signatures
-        reveal_type(x)    # E: Statement is unreachable
+        reveal_type(x)    # E: Statement is unreachable \
+                          # N: Revealed type is "Never"
     else:
         reveal_type(x)    # N: Revealed type is "Type[__main__.<subclass of "__main__.A" and "__main__.B">]"
 else:

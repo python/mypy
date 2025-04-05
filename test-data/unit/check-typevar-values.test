@@ -123,7 +123,6 @@ def h(x: T) -> T:
         return '' # E: Incompatible return value type (got "str", expected "int")
     return x
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testIsinstanceAndTypeVarValues2]
 from typing import TypeVar
@@ -140,7 +139,6 @@ def g(x: T) -> T:
         return 2  # E: Incompatible return value type (got "int", expected "str")
     return x
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testIsinstanceAndTypeVarValues3]
 from typing import TypeVar
@@ -163,7 +161,6 @@ def f(x: T) -> T:
         y = object()
     return y # E: Incompatible return value type (got "object", expected "str")
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testIsinstanceAndTypeVarValues5]
 from typing import TypeVar
@@ -215,7 +212,6 @@ def g(x: S) -> None:
     if isinstance(x, int):
         x = y
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testIsinstanceWithUserDefinedTypeAndTypeVarValues2]
 from typing import TypeVar
@@ -233,7 +229,6 @@ def f(x: T) -> None:
         x = 1
         x = S() # E: Incompatible types in assignment (expression has type "S", variable has type "int")
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testTypeVarValuesAndNestedCalls]
 from typing import TypeVar
@@ -744,4 +739,25 @@ def fn(w: W) -> W:
     elif type(w) is int:
         reveal_type(w)  # N: Revealed type is "builtins.int"
     return w
+[builtins fixtures/isinstance.pyi]
+
+[case testTypeVarValuesPropagateUnreachabilitySilence]
+# flags: --warn-unreachable
+from typing import Any, Callable, TypeVar
+
+from typing_extensions import Concatenate, ParamSpec
+
+T = TypeVar("T", int, str)
+P = ParamSpec("P")
+
+def accepts_mapping(
+    func: Callable[P, Any]
+) -> Callable[Concatenate[T, P], T]:
+    def wrapper(data: T, /, *args: P.args, **kwargs: P.kwargs) -> T:
+        if isinstance(data, str):
+            return ""
+        else:
+            return 1
+
+    return wrapper
 [builtins fixtures/isinstance.pyi]
