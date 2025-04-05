@@ -4151,3 +4151,106 @@ class Base:
                                         # E: TypedDict() expects a dictionary literal as the second argument
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAlias]
+from typing import NotRequired, TypedDict
+from typing_extensions import TypeAlias
+
+class Base(TypedDict):
+    foo: int
+
+Base1 = Base
+class Child1(Base1):
+    bar: NotRequired[int]
+c11: Child1 = {"foo": 0}
+c12: Child1 = {"foo": 0, "bar": 1}
+c13: Child1 = {"foo": 0, "bar": 1, "baz": "error"}  # E: Extra key "baz" for TypedDict "Child1"
+
+Base2: TypeAlias = Base
+class Child2(Base2):
+    bar: NotRequired[int]
+c21: Child2 = {"foo": 0}
+c22: Child2 = {"foo": 0, "bar": 1}
+c23: Child2 = {"foo": 0, "bar": 1, "baz": "error"}  # E: Extra key "baz" for TypedDict "Child2"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAliasInheritance]
+from typing import TypedDict
+from typing_extensions import TypeAlias
+
+class A(TypedDict):
+    x: str
+class B(TypedDict):
+    y: int
+
+B1 = B
+B2: TypeAlias = B
+
+class C(A, B1):
+    pass
+c1: C = {"y": 1}  # E: Missing key "x" for TypedDict "C"
+c2: C = {"x": "x", "y": 2}
+c3: C = {"x": 1, "y": 2}  # E: Incompatible types (expression has type "int", TypedDict item "x" has type "str")
+
+class D(A, B2):
+    pass
+d1: D = {"y": 1}  # E: Missing key "x" for TypedDict "D"
+d2: D = {"x": "x", "y": 2}
+d3: D = {"x": 1, "y": 2}  # E: Incompatible types (expression has type "int", TypedDict item "x" has type "str")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAliasDuplicateBases]
+from typing import TypedDict
+from typing_extensions import TypeAlias
+
+class A(TypedDict):
+    x: str
+
+A1 = A
+A2 = A
+A3: TypeAlias = A
+
+class E(A1, A2): pass  # E: Duplicate base class "A"
+class F(A1, A3): pass # E: Duplicate base class "A"
+class G(A, A1): pass # E: Duplicate base class "A"
+
+class H(A, list): pass  # E: All bases of a new TypedDict must be TypedDict types
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAliasGeneric]
+from typing import Generic, TypedDict, TypeVar
+from typing_extensions import TypeAlias
+
+_T = TypeVar("_T")
+
+class A(Generic[_T], TypedDict):
+    x: _T
+
+# This is by design - no_args aliases are only supported for instances
+A0 = A
+class B(A0[str]):  # E: Bad number of arguments for type alias, expected 0, given 1
+    y: int
+
+A1 = A[_T]
+A2: TypeAlias = A[_T]
+Aint = A[int]
+
+class C(A1[_T]):
+    y: str
+c1: C[int] = {"x": 0, "y": "a"}
+c2: C[int] = {"x": "no", "y": "a"}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+
+class D(A2[_T]):
+    y: str
+d1: D[int] = {"x": 0, "y": "a"}
+d2: D[int] = {"x": "no", "y": "a"}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+
+class E(Aint):
+    y: str
+e1: E = {"x": 0, "y": "a"}
+e2: E = {"x": "no", "y": "a"}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
