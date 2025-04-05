@@ -72,7 +72,6 @@ from mypy.nodes import (
     ContinueStmt,
     Decorator,
     DelStmt,
-    DictExpr,
     EllipsisExpr,
     Expression,
     ExpressionStmt,
@@ -106,7 +105,6 @@ from mypy.nodes import (
     RaiseStmt,
     RefExpr,
     ReturnStmt,
-    SetExpr,
     StarExpr,
     Statement,
     StrExpr,
@@ -5512,12 +5510,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # Already named - we should infer type of it as given
             NameExpr,
             AssignmentExpr,
-            # Collection literals defined inline - we want to infer types of variables
-            # included there, not exprs as a whole
-            ListExpr,
-            DictExpr,
-            TupleExpr,
-            SetExpr,
             # Primitive literals - their type is known, no need to name them
             IntExpr,
             StrExpr,
