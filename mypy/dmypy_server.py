@@ -16,8 +16,9 @@ import subprocess
 import sys
 import time
 import traceback
+from collections.abc import Sequence, Set as AbstractSet
 from contextlib import redirect_stderr, redirect_stdout
-from typing import AbstractSet, Any, Callable, Final, List, Sequence, Tuple
+from typing import Any, Callable, Final
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
@@ -161,9 +162,9 @@ def ignore_suppressed_imports(module: str) -> bool:
     return module.startswith("encodings.")
 
 
-ModulePathPair: _TypeAlias = Tuple[str, str]
-ModulePathPairs: _TypeAlias = List[ModulePathPair]
-ChangesAndRemovals: _TypeAlias = Tuple[ModulePathPairs, ModulePathPairs]
+ModulePathPair: _TypeAlias = tuple[str, str]
+ModulePathPairs: _TypeAlias = list[ModulePathPair]
+ChangesAndRemovals: _TypeAlias = tuple[ModulePathPairs, ModulePathPairs]
 
 
 class Server:
@@ -625,6 +626,8 @@ class Server:
         changed, new_files = self.find_reachable_changed_modules(
             sources, graph, seen, changed_paths
         )
+        # Same as in fine_grained_increment().
+        self.add_explicitly_new(sources, changed)
         if explicit_export_types:
             # Same as in fine_grained_increment().
             add_all_sources_to_changed(sources, changed)
@@ -712,7 +715,7 @@ class Server:
             find_changes_time=t1 - t0,
             fg_update_time=t2 - t1,
             refresh_suppressed_time=t3 - t2,
-            find_added_supressed_time=t4 - t3,
+            find_added_suppressed_time=t4 - t3,
             cleanup_time=t5 - t4,
         )
 
@@ -888,6 +891,22 @@ class Server:
             assert path
             removed.append((source.module, path))
 
+        self.add_explicitly_new(sources, changed)
+
+        # Find anything that has had its module path change because of added or removed __init__s
+        last = {s.path: s.module for s in self.previous_sources}
+        for s in sources:
+            assert s.path
+            if s.path in last and last[s.path] != s.module:
+                # Mark it as removed from its old name and changed at its new name
+                removed.append((last[s.path], s.path))
+                changed.append((s.module, s.path))
+
+        return changed, removed
+
+    def add_explicitly_new(
+        self, sources: list[BuildSource], changed: list[tuple[str, str]]
+    ) -> None:
         # Always add modules that were (re-)added, since they may be detected as not changed by
         # fswatcher (if they were actually not changed), but they may still need to be checked
         # in case they had errors before they were deleted from sources on previous runs.
@@ -902,17 +921,6 @@ class Server:
                 and (source.module, source.path) not in changed_set
             ]
         )
-
-        # Find anything that has had its module path change because of added or removed __init__s
-        last = {s.path: s.module for s in self.previous_sources}
-        for s in sources:
-            assert s.path
-            if s.path in last and last[s.path] != s.module:
-                # Mark it as removed from its old name and changed at its new name
-                removed.append((last[s.path], s.path))
-                changed.append((s.module, s.path))
-
-        return changed, removed
 
     def cmd_inspect(
         self,

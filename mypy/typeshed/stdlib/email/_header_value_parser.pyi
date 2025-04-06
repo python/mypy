@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Iterable, Iterator
 from email.errors import HeaderParseError, MessageDefect
 from email.policy import Policy
@@ -16,6 +17,13 @@ TOKEN_ENDS: Final[set[str]]
 ASPECIALS: Final[set[str]]
 ATTRIBUTE_ENDS: Final[set[str]]
 EXTENDED_ATTRIBUTE_ENDS: Final[set[str]]
+# Added in Python 3.8.20, 3.9.20, 3.10.15, 3.11.10, 3.12.5
+NLSET: Final[set[str]]
+# Added in Python 3.8.20, 3.9.20, 3.10.15, 3.11.10, 3.12.5
+SPECIALSNL: Final[set[str]]
+
+if sys.version_info >= (3, 12):
+    def make_quoted_pairs(value: Any) -> str: ...
 
 def quote_string(value: Any) -> str: ...
 

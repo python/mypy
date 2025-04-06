@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import AbstractSet, Iterable, Iterator, TypeVar
+from collections.abc import Iterable, Iterator, Set as AbstractSet
+from typing import TypeVar
 
 T = TypeVar("T")
 
@@ -57,7 +58,11 @@ def prepare_sccs(
     sccs: list[set[T]], edges: dict[T, list[T]]
 ) -> dict[AbstractSet[T], set[AbstractSet[T]]]:
     """Use original edges to organize SCCs in a graph by dependencies between them."""
-    sccsmap = {v: frozenset(scc) for scc in sccs for v in scc}
+    sccsmap = {}
+    for scc in sccs:
+        scc_frozen = frozenset(scc)
+        for v in scc:
+            sccsmap[v] = scc_frozen
     data: dict[AbstractSet[T], set[AbstractSet[T]]] = {}
     for scc in sccs:
         deps: set[AbstractSet[T]] = set()

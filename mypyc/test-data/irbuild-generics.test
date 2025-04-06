@@ -151,7 +151,7 @@ L3:
 
 
 [case testParamSpec]
-from typing import Callable, ParamSpec, TypeVar
+from typing import Callable, ParamSpec
 
 P = ParamSpec("P")
 
@@ -185,6 +185,642 @@ L0:
     r6 = PyObject_Call(func, r5, r2)
     r7 = unbox(int, r6)
     return r7
+def f(x):
+    x :: int
+L0:
+    return x
+
+[case testTypeVarMappingBound]
+# Dicts are special-cased for efficient iteration.
+from typing import Dict, TypedDict, TypeVar, Union
+
+class TD(TypedDict):
+    foo: int
+
+M = TypeVar("M", bound=Dict[str, int])
+U = TypeVar("U", bound=Union[Dict[str, int], Dict[str, str]])
+T = TypeVar("T", bound=TD)
+
+def fn_mapping(m: M) -> None:
+    [x for x in m]
+    [x for x in m.values()]
+    {x for x in m.keys()}
+    {k: v for k, v in m.items()}
+
+def fn_union(m: U) -> None:
+    [x for x in m]
+    [x for x in m.values()]
+    {x for x in m.keys()}
+    {k: v for k, v in m.items()}
+
+def fn_typeddict(t: T) -> None:
+    [x for x in t]
+    [x for x in t.values()]
+    {x for x in t.keys()}
+    {k: v for k, v in t.items()}
+
+[typing fixtures/typing-full.pyi]
+[out]
+def fn_mapping(m):
+    m :: dict
+    r0 :: list
+    r1 :: short_int
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: object
+    r5 :: tuple[bool, short_int, object]
+    r6 :: short_int
+    r7 :: bool
+    r8 :: object
+    r9, x :: str
+    r10 :: i32
+    r11, r12, r13 :: bit
+    r14 :: list
+    r15 :: short_int
+    r16 :: native_int
+    r17 :: short_int
+    r18 :: object
+    r19 :: tuple[bool, short_int, object]
+    r20 :: short_int
+    r21 :: bool
+    r22 :: object
+    r23, x_2 :: int
+    r24 :: object
+    r25 :: i32
+    r26, r27, r28 :: bit
+    r29 :: set
+    r30 :: short_int
+    r31 :: native_int
+    r32 :: short_int
+    r33 :: object
+    r34 :: tuple[bool, short_int, object]
+    r35 :: short_int
+    r36 :: bool
+    r37 :: object
+    r38, x_3 :: str
+    r39 :: i32
+    r40, r41, r42 :: bit
+    r43 :: dict
+    r44 :: short_int
+    r45 :: native_int
+    r46 :: short_int
+    r47 :: object
+    r48 :: tuple[bool, short_int, object, object]
+    r49 :: short_int
+    r50 :: bool
+    r51, r52 :: object
+    r53 :: str
+    r54 :: int
+    k :: str
+    v :: int
+    r55 :: object
+    r56 :: i32
+    r57, r58, r59 :: bit
+L0:
+    r0 = PyList_New(0)
+    r1 = 0
+    r2 = PyDict_Size(m)
+    r3 = r2 << 1
+    r4 = CPyDict_GetKeysIter(m)
+L1:
+    r5 = CPyDict_NextKey(r4, r1)
+    r6 = r5[1]
+    r1 = r6
+    r7 = r5[0]
+    if r7 goto L2 else goto L4 :: bool
+L2:
+    r8 = r5[2]
+    r9 = cast(str, r8)
+    x = r9
+    r10 = PyList_Append(r0, x)
+    r11 = r10 >= 0 :: signed
+L3:
+    r12 = CPyDict_CheckSize(m, r3)
+    goto L1
+L4:
+    r13 = CPy_NoErrOccurred()
+L5:
+    r14 = PyList_New(0)
+    r15 = 0
+    r16 = PyDict_Size(m)
+    r17 = r16 << 1
+    r18 = CPyDict_GetValuesIter(m)
+L6:
+    r19 = CPyDict_NextValue(r18, r15)
+    r20 = r19[1]
+    r15 = r20
+    r21 = r19[0]
+    if r21 goto L7 else goto L9 :: bool
+L7:
+    r22 = r19[2]
+    r23 = unbox(int, r22)
+    x_2 = r23
+    r24 = box(int, x_2)
+    r25 = PyList_Append(r14, r24)
+    r26 = r25 >= 0 :: signed
+L8:
+    r27 = CPyDict_CheckSize(m, r17)
+    goto L6
+L9:
+    r28 = CPy_NoErrOccurred()
+L10:
+    r29 = PySet_New(0)
+    r30 = 0
+    r31 = PyDict_Size(m)
+    r32 = r31 << 1
+    r33 = CPyDict_GetKeysIter(m)
+L11:
+    r34 = CPyDict_NextKey(r33, r30)
+    r35 = r34[1]
+    r30 = r35
+    r36 = r34[0]
+    if r36 goto L12 else goto L14 :: bool
+L12:
+    r37 = r34[2]
+    r38 = cast(str, r37)
+    x_3 = r38
+    r39 = PySet_Add(r29, x_3)
+    r40 = r39 >= 0 :: signed
+L13:
+    r41 = CPyDict_CheckSize(m, r32)
+    goto L11
+L14:
+    r42 = CPy_NoErrOccurred()
+L15:
+    r43 = PyDict_New()
+    r44 = 0
+    r45 = PyDict_Size(m)
+    r46 = r45 << 1
+    r47 = CPyDict_GetItemsIter(m)
+L16:
+    r48 = CPyDict_NextItem(r47, r44)
+    r49 = r48[1]
+    r44 = r49
+    r50 = r48[0]
+    if r50 goto L17 else goto L19 :: bool
+L17:
+    r51 = r48[2]
+    r52 = r48[3]
+    r53 = cast(str, r51)
+    r54 = unbox(int, r52)
+    k = r53
+    v = r54
+    r55 = box(int, v)
+    r56 = CPyDict_SetItem(r43, k, r55)
+    r57 = r56 >= 0 :: signed
+L18:
+    r58 = CPyDict_CheckSize(m, r46)
+    goto L16
+L19:
+    r59 = CPy_NoErrOccurred()
+L20:
+    return 1
+def fn_union(m):
+    m :: dict
+    r0 :: list
+    r1 :: short_int
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: object
+    r5 :: tuple[bool, short_int, object]
+    r6 :: short_int
+    r7 :: bool
+    r8 :: object
+    r9, x :: str
+    r10 :: i32
+    r11, r12, r13 :: bit
+    r14 :: list
+    r15 :: short_int
+    r16 :: native_int
+    r17 :: short_int
+    r18 :: object
+    r19 :: tuple[bool, short_int, object]
+    r20 :: short_int
+    r21 :: bool
+    r22 :: object
+    r23, x_2 :: union[int, str]
+    r24 :: i32
+    r25, r26, r27 :: bit
+    r28 :: set
+    r29 :: short_int
+    r30 :: native_int
+    r31 :: short_int
+    r32 :: object
+    r33 :: tuple[bool, short_int, object]
+    r34 :: short_int
+    r35 :: bool
+    r36 :: object
+    r37, x_3 :: str
+    r38 :: i32
+    r39, r40, r41 :: bit
+    r42 :: dict
+    r43 :: short_int
+    r44 :: native_int
+    r45 :: short_int
+    r46 :: object
+    r47 :: tuple[bool, short_int, object, object]
+    r48 :: short_int
+    r49 :: bool
+    r50, r51 :: object
+    r52 :: str
+    r53 :: union[int, str]
+    k :: str
+    v :: union[int, str]
+    r54 :: i32
+    r55, r56, r57 :: bit
+L0:
+    r0 = PyList_New(0)
+    r1 = 0
+    r2 = PyDict_Size(m)
+    r3 = r2 << 1
+    r4 = CPyDict_GetKeysIter(m)
+L1:
+    r5 = CPyDict_NextKey(r4, r1)
+    r6 = r5[1]
+    r1 = r6
+    r7 = r5[0]
+    if r7 goto L2 else goto L4 :: bool
+L2:
+    r8 = r5[2]
+    r9 = cast(str, r8)
+    x = r9
+    r10 = PyList_Append(r0, x)
+    r11 = r10 >= 0 :: signed
+L3:
+    r12 = CPyDict_CheckSize(m, r3)
+    goto L1
+L4:
+    r13 = CPy_NoErrOccurred()
+L5:
+    r14 = PyList_New(0)
+    r15 = 0
+    r16 = PyDict_Size(m)
+    r17 = r16 << 1
+    r18 = CPyDict_GetValuesIter(m)
+L6:
+    r19 = CPyDict_NextValue(r18, r15)
+    r20 = r19[1]
+    r15 = r20
+    r21 = r19[0]
+    if r21 goto L7 else goto L9 :: bool
+L7:
+    r22 = r19[2]
+    r23 = cast(union[int, str], r22)
+    x_2 = r23
+    r24 = PyList_Append(r14, x_2)
+    r25 = r24 >= 0 :: signed
+L8:
+    r26 = CPyDict_CheckSize(m, r17)
+    goto L6
+L9:
+    r27 = CPy_NoErrOccurred()
+L10:
+    r28 = PySet_New(0)
+    r29 = 0
+    r30 = PyDict_Size(m)
+    r31 = r30 << 1
+    r32 = CPyDict_GetKeysIter(m)
+L11:
+    r33 = CPyDict_NextKey(r32, r29)
+    r34 = r33[1]
+    r29 = r34
+    r35 = r33[0]
+    if r35 goto L12 else goto L14 :: bool
+L12:
+    r36 = r33[2]
+    r37 = cast(str, r36)
+    x_3 = r37
+    r38 = PySet_Add(r28, x_3)
+    r39 = r38 >= 0 :: signed
+L13:
+    r40 = CPyDict_CheckSize(m, r31)
+    goto L11
+L14:
+    r41 = CPy_NoErrOccurred()
+L15:
+    r42 = PyDict_New()
+    r43 = 0
+    r44 = PyDict_Size(m)
+    r45 = r44 << 1
+    r46 = CPyDict_GetItemsIter(m)
+L16:
+    r47 = CPyDict_NextItem(r46, r43)
+    r48 = r47[1]
+    r43 = r48
+    r49 = r47[0]
+    if r49 goto L17 else goto L19 :: bool
+L17:
+    r50 = r47[2]
+    r51 = r47[3]
+    r52 = cast(str, r50)
+    r53 = cast(union[int, str], r51)
+    k = r52
+    v = r53
+    r54 = CPyDict_SetItem(r42, k, v)
+    r55 = r54 >= 0 :: signed
+L18:
+    r56 = CPyDict_CheckSize(m, r45)
+    goto L16
+L19:
+    r57 = CPy_NoErrOccurred()
+L20:
+    return 1
+def fn_typeddict(t):
+    t :: dict
+    r0 :: list
+    r1 :: short_int
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: object
+    r5 :: tuple[bool, short_int, object]
+    r6 :: short_int
+    r7 :: bool
+    r8 :: object
+    r9, x :: str
+    r10 :: i32
+    r11, r12, r13 :: bit
+    r14 :: list
+    r15 :: short_int
+    r16 :: native_int
+    r17 :: short_int
+    r18 :: object
+    r19 :: tuple[bool, short_int, object]
+    r20 :: short_int
+    r21 :: bool
+    r22, x_2 :: object
+    r23 :: i32
+    r24, r25, r26 :: bit
+    r27 :: set
+    r28 :: short_int
+    r29 :: native_int
+    r30 :: short_int
+    r31 :: object
+    r32 :: tuple[bool, short_int, object]
+    r33 :: short_int
+    r34 :: bool
+    r35 :: object
+    r36, x_3 :: str
+    r37 :: i32
+    r38, r39, r40 :: bit
+    r41 :: dict
+    r42 :: short_int
+    r43 :: native_int
+    r44 :: short_int
+    r45 :: object
+    r46 :: tuple[bool, short_int, object, object]
+    r47 :: short_int
+    r48 :: bool
+    r49, r50 :: object
+    r51, k :: str
+    v :: object
+    r52 :: i32
+    r53, r54, r55 :: bit
+L0:
+    r0 = PyList_New(0)
+    r1 = 0
+    r2 = PyDict_Size(t)
+    r3 = r2 << 1
+    r4 = CPyDict_GetKeysIter(t)
+L1:
+    r5 = CPyDict_NextKey(r4, r1)
+    r6 = r5[1]
+    r1 = r6
+    r7 = r5[0]
+    if r7 goto L2 else goto L4 :: bool
+L2:
+    r8 = r5[2]
+    r9 = cast(str, r8)
+    x = r9
+    r10 = PyList_Append(r0, x)
+    r11 = r10 >= 0 :: signed
+L3:
+    r12 = CPyDict_CheckSize(t, r3)
+    goto L1
+L4:
+    r13 = CPy_NoErrOccurred()
+L5:
+    r14 = PyList_New(0)
+    r15 = 0
+    r16 = PyDict_Size(t)
+    r17 = r16 << 1
+    r18 = CPyDict_GetValuesIter(t)
+L6:
+    r19 = CPyDict_NextValue(r18, r15)
+    r20 = r19[1]
+    r15 = r20
+    r21 = r19[0]
+    if r21 goto L7 else goto L9 :: bool
+L7:
+    r22 = r19[2]
+    x_2 = r22
+    r23 = PyList_Append(r14, x_2)
+    r24 = r23 >= 0 :: signed
+L8:
+    r25 = CPyDict_CheckSize(t, r17)
+    goto L6
+L9:
+    r26 = CPy_NoErrOccurred()
+L10:
+    r27 = PySet_New(0)
+    r28 = 0
+    r29 = PyDict_Size(t)
+    r30 = r29 << 1
+    r31 = CPyDict_GetKeysIter(t)
+L11:
+    r32 = CPyDict_NextKey(r31, r28)
+    r33 = r32[1]
+    r28 = r33
+    r34 = r32[0]
+    if r34 goto L12 else goto L14 :: bool
+L12:
+    r35 = r32[2]
+    r36 = cast(str, r35)
+    x_3 = r36
+    r37 = PySet_Add(r27, x_3)
+    r38 = r37 >= 0 :: signed
+L13:
+    r39 = CPyDict_CheckSize(t, r30)
+    goto L11
+L14:
+    r40 = CPy_NoErrOccurred()
+L15:
+    r41 = PyDict_New()
+    r42 = 0
+    r43 = PyDict_Size(t)
+    r44 = r43 << 1
+    r45 = CPyDict_GetItemsIter(t)
+L16:
+    r46 = CPyDict_NextItem(r45, r42)
+    r47 = r46[1]
+    r42 = r47
+    r48 = r46[0]
+    if r48 goto L17 else goto L19 :: bool
+L17:
+    r49 = r46[2]
+    r50 = r46[3]
+    r51 = cast(str, r49)
+    k = r51
+    v = r50
+    r52 = CPyDict_SetItem(r41, k, v)
+    r53 = r52 >= 0 :: signed
+L18:
+    r54 = CPyDict_CheckSize(t, r44)
+    goto L16
+L19:
+    r55 = CPy_NoErrOccurred()
+L20:
+    return 1
+
+[case testParamSpecComponentsAreUsable]
+from typing import Callable, ParamSpec
+
+P = ParamSpec("P")
+
+def deco(func: Callable[P, int]) -> Callable[P, int]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> int:
+        can_listcomp = [x for x in args]
+        can_dictcomp = {k: v for k, v in kwargs.items()}
+        can_iter = list(kwargs)
+        can_use_keys = list(kwargs.keys())
+        can_use_values = list(kwargs.values())
+        return func(*args, **kwargs)
+
+    return inner
+
+@deco
+def f(x: int) -> int:
+    return x
+
+f(1)
+[out]
+def inner_deco_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def inner_deco_obj.__call__(__mypyc_self__, args, kwargs):
+    __mypyc_self__ :: __main__.inner_deco_obj
+    args :: tuple
+    kwargs :: dict
+    r0 :: __main__.deco_env
+    r1 :: native_int
+    r2 :: list
+    r3 :: short_int
+    r4 :: native_int
+    r5 :: short_int
+    r6 :: bit
+    r7, x :: object
+    r8 :: bit
+    r9 :: short_int
+    can_listcomp :: list
+    r10 :: dict
+    r11 :: short_int
+    r12 :: native_int
+    r13 :: short_int
+    r14 :: object
+    r15 :: tuple[bool, short_int, object, object]
+    r16 :: short_int
+    r17 :: bool
+    r18, r19 :: object
+    r20, k :: str
+    v :: object
+    r21 :: i32
+    r22, r23, r24 :: bit
+    can_dictcomp :: dict
+    r25, can_iter, r26, can_use_keys, r27, can_use_values :: list
+    r28 :: object
+    r29 :: list
+    r30 :: object
+    r31 :: dict
+    r32 :: i32
+    r33 :: bit
+    r34 :: tuple
+    r35 :: object
+    r36 :: int
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = var_object_size args
+    r2 = PyList_New(r1)
+    r3 = 0
+L1:
+    r4 = var_object_size args
+    r5 = r4 << 1
+    r6 = int_lt r3, r5
+    if r6 goto L2 else goto L4 :: bool
+L2:
+    r7 = CPySequenceTuple_GetItem(args, r3)
+    x = r7
+    r8 = CPyList_SetItemUnsafe(r2, r3, x)
+L3:
+    r9 = r3 + 2
+    r3 = r9
+    goto L1
+L4:
+    can_listcomp = r2
+    r10 = PyDict_New()
+    r11 = 0
+    r12 = PyDict_Size(kwargs)
+    r13 = r12 << 1
+    r14 = CPyDict_GetItemsIter(kwargs)
+L5:
+    r15 = CPyDict_NextItem(r14, r11)
+    r16 = r15[1]
+    r11 = r16
+    r17 = r15[0]
+    if r17 goto L6 else goto L8 :: bool
+L6:
+    r18 = r15[2]
+    r19 = r15[3]
+    r20 = cast(str, r18)
+    k = r20
+    v = r19
+    r21 = CPyDict_SetItem(r10, k, v)
+    r22 = r21 >= 0 :: signed
+L7:
+    r23 = CPyDict_CheckSize(kwargs, r13)
+    goto L5
+L8:
+    r24 = CPy_NoErrOccurred()
+L9:
+    can_dictcomp = r10
+    r25 = PySequence_List(kwargs)
+    can_iter = r25
+    r26 = CPyDict_Keys(kwargs)
+    can_use_keys = r26
+    r27 = CPyDict_Values(kwargs)
+    can_use_values = r27
+    r28 = r0.func
+    r29 = PyList_New(0)
+    r30 = CPyList_Extend(r29, args)
+    r31 = PyDict_New()
+    r32 = CPyDict_UpdateInDisplay(r31, kwargs)
+    r33 = r32 >= 0 :: signed
+    r34 = PyList_AsTuple(r29)
+    r35 = PyObject_Call(r28, r34, r31)
+    r36 = unbox(int, r35)
+    return r36
+def deco(func):
+    func :: object
+    r0 :: __main__.deco_env
+    r1 :: bool
+    r2 :: __main__.inner_deco_obj
+    r3 :: bool
+    inner :: object
+L0:
+    r0 = deco_env()
+    r0.func = func; r1 = is_error
+    r2 = inner_deco_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    inner = r2
+    return inner
 def f(x):
     x :: int
 L0:

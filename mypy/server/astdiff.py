@@ -52,14 +52,15 @@ Summary of how this works for certain kinds of differences:
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.expandtype import expand_type
 from mypy.nodes import (
+    SYMBOL_FUNCBASE_TYPES,
     UNBOUND_IMPORTED,
     Decorator,
-    FuncBase,
     FuncDef,
     FuncItem,
     MypyFile,
@@ -114,10 +115,10 @@ from mypy.util import get_prefix
 
 # Type snapshots are strict, they must be hashable and ordered (e.g. for Unions).
 Primitive: _TypeAlias = Union[str, float, int, bool]  # float is for Literal[3.14] support.
-SnapshotItem: _TypeAlias = Tuple[Union[Primitive, "SnapshotItem"], ...]
+SnapshotItem: _TypeAlias = tuple[Union[Primitive, "SnapshotItem"], ...]
 
 # Symbol snapshots can be more lenient.
-SymbolSnapshot: _TypeAlias = Tuple[object, ...]
+SymbolSnapshot: _TypeAlias = tuple[object, ...]
 
 
 def compare_symbol_table_snapshots(
@@ -219,7 +220,9 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sym
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname) != name_prefix:
                 # This is a cross-reference to a node defined in another module.
-                result[name] = ("CrossRef", common)
+                # Include the node kind (FuncDef, Decorator, TypeInfo, ...), so that we will
+                # reprocess when a *new* node is created instead of merging an existing one.
+                result[name] = ("CrossRef", common, type(node).__name__)
             else:
                 result[name] = snapshot_definition(node, common)
     return result
@@ -231,17 +234,22 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
     The representation is nested tuples and dicts. Only externally
     visible attributes are included.
     """
-    if isinstance(node, FuncBase):
+    if isinstance(node, SYMBOL_FUNCBASE_TYPES):
         # TODO: info
         if node.type:
-            signature = snapshot_type(node.type)
+            signature: tuple[object, ...] = snapshot_type(node.type)
         else:
             signature = snapshot_untyped_signature(node)
         impl: FuncDef | None = None
         if isinstance(node, FuncDef):
             impl = node
-        elif isinstance(node, OverloadedFuncDef) and node.impl:
+        elif node.impl:
             impl = node.impl.func if isinstance(node.impl, Decorator) else node.impl
+        setter_type = None
+        if isinstance(node, OverloadedFuncDef) and node.items:
+            first_item = node.items[0]
+            if isinstance(first_item, Decorator) and first_item.func.is_property:
+                setter_type = snapshot_optional_type(first_item.var.setter_type)
         is_trivial_body = impl.is_trivial_body if impl else False
         dataclass_transform_spec = find_dataclass_transform_spec(node)
         return (
@@ -254,6 +262,8 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             signature,
             is_trivial_body,
             dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
+            node.deprecated if isinstance(node, FuncDef) else None,
+            setter_type,  # multi-part properties are stored as OverloadedFuncDef
         )
     elif isinstance(node, Var):
         return ("Var", common, snapshot_optional_type(node.type), node.is_final)
@@ -300,6 +310,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             [snapshot_type(base) for base in node.bases],
             [snapshot_type(p) for p in node._promote],
             dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
+            node.deprecated,
         )
         prefix = node.fullname
         symbol_table = snapshot_symbol_table(prefix, node.names)
@@ -475,7 +486,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
     def visit_typeddict_type(self, typ: TypedDictType) -> SnapshotItem:
         items = tuple((key, snapshot_type(item_type)) for key, item_type in typ.items.items())
         required = tuple(sorted(typ.required_keys))
-        return ("TypedDictType", items, required)
+        readonly = tuple(sorted(typ.readonly_keys))
+        return ("TypedDictType", items, required, readonly)
 
     def visit_literal_type(self, typ: LiteralType) -> SnapshotItem:
         return ("LiteralType", snapshot_type(typ.fallback), typ.value)

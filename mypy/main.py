@@ -8,8 +8,10 @@ import subprocess
 import sys
 import time
 from collections import defaultdict
+from collections.abc import Sequence
 from gettext import gettext
-from typing import IO, Any, Final, NoReturn, Sequence, TextIO
+from io import TextIOWrapper
+from typing import IO, TYPE_CHECKING, Any, Final, NoReturn, TextIO
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
@@ -22,10 +24,21 @@ from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
-from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
+from mypy.modulefinder import (
+    BuildSource,
+    FindModuleCache,
+    ModuleNotFoundReason,
+    SearchPaths,
+    get_search_dirs,
+    mypy_path,
+)
 from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
+
+if TYPE_CHECKING:
+    from _typeshed import SupportsWrite
+
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
@@ -67,6 +80,10 @@ def main(
     if args is None:
         args = sys.argv[1:]
 
+    # Write an escape sequence instead of raising an exception on encoding errors.
+    if isinstance(stdout, TextIOWrapper) and stdout.errors == "strict":
+        stdout.reconfigure(errors="backslashreplace")
+
     fscache = FileSystemCache()
     sources, options = process_options(args, stdout=stdout, stderr=stderr, fscache=fscache)
     if clean_exit:
@@ -75,6 +92,13 @@ def main(
     formatter = util.FancyFormatter(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
+
+    if options.allow_redefinition_new and not options.local_partial_types:
+        fail(
+            "error: --local-partial-types must be enabled if using --allow-redefinition-new",
+            stderr,
+            options,
+        )
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -360,17 +384,17 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     # =====================
     # Help-printing methods
     # =====================
-    def print_usage(self, file: IO[str] | None = None) -> None:
+    def print_usage(self, file: SupportsWrite[str] | None = None) -> None:
         if file is None:
             file = self.stdout
         self._print_message(self.format_usage(), file)
 
-    def print_help(self, file: IO[str] | None = None) -> None:
+    def print_help(self, file: SupportsWrite[str] | None = None) -> None:
         if file is None:
             file = self.stdout
         self._print_message(self.format_help(), file)
 
-    def _print_message(self, message: str, file: IO[str] | None = None) -> None:
+    def _print_message(self, message: str, file: SupportsWrite[str] | None = None) -> None:
         if message:
             if file is None:
                 file = self.stderr
@@ -545,15 +569,16 @@ def process_options(
     )
     config_group.add_argument(
         "--config-file",
-        help="Configuration file, must have a [mypy] section "
-        "(defaults to {})".format(", ".join(defaults.CONFIG_FILES)),
+        help=(
+            f"Configuration file, must have a [mypy] section "
+            f"(defaults to {', '.join(defaults.CONFIG_NAMES + defaults.SHARED_CONFIG_NAMES)})"
+        ),
     )
     add_invertible_flag(
         "--warn-unused-configs",
         default=False,
         strict_flag=True,
-        help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' "
-        "config sections",
+        help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' config sections",
         group=config_group,
     )
 
@@ -573,6 +598,11 @@ def process_options(
         help="Silently ignore imports of missing modules",
     )
     imports_group.add_argument(
+        "--follow-untyped-imports",
+        action="store_true",
+        help="Typecheck modules without stubs or py.typed marker",
+    )
+    imports_group.add_argument(
         "--follow-imports",
         choices=["normal", "silent", "skip", "error"],
         default="normal",
@@ -582,8 +612,7 @@ def process_options(
         "--python-executable",
         action="store",
         metavar="EXECUTABLE",
-        help="Python executable used for finding PEP 561 compliant installed"
-        " packages and stubs",
+        help="Python executable used for finding PEP 561 compliant installed packages and stubs",
         dest="special-opts:python_executable",
     )
     imports_group.add_argument(
@@ -616,8 +645,7 @@ def process_options(
         "--platform",
         action="store",
         metavar="PLATFORM",
-        help="Type check special-cased code for the given OS platform "
-        "(defaults to sys.platform)",
+        help="Type check special-cased code for the given OS platform (defaults to sys.platform)",
     )
     platform_group.add_argument(
         "--always-true",
@@ -639,12 +667,6 @@ def process_options(
         description="Disallow the use of the dynamic 'Any' type under certain conditions.",
     )
     disallow_any_group.add_argument(
-        "--disallow-any-unimported",
-        default=False,
-        action="store_true",
-        help="Disallow Any types resulting from unfollowed imports",
-    )
-    disallow_any_group.add_argument(
         "--disallow-any-expr",
         default=False,
         action="store_true",
@@ -654,8 +676,7 @@ def process_options(
         "--disallow-any-decorated",
         default=False,
         action="store_true",
-        help="Disallow functions that have Any in their signature "
-        "after decorator transformation",
+        help="Disallow functions that have Any in their signature after decorator transformation",
     )
     disallow_any_group.add_argument(
         "--disallow-any-explicit",
@@ -668,6 +689,12 @@ def process_options(
         default=False,
         strict_flag=True,
         help="Disallow usage of generic types that do not specify explicit type parameters",
+        group=disallow_any_group,
+    )
+    add_invertible_flag(
+        "--disallow-any-unimported",
+        default=False,
+        help="Disallow Any types resulting from unfollowed imports",
         group=disallow_any_group,
     )
     add_invertible_flag(
@@ -799,6 +826,21 @@ def process_options(
         help="Warn about statements or expressions inferred to be unreachable",
         group=lint_group,
     )
+    add_invertible_flag(
+        "--report-deprecated-as-note",
+        default=False,
+        strict_flag=False,
+        help="Report importing or using deprecated features as notes instead of errors",
+        group=lint_group,
+    )
+    lint_group.add_argument(
+        "--deprecated-calls-exclude",
+        metavar="MODULE",
+        action="append",
+        default=[],
+        help="Disable deprecated warnings for functions/methods coming"
+        " from specific package, module, or class",
+    )
 
     # Note: this group is intentionally added here even though we don't add
     # --strict to this group near the end.
@@ -821,7 +863,15 @@ def process_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
-        help="Allow unconditional variable redefinition with a new type",
+        help="Allow restricted, unconditional variable redefinition with a new type",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
+        "--allow-redefinition-new",
+        default=False,
+        strict_flag=False,
+        help=argparse.SUPPRESS,  # This is still very experimental
         group=strictness_group,
     )
 
@@ -839,6 +889,14 @@ def process_options(
         default=False,
         strict_flag=True,
         help="Prohibit equality, identity, and container checks for non-overlapping types",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
+        "--strict-bytes",
+        default=False,
+        strict_flag=False,
+        help="Disable treating bytearray and memoryview as subtypes of bytes",
         group=strictness_group,
     )
 
@@ -1065,6 +1123,11 @@ def process_options(
                 dest=f"special-opts:{report_type}_report",
             )
 
+    # Undocumented mypyc feature: generate annotated HTML source file
+    report_group.add_argument(
+        "-a", dest="mypyc_annotation_file", type=str, default=None, help=argparse.SUPPRESS
+    )
+
     other_group = parser.add_argument_group(title="Miscellaneous")
     other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
     other_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
@@ -1149,7 +1212,7 @@ def process_options(
     parser.add_argument("--test-env", action="store_true", help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
-    parser.add_argument("--local-partial-types", action="store_true", help=argparse.SUPPRESS)
+    add_invertible_flag("--local-partial-types", default=False, help=argparse.SUPPRESS)
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
     # type precision in a code base. It also _removes_ some deps, so this flag should be never
@@ -1208,6 +1271,15 @@ def process_options(
             "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'. "
             "May be specified more than once, eg. --exclude a --exclude b"
         ),
+    )
+    add_invertible_flag(
+        "--exclude-gitignore",
+        default=False,
+        help=(
+            "Use .gitignore file(s) to exclude files from checking "
+            "(in addition to any explicit --exclude if present)"
+        ),
+        group=code_group,
     )
     code_group.add_argument(
         "-m",
@@ -1334,6 +1406,7 @@ def process_options(
         )
 
     validate_package_allow_list(options.untyped_calls_exclude)
+    validate_package_allow_list(options.deprecated_calls_exclude)
 
     options.process_error_codes(error_callback=parser.error)
     options.process_incomplete_features(error_callback=parser.error, warning_callback=print)
@@ -1368,6 +1441,11 @@ def process_options(
             parser.error("--cache-map is incompatible with --sqlite-cache")
 
         process_cache_map(parser, special_opts, options)
+
+    # Process --strict-bytes
+    if options.strict_bytes:
+        options.disable_bytearray_promotion = True
+        options.disable_memoryview_promotion = True
 
     # An explicitly specified cache_fine_grained implies local_partial_types
     # (because otherwise the cache is not compatible with dmypy)
@@ -1406,7 +1484,15 @@ def process_options(
                 fail(f"Package name '{p}' cannot have a slash in it.", stderr, options)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail(f"Can't find package '{p}'", stderr, options)
+                reason = cache.find_module(p)
+                if reason is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
+                    fail(
+                        f"Package '{p}' cannot be type checked due to missing py.typed marker. See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
+                        stderr,
+                        options,
+                    )
+                else:
+                    fail(f"Can't find package '{p}'", stderr, options)
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
@@ -1457,7 +1543,7 @@ def process_package_roots(
                 root = ""
         package_root.append(root)
     options.package_root = package_root
-    # Pass the package root on the the filesystem cache.
+    # Pass the package root on the filesystem cache.
     fscache.set_package_root(package_root)
 
 
@@ -1527,8 +1613,9 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]
                 + "(and no cache from previous mypy run)\n"
             )
         else:
-            sys.stderr.write("error: --install-types failed (no mypy cache directory)\n")
-        sys.exit(2)
+            sys.stderr.write(
+                "error: --install-types failed (an error blocked analysis of which types to install)\n"
+            )
     fnam = build.missing_stubs_file(cache_dir)
     if not os.path.isfile(fnam):
         # No missing stubs.

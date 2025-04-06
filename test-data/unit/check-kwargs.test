@@ -345,7 +345,7 @@ from typing import Mapping
 class MappingSubclass(Mapping[str, str]): pass
 def f(**kwargs: 'A') -> None: pass
 d: MappingSubclass
-f(**d)
+f(**d)  # E: Argument 1 to "f" has incompatible type "**MappingSubclass"; expected "A"
 class A: pass
 [builtins fixtures/dict.pyi]
 
@@ -358,6 +358,9 @@ f(**d)         # E: Keywords must be strings
 f(**A())       # E: Argument after ** must be a mapping, not "A"
 kwargs: Optional[Any]
 f(**kwargs)    # E: Argument after ** must be a mapping, not "Optional[Any]"
+
+def g(a: int) -> None: pass
+g(a=1, **4)  # E: Argument after ** must be a mapping, not "int"
 [builtins fixtures/dict.pyi]
 
 [case testPassingKeywordVarArgsToNonVarArgsFunction]

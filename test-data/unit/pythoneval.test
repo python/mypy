@@ -11,56 +11,86 @@ print('hello, world')
 [out]
 hello, world
 
-[case testReversed]
+[case testMiscStdlibFeatures]
+# Various legacy tests merged together to speed up test runtimes.
+
+def f(x: object) -> None: pass
+
+# testReversed
 from typing import Reversible
-class A(Reversible):
+class R(Reversible):
     def __iter__(self): return iter('oof')
     def __reversed__(self): return iter('foo')
-print(list(reversed(range(5))))
-print(list(reversed([1,2,3])))
-print(list(reversed('abc')))
-print(list(reversed(A())))
-[out]
--- Escape bracket at line beginning
-\[4, 3, 2, 1, 0]
-\[3, 2, 1]
-\['c', 'b', 'a']
-\['f', 'o', 'o']
+f(list(reversed(range(5))))
+f(list(reversed([1,2,3])))
+f(list(reversed('abc')))
+f(list(reversed(R())))
 
-[case testIntAndFloatConversion]
+# testIntAndFloatConversion
 from typing import SupportsInt, SupportsFloat
 class A(SupportsInt):
     def __int__(self): return 5
 class B(SupportsFloat):
     def __float__(self): return 1.2
-print(int(1))
-print(int(6.2))
-print(int('3'))
-print(int(b'4'))
-print(int(A()))
-print(float(-9))
-print(float(B()))
-[out]
-1
-6
-3
-4
-5
--9.0
-1.2
+f(int(1))
+f(int(6.2))
+f(int('3'))
+f(int(b'4'))
+f(int(A()))
+f(float(-9))
+f(float(B()))
 
-[case testAbs]
+# testAbs
 from typing import SupportsAbs
-class A(SupportsAbs[float]):
+class Ab(SupportsAbs[float]):
     def __abs__(self) -> float: return 5.5
 
-print(abs(-1))
-print(abs(-1.2))
-print(abs(A()))
-[out]
-1
-1.2
-5.5
+f(abs(-1))
+f(abs(-1.2))
+f(abs(Ab()))
+
+# testRound
+from typing import SupportsRound
+class Ro(SupportsRound):
+    def __round__(self, ndigits=0): return 'x%d' % ndigits
+f(round(1.6))
+f(round(Ro()))
+f(round(Ro(), 2))
+
+# testCallMethodViaTypeObject
+list.__add__([1, 2], [3, 4])
+
+# testInheritedClassAttribute
+import typing
+class AA:
+    x = 1
+    def f(self: typing.Optional["AA"]) -> None: pass
+class BB(AA):
+    pass
+BB.f(None)
+f(BB.x)
+
+# testSpecialAttributes
+class Doc:
+    """A docstring!"""
+f(Doc().__doc__)
+f(Doc().__class__)
+
+# testFunctionAttributes
+f(ord.__class__)
+f(type(ord.__doc__ or '' + ''))
+f(ord.__name__)
+f(ord.__module__)
+
+# testModuleAttributes
+import math
+f(type(__spec__))
+f(math.__name__)
+f(math.__spec__.name)
+f(type(math.__dict__))
+f(type(math.__doc__ or ''))
+f(type(math.__spec__).__name__)
+f(math.__class__)
 
 [case testAbs2]
 n: int
@@ -72,77 +102,6 @@ abs(1.1) + 'x'  # Error
 [out]
 _program.py:4: error: Unsupported operand types for + ("int" and "str")
 _program.py:6: error: Unsupported operand types for + ("float" and "str")
-
-[case testRound]
-from typing import SupportsRound
-class A(SupportsRound):
-    def __round__(self, ndigits=0): return 'x%d' % ndigits
-print(round(1.6))
-print(round(A()))
-print(round(A(), 2))
-[out]
-2
-x0
-x2
-
-[case testCallMethodViaTypeObject]
-import typing
-print(list.__add__([1, 2], [3, 4]))
-[out]
-\[1, 2, 3, 4]
-
-[case testInheritedClassAttribute]
-import typing
-class A:
-    x = 1
-    def f(self: typing.Optional["A"]) -> None: print('f')
-class B(A):
-    pass
-B.f(None)
-print(B.x)
-[out]
-f
-1
-
-[case testModuleAttributes]
-import math
-import typing
-print(type(__spec__))
-print(math.__name__)
-print(math.__spec__.name)
-print(type(math.__dict__))
-print(type(math.__doc__ or ''))
-print(type(math.__spec__).__name__)
-print(math.__class__)
-[out]
-<class 'NoneType'>
-math
-math
-<class 'dict'>
-<class 'str'>
-ModuleSpec
-<class 'module'>
-
-[case testSpecialAttributes]
-import typing
-class A:
-    """A docstring!"""
-print(A().__doc__)
-print(A().__class__)
-[out]
-A docstring!
-<class '__main__.A'>
-
-[case testFunctionAttributes]
-import typing
-ord.__class__
-print(type(ord.__doc__ or '' + ''))
-print(ord.__name__)
-print(ord.__module__)
-[out]
-<class 'str'>
-ord
-builtins
 
 [case testTypeAttributes]
 import typing
@@ -283,7 +242,7 @@ f.write('x')
 f.write(b'x')
 f.foobar()
 [out]
-_program.py:3: error: Argument 1 to "write" of "TextIOBase" has incompatible type "bytes"; expected "str"
+_program.py:3: error: Argument 1 to "write" of "_TextIOBase" has incompatible type "bytes"; expected "str"
 _program.py:4: error: "TextIOWrapper[_WrappedBuffer]" has no attribute "foobar"
 
 [case testOpenReturnTypeInference]
@@ -293,9 +252,9 @@ reveal_type(open('x', 'rb'))
 mode = 'rb'
 reveal_type(open('x', mode))
 [out]
-_program.py:1: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
-_program.py:2: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
-_program.py:3: note: Revealed type is "io.BufferedReader"
+_program.py:1: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
+_program.py:2: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
+_program.py:3: note: Revealed type is "_io.BufferedReader"
 _program.py:5: note: Revealed type is "typing.IO[Any]"
 
 [case testOpenReturnTypeInferenceSpecialCases]
@@ -304,8 +263,8 @@ reveal_type(open(file='x', mode='rb'))
 mode = 'rb'
 reveal_type(open(mode=mode, file='r'))
 [out]
-_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is "io.BufferedReader"
-_testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is "io.BufferedReader"
+_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is "_io.BufferedReader"
+_testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is "_io.BufferedReader"
 _testOpenReturnTypeInferenceSpecialCases.py:4: note: Revealed type is "typing.IO[Any]"
 
 [case testPathOpenReturnTypeInference]
@@ -317,9 +276,9 @@ reveal_type(p.open('rb'))
 mode = 'rb'
 reveal_type(p.open(mode))
 [out]
-_program.py:3: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
-_program.py:4: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
-_program.py:5: note: Revealed type is "io.BufferedReader"
+_program.py:3: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
+_program.py:4: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
+_program.py:5: note: Revealed type is "_io.BufferedReader"
 _program.py:7: note: Revealed type is "typing.IO[Any]"
 
 [case testPathOpenReturnTypeInferenceSpecialCases]
@@ -330,8 +289,8 @@ reveal_type(p.open(errors='replace', mode='r'))
 mode = 'r'
 reveal_type(p.open(mode=mode, errors='replace'))
 [out]
-_program.py:3: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
-_program.py:4: note: Revealed type is "io.TextIOWrapper[io._WrappedBuffer]"
+_program.py:3: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
+_program.py:4: note: Revealed type is "_io.TextIOWrapper[_io._WrappedBuffer]"
 _program.py:6: note: Revealed type is "typing.IO[Any]"
 
 [case testGenericPatterns]
@@ -864,7 +823,7 @@ class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
-_program.py:7: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Optional[Callable[[], str]]"
+_program.py:7: error: Argument 1 to "defaultdict" has incompatible type "Type[List[_T]]"; expected "Optional[Callable[[], str]]"
 _program.py:10: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
 _program.py:10: error: Incompatible types in assignment (expression has type "int", target has type "str")
 _program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[Never]]"; expected "defaultdict[int, List[Never]]"
@@ -954,7 +913,7 @@ a = []  # type: List[Dict[str, str]]
 sorted(a, key=lambda y: y[''])
 
 [case testAbstractProperty]
-from abc import abstractproperty, ABCMeta
+from abc import abstractproperty, ABCMeta  # type: ignore[deprecated]
 class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self) -> int: pass
@@ -1067,14 +1026,14 @@ reveal_type(g)
 with f('') as s:
     reveal_type(s)
 [out]
-_program.py:13: note: Revealed type is "def (x: builtins.int) -> contextlib._GeneratorContextManager[builtins.str]"
-_program.py:14: note: Revealed type is "def (*x: builtins.str) -> contextlib._GeneratorContextManager[builtins.int]"
+_program.py:13: note: Revealed type is "def (x: builtins.int) -> contextlib._GeneratorContextManager[builtins.str, None, None]"
+_program.py:14: note: Revealed type is "def (*x: builtins.str) -> contextlib._GeneratorContextManager[builtins.int, None, None]"
 _program.py:16: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 _program.py:17: note: Revealed type is "builtins.str"
 
 [case testTypedDictGet]
 # Test that TypedDict get plugin works with typeshed stubs
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
@@ -1095,7 +1054,7 @@ _testTypedDictGet.py:9: note:     def [_T] get(self, str, /, default: object) ->
 _testTypedDictGet.py:11: note: Revealed type is "builtins.object"
 
 [case testTypedDictMappingMethods]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Cell = TypedDict('Cell', {'value': int})
 c = Cell(value=42)
 for x in c:
@@ -1139,8 +1098,7 @@ def foo(mymap) -> Optional[MyNamedTuple]:
 [out]
 
 [case testCanConvertTypedDictToAnySuperclassOfMapping]
-from mypy_extensions import TypedDict
-from typing import Sized, Iterable, Container
+from typing import Sized, TypedDict, Iterable, Container
 
 Point = TypedDict('Point', {'x': int, 'y': int})
 
@@ -1151,12 +1109,12 @@ c: Container[str] = p
 o: object = p
 it2: Iterable[int] = p
 [out]
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note: Following member(s) of "Point" have conflicts:
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Expected:
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[int]
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Got:
-_testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[str]
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note: Following member(s) of "Point" have conflicts:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:     Expected:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:         def __iter__(self) -> Iterator[int]
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:     Got:
+_testCanConvertTypedDictToAnySuperclassOfMapping.py:10: note:         def __iter__(self) -> Iterator[str]
 
 [case testAsyncioGatherPreciseType-xfail]
 # Mysteriously regressed in #11905
@@ -1548,24 +1506,24 @@ note: A user-defined top-level module with name "typing" is not supported
 # flags: --ignore-missing-imports
 import scribe  # No Python 3 stubs available for scribe
 from scribe import x
-import python2  # Python 3 stubs available for python2
+import pytz  # Python 3 stubs available for pytz
 import foobar_asdf
 import jack  # This has a stubs package but was never bundled with mypy, so ignoring works
 [out]
-_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "python2"
-_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-six"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "pytz"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-pytz"
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: (or run "mypy --install-types" to install all missing stub packages)
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testNoPython3StubAvailable]
 import scribe
 from scribe import x
-import python2
+import pytz
 [out]
 _testNoPython3StubAvailable.py:1: error: Cannot find implementation or library stub for module named "scribe"
 _testNoPython3StubAvailable.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "python2"
-_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-six"
+_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "pytz"
+_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-pytz"
 _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to install all missing stub packages)
 
 
@@ -1595,18 +1553,6 @@ if isinstance(obj, Awaitable):
 [out]
 _testSpecialTypingProtocols.py:6: note: Revealed type is "Tuple[builtins.int]"
 _testSpecialTypingProtocols.py:8: error: Statement is unreachable
-
-[case testEnumValueWithPlaceholderNodeType]
-# https://github.com/python/mypy/issues/11971
-from enum import Enum
-from typing import Callable, Dict
-class Foo(Enum):
-    Bar: Foo = Callable[[str], None]
-    Baz: Foo = Callable[[Dict[str, "Missing"]], None]
-[out]
-_testEnumValueWithPlaceholderNodeType.py:5: error: Incompatible types in assignment (expression has type "<typing special form>", variable has type "Foo")
-_testEnumValueWithPlaceholderNodeType.py:6: error: Incompatible types in assignment (expression has type "<typing special form>", variable has type "Foo")
-_testEnumValueWithPlaceholderNodeType.py:6: error: Name "Missing" is not defined
 
 [case testTypeshedRecursiveTypesExample]
 from typing import List, Union
@@ -1705,8 +1651,8 @@ f: m.F
 reveal_type(f)
 
 [file m.pyi]
-from typing import Type, Callable
-from typing_extensions import Literal, TypeAlias
+from typing import Type, Callable, Literal
+from typing_extensions import TypeAlias
 
 Foo = Literal[1, 2]
 reveal_type(Foo)
@@ -2099,7 +2045,7 @@ def f(d: Description) -> None:
 _testDataclassStrictOptionalAlwaysSet.py:9: note: Revealed type is "def (Union[builtins.int, None]) -> Union[builtins.str, None]"
 
 [case testPEP695VarianceInference]
-# flags: --python-version=3.12 --enable-incomplete-feature=NewGenericSyntax
+# flags: --python-version=3.12
 from typing import Callable, Final
 
 class Job[_R_co]:
@@ -2120,7 +2066,7 @@ def func(
 _testPEP695VarianceInference.py:17: error: Incompatible types in assignment (expression has type "Job[None]", variable has type "Job[int]")
 
 [case testPEP695TypeAliasWithDifferentTargetTypes]
-# flags: --python-version=3.12 --enable-incomplete-feature=NewGenericSyntax
+# flags: --python-version=3.12
 from typing import Any, Callable, List, Literal, TypedDict, overload, TypeAlias, TypeVar, Never
 
 class C[T]: pass
@@ -2196,3 +2142,51 @@ type K4 = None | B[int]
 
 type L1 = Never
 type L2 = list[Never]
+
+[case testPEP695VarianceInferenceSpecialCaseWithTypeshed]
+# flags: --python-version=3.12
+class C1[T1, T2](list[T1]):
+    def m(self, a: T2) -> None: ...
+
+def func1(p: C1[int, object]):
+    x: C1[int, int] = p
+
+class C2[T1, T2, T3](dict[T2, T3]):
+    def m(self, a: T1) -> None: ...
+
+def func2(p: C2[object, int, int]):
+    x: C2[int, int, int] = p
+
+class C3[T1, T2](tuple[T1, ...]):
+    def m(self, a: T2) -> None: ...
+
+def func3(p: C3[int, object]):
+    x: C3[int, int] = p
+
+
+[case testDynamicClassAttribute]
+# Some things that can break if DynamicClassAttribute isn't handled properly
+from types import DynamicClassAttribute
+from enum import Enum
+
+class TestClass:
+    @DynamicClassAttribute
+    def name(self) -> str: ...
+
+class TestClass2(TestClass, Enum): ...
+
+class Status(Enum):
+    ABORTED = -1
+
+def imperfect(status: Status) -> str:
+    return status.name.lower()
+
+[case testUnpackIteratorBuiltins]
+# Regression test for https://github.com/python/mypy/issues/18320
+# Caused by https://github.com/python/typeshed/pull/12851
+x = [1, 2]
+reveal_type([*reversed(x)])
+reveal_type([*map(str, x)])
+[out]
+_testUnpackIteratorBuiltins.py:4: note: Revealed type is "builtins.list[builtins.int]"
+_testUnpackIteratorBuiltins.py:5: note: Revealed type is "builtins.list[builtins.str]"

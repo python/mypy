@@ -134,10 +134,10 @@ method_op(
 
 # This is unsafe because it assumes that the index is a non-negative short integer
 # that is in-bounds for the list.
-list_get_item_unsafe_op = custom_op(
+list_get_item_unsafe_op = custom_primitive_op(
+    name="list_get_item_unsafe",
     arg_types=[list_rprimitive, short_int_rprimitive],
     return_type=object_rprimitive,
-    c_function_name="CPyList_GetItemUnsafe",
     error_kind=ERR_NEVER,
 )
 
@@ -259,6 +259,33 @@ method_op(
     arg_types=[list_rprimitive, object_rprimitive],
     return_type=int_rprimitive,
     c_function_name="CPyList_Index",
+    error_kind=ERR_MAGIC,
+)
+
+# list.copy()
+method_op(
+    name="copy",
+    arg_types=[list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="CPyList_Copy",
+    error_kind=ERR_MAGIC,
+)
+
+# list + list
+binary_op(
+    name="+",
+    arg_types=[list_rprimitive, list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="PySequence_Concat",
+    error_kind=ERR_MAGIC,
+)
+
+# list += list
+binary_op(
+    name="+=",
+    arg_types=[list_rprimitive, object_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="PySequence_InPlaceConcat",
     error_kind=ERR_MAGIC,
 )
 

@@ -1,5 +1,4 @@
 [case testTypeVarDefaultsBasic]
-import builtins
 from typing import Generic, TypeVar, ParamSpec, Callable, Tuple, List
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -10,7 +9,7 @@ Ts1 = TypeVarTuple("Ts1", default=Unpack[Tuple[int, str]])
 def f1(a: T1) -> List[T1]: ...
 reveal_type(f1)  # N: Revealed type is "def [T1 = builtins.int] (a: T1`-1 = builtins.int) -> builtins.list[T1`-1 = builtins.int]"
 
-def f2(a: Callable[P1, None] ) -> Callable[P1, None]: ...
+def f2(a: Callable[P1, None]) -> Callable[P1, None]: ...
 reveal_type(f2)  # N: Revealed type is "def [P1 = [builtins.int, builtins.str]] (a: def (*P1.args, **P1.kwargs)) -> def (*P1.args, **P1.kwargs)"
 
 def f3(a: Tuple[Unpack[Ts1]]) -> Tuple[Unpack[Ts1]]: ...
@@ -68,7 +67,7 @@ P2 = ParamSpec("P2", default=2)  # E: The default argument to ParamSpec must be 
 P3 = ParamSpec("P3", default=(2, int))  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
 P4 = ParamSpec("P4", default=[2, int])  # E: Argument 0 of ParamSpec default must be a type
 
-Ts1 = TypeVarTuple("Ts1", default=2) # E: The default argument to TypeVarTuple must be an Unpacked tuple
+Ts1 = TypeVarTuple("Ts1", default=2)  # E: The default argument to TypeVarTuple must be an Unpacked tuple
 Ts2 = TypeVarTuple("Ts2", default=int)  # E: The default argument to TypeVarTuple must be an Unpacked tuple
 Ts3 = TypeVarTuple("Ts3", default=Tuple[int])  # E: The default argument to TypeVarTuple must be an Unpacked tuple
 [builtins fixtures/tuple.pyi]
@@ -181,8 +180,8 @@ reveal_type(func_b1(callback1))  # N: Revealed type is "def (x: builtins.str)"
 reveal_type(func_b1(2))  # N: Revealed type is "def (builtins.int, builtins.str)"
 
 def func_c1(x: Union[int, Callable[[Unpack[Ts1]], None]]) -> Tuple[Unpack[Ts1]]: ...
-# reveal_type(func_c1(callback1))  # Revealed type is "builtins.tuple[str]"  # TODO
-# reveal_type(func_c1(2))  # Revealed type is "builtins.tuple[builtins.int, builtins.str]"  # TODO
+# reveal_type(func_c1(callback1))  # Revealed type is "Tuple[str]"  # TODO
+reveal_type(func_c1(2))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarDefaultsClass1]
@@ -717,3 +716,36 @@ def func_d3(
     reveal_type(c)  # N: Revealed type is "__main__.B[__main__.A[builtins.dict[builtins.int, builtins.float]]]"
     reveal_type(d)  # N: Revealed type is "__main__.B[builtins.int]"
 [builtins fixtures/dict.pyi]
+
+[case testTypeVarDefaultsAndTypeObjectTypeInUnion]
+from __future__ import annotations
+from typing import Generic
+from typing_extensions import TypeVar
+
+_I = TypeVar("_I", default=int)
+
+class C(Generic[_I]): pass
+
+t: type[C] | int = C
+[builtins fixtures/tuple.pyi]
+
+
+
+[case testGenericTypeAliasWithDefaultTypeVarPreservesNoneInDefault]
+from typing_extensions import TypeVar
+from typing import Generic, Union
+
+T1 = TypeVar("T1", default=Union[int, None])
+T2 = TypeVar("T2", default=Union[int, None])
+
+
+class A(Generic[T1, T2]):
+    def __init__(self, a: T1, b: T2) -> None:
+        self.a = a
+        self.b = b
+
+
+MyA = A[T1, int]
+a: MyA = A(None, 10)
+reveal_type(a.a)  # N: Revealed type is "Union[builtins.int, None]"
+[builtins fixtures/tuple.pyi]

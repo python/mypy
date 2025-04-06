@@ -1,0 +1,324 @@
+From abc5225e3c69d7ae8f3388c87260fe496efaecac Mon Sep 17 00:00:00 2001
+From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
+Date: Sat, 21 Dec 2024 22:36:38 +0100
+Subject: [PATCH] Revert Remove redundant inheritances from Iterator in
+ builtins
+
+---
+ mypy/typeshed/stdlib/_asyncio.pyi             |  4 +-
+ mypy/typeshed/stdlib/builtins.pyi             | 10 ++---
+ mypy/typeshed/stdlib/csv.pyi                  |  4 +-
+ mypy/typeshed/stdlib/fileinput.pyi            |  6 +--
+ mypy/typeshed/stdlib/itertools.pyi            | 38 +++++++++----------
+ mypy/typeshed/stdlib/multiprocessing/pool.pyi |  4 +-
+ mypy/typeshed/stdlib/sqlite3/__init__.pyi     |  2 +-
+ 7 files changed, 34 insertions(+), 34 deletions(-)
+
+diff --git a/mypy/typeshed/stdlib/_asyncio.pyi b/mypy/typeshed/stdlib/_asyncio.pyi
+index 89cdff6cc..1397e579d 100644
+--- a/mypy/typeshed/stdlib/_asyncio.pyi
++++ b/mypy/typeshed/stdlib/_asyncio.pyi
+@@ -1,6 +1,6 @@
+ import sys
+ from asyncio.events import AbstractEventLoop
+-from collections.abc import Awaitable, Callable, Coroutine, Generator
++from collections.abc import Awaitable, Callable, Coroutine, Generator, Iterable
+ from contextvars import Context
+ from types import FrameType
+ from typing import Any, Literal, TextIO, TypeVar
+@@ -13,7 +13,7 @@ _T = TypeVar("_T")
+ _T_co = TypeVar("_T_co", covariant=True)
+ _TaskYieldType: TypeAlias = Future[object] | None
+
+-class Future(Awaitable[_T]):
++class Future(Awaitable[_T], Iterable[_T]):
+     _state: str
+     @property
+     def _exception(self) -> BaseException | None: ...
+diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
+index b75e34fc5..526406acc 100644
+--- a/mypy/typeshed/stdlib/builtins.pyi
++++ b/mypy/typeshed/stdlib/builtins.pyi
+@@ -1130,7 +1130,7 @@ class frozenset(AbstractSet[_T_co]):
+     if sys.version_info >= (3, 9):
+         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+
+-class enumerate(Generic[_T]):
++class enumerate(Iterator[tuple[int, _T]]):
+     def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> tuple[int, _T]: ...
+@@ -1324,7 +1324,7 @@ else:
+
+ exit: _sitebuiltins.Quitter
+
+-class filter(Generic[_T]):
++class filter(Iterator[_T]):
+     @overload
+     def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
+     @overload
+@@ -1389,7 +1389,7 @@ license: _sitebuiltins._Printer
+
+ def locals() -> dict[str, Any]: ...
+
+-class map(Generic[_S]):
++class map(Iterator[_S]):
+     @overload
+     def __new__(cls, func: Callable[[_T1], _S], iterable: Iterable[_T1], /) -> Self: ...
+     @overload
+@@ -1632,7 +1632,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
+
+ quit: _sitebuiltins.Quitter
+
+-class reversed(Generic[_T]):
++class reversed(Iterator[_T]):
+     @overload
+     def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
+     @overload
+@@ -1693,7 +1693,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
+ @overload
+ def vars(object: Any = ..., /) -> dict[str, Any]: ...
+
+-class zip(Generic[_T_co]):
++class zip(Iterator[_T_co]):
+     if sys.version_info >= (3, 10):
+         @overload
+         def __new__(cls, *, strict: bool = ...) -> zip[Any]: ...
+diff --git a/mypy/typeshed/stdlib/csv.pyi b/mypy/typeshed/stdlib/csv.pyi
+index 4a82de638..ef93129d6 100644
+--- a/mypy/typeshed/stdlib/csv.pyi
++++ b/mypy/typeshed/stdlib/csv.pyi
+@@ -25,7 +25,7 @@ else:
+     from _csv import _reader as Reader, _writer as Writer
+
+ from _typeshed import SupportsWrite
+-from collections.abc import Collection, Iterable, Mapping, Sequence
++from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
+ from typing import Any, Generic, Literal, TypeVar, overload
+ from typing_extensions import Self
+
+@@ -75,7 +75,7 @@ class excel(Dialect): ...
+ class excel_tab(excel): ...
+ class unix_dialect(Dialect): ...
+
+-class DictReader(Generic[_T]):
++class DictReader(Iterator[dict[_T | Any, str | Any]], Generic[_T]):
+     fieldnames: Sequence[_T] | None
+     restkey: _T | None
+     restval: str | Any | None
+diff --git a/mypy/typeshed/stdlib/fileinput.pyi b/mypy/typeshed/stdlib/fileinput.pyi
+index bf6daad0a..1e6aa78e2 100644
+--- a/mypy/typeshed/stdlib/fileinput.pyi
++++ b/mypy/typeshed/stdlib/fileinput.pyi
+@@ -1,8 +1,8 @@
+ import sys
+ from _typeshed import AnyStr_co, StrOrBytesPath
+-from collections.abc import Callable, Iterable
++from collections.abc import Callable, Iterable, Iterator
+ from types import TracebackType
+-from typing import IO, Any, AnyStr, Generic, Literal, Protocol, overload
++from typing import IO, Any, AnyStr, Literal, Protocol, overload
+ from typing_extensions import Self, TypeAlias
+
+ if sys.version_info >= (3, 9):
+@@ -107,7 +107,7 @@ def fileno() -> int: ...
+ def isfirstline() -> bool: ...
+ def isstdin() -> bool: ...
+
+-class FileInput(Generic[AnyStr]):
++class FileInput(Iterator[AnyStr]):
+     if sys.version_info >= (3, 10):
+         # encoding and errors are added
+         @overload
+diff --git a/mypy/typeshed/stdlib/itertools.pyi b/mypy/typeshed/stdlib/itertools.pyi
+index 55b0814ac..675533d44 100644
+--- a/mypy/typeshed/stdlib/itertools.pyi
++++ b/mypy/typeshed/stdlib/itertools.pyi
+@@ -29,7 +29,7 @@ _Predicate: TypeAlias = Callable[[_T], object]
+
+ # Technically count can take anything that implements a number protocol and has an add method
+ # but we can't enforce the add method
+-class count(Generic[_N]):
++class count(Iterator[_N]):
+     @overload
+     def __new__(cls) -> count[int]: ...
+     @overload
+@@ -39,12 +39,12 @@ class count(Generic[_N]):
+     def __next__(self) -> _N: ...
+     def __iter__(self) -> Self: ...
+
+-class cycle(Generic[_T]):
++class cycle(Iterator[_T]):
+     def __new__(cls, iterable: Iterable[_T], /) -> Self: ...
+     def __next__(self) -> _T: ...
+     def __iter__(self) -> Self: ...
+
+-class repeat(Generic[_T]):
++class repeat(Iterator[_T]):
+     @overload
+     def __new__(cls, object: _T) -> Self: ...
+     @overload
+@@ -53,7 +53,7 @@ class repeat(Generic[_T]):
+     def __iter__(self) -> Self: ...
+     def __length_hint__(self) -> int: ...
+
+-class accumulate(Generic[_T]):
++class accumulate(Iterator[_T]):
+     @overload
+     def __new__(cls, iterable: Iterable[_T], func: None = None, *, initial: _T | None = ...) -> Self: ...
+     @overload
+@@ -61,7 +61,7 @@ class accumulate(Generic[_T]):
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T: ...
+
+-class chain(Generic[_T]):
++class chain(Iterator[_T]):
+     def __new__(cls, *iterables: Iterable[_T]) -> Self: ...
+     def __next__(self) -> _T: ...
+     def __iter__(self) -> Self: ...
+@@ -71,22 +71,22 @@ class chain(Generic[_T]):
+     if sys.version_info >= (3, 9):
+         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+
+-class compress(Generic[_T]):
++class compress(Iterator[_T]):
+     def __new__(cls, data: Iterable[_T], selectors: Iterable[Any]) -> Self: ...
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T: ...
+
+-class dropwhile(Generic[_T]):
++class dropwhile(Iterator[_T]):
+     def __new__(cls, predicate: _Predicate[_T], iterable: Iterable[_T], /) -> Self: ...
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T: ...
+
+-class filterfalse(Generic[_T]):
++class filterfalse(Iterator[_T]):
+     def __new__(cls, function: _Predicate[_T] | None, iterable: Iterable[_T], /) -> Self: ...
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T: ...
+
+-class groupby(Generic[_T_co, _S_co]):
++class groupby(Iterator[tuple[_T_co, Iterator[_S_co]]], Generic[_T_co, _S_co]):
+     @overload
+     def __new__(cls, iterable: Iterable[_T1], key: None = None) -> groupby[_T1, _T1]: ...
+     @overload
+@@ -94,7 +94,7 @@ class groupby(Generic[_T_co, _S_co]):
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> tuple[_T_co, Iterator[_S_co]]: ...
+
+-class islice(Generic[_T]):
++class islice(Iterator[_T]):
+     @overload
+     def __new__(cls, iterable: Iterable[_T], stop: int | None, /) -> Self: ...
+     @overload
+@@ -102,19 +102,19 @@ class islice(Generic[_T]):
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T: ...
+
+-class starmap(Generic[_T_co]):
++class starmap(Iterator[_T_co]):
+     def __new__(cls, function: Callable[..., _T], iterable: Iterable[Iterable[Any]], /) -> starmap[_T]: ...
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T_co: ...
+
+-class takewhile(Generic[_T]):
++class takewhile(Iterator[_T]):
+     def __new__(cls, predicate: _Predicate[_T], iterable: Iterable[_T], /) -> Self: ...
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T: ...
+
+ def tee(iterable: Iterable[_T], n: int = 2, /) -> tuple[Iterator[_T], ...]: ...
+
+-class zip_longest(Generic[_T_co]):
++class zip_longest(Iterator[_T_co]):
+     # one iterable (fillvalue doesn't matter)
+     @overload
+     def __new__(cls, iter1: Iterable[_T1], /, *, fillvalue: object = ...) -> zip_longest[tuple[_T1]]: ...
+@@ -192,7 +192,7 @@ class zip_longest(Generic[_T_co]):
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T_co: ...
+
+-class product(Generic[_T_co]):
++class product(Iterator[_T_co]):
+     @overload
+     def __new__(cls, iter1: Iterable[_T1], /) -> product[tuple[_T1]]: ...
+     @overload
+@@ -277,7 +277,7 @@ class product(Generic[_T_co]):
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T_co: ...
+
+-class permutations(Generic[_T_co]):
++class permutations(Iterator[_T_co]):
+     @overload
+     def __new__(cls, iterable: Iterable[_T], r: Literal[2]) -> permutations[tuple[_T, _T]]: ...
+     @overload
+@@ -291,7 +291,7 @@ class permutations(Generic[_T_co]):
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T_co: ...
+
+-class combinations(Generic[_T_co]):
++class combinations(Iterator[_T_co]):
+     @overload
+     def __new__(cls, iterable: Iterable[_T], r: Literal[2]) -> combinations[tuple[_T, _T]]: ...
+     @overload
+@@ -305,7 +305,7 @@ class combinations(Generic[_T_co]):
+     def __iter__(self) -> Self: ...
+     def __next__(self) -> _T_co: ...
+
+-class combinations_with_replacement(Generic[_T_co]):
++class combinations_with_replacement(Iterator[_T_co]):
+     @overload
+     def __new__(cls, iterable: Iterable[_T], r: Literal[2]) -> combinations_with_replacement[tuple[_T, _T]]: ...
+     @overload
+@@ -320,13 +320,13 @@ class combinations_with_replacement(Generic[_T_co]):
+     def __next__(self) -> _T_co: ...
+
+ if sys.version_info >= (3, 10):
+-    class pairwise(Generic[_T_co]):
++    class pairwise(Iterator[_T_co]):
+         def __new__(cls, iterable: Iterable[_T], /) -> pairwise[tuple[_T, _T]]: ...
+         def __iter__(self) -> Self: ...
+         def __next__(self) -> _T_co: ...
+
+ if sys.version_info >= (3, 12):
+-    class batched(Generic[_T_co]):
++    class batched(Iterator[tuple[_T_co, ...]], Generic[_T_co]):
+         if sys.version_info >= (3, 13):
+             def __new__(cls, iterable: Iterable[_T_co], n: int, *, strict: bool = False) -> Self: ...
+         else:
+diff --git a/mypy/typeshed/stdlib/multiprocessing/pool.pyi b/mypy/typeshed/stdlib/multiprocessing/pool.pyi
+index 2937d45e3..93197e5d4 100644
+--- a/mypy/typeshed/stdlib/multiprocessing/pool.pyi
++++ b/mypy/typeshed/stdlib/multiprocessing/pool.pyi
+@@ -1,5 +1,5 @@
+ import sys
+-from collections.abc import Callable, Iterable, Mapping
++from collections.abc import Callable, Iterable, Iterator, Mapping
+ from multiprocessing.context import DefaultContext, Process
+ from types import TracebackType
+ from typing import Any, Final, Generic, TypeVar
+@@ -37,7 +37,7 @@ class MapResult(ApplyResult[list[_T]]):
+         error_callback: Callable[[BaseException], object] | None,
+     ) -> None: ...
+
+-class IMapIterator(Generic[_T]):
++class IMapIterator(Iterator[_T]):
+     def __init__(self, pool: Pool) -> None: ...
+     def __iter__(self) -> Self: ...
+     def next(self, timeout: float | None = None) -> _T: ...
+diff --git a/mypy/typeshed/stdlib/sqlite3/__init__.pyi b/mypy/typeshed/stdlib/sqlite3/__init__.pyi
+index b83516b4d..724bc3166 100644
+--- a/mypy/typeshed/stdlib/sqlite3/__init__.pyi
++++ b/mypy/typeshed/stdlib/sqlite3/__init__.pyi
+@@ -397,7 +397,7 @@ class Connection:
+         self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None, /
+     ) -> Literal[False]: ...
+
+-class Cursor:
++class Cursor(Iterator[Any]):
+     arraysize: int
+     @property
+     def connection(self) -> Connection: ...
+--
+2.47.1

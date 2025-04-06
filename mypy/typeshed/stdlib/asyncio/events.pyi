@@ -1,8 +1,15 @@
 import ssl
 import sys
+from _asyncio import (
+    _get_running_loop as _get_running_loop,
+    _set_running_loop as _set_running_loop,
+    get_event_loop as get_event_loop,
+    get_running_loop as get_running_loop,
+)
 from _typeshed import FileDescriptorLike, ReadableBuffer, StrPath, Unused, WriteableBuffer
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Sequence
+from concurrent.futures import Executor
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Literal, Protocol, TypeVar, overload
@@ -16,6 +23,7 @@ from .tasks import Task
 from .transports import BaseTransport, DatagramTransport, ReadTransport, SubprocessTransport, Transport, WriteTransport
 from .unix_events import AbstractChildWatcher
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 14):
     __all__ = (
         "AbstractEventLoopPolicy",
@@ -181,9 +189,9 @@ class AbstractEventLoop:
         def call_soon_threadsafe(self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> Handle: ...
 
     @abstractmethod
-    def run_in_executor(self, executor: Any, func: Callable[[Unpack[_Ts]], _T], *args: Unpack[_Ts]) -> Future[_T]: ...
+    def run_in_executor(self, executor: Executor | None, func: Callable[[Unpack[_Ts]], _T], *args: Unpack[_Ts]) -> Future[_T]: ...
     @abstractmethod
-    def set_default_executor(self, executor: Any) -> None: ...
+    def set_default_executor(self, executor: Executor) -> None: ...
     # Network I/O methods returning Futures.
     @abstractmethod
     async def getaddrinfo(
@@ -632,7 +640,6 @@ class BaseDefaultEventLoopPolicy(AbstractEventLoopPolicy, metaclass=ABCMeta):
 
 def get_event_loop_policy() -> AbstractEventLoopPolicy: ...
 def set_event_loop_policy(policy: AbstractEventLoopPolicy | None) -> None: ...
-def get_event_loop() -> AbstractEventLoop: ...
 def set_event_loop(loop: AbstractEventLoop | None) -> None: ...
 def new_event_loop() -> AbstractEventLoop: ...
 
@@ -646,7 +653,3 @@ if sys.version_info < (3, 14):
     else:
         def get_child_watcher() -> AbstractChildWatcher: ...
         def set_child_watcher(watcher: AbstractChildWatcher) -> None: ...
-
-def _set_running_loop(loop: AbstractEventLoop | None, /) -> None: ...
-def _get_running_loop() -> AbstractEventLoop: ...
-def get_running_loop() -> AbstractEventLoop: ...

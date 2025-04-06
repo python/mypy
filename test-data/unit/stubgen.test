@@ -238,13 +238,24 @@ class C:
     def __init__(self, x: str) -> None: ...
 
 [case testSelfAssignment]
+from mod import A
+from typing import Any, Dict, Union
 class C:
     def __init__(self):
+        self.a: A = A()
         self.x = 1
         x.y = 2
+        self.y: Dict[str, Any] = {}
+        self.z: Union[int, str, bool, None] = None
 [out]
+from mod import A
+from typing import Any
+
 class C:
+    a: A
     x: int
+    y: dict[str, Any]
+    z: int | str | bool | None
     def __init__(self) -> None: ...
 
 [case testSelfAndClassBodyAssignment]
@@ -327,10 +338,24 @@ class A: ...
 class B(A): ...
 
 [case testDecoratedFunction]
+import x
+
 @decorator
 def foo(x): ...
+
+@x.decorator
+def bar(x): ...
+
+@decorator(x=1, y={"a": 1})
+def foo_bar(x): ...
 [out]
+import x
+
+@decorator
 def foo(x) -> None: ...
+@x.decorator
+def bar(x) -> None: ...
+def foo_bar(x) -> None: ...
 
 [case testMultipleAssignment]
 x, y = 1, 2
@@ -1225,6 +1250,7 @@ from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple('Ts')
 class D(Generic[Unpack[Ts]]): ...
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
 [out]
 from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
@@ -1232,12 +1258,15 @@ from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple('Ts')
 
 class D(Generic[Unpack[Ts]]): ...
+
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
 
 [case testGenericClassTypeVarTuple_semanal]
 from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple('Ts')
 class D(Generic[Unpack[Ts]]): ...
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
 [out]
 from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
@@ -1246,29 +1275,37 @@ Ts = TypeVarTuple('Ts')
 
 class D(Generic[Unpack[Ts]]): ...
 
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
+
 [case testGenericClassTypeVarTuplePy311]
 # flags: --python-version=3.11
 from typing import Generic, TypeVarTuple
 Ts = TypeVarTuple('Ts')
 class D(Generic[*Ts]): ...
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
 [out]
 from typing import Generic, TypeVarTuple
 
 Ts = TypeVarTuple('Ts')
 
 class D(Generic[*Ts]): ...
+
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
 
 [case testGenericClassTypeVarTuplePy311_semanal]
 # flags: --python-version=3.11
 from typing import Generic, TypeVarTuple
 Ts = TypeVarTuple('Ts')
 class D(Generic[*Ts]): ...
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
 [out]
 from typing import Generic, TypeVarTuple
 
 Ts = TypeVarTuple('Ts')
 
 class D(Generic[*Ts]): ...
+
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
 
 [case testObjectBaseClass]
 class A(object): ...
@@ -1640,11 +1677,11 @@ def all():
 from _typeshed import Incomplete
 from collections.abc import Generator
 
-def f() -> Generator[Incomplete, None, None]: ...
-def g() -> Generator[None, Incomplete, None]: ...
-def h1() -> Generator[None, None, None]: ...
+def f() -> Generator[Incomplete]: ...
+def g() -> Generator[None, Incomplete]: ...
+def h1() -> Generator[None]: ...
 def h2() -> Generator[None, None, Incomplete]: ...
-def h3() -> Generator[None, None, None]: ...
+def h3() -> Generator[None]: ...
 def all() -> Generator[Incomplete, Incomplete, Incomplete]: ...
 
 [case testFunctionYieldsNone]
@@ -1656,8 +1693,8 @@ def g():
 [out]
 from collections.abc import Generator
 
-def f() -> Generator[None, None, None]: ...
-def g() -> Generator[None, None, None]: ...
+def f() -> Generator[None]: ...
+def g() -> Generator[None]: ...
 
 [case testGeneratorAlreadyDefined]
 class Generator:
@@ -1671,7 +1708,7 @@ from collections.abc import Generator as _Generator
 
 class Generator: ...
 
-def f() -> _Generator[Incomplete, None, None]: ...
+def f() -> _Generator[Incomplete]: ...
 
 [case testGeneratorYieldFrom]
 def g1():
@@ -1692,10 +1729,10 @@ def g5():
 from _typeshed import Incomplete
 from collections.abc import Generator
 
-def g1() -> Generator[Incomplete, Incomplete, None]: ...
-def g2() -> Generator[Incomplete, Incomplete, None]: ...
-def g3() -> Generator[Incomplete, Incomplete, None]: ...
-def g4() -> Generator[Incomplete, Incomplete, None]: ...
+def g1() -> Generator[Incomplete, Incomplete]: ...
+def g2() -> Generator[Incomplete, Incomplete]: ...
+def g3() -> Generator[Incomplete, Incomplete]: ...
+def g4() -> Generator[Incomplete, Incomplete]: ...
 def g5() -> Generator[Incomplete, Incomplete, Incomplete]: ...
 
 [case testGeneratorYieldAndYieldFrom]
@@ -1728,13 +1765,13 @@ def g7():
 from _typeshed import Incomplete
 from collections.abc import Generator
 
-def g1() -> Generator[Incomplete, Incomplete, None]: ...
-def g2() -> Generator[Incomplete, Incomplete, None]: ...
-def g3() -> Generator[Incomplete, Incomplete, None]: ...
-def g4() -> Generator[Incomplete, Incomplete, None]: ...
-def g5() -> Generator[Incomplete, Incomplete, None]: ...
+def g1() -> Generator[Incomplete, Incomplete]: ...
+def g2() -> Generator[Incomplete, Incomplete]: ...
+def g3() -> Generator[Incomplete, Incomplete]: ...
+def g4() -> Generator[Incomplete, Incomplete]: ...
+def g5() -> Generator[Incomplete, Incomplete]: ...
 def g6() -> Generator[Incomplete, Incomplete, Incomplete]: ...
-def g7() -> Generator[Incomplete, Incomplete, None]: ...
+def g7() -> Generator[Incomplete, Incomplete]: ...
 
 [case testCallable]
 from typing import Callable
@@ -3078,18 +3115,14 @@ import attrs
 
 @attrs.define
 class C:
-    x = attrs.field()
+    x: int = attrs.field()
 
 [out]
-from _typeshed import Incomplete
+import attrs
 
+@attrs.define
 class C:
-    x: Incomplete
-    def __init__(self, x) -> None: ...
-    def __lt__(self, other): ...
-    def __le__(self, other): ...
-    def __gt__(self, other): ...
-    def __ge__(self, other): ...
+    x: int = attrs.field()
 
 [case testNamedTupleInClass]
 from collections import namedtuple
@@ -4030,8 +4063,9 @@ def i(x=..., y=..., z=...) -> None: ...
 [case testDataclass]
 import dataclasses
 import dataclasses as dcs
-from dataclasses import dataclass, InitVar, KW_ONLY
+from dataclasses import dataclass, field, Field, InitVar, KW_ONLY
 from dataclasses import dataclass as dc
+from datetime import datetime
 from typing import ClassVar
 
 @dataclasses.dataclass
@@ -4046,6 +4080,10 @@ class X:
     h: int = 1
     i: InitVar[str]
     j: InitVar = 100
+    # Lambda not supported yet -> marked as Incomplete instead
+    k: str = Field(
+        default_factory=lambda: datetime.utcnow().isoformat(" ", timespec="seconds")
+    )
     non_field = None
 
 @dcs.dataclass
@@ -4063,7 +4101,8 @@ class V: ...
 [out]
 import dataclasses
 import dataclasses as dcs
-from dataclasses import InitVar, KW_ONLY, dataclass, dataclass as dc
+from _typeshed import Incomplete
+from dataclasses import Field, InitVar, KW_ONLY, dataclass, dataclass as dc, field
 from typing import ClassVar
 
 @dataclasses.dataclass
@@ -4072,12 +4111,13 @@ class X:
     b: str = ...
     c: ClassVar
     d: ClassVar = ...
-    f: list[int] = ...
-    g: int = ...
+    f: list[int] = field(init=False, default_factory=list)
+    g: int = field(default=2, kw_only=True)
     _: KW_ONLY
     h: int = ...
     i: InitVar[str]
     j: InitVar = ...
+    k: str = Field(default_factory=Incomplete)
     non_field = ...
 
 @dcs.dataclass
@@ -4090,8 +4130,9 @@ class W: ...
 class V: ...
 
 [case testDataclass_semanal]
-from dataclasses import InitVar, dataclass, field
+from dataclasses import Field, InitVar, dataclass, field
 from typing import ClassVar
+from datetime import datetime
 
 @dataclass
 class X:
@@ -4105,13 +4146,18 @@ class X:
     h: int = 1
     i: InitVar = 100
     j: list[int] = field(default_factory=list)
+    # Lambda not supported yet -> marked as Incomplete instead
+    k: str = Field(
+        default_factory=lambda: datetime.utcnow().isoformat(" ", timespec="seconds")
+    )
     non_field = None
 
 @dataclass(init=False, repr=False, frozen=True)
 class Y: ...
 
 [out]
-from dataclasses import InitVar, dataclass
+from _typeshed import Incomplete
+from dataclasses import Field, InitVar, dataclass, field
 from typing import ClassVar
 
 @dataclass
@@ -4121,13 +4167,13 @@ class X:
     c: str = ...
     d: ClassVar
     e: ClassVar = ...
-    f: list[int] = ...
-    g: int = ...
+    f: list[int] = field(init=False, default_factory=list)
+    g: int = field(default=2, kw_only=True)
     h: int = ...
     i: InitVar = ...
-    j: list[int] = ...
+    j: list[int] = field(default_factory=list)
+    k: str = Field(default_factory=Incomplete)
     non_field = ...
-    def __init__(self, a, b, c=..., *, g=..., h=..., i=..., j=...) -> None: ...
 
 @dataclass(init=False, repr=False, frozen=True)
 class Y: ...
@@ -4155,7 +4201,7 @@ class X:
 class Y: ...
 
 [out]
-from dataclasses import InitVar, KW_ONLY, dataclass
+from dataclasses import InitVar, KW_ONLY, dataclass, field
 from typing import ClassVar
 
 @dataclass
@@ -4164,14 +4210,13 @@ class X:
     b: str = ...
     c: ClassVar
     d: ClassVar = ...
-    f: list[int] = ...
-    g: int = ...
+    f: list[int] = field(init=False, default_factory=list)
+    g: int = field(default=2, kw_only=True)
     _: KW_ONLY
     h: int = ...
     i: InitVar[str]
     j: InitVar = ...
     non_field = ...
-    def __init__(self, a, b=..., *, g=..., h=..., i, j=...) -> None: ...
 
 @dataclass(init=False, repr=False, frozen=True)
 class Y: ...
@@ -4216,7 +4261,6 @@ from dataclasses import dataclass
 @dataclass
 class X(missing.Base):
     a: int
-    def __init__(self, *generated_args, a, **generated_kwargs) -> None: ...
 
 @dataclass
 class Y(missing.Base):
@@ -4224,7 +4268,142 @@ class Y(missing.Base):
     generated_args_: str
     generated_kwargs: float
     generated_kwargs_: float
-    def __init__(self, *generated_args__, generated_args, generated_args_, generated_kwargs, generated_kwargs_, **generated_kwargs__) -> None: ...
+
+[case testDataclassTransform]
+# dataclass_transform detection only works with semantic analysis.
+# Test stubgen doesn't break too badly without it.
+from typing_extensions import dataclass_transform
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls):
+    return cls
+
+@create_model
+class X:
+    a: int
+    b: str = "hello"
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class Y(ModelBase):
+    a: int
+    b: str = "hello"
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class DCMeta(type): ...
+
+class Z(metaclass=DCMeta):
+    a: int
+    b: str = "hello"
+
+[out]
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls): ...
+
+class X:
+    a: int
+    b: str
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class Y(ModelBase):
+    a: int
+    b: str
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class DCMeta(type): ...
+
+class Z(metaclass=DCMeta):
+    a: int
+    b: str
+
+[case testDataclassTransformDecorator_semanal]
+import typing_extensions
+from dataclasses import field
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls):
+    return cls
+
+@create_model
+class X:
+    a: int
+    b: str = "hello"
+    c: bool = field(default=True)
+
+[out]
+import typing_extensions
+from dataclasses import field
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls): ...
+
+@create_model
+class X:
+    a: int
+    b: str = ...
+    c: bool = field(default=True)
+
+[case testDataclassTransformClass_semanal]
+from dataclasses import field
+from typing_extensions import dataclass_transform
+
+@dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class X(ModelBase):
+    a: int
+    b: str = "hello"
+    c: bool = field(default=True)
+
+[out]
+from dataclasses import field
+from typing_extensions import dataclass_transform
+
+@dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class X(ModelBase):
+    a: int
+    b: str = ...
+    c: bool = field(default=True)
+
+[case testDataclassTransformMetaclass_semanal]
+from dataclasses import field
+from typing import Any
+from typing_extensions import dataclass_transform
+
+def custom_field(*, default: bool, kw_only: bool) -> Any: ...
+
+@dataclass_transform(kw_only_default=True, field_specifiers=(custom_field,))
+class DCMeta(type): ...
+
+class X(metaclass=DCMeta):
+    a: int
+    b: str = "hello"
+    c: bool = field(default=True)  # should be ignored, not field_specifier here
+
+class Y(X):
+    d: str = custom_field(default="Hello")
+
+[out]
+from typing import Any
+from typing_extensions import dataclass_transform
+
+def custom_field(*, default: bool, kw_only: bool) -> Any: ...
+
+@dataclass_transform(kw_only_default=True, field_specifiers=(custom_field,))
+class DCMeta(type): ...
+
+class X(metaclass=DCMeta):
+    a: int
+    b: str = ...
+    c: bool = ...
+
+class Y(X):
+    d: str = custom_field(default='Hello')
 
 [case testAlwaysUsePEP604Union]
 import typing
@@ -4415,3 +4594,114 @@ class Test(Whatever, a=1, b='b', c=True, d=1.5, e=None, f=1j, g=b'123'): ...
 class Test(Whatever, keyword=SomeName * 2, attr=SomeName.attr): ...
 [out]
 class Test(Whatever, keyword=SomeName * 2, attr=SomeName.attr): ...
+
+[case testPEP695GenericClass]
+# flags: --python-version=3.12
+
+class C[T]: ...
+class C1[T1](int): ...
+class C2[T2: int]: ...
+class C3[T3: str | bytes]: ...
+class C4[T4: (str, bytes)]: ...
+
+class Outer:
+    class Inner[T]: ...
+
+[out]
+class C[T]: ...
+class C1[T1](int): ...
+class C2[T2: int]: ...
+class C3[T3: str | bytes]: ...
+class C4[T4: (str, bytes)]: ...
+
+class Outer:
+    class Inner[T]: ...
+
+[case testPEP695GenericFunction]
+# flags: --python-version=3.12
+
+def f1[T1](): ...
+def f2[T2: int](): ...
+def f3[T3: str | bytes](): ...
+def f4[T4: (str, bytes)](): ...
+
+class C:
+    def m[T](self, x: T) -> T: ...
+
+[out]
+def f1[T1]() -> None: ...
+def f2[T2: int]() -> None: ...
+def f3[T3: str | bytes]() -> None: ...
+def f4[T4: (str, bytes)]() -> None: ...
+
+class C:
+    def m[T](self, x: T) -> T: ...
+
+[case testPEP695TypeAlias]
+# flags: --python-version=3.12
+
+type Alias = int | str
+type Alias1[T1] = list[T1] | set[T1]
+type Alias2[T2: int] = list[T2] | set[T2]
+type Alias3[T3: str | bytes] = list[T3] | set[T3]
+type Alias4[T4: (str, bytes)] = list[T4] | set[T4]
+
+class C:
+    type IndentedAlias[T] = list[T]
+
+[out]
+type Alias = int | str
+type Alias1[T1] = list[T1] | set[T1]
+type Alias2[T2: int] = list[T2] | set[T2]
+type Alias3[T3: str | bytes] = list[T3] | set[T3]
+type Alias4[T4: (str, bytes)] = list[T4] | set[T4]
+class C:
+    type IndentedAlias[T] = list[T]
+
+[case testPEP695Syntax_semanal]
+# flags: --python-version=3.12
+
+class C[T]: ...
+def f[S](): ...
+type A[R] = list[R]
+
+[out]
+class C[T]: ...
+
+def f[S]() -> None: ...
+type A[R] = list[R]
+
+[case testPEP696Syntax]
+# flags: --python-version=3.13
+
+type Alias1[T1 = int] = list[T1] | set[T1]
+type Alias2[T2: int | float = int] = list[T2] | set[T2]
+class C3[T3 = int]: ...
+class C4[T4: int | float = int](list[T4]): ...
+def f5[T5 = int](): ...
+
+[out]
+type Alias1[T1 = int] = list[T1] | set[T1]
+type Alias2[T2: int | float = int] = list[T2] | set[T2]
+class C3[T3 = int]: ...
+class C4[T4: int | float = int](list[T4]): ...
+
+def f5[T5 = int]() -> None: ...
+
+[case testIgnoreMypyGeneratedMethods_semanal]
+# flags: --include-private --python-version=3.13
+from typing_extensions import dataclass_transform
+
+@dataclass_transform()
+class DCMeta(type): ...
+class DC(metaclass=DCMeta):
+    x: str
+
+[out]
+from typing_extensions import dataclass_transform
+
+@dataclass_transform()
+class DCMeta(type): ...
+
+class DC(metaclass=DCMeta):
+    x: str

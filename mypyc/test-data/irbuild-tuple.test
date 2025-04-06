@@ -265,7 +265,7 @@ L1:
     r10 = int_lt r7, r9
     if r10 goto L2 else goto L4 :: bool
 L2:
-    r11 = CPyList_GetItemUnsafe(source, r7)
+    r11 = list_get_item_unsafe source, r7
     r12 = unbox(int, r11)
     x = r12
     r13 = f(x)
@@ -383,4 +383,38 @@ L3:
     goto L1
 L4:
     a = r1
+    return 1
+
+[case testTupleAdd]
+from typing import Tuple
+def f(a: Tuple[int, ...], b: Tuple[int, ...]) -> None:
+    c = a + b
+    d = a + (1, 2)
+def g(a: Tuple[int, int], b: Tuple[int, int]) -> None:
+    c = a + b
+[out]
+def f(a, b):
+    a, b, r0, c :: tuple
+    r1 :: tuple[int, int]
+    r2 :: object
+    r3, d :: tuple
+L0:
+    r0 = PySequence_Concat(a, b)
+    c = r0
+    r1 = (2, 4)
+    r2 = box(tuple[int, int], r1)
+    r3 = PySequence_Concat(a, r2)
+    d = r3
+    return 1
+def g(a, b):
+    a, b :: tuple[int, int]
+    r0, r1 :: object
+    r2 :: tuple
+    r3, c :: tuple[int, int, int, int]
+L0:
+    r0 = box(tuple[int, int], a)
+    r1 = box(tuple[int, int], b)
+    r2 = PySequence_Concat(r0, r1)
+    r3 = unbox(tuple[int, int, int, int], r2)
+    c = r3
     return 1

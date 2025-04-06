@@ -1,6 +1,6 @@
 [case testPEP695Basics]
-# flags: --enable-incomplete-feature=NewGenericSyntax
-from typing import Any, TypeAliasType, cast
+from enum import Enum
+from typing import Any, Literal, TypeAliasType, cast
 
 from testutil import assertRaises
 
@@ -189,10 +189,16 @@ type R = int | list[R]
 def test_recursive_type_alias() -> None:
     assert isinstance(R, TypeAliasType)
     assert getattr(R, "__value__") == (int | list[R])
+
+class SomeEnum(Enum):
+    AVALUE = "a"
+
+type EnumLiteralAlias1 = Literal[SomeEnum.AVALUE]
+type EnumLiteralAlias2 = Literal[SomeEnum.AVALUE] | None
+EnumLiteralAlias3 = Literal[SomeEnum.AVALUE] | None
 [typing fixtures/typing-full.pyi]
 
 [case testPEP695GenericTypeAlias]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 from typing import Callable
 from types import GenericAlias
 

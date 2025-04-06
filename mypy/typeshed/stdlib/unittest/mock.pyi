@@ -2,7 +2,7 @@ import sys
 from collections.abc import Awaitable, Callable, Coroutine, Iterable, Mapping, Sequence
 from contextlib import _GeneratorContextManager
 from types import TracebackType
-from typing import Any, Final, Generic, Literal, TypeVar, overload
+from typing import Any, ClassVar, Final, Generic, Literal, TypeVar, overload
 from typing_extensions import ParamSpec, Self, TypeAlias
 
 _T = TypeVar("_T")
@@ -85,6 +85,7 @@ class _Call(tuple[Any, ...]):
         two: bool = False,
         from_kall: bool = True,
     ) -> None: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
     def __eq__(self, other: object) -> bool: ...
     def __ne__(self, value: object, /) -> bool: ...
     def __call__(self, *args: Any, **kwargs: Any) -> _Call: ...
@@ -363,7 +364,7 @@ class _patcher:
 
 patch: _patcher
 
-class MagicMixin:
+class MagicMixin(Base):
     def __init__(self, *args: Any, **kw: Any) -> None: ...
 
 class NonCallableMagicMock(MagicMixin, NonCallableMock): ...
@@ -393,7 +394,7 @@ class AsyncMock(AsyncMockMixin, AsyncMagicMixin, Mock):
     # But, `NonCallableMock` super-class has the better version.
     def reset_mock(self, visited: Any = None, *, return_value: bool = False, side_effect: bool = False) -> None: ...
 
-class MagicProxy:
+class MagicProxy(Base):
     name: str
     parent: Any
     def __init__(self, name: str, parent: Any) -> None: ...
@@ -403,6 +404,7 @@ class MagicProxy:
 class _ANY:
     def __eq__(self, other: object) -> Literal[True]: ...
     def __ne__(self, other: object) -> Literal[False]: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
 
 ANY: Any
 
