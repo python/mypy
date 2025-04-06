@@ -1607,6 +1607,83 @@ t6: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3
 
 [builtins fixtures/tuple.pyi]
 
+[case testPropertyLongTupleReturnTypeMismatchUnion]
+from typing import Tuple, Union
+class A:
+    a: str
+    b: str
+    c: str
+    d: str
+    e: str
+    f: str
+    g: Union[str, int]
+    h: Union[str, float]
+    i: Union[str, None]
+    j: Union[str, None]
+    k: Union[str, None]
+    l: Union[str, None]
+
+    @property
+    def x(self) -> Tuple[str, str, str, str, str, str, str, str, str, str, str, str]:
+        return (
+            self.a,
+            self.b,
+            self.c,
+            self.d,
+            self.e,
+            self.f,
+            self.g,
+            self.h,
+            self.i,
+            self.j,
+            self.k,
+            self.l,
+        )
+[out]
+main:18: error: Incompatible return value type (6 tuple items are incompatible; 3 items are omitted)
+main:18: note: Expression tuple item 6 has type "Union[str, int]"; "str" expected;
+main:18: note: Expression tuple item 7 has type "Union[str, float]"; "str" expected;
+main:18: note: Expression tuple item 8 has type "Optional[str]"; "str" expected;
+[builtins fixtures/property.pyi]
+
+[case testPropertyLongTupleReturnTypeMismatchUnionWiderExpected]
+from typing import Tuple, Union
+class A:
+    a: str
+    b: str
+    c: str
+    d: str
+    e: str
+    f: str
+    g: str
+    h: str
+    i: str
+    j: str
+    k: str
+    l: Union[float, int]
+
+    @property
+    def x(self) -> Tuple[Union[str, int], Union[str, float], int, Union[str, None], Union[str, None], Union[str, None], str, str, str, str, str, str]:
+        return (
+            self.a,
+            self.b,
+            self.c,
+            self.d,
+            self.e,
+            self.f,
+            self.g,
+            self.h,
+            self.i,
+            self.j,
+            self.k,
+            self.l,
+        )
+[out]
+main:18: error: Incompatible return value type (2 tuple items are incompatible)
+main:18: note: Expression tuple item 2 has type "str"; "int" expected;
+main:18: note: Expression tuple item 11 has type "Union[float, int]"; "str" expected;
+[builtins fixtures/property.pyi]
+
 [case testTupleWithStarExpr]
 from typing import Tuple, List
 points = (1, "test")  # type: Tuple[int, str]
