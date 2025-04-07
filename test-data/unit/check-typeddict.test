@@ -3821,6 +3821,15 @@ def f():
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictInlinePEP764UsesExtensionSyntax]
+# flags: --enable-incomplete-feature=NewInlineTypedDict
+from typing import TypedDict
+x: TypedDict[{'name': str, 'production': {'location': str}}]  # E: Legacy inline TypedDict is experimental, must be enabled with --enable-incomplete-feature=InlineTypedDict \
+                                                              # N: Did you mean TypedDict[...]?
+reveal_type(x)  # N: Revealed type is "TypedDict({'name': builtins.str, 'production': TypedDict({'location': builtins.str})})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 # ReadOnly
 # See: https://peps.python.org/pep-0705
 

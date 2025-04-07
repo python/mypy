@@ -334,5 +334,5 @@ to use inline TypedDict syntax. For example:
         type Z = {"a": int, "b": int}  # same as above (Python 3.12+ only)
 
     This restriction does not apply to the :pep:`764` syntax.
-    Also, due to incompatibility with runtime type-checking it is strongly recommended
+    Also, due to incompatibility with runtime type-checking, it is strongly recommended
     to *not* use legacy inline syntax in union types.
