@@ -668,6 +668,8 @@ def update_module_isolated(
     state.type_check_first_pass()
     state.type_check_second_pass()
     state.detect_possibly_undefined_vars()
+    state.generate_unused_ignore_notes()
+    state.generate_ignore_without_code_notes()
     t2 = time.time()
     state.finish_passes()
     t3 = time.time()
