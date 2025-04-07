@@ -381,7 +381,9 @@ class DataclassTransformer:
         ):
             str_type = self._api.named_type("builtins.str")
             literals: list[Type] = [
-                LiteralType(attr.name, str_type) for attr in attributes if attr.is_in_init
+                LiteralType(attr.name, str_type)
+                for attr in attributes
+                if attr.is_in_init and not attr.kw_only
             ]
             match_args_type = TupleType(literals, self._api.named_type("builtins.tuple"))
             add_attribute_to_class(self._api, self._cls, "__match_args__", match_args_type)
