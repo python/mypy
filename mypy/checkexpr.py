@@ -4296,12 +4296,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif e.op == "or":
             left_map, right_map = self.chk.find_isinstance_check(e.left)
 
-        left_impossible = left_map is None or any(
-            isinstance(get_proper_type(v), UninhabitedType) for v in left_map.values()
-        )
-        right_impossible = right_map is None or any(
-            isinstance(get_proper_type(v), UninhabitedType) for v in right_map.values()
-        )
+        left_impossible = is_impossible_map(left_map)
+        right_impossible = is_impossible_map(right_map)
 
         # If left_map is None then we know mypy considers the left expression
         # to be redundant.
@@ -5835,13 +5831,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.chk.push_type_map(true_map)
 
                 if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
-                    if true_map is None or any(
-                        isinstance(get_proper_type(t), UninhabitedType) for t in true_map.values()
-                    ):
+                    if is_impossible_map(true_map):
                         self.msg.redundant_condition_in_comprehension(False, condition)
-                    elif false_map is None or any(
-                        isinstance(get_proper_type(t), UninhabitedType) for t in false_map.values()
-                    ):
+                    elif is_impossible_map(false_map):
                         self.msg.redundant_condition_in_comprehension(True, condition)
 
     def visit_conditional_expr(self, e: ConditionalExpr, allow_none_return: bool = False) -> Type:
@@ -5852,13 +5844,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # but only for the current expression
         if_map, else_map = self.chk.find_isinstance_check(e.cond)
         if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
-            if if_map is None or any(
-                isinstance(get_proper_type(t), UninhabitedType) for t in if_map.values()
-            ):
+            if is_impossible_map(if_map):
                 self.msg.redundant_condition_in_if(False, e.cond)
-            elif else_map is None or any(
-                isinstance(get_proper_type(t), UninhabitedType) for t in else_map.values()
-            ):
+            elif is_impossible_map(else_map):
                 self.msg.redundant_condition_in_if(True, e.cond)
 
         if_type = self.analyze_cond_branch(
@@ -5946,9 +5934,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             self.chk.push_type_map(map)
 
-            if map is None or any(
-                isinstance(get_proper_type(t), UninhabitedType) for t in map.values()
-            ):
+            if is_impossible_map(map):
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later. Since the branch was
                 # determined to be unreachable, any errors should be suppressed.
@@ -6756,4 +6742,15 @@ def is_type_type_context(context: Type | None) -> bool:
         return True
     if isinstance(context, UnionType):
         return any(is_type_type_context(item) for item in context.items)
+    return False
+
+
+def is_impossible_map(map: mypy.checker.TypeMap) -> bool:
+    if map is None:
+        return True
+
+    for v in map.values():
+        if isinstance(get_proper_type(v), UninhabitedType):
+            return True
+
     return False
