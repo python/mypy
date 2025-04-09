@@ -757,8 +757,8 @@ of the above sections.
     Note: the :option:`--warn-unreachable` flag
     is not automatically enabled by the strict flag.
 
-    The strict flag does not take precedence over other strict-related flags. 
-    Directly specifying a flag of alternate behavior will override the 
+    The strict flag does not take precedence over other strict-related flags.
+    Directly specifying a flag of alternate behavior will override the
     behavior of strict, regardless of the order in which they are passed.
     You can see the list of flags enabled by strict mode in the full
     :option:`mypy --help` output.
