@@ -480,6 +480,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 if not self.options.check_unreachable:
                                     break
 
+                            if not self.options.check_unreachable:
+                                continue
+
                         self.accept(d)
 
                 assert not self.current_node_deferred
@@ -3144,6 +3147,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     reported_unreachable = True
                     if not self.options.check_unreachable:
                         break
+
+                if not self.options.check_unreachable:
+                    # skip checking *anything*, even if it's a noop
+                    continue
 
             self.accept(s)
 
