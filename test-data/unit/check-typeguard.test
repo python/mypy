@@ -807,16 +807,16 @@ def test() -> None:
 [case testTypeGuardedTypeDoesNotLeak]
 # https://github.com/python/mypy/issues/18895
 from enum import Enum
-from typing import Union
-from typing_extensions import TypeGuard, Literal
+from typing import Literal, Union
+from typing_extensions import TypeGuard
 
 class Model(str, Enum):
-    MODEL_A1 = 'model_a1'
-    MODEL_A2 = 'model_a2'
-    MODEL_B = 'model_b'
+    A1 = 'model_a1'
+    A2 = 'model_a2'
+    B = 'model_b'
 
-MODEL_A = Literal[Model.MODEL_A1, Model.MODEL_A2]
-MODEL_B = Literal[Model.MODEL_B]
+MODEL_A = Literal[Model.A1, Model.A2]
+MODEL_B = Literal[Model.B]
 
 def is_model_a(model: str) -> TypeGuard[MODEL_A]:
     return True
@@ -829,7 +829,6 @@ def process_model(model: Union[MODEL_A, MODEL_B]) -> int:
 
 def handle(model: Model) -> int:
     if is_model_a(model) or is_model_b(model):
-        # TODO: should start passing after #18896
-        return process_model(model)  # E: Argument 1 to "process_model" has incompatible type "Model"; expected "Union[Literal[Model.MODEL_A1, Model.MODEL_A2], Literal[Model.MODEL_B]]"
+        return process_model(model)
     return 0
 [builtins fixtures/tuple.pyi]
