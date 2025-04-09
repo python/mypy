@@ -829,6 +829,7 @@ def process_model(model: Union[MODEL_A, MODEL_B]) -> int:
 
 def handle(model: Model) -> int:
     if is_model_a(model) or is_model_b(model):
+        reveal_type(model)  # N: Revealed type is "__main__.Model"
         return process_model(model)
     return 0
 [builtins fixtures/tuple.pyi]
