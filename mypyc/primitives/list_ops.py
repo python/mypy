@@ -27,6 +27,15 @@ from mypyc.primitives.registry import (
 # Get the 'builtins.list' type object.
 load_address_op(name="builtins.list", type=object_rprimitive, src="PyList_Type")
 
+# sorted(obj)
+function_op(
+    name="builtins.sorted",
+    arg_types=[object_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="CPySequence_Sort",
+    error_kind=ERR_MAGIC,
+)
+
 # list(obj)
 to_list = function_op(
     name="builtins.list",

@@ -561,3 +561,25 @@ L3:
     goto L1
 L4:
     return 1
+
+[case testSorted]
+from typing import List, Any
+def list_sort(a: List[int]) -> None:
+    a.sort()
+def sort_iterable(a: Any) -> None:
+    sorted(a)
+[out]
+def list_sort(a):
+    a :: list
+    r0 :: i32
+    r1 :: bit
+L0:
+    r0 = PyList_Sort(a)
+    r1 = r0 >= 0 :: signed
+    return 1
+def sort_iterable(a):
+    a :: object
+    r0 :: list
+L0:
+    r0 = CPySequence_Sort(a)
+    return 1
