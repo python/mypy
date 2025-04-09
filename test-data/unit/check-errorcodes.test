@@ -1245,3 +1245,7 @@ def process(response1: int,response2: int) -> int: # E: Overloaded function sign
 
 def process(response1,response2)-> Union[float,int]:
    return response1 + response2
+
+[case testUnreachableCodeSkipped_skip_unreachable]
+if False:
+    reveal_type("x")  # will not output anything

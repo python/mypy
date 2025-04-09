@@ -5925,11 +5925,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         allow_none_return: bool = False,
         suppress_unreachable_errors: bool | None = None,
     ) -> Type:
-        # TODO: default based on flag (default to `True` if flag is not passed)
         unreachable_errors_suppressed = (
             suppress_unreachable_errors
             if suppress_unreachable_errors is not None
-            else self.chk.binder.is_unreachable_warning_suppressed()
+            else not self.chk.options.check_unreachable
+            or self.chk.binder.is_unreachable_warning_suppressed()
         )
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             self.chk.push_type_map(map)

@@ -140,6 +140,7 @@ class TypeCheckSuite(DataSuite):
             options.force_uppercase_builtins = True
         if "union-error" not in testcase.file:
             options.force_union_syntax = True
+        options.check_unreachable = not testcase.name.endswith("_skip_unreachable")
 
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases

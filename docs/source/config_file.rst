@@ -579,6 +579,13 @@ section of the command line docs.
 
     For example, it would report an error for :code:`def f(a: int, b)` but not :code:`def f(a, b)`.
 
+.. confval:: check_unreachable
+
+    :type: boolean
+    :default: False
+
+    Type-checks unreachable code.
+
 .. confval:: check_untyped_defs
 
     :type: boolean
