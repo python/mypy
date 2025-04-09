@@ -1765,8 +1765,10 @@ def f(x):
     r10 :: object
     r11 :: object[1]
     r12 :: object_ptr
-    r13 :: object
-    r14 :: bool
+    r13, r14 :: object
+    r15 :: i32
+    r16 :: bit
+    r17, r18 :: bool
 L0:
     r0 = __main__.Foo :: type
     r1 = PyObject_IsInstance(x, r0)
@@ -1790,9 +1792,13 @@ L2:
     goto L8
 L3:
 L4:
-    if 0 goto L6 else goto L5 :: bool
+    r14 = box(bool, 0)
+    r15 = PyObject_IsTrue(r14)
+    r16 = r15 >= 0 :: signed
+    r17 = truncate r15: i32 to builtins.bool
+    if r17 goto L6 else goto L5 :: bool
 L5:
-    r14 = raise AssertionError('Unreachable')
+    r18 = raise AssertionError('Unreachable')
     unreachable
 L6:
     goto L8
