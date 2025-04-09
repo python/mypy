@@ -1069,6 +1069,8 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
 def try_contracting_literals_in_union(types: Sequence[Type]) -> list[ProperType]:
     """Contracts any literal types back into a sum type if possible.
 
+    Requires a flattened union and does not descend into children.
+
     Will replace the first instance of the literal with the sum type and
     remove all others.
 
