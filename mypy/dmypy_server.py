@@ -756,7 +756,8 @@ class Server:
                 changed.append((nxt.module, nxt.path))
             elif nxt.module in graph:
                 state = graph[nxt.module]
-                for dep in state.dependencies:
+                ancestors = state.ancestors or []
+                for dep in state.dependencies + ancestors:
                     if dep not in seen:
                         seen.add(dep)
                         worklist.append(BuildSource(graph[dep].path, graph[dep].id, followed=True))
