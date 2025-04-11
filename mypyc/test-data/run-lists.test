@@ -267,6 +267,9 @@ print(g())
 7
 
 [case testListOps]
+from typing import Any, cast
+from testutil import assertRaises
+
 def test_slicing() -> None:
     # Use dummy adds to avoid constant folding
     zero = int()
@@ -288,6 +291,34 @@ def test_slicing() -> None:
     assert s[1:long_int] == ["o", "o", "b", "a", "r"]
     assert s[long_int:] == []
     assert s[-long_int:-1] == ["f", "o", "o", "b", "a"]
+
+def in_place_add(l2: Any) -> list[Any]:
+    l1 = [1, 2]
+    l1 += l2
+    return l1
+
+def test_add() -> None:
+    res = [1, 2, 3, 4]
+    assert [1, 2] + [3, 4] == res
+    with assertRaises(TypeError, 'can only concatenate list (not "tuple") to list'):
+        assert [1, 2] + cast(Any, (3, 4)) == res
+    l1 = [1, 2]
+    id_l1 = id(l1)
+    l1 += [3, 4]
+    assert l1 == res
+    assert id_l1 == id(l1)
+    assert in_place_add([3, 4]) == res
+    assert in_place_add((3, 4)) == res
+    assert in_place_add({3, 4}) == res
+    assert in_place_add({3: "", 4: ""}) == res
+    assert in_place_add(range(3, 5)) == res
+
+def test_multiply() -> None:
+    l1 = [1]
+    assert l1 * 3 == [1, 1, 1]
+    assert 3 * l1 == [1, 1, 1]
+    l1 *= 3
+    assert l1 == [1, 1, 1]
 
 [case testOperatorInExpression]
 
@@ -458,3 +489,25 @@ def test_index_with_literal() -> None:
     assert d is d2
     d = a[-2].d
     assert d is d1
+
+[case testSorted]
+from typing import List
+
+def test_list_sort() -> None:
+    l1 = [2, 1, 3]
+    id_l1 = id(l1)
+    l1.sort()
+    assert l1 == [1, 2, 3]
+    assert id_l1 == id(l1)
+
+def test_sorted() -> None:
+    res = [1, 2, 3]
+    l1 = [2, 1, 3]
+    id_l1 = id(l1)
+    s_l1 = sorted(l1)
+    assert s_l1 == res
+    assert id_l1 != id(s_l1)
+    assert l1 == [2, 1, 3]
+    assert sorted((2, 1, 3)) == res
+    assert sorted({2, 1, 3}) == res
+    assert sorted({2: "", 1: "", 3: ""}) == res

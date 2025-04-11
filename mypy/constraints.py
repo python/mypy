@@ -1063,11 +1063,11 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         # using e.g. callback protocols.
         # TODO: check that callables match? Ideally we should not infer constraints
         # callables that can never be subtypes of one another in given direction.
-        template = template.with_unpacked_kwargs()
+        template = template.with_unpacked_kwargs().with_normalized_var_args()
         extra_tvars = False
         if isinstance(self.actual, CallableType):
             res: list[Constraint] = []
-            cactual = self.actual.with_unpacked_kwargs()
+            cactual = self.actual.with_unpacked_kwargs().with_normalized_var_args()
             param_spec = template.param_spec()
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type

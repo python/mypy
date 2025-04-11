@@ -1847,6 +1847,22 @@ e: Empty
 reveal_type(e.__match_args__)  # N: Revealed type is "Tuple[()]"
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassWithMatchArgsAndKwOnly]
+# flags: --python-version 3.10
+from dataclasses import dataclass, field
+@dataclass(kw_only=True)
+class One:
+    a: int
+    b: str
+reveal_type(One.__match_args__)  # N: Revealed type is "Tuple[()]"
+
+@dataclass(kw_only=True)
+class Two:
+    a: int = field(kw_only=False)
+    b: str
+reveal_type(Two.__match_args__)  # N: Revealed type is "Tuple[Literal['a']]"
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassWithoutMatchArgs]
 # flags: --python-version 3.10
 from dataclasses import dataclass

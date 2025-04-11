@@ -14,7 +14,7 @@ from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.options import Options
-from mypy.util import is_typeshed_file, short_type
+from mypy.util import is_sunder, is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
 if TYPE_CHECKING:
@@ -3246,32 +3246,55 @@ class TypeInfo(SymbolNode):
 
     @property
     def enum_members(self) -> list[str]:
-        return [
-            name
-            for name, sym in self.names.items()
-            if (
-                (
-                    isinstance(sym.node, Var)
-                    and name not in EXCLUDED_ENUM_ATTRIBUTES
-                    and not name.startswith("__")
-                    and sym.node.has_explicit_value
-                    and not (
-                        isinstance(
-                            typ := mypy.types.get_proper_type(sym.node.type), mypy.types.Instance
-                        )
+        # TODO: cache the results?
+        members = []
+        for name, sym in self.names.items():
+            # Case 1:
+            #
+            # class MyEnum(Enum):
+            #     @member
+            #     def some(self): ...
+            if isinstance(sym.node, Decorator):
+                if any(
+                    dec.fullname == "enum.member"
+                    for dec in sym.node.decorators
+                    if isinstance(dec, RefExpr)
+                ):
+                    members.append(name)
+                    continue
+            # Case 2:
+            #
+            # class MyEnum(Enum):
+            #     x = 1
+            #
+            # Case 3:
+            #
+            # class MyEnum(Enum):
+            #     class Other: ...
+            elif isinstance(sym.node, (Var, TypeInfo)):
+                if (
+                    # TODO: properly support ignored names from `_ignore_`
+                    name in EXCLUDED_ENUM_ATTRIBUTES
+                    or is_sunder(name)
+                    or name.startswith("__")  # dunder and private
+                ):
+                    continue  # name is excluded
+
+                if isinstance(sym.node, Var):
+                    if not sym.node.has_explicit_value:
+                        continue  # unannotated value not a member
+
+                    typ = mypy.types.get_proper_type(sym.node.type)
+                    if isinstance(
+                        typ, mypy.types.FunctionLike
+                    ) or (  # explicit `@member` is required
+                        isinstance(typ, mypy.types.Instance)
                         and typ.type.fullname == "enum.nonmember"
-                    )
-                )
-                or (
-                    isinstance(sym.node, Decorator)
-                    and any(
-                        dec.fullname == "enum.member"
-                        for dec in sym.node.decorators
-                        if isinstance(dec, RefExpr)
-                    )
-                )
-            )
-        ]
+                    ):
+                        continue  # name is not a member
+
+                members.append(name)
+        return members
 
     def __getitem__(self, name: str) -> SymbolTableNode:
         n = self.get(name)

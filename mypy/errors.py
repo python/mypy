@@ -506,10 +506,13 @@ class Errors:
                 # line == end_line for most nodes, so we only loop once.
                 for scope_line in lines:
                     if self.is_ignored_error(scope_line, info, self.ignored_lines[file]):
+                        err_code = info.code or codes.MISC
+                        if not self.is_error_code_enabled(err_code):
+                            # Error code is disabled - don't mark the current
+                            # "type: ignore" comment as used.
+                            return
                         # Annotation requests us to ignore all errors on this line.
-                        self.used_ignored_lines[file][scope_line].append(
-                            (info.code or codes.MISC).code
-                        )
+                        self.used_ignored_lines[file][scope_line].append(err_code.code)
                         return
             if file in self.ignored_files:
                 return

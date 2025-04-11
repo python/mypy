@@ -1461,8 +1461,15 @@ class SemanticAnalyzer(
                         item.func.abstract_status = IS_ABSTRACT
                     else:
                         item.abstract_status = IS_ABSTRACT
+            elif all(
+                isinstance(item, Decorator) and item.func.abstract_status == IS_ABSTRACT
+                for item in defn.items
+            ):
+                # Since there is no implementation, it can't be called via super().
+                if defn.items:
+                    assert isinstance(defn.items[0], Decorator)
+                    defn.items[0].func.is_trivial_body = True
             else:
-                # TODO: also allow omitting an implementation for abstract methods in ABCs?
                 self.fail(
                     "An overloaded function outside a stub file must have an implementation",
                     defn,
@@ -3464,8 +3471,9 @@ class SemanticAnalyzer(
     def analyze_enum_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines an Enum."""
         if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, EnumCallExpr):
-            # Already analyzed enum -- nothing to do here.
-            return True
+            # This is an analyzed enum definition.
+            # It is valid iff it can be stored correctly, failures were already reported.
+            return self._is_single_name_assignment(s)
         return self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
 
     def analyze_namedtuple_assign(self, s: AssignmentStmt) -> bool:
@@ -3474,7 +3482,9 @@ class SemanticAnalyzer(
             if s.rvalue.analyzed.info.tuple_type and not has_placeholder(
                 s.rvalue.analyzed.info.tuple_type
             ):
-                return True  # This is a valid and analyzed named tuple definition, nothing to do here.
+                # This is an analyzed named tuple definition.
+                # It is valid iff it can be stored correctly, failures were already reported.
+                return self._is_single_name_assignment(s)
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]
@@ -3515,8 +3525,9 @@ class SemanticAnalyzer(
             if s.rvalue.analyzed.info.typeddict_type and not has_placeholder(
                 s.rvalue.analyzed.info.typeddict_type
             ):
-                # This is a valid and analyzed typed dict definition, nothing to do here.
-                return True
+                # This is an analyzed typed dict definition.
+                # It is valid iff it can be stored correctly, failures were already reported.
+                return self._is_single_name_assignment(s)
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]
@@ -3539,6 +3550,9 @@ class SemanticAnalyzer(
                 self.setup_type_vars(defn, tvar_defs)
                 self.setup_alias_type_vars(defn)
             return True
+
+    def _is_single_name_assignment(self, s: AssignmentStmt) -> bool:
+        return len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr)
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         # We cannot use s.type, because analyze_simple_literal_type() will set it.
@@ -6071,6 +6085,8 @@ class SemanticAnalyzer(
                 return None
             types.append(analyzed)
 
+        if allow_unpack:
+            types = self.type_analyzer().check_unpacks_in_list(types)
         if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
             single_any = len(types) == 1 and isinstance(first_arg, AnyType)

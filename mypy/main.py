@@ -1123,6 +1123,11 @@ def process_options(
                 dest=f"special-opts:{report_type}_report",
             )
 
+    # Undocumented mypyc feature: generate annotated HTML source file
+    report_group.add_argument(
+        "-a", dest="mypyc_annotation_file", type=str, default=None, help=argparse.SUPPRESS
+    )
+
     other_group = parser.add_argument_group(title="Miscellaneous")
     other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
     other_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
