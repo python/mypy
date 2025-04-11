@@ -264,6 +264,11 @@ MUTABLE_OVERRIDE: Final[ErrorCode] = ErrorCode(
     "General",
     default_enabled=False,
 )
+MAYBE_UNRECOGNIZED_STR_TYPEFORM: Final[ErrorCode] = ErrorCode(
+    "maybe-unrecognized-str-typeform",
+    "Warn when a string is used where a TypeForm is expected but a string annotation cannot be recognized",
+    "General",
+)
 
 # Syntax errors are often blocking.
 SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")
