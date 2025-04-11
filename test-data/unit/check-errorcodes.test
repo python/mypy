@@ -532,6 +532,11 @@ if int() != str():  # E: Non-overlapping equality check (left operand type: "int
     pass
 if int() is str():  # E: Non-overlapping identity check (left operand type: "int", right operand type: "str")  [comparison-overlap]
     pass
+
+x = int()
+while True:
+    if x is str():  # E: Non-overlapping identity check (left operand type: "int", right operand type: "str")  [comparison-overlap]
+        pass
 [builtins fixtures/primitives.pyi]
 
 [case testErrorCodeMissingModule]
@@ -1253,3 +1258,7 @@ def process(response1: int,response2: int) -> int: # E: Overloaded function sign
 
 def process(response1,response2)-> Union[float,int]:
    return response1 + response2
+
+[case testUnreachableCodeSkipped_skip_unreachable]
+if False:
+    reveal_type("x")  # will not output anything
