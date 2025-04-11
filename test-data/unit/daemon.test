@@ -647,3 +647,21 @@ b: str
 from demo.test import a
 [file demo/test.py]
 a: int
+
+[case testDaemonImportAncestors]
+$ dmypy run test.py
+Daemon started
+test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+$ dmypy run test.py
+test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+$ dmypy run test.py
+test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+[file test.py]
+from xml.etree.ElementTree import Element
+1 + 'a'
