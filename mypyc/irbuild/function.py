@@ -802,17 +802,24 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     return builder.add_local_reg(fdef, object_rprimitive)
 
 
+# This function still does not support the following imports.
+# import json as _json
+# from json import decoder
+# Using either _json.JSONDecoder or decoder.JSONDecoder as a type hint for a dataclass field will fail.
+# See issue mypyc/mypyc#1099.
 def load_type(builder: IRBuilder, typ: TypeInfo, unbounded_type: Type | None, line: int) -> Value:
-    # typ.fullname contains the module where the class object was defined. However, it is possible that the class
-    # object's module was not imported in the file currently being compiled. So, we use unbounded_type.name (if provided
-    # by caller) to load the class object through one of the imported modules.
-    # Example: for `json.JSONDecoder`, typ.fullname is `json.decoder.JSONDecoder` but the Python file may import `json`
-    # not `json.decoder`.
-    # Another corner case: The Python file being compiled imports mod1 and has a type hint `mod1.OuterClass.InnerClass`.
-    # But, mod1/__init__.py might import OuterClass like this: `from mod2.mod3 import OuterClass`. In this case,
-    # typ.fullname is `mod2.mod3.OuterClass.InnerClass` and `unbounded_type.name` is `mod1.OuterClass.InnerClass`. So,
-    # we must use unbounded_type.name to load the class object.
-    # See issue mypy/mypy#1087.
+    # typ.fullname contains the module where the class object was defined. However, it is possible
+    # that the class object's module was not imported in the file currently being compiled. So, we
+    # use unbounded_type.name (if provided by caller) to load the class object through one of the
+    # imported modules.
+    # Example: for `json.JSONDecoder`, typ.fullname is `json.decoder.JSONDecoder` but the Python
+    # file may import `json` not `json.decoder`.
+    # Another corner case: The Python file being compiled imports mod1 and has a type hint
+    # `mod1.OuterClass.InnerClass`. But, mod1/__init__.py might import OuterClass like this:
+    # `from mod2.mod3 import OuterClass`. In this case, typ.fullname is
+    # `mod2.mod3.OuterClass.InnerClass` and `unbounded_type.name` is `mod1.OuterClass.InnerClass`.
+    # So, we must use unbounded_type.name to load the class object.
+    # See issue mypyc/mypyc#1087.
     load_attr_path = (
         unbounded_type.name if isinstance(unbounded_type, UnboundType) else typ.fullname
     ).removesuffix(f".{typ.name}")
@@ -830,7 +837,8 @@ def load_type(builder: IRBuilder, typ: TypeInfo, unbounded_type: Type | None, li
     ):
         # Load the imported module.
         loaded_module = builder.load_module(module_name)
-        # Recursively load attributes of the imported module. These may be submodules, classes or any other object.
+        # Recursively load attributes of the imported module. These may be submodules, classes or
+        # any other object.
         for attr in (
             load_attr_path.removeprefix(f"{module_name}.").split(".")
             if load_attr_path != module_name
