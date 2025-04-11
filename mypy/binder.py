@@ -385,7 +385,7 @@ class ConditionalTypeBinder:
 
         p_declared = get_proper_type(declared_type)
         p_type = get_proper_type(type)
-        if isinstance(p_type, AnyType):
+        if isinstance(p_type, AnyType) and not p_type.is_special_form:
             # Any type requires some special casing, for both historical reasons,
             # and to optimise user experience without sacrificing correctness too much.
             if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_inferred:
