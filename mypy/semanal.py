@@ -404,9 +404,6 @@ class SemanticAnalyzer(
     cur_mod_id = ""  # Current module id (or None) (phase 2)
     _is_stub_file = False  # Are we analyzing a stub file?
     _is_typeshed_stub_file = False  # Are we analyzing a typeshed stub file?
-    imports: set[str]  # Imported modules (during phase 2 analysis)
-    # Note: some imports (and therefore dependencies) might
-    # not be found in phase 1, for example due to * imports.
     errors: Errors  # Keeps track of generated errors
     plugin: Plugin  # Mypy plugin for special casing of library features
     statement: Statement | None = None  # Statement/definition being analyzed
@@ -445,7 +442,6 @@ class SemanticAnalyzer(
         self.saved_locals: dict[
             FuncItem | GeneratorExpr | DictionaryComprehension, SymbolTable
         ] = {}
-        self.imports = set()
         self._type = None
         self.type_stack = []
         # Are the namespaces of classes being processed complete?
@@ -3114,9 +3110,6 @@ class SemanticAnalyzer(
                 # if '__all__' exists, all nodes not included have had module_public set to
                 # False, and we can skip checking '_' because it's been explicitly included.
                 if node.module_public and (not name.startswith("_") or "__all__" in m.names):
-                    if isinstance(node.node, MypyFile):
-                        # Star import of submodule from a package, add it as a dependency.
-                        self.imports.add(node.node.fullname)
                     # `from x import *` always reexports symbols
                     self.add_imported_symbol(
                         name, node, context=i, module_public=True, module_hidden=False
