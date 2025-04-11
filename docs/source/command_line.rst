@@ -749,8 +749,19 @@ of the above sections.
 
 .. option:: --strict
 
-    This flag mode enables all optional error checking flags.  You can see the
-    list of flags enabled by strict mode in the full :option:`mypy --help` output.
+    This flag mode enables a defined subset of optional error-checking flags.
+    This subset primarily includes checks for inadvertent type unsoundness (i.e
+    strict will catch type errors as long as intentional methods like type ignore
+    or casting were not used.)
+
+    Note: the :option:`--warn-unreachable` flag
+    is not automatically enabled by the strict flag.
+
+    The strict flag does not take precedence over other strict-related flags.
+    Directly specifying a flag of alternate behavior will override the
+    behavior of strict, regardless of the order in which they are passed.
+    You can see the list of flags enabled by strict mode in the full
+    :option:`mypy --help` output.
 
     Note: the exact list of flags enabled by running :option:`--strict` may change
     over time.
