@@ -11,7 +11,6 @@ three tools at our disposal:
 * Use of string literal types or type comments
 * Use of ``typing.TYPE_CHECKING``
 * Use of ``from __future__ import annotations`` (:pep:`563`)
-  (This directive has been declared deprecated since Python 3.14, and is expected to be removed in a future version of Python)
 
 We provide a description of these before moving onto discussion of specific
 problems you may encounter.
