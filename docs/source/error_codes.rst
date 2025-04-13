@@ -67,6 +67,9 @@ other parts of code checked in strict mode:
    allow_untyped_defs = True
    allow_untyped_calls = True
    disable_error_code = var-annotated, has-type
+[mypy]
+ignore_missing_imports = True
+
 
 Note that per-module enabling/disabling acts as override over the global
 options. So that you don't need to repeat the error code lists for each
