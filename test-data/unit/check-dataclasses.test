@@ -260,7 +260,7 @@ class FrozenBase:
     pass
 
 @dataclass
-class BadNormalDerived(FrozenBase):  # E: Cannot inherit non-frozen dataclass from a frozen one
+class BadNormalDerived(FrozenBase):  # E: Non-frozen dataclass cannot inherit from a frozen dataclass
     pass
 
 @dataclass
@@ -268,7 +268,7 @@ class NormalBase:
     pass
 
 @dataclass(frozen=True)
-class BadFrozenDerived(NormalBase):  # E: Cannot inherit frozen dataclass from a non-frozen one
+class BadFrozenDerived(NormalBase):  # E: Frozen dataclass cannot inherit from a non-frozen dataclass
     pass
 
 [builtins fixtures/dataclasses.pyi]
