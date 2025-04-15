@@ -68,6 +68,9 @@ class C:
     def __init__(self, s: str) -> None:
         self.s = s
 
+    def concat(self, s: str) -> str:
+        return self.s + s
+
 async def make_c(s: str) -> C:
     await one()
     return C(s)
@@ -93,6 +96,33 @@ async def set_attr2(s: str) -> None:
 def test_set_attr() -> None:
     assert asyncio.run(set_attr1("foo")) == "foo!"
     asyncio.run(set_attr2("foo"))  # Just check that it compiles and runs
+
+def upper(s: str) -> str:
+    return s.upper()
+
+async def call1(s: str) -> str:
+    return upper(await concat(s, "a"))
+
+async def call2(s: str) -> str:
+    return await concat(await concat(s, "a"), "b")
+
+def test_call() -> None:
+    assert asyncio.run(call1("foo")) == "FOOA"
+    assert asyncio.run(call2("foo")) == "fooab"
+
+async def method_call(s: str) -> str:
+    c = C("<")
+    return c.concat(await concat(s, ">"))
+
+def test_method_call() -> None:
+    assert asyncio.run(method_call("foo")) == "<foo>"
+
+async def construct(s: str) -> str:
+    c = C(await concat(s, "!"))
+    return c.s
+
+def test_construct() -> None:
+    assert asyncio.run(construct("foo")) == "foo!"
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
