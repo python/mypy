@@ -2,6 +2,7 @@
 A "meta test" which tests the parsing of .test files. This is not meant to become exhaustive
 but to ensure we maintain a basic level of ergonomics for mypy contributors.
 """
+
 from mypy.test.helpers import Suite
 from mypy.test.meta._pytest import PytestResult, run_pytest_data_suite
 
@@ -49,13 +50,13 @@ class ParseTestDataSuite(Suite):
             """
             [case abc]
             s: str
-            [out version>=3.8]
+            [out version>=3.9]
             abc
             """
         )
 
         # Assert
-        assert "version>=3.8 always true since minimum runtime version is (3, 8)" in actual.stdout
+        assert "version>=3.9 always true since minimum runtime version is (3, 9)" in actual.stdout
 
     def test_bad_eq_version_check(self) -> None:
         # Act
@@ -69,4 +70,4 @@ class ParseTestDataSuite(Suite):
         )
 
         # Assert
-        assert "version==3.7 always false since minimum runtime version is (3, 8)" in actual.stdout
+        assert "version==3.7 always false since minimum runtime version is (3, 9)" in actual.stdout

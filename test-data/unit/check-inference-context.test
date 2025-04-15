@@ -701,7 +701,7 @@ class A: pass
 class B(A): pass
 class C(A): pass
 def f(func: Callable[[T], S], *z: T, r: Optional[S] = None) -> S: pass
-reveal_type(f(lambda x: 0 if isinstance(x, B) else 1))  # N: Revealed type is "builtins.int"
+reveal_type(f(lambda x: 0 if isinstance(x, B) else 1))  # N: Revealed type is "Union[Literal[0]?, Literal[1]?]"
 f(lambda x: 0 if isinstance(x, B) else 1, A())() # E: "int" not callable
 f(lambda x: x if isinstance(x, B) else B(), A(), r=B())() # E: "B" not callable
 f(
@@ -1305,6 +1305,25 @@ def g(l: List[C], x: str) -> Optional[C]:
     return f(l, lambda c: reveal_type(c).x)  # N: Revealed type is "__main__.C"
 [builtins fixtures/list.pyi]
 
+[case testPartialTypeContextWithTwoLambdas]
+from typing import Any, Generic, TypeVar, Callable
+
+def int_to_any(x: int) -> Any: ...
+def any_to_int(x: Any) -> int: ...
+def any_to_str(x: Any) -> str: ...
+
+T = TypeVar("T")
+class W(Generic[T]):
+    def __init__(
+        self, serialize: Callable[[T], Any], deserialize: Callable[[Any], T]
+    ) -> None:
+        ...
+reveal_type(W(lambda x: int_to_any(x), lambda x: any_to_int(x)))  # N: Revealed type is "__main__.W[builtins.int]"
+W(
+    lambda x: int_to_any(x),  # E: Argument 1 to "int_to_any" has incompatible type "str"; expected "int"
+    lambda x: any_to_str(x)
+)
+
 [case testWideOuterContextEmpty]
 from typing import List, TypeVar
 
@@ -1372,7 +1391,7 @@ from typing import Union, List, Any
 
 def f(x: Union[List[str], Any]) -> None:
     a = x if x else []
-    reveal_type(a)  # N: Revealed type is "Union[builtins.list[Union[builtins.str, Any]], builtins.list[builtins.str], Any]"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.str], Any, builtins.list[Union[builtins.str, Any]]]"
 [builtins fixtures/list.pyi]
 
 [case testConditionalExpressionWithEmptyIteableAndUnionWithAny]
@@ -1380,7 +1399,7 @@ from typing import Union, Iterable, Any
 
 def f(x: Union[Iterable[str], Any]) -> None:
     a = x if x else []
-    reveal_type(a)  # N: Revealed type is "Union[builtins.list[Union[builtins.str, Any]], typing.Iterable[builtins.str], Any]"
+    reveal_type(a)  # N: Revealed type is "Union[typing.Iterable[builtins.str], Any, builtins.list[Union[builtins.str, Any]]]"
 [builtins fixtures/list.pyi]
 
 [case testInferMultipleAnyUnionCovariant]
@@ -1463,3 +1482,16 @@ b: Any
 i = i if isinstance(i, int) else b
 reveal_type(i)  # N: Revealed type is "Union[Any, builtins.int]"
 [builtins fixtures/isinstance.pyi]
+
+[case testLambdaInferenceUsesNarrowedTypes]
+from typing import Optional, Callable
+
+def f1(key: Callable[[], str]) -> None: ...
+def f2(key: object) -> None: ...
+
+def g(b: Optional[str]) -> None:
+    if b:
+        f1(lambda: reveal_type(b))  # N: Revealed type is "builtins.str"
+        z: Callable[[], str] = lambda: reveal_type(b)  # N: Revealed type is "builtins.str"
+        f2(lambda: reveal_type(b))  # N: Revealed type is "builtins.str"
+        lambda: reveal_type(b)  # N: Revealed type is "builtins.str"

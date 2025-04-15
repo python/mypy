@@ -165,7 +165,7 @@ N = namedtuple('N', ['x', 1]) # E: String literal expected as "namedtuple()" ite
 
 [case testNamedTupleWithUnderscoreItemName]
 from collections import namedtuple
-N = namedtuple('N', ['_fallback']) # E: "namedtuple()" field names cannot start with an underscore: _fallback
+N = namedtuple('N', ['_fallback']) # E: "namedtuple()" field name "_fallback" starts with an underscore
 [builtins fixtures/tuple.pyi]
 
 -- NOTE: The following code works at runtime but is not yet supported by mypy.
@@ -197,7 +197,7 @@ N = NamedTuple('N', 1) # E: List or tuple literal expected as the second argumen
 
 [case testTypingNamedTupleWithUnderscoreItemName]
 from typing import NamedTuple
-N = NamedTuple('N', [('_fallback', int)]) # E: "NamedTuple()" field names cannot start with an underscore: _fallback
+N = NamedTuple('N', [('_fallback', int)]) # E: "NamedTuple()" field name "_fallback" starts with an underscore
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithUnexpectedNames]

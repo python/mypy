@@ -342,7 +342,7 @@ b: bool
 i: str
 j = b or i
 if not j:
-    reveal_type(j) # N: Revealed type is "builtins.str"
+    reveal_type(j) # N: Revealed type is "Literal['']"
 [builtins fixtures/bool.pyi]
 
 [case testAndOr]
@@ -985,8 +985,7 @@ main:4: error: "A" not callable
 -- assert_type()
 
 [case testAssertType]
-from typing import assert_type, Any
-from typing_extensions import Literal
+from typing import assert_type, Any, Literal
 a: int = 1
 returned = assert_type(a, int)
 reveal_type(returned)  # N: Revealed type is "builtins.int"
@@ -998,8 +997,7 @@ assert_type(42, int)  # E: Expression is of type "Literal[42]", not "int"
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeGeneric]
-from typing import assert_type, TypeVar, Generic
-from typing_extensions import Literal
+from typing import assert_type, Literal, TypeVar, Generic
 T = TypeVar("T")
 def f(x: T) -> T: return x
 assert_type(f(1), int)
@@ -1012,25 +1010,23 @@ y: Gen[Literal[1]] = assert_type(Gen(1), Gen[Literal[1]])
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeUncheckedFunction]
-from typing import assert_type
-from typing_extensions import Literal
+from typing import Literal, assert_type
 def f():
     x = 42
     assert_type(x, Literal[42])
 [out]
-main:5: error: Expression is of type "Any", not "Literal[42]"
-main:5: note: "assert_type" expects everything to be "Any" in unchecked functions
+main:4: error: Expression is of type "Any", not "Literal[42]"
+main:4: note: "assert_type" expects everything to be "Any" in unchecked functions
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeUncheckedFunctionWithUntypedCheck]
 # flags: --check-untyped-defs
-from typing import assert_type
-from typing_extensions import Literal
+from typing import Literal, assert_type
 def f():
     x = 42
     assert_type(x, Literal[42])
 [out]
-main:6: error: Expression is of type "int", not "Literal[42]"
+main:5: error: Expression is of type "int", not "Literal[42]"
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeNoPromoteUnion]
@@ -1178,8 +1174,8 @@ class B: pass
 [case testSlicingWithInvalidBase]
 
 a: A
-a[1:2] # E: Invalid index type "slice" for "A"; expected type "int"
-a[:]   # E: Invalid index type "slice" for "A"; expected type "int"
+a[1:2] # E: Invalid index type "slice[int, int, None]" for "A"; expected type "int"
+a[:]   # E: Invalid index type "slice[None, None, None]" for "A"; expected type "int"
 class A:
   def __getitem__(self, n: int) -> 'A': pass
 [builtins fixtures/slice.pyi]
@@ -1470,10 +1466,9 @@ if int():
 
 [case testConditionalExpressionUnion]
 from typing import Union
-reveal_type(1 if bool() else 2) # N: Revealed type is "builtins.int"
-reveal_type(1 if bool() else '') # N: Revealed type is "builtins.object"
-x: Union[int, str] = reveal_type(1 if bool() else '') \
-    # N: Revealed type is "Union[Literal[1]?, Literal['']?]"
+reveal_type(1 if bool() else 2) # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+reveal_type(1 if bool() else '') # N: Revealed type is "Union[Literal[1]?, Literal['']?]"
+x: Union[int, str] = reveal_type(1 if bool() else '') # N: Revealed type is "Union[Literal[1]?, Literal['']?]"
 class A:
     pass
 class B(A):
@@ -1487,17 +1482,17 @@ b = B()
 c = C()
 d = D()
 reveal_type(a if bool() else b) # N: Revealed type is "__main__.A"
-reveal_type(b if bool() else c) # N: Revealed type is "builtins.object"
-reveal_type(c if bool() else b) # N: Revealed type is "builtins.object"
-reveal_type(c if bool() else a) # N: Revealed type is "builtins.object"
-reveal_type(d if bool() else b) # N: Revealed type is "__main__.A"
+reveal_type(b if bool() else c) # N: Revealed type is "Union[__main__.B, __main__.C]"
+reveal_type(c if bool() else b) # N: Revealed type is "Union[__main__.C, __main__.B]"
+reveal_type(c if bool() else a) # N: Revealed type is "Union[__main__.C, __main__.A]"
+reveal_type(d if bool() else b) # N: Revealed type is "Union[__main__.D, __main__.B]"
 [builtins fixtures/bool.pyi]
 
 [case testConditionalExpressionUnionWithAny]
 from typing import Union, Any
 a: Any
 x: Union[int, str] = reveal_type(a if int() else 1)  # N: Revealed type is "Union[Any, Literal[1]?]"
-reveal_type(a if int() else 1)  # N: Revealed type is "Any"
+reveal_type(a if int() else 1)  # N: Revealed type is "Union[Any, Literal[1]?]"
 
 [case testConditionalExpressionStatementNoReturn]
 from typing import List, Union
@@ -1506,6 +1501,13 @@ y = ""
 x.append(y) if bool() else x.append(y)
 z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not return a value (it only ever returns None)
 [builtins fixtures/list.pyi]
+
+[case testConditionalExpressionWithUnreachableBranches]
+from typing import TypeVar
+T = TypeVar("T", int, str)
+def foo(x: T) -> T:
+    return x + 1 if isinstance(x, int) else x + "a"
+[builtins fixtures/isinstancelist.pyi]
 
 -- Special cases
 -- -------------
@@ -1589,8 +1591,7 @@ if str():
 ....a  # E: "ellipsis" has no attribute "a"
 
 class A: pass
-[builtins fixtures/dict.pyi]
-[out]
+[builtins fixtures/dict-full.pyi]
 
 
 -- Yield expression
@@ -1641,7 +1642,7 @@ from typing import Generator
 def g() -> Generator[int, None, None]:
     x = yield from ()  # E: Function does not return a value (it only ever returns None)
     x = yield from (0, 1, 2)  # E: Function does not return a value (it only ever returns None)
-    x = yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "object", expected type "int") \
+    x = yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "Union[int, str]", expected type "int") \
                                  # E: Function does not return a value (it only ever returns None)
     x = yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int") \
                                # E: Function does not return a value (it only ever returns None)
@@ -2278,7 +2279,7 @@ def f(x: T) -> T:
 
 [case testStrictEqualityWithALiteral]
 # flags: --strict-equality
-from typing_extensions import Literal, Final
+from typing import Final, Literal
 
 def returns_a_or_b() -> Literal['a', 'b']:
     ...
@@ -2378,6 +2379,38 @@ assert a == b
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testStrictEqualityWithRecursiveMapTypes]
+# flags: --strict-equality
+from typing import Dict
+
+R = Dict[str, R]
+
+a: R
+b: R
+assert a == b
+
+R2 = Dict[int, R2]
+c: R2
+assert a == c  # E: Non-overlapping equality check (left operand type: "Dict[str, R]", right operand type: "Dict[int, R2]")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityWithRecursiveListTypes]
+# flags: --strict-equality
+from typing import List, Union
+
+R = List[Union[str, R]]
+
+a: R
+b: R
+assert a == b
+
+R2 = List[Union[int, R2]]
+c: R2
+assert a == c
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name "Any" is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
@@ -2418,5 +2451,7 @@ def f() -> int:  # E: Missing return statement
 from typing import TypeVar
 T = TypeVar("T")
 x: int
-x + T  # E: Unsupported operand types for + ("int" and "object")
-T()  # E: "object" not callable
+x + T  # E: Unsupported left operand type for + ("int")
+T()  # E: "TypeVar" not callable
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

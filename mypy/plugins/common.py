@@ -164,7 +164,7 @@ def find_shallow_matching_overload_item(overload: Overloaded, call: CallExpr) ->
 
 
 def _get_callee_type(call: CallExpr) -> CallableType | None:
-    """Return the type of the callee, regardless of its syntatic form."""
+    """Return the type of the callee, regardless of its syntactic form."""
 
     callee_node: Node | None = call.callee
 
@@ -282,7 +282,6 @@ def add_overloaded_method_to_class(
             var = Var(func.name, func.type)
             var.set_line(func.line)
             func.is_decorated = True
-            func.deco_line = func.line
 
             deco = Decorator(func, [], var)
         else:
@@ -399,6 +398,7 @@ def add_attribute_to_class(
     override_allow_incompatible: bool = False,
     fullname: str | None = None,
     is_classvar: bool = False,
+    overwrite_existing: bool = False,
 ) -> Var:
     """
     Adds a new attribute to a class definition.
@@ -408,7 +408,7 @@ def add_attribute_to_class(
 
     # NOTE: we would like the plugin generated node to dominate, but we still
     # need to keep any existing definitions so they get semantically analyzed.
-    if name in info.names:
+    if name in info.names and not overwrite_existing:
         # Get a nice unique name instead.
         r_name = get_unique_redefinition_name(name, info.names)
         info.names[r_name] = info.names[name]

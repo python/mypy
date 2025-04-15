@@ -9,8 +9,8 @@ from re import Pattern
 from socket import socket as _socket
 from ssl import SSLContext, SSLSocket
 from types import TracebackType
-from typing import IO, Any, SupportsAbs, SupportsInt
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, Literal, SupportsAbs, SupportsInt
+from typing_extensions import Self, TypeAlias
 
 __all__ = ["IMAP4", "IMAP4_stream", "Internaldate2tuple", "Int2AP", "ParseFlags", "Time2Internaldate", "IMAP4_SSL"]
 

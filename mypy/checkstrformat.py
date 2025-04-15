@@ -13,11 +13,16 @@ implementation simple.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Callable, Dict, Final, Match, Pattern, Tuple, Union, cast
+from re import Match, Pattern
+from typing import Callable, Final, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes
+from mypy import message_registry
+from mypy.checker_shared import TypeCheckerSharedApi
 from mypy.errors import Errors
+from mypy.maptype import map_instance_to_supertype
+from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -40,6 +45,9 @@ from mypy.nodes import (
     TempNode,
     TupleExpr,
 )
+from mypy.parse import parse
+from mypy.subtypes import is_subtype
+from mypy.typeops import custom_special_method
 from mypy.types import (
     AnyType,
     Instance,
@@ -47,27 +55,18 @@ from mypy.types import (
     TupleType,
     Type,
     TypeOfAny,
+    TypeVarTupleType,
     TypeVarType,
     UnionType,
+    UnpackType,
+    find_unpack_in_list,
     get_proper_type,
     get_proper_types,
 )
 
-if TYPE_CHECKING:
-    # break import cycle only needed for mypy
-    import mypy.checker
-    import mypy.checkexpr
-
-from mypy import message_registry
-from mypy.maptype import map_instance_to_supertype
-from mypy.messages import MessageBuilder
-from mypy.parse import parse
-from mypy.subtypes import is_subtype
-from mypy.typeops import custom_special_method
-
 FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr]
-Checkers: _TypeAlias = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
-MatchMap: _TypeAlias = Dict[Tuple[int, int], Match[str]]  # span -> match
+Checkers: _TypeAlias = tuple[Callable[[Expression], None], Callable[[Type], bool]]
+MatchMap: _TypeAlias = dict[tuple[int, int], Match[str]]  # span -> match
 
 
 def compile_format_re() -> Pattern[str]:
@@ -295,21 +294,13 @@ class StringFormatterChecker:
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: mypy.checker.TypeChecker
+    chk: TypeCheckerSharedApi
     # This is shared with TypeChecker, but stored also here for convenience.
     msg: MessageBuilder
-    # Some services are provided by a ExpressionChecker instance.
-    exprchk: mypy.checkexpr.ExpressionChecker
 
-    def __init__(
-        self,
-        exprchk: mypy.checkexpr.ExpressionChecker,
-        chk: mypy.checker.TypeChecker,
-        msg: MessageBuilder,
-    ) -> None:
+    def __init__(self, chk: TypeCheckerSharedApi, msg: MessageBuilder) -> None:
         """Construct an expression type checker."""
         self.chk = chk
-        self.exprchk = exprchk
         self.msg = msg
 
     def check_str_format_call(self, call: CallExpr, format_value: str) -> None:
@@ -369,7 +360,7 @@ class StringFormatterChecker:
                 ):
                     # TODO: add support for some custom specs like datetime?
                     self.msg.fail(
-                        "Unrecognized format" ' specification "{}"'.format(spec.format_spec[1:]),
+                        f'Unrecognized format specification "{spec.format_spec[1:]}"',
                         call,
                         code=codes.STRING_FORMATTING,
                     )
@@ -390,8 +381,10 @@ class StringFormatterChecker:
                 # If the explicit conversion is given, then explicit conversion is called _first_.
                 if spec.conversion[1] not in "rsa":
                     self.msg.fail(
-                        'Invalid conversion type "{}",'
-                        ' must be one of "r", "s" or "a"'.format(spec.conversion[1]),
+                        (
+                            f'Invalid conversion type "{spec.conversion[1]}", '
+                            f'must be one of "r", "s" or "a"'
+                        ),
                         call,
                         code=codes.STRING_FORMATTING,
                     )
@@ -469,8 +462,7 @@ class StringFormatterChecker:
                 expr = self.get_expr_by_position(int(key), call)
                 if not expr:
                     self.msg.fail(
-                        "Cannot find replacement for positional"
-                        " format specifier {}".format(key),
+                        f"Cannot find replacement for positional format specifier {key}",
                         call,
                         code=codes.STRING_FORMATTING,
                     )
@@ -479,7 +471,7 @@ class StringFormatterChecker:
                 expr = self.get_expr_by_name(key, call)
                 if not expr:
                     self.msg.fail(
-                        "Cannot find replacement for named" ' format specifier "{}"'.format(key),
+                        f'Cannot find replacement for named format specifier "{key}"',
                         call,
                         code=codes.STRING_FORMATTING,
                     )
@@ -613,7 +605,7 @@ class StringFormatterChecker:
         # TODO: fix column to point to actual start of the format specifier _within_ string.
         temp_ast.line = ctx.line
         temp_ast.column = ctx.column
-        self.exprchk.accept(temp_ast)
+        self.chk.expr_checker.accept(temp_ast)
         return temp_ast
 
     def validate_and_transform_accessors(
@@ -651,8 +643,9 @@ class StringFormatterChecker:
                 assert spec.key, "Call this method only after auto-generating keys!"
                 assert spec.field
                 self.msg.fail(
-                    "Invalid index expression in format field"
-                    ' accessor "{}"'.format(spec.field[len(spec.key) :]),
+                    'Invalid index expression in format field accessor "{}"'.format(
+                        spec.field[len(spec.key) :]
+                    ),
                     ctx,
                     code=codes.STRING_FORMATTING,
                 )
@@ -679,7 +672,7 @@ class StringFormatterChecker:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements.
         """
-        self.exprchk.accept(expr)
+        self.chk.expr_checker.accept(expr)
         specifiers = parse_conversion_specifiers(expr.value)
         has_mapping_keys = self.analyze_conversion_specifiers(specifiers, expr)
         if has_mapping_keys is None:
@@ -728,6 +721,22 @@ class StringFormatterChecker:
         rep_types: list[Type] = []
         if isinstance(rhs_type, TupleType):
             rep_types = rhs_type.items
+            unpack_index = find_unpack_in_list(rep_types)
+            if unpack_index is not None:
+                # TODO: we should probably warn about potentially short tuple.
+                # However, without special-casing for tuple(f(i) for in other_tuple)
+                # this causes false positive on mypy self-check in report.py.
+                extras = max(0, len(checkers) - len(rep_types) + 1)
+                unpacked = rep_types[unpack_index]
+                assert isinstance(unpacked, UnpackType)
+                unpacked = get_proper_type(unpacked.type)
+                if isinstance(unpacked, TypeVarTupleType):
+                    unpacked = get_proper_type(unpacked.upper_bound)
+                assert (
+                    isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
+                )
+                unpack_items = [unpacked.args[0]] * extras
+                rep_types = rep_types[:unpack_index] + unpack_items + rep_types[unpack_index + 1 :]
         elif isinstance(rhs_type, AnyType):
             return
         elif isinstance(rhs_type, Instance) and rhs_type.type.fullname == "builtins.tuple":

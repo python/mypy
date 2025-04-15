@@ -263,6 +263,38 @@ mypy-daemon: error: Missing target module, package, files, or command.
 $ dmypy stop
 Daemon stopped
 
+[case testDaemonRunTwoFilesFullTypeshed]
+$ dmypy run x.py
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy run y.py
+Success: no issues found in 1 source file
+$ dmypy run x.py
+Success: no issues found in 1 source file
+[file x.py]
+[file y.py]
+
+[case testDaemonCheckTwoFilesFullTypeshed]
+$ dmypy start
+Daemon started
+$ dmypy check foo.py
+foo.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+$ dmypy check bar.py
+Success: no issues found in 1 source file
+$ dmypy check foo.py
+foo.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+[file foo.py]
+from bar import add
+x: str = add("a", "b")
+x_error: int = add("a", "b")
+[file bar.py]
+def add(a, b) -> str:
+    return a + b
+
 [case testDaemonWarningSuccessExitCode-posix]
 $ dmypy run -- foo.py --follow-imports=error --python-version=3.11
 Daemon started
@@ -360,6 +392,33 @@ def bar() -> None:
     x = foo('abc')  # type: str
     foo(arg='xyz')
 
+[case testDaemonInspectCheck]
+$ dmypy start
+Daemon started
+$ dmypy check foo.py
+Success: no issues found in 1 source file
+$ dmypy check foo.py --export-types
+Success: no issues found in 1 source file
+$ dmypy inspect foo.py:1:1
+"int"
+[file foo.py]
+x = 1
+
+[case testDaemonInspectRun]
+$ dmypy run test1.py
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy run test2.py
+Success: no issues found in 1 source file
+$ dmypy run test1.py --export-types
+Success: no issues found in 1 source file
+$ dmypy inspect test1.py:1:1
+"int"
+[file test1.py]
+a: int
+[file test2.py]
+a: str
+
 [case testDaemonGetType]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.8
 Daemon started
@@ -372,6 +431,9 @@ foo.py:3: error: Incompatible types in assignment (expression has type "str", va
 $ dmypy inspect foo:1
 Format should be file:line:column[:end_line:end_column]
 == Return code: 2
+$ dmypy inspect foo:1:2:3
+Source file is not a Python file
+== Return code: 2
 $ dmypy inspect foo.py:1:2:a:b
 invalid literal for int() with base 10: 'a'
 == Return code: 2
@@ -379,7 +441,7 @@ $ dmypy inspect foo.pyc:1:1:2:2
 Source file is not a Python file
 == Return code: 2
 $ dmypy inspect bar/baz.py:1:1:2:2
-Unknown module: baz
+Unknown module: bar/baz.py
 == Return code: 1
 $ dmypy inspect foo.py:3:1:1:1
 "end_line" must not be before "line"
@@ -434,7 +496,7 @@ $ dmypy inspect foo.pyc:1:2
 Source file is not a Python file
 == Return code: 2
 $ dmypy inspect bar/baz.py:1:2
-Unknown module: baz
+Unknown module: bar/baz.py
 == Return code: 1
 $ dmypy inspect foo.py:7:5 --include-span
 7:5:7:5 -> "int"
@@ -571,3 +633,35 @@ class A:
     x: int
 class B:
     x: int
+
+[case testDaemonInspectSelectCorrectFile]
+$ dmypy run test.py --export-types
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy inspect demo/test.py:1:1
+"int"
+$ dmypy inspect test.py:1:1
+"str"
+[file test.py]
+b: str
+from demo.test import a
+[file demo/test.py]
+a: int
+
+[case testDaemonImportAncestors]
+$ dmypy run test.py
+Daemon started
+test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+$ dmypy run test.py
+test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+$ dmypy run test.py
+test.py:2: error: Unsupported operand types for + ("int" and "str")  [operator]
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+[file test.py]
+from xml.etree.ElementTree import Element
+1 + 'a'

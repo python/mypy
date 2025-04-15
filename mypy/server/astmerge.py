@@ -51,6 +51,7 @@ from typing import TypeVar, cast
 
 from mypy.nodes import (
     MDEF,
+    SYMBOL_NODE_EXPRESSION_TYPES,
     AssertTypeExpr,
     AssignmentStmt,
     Block,
@@ -160,7 +161,7 @@ def replacement_map_from_symbol_table(
         ):
             new_node = new[name]
             if (
-                type(new_node.node) == type(node.node)  # noqa: E721
+                type(new_node.node) == type(node.node)
                 and new_node.node
                 and node.node
                 and new_node.node.fullname == node.node.fullname
@@ -301,7 +302,7 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_call_expr(self, node: CallExpr) -> None:
         super().visit_call_expr(node)
-        if isinstance(node.analyzed, SymbolNode):
+        if isinstance(node.analyzed, SYMBOL_NODE_EXPRESSION_TYPES):
             node.analyzed = self.fixup(node.analyzed)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> None:
@@ -330,6 +331,7 @@ class NodeReplaceVisitor(TraverserVisitor):
     def visit_var(self, node: Var) -> None:
         node.info = self.fixup(node.info)
         self.fixup_type(node.type)
+        self.fixup_type(node.setter_type)
         super().visit_var(node)
 
     def visit_type_alias(self, node: TypeAlias) -> None:
@@ -394,7 +396,7 @@ class NodeReplaceVisitor(TraverserVisitor):
         # have bodies in the AST so we need to iterate over their symbol
         # tables separately, unlike normal classes.
         self.process_type_info(info)
-        for name, node in info.names.items():
+        for node in info.names.values():
             if node.node:
                 node.node.accept(self)
 
@@ -549,7 +551,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 def replace_nodes_in_symbol_table(
     symbols: SymbolTable, replacements: dict[SymbolNode, SymbolNode]
 ) -> None:
-    for name, node in symbols.items():
+    for node in symbols.values():
         if node.node:
             if node.node in replacements:
                 new = replacements[node.node]

@@ -6,6 +6,7 @@ import sys
 from _typeshed import StrPath, SupportsRead, SupportsWrite
 from collections.abc import Mapping, Sequence
 from typing import Any, AnyStr, BinaryIO, ClassVar
+from typing_extensions import deprecated
 
 __all__ = ["HTTPServer", "ThreadingHTTPServer", "BaseHTTPRequestHandler", "SimpleHTTPRequestHandler", "CGIHTTPRequestHandler"]
 
@@ -45,7 +46,7 @@ class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
     def log_error(self, format: str, *args: Any) -> None: ...
     def log_message(self, format: str, *args: Any) -> None: ...
     def version_string(self) -> str: ...
-    def date_time_string(self, timestamp: int | None = None) -> str: ...
+    def date_time_string(self, timestamp: float | None = None) -> str: ...
     def log_date_time_string(self) -> str: ...
     def address_string(self) -> str: ...
     def parse_request(self) -> bool: ...  # undocumented
@@ -61,7 +62,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         client_address: _socket._RetAddress,
         server: socketserver.BaseServer,
         *,
-        directory: str | None = None,
+        directory: StrPath | None = None,
     ) -> None: ...
     def do_GET(self) -> None: ...
     def do_HEAD(self) -> None: ...
@@ -72,7 +73,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def guess_type(self, path: StrPath) -> str: ...  # undocumented
 
 def executable(path: StrPath) -> bool: ...  # undocumented
-
+@deprecated("Deprecated in Python 3.13; removal scheduled for Python 3.15")
 class CGIHTTPRequestHandler(SimpleHTTPRequestHandler):
     cgi_directories: list[str]
     have_fork: bool  # undocumented

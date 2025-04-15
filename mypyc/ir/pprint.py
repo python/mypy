@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Final, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Final, Union
 
 from mypyc.common import short_name
 from mypyc.ir.func_ir import FuncIR, all_values_full
@@ -43,6 +44,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     Return,
@@ -216,6 +218,25 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             return self.format("%s(%s)", op.function_name, args_str)
         else:
             return self.format("%r = %s(%s)", op, op.function_name, args_str)
+
+    def visit_primitive_op(self, op: PrimitiveOp) -> str:
+        args = []
+        arg_index = 0
+        type_arg_index = 0
+        for arg_type in zip(op.desc.arg_types):
+            if arg_type:
+                args.append(self.format("%r", op.args[arg_index]))
+                arg_index += 1
+            else:
+                assert op.type_args
+                args.append(self.format("%r", op.type_args[type_arg_index]))
+                type_arg_index += 1
+
+        args_str = ", ".join(args)
+        if op.is_void:
+            return self.format("%s %s", op.desc.name, args_str)
+        else:
+            return self.format("%r = %s %s", op, op.desc.name, args_str)
 
     def visit_truncate(self, op: Truncate) -> str:
         return self.format("%r = truncate %r: %t to %t", op, op.src, op.src_type, op.type)

@@ -120,46 +120,43 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value);
 CPyTagged CPyTagged_FromVoidPtr(void *ptr);
 CPyTagged CPyTagged_FromInt64(int64_t value);
-CPyTagged CPyTagged_FromObject(PyObject *object);
-CPyTagged CPyTagged_StealFromObject(PyObject *object);
-CPyTagged CPyTagged_BorrowFromObject(PyObject *object);
 PyObject *CPyTagged_AsObject(CPyTagged x);
 PyObject *CPyTagged_StealAsObject(CPyTagged x);
 Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x);
 void CPyTagged_IncRef(CPyTagged x);
 void CPyTagged_DecRef(CPyTagged x);
 void CPyTagged_XDecRef(CPyTagged x);
-CPyTagged CPyTagged_Negate(CPyTagged num);
-CPyTagged CPyTagged_Invert(CPyTagged num);
-CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right);
+
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Negate_(CPyTagged num);
+CPyTagged CPyTagged_Invert_(CPyTagged num);
+CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Multiply_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_FloorDivide_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Remainder_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
+CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right);
+
 PyObject *CPyTagged_Str(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);
 PyObject *CPyBool_Str(bool b);
-int64_t CPyLong_AsInt64(PyObject *o);
+int64_t CPyLong_AsInt64_(PyObject *o);
 int64_t CPyInt64_Divide(int64_t x, int64_t y);
 int64_t CPyInt64_Remainder(int64_t x, int64_t y);
-int32_t CPyLong_AsInt32(PyObject *o);
+int32_t CPyLong_AsInt32_(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);
 void CPyInt32_Overflow(void);
-int16_t CPyLong_AsInt16(PyObject *o);
+int16_t CPyLong_AsInt16_(PyObject *o);
 int16_t CPyInt16_Divide(int16_t x, int16_t y);
 int16_t CPyInt16_Remainder(int16_t x, int16_t y);
 void CPyInt16_Overflow(void);
-uint8_t CPyLong_AsUInt8(PyObject *o);
+uint8_t CPyLong_AsUInt8_(PyObject *o);
 void CPyUInt8_Overflow(void);
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y);
 
@@ -197,6 +194,41 @@ static inline Py_ssize_t CPyTagged_ShortAsSsize_t(CPyTagged x) {
 static inline PyObject *CPyTagged_LongAsObject(CPyTagged x) {
     // NOTE: Assume target is not a short int.
     return (PyObject *)(x & ~CPY_INT_TAG);
+}
+
+static inline CPyTagged CPyTagged_FromObject(PyObject *object) {
+    int overflow;
+    // The overflow check knows about CPyTagged's width
+    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
+    if (unlikely(overflow != 0)) {
+        Py_INCREF(object);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return value << 1;
+    }
+}
+
+static inline CPyTagged CPyTagged_StealFromObject(PyObject *object) {
+    int overflow;
+    // The overflow check knows about CPyTagged's width
+    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
+    if (unlikely(overflow != 0)) {
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        Py_DECREF(object);
+        return value << 1;
+    }
+}
+
+static inline CPyTagged CPyTagged_BorrowFromObject(PyObject *object) {
+    int overflow;
+    // The overflow check knows about CPyTagged's width
+    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
+    if (unlikely(overflow != 0)) {
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return value << 1;
+    }
 }
 
 static inline bool CPyTagged_TooBig(Py_ssize_t value) {
@@ -284,6 +316,245 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
     } else {
         return !CPyTagged_IsLt_(right, left);
     }
+}
+
+static inline int64_t CPyLong_AsInt64(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = Py_SIZE(lobj);
+        if (likely(size == 1)) {
+            // Fast path
+            return CPY_LONG_DIGIT(lobj, 0);
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    }
+    // Slow path
+    return CPyLong_AsInt64_(o);
+}
+
+static inline int32_t CPyLong_AsInt32(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            // Fast path
+            return CPY_LONG_DIGIT(lobj, 0);
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            // Fast path
+            return CPY_LONG_DIGIT(lobj, 0);
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    #endif
+    }
+    // Slow path
+    return CPyLong_AsInt32_(o);
+}
+
+static inline int16_t CPyLong_AsInt16(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            // Fast path
+            digit x = CPY_LONG_DIGIT(lobj, 0);
+            if (x < 0x8000)
+                return x;
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            // Fast path
+            digit x = lobj->ob_digit[0];
+            if (x < 0x8000)
+                return x;
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    #endif
+    }
+    // Slow path
+    return CPyLong_AsInt16_(o);
+}
+
+static inline uint8_t CPyLong_AsUInt8(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            // Fast path
+            digit x = CPY_LONG_DIGIT(lobj, 0);
+            if (x < 256)
+                return x;
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            // Fast path
+            digit x = lobj->ob_digit[0];
+            if (x < 256)
+                return x;
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    #endif
+    }
+    // Slow path
+    return CPyLong_AsUInt8_(o);
+}
+
+static inline CPyTagged CPyTagged_Negate(CPyTagged num) {
+    if (likely(CPyTagged_CheckShort(num)
+               && num != (CPyTagged) ((Py_ssize_t)1 << (CPY_INT_BITS - 1)))) {
+        // The only possibility of an overflow error happening when negating a short is if we
+        // attempt to negate the most negative number.
+        return -num;
+    }
+    return CPyTagged_Negate_(num);
+}
+
+static inline CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
+    // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        CPyTagged sum = left + right;
+        if (likely(!CPyTagged_IsAddOverflow(sum, left, right))) {
+            return sum;
+        }
+    }
+    return CPyTagged_Add_(left, right);
+}
+
+static inline CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
+    // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        CPyTagged diff = left - right;
+        if (likely(!CPyTagged_IsSubtractOverflow(diff, left, right))) {
+            return diff;
+        }
+    }
+    return CPyTagged_Subtract_(left, right);
+}
+
+static inline CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
+    // TODO: Consider using some clang/gcc extension to check for overflow
+    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)) {
+        if (!CPyTagged_IsMultiplyOverflow(left, right)) {
+            return left * CPyTagged_ShortAsSsize_t(right);
+        }
+    }
+    return CPyTagged_Multiply_(left, right);
+}
+
+static inline CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
+    if (CPyTagged_CheckShort(left)
+        && CPyTagged_CheckShort(right)
+        && !CPyTagged_MaybeFloorDivideFault(left, right)) {
+        Py_ssize_t result = CPyTagged_ShortAsSsize_t(left) / CPyTagged_ShortAsSsize_t(right);
+        if (((Py_ssize_t)left < 0) != (((Py_ssize_t)right) < 0)) {
+            if (result * right != left) {
+                // Round down
+                result--;
+            }
+        }
+        return result << 1;
+    }
+    return CPyTagged_FloorDivide_(left, right);
+}
+
+static inline CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right) {
+    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)
+        && !CPyTagged_MaybeRemainderFault(left, right)) {
+        Py_ssize_t result = (Py_ssize_t)left % (Py_ssize_t)right;
+        if (((Py_ssize_t)right < 0) != ((Py_ssize_t)left < 0) && result != 0) {
+            result += right;
+        }
+        return result;
+    }
+    return CPyTagged_Remainder_(left, right);
+}
+
+// Bitwise '~'
+static inline CPyTagged CPyTagged_Invert(CPyTagged num) {
+    if (likely(CPyTagged_CheckShort(num) && num != CPY_TAGGED_ABS_MIN)) {
+        return ~num & ~CPY_INT_TAG;
+    }
+    return CPyTagged_Invert_(num);
+}
+
+// Bitwise '&'
+static inline CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left & right;
+    }
+    return CPyTagged_BitwiseLongOp_(left, right, '&');
+}
+
+// Bitwise '|'
+static inline CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left | right;
+    }
+    return CPyTagged_BitwiseLongOp_(left, right, '|');
+}
+
+// Bitwise '^'
+static inline CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left ^ right;
+    }
+    return CPyTagged_BitwiseLongOp_(left, right, '^');
+}
+
+// Bitwise '>>'
+static inline CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left)
+               && CPyTagged_CheckShort(right)
+               && (Py_ssize_t)right >= 0)) {
+        CPyTagged count = CPyTagged_ShortAsSsize_t(right);
+        if (unlikely(count >= CPY_INT_BITS)) {
+            if ((Py_ssize_t)left >= 0) {
+                return 0;
+            } else {
+                return CPyTagged_ShortFromInt(-1);
+            }
+        }
+        return ((Py_ssize_t)left >> count) & ~CPY_INT_TAG;
+    }
+    return CPyTagged_Rshift_(left, right);
+}
+
+static inline bool IsShortLshiftOverflow(Py_ssize_t short_int, Py_ssize_t shift) {
+    return ((Py_ssize_t)(short_int << shift) >> shift) != short_int;
+}
+
+// Bitwise '<<'
+static inline CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left)
+               && CPyTagged_CheckShort(right)
+               && (Py_ssize_t)right >= 0
+               && right < CPY_INT_BITS * 2)) {
+        CPyTagged shift = CPyTagged_ShortAsSsize_t(right);
+        if (!IsShortLshiftOverflow(left, shift))
+            // Short integers, no overflow
+            return left << shift;
+    }
+    return CPyTagged_Lshift_(left, right);
 }
 
 
@@ -391,9 +662,12 @@ int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 int CPyList_Remove(PyObject *list, PyObject *obj);
 CPyTagged CPyList_Index(PyObject *list, PyObject *obj);
+PyObject *CPySequence_Sort(PyObject *seq);
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
+PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+PyObject *CPyList_Copy(PyObject *list);
 int CPySequence_Check(PyObject *obj);
 
 
@@ -446,19 +720,39 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 
 // Str operations
 
+// Macros for strip type. These values are copied from CPython.
+#define LEFTSTRIP  0
+#define RIGHTSTRIP 1
+#define BOTHSTRIP  2
 
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
+CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction);
+CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
+PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split);
+PyObject *_CPyStr_Strip(PyObject *self, int strip_type, PyObject *sep);
+static inline PyObject *CPyStr_Strip(PyObject *self, PyObject *sep) {
+    return _CPyStr_Strip(self, BOTHSTRIP, sep);
+}
+static inline PyObject *CPyStr_LStrip(PyObject *self, PyObject *sep) {
+    return _CPyStr_Strip(self, LEFTSTRIP, sep);
+}
+static inline PyObject *CPyStr_RStrip(PyObject *self, PyObject *sep) {
+    return _CPyStr_Strip(self, RIGHTSTRIP, sep);
+}
 PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace);
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
 PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
-bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
-bool CPyStr_Endswith(PyObject *self, PyObject *subobj);
+int CPyStr_Startswith(PyObject *self, PyObject *subobj);
+int CPyStr_Endswith(PyObject *self, PyObject *subobj);
+PyObject *CPyStr_Removeprefix(PyObject *self, PyObject *prefix);
+PyObject *CPyStr_Removesuffix(PyObject *self, PyObject *suffix);
 bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
 PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
+CPyTagged CPyStr_Ord(PyObject *obj);
 
 
 // Bytes operations
@@ -469,6 +763,7 @@ PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
 PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
+CPyTagged CPyBytes_Ord(PyObject *obj);
 
 
 int CPyBytes_Compare(PyObject *left, PyObject *right);
@@ -512,7 +807,7 @@ static inline PyObject *_CPy_FromDummy(PyObject *p) {
     return p;
 }
 
-static int CPy_NoErrOccured(void) {
+static int CPy_NoErrOccurred(void) {
     return PyErr_Occurred() == NULL;
 }
 
@@ -544,13 +839,8 @@ void CPy_AttributeError(const char *filename, const char *funcname, const char *
 
 // Misc operations
 
-#if PY_VERSION_HEX >= 0x03080000
 #define CPy_TRASHCAN_BEGIN(op, dealloc) Py_TRASHCAN_BEGIN(op, dealloc)
 #define CPy_TRASHCAN_END(op) Py_TRASHCAN_END
-#else
-#define CPy_TRASHCAN_BEGIN(op, dealloc) Py_TRASHCAN_SAFE_BEGIN(op)
-#define CPy_TRASHCAN_END(op) Py_TRASHCAN_SAFE_END(op)
-#endif
 
 // Tweaked version of _PyArg_Parser in CPython
 typedef struct CPyArg_Parser {
@@ -580,10 +870,7 @@ static inline bool CPy_TypeCheck(PyObject *o, PyObject *type) {
     return PyObject_TypeCheck(o, (PyTypeObject *)type);
 }
 
-static inline PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o) {
-    return (PyObject *)_PyType_CalculateMetaclass((PyTypeObject *)type, o);
-}
-
+PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);
 PyObject *CPy_GetCoro(PyObject *obj);
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val);
 int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp);
@@ -591,15 +878,17 @@ PyObject *CPy_FetchStopIterationValue(void);
 PyObject *CPyType_FromTemplate(PyObject *template_,
                                PyObject *orig_bases,
                                PyObject *modname);
-PyObject *CPyType_FromTemplateWarpper(PyObject *template_,
+PyObject *CPyType_FromTemplateWrapper(PyObject *template_,
                                       PyObject *orig_bases,
                                       PyObject *modname);
 int CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
-                               PyObject *dict, PyObject *annotations);
+                               PyObject *dict, PyObject *annotations,
+                               PyObject *dataclass_type);
 PyObject *CPyPickle_SetState(PyObject *obj, PyObject *state);
 PyObject *CPyPickle_GetState(PyObject *obj);
 CPyTagged CPyTagged_Id(PyObject *o);
 void CPyDebug_Print(const char *msg);
+void CPyDebug_PrintObject(PyObject *obj);
 void CPy_Init(void);
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, const char *, const char * const *, ...);
@@ -635,6 +924,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyOb
 
 PyObject *CPy_GetAIter(PyObject *obj);
 PyObject *CPy_GetANext(PyObject *aiter);
+void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value);
 
 #ifdef __cplusplus
 }

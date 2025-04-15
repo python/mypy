@@ -15,7 +15,7 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeType,
-    TypeVarType,
+    TypeVarLikeType,
     UnboundType,
     UninhabitedType,
     UnionType,
@@ -33,6 +33,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     dict_rprimitive,
     float_rprimitive,
+    frozenset_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -62,6 +63,7 @@ class Mapper:
         self.group_map = group_map
         self.type_to_ir: dict[TypeInfo, ClassIR] = {}
         self.func_to_decl: dict[SymbolNode, FuncDecl] = {}
+        self.symbol_fullnames: set[str] = set()
 
     def type_to_rtype(self, typ: Type | None) -> RType:
         if typ is None:
@@ -88,6 +90,8 @@ class Mapper:
                 return dict_rprimitive
             elif typ.type.fullname == "builtins.set":
                 return set_rprimitive
+            elif typ.type.fullname == "builtins.frozenset":
+                return frozenset_rprimitive
             elif typ.type.fullname == "builtins.tuple":
                 return tuple_rprimitive  # Varying-length tuple
             elif typ.type.fullname == "builtins.range":
@@ -131,7 +135,7 @@ class Mapper:
             return object_rprimitive
         elif isinstance(typ, TypeType):
             return object_rprimitive
-        elif isinstance(typ, TypeVarType):
+        elif isinstance(typ, TypeVarLikeType):
             # Erase type variable to upper bound.
             # TODO: Erase to union if object has value restriction?
             return self.type_to_rtype(typ.upper_bound)
@@ -160,7 +164,7 @@ class Mapper:
         else:
             return self.type_to_rtype(typ)
 
-    def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:
+    def fdef_to_sig(self, fdef: FuncDef, strict_dunders_typing: bool) -> FuncSignature:
         if isinstance(fdef.type, CallableType):
             arg_types = [
                 self.get_arg_rtype(typ, kind)
@@ -199,11 +203,14 @@ class Mapper:
             )
         ]
 
-        # We force certain dunder methods to return objects to support letting them
-        # return NotImplemented. It also avoids some pointless boxing and unboxing,
-        # since tp_richcompare needs an object anyways.
-        if fdef.name in ("__eq__", "__ne__", "__lt__", "__gt__", "__le__", "__ge__"):
-            ret = object_rprimitive
+        if not strict_dunders_typing:
+            # We force certain dunder methods to return objects to support letting them
+            # return NotImplemented. It also avoids some pointless boxing and unboxing,
+            # since tp_richcompare needs an object anyways.
+            # However, it also prevents some optimizations.
+            if fdef.name in ("__eq__", "__ne__", "__lt__", "__gt__", "__le__", "__ge__"):
+                ret = object_rprimitive
+
         return FuncSignature(args, ret)
 
     def is_native_module(self, module: str) -> bool:
@@ -214,7 +221,8 @@ class Mapper:
         if expr.node is None:
             return False
         if "." in expr.node.fullname:
-            return self.is_native_module(expr.node.fullname.rpartition(".")[0])
+            name = expr.node.fullname.rpartition(".")[0]
+            return self.is_native_module(name) or name in self.symbol_fullnames
         return True
 
     def is_native_module_ref_expr(self, expr: RefExpr) -> bool:

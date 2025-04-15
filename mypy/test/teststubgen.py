@@ -10,6 +10,8 @@ import unittest
 from types import ModuleType
 from typing import Any
 
+import pytest
+
 from mypy.errors import CompileError
 from mypy.moduleinspect import InspectError, ModuleInspect
 from mypy.stubdoc import (
@@ -36,6 +38,7 @@ from mypy.stubgen import (
 from mypy.stubgenc import InspectionStubGenerator, infer_c_method_args
 from mypy.stubutil import (
     ClassInfo,
+    FunctionContext,
     common_dir_prefix,
     infer_method_ret_type,
     remove_misplaced_type_comments,
@@ -396,6 +399,164 @@ class StubgenUtilSuite(unittest.TestCase):
             None,
         )
 
+    def test_infer_sig_from_docstring_args_kwargs(self) -> None:
+        assert_equal(
+            infer_sig_from_docstring("func(*args, **kwargs) -> int", "func"),
+            [
+                FunctionSig(
+                    name="func",
+                    args=[ArgSig(name="*args"), ArgSig(name="**kwargs")],
+                    ret_type="int",
+                )
+            ],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(*args) -> int", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="*args")], ret_type="int")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(**kwargs) -> int", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="**kwargs")], ret_type="int")],
+        )
+
+    @pytest.mark.xfail(
+        raises=AssertionError, reason="Arg and kwarg signature validation not implemented yet"
+    )
+    def test_infer_sig_from_docstring_args_kwargs_errors(self) -> None:
+        # Double args
+        assert_equal(infer_sig_from_docstring("func(*args, *args2) -> int", "func"), [])
+
+        # Double kwargs
+        assert_equal(infer_sig_from_docstring("func(**kw, **kw2) -> int", "func"), [])
+
+        # args after kwargs
+        assert_equal(infer_sig_from_docstring("func(**kwargs, *args) -> int", "func"), [])
+
+    def test_infer_sig_from_docstring_positional_only_arguments(self) -> None:
+        assert_equal(
+            infer_sig_from_docstring("func(self, /) -> str", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="self")], ret_type="str")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(self, x, /) -> str", "func"),
+            [
+                FunctionSig(
+                    name="func", args=[ArgSig(name="self"), ArgSig(name="x")], ret_type="str"
+                )
+            ],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(x, /, y) -> int", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="int")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(x, /, *args) -> str", "func"),
+            [
+                FunctionSig(
+                    name="func", args=[ArgSig(name="x"), ArgSig(name="*args")], ret_type="str"
+                )
+            ],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(x, /, *, kwonly, **kwargs) -> str", "func"),
+            [
+                FunctionSig(
+                    name="func",
+                    args=[ArgSig(name="x"), ArgSig(name="kwonly"), ArgSig(name="**kwargs")],
+                    ret_type="str",
+                )
+            ],
+        )
+
+    def test_infer_sig_from_docstring_keyword_only_arguments(self) -> None:
+        assert_equal(
+            infer_sig_from_docstring("func(*, x) -> str", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="x")], ret_type="str")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(x, *, y) -> str", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(*, x, y) -> str", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(x, *, kwonly, **kwargs) -> str", "func"),
+            [
+                FunctionSig(
+                    name="func",
+                    args=[ArgSig(name="x"), ArgSig(name="kwonly"), ArgSig("**kwargs")],
+                    ret_type="str",
+                )
+            ],
+        )
+
+    def test_infer_sig_from_docstring_pos_only_and_keyword_only_arguments(self) -> None:
+        assert_equal(
+            infer_sig_from_docstring("func(x, /, *, y) -> str", "func"),
+            [FunctionSig(name="func", args=[ArgSig(name="x"), ArgSig(name="y")], ret_type="str")],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(x,  /, y,  *, z) -> str", "func"),
+            [
+                FunctionSig(
+                    name="func",
+                    args=[ArgSig(name="x"), ArgSig(name="y"), ArgSig(name="z")],
+                    ret_type="str",
+                )
+            ],
+        )
+
+        assert_equal(
+            infer_sig_from_docstring("func(x,  /, y,  *, z, **kwargs) -> str", "func"),
+            [
+                FunctionSig(
+                    name="func",
+                    args=[
+                        ArgSig(name="x"),
+                        ArgSig(name="y"),
+                        ArgSig(name="z"),
+                        ArgSig("**kwargs"),
+                    ],
+                    ret_type="str",
+                )
+            ],
+        )
+
+    def test_infer_sig_from_docstring_pos_only_and_keyword_only_arguments_errors(self) -> None:
+        # / as first argument
+        assert_equal(infer_sig_from_docstring("func(/, x) -> str", "func"), [])
+
+        # * as last argument
+        assert_equal(infer_sig_from_docstring("func(x, *) -> str", "func"), [])
+
+        # / after *
+        assert_equal(infer_sig_from_docstring("func(x, *, /,  y) -> str", "func"), [])
+
+        # Two /
+        assert_equal(infer_sig_from_docstring("func(x, /, /, *,  y) -> str", "func"), [])
+
+        assert_equal(infer_sig_from_docstring("func(x, /, y,  /, *,  z) -> str", "func"), [])
+
+        # Two *
+        assert_equal(infer_sig_from_docstring("func(x, /, *, *,  y) -> str", "func"), [])
+
+        assert_equal(infer_sig_from_docstring("func(x, /, *, y, *,  z) -> str", "func"), [])
+
+        # *args and * are not allowed
+        assert_equal(infer_sig_from_docstring("func(*args, *, kwonly) -> str", "func"), [])
+
     def test_infer_arg_sig_from_anon_docstring(self) -> None:
         assert_equal(
             infer_arg_sig_from_anon_docstring("(*args, **kwargs)"),
@@ -610,6 +771,16 @@ class StubgenUtilSuite(unittest.TestCase):
         assert common_dir_prefix([r"foo\bar/x.pyi"]) == r"foo\bar"
         assert common_dir_prefix([r"foo/bar/x.pyi"]) == r"foo\bar"
 
+    def test_function_context_nested_classes(self) -> None:
+        ctx = FunctionContext(
+            module_name="spangle",
+            name="foo",
+            class_info=ClassInfo(
+                name="Nested", self_var="self", parent=ClassInfo(name="Parent", self_var="self")
+            ),
+        )
+        assert ctx.fullname == "spangle.Parent.Nested.foo"
+
 
 class StubgenHelpersSuite(unittest.TestCase):
     def test_is_blacklisted_path(self) -> None:
@@ -698,6 +869,8 @@ class StubgenPythonSuite(DataSuite):
                 f.write(content)
 
         options = self.parse_flags(source, extra)
+        if sys.version_info < options.pyversion:
+            pytest.skip()
         modules = self.parse_modules(source)
         out_dir = "out"
         try:
@@ -841,6 +1014,59 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(gen.get_imports().splitlines(), ["from typing import ClassVar"])
         assert_equal(output, ["class C:", "    x: ClassVar[int] = ..."])
 
+    def test_generate_c_type_none_default(self) -> None:
+        class TestClass:
+            def test(self, arg0=1, arg1=None) -> None:  # type: ignore[no-untyped-def]
+                pass
+
+        output: list[str] = []
+        mod = ModuleType(TestClass.__module__, "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        gen.is_c_module = False
+        gen.generate_function_stub(
+            "test",
+            TestClass.test,
+            output=output,
+            class_info=ClassInfo(
+                self_var="self",
+                cls=TestClass,
+                name="TestClass",
+                docstring=getattr(TestClass, "__doc__", None),
+            ),
+        )
+        assert_equal(
+            output, ["def test(self, arg0: int = ..., arg1: Incomplete | None = ...) -> None: ..."]
+        )
+
+    def test_non_c_generate_signature_with_kw_only_args(self) -> None:
+        class TestClass:
+            def test(
+                self, arg0: str, *, keyword_only: str, keyword_only_with_default: int = 7
+            ) -> None:
+                pass
+
+        output: list[str] = []
+        mod = ModuleType(TestClass.__module__, "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        gen.is_c_module = False
+        gen.generate_function_stub(
+            "test",
+            TestClass.test,
+            output=output,
+            class_info=ClassInfo(
+                self_var="self",
+                cls=TestClass,
+                name="TestClass",
+                docstring=getattr(TestClass, "__doc__", None),
+            ),
+        )
+        assert_equal(
+            output,
+            [
+                "def test(self, arg0: str, *, keyword_only: str, keyword_only_with_default: int = ...) -> None: ..."
+            ],
+        )
+
     def test_generate_c_type_inheritance(self) -> None:
         class TestClass(KeyError):
             pass
@@ -943,7 +1169,7 @@ class StubgencSuite(unittest.TestCase):
     def test_generate_c_type_classmethod_with_overloads(self) -> None:
         class TestClass:
             @classmethod
-            def test(self, arg0: str) -> None:
+            def test(cls, arg0: str) -> None:
                 """
                 test(cls, arg0: str)
                 test(cls, arg0: int)
@@ -1099,8 +1325,7 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(gen.get_imports().splitlines(), ["import foo", "import other"])
 
     def test_generate_c_function_no_crash_for_non_str_docstring(self) -> None:
-        def test(arg0: str) -> None:
-            ...
+        def test(arg0: str) -> None: ...
 
         test.__doc__ = property(lambda self: "test(arg0: str) -> None")  # type: ignore[assignment]
 
@@ -1354,6 +1579,20 @@ class IsValidTypeSuite(unittest.TestCase):
         assert is_valid_type("List[int]")
         assert is_valid_type("Dict[str, int]")
         assert is_valid_type("None")
+        assert is_valid_type("Literal[26]")
+        assert is_valid_type("Literal[0x1A]")
+        assert is_valid_type('Literal["hello world"]')
+        assert is_valid_type('Literal[b"hello world"]')
+        assert is_valid_type('Literal[u"hello world"]')
+        assert is_valid_type("Literal[True]")
+        assert is_valid_type("Literal[Color.RED]")
+        assert is_valid_type("Literal[None]")
+        assert is_valid_type("str | int")
+        assert is_valid_type("dict[str, int] | int")
+        assert is_valid_type("tuple[str, ...]")
+        assert is_valid_type(
+            'Literal[26, 0x1A, "hello world", b"hello world", u"hello world", True, Color.RED, None]'
+        )
         assert not is_valid_type("foo-bar")
         assert not is_valid_type("x->y")
         assert not is_valid_type("True")

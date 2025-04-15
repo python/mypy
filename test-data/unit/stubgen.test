@@ -27,20 +27,20 @@ def g(arg) -> None: ...
 def f(a, b=2): ...
 def g(b=-1, c=0): ...
 [out]
-def f(a, b: int = ...) -> None: ...
-def g(b: int = ..., c: int = ...) -> None: ...
+def f(a, b: int = 2) -> None: ...
+def g(b: int = -1, c: int = 0) -> None: ...
 
 [case testDefaultArgNone]
 def f(x=None): ...
 [out]
 from _typeshed import Incomplete
 
-def f(x: Incomplete | None = ...) -> None: ...
+def f(x: Incomplete | None = None) -> None: ...
 
 [case testDefaultArgBool]
 def f(x=True, y=False): ...
 [out]
-def f(x: bool = ..., y: bool = ...) -> None: ...
+def f(x: bool = True, y: bool = False) -> None: ...
 
 [case testDefaultArgBool_inspect]
 def f(x=True, y=False): ...
@@ -48,9 +48,9 @@ def f(x=True, y=False): ...
 def f(x: bool = ..., y: bool = ...): ...
 
 [case testDefaultArgStr]
-def f(x='foo'): ...
+def f(x='foo',y="how's quotes"): ...
 [out]
-def f(x: str = ...) -> None: ...
+def f(x: str = 'foo', y: str = "how's quotes") -> None: ...
 
 [case testDefaultArgStr_inspect]
 def f(x='foo'): ...
@@ -58,14 +58,16 @@ def f(x='foo'): ...
 def f(x: str = ...): ...
 
 [case testDefaultArgBytes]
-def f(x=b'foo'): ...
+def f(x=b'foo',y=b"what's up",z=b'\xc3\xa0 la une'): ...
 [out]
-def f(x: bytes = ...) -> None: ...
+def f(x: bytes = b'foo', y: bytes = b"what's up", z: bytes = b'\xc3\xa0 la une') -> None: ...
 
 [case testDefaultArgFloat]
-def f(x=1.2): ...
+def f(x=1.2,y=1e-6,z=0.0,w=-0.0,v=+1.0): ...
+def g(x=float("nan"), y=float("inf"), z=float("-inf")): ...
 [out]
-def f(x: float = ...) -> None: ...
+def f(x: float = 1.2, y: float = 1e-06, z: float = 0.0, w: float = -0.0, v: float = +1.0) -> None: ...
+def g(x=..., y=..., z=...) -> None: ...
 
 [case testDefaultArgOther]
 def f(x=ord): ...
@@ -126,10 +128,10 @@ def i(a, *, b=1): ...
 def j(a, *, b=1, **c): ...
 [out]
 def f(a, *b, **c) -> None: ...
-def g(a, *b, c: int = ...) -> None: ...
-def h(a, *b, c: int = ..., **d) -> None: ...
-def i(a, *, b: int = ...) -> None: ...
-def j(a, *, b: int = ..., **c) -> None: ...
+def g(a, *b, c: int = 1) -> None: ...
+def h(a, *b, c: int = 1, **d) -> None: ...
+def i(a, *, b: int = 1) -> None: ...
+def j(a, *, b: int = 1, **c) -> None: ...
 
 [case testClass]
 class A:
@@ -236,13 +238,24 @@ class C:
     def __init__(self, x: str) -> None: ...
 
 [case testSelfAssignment]
+from mod import A
+from typing import Any, Dict, Union
 class C:
     def __init__(self):
+        self.a: A = A()
         self.x = 1
         x.y = 2
+        self.y: Dict[str, Any] = {}
+        self.z: Union[int, str, bool, None] = None
 [out]
+from mod import A
+from typing import Any
+
 class C:
+    a: A
     x: int
+    y: dict[str, Any]
+    z: int | str | bool | None
     def __init__(self) -> None: ...
 
 [case testSelfAndClassBodyAssignment]
@@ -325,10 +338,24 @@ class A: ...
 class B(A): ...
 
 [case testDecoratedFunction]
+import x
+
 @decorator
 def foo(x): ...
+
+@x.decorator
+def bar(x): ...
+
+@decorator(x=1, y={"a": 1})
+def foo_bar(x): ...
 [out]
+import x
+
+@decorator
 def foo(x) -> None: ...
+@x.decorator
+def bar(x) -> None: ...
+def foo_bar(x) -> None: ...
 
 [case testMultipleAssignment]
 x, y = 1, 2
@@ -356,8 +383,17 @@ y: Incomplete
 def f(x, *, y=1): ...
 def g(x, *, y=1, z=2): ...
 [out]
-def f(x, *, y: int = ...) -> None: ...
-def g(x, *, y: int = ..., z: int = ...) -> None: ...
+def f(x, *, y: int = 1) -> None: ...
+def g(x, *, y: int = 1, z: int = 2) -> None: ...
+
+[case testKeywordOnlyArg_inspect]
+def f(x, *, y=1): ...
+def g(x, *, y=1, z=2): ...
+def h(x, *, y, z=2): ...
+[out]
+def f(x, *, y: int = ...): ...
+def g(x, *, y: int = ..., z: int = ...): ...
+def h(x, *, y, z: int = ...): ...
 
 [case testProperty]
 class A:
@@ -366,6 +402,8 @@ class A:
         return 1
     @f.setter
     def f(self, x): ...
+    @f.deleter
+    def f(self): ...
 
     def h(self):
         self.f = 1
@@ -375,6 +413,30 @@ class A:
     def f(self): ...
     @f.setter
     def f(self, x) -> None: ...
+    @f.deleter
+    def f(self) -> None: ...
+    def h(self) -> None: ...
+
+[case testProperty_semanal]
+class A:
+    @property
+    def f(self):
+        return 1
+    @f.setter
+    def f(self, x): ...
+    @f.deleter
+    def f(self): ...
+
+    def h(self):
+        self.f = 1
+[out]
+class A:
+    @property
+    def f(self): ...
+    @f.setter
+    def f(self, x) -> None: ...
+    @f.deleter
+    def f(self) -> None: ...
     def h(self) -> None: ...
 
 -- a read/write property is treated the same as an attribute
@@ -569,6 +631,8 @@ __all__ = [] + ['f']
 def f(): ...
 def g(): ...
 [out]
+__all__ = ['f']
+
 def f() -> None: ...
 
 [case testOmitDefsNotInAll_semanal]
@@ -576,6 +640,8 @@ __all__ = ['f']
 def f(): ...
 def g(): ...
 [out]
+__all__ = ['f']
+
 def f() -> None: ...
 
 [case testOmitDefsNotInAll_inspect]
@@ -583,6 +649,8 @@ __all__ = [] + ['f']
 def f(): ...
 def g(): ...
 [out]
+__all__ = ['f']
+
 def f(): ...
 
 [case testVarDefsNotInAll_import]
@@ -592,6 +660,8 @@ x = 1
 y = 1
 def g(): ...
 [out]
+__all__ = ['f', 'g']
+
 def f() -> None: ...
 def g() -> None: ...
 
@@ -602,6 +672,8 @@ x = 1
 y = 1
 def g(): ...
 [out]
+__all__ = ['f', 'g']
+
 def f(): ...
 def g(): ...
 
@@ -610,6 +682,8 @@ __all__ = [] + ['f']
 def f(): ...
 class A: ...
 [out]
+__all__ = ['f']
+
 def f() -> None: ...
 
 class A: ...
@@ -619,6 +693,8 @@ __all__ = [] + ['f']
 def f(): ...
 class A: ...
 [out]
+__all__ = ['f']
+
 def f(): ...
 
 class A: ...
@@ -629,6 +705,8 @@ class A:
     x = 1
     def f(self): ...
 [out]
+__all__ = ['A']
+
 class A:
     x: int
     def f(self) -> None: ...
@@ -666,6 +744,8 @@ x = 1
 [out]
 from re import match as match, sub as sub
 
+__all__ = ['match', 'sub', 'x']
+
 x: int
 
 [case testExportModule_import]
@@ -675,6 +755,8 @@ x = 1
 y = 2
 [out]
 import re as re
+
+__all__ = ['re', 'x']
 
 x: int
 
@@ -686,6 +768,8 @@ y = 2
 [out]
 import re as re
 
+__all__ = ['re', 'x']
+
 x: int
 
 [case testExportModuleAs_import]
@@ -696,6 +780,8 @@ y = 2
 [out]
 import re as rex
 
+__all__ = ['rex', 'x']
+
 x: int
 
 [case testExportModuleInPackage_import]
@@ -704,12 +790,16 @@ __all__ = ['p']
 [out]
 import urllib.parse as p
 
+__all__ = ['p']
+
 [case testExportPackageOfAModule_import]
 import urllib.parse
 __all__ = ['urllib']
 
 [out]
 import urllib as urllib
+
+__all__ = ['urllib']
 
 [case testRelativeImportAll]
 from .x import *
@@ -723,6 +813,8 @@ x = 1
 class C:
     def g(self): ...
 [out]
+__all__ = ['f', 'x', 'C', 'g']
+
 def f() -> None: ...
 
 x: int
@@ -740,6 +832,8 @@ x = 1
 class C:
     def g(self): ...
 [out]
+__all__ = ['f', 'x', 'C', 'g']
+
 def f(): ...
 
 x: int
@@ -1151,6 +1245,68 @@ T = TypeVar('T')
 
 class D(Generic[T]): ...
 
+[case testGenericClassTypeVarTuple]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+Ts = TypeVarTuple('Ts')
+class D(Generic[Unpack[Ts]]): ...
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
+[out]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[Unpack[Ts]]): ...
+
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
+
+[case testGenericClassTypeVarTuple_semanal]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+Ts = TypeVarTuple('Ts')
+class D(Generic[Unpack[Ts]]): ...
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
+[out]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[Unpack[Ts]]): ...
+
+def callback(func: Callable[[Unpack[Ts]], None], *args: Unpack[Ts]) -> None: ...
+
+[case testGenericClassTypeVarTuplePy311]
+# flags: --python-version=3.11
+from typing import Generic, TypeVarTuple
+Ts = TypeVarTuple('Ts')
+class D(Generic[*Ts]): ...
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
+[out]
+from typing import Generic, TypeVarTuple
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[*Ts]): ...
+
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
+
+[case testGenericClassTypeVarTuplePy311_semanal]
+# flags: --python-version=3.11
+from typing import Generic, TypeVarTuple
+Ts = TypeVarTuple('Ts')
+class D(Generic[*Ts]): ...
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
+[out]
+from typing import Generic, TypeVarTuple
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[*Ts]): ...
+
+def callback(func: Callable[[*Ts], None], *args: *Ts) -> None: ...
+
 [case testObjectBaseClass]
 class A(object): ...
 [out]
@@ -1235,8 +1391,8 @@ from _typeshed import Incomplete
 
 class A:
     x: Incomplete
-    def __init__(self, a: Incomplete | None = ...) -> None: ...
-    def method(self, a: Incomplete | None = ...) -> None: ...
+    def __init__(self, a: Incomplete | None = None) -> None: ...
+    def method(self, a: Incomplete | None = None) -> None: ...
 
 [case testAnnotationImportsFrom]
 import foo
@@ -1266,9 +1422,8 @@ x: List[collections.defaultdict]
 
 [out]
 import collections
-from typing import List
 
-x: List[collections.defaultdict]
+x: list[collections.defaultdict]
 
 
 [case testAnnotationFwRefs]
@@ -1522,11 +1677,11 @@ def all():
 from _typeshed import Incomplete
 from collections.abc import Generator
 
-def f() -> Generator[Incomplete, None, None]: ...
-def g() -> Generator[None, Incomplete, None]: ...
-def h1() -> Generator[None, None, None]: ...
+def f() -> Generator[Incomplete]: ...
+def g() -> Generator[None, Incomplete]: ...
+def h1() -> Generator[None]: ...
 def h2() -> Generator[None, None, Incomplete]: ...
-def h3() -> Generator[None, None, None]: ...
+def h3() -> Generator[None]: ...
 def all() -> Generator[Incomplete, Incomplete, Incomplete]: ...
 
 [case testFunctionYieldsNone]
@@ -1538,8 +1693,8 @@ def g():
 [out]
 from collections.abc import Generator
 
-def f() -> Generator[None, None, None]: ...
-def g() -> Generator[None, None, None]: ...
+def f() -> Generator[None]: ...
+def g() -> Generator[None]: ...
 
 [case testGeneratorAlreadyDefined]
 class Generator:
@@ -1553,7 +1708,7 @@ from collections.abc import Generator as _Generator
 
 class Generator: ...
 
-def f() -> _Generator[Incomplete, None, None]: ...
+def f() -> _Generator[Incomplete]: ...
 
 [case testGeneratorYieldFrom]
 def g1():
@@ -1574,10 +1729,10 @@ def g5():
 from _typeshed import Incomplete
 from collections.abc import Generator
 
-def g1() -> Generator[Incomplete, Incomplete, None]: ...
-def g2() -> Generator[Incomplete, Incomplete, None]: ...
-def g3() -> Generator[Incomplete, Incomplete, None]: ...
-def g4() -> Generator[Incomplete, Incomplete, None]: ...
+def g1() -> Generator[Incomplete, Incomplete]: ...
+def g2() -> Generator[Incomplete, Incomplete]: ...
+def g3() -> Generator[Incomplete, Incomplete]: ...
+def g4() -> Generator[Incomplete, Incomplete]: ...
 def g5() -> Generator[Incomplete, Incomplete, Incomplete]: ...
 
 [case testGeneratorYieldAndYieldFrom]
@@ -1610,13 +1765,13 @@ def g7():
 from _typeshed import Incomplete
 from collections.abc import Generator
 
-def g1() -> Generator[Incomplete, Incomplete, None]: ...
-def g2() -> Generator[Incomplete, Incomplete, None]: ...
-def g3() -> Generator[Incomplete, Incomplete, None]: ...
-def g4() -> Generator[Incomplete, Incomplete, None]: ...
-def g5() -> Generator[Incomplete, Incomplete, None]: ...
+def g1() -> Generator[Incomplete, Incomplete]: ...
+def g2() -> Generator[Incomplete, Incomplete]: ...
+def g3() -> Generator[Incomplete, Incomplete]: ...
+def g4() -> Generator[Incomplete, Incomplete]: ...
+def g5() -> Generator[Incomplete, Incomplete]: ...
 def g6() -> Generator[Incomplete, Incomplete, Incomplete]: ...
-def g7() -> Generator[Incomplete, Incomplete, None]: ...
+def g7() -> Generator[Incomplete, Incomplete]: ...
 
 [case testCallable]
 from typing import Callable
@@ -2106,9 +2261,9 @@ funcs: Dict[Any, Any]
 f = funcs[a.f]
 [out]
 from _typeshed import Incomplete
-from typing import Any, Dict
+from typing import Any
 
-funcs: Dict[Any, Any]
+funcs: dict[Any, Any]
 f: Incomplete
 
 [case testAbstractMethodNameExpr]
@@ -2286,10 +2441,12 @@ class B:
     @property
     def x(self):
         return 'x'
-
     @x.setter
     def x(self, value):
         self.y = 'y'
+    @x.deleter
+    def x(self):
+        del self.y
 
 [out]
 class A:
@@ -2303,6 +2460,8 @@ class B:
     y: str
     @x.setter
     def x(self, value) -> None: ...
+    @x.deleter
+    def x(self) -> None: ...
 
 [case testMisplacedTypeComment]
 def f():
@@ -2324,6 +2483,8 @@ else:
 
 [out]
 import cookielib as cookielib
+
+__all__ = ['cookielib']
 
 [case testCannotCalculateMRO_semanal]
 class X: pass
@@ -2462,7 +2623,7 @@ from _typeshed import Incomplete as _Incomplete
 
 Y: _Incomplete
 
-def g(x: _Incomplete | None = ...) -> None: ...
+def g(x: _Incomplete | None = None) -> None: ...
 
 x: _Incomplete
 
@@ -2770,6 +2931,8 @@ class A: pass
 # p/__init__.pyi
 from p.a import A
 
+__all__ = ['a']
+
 a: A
 # p/a.pyi
 class A: ...
@@ -2943,25 +3106,23 @@ __uri__ = ''
 __version__ = ''
 
 [out]
-from m import __version__ as __version__
+from m import __about__ as __about__, __author__ as __author__, __version__ as __version__
+
+__all__ = ['__about__', '__author__', '__version__']
 
 [case testAttrsClass_semanal]
 import attrs
 
 @attrs.define
 class C:
-    x = attrs.field()
+    x: int = attrs.field()
 
 [out]
-from _typeshed import Incomplete
+import attrs
 
+@attrs.define
 class C:
-    x: Incomplete
-    def __init__(self, x) -> None: ...
-    def __lt__(self, other): ...
-    def __le__(self, other): ...
-    def __gt__(self, other): ...
-    def __ge__(self, other): ...
+    x: int = attrs.field()
 
 [case testNamedTupleInClass]
 from collections import namedtuple
@@ -3170,18 +3331,18 @@ def f(*args: Union[int, Tuple[int, int]]) -> int:
 
 
 [out]
-from typing import Tuple, overload
+from typing import overload
 
 class A:
     @overload
     def f(self, x: int, y: int) -> int: ...
     @overload
-    def f(self, x: Tuple[int, int]) -> int: ...
+    def f(self, x: tuple[int, int]) -> int: ...
 
 @overload
 def f(x: int, y: int) -> int: ...
 @overload
-def f(x: Tuple[int, int]) -> int: ...
+def f(x: tuple[int, int]) -> int: ...
 
 [case testOverload_fromTypingExtensionsImport]
 from typing import Tuple, Union
@@ -3212,19 +3373,18 @@ def f(*args: Union[int, Tuple[int, int]]) -> int:
 
 
 [out]
-from typing import Tuple
 from typing_extensions import overload
 
 class A:
     @overload
     def f(self, x: int, y: int) -> int: ...
     @overload
-    def f(self, x: Tuple[int, int]) -> int: ...
+    def f(self, x: tuple[int, int]) -> int: ...
 
 @overload
 def f(x: int, y: int) -> int: ...
 @overload
-def f(x: Tuple[int, int]) -> int: ...
+def f(x: tuple[int, int]) -> int: ...
 
 [case testOverload_importTyping]
 import typing
@@ -3287,22 +3447,22 @@ class A:
     @typing.overload
     def f(self, x: int, y: int) -> int: ...
     @typing.overload
-    def f(self, x: typing.Tuple[int, int]) -> int: ...
+    def f(self, x: tuple[int, int]) -> int: ...
     @typing.overload
     @classmethod
     def g(cls, x: int, y: int) -> int: ...
     @typing.overload
     @classmethod
-    def g(cls, x: typing.Tuple[int, int]) -> int: ...
+    def g(cls, x: tuple[int, int]) -> int: ...
 
 @typing.overload
 def f(x: int, y: int) -> int: ...
 @typing.overload
-def f(x: typing.Tuple[int, int]) -> int: ...
+def f(x: tuple[int, int]) -> int: ...
 @typing_extensions.overload
 def g(x: int, y: int) -> int: ...
 @typing_extensions.overload
-def g(x: typing.Tuple[int, int]) -> int: ...
+def g(x: tuple[int, int]) -> int: ...
 
 [case testOverload_importTypingAs]
 import typing as t
@@ -3365,22 +3525,22 @@ class A:
     @t.overload
     def f(self, x: int, y: int) -> int: ...
     @t.overload
-    def f(self, x: t.Tuple[int, int]) -> int: ...
+    def f(self, x: tuple[int, int]) -> int: ...
     @t.overload
     @classmethod
     def g(cls, x: int, y: int) -> int: ...
     @t.overload
     @classmethod
-    def g(cls, x: t.Tuple[int, int]) -> int: ...
+    def g(cls, x: tuple[int, int]) -> int: ...
 
 @t.overload
 def f(x: int, y: int) -> int: ...
 @t.overload
-def f(x: t.Tuple[int, int]) -> int: ...
+def f(x: tuple[int, int]) -> int: ...
 @te.overload
 def g(x: int, y: int) -> int: ...
 @te.overload
-def g(x: t.Tuple[int, int]) -> int: ...
+def g(x: tuple[int, int]) -> int: ...
 
 [case testOverloadFromImportAlias]
 from typing import overload as t_overload
@@ -3447,7 +3607,7 @@ class P(Protocol):
 [case testNonDefaultKeywordOnlyArgAfterAsterisk]
 def func(*, non_default_kwarg: bool, default_kwarg: bool = True): ...
 [out]
-def func(*, non_default_kwarg: bool, default_kwarg: bool = ...): ...
+def func(*, non_default_kwarg: bool, default_kwarg: bool = True): ...
 
 [case testNestedGenerator]
 def f1():
@@ -3467,7 +3627,7 @@ def f2(): ...
 class A:
     """class docstring
 
-    a multiline docstring"""
+    a multiline 😊 docstring"""
     def func():
         """func docstring
         don't forget to indent"""
@@ -3494,7 +3654,7 @@ class B:
 class A:
     """class docstring
 
-    a multiline docstring"""
+    a multiline 😊 docstring"""
     def func() -> None:
         """func docstring
         don't forget to indent"""
@@ -3853,11 +4013,59 @@ def gen2() -> _Generator[_Incomplete, _Incomplete, _Incomplete]: ...
 class X(_Incomplete): ...
 class Y(_Incomplete): ...
 
+[case testIgnoreLongDefaults]
+def f(x='abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
+abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
+abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
+abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'): ...
+
+def g(x=b'abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
+abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
+abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
+abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'): ...
+
+def h(x=123456789012345678901234567890123456789012345678901234567890\
+123456789012345678901234567890123456789012345678901234567890\
+123456789012345678901234567890123456789012345678901234567890\
+123456789012345678901234567890123456789012345678901234567890): ...
+
+[out]
+def f(x: str = ...) -> None: ...
+def g(x: bytes = ...) -> None: ...
+def h(x: int = ...) -> None: ...
+
+[case testDefaultsOfBuiltinContainers]
+def f(x=(), y=(1,), z=(1, 2)): ...
+def g(x=[], y=[1, 2]): ...
+def h(x={}, y={1: 2, 3: 4}): ...
+def i(x={1, 2, 3}): ...
+def j(x=[(1,"a"), (2,"b")]): ...
+
+[out]
+def f(x=(), y=(1,), z=(1, 2)) -> None: ...
+def g(x=[], y=[1, 2]) -> None: ...
+def h(x={}, y={1: 2, 3: 4}) -> None: ...
+def i(x={1, 2, 3}) -> None: ...
+def j(x=[(1, 'a'), (2, 'b')]) -> None: ...
+
+[case testDefaultsOfBuiltinContainersWithNonTrivialContent]
+def f(x=(1, u.v), y=(k(),), z=(w,)): ...
+def g(x=[1, u.v], y=[k()], z=[w]): ...
+def h(x={1: u.v}, y={k(): 2}, z={m: m}, w={**n}): ...
+def i(x={u.v, 2}, y={3, k()}, z={w}): ...
+
+[out]
+def f(x=..., y=..., z=...) -> None: ...
+def g(x=..., y=..., z=...) -> None: ...
+def h(x=..., y=..., z=..., w=...) -> None: ...
+def i(x=..., y=..., z=...) -> None: ...
+
 [case testDataclass]
 import dataclasses
 import dataclasses as dcs
-from dataclasses import dataclass, InitVar, KW_ONLY
+from dataclasses import dataclass, field, Field, InitVar, KW_ONLY
 from dataclasses import dataclass as dc
+from datetime import datetime
 from typing import ClassVar
 
 @dataclasses.dataclass
@@ -3872,6 +4080,10 @@ class X:
     h: int = 1
     i: InitVar[str]
     j: InitVar = 100
+    # Lambda not supported yet -> marked as Incomplete instead
+    k: str = Field(
+        default_factory=lambda: datetime.utcnow().isoformat(" ", timespec="seconds")
+    )
     non_field = None
 
 @dcs.dataclass
@@ -3889,7 +4101,8 @@ class V: ...
 [out]
 import dataclasses
 import dataclasses as dcs
-from dataclasses import InitVar, KW_ONLY, dataclass, dataclass as dc
+from _typeshed import Incomplete
+from dataclasses import Field, InitVar, KW_ONLY, dataclass, dataclass as dc, field
 from typing import ClassVar
 
 @dataclasses.dataclass
@@ -3898,12 +4111,13 @@ class X:
     b: str = ...
     c: ClassVar
     d: ClassVar = ...
-    f: list[int] = ...
-    g: int = ...
+    f: list[int] = field(init=False, default_factory=list)
+    g: int = field(default=2, kw_only=True)
     _: KW_ONLY
     h: int = ...
     i: InitVar[str]
     j: InitVar = ...
+    k: str = Field(default_factory=Incomplete)
     non_field = ...
 
 @dcs.dataclass
@@ -3916,49 +4130,57 @@ class W: ...
 class V: ...
 
 [case testDataclass_semanal]
-from dataclasses import dataclass, InitVar
+from dataclasses import Field, InitVar, dataclass, field
 from typing import ClassVar
+from datetime import datetime
 
 @dataclass
 class X:
     a: int
-    b: str = "hello"
-    c: ClassVar
-    d: ClassVar = 200
+    b: InitVar[str]
+    c: str = "hello"
+    d: ClassVar
+    e: ClassVar = 200
     f: list[int] = field(init=False, default_factory=list)
     g: int = field(default=2, kw_only=True)
     h: int = 1
-    i: InitVar[str]
-    j: InitVar = 100
+    i: InitVar = 100
+    j: list[int] = field(default_factory=list)
+    # Lambda not supported yet -> marked as Incomplete instead
+    k: str = Field(
+        default_factory=lambda: datetime.utcnow().isoformat(" ", timespec="seconds")
+    )
     non_field = None
 
 @dataclass(init=False, repr=False, frozen=True)
 class Y: ...
 
 [out]
-from dataclasses import InitVar, dataclass
+from _typeshed import Incomplete
+from dataclasses import Field, InitVar, dataclass, field
 from typing import ClassVar
 
 @dataclass
 class X:
     a: int
-    b: str = ...
-    c: ClassVar
-    d: ClassVar = ...
-    f: list[int] = ...
-    g: int = ...
+    b: InitVar[str]
+    c: str = ...
+    d: ClassVar
+    e: ClassVar = ...
+    f: list[int] = field(init=False, default_factory=list)
+    g: int = field(default=2, kw_only=True)
     h: int = ...
-    i: InitVar[str]
-    j: InitVar = ...
+    i: InitVar = ...
+    j: list[int] = field(default_factory=list)
+    k: str = Field(default_factory=Incomplete)
     non_field = ...
-    def __init__(self, a, b, f, g, h, i, j) -> None: ...
 
 @dataclass(init=False, repr=False, frozen=True)
 class Y: ...
 
 [case testDataclassWithKwOnlyField_semanal]
 # flags: --python-version=3.10
-from dataclasses import dataclass, InitVar, KW_ONLY
+from dataclasses import dataclass, field, InitVar, KW_ONLY
 from typing import ClassVar
 
 @dataclass
@@ -3979,7 +4201,7 @@ class X:
 class Y: ...
 
 [out]
-from dataclasses import InitVar, KW_ONLY, dataclass
+from dataclasses import InitVar, KW_ONLY, dataclass, field
 from typing import ClassVar
 
 @dataclass
@@ -3988,14 +4210,13 @@ class X:
     b: str = ...
     c: ClassVar
     d: ClassVar = ...
-    f: list[int] = ...
-    g: int = ...
+    f: list[int] = field(init=False, default_factory=list)
+    g: int = field(default=2, kw_only=True)
     _: KW_ONLY
     h: int = ...
     i: InitVar[str]
     j: InitVar = ...
     non_field = ...
-    def __init__(self, a, b, f, g, *, h, i, j) -> None: ...
 
 @dataclass(init=False, repr=False, frozen=True)
 class Y: ...
@@ -4026,6 +4247,13 @@ import missing
 class X(missing.Base):
     a: int
 
+@dataclass
+class Y(missing.Base):
+    generated_args: str
+    generated_args_: str
+    generated_kwargs: float
+    generated_kwargs_: float
+
 [out]
 import missing
 from dataclasses import dataclass
@@ -4033,4 +4261,447 @@ from dataclasses import dataclass
 @dataclass
 class X(missing.Base):
     a: int
-    def __init__(self, *selfa_, a, **selfa__) -> None: ...
+
+@dataclass
+class Y(missing.Base):
+    generated_args: str
+    generated_args_: str
+    generated_kwargs: float
+    generated_kwargs_: float
+
+[case testDataclassTransform]
+# dataclass_transform detection only works with semantic analysis.
+# Test stubgen doesn't break too badly without it.
+from typing_extensions import dataclass_transform
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls):
+    return cls
+
+@create_model
+class X:
+    a: int
+    b: str = "hello"
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class Y(ModelBase):
+    a: int
+    b: str = "hello"
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class DCMeta(type): ...
+
+class Z(metaclass=DCMeta):
+    a: int
+    b: str = "hello"
+
+[out]
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls): ...
+
+class X:
+    a: int
+    b: str
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class Y(ModelBase):
+    a: int
+    b: str
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+class DCMeta(type): ...
+
+class Z(metaclass=DCMeta):
+    a: int
+    b: str
+
+[case testDataclassTransformDecorator_semanal]
+import typing_extensions
+from dataclasses import field
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls):
+    return cls
+
+@create_model
+class X:
+    a: int
+    b: str = "hello"
+    c: bool = field(default=True)
+
+[out]
+import typing_extensions
+from dataclasses import field
+
+@typing_extensions.dataclass_transform(kw_only_default=True)
+def create_model(cls): ...
+
+@create_model
+class X:
+    a: int
+    b: str = ...
+    c: bool = field(default=True)
+
+[case testDataclassTransformClass_semanal]
+from dataclasses import field
+from typing_extensions import dataclass_transform
+
+@dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class X(ModelBase):
+    a: int
+    b: str = "hello"
+    c: bool = field(default=True)
+
+[out]
+from dataclasses import field
+from typing_extensions import dataclass_transform
+
+@dataclass_transform(kw_only_default=True)
+class ModelBase: ...
+
+class X(ModelBase):
+    a: int
+    b: str = ...
+    c: bool = field(default=True)
+
+[case testDataclassTransformMetaclass_semanal]
+from dataclasses import field
+from typing import Any
+from typing_extensions import dataclass_transform
+
+def custom_field(*, default: bool, kw_only: bool) -> Any: ...
+
+@dataclass_transform(kw_only_default=True, field_specifiers=(custom_field,))
+class DCMeta(type): ...
+
+class X(metaclass=DCMeta):
+    a: int
+    b: str = "hello"
+    c: bool = field(default=True)  # should be ignored, not field_specifier here
+
+class Y(X):
+    d: str = custom_field(default="Hello")
+
+[out]
+from typing import Any
+from typing_extensions import dataclass_transform
+
+def custom_field(*, default: bool, kw_only: bool) -> Any: ...
+
+@dataclass_transform(kw_only_default=True, field_specifiers=(custom_field,))
+class DCMeta(type): ...
+
+class X(metaclass=DCMeta):
+    a: int
+    b: str = ...
+    c: bool = ...
+
+class Y(X):
+    d: str = custom_field(default='Hello')
+
+[case testAlwaysUsePEP604Union]
+import typing
+import typing as t
+from typing import Optional, Union, Optional as O, Union as U
+import x
+
+union = Union[int, str]
+bad_union = Union[int]
+nested_union = Optional[Union[int, str]]
+not_union = x.Union[int, str]
+u = U[int, str]
+o = O[int]
+
+def f1(a: Union["int", Optional[tuple[int, t.Optional[int]]]]) -> int: ...
+def f2(a: typing.Union[int | x.Union[int, int], O[float]]) -> int: ...
+
+[out]
+import x
+from _typeshed import Incomplete
+
+union = int | str
+bad_union = int
+nested_union = int | str | None
+not_union: Incomplete
+u = int | str
+o = int | None
+
+def f1(a: int | tuple[int, int | None] | None) -> int: ...
+def f2(a: int | x.Union[int, int] | float | None) -> int: ...
+
+[case testTypingBuiltinReplacements]
+import typing
+import typing as t
+from typing import Tuple
+import typing_extensions
+import typing_extensions as te
+from typing_extensions import List, Type
+
+# builtins are not builtins
+tuple = int
+[list,] = float
+dict, set, frozenset = str, float, int
+
+x: Tuple[t.Text, t.FrozenSet[typing.Type[float]]]
+y: typing.List[int]
+z: t.Dict[str, float]
+v: typing.Set[int]
+w: List[typing_extensions.Dict[te.FrozenSet[Type[int]], te.Tuple[te.Set[te.Text], ...]]]
+
+x_alias = Tuple[str, ...]
+y_alias = typing.List[int]
+z_alias = t.Dict[str, float]
+v_alias = typing.Set[int]
+w_alias = List[typing_extensions.Dict[str, te.Tuple[int, ...]]]
+
+[out]
+from _typeshed import Incomplete
+from builtins import dict as _dict, frozenset as _frozenset, list as _list, set as _set, tuple as _tuple
+
+tuple = int
+list: Incomplete
+dict: Incomplete
+set: Incomplete
+frozenset: Incomplete
+x: _tuple[str, _frozenset[type[float]]]
+y: _list[int]
+z: _dict[str, float]
+v: _set[int]
+w: _list[_dict[_frozenset[type[int]], _tuple[_set[str], ...]]]
+x_alias = _tuple[str, ...]
+y_alias = _list[int]
+z_alias = _dict[str, float]
+v_alias = _set[int]
+w_alias = _list[_dict[str, _tuple[int, ...]]]
+
+[case testHandlingNameCollisions]
+# flags: --include-private
+from typing import Tuple
+tuple = int
+_tuple = range
+__tuple = map
+x: Tuple[int, str]
+[out]
+from builtins import tuple as ___tuple
+
+tuple = int
+_tuple = range
+__tuple = map
+x: ___tuple[int, str]
+
+[case testPEP570PosOnlyParams]
+def f(x=0, /): ...
+def f1(x: int, /): ...
+def f2(x: int, y: float = 1, /): ...
+def f3(x: int, /, y: float): ...
+def f4(x: int, /, y: float = 1): ...
+def f5(x: int, /, *, y: float): ...
+def f6(x: int = 0, /, *, y: float): ...
+def f7(x: int, /, *, y: float = 1): ...
+def f8(x: int = 0, /, *, y: float = 1): ...
+
+[out]
+def f(x: int = 0, /) -> None: ...
+def f1(x: int, /): ...
+def f2(x: int, y: float = 1, /): ...
+def f3(x: int, /, y: float): ...
+def f4(x: int, /, y: float = 1): ...
+def f5(x: int, /, *, y: float): ...
+def f6(x: int = 0, /, *, y: float): ...
+def f7(x: int, /, *, y: float = 1): ...
+def f8(x: int = 0, /, *, y: float = 1): ...
+
+[case testPreserveEmptyTuple]
+ann: tuple[()]
+alias = tuple[()]
+def f(x: tuple[()]): ...
+class C(tuple[()]): ...
+
+[out]
+ann: tuple[()]
+alias = tuple[()]
+
+def f(x: tuple[()]): ...
+
+class C(tuple[()]): ...
+
+[case testPreserveEnumValue_semanal]
+from enum import Enum
+
+class Foo(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+class Bar(Enum):
+    A = object()
+    B = "a" + "b"
+
+[out]
+from enum import Enum
+
+class Foo(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+class Bar(Enum):
+    A = ...
+    B = ...
+
+[case testGracefullyHandleInvalidOptionalUsage]
+from typing import Optional
+
+x: Optional  # invalid
+y: Optional[int]  # valid
+z: Optional[int, str]  # invalid
+w: Optional[int | str]  # valid
+r: Optional[type[int | str]]
+
+X = Optional
+Y = Optional[int]
+Z = Optional[int, str]
+W = Optional[int | str]
+R = Optional[type[int | str]]
+
+[out]
+from _typeshed import Incomplete
+from typing import Optional
+
+x: Incomplete
+y: int | None
+z: Incomplete
+w: int | str | None
+r: type[int | str] | None
+X = Optional
+Y = int | None
+Z = Incomplete
+W = int | str | None
+R = type[int | str] | None
+
+[case testClassInheritanceWithKeywordsConstants]
+class Test(Whatever, a=1, b='b', c=True, d=1.5, e=None, f=1j, g=b'123'): ...
+[out]
+class Test(Whatever, a=1, b='b', c=True, d=1.5, e=None, f=1j, g=b'123'): ...
+
+[case testClassInheritanceWithKeywordsDynamic]
+class Test(Whatever, keyword=SomeName * 2, attr=SomeName.attr): ...
+[out]
+class Test(Whatever, keyword=SomeName * 2, attr=SomeName.attr): ...
+
+[case testPEP695GenericClass]
+# flags: --python-version=3.12
+
+class C[T]: ...
+class C1[T1](int): ...
+class C2[T2: int]: ...
+class C3[T3: str | bytes]: ...
+class C4[T4: (str, bytes)]: ...
+
+class Outer:
+    class Inner[T]: ...
+
+[out]
+class C[T]: ...
+class C1[T1](int): ...
+class C2[T2: int]: ...
+class C3[T3: str | bytes]: ...
+class C4[T4: (str, bytes)]: ...
+
+class Outer:
+    class Inner[T]: ...
+
+[case testPEP695GenericFunction]
+# flags: --python-version=3.12
+
+def f1[T1](): ...
+def f2[T2: int](): ...
+def f3[T3: str | bytes](): ...
+def f4[T4: (str, bytes)](): ...
+
+class C:
+    def m[T](self, x: T) -> T: ...
+
+[out]
+def f1[T1]() -> None: ...
+def f2[T2: int]() -> None: ...
+def f3[T3: str | bytes]() -> None: ...
+def f4[T4: (str, bytes)]() -> None: ...
+
+class C:
+    def m[T](self, x: T) -> T: ...
+
+[case testPEP695TypeAlias]
+# flags: --python-version=3.12
+
+type Alias = int | str
+type Alias1[T1] = list[T1] | set[T1]
+type Alias2[T2: int] = list[T2] | set[T2]
+type Alias3[T3: str | bytes] = list[T3] | set[T3]
+type Alias4[T4: (str, bytes)] = list[T4] | set[T4]
+
+class C:
+    type IndentedAlias[T] = list[T]
+
+[out]
+type Alias = int | str
+type Alias1[T1] = list[T1] | set[T1]
+type Alias2[T2: int] = list[T2] | set[T2]
+type Alias3[T3: str | bytes] = list[T3] | set[T3]
+type Alias4[T4: (str, bytes)] = list[T4] | set[T4]
+class C:
+    type IndentedAlias[T] = list[T]
+
+[case testPEP695Syntax_semanal]
+# flags: --python-version=3.12
+
+class C[T]: ...
+def f[S](): ...
+type A[R] = list[R]
+
+[out]
+class C[T]: ...
+
+def f[S]() -> None: ...
+type A[R] = list[R]
+
+[case testPEP696Syntax]
+# flags: --python-version=3.13
+
+type Alias1[T1 = int] = list[T1] | set[T1]
+type Alias2[T2: int | float = int] = list[T2] | set[T2]
+class C3[T3 = int]: ...
+class C4[T4: int | float = int](list[T4]): ...
+def f5[T5 = int](): ...
+
+[out]
+type Alias1[T1 = int] = list[T1] | set[T1]
+type Alias2[T2: int | float = int] = list[T2] | set[T2]
+class C3[T3 = int]: ...
+class C4[T4: int | float = int](list[T4]): ...
+
+def f5[T5 = int]() -> None: ...
+
+[case testIgnoreMypyGeneratedMethods_semanal]
+# flags: --include-private --python-version=3.13
+from typing_extensions import dataclass_transform
+
+@dataclass_transform()
+class DCMeta(type): ...
+class DC(metaclass=DCMeta):
+    x: str
+
+[out]
+from typing_extensions import dataclass_transform
+
+@dataclass_transform()
+class DCMeta(type): ...
+
+class DC(metaclass=DCMeta):
+    x: str

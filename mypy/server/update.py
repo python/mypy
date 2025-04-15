@@ -118,7 +118,8 @@ import os
 import re
 import sys
 import time
-from typing import Callable, Final, NamedTuple, Sequence, Union
+from collections.abc import Sequence
+from typing import Callable, Final, NamedTuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.build import (
@@ -146,11 +147,7 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.options import Options
-from mypy.semanal_main import (
-    core_modules,
-    semantic_analysis_for_scc,
-    semantic_analysis_for_targets,
-)
+from mypy.semanal_main import semantic_analysis_for_scc, semantic_analysis_for_targets
 from mypy.server.astdiff import (
     SymbolSnapshot,
     compare_symbol_table_snapshots,
@@ -162,11 +159,12 @@ from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
 from mypy.server.trigger import WILDCARD_TAG, make_trigger
 from mypy.typestate import type_state
-from mypy.util import module_prefix, split_target
+from mypy.util import is_stdlib_file, module_prefix, split_target
 
 MAX_ITER: Final = 1000
 
-SENSITIVE_INTERNAL_MODULES = tuple(core_modules) + ("mypy_extensions", "typing_extensions")
+# These are modules beyond stdlib that have some special meaning for mypy.
+SENSITIVE_INTERNAL_MODULES = ("mypy_extensions", "typing_extensions")
 
 
 class FineGrainedBuildManager:
@@ -406,7 +404,10 @@ class FineGrainedBuildManager:
         # builtins and friends could potentially get triggered because
         # of protocol stuff, but nothing good could possibly come from
         # actually updating them.
-        if module in SENSITIVE_INTERNAL_MODULES:
+        if (
+            is_stdlib_file(self.manager.options.abs_custom_typeshed_dir, path)
+            or module in SENSITIVE_INTERNAL_MODULES
+        ):
             return [], (module, path), None
 
         manager = self.manager
@@ -1059,8 +1060,7 @@ def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> dict[str,
 
     Returns a dictionary from full name to corresponding symbol table.
     """
-    result = {}
-    result[prefix] = symbols
+    result = {prefix: symbols}
     for name, node in symbols.items():
         if isinstance(node.node, TypeInfo) and node.node.fullname.startswith(prefix + "."):
             more = find_symbol_tables_recursive(prefix + "." + name, node.node.names)

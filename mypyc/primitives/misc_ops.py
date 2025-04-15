@@ -13,9 +13,17 @@ from mypyc.ir.rtypes import (
     int_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
+    pointer_rprimitive,
     str_rprimitive,
+    void_rtype,
 )
-from mypyc.primitives.registry import ERR_NEG_INT, custom_op, function_op, load_address_op
+from mypyc.primitives.registry import (
+    ERR_NEG_INT,
+    custom_op,
+    custom_primitive_op,
+    function_op,
+    load_address_op,
+)
 
 # Get the 'bool' type object.
 load_address_op(name="builtins.bool", type=object_rprimitive, src="PyBool_Type")
@@ -216,7 +224,13 @@ pytype_from_template_op = custom_op(
 # Create a dataclass from an extension class. See
 # CPyDataclass_SleightOfHand for more docs.
 dataclass_sleight_of_hand = custom_op(
-    arg_types=[object_rprimitive, object_rprimitive, dict_rprimitive, dict_rprimitive],
+    arg_types=[
+        object_rprimitive,
+        object_rprimitive,
+        dict_rprimitive,
+        dict_rprimitive,
+        str_rprimitive,
+    ],
     return_type=bit_rprimitive,
     c_function_name="CPyDataclass_SleightOfHand",
     error_kind=ERR_FALSE,
@@ -232,10 +246,48 @@ check_unpack_count_op = custom_op(
 )
 
 
-# register an implementation for a singledispatch function
+# Register an implementation for a singledispatch function
 register_function = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPySingledispatch_RegisterFunction",
     error_kind=ERR_MAGIC,
+)
+
+
+# Initialize a PyObject * item in a memory buffer (steal the value)
+buf_init_item = custom_primitive_op(
+    name="buf_init_item",
+    arg_types=[pointer_rprimitive, c_pyssize_t_rprimitive, object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+    steals=[False, False, True],
+)
+
+# Get length of PyVarObject instance (e.g. list or tuple)
+var_object_size = custom_primitive_op(
+    name="var_object_size",
+    arg_types=[object_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    error_kind=ERR_NEVER,
+)
+
+# Set the lazy value compute function of an TypeAliasType instance (Python 3.12+).
+# This must only be used as part of initializing the object. Any existing value
+# will be cleared.
+set_type_alias_compute_function_op = custom_primitive_op(
+    name="set_type_alias_compute_function",
+    c_function_name="CPy_SetTypeAliasTypeComputeFunction",
+    # (alias object, value compute function)
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
+)
+
+debug_print_op = custom_primitive_op(
+    name="debug_print",
+    c_function_name="CPyDebug_PrintObject",
+    arg_types=[object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
 )

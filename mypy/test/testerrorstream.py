@@ -1,4 +1,5 @@
 """Tests for mypy incremental error output."""
+
 from __future__ import annotations
 
 from mypy import build
@@ -29,7 +30,7 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
 
     logged_messages: list[str] = []
 
-    def flush_errors(msgs: list[str], serious: bool) -> None:
+    def flush_errors(filename: str | None, msgs: list[str], serious: bool) -> None:
         if msgs:
             logged_messages.append("==== Errors flushed ====")
             logged_messages.extend(msgs)

@@ -3,6 +3,7 @@ A "meta test" which tests the `--update-data` feature for updating .test files.
 Updating the expected output, especially when it's in the form of inline (comment) assertions,
 can be brittle, which is why we're "meta-testing" here.
 """
+
 from mypy.test.helpers import Suite
 from mypy.test.meta._pytest import PytestResult, dedent_docstring, run_pytest_data_suite
 

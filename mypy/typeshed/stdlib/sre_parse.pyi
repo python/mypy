@@ -19,10 +19,20 @@ FLAGS: dict[str, int]
 TYPE_FLAGS: int
 GLOBAL_FLAGS: int
 
+if sys.version_info >= (3, 11):
+    MAXWIDTH: int
+
 if sys.version_info < (3, 11):
     class Verbose(Exception): ...
 
-class _State:
+_OpSubpatternType: TypeAlias = tuple[int | None, int, int, SubPattern]
+_OpGroupRefExistsType: TypeAlias = tuple[int, SubPattern, SubPattern]
+_OpInType: TypeAlias = list[tuple[_NIC, int]]
+_OpBranchType: TypeAlias = tuple[None, list[SubPattern]]
+_AvType: TypeAlias = _OpInType | _OpBranchType | Iterable[SubPattern] | _OpGroupRefExistsType | _OpSubpatternType
+_CodeType: TypeAlias = tuple[_NIC, _AvType]
+
+class State:
     flags: int
     groupdict: dict[str, int]
     groupwidths: list[int | None]
@@ -34,29 +44,12 @@ class _State:
     def checkgroup(self, gid: int) -> bool: ...
     def checklookbehindgroup(self, gid: int, source: Tokenizer) -> None: ...
 
-if sys.version_info >= (3, 8):
-    State: TypeAlias = _State
-else:
-    Pattern: TypeAlias = _State
-
-_OpSubpatternType: TypeAlias = tuple[int | None, int, int, SubPattern]
-_OpGroupRefExistsType: TypeAlias = tuple[int, SubPattern, SubPattern]
-_OpInType: TypeAlias = list[tuple[_NIC, int]]
-_OpBranchType: TypeAlias = tuple[None, list[SubPattern]]
-_AvType: TypeAlias = _OpInType | _OpBranchType | Iterable[SubPattern] | _OpGroupRefExistsType | _OpSubpatternType
-_CodeType: TypeAlias = tuple[_NIC, _AvType]
-
 class SubPattern:
     data: list[_CodeType]
     width: int | None
+    state: State
 
-    if sys.version_info >= (3, 8):
-        state: State
-        def __init__(self, state: State, data: list[_CodeType] | None = None) -> None: ...
-    else:
-        pattern: Pattern
-        def __init__(self, pattern: Pattern, data: list[_CodeType] | None = None) -> None: ...
-
+    def __init__(self, state: State, data: list[_CodeType] | None = None) -> None: ...
     def dump(self, level: int = 0) -> None: ...
     def __len__(self) -> int: ...
     def __delitem__(self, index: int | slice) -> None: ...
@@ -76,11 +69,7 @@ class Tokenizer:
     def match(self, char: str) -> bool: ...
     def get(self) -> str | None: ...
     def getwhile(self, n: int, charset: Iterable[str]) -> str: ...
-    if sys.version_info >= (3, 8):
-        def getuntil(self, terminator: str, name: str) -> str: ...
-    else:
-        def getuntil(self, terminator: str) -> str: ...
-
+    def getuntil(self, terminator: str, name: str) -> str: ...
     @property
     def pos(self) -> int: ...
     def tell(self) -> int: ...
@@ -103,23 +92,13 @@ if sys.version_info >= (3, 12):
     @overload
     def parse_template(source: bytes, pattern: _Pattern[Any]) -> _TemplateByteType: ...
 
-elif sys.version_info >= (3, 8):
+else:
     @overload
     def parse_template(source: str, state: _Pattern[Any]) -> _TemplateType: ...
     @overload
     def parse_template(source: bytes, state: _Pattern[Any]) -> _TemplateByteType: ...
 
-else:
-    @overload
-    def parse_template(source: str, pattern: _Pattern[Any]) -> _TemplateType: ...
-    @overload
-    def parse_template(source: bytes, pattern: _Pattern[Any]) -> _TemplateByteType: ...
-
-if sys.version_info >= (3, 8):
-    def parse(str: str, flags: int = 0, state: State | None = None) -> SubPattern: ...
-
-else:
-    def parse(str: str, flags: int = 0, pattern: Pattern | None = None) -> SubPattern: ...
+def parse(str: str, flags: int = 0, state: State | None = None) -> SubPattern: ...
 
 if sys.version_info < (3, 12):
     def expand_template(template: _TemplateType, match: Match[Any]) -> str: ...

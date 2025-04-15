@@ -1,44 +1,41 @@
 import sys
 from _typeshed import StrOrBytesPath
-from collections.abc import Callable, Hashable, Iterable, Sequence
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from configparser import RawConfigParser
 from re import Pattern
 from threading import Thread
-from typing import IO, Any, overload
-from typing_extensions import Literal, SupportsIndex, TypeAlias, TypedDict
+from typing import IO, Any, Final, Literal, SupportsIndex, TypedDict, overload, type_check_only
+from typing_extensions import Required, TypeAlias
 
 from . import Filter, Filterer, Formatter, Handler, Logger, _FilterType, _FormatStyle, _Level
 
 DEFAULT_LOGGING_CONFIG_PORT: int
-RESET_ERROR: int  # undocumented
-IDENTIFIER: Pattern[str]  # undocumented
+RESET_ERROR: Final[int]  # undocumented
+IDENTIFIER: Final[Pattern[str]]  # undocumented
 
 if sys.version_info >= (3, 11):
+    @type_check_only
     class _RootLoggerConfiguration(TypedDict, total=False):
         level: _Level
         filters: Sequence[str | _FilterType]
         handlers: Sequence[str]
 
 else:
+    @type_check_only
     class _RootLoggerConfiguration(TypedDict, total=False):
         level: _Level
         filters: Sequence[str]
         handlers: Sequence[str]
 
+@type_check_only
 class _LoggerConfiguration(_RootLoggerConfiguration, TypedDict, total=False):
     propagate: bool
 
-if sys.version_info >= (3, 8):
-    _FormatterConfigurationTypedDict = TypedDict(
-        "_FormatterConfigurationTypedDict", {"class": str, "format": str, "datefmt": str, "style": _FormatStyle}, total=False
-    )
-else:
-    _FormatterConfigurationTypedDict = TypedDict(
-        "_FormatterConfigurationTypedDict",
-        {"class": str, "format": str, "datefmt": str, "style": _FormatStyle, "validate": bool},
-        total=False,
-    )
+_FormatterConfigurationTypedDict = TypedDict(
+    "_FormatterConfigurationTypedDict", {"class": str, "format": str, "datefmt": str, "style": _FormatStyle}, total=False
+)
 
+@type_check_only
 class _FilterConfigurationTypedDict(TypedDict):
     name: str
 
@@ -50,17 +47,16 @@ _FilterConfiguration: TypeAlias = _FilterConfigurationTypedDict | dict[str, Any]
 # Handler config can have additional keys even when not providing a custom factory so we just use `dict`.
 _HandlerConfiguration: TypeAlias = dict[str, Any]
 
-class _OptionalDictConfigArgs(TypedDict, total=False):
+@type_check_only
+class _DictConfigArgs(TypedDict, total=False):
+    version: Required[Literal[1]]
     formatters: dict[str, _FormatterConfiguration]
     filters: dict[str, _FilterConfiguration]
     handlers: dict[str, _HandlerConfiguration]
     loggers: dict[str, _LoggerConfiguration]
-    root: _RootLoggerConfiguration | None
+    root: _RootLoggerConfiguration
     incremental: bool
     disable_existing_loggers: bool
-
-class _DictConfigArgs(_OptionalDictConfigArgs, TypedDict):
-    version: Literal[1]
 
 # Accept dict[str, Any] to avoid false positives if called with a dict
 # type, since dict types are not compatible with TypedDicts.
@@ -72,7 +68,7 @@ def dictConfig(config: _DictConfigArgs | dict[str, Any]) -> None: ...
 if sys.version_info >= (3, 10):
     def fileConfig(
         fname: StrOrBytesPath | IO[str] | RawConfigParser,
-        defaults: dict[str, str] | None = None,
+        defaults: Mapping[str, str] | None = None,
         disable_existing_loggers: bool = True,
         encoding: str | None = None,
     ) -> None: ...
@@ -80,7 +76,7 @@ if sys.version_info >= (3, 10):
 else:
     def fileConfig(
         fname: StrOrBytesPath | IO[str] | RawConfigParser,
-        defaults: dict[str, str] | None = None,
+        defaults: Mapping[str, str] | None = None,
         disable_existing_loggers: bool = True,
     ) -> None: ...
 
@@ -125,7 +121,7 @@ class BaseConfigurator:  # undocumented
     def cfg_convert(self, value: str) -> Any: ...
     def convert(self, value: Any) -> Any: ...
     def configure_custom(self, config: dict[str, Any]) -> Any: ...
-    def as_tuple(self, value: list[Any] | tuple[Any]) -> tuple[Any]: ...
+    def as_tuple(self, value: list[Any] | tuple[Any, ...]) -> tuple[Any, ...]: ...
 
 class DictConfigurator(BaseConfigurator):
     def configure(self) -> None: ...  # undocumented

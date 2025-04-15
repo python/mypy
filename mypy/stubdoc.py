@@ -11,16 +11,17 @@ import io
 import keyword
 import re
 import tokenize
-from typing import Any, Final, MutableMapping, MutableSequence, NamedTuple, Sequence, Tuple
+from collections.abc import MutableMapping, MutableSequence, Sequence
+from typing import Any, Final, NamedTuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.util
 
 # Type alias for signatures strings in format ('func_name', '(arg, opt_arg=False)').
-Sig: _TypeAlias = Tuple[str, str]
+Sig: _TypeAlias = tuple[str, str]
 
 
-_TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$")
+_TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], .\"\'|]*(\.[a-zA-Z_][\w\[\], ]*)*$")
 _ARG_NAME_RE: Final = re.compile(r"\**[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -36,11 +37,19 @@ def is_valid_type(s: str) -> bool:
 class ArgSig:
     """Signature info for a single argument."""
 
-    def __init__(self, name: str, type: str | None = None, default: bool = False):
+    def __init__(
+        self,
+        name: str,
+        type: str | None = None,
+        *,
+        default: bool = False,
+        default_value: str = "...",
+    ) -> None:
         self.name = name
         self.type = type
         # Does this argument have a default value?
         self.default = default
+        self.default_value = default_value
 
     def is_star_arg(self) -> bool:
         return self.name.startswith("*") and not self.name.startswith("**")
@@ -59,6 +68,7 @@ class ArgSig:
                 self.name == other.name
                 and self.type == other.type
                 and self.default == other.default
+                and self.default_value == other.default_value
             )
         return False
 
@@ -67,6 +77,7 @@ class FunctionSig(NamedTuple):
     name: str
     args: list[ArgSig]
     ret_type: str | None
+    type_args: str = ""  # TODO implement in stubgenc and remove the default
 
     def is_special_method(self) -> bool:
         return bool(
@@ -119,10 +130,10 @@ class FunctionSig(NamedTuple):
             if arg_type:
                 arg_def += ": " + arg_type
                 if arg.default:
-                    arg_def += " = ..."
+                    arg_def += f" = {arg.default_value}"
 
             elif arg.default:
-                arg_def += "=..."
+                arg_def += f"={arg.default_value}"
 
             args.append(arg_def)
 
@@ -132,9 +143,7 @@ class FunctionSig(NamedTuple):
             retfield = " -> " + ret_type
 
         prefix = "async " if is_async else ""
-        sig = "{indent}{prefix}def {name}({args}){ret}:".format(
-            indent=indent, prefix=prefix, name=self.name, args=", ".join(args), ret=retfield
-        )
+        sig = f"{indent}{prefix}def {self.name}{self.type_args}({', '.join(args)}){retfield}:"
         if docstring:
             suffix = f"\n{indent}    {mypy.util.quote_docstring(docstring)}"
         else:
@@ -166,6 +175,8 @@ class DocStringParser:
         self.ret_type = "Any"
         self.found = False
         self.args: list[ArgSig] = []
+        self.pos_only: int | None = None
+        self.keyword_only: int | None = None
         # Valid signatures found so far.
         self.signatures: list[FunctionSig] = []
 
@@ -243,15 +254,34 @@ class DocStringParser:
                 self.arg_type = self.accumulator
                 self.state.pop()
             elif self.state[-1] == STATE_ARGUMENT_LIST:
-                self.arg_name = self.accumulator
-                if not (
-                    token.string == ")" and self.accumulator.strip() == ""
-                ) and not _ARG_NAME_RE.match(self.arg_name):
-                    # Invalid argument name.
-                    self.reset()
-                    return
+                if self.accumulator == "*":
+                    if self.keyword_only is not None:
+                        # Error condition: cannot have * twice
+                        self.reset()
+                        return
+                    self.keyword_only = len(self.args)
+                    self.accumulator = ""
+                else:
+                    if self.accumulator.startswith("*"):
+                        self.keyword_only = len(self.args) + 1
+                    self.arg_name = self.accumulator
+                    if not (
+                        token.string == ")" and self.accumulator.strip() == ""
+                    ) and not _ARG_NAME_RE.match(self.arg_name):
+                        # Invalid argument name.
+                        self.reset()
+                        return
 
             if token.string == ")":
+                if (
+                    self.state[-1] == STATE_ARGUMENT_LIST
+                    and self.keyword_only is not None
+                    and self.keyword_only == len(self.args)
+                    and not self.arg_name
+                ):
+                    # Error condition: * must be followed by arguments
+                    self.reset()
+                    return
                 self.state.pop()
 
             # arg_name is empty when there are no args. e.g. func()
@@ -271,6 +301,22 @@ class DocStringParser:
             self.arg_type = None
             self.arg_default = None
             self.accumulator = ""
+        elif (
+            token.type == tokenize.OP
+            and token.string == "/"
+            and self.state[-1] == STATE_ARGUMENT_LIST
+        ):
+            if token.string == "/":
+                if self.pos_only is not None or self.keyword_only is not None or not self.args:
+                    # Error cases:
+                    # - / shows up more than once
+                    # - / shows up after *
+                    # - / shows up before any arguments
+                    self.reset()
+                    return
+                self.pos_only = len(self.args)
+                self.state.append(STATE_ARGUMENT_TYPE)
+                self.accumulator = ""
 
         elif token.type == tokenize.OP and token.string == "->" and self.state[-1] == STATE_INIT:
             self.accumulator = ""
@@ -316,7 +362,7 @@ class DocStringParser:
             return has_arg("*args", signature) and has_arg("**kwargs", signature)
 
         # Move functions with (*args, **kwargs) in their signature to last place.
-        return list(sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0))
+        return sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0)
 
 
 def infer_sig_from_docstring(docstr: str | None, name: str) -> list[FunctionSig] | None:
@@ -374,7 +420,8 @@ def infer_ret_type_sig_from_docstring(docstr: str, name: str) -> str | None:
 
 def infer_ret_type_sig_from_anon_docstring(docstr: str) -> str | None:
     """Convert signature in form of "(self: TestClass, arg0) -> int" to their return type."""
-    return infer_ret_type_sig_from_docstring("stub" + docstr.strip(), "stub")
+    lines = ["stub" + line.strip() for line in docstr.splitlines() if line.strip().startswith("(")]
+    return infer_ret_type_sig_from_docstring("".join(lines), "stub")
 
 
 def parse_signature(sig: str) -> tuple[str, list[str], list[str]] | None:

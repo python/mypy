@@ -4,8 +4,8 @@ import types
 from _typeshed import SupportsKeysAndGetItem, Unused
 from builtins import property as _builtins_property
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import Any, Generic, Literal, TypeVar, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = ["EnumMeta", "Enum", "IntEnum", "Flag", "IntFlag", "auto", "unique"]
 
@@ -31,10 +31,12 @@ if sys.version_info >= (3, 11):
         "nonmember",
         "property",
         "verify",
+        "pickle_by_enum_name",
+        "pickle_by_global_name",
     ]
 
-if sys.version_info >= (3, 11):
-    __all__ += ["pickle_by_enum_name", "pickle_by_global_name"]
+if sys.version_info >= (3, 13):
+    __all__ += ["EnumDict"]
 
 _EnumMemberT = TypeVar("_EnumMemberT")
 _EnumerationT = TypeVar("_EnumerationT", bound=type[Enum])
@@ -62,7 +64,11 @@ if sys.version_info >= (3, 11):
         def __init__(self, value: _EnumMemberT) -> None: ...
 
 class _EnumDict(dict[str, Any]):
-    def __init__(self) -> None: ...
+    if sys.version_info >= (3, 13):
+        def __init__(self, cls_name: str | None = None) -> None: ...
+    else:
+        def __init__(self) -> None: ...
+
     def __setitem__(self, key: str, value: Any) -> None: ...
     if sys.version_info >= (3, 11):
         # See comment above `typing.MutableMapping.update`
@@ -74,6 +80,12 @@ class _EnumDict(dict[str, Any]):
         def update(self, members: SupportsKeysAndGetItem[str, Any], **more_members: Any) -> None: ...
         @overload
         def update(self, members: Iterable[tuple[str, Any]], **more_members: Any) -> None: ...
+    if sys.version_info >= (3, 13):
+        @property
+        def member_names(self) -> list[str]: ...
+
+if sys.version_info >= (3, 13):
+    EnumDict = _EnumDict
 
 # Structurally: Iterable[T], Reversible[T], Container[T] where T is the enum itself
 class EnumMeta(type):
@@ -175,6 +187,7 @@ if sys.version_info >= (3, 11):
         name: str
         clsname: str
         member: Enum | None
+
     _magic_enum_attr = property
 else:
     _magic_enum_attr = types.DynamicClassAttribute
@@ -258,9 +271,10 @@ if sys.version_info >= (3, 11):
         def _generate_next_value_(name: str, start: int, count: int, last_values: list[str]) -> str: ...
 
     class EnumCheck(StrEnum):
-        CONTINUOUS: str
-        NAMED_FLAGS: str
-        UNIQUE: str
+        CONTINUOUS = "no skipped integer values"
+        NAMED_FLAGS = "multi-flag aliases may not contain unnamed flags"
+        UNIQUE = "one name per value"
+
     CONTINUOUS = EnumCheck.CONTINUOUS
     NAMED_FLAGS = EnumCheck.NAMED_FLAGS
     UNIQUE = EnumCheck.UNIQUE
@@ -270,10 +284,11 @@ if sys.version_info >= (3, 11):
         def __call__(self, enumeration: _EnumerationT) -> _EnumerationT: ...
 
     class FlagBoundary(StrEnum):
-        STRICT: str
-        CONFORM: str
-        EJECT: str
-        KEEP: str
+        STRICT = "strict"
+        CONFORM = "conform"
+        EJECT = "eject"
+        KEEP = "keep"
+
     STRICT = FlagBoundary.STRICT
     CONFORM = FlagBoundary.CONFORM
     EJECT = FlagBoundary.EJECT
@@ -305,12 +320,23 @@ else:
         __rand__ = __and__
         __rxor__ = __xor__
 
-# subclassing IntFlag so it picks up all implemented base functions, best modeling behavior of enum.auto()
-class auto(IntFlag):
+class auto:
     _value_: Any
     @_magic_enum_attr
     def value(self) -> Any: ...
     def __new__(cls) -> Self: ...
+
+    # These don't exist, but auto is basically immediately replaced with
+    # either an int or a str depending on the type of the enum. StrEnum's auto
+    # shouldn't have these, but they're needed for int versions of auto (mostly the __or__).
+    # Ideally type checkers would special case auto enough to handle this,
+    # but until then this is a slightly inaccurate helping hand.
+    def __or__(self, other: int | Self) -> Self: ...
+    def __and__(self, other: int | Self) -> Self: ...
+    def __xor__(self, other: int | Self) -> Self: ...
+    __ror__ = __or__
+    __rand__ = __and__
+    __rxor__ = __xor__
 
 if sys.version_info >= (3, 11):
     def pickle_by_global_name(self: Enum, proto: int) -> str: ...

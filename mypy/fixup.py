@@ -117,7 +117,8 @@ class NodeFixer(NodeVisitor[None]):
     # NOTE: This method *definitely* isn't part of the NodeVisitor API.
     def visit_symbol_table(self, symtab: SymbolTable, table_fullname: str) -> None:
         # Copy the items because we may mutate symtab.
-        for key, value in list(symtab.items()):
+        for key in list(symtab):
+            value = symtab[key]
             cross_ref = value.cross_ref
             if cross_ref is not None:  # Fix up cross-reference.
                 value.cross_ref = None
@@ -128,8 +129,23 @@ class NodeFixer(NodeVisitor[None]):
                         cross_ref, self.modules, raise_on_missing=not self.allow_missing
                     )
                     if stnode is not None:
-                        assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
-                        value.node = stnode.node
+                        if stnode is value:
+                            # The node seems to refer to itself, which can mean that
+                            # the target is a deleted submodule of the current module,
+                            # and thus lookup falls back to the symbol table of the parent
+                            # package. Here's how this may happen:
+                            #
+                            #   pkg/__init__.py:
+                            #     from pkg import sub
+                            #
+                            # Now if pkg.sub is deleted, the pkg.sub symbol table entry
+                            # appears to refer to itself. Replace the entry with a
+                            # placeholder to avoid a crash. We can't delete the entry,
+                            # as it would stop dependency propagation.
+                            value.node = Var(key + "@deleted")
+                        else:
+                            assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
+                            value.node = stnode.node
                     elif not self.allow_missing:
                         assert False, f"Could not find cross-ref {cross_ref}"
                     else:
@@ -194,6 +210,8 @@ class NodeFixer(NodeVisitor[None]):
             v.info = self.current_info
         if v.type is not None:
             v.type.accept(self.type_fixer)
+        if v.setter_type is not None:
+            v.setter_type.accept(self.type_fixer)
 
     def visit_type_alias(self, a: TypeAlias) -> None:
         a.target.accept(self.type_fixer)
@@ -224,6 +242,9 @@ class TypeFixer(TypeVisitor[None]):
             a.accept(self)
         if inst.last_known_value is not None:
             inst.last_known_value.accept(self)
+        if inst.extra_attrs:
+            for v in inst.extra_attrs.attrs.values():
+                v.accept(self)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         type_ref = t.type_ref
@@ -255,6 +276,8 @@ class TypeFixer(TypeVisitor[None]):
                 arg.accept(self)
         if ct.type_guard is not None:
             ct.type_guard.accept(self)
+        if ct.type_is is not None:
+            ct.type_is.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items:

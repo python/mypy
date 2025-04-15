@@ -222,7 +222,7 @@ def f(y):
 L0:
     r0 = box(None, 1)
     x = r0
-    r1 = y == 2
+    r1 = int_eq y, 2
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = box(int, y)

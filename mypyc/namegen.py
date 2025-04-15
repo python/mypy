@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 
 class NameGenerator:
@@ -100,10 +100,9 @@ def make_module_translation_map(names: list[str]) -> dict[str, str]:
     for name in names:
         for suffix in candidate_suffixes(name):
             if num_instances[suffix] == 1:
-                result[name] = suffix
                 break
-        else:
-            assert False, names
+        # Takes the last suffix if none are unique
+        result[name] = suffix
     return result
 
 

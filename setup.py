@@ -8,8 +8,8 @@ import os.path
 import sys
 from typing import TYPE_CHECKING, Any
 
-if sys.version_info < (3, 8, 0):  # noqa: UP036
-    sys.stderr.write("ERROR: You need Python 3.8 or later to use mypy.\n")
+if sys.version_info < (3, 9, 0):  # noqa: UP036, RUF100
+    sys.stderr.write("ERROR: You need Python 3.9 or later to use mypy.\n")
     exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 # This requires setuptools when building; setuptools is not needed
 # when installing from a wheel file (though it is still needed for
 # alternative forms of installing, as suggested by README.md).
-from setuptools import Extension, find_packages, setup
+from setuptools import Extension, setup
 from setuptools.command.build_py import build_py
 
 from mypy.version import __version__ as version
@@ -26,25 +26,12 @@ from mypy.version import __version__ as version
 if TYPE_CHECKING:
     from typing_extensions import TypeGuard
 
-description = "Optional static typing for Python"
-long_description = """
-Mypy -- Optional Static Typing for Python
-=========================================
-
-Add type annotations to your Python programs, and use mypy to type
-check them.  Mypy is essentially a Python linter on steroids, and it
-can catch many programming errors by analyzing your program, without
-actually having to run it.  Mypy has a powerful type system with
-features such as type inference, gradual typing, generics and union
-types.
-""".lstrip()
-
 
 def is_list_of_setuptools_extension(items: list[Any]) -> TypeGuard[list[Extension]]:
     return all(isinstance(item, Extension) for item in items)
 
 
-def find_package_data(base, globs, root="mypy"):
+def find_package_data(base: str, globs: list[str], root: str = "mypy") -> list[str]:
     """Find all interesting data files, for setup(package_data=)
 
     Arguments:
@@ -65,25 +52,18 @@ def find_package_data(base, globs, root="mypy"):
 
 
 class CustomPythonBuild(build_py):
-    def pin_version(self):
+    def pin_version(self) -> None:
         path = os.path.join(self.build_lib, "mypy")
         self.mkpath(path)
         with open(os.path.join(path, "version.py"), "w") as stream:
             stream.write(f'__version__ = "{version}"\n')
 
-    def run(self):
+    def run(self) -> None:
         self.execute(self.pin_version, ())
         build_py.run(self)
 
 
 cmdclass = {"build_py": CustomPythonBuild}
-
-package_data = ["py.typed"]
-
-package_data += find_package_data(os.path.join("mypy", "typeshed"), ["*.py", "*.pyi"])
-package_data += [os.path.join("mypy", "typeshed", "stdlib", "VERSIONS")]
-
-package_data += find_package_data(os.path.join("mypy", "xml"), ["*.xsd", "*.xslt", "*.css"])
 
 USE_MYPYC = False
 # To compile with mypyc, a mypyc checkout must be present on the PYTHONPATH
@@ -173,69 +153,10 @@ if USE_MYPYC:
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == "win32" or force_multifile,
     )
-    assert is_list_of_setuptools_extension(ext_modules), "Expected mypycify to use setuptools"
 
 else:
     ext_modules = []
 
+assert is_list_of_setuptools_extension(ext_modules), "Expected mypycify to use setuptools"
 
-classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Environment :: Console",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Topic :: Software Development",
-    "Typing :: Typed",
-]
-
-setup(
-    name="mypy",
-    version=version,
-    description=description,
-    long_description=long_description,
-    author="Jukka Lehtosalo",
-    author_email="jukka.lehtosalo@iki.fi",
-    url="https://www.mypy-lang.org/",
-    license="MIT",
-    py_modules=[],
-    ext_modules=ext_modules,
-    packages=find_packages(),
-    package_data={"mypy": package_data},
-    entry_points={
-        "console_scripts": [
-            "mypy=mypy.__main__:console_entry",
-            "stubgen=mypy.stubgen:main",
-            "stubtest=mypy.stubtest:main",
-            "dmypy=mypy.dmypy.client:console_entry",
-            "mypyc=mypyc.__main__:main",
-        ]
-    },
-    classifiers=classifiers,
-    cmdclass=cmdclass,
-    # When changing this, also update mypy-requirements.txt.
-    install_requires=[
-        "typing_extensions>=4.1.0",
-        "mypy_extensions >= 1.0.0",
-        "tomli>=1.1.0; python_version<'3.11'",
-    ],
-    # Same here.
-    extras_require={
-        "dmypy": "psutil >= 4.0",
-        "mypyc": "setuptools >= 50",
-        "python2": "",
-        "reports": "lxml",
-        "install-types": "pip",
-    },
-    python_requires=">=3.8",
-    include_package_data=True,
-    project_urls={
-        "News": "https://mypy-lang.org/news.html",
-        "Documentation": "https://mypy.readthedocs.io/en/stable/index.html",
-        "Repository": "https://github.com/python/mypy",
-    },
-)
+setup(version=version, ext_modules=ext_modules, cmdclass=cmdclass)

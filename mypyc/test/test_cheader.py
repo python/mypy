@@ -7,8 +7,8 @@ import os
 import re
 import unittest
 
+from mypyc.ir.ops import PrimitiveDescription
 from mypyc.primitives import registry
-from mypyc.primitives.registry import CFunctionDescription
 
 
 class TestHeaderInclusion(unittest.TestCase):
@@ -27,15 +27,16 @@ class TestHeaderInclusion(unittest.TestCase):
 
         for values in [
             registry.method_call_ops.values(),
-            registry.function_ops.values(),
             registry.binary_ops.values(),
             registry.unary_ops.values(),
+            registry.function_ops.values(),
         ]:
             for ops in values:
-                if isinstance(ops, CFunctionDescription):
+                if isinstance(ops, PrimitiveDescription):
                     ops = [ops]
                 for op in ops:
-                    check_name(op.c_function_name)
+                    if op.c_function_name is not None:
+                        check_name(op.c_function_name)
 
         primitives_path = os.path.join(os.path.dirname(__file__), "..", "primitives")
         for fnam in glob.glob(f"{primitives_path}/*.py"):

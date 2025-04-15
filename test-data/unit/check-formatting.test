@@ -502,7 +502,7 @@ def better_snakecase(text: str) -> str:
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallFinal]
-from typing_extensions import Final
+from typing import Final
 
 FMT: Final = '{.x}, {:{:d}}'
 
@@ -511,7 +511,7 @@ FMT.format(1, 2, 'no')  # E: "int" has no attribute "x" \
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallFinalChar]
-from typing_extensions import Final
+from typing import Final
 
 GOOD: Final = 'c'
 BAD: Final = 'no'
@@ -542,7 +542,7 @@ x: Any
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallAccessorsIndices]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class User(TypedDict):
     id: int
@@ -554,6 +554,7 @@ u: User
 def f() -> str: ...
 '{[f()]}'.format(u)  # E: Invalid index expression in format field accessor "[f()]"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testFormatCallFlags]
 from typing import Union
@@ -588,3 +589,45 @@ class S:
 '{:%}'.format(0.001)
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
+
+[case testEnumWithStringToFormatValue]
+from enum import Enum
+
+class Responses(str, Enum):
+    TEMPLATED = 'insert {} here'
+    TEMPLATED_WITH_KW = 'insert {value} here'
+    NORMAL = 'something'
+
+Responses.TEMPLATED.format(42)
+Responses.TEMPLATED_WITH_KW.format(value=42)
+Responses.TEMPLATED.format()  # E: Cannot find replacement for positional format specifier 0
+Responses.TEMPLATED_WITH_KW.format()  # E: Cannot find replacement for named format specifier "value"
+Responses.NORMAL.format(42)  # E: Not all arguments converted during string formatting
+Responses.NORMAL.format(value=42)  # E: Not all arguments converted during string formatting
+[builtins fixtures/primitives.pyi]
+
+[case testNonStringEnumToFormatValue]
+from enum import Enum
+
+class Responses(Enum):
+    TEMPLATED = 'insert {value} here'
+
+Responses.TEMPLATED.format(value=42)  # E: "Responses" has no attribute "format"
+[builtins fixtures/primitives.pyi]
+
+[case testStrEnumWithStringToFormatValue]
+# flags: --python-version 3.11
+from enum import StrEnum
+
+class Responses(StrEnum):
+    TEMPLATED = 'insert {} here'
+    TEMPLATED_WITH_KW = 'insert {value} here'
+    NORMAL = 'something'
+
+Responses.TEMPLATED.format(42)
+Responses.TEMPLATED_WITH_KW.format(value=42)
+Responses.TEMPLATED.format()  # E: Cannot find replacement for positional format specifier 0
+Responses.TEMPLATED_WITH_KW.format()  # E: Cannot find replacement for named format specifier "value"
+Responses.NORMAL.format(42)  # E: Not all arguments converted during string formatting
+Responses.NORMAL.format(value=42)  # E: Not all arguments converted during string formatting
+[builtins fixtures/primitives.pyi]

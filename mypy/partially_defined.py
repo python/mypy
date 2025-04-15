@@ -36,6 +36,7 @@ from mypy.nodes import (
     SymbolTable,
     TryStmt,
     TupleExpr,
+    TypeAliasStmt,
     WhileStmt,
     WithStmt,
     implicit_module_attrs,
@@ -44,7 +45,7 @@ from mypy.options import Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.reachability import ALWAYS_TRUE, infer_pattern_value
 from mypy.traverser import ExtendedTraverserVisitor
-from mypy.types import Type, UninhabitedType
+from mypy.types import Type, UninhabitedType, get_proper_type
 
 
 class BranchState:
@@ -506,7 +507,8 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.skip_branch()
 
     def visit_expression_stmt(self, o: ExpressionStmt) -> None:
-        if isinstance(self.type_map.get(o.expr, None), (UninhabitedType, type(None))):
+        typ = self.type_map.get(o.expr)
+        if typ is None or isinstance(get_proper_type(typ), UninhabitedType):
             self.tracker.skip_branch()
         super().visit_expression_stmt(o)
 
@@ -673,3 +675,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
                 name = mod
             self.tracker.record_definition(name)
         super().visit_import_from(o)
+
+    def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
+        # Type alias target may contain forward references
+        self.tracker.record_definition(o.name.name)

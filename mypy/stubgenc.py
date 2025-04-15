@@ -6,13 +6,15 @@ The public interface is via the mypy.stubgen module.
 
 from __future__ import annotations
 
+import enum
 import glob
 import importlib
 import inspect
 import keyword
 import os.path
+from collections.abc import Mapping
 from types import FunctionType, ModuleType
-from typing import Any, Mapping
+from typing import Any, Callable
 
 from mypy.fastparse import parse_type_comment
 from mypy.moduleinspect import is_c_module
@@ -41,7 +43,7 @@ from mypy.stubutil import (
 class ExternalSignatureGenerator(SignatureGenerator):
     def __init__(
         self, func_sigs: dict[str, str] | None = None, class_sigs: dict[str, str] | None = None
-    ):
+    ) -> None:
         """
         Takes a mapping of function/method names to signatures and class name to
         class signatures (usually corresponds to __init__).
@@ -126,10 +128,12 @@ class DocstringSignatureGenerator(SignatureGenerator):
         """Infer property type from docstring or docstring signature."""
         if ctx.docstring is not None:
             inferred = infer_ret_type_sig_from_anon_docstring(ctx.docstring)
-            if not inferred:
-                inferred = infer_ret_type_sig_from_docstring(ctx.docstring, ctx.name)
-            if not inferred:
-                inferred = infer_prop_type_from_docstring(ctx.docstring)
+            if inferred:
+                return inferred
+            inferred = infer_ret_type_sig_from_docstring(ctx.docstring, ctx.name)
+            if inferred:
+                return inferred
+            inferred = infer_prop_type_from_docstring(ctx.docstring)
             return inferred
         else:
             return None
@@ -176,7 +180,7 @@ def generate_stub_for_c_module(
     gen.generate_module()
     output = gen.output()
 
-    with open(target, "w") as file:
+    with open(target, "w", encoding="utf-8") as file:
         file.write(output)
 
 
@@ -185,7 +189,7 @@ class CFunctionStub:
     Class that mimics a C function in order to provide parseable docstrings.
     """
 
-    def __init__(self, name: str, doc: str, is_abstract: bool = False):
+    def __init__(self, name: str, doc: str, is_abstract: bool = False) -> None:
         self.__name__ = name
         self.__doc__ = doc
         self.__abstractmethod__ = is_abstract
@@ -200,12 +204,15 @@ class CFunctionStub:
             sigs[0].name, "\n".join(sig.format_sig()[:-4] for sig in sigs), is_abstract
         )
 
-    def __get__(self) -> None:
+    def __get__(self) -> None:  # noqa: PLE0302
         """
         This exists to make this object look like a method descriptor and thus
         return true for CStubGenerator.ismethod()
         """
         pass
+
+
+_Missing = enum.Enum("_Missing", "VALUE")
 
 
 class InspectionStubGenerator(BaseStubGenerator):
@@ -237,6 +244,27 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.resort_members = self.is_c_module
         super().__init__(_all_, include_private, export_less, include_docstrings)
         self.module_name = module_name
+        if self.is_c_module:
+            # Add additional implicit imports.
+            # C-extensions are given more latitude since they do not import the typing module.
+            self.known_imports.update(
+                {
+                    "typing": [
+                        "Any",
+                        "Callable",
+                        "ClassVar",
+                        "Dict",
+                        "Iterable",
+                        "Iterator",
+                        "List",
+                        "Literal",
+                        "NamedTuple",
+                        "Optional",
+                        "Tuple",
+                        "Union",
+                    ]
+                }
+            )
 
     def get_default_function_sig(self, func: object, ctx: FunctionContext) -> FunctionSig:
         argspec = None
@@ -269,6 +297,8 @@ class InspectionStubGenerator(BaseStubGenerator):
         varargs = argspec.varargs
         kwargs = argspec.varkw
         annotations = argspec.annotations
+        kwonlyargs = argspec.kwonlyargs
+        kwonlydefaults = argspec.kwonlydefaults
 
         def get_annotation(key: str) -> str | None:
             if key not in annotations:
@@ -281,27 +311,51 @@ class InspectionStubGenerator(BaseStubGenerator):
             return argtype
 
         arglist: list[ArgSig] = []
+
         # Add the arguments to the signature
-        for i, arg in enumerate(args):
-            # Check if the argument has a default value
-            if defaults and i >= len(args) - len(defaults):
-                default_value = defaults[i - (len(args) - len(defaults))]
-                if arg in annotations:
-                    argtype = annotations[arg]
+        def add_args(
+            args: list[str], get_default_value: Callable[[int, str], object | _Missing]
+        ) -> None:
+            for i, arg in enumerate(args):
+                # Check if the argument has a default value
+                default_value = get_default_value(i, arg)
+                if default_value is not _Missing.VALUE:
+                    if arg in annotations:
+                        argtype = annotations[arg]
+                    else:
+                        argtype = self.get_type_annotation(default_value)
+                        if argtype == "None":
+                            # None is not a useful annotation, but we can infer that the arg
+                            # is optional
+                            incomplete = self.add_name("_typeshed.Incomplete")
+                            argtype = f"{incomplete} | None"
+
+                    arglist.append(ArgSig(arg, argtype, default=True))
                 else:
-                    argtype = self.get_type_annotation(default_value)
-                    if argtype == "None":
-                        # None is not a useful annotation, but we can infer that the arg
-                        # is optional
-                        incomplete = self.add_name("_typeshed.Incomplete")
-                        argtype = f"{incomplete} | None"
-                arglist.append(ArgSig(arg, argtype, default=True))
+                    arglist.append(ArgSig(arg, get_annotation(arg), default=False))
+
+        def get_pos_default(i: int, _arg: str) -> Any | _Missing:
+            if defaults and i >= len(args) - len(defaults):
+                return defaults[i - (len(args) - len(defaults))]
             else:
-                arglist.append(ArgSig(arg, get_annotation(arg), default=False))
+                return _Missing.VALUE
+
+        add_args(args, get_pos_default)
 
         # Add *args if present
         if varargs:
             arglist.append(ArgSig(f"*{varargs}", get_annotation(varargs)))
+        # if we have keyword only args, then we need to add "*"
+        elif kwonlyargs:
+            arglist.append(ArgSig("*"))
+
+        def get_kw_default(_i: int, arg: str) -> Any | _Missing:
+            if kwonlydefaults and arg in kwonlydefaults:
+                return kwonlydefaults[arg]
+            else:
+                return _Missing.VALUE
+
+        add_args(kwonlyargs, get_kw_default)
 
         # Add **kwargs if present
         if kwargs:
@@ -382,7 +436,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                     if self.should_reexport(name, obj_module_name, name_is_alias=False):
                         self.import_tracker.reexport(name)
 
-        self.set_defined_names(set([name for name, obj in all_items if not inspect.ismodule(obj)]))
+        self.set_defined_names({name for name, obj in all_items if not inspect.ismodule(obj)})
 
         if self.resort_members:
             functions: list[str] = []
@@ -444,6 +498,9 @@ class InspectionStubGenerator(BaseStubGenerator):
                 "__module__",
                 "__weakref__",
                 "__annotations__",
+                "__firstlineno__",
+                "__static_attributes__",
+                "__annotate__",
             )
             or attr in self.IGNORED_DUNDERS
             or is_pybind_skipped_attribute(attr)  # For pickling
@@ -473,7 +530,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         if obj is None or obj is type(None):
             return "None"
         elif inspect.isclass(obj):
-            return "type[{}]".format(self.get_type_fullname(obj))
+            return f"type[{self.get_type_fullname(obj)}]"
         elif isinstance(obj, FunctionType):
             return self.add_name("typing.Callable")
         elif isinstance(obj, ModuleType):
@@ -508,12 +565,14 @@ class InspectionStubGenerator(BaseStubGenerator):
             return inspect.ismethod(obj)
 
     def is_staticmethod(self, class_info: ClassInfo | None, name: str, obj: object) -> bool:
-        if self.is_c_module:
+        if class_info is None:
             return False
+        elif self.is_c_module:
+            raw_lookup: Mapping[str, Any] = getattr(class_info.cls, "__dict__")  # noqa: B009
+            raw_value = raw_lookup.get(name, obj)
+            return isinstance(raw_value, staticmethod)
         else:
-            return class_info is not None and isinstance(
-                inspect.getattr_static(class_info.cls, name), staticmethod
-            )
+            return isinstance(inspect.getattr_static(class_info.cls, name), staticmethod)
 
     @staticmethod
     def is_abstract_method(obj: object) -> bool:
@@ -590,8 +649,28 @@ class InspectionStubGenerator(BaseStubGenerator):
                 if inferred[0].args and inferred[0].args[0].name == "cls":
                     decorators.append("@classmethod")
 
+        if docstring:
+            docstring = self._indent_docstring(docstring)
         output.extend(self.format_func_def(inferred, decorators=decorators, docstring=docstring))
         self._fix_iter(ctx, inferred, output)
+
+    def _indent_docstring(self, docstring: str) -> str:
+        """Fix indentation of docstring extracted from pybind11 or other binding generators."""
+        lines = docstring.splitlines(keepends=True)
+        indent = self._indent + "    "
+        if len(lines) > 1:
+            if not all(line.startswith(indent) or not line.strip() for line in lines):
+                # if the docstring is not indented, then indent all but the first line
+                for i, line in enumerate(lines[1:]):
+                    if line.strip():
+                        lines[i + 1] = indent + line
+        # if there's a trailing newline, add a final line to visually indent the quoted docstring
+        if lines[-1].endswith("\n"):
+            if len(lines) > 1:
+                lines.append(indent)
+            else:
+                lines[-1] = lines[-1][:-1]
+        return "".join(lines)
 
     def _fix_iter(
         self, ctx: FunctionContext, inferred: list[FunctionSig], output: list[str]
@@ -640,7 +719,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         if fget:
             alt_docstr = getattr(fget, "__doc__", None)
             if alt_docstr and docstring:
-                docstring += alt_docstr
+                docstring += "\n" + alt_docstr
             elif alt_docstr:
                 docstring = alt_docstr
 
@@ -713,17 +792,19 @@ class InspectionStubGenerator(BaseStubGenerator):
                 bases.append(base)
         return [self.strip_or_import(self.get_type_fullname(base)) for base in bases]
 
-    def generate_class_stub(self, class_name: str, cls: type, output: list[str]) -> None:
+    def generate_class_stub(
+        self, class_name: str, cls: type, output: list[str], parent_class: ClassInfo | None = None
+    ) -> None:
         """Generate stub for a single class using runtime introspection.
 
         The result lines will be appended to 'output'. If necessary, any
         required names will be added to 'imports'.
         """
-        raw_lookup = getattr(cls, "__dict__")  # noqa: B009
+        raw_lookup: Mapping[str, Any] = getattr(cls, "__dict__")  # noqa: B009
         items = self.get_members(cls)
         if self.resort_members:
             items = sorted(items, key=lambda x: method_name_sort_key(x[0]))
-        names = set(x[0] for x in items)
+        names = {x[0] for x in items}
         methods: list[str] = []
         types: list[str] = []
         static_properties: list[str] = []
@@ -734,7 +815,9 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.record_name(class_name)
         self.indent()
 
-        class_info = ClassInfo(class_name, "", getattr(cls, "__doc__", None), cls)
+        class_info = ClassInfo(
+            class_name, "", getattr(cls, "__doc__", None), cls, parent=parent_class
+        )
 
         for attr, value in items:
             # use unevaluated descriptors when dealing with property inspection
@@ -751,7 +834,9 @@ class InspectionStubGenerator(BaseStubGenerator):
                         continue
                     attr = "__init__"
                 # FIXME: make this nicer
-                if self.is_classmethod(class_info, attr, value):
+                if self.is_staticmethod(class_info, attr, value):
+                    class_info.self_var = ""
+                elif self.is_classmethod(class_info, attr, value):
                     class_info.self_var = "cls"
                 else:
                     class_info.self_var = "self"
@@ -767,7 +852,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                     class_info,
                 )
             elif inspect.isclass(value) and self.is_defined_in_module(value):
-                self.generate_class_stub(attr, value, types)
+                self.generate_class_stub(attr, value, types, parent_class=class_info)
             else:
                 attrs.append((attr, value))
 

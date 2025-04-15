@@ -9,11 +9,12 @@ from typing import Any
 from sphinx.addnodes import document
 from sphinx.application import Sphinx
 from sphinx.builders.html import StandaloneHTMLBuilder
+from sphinx.environment import BuildEnvironment
 
 
 class MypyHTMLBuilder(StandaloneHTMLBuilder):
-    def __init__(self, app: Sphinx) -> None:
-        super().__init__(app)
+    def __init__(self, app: Sphinx, env: BuildEnvironment) -> None:
+        super().__init__(app, env)
         self._ref_to_doc = {}
 
     def write_doc(self, docname: str, doctree: document) -> None:

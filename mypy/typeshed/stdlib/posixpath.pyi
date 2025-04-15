@@ -1,6 +1,6 @@
 import sys
 from _typeshed import AnyOrLiteralStr, BytesPath, FileDescriptorOrPath, StrOrBytesPath, StrPath
-from collections.abc import Sequence
+from collections.abc import Iterable
 from genericpath import (
     commonprefix as commonprefix,
     exists as exists,
@@ -14,6 +14,9 @@ from genericpath import (
     sameopenfile as sameopenfile,
     samestat as samestat,
 )
+
+if sys.version_info >= (3, 13):
+    from genericpath import isdevdrive as isdevdrive
 from os import PathLike
 from typing import AnyStr, overload
 from typing_extensions import LiteralString
@@ -60,6 +63,8 @@ __all__ = [
 ]
 if sys.version_info >= (3, 12):
     __all__ += ["isjunction", "splitroot"]
+if sys.version_info >= (3, 13):
+    __all__ += ["isdevdrive"]
 
 supports_unicode_filenames: bool
 # aliases (also in os)
@@ -72,7 +77,7 @@ pathsep: LiteralString
 defpath: LiteralString
 devnull: LiteralString
 
-# Overloads are necessary to work around python/mypy#3644.
+# Overloads are necessary to work around python/mypy#17952 & python/mypy#11880
 @overload
 def abspath(path: PathLike[AnyStr]) -> AnyStr: ...
 @overload
@@ -102,21 +107,21 @@ def normpath(path: PathLike[AnyStr]) -> AnyStr: ...
 @overload
 def normpath(path: AnyOrLiteralStr) -> AnyOrLiteralStr: ...
 @overload
-def commonpath(paths: Sequence[LiteralString]) -> LiteralString: ...
+def commonpath(paths: Iterable[LiteralString]) -> LiteralString: ...
 @overload
-def commonpath(paths: Sequence[StrPath]) -> str: ...
+def commonpath(paths: Iterable[StrPath]) -> str: ...
 @overload
-def commonpath(paths: Sequence[BytesPath]) -> bytes: ...
+def commonpath(paths: Iterable[BytesPath]) -> bytes: ...
 
 # First parameter is not actually pos-only,
 # but must be defined as pos-only in the stub or cross-platform code doesn't type-check,
 # as the parameter name is different in ntpath.join()
 @overload
-def join(__a: LiteralString, *paths: LiteralString) -> LiteralString: ...
+def join(a: LiteralString, /, *paths: LiteralString) -> LiteralString: ...
 @overload
-def join(__a: StrPath, *paths: StrPath) -> str: ...
+def join(a: StrPath, /, *paths: StrPath) -> str: ...
 @overload
-def join(__a: BytesPath, *paths: BytesPath) -> bytes: ...
+def join(a: BytesPath, /, *paths: BytesPath) -> bytes: ...
 
 if sys.version_info >= (3, 10):
     @overload

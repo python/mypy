@@ -1,10 +1,7 @@
 import sys
 from typing import IO
 
-if sys.version_info >= (3, 8):
-    __all__ = ["pprint", "pformat", "isreadable", "isrecursive", "saferepr", "PrettyPrinter", "pp"]
-else:
-    __all__ = ["pprint", "pformat", "isreadable", "isrecursive", "saferepr", "PrettyPrinter"]
+__all__ = ["pprint", "pformat", "isreadable", "isrecursive", "saferepr", "PrettyPrinter", "pp"]
 
 if sys.version_info >= (3, 10):
     def pformat(
@@ -18,7 +15,7 @@ if sys.version_info >= (3, 10):
         underscore_numbers: bool = False,
     ) -> str: ...
 
-elif sys.version_info >= (3, 8):
+else:
     def pformat(
         object: object,
         indent: int = 1,
@@ -28,9 +25,6 @@ elif sys.version_info >= (3, 8):
         compact: bool = False,
         sort_dicts: bool = True,
     ) -> str: ...
-
-else:
-    def pformat(object: object, indent: int = 1, width: int = 80, depth: int | None = None, *, compact: bool = False) -> str: ...
 
 if sys.version_info >= (3, 10):
     def pp(
@@ -45,7 +39,7 @@ if sys.version_info >= (3, 10):
         underscore_numbers: bool = ...,
     ) -> None: ...
 
-elif sys.version_info >= (3, 8):
+else:
     def pp(
         object: object,
         stream: IO[str] | None = ...,
@@ -70,18 +64,6 @@ if sys.version_info >= (3, 10):
         underscore_numbers: bool = False,
     ) -> None: ...
 
-elif sys.version_info >= (3, 8):
-    def pprint(
-        object: object,
-        stream: IO[str] | None = None,
-        indent: int = 1,
-        width: int = 80,
-        depth: int | None = None,
-        *,
-        compact: bool = False,
-        sort_dicts: bool = True,
-    ) -> None: ...
-
 else:
     def pprint(
         object: object,
@@ -91,6 +73,7 @@ else:
         depth: int | None = None,
         *,
         compact: bool = False,
+        sort_dicts: bool = True,
     ) -> None: ...
 
 def isreadable(object: object) -> bool: ...
@@ -110,17 +93,6 @@ class PrettyPrinter:
             sort_dicts: bool = True,
             underscore_numbers: bool = False,
         ) -> None: ...
-    elif sys.version_info >= (3, 8):
-        def __init__(
-            self,
-            indent: int = 1,
-            width: int = 80,
-            depth: int | None = None,
-            stream: IO[str] | None = None,
-            *,
-            compact: bool = False,
-            sort_dicts: bool = True,
-        ) -> None: ...
     else:
         def __init__(
             self,
@@ -130,6 +102,7 @@ class PrettyPrinter:
             stream: IO[str] | None = None,
             *,
             compact: bool = False,
+            sort_dicts: bool = True,
         ) -> None: ...
 
     def pformat(self, object: object) -> str: ...

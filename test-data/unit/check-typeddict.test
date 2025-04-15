@@ -1,7 +1,7 @@
 -- Create Instance
 
 [case testCanCreateTypedDictInstanceWithKeywordArguments]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(x=42, y=1337)
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})"
@@ -12,7 +12,7 @@ reveal_type(p.values()) # N: Revealed type is "typing.Iterable[builtins.object]"
 [targets __main__]
 
 [case testCanCreateTypedDictInstanceWithDictCall]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(dict(x=42, y=1337))
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})"
@@ -22,7 +22,7 @@ reveal_type(p.values()) # N: Revealed type is "typing.Iterable[builtins.object]"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictInstanceWithDictLiteral]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point({'x': 42, 'y': 1337})
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})"
@@ -32,8 +32,7 @@ reveal_type(p.values()) # N: Revealed type is "typing.Iterable[builtins.object]"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictInstanceWithNoArguments]
-from typing import TypeVar, Union
-from mypy_extensions import TypedDict
+from typing import TypedDict, TypeVar, Union
 EmptyDict = TypedDict('EmptyDict', {})
 p = EmptyDict()
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.EmptyDict', {})"
@@ -45,49 +44,55 @@ reveal_type(p.values()) # N: Revealed type is "typing.Iterable[builtins.object]"
 -- Create Instance (Errors)
 
 [case testCannotCreateTypedDictInstanceWithUnknownArgumentPattern]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(42, 1337)  # E: Expected keyword arguments, {...}, or dict(...) in TypedDict constructor
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictInstanceNonLiteralItemName]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 x = 'x'
 p = Point({x: 42, 'y': 1337})  # E: Expected TypedDict key to be string literal
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithExtraItems]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(x=42, y=1337, z=666)  # E: Extra key "z" for TypedDict "Point"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithMissingItems]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(x=42)  # E: Missing key "y" for TypedDict "Point"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithIncompatibleItemType]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(x='meaning_of_life', y=1337)  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithInlineTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 D = TypedDict('D', {
-    'x': TypedDict('E', {  # E: Inline TypedDict types not supported; use assignment to define TypedDict
+    'x': TypedDict('E', {  # E: Use dict literal for nested TypedDict
         'y': int
     })
 })
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 -- Define TypedDict (Class syntax)
 
 [case testCanCreateTypedDictWithClass]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class Point(TypedDict):
     x: int
@@ -96,9 +101,10 @@ class Point(TypedDict):
 p = Point(x=42, y=1337)
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictWithSubclass]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class Point1D(TypedDict):
     x: int
@@ -109,9 +115,10 @@ p: Point2D
 reveal_type(r)  # N: Revealed type is "TypedDict('__main__.Point1D', {'x': builtins.int})"
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point2D', {'x': builtins.int, 'y': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictWithSubclass2]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class Point1D(TypedDict):
     x: int
@@ -121,9 +128,10 @@ class Point2D(TypedDict, Point1D): # We also allow to include TypedDict in bases
 p: Point2D
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point2D', {'x': builtins.int, 'y': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictClassEmpty]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class EmptyDict(TypedDict):
     pass
@@ -131,12 +139,12 @@ class EmptyDict(TypedDict):
 p = EmptyDict()
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.EmptyDict', {})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 [case testCanCreateTypedDictWithClassOldVersion]
 # Test that we can use class-syntax to merge function-based TypedDicts
-
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 MovieBase1 = TypedDict(
     'MovieBase1', {'name': str, 'year': int})
@@ -152,13 +160,13 @@ def foo(x):
 
 foo({})  # E: Missing keys ("name", "year") for TypedDict "Movie"
 foo({'name': 'lol', 'year': 2009, 'based_on': 0})  # E: Incompatible types (expression has type "int", TypedDict item "based_on" has type "str")
-
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 -- Define TypedDict (Class syntax errors)
 
 [case testCannotCreateTypedDictWithClassOtherBases]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class A: pass
 
@@ -170,6 +178,7 @@ class Point2D(Point1D, A): # E: All bases of a new TypedDict must be TypedDict t
 p: Point2D
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point2D', {'x': builtins.int, 'y': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictWithDuplicateBases]
 # https://github.com/python/mypy/issues/3673
@@ -187,7 +196,7 @@ class C(TypedDict, TypedDict): # E: Duplicate base class "TypedDict"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictWithClassWithOtherStuff]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class Point(TypedDict):
     x: int
@@ -198,6 +207,7 @@ class Point(TypedDict):
 p = Point(x=42, y=1337, z='whatever')
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int, 'z': Any})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictWithClassWithFunctionUsedToCrash]
 # https://github.com/python/mypy/issues/11079
@@ -237,12 +247,13 @@ class Foo(TypedDict):
 [typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictTypeWithUnderscoreItemName]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int, '_fallback': object})
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictWithClassUnderscores]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class Point(TypedDict):
     x: int
@@ -251,9 +262,10 @@ class Point(TypedDict):
 p: Point
 reveal_type(p) # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, '_y': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictWithDuplicateKey1]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class Bad(TypedDict):
     x: int
@@ -262,6 +274,7 @@ class Bad(TypedDict):
 b: Bad
 reveal_type(b) # N: Revealed type is "TypedDict('__main__.Bad', {'x': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictWithDuplicateKey2]
 from typing import TypedDict
@@ -280,7 +293,7 @@ reveal_type(d2) # N: Revealed type is "TypedDict('__main__.D2', {'x': builtins.s
 [typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictWithClassOverwriting]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class Point1(TypedDict):
     x: int
@@ -292,9 +305,10 @@ class Bad(Point1, Point2): # E: Overwriting TypedDict field "x" while merging
 b: Bad
 reveal_type(b) # N: Revealed type is "TypedDict('__main__.Bad', {'x': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictWithClassOverwriting2]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class Point1(TypedDict):
     x: int
@@ -304,104 +318,111 @@ class Point2(Point1):
 p2: Point2
 reveal_type(p2) # N: Revealed type is "TypedDict('__main__.Point2', {'x': builtins.float})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 -- Subtyping
 
 [case testCanConvertTypedDictToItself]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 def identity(p: Point) -> Point:
     return p
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanConvertTypedDictToEquivalentTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 PointA = TypedDict('PointA', {'x': int, 'y': int})
 PointB = TypedDict('PointB', {'x': int, 'y': int})
 def identity(p: PointA) -> PointB:
     return p
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotConvertTypedDictToSimilarTypedDictWithNarrowerItemTypes]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 ObjectPoint = TypedDict('ObjectPoint', {'x': object, 'y': object})
 def convert(op: ObjectPoint) -> Point:
     return op  # E: Incompatible return value type (got "ObjectPoint", expected "Point")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotConvertTypedDictToSimilarTypedDictWithWiderItemTypes]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 ObjectPoint = TypedDict('ObjectPoint', {'x': object, 'y': object})
 def convert(p: Point) -> ObjectPoint:
     return p  # E: Incompatible return value type (got "Point", expected "ObjectPoint")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotConvertTypedDictToSimilarTypedDictWithIncompatibleItemTypes]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 Chameleon = TypedDict('Chameleon', {'x': str, 'y': str})
 def convert(p: Point) -> Chameleon:
     return p  # E: Incompatible return value type (got "Point", expected "Chameleon")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanConvertTypedDictToNarrowerTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 Point1D = TypedDict('Point1D', {'x': int})
 def narrow(p: Point) -> Point1D:
     return p
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotConvertTypedDictToWiderTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 Point3D = TypedDict('Point3D', {'x': int, 'y': int, 'z': int})
 def widen(p: Point) -> Point3D:
     return p  # E: Incompatible return value type (got "Point", expected "Point3D")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanConvertTypedDictToCompatibleMapping]
-from mypy_extensions import TypedDict
-from typing import Mapping
+from typing import Mapping, TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 def as_mapping(p: Point) -> Mapping[str, object]:
     return p
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotConvertTypedDictToIncompatibleMapping]
-from mypy_extensions import TypedDict
-from typing import Mapping
+from typing import Mapping, TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 def as_mapping(p: Point) -> Mapping[str, int]:
     return p  # E: Incompatible return value type (got "Point", expected "Mapping[str, int]")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictAcceptsIntForFloatDuckTypes]
-from mypy_extensions import TypedDict
-from typing import Any, Mapping
+from typing import Any, Mapping, TypedDict
 Point = TypedDict('Point', {'x': float, 'y': float})
 def create_point() -> Point:
     return Point(x=1, y=2)
 reveal_type(Point(x=1, y=2))  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.float, 'y': builtins.float})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictDoesNotAcceptsFloatForInt]
-from mypy_extensions import TypedDict
-from typing import Any, Mapping
+from typing import Any, Mapping, TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 def create_point() -> Point:
     return Point(x=1.2, y=2.5)
 [out]
-main:5: error: Incompatible types (expression has type "float", TypedDict item "x" has type "int")
-main:5: error: Incompatible types (expression has type "float", TypedDict item "y" has type "int")
+main:4: error: Incompatible types (expression has type "float", TypedDict item "x" has type "int")
+main:4: error: Incompatible types (expression has type "float", TypedDict item "y" has type "int")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictAcceptsAnyType]
-from mypy_extensions import TypedDict
-from typing import Any, Mapping
+from typing import Any, Mapping, TypedDict
 Point = TypedDict('Point', {'x': float, 'y': float})
 def create_point(something: Any) -> Point:
     return Point({
@@ -409,17 +430,17 @@ def create_point(something: Any) -> Point:
       'y': something.y
     })
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictValueTypeContext]
-from mypy_extensions import TypedDict
-from typing import List
+from typing import List, TypedDict
 D = TypedDict('D', {'x': List[int]})
 reveal_type(D(x=[]))  # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.list[builtins.int]})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotConvertTypedDictToDictOrMutableMapping]
-from mypy_extensions import TypedDict
-from typing import Dict, MutableMapping
+from typing import Dict, MutableMapping, TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 def as_dict(p: Point) -> Dict[str, int]:
     return p  # E: Incompatible return value type (got "Point", expected "Dict[str, int]")
@@ -429,15 +450,15 @@ def as_mutable_mapping(p: Point) -> MutableMapping[str, object]:
 [typing fixtures/typing-full.pyi]
 
 [case testCanConvertTypedDictToAny]
-from mypy_extensions import TypedDict
-from typing import Any
+from typing import Any, TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 def unprotect(p: Point) -> Any:
     return p
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testAnonymousTypedDictInErrorMessages]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 A = TypedDict('A', {'x': int, 'y': str})
 B = TypedDict('B', {'x': int, 'z': str, 'a': int})
@@ -453,9 +474,10 @@ f(l) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x': int})]";
 ll = [b, c]
 f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x': int, 'z': str})]"; expected "A"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictWithSimpleProtocol]
-from typing_extensions import Protocol, TypedDict
+from typing import Protocol, TypedDict
 
 class StrObjectMap(Protocol):
     def __getitem__(self, key: str) -> object: ...
@@ -483,8 +505,7 @@ main:17: note:     Got:
 main:17: note:         def __getitem__(self, str, /) -> object
 
 [case testTypedDictWithSimpleProtocolInference]
-from typing_extensions import Protocol, TypedDict
-from typing import TypeVar
+from typing import Protocol, TypedDict, TypeVar
 
 T_co = TypeVar('T_co', covariant=True)
 T = TypeVar('T')
@@ -507,7 +528,7 @@ reveal_type(fun(b))  # N: Revealed type is "builtins.object"
 -- Join
 
 [case testJoinOfTypedDictHasOnlyCommonKeysAndNewFallback]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 Point3D = TypedDict('Point3D', {'x': int, 'y': int, 'z': int})
 p1 = TaggedPoint(type='2d', x=0, y=0)
@@ -520,7 +541,7 @@ reveal_type(joined_points)  # N: Revealed type is "TypedDict({'x': builtins.int,
 [typing fixtures/typing-typeddict.pyi]
 
 [case testJoinOfTypedDictRemovesNonequivalentKeys]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 CellWithInt = TypedDict('CellWithInt', {'value': object, 'meta': int})
 CellWithObject = TypedDict('CellWithObject', {'value': object, 'meta': object})
 c1 = CellWithInt(value=1, meta=42)
@@ -530,9 +551,10 @@ reveal_type(c1)             # N: Revealed type is "TypedDict('__main__.CellWithI
 reveal_type(c2)             # N: Revealed type is "TypedDict('__main__.CellWithObject', {'value': builtins.object, 'meta': builtins.object})"
 reveal_type(joined_cells)   # N: Revealed type is "builtins.list[TypedDict({'value': builtins.object})]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testJoinOfDisjointTypedDictsIsEmptyTypedDict]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 Cell = TypedDict('Cell', {'value': object})
 d1 = Point(x=0, y=0)
@@ -542,10 +564,10 @@ reveal_type(d1)             # N: Revealed type is "TypedDict('__main__.Point', {
 reveal_type(d2)             # N: Revealed type is "TypedDict('__main__.Cell', {'value': builtins.object})"
 reveal_type(joined_dicts)   # N: Revealed type is "builtins.list[TypedDict({})]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testJoinOfTypedDictWithCompatibleMappingIsMapping]
-from mypy_extensions import TypedDict
-from typing import Mapping
+from typing import Mapping, TypedDict
 Cell = TypedDict('Cell', {'value': int})
 left = Cell(value=42)
 right = {'score': 999}  # type: Mapping[str, int]
@@ -554,10 +576,10 @@ joined2 = [right, left]
 reveal_type(joined1)  # N: Revealed type is "builtins.list[typing.Mapping[builtins.str, builtins.object]]"
 reveal_type(joined2)  # N: Revealed type is "builtins.list[typing.Mapping[builtins.str, builtins.object]]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype]
-from mypy_extensions import TypedDict
-from typing import Sized
+from typing import Sized, TypedDict
 Cell = TypedDict('Cell', {'value': int})
 left = Cell(value=42)
 right = {'score': 999}  # type: Sized
@@ -569,8 +591,7 @@ reveal_type(joined2)  # N: Revealed type is "builtins.list[typing.Sized]"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testJoinOfTypedDictWithIncompatibleTypeIsObject]
-from mypy_extensions import TypedDict
-from typing import Mapping
+from typing import Mapping, TypedDict
 Cell = TypedDict('Cell', {'value': int})
 left = Cell(value=42)
 right = 42
@@ -579,13 +600,13 @@ joined2 = [right, left]
 reveal_type(joined1)  # N: Revealed type is "builtins.list[builtins.object]"
 reveal_type(joined2)  # N: Revealed type is "builtins.list[builtins.object]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 -- Meet
 
 [case testMeetOfTypedDictsWithCompatibleCommonKeysHasAllKeysAndNewFallback]
-from mypy_extensions import TypedDict
-from typing import TypeVar, Callable
+from typing import TypedDict, TypeVar, Callable
 XY = TypedDict('XY', {'x': int, 'y': int})
 YZ = TypedDict('YZ', {'y': int, 'z': int})
 T = TypeVar('T')
@@ -593,10 +614,10 @@ def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: XY, y: YZ) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': builtins.int, 'z': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfTypedDictsWithIncompatibleCommonKeysIsUninhabited]
-from mypy_extensions import TypedDict
-from typing import TypeVar, Callable
+from typing import TypedDict, TypeVar, Callable
 XYa = TypedDict('XYa', {'x': int, 'y': int})
 YbZ = TypedDict('YbZ', {'y': object, 'z': int})
 T = TypeVar('T')
@@ -604,10 +625,10 @@ def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: XYa, y: YbZ) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Never"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfTypedDictsWithNoCommonKeysHasAllKeysAndNewFallback]
-from mypy_extensions import TypedDict
-from typing import TypeVar, Callable
+from typing import TypedDict, TypeVar, Callable
 X = TypedDict('X', {'x': int})
 Z = TypedDict('Z', {'z': int})
 T = TypeVar('T')
@@ -615,11 +636,11 @@ def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: X, y: Z) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "TypedDict({'x': builtins.int, 'z': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 # TODO: It would be more accurate for the meet to be TypedDict instead.
 [case testMeetOfTypedDictWithCompatibleMappingIsUninhabitedForNow]
-from mypy_extensions import TypedDict
-from typing import TypeVar, Callable, Mapping
+from typing import TypedDict, TypeVar, Callable, Mapping
 X = TypedDict('X', {'x': int})
 M = Mapping[str, int]
 T = TypeVar('T')
@@ -627,10 +648,10 @@ def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: X, y: M) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Never"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfTypedDictWithIncompatibleMappingIsUninhabited]
-from mypy_extensions import TypedDict
-from typing import TypeVar, Callable, Mapping
+from typing import TypedDict, TypeVar, Callable, Mapping
 X = TypedDict('X', {'x': int})
 M = Mapping[str, str]
 T = TypeVar('T')
@@ -638,10 +659,10 @@ def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: X, y: M) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Never"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfTypedDictWithCompatibleMappingSuperclassIsUninhabitedForNow]
-from mypy_extensions import TypedDict
-from typing import TypeVar, Callable, Iterable
+from typing import TypedDict, TypeVar, Callable, Iterable
 X = TypedDict('X', {'x': int})
 I = Iterable[str]
 T = TypeVar('T')
@@ -649,10 +670,10 @@ def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: X, y: I) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "TypedDict('__main__.X', {'x': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfTypedDictsWithNonTotal]
-from mypy_extensions import TypedDict
-from typing import TypeVar, Callable
+from typing import TypedDict, TypeVar, Callable
 XY = TypedDict('XY', {'x': int, 'y': int}, total=False)
 YZ = TypedDict('YZ', {'y': int, 'z': int}, total=False)
 T = TypeVar('T')
@@ -660,10 +681,10 @@ def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: XY, y: YZ) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'?: builtins.int, 'y'?: builtins.int, 'z'?: builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfTypedDictsWithNonTotalAndTotal]
-from mypy_extensions import TypedDict
-from typing import TypeVar, Callable
+from typing import TypedDict, TypeVar, Callable
 XY = TypedDict('XY', {'x': int}, total=False)
 YZ = TypedDict('YZ', {'y': int, 'z': int})
 T = TypeVar('T')
@@ -671,10 +692,10 @@ def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: XY, y: YZ) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'?: builtins.int, 'y': builtins.int, 'z': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfTypedDictsWithIncompatibleNonTotalAndTotal]
-from mypy_extensions import TypedDict
-from typing import TypeVar, Callable
+from typing import TypedDict, TypeVar, Callable
 XY = TypedDict('XY', {'x': int, 'y': int}, total=False)
 YZ = TypedDict('YZ', {'y': int, 'z': int})
 T = TypeVar('T')
@@ -682,13 +703,13 @@ def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: XY, y: YZ) -> None: pass
 reveal_type(f(g)) # N: Revealed type is "Never"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 -- Constraint Solver
 
 [case testTypedDictConstraintsAgainstIterable]
-from typing import TypeVar, Iterable
-from mypy_extensions import TypedDict
+from typing import TypedDict, TypeVar, Iterable
 T = TypeVar('T')
 def f(x: Iterable[T]) -> T: pass
 A = TypedDict('A', {'x': int})
@@ -703,25 +724,26 @@ reveal_type(f(a)) # N: Revealed type is "builtins.str"
 -- Special Method: __getitem__
 
 [case testCanGetItemOfTypedDictWithValidStringLiteralKey]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 reveal_type(p['type'])  # N: Revealed type is "builtins.str"
 reveal_type(p['x'])     # N: Revealed type is "builtins.int"
 reveal_type(p['y'])     # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotGetItemOfTypedDictWithInvalidStringLiteralKey]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p: TaggedPoint
 p['typ']  # E: TypedDict "TaggedPoint" has no key "typ" \
           # N: Did you mean "type"?
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey]
-from typing import TypeVar
-from mypy_extensions import TypedDict
+from typing import TypedDict, TypeVar
 A = TypedDict('A', {'x': str, 'y': int, 'z': str})
 B = TypedDict('B', {'x': str, 'z': int})
 C = TypedDict('C', {'x': str, 'y': int, 'z': int})
@@ -732,68 +754,73 @@ ac = join(A(x='', y=1, z=''), C(x='', y=0, z=1))
 ab['y']  # E: "y" is not a valid TypedDict key; expected one of ("x")
 ac['a']  # E: "a" is not a valid TypedDict key; expected one of ("x", "y")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotGetItemOfTypedDictWithNonLiteralKey]
-from mypy_extensions import TypedDict
-from typing import Union
+from typing import TypedDict, Union
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 def get_coordinate(p: TaggedPoint, key: str) -> Union[str, int]:
     return p[key]  # E: TypedDict key must be a string literal; expected one of ("type", "x", "y")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 -- Special Method: __setitem__
 
 [case testCanSetItemOfTypedDictWithValidStringLiteralKeyAndCompatibleValueType]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 p['type'] = 'two_d'
 p['x'] = 1
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotSetItemOfTypedDictWithIncompatibleValueType]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 p['x'] = 'y'  # E: Value of "x" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotSetItemOfTypedDictWithInvalidStringLiteralKey]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 p['z'] = 1  # E: TypedDict "TaggedPoint" has no key "z"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotSetItemOfTypedDictWithNonLiteralKey]
-from mypy_extensions import TypedDict
-from typing import Union
+from typing import TypedDict, Union
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
     p[key] = value  # E: TypedDict key must be a string literal; expected one of ("type", "x", "y")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 -- isinstance
 
 [case testTypedDictWithIsInstanceAndIsSubclass]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 D = TypedDict('D', {'x': int})
 d: object
 if isinstance(d, D):   # E: Cannot use isinstance() with TypedDict type
     reveal_type(d)     # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int})"
 issubclass(object, D)  # E: Cannot use issubclass() with TypedDict type
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 -- Scoping
 
 [case testTypedDictInClassNamespace]
 # https://github.com/python/mypy/pull/2553#issuecomment-266474341
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class C:
     def f(self):
         A = TypedDict('A', {'x': int})
@@ -801,20 +828,21 @@ class C:
         A = TypedDict('A', {'y': int})
 C.A  # E: "Type[C]" has no attribute "A"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictInFunction]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 def f() -> None:
     A = TypedDict('A', {'x': int})
 A  # E: Name "A" is not defined
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 -- Union simplification / proper subtype checks
 
 [case testTypedDictUnionSimplification]
-from typing import TypeVar, Union, Any, cast
-from mypy_extensions import TypedDict
+from typing import TypedDict, TypeVar, Union, Any, cast
 
 T = TypeVar('T')
 S = TypeVar('S')
@@ -842,10 +870,10 @@ reveal_type(u(f, c)) # N: Revealed type is "Union[TypedDict('__main__.C', {'a': 
 reveal_type(u(c, g)) # N: Revealed type is "Union[TypedDict('__main__.G', {'a': Any}), TypedDict('__main__.C', {'a': builtins.int})]"
 reveal_type(u(g, c)) # N: Revealed type is "Union[TypedDict('__main__.C', {'a': builtins.int}), TypedDict('__main__.G', {'a': Any})]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnionSimplification2]
-from typing import TypeVar, Union, Mapping, Any
-from mypy_extensions import TypedDict
+from typing import TypedDict, TypeVar, Union, Mapping, Any
 
 T = TypeVar('T')
 S = TypeVar('S')
@@ -865,10 +893,10 @@ reveal_type(u(c, m_s_s)) # N: Revealed type is "Union[typing.Mapping[builtins.st
 reveal_type(u(c, m_i_i)) # N: Revealed type is "Union[typing.Mapping[builtins.int, builtins.int], TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})]"
 reveal_type(u(c, m_s_a)) # N: Revealed type is "Union[typing.Mapping[builtins.str, Any], TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnionUnambiguousCase]
-from typing import Union, Mapping, Any, cast
-from typing_extensions import TypedDict, Literal
+from typing import Union, Literal, Mapping, TypedDict, Any, cast
 
 A = TypedDict('A', {'@type': Literal['a-type'], 'a': str})
 B = TypedDict('B', {'@type': Literal['b-type'], 'b': int})
@@ -876,20 +904,20 @@ B = TypedDict('B', {'@type': Literal['b-type'], 'b': int})
 c: Union[A, B] = {'@type': 'a-type', 'a': 'Test'}
 reveal_type(c) # N: Revealed type is "Union[TypedDict('__main__.A', {'@type': Literal['a-type'], 'a': builtins.str}), TypedDict('__main__.B', {'@type': Literal['b-type'], 'b': builtins.int})]"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnionAmbiguousCaseBothMatch]
-from typing import Union, Mapping, Any, cast
-from typing_extensions import TypedDict, Literal
+from typing import Union, Literal, Mapping, TypedDict, Any, cast
 
 A = TypedDict('A', {'@type': Literal['a-type'], 'value': str})
 B = TypedDict('B', {'@type': Literal['b-type'], 'value': str})
 
 c: Union[A, B] = {'@type': 'a-type', 'value': 'Test'}
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnionAmbiguousCaseNoMatch]
-from typing import Union, Mapping, Any, cast
-from typing_extensions import TypedDict, Literal
+from typing import Union, Literal, Mapping, TypedDict, Any, cast
 
 A = TypedDict('A', {'@type': Literal['a-type'], 'value': int})
 B = TypedDict('B', {'@type': Literal['b-type'], 'value': int})
@@ -897,11 +925,12 @@ B = TypedDict('B', {'@type': Literal['b-type'], 'value': int})
 c: Union[A, B] = {'@type': 'a-type', 'value': 'Test'}  # E: Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly \
                                                        # E: Incompatible types in assignment (expression has type "Dict[str, str]", variable has type "Union[A, B]")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 -- Use dict literals
 
 [case testTypedDictDictLiterals]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 Point = TypedDict('Point', {'x': int, 'y': int})
 
@@ -919,9 +948,10 @@ f(dict(x=1, y=3, z=4))  # E: Extra key "z" for TypedDict "Point"
 f(dict(x=1, y=3, z=4, a=5))  # E: Extra keys ("z", "a") for TypedDict "Point"
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictExplicitTypes]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 Point = TypedDict('Point', {'x': int, 'y': int})
 
@@ -938,10 +968,10 @@ if int():
 p4: Point = {'x': 1, 'y': 2}
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems]
-from mypy_extensions import TypedDict
-from typing import TypeVar
+from typing import TypedDict, TypeVar
 A = TypedDict('A', {'x': int, 'y': int})
 B = TypedDict('B', {'x': int, 'y': str})
 T = TypeVar('T')
@@ -950,10 +980,10 @@ ab = join(A(x=1, y=1), B(x=1, y=''))
 if int():
     ab = {'x': 1, 'z': 1} # E: Expected TypedDict key "x" but found keys ("x", "z")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems]
-from mypy_extensions import TypedDict
-from typing import TypeVar
+from typing import TypedDict, TypeVar
 A = TypedDict('A', {'x': int, 'y': int, 'z': int})
 B = TypedDict('B', {'x': int, 'y': int, 'z': str})
 T = TypeVar('T')
@@ -962,12 +992,13 @@ ab = join(A(x=1, y=1, z=1), B(x=1, y=1, z=''))
 if int():
     ab = {} # E: Expected TypedDict keys ("x", "y") but found no keys
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 -- Other TypedDict methods
 
 [case testTypedDictGetMethod]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A: pass
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
@@ -980,8 +1011,7 @@ reveal_type(d.get('y', None)) # N: Revealed type is "Union[builtins.str, None]"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictGetMethodTypeContext]
-from typing import List
-from mypy_extensions import TypedDict
+from typing import List, TypedDict
 class A: pass
 D = TypedDict('D', {'x': List[int], 'y': int})
 d: D
@@ -993,7 +1023,7 @@ reveal_type(d.get('x', a)) # N: Revealed type is "Union[builtins.list[builtins.i
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictGetMethodInvalidArgs]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
 d.get() # E: All overload variants of "get" of "Mapping" require at least one argument \
@@ -1013,14 +1043,15 @@ reveal_type(y) # N: Revealed type is "builtins.object"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictMissingMethod]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
 d.bad(1) # E: "D" has no attribute "bad"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictChainedGetMethodWithDictFallback]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str})
 E = TypedDict('E', {'d': D})
 p = E(d=D(x=0, y=''))
@@ -1029,7 +1060,7 @@ reveal_type(p.get('d', {'x': 1, 'y': ''})) # N: Revealed type is "TypedDict('__m
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictGetDefaultParameterStillTypeChecked]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 p.get('x', 1 + 'y')     # E: Unsupported operand types for + ("int" and "str")
@@ -1037,7 +1068,7 @@ p.get('x', 1 + 'y')     # E: Unsupported operand types for + ("int" and "str")
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictChainedGetWithEmptyDictDefault]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 C = TypedDict('C', {'a': int})
 D = TypedDict('D', {'x': C, 'y': str})
 d: D
@@ -1054,23 +1085,25 @@ reveal_type(d.get('x', {})['a']) # N: Revealed type is "builtins.int"
 -- Totality (the "total" keyword argument)
 
 [case testTypedDictWithTotalTrue]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str}, total=True)
 d: D
 reveal_type(d) \
     # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int, 'y': builtins.str})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictWithInvalidTotalArgument]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 A = TypedDict('A', {'x': int}, total=0) # E: "total" argument must be a True or False literal
 B = TypedDict('B', {'x': int}, total=bool) # E: "total" argument must be a True or False literal
 C = TypedDict('C', {'x': int}, x=False) # E: Unexpected keyword argument "x" for "TypedDict"
 D = TypedDict('D', {'x': int}, False) # E: Unexpected arguments to TypedDict()
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictWithTotalFalse]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str}, total=False)
 def f(d: D) -> None:
     reveal_type(d) # N: Revealed type is "TypedDict('__main__.D', {'x'?: builtins.int, 'y'?: builtins.str})"
@@ -1081,9 +1114,10 @@ f({'x': 1, 'y': ''})
 f({'x': 1, 'z': ''}) # E: Extra key "z" for TypedDict "D"
 f({'x': ''}) # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictConstructorWithTotalFalse]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str}, total=False)
 def f(d: D) -> None: pass
 reveal_type(D()) # N: Revealed type is "TypedDict('__main__.D', {'x'?: builtins.int, 'y'?: builtins.str})"
@@ -1093,9 +1127,10 @@ f(D(x=1, y=''))
 f(D(x=1, z='')) # E: Extra key "z" for TypedDict "D"
 f(D(x='')) # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictIndexingWithNonRequiredKey]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str}, total=False)
 d: D
 reveal_type(d['x']) # N: Revealed type is "builtins.int"
@@ -1106,7 +1141,7 @@ reveal_type(d.get('y')) # N: Revealed type is "Union[builtins.str, None]"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictSubtypingWithTotalFalse]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 A = TypedDict('A', {'x': int})
 B = TypedDict('B', {'x': int}, total=False)
 C = TypedDict('C', {'x': int, 'y': str}, total=False)
@@ -1123,10 +1158,10 @@ fb(a) # E: Argument 1 to "fb" has incompatible type "A"; expected "B"
 fa(b) # E: Argument 1 to "fa" has incompatible type "B"; expected "A"
 fc(b) # E: Argument 1 to "fc" has incompatible type "B"; expected "C"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictJoinWithTotalFalse]
-from typing import TypeVar
-from mypy_extensions import TypedDict
+from typing import TypedDict, TypeVar
 A = TypedDict('A', {'x': int})
 B = TypedDict('B', {'x': int}, total=False)
 C = TypedDict('C', {'x': int, 'y': str}, total=False)
@@ -1146,18 +1181,20 @@ reveal_type(j(b, c)) \
 reveal_type(j(c, b)) \
     # N: Revealed type is "TypedDict({'x'?: builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictClassWithTotalArgument]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class D(TypedDict, total=False):
     x: int
     y: str
 d: D
 reveal_type(d) # N: Revealed type is "TypedDict('__main__.D', {'x'?: builtins.int, 'y'?: builtins.str})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictClassWithInvalidTotalArgument]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class D(TypedDict, total=1): # E: "total" argument must be a True or False literal
     x: int
 class E(TypedDict, total=bool): # E: "total" argument must be a True or False literal
@@ -1166,9 +1203,10 @@ class F(TypedDict, total=xyz): # E: Name "xyz" is not defined \
                                # E: "total" argument must be a True or False literal
     x: int
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictClassInheritanceWithTotalArgument]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 class A(TypedDict):
     x: int
 class B(TypedDict, A, total=False):
@@ -1178,9 +1216,10 @@ class C(TypedDict, B, total=True):
 c: C
 reveal_type(c) # N: Revealed type is "TypedDict('__main__.C', {'x': builtins.int, 'y'?: builtins.int, 'z': builtins.str})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNonTotalTypedDictInErrorMessages]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 A = TypedDict('A', {'x': int, 'y': str}, total=False)
 B = TypedDict('B', {'x': int, 'z': str, 'a': int}, total=False)
@@ -1196,10 +1235,11 @@ f(l) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x'?: int})]"
 ll = [b, c]
 f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x'?: int, 'z'?: str})]"; expected "A"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testNonTotalTypedDictCanBeEmpty]
 # flags: --warn-unreachable
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 class A(TypedDict):
     ...
@@ -1216,70 +1256,80 @@ if not a:
 if not b:
     reveal_type(b) # N: Revealed type is "TypedDict('__main__.B', {'x'?: builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 -- Create Type (Errors)
 
 [case testCannotCreateTypedDictTypeWithTooFewArguments]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point')  # E: Too few arguments for TypedDict()
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictTypeWithTooManyArguments]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int}, dict)  # E: Unexpected arguments to TypedDict()
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictTypeWithInvalidName]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict(dict, {'x': int, 'y': int})  # E: TypedDict() expects a string literal as the first argument
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictTypeWithInvalidItems]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x'})  # E: TypedDict() expects a dictionary literal as the second argument
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictTypeWithKwargs]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 d = {'x': int, 'y': int}
 Point = TypedDict('Point', {**d})  # E: Invalid TypedDict() field name
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictTypeWithBytes]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict(b'Point', {'x': int, 'y': int})  # E: TypedDict() expects a string literal as the first argument
 # This technically works at runtime but doesn't make sense.
 Point2 = TypedDict('Point2', {b'x': int})  # E: Invalid TypedDict() field name
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 -- NOTE: The following code works at runtime but is not yet supported by mypy.
 --       Keyword arguments may potentially be supported in the future.
 [case testCannotCreateTypedDictTypeWithNonpositionalArgs]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict(typename='Point', fields={'x': int, 'y': int})  # E: Unexpected arguments to TypedDict()
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictTypeWithInvalidItemName]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {int: int, int: int})  # E: Invalid TypedDict() field name
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictTypeWithInvalidItemType]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 Point = TypedDict('Point', {'x': 1, 'y': 1})  # E: Invalid type: try using Literal[1] instead?
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictTypeWithInvalidName2]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 X = TypedDict('Y', {'x': int})  # E: First argument "Y" to TypedDict() does not match variable name "X"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 
 -- Overloading
 
 [case testTypedDictOverloading]
-from typing import overload, Iterable
-from mypy_extensions import TypedDict
+from typing import overload, Iterable, TypedDict
 
 A = TypedDict('A', {'x': int})
 
@@ -1296,8 +1346,7 @@ reveal_type(f(1))  # N: Revealed type is "builtins.int"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictOverloading2]
-from typing import overload, Iterable
-from mypy_extensions import TypedDict
+from typing import overload, Iterable, TypedDict
 
 A = TypedDict('A', {'x': int})
 
@@ -1312,16 +1361,15 @@ f(a)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
-main:13: error: Argument 1 to "f" has incompatible type "A"; expected "Iterable[int]"
-main:13: note: Following member(s) of "A" have conflicts:
-main:13: note:     Expected:
-main:13: note:         def __iter__(self) -> Iterator[int]
-main:13: note:     Got:
-main:13: note:         def __iter__(self) -> Iterator[str]
+main:12: error: Argument 1 to "f" has incompatible type "A"; expected "Iterable[int]"
+main:12: note: Following member(s) of "A" have conflicts:
+main:12: note:     Expected:
+main:12: note:         def __iter__(self) -> Iterator[int]
+main:12: note:     Got:
+main:12: note:         def __iter__(self) -> Iterator[str]
 
 [case testTypedDictOverloading3]
-from typing import overload
-from mypy_extensions import TypedDict
+from typing import TypedDict, overload
 
 A = TypedDict('A', {'x': int})
 
@@ -1340,8 +1388,7 @@ f(a)  # E: No overload variant of "f" matches argument type "A" \
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictOverloading4]
-from typing import overload
-from mypy_extensions import TypedDict
+from typing import TypedDict, overload
 
 A = TypedDict('A', {'x': int})
 B = TypedDict('B', {'x': str})
@@ -1361,8 +1408,7 @@ f(b) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictOverloading5]
-from typing import overload
-from mypy_extensions import TypedDict
+from typing import TypedDict, overload
 
 A = TypedDict('A', {'x': int})
 B = TypedDict('B', {'y': str})
@@ -1384,8 +1430,7 @@ f(c) # E: Argument 1 to "f" has incompatible type "C"; expected "A"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictOverloading6]
-from typing import overload
-from mypy_extensions import TypedDict
+from typing import TypedDict, overload
 
 A = TypedDict('A', {'x': int})
 B = TypedDict('B', {'y': str})
@@ -1407,8 +1452,7 @@ reveal_type(f(b)) # N: Revealed type is "builtins.str"
 -- Special cases
 
 [case testForwardReferenceInTypedDict]
-from typing import Mapping
-from mypy_extensions import TypedDict
+from typing import TypedDict, Mapping
 X = TypedDict('X', {'b': 'B', 'c': 'C'})
 class B: pass
 class C(B): pass
@@ -1417,10 +1461,10 @@ reveal_type(x) # N: Revealed type is "TypedDict('__main__.X', {'b': __main__.B, 
 m1: Mapping[str, object] = x
 m2: Mapping[str, B] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, B]")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testForwardReferenceInClassTypedDict]
-from typing import Mapping
-from mypy_extensions import TypedDict
+from typing import TypedDict, Mapping
 class X(TypedDict):
     b: 'B'
     c: 'C'
@@ -1431,52 +1475,53 @@ reveal_type(x) # N: Revealed type is "TypedDict('__main__.X', {'b': __main__.B, 
 m1: Mapping[str, object] = x
 m2: Mapping[str, B] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, B]")
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testForwardReferenceToTypedDictInTypedDict]
-from typing import Mapping
-from mypy_extensions import TypedDict
+from typing import TypedDict, Mapping
 X = TypedDict('X', {'a': 'A'})
 A = TypedDict('A', {'b': int})
 x: X
 reveal_type(x) # N: Revealed type is "TypedDict('__main__.X', {'a': TypedDict('__main__.A', {'b': builtins.int})})"
 reveal_type(x['a']['b']) # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testSelfRecursiveTypedDictInheriting]
+from typing import TypedDict
 
-from mypy_extensions import TypedDict
-# flags: --disable-recursive-aliases
-class MovieBase(TypedDict):
-    name: str
-    year: int
+def test() -> None:
+    class MovieBase(TypedDict):
+        name: str
+        year: int
 
-class Movie(MovieBase):
-    director: 'Movie' # E: Cannot resolve name "Movie" (possible cyclic definition)
-
-m: Movie
-reveal_type(m['director']['name']) # N: Revealed type is "Any"
+    class Movie(MovieBase):
+        director: 'Movie' # E: Cannot resolve name "Movie" (possible cyclic definition) \
+                          # N: Recursive types are not allowed at function scope
+    m: Movie
+    reveal_type(m['director']['name']) # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
-[out]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testSubclassOfRecursiveTypedDict]
-# flags: --disable-recursive-aliases
-from typing import List
-from mypy_extensions import TypedDict
+from typing import List, TypedDict
 
-class Command(TypedDict):
-    subcommands: List['Command']  # E: Cannot resolve name "Command" (possible cyclic definition)
+def test() -> None:
+    class Command(TypedDict):
+        subcommands: List['Command']  # E: Cannot resolve name "Command" (possible cyclic definition) \
+                                      # N: Recursive types are not allowed at function scope
 
-class HelpCommand(Command):
-    pass
+    class HelpCommand(Command):
+        pass
 
-hc = HelpCommand(subcommands=[])
-reveal_type(hc)  # N: Revealed type is "TypedDict('__main__.HelpCommand', {'subcommands': builtins.list[Any]})"
+    hc = HelpCommand(subcommands=[])
+    reveal_type(hc)  # N: Revealed type is "TypedDict('__main__.HelpCommand@7', {'subcommands': builtins.list[Any]})"
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testTypedDictForwardAsUpperBound]
-from typing import TypeVar, Generic
-from mypy_extensions import TypedDict
+from typing import TypedDict, TypeVar, Generic
 T = TypeVar('T', bound='M')
 class G(Generic[T]):
     x: T
@@ -1488,12 +1533,13 @@ z: int = G[M]().x['x']  # type: ignore[used-before-def]
 class M(TypedDict):
     x: int
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testTypedDictWithImportCycleForward]
 import a
 [file a.py]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 from b import f
 
 N = TypedDict('N', {'a': str})
@@ -1504,6 +1550,7 @@ def f(x: a.N) -> None:
     reveal_type(x)
     reveal_type(x['a'])
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 tmp/b.py:4: note: Revealed type is "TypedDict('a.N', {'a': builtins.str})"
 tmp/b.py:5: note: Revealed type is "builtins.str"
@@ -1524,14 +1571,15 @@ tp(x='no')  # E: Incompatible types (expression has type "str", TypedDict item "
 
 [file b.py]
 from a import C
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 tp = TypedDict('tp', {'x': int})
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testTypedDictAsStarStarArg]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 A = TypedDict('A', {'x': int, 'y': str})
 class B: pass
@@ -1551,11 +1599,11 @@ f4(**a) # E: Extra argument "y" from **args for "f4"
 f5(**a) # E: Missing positional arguments "y", "z" in call to "f5"
 f6(**a) # E: Extra argument "y" from **args for "f6"
 f1(1, **a) # E: "f1" gets multiple values for keyword argument "x"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictAsStarStarArgConstraints]
-from typing import TypeVar, Union
-from mypy_extensions import TypedDict
+from typing import TypedDict, TypeVar, Union
 
 T = TypeVar('T')
 S = TypeVar('S')
@@ -1564,10 +1612,11 @@ def f1(x: T, y: S) -> Union[T, S]: ...
 A = TypedDict('A', {'y': int, 'x': str})
 a: A
 reveal_type(f1(**a)) # N: Revealed type is "Union[builtins.str, builtins.int]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictAsStarStarArgCalleeKwargs]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 A = TypedDict('A', {'x': int, 'y': str})
 B = TypedDict('B', {'x': str, 'y': str})
@@ -1585,9 +1634,10 @@ g(1, **a) # E: "g" gets multiple values for keyword argument "x"
 g(1, **b) # E: "g" gets multiple values for keyword argument "x" \
           # E: Argument "x" to "g" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictAsStarStarTwice]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 A = TypedDict('A', {'x': int, 'y': str})
 B = TypedDict('B', {'z': bytes})
@@ -1609,11 +1659,11 @@ f1(**a, **c) # E: "f1" gets multiple values for keyword argument "x" \
              # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
 f1(**c, **a) # E: "f1" gets multiple values for keyword argument "x" \
              # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictAsStarStarAndDictAsStarStar]
-from mypy_extensions import TypedDict
-from typing import Any, Dict
+from typing import Any, Dict, TypedDict
 
 TD = TypedDict('TD', {'x': int, 'y': str})
 
@@ -1628,10 +1678,10 @@ f1(**d, **td)
 f2(**td, **d)
 f2(**d, **td)
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictNonMappingMethods]
-from typing import List
-from mypy_extensions import TypedDict
+from typing import List, TypedDict
 
 A = TypedDict('A', {'x': int, 'y': List[int]})
 a: A
@@ -1648,7 +1698,7 @@ a.setdefault('y', '') # E: Argument 2 to "setdefault" of "TypedDict" has incompa
 x = ''
 a.setdefault(x, 1) # E: Expected TypedDict key to be string literal
 alias = a.setdefault
-alias(x, 1) # E: Argument 1 has incompatible type "str"; expected "NoReturn"
+alias(x, 1) # E: Argument 1 has incompatible type "str"; expected "Never"
 
 a.update({})
 a.update({'x': 1})
@@ -1661,10 +1711,10 @@ a.update({'z': 1, 'x': 1}) # E: Expected TypedDict key "x" but found keys ("z", 
 d = {'x': 1}
 a.update(d) # E: Argument 1 to "update" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'x'?: int, 'y'?: List[int]})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictPopMethod]
-from typing import List
-from mypy_extensions import TypedDict
+from typing import List, TypedDict
 
 A = TypedDict('A', {'x': int, 'y': List[int]}, total=False)
 B = TypedDict('B', {'x': int})
@@ -1680,13 +1730,13 @@ b.pop('x') # E: Key "x" of TypedDict "B" cannot be deleted
 x = ''
 b.pop(x) # E: Expected TypedDict key to be string literal
 pop = b.pop
-pop('x') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
-pop('invalid') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
+pop('x') # E: Argument 1 has incompatible type "str"; expected "Never"
+pop('invalid') # E: Argument 1 has incompatible type "str"; expected "Never"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictDel]
-from typing import List
-from mypy_extensions import TypedDict
+from typing import List, TypedDict
 
 A = TypedDict('A', {'x': int, 'y': List[int]}, total=False)
 B = TypedDict('B', {'x': int})
@@ -1703,10 +1753,10 @@ alias = b.__delitem__
 alias('x')
 alias(s)
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testPluginUnionsOfTypedDicts]
-from typing import Union
-from mypy_extensions import TypedDict
+from typing import TypedDict, Union
 
 class TDA(TypedDict):
     a: int
@@ -1731,8 +1781,7 @@ reveal_type(td['c'])  # N: Revealed type is "Union[Any, builtins.int]" \
 [typing fixtures/typing-typeddict.pyi]
 
 [case testPluginUnionsOfTypedDictsNonTotal]
-from typing import Union
-from mypy_extensions import TypedDict
+from typing import TypedDict, Union
 
 class TDA(TypedDict, total=False):
     a: int
@@ -1747,8 +1796,9 @@ td: Union[TDA, TDB]
 
 reveal_type(td.pop('a'))  # N: Revealed type is "builtins.int"
 reveal_type(td.pop('b'))  # N: Revealed type is "Union[builtins.str, builtins.int]"
-reveal_type(td.pop('c'))  # E: TypedDict "TDA" has no key "c" \
-                          # N: Revealed type is "Union[Any, builtins.int]"
+reveal_type(td.pop('c'))  # N: Revealed type is "Union[Any, builtins.int]" \
+                          # E: TypedDict "TDA" has no key "c"
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1762,9 +1812,9 @@ class Point(TypedDict):
 p = Point(x=42, y=1337)
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictWithTypingProper]
-# flags: --python-version 3.8
 from typing import TypedDict
 
 class Point(TypedDict):
@@ -1777,8 +1827,7 @@ reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtin
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictOptionalUpdate]
-from typing import Union
-from mypy_extensions import TypedDict
+from typing import TypedDict, Union
 
 class A(TypedDict):
     x: int
@@ -1786,6 +1835,7 @@ class A(TypedDict):
 d: A
 d.update({'x': 1})
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictOverlapWithDict]
 # mypy: strict-equality
@@ -2016,8 +2066,7 @@ v = {bad2: 2}  # E: Missing key "num" for TypedDict "Value" \
 
 [case testOperatorContainsNarrowsTypedDicts_unionWithList]
 from __future__ import annotations
-from typing import assert_type, TypedDict, Union
-from typing_extensions import final
+from typing import assert_type, final, TypedDict, Union
 
 @final
 class D(TypedDict):
@@ -2034,12 +2083,11 @@ else:
     assert_type(d_or_list, list[str])
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_total]
 from __future__ import annotations
-from typing import assert_type, Literal, TypedDict, TypeVar, Union
-from typing_extensions import final
+from typing import assert_type, final, Literal, TypedDict, TypeVar, Union
 
 @final
 class D1(TypedDict):
@@ -2085,13 +2133,12 @@ def f(arg: TD) -> None:
 
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_final]
 # flags: --warn-unreachable
 from __future__ import annotations
-from typing import assert_type, TypedDict, Union
-from typing_extensions import final
+from typing import assert_type, final, TypedDict, Union
 
 @final
 class DFinal(TypedDict):
@@ -2129,12 +2176,11 @@ else:
     assert_type(d_union, DNotFinal)
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse]
 from __future__ import annotations
-from typing import assert_type, Literal, TypedDict, Union
-from typing_extensions import final
+from typing import assert_type, final, Literal, TypedDict, Union
 
 @final
 class DTotal(TypedDict):
@@ -2165,12 +2211,12 @@ else:
     assert_type(d, Union[DTotal, DNotTotal])
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired]
 from __future__ import annotations
-from typing import assert_type, Required, NotRequired, TypedDict, Union
-from typing_extensions import final
+from typing import assert_type, final, TypedDict, Union
+from typing_extensions import Required, NotRequired
 
 @final
 class D1(TypedDict):
@@ -2197,11 +2243,10 @@ else:
     assert_type(d, Union[D1, D2])
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testCannotSubclassFinalTypedDict]
-from typing import TypedDict
-from typing_extensions import final
+from typing import TypedDict, final
 
 @final
 class DummyTypedDict(TypedDict):
@@ -2213,11 +2258,10 @@ class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedD
     pass
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testCannotSubclassFinalTypedDictWithForwardDeclarations]
-from typing import TypedDict
-from typing_extensions import final
+from typing import TypedDict, final
 
 @final
 class DummyTypedDict(TypedDict):
@@ -2229,7 +2273,7 @@ class SubType(DummyTypedDict): # E: Cannot inherit from final class "DummyTypedD
 class ForwardDeclared: pass
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypedDictTypeNarrowingWithFinalKey]
 from typing import Final, Optional, TypedDict
@@ -2249,8 +2293,7 @@ if foo[KEY_NAME] is not None:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictDoubleForwardClass]
-from mypy_extensions import TypedDict
-from typing import Any, List
+from typing import Any, List, TypedDict
 
 class Foo(TypedDict):
     bar: Bar
@@ -2265,8 +2308,7 @@ reveal_type(foo['baz'])  # N: Revealed type is "builtins.list[Any]"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictDoubleForwardFunc]
-from mypy_extensions import TypedDict
-from typing import Any, List
+from typing import Any, List, TypedDict
 
 Foo = TypedDict('Foo', {'bar': 'Bar', 'baz': 'Bar'})
 
@@ -2279,8 +2321,7 @@ reveal_type(foo['baz'])  # N: Revealed type is "builtins.list[Any]"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictDoubleForwardMixed]
-from mypy_extensions import TypedDict
-from typing import Any, List
+from typing import Any, List, TypedDict
 
 Bar = List[Any]
 
@@ -2357,11 +2398,42 @@ d[True] # E: TypedDict key must be a string literal; expected one of ("foo")
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUppercaseKey]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 Foo = TypedDict('Foo', {'camelCaseKey': str})
 value: Foo = {}  # E: Missing key "camelCaseKey" for TypedDict "Foo"
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictWithDeferredFieldTypeEval]
+from typing import Generic, TypeVar, TypedDict, NotRequired
+
+class Foo(TypedDict):
+    y: NotRequired[int]
+    x: Outer[Inner[ForceDeferredEval]]
+
+var: Foo
+reveal_type(var)  # N: Revealed type is "TypedDict('__main__.Foo', {'y'?: builtins.int, 'x': __main__.Outer[__main__.Inner[__main__.ForceDeferredEval]]})"
+
+T1 = TypeVar("T1")
+class Outer(Generic[T1]): pass
+
+T2 = TypeVar("T2", bound="ForceDeferredEval")
+class Inner(Generic[T2]): pass
+
+class ForceDeferredEval: pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictRequiredUnimportedAny]
+# flags: --disallow-any-unimported
+from typing import NotRequired, TypedDict, ReadOnly
+from nonexistent import Foo  # type: ignore[import-not-found]
+class Bar(TypedDict):
+    foo: NotRequired[Foo]  # E: Type of variable becomes "Any" due to an unfollowed import
+    bar: ReadOnly[Foo]  # E: Type of variable becomes "Any" due to an unfollowed import
+    baz: NotRequired[ReadOnly[Foo]]  # E: Type of variable becomes "Any" due to an unfollowed import
+[typing fixtures/typing-typeddict.pyi]
 
 -- Required[]
 
@@ -2585,8 +2657,9 @@ def func(foo: Union[Foo1, Foo2]):
 
     del foo["missing"]  # E: TypedDict "Foo1" has no key "missing" \
                         # E: TypedDict "Foo2" has no key "missing"
-    del foo[1]  # E: Expected TypedDict key to be string literal \
-                # E: Argument 1 to "__delitem__" has incompatible type "int"; expected "str"
+    del foo[1]  # E: Argument 1 to "__delitem__" has incompatible type "int"; expected "str" \
+                # E: Expected TypedDict key to be string literal
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -2708,7 +2781,7 @@ class TD(TypedDict):
 reveal_type(TD.__iter__)  # N: Revealed type is "def (typing._TypedDict) -> typing.Iterator[builtins.str]"
 reveal_type(TD.__annotations__)  # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
 reveal_type(TD.values)  # N: Revealed type is "def (self: typing.Mapping[T`1, T_co`2]) -> typing.Iterable[T_co`2]"
-[builtins fixtures/dict.pyi]
+[builtins fixtures/dict-full.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testGenericTypedDictAlias]
@@ -2853,7 +2926,7 @@ foo({"foo": {"e": "foo"}})  # E: Type of TypedDict is ambiguous, none of ("A", "
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictMissingEmptyKey]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 class A(TypedDict):
     my_attr_1: str
@@ -2865,7 +2938,7 @@ d['']  # E: TypedDict "A" has no key ""
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictFlexibleUpdate]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 A = TypedDict("A", {"foo": int, "bar": int})
 B = TypedDict("B", {"foo": int})
@@ -2880,7 +2953,7 @@ a.update(a)
 
 [case testTypedDictStrictUpdate]
 # flags: --extra-checks
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 A = TypedDict("A", {"foo": int, "bar": int})
 B = TypedDict("B", {"foo": int})
@@ -2894,8 +2967,7 @@ a.update(a)  # OK
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictFlexibleUpdateUnion]
-from typing import Union
-from mypy_extensions import TypedDict
+from typing import TypedDict, Union
 
 A = TypedDict("A", {"foo": int, "bar": int})
 B = TypedDict("B", {"foo": int})
@@ -2908,8 +2980,7 @@ a.update(u)
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictFlexibleUpdateUnionExtra]
-from typing import Union
-from mypy_extensions import TypedDict
+from typing import TypedDict, Union
 
 A = TypedDict("A", {"foo": int, "bar": int})
 B = TypedDict("B", {"foo": int, "extra": int})
@@ -2923,8 +2994,7 @@ a.update(u)
 
 [case testTypedDictFlexibleUpdateUnionStrict]
 # flags: --extra-checks
-from typing import Union, NotRequired
-from mypy_extensions import TypedDict
+from typing import TypedDict, Union, NotRequired
 
 A = TypedDict("A", {"foo": int, "bar": int})
 A1 = TypedDict("A1", {"foo": int, "bar": NotRequired[int]})
@@ -2984,7 +3054,7 @@ class Bar(TypedDict):
     b: int
 
 foo: Foo = {"a": 1, "b": "a"}
-bar1: Bar = {**foo, "b": 2}  # Incompatible item is overriden
+bar1: Bar = {**foo, "b": 2}  # Incompatible item is overridden
 bar2: Bar = {**foo, "a": 2}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -3108,7 +3178,7 @@ bar2: Bar = {**bar, "c": {**bar["c"], "b": "wrong"}, "d": 2}  # E: Incompatible 
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackOverrideRequired]
-from mypy_extensions import TypedDict
+from typing import TypedDict
 
 Details = TypedDict('Details', {'first_name': str, 'last_name': str})
 DetailsSubset = TypedDict('DetailsSubset', {'first_name': str, 'last_name': str}, total=False)
@@ -3234,5 +3304,953 @@ class Foo(TypedDict):
 def foo(x: int) -> Foo: ...
 
 f: Foo = {**foo("no")}  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictWith__or__method]
+from typing import Dict, TypedDict
+
+class Foo(TypedDict):
+    key: int
+
+foo1: Foo = {'key': 1}
+foo2: Foo = {'key': 2}
+
+reveal_type(foo1 | foo2)  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
+reveal_type(foo1 | {'key': 1})  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
+reveal_type(foo1 | {'key': 'a'})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type(foo1 | {})  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
+
+d1: Dict[str, int]
+d2: Dict[int, str]
+
+reveal_type(foo1 | d1)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+foo1 | d2  # E: Unsupported operand types for | ("Foo" and "Dict[int, str]")
+
+
+class Bar(TypedDict):
+    key: int
+    value: str
+
+bar: Bar
+reveal_type(bar | {})  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type(bar | {'key': 1, 'value': 'v'})  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type(bar | {'key': 1})  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type(bar | {'value': 'v'})  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type(bar | {'key': 'a'})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type(bar | {'value': 1})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type(bar | {'key': 'a', 'value': 1})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+
+reveal_type(bar | foo1)  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type(bar | d1)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+bar | d2  # E: Unsupported operand types for | ("Bar" and "Dict[int, str]")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
+
+[case testTypedDictWith__or__method_error]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    key: int
+
+foo: Foo = {'key': 1}
+foo | 1
+
+class SubDict(dict): ...
+foo | SubDict()
+[out]
+main:7: error: No overload variant of "__or__" of "TypedDict" matches argument type "int"
+main:7: note: Possible overload variants:
+main:7: note:     def __or__(self, TypedDict({'key'?: int}), /) -> Foo
+main:7: note:     def __or__(self, Dict[str, Any], /) -> Dict[str, object]
+main:10: error: No overload variant of "__ror__" of "dict" matches argument type "Foo"
+main:10: note: Possible overload variants:
+main:10: note:     def __ror__(self, Dict[Any, Any], /) -> Dict[Any, Any]
+main:10: note:     def [T, T2] __ror__(self, Dict[T, T2], /) -> Dict[Union[Any, T], Union[Any, T2]]
+[builtins fixtures/dict-full.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
+
+[case testTypedDictWith__ror__method]
+from typing import Dict, TypedDict
+
+class Foo(TypedDict):
+    key: int
+
+foo: Foo = {'key': 1}
+
+reveal_type({'key': 1} | foo)  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
+reveal_type({'key': 'a'} | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type({} | foo)  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
+{1: 'a'} | foo  # E: Dict entry 0 has incompatible type "int": "str"; expected "str": "Any"
+
+d1: Dict[str, int]
+d2: Dict[int, str]
+
+reveal_type(d1 | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+d2 | foo  # E: Unsupported operand types for | ("Dict[int, str]" and "Foo")
+1 | foo  # E: Unsupported left operand type for | ("int")
+
+
+class Bar(TypedDict):
+    key: int
+    value: str
+
+bar: Bar
+reveal_type({} | bar)  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type({'key': 1, 'value': 'v'} | bar)  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type({'key': 1} | bar)  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type({'value': 'v'} | bar)  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type({'key': 'a'} | bar)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type({'value': 1} | bar)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type({'key': 'a', 'value': 1} | bar)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+
+reveal_type(d1 | bar)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+d2 | bar  # E: Unsupported operand types for | ("Dict[int, str]" and "Bar")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
+
+[case testTypedDictWith__ior__method]
+from typing import Dict, TypedDict
+
+class Foo(TypedDict):
+    key: int
+
+foo: Foo = {'key': 1}
+foo |= {'key': 2}
+
+foo |= {}
+foo |= {'key': 'a', 'b': 'a'}  # E: Expected TypedDict key "key" but found keys ("key", "b")  \
+                               # E: Incompatible types (expression has type "str", TypedDict item "key" has type "int")
+foo |= {'b': 2}  # E: Unexpected TypedDict key "b"
+
+d1: Dict[str, int]
+d2: Dict[int, str]
+
+foo |= d1  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'key'?: int})"
+foo |= d2  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[int, str]"; expected "TypedDict({'key'?: int})"
+
+
+class Bar(TypedDict):
+    key: int
+    value: str
+
+bar: Bar
+bar |= {}
+bar |= {'key': 1, 'value': 'a'}
+bar |= {'key': 'a', 'value': 'a', 'b': 'a'}  # E: Expected TypedDict keys ("key", "value") but found keys ("key", "value", "b") \
+                                             # E: Incompatible types (expression has type "str", TypedDict item "key" has type "int")
+
+bar |= foo
+bar |= d1  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'key'?: int, 'value'?: str})"
+bar |= d2  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[int, str]"; expected "TypedDict({'key'?: int, 'value'?: str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
+
+[case testGenericTypedDictStrictOptionalExtending]
+from typing import Generic, TypeVar, TypedDict, Optional
+
+T = TypeVar("T")
+class Foo(TypedDict, Generic[T], total=False):
+    a: Optional[str]
+    g: Optional[T]
+
+class Bar(Foo[T], total=False):
+    other: str
+
+b: Bar[int]
+reveal_type(b["a"])  # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(b["g"])  # N: Revealed type is "Union[builtins.int, None]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testNoCrashOnUnImportedAnyNotRequired]
+# flags: --disallow-any-unimported
+from typing import NotRequired, Required, TypedDict
+from thismoduledoesntexist import T  # type: ignore[import]
+
+B = TypedDict("B", {  # E: Type of a TypedDict key becomes "Any" due to an unfollowed import
+    "T1": NotRequired[T],
+    "T2": Required[T],
+})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictWithClassLevelKeywords]
+from typing import TypedDict, Generic, TypeVar
+
+T = TypeVar('T')
+
+class Meta(type): ...
+
+class WithMetaKeyword(TypedDict, metaclass=Meta):  # E: Unexpected keyword argument "metaclass" for "__init_subclass__" of "TypedDict"
+    ...
+
+class GenericWithMetaKeyword(TypedDict, Generic[T], metaclass=Meta):  # E: Unexpected keyword argument "metaclass" for "__init_subclass__" of "TypedDict"
+    ...
+
+# We still don't allow this, because the implementation is much easier
+# and it does not make any practical sense to do it:
+class WithTypeMeta(TypedDict, metaclass=type):  # E: Unexpected keyword argument "metaclass" for "__init_subclass__" of "TypedDict"
+    ...
+
+class OtherKeywords(TypedDict, a=1, b=2, c=3, total=True):  # E: Unexpected keyword argument "a" for "__init_subclass__" of "TypedDict" \
+                                                            # E: Unexpected keyword argument "b" for "__init_subclass__" of "TypedDict" \
+                                                            # E: Unexpected keyword argument "c" for "__init_subclass__" of "TypedDict"
+    ...
+
+class TotalInTheMiddle(TypedDict, a=1, total=True, b=2, c=3):  # E: Unexpected keyword argument "a" for "__init_subclass__" of "TypedDict" \
+                                                            # E: Unexpected keyword argument "b" for "__init_subclass__" of "TypedDict" \
+                                                            # E: Unexpected keyword argument "c" for "__init_subclass__" of "TypedDict"
+    ...
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testCanCreateClassWithFunctionBasedTypedDictBase]
+from typing import TypedDict
+
+class Params(TypedDict("Params", {'x': int})):
+    pass
+
+p: Params = {'x': 2}
+reveal_type(p) # N: Revealed type is "TypedDict('__main__.Params', {'x': builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testInitTypedDictFromType]
+from typing import TypedDict, Type
+from typing_extensions import Required
+
+class Point(TypedDict, total=False):
+    x: Required[int]
+    y: int
+
+def func(cls: Type[Point]) -> None:
+    reveal_type(cls)  # N: Revealed type is "Type[TypedDict('__main__.Point', {'x': builtins.int, 'y'?: builtins.int})]"
+    cls(x=1, y=2)
+    cls(1, 2)  # E: Too many positional arguments
+    cls(x=1)
+    cls(y=2)  # E: Missing named argument "x"
+    cls(x=1, y=2, error="")  # E: Unexpected keyword argument "error"
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testInitTypedDictFromTypeGeneric]
+from typing import Generic, TypedDict, Type, TypeVar
+from typing_extensions import Required
+
+class Point(TypedDict, total=False):
+    x: Required[int]
+    y: int
+
+T = TypeVar("T", bound=Point)
+
+class A(Generic[T]):
+    def __init__(self, a: Type[T]) -> None:
+        self.a = a
+
+    def func(self) -> T:
+        reveal_type(self.a)  # N: Revealed type is "Type[T`1]"
+        self.a(x=1, y=2)
+        self.a(y=2)  # E: Missing named argument "x"
+        return self.a(x=1)
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testNameUndefinedErrorDoesNotLoseUnpackedKWArgsInformation]
+from typing import TypedDict, overload
+from typing_extensions import Unpack
+
+class TD(TypedDict, total=False):
+    x: int
+    y: str
+
+@overload
+def f(self, *, x: int) -> None: ...
+@overload
+def f(self, *, y: str) -> None: ...
+def f(self, **kwargs: Unpack[TD]) -> None:
+    z  # E: Name "z" is not defined
+
+@overload
+def g(self, *, x: float) -> None: ...
+@overload
+def g(self, *, y: str) -> None: ...
+def g(self, **kwargs: Unpack[TD]) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+    z  # E: Name "z" is not defined
+
+class A:
+    def f(self, *, x: int) -> None: ...
+    def g(self, *, x: float) -> None: ...
+class B(A):
+    def f(self, **kwargs: Unpack[TD]) -> None:
+        z  # E: Name "z" is not defined
+    def g(self, **kwargs: Unpack[TD]) -> None:  # E: Signature of "g" incompatible with supertype "A" \
+                                                # N:      Superclass: \
+                                                # N:          def g(self, *, x: float) -> None \
+                                                # N:      Subclass: \
+                                                # N:          def g(*, x: int = ..., y: str = ...) -> None
+        z  # E: Name "z" is not defined
+reveal_type(B.f)  # N: Revealed type is "def (self: __main__.B, **kwargs: Unpack[TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: builtins.str})])"
+B().f(x=1.0)  # E: Argument "x" to "f" of "B" has incompatible type "float"; expected "int"
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackWithParamSpecInference]
+from typing import TypedDict, TypeVar, ParamSpec, Callable
+from typing_extensions import Unpack
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def run(func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+class Params(TypedDict):
+    temperature: float
+
+def test(temperature: int) -> None: ...
+def test2(temperature: float, other: str) -> None: ...
+
+class Test:
+    def f(self, c: Callable[..., None], **params: Unpack[Params]) -> None:
+        run(c, **params)
+    def g(self, **params: Unpack[Params]) -> None:
+        run(test, **params)  # E: Argument "temperature" to "run" has incompatible type "float"; expected "int"
+    def h(self, **params: Unpack[Params]) -> None:
+        run(test2, other="yes", **params)
+        run(test2, other=0, **params)  # E: Argument "other" to "run" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictUnpackSingleWithSubtypingNoCrash]
+from typing import Callable, TypedDict
+from typing_extensions import Unpack
+
+class Kwargs(TypedDict):
+    name: str
+
+def f(**kwargs: Unpack[Kwargs]) -> None:
+    pass
+
+class C:
+    d: Callable[[Unpack[Kwargs]], None]
+
+# TODO: it is an old question whether we should allow this, for now simply don't crash.
+class D(C):
+    d = f
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNoOldStyleAlias]
+# flags: --enable-incomplete-feature=InlineTypedDict
+X = {"int": int, "str": str}
+reveal_type(X)  # N: Revealed type is "builtins.dict[builtins.str, def () -> builtins.object]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineYesMidStyleAlias]
+# flags: --enable-incomplete-feature=InlineTypedDict
+from typing_extensions import TypeAlias
+X: TypeAlias = {"int": int, "str": str}
+x: X
+reveal_type(x)  # N:  # N: Revealed type is "TypedDict({'int': builtins.int, 'str': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNoEmpty]
+# flags: --enable-incomplete-feature=InlineTypedDict
+x: {}  # E: Invalid type comment or annotation
+reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNotRequired]
+# flags: --enable-incomplete-feature=InlineTypedDict
+from typing import NotRequired
+
+x: {"one": int, "other": NotRequired[int]}
+x = {"one": 1}  # OK
+y: {"one": int, "other": int}
+y = {"one": 1}  # E: Expected TypedDict keys ("one", "other") but found only key "one"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineReadOnly]
+# flags: --enable-incomplete-feature=InlineTypedDict
+from typing import ReadOnly
+
+x: {"one": int, "other": ReadOnly[int]}
+x["one"] = 1  # ok
+x["other"] = 1  # E: ReadOnly TypedDict key "other" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNestedSchema]
+# flags: --enable-incomplete-feature=InlineTypedDict
+def nested() -> {"one": str, "other": {"a": int, "b": int}}:
+    if bool():
+        return {"one": "yes", "other": {"a": 1, "b": 2}}  # OK
+    else:
+        return {"one": "no", "other": {"a": 1, "b": "2"}}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineMergeAnother]
+# flags: --enable-incomplete-feature=InlineTypedDict
+from typing import TypeVar
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+X: TypeAlias = {"item": T}
+x: {"a": int, **X[str], "b": int}
+reveal_type(x)  # N: Revealed type is "TypedDict({'a': builtins.int, 'b': builtins.int, 'item': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+# ReadOnly
+# See: https://peps.python.org/pep-0705
+
+[case testTypedDictReadOnly]
+# flags: --show-error-codes
+from typing import ReadOnly, TypedDict
+
+class TP(TypedDict):
+    one: int
+    other: ReadOnly[str]
+
+x: TP
+reveal_type(x["one"])   # N: Revealed type is "builtins.int"
+reveal_type(x["other"]) # N: Revealed type is "builtins.str"
+x["one"] = 1  # ok
+x["other"] = "a"  # E: ReadOnly TypedDict key "other" TypedDict is mutated  [typeddict-readonly-mutated]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyCreation]
+from typing import ReadOnly, TypedDict
+
+class TD(TypedDict):
+    x: ReadOnly[int]
+    y: int
+
+# Ok:
+x = TD({"x": 1, "y": 2})
+y = TD(x=1, y=2)
+z: TD = {"x": 1, "y": 2}
+
+# Error:
+x2 = TD({"x": "a", "y": 2})  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+y2 = TD(x="a", y=2)          # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+z2: TD = {"x": "a", "y": 2}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyDel]
+from typing import ReadOnly, TypedDict, NotRequired
+
+class TP(TypedDict):
+    required_key: ReadOnly[str]
+    optional_key: ReadOnly[NotRequired[str]]
+
+x: TP
+del x["required_key"]  # E: Key "required_key" of TypedDict "TP" cannot be deleted
+del x["optional_key"]  # E: Key "optional_key" of TypedDict "TP" cannot be deleted
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyMutateMethods]
+from typing import ReadOnly, TypedDict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+    other: ReadOnly[int]
+    mutable: bool
+
+x: TP
+reveal_type(x.pop("key"))  # N: Revealed type is "builtins.str" \
+                           # E: Key "key" of TypedDict "TP" cannot be deleted
+
+
+x.update({"key": "abc", "other": 1, "mutable": True})  # E: ReadOnly TypedDict keys ("key", "other") TypedDict are mutated
+x.setdefault("key", "abc")  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+x.setdefault("other", 1)  # E: ReadOnly TypedDict key "other" TypedDict is mutated
+x.setdefault("mutable", False)  # ok
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictFromTypingExtensionsReadOnlyMutateMethods]
+from typing_extensions import ReadOnly, TypedDict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+
+x: TP
+x.update({"key": "abc"})  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictFromMypyExtensionsReadOnlyMutateMethods]
+from mypy_extensions import TypedDict
+from typing_extensions import ReadOnly
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+
+x: TP
+x.update({"key": "abc"})  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyMutate__ior__Statements]
+from typing import TypedDict
+from typing_extensions import ReadOnly
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+    other: ReadOnly[int]
+    mutable: bool
+
+x: TP
+x |= {"mutable": True}  # ok
+x |= {"key": "a"}  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+x |= {"key": "a", "other": 1, "mutable": True}  # E: ReadOnly TypedDict keys ("key", "other") TypedDict are mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
+
+[case testTypedDictReadOnlyMutate__or__Statements]
+from typing import TypedDict
+from typing_extensions import ReadOnly
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+    other: ReadOnly[int]
+    mutable: bool
+
+x: TP
+# These are new objects, not mutation:
+x = x | {"mutable": True}
+x = x | {"key": "a"}
+x = x | {"key": "a", "other": 1, "mutable": True}
+y1 = x | {"mutable": True}
+y2 = x | {"key": "a"}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
+
+[case testTypedDictReadOnlyMutateWithOtherDicts]
+from typing import ReadOnly, TypedDict, Dict
+
+class TP(TypedDict):
+    key: ReadOnly[str]
+    mutable: bool
+
+class Mutable(TypedDict):
+    mutable: bool
+
+class Regular(TypedDict):
+    key: str
+
+m: Mutable
+r: Regular
+d: Dict[str, object]
+
+# Creating new objects is ok:
+tp: TP = {**r, **m}
+tp1: TP = {**tp, **m}
+tp2: TP = {**r, **m}
+tp3: TP = {**tp, **r}
+tp4: TP = {**tp, **d}  # E: Unsupported type "Dict[str, object]" for ** expansion in TypedDict
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictGenericReadOnly]
+from typing import ReadOnly, TypedDict, TypeVar, Generic
+
+T = TypeVar('T')
+
+class TP(TypedDict, Generic[T]):
+    key: ReadOnly[T]
+
+x: TP[int]
+reveal_type(x["key"])   # N: Revealed type is "builtins.int"
+x["key"] = 1  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+x["key"] = "a"  # E: ReadOnly TypedDict key "key" TypedDict is mutated \
+                # E: Value of "key" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyOtherTypedDict]
+from typing import ReadOnly, TypedDict
+
+class First(TypedDict):
+    field: int
+
+class TP(TypedDict):
+    key: ReadOnly[First]
+
+x: TP
+reveal_type(x["key"]["field"])   # N: Revealed type is "builtins.int"
+x["key"]["field"] = 1  # ok
+x["key"] = {"field": 2}  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyInheritance]
+from typing import ReadOnly, TypedDict
+
+class Base(TypedDict):
+    a: ReadOnly[str]
+
+class Child(Base):
+    b: ReadOnly[int]
+
+base: Base
+reveal_type(base["a"])   # N: Revealed type is "builtins.str"
+base["a"] = "x"  # E: ReadOnly TypedDict key "a" TypedDict is mutated
+base["b"]  # E: TypedDict "Base" has no key "b"
+
+child: Child
+reveal_type(child["a"])   # N: Revealed type is "builtins.str"
+reveal_type(child["b"])   # N: Revealed type is "builtins.int"
+child["a"] = "x"  # E: ReadOnly TypedDict key "a" TypedDict is mutated
+child["b"] = 1  # E: ReadOnly TypedDict key "b" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlySubtyping]
+from typing import ReadOnly, TypedDict
+
+class A(TypedDict):
+    key: ReadOnly[str]
+
+class B(TypedDict):
+    key: str
+
+a: A
+b: B
+
+def accepts_A(d: A): ...
+def accepts_B(d: B): ...
+
+accepts_A(a)
+accepts_A(b)
+accepts_B(a)  # E: Argument 1 to "accepts_B" has incompatible type "A"; expected "B"
+accepts_B(b)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictRequiredConsistentWithNotRequiredReadOnly]
+from typing import NotRequired, ReadOnly, Required, TypedDict
+
+class A(TypedDict):
+    x: NotRequired[ReadOnly[str]]
+
+class B(TypedDict):
+    x: Required[str]
+
+def f(b: B):
+    a: A = b  # ok
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyCall]
+from typing import ReadOnly, TypedDict
+
+TP = TypedDict("TP", {"one": int, "other": ReadOnly[str]})
+
+x: TP
+reveal_type(x["one"])   # N: Revealed type is "builtins.int"
+reveal_type(x["other"]) # N: Revealed type is "builtins.str"
+x["one"] = 1  # ok
+x["other"] = "a"  # E: ReadOnly TypedDict key "other" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyABCSubtypes]
+from typing import ReadOnly, TypedDict, Mapping, Dict, MutableMapping
+
+class TP(TypedDict):
+    one: int
+    other: ReadOnly[int]
+
+def accepts_mapping(m: Mapping[str, object]): ...
+def accepts_mutable_mapping(mm: MutableMapping[str, object]): ...
+def accepts_dict(d: Dict[str, object]): ...
+
+x: TP
+accepts_mapping(x)
+accepts_mutable_mapping(x)  # E: Argument 1 to "accepts_mutable_mapping" has incompatible type "TP"; expected "MutableMapping[str, object]"
+accepts_dict(x)  # E: Argument 1 to "accepts_dict" has incompatible type "TP"; expected "Dict[str, object]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyAndNotRequired]
+from typing import ReadOnly, TypedDict, NotRequired
+
+class TP(TypedDict):
+    one: ReadOnly[NotRequired[int]]
+    two: NotRequired[ReadOnly[str]]
+
+x: TP
+reveal_type(x)  # N: Revealed type is "TypedDict('__main__.TP', {'one'?=: builtins.int, 'two'?=: builtins.str})"
+reveal_type(x.get("one"))  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(x.get("two"))  # N: Revealed type is "Union[builtins.str, None]"
+x["one"] = 1  # E: ReadOnly TypedDict key "one" TypedDict is mutated
+x["two"] = "a"  # E: ReadOnly TypedDict key "two" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictsWithReadOnly]
+from typing import TypeVar, Callable, TypedDict, ReadOnly
+XY = TypedDict('XY', {'x': ReadOnly[int], 'y': int})
+YZ = TypedDict('YZ', {'y': int, 'z': ReadOnly[int]})
+T = TypeVar('T')
+def f(x: Callable[[T, T], None]) -> T: pass
+def g(x: XY, y: YZ) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'=: builtins.int, 'y': builtins.int, 'z'=: builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyUnpack]
+from typing import TypedDict
+from typing_extensions import Unpack, ReadOnly
+
+class TD(TypedDict):
+    x: ReadOnly[int]
+    y: str
+
+def func(**kwargs: Unpack[TD]):
+    kwargs["x"] = 1  # E: ReadOnly TypedDict key "x" TypedDict is mutated
+    kwargs["y" ] = "a"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testIncorrectTypedDictSpecialFormsUsage]
+from typing import ReadOnly, TypedDict, NotRequired, Required
+
+x: ReadOnly[int]     # E: ReadOnly[] can be only used in a TypedDict definition
+y: Required[int]     # E: Required[] can be only used in a TypedDict definition
+z: NotRequired[int]  # E: NotRequired[] can be only used in a TypedDict definition
+
+class TP(TypedDict):
+    a: ReadOnly[ReadOnly[int]]              # E: "ReadOnly[]" type cannot be nested
+    b: ReadOnly[NotRequired[ReadOnly[str]]] # E: "ReadOnly[]" type cannot be nested
+    c: NotRequired[Required[int]]           # E: "Required[]" type cannot be nested
+    d: Required[NotRequired[int]]           # E: "NotRequired[]" type cannot be nested
+    e: Required[ReadOnly[NotRequired[int]]] # E: "NotRequired[]" type cannot be nested
+    f: ReadOnly[ReadOnly[ReadOnly[int]]]    # E: "ReadOnly[]" type cannot be nested
+    g: Required[Required[int]]              # E: "Required[]" type cannot be nested
+    h: NotRequired[NotRequired[int]]        # E: "NotRequired[]" type cannot be nested
+
+    j: NotRequired[ReadOnly[Required[ReadOnly[int]]]]  # E: "Required[]" type cannot be nested \
+                                                       # E: "ReadOnly[]" type cannot be nested
+
+    k: ReadOnly  # E: "ReadOnly[]" must have exactly one type argument
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAnnotatedWithSpecialForms]
+from typing import NotRequired, ReadOnly, Required, TypedDict
+from typing_extensions import Annotated
+
+class A(TypedDict):
+    a: Annotated[NotRequired[ReadOnly[int]], ""]  # ok
+    b: NotRequired[ReadOnly[Annotated[int, ""]]]  # ok
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyCovariant]
+from typing import ReadOnly, TypedDict, Union
+
+class A(TypedDict):
+    a: ReadOnly[Union[int, str]]
+
+class A2(TypedDict):
+    a: ReadOnly[int]
+
+class B(TypedDict):
+    a: int
+
+class B2(TypedDict):
+    a: Union[int, str]
+
+class B3(TypedDict):
+    a: int
+
+def fa(a: A) -> None: ...
+def fa2(a: A2) -> None: ...
+
+b: B = {"a": 1}
+fa(b)
+fa2(b)
+b2: B2 = {"a": 1}
+fa(b2)
+fa2(b2)  # E: Argument 1 to "fa2" has incompatible type "B2"; expected "A2"
+
+class C(TypedDict):
+    a: ReadOnly[Union[int, str]]
+    b: Union[str, bytes]
+
+class D(TypedDict):
+    a: int
+    b: str
+
+d: D = {"a": 1, "b": "x"}
+c: C = d  # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictFinalAndClassVar]
+from typing import TypedDict, Final, ClassVar
+
+class My(TypedDict):
+    a: Final      # E: Final[...] can't be used inside a TypedDict
+    b: Final[int] # E: Final[...] can't be used inside a TypedDict
+    c: ClassVar       # E: ClassVar[...] can't be used inside a TypedDict
+    d: ClassVar[int]  # E: ClassVar[...] can't be used inside a TypedDict
+
+Func = TypedDict('Func', {
+    'a': Final,         # E: Final[...] can't be used inside a TypedDict
+    'b': Final[int],    # E: Final[...] can't be used inside a TypedDict
+    'c': ClassVar,      # E: ClassVar[...] can't be used inside a TypedDict
+    'd': ClassVar[int], # E: ClassVar[...] can't be used inside a TypedDict
+})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictNestedInClassAndInherited]
+from typing import TypedDict
+
+class Base:
+    class Params(TypedDict):
+        name: str
+
+class Derived(Base):
+    pass
+
+class DerivedOverride(Base):
+    class Params(Base.Params):
+        pass
+
+Base.Params(name="Robert")
+Derived.Params(name="Robert")
+DerivedOverride.Params(name="Robert")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testEnumAsClassMemberNoCrash]
+# https://github.com/python/mypy/issues/18736
+from typing import TypedDict
+
+class Base:
+    def __init__(self, namespace: dict[str, str]) -> None:
+        # Not a bug: trigger defer
+        names = {n: n for n in namespace if fail}  # E: Name "fail" is not defined
+        self.d = TypedDict("d", names)  # E: TypedDict type as attribute is not supported \
+                                        # E: TypedDict() expects a dictionary literal as the second argument
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAlias]
+from typing import NotRequired, TypedDict
+from typing_extensions import TypeAlias
+
+class Base(TypedDict):
+    foo: int
+
+Base1 = Base
+class Child1(Base1):
+    bar: NotRequired[int]
+c11: Child1 = {"foo": 0}
+c12: Child1 = {"foo": 0, "bar": 1}
+c13: Child1 = {"foo": 0, "bar": 1, "baz": "error"}  # E: Extra key "baz" for TypedDict "Child1"
+
+Base2: TypeAlias = Base
+class Child2(Base2):
+    bar: NotRequired[int]
+c21: Child2 = {"foo": 0}
+c22: Child2 = {"foo": 0, "bar": 1}
+c23: Child2 = {"foo": 0, "bar": 1, "baz": "error"}  # E: Extra key "baz" for TypedDict "Child2"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAliasInheritance]
+from typing import TypedDict
+from typing_extensions import TypeAlias
+
+class A(TypedDict):
+    x: str
+class B(TypedDict):
+    y: int
+
+B1 = B
+B2: TypeAlias = B
+
+class C(A, B1):
+    pass
+c1: C = {"y": 1}  # E: Missing key "x" for TypedDict "C"
+c2: C = {"x": "x", "y": 2}
+c3: C = {"x": 1, "y": 2}  # E: Incompatible types (expression has type "int", TypedDict item "x" has type "str")
+
+class D(A, B2):
+    pass
+d1: D = {"y": 1}  # E: Missing key "x" for TypedDict "D"
+d2: D = {"x": "x", "y": 2}
+d3: D = {"x": 1, "y": 2}  # E: Incompatible types (expression has type "int", TypedDict item "x" has type "str")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAliasDuplicateBases]
+from typing import TypedDict
+from typing_extensions import TypeAlias
+
+class A(TypedDict):
+    x: str
+
+A1 = A
+A2 = A
+A3: TypeAlias = A
+
+class E(A1, A2): pass  # E: Duplicate base class "A"
+class F(A1, A3): pass # E: Duplicate base class "A"
+class G(A, A1): pass # E: Duplicate base class "A"
+
+class H(A, list): pass  # E: All bases of a new TypedDict must be TypedDict types
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAliasGeneric]
+from typing import Generic, TypedDict, TypeVar
+from typing_extensions import TypeAlias
+
+_T = TypeVar("_T")
+
+class A(Generic[_T], TypedDict):
+    x: _T
+
+# This is by design - no_args aliases are only supported for instances
+A0 = A
+class B(A0[str]):  # E: Bad number of arguments for type alias, expected 0, given 1
+    y: int
+
+A1 = A[_T]
+A2: TypeAlias = A[_T]
+Aint = A[int]
+
+class C(A1[_T]):
+    y: str
+c1: C[int] = {"x": 0, "y": "a"}
+c2: C[int] = {"x": "no", "y": "a"}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+
+class D(A2[_T]):
+    y: str
+d1: D[int] = {"x": 0, "y": "a"}
+d2: D[int] = {"x": "no", "y": "a"}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
+
+class E(Aint):
+    y: str
+e1: E = {"x": 0, "y": "a"}
+e2: E = {"x": "no", "y": "a"}
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

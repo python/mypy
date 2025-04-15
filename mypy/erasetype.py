@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Container, cast
+from collections.abc import Container
+from typing import Callable, cast
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
 from mypy.types import (
@@ -34,6 +35,7 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
 )
+from mypy.typevartuples import erased_vars
 
 
 def erase_type(typ: Type) -> ProperType:
@@ -77,17 +79,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return t
 
     def visit_instance(self, t: Instance) -> ProperType:
-        args: list[Type] = []
-        for tv in t.type.defn.type_vars:
-            # Valid erasure for *Ts is *tuple[Any, ...], not just Any.
-            if isinstance(tv, TypeVarTupleType):
-                args.append(
-                    UnpackType(
-                        tv.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
-                    )
-                )
-            else:
-                args.append(AnyType(TypeOfAny.special_form))
+        args = erased_vars(t.type.defn.type_vars, TypeOfAny.special_form)
         return Instance(t.type, args, t.line)
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
@@ -100,7 +92,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         raise RuntimeError("Parameters should have been bound to a class")
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
-        return AnyType(TypeOfAny.special_form)
+        # Likely, we can never get here because of aggressive erasure of types that
+        # can contain this, but better still return a valid replacement.
+        return t.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
 
     def visit_unpack_type(self, t: UnpackType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
@@ -168,6 +162,7 @@ class TypeVarEraser(TypeTranslator):
     """Implementation of type erasure"""
 
     def __init__(self, erase_id: Callable[[TypeVarId], bool], replacement: Type) -> None:
+        super().__init__()
         self.erase_id = erase_id
         self.replacement = replacement
 
@@ -206,6 +201,14 @@ class TypeVarEraser(TypeTranslator):
                         # this essentially mimics the logic in tuple_fallback().
                         return result.partial_fallback.accept(self)
                     return unpacked
+        return result
+
+    def visit_callable_type(self, t: CallableType) -> Type:
+        result = super().visit_callable_type(t)
+        assert isinstance(result, ProperType) and isinstance(result, CallableType)
+        # Usually this is done in semanal_typeargs.py, but erasure can create
+        # a non-normal callable from normal one.
+        result.normalize_trivial_unpack()
         return result
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:

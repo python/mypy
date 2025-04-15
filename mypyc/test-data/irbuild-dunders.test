@@ -15,24 +15,16 @@ L0:
 def f(c):
     c :: __main__.C
     r0 :: int
-    r1 :: native_int
-    r2, r3, r4 :: bit
-    r5 :: bool
+    r1 :: bit
+    r2 :: bool
 L0:
     r0 = c.__len__()
-    r1 = r0 & 1
-    r2 = r1 != 0
-    if r2 goto L1 else goto L2 :: bool
+    r1 = int_ge r0, 0
+    if r1 goto L2 else goto L1 :: bool
 L1:
-    r3 = CPyTagged_IsLt_(r0, 0)
-    if r3 goto L3 else goto L4 :: bool
-L2:
-    r4 = r0 >= 0 :: signed
-    if r4 goto L4 else goto L3 :: bool
-L3:
-    r5 = raise ValueError('__len__() should return >= 0')
+    r2 = raise ValueError('__len__() should return >= 0')
     unreachable
-L4:
+L2:
     return r0
 
 [case testDundersSetItem]

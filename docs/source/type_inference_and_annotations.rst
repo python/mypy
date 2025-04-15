@@ -41,12 +41,10 @@ variable type annotation:
 
 .. code-block:: python
 
-   from typing import Union
-
-   x: Union[int, str] = 1
+   x: int | str = 1
 
 Without the type annotation, the type of ``x`` would be just ``int``. We
-use an annotation to give it a more general type ``Union[int, str]`` (this
+use an annotation to give it a more general type ``int | str`` (this
 type means that the value can be either an ``int`` or a ``str``).
 
 The best way to think about this is that the type annotation sets the type of
@@ -55,8 +53,8 @@ about the following code:
 
 .. code-block:: python
 
-   x: Union[int, str] = 1.1  # error: Incompatible types in assignment
-                             # (expression has type "float", variable has type "Union[int, str]")
+   x: int | str = 1.1  # error: Incompatible types in assignment
+                       # (expression has type "float", variable has type "int | str")
 
 .. note::
 

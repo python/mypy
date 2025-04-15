@@ -22,6 +22,7 @@ def define(
     *,
     these: Optional[Mapping[str, Any]] = ...,
     repr: bool = ...,
+    unsafe_hash: Optional[bool]=None,
     hash: Optional[bool] = ...,
     init: bool = ...,
     slots: bool = ...,
@@ -44,6 +45,7 @@ def define(
     *,
     these: Optional[Mapping[str, Any]] = ...,
     repr: bool = ...,
+    unsafe_hash: Optional[bool]=None,
     hash: Optional[bool] = ...,
     init: bool = ...,
     slots: bool = ...,
@@ -79,6 +81,7 @@ def field(
     eq: Optional[bool] = ...,
     order: Optional[bool] = ...,
     on_setattr: Optional[_OnSetAttrArgType] = ...,
+    alias: Optional[str] = ...,
 ) -> Any: ...
 
 # This form catches an explicit None or no default and infers the type from the
@@ -98,6 +101,7 @@ def field(
     eq: Optional[bool] = ...,
     order: Optional[bool] = ...,
     on_setattr: Optional[object] = ...,
+    alias: Optional[str] = ...,
 ) -> _T: ...
 
 # This form catches an explicit default argument.
@@ -116,6 +120,7 @@ def field(
     eq: Optional[bool] = ...,
     order: Optional[bool] = ...,
     on_setattr: Optional[object] = ...,
+    alias: Optional[str] = ...,
 ) -> _T: ...
 
 # This form covers type=non-Type: e.g. forward references (str), Any
@@ -134,6 +139,7 @@ def field(
     eq: Optional[bool] = ...,
     order: Optional[bool] = ...,
     on_setattr: Optional[object] = ...,
+    alias: Optional[str] = ...,
 ) -> Any: ...
 
 def evolve(inst: _T, **changes: Any) -> _T: ...

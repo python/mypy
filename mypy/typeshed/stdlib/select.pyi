@@ -2,15 +2,16 @@ import sys
 from _typeshed import FileDescriptorLike
 from collections.abc import Iterable
 from types import TracebackType
-from typing import Any
-from typing_extensions import Self, final
+from typing import Any, ClassVar, final
+from typing_extensions import Self
 
 if sys.platform != "win32":
     PIPE_BUF: int
     POLLERR: int
     POLLHUP: int
     POLLIN: int
-    POLLMSG: int
+    if sys.platform == "linux":
+        POLLMSG: int
     POLLNVAL: int
     POLLOUT: int
     POLLPRI: int
@@ -21,14 +22,17 @@ if sys.platform != "win32":
     POLLWRBAND: int
     POLLWRNORM: int
 
-class poll:
-    def register(self, fd: FileDescriptorLike, eventmask: int = ...) -> None: ...
-    def modify(self, fd: FileDescriptorLike, eventmask: int) -> None: ...
-    def unregister(self, fd: FileDescriptorLike) -> None: ...
-    def poll(self, timeout: float | None = ...) -> list[tuple[int, int]]: ...
+    # This is actually a function that returns an instance of a class.
+    # The class is not accessible directly, and also calls itself select.poll.
+    class poll:
+        # default value is select.POLLIN | select.POLLPRI | select.POLLOUT
+        def register(self, fd: FileDescriptorLike, eventmask: int = 7, /) -> None: ...
+        def modify(self, fd: FileDescriptorLike, eventmask: int, /) -> None: ...
+        def unregister(self, fd: FileDescriptorLike, /) -> None: ...
+        def poll(self, timeout: float | None = None, /) -> list[tuple[int, int]]: ...
 
 def select(
-    __rlist: Iterable[Any], __wlist: Iterable[Any], __xlist: Iterable[Any], __timeout: float | None = None
+    rlist: Iterable[Any], wlist: Iterable[Any], xlist: Iterable[Any], timeout: float | None = None, /
 ) -> tuple[list[Any], list[Any], list[Any]]: ...
 
 error = OSError
@@ -52,6 +56,8 @@ if sys.platform != "linux" and sys.platform != "win32":
             data: Any = ...,
             udata: Any = ...,
         ) -> None: ...
+        __hash__: ClassVar[None]  # type: ignore[assignment]
+
     # BSD only
     @final
     class kqueue:
@@ -59,11 +65,12 @@ if sys.platform != "linux" and sys.platform != "win32":
         def __init__(self) -> None: ...
         def close(self) -> None: ...
         def control(
-            self, __changelist: Iterable[kevent] | None, __maxevents: int, __timeout: float | None = None
+            self, changelist: Iterable[kevent] | None, maxevents: int, timeout: float | None = None, /
         ) -> list[kevent]: ...
         def fileno(self) -> int: ...
         @classmethod
-        def fromfd(cls, __fd: FileDescriptorLike) -> kqueue: ...
+        def fromfd(cls, fd: FileDescriptorLike, /) -> kqueue: ...
+
     KQ_EV_ADD: int
     KQ_EV_CLEAR: int
     KQ_EV_DELETE: int
@@ -75,7 +82,8 @@ if sys.platform != "linux" and sys.platform != "win32":
     KQ_EV_ONESHOT: int
     KQ_EV_SYSFLAGS: int
     KQ_FILTER_AIO: int
-    KQ_FILTER_NETDEV: int
+    if sys.platform != "darwin":
+        KQ_FILTER_NETDEV: int
     KQ_FILTER_PROC: int
     KQ_FILTER_READ: int
     KQ_FILTER_SIGNAL: int
@@ -110,9 +118,10 @@ if sys.platform == "linux":
         def __enter__(self) -> Self: ...
         def __exit__(
             self,
-            __exc_type: type[BaseException] | None = None,
-            __exc_value: BaseException | None = ...,
-            __exc_tb: TracebackType | None = None,
+            exc_type: type[BaseException] | None = None,
+            exc_value: BaseException | None = ...,
+            exc_tb: TracebackType | None = None,
+            /,
         ) -> None: ...
         def close(self) -> None: ...
         closed: bool
@@ -122,7 +131,8 @@ if sys.platform == "linux":
         def unregister(self, fd: FileDescriptorLike) -> None: ...
         def poll(self, timeout: float | None = None, maxevents: int = -1) -> list[tuple[int, int]]: ...
         @classmethod
-        def fromfd(cls, __fd: FileDescriptorLike) -> epoll: ...
+        def fromfd(cls, fd: FileDescriptorLike, /) -> epoll: ...
+
     EPOLLERR: int
     EPOLLEXCLUSIVE: int
     EPOLLET: int
