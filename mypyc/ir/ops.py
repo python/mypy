@@ -692,6 +692,9 @@ class PrimitiveOp(RegisterOp):
     def sources(self) -> list[Value]:
         return self.args
 
+    def set_sources(self, new: list[Value]) -> None:
+        self.args = new[:]
+
     def stolen(self) -> list[Value]:
         steals = self.desc.steals
         if isinstance(steals, list):

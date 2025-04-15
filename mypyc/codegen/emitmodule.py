@@ -252,7 +252,7 @@ def compile_scc_to_ir(
             # Perform optimizations.
             do_copy_propagation(fn, compiler_options)
             do_flag_elimination(fn, compiler_options)
-            
+
     return modules
 
 
