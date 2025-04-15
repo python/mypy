@@ -1,6 +1,6 @@
 # async test cases (compile and run)
 
-[case testRunAsync]
+[case testRunAsyncBasics]
 import asyncio
 
 async def h() -> int:
@@ -26,6 +26,73 @@ def test_1() -> None:
 def test_2() -> None:
     result = asyncio.run(f2())
     assert result == 9
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+# eh, we could use the real type but it doesn't seem important
+def run(x: object) -> object: ...
+
+[typing fixtures/typing-full.pyi]
+
+[case testRunAsyncAwaitInVariousPositions]
+import asyncio
+
+async def one() -> int:
+    return int() + 1
+
+async def true() -> bool:
+    return bool(int() + 1)
+
+async def branch_await() -> int:
+    if await true():
+        return 3
+    return 2
+
+async def branch_await_not() -> int:
+    if not await true():
+        return 3
+    return 2
+
+def test_branch() -> None:
+    assert asyncio.run(branch_await()) == 3
+    assert asyncio.run(branch_await_not()) == 2
+
+async def assign_local() -> int:
+    x = await one()
+    return x + 1
+
+def test_assign_local() -> None:
+    assert asyncio.run(assign_local()) == 2
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+async def make_c(s: str) -> C:
+    await one()
+    return C(s)
+
+async def get_attr(s: str) -> str:
+    return (await make_c(s)).s
+
+def test_get_attr() -> None:
+    assert asyncio.run(get_attr("foo")) == "foo"
+
+async def concat(s: str, t: str) -> str:
+    await one()
+    return s + t
+
+async def set_attr1(s: str) -> str:
+    c = await make_c("xyz")
+    c.s = await concat(s, "!")
+    return c.s
+
+async def set_attr2(s: str) -> None:
+    (await make_c("xyz")).s = s
+
+def test_set_attr() -> None:
+    assert asyncio.run(set_attr1("foo")) == "foo!"
+    asyncio.run(set_attr2("foo"))  # Just check that it compiles and runs
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
@@ -77,7 +144,6 @@ from testutil import run_generator
 yields, val = run_generator(async_return())
 assert yields == ('foo',)
 assert val == 'test', val
-
 
 [case testAsyncFor]
 from typing import AsyncIterable, List, Set, Dict
