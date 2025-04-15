@@ -238,7 +238,7 @@ class Op(Value):
 
     @abstractmethod
     def set_sources(self, new: list[Value]) -> None:
-        """Rewrite the soruces of an op"""
+        """Rewrite the sources of an op"""
 
     def stolen(self) -> list[Value]:
         """Return arguments that have a reference count stolen by this op"""
