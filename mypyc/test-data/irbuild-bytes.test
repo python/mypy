@@ -185,3 +185,44 @@ L0:
     r10 = CPyBytes_Build(2, var, r9)
     b4 = r10
     return 1
+
+[case testDecode]
+def f(b: bytes) -> None:
+    b.decode()
+    b.decode('utf8')
+    b.decode('utf-8', 'strict')
+    b.decode('utf-8', 'strict')
+    b.decode('latin1', 'strict')
+    b.decode('ascii')
+    b.decode('latin-1')
+    b.decode('utf-8', 'ignore')
+    b.decode('ascii', 'replace')
+    b.decode('latin1', 'ignore')
+[out]
+def f(b):
+    b :: bytes
+    r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21 :: str
+L0:
+    r0 = CPy_DecodeUtf8(b)
+    r1 = CPy_DecodeUtf8(b)
+    r2 = 'utf-8'
+    r3 = 'strict'
+    r4 = CPy_Decode(b, r2, r3)
+    r5 = 'utf-8'
+    r6 = 'strict'
+    r7 = CPy_Decode(b, r5, r6)
+    r8 = 'latin1'
+    r9 = 'strict'
+    r10 = CPy_Decode(b, r8, r9)
+    r11 = CPy_DecodeAscii(b)
+    r12 = CPy_DecodeLatin1(b)
+    r13 = 'utf-8'
+    r14 = 'ignore'
+    r15 = CPy_Decode(b, r13, r14)
+    r16 = 'ascii'
+    r17 = 'replace'
+    r18 = CPy_Decode(b, r16, r17)
+    r19 = 'latin1'
+    r20 = 'ignore'
+    r21 = CPy_Decode(b, r19, r20)
+    return 1
