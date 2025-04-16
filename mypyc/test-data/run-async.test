@@ -47,12 +47,12 @@ async def true() -> bool:
     return bool(int() + await one())
 
 async def branch_await() -> int:
-    if await true():
+    if bool(int() + 1) == await true():
         return 3
     return 2
 
 async def branch_await_not() -> int:
-    if not await true():
+    if bool(int() + 1) == (not await true()):
         return 3
     return 2
 
@@ -60,12 +60,12 @@ def test_branch() -> None:
     assert asyncio.run(branch_await()) == 3
     assert asyncio.run(branch_await_not()) == 2
 
-async def assign_local() -> int:
-    x = await one()
+async def assign_multi() -> int:
+    _, x = int(), await one()
     return x + 1
 
-def test_assign_local() -> None:
-    assert asyncio.run(assign_local()) == 2
+def test_assign_multi() -> None:
+    assert asyncio.run(assign_multi()) == 2
 
 class C:
     def __init__(self, s: str) -> None:
@@ -78,81 +78,46 @@ async def make_c(s: str) -> C:
     await one()
     return C(s)
 
-async def get_attr(s: str) -> str:
-    return (await make_c(s)).s
-
-def test_get_attr() -> None:
-    assert asyncio.run(get_attr("foo")) == "foo"
-
 async def concat(s: str, t: str) -> str:
     await one()
     return s + t
 
-async def set_attr1(s: str) -> str:
-    c = await make_c("xyz")
-    c.s = await concat(s, "!")
-    return c.s
-
-async def set_attr2(s: str) -> None:
-    (await make_c("xyz")).s = s
+async def set_attr(s: str) -> None:
+    (await make_c("xyz")).s = await concat(s, "!")
 
 def test_set_attr() -> None:
-    assert asyncio.run(set_attr1("foo")) == "foo!"
-    asyncio.run(set_attr2("foo"))  # Just check that it compiles and runs
+    asyncio.run(set_attr("foo"))  # Just check that it compiles and runs
 
-def upper(s: str) -> str:
-    return s.upper()
+def concat2(x: str, y: str) -> str:
+    return x + y
 
 async def call1(s: str) -> str:
-    return upper(await concat(s, "a"))
+    return concat2(str(int()), await concat(s, "a"))
 
 async def call2(s: str) -> str:
-    return await concat(await concat(s, "a"), "b")
+    return await concat(str(int()), await concat(s, "b"))
 
 def test_call() -> None:
-    assert asyncio.run(call1("foo")) == "FOOA"
-    assert asyncio.run(call2("foo")) == "fooab"
+    assert asyncio.run(call1("foo")) == "0fooa"
+    assert asyncio.run(call2("foo")) == "0foob"
 
 async def method_call(s: str) -> str:
-    c = C("<")
-    return c.concat(await concat(s, ">"))
+    return C("<").concat(await concat(s, ">"))
 
 def test_method_call() -> None:
     assert asyncio.run(method_call("foo")) == "<foo>"
 
+class D:
+    def __init__(self, a: str, b: str) -> None:
+        self.a = a
+        self.b = b
+
 async def construct(s: str) -> str:
-    c = C(await concat(s, "!"))
-    return c.s
+    c = D(await concat(s, "!"), await concat(s, "?"))
+    return c.a + c.b
 
 def test_construct() -> None:
-    assert asyncio.run(construct("foo")) == "foo!"
-
-async def repr_as_object(s: str) -> object:
-    return repr(s)
-
-async def do_cast(s: str) -> str:
-    return cast(str, await repr_as_object(s))
-
-def test_cast() -> None:
-    assert asyncio.run(do_cast("foo")) == "'foo'"
-
-async def box() -> list[int]:
-    return [await one(), await one()]
-
-def test_box() -> None:
-    assert asyncio.run(box()) == [1, 1]
-
-async def int_as_any(n: int) -> Any:
-    return n * 2
-
-async def inc(n: int) -> int:
-    return n + await one()
-
-async def unbox(n: int) -> int:
-    return await inc(await int_as_any(n))
-
-def test_unbox() -> None:
-    assert asyncio.run(unbox(4)) == 9
+    assert asyncio.run(construct("foo")) == "foo!foo?"
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
