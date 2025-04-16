@@ -35,13 +35,16 @@ def run(x: object) -> object: ...
 [typing fixtures/typing-full.pyi]
 
 [case testRunAsyncAwaitInVariousPositions]
+from typing import cast, Any
+
 import asyncio
 
 async def one() -> int:
+    await asyncio.sleep(0.0)
     return int() + 1
 
 async def true() -> bool:
-    return bool(int() + 1)
+    return bool(int() + await one())
 
 async def branch_await() -> int:
     if await true():
@@ -123,6 +126,33 @@ async def construct(s: str) -> str:
 
 def test_construct() -> None:
     assert asyncio.run(construct("foo")) == "foo!"
+
+async def repr_as_object(s: str) -> object:
+    return repr(s)
+
+async def do_cast(s: str) -> str:
+    return cast(str, await repr_as_object(s))
+
+def test_cast() -> None:
+    assert asyncio.run(do_cast("foo")) == "'foo'"
+
+async def box() -> list[int]:
+    return [await one(), await one()]
+
+def test_box() -> None:
+    assert asyncio.run(box()) == [1, 1]
+
+async def int_as_any(n: int) -> Any:
+    return n * 2
+
+async def inc(n: int) -> int:
+    return n + await one()
+
+async def unbox(n: int) -> int:
+    return await inc(await int_as_any(n))
+
+def test_unbox() -> None:
+    assert asyncio.run(unbox(4)) == 9
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
