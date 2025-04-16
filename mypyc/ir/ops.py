@@ -1247,7 +1247,7 @@ class LoadGlobal(RegisterOp):
         return []
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.src,) = new
+        assert not new
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_load_global(self)
@@ -1588,6 +1588,7 @@ class LoadAddress(RegisterOp):
     def set_sources(self, new: list[Value]) -> None:
         if new:
             assert isinstance(new[0], Register)
+            assert len(new) == 1
             self.src = new[0]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
