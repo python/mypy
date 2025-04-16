@@ -107,3 +107,11 @@ function_op(
     c_function_name="CPyBytes_Ord",
     error_kind=ERR_MAGIC,
 )
+
+method_op(
+    name="decode",
+    arg_types=[bytes_rprimitive, bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPy_DecodeUtf8",
+    error_kind=ERR_MAGIC,
+)

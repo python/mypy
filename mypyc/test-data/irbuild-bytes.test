@@ -185,3 +185,15 @@ L0:
     r10 = CPyBytes_Build(2, var, r9)
     b4 = r10
     return 1
+
+[case testDecodeUtf8]
+def f(b: bytes) -> str:
+    return b.decode("utf-8")
+[out]
+def f(b):
+    b :: bytes
+    r0, r1 :: str
+L0:
+    r0 = 'utf-8'
+    r1 = CPy_Decode(b, r0, 0)
+    return r1

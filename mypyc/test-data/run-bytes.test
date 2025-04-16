@@ -323,3 +323,29 @@ class A:
 def test_bytes_dunder() -> None:
     assert b'%b' % A() == b'aaa'
     assert b'%s' % A() == b'aaa'
+
+[case testDecodeUtf8]
+from typing import Any
+from testutil import assertRaises
+from a import bytes_subclass
+
+def test_decode_utf8() -> None:
+    assert b'hello'.decode('utf-8') == 'hello'
+    assert b''.decode('utf-8') == ''
+
+    x: bytes = bytearray(b'hello')
+    assert x.decode('utf-8') == 'hello'
+    assert type(x.decode('utf-8')) == str
+
+    y: Any = bytes_subclass()
+    assert y.decode('utf-8') == 'spook'
+
+    n: Any = 123
+    with assertRaises(AttributeError):
+        n.decode('utf-8')
+
+
+[file a.py]
+class bytes_subclass(bytes):
+    def decode(self, encoding='utf-8'):
+        return 'spook'
