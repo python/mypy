@@ -3265,6 +3265,7 @@ def append_invariance_notes(
         arg_type.type.fullname == "builtins.list"
         and expected_type.type.fullname == "builtins.list"
         and is_subtype(arg_type.args[0], expected_type.args[0])
+        and not isinstance(get_proper_type(arg_type.args[0]), UninhabitedType)
     ):
         invariant_type = "list"
         covariant_suggestion = 'Consider using "Sequence" instead, which is covariant'
@@ -3273,6 +3274,8 @@ def append_invariance_notes(
         and expected_type.type.fullname == "builtins.dict"
         and is_same_type(arg_type.args[0], expected_type.args[0])
         and is_subtype(arg_type.args[1], expected_type.args[1])
+        and not isinstance(get_proper_type(arg_type.args[0]), UninhabitedType)
+        and not isinstance(get_proper_type(arg_type.args[1]), UninhabitedType)
     ):
         invariant_type = "dict"
         covariant_suggestion = (
