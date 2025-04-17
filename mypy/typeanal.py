@@ -1363,7 +1363,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.note("Did you mean TypedDict[...]?", t)
             if t.is_pep764 and NEW_INLINE_TYPEDDICT not in self.options.enable_incomplete_feature:
                 self.fail(
-                    "PEP-764 inline TypedDict is experimental,"
+                    "PEP 764 inline TypedDict is experimental,"
                     f" must be enabled with --enable-incomplete-feature={NEW_INLINE_TYPEDDICT}",
                     t,
                 )
@@ -1371,7 +1371,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             fallback = self.named_type("typing._TypedDict")
             if t.is_pep764 and t.extra_items_from:
                 self.fail(
-                    "PEP-764 inline TypedDict does not support merge-in", t, code=codes.VALID_TYPE
+                    "PEP 764 inline TypedDict does not support merge-in", t, code=codes.VALID_TYPE
                 )
                 return AnyType(TypeOfAny.from_error)
             for typ in t.extra_items_from:
