@@ -3,6 +3,8 @@
 [case testRunAsyncBasics]
 import asyncio
 
+from testutil import assertRaises
+
 async def h() -> int:
     return 1
 
@@ -19,13 +21,56 @@ async def f2() -> int:
         x += i + await f() + await g()
     return x
 
-def test_1() -> None:
+def test_simple_call() -> None:
     result = asyncio.run(f())
     assert result == 3
 
-def test_2() -> None:
+def test_multiple_awaits_in_expression() -> None:
     result = asyncio.run(f2())
     assert result == 9
+
+class MyError(Exception):
+    pass
+
+async def exc1() -> None:
+    await asyncio.sleep(0)
+    raise MyError()
+
+async def exc2() -> None:
+    await asyncio.sleep(0)
+    raise MyError()
+
+async def exc3() -> None:
+    await exc1()
+
+async def exc4() -> None:
+    await exc2()
+
+async def exc5() -> int:
+    try:
+        await exc1()
+    except MyError:
+        return 3
+    return 4
+
+async def exc6() -> int:
+    try:
+        await exc4()
+    except MyError:
+        return 3
+    return 4
+
+def test_exception() -> None:
+    with assertRaises(MyError):
+        asyncio.run(exc1())
+    with assertRaises(MyError):
+        asyncio.run(exc2())
+    with assertRaises(MyError):
+        asyncio.run(exc3())
+    with assertRaises(MyError):
+        asyncio.run(exc4())
+    assert asyncio.run(exc5()) == 3
+    assert asyncio.run(exc6()) == 3
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
@@ -261,3 +306,33 @@ async def x() -> None:
 import asyncio
 import native
 asyncio.run(native.x())
+
+[case testRunAsyncSpecialCases]
+import asyncio
+
+async def t() -> tuple[int, str, str]:
+    return (1, "x", "y")
+
+async def f() -> tuple[int, str, str]:
+    return await t()
+
+def test_tuple_return() -> None:
+    result = asyncio.run(f())
+    assert result == (1, "x", "y")
+
+async def e() -> ValueError:
+    return ValueError("foo")
+
+async def g() -> ValueError:
+    return await e()
+
+def test_exception_return() -> None:
+    result = asyncio.run(g())
+    assert isinstance(result, ValueError)
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+# eh, we could use the real type but it doesn't seem important
+def run(x: object) -> object: ...
+
+[typing fixtures/typing-full.pyi]
