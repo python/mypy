@@ -823,7 +823,7 @@ section of the command line docs.
 
     Disable name-defined error checking for the given values.
 
-    Note: This setting should be used *only* if new values have beed defined
+    Note: This setting should be used *only* if new values have been defined
     into the ``builtins`` module.
 
 
