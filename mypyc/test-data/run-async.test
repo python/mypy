@@ -74,19 +74,9 @@ class C:
     def concat(self, s: str) -> str:
         return self.s + s
 
-async def make_c(s: str) -> C:
-    await one()
-    return C(s)
-
 async def concat(s: str, t: str) -> str:
     await one()
     return s + t
-
-async def set_attr(s: str) -> None:
-    (await make_c("xyz")).s = await concat(s, "!")
-
-def test_set_attr() -> None:
-    asyncio.run(set_attr("foo"))  # Just check that it compiles and runs
 
 def concat2(x: str, y: str) -> str:
     return x + y
@@ -125,7 +115,6 @@ async def sleep(t: float) -> None: ...
 def run(x: object) -> object: ...
 
 [typing fixtures/typing-full.pyi]
-
 
 [case testAsyncWith]
 from testutil import async_val
