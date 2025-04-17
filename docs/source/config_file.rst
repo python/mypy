@@ -817,6 +817,15 @@ section of the command line docs.
    Note: the exact list of flags enabled by :confval:`strict` may
    change over time.
 
+.. confval:: user_builtins_name
+
+   :type: comma-separated list of strings
+
+    Disable name-defined error checking for the given values.
+
+    Note: This setting should be used *only* if new values have beed defined
+    into the ``builtins`` module.
+
 
 Configuring error messages
 **************************
