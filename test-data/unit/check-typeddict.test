@@ -3707,6 +3707,12 @@ reveal_type(x)  # N: Revealed type is "TypedDict({'a': builtins.int, 'b': builti
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testTypedDictInlinePEP764NotEnabled]
+from typing import TypedDict
+x: TypedDict[{"a": int}]  # E: PEP 764 inline TypedDict is experimental, must be enabled with --enable-incomplete-feature=NewInlineTypedDict
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictInlinePEP764OldStyleAlias]
 # flags: --enable-incomplete-feature=NewInlineTypedDict
 from typing import TypedDict
