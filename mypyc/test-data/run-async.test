@@ -1,6 +1,6 @@
 # async test cases (compile and run)
 
-[case testAsync]
+[case testRunAsyncBasics]
 import asyncio
 
 async def h() -> int:
@@ -11,19 +11,110 @@ async def g() -> int:
     return await h()
 
 async def f() -> int:
-    return await g()
+    return await g() + 2
+
+async def f2() -> int:
+    x = 0
+    for i in range(2):
+        x += i + await f() + await g()
+    return x
+
+def test_1() -> None:
+    result = asyncio.run(f())
+    assert result == 3
+
+def test_2() -> None:
+    result = asyncio.run(f2())
+    assert result == 9
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
+# eh, we could use the real type but it doesn't seem important
+def run(x: object) -> object: ...
 
 [typing fixtures/typing-full.pyi]
 
-[file driver.py]
-from native import f
+[case testRunAsyncAwaitInVariousPositions]
+from typing import cast, Any
+
 import asyncio
 
-result = asyncio.run(f())
-assert result == 1
+async def one() -> int:
+    await asyncio.sleep(0.0)
+    return int() + 1
+
+async def true() -> bool:
+    return bool(int() + await one())
+
+async def branch_await() -> int:
+    if bool(int() + 1) == await true():
+        return 3
+    return 2
+
+async def branch_await_not() -> int:
+    if bool(int() + 1) == (not await true()):
+        return 3
+    return 2
+
+def test_branch() -> None:
+    assert asyncio.run(branch_await()) == 3
+    assert asyncio.run(branch_await_not()) == 2
+
+async def assign_multi() -> int:
+    _, x = int(), await one()
+    return x + 1
+
+def test_assign_multi() -> None:
+    assert asyncio.run(assign_multi()) == 2
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+    def concat(self, s: str) -> str:
+        return self.s + s
+
+async def concat(s: str, t: str) -> str:
+    await one()
+    return s + t
+
+def concat2(x: str, y: str) -> str:
+    return x + y
+
+async def call1(s: str) -> str:
+    return concat2(str(int()), await concat(s, "a"))
+
+async def call2(s: str) -> str:
+    return await concat(str(int()), await concat(s, "b"))
+
+def test_call() -> None:
+    assert asyncio.run(call1("foo")) == "0fooa"
+    assert asyncio.run(call2("foo")) == "0foob"
+
+async def method_call(s: str) -> str:
+    return C("<").concat(await concat(s, ">"))
+
+def test_method_call() -> None:
+    assert asyncio.run(method_call("foo")) == "<foo>"
+
+class D:
+    def __init__(self, a: str, b: str) -> None:
+        self.a = a
+        self.b = b
+
+async def construct(s: str) -> str:
+    c = D(await concat(s, "!"), await concat(s, "?"))
+    return c.a + c.b
+
+def test_construct() -> None:
+    assert asyncio.run(construct("foo")) == "foo!foo?"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+# eh, we could use the real type but it doesn't seem important
+def run(x: object) -> object: ...
+
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncWith]
 from testutil import async_val
@@ -67,7 +158,6 @@ from testutil import run_generator
 yields, val = run_generator(async_return())
 assert yields == ('foo',)
 assert val == 'test', val
-
 
 [case testAsyncFor]
 from typing import AsyncIterable, List, Set, Dict

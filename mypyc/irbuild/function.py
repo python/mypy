@@ -270,6 +270,7 @@ def gen_func_item(
         # Re-enter the FuncItem and visit the body of the function this time.
         builder.enter(fn_info)
         setup_env_for_generator_class(builder)
+
         load_outer_envs(builder, builder.fn_info.generator_class)
         top_level = builder.top_level_fn_info()
         if (
