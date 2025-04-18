@@ -911,6 +911,14 @@ def process_options(
         group=strictness_group,
     )
 
+    add_invertible_flag(
+        "--check-unreachable",
+        default=False,
+        strict_flag=False,
+        help="Type check unreachable code",
+        group=strictness_group,
+    )
+
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names)
     )

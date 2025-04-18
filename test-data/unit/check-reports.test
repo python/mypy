@@ -41,7 +41,7 @@ def f(x: int) -> None:
 [outfile out/lineprecision.txt]
 Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
 -------------------------------------------------------------
-__main__     10        5          0    0      2           3
+__main__     10        7          0    0      2           1
 
 [case testLinePrecisionEmptyLines]
 # flags: --lineprecision-report out

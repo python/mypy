@@ -940,7 +940,7 @@ for x in t:
 [case testForLoopOverEmptyTuple]
 import typing
 t = ()
-for x in t: pass  # E: Need type annotation for "x"
+for x in t: pass
 [builtins fixtures/for.pyi]
 
 [case testForLoopOverNoneValuedTuple]
@@ -1604,7 +1604,6 @@ t5: Tuple[int, int] = (1, 2, "s", 4)  # E: Incompatible types in assignment (exp
 
 # long initializer assignment with mismatched pairs
 t6: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8, "str", "str", "str", "str", 1, 1, 1, 1, 1) # E: Incompatible types in assignment (expression has type Tuple[int, int, ... <15 more items>], variable has type Tuple[int, int, ... <10 more items>])
-
 [builtins fixtures/tuple.pyi]
 
 [case testPropertyLongTupleReturnTypeMismatchUnion]
