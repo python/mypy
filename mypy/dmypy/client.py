@@ -669,7 +669,6 @@ def request(
     try:
         with IPCClient(name, timeout) as client:
             send(client, args)
-
             final = False
             while not final:
                 response = receive(client)
