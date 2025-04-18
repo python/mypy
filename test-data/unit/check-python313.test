@@ -255,3 +255,19 @@ def func_c1(
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testTypeVarConstraintsDefaultAliasesInline]
+type K = int
+type V = int
+
+class A1[T: (str, int) = K]:
+    x: T
+class A2[T: (str, K) = K]:
+    x: T
+class A3[T: (str, K) = V]:
+    x: T
+
+reveal_type(A1().x)  # N: Revealed type is "builtins.int"
+reveal_type(A2().x)  # N: Revealed type is "builtins.int"
+reveal_type(A3().x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
