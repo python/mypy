@@ -2765,6 +2765,28 @@ reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
 reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
 [builtins fixtures/tuple.pyi]
 
+[case testLiteralUnionEnumAliasAssignable]
+from enum import Enum
+from typing import Literal, Union
+
+class E(Enum):
+    A = 'a'
+    B = 'b'
+    C = 'c'
+
+A = Literal[E.A]
+B = Literal[E.B, E.C]
+
+def f(x: Union[A, B]) -> None: ...
+def f2(x: Union[A, Literal[E.B, E.C]]) -> None: ...
+def f3(x: Union[Literal[E.A], B]) -> None: ...
+
+def main(x: E) -> None:
+    f(x)
+    f2(x)
+    f3(x)
+[builtins fixtures/tuple.pyi]
+
 [case testStrictEqualityLiteralTrueVsFalse]
 # mypy: strict-equality
 

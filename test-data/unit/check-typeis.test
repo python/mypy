@@ -936,3 +936,20 @@ def func(arg: Any) -> None:
     if is_dataclass(arg):
         reveal_type(arg)  # N: Revealed type is "Union[Type[__main__.DataclassInstance], __main__.DataclassInstance]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeIsEnumOverlappingUnionExcludesIrrelevant]
+from enum import Enum
+from typing import Literal
+from typing_extensions import TypeIs
+
+class Model(str, Enum):
+    A = 'a'
+    B = 'a'
+
+def is_model_a(model: str) -> TypeIs[Literal[Model.A, "foo"]]:
+    return True
+
+def handle(model: Model) -> None:
+    if is_model_a(model):
+        reveal_type(model)  # N: Revealed type is "Literal[__main__.Model.A]"
+[builtins fixtures/tuple.pyi]

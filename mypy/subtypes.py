@@ -67,6 +67,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
     find_unpack_in_list,
+    flatten_nested_unions,
     get_proper_type,
     is_named_instance,
     split_with_prefix_and_suffix,
@@ -327,7 +328,9 @@ def _is_subtype(
             and isinstance(left, Instance)
             and (left.type.is_enum or left.type.fullname == "builtins.bool")
         ):
-            right = UnionType(mypy.typeops.try_contracting_literals_in_union(right.items))
+            right = UnionType(
+                mypy.typeops.try_contracting_literals_in_union(flatten_nested_unions(right.items))
+            )
             if proper_subtype:
                 is_subtype_of_item = any(
                     is_proper_subtype(orig_left, item, subtype_context=subtype_context)

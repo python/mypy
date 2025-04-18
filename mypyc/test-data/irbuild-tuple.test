@@ -418,3 +418,38 @@ L0:
     r3 = unbox(tuple[int, int, int, int], r2)
     c = r3
     return 1
+
+[case testTupleMultiply]
+from typing import Tuple
+def f(a: Tuple[int]) -> None:
+    b = a * 2
+    c = 3 * (2,)
+def g(a: Tuple[int, ...]) -> None:
+    b = a * 2
+[out]
+def f(a):
+    a :: tuple[int]
+    r0 :: object
+    r1 :: tuple
+    r2, b :: tuple[int, int]
+    r3 :: tuple[int]
+    r4 :: object
+    r5 :: tuple
+    r6, c :: tuple[int, int, int]
+L0:
+    r0 = box(tuple[int], a)
+    r1 = CPySequence_Multiply(r0, 4)
+    r2 = unbox(tuple[int, int], r1)
+    b = r2
+    r3 = (4)
+    r4 = box(tuple[int], r3)
+    r5 = CPySequence_RMultiply(6, r4)
+    r6 = unbox(tuple[int, int, int], r5)
+    c = r6
+    return 1
+def g(a):
+    a, r0, b :: tuple
+L0:
+    r0 = CPySequence_Multiply(a, 4)
+    b = r0
+    return 1
