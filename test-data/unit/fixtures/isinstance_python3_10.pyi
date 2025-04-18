@@ -1,6 +1,6 @@
 # For Python 3.10+ only
 from typing import Tuple, TypeVar, Generic, Union, cast, Any, Type
-import types
+import types as std_types
 
 T = TypeVar('T')
 

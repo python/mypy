@@ -20,7 +20,7 @@ import re
 import symtable
 import sys
 import traceback
-import types
+import types as std_types
 import typing
 import typing_extensions
 import warnings

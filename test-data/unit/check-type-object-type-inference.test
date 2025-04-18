@@ -2,7 +2,7 @@
 # flags: --python-version 3.9
 from typing import TypeVar, Generic, Type
 from abc import abstractmethod
-import types  # Explicitly bring in stubs for 'types'
+import types as std_types  # Explicitly bring in stubs for 'types'
 
 T = TypeVar('T')
 class E(Generic[T]):

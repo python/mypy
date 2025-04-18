@@ -24,7 +24,7 @@ import re
 import stat
 import sys
 import time
-import types
+import types as std_types
 from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import (
     TYPE_CHECKING,

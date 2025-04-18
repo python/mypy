@@ -4918,7 +4918,7 @@ def g(x: Type[S]) -> str:
     return reveal_type(x * 0)  # N: Revealed type is "builtins.str"
 
 [case testMetaclassGetitem]
-import types
+import types as std_types
 
 class M(type):
     def __getitem__(self, key) -> int: return 1

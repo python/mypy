@@ -1,5 +1,5 @@
 import sys
-import types
+import types as std_types
 from _typeshed import (
     OpenBinaryMode,
     OpenBinaryModeReading,

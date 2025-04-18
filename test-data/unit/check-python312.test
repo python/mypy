@@ -1671,7 +1671,7 @@ x: Comparable[Good]
 y: Comparable[int]  # E: Type argument "int" of "Comparable" must be a subtype of "Comparable[Any]"
 
 [case testPEP695TypeAliasWithDifferentTargetTypes]
-import types  # We need GenericAlias from here, and test stubs don't bring in 'types'
+import types as std_types  # We need GenericAlias from here, and test stubs don't bring in 'types'
 from typing import Any, Callable, List, Literal, TypedDict
 
 # Test that various type expressions don't generate false positives as type alias

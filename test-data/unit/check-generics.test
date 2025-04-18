@@ -454,7 +454,7 @@ A[int, str, int]() # E: Type application has too many types (2 expected)
 [out]
 
 [case testInvalidTypeApplicationType]
-import types
+import types as std_types
 a: A
 class A: pass
 a[A]()  # E: Value of type "A" is not indexable
@@ -516,7 +516,7 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 
 [case testTypeApplicationCrash]
 # flags: --python-version 3.8
-import types
+import types as std_types
 type[int] # this was crashing, see #2302 (comment)  # E: The type "Type[type]" is not generic and not indexable
 [builtins fixtures/tuple.pyi]
 
