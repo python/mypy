@@ -1,4 +1,4 @@
-import types
+import types as std_types
 from _imp import (
     acquire_lock as acquire_lock,
     create_dynamic as create_dynamic,

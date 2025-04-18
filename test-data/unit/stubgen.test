@@ -1865,7 +1865,7 @@ class F:
 def g(): ...
 
 [case testCoroutineImportTypes]
-import types
+import types as std_types
 
 class F:
     @types.coroutine
@@ -1876,7 +1876,7 @@ class F:
 def g():
     return 2
 [out]
-import types
+import types as std_types
 
 class F:
     @types.coroutine
@@ -2075,7 +2075,7 @@ class F:
 def g(): ...
 
 [case testCoroutineImportTypesAsT]
-import types as t
+import types as std_types as t
 
 class F:
     @t.coroutine
@@ -2086,7 +2086,7 @@ class F:
 def g():
     return 2
 [out]
-import types as t
+import types as std_types as t
 
 class F:
     @t.coroutine
@@ -3784,7 +3784,7 @@ class MatchNames:
     def __exit__(self, type, value, traceback): ...
 
 [out]
-import types
+import types as std_types
 
 class MismatchNames:
     def __exit__(self, tp: type[BaseException] | None, val: BaseException | None, tb: types.TracebackType | None): ...

@@ -24,7 +24,7 @@ import re
 import stat
 import sys
 import time
-import types
+import types as std_types
 from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import (
     TYPE_CHECKING,
@@ -511,7 +511,7 @@ def load_plugins(
     return ChainedPlugin(options, custom_plugins + [default_plugin]), snapshot
 
 
-def take_module_snapshot(module: types.ModuleType) -> str:
+def take_module_snapshot(module: std_types.ModuleType) -> str:
     """Take plugin module snapshot by recording its version and hash.
 
     We record _both_ hash and the version to detect more possible changes

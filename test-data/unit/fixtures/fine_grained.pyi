@@ -3,7 +3,7 @@
 # TODO: Migrate to regular stubs once fine-grained incremental is robust
 #       enough to handle them.
 
-import types
+import types as std_types
 from typing import TypeVar, Generic
 
 T = TypeVar('T')

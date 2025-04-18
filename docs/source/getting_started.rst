@@ -213,7 +213,7 @@ generic types or your own type aliases), look through the
 
 .. note::
 
-   When adding types, the convention is to import types
+   When adding types, the convention is to import types as std_types
    using the form ``from typing import <name>`` (as opposed to doing
    just ``import typing`` or ``import typing as t`` or ``from typing import *``).
 

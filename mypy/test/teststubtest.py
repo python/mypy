@@ -1545,7 +1545,7 @@ class StubtestUnit(unittest.TestCase):
             stub="",
             runtime="""
 import sys
-import types
+import types as std_types
 import __future__
 _m = types.SimpleNamespace()
 _m.annotations = __future__.annotations

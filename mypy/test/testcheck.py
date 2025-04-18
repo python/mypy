@@ -5,6 +5,10 @@ from __future__ import annotations
 import os
 import re
 import sys
+import types
+from typing import cast
+
+import lxml
 
 from mypy import build
 from mypy.build import Graph
@@ -24,10 +28,14 @@ from mypy.test.helpers import (
 )
 from mypy.test.update_data import update_testcase_output
 
-try:
-    import lxml  # type: ignore[import-untyped]
-except ImportError:
-    lxml = None
+# try:
+# import lxml as _lxml
+
+# lxml: Optional[types.ModuleType] = _lxml
+# except ImportError:
+# lxml: Optional[types.ModuleType] = None
+
+lxml = cast(types.ModuleType, lxml)
 
 
 import pytest
@@ -55,8 +63,10 @@ class TypeCheckSuite(DataSuite):
     files = typecheck_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        if lxml is None and os.path.basename(testcase.file) == "check-reports.test":
+        if lxml is None:
+            # if os.path.basename(testcase.file) == "check-reports.test":
             pytest.skip("Cannot import lxml. Is it installed?")
+        # return
         incremental = (
             "incremental" in testcase.name.lower()
             or "incremental" in testcase.file

@@ -1,5 +1,5 @@
 import sys
-import types
+import types as std_types
 from _socket import _Address, _RetAddress
 from _typeshed import ReadableBuffer
 from collections.abc import Callable

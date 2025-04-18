@@ -1,4 +1,4 @@
-import types
+import types as std_types
 from _codecs import *
 from _typeshed import ReadableBuffer
 from abc import abstractmethod
