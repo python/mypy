@@ -1656,7 +1656,7 @@ class Parameters(ProperType):
         *,
         variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
         is_ellipsis_args: Bogus[bool] = _dummy,
-        imprecise_arg_kinds: Bogus[bool] = _dummy,
+        imprecise_arg_kinds: Bogus[bool] = _dummy, # type: ignore
     ) -> Parameters:
         return Parameters(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,

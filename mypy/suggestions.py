@@ -60,7 +60,7 @@ from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
 from mypy.traverser import TraverserVisitor
 from mypy.typeops import make_simplified_union
-from mypy.types import (
+from mypy.my_types import (
     AnyType,
     CallableType,
     FunctionLike,
@@ -653,7 +653,7 @@ class SuggestionEngine:
             for ct in typ.items:
                 if not (
                     len(ct.arg_types) == 1
-                    and isinstance(ct.arg_types[0], TypeVarType)
+                    #and isinstance(ct.arg_types[0], TypeVarType)
                     and ct.arg_types[0] == ct.ret_type
                 ):
                     return None
