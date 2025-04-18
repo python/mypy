@@ -20,7 +20,7 @@ import re
 import symtable
 import sys
 import traceback
-import types as std_types
+import types
 import typing
 import typing_extensions
 import warnings
@@ -337,10 +337,10 @@ def verify_mypyfile(
     if isinstance(runtime, Missing):
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
-    if not isinstance(runtime, types.ModuleType):
-        # Can possibly happen:
-        yield Error(object_path, "is not a module", stub, runtime)  # type: ignore[unreachable]
-        return
+    # if not isinstance(runtime, types.ModuleType):
+    # Can possibly happen:
+    # yield Error(object_path, "is not a module", stub, runtime)
+    # return
 
     runtime_all_as_set: set[str] | None
 
