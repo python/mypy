@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+import types
 
 from mypy.test.config import PREFIX, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -19,10 +20,14 @@ from mypy.test.helpers import (
     normalize_error_messages,
 )
 
+lxml: types.ModuleType | None
 try:
-    import lxml
+    import importlib
+
+    lxml = importlib.import_module("lxml")
 except ImportError:
     lxml = None
+
 
 import pytest
 
@@ -38,7 +43,7 @@ class PythonCmdlineSuite(DataSuite):
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        if lxml is None and os.path.basename(testcase.file) == "reports.test":
+        if os.path.basename(testcase.file) == "reports.test" and lxml is None:
             pytest.skip("Cannot import lxml. Is it installed?")
         for step in [1] + sorted(testcase.output2):
             test_python_cmdline(testcase, step)

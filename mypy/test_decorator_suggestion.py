@@ -1,4 +1,5 @@
-from typing import Callable, ParamSpec, TypeVar
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
 
 R = TypeVar("R")
 P = ParamSpec("P")
@@ -9,5 +10,5 @@ def dec(f: Callable[P, R]) -> Callable[P, R]:
 
 
 @dec
-def f():
+def f() -> None:
     print("hello world")

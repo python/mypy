@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import textwrap
+import types
 
 from mypy.report import CoberturaPackage, get_line_rate
 from mypy.test.helpers import Suite, assert_equal
 
+lxml: types.ModuleType | None
 try:
-    import lxml
+    import importlib
+
+    lxml = importlib.import_module("lxml")
 except ImportError:
     lxml = None
 

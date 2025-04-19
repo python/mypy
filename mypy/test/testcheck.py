@@ -5,6 +5,9 @@ from __future__ import annotations
 import os
 import re
 import sys
+import types
+
+import pytest
 
 from mypy import build
 from mypy.build import Graph
@@ -24,13 +27,13 @@ from mypy.test.helpers import (
 )
 from mypy.test.update_data import update_testcase_output
 
+lxml: types.ModuleType | None
 try:
-    import lxml  # type: ignore[import-untyped]
+    import importlib
+
+    lxml = importlib.import_module("lxml")
 except ImportError:
     lxml = None
-
-
-import pytest
 
 # List of files that contain test case descriptions.
 # Includes all check-* files with the .test extension in the test-data/unit directory
