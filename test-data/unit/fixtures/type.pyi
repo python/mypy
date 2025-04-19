@@ -2,7 +2,7 @@
 
 from typing import Any, Generic, TypeVar, List, Union
 import sys
-import types as std_types
+import types
 
 T = TypeVar("T")
 S = TypeVar("S")

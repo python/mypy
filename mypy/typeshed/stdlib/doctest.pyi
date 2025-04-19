@@ -1,5 +1,5 @@
 import sys
-import types as std_types
+import types 
 import unittest
 from _typeshed import ExcInfo
 from collections.abc import Callable

@@ -1,5 +1,5 @@
 import sys
-import types as std_types
+import types 
 from _typeshed import SupportsAllComparisons, SupportsItems
 from collections.abc import Callable, Hashable, Iterable, Sized
 from typing import Any, Generic, Literal, NamedTuple, TypedDict, TypeVar, final, overload

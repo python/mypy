@@ -1,7 +1,7 @@
 import importlib.abc
 import importlib.machinery
 import sys
-import types as std_types
+import types 
 from _typeshed import ReadableBuffer
 from collections.abc import Callable
 from importlib._bootstrap import module_from_spec as module_from_spec, spec_from_loader as spec_from_loader

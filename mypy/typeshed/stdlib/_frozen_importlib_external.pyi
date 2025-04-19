@@ -3,7 +3,7 @@ import _io
 import importlib.abc
 import importlib.machinery
 import sys
-import types as std_types
+import types 
 from _typeshed import ReadableBuffer, StrOrBytesPath, StrPath
 from _typeshed.importlib import LoaderProtocol
 from collections.abc import Callable, Iterable, Iterator, Mapping, MutableSequence, Sequence

@@ -1,6 +1,6 @@
 import builtins
 import sys
-import types as std_types
+import types 
 from _typeshed import ReadableBuffer, SupportsRead, SupportsWrite
 from typing import Any
 from typing_extensions import TypeAlias

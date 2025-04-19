@@ -16,7 +16,7 @@ if __name__ == "__main__":
     if sys.version_info < (3, 11):
         old_sys_path = sys.path
         sys.path = sys.path[1:]
-        import types as std_types  # noqa: F401
+        import types  # noqa: F401
 
         sys.path = old_sys_path
 

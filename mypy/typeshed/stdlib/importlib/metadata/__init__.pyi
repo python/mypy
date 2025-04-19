@@ -1,7 +1,7 @@
 import abc
 import pathlib
 import sys
-import types as std_types
+import types 
 from _collections_abc import dict_keys, dict_values
 from _typeshed import StrPath
 from collections.abc import Iterable, Iterator, Mapping
