@@ -500,6 +500,46 @@ reveal_type(h)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/ops.pyi]
 [out]
 
+[case testConditionalValuesBinaryOps]
+# flags: --platform linux
+import sys
+
+t_and_t = (sys.platform == 'linux' and sys.platform == 'linux') and 's'
+t_or_t = (sys.platform == 'linux' or sys.platform == 'linux') and 's'
+t_and_f = (sys.platform == 'linux' and sys.platform == 'windows') and 's'
+t_or_f = (sys.platform == 'linux' or sys.platform == 'windows') and 's'
+f_and_t = (sys.platform == 'windows' and sys.platform == 'linux') and 's'
+f_or_t = (sys.platform == 'windows' or sys.platform == 'linux') and 's'
+f_and_f = (sys.platform == 'windows' and sys.platform == 'windows') and 's'
+f_or_f = (sys.platform == 'windows' or sys.platform == 'windows') and 's'
+reveal_type(t_and_t) # N: Revealed type is "Literal['s']"
+reveal_type(t_or_t) # N: Revealed type is "Literal['s']"
+reveal_type(f_and_t) # N: Revealed type is "builtins.bool"
+reveal_type(f_or_t) # N: Revealed type is "Literal['s']"
+reveal_type(t_and_f) # N: Revealed type is "builtins.bool"
+reveal_type(t_or_f) # N: Revealed type is "Literal['s']"
+reveal_type(f_and_f) # N: Revealed type is "builtins.bool"
+reveal_type(f_or_f) # N: Revealed type is "builtins.bool"
+[builtins fixtures/ops.pyi]
+
+[case testConditionalValuesNegation]
+# flags: --platform linux
+import sys
+
+not_t = not sys.platform == 'linux' and 's'
+not_f = not sys.platform == 'windows' and 's'
+not_and_t = not (sys.platform == 'linux' and sys.platform == 'linux') and 's'
+not_and_f = not (sys.platform == 'linux' and sys.platform == 'windows') and 's'
+not_or_t = not (sys.platform == 'linux' or sys.platform == 'linux') and 's'
+not_or_f = not (sys.platform == 'windows' or sys.platform == 'windows') and 's'
+reveal_type(not_t) # N: Revealed type is "builtins.bool"
+reveal_type(not_f) # N: Revealed type is "Literal['s']"
+reveal_type(not_and_t) # N: Revealed type is "builtins.bool"
+reveal_type(not_and_f) # N: Revealed type is "Literal['s']"
+reveal_type(not_or_t) # N: Revealed type is "builtins.bool"
+reveal_type(not_or_f) # N: Revealed type is "Literal['s']"
+[builtins fixtures/ops.pyi]
+
 [case testShortCircuitAndWithConditionalAssignment]
 # flags: --platform linux
 import sys

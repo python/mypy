@@ -115,31 +115,41 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
     MYPY_TRUE if true under mypy and false at runtime, MYPY_FALSE if
     false under mypy and true at runtime, else TRUTH_VALUE_UNKNOWN.
     """
+    if isinstance(expr, UnaryExpr) and expr.op == "not":
+        positive = infer_condition_value(expr.expr, options)
+        return inverted_truth_mapping[positive]
+
     pyversion = options.python_version
     name = ""
-    negated = False
-    alias = expr
-    if isinstance(alias, UnaryExpr):
-        if alias.op == "not":
-            expr = alias.expr
-            negated = True
+
     result = TRUTH_VALUE_UNKNOWN
     if isinstance(expr, NameExpr):
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
     elif isinstance(expr, OpExpr) and expr.op in ("and", "or"):
+        # This is a bit frivolous with MYPY_* vs ALWAYS_* returns: for example, here
+        # `MYPY_TRUE or ALWAYS_TRUE` will be `MYPY_TRUE`, while
+        # `ALWAYS_TRUE or MYPY_TRUE` will be `ALWAYS_TRUE`. This literally never
+        # makes any difference in consuming code, so short-circuiting here is probably
+        # good enough as it allows referencing platform-dependent variables in
+        # statement parts that will not be executed.
         left = infer_condition_value(expr.left, options)
-        if (left in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "and") or (
-            left in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "or"
+        if (left in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "or") or (
+            left in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "and"
         ):
-            # Either `True and <other>` or `False or <other>`: the result will
-            # always be the right-hand-side.
-            return infer_condition_value(expr.right, options)
-        else:
-            # The result will always be the left-hand-side (e.g. ALWAYS_* or
-            # TRUTH_VALUE_UNKNOWN).
+            # Either `True or <other>` or `False and <other>`: `<other>` doesn't matter
             return left
+        right = infer_condition_value(expr.right, options)
+        if (right in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "or") or (
+            right in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "and"
+        ):
+            # Either `<other> or True` or `<other> and False`: `<other>` doesn't matter
+            return right
+        # Now we have `True and True`, `False or False` or smth indeterminate.
+        if TRUTH_VALUE_UNKNOWN in (left, right) or expr.op not in ("or", "and"):
+            return TRUTH_VALUE_UNKNOWN
+        return left
     else:
         result = consider_sys_version_info(expr, pyversion)
         if result == TRUTH_VALUE_UNKNOWN:
@@ -155,8 +165,6 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
             result = ALWAYS_TRUE
         elif name in options.always_false:
             result = ALWAYS_FALSE
-    if negated:
-        result = inverted_truth_mapping[result]
     return result
 
 
