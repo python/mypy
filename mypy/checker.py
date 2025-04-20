@@ -455,7 +455,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         Deferred functions will be processed by check_second_pass().
         """
         self.recurse_into_functions = True
-        with state.strict_optional_set(self.options.strict_optional):
+        with state.strict_optional_set(self.options.strict_optional), state.type_checker_set(self):
             self.errors.set_file(
                 self.path, self.tree.fullname, scope=self.tscope, options=self.options
             )
@@ -496,7 +496,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         This goes through deferred nodes, returning True if there were any.
         """
         self.recurse_into_functions = True
-        with state.strict_optional_set(self.options.strict_optional):
+        with state.strict_optional_set(self.options.strict_optional), state.type_checker_set(self):
             if not todo and not self.deferred_nodes:
                 return False
             self.errors.set_file(

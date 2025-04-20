@@ -4,7 +4,6 @@ from collections.abc import Iterable, Mapping, Sequence
 from typing import Final, TypeVar, cast, overload
 
 from mypy.nodes import ARG_STAR, FakeInfo, Var
-from mypy.state import state
 from mypy.types import (
     ANY_STRATEGY,
     AnyType,
@@ -544,6 +543,8 @@ def remove_trivial(types: Iterable[Type]) -> list[Type]:
         * Remove everything else if there is an `object`
         * Remove strict duplicate types
     """
+    from mypy.state import state
+
     removed_none = False
     new_types = []
     all_types = set()
