@@ -634,7 +634,7 @@ def add_non_ext_class_attr_ann(
             if builder.current_module == type_info.module_name and stmt.line < type_info.line:
                 typ = builder.load_str(type_info.fullname)
             else:
-                typ = load_type(builder, type_info, stmt.line)
+                typ = load_type(builder, type_info, stmt.unanalyzed_type, stmt.line)
 
     if typ is None:
         # FIXME: if get_type_info is not provided, don't fall back to stmt.type?
@@ -650,7 +650,7 @@ def add_non_ext_class_attr_ann(
             # actually a forward reference due to the __annotations__ future?
             typ = builder.load_str(stmt.unanalyzed_type.original_str_expr)
         elif isinstance(ann_type, Instance):
-            typ = load_type(builder, ann_type.type, stmt.line)
+            typ = load_type(builder, ann_type.type, stmt.unanalyzed_type, stmt.line)
         else:
             typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
 
