@@ -448,7 +448,8 @@ class StringFormatterChecker:
                     call,
                     code=codes.STRING_FORMATTING,
                 )
-        if isinstance(actual_type, NoneType):
+        a_type = get_proper_type(actual_type)
+        if isinstance(a_type, NoneType):
             # Perform type check of alignment specifiers on None
             if spec.format_spec and any(c in spec.format_spec for c in "<>^"):
                 specifierIndex = -1
