@@ -487,14 +487,6 @@ class StringFormatterChecker:
             for s in substring:
                 if (s in fullname):
                     return True
-        # if isinstance(actual_type, NoneType) or isinstance(actual_type, LiteralType):
-        #     return True
-        # if isinstance(actual_type, Instance):
-        #     fullname = actual_type.type.fullname
-        #     substring = ["builtins.", "mypyc.", "mypy.", "uuid.", "uuid.", "pathlib."]
-        #     for s in substring:
-        #         if (s in fullname):
-        #             return True
         return False
         
 
