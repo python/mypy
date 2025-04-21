@@ -337,7 +337,6 @@ class StringFormatterChecker:
 
         The core logic for format checking is implemented in this method.
         """
-        print("in format call")
         assert all(s.key for s in specs), "Keys must be auto-generated first!"
         replacements = self.find_replacements_in_call(call, [cast(str, s.key) for s in specs])
         assert len(replacements) == len(specs)
