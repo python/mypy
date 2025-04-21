@@ -458,14 +458,14 @@ class StringFormatterChecker:
                         specifierIndex = i
                 if specifierIndex > -1:
                     self.msg.fail(
-						(
-							f'Alignment format specifier '
-							f'"{spec.format_spec[specifierIndex]}" '
-							f'is not supported for None'
-						),
-						call,
-						code=codes.STRING_FORMATTING,
-					)        
+                        (
+                            f"Alignment format specifier "
+                            f'"{spec.format_spec[specifierIndex]}" '
+                            f"is not supported for None"
+                        ),
+                        call,
+                        code=codes.STRING_FORMATTING,
+                    )
 
     def find_replacements_in_call(self, call: CallExpr, keys: list[str]) -> list[Expression]:
         """Find replacement expression for every specifier in str.format() call.
