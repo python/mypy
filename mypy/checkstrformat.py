@@ -337,6 +337,7 @@ class StringFormatterChecker:
 
         The core logic for format checking is implemented in this method.
         """
+        print("in format call")
         assert all(s.key for s in specs), "Keys must be auto-generated first!"
         replacements = self.find_replacements_in_call(call, [cast(str, s.key) for s in specs])
         assert len(replacements) == len(specs)
@@ -398,24 +399,6 @@ class StringFormatterChecker:
                 get_proper_types(a_type.items) if isinstance(a_type, UnionType) else [a_type]
             )
             for a_type in actual_items:
-                if isinstance(a_type, NoneType):
-                    # Perform type check of alignment specifiers on None 
-                    if spec.format_spec and any(c in spec.format_spec for c in "<>^"):
-                        specifierIndex = -1
-                        for i in range(len("<>^")):
-                            if spec.format_spec[i] in "<>^":
-                                specifierIndex = i
-                        if specifierIndex > -1:
-                            self.msg.fail(
-                                (
-									f'Alignment format specifier '
-                                    f'"{spec.format_spec[specifierIndex]}" '
-									f'is not supported for None'
-								),
-								call,
-								code=codes.STRING_FORMATTING,
-							)
-                            continue
                 if custom_special_method(a_type, "__format__"):
                     continue
                 self.check_placeholder_type(a_type, expected_type, call)
@@ -466,6 +449,23 @@ class StringFormatterChecker:
                     call,
                     code=codes.STRING_FORMATTING,
                 )
+        if isinstance(actual_type, NoneType):
+            # Perform type check of alignment specifiers on None
+            if spec.format_spec and any(c in spec.format_spec for c in "<>^"):
+                specifierIndex = -1
+                for i in range(len("<>^")):
+                    if spec.format_spec[i] in "<>^":
+                        specifierIndex = i
+                if specifierIndex > -1:
+                    self.msg.fail(
+						(
+							f'Alignment format specifier '
+							f'"{spec.format_spec[specifierIndex]}" '
+							f'is not supported for None'
+						),
+						call,
+						code=codes.STRING_FORMATTING,
+					)        
 
     def find_replacements_in_call(self, call: CallExpr, keys: list[str]) -> list[Expression]:
         """Find replacement expression for every specifier in str.format() call.
