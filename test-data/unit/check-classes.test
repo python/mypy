@@ -8516,7 +8516,7 @@ class C(B):
 
     @property
     def tricky(self) -> int: ...
-    @baz.setter
+    @tricky.setter
     @deco_instance
     def tricky(self, x: int) -> None: ...
 
