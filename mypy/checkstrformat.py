@@ -52,6 +52,7 @@ from mypy.types import (
     AnyType,
     Instance,
     LiteralType,
+    NoneType,
     TupleType,
     Type,
     TypeOfAny,
@@ -98,9 +99,10 @@ def compile_new_format_re(custom_spec: bool) -> Pattern[str]:
 
     # Conversion (optional) is ! followed by one of letters for forced repr(), str(), or ascii().
     conversion = r"(?P<conversion>![^:])?"
-
+    print("in compile new format")
     # Format specification (optional) follows its own mini-language:
     if not custom_spec:
+        print("not custom")
         # Fill and align is valid for all builtin types.
         fill_align = r"(?P<fill_align>.?[<>=^])?"
         # Number formatting options are only valid for int, float, complex, and Decimal,
@@ -111,8 +113,10 @@ def compile_new_format_re(custom_spec: bool) -> Pattern[str]:
         conv_type = r"(?P<type>.)?"  # only some are supported, but we want to give a better error
         format_spec = r"(?P<format_spec>:" + fill_align + num_spec + conv_type + r")?"
     else:
+        print("custom")
         # Custom types can define their own form_spec using __format__().
         format_spec = r"(?P<format_spec>:.*)?"
+    print()
 
     return re.compile(field + conversion + format_spec)
 
@@ -182,7 +186,12 @@ def parse_format_value(
     The specifiers may be nested (two levels maximum), in this case they are ordered as
     '{0:{1}}, {2:{3}{4}}'. Return None in case of an error.
     """
+    print("in parse")
+    print("format_value", format_value)
+    print("ctx", ctx)
+    print("msg", msg)
     top_targets = find_non_escaped_targets(format_value, ctx, msg)
+    print("top_targets", top_targets)
     if top_targets is None:
         return None
 
@@ -324,7 +333,12 @@ class StringFormatterChecker:
             - 's' must not accept bytes
             - non-empty flags are only allowed for numeric types
         """
+        print("in check str formal")
+        print("Call: ", call)
+        print("format_value: ", format_value)
         conv_specs = parse_format_value(format_value, call, self.msg)
+        # print("conv_specs", conv_specs)
+        print()
         if conv_specs is None:
             return
         if not self.auto_generate_keys(conv_specs, call):
@@ -338,6 +352,7 @@ class StringFormatterChecker:
 
         The core logic for format checking is implemented in this method.
         """
+        print("in check specs")
         assert all(s.key for s in specs), "Keys must be auto-generated first!"
         replacements = self.find_replacements_in_call(call, [cast(str, s.key) for s in specs])
         assert len(replacements) == len(specs)
@@ -399,6 +414,9 @@ class StringFormatterChecker:
                 get_proper_types(a_type.items) if isinstance(a_type, UnionType) else [a_type]
             )
             for a_type in actual_items:
+                print("atype", a_type, type(a_type))
+                if isinstance(a_type, NoneType):
+                    print("isNone")
                 if custom_special_method(a_type, "__format__"):
                     continue
                 self.check_placeholder_type(a_type, expected_type, call)
