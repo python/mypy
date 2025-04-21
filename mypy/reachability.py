@@ -128,28 +128,31 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
     elif isinstance(expr, MemberExpr):
         name = expr.name
     elif isinstance(expr, OpExpr) and expr.op in ("and", "or"):
-        # This is a bit frivolous with MYPY_* vs ALWAYS_* returns: for example, here
-        # `MYPY_TRUE or ALWAYS_TRUE` will be `MYPY_TRUE`, while
-        # `ALWAYS_TRUE or MYPY_TRUE` will be `ALWAYS_TRUE`. This literally never
-        # makes any difference in consuming code, so short-circuiting here is probably
-        # good enough as it allows referencing platform-dependent variables in
-        # statement parts that will not be executed.
-        left = infer_condition_value(expr.left, options)
-        if (left in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "or") or (
-            left in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "and"
-        ):
-            # Either `True or <other>` or `False and <other>`: `<other>` doesn't matter
-            return left
-        right = infer_condition_value(expr.right, options)
-        if (right in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "or") or (
-            right in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "and"
-        ):
-            # Either `<other> or True` or `<other> and False`: `<other>` doesn't matter
-            return right
-        # Now we have `True and True`, `False or False` or smth indeterminate.
-        if TRUTH_VALUE_UNKNOWN in (left, right) or expr.op not in ("or", "and"):
+        if expr.op not in ("or", "and"):
             return TRUTH_VALUE_UNKNOWN
-        return left
+
+        left = infer_condition_value(expr.left, options)
+        right = infer_condition_value(expr.right, options)
+        results = {left, right}
+        if expr.op == "or":
+            if ALWAYS_TRUE in results:
+                return ALWAYS_TRUE
+            elif MYPY_TRUE in results:
+                return MYPY_TRUE
+            elif left == right == MYPY_FALSE:
+                return MYPY_FALSE
+            elif results <= {ALWAYS_FALSE, MYPY_FALSE}:
+                return ALWAYS_FALSE
+        elif expr.op == "and":
+            if ALWAYS_FALSE in results:
+                return ALWAYS_FALSE
+            elif MYPY_FALSE in results:
+                return MYPY_FALSE
+            elif left == right == ALWAYS_TRUE:
+                return ALWAYS_TRUE
+            elif results <= {ALWAYS_TRUE, MYPY_TRUE}:
+                return MYPY_TRUE
+        return TRUTH_VALUE_UNKNOWN
     else:
         result = consider_sys_version_info(expr, pyversion)
         if result == TRUTH_VALUE_UNKNOWN:

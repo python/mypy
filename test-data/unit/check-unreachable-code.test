@@ -550,6 +550,32 @@ reveal_type(unary_minus) # N: Revealed type is "Union[Literal[0], builtins.str]"
 reveal_type(binary_minus) # N: Revealed type is "Union[Literal[0], builtins.str]"
 [builtins fixtures/ops.pyi]
 
+[case testMypyFalseValuesInBinaryOps_no_empty]
+# flags: --platform linux
+import sys
+from typing import TYPE_CHECKING
+
+MYPY = 0
+
+if TYPE_CHECKING and sys.platform == 'linux':
+    def foo1() -> int: ...
+if sys.platform == 'linux' and TYPE_CHECKING:
+    def foo2() -> int: ...
+if MYPY and sys.platform == 'linux':
+    def foo3() -> int: ...
+if sys.platform == 'linux' and MYPY:
+    def foo4() -> int: ...
+
+if TYPE_CHECKING or sys.platform == 'linux':
+    def bar1() -> int: ...  # E: Missing return statement
+if sys.platform == 'linux' or TYPE_CHECKING:
+    def bar2() -> int: ...  # E: Missing return statement
+if MYPY or sys.platform == 'linux':
+    def bar3() -> int: ...  # E: Missing return statement
+if sys.platform == 'linux' or MYPY:
+    def bar4() -> int: ...  # E: Missing return statement
+[builtins fixtures/ops.pyi]
+
 [case testShortCircuitAndWithConditionalAssignment]
 # flags: --platform linux
 import sys
