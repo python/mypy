@@ -540,6 +540,16 @@ reveal_type(not_or_t) # N: Revealed type is "builtins.bool"
 reveal_type(not_or_f) # N: Revealed type is "Literal['s']"
 [builtins fixtures/ops.pyi]
 
+[case testConditionalValuesUnsupportedOps]
+# flags: --platform linux
+import sys
+
+unary_minus = -(sys.platform == 'linux') and 's'
+binary_minus = ((sys.platform == 'linux') - (sys.platform == 'linux')) and 's'
+reveal_type(unary_minus) # N: Revealed type is "Union[Literal[0], builtins.str]"
+reveal_type(binary_minus) # N: Revealed type is "Union[Literal[0], builtins.str]"
+[builtins fixtures/ops.pyi]
+
 [case testShortCircuitAndWithConditionalAssignment]
 # flags: --platform linux
 import sys
