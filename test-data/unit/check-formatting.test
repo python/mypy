@@ -265,6 +265,16 @@ b'%c' % (123)
 -- ------------------
 
 
+[case testFormatCallNoneAlignment]
+'{:<1}'.format(None)  # E: Alignment format specifier "<" is not supported for None
+'{:>1}'.format(None)  # E: Alignment format specifier ">" is not supported for None
+'{:^1}'.format(None)  # E: Alignment format specifier "^" is not supported for None
+
+'{:<10}'.format('16') # OK
+'{:>10}'.format('16') # OK
+'{:^10}'.format('16') # OK
+[builtins fixtures/primitives.pyi]
+
 [case testFormatCallParseErrors]
 '}'.format()  # E: Invalid conversion specifier in format string: unexpected }
 '{'.format()  # E: Invalid conversion specifier in format string: unmatched {
