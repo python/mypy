@@ -196,6 +196,9 @@ class ClassIR:
         # value of an attribute is the same as the error value.
         self.bitmap_attrs: list[str] = []
 
+        # If this is a generator environment class, what is the actual method for it
+        self.env_user_function: FuncIR | None = None
+
     def __repr__(self) -> str:
         return (
             "ClassIR("
@@ -394,6 +397,7 @@ class ClassIR:
             "_always_initialized_attrs": sorted(self._always_initialized_attrs),
             "_sometimes_initialized_attrs": sorted(self._sometimes_initialized_attrs),
             "init_self_leak": self.init_self_leak,
+            "env_user_function": self.env_user_function.id if self.env_user_function else None,
         }
 
     @classmethod
@@ -446,6 +450,9 @@ class ClassIR:
         ir._always_initialized_attrs = set(data["_always_initialized_attrs"])
         ir._sometimes_initialized_attrs = set(data["_sometimes_initialized_attrs"])
         ir.init_self_leak = data["init_self_leak"]
+        ir.env_user_function = (
+            ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
+        )
 
         return ir
 
