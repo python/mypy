@@ -337,7 +337,6 @@ class StringFormatterChecker:
 
         The core logic for format checking is implemented in this method.
         """
-        print("in format call")
         assert all(s.key for s in specs), "Keys must be auto-generated first!"
         replacements = self.find_replacements_in_call(call, [cast(str, s.key) for s in specs])
         assert len(replacements) == len(specs)
@@ -449,7 +448,8 @@ class StringFormatterChecker:
                     call,
                     code=codes.STRING_FORMATTING,
                 )
-        if isinstance(actual_type, NoneType):
+        a_type = get_proper_type(actual_type)
+        if isinstance(a_type, NoneType):
             # Perform type check of alignment specifiers on None
             if spec.format_spec and any(c in spec.format_spec for c in "<>^"):
                 specifierIndex = -1
@@ -458,14 +458,14 @@ class StringFormatterChecker:
                         specifierIndex = i
                 if specifierIndex > -1:
                     self.msg.fail(
-						(
-							f'Alignment format specifier '
-							f'"{spec.format_spec[specifierIndex]}" '
-							f'is not supported for None'
-						),
-						call,
-						code=codes.STRING_FORMATTING,
-					)        
+                        (
+                            f"Alignment format specifier "
+                            f'"{spec.format_spec[specifierIndex]}" '
+                            f"is not supported for None"
+                        ),
+                        call,
+                        code=codes.STRING_FORMATTING,
+                    )
 
     def find_replacements_in_call(self, call: CallExpr, keys: list[str]) -> list[Expression]:
         """Find replacement expression for every specifier in str.format() call.
