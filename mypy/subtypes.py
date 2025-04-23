@@ -1663,15 +1663,16 @@ def are_parameters_compatible(
 
     trivial_vararg_suffix = False
     if (
-        right.arg_kinds[-1:] == [ARG_STAR]
-        and isinstance(get_proper_type(right.arg_types[-1]), AnyType)
+        right_star is not None
+        and isinstance(get_proper_type(right_star.typ), AnyType)
         and not is_proper_subtype
-        and all(k.is_positional(star=True) for k in left.arg_kinds)
     ):
         # Similar to how (*Any, **Any) is considered a supertype of all callables, we consider
         # (*Any) a supertype of all callables with positional arguments. This is needed in
         # particular because we often refuse to try type inference if actual type is not
         # a subtype of erased template type.
+
+        # This case also ensures that *Any is any length.
         trivial_vararg_suffix = True
 
     # Match up corresponding arguments and check them for compatibility. In

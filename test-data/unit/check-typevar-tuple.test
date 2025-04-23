@@ -2312,18 +2312,18 @@ def good2(*args: str) -> int: ...
 # These are special-cased for *args: Any (as opposite to *args: object)
 def ok1(a: str, b: int, /) -> None: ...
 def ok2(c: bytes, *args: int) -> str: ...
+def ok3(**kwargs: None) -> None: ...
 
 def bad1(*, d: str) -> int: ...
-def bad2(**kwargs: None) -> None: ...
 
 higher_order(good1)
 higher_order(good2)
 
 higher_order(ok1)
 higher_order(ok2)
+higher_order(ok3)
 
 higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[NamedArg(str, 'd')], int]"; expected "Callable[[VarArg(Any)], Any]"
-higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[VarArg(Any)], Any]"
 [builtins fixtures/tuple.pyi]
 
 [case testAliasToCallableWithUnpack2]
@@ -2381,11 +2381,11 @@ def func(x: Array[Unpack[Ts]], *args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
     ...
 
 def a2(x: Array[int, str]) -> None:
-    reveal_type(func(x, 2, "Hello"))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
-    reveal_type(func(x, 2))           # E: Cannot infer type argument 1 of "func" \
-                                      # N: Revealed type is "builtins.tuple[Any, ...]"
-    reveal_type(func(x, 2, "Hello", True))   # E: Cannot infer type argument 1 of "func" \
-                                             # N: Revealed type is "builtins.tuple[Any, ...]"
+    reveal_type(func(x, 2, "Hello"))  # N: Revealed type is "Tuple[Literal[2]?, Literal['Hello']?]"
+    reveal_type(func(x, 2))           # N: Revealed type is "Tuple[Literal[2]?]" \
+                                      # E: Argument 1 to "func" has incompatible type "Array[int, str]"; expected "Array[int]"
+    reveal_type(func(x, 2, "Hello", True))   # N: Revealed type is "Tuple[Literal[2]?, Literal['Hello']?, Literal[True]?]" \
+                                             # E: Argument 1 to "func" has incompatible type "Array[int, str]"; expected "Array[int, str, bool]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleTypeApplicationOverload]
@@ -2627,4 +2627,38 @@ def fn(f: Callable[[*tuple[T]], int]) -> Callable[[*tuple[T]], int]: ...
 
 def test(*args: Unpack[tuple[T]]) -> int: ...
 reveal_type(fn(test))  # N: Revealed type is "def [T] (T`1) -> builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testKwargWithTypeVarTupleInference]
+# https://github.com/python/mypy/issues/16522
+from typing import Generic, TypeVar, Protocol
+from typing_extensions import TypeVarTuple, Unpack
+
+PosArgT = TypeVarTuple("PosArgT")
+StatusT = TypeVar("StatusT")
+StatusT_co = TypeVar("StatusT_co", covariant=True)
+StatusT_contra = TypeVar("StatusT_contra", contravariant=True)
+
+class TaskStatus(Generic[StatusT_contra]):
+    def started(self, value: StatusT_contra) -> None: ...
+
+class NurseryStartFunc(Protocol[Unpack[PosArgT], StatusT_co]):
+    def __call__(
+        self,
+        *args: Unpack[PosArgT],
+        task_status: TaskStatus[StatusT_co],
+    ) -> object: ...
+
+def nursery_start(
+    async_fn: NurseryStartFunc[Unpack[PosArgT], StatusT],
+    *args: Unpack[PosArgT],
+) -> StatusT:  ...
+
+def task(a: int, b: str, *, task_status: TaskStatus[str]) -> None: ...
+
+def test() -> None:
+    reveal_type(nursery_start(task, "a", 2))  # N: Revealed type is "builtins.str" \
+                                              # E: Argument 1 to "nursery_start" has incompatible type "Callable[[int, str, NamedArg(TaskStatus[str], 'task_status')], None]"; expected "NurseryStartFunc[str, int, str]" \
+                                              # N: "NurseryStartFunc[str, int, str].__call__" has type "Callable[[str, int, NamedArg(TaskStatus[str], 'task_status')], object]"
+    reveal_type(nursery_start(task, 1, "b"))  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
