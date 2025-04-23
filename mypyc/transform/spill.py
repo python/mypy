@@ -78,12 +78,13 @@ def spill_regs(
                 and not (isinstance(op, Branch) and op.op == Branch.IS_ERROR)
             ):
                 new_sources: list[Value] = []
+                stolen = op.stolen()
                 for src in op.sources():
                     if src in spill_locs:
                         read = GetAttr(env_reg, spill_locs[src], op.line)
                         block.ops.append(read)
                         new_sources.append(read)
-                        if src.type.is_refcounted:
+                        if src.type.is_refcounted and src not in stolen:
                             to_decref.append(read)
                     else:
                         new_sources.append(src)
