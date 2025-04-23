@@ -353,14 +353,22 @@ import asyncio
 import gc
 
 def assert_no_leaks(fn, max_new):
+    # Warm-up, in case asyncio allocates something on first use
     asyncio.run(fn())
+
     gc.collect()
     old_objs = gc.get_objects()
+
     for i in range(10):
         asyncio.run(fn())
+
     gc.collect()
     new_objs = gc.get_objects()
+
     delta = len(new_objs) - len(old_objs)
+    # Often a few persistent objects get allocated, which may be unavoidable.
+    # The main thing we care about is that each iteration does not leak an
+    # additional object.
     assert delta <= max_new, delta
 
 async def concat_one(x: str) -> str:
