@@ -689,6 +689,7 @@ def func_fn(fn: Callable[P, Tc], b: str) -> Callable[P, Tc]:
 def func_fn_unpack(fn: Callable[[Unpack[Ts]], Tc], b: str) -> Callable[[Unpack[Ts]], Tc]:
     return fn
 
+# We should not leak stray typevars that aren't in scope:
 use_int_callable(partial(func_b, b=""))
 use_func_callable(partial(func_b, b=""))
 use_int_callable(partial(func_c, b=""))
@@ -699,4 +700,29 @@ use_func_callable(partial(func_fn, b=""))
 use_int_callable(partial(func_fn_unpack, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[Callable[[VarArg(Any)], Any]]"; expected "Callable[[int], int]" \
                                                  # N: "partial[Callable[[VarArg(Any)], Any]].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Callable[[VarArg(Any)], Any]]"
 use_func_callable(partial(func_fn_unpack, b=""))
+
+# But we should not erase typevars that aren't bound by function
+# passed to `partial`:
+
+def outer_b(arg: Tb) -> None:
+
+    def inner(a: Tb, b: str) -> Tb:
+        return a
+
+    def call(fn: Callable[[int], int]) -> int:
+        return fn(0)
+
+    call(partial(inner, b=""))  # E: Argument 1 to "call" has incompatible type "partial[Tb]"; expected "Callable[[int], int]" \
+                                # N: "partial[Tb].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Tb]"
+
+def outer_c(arg: Tc) -> None:
+
+    def inner(a: Tc, b: str) -> Tc:
+        return a
+
+    def call(fn: Callable[[int], int]) -> int:
+        return fn(0)
+
+    call(partial(inner, b=""))  # E: Argument 1 to "call" has incompatible type "partial[str]"; expected "Callable[[int], int]" \
+                                # N: "partial[str].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], str]"
 [builtins fixtures/tuple.pyi]
