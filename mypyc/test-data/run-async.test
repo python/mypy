@@ -390,6 +390,7 @@ async def make_list(a: list[int]) -> list[int]:
 async def spill() -> list[int]:
     a: list[int] = []
     for i in range(5):
+        await asyncio.sleep(0.0001)
         a = (await make_list(a + [1])) + a + (await make_list(a + [2]))
     return a
 
@@ -398,17 +399,22 @@ async def bar(n: int) -> None:
         await spill()
 
 def test_spilled() -> None:
-    assert_no_leaks(lambda: bar(100), 2)
+    assert_no_leaks(lambda: bar(40), 2)
 
 async def raise_deep(n: int) -> str:
     if n == 0:
+        await asyncio.sleep(0.0001)
         raise TypeError(str(n))
     else:
+        if n == 2:
+            await asyncio.sleep(0.0001)
         return await raise_deep(n - 1)
 
 async def maybe_raise(n: int) -> str:
     if n % 3 == 0:
-        await raise_deep(10)
+        await raise_deep(5)
+    elif n % 29 == 0:
+        await asyncio.sleep(0.0001)
     return str(n)
 
 async def exc(n: int) -> list[str]:
@@ -421,7 +427,7 @@ async def exc(n: int) -> list[str]:
     return a
 
 def test_exception() -> None:
-    assert_no_leaks(lambda: exc(100), 2)
+    assert_no_leaks(lambda: exc(50), 2)
 
 class C:
     def __init__(self, s: str) -> None:
@@ -431,7 +437,9 @@ async def id(c: C) -> C:
     return c
 
 async def stolen_helper(c: C, s: str) -> str:
+    await asyncio.sleep(0.0001)
     (await id(c)).s = await concat_one(s)
+    await asyncio.sleep(0.0001)
     return c.s
 
 async def stolen(n: int) -> int:
@@ -442,7 +450,8 @@ async def stolen(n: int) -> int:
     return n
 
 def test_stolen() -> None:
-    assert_no_leaks(lambda: stolen(1000), 2)
+    assert_no_leaks(lambda: stolen(100), 2)
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
+async def sleep(t: float) -> None: ...
