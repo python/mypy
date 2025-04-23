@@ -415,5 +415,26 @@ async def exc(n: int) -> list[str]:
 def test_exception() -> None:
     assert_no_leaks(lambda: exc(100), 2)
 
+class C:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+async def id(c: C) -> C:
+    return c
+
+async def stolen_helper(c: C, s: str) -> str:
+    (await id(c)).s = await concat_one(s)
+    return c.s
+
+async def stolen(n: int) -> int:
+    for i in range(n):
+        c = C(str(i))
+        s = await stolen_helper(c, str(i + 2))
+        assert s == str(i + 2) + "1"
+    return n
+
+def test_stolen() -> None:
+    assert_no_leaks(lambda: stolen(1000), 2)
+
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
