@@ -408,6 +408,9 @@ class Options:
 
         # Output html file for mypyc -a
         self.mypyc_annotation_file: str | None = None
+        # Skip writing C output files, but perform all other steps of a build (allows
+        # preserving manual tweaks to generated C file)
+        self.mypyc_skip_c_generation = False
 
     def use_lowercase_names(self) -> bool:
         if self.python_version >= (3, 9):
