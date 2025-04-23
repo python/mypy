@@ -119,9 +119,19 @@ class C:
     def concat(self, s: str) -> str:
         return self.s + s
 
+async def make_c(s: str) -> C:
+    await one()
+    return C(s)
+
 async def concat(s: str, t: str) -> str:
     await one()
     return s + t
+
+async def set_attr(s: str) -> None:
+    (await make_c("xyz")).s = await concat(s, "!")
+
+def test_set_attr() -> None:
+    asyncio.run(set_attr("foo"))  # Just check that it compiles and runs
 
 def concat2(x: str, y: str) -> str:
     return x + y
@@ -160,6 +170,7 @@ async def sleep(t: float) -> None: ...
 def run(x: object) -> object: ...
 
 [typing fixtures/typing-full.pyi]
+
 
 [case testAsyncWith]
 from testutil import async_val
@@ -336,3 +347,111 @@ async def sleep(t: float) -> None: ...
 def run(x: object) -> object: ...
 
 [typing fixtures/typing-full.pyi]
+
+[case testRunAsyncRefCounting]
+import asyncio
+import gc
+
+def assert_no_leaks(fn, max_new):
+    # Warm-up, in case asyncio allocates something on first use
+    asyncio.run(fn())
+
+    gc.collect()
+    old_objs = gc.get_objects()
+
+    for i in range(10):
+        asyncio.run(fn())
+
+    gc.collect()
+    new_objs = gc.get_objects()
+
+    delta = len(new_objs) - len(old_objs)
+    # Often a few persistent objects get allocated, which may be unavoidable.
+    # The main thing we care about is that each iteration does not leak an
+    # additional object.
+    assert delta <= max_new, delta
+
+async def concat_one(x: str) -> str:
+    return x + "1"
+
+async def foo(n: int) -> str:
+    s = ""
+    while len(s) < n:
+        s = await concat_one(s)
+    return s
+
+def test_trivial() -> None:
+    assert_no_leaks(lambda: foo(1000), 5)
+
+async def make_list(a: list[int]) -> list[int]:
+    await concat_one("foobar")
+    return [a[0]]
+
+async def spill() -> list[int]:
+    a: list[int] = []
+    for i in range(5):
+        await asyncio.sleep(0.0001)
+        a = (await make_list(a + [1])) + a + (await make_list(a + [2]))
+    return a
+
+async def bar(n: int) -> None:
+    for i in range(n):
+        await spill()
+
+def test_spilled() -> None:
+    assert_no_leaks(lambda: bar(40), 2)
+
+async def raise_deep(n: int) -> str:
+    if n == 0:
+        await asyncio.sleep(0.0001)
+        raise TypeError(str(n))
+    else:
+        if n == 2:
+            await asyncio.sleep(0.0001)
+        return await raise_deep(n - 1)
+
+async def maybe_raise(n: int) -> str:
+    if n % 3 == 0:
+        await raise_deep(5)
+    elif n % 29 == 0:
+        await asyncio.sleep(0.0001)
+    return str(n)
+
+async def exc(n: int) -> list[str]:
+    a = []
+    for i in range(n):
+        try:
+            a.append(str(int()) + await maybe_raise(n))
+        except TypeError:
+            a.append(str(int() + 5))
+    return a
+
+def test_exception() -> None:
+    assert_no_leaks(lambda: exc(50), 2)
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+async def id(c: C) -> C:
+    return c
+
+async def stolen_helper(c: C, s: str) -> str:
+    await asyncio.sleep(0.0001)
+    (await id(c)).s = await concat_one(s)
+    await asyncio.sleep(0.0001)
+    return c.s
+
+async def stolen(n: int) -> int:
+    for i in range(n):
+        c = C(str(i))
+        s = await stolen_helper(c, str(i + 2))
+        assert s == str(i + 2) + "1"
+    return n
+
+def test_stolen() -> None:
+    assert_no_leaks(lambda: stolen(100), 2)
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
+async def sleep(t: float) -> None: ...
