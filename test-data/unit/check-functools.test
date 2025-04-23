@@ -658,3 +658,45 @@ def f(x: P):
     # TODO: but this is incorrect, predating the functools.partial plugin
     reveal_type(partial(x, "a")())  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialTypeVarErasure]
+from typing import Callable, TypeVar, Union
+from typing_extensions import ParamSpec, TypeVarTuple, Unpack
+from functools import partial
+
+def use_int_callable(x: Callable[[int], int]) -> None:
+    pass
+def use_func_callable(
+    x: Callable[
+        [Callable[[int], None]],
+        Callable[[int], None],
+    ],
+) -> None:
+    pass
+
+Tc = TypeVar("Tc", int, str)
+Tb = TypeVar("Tb", bound=Union[int, str])
+P = ParamSpec("P")
+Ts = TypeVarTuple("Ts")
+
+def func_b(a: Tb, b: str) -> Tb:
+    return a
+def func_c(a: Tc, b: str) -> Tc:
+    return a
+
+def func_fn(fn: Callable[P, Tc], b: str) -> Callable[P, Tc]:
+    return fn
+def func_fn_unpack(fn: Callable[[Unpack[Ts]], Tc], b: str) -> Callable[[Unpack[Ts]], Tc]:
+    return fn
+
+use_int_callable(partial(func_b, b=""))
+use_func_callable(partial(func_b, b=""))
+use_int_callable(partial(func_c, b=""))
+use_func_callable(partial(func_c, b=""))
+use_int_callable(partial(func_fn, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[Callable[[VarArg(Any), KwArg(Any)], Any]]"; expected "Callable[[int], int]" \
+                                          # N: "partial[Callable[[VarArg(Any), KwArg(Any)], Any]].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Callable[[VarArg(Any), KwArg(Any)], Any]]"
+use_func_callable(partial(func_fn, b=""))
+use_int_callable(partial(func_fn_unpack, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[Callable[[VarArg(Any)], Any]]"; expected "Callable[[int], int]" \
+                                                 # N: "partial[Callable[[VarArg(Any)], Any]].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Callable[[VarArg(Any)], Any]]"
+use_func_callable(partial(func_fn_unpack, b=""))
+[builtins fixtures/tuple.pyi]
