@@ -189,27 +189,6 @@ def is_subtype(
             return _is_subtype(left, right, subtype_context, proper_subtype=False)
     left = get_proper_type(left)
     right = get_proper_type(right)
-
-    # Special case: distribute Tuple unions before fallback subtype check
-    if isinstance(left, TupleType) and isinstance(right, UnionType):
-        items = [get_proper_type(item) for item in left.items]
-        if any(isinstance(item, UnionType) for item in items):
-            expanded = []
-            for item in items:
-                if isinstance(item, UnionType):
-                    expanded.append(item.items)
-                else:
-                    expanded.append([item])
-            distributed = []
-            for combo in product(*expanded):
-                fb = left.partial_fallback
-                if hasattr(left, "fallback") and left.fallback is not None:
-                    fb = left.fallback
-                distributed.append(TupleType(list(combo), fallback=fb))
-            simplified = make_simplified_union(distributed)
-            if is_equivalent(simplified, right):
-                return True
-            return _is_subtype(simplified, right, subtype_context, proper_subtype=False)
     return _is_subtype(left, right, subtype_context, proper_subtype=False)
 
 
@@ -328,7 +307,23 @@ def _is_subtype(
         # TODO: should we consider all types proper subtypes of UnboundType and/or
         # ErasedType as we do for non-proper subtyping.
         return True
-
+    if isinstance(left, TupleType) and isinstance(right, UnionType):
+        items = [get_proper_type(item) for item in left.items]
+        if any(isinstance(item, UnionType) for item in items):
+            expanded = []
+            for item in items:
+                if isinstance(item, UnionType):
+                    expanded.append(item.items)
+                else:
+                    expanded.append([item])
+            distributed = []
+            for combo in product(*expanded):
+                fb = left.partial_fallback
+                if hasattr(left, "fallback") and left.fallback is not None:
+                    fb = left.fallback
+                distributed.append(TupleType(list(combo), fallback=fb))
+            simplified = make_simplified_union(distributed)
+            return _is_subtype(simplified, right, subtype_context, proper_subtype=False)
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
         # Normally, when 'left' is not itself a union, the only way
         # 'left' can be a subtype of the union 'right' is if it is a
