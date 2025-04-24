@@ -923,7 +923,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 and self.is_alias_expression(o.rvalue)
                 and not self.is_private_name(lvalue.name)
             ):
-                is_type_alias = o.unanalyzed_type and getattr(o.type, 'name', None) == 'TypeAlias'
+                is_type_alias = o.unanalyzed_type and getattr(o.type, "name", None) == "TypeAlias"
                 if not o.unanalyzed_type or is_type_alias:
                     self.process_typealias(lvalue, o.rvalue)
                     continue
