@@ -207,6 +207,8 @@ def is_subtype(
                     fb = left.fallback
                 distributed.append(TupleType(list(combo), fallback=fb))
             simplified = make_simplified_union(distributed)
+            if is_equivalent(simplified, right):
+                return True
             return _is_subtype(simplified, right, subtype_context, proper_subtype=False)
     return _is_subtype(left, right, subtype_context, proper_subtype=False)
 
