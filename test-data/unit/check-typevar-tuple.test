@@ -2381,7 +2381,7 @@ def func(x: Array[Unpack[Ts]], *args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
     ...
 
 def a2(x: Array[int, str]) -> None:
-    reveal_type(func(x, 2, "Hello"))  # N: Revealed type is "Tuple[Literal[2]?, Literal['Hello']?]"
+    reveal_type(func(x, 2, "Hello"))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
     reveal_type(func(x, 2))           # N: Revealed type is "Tuple[Literal[2]?]" \
                                       # E: Argument 1 to "func" has incompatible type "Array[int, str]"; expected "Array[int]"
     reveal_type(func(x, 2, "Hello", True))   # N: Revealed type is "Tuple[Literal[2]?, Literal['Hello']?, Literal[True]?]" \
