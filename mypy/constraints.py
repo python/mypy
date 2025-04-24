@@ -277,8 +277,13 @@ def infer_constraints_for_callable(
     if any(isinstance(v, ParamSpecType) for v in callee.variables):
         # As a perf optimization filter imprecise constraints only when we can have them.
         constraints = filter_imprecise_kinds(constraints)
-    for pconstraint in priority_constraints:
-        constraints = [c for c in constraints if c.type_var != pconstraint.type_var]
+
+    # TODO: consider passing this up the call stack
+    for tv in {c.origin_type_var for c in priority_constraints}:
+        from mypy.solve import solve_constraints
+
+        if solve_constraints([tv], constraints + priority_constraints)[0][0] is None:
+            constraints = [c for c in constraints if c.type_var != tv.id]
 
     return constraints + priority_constraints
 
