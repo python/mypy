@@ -690,6 +690,11 @@ def func_fn_unpack(fn: Callable[[Unpack[Ts]], Tc], b: str) -> Callable[[Unpack[T
     return fn
 
 # We should not leak stray typevars that aren't in scope:
+reveal_type(partial(func_b, b=""))  # N: Revealed type is "functools.partial[Any]"
+reveal_type(partial(func_c, b=""))  # N: Revealed type is "functools.partial[Any]"
+reveal_type(partial(func_fn, b=""))  # N: Revealed type is "functools.partial[def (*Any, **Any) -> Any]"
+reveal_type(partial(func_fn_unpack, b=""))  # N: Revealed type is "functools.partial[def (*Any) -> Any]"
+
 use_int_callable(partial(func_b, b=""))
 use_func_callable(partial(func_b, b=""))
 use_int_callable(partial(func_c, b=""))
@@ -709,20 +714,17 @@ def outer_b(arg: Tb) -> None:
     def inner(a: Tb, b: str) -> Tb:
         return a
 
-    def call(fn: Callable[[int], int]) -> int:
-        return fn(0)
-
-    call(partial(inner, b=""))  # E: Argument 1 to "call" has incompatible type "partial[Tb]"; expected "Callable[[int], int]" \
-                                # N: "partial[Tb].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Tb]"
+    reveal_type(partial(inner, b=""))  # N: Revealed type is "functools.partial[Tb`-1]"
+    use_int_callable(partial(inner, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[Tb]"; expected "Callable[[int], int]" \
+                                            # N: "partial[Tb].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], Tb]"
 
 def outer_c(arg: Tc) -> None:
 
     def inner(a: Tc, b: str) -> Tc:
         return a
 
-    def call(fn: Callable[[int], int]) -> int:
-        return fn(0)
-
-    call(partial(inner, b=""))  # E: Argument 1 to "call" has incompatible type "partial[str]"; expected "Callable[[int], int]" \
-                                # N: "partial[str].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], str]"
+    reveal_type(partial(inner, b=""))  # N: Revealed type is "functools.partial[builtins.int]" \
+                                       # N: Revealed type is "functools.partial[builtins.str]"
+    use_int_callable(partial(inner, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[str]"; expected "Callable[[int], int]" \
+                                            # N: "partial[str].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], str]"
 [builtins fixtures/tuple.pyi]
