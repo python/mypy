@@ -339,7 +339,7 @@ class StringFormatterChecker:
 
         The core logic for format checking is implemented in this method.
         """
-        # print("in format call")
+
         assert all(s.key for s in specs), "Keys must be auto-generated first!"
         replacements = self.find_replacements_in_call(call, [cast(str, s.key) for s in specs])
         assert len(replacements) == len(specs)
@@ -451,8 +451,9 @@ class StringFormatterChecker:
                     call,
                     code=codes.STRING_FORMATTING,
                 )
-        actual_type = get_proper_type(actual_type)
-        if isinstance(actual_type, NoneType):
+
+        a_type = get_proper_type(actual_type)
+        if isinstance(a_type, NoneType):
             # Perform type check of alignment specifiers on None
             if spec.format_spec and any(c in spec.format_spec for c in "<>^"):
                 specifierIndex = -1
@@ -469,40 +470,6 @@ class StringFormatterChecker:
                         call,
                         code=codes.STRING_FORMATTING,
                     )
-        if spec.format_spec and not self.type_supports_formatting(actual_type):
-            self.msg.fail(
-                f'"{actual_type}" does not support custom formatting (no __format__ method)',
-                call,
-                code=codes.STRING_FORMATTING,
-            )
-
-    def type_supports_formatting(self, actual_type: Type) -> bool:
-        actual_type = get_proper_type(actual_type)
-        if isinstance(
-            actual_type, (NoneType, LiteralType, AnyType, TupleType, TypeType, DeletedType)
-        ):
-            return True
-        if isinstance(actual_type, Instance):
-            fullname = actual_type.type.fullname
-            substring = [
-                "builtins.",
-                "mypy.",
-                "mypyc.",
-                "typing.",
-                "types.",
-                "uuid.",
-                "pathlib.",
-                "_pytest.",
-                "inspect.",
-                "os.",
-                "sys.",
-                "re.",
-                "collections.",
-            ]
-            for s in substring:
-                if s in fullname:
-                    return True
-        return False
 
     def find_replacements_in_call(self, call: CallExpr, keys: list[str]) -> list[Expression]:
         """Find replacement expression for every specifier in str.format() call.
