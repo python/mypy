@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
+from itertools import product
 from typing import Any, Callable, Final, TypeVar, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
@@ -34,6 +35,7 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.state import state
+from mypy.typeops import make_simplified_union
 from mypy.types import (
     MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
@@ -185,6 +187,27 @@ def is_subtype(
         # steps we come back to initial call is_subtype(A, B) and immediately return True.
         with pop_on_exit(type_state.get_assumptions(is_proper=False), left, right):
             return _is_subtype(left, right, subtype_context, proper_subtype=False)
+    left = get_proper_type(left)
+    right = get_proper_type(right)
+
+    # Special case: distribute Tuple unions before fallback subtype check
+    if isinstance(left, TupleType) and isinstance(right, UnionType):
+        items = [get_proper_type(item) for item in left.items]
+        if any(isinstance(item, UnionType) for item in items):
+            expanded = []
+            for item in items:
+                if isinstance(item, UnionType):
+                    expanded.append(item.items)
+                else:
+                    expanded.append([item])
+            distributed = []
+            for combo in product(*expanded):
+                fb = left.partial_fallback
+                if hasattr(left, "fallback") and left.fallback is not None:
+                    fb = left.fallback
+                distributed.append(TupleType(list(combo), fallback=fb))
+            simplified = make_simplified_union(distributed)
+            return _is_subtype(simplified, right, subtype_context, proper_subtype=False)
     return _is_subtype(left, right, subtype_context, proper_subtype=False)
 
 
