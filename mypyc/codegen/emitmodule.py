@@ -61,6 +61,7 @@ from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
 from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
+from mypyc.transform.spill import insert_spills
 from mypyc.transform.uninit import insert_uninit_checks
 
 # All of the modules being compiled are divided into "groups". A group
@@ -228,6 +229,12 @@ def compile_scc_to_ir(
     if errors.num_errors > 0:
         return modules
 
+    env_user_functions = {}
+    for module in modules.values():
+        for cls in module.classes:
+            if cls.env_user_function:
+                env_user_functions[cls.env_user_function] = cls
+
     for module in modules.values():
         for fn in module.functions:
             # Insert uninit checks.
@@ -236,6 +243,10 @@ def compile_scc_to_ir(
             insert_exception_handling(fn)
             # Insert refcount handling.
             insert_ref_count_opcodes(fn)
+
+            if fn in env_user_functions:
+                insert_spills(fn, env_user_functions[fn])
+
             # Switch to lower abstraction level IR.
             lower_ir(fn, compiler_options)
             # Perform optimizations.
