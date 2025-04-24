@@ -457,6 +457,19 @@ def run(x: object) -> object: ...
 async def sleep(t: float) -> None: ...
 
 [case testRunAsyncMiscTypesInEnvironment]
+# Here we test that values of various kinds of types can be spilled to the
+# environment. In particular, types with "overlapping error values" such as
+# i64 can be tricky, since they require extra work to support undefined
+# attribute values (which raise AttributeError when accessed). For these,
+# the object struct has a bitfield which keeps track of whether certain
+# attributes have an assigned value.
+#
+# In practice we mark these attributes as "always defined", which causes these
+# checks to be skipped on attribute access, and thus we don't require the
+# bitfield to exist.
+#
+# See the comment of RType.error_overlap for more information.
+
 import asyncio
 
 from mypy_extensions import i64, i32, i16, u8
