@@ -509,6 +509,13 @@ class FuncBase(Node):
         "_fullname",
     )
 
+    is_static: bool
+    """Is this a `@staticmethod` (explicit or implicit)?
+
+    This shouldn't be used to check that there's `self` or `cls` argument.
+    Use :py:attr:`has_self_or_cls_argument` instead.
+    """
+
     def __init__(self) -> None:
         super().__init__()
         # Type signature. This is usually CallableType or Overloaded, but it can be
@@ -535,6 +542,15 @@ class FuncBase(Node):
     @property
     def fullname(self) -> str:
         return self._fullname
+
+    @property
+    def has_self_or_cls_argument(self) -> bool:
+        """If used as a method, does it have an argument for method binding (`self`, `cls`)?
+
+        This is true for `__new__` even though `__new__` does not undergo method binding,
+        because we still usually assume that `cls` corresponds to the enclosing class.
+        """
+        return not self.is_static or self.name == "__new__"
 
 
 OverloadPart: _TypeAlias = Union["FuncDef", "Decorator"]
