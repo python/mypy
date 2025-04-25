@@ -74,6 +74,7 @@ from mypy.types import (
     TypeOfAny,
     TypeStrVisitor,
     TypeTranslator,
+    TypeVarType,
     UninhabitedType,
     UnionType,
     get_proper_type,
@@ -650,12 +651,16 @@ class SuggestionEngine:
             if not isinstance(typ, FunctionLike):
                 return None
             for ct in typ.items:
-                if not (
-                    len(ct.arg_types) == 1
-                    # and isinstance(ct.arg_types[0], TypeVarType)
-                    and ct.arg_types[0] == ct.ret_type
-                ):
+                if len(ct.arg_types) != 1:
                     return None
+
+            arg_type = get_proper_type(ct.arg_types[0])
+            ret_type = get_proper_type(ct.ret_type)
+
+            if isinstance(arg_type, TypeVarType) and arg_type == ret_type:
+                continue
+
+            return None
 
         return node.func
 

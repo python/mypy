@@ -12,3 +12,8 @@ def dec(f: Callable[P, R]) -> Callable[P, R]:
 @dec
 def f() -> None:
     print("hello world")
+
+
+@dec
+def foo() -> None:
+    print()
