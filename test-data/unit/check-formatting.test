@@ -266,6 +266,8 @@ b'%c' % (123)
 
 
 [case testFormatCallNoneAlignment]
+from typing import Optional
+
 '{:<1}'.format(None)  # E: Alignment format specifier "<" is not supported for None
 '{:>1}'.format(None)  # E: Alignment format specifier ">" is not supported for None
 '{:^1}'.format(None)  # E: Alignment format specifier "^" is not supported for None
@@ -273,6 +275,25 @@ b'%c' % (123)
 '{:<10}'.format('16') # OK
 '{:>10}'.format('16') # OK
 '{:^10}'.format('16') # OK
+
+'{!s:<5}'.format(None) # OK
+'{!s:>5}'.format(None) # OK
+'{!s:^5}'.format(None) # OK
+
+f"{None!s:<5}"  # OK
+f"{None!s:>5}"  # OK
+f"{None!s:^5}"  # OK
+
+
+f"{None:<5}"  # E: Alignment format specifier "<" is not supported for None
+f"{None:>5}"  # E: Alignment format specifier ">" is not supported for None
+f"{None:^5}"  # E: Alignment format specifier "^" is not supported for None
+
+my_var: Optional[str] = None
+"{:<2}".format(my_var) # E: Alignment format specifier "<" is not supported for None
+my_var = "test"
+"{:>2}".format(my_var) # OK
+
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallParseErrors]
