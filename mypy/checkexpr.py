@@ -2013,7 +2013,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             #     variables in an expression are inferred at the same time.
             #     (And this is hard, also we need to be careful with lambdas that require
             #     two passes.)
-        if isinstance(ret_type, TypeVarType):
+        if (
+            isinstance(ret_type, TypeVarType)
+            or isinstance(ret_type, UnionType)
+            and all(isinstance(u, TypeVarType) for u in ret_type.items)
+        ):
             # Another special case: the return type is a type variable. If it's unrestricted,
             # we could infer a too general type for the type variable if we use context,
             # and this could result in confusing and spurious type errors elsewhere.
