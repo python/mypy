@@ -1510,3 +1510,19 @@ def mymin(
 def check(paths: Iterable[str], key: Callable[[str], int]) -> Union[str, None]:
     return mymin(paths, key=key, default=None)
 [builtins fixtures/tuple.pyi]
+
+[case testInferenceContextLiteralInstance]
+from collections.abc import Callable, Iterable, Mapping
+from enum import Enum
+from typing import Final, Generic, Literal, TypeVar, Union
+
+class Opt(Enum):
+    MISSING = "MISSING"
+
+MISSING: Final[Literal[Opt.MISSING]] = Opt.MISSING
+_T1 = TypeVar("_T1")
+
+def check(mapping: Mapping[str, _T1]) -> None:
+    res: Union[_T1, Opt] = mapping.get("", MISSING)
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

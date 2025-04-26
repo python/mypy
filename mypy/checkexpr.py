@@ -139,6 +139,7 @@ from mypy.typeops import (
     get_all_type_vars,
     get_type_vars,
     is_literal_type_like,
+    is_literal_type_like_or_singleton,
     make_simplified_union,
     simple_literal_type,
     true_only,
@@ -2042,7 +2043,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             #        expects_literal(identity(3))  # Should type-check
             # TODO: we may want to add similar exception if all arguments are lambdas, since
             # in this case external context is almost everything we have.
-            if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
+            if not is_generic_instance(ctx) and not is_literal_type_like_or_singleton(ctx):
                 return callable.copy_modified()
         args = infer_type_arguments(
             callable.variables, ret_type, erased_ctx, skip_unsatisfied=True
