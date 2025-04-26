@@ -6210,7 +6210,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ):
             if not is_subtype(p_default, e.upper_bound):
                 self.chk.fail("TypeVar default must be a subtype of the bound type", e)
-            if e.values and not any(p_default == value for value in e.values):
+            if e.values and not any(is_same_type(p_default, value) for value in e.values):
                 self.chk.fail("TypeVar default must be one of the constraint types", e)
         return AnyType(TypeOfAny.special_form)
 
