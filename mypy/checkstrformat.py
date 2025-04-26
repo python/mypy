@@ -44,21 +44,18 @@ from mypy.nodes import (
     StrExpr,
     TempNode,
     TupleExpr,
-    Var,
 )
 from mypy.parse import parse
 from mypy.subtypes import is_subtype
 from mypy.typeops import custom_special_method
 from mypy.types import (
     AnyType,
-    DeletedType,
     Instance,
     LiteralType,
     NoneType,
     TupleType,
     Type,
     TypeOfAny,
-    TypeType,
     TypeVarTupleType,
     TypeVarType,
     UnionType,
@@ -457,12 +454,12 @@ class StringFormatterChecker:
             # Perform type check of alignment specifiers on None
             # If spec.format_spec is None then we use "" instead of avoid crashing
             specifier_char = None
-            if spec.non_standard_format_spec == True and isinstance(call.args[-1], StrExpr):
+            if spec.non_standard_format_spec and isinstance(call.args[-1], StrExpr):
                 arg = call.args[-1].value
                 specifier_char = next((c for c in (arg or "") if c in "<>^"), None)
             elif isinstance(spec.format_spec, str):
                 specifier_char = next((c for c in (spec.format_spec or "") if c in "<>^"), None)
-            
+
             if specifier_char:
                 self.msg.fail(
                     (
@@ -473,7 +470,6 @@ class StringFormatterChecker:
                     call,
                     code=codes.STRING_FORMATTING,
                 )
-            
 
     def find_replacements_in_call(self, call: CallExpr, keys: list[str]) -> list[Expression]:
         """Find replacement expression for every specifier in str.format() call.
