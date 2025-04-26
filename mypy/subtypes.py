@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
-from itertools import product
 from typing import Any, Callable, Final, TypeVar, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
@@ -35,7 +34,6 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.state import state
-from mypy.typeops import make_simplified_union
 from mypy.types import (
     MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
@@ -286,6 +284,21 @@ def is_same_type(
     )
 
 
+# This is a helper function used to check for recursive type of distributed tuple
+def structurally_recursive(typ: Type, seen: set[Type] | None = None) -> bool:
+    if seen is None:
+        seen = set()
+    typ = get_proper_type(typ)
+    if typ in seen:
+        return True
+    seen.add(typ)
+    if isinstance(typ, UnionType):
+        return any(structurally_recursive(item, seen.copy()) for item in typ.items)
+    if isinstance(typ, TupleType):
+        return any(structurally_recursive(item, seen.copy()) for item in typ.items)
+    return False
+
+
 # This is a common entry point for subtyping checks (both proper and non-proper).
 # Never call this private function directly, use the public versions.
 def _is_subtype(
@@ -308,22 +321,29 @@ def _is_subtype(
         # ErasedType as we do for non-proper subtyping.
         return True
     if isinstance(left, TupleType) and isinstance(right, UnionType):
-        items = [get_proper_type(item) for item in left.items]
-        if any(isinstance(item, UnionType) for item in items):
-            expanded = []
-            for item in items:
-                if isinstance(item, UnionType):
-                    expanded.append(item.items)
-                else:
-                    expanded.append([item])
-            distributed = []
-            for combo in product(*expanded):
-                fb = left.partial_fallback
-                if hasattr(left, "fallback") and left.fallback is not None:
-                    fb = left.fallback
-                distributed.append(TupleType(list(combo), fallback=fb))
-            simplified = make_simplified_union(distributed)
-            return _is_subtype(simplified, right, subtype_context, proper_subtype=False)
+        # check only if not recursive type because if recursive type,
+        # test run into maximum recursive depth reached
+        if not structurally_recursive(left) and not structurally_recursive(right):
+            fallback = left.partial_fallback
+            tuple_items = left.items
+            if hasattr(left, "fallback") and left.fallback is not None:
+                fallback = left.fallback
+            for i in range(len(tuple_items)):
+                uitems = tuple_items[i]
+                uitems_type = get_proper_type(uitems)
+                if isinstance(uitems_type, UnionType):
+                    new_tuples = [
+                        TupleType(
+                            tuple_items[:i] + [uitem] + tuple_items[i + 1 :], fallback=fallback
+                        )
+                        for uitem in uitems_type.items
+                    ]
+                    result = [
+                        _is_subtype(t, right, subtype_context, proper_subtype=False)
+                        for t in new_tuples
+                    ]
+                    inverted_list = [not item for item in result]
+                    return not any(inverted_list)
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
         # Normally, when 'left' is not itself a union, the only way
         # 'left' can be a subtype of the union 'right' is if it is a
