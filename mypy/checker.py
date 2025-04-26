@@ -174,6 +174,7 @@ from mypy.types import (
     ANY_STRATEGY,
     MYPYC_NATIVE_INT_NAMES,
     OVERLOAD_NAMES,
+    PROPERTY_DECORATOR_NAMES,
     AnyType,
     BoolTypeQuery,
     CallableType,
@@ -2317,6 +2318,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 defn.name, name, base.name, context, original=original_type, override=typ
             )
         return False
+
+    def get_property_instance(self, method: Decorator) -> Instance | None:
+        property_deco_name = next(
+            (
+                name
+                for d in method.original_decorators
+                for name in PROPERTY_DECORATOR_NAMES
+                if refers_to_fullname(d, name)
+            ),
+            None,
+        )
+        if property_deco_name is not None:
+            return self.named_type(property_deco_name)
+        return None
 
     def get_op_other_domain(self, tp: FunctionLike) -> Type | None:
         if isinstance(tp, CallableType):
