@@ -1091,6 +1091,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TypeType):
             return self._is_subtype(left.item, right.item)
+        if isinstance(right, Overloaded) and right.is_type_obj():
+            # Same as in other direction: if it's a constructor callable, all
+            # items should belong to the same class' constructor, so it's enough
+            # to check one of them.
+            return self._is_subtype(left, right.items[0])
         if isinstance(right, CallableType):
             if self.proper_subtype and not right.is_type_obj():
                 # We can't accept `Type[X]` as a *proper* subtype of Callable[P, X]
