@@ -1005,27 +1005,6 @@ def is_literal_type_like(t: Type | None) -> bool:
         return False
 
 
-def is_literal_type_like_or_singleton(t: Type | None) -> bool:
-    """Returns 'true' if the given type context is potentially either a LiteralType,
-    a Union of LiteralType, a singleton (or a union thereof), or something similar.
-    """
-    t = get_proper_type(t)
-    if t is None:
-        return False
-    elif isinstance(t, LiteralType):
-        return True
-    elif t.is_singleton_type():
-        return True
-    elif isinstance(t, UnionType):
-        return any(is_literal_type_like_or_singleton(item) for item in t.items)
-    elif isinstance(t, TypeVarType):
-        return is_literal_type_like_or_singleton(t.upper_bound) or any(
-            is_literal_type_like_or_singleton(item) for item in t.values
-        )
-    else:
-        return False
-
-
 def is_singleton_type(typ: Type) -> bool:
     """Returns 'true' if this type is a "singleton type" -- if there exists
     exactly only one runtime value associated with this type.
