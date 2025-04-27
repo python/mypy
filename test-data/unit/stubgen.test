@@ -272,6 +272,20 @@ class C:
     x: int
     def __init__(self) -> None: ...
 
+[case testSelfAndClassBodyAssignment_semanal]
+x = 1
+class C:
+    x = 1
+    def __init__(self):
+        self.x = 1
+        self.x = 1
+[out]
+x: int
+
+class C:
+    x: int
+    def __init__(self) -> None: ...
+
 [case testEmptyClass]
 class A: ...
 [out]
@@ -1394,6 +1408,22 @@ class A:
     def __init__(self, a: Incomplete | None = None) -> None: ...
     def method(self, a: Incomplete | None = None) -> None: ...
 
+[case testInferOptionalOnlyFunc_semanal]
+class A:
+    x = None
+    def __init__(self, a=None):
+        self.x = []
+    def method(self, a=None):
+        self.x = []
+[out]
+from _typeshed import Incomplete
+
+class A:
+    x: Incomplete
+    def __init__(self, a: Incomplete | None = None) -> None: ...
+    def method(self, a: Incomplete | None = None) -> None: ...
+
+
 [case testAnnotationImportsFrom]
 import foo
 from collections import defaultdict
@@ -2332,6 +2362,147 @@ from base import Base
 class C(Base, metaclass=abc.ABCMeta):
     @abstractmethod
     def other(self): ...
+
+[case testInferredAttribute_semanal]
+from typing import Any
+
+class Foo:
+    def __init__(self, name: str, timeout=0, any: Any = None, incomplete=None) -> None:
+        self.name = name
+        self.timeout = timeout
+        self.inferred_any = any
+        self.explicit_any: Any = any
+        self.incomplete = incomplete
+        self.cache: dict[str, int] = {}
+
+[out]
+from _typeshed import Incomplete
+from typing import Any
+
+class Foo:
+    name: str
+    timeout: Incomplete
+    inferred_any: Incomplete
+    explicit_any: Any
+    incomplete: Incomplete
+    cache: dict[str, int]
+    def __init__(self, name: str, timeout: int = 0, any: Any = None, incomplete: Incomplete | None = None) -> None: ...
+
+[case testInferredGenericAttribute_semanal]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class Foo(Generic[T]):
+    def __init__(self, things: list[T]) -> None:
+        self.things = things
+
+[out]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class Foo(Generic[T]):
+    things: list[T]
+    def __init__(self, things: list[T]) -> None: ...
+
+[case testInferredTypedDict_semanal]
+from typing import TypedDict
+
+class Context(TypedDict, total=False):
+    name: str
+    aliases: dict[str, str]
+    tools: set[str]
+
+class A:
+    def __init__(self):
+        self.context: Context | None = None
+
+[out]
+from typing import TypedDict
+
+class Context(TypedDict, total=False):
+    name: str
+    aliases: dict[str, str]
+    tools: set[str]
+
+class A:
+    context: TypedDict('main.Context', {'name': str, 'aliases': dict[str, str], 'tools': set[str]}) | None
+    def __init__(self) -> None: ...
+
+[case testInferredComplexAlias_semanal]
+# modules: main a
+
+import collections
+from a import valid, B
+
+def func() -> int:
+    return 2
+
+aliased_func = func
+int_value = 1
+
+class A:
+    cls_var = valid
+
+    def __init__(self, arg1: str, arg2: list[B], arg3: list[str], arg4: collections.defaultdict[str, collections.deque[int]]) -> None:
+        self.arg1 = arg1
+        self.arg2 = arg2
+        self.arg3 = arg3
+        self.arg4 = arg4
+        self.func = func
+
+    def meth(self) -> None:
+        func_value = int_value
+
+    alias_meth = meth
+    alias_func = func
+    alias_alias_func = aliased_func
+    int_value = int_value
+
+class C:
+    def __init__(self, arg: A):
+        self.arg = arg
+
+[file a.py]
+valid : list[int] = [1, 2, 3]
+
+class B:
+    pass
+
+
+[out]
+# main.pyi
+import a
+import collections
+from a import B, valid
+from typing import Callable
+
+def func() -> int: ...
+aliased_func = func
+int_value: int
+
+class A:
+    cls_var = valid
+    arg1: str
+    arg2: list[a.B]
+    arg3: list[str]
+    arg4: collections.defaultdict[str, collections.deque[int]]
+    func: Callable[[], int]
+    def __init__(self, arg1: str, arg2: list[B], arg3: list[str], arg4: collections.defaultdict[str, collections.deque[int]]) -> None: ...
+    def meth(self) -> None: ...
+    alias_meth = meth
+    alias_func = func
+    alias_alias_func = aliased_func
+    int_value = int_value
+
+class C:
+    arg: A
+    def __init__(self, arg: A) -> None: ...
+# a.pyi
+valid: list[int]
+
+class B: ...
 
 [case testInvalidNumberOfArgsInAnnotation]
 def f(x):

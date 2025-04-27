@@ -3462,18 +3462,21 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 return f"{tuple_name}[{s}, fallback={t.partial_fallback.accept(self)}]"
         return f"{tuple_name}[{s}]"
 
+    def typeddict_item_str(self, t: TypedDictType, name: str, typ: str) -> str:
+        modifier = ""
+        if name not in t.required_keys:
+            modifier += "?"
+        if name in t.readonly_keys:
+            modifier += "="
+        return f"{name!r}{modifier}: {typ}"
+
     def visit_typeddict_type(self, t: TypedDictType, /) -> str:
-        def item_str(name: str, typ: str) -> str:
-            modifier = ""
-            if name not in t.required_keys:
-                modifier += "?"
-            if name in t.readonly_keys:
-                modifier += "="
-            return f"{name!r}{modifier}: {typ}"
 
         s = (
             "{"
-            + ", ".join(item_str(name, typ.accept(self)) for name, typ in t.items.items())
+            + ", ".join(
+                self.typeddict_item_str(t, name, typ.accept(self)) for name, typ in t.items.items()
+            )
             + "}"
         )
         prefix = ""

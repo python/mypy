@@ -476,8 +476,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         analyzed: bool = False,
         export_less: bool = False,
         include_docstrings: bool = False,
+        known_modules: list[str] | None = None,
     ) -> None:
-        super().__init__(_all_, include_private, export_less, include_docstrings)
+        super().__init__(_all_, include_private, export_less, include_docstrings, known_modules)
         self._decorators: list[str] = []
         # Stack of defined variables (per scope).
         self._vars: list[list[str]] = [[]]
@@ -1233,7 +1234,10 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             return None
         self._vars[-1].append(lvalue)
         if annotation is not None:
-            typename = self.print_annotation(annotation)
+            if isinstance(annotation, UnboundType):
+                typename = self.print_annotation(annotation)
+            else:
+                typename = self.print_annotation(annotation, self.known_modules)
             if (
                 isinstance(annotation, UnboundType)
                 and not annotation.args
@@ -1460,7 +1464,14 @@ class SelfTraverser(mypy.traverser.TraverserVisitor):
             and isinstance(lvalue.expr, NameExpr)
             and lvalue.expr.name == "self"
         ):
-            self.results.append((lvalue.name, o.rvalue, o.unanalyzed_type))
+            # lvalue.node might be populated with an inferred type
+            if isinstance(lvalue.node, Var) and (
+                lvalue.node.is_ready or not isinstance(get_proper_type(lvalue.node.type), AnyType)
+            ):
+                annotation = lvalue.node.type
+            else:
+                annotation = o.unanalyzed_type
+            self.results.append((lvalue.name, o.rvalue, annotation))
 
 
 def find_self_initializers(fdef: FuncBase) -> list[tuple[str, Expression, Type | None]]:
@@ -1652,7 +1663,7 @@ def mypy_options(stubgen_options: Options) -> MypyOptions:
     options.follow_imports = "skip"
     options.incremental = False
     options.ignore_errors = True
-    options.semantic_analysis_only = True
+    options.semantic_analysis_only = False
     options.python_version = stubgen_options.pyversion
     options.show_traceback = True
     options.transform_source = remove_misplaced_type_comments
@@ -1729,7 +1740,7 @@ def generate_stub_for_py_module(
 ) -> None:
     """Use analysed (or just parsed) AST to generate type stub for single file.
 
-    If directory for target doesn't exist it will created. Existing stub
+    If directory for target doesn't exist it will be created. Existing stub
     will be overwritten.
     """
     if inspect:
@@ -1748,6 +1759,7 @@ def generate_stub_for_py_module(
     else:
         gen = ASTStubGenerator(
             mod.runtime_all,
+            known_modules=all_modules,
             include_private=include_private,
             analyzed=not parse_only,
             export_less=export_less,
