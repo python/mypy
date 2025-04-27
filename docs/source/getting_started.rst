@@ -13,20 +13,45 @@ If you're unfamiliar with the concepts of static and dynamic type checking,
 be sure to read this chapter carefully, as the rest of the documentation
 may not make much sense otherwise.
 
-Installing and running mypy
-***************************
+Installing mypy
+***************
 
-Mypy requires Python 3.9 or later to run.  You can install mypy using pip:
+Mypy requires Python 3.9 or later to run, and can be installed through either pip or uv.
+
+With pip
+~~~~~~~~
+
+You can install mypy with pip:
 
 .. code-block:: shell
 
     $ python3 -m pip install mypy
 
-Once mypy is installed, run it by using the ``mypy`` tool:
+With uv
+~~~~~~~
+
+You can also install mypy with uv:
+
+.. code-block:: shell
+
+    $ uv add mypy
+
+Running mypy
+************
+
+Once mypy is installed, run it by using the ``mypy`` tool. The command that you use to run mypy depends on wether you installed it with pip or uv.
+
+For pip, use:
 
 .. code-block:: shell
 
     $ mypy program.py
+
+For uv, use:
+
+.. code-block:: shell
+
+    $ uv run mypy program.py
 
 This command makes mypy *type check* your ``program.py`` file and print
 out any errors it finds. Mypy will type check your code *statically*: this
