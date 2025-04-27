@@ -2017,7 +2017,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if (
             isinstance(proper_ret, TypeVarType)
             or isinstance(proper_ret, UnionType)
-            and any(isinstance(get_proper_type(u), TypeVarType) for u in proper_ret.items)
+            and all(isinstance(get_proper_type(u), TypeVarType) for u in proper_ret.items)
         ):
             # Another special case: the return type is a type variable. If it's unrestricted,
             # we could infer a too general type for the type variable if we use context,
