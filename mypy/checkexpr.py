@@ -1452,6 +1452,38 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         object_type: Type | None,
         member: str | None = None,
     ) -> Type:
+
+        proper_callee = get_proper_type(callee_type)
+
+        is_constructor_call = False
+        if isinstance(e.callee, RefExpr):
+            node = e.callee.node
+            if node is not None and hasattr(node, "name"):
+                is_constructor_call = node.name == "__init__"
+            elif callable_name is None:
+                # direct class call without member name
+                is_constructor_call = True
+
+        object_type = get_proper_type(object_type)
+        if (
+            isinstance(proper_callee, CallableType)
+            and isinstance(object_type, Instance)
+            and is_constructor_call
+        ):
+            target_name = object_type.type.name
+            arg_names_set = set(e.arg_names or [])
+
+            for name, kind in zip(proper_callee.arg_names, proper_callee.arg_kinds):
+                if name is not None and kind in (ARG_NAMED, ARG_POS):
+                    if name not in arg_names_set:
+                        if target_name == "misc":
+                            continue  # Skip error for miscellaneous/unknown classes
+
+                        """ self.msg.fail(
+                            f'Missing required named argument "{name}" for {target_name}',
+                            e,
+                        )"""
+
         """Type check call expression.
 
         The callee_type should be used as the type of callee expression. In particular,
@@ -1466,7 +1498,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if callable_name is None and member is not None:
             assert object_type is not None
             callable_name = self.method_fullname(object_type, member)
-        object_type = get_proper_type(object_type)
+        # object_type = get_proper_type(object_type) redefined earlier in the code
         if callable_name:
             # Try to refine the call signature using plugin hooks before checking the call.
             callee_type = self.transform_callee_type(
