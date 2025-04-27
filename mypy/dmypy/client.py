@@ -138,6 +138,20 @@ p.add_argument(
 )
 p.add_argument("--remove", metavar="FILE", nargs="*", help="Files to remove from the run")
 
+
+watch_parser = p = subparsers.add_parser("watch", help="Check on a set interval (requires daemon)")
+p.add_argument("--log-file", metavar="FILE", type=str, help="Direct daemon stdout/stderr to FILE")
+p.add_argument("files", metavar="FILE", nargs="+", help="File (or directory) to check")
+p.add_argument(
+    "--interval", metavar="INTERVAL", default=1, type=int, help="Time between checks (in seconds)"
+)
+p.add_argument(
+    "--export-types",
+    action="store_true",
+    help="Store types of all expressions in a shared location (useful for inspections)",
+)
+
+
 suggest_parser = p = subparsers.add_parser(
     "suggest", help="Suggest a signature or show call sites for a specific function"
 )
@@ -599,7 +613,7 @@ def show_stats(response: Mapping[str, object]) -> None:
             # Special case text output to display just 40 characters of text
             value = repr(value)[1:-1]
             if len(value) > 50:
-                value = f"{value[:40]} ... {len(value)-40} more characters"
+                value = f"{value[:40]} ... {len(value) - 40} more characters"
             print("%-24s: %s" % (key, value))
             continue
         print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
@@ -609,6 +623,35 @@ def show_stats(response: Mapping[str, object]) -> None:
 def do_hang(args: argparse.Namespace) -> None:
     """Hang for 100 seconds, as a debug hack."""
     print(request(args.status_file, "hang", timeout=1))
+
+
+@action(watch_parser)
+def do_watch(args: argparse.Namespace) -> None:
+    """Recheck the same set of files every few seconds"""
+    response = request(args.status_file, "check", files=args.files, export_types=args.export_types)
+    os.system("cls" if os.name == "nt" else "clear")
+    previous_output = response["out"]
+    previous_err = response["err"]
+    sys.stdout.write(previous_output)
+    sys.stdout.flush()
+    sys.stderr.write(previous_err)
+    sys.stderr.flush()
+    while True:
+        try:
+            time.sleep(args.interval)
+            response = request(args.status_file, "recheck", export_types=args.export_types)
+            output = response["out"]
+            err = response["err"]
+            if output != previous_output or err != previous_err:
+                os.system("cls" if os.name == "nt" else "clear")
+                sys.stdout.write(output)
+                sys.stdout.flush()
+                sys.stderr.write(err)
+                sys.stderr.flush()
+                previous_output = output
+                previous_err = err
+        except KeyboardInterrupt:
+            break
 
 
 @action(daemon_parser)
