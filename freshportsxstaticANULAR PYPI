@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XD83WKV7CC"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-XD83WKV7CC');
+</script>
+	<title>FreshPorts -- devel/py-XStatic-Angular-FileUpload: File Upload module for the AngularJS (angular-file-upload)</title>
+	<link rel="stylesheet" href="/css/freshports.css?v=a112636a" type="text/css">
+
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+	<meta name="description" content="This port is the static file package for angular-file-upload JavaScript library
+that provides a Angular File Upload support for the AngularJS framework.
+
+It uses the XStatic packaging standard, aimed to bring an ability to
+install javascript libraries via easy_install or pip utility.
+
+WWW: https://pypi.org/project/XStatic-Angular-FileUpload/">
+	<meta name="keywords"    content="FreeBSD, index, applications, ports">
+
+	<link rel="SHORTCUT ICON" href="/favicon.ico">
+
+	<link rel="alternate" type="application/rss+xml" title="FreshPorts - The Place For Ports" href="https://www.freshports.org/backend/rss2.0.php">
+
+	<link rel="search" type="application/opensearchdescription+xml" href="https://www.freshports.org/opensearch.php" title="FreshPorts">
+
+	<link rel="apple-touch-icon" sizes="57x57" href="/images/apple-icon-57x57.png">
+	<link rel="apple-touch-icon" sizes="60x60" href="/images/apple-icon-60x60.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="/images/apple-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="76x76" href="/images/apple-icon-76x76.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="/images/apple-icon-114x114.png">
+	<link rel="apple-touch-icon" sizes="120x120" href="/images/apple-icon-120x120.png">
+	<link rel="apple-touch-icon" sizes="144x144" href="/images/apple-icon-144x144.png">
+	<link rel="apple-touch-icon" sizes="152x152" href="/images/apple-icon-152x152.png">
+	<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-icon-180x180.png">
+	<link rel="icon" type="image/png" sizes="192x192"  href="/images/android-icon-192x192.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="96x96" href="/images/favicon-96x96.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png">
+	<link rel="manifest" href="/manifest.json">
+	<meta name="msapplication-TileColor" content="#ffffff">
+	<meta name="msapplication-TileImage" content="/images/ms-icon-144x144.png">
+	<meta name="theme-color" content="#ffffff">
+	<meta name="robots" content="nofollow">
+</head>
+
+<BODY>
+<script>
+var sheet = document.createElement('style')
+sheet.innerHTML = ".more {display: none;}";
+document.body.appendChild(sheet);
+</script>
+<br>
+<table class="fullwidth borderless">
+<tr>
+	<td><span class="logo"><a href="/"><img id="fp-logo" src="/images/freshports.jpg" alt="FreshPorts -- The Place For Ports" title="FreshPorts -- The Place For Ports" width="512" height="110"></a></span><img src="/images/notbug.gif" width="56" height="50" alt="notbug" title="notbug"><span class="amazon">As an Amazon Associate I earn from qualifying purchases.<br>Want a good read? Try <a target="_blank" rel="noopener noreferrer" href="https://www.amazon.com/gp/product/B07PVTBWX7/ref=as_li_tl?ie=UTF8&amp;camp=1789&amp;creative=9325&amp;creativeASIN=B07PVTBWX7&amp;linkCode=as2&amp;tag=thfrdi0c-20&amp;linkId=a5cb3ac309f59900d44401e24a169f05">FreeBSD Mastery: Jails (IT Mastery Book 15)</a></span><span class="amazon">Want a good monitor light? See my <a href="https://dan.langille.org/2023/12/30/blatant-self-interest-monitor-light/">photos</a></span><span class="timezone">All times are UTC</span></td>	<td class="sans nowrap vbottom hcentered"><img src="/images/ukraine.png" width="133" height="100" alt="Ukraine" title="Ukraine"></td>
+</tr>
+</table>
+<table class="fullwidth borderless" class="cellpadding4">
+<tr>
+<td><h2>Newsfeed changes</h2>
+
+<p>The news feed page[s] were not laid out well. Two pages, disjointed information, hard to figure out how to use the optional parameters... </p>
+
+<p>Thankfully, someone told me.</p>
+
+<p>The new page is ready for your review. Please compare these two:<p>
+
+<ul>
+<li>new page: <a href="https://dev.freshports.org/backend/">https://dev.freshports.org/backend/</a></li>
+<li>old page: <a href="https://dev.freshports.org/backend/newsfeeds.php">https://dev.freshports.org/backend/newsfeeds.php</a></li>
+</ul>
+
+You may also be interested in the <a href="https://github.com/FreshPorts/freshports/issues/621#issuecomment-2767704194">Github issue</a>.
+</td></tr>
+</table>
+
+
+	<table class="fullwidth borderless">
+
+	<tr><td class="content">
+
+			<table class="maincontent fullwidth bordered">
+	<tr>
+		<td class="accent" colspan="1"><span>Port details</span></td>
+	</tr>
+
+	<tr><td class="content">
+
+			<dl class="port-description">
+<dt> <span class="element-details">py-XStatic-Angular-FileUpload</span> <span class="fp_description_short">File Upload module for the AngularJS (angular-file-upload)</span><br>
+</dt>
+<dt><b> <a href="#history">12.0.4.0_1</a></b> <a href="/devel/" title="The category for this port">devel</a> <a href="/faq.php#deleted"><img class="icon" src="/images/deleted.gif" alt="Deleted" title="Deleted" width="21" height="18"></a>
+ <a href="/faq.php#watchlistcount"><img class="icon" src="/images/sum.gif" alt="on this many watch lists" title="on this many watch lists" width="8" height="11"></a>=0 <a href="/search.php?stype=depends_all&amp;method=match&amp;query=devel/py-XStatic-Angular-FileUpload"><img class="icon" src="/images/search.jpg" alt="search for ports that depend on this port" title="search for ports that depend on this port" width="17" height="17"></a> <a href="https://bugs.freebsd.org/bugzilla/buglist.cgi?component=Individual%20Port%28s%29&amp;list_id=28394&amp;product=Ports%20%26%20Packages&amp;query_format=advanced&amp;resolution=---&amp;short_desc=devel%2Fpy-XStatic-Angular-FileUpload&amp;short_desc_type=allwordssubstr"  rel="nofollow noopener noreferrer"><img class="icon" src="/images/bug.gif" alt="Find issues related to this port" title="Find issues related to this port" width="16" height="16"></a> <a href="https://bugs.freebsd.org/bugzilla/enter_bug.cgi?component=Individual%20Port%28s%29&amp;product=Ports%20%26%20Packages&amp;short_desc=devel%2Fpy-XStatic-Angular-FileUpload"  rel="noopener noreferrer nofollow"><img class="icon" src="/images/bug_report.gif" alt="Report an issue related to this port" title="Report an issue related to this port" width="16" height="16"></a> <a href="https://repology.org/tools/project-by?repo=freebsd&amp;name_type=srcname&amp;target_page=project_versions&amp;name=devel/py-XStatic-Angular-FileUpload" rel="noopener noreferrer"><img class="icon" src="/images/repology.png" alt="View this port on Repology." title="View this port on Repology." width="16" height="16"></a> <a href="https://portsfallout.com/fallout?port=devel%2Fpy-XStatic-Angular-FileUpload%24" rel="noopener noreferrer"><img class="icon fallout" src="/images/fallout.svg" alt="pkg-fallout" title="pkg-fallout" width="16" height="16"></a> <span class="tooltip">12.0.4.0_1<span class="tooltiptext tooltip-top">Version of this port present on the latest quarterly branch.</span></span></dt><dt class="nomaintainer">There is no maintainer for this port.</dt><dd>Any concerns regarding this port should be directed to the FreeBSD Ports mailing list via <a href="mailto:ports@FreeBSD.org?subject=FreeBSD%20Port:%20devel/py-XStatic-Angular-FileUpload" title="email the FreeBSD Ports mailing list">ports@FreeBSD.org</a> <a href="/search.php?stype=maintainer&amp;method=exact&amp;query=ports%40FreeBSD.org"><img class="icon" src="/images/search.jpg" alt="search for ports maintained by this maintainer" title="search for ports maintained by this maintainer" width="17" height="17"></a></dd><dt><b>Port Added:</b> 2016-12-18 11:36:49</dt>
+<dt><b>Last Update:</b> 2020-12-05 14:01:19</dt>
+<dt><b>SVN Revision:</b> <a href="https://svnweb.freebsd.org/changeset/ports/557063" rel="noopener noreferrer">557063</a></dt>
+<dt><b>Also Listed In:</b> <a href="/python/">python</a></dt>
+<dt><b>License:</b> not specified in port</dt>
+<dt class="www">WWW: </dt><dd class="www-description"><a href="https://pypi.org/project/XStatic-Angular-FileUpload/" title="Homepage for this port">https://pypi.org/project/XStatic-Angular-FileUpload/</a></dd><dt class="description" id="description">Description:</dt><dd class="port-description">This port is the static file package for angular-file-upload JavaScript library
+that provides a Angular File Upload support for the AngularJS framework.
+
+It uses the XStatic packaging standard, aimed to bring an ability to
+install javascript libraries via easy_install or pip utility.
+
+WWW: <a href="https://pypi.org/project/XStatic-Angular-FileUpload/">https://pypi.org/project/XStatic-Angular-FileUpload/</a></dd><dt><a href="https://pypi.org/project/XStatic-Angular-FileUpload/" title="Homepage for this port"><img class="icon" src="/images/home.svg" alt="Homepage" title="Homepage" width="24" height="24"></a>&nbsp;&nbsp;&nbsp;&nbsp;<del>cgit</del> &#166; <del>GitHub</del> &#166; <del>GitHub</del> &#166; <del>GitLab</del> &#166; <a href="https://svnweb.freebsd.org/ports/head/devel/py-XStatic-Angular-FileUpload/?pathrev=557062"><img class="icon" src="/images/subversion.png" alt="SVNWeb" title="SVNWeb" width="32" height="32"></a></dt><br>
+<dt id="man" class="man"><b>Manual pages:</b></dt>
+<dd>FreshPorts has no man page information for this port.</dd>
+<dt class="pkg-plist"><a id="pkg-plist"><b>pkg-plist:</b></a> as obtained via: <code class="code">make generate-plist</code></dt><dd>There is no configure plist information for this port.</dd><dt class="pkg-plist"><b>Dependency lines</b>:</dt><dd class="pkg-plist">
+<ul class="pkg-plist"><li class="file">${PYTHON_PKGNAMEPREFIX}XStatic-Angular-FileUpload>0:devel/py-XStatic-Angular-FileUpload@${PY_FLAVOR}</li></ul></dd><dt>No installation instructions:</dt><dd>This port has been deleted.</dd><dt class="pkgname"><b>PKGNAME:</b> <span class="pkgname">py37-XStatic-Angular-FileUpload</span></dt><dt class="flavors" id="flavors"><b>Package flavors</b> (<span class="file">&lt;flavor&gt;: &lt;package&gt;</span>)</dt><dd><ul><li><span class="file">py37: py37-XStatic-Angular-FileUpload</span></li>
+<li><span class="file">py27: py27-XStatic-Angular-FileUpload</span></li>
+</ul></dd><dt id="distinfo"><b>distinfo:</b></dt><dd class="distinfo">TIMESTAMP = 1481111873
+SHA256 (XStatic-Angular-FileUpload-12.0.4.0.tar.gz) = 68e66efc4f2ed81438553a54646d5cc67487b05764c0003ff25ae5beb8dae21f
+SIZE (XStatic-Angular-FileUpload-12.0.4.0.tar.gz) = 188575</dd></dl>
+<dl class="port-description">
+<dt id="packages"><hr><b>No package information for this port in our database</b></dt><dd>Sometimes this happens. Not all ports have packages. Perhaps there is a build error. Check the fallout link: <a href="https://portsfallout.com/fallout?port=devel%2Fpy-XStatic-Angular-FileUpload%24" rel="noopener noreferrer"><img class="icon fallout" src="/images/fallout.svg" alt="pkg-fallout" title="pkg-fallout" width="16" height="16"></a></dd></dl>
+<dl class="port-description">
+<dt class="h2" id="dependencies">Dependencies</dt><dt class="notice">NOTE: FreshPorts displays only information on required and default dependencies.  Optional dependencies are not covered.</dt><dt class="required" id="requiredbuild">Build dependencies:</dt><dd>
+<ol class="required" id="requiredtobuild"><li><span class="port">py37-XStatic&gt;=0 : </span><a class="port" href="/devel/py-XStatic/">devel/py-XStatic@py37</a></li><li><span class="port">py37-setuptools&gt;0 : </span><a class="port" href="/devel/py-setuptools/">devel/py-setuptools@py37</a></li><li><span class="port">python3.7 : </span><a class="port" href="/lang/python37/">lang/python37</a></li>
+</ol></dd>
+<dt class="required" id="requiredrun">Runtime dependencies:</dt><dd>
+<ol class="required" id="requiredtorun"><li><span class="port">py37-XStatic&gt;=0 : </span><a class="port" href="/devel/py-XStatic/">devel/py-XStatic@py37</a></li><li><span class="port">py37-setuptools&gt;0 : </span><a class="port" href="/devel/py-setuptools/">devel/py-setuptools@py37</a></li><li><span class="port">python3.7 : </span><a class="port" href="/lang/python37/">lang/python37</a></li>
+</ol></dd>
+<dt class="h3" id="requiredby">There are no ports dependent upon this port</dt><dt id="config"><hr>
+<b>Configuration Options</b>:</dt>
+<dd class="config">     No options to configure</dd><dt id="options"><b>Options name</b>:</dt>
+<dd class="options">N/A</dd><dt id="uses"><b>USES:</b></dt>
+<dd class="uses">python</dd>
+<dt id="message"><b>FreshPorts was unable to extract/find any pkg message</b><br></dt><dt id="sites"><b>Master Sites:</b></dt>
+<dd><a href="#" id="mastersites-Extra-show" class="showLink" onclick="showHide('mastersites-Extra');return false;">Expand this list (2 items)</a><dd id="mastersites-Extra" class="more mastersites"><a href="#" id="mastersites-Extra-hide" class="hideLink" onclick="showHide('mastersites-Extra');return false;">Collapse this list.</a><ol class="mastersites" id="mastersites">
+<li><a href="https://files.pythonhosted.org/packages/source/X/XStatic-Angular-FileUpload/">https://files.pythonhosted.org/packages/source/X/XStatic-Angular-FileUpload/</a></li>
+<li><a href="https://pypi.org/packages/source/X/XStatic-Angular-FileUpload/">https://pypi.org/packages/source/X/XStatic-Angular-FileUpload/</a></li>
+</ol><a href="#" class="hideLink" onclick="showHide('mastersites-Extra');return false;">Collapse this list.</a></dd></dl>
+</TD></tr>
+</table>
+
+<p id="history">Number of commits found: 8</p><table class="commit-list fullwidth bordered">
+<tr>
+<td class="accent" colspan="3"><span>Commit History - (may be incomplete: for full details, see links to repositories near top of page)</span></td>
+<tr><th>Commit</th><th>Credits</th><th>Log message</th></tr>
+<tr><td class="commit-details"><span class="element-details">12.0.4.0_1</span><br>05 Dec 2020 14:01:19<br><a href="https://svnweb.freebsd.org/changeset/ports/557063" rel="noopener noreferrer"><img class="icon" src="/images/subversion.png" alt="Revision:557063" title="Revision:557063" width="32" height="32"></a><a href="https://www.freebsd.org/cgi/mid.cgi?db=mid&amp;id=202012051401.0B5E1JK9004450@repo.freebsd.org" rel="noopener noreferrer"><img class="icon" src="/images/envelope10.gif" alt="Original commit" title="Original commit message" width="32" height="18"></a>&nbsp;<a href="/commit.php?category=devel&amp;port=py-XStatic-Angular-FileUpload&amp;files=yes&amp;message_id=202012051401.0B5E1JK9004450@repo.freebsd.org"><img class="icon" src="/images/logs.gif" alt="files touched by this commit" title="files touched by this commit" width="17" height="20"></a></td>
+    <td class="commit-details"><a href="mailto:sunpoet@FreeBSD.org" title="committed by this person">sunpoet</a>&nbsp;<a href="/search.php?stype=committer&amp;method=exact&amp;query=sunpoet"><img class="icon" src="/images/search.jpg" alt="search for other commits by this committer" title="search for other commits by this committer" width="17" height="17"></a></td>
+    <td class="commit-details"><pre class="description">Move devel/py-XStatic* to devel/py-xstatic*
+
+- Move devel/py-XStatic to devel/py-xstatic
+- Move devel/py-XStatic-Angular to devel/py-xstatic-angular
+- Move devel/py-XStatic-Angular-Bootstrap to devel/py-xstatic-angular-bootstrap
+- Move devel/py-XStatic-Angular-FileUpload to
+devel/py-xstatic-angular-fileupload
+- Move devel/py-XStatic-Angular-Gettext to devel/py-xstatic-angular-gettext
+- Move devel/py-XStatic-Angular-Schema-Form to
+devel/py-xstatic-angular-schema-form
+- Move devel/py-XStatic-Angular-lrdragndrop to
+devel/py-xstatic-angular-lrdragndrop
+- Move devel/py-XStatic-Bootstrap-Datepicker to
+devel/py-xstatic-bootstrap-datepicker
+- Move devel/py-XStatic-Bootstrap-SCSS to devel/py-xstatic-bootstrap-scss
+- Move devel/py-XStatic-D3 to devel/py-xstatic-d3
+- Move devel/py-XStatic-Font-Awesome to devel/py-xstatic-font-awesome
+- Move devel/py-XStatic-Hogan to devel/py-xstatic-hogan
+- Move devel/py-XStatic-JQuery-Migrate to devel/py-xstatic-jquery-migrate</pre>(Only the first 15 lines of the commit message are shown above <a href="/commit.php?message_id=202012051401.0B5E1JK9004450@repo.freebsd.org"><img class="icon" src="/images/play.gif" alt="View all of this commit message" title="View all of this commit message" width="13" height="13"></a>)</td>
+</tr>
+<tr><td class="commit-details"><span class="element-details">12.0.4.0_1</span><br>12 Sep 2020 12:55:04<br><a href="https://svnweb.freebsd.org/changeset/ports/548357" rel="noopener noreferrer"><img class="icon" src="/images/subversion.png" alt="Revision:548357" title="Revision:548357" width="32" height="32"></a><a href="https://www.freebsd.org/cgi/mid.cgi?db=mid&amp;id=202009121255.08CCt4tF036369@repo.freebsd.org" rel="noopener noreferrer"><img class="icon" src="/images/envelope10.gif" alt="Original commit" title="Original commit message" width="32" height="18"></a>&nbsp;<a href="/commit.php?category=devel&amp;port=py-XStatic-Angular-FileUpload&amp;files=yes&amp;message_id=202009121255.08CCt4tF036369@repo.freebsd.org"><img class="icon" src="/images/logs.gif" alt="files touched by this commit" title="files touched by this commit" width="17" height="20"></a></td>
+    <td class="commit-details"><a href="mailto:zi@FreeBSD.org" title="committed by this person">zi</a>&nbsp;<a href="/search.php?stype=committer&amp;method=exact&amp;query=zi"><img class="icon" src="/images/search.jpg" alt="search for other commits by this committer" title="search for other commits by this committer" width="17" height="17"></a></td>
+    <td class="commit-details"><pre class="description">- Reset MAINTAINER due to multiple fatal bounces
+
+Reported by:	portscout!</pre></td>
+</tr>
+<tr><td class="commit-details"><span class="element-details">12.0.4.0_1</span><br>20 Jun 2018 17:05:44<br><a href="https://svnweb.freebsd.org/changeset/ports/472884" rel="noopener noreferrer"><img class="icon" src="/images/subversion.png" alt="Revision:472884" title="Revision:472884" width="32" height="32"></a><a href="https://www.freebsd.org/cgi/mid.cgi?db=mid&amp;id=201806201705.w5KH5ixe079331@repo.freebsd.org" rel="noopener noreferrer"><img class="icon" src="/images/envelope10.gif" alt="Original commit" title="Original commit message" width="32" height="18"></a>&nbsp;<a href="/commit.php?category=devel&amp;port=py-XStatic-Angular-FileUpload&amp;files=yes&amp;message_id=201806201705.w5KH5ixe079331@repo.freebsd.org"><img class="icon" src="/images/logs.gif" alt="files touched by this commit" title="files touched by this commit" width="17" height="20"></a></td>
+    <td class="commit-details"><a href="mailto:mat@FreeBSD.org" title="committed by this person">mat</a>&nbsp;<a href="/search.php?stype=committer&amp;method=exact&amp;query=mat"><img class="icon" src="/images/search.jpg" alt="search for other commits by this committer" title="search for other commits by this committer" width="17" height="17"></a></td>
+    <td class="commit-details"><pre class="description">Use PY_FLAVOR for dependencies.
+
+FLAVOR is the current port&apos;s flavor, it should not be used outside of
+this scope.
+
+Sponsored by:	Absolight</pre></td>
+</tr>
+<tr><td class="commit-details"><span class="element-details">12.0.4.0_1</span><br>25 Apr 2018 16:42:38<br><a href="https://svnweb.freebsd.org/changeset/ports/468282" rel="noopener noreferrer"><img class="icon" src="/images/subversion.png" alt="Revision:468282" title="Revision:468282" width="32" height="32"></a><a href="https://www.freebsd.org/cgi/mid.cgi?db=mid&amp;id=201804251642.w3PGgcAo047615@repo.freebsd.org" rel="noopener noreferrer"><img class="icon" src="/images/envelope10.gif" alt="Original commit" title="Original commit message" width="32" height="18"></a>&nbsp;<a href="/commit.php?category=devel&amp;port=py-XStatic-Angular-FileUpload&amp;files=yes&amp;message_id=201804251642.w3PGgcAo047615@repo.freebsd.org"><img class="icon" src="/images/logs.gif" alt="files touched by this commit" title="files touched by this commit" width="17" height="20"></a></td>
+    <td class="commit-details"><a href="mailto:amdmi3@FreeBSD.org" title="committed by this person">amdmi3</a>&nbsp;<a href="/search.php?stype=committer&amp;method=exact&amp;query=amdmi3"><img class="icon" src="/images/search.jpg" alt="search for other commits by this committer" title="search for other commits by this committer" width="17" height="17"></a></td>
+    <td class="commit-details"><pre class="description">Switch all pypi.python.org WWWs to a new PyPi home pypi.org where
+they now redirect to anyway. All new urls checked to return 200,
+I&apos;ve fixed a couple of them in the process.
+
+Approved by:	portmgr blanket, mat</pre></td>
+</tr>
+<tr><td class="commit-details"><span class="element-details">12.0.4.0_1</span><br>08 Feb 2018 20:18:09<br><a href="https://svnweb.freebsd.org/changeset/ports/461265" rel="noopener noreferrer"><img class="icon" src="/images/subversion.png" alt="Revision:461265" title="Revision:461265" width="32" height="32"></a><a href="https://www.freebsd.org/cgi/mid.cgi?db=mid&amp;id=201802082018.w18KI9gW029014@repo.freebsd.org" rel="noopener noreferrer"><img class="icon" src="/images/envelope10.gif" alt="Original commit" title="Original commit message" width="32" height="18"></a>&nbsp;<a href="/commit.php?category=devel&amp;port=py-XStatic-Angular-FileUpload&amp;files=yes&amp;message_id=201802082018.w18KI9gW029014@repo.freebsd.org"><img class="icon" src="/images/logs.gif" alt="files touched by this commit" title="files touched by this commit" width="17" height="20"></a></td>
+    <td class="commit-details"><a href="mailto:amdmi3@FreeBSD.org" title="committed by this person">amdmi3</a>&nbsp;<a href="/search.php?stype=committer&amp;method=exact&amp;query=amdmi3"><img class="icon" src="/images/search.jpg" alt="search for other commits by this committer" title="search for other commits by this committer" width="17" height="17"></a></td>
+    <td class="commit-details"><pre class="description">Canonicalize PyPi WWWs:
+- Switch to https://
+- Remove trailing slashes
+
+Approved by:	portmgr blanket</pre></td>
+</tr>
+<tr><td class="commit-details"><span class="element-details">12.0.4.0_1</span><br>30 Nov 2017 15:50:34<br><a href="https://svnweb.freebsd.org/changeset/ports/455210" rel="noopener noreferrer"><img class="icon" src="/images/subversion.png" alt="Revision:455210" title="Revision:455210" width="32" height="32"></a><a href="https://www.freebsd.org/cgi/mid.cgi?db=mid&amp;id=201711301550.vAUFoYsm001135@repo.freebsd.org" rel="noopener noreferrer"><img class="icon" src="/images/envelope10.gif" alt="Original commit" title="Original commit message" width="32" height="18"></a>&nbsp;<a href="/commit.php?category=devel&amp;port=py-XStatic-Angular-FileUpload&amp;files=yes&amp;message_id=201711301550.vAUFoYsm001135@repo.freebsd.org"><img class="icon" src="/images/logs.gif" alt="files touched by this commit" title="files touched by this commit" width="17" height="20"></a>&nbsp;<a href="/sanity_test_failures.php?message_id=201711301550.vAUFoYsm001135@repo.freebsd.org"><img class="icon" src="/images/stf.gif" alt="Sanity Test Failure" title="Sanity Test Failure" width="13" height="13"></a></td>
+    <td class="commit-details"><a href="mailto:mat@FreeBSD.org" title="committed by this person">mat</a>&nbsp;<a href="/search.php?stype=committer&amp;method=exact&amp;query=mat"><img class="icon" src="/images/search.jpg" alt="search for other commits by this committer" title="search for other commits by this committer" width="17" height="17"></a></td>
+    <td class="commit-details"><pre class="description">Convert Python ports to FLAVORS.
+
+  Ports using USE_PYTHON=distutils are now flavored.  They will
+  automatically get flavors (py27, py34, py35, py36) depending on what
+  versions they support.
+
+  There is also a USE_PYTHON=flavors for ports that do not use distutils
+  but need FLAVORS to be set.  A USE_PYTHON=noflavors can be set if
+  using distutils but flavors are not wanted.
+
+  A new USE_PYTHON=optsuffix that will add PYTHON_PKGNAMESUFFIX has been
+  added to cope with Python ports that did not have the Python
+  PKGNAMEPREFIX but are flavored.
+
+  USES=python now also exports a PY_FLAVOR variable that contains the</pre>(Only the first 15 lines of the commit message are shown above <a href="/commit.php?message_id=201711301550.vAUFoYsm001135@repo.freebsd.org"><img class="icon" src="/images/play.gif" alt="View all of this commit message" title="View all of this commit message" width="13" height="13"></a>)</td>
+</tr>
+<tr><td class="commit-details"><span class="element-details">12.0.4.0_1</span><br>25 Dec 2016 11:28:59<br><a href="https://svnweb.freebsd.org/changeset/ports/429408" rel="noopener noreferrer"><img class="icon" src="/images/subversion.png" alt="Revision:429408" title="Revision:429408" width="32" height="32"></a><a href="https://www.freebsd.org/cgi/mid.cgi?db=mid&amp;id=201612251128.uBPBSxwJ074987@repo.freebsd.org" rel="noopener noreferrer"><img class="icon" src="/images/envelope10.gif" alt="Original commit" title="Original commit message" width="32" height="18"></a>&nbsp;<a href="/commit.php?category=devel&amp;port=py-XStatic-Angular-FileUpload&amp;files=yes&amp;message_id=201612251128.uBPBSxwJ074987@repo.freebsd.org"><img class="icon" src="/images/logs.gif" alt="files touched by this commit" title="files touched by this commit" width="17" height="20"></a></td>
+    <td class="commit-details"><a href="mailto:novel@FreeBSD.org" title="committed by this person">novel</a>&nbsp;<a href="/search.php?stype=committer&amp;method=exact&amp;query=novel"><img class="icon" src="/images/search.jpg" alt="search for other commits by this committer" title="search for other commits by this committer" width="17" height="17"></a></td>
+    <td class="commit-details"><pre class="description">Update py-XStatic* COMMENTs and pkg-descr&apos;s
+
+Use more informative COMMENT and pkg-descr for
+devel/py-XStatic* family of ports.
+
+PR:		<a href="http://bugs.FreeBSD.org/215145">215145</a>
+Submitted by:	maintainer
+Reported by:	adamw, mat</pre></td>
+</tr>
+<tr><td class="commit-details"><span class="element-details">12.0.4.0</span><br>18 Dec 2016 11:36:26<br><a href="https://svnweb.freebsd.org/changeset/ports/428845" rel="noopener noreferrer"><img class="icon" src="/images/subversion.png" alt="Revision:428845" title="Revision:428845" width="32" height="32"></a><a href="https://www.freebsd.org/cgi/mid.cgi?db=mid&amp;id=201612181136.uBIBaQLG037821@repo.freebsd.org" rel="noopener noreferrer"><img class="icon" src="/images/envelope10.gif" alt="Original commit" title="Original commit message" width="32" height="18"></a>&nbsp;<a href="/commit.php?category=devel&amp;port=py-XStatic-Angular-FileUpload&amp;files=yes&amp;message_id=201612181136.uBIBaQLG037821@repo.freebsd.org"><img class="icon" src="/images/logs.gif" alt="files touched by this commit" title="files touched by this commit" width="17" height="20"></a></td>
+    <td class="commit-details"><a href="mailto:novel@FreeBSD.org" title="committed by this person">novel</a>&nbsp;<a href="/search.php?stype=committer&amp;method=exact&amp;query=novel"><img class="icon" src="/images/search.jpg" alt="search for other commits by this committer" title="search for other commits by this committer" width="17" height="17"></a></td>
+    <td class="commit-details"><pre class="description">Add devel/py-XStatic and related ports
+
+Add py-XStatic family of ports. The goal of XStatic family of packages
+is to provide static file packages with minimal overhead - without
+selling you some dependencies you don&apos;t want.
+
+PR:		<a href="http://bugs.FreeBSD.org/215145">215145</a>
+Submitted by:	Alexander Nusov (alexander.nusov@nfvexpress.com)</pre></td>
+</tr>
+</table>
+<p>Number of commits found: 8</p>
+		</TD>
+		<td class="sidebar">
+			
+  <table class="bordered">
+        <tr>
+         <th class="accent">Login</th>
+        </tr>
+        <tr>
+
+         <td><a href="/login.php" title="Login to the website">User Login</a><br><a href="/new-user.php" title="Create an account">Create account</a><br>
+   </td>
+   </tr>
+   </table>
+
+<div>
+
+<p><small>Servers and bandwidth provided by <br><a href="https://www.nyi.net/" rel="noopener noreferrer" TARGET="_blank">New York Internet</a>, <a href="https://www.ixsystems.com/"  rel="noopener noreferrer" TARGET="_blank">iXsystems</a>, and <a href="https://www.rootbsd.net/" rel="noopener noreferrer" TARGET="_blank">RootBSD</a></small></p>
+</div>	
+<table class="bordered">
+	<tr>
+		<th class="accent">This site</th>
+	</tr>
+	<tr>
+	<td>
+	<a href="/about.php" title="A bit of background on FreshPorts">What is FreshPorts?</a><br>
+	<a href="/authors.php" title="Who wrote this stuff?">About the authors</a><br>
+	<a href="https://github.com/FreshPorts/freshports/issues" title="Report a website problem">Issues</a><br>
+	<a href="/faq.php" title="Frequently Asked Questions">FAQ</a><br>
+	<a href="/how-big-is-it.php" title="How many pages are in this website?">How big is it?</a><br>
+	<a href="/security-policy.php" title="Are you a security researcher? Please read this.">Security Policy</a><br>
+	<a href="/privacy.php" title="Our privacy statement">Privacy</a><br>
+	<a href="https://news.freshports.org/" title="All the latest FreshPorts news" rel="noopener noreferrer">Blog</a><br>
+	<a href="/contact.php" title="Contact details">Contact</a><br>
+	</td>
+	</tr>
+</table>
+<br>
+<table class="bordered">
+	<tr>
+		<th class="accent">Search</th>
+	</tr>
+	<tr>
+
+	<td>
+	<FORM ACTION="/search.php" NAME="f">
+	Enter Keywords:<br>
+	<INPUT NAME="query"  TYPE="text" SIZE="8" TABINDEX=1>&nbsp;<INPUT TYPE="submit" VALUE="go" NAME="search" TABINDEX=2>
+	<INPUT NAME="num"             TYPE="hidden" value="10">
+	<INPUT NAME="stype"           TYPE="hidden" value="name">
+	<INPUT NAME="method"          TYPE="hidden" value="match">
+	<INPUT NAME="deleted"         TYPE="hidden" value="excludedeleted">
+	<INPUT NAME="start"           TYPE="hidden" value="1">
+  	<INPUT NAME="casesensitivity" TYPE="hidden" value="caseinsensitive" >
+	</FORM>
+<a href="/search.php" title="Advanced Searching options">more...</a><br>
+	</td>
+</tr>
+</table>
+
+<br>
+<table class="bordered">
+	<tr>
+		<th class="accent">Latest Vulnerabilities</th>
+	</tr>
+	<tr><td>
+	<table class="fullwidth">
+<tr><td><a href="https://www.vuxml.org/freebsd/45276ea6-1653-4240-9986-ccfc6fec7ece.html">jenkins</a></td><td>Apr 11</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/45276ea6-1653-4240-9986-ccfc6fec7ece.html">jenkins-lts</a></td><td>Apr 11</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/ed602f8b-15c2-11f0-b4e4-2cf05da270f3.html">gitlab</a></td><td>Apr 10</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/8f71ad3b-14f5-11f0-87ba-002590c1f29c.html">expat2</a></td><td>Apr 09</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/28e5f7be-13c8-11f0-a5bd-b42e991fc52e.html">firefox</a></td><td>Apr 07</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/2c0180a5-13c8-11f0-a5bd-b42e991fc52e.html">firefox</a></td><td>Apr 07</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/2e0ff31b-13c8-11f0-a5bd-b42e991fc52e.html">firefox</a></td><td>Apr 07</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/2fc74cae-13c8-11f0-a5bd-b42e991fc52e.html">firefox</a></td><td>Apr 07</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/315f568e-13c8-11f0-a5bd-b42e991fc52e.html">firefox</a></td><td>Apr 07</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/34c51a2b-13c8-11f0-a5bd-b42e991fc52e.html">firefox</a></td><td>Apr 07</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/28e5f7be-13c8-11f0-a5bd-b42e991fc52e.html">firefox-esr</a></td><td>Apr 07</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/2c0180a5-13c8-11f0-a5bd-b42e991fc52e.html">firefox-esr</a></td><td>Apr 07</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/2e0ff31b-13c8-11f0-a5bd-b42e991fc52e.html">firefox-esr</a></td><td>Apr 07</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/28e5f7be-13c8-11f0-a5bd-b42e991fc52e.html">librewolf</a></td><td>Apr 07</td></tr>
+<tr><td><a href="https://www.vuxml.org/freebsd/2c0180a5-13c8-11f0-a5bd-b42e991fc52e.html">librewolf</a></td><td>Apr 07</td></tr>
+</table>
+<p>33 vulnerabilities affecting 380 ports have been reported in the past 14 days</p>
+
+	</td></tr>
+	<tr><td>
+		<p><sup>*</sup> - modified, not new</p><p><a href="/vuxml.php?all">All vulnerabilities</a></p>
+		<p>Last processed:<br>2025-04-11 06:28:22 UTC</p>
+	</td></tr>
+</table>
+<br>
+
+<table class="bordered">
+	<tr>
+		<th class="accent">Ports</th>
+	</tr>
+	<tr>
+	<td>
+
+	<a href="/" title="FreshPorts Home page">Home</a><br>
+	<a href="/categories.php" title="List of all Port categories">Categories</a><br>
+	<a href="/ports-deleted.php" title="All deleted ports">Deleted ports</a><br>
+	<a href="/sanity_test_failures.php" title="Things that didn't go quite right...">Sanity Test Failures</a><br>
+	<a href="/backend/newsfeeds.php" title="Newsfeeds for just about everything">Newsfeeds</a><br>
+	
+	</td>
+	</tr>
+</table><br>
+
+<table class="bordered">
+	<tr>
+		<th class="accent">Statistics</th>
+	</tr>
+	<tr>
+	<td>
+
+<a href="/graphs.php" title="Everyone loves statistics!">Graphs</a><br>
+<a href="/graphs2.php" title="Everyone loves statistics!">NEW Graphs (Javascript)</a><br><BR>Calculated hourly:<BR><TABLE>
+<TR><TD><A HREF="/categories.php" TITLE="Number of ports in the database">Port count</A></TD> <TD>33267</TD></TR>
+<TR><TD><A HREF="/ports-broken.php" TITLE="Broken ports">Broken</A></TD>     <TD>128</TD></TR>
+<TR><TD><A HREF="/ports-deprecated.php" TITLE="Ports that have been deprecated">Deprecated</A></TD>     <TD>282</TD></TR>
+<TR><TD><A HREF="/ports-ignore.php" TITLE="Ports that you should ignore">Ignore</A></TD>     <TD>244</TD></TR>
+<TR><TD><A HREF="/ports-forbidden.php" TITLE="Ports that are forbidden">Forbidden</A></TD>  <TD>1</TD></TR>
+<TR><TD><A HREF="/ports-restricted.php" TITLE="Ports that are restricted">Restricted</A></TD>  <TD>2</TD></TR>
+<TR><TD><A HREF="/ports-no-cdrom.php" TITLE="Ports that are marked as NO CDROM">No CDROM</A></TD>  <TD>1</TD></TR>
+<TR><TD><A HREF="/ports-vulnerable.php" TITLE="Ports that vulnerable to exploitation">Vulnerable</A></TD>  <TD>27</TD></TR>
+<TR><TD><A HREF="/ports-expired.php" TITLE="Ports that have expired">Expired</A></TD>  <TD>33</TD></TR>
+<TR><TD><A HREF="/ports-expiration-date.php" TITLE="Ports that have an expiration date set">Set to expire</A></TD>  <TD>239</TD></TR>
+<TR><TD><A HREF="/ports-interactive.php" TITLE="Ports that require interaction during installation">Interactive</A></TD>  <TD>0</TD></TR>
+<TR><TD><A HREF="/ports-new.php?interval=today" TITLE="Ports added in the last 24 hours">new 24 hours</A></TD>    <TD>3</TD></TR>
+<TR><TD><A HREF="/ports-new.php?interval=yesterday" TITLE="Ports added in the last 48 hours">new 48 hours</A></TD><TD>3</TD></TR>
+<TR><TD><A HREF="/ports-new.php?interval=week" TITLE="Ports added in the last 7 days">new 7 days</A></TD><TD>18</TD></TR>
+<TR><TD><A HREF="/ports-new.php?interval=fortnight" TITLE="Ports added in the last 14 days">new fortnight</A></TD><TD>28</TD></TR>
+<TR><TD><A HREF="/ports-new.php?interval=month" TITLE="Ports added in the last month">new month</A></TD><TD>93</TD></TR>
+</TABLE>
+
+
+	</td>
+	</tr>
+</table>
+
+
+		</td>
+	</tr>
+
+	</table>
+
+	<table class="footer fullwidth borderless">
+<tr><td>
+<HR>
+<table class="borderless">
+
+<tr><td>
+<table class="fullwidth">
+<tr>
+<td class="sponsors">
+<small>Servers and bandwidth provided by <br><a href="https://www.nyi.net/" rel="noopener noreferrer" TARGET="_blank">New York Internet</a>, <a href="https://www.ixsystems.com/"  rel="noopener noreferrer" TARGET="_blank">iXsystems</a>, and <a href="https://www.rootbsd.net/" rel="noopener noreferrer" TARGET="_blank">RootBSD</a></small>
+</td>
+<td class="copyright">
+<small>
+Valid 
+<a href="https://validator.w3.org/check?uri=https%3A%2F%2Fwww.freshports.org%2Fdevel%2Fpy-XStatic-Angular-FileUpload%2F" title="We like to keep our HTML valid" target="_blank" rel="nofollow noopener noreferrer">HTML</a>,
+<a href="https://jigsaw.w3.org/css-validator/validator?uri=https%3A%2F%2Fwww.freshports.org%2Fdevel%2Fpy-XStatic-Angular-FileUpload%2F" title="We like to have valid CSS" rel="nofollow noopener noreferrer">CSS</a>, and
+<a href="https://validator.w3.org/feed/check.cgi?url=https%3A%2F%2Fwww.freshports.org%2Fbackend%2Frss2.0.php" title="Valid RSS is good too" rel="noopener noreferrer">RSS</a>.
+</small>
+<small><a href="/legal.php" target="_top" title="This material is copyrighted">Copyright</a> &copy; 2000-2025 <a href="https://www.langille.org/" rel="noopener noreferrer">Dan Langille</a>. All rights reserved.</small>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</td></tr>
+</table>
+<script src="/javascript/freshports.js" defer></script>
+	</body>
+	</html>
+
+	
