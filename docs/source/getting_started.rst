@@ -39,7 +39,7 @@ You can also install mypy with uv:
 Running mypy
 ************
 
-Once mypy is installed, run it by using the ``mypy`` tool. The command that you use to run mypy depends on wether you installed it with pip or uv.
+Once mypy is installed, run it by using the ``mypy`` tool. The command that you use to run mypy depends on whether you installed it with pip or uv.
 
 For pip, use:
 
