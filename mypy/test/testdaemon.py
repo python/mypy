@@ -137,19 +137,20 @@ class DaemonUtilitySuite(unittest.TestCase):
 
 
 class DaemonWatchSuite(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.temp_path = pathlib.Path(self.temp_dir.name)
-        self.output_lines = []
+        self.output_lines: list[str] = []
         self.stop_reader = False
 
-    def _read_output(self):
+    def _read_output(self) -> None:
+        assert self.process.stdout
         for line in self.process.stdout:
             self.output_lines.append(line.strip())
             if self.stop_reader:
                 break
 
-    def _start_watching(self, args: str, start_daemon: bool = True):
+    def _start_watching(self, args: str, start_daemon: bool = True) -> None:
         if start_daemon:
             subprocess.run(
                 [sys.executable, "-m", "mypy.dmypy", "start"],
@@ -172,7 +173,7 @@ class DaemonWatchSuite(unittest.TestCase):
         self.reader_thread = threading.Thread(target=self._read_output, daemon=True)
         self.reader_thread.start()
 
-    def _wait_for_output(self, text: str, timeout=5):
+    def _wait_for_output(self, text: str, timeout: int = 5) -> bool:
         """Wait for text to appear in output within timeout seconds."""
         start_time = time.time()
         while time.time() - start_time < timeout:
@@ -181,7 +182,7 @@ class DaemonWatchSuite(unittest.TestCase):
             time.sleep(0.1)
         return False
 
-    def test_watcher_reacts_to_file_changes(self):
+    def test_watcher_reacts_to_file_changes(self) -> None:
         (self.temp_path / "valid.py").write_text(
             "def hello_world() -> str:\n    return 'Hello World!'"
         )
@@ -198,8 +199,7 @@ class DaemonWatchSuite(unittest.TestCase):
         self.assertTrue(self._wait_for_output("Incompatible return value type"))
         self.assertTrue(self._wait_for_output("Found 1 error in 1 file"))
 
-    def tearDown(self):
-        print(self.output_lines)
+    def tearDown(self) -> None:
         subprocess.run([sys.executable, "-m", "mypy.dmypy", "stop"], cwd=self.temp_path)
 
         # Send SIGINT to terminate the watcher process
