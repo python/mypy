@@ -559,6 +559,11 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
     if filtered_options != options:
         return any_constraints(filtered_options, eager=eager)
 
+    # Try harder: if that didn't work, try to strip typevars not owned by current function.
+    filtered_options = [filter_own(o) for o in options]
+    if filtered_options != options:
+        return any_constraints(filtered_options, eager=eager)
+
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
     return []
@@ -574,12 +579,8 @@ def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | No
     if not option:
         return option
 
-    own = type_state.constraints_targets[-1] if type_state.constraints_targets else None
-
     satisfiable = []
     for c in option:
-        if own is not None and c.type_var not in own:
-            continue
         if isinstance(c.origin_type_var, TypeVarType) and c.origin_type_var.values:
             if any(
                 mypy.subtypes.is_subtype(c.target, value) for value in c.origin_type_var.values
@@ -590,6 +591,16 @@ def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | No
     if not satisfiable:
         return None
     return satisfiable
+
+
+def filter_own(option: list[Constraint] | None) -> list[Constraint] | None:
+    """Keep only constraints that reference type vars local to current function, if any."""
+
+    if not option or not type_state.constraints_targets:
+        return option
+    own_vars = type_state.constraints_targets[-1]
+
+    return [c for c in option if c.type_var in own_vars] or None
 
 
 def is_same_constraints(x: list[Constraint], y: list[Constraint]) -> bool:
