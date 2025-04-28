@@ -24,7 +24,6 @@ from mypy.test.helpers import (
 )
 from mypy.test.update_data import update_testcase_output
 
-lxml: types.ModuleType | None
 try:
     import lxml  # type: ignore[import-untyped]
 except ImportError:
