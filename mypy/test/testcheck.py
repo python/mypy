@@ -6,7 +6,6 @@ import os
 import re
 import sys
 
-
 from mypy import build
 from mypy.build import Graph
 from mypy.errors import CompileError

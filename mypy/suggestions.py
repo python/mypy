@@ -657,7 +657,7 @@ class SuggestionEngine:
                     and ct.arg_types[0] == ct.ret_type
                 ):
                     return None
-        
+
         return node.func
 
     def try_type(self, func: FuncDef, typ: ProperType) -> list[str]:
