@@ -26,7 +26,7 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    from lxml import etree
+    from lxml import etree  # type: ignore[import-untyped]
 
     LXML_INSTALLED = True
 except ImportError:
