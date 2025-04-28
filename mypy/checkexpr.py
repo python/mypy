@@ -1493,7 +1493,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if callable_name is None and member is not None:
             assert object_type is not None
             callable_name = self.method_fullname(object_type, member)
-        # object_type = get_proper_type(object_type) redefined earlier in the code
         if callable_name:
             # Try to refine the call signature using plugin hooks before checking the call.
             callee_type = self.transform_callee_type(
