@@ -77,25 +77,25 @@ for int_name in (
         error_kind=ERR_MAGIC,
     )
 
-# str(int)
-int_to_str_op = function_op(
-    name="builtins.str",
-    arg_types=[int_rprimitive],
-    return_type=str_rprimitive,
-    c_function_name="CPyTagged_Str",
-    error_kind=ERR_MAGIC,
-    priority=2,
-)
-
-# We need a specialization for str on bools also since the int one is wrong...
-function_op(
-    name="builtins.str",
-    arg_types=[bool_rprimitive],
-    return_type=str_rprimitive,
-    c_function_name="CPyBool_Str",
-    error_kind=ERR_MAGIC,
-    priority=3,
-)
+for name in ("builtins.str", "builtins.repr"):
+    # str(int) and repr(int)
+    int_to_str_op = function_op(
+        name=name,
+        arg_types=[int_rprimitive],
+        return_type=str_rprimitive,
+        c_function_name="CPyTagged_Str",
+        error_kind=ERR_MAGIC,
+        priority=2,
+    )
+    # We need a specialization for str on bools also since the int one is wrong...
+    function_op(
+        name=name,
+        arg_types=[bool_rprimitive],
+        return_type=str_rprimitive,
+        c_function_name="CPyBool_Str",
+        error_kind=ERR_MAGIC,
+        priority=3,
+    )
 
 
 def int_binary_primitive(

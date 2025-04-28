@@ -241,37 +241,37 @@ assert 1, f()  # E: Name "f" is not defined
 
 [case testFastParserConsistentFunctionTypes]
 
-def f(x, y, z):
+def f1(x, y, z):
   # type: (int, int, int) -> int
   pass
 
-def f(x,  # type: int  # E: Function has duplicate type signatures
+def f2(x,  # type: int  # E: Function has duplicate type signatures
       y,  # type: int
       z   # type: int
     ):
     # type: (int, int, int) -> int
     pass
 
-def f(x,  # type: int
+def f3(x,  # type: int
       y,  # type: int
       z   # type: int
     ):
     # type: (...) -> int
     pass
 
-def f(x, y, z):
+def f4(x, y, z):
   # type: (int, int, int) -> int
   pass
 
-def f(x) -> int:  # E: Function has duplicate type signatures
+def f5(x) -> int:  # E: Function has duplicate type signatures
   # type: (int) -> int
   pass
 
-def f(x: int, y: int, z: int):
+def f6(x: int, y: int, z: int):
   # type: (...) -> int
   pass
 
-def f(x: int):  # E: Function has duplicate type signatures
+def f7(x: int):  # E: Function has duplicate type signatures
   # type: (int) -> int
   pass
 

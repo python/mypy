@@ -2029,3 +2029,16 @@ def foo() -> None:
 class Z: ...  # E: Name "Z" already defined on line 2
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695MultipleUnpacksInBareApplicationNoCrash]
+# https://github.com/python/mypy/issues/18856
+class A[*Ts]: ...
+
+A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
+a: A[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
+def foo(a: A[*tuple[int, ...], *tuple[int, ...]]): ...  # E: More than one Unpack in a type is not allowed
+
+tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
+b: tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
+RECURSION_LIMIT: Final = 2**14
 
 
 def stat_proxy(path: str) -> os.stat_result:
@@ -76,7 +77,7 @@ def main(
     util.check_python_version("mypy")
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
-    sys.setrecursionlimit(2**14)
+    sys.setrecursionlimit(RECURSION_LIMIT)
     if args is None:
         args = sys.argv[1:]
 
@@ -92,6 +93,13 @@ def main(
     formatter = util.FancyFormatter(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
+
+    if options.allow_redefinition_new and not options.local_partial_types:
+        fail(
+            "error: --local-partial-types must be enabled if using --allow-redefinition-new",
+            stderr,
+            options,
+        )
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -856,7 +864,15 @@ def process_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
-        help="Allow unconditional variable redefinition with a new type",
+        help="Allow restricted, unconditional variable redefinition with a new type",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
+        "--allow-redefinition-new",
+        default=False,
+        strict_flag=False,
+        help=argparse.SUPPRESS,  # This is still very experimental
         group=strictness_group,
     )
 
@@ -1108,6 +1124,16 @@ def process_options(
                 dest=f"special-opts:{report_type}_report",
             )
 
+    # Undocumented mypyc feature: generate annotated HTML source file
+    report_group.add_argument(
+        "-a", dest="mypyc_annotation_file", type=str, default=None, help=argparse.SUPPRESS
+    )
+    # Hidden mypyc feature: do not write any C files (keep existing ones and assume they exist).
+    # This can be useful when debugging mypyc bugs.
+    report_group.add_argument(
+        "--skip-c-gen", dest="mypyc_skip_c_generation", action="store_true", help=argparse.SUPPRESS
+    )
+
     other_group = parser.add_argument_group(title="Miscellaneous")
     other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
     other_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
@@ -1251,6 +1277,15 @@ def process_options(
             "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'. "
             "May be specified more than once, eg. --exclude a --exclude b"
         ),
+    )
+    add_invertible_flag(
+        "--exclude-gitignore",
+        default=False,
+        help=(
+            "Use .gitignore file(s) to exclude files from checking "
+            "(in addition to any explicit --exclude if present)"
+        ),
+        group=code_group,
     )
     code_group.add_argument(
         "-m",

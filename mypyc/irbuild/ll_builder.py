@@ -1161,7 +1161,7 @@ class LowLevelIRBuilder:
         """Generate either a native or Python method call."""
         # If we have *args, then fallback to Python method call.
         if arg_kinds is not None and any(kind.is_star() for kind in arg_kinds):
-            return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
+            return self.py_method_call(base, name, arg_values, line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
         if (

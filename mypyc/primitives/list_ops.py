@@ -27,6 +27,15 @@ from mypyc.primitives.registry import (
 # Get the 'builtins.list' type object.
 load_address_op(name="builtins.list", type=object_rprimitive, src="PyList_Type")
 
+# sorted(obj)
+function_op(
+    name="builtins.sorted",
+    arg_types=[object_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="CPySequence_Sort",
+    error_kind=ERR_MAGIC,
+)
+
 # list(obj)
 to_list = function_op(
     name="builtins.list",
@@ -262,6 +271,33 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# list.copy()
+method_op(
+    name="copy",
+    arg_types=[list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="CPyList_Copy",
+    error_kind=ERR_MAGIC,
+)
+
+# list + list
+binary_op(
+    name="+",
+    arg_types=[list_rprimitive, list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="PySequence_Concat",
+    error_kind=ERR_MAGIC,
+)
+
+# list += list
+binary_op(
+    name="+=",
+    arg_types=[list_rprimitive, object_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="PySequence_InPlaceConcat",
+    error_kind=ERR_MAGIC,
+)
+
 # list * int
 binary_op(
     name="*",
@@ -277,6 +313,15 @@ binary_op(
     arg_types=[int_rprimitive, list_rprimitive],
     return_type=list_rprimitive,
     c_function_name="CPySequence_RMultiply",
+    error_kind=ERR_MAGIC,
+)
+
+# list *= int
+binary_op(
+    name="*=",
+    arg_types=[list_rprimitive, int_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name="CPySequence_InPlaceMultiply",
     error_kind=ERR_MAGIC,
 )
 

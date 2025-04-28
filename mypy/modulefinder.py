@@ -16,6 +16,9 @@ from enum import Enum, unique
 from typing import Final, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
+from pathspec import PathSpec
+from pathspec.patterns.gitwildmatch import GitWildMatchPatternError
+
 from mypy import pyinfo
 from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
@@ -625,6 +628,12 @@ class FindModuleCache:
                 subpath, self.options.exclude, self.fscache, self.options.verbosity >= 2
             ):
                 continue
+            if (
+                self.options
+                and self.options.exclude_gitignore
+                and matches_gitignore(subpath, self.fscache, self.options.verbosity >= 2)
+            ):
+                continue
 
             if self.fscache.isdir(subpath):
                 # Only recurse into packages
@@ -662,6 +671,42 @@ def matches_exclude(
                 )
             return True
     return False
+
+
+def matches_gitignore(subpath: str, fscache: FileSystemCache, verbose: bool) -> bool:
+    dir, _ = os.path.split(subpath)
+    for gi_path, gi_spec in find_gitignores(dir):
+        relative_path = os.path.relpath(subpath, gi_path)
+        if fscache.isdir(relative_path):
+            relative_path = relative_path + "/"
+        if gi_spec.match_file(relative_path):
+            if verbose:
+                print(
+                    f"TRACE: Excluding {relative_path} (matches .gitignore) in {gi_path}",
+                    file=sys.stderr,
+                )
+            return True
+    return False
+
+
+@functools.lru_cache
+def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
+    parent_dir = os.path.dirname(dir)
+    if parent_dir == dir:
+        parent_gitignores = []
+    else:
+        parent_gitignores = find_gitignores(parent_dir)
+
+    gitignore = os.path.join(dir, ".gitignore")
+    if os.path.isfile(gitignore):
+        with open(gitignore) as f:
+            lines = f.readlines()
+        try:
+            return parent_gitignores + [(dir, PathSpec.from_lines("gitwildmatch", lines))]
+        except GitWildMatchPatternError:
+            print(f"error: could not parse {gitignore}", file=sys.stderr)
+            return parent_gitignores
+    return parent_gitignores
 
 
 def is_init_file(path: str) -> bool:

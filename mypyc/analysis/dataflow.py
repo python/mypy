@@ -17,6 +17,7 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     ControlOp,
+    DecRef,
     Extend,
     Float,
     FloatComparisonOp,
@@ -25,6 +26,7 @@ from mypyc.ir.ops import (
     GetAttr,
     GetElementPtr,
     Goto,
+    IncRef,
     InitStatic,
     Integer,
     IntOp,
@@ -77,12 +79,11 @@ class CFG:
         return f"exits: {exits}\nsucc: {self.succ}\npred: {self.pred}"
 
 
-def get_cfg(blocks: list[BasicBlock]) -> CFG:
+def get_cfg(blocks: list[BasicBlock], *, use_yields: bool = False) -> CFG:
     """Calculate basic block control-flow graph.
 
-    The result is a dictionary like this:
-
-         basic block index -> (successors blocks, predecesssor blocks)
+    If use_yields is set, then we treat returns inserted by yields as gotos
+    instead of exits.
     """
     succ_map = {}
     pred_map: dict[BasicBlock, list[BasicBlock]] = {}
@@ -92,7 +93,10 @@ def get_cfg(blocks: list[BasicBlock]) -> CFG:
             isinstance(op, ControlOp) for op in block.ops[:-1]
         ), "Control-flow ops must be at the end of blocks"
 
-        succ = list(block.terminator.targets())
+        if use_yields and isinstance(block.terminator, Return) and block.terminator.yield_target:
+            succ = [block.terminator.yield_target]
+        else:
+            succ = list(block.terminator.targets())
         if not succ:
             exits.add(block)
 
@@ -474,6 +478,12 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
     def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
         return non_trivial_sources(op), set()
 
+    def visit_inc_ref(self, op: IncRef) -> GenAndKill[Value]:
+        return set(), set()
+
+    def visit_dec_ref(self, op: DecRef) -> GenAndKill[Value]:
+        return set(), set()
+
 
 def analyze_live_regs(blocks: list[BasicBlock], cfg: CFG) -> AnalysisResult[Value]:
     """Calculate live registers at each CFG location.
@@ -542,7 +552,7 @@ def run_analysis(
     # Set up initial state for worklist algorithm.
     worklist = list(blocks)
     if not backward:
-        worklist = worklist[::-1]  # Reverse for a small performance improvement
+        worklist.reverse()  # Reverse for a small performance improvement
     workset = set(worklist)
     before: dict[BasicBlock, set[T]] = {}
     after: dict[BasicBlock, set[T]] = {}

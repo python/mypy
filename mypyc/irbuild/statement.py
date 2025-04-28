@@ -211,12 +211,11 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         and any(t.is_refcounted for t in rvalue_reg.type.types)
     ):
         n = len(first_lvalue.items)
-        for i in range(n):
-            target = builder.get_assignment_target(first_lvalue.items[i])
-            rvalue_item = builder.add(TupleGet(rvalue_reg, i, borrow=True))
-            rvalue_item = builder.add(Unborrow(rvalue_item))
-            builder.assign(target, rvalue_item, line)
+        borrows = [builder.add(TupleGet(rvalue_reg, i, borrow=True)) for i in range(n)]
         builder.builder.keep_alive([rvalue_reg], steal=True)
+        for lvalue_item, rvalue_item in zip(first_lvalue.items, borrows):
+            rvalue_item = builder.add(Unborrow(rvalue_item))
+            builder.assign(builder.get_assignment_target(lvalue_item), rvalue_item, line)
         builder.flush_keep_alives()
         return
 
@@ -906,7 +905,7 @@ def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
     next_label = len(cls.continuation_blocks)
     cls.continuation_blocks.append(next_block)
     builder.assign(cls.next_label_target, Integer(next_label), line)
-    builder.add(Return(retval))
+    builder.add(Return(retval, yield_target=next_block))
     builder.activate_block(next_block)
 
     add_raise_exception_blocks_to_generator_class(builder, line)

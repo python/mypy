@@ -143,7 +143,12 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
             ]
         )
     if is_enum_overlapping_union(declared, narrowed):
-        return original_narrowed
+        # Quick check before reaching `is_overlapping_types`. If it's enum/literal overlap,
+        # avoid full expansion and make it faster.
+        assert isinstance(narrowed, UnionType)
+        return make_simplified_union(
+            [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
+        )
     elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True):
         if state.strict_optional:
             return UninhabitedType()

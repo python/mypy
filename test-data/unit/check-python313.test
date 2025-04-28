@@ -219,7 +219,7 @@ def func_a1(
     reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.float, builtins.str]"
     reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.float, builtins.float]"
     reveal_type(d)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testPEP695TypeParameterDefaultTypeAlias2]
@@ -253,5 +253,24 @@ def func_c1(
     # reveal_type(a)  # Revealed type is "Tuple[builtins.int, builtins.str]"  # TODO
     reveal_type(b)  # N: Revealed type is "Tuple[builtins.float]"
 
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeParameterDefaultTypeAlias4]
+# flags: --disallow-any-generics
+class A[L = int, M = str]: ...
+TD1 = A[float]
+type TD2 = A[float]
+
+def func_d1(
+    a: TD1,
+    b: TD1[float],  # E: Bad number of arguments for type alias, expected 0, given 1
+    c: TD2,
+    d: TD2[float],  # E: Bad number of arguments for type alias, expected 0, given 1
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.A[builtins.float, builtins.str]"
+    reveal_type(b)  # N: Revealed type is "__main__.A[builtins.float, builtins.str]"
+    reveal_type(c)  # N: Revealed type is "__main__.A[builtins.float, builtins.str]"
+    reveal_type(d)  # N: Revealed type is "__main__.A[builtins.float, builtins.str]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]

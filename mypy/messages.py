@@ -2439,7 +2439,7 @@ class MessageBuilder:
         error_cnt = 0
         notes: list[str] = []
         for i, (lhs_t, rhs_t) in enumerate(zip(lhs_types, rhs_types)):
-            if not is_subtype(lhs_t, rhs_t):
+            if not is_subtype(rhs_t, lhs_t):
                 if error_cnt < 3:
                     notes.append(
                         "Expression tuple item {} has type {}; {} expected; ".format(
