@@ -285,7 +285,7 @@ def is_same_type(
 
 
 # This is a helper function used to check for recursive type of distributed tuple
-def structurally_recursive(typ: Type, seen: set[Type] | None = None) -> bool:
+def is_structurally_recursive(typ: Type, seen: set[Type] | None = None) -> bool:
     if seen is None:
         seen = set()
     typ = get_proper_type(typ)
@@ -293,9 +293,9 @@ def structurally_recursive(typ: Type, seen: set[Type] | None = None) -> bool:
         return True
     seen.add(typ)
     if isinstance(typ, UnionType):
-        return any(structurally_recursive(item, seen.copy()) for item in typ.items)
+        return any(is_structurally_recursive(item, seen.copy()) for item in typ.items)
     if isinstance(typ, TupleType):
-        return any(structurally_recursive(item, seen.copy()) for item in typ.items)
+        return any(is_structurally_recursive(item, seen.copy()) for item in typ.items)
     return False
 
 
@@ -323,7 +323,7 @@ def _is_subtype(
     if isinstance(left, TupleType) and isinstance(right, UnionType):
         # check only if not recursive type because if recursive type,
         # test run into maximum recursive depth reached
-        if not structurally_recursive(left) and not structurally_recursive(right):
+        if not is_structurally_recursive(left) and not is_structurally_recursive(right):
             fallback = left.partial_fallback
             tuple_items = left.items
             if hasattr(left, "fallback") and left.fallback is not None:
