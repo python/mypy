@@ -3578,13 +3578,13 @@ def baz(x: int):
     return bar(*x, **x) # E: Expected iterable as variadic argument # E: Argument after ** must be a mapping, not "int"
 
 def f1(x: int):
-    return g(**x) # E: Argument after ** must be a mapping, not "int" 
+    return g(**x) # E: Argument after ** must be a mapping, not "int"
 
 def f2(x: list[int]):
     return g(*x)
 
 def f3(x: Any):
-    return g(*x) 
+    return g(*x)
 
 from typing import Optional
 def f4(x: Optional[int]):
