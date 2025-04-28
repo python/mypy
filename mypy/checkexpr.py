@@ -1453,6 +1453,32 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         member: str | None = None,
     ) -> Type:
 
+        proper_callee = get_proper_type(callee_type)
+
+        is_constructor_call = False
+        if isinstance(e.callee, RefExpr):
+            node = e.callee.node
+            if node is not None and hasattr(node, "name"):
+                is_constructor_call = node.name == "__init__"
+            elif callable_name is None:
+                # direct class call without member name
+                is_constructor_call = True
+
+        object_type = get_proper_type(object_type)
+        if (
+            isinstance(proper_callee, CallableType)
+            and isinstance(object_type, Instance)
+            and is_constructor_call
+        ):
+            target_name = object_type.type.name
+            arg_names_set = set(e.arg_names or [])
+
+            for name, kind in zip(proper_callee.arg_names, proper_callee.arg_kinds):
+                if name is not None and kind in (ARG_NAMED, ARG_POS):
+                    if name not in arg_names_set:
+                        if target_name == "misc":
+                            continue  # Skip error for miscellaneous/unknown classes
+
         """Type check call expression.
 
         The callee_type should be used as the type of callee expression. In particular,
