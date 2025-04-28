@@ -2075,7 +2075,7 @@ class F:
 def g(): ...
 
 [case testCoroutineImportTypesAsT]
-import types  as t
+import types as t
 
 class F:
     @t.coroutine
@@ -2086,7 +2086,7 @@ class F:
 def g():
     return 2
 [out]
-import types  as t
+import types as t
 
 class F:
     @t.coroutine
