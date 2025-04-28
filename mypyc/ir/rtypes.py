@@ -58,8 +58,21 @@ class RType:
     # to checking for error value as the return value of a function.
     #
     # For example, no i64 value can be reserved for error value, so we
-    # pick an arbitrary value (e.g. -113) to signal error, but this is
-    # also a valid non-error value.
+    # pick an arbitrary value (-113) to signal error, but this is
+    # also a valid non-error value. The chosen value is rare as a
+    # normal, non-error value, so most of the time we can avoid calling
+    # PyErr_Occurred() when checking for errors raised by called
+    # functions.
+    #
+    # This also means that if an attribute with this type might be
+    # undefined, we can't just rely on the error value to signal this.
+    # Instead, we add a bitfield to keep track whether attributes with
+    # "error overlap" have a value. If there is no value, AttributeError
+    # is raised on attribute read. Parameters with default values also
+    # use the bitfield trick to indicate whether the caller passed a
+    # value. (If we can determine that an attribute is "always defined",
+    # we never raise an AttributeError and don't need the bitfield
+    # entry.)
     error_overlap = False
 
     @abstractmethod

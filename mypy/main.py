@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
+RECURSION_LIMIT: Final = 2**14
 
 
 def stat_proxy(path: str) -> os.stat_result:
@@ -76,7 +77,7 @@ def main(
     util.check_python_version("mypy")
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
-    sys.setrecursionlimit(2**14)
+    sys.setrecursionlimit(RECURSION_LIMIT)
     if args is None:
         args = sys.argv[1:]
 
@@ -1126,6 +1127,11 @@ def process_options(
     # Undocumented mypyc feature: generate annotated HTML source file
     report_group.add_argument(
         "-a", dest="mypyc_annotation_file", type=str, default=None, help=argparse.SUPPRESS
+    )
+    # Hidden mypyc feature: do not write any C files (keep existing ones and assume they exist).
+    # This can be useful when debugging mypyc bugs.
+    report_group.add_argument(
+        "--skip-c-gen", dest="mypyc_skip_c_generation", action="store_true", help=argparse.SUPPRESS
     )
 
     other_group = parser.add_argument_group(title="Miscellaneous")

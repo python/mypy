@@ -1,7 +1,9 @@
 # async test cases (compile and run)
 
-[case testAsync]
+[case testRunAsyncBasics]
 import asyncio
+
+from testutil import assertRaises
 
 async def h() -> int:
     return 1
@@ -11,19 +13,164 @@ async def g() -> int:
     return await h()
 
 async def f() -> int:
-    return await g()
+    return await g() + 2
+
+async def f2() -> int:
+    x = 0
+    for i in range(2):
+        x += i + await f() + await g()
+    return x
+
+def test_simple_call() -> None:
+    result = asyncio.run(f())
+    assert result == 3
+
+def test_multiple_awaits_in_expression() -> None:
+    result = asyncio.run(f2())
+    assert result == 9
+
+class MyError(Exception):
+    pass
+
+async def exc1() -> None:
+    await asyncio.sleep(0)
+    raise MyError()
+
+async def exc2() -> None:
+    await asyncio.sleep(0)
+    raise MyError()
+
+async def exc3() -> None:
+    await exc1()
+
+async def exc4() -> None:
+    await exc2()
+
+async def exc5() -> int:
+    try:
+        await exc1()
+    except MyError:
+        return 3
+    return 4
+
+async def exc6() -> int:
+    try:
+        await exc4()
+    except MyError:
+        return 3
+    return 4
+
+def test_exception() -> None:
+    with assertRaises(MyError):
+        asyncio.run(exc1())
+    with assertRaises(MyError):
+        asyncio.run(exc2())
+    with assertRaises(MyError):
+        asyncio.run(exc3())
+    with assertRaises(MyError):
+        asyncio.run(exc4())
+    assert asyncio.run(exc5()) == 3
+    assert asyncio.run(exc6()) == 3
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
+# eh, we could use the real type but it doesn't seem important
+def run(x: object) -> object: ...
 
 [typing fixtures/typing-full.pyi]
 
-[file driver.py]
-from native import f
+[case testRunAsyncAwaitInVariousPositions]
+from typing import cast, Any
+
 import asyncio
 
-result = asyncio.run(f())
-assert result == 1
+async def one() -> int:
+    await asyncio.sleep(0.0)
+    return int() + 1
+
+async def true() -> bool:
+    return bool(int() + await one())
+
+async def branch_await() -> int:
+    if bool(int() + 1) == await true():
+        return 3
+    return 2
+
+async def branch_await_not() -> int:
+    if bool(int() + 1) == (not await true()):
+        return 3
+    return 2
+
+def test_branch() -> None:
+    assert asyncio.run(branch_await()) == 3
+    assert asyncio.run(branch_await_not()) == 2
+
+async def assign_multi() -> int:
+    _, x = int(), await one()
+    return x + 1
+
+def test_assign_multi() -> None:
+    assert asyncio.run(assign_multi()) == 2
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+    def concat(self, s: str) -> str:
+        return self.s + s
+
+async def make_c(s: str) -> C:
+    await one()
+    return C(s)
+
+async def concat(s: str, t: str) -> str:
+    await one()
+    return s + t
+
+async def set_attr(s: str) -> None:
+    (await make_c("xyz")).s = await concat(s, "!")
+
+def test_set_attr() -> None:
+    asyncio.run(set_attr("foo"))  # Just check that it compiles and runs
+
+def concat2(x: str, y: str) -> str:
+    return x + y
+
+async def call1(s: str) -> str:
+    return concat2(str(int()), await concat(s, "a"))
+
+async def call2(s: str) -> str:
+    return await concat(str(int()), await concat(s, "b"))
+
+def test_call() -> None:
+    assert asyncio.run(call1("foo")) == "0fooa"
+    assert asyncio.run(call2("foo")) == "0foob"
+
+async def method_call(s: str) -> str:
+    return C("<").concat(await concat(s, ">"))
+
+def test_method_call() -> None:
+    assert asyncio.run(method_call("foo")) == "<foo>"
+
+class D:
+    def __init__(self, a: str, b: str) -> None:
+        self.a = a
+        self.b = b
+
+async def construct(s: str) -> str:
+    c = D(await concat(s, "!"), await concat(s, "?"))
+    return c.a + c.b
+
+def test_construct() -> None:
+    assert asyncio.run(construct("foo")) == "foo!foo?"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+# eh, we could use the real type but it doesn't seem important
+def run(x: object) -> object: ...
+
+[typing fixtures/typing-full.pyi]
+
 
 [case testAsyncWith]
 from testutil import async_val
@@ -67,7 +214,6 @@ from testutil import run_generator
 yields, val = run_generator(async_return())
 assert yields == ('foo',)
 assert val == 'test', val
-
 
 [case testAsyncFor]
 from typing import AsyncIterable, List, Set, Dict
@@ -171,3 +317,247 @@ async def x() -> None:
 import asyncio
 import native
 asyncio.run(native.x())
+
+[case testRunAsyncSpecialCases]
+import asyncio
+
+async def t() -> tuple[int, str, str]:
+    return (1, "x", "y")
+
+async def f() -> tuple[int, str, str]:
+    return await t()
+
+def test_tuple_return() -> None:
+    result = asyncio.run(f())
+    assert result == (1, "x", "y")
+
+async def e() -> ValueError:
+    return ValueError("foo")
+
+async def g() -> ValueError:
+    return await e()
+
+def test_exception_return() -> None:
+    result = asyncio.run(g())
+    assert isinstance(result, ValueError)
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+# eh, we could use the real type but it doesn't seem important
+def run(x: object) -> object: ...
+
+[typing fixtures/typing-full.pyi]
+
+[case testRunAsyncRefCounting]
+import asyncio
+import gc
+
+def assert_no_leaks(fn, max_new):
+    # Warm-up, in case asyncio allocates something on first use
+    asyncio.run(fn())
+
+    gc.collect()
+    old_objs = gc.get_objects()
+
+    for i in range(10):
+        asyncio.run(fn())
+
+    gc.collect()
+    new_objs = gc.get_objects()
+
+    delta = len(new_objs) - len(old_objs)
+    # Often a few persistent objects get allocated, which may be unavoidable.
+    # The main thing we care about is that each iteration does not leak an
+    # additional object.
+    assert delta <= max_new, delta
+
+async def concat_one(x: str) -> str:
+    return x + "1"
+
+async def foo(n: int) -> str:
+    s = ""
+    while len(s) < n:
+        s = await concat_one(s)
+    return s
+
+def test_trivial() -> None:
+    assert_no_leaks(lambda: foo(1000), 5)
+
+async def make_list(a: list[int]) -> list[int]:
+    await concat_one("foobar")
+    return [a[0]]
+
+async def spill() -> list[int]:
+    a: list[int] = []
+    for i in range(5):
+        await asyncio.sleep(0.0001)
+        a = (await make_list(a + [1])) + a + (await make_list(a + [2]))
+    return a
+
+async def bar(n: int) -> None:
+    for i in range(n):
+        await spill()
+
+def test_spilled() -> None:
+    assert_no_leaks(lambda: bar(40), 2)
+
+async def raise_deep(n: int) -> str:
+    if n == 0:
+        await asyncio.sleep(0.0001)
+        raise TypeError(str(n))
+    else:
+        if n == 2:
+            await asyncio.sleep(0.0001)
+        return await raise_deep(n - 1)
+
+async def maybe_raise(n: int) -> str:
+    if n % 3 == 0:
+        await raise_deep(5)
+    elif n % 29 == 0:
+        await asyncio.sleep(0.0001)
+    return str(n)
+
+async def exc(n: int) -> list[str]:
+    a = []
+    for i in range(n):
+        try:
+            a.append(str(int()) + await maybe_raise(n))
+        except TypeError:
+            a.append(str(int() + 5))
+    return a
+
+def test_exception() -> None:
+    assert_no_leaks(lambda: exc(50), 2)
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+async def id(c: C) -> C:
+    return c
+
+async def stolen_helper(c: C, s: str) -> str:
+    await asyncio.sleep(0.0001)
+    (await id(c)).s = await concat_one(s)
+    await asyncio.sleep(0.0001)
+    return c.s
+
+async def stolen(n: int) -> int:
+    for i in range(n):
+        c = C(str(i))
+        s = await stolen_helper(c, str(i + 2))
+        assert s == str(i + 2) + "1"
+    return n
+
+def test_stolen() -> None:
+    assert_no_leaks(lambda: stolen(100), 2)
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
+async def sleep(t: float) -> None: ...
+
+[case testRunAsyncMiscTypesInEnvironment]
+# Here we test that values of various kinds of types can be spilled to the
+# environment. In particular, types with "overlapping error values" such as
+# i64 can be tricky, since they require extra work to support undefined
+# attribute values (which raise AttributeError when accessed). For these,
+# the object struct has a bitfield which keeps track of whether certain
+# attributes have an assigned value.
+#
+# In practice we mark these attributes as "always defined", which causes these
+# checks to be skipped on attribute access, and thus we don't require the
+# bitfield to exist.
+#
+# See the comment of RType.error_overlap for more information.
+
+import asyncio
+
+from mypy_extensions import i64, i32, i16, u8
+
+async def inc_float(x: float) -> float:
+    return x + 1.0
+
+async def inc_i64(x: i64) -> i64:
+    return x + 1
+
+async def inc_i32(x: i32) -> i32:
+    return x + 1
+
+async def inc_i16(x: i16) -> i16:
+    return x + 1
+
+async def inc_u8(x: u8) -> u8:
+    return x + 1
+
+async def inc_tuple(x: tuple[i64, float]) -> tuple[i64, float]:
+    return x[0] + 1, x[1] + 1.5
+
+async def neg_bool(b: bool) -> bool:
+    return not b
+
+async def float_ops(x: float) -> float:
+    n = x
+    n = await inc_float(n)
+    n = float("0.5") + await inc_float(n)
+    return n
+
+def test_float() -> None:
+    assert asyncio.run(float_ops(2.5)) == 5.0
+
+async def i64_ops(x: i64) -> i64:
+    n = x
+    n = await inc_i64(n)
+    n = i64("1") + await inc_i64(n)
+    return n
+
+def test_i64() -> None:
+    assert asyncio.run(i64_ops(2)) == 5
+
+async def i32_ops(x: i32) -> i32:
+    n = x
+    n = await inc_i32(n)
+    n = i32("1") + await inc_i32(n)
+    return n
+
+def test_i32() -> None:
+    assert asyncio.run(i32_ops(3)) == 6
+
+async def i16_ops(x: i16) -> i16:
+    n = x
+    n = await inc_i16(n)
+    n = i16("1") + await inc_i16(n)
+    return n
+
+def test_i16() -> None:
+    assert asyncio.run(i16_ops(4)) == 7
+
+async def u8_ops(x: u8) -> u8:
+    n = x
+    n = await inc_u8(n)
+    n = u8("1") + await inc_u8(n)
+    return n
+
+def test_u8() -> None:
+    assert asyncio.run(u8_ops(5)) == 8
+
+async def tuple_ops(x: tuple[i64, float]) -> tuple[i64, float]:
+    n = x
+    n = await inc_tuple(n)
+    m = ((i64("1"), float("0.5")), await inc_tuple(n))
+    return m[1]
+
+def test_tuple() -> None:
+    assert asyncio.run(tuple_ops((1, 2.5))) == (3, 5.5)
+
+async def bool_ops(x: bool) -> bool:
+    n = x
+    n = await neg_bool(n)
+    m = (bool("1"), await neg_bool(n))
+    return m[0] and m[1]
+
+def test_bool() -> None:
+    assert asyncio.run(bool_ops(True)) is True
+    assert asyncio.run(bool_ops(False)) is False
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...

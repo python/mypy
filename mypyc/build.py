@@ -452,7 +452,8 @@ def mypyc_build(
         cfilenames = []
         for cfile, ctext in cfiles:
             cfile = os.path.join(compiler_options.target_dir, cfile)
-            write_file(cfile, ctext)
+            if not options.mypyc_skip_c_generation:
+                write_file(cfile, ctext)
             if os.path.splitext(cfile)[1] == ".c":
                 cfilenames.append(cfile)
 
