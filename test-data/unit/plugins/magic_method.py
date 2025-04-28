@@ -18,7 +18,6 @@ def type_radd(ctx, *args):
 class TestPlugin(Plugin):
 
     def get_method_hook(self, fullname):
-        print(fullname)
         if fullname == 'builtins.int.__add__':
             return type_add
         if fullname == 'builtins.int.__radd__':
