@@ -91,6 +91,9 @@ class TypeState:
     _assuming_proper: Final[list[tuple[Type, Type]]]
     # Ditto for inference of generic constraints against recursive type aliases.
     inferring: Final[list[tuple[Type, Type]]]
+    # When building constraints for a callable, prefer these variables when we encounter
+    # ambiguous set in `any_constraints`
+    constraints_targets: Final[list[set[TypeVarId]]]
     # Whether to use joins or unions when solving constraints, see checkexpr.py for details.
     infer_unions: bool
     # Whether to use new type inference algorithm that can infer polymorphic types.
@@ -112,6 +115,7 @@ class TypeState:
         self._assuming = []
         self._assuming_proper = []
         self.inferring = []
+        self.constraints_targets = []
         self.infer_unions = False
         self.infer_polymorphic = False
 

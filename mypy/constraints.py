@@ -69,8 +69,6 @@ if TYPE_CHECKING:
 SUBTYPE_OF: Final = 0
 SUPERTYPE_OF: Final = 1
 
-PT = []
-
 
 class Constraint:
     """A representation of a type constraint.
@@ -130,7 +128,7 @@ def infer_constraints_for_callable(
     param_spec_arg_kinds = []
 
     own_vars = {t.id for t in callee.variables}
-    PT.append(own_vars)
+    type_state.constraints_targets.append(own_vars)
 
     incomplete_star_mapping = False
     for i, actuals in enumerate(formal_to_actual):  # TODO: isn't this `enumerate(arg_types)`?
@@ -278,7 +276,7 @@ def infer_constraints_for_callable(
     if any(isinstance(v, ParamSpecType) for v in callee.variables):
         # As a perf optimization filter imprecise constraints only when we can have them.
         constraints = filter_imprecise_kinds(constraints)
-    PT.pop()
+    type_state.constraints_targets.pop()
     return constraints
 
 
@@ -576,7 +574,7 @@ def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | No
     if not option:
         return option
 
-    own = PT[-1] if PT else None
+    own = type_state.constraints_targets[-1] if type_state.constraints_targets else None
 
     satisfiable = []
     for c in option:
