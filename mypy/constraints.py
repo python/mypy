@@ -578,7 +578,7 @@ def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | No
 
     satisfiable = []
     for c in option:
-        if own is not None and c.op == SUPERTYPE_OF and c.type_var not in own:
+        if own is not None and c.type_var not in own:
             continue
         if isinstance(c.origin_type_var, TypeVarType) and c.origin_type_var.values:
             if any(
