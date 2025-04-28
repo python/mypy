@@ -1495,3 +1495,18 @@ def g(b: Optional[str]) -> None:
         z: Callable[[], str] = lambda: reveal_type(b)  # N: Revealed type is "builtins.str"
         f2(lambda: reveal_type(b))  # N: Revealed type is "builtins.str"
         lambda: reveal_type(b)  # N: Revealed type is "builtins.str"
+
+[case testInferenceContextMappingGet]
+from typing import Generic, TypeVar, Union
+
+_T = TypeVar("_T")
+_K = TypeVar("_K")
+_V = TypeVar("_V")
+
+class Mapping(Generic[_K, _V]):
+    def get(self, key: _K, default: Union[_V, _T]) -> Union[_V, _T]: ...
+
+def check(mapping: Mapping[str, _T]) -> None:
+    fail1 = mapping.get("", "")
+    fail2: Union[_T, str] = mapping.get("", "")
+[builtins fixtures/tuple.pyi]

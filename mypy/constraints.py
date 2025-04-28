@@ -69,6 +69,8 @@ if TYPE_CHECKING:
 SUBTYPE_OF: Final = 0
 SUPERTYPE_OF: Final = 1
 
+PT = []
+
 
 class Constraint:
     """A representation of a type constraint.
@@ -126,6 +128,9 @@ def infer_constraints_for_callable(
     param_spec_arg_types = []
     param_spec_arg_names = []
     param_spec_arg_kinds = []
+
+    own_vars = {t.id for t in callee.variables}
+    PT.append(own_vars)
 
     incomplete_star_mapping = False
     for i, actuals in enumerate(formal_to_actual):  # TODO: isn't this `enumerate(arg_types)`?
@@ -273,6 +278,7 @@ def infer_constraints_for_callable(
     if any(isinstance(v, ParamSpecType) for v in callee.variables):
         # As a perf optimization filter imprecise constraints only when we can have them.
         constraints = filter_imprecise_kinds(constraints)
+    PT.pop()
     return constraints
 
 
@@ -512,7 +518,7 @@ def handle_recursive_union(template: UnionType, actual: Type, direction: int) ->
     ) or infer_constraints(UnionType.make_union(type_var_items), actual, direction)
 
 
-def any_constraints(options: list[list[Constraint] | None], eager: bool) -> list[Constraint]:
+def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> list[Constraint]:
     """Deduce what we can from a collection of constraint lists.
 
     It's a given that at least one of the lists must be satisfied. A
@@ -547,7 +553,7 @@ def any_constraints(options: list[list[Constraint] | None], eager: bool) -> list
                 if option in trivial_options:
                     continue
                 merged_options.append([merge_with_any(c) for c in option])
-            return any_constraints(list(merged_options), eager)
+            return any_constraints(list(merged_options), eager=eager)
 
     # If normal logic didn't work, try excluding trivially unsatisfiable constraint (due to
     # upper bounds) from each option, and comparing them again.
@@ -569,8 +575,13 @@ def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | No
     """
     if not option:
         return option
+
+    own = PT[-1] if PT else None
+
     satisfiable = []
     for c in option:
+        if own is not None and c.op == SUPERTYPE_OF and c.type_var not in own:
+            continue
         if isinstance(c.origin_type_var, TypeVarType) and c.origin_type_var.values:
             if any(
                 mypy.subtypes.is_subtype(c.target, value) for value in c.origin_type_var.values
