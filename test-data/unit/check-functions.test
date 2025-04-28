@@ -3566,3 +3566,29 @@ class Bar(Foo):
 
     def foo(self, value: Union[int, str]) -> Union[int, str]:
         return super().foo(value)  # E: Call to abstract method "foo" of "Foo" with trivial body via super() is unsafe
+
+[case testInvalidUnpack]
+from foo import bar  # type: ignore[import-not-found]
+from typing import Any
+
+def g(x: Any):
+    pass
+
+def baz(x: int):
+    return bar(*x, **x) # E: Expected iterable as variadic argument # E: Argument after ** must be a mapping, not "int"
+
+def f1(x: int):
+    return g(**x) # E: Argument after ** must be a mapping, not "int" 
+
+def f2(x: list[int]):
+    return g(*x)
+
+def f3(x: Any):
+    return g(*x) 
+
+from typing import Optional
+def f4(x: Optional[int]):
+    return g(*x) # E: Expected iterable as variadic argument
+
+def f(x: int):
+    return g(*x)  # E: Expected iterable as variadic argument
