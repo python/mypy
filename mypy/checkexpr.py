@@ -1452,6 +1452,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         object_type: Type | None,
         member: str | None = None,
     ) -> Type:
+
         """Type check call expression.
 
         The callee_type should be used as the type of callee expression. In particular,
