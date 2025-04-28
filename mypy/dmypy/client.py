@@ -628,18 +628,14 @@ def do_hang(args: argparse.Namespace) -> None:
 @action(watch_parser)
 def do_watch(args: argparse.Namespace) -> None:
     """Recheck the same set of files every few seconds"""
-    response = request(args.status_file, "check", files=args.files, export_types=args.export_types)
-    os.system("cls" if os.name == "nt" else "clear")
-    previous_output = response["out"]
-    previous_err = response["err"]
-    sys.stdout.write(previous_output)
-    sys.stdout.flush()
-    sys.stderr.write(previous_err)
-    sys.stderr.flush()
+    previous_output = None
+    previous_err = None
     while True:
         try:
             time.sleep(args.interval)
-            response = request(args.status_file, "recheck", export_types=args.export_types)
+            response = request(
+                args.status_file, "check", files=args.files, export_types=args.export_types
+            )
             output = response["out"]
             err = response["err"]
             if output != previous_output or err != previous_err:

@@ -8,9 +8,13 @@ This also includes some unit tests.
 from __future__ import annotations
 
 import os
+import pathlib
+import signal
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 
 from mypy.dmypy_server import filter_out_missing_top_level_packages
@@ -130,3 +134,86 @@ class DaemonUtilitySuite(unittest.TestCase):
         if not path.endswith("/"):
             with open(fullpath, "w") as f:
                 f.write("# test file")
+
+
+class DaemonWatchSuite(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_path = pathlib.Path(self.temp_dir.name)
+        self.output_lines = []
+        self.stop_reader = False
+
+    def _read_output(self):
+        for line in self.process.stdout:
+            self.output_lines.append(line.strip())
+            if self.stop_reader:
+                break
+
+    def _start_watching(self, args: str, start_daemon: bool = True):
+        if start_daemon:
+            subprocess.run(
+                [sys.executable, "-m", "mypy.dmypy", "start"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                cwd=self.temp_path,
+                check=True,
+            )
+
+        self.process = subprocess.Popen(
+            [sys.executable, "-m", "mypy.dmypy", "watch", args],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=self.temp_path,
+            text=True,
+            universal_newlines=True,
+            bufsize=1,
+        )
+
+        self.reader_thread = threading.Thread(target=self._read_output, daemon=True)
+        self.reader_thread.start()
+
+    def _wait_for_output(self, text: str, timeout=5):
+        """Wait for text to appear in output within timeout seconds."""
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if any(text in line for line in self.output_lines):
+                return True
+            time.sleep(0.1)
+        return False
+
+    def test_watcher_reacts_to_file_changes(self):
+        (self.temp_path / "valid.py").write_text(
+            "def hello_world() -> str:\n    return 'Hello World!'"
+        )
+
+        self._start_watching(".")
+
+        # The initial run can take a bit longer, therefore the 10s timeout
+        self.assertTrue(self._wait_for_output("Success: no issues found in 1 source file", 10))
+
+        (self.temp_path / "invalid.py").write_text(
+            "def hello_world() -> int:\n    return 'Hello World!'"
+        )
+
+        self.assertTrue(self._wait_for_output("Incompatible return value type"))
+        self.assertTrue(self._wait_for_output("Found 1 error in 1 file"))
+
+    def tearDown(self):
+        print(self.output_lines)
+        subprocess.run([sys.executable, "-m", "mypy.dmypy", "stop"], cwd=self.temp_path)
+
+        # Send SIGINT to terminate the watcher process
+        if self.process.poll() is None:
+            self.process.send_signal(signal.SIGINT)
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+
+        # Stop the output reader thread
+        self.stop_reader = True
+        if self.reader_thread.is_alive():
+            self.reader_thread.join(timeout=5)
+
+        # Clean up temp directory
+        self.temp_dir.cleanup()
