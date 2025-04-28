@@ -29,6 +29,7 @@ try:
 except ImportError:
     lxml = None
 
+
 import pytest
 
 # List of files that contain test case descriptions.

@@ -1,5 +1,5 @@
 import sys
-import types 
+import types
 from _typeshed import StrPath
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable

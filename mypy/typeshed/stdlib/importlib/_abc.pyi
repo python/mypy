@@ -1,5 +1,5 @@
 import sys
-import types 
+import types
 from abc import ABCMeta
 from importlib.machinery import ModuleSpec
 

@@ -2,7 +2,7 @@ import _ast
 import _sitebuiltins
 import _typeshed
 import sys
-import types 
+import types
 from _collections_abc import dict_items, dict_keys, dict_values
 from _typeshed import (
     AnyStr_co,

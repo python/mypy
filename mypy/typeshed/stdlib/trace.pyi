@@ -1,5 +1,5 @@
 import sys
-import types 
+import types
 from _typeshed import Incomplete, StrPath, TraceFunction
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any, TypeVar

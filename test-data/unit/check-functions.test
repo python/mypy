@@ -1831,7 +1831,7 @@ F = Callable[[Arg(int, 'x')], int]  # E: Invalid argument constructor "__main__.
 from typing import Callable, List
 from mypy_extensions import Arg, VarArg, KwArg
 import mypy_extensions
-import types   # Needed for type checking
+import types  # Needed for type checking
 
 def WrongArg(x, y): return y
 # Note that for this test, the 'Value of type "int" is not indexable' errors are silly,

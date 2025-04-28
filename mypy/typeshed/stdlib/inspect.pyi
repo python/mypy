@@ -1,7 +1,7 @@
 import dis
 import enum
 import sys
-import types 
+import types
 from _typeshed import StrPath
 from collections import OrderedDict
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator, Mapping, Sequence, Set as AbstractSet

@@ -1,6 +1,6 @@
 import _typeshed
 import sys
-import types 
+import types
 from _typeshed import SupportsKeysAndGetItem, Unused
 from builtins import property as _builtins_property
 from collections.abc import Callable, Iterable, Iterator, Mapping

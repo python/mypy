@@ -1,4 +1,4 @@
-import types 
+import types
 from collections.abc import Iterable, Mapping
 from datetime import datetime as _datetime
 from email._header_value_parser import (

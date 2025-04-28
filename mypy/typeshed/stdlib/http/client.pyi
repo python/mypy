@@ -2,7 +2,7 @@ import email.message
 import io
 import ssl
 import sys
-import types 
+import types
 from _typeshed import MaybeNone, ReadableBuffer, SupportsRead, SupportsReadline, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from socket import socket

@@ -1,6 +1,6 @@
 import _ast
 import sys
-import types 
+import types
 from _typeshed import ReadableBuffer, StrPath
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterator, Mapping, Sequence

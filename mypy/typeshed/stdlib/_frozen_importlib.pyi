@@ -1,7 +1,7 @@
 import importlib.abc
 import importlib.machinery
 import sys
-import types 
+import types
 from _typeshed.importlib import LoaderProtocol
 from collections.abc import Mapping, Sequence
 from types import ModuleType

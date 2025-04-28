@@ -2,7 +2,7 @@ import sys
 
 # Even though this file is 3.11+ only, Pyright will complain in stubtest for older versions.
 if sys.version_info >= (3, 11):
-    import types 
+    import types
     from collections.abc import Callable
     from contextlib import AbstractContextManager
     from importlib.abc import ResourceReader, Traversable
