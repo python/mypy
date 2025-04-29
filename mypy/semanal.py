@@ -6382,6 +6382,8 @@ class SemanticAnalyzer(
             if node.name not in self.globals:
                 return True
             global_node = self.globals[node.name]
+            if not self.is_textually_before_class(global_node.node):
+                return True
             return not self.is_type_like(global_node.node)
         return False
 
@@ -6408,6 +6410,13 @@ class SemanticAnalyzer(
             return line_diff > len(node.original_decorators)
         else:
             return line_diff > 0
+
+    def is_textually_before_class(self, node: SymbolNode | None) -> bool:
+        """Similar to above, but check if a node is defined before current class."""
+        assert self.type is not None
+        if node is None:
+            return False
+        return node.line < self.type.defn.line
 
     def is_overloaded_item(self, node: SymbolNode, statement: Statement) -> bool:
         """Check whether the function belongs to the overloaded variants"""
