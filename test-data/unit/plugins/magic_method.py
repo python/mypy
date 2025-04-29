@@ -1,6 +1,7 @@
 from mypy.types import LiteralType, AnyType, TypeOfAny
 from mypy.plugin import Plugin
 
+# If radd exists, there shouldn't be an error. If it doesn't exist, then there will be an error
 def type_add(ctx, *args):
     lhs = ctx.type
     rhs = ctx.arg_types[0][0]

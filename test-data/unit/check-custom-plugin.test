@@ -1125,3 +1125,4 @@ reveal_type(c) # N: Revealed type is "Literal[7]"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/magic_method.py
+[builtins fixtures/ops.pyi]
