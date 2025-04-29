@@ -1374,8 +1374,8 @@ class BadUse():  # E: native_class must be used with True or False only
 [case testMypycAttrNativeClassMetaError]
 from mypy_extensions import mypyc_attr
 
-@mypyc_attr(native_class=False)
-class M(type):
+@mypyc_attr(native_class=True)
+class M(type):  # E: Inheriting from most builtin types is unimplemented
     pass
 
 @mypyc_attr(native_class=True)
