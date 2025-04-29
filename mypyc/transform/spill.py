@@ -45,6 +45,10 @@ def spill_regs(
     for i, val in enumerate(to_spill):
         name = f"{TEMP_ATTR_NAME}2_{i}"
         env.attributes[name] = val.type
+        if val.type.error_overlap:
+            # We can safely treat as always initialized, since the type has no pointers.
+            # This way we also don't need to manage the defined attribute bitfield.
+            env._always_initialized_attrs.add(name)
         spill_locs[val] = name
 
     for block in blocks:
