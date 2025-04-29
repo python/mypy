@@ -202,18 +202,17 @@ class DaemonWatchSuite(unittest.TestCase):
     def tearDown(self) -> None:
         subprocess.run([sys.executable, "-m", "mypy.dmypy", "stop"], cwd=self.temp_path)
 
-        # Send SIGINT to terminate the watcher process
         if self.process.poll() is None:
-            self.process.send_signal(signal.SIGINT)
+            self.process.send_signal(
+                signal.CTRL_C_EVENT if sys.platform == "win32" else signal.SIGINT
+            )
             try:
                 self.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self.process.kill()
 
-        # Stop the output reader thread
         self.stop_reader = True
         if self.reader_thread.is_alive():
             self.reader_thread.join(timeout=5)
 
-        # Clean up temp directory
         self.temp_dir.cleanup()
