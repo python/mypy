@@ -267,35 +267,13 @@ def gen_func_item(
             lambda args, blocks, fn_info: gen_func_ir(builder, args, blocks, sig, fn_info, cdef, is_singledispatch))
 
         # Re-enter the FuncItem and visit the body of the function this time.
-        builder.enter(fn_info, ret_type=sig.ret_type)
-        setup_env_for_generator_class(builder)
-
-        load_outer_envs(builder, builder.fn_info.generator_class)
-        top_level = builder.top_level_fn_info()
-        if (
-            builder.fn_info.is_nested
-            and isinstance(fitem, FuncDef)
-            and top_level
-            and top_level.add_nested_funcs_to_env
-        ):
-            setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
-        create_switch_for_generator_class(builder)
-        add_raise_exception_blocks_to_generator_class(builder, fitem.line)
-
-        add_vars_to_env(builder)
-
-        builder.accept(fitem.body)
-        builder.maybe_add_implicit_return()
-
-        populate_switch_for_generator_class(builder)
+        gen_generator_body_func(builder, fn_info, sig)
     else:
         load_env_registers(builder)
         gen_arg_defaults(builder)
         if contains_nested:
             finalize_env_class(builder)
-
         add_vars_to_env(builder)
-
         builder.accept(fitem.body)
         builder.maybe_add_implicit_return()
 
@@ -324,6 +302,31 @@ def gen_func_item(
         return gen_dispatch_func_ir(builder, fitem, fn_info.name, name, sig)
 
     return func_ir, func_reg
+
+
+def gen_generator_body_func(builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature) -> None:
+    builder.enter(fn_info, ret_type=sig.ret_type)
+    setup_env_for_generator_class(builder)
+
+    load_outer_envs(builder, builder.fn_info.generator_class)
+    top_level = builder.top_level_fn_info()
+    fitem = fn_info.fitem
+    if (
+        builder.fn_info.is_nested
+        and isinstance(fitem, FuncDef)
+        and top_level
+        and top_level.add_nested_funcs_to_env
+    ):
+        setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
+    create_switch_for_generator_class(builder)
+    add_raise_exception_blocks_to_generator_class(builder, fitem.line)
+
+    add_vars_to_env(builder)
+
+    builder.accept(fitem.body)
+    builder.maybe_add_implicit_return()
+
+    populate_switch_for_generator_class(builder)
 
 
 def add_vars_to_env(builder: IRBuilder) -> None:
