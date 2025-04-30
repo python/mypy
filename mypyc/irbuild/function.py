@@ -267,25 +267,34 @@ def gen_func_item(
 
         # Re-enter the FuncItem and visit the body of the function this time.
         gen_generator_func_body(builder, fn_info, sig)
+
+        # Hang on to the local symbol table for a while, since we use it
+        # to calculate argument defaults below.
+        symtable = builder.symtables[-1]
+
+        args, _, blocks, ret_type, fn_info = builder.leave()
+
+        add_methods_to_generator_class(builder, fn_info, sig, args, blocks, fitem.is_coroutine)
+
+        # Evaluate argument defaults in the surrounding scope, since we
+        # calculate them *once* when the function definition is evaluated.
+        calculate_arg_defaults(builder, fn_info, func_reg, symtable)
     else:
         gen_func_body(builder)
 
-    # Hang on to the local symbol table for a while, since we use it
-    # to calculate argument defaults below.
-    symtable = builder.symtables[-1]
+        # Hang on to the local symbol table for a while, since we use it
+        # to calculate argument defaults below.
+        symtable = builder.symtables[-1]
 
-    args, _, blocks, ret_type, fn_info = builder.leave()
+        args, _, blocks, ret_type, fn_info = builder.leave()
 
-    if is_generator:
-        add_methods_to_generator_class(builder, fn_info, sig, args, blocks, fitem.is_coroutine)
-    else:
         func_ir, func_reg = gen_func_ir(
             builder, args, blocks, sig, fn_info, cdef, is_singledispatch
         )
 
-    # Evaluate argument defaults in the surrounding scope, since we
-    # calculate them *once* when the function definition is evaluated.
-    calculate_arg_defaults(builder, fn_info, func_reg, symtable)
+        # Evaluate argument defaults in the surrounding scope, since we
+        # calculate them *once* when the function definition is evaluated.
+        calculate_arg_defaults(builder, fn_info, func_reg, symtable)
 
     if is_singledispatch:
         # add the generated main singledispatch function
