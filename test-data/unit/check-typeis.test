@@ -454,7 +454,10 @@ def g(x: object) -> None: ...
 def test(x: List[Any]) -> None:
     if not(f(x) or isinstance(x, A)):
         return
-    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "List[Any]" and "__main__.A">]"
+
+    g(reveal_type(x))  # N: Revealed type is "builtins.list[Any]"
+    # explanation: `if f(x): ...` is assumed always true!
+    # so there's no narrowing here.
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsMultipleCondition]
@@ -819,6 +822,7 @@ accept_typeguard(typeguard)
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsInOverloads]
+# flags: --warn-unreachable
 from typing import Any, overload, Union
 from typing_extensions import TypeIs
 
@@ -843,13 +847,15 @@ def func3(val: Union[int, str]):
     if func1(val):
         reveal_type(val)  # N: Revealed type is "Union[builtins.int, builtins.str]"
     else:
-        reveal_type(val)
+        reveal_type(val)  # E: Statement is unreachable \
+                          # N: Revealed type is "Never"
 
 def func4(val: int):
     if func1(val):
         reveal_type(val)  # N: Revealed type is "builtins.int"
     else:
-        reveal_type(val)
+        reveal_type(val)  # E: Statement is unreachable \
+                          # N: Revealed type is "Never"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsInOverloadsSameReturn]

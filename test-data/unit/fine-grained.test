@@ -9695,7 +9695,7 @@ c.py:2: note: Revealed type is "a.<subclass of "a.A" and "a.B">"
 c.py:2: note: Revealed type is "Any"
 b.py:2: error: Cannot determine type of "y"
 
-[case testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection]
+[case testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachableToIntersection]
 import c
 [file a.py]
 class A:

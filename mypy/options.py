@@ -26,6 +26,7 @@ PER_MODULE_OPTIONS: Final = {
     "allow_untyped_globals",
     "always_false",
     "always_true",
+    "check_unreachable",
     "check_untyped_defs",
     "debug_cache",
     "disable_error_code",
@@ -43,8 +44,8 @@ PER_MODULE_OPTIONS: Final = {
     "enable_error_code",
     "enabled_error_codes",
     "extra_checks",
-    "follow_imports_for_stubs",
     "follow_imports",
+    "follow_imports_for_stubs",
     "follow_untyped_imports",
     "ignore_errors",
     "ignore_missing_imports",
@@ -158,6 +159,9 @@ class Options:
 
         # Disallow defining incompletely typed functions
         self.disallow_incomplete_defs = False
+
+        # Type check unreachable code
+        self.check_unreachable = False
 
         # Type check unannotated functions
         self.check_untyped_defs = False

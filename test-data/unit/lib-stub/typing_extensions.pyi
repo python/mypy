@@ -81,6 +81,7 @@ def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -
 
 def reveal_type(__obj: _T) -> _T: pass
 def assert_type(__val: _T, __typ: Any) -> _T: pass
+def assert_never(__val: Never) -> Never: pass
 
 def dataclass_transform(
     *,
