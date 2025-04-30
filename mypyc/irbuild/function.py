@@ -248,7 +248,7 @@ def gen_func_item(
         add_nested_funcs_to_env=add_nested_funcs_to_env,
     )
     is_generator = fn_info.is_generator
-    builder.enter(fn_info, ret_type=sig.ret_type if not is_generator else object_rprimitive)
+    builder.enter(fn_info, ret_type=sig.ret_type)
 
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
@@ -281,19 +281,23 @@ def gen_func_item(
             setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
         create_switch_for_generator_class(builder)
         add_raise_exception_blocks_to_generator_class(builder, fitem.line)
+
+        add_vars_to_env(builder)
+
+        builder.accept(fitem.body)
+        builder.maybe_add_implicit_return()
+
+        populate_switch_for_generator_class(builder)
     else:
         load_env_registers(builder)
         gen_arg_defaults(builder)
         if contains_nested:
             finalize_env_class(builder)
 
-    add_vars_to_env(builder)
+        add_vars_to_env(builder)
 
-    builder.accept(fitem.body)
-    builder.maybe_add_implicit_return()
-
-    if is_generator:
-        populate_switch_for_generator_class(builder)
+        builder.accept(fitem.body)
+        builder.maybe_add_implicit_return()
 
     # Hang on to the local symbol table for a while, since we use it
     # to calculate argument defaults below.
