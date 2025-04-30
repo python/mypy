@@ -73,17 +73,13 @@ from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.env_class import (
     finalize_env_class,
     load_env_registers,
-    load_outer_envs,
     setup_env_class,
-    setup_func_for_recursive_call,
+    add_vars_to_env,
 )
 from mypyc.irbuild.generator import (
     add_methods_to_generator_class,
-    add_raise_exception_blocks_to_generator_class,
-    create_switch_for_generator_class,
     gen_generator_func,
-    populate_switch_for_generator_class,
-    setup_env_for_generator_class,
+    gen_generator_body_func,
 )
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.irbuild.util import is_constant
@@ -261,7 +257,7 @@ def gen_func_item(
         setup_callable_class(builder)
 
     if is_generator:
-        # Do a first-pass and generate a function that just returns a generator object.
+        # First generate a function that just constructs and returns a generator object.
         func_ir, func_reg = gen_generator_func(
             builder,
             lambda args, blocks, fn_info: gen_func_ir(builder, args, blocks, sig, fn_info, cdef, is_singledispatch))
@@ -302,64 +298,6 @@ def gen_func_item(
         return gen_dispatch_func_ir(builder, fitem, fn_info.name, name, sig)
 
     return func_ir, func_reg
-
-
-def gen_generator_body_func(builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature) -> None:
-    builder.enter(fn_info, ret_type=sig.ret_type)
-    setup_env_for_generator_class(builder)
-
-    load_outer_envs(builder, builder.fn_info.generator_class)
-    top_level = builder.top_level_fn_info()
-    fitem = fn_info.fitem
-    if (
-        builder.fn_info.is_nested
-        and isinstance(fitem, FuncDef)
-        and top_level
-        and top_level.add_nested_funcs_to_env
-    ):
-        setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
-    create_switch_for_generator_class(builder)
-    add_raise_exception_blocks_to_generator_class(builder, fitem.line)
-
-    add_vars_to_env(builder)
-
-    builder.accept(fitem.body)
-    builder.maybe_add_implicit_return()
-
-    populate_switch_for_generator_class(builder)
-
-
-def add_vars_to_env(builder: IRBuilder) -> None:
-    # Add all variables and functions that are declared/defined within this
-    # function and are referenced in functions nested within this one to this
-    # function's environment class so the nested functions can reference
-    # them even if they are declared after the nested function's definition.
-    # Note that this is done before visiting the body of this function.
-
-    env_for_func: FuncInfo | ImplicitClass = builder.fn_info
-    if builder.fn_info.is_generator:
-        env_for_func = builder.fn_info.generator_class
-    elif builder.fn_info.is_nested or builder.fn_info.in_non_ext:
-        env_for_func = builder.fn_info.callable_class
-
-    if builder.fn_info.fitem in builder.free_variables:
-        # Sort the variables to keep things deterministic
-        for var in sorted(builder.free_variables[builder.fn_info.fitem], key=lambda x: x.name):
-            if isinstance(var, Var):
-                rtype = builder.type_to_rtype(var.type)
-                builder.add_var_to_env_class(var, rtype, env_for_func, reassign=False)
-
-    if builder.fn_info.fitem in builder.encapsulating_funcs:
-        for nested_fn in builder.encapsulating_funcs[builder.fn_info.fitem]:
-            if isinstance(nested_fn, FuncDef):
-                # The return type is 'object' instead of an RInstance of the
-                # callable class because differently defined functions with
-                # the same name and signature across conditional blocks
-                # will generate different callable classes, so the callable
-                # class that gets instantiated must be generic.
-                builder.add_var_to_env_class(
-                    nested_fn, object_rprimitive, env_for_func, reassign=False
-                )
 
 
 def has_nested_func_self_reference(builder: IRBuilder, fitem: FuncItem) -> bool:
