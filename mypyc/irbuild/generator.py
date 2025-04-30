@@ -10,6 +10,8 @@ mypyc.irbuild.function.
 
 from __future__ import annotations
 
+from typing import Callable
+
 from mypy.nodes import ARG_OPT, Var
 from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
@@ -49,12 +51,24 @@ from mypyc.primitives.exc_ops import (
 )
 
 
-def gen_generator_func(builder: IRBuilder) -> None:
+def gen_generator_func(
+    builder: IRBuilder,
+    gen_func_ir: Callable[[list[Register], list[BasicBlock], FuncInfo], tuple[FuncIR, Value | None]],
+) -> tuple[FuncIR, Value | None]:
     setup_generator_class(builder)
     load_env_registers(builder)
     gen_arg_defaults(builder)
     finalize_env_class(builder)
     builder.add(Return(instantiate_generator_class(builder)))
+
+    args, _, blocks, ret_type, fn_info = builder.leave()
+    func_ir, func_reg = gen_func_ir(args, blocks, fn_info)
+
+    # Re-enter the FuncItem and visit the body of the function this time.
+    builder.enter(fn_info)
+    setup_env_for_generator_class(builder)
+
+    return func_ir, func_reg
 
 
 def instantiate_generator_class(builder: IRBuilder) -> Value:

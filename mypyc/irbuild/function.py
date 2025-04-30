@@ -262,15 +262,9 @@ def gen_func_item(
 
     if is_generator:
         # Do a first-pass and generate a function that just returns a generator object.
-        gen_generator_func(builder)
-        args, _, blocks, ret_type, fn_info = builder.leave()
-        func_ir, func_reg = gen_func_ir(
-            builder, args, blocks, sig, fn_info, cdef, is_singledispatch
-        )
-
-        # Re-enter the FuncItem and visit the body of the function this time.
-        builder.enter(fn_info)
-        setup_env_for_generator_class(builder)
+        func_ir, func_reg = gen_generator_func(
+            builder,
+            lambda args, blocks, fn_info: gen_func_ir(builder, args, blocks, sig, fn_info, cdef, is_singledispatch))
 
         load_outer_envs(builder, builder.fn_info.generator_class)
         top_level = builder.top_level_fn_info()
