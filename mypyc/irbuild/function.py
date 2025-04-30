@@ -78,8 +78,8 @@ from mypyc.irbuild.env_class import (
 )
 from mypyc.irbuild.generator import (
     add_methods_to_generator_class,
-    gen_generator_func_body,
     gen_generator_func,
+    gen_generator_func_body,
 )
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.irbuild.util import is_constant
@@ -280,21 +280,7 @@ def gen_func_item(
         # calculate them *once* when the function definition is evaluated.
         calculate_arg_defaults(builder, fn_info, func_reg, symtable)
     else:
-        gen_func_body(builder)
-
-        # Hang on to the local symbol table for a while, since we use it
-        # to calculate argument defaults below.
-        symtable = builder.symtables[-1]
-
-        args, _, blocks, ret_type, fn_info = builder.leave()
-
-        func_ir, func_reg = gen_func_ir(
-            builder, args, blocks, sig, fn_info, cdef, is_singledispatch
-        )
-
-        # Evaluate argument defaults in the surrounding scope, since we
-        # calculate them *once* when the function definition is evaluated.
-        calculate_arg_defaults(builder, fn_info, func_reg, symtable)
+        func_ir, func_reg = gen_func_body(builder, sig, cdef, is_singledispatch)
 
     if is_singledispatch:
         # add the generated main singledispatch function
@@ -306,7 +292,9 @@ def gen_func_item(
     return func_ir, func_reg
 
 
-def gen_func_body(builder: IRBuilder) -> None:
+def gen_func_body(
+    builder: IRBuilder, sig: FuncSignature, cdef: ClassDef | None, is_singledispatch: bool
+) -> tuple[FuncIR, Value | None]:
     load_env_registers(builder)
     gen_arg_defaults(builder)
     if builder.fn_info.contains_nested:
@@ -314,6 +302,19 @@ def gen_func_body(builder: IRBuilder) -> None:
     add_vars_to_env(builder)
     builder.accept(builder.fn_info.fitem.body)
     builder.maybe_add_implicit_return()
+
+    # Hang on to the local symbol table for a while, since we use it
+    # to calculate argument defaults below.
+    symtable = builder.symtables[-1]
+
+    args, _, blocks, ret_type, fn_info = builder.leave()
+
+    func_ir, func_reg = gen_func_ir(builder, args, blocks, sig, fn_info, cdef, is_singledispatch)
+
+    # Evaluate argument defaults in the surrounding scope, since we
+    # calculate them *once* when the function definition is evaluated.
+    calculate_arg_defaults(builder, fn_info, func_reg, symtable)
+    return func_ir, func_reg
 
 
 def has_nested_func_self_reference(builder: IRBuilder, fitem: FuncItem) -> bool:
