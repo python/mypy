@@ -235,20 +235,20 @@ def gen_func_item(
         func_name = singledispatch_main_func_name(name)
     else:
         func_name = name
-    builder.enter(
-        FuncInfo(
-            fitem=fitem,
-            name=func_name,
-            class_name=class_name,
-            namespace=gen_func_ns(builder),
-            is_nested=is_nested,
-            contains_nested=contains_nested,
-            is_decorated=is_decorated,
-            in_non_ext=in_non_ext,
-            add_nested_funcs_to_env=add_nested_funcs_to_env,
-        )
+
+    fn_info = FuncInfo(
+        fitem=fitem,
+        name=func_name,
+        class_name=class_name,
+        namespace=gen_func_ns(builder),
+        is_nested=is_nested,
+        contains_nested=contains_nested,
+        is_decorated=is_decorated,
+        in_non_ext=in_non_ext,
+        add_nested_funcs_to_env=add_nested_funcs_to_env,
     )
-    is_generator = builder.fn_info.is_generator
+    is_generator = fn_info.is_generator
+    builder.enter(fn_info, ret_type=sig.ret_type if not is_generator else object_rprimitive)
 
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
@@ -266,6 +266,10 @@ def gen_func_item(
             builder,
             lambda args, blocks, fn_info: gen_func_ir(builder, args, blocks, sig, fn_info, cdef, is_singledispatch))
 
+        # Re-enter the FuncItem and visit the body of the function this time.
+        builder.enter(fn_info, ret_type=sig.ret_type)
+        setup_env_for_generator_class(builder)
+
         load_outer_envs(builder, builder.fn_info.generator_class)
         top_level = builder.top_level_fn_info()
         if (
@@ -282,8 +286,6 @@ def gen_func_item(
         gen_arg_defaults(builder)
         if contains_nested:
             finalize_env_class(builder)
-
-    builder.ret_types[-1] = sig.ret_type
 
     add_vars_to_env(builder)
 

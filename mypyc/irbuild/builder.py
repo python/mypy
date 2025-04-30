@@ -1169,7 +1169,7 @@ class IRBuilder:
                     return None
             return res
 
-    def enter(self, fn_info: FuncInfo | str = "") -> None:
+    def enter(self, fn_info: FuncInfo | str = "", *, ret_type: RType = none_rprimitive) -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
         self.builder = LowLevelIRBuilder(self.errors, self.options)
@@ -1179,7 +1179,7 @@ class IRBuilder:
         self.runtime_args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
-        self.ret_types.append(none_rprimitive)
+        self.ret_types.append(ret_type)
         if fn_info.is_generator:
             self.nonlocal_control.append(GeneratorNonlocalControl())
         else:

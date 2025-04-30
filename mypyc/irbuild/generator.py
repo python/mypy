@@ -64,10 +64,6 @@ def gen_generator_func(
     args, _, blocks, ret_type, fn_info = builder.leave()
     func_ir, func_reg = gen_func_ir(args, blocks, fn_info)
 
-    # Re-enter the FuncItem and visit the body of the function this time.
-    builder.enter(fn_info)
-    setup_env_for_generator_class(builder)
-
     return func_ir, func_reg
 
 
