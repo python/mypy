@@ -1347,7 +1347,7 @@ m: str
 
 match m:
     case a if a := 1:  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-        reveal_type(a)  # N: Revealed type is "Never"
+        reveal_type(a)  # N: Revealed type is "Literal[1]?"
 
 [case testMatchAssigningPatternGuard]
 m: str
