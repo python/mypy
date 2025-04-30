@@ -248,18 +248,19 @@ def gen_func_item(
             add_nested_funcs_to_env=add_nested_funcs_to_env,
         )
     )
-
+    is_generator = builder.fn_info.is_generator
+    
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
     # store a variable denoting the next instruction to be executed when the __next__ function
     # is called, along with all the variables inside the function itself.
-    if builder.fn_info.contains_nested or builder.fn_info.is_generator:
+    if contains_nested or is_generator:
         setup_env_class(builder)
 
-    if builder.fn_info.is_nested or builder.fn_info.in_non_ext:
+    if is_nested or in_non_ext:
         setup_callable_class(builder)
 
-    if builder.fn_info.is_generator:
+    if is_generator:
         # Do a first-pass and generate a function that just returns a generator object.
         gen_generator_func(builder)
         args, _, blocks, ret_type, fn_info = builder.leave()
@@ -286,7 +287,7 @@ def gen_func_item(
         load_env_registers(builder)
         gen_arg_defaults(builder)
 
-    if builder.fn_info.contains_nested and not builder.fn_info.is_generator:
+    if contains_nested and not is_generator:
         finalize_env_class(builder)
 
     builder.ret_types[-1] = sig.ret_type
@@ -298,9 +299,9 @@ def gen_func_item(
     # Note that this is done before visiting the body of this function.
 
     env_for_func: FuncInfo | ImplicitClass = builder.fn_info
-    if builder.fn_info.is_generator:
+    if is_generator:
         env_for_func = builder.fn_info.generator_class
-    elif builder.fn_info.is_nested or builder.fn_info.in_non_ext:
+    elif is_nested or in_non_ext:
         env_for_func = builder.fn_info.callable_class
 
     if builder.fn_info.fitem in builder.free_variables:
@@ -325,7 +326,7 @@ def gen_func_item(
     builder.accept(fitem.body)
     builder.maybe_add_implicit_return()
 
-    if builder.fn_info.is_generator:
+    if is_generator:
         populate_switch_for_generator_class(builder)
 
     # Hang on to the local symbol table for a while, since we use it
@@ -334,7 +335,7 @@ def gen_func_item(
 
     args, _, blocks, ret_type, fn_info = builder.leave()
 
-    if fn_info.is_generator:
+    if is_generator:
         add_methods_to_generator_class(builder, fn_info, sig, args, blocks, fitem.is_coroutine)
     else:
         func_ir, func_reg = gen_func_ir(
