@@ -75,9 +75,12 @@ def gen_generator_func(
 def gen_generator_func_body(
     builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature
 ) -> dict[SymbolNode, SymbolTarget]:
-    """Generate IR for the body of the generator function.
+    """Generate IR based on the body of a generator function.
 
-    This will be used by the generated "__next__".
+    Add "__next__", "__iter__" and other generator methods to the generator
+    class that implements the function (each function gets a separate class).
+
+    Return the symbol table for the body.
     """
     builder.enter(fn_info, ret_type=sig.ret_type)
     setup_env_for_generator_class(builder)
@@ -102,13 +105,14 @@ def gen_generator_func_body(
 
     populate_switch_for_generator_class(builder)
 
-    # Hang on to the local symbol table for a while, since we use it
-    # to calculate argument defaults below.
+    # Hang on to the local symbol table, since the caller will use it
+    # to calculate argument defaults.
     symtable = builder.symtables[-1]
 
     args, _, blocks, ret_type, fn_info = builder.leave()
 
     add_methods_to_generator_class(builder, fn_info, sig, args, blocks, fitem.is_coroutine)
+
     return symtable
 
 
