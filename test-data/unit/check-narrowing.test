@@ -1284,7 +1284,7 @@ def f(t: Type[T], a: A, b: B) -> None:
         reveal_type(a)  # N: Revealed type is "__main__.A"
 
     if type(b) is t:
-        reveal_type(b)  # N: Revealed type is "Never"
+        reveal_type(b)  # N: Revealed type is "T`-1"
     else:
         reveal_type(b)  # N: Revealed type is "__main__.B"
 
@@ -2412,4 +2412,15 @@ def foo(x: T) -> T:
         raise
     reveal_type(x)  # N: Revealed type is "T`-1"
     return x
+[builtins fixtures/isinstance.pyi]
+
+[case testDoNotNarrowToNever]
+def any():
+    return 1
+
+def f() -> None:
+    x = "a"
+    x = any()
+    assert isinstance(x, int)
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstance.pyi]
