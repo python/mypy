@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from mypy.nodes import ARG_OPT, FuncDef, Var
+from mypy.nodes import ARG_OPT, FuncDef, SymbolNode, Var
 from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
@@ -33,7 +33,7 @@ from mypyc.ir.ops import (
     Value,
 )
 from mypyc.ir.rtypes import RInstance, int_rprimitive, object_rprimitive
-from mypyc.irbuild.builder import IRBuilder, gen_arg_defaults
+from mypyc.irbuild.builder import IRBuilder, SymbolTarget, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
     add_args_to_env,
@@ -72,7 +72,9 @@ def gen_generator_func(
     return func_ir, func_reg
 
 
-def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature) -> None:
+def gen_generator_func_body(
+    builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature
+) -> dict[SymbolNode, SymbolTarget]:
     """Generate IR for the body of the generator function.
 
     This will be used by the generated "__next__".
@@ -99,6 +101,15 @@ def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, sig: FuncSign
     builder.maybe_add_implicit_return()
 
     populate_switch_for_generator_class(builder)
+
+    # Hang on to the local symbol table for a while, since we use it
+    # to calculate argument defaults below.
+    symtable = builder.symtables[-1]
+
+    args, _, blocks, ret_type, fn_info = builder.leave()
+
+    add_methods_to_generator_class(builder, fn_info, sig, args, blocks, fitem.is_coroutine)
+    return symtable
 
 
 def instantiate_generator_class(builder: IRBuilder) -> Value:

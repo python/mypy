@@ -76,11 +76,7 @@ from mypyc.irbuild.env_class import (
     load_env_registers,
     setup_env_class,
 )
-from mypyc.irbuild.generator import (
-    add_methods_to_generator_class,
-    gen_generator_func,
-    gen_generator_func_body,
-)
+from mypyc.irbuild.generator import gen_generator_func, gen_generator_func_body
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.irbuild.util import is_constant
 from mypyc.primitives.dict_ops import dict_get_method_with_none, dict_new_op, dict_set_item_op
@@ -266,15 +262,7 @@ def gen_func_item(
         )
 
         # Re-enter the FuncItem and visit the body of the function this time.
-        gen_generator_func_body(builder, fn_info, sig)
-
-        # Hang on to the local symbol table for a while, since we use it
-        # to calculate argument defaults below.
-        symtable = builder.symtables[-1]
-
-        args, _, blocks, ret_type, fn_info = builder.leave()
-
-        add_methods_to_generator_class(builder, fn_info, sig, args, blocks, fitem.is_coroutine)
+        symtable = gen_generator_func_body(builder, fn_info, sig)
 
         # Evaluate argument defaults in the surrounding scope, since we
         # calculate them *once* when the function definition is evaluated.
