@@ -197,6 +197,7 @@ class ModuleFinderSitePackagesSuite(Suite):
             ("pkg_typed.a.a_var", ModuleNotFoundReason.NOT_FOUND),
             # Regular package with py.typed, bundled stubs, and external stubs-only package
             ("pkg_typed_w_stubs", self.path("pkg_typed_w_stubs-stubs", "__init__.pyi")),
+            ("pkg_typed_w_stubs.spam", self.path("pkg_typed_w_stubs-stubs", "spam.pyi")),
             # Regular package without py.typed
             ("pkg_untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
             ("pkg_untyped.a", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
@@ -254,6 +255,7 @@ class ModuleFinderSitePackagesSuite(Suite):
             ("pkg_typed.a.a_var", ModuleNotFoundReason.NOT_FOUND),
             # Regular package with py.typed, bundled stubs, and external stubs-only package
             ("pkg_typed_w_stubs", self.path("pkg_typed_w_stubs-stubs", "__init__.pyi")),
+            ("pkg_typed_w_stubs.spam", self.path("pkg_typed_w_stubs-stubs", "spam.pyi")),
             # Regular package without py.typed
             ("pkg_untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
             ("pkg_untyped.a", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
