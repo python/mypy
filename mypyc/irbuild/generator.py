@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from mypy.nodes import ARG_OPT, Var, FuncDef
+from mypy.nodes import ARG_OPT, FuncDef, Var
 from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
@@ -56,7 +56,9 @@ from mypyc.primitives.exc_ops import (
 
 def gen_generator_func(
     builder: IRBuilder,
-    gen_func_ir: Callable[[list[Register], list[BasicBlock], FuncInfo], tuple[FuncIR, Value | None]],
+    gen_func_ir: Callable[
+        [list[Register], list[BasicBlock], FuncInfo], tuple[FuncIR, Value | None]
+    ],
 ) -> tuple[FuncIR, Value | None]:
     """Generate IR for generator function that returns generator object."""
     setup_generator_class(builder)

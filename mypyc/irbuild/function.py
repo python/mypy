@@ -69,17 +69,17 @@ from mypyc.irbuild.callable_class import (
     instantiate_callable_class,
     setup_callable_class,
 )
-from mypyc.irbuild.context import FuncInfo, ImplicitClass
+from mypyc.irbuild.context import FuncInfo
 from mypyc.irbuild.env_class import (
+    add_vars_to_env,
     finalize_env_class,
     load_env_registers,
     setup_env_class,
-    add_vars_to_env,
 )
 from mypyc.irbuild.generator import (
     add_methods_to_generator_class,
-    gen_generator_func,
     gen_generator_body_func,
+    gen_generator_func,
 )
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.irbuild.util import is_constant
@@ -260,7 +260,10 @@ def gen_func_item(
         # First generate a function that just constructs and returns a generator object.
         func_ir, func_reg = gen_generator_func(
             builder,
-            lambda args, blocks, fn_info: gen_func_ir(builder, args, blocks, sig, fn_info, cdef, is_singledispatch))
+            lambda args, blocks, fn_info: gen_func_ir(
+                builder, args, blocks, sig, fn_info, cdef, is_singledispatch
+            ),
+        )
 
         # Re-enter the FuncItem and visit the body of the function this time.
         gen_generator_body_func(builder, fn_info, sig)
