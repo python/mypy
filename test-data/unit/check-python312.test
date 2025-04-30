@@ -2004,15 +2004,18 @@ reveal_type(x.related_resources)  # N: Revealed type is "__main__.ResourceRule"
 
 [case testPEP695TypeAliasRecursiveOuterClass]
 class A:
-    type X = X
+    type X = X  # E: Cannot resolve name "X" (possible cyclic definition)
 class X: ...
+
+class AA:
+    XX = XX  # OK, we allow this as a special case.
+class XX: ...
 
 class Y: ...
 class B:
     type Y = Y
 
-x: A.X
-reveal_type(x)  # N: Revealed type is "__main__.X"
+reveal_type(AA.XX)  # N: Revealed type is "def () -> __main__.XX"
 y: B.Y
 reveal_type(y)  # N: Revealed type is "__main__.Y"
 [builtins fixtures/tuple.pyi]
@@ -2042,3 +2045,17 @@ tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type i
 b: tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testForwardNestedPrecedesForwardGlobal]
+from typing import NewType
+
+class W[T]: pass
+
+class R:
+    class M(W[Action.V], type):
+        FOO = R.Action.V(0)
+    class Action(metaclass=M):
+        V = NewType('V', int)
+
+class Action:
+    pass
