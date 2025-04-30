@@ -64,9 +64,9 @@ z: str
 
 if int():
     y = w.y
-v.y           # E: Item "C" of "Union[C, D]" has no attribute "y" \
+v.y           # E: Item "C" of "Union[C, D]" has no attribute "y," use if <variable_name> is not None to prevent this issue \
               # E: Item "D" of "Union[C, D]" has no attribute "y"
-u.y           # E: Item "C" of "Union[A, C, D]" has no attribute "y" \
+u.y           # E: Item "C" of "Union[A, C, D]" has no attribute "y," use if <variable_name> is not None to prevent this issue \
               # E: Item "D" of "Union[A, C, D]" has no attribute "y"
 if int():
     z = w.y       # E: Incompatible types in assignment (expression has type "int", variable has type "str")
