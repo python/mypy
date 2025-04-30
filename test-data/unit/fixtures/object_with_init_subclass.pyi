@@ -59,3 +59,4 @@ class dict(Mapping[KT, VT]):
     @overload
     def get(self, k: KT, default: Union[KT, T]) -> Union[VT, T]: pass
     def __len__(self) -> int: ...
+import _typeshed
