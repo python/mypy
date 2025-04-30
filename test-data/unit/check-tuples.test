@@ -1040,9 +1040,10 @@ reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.Tes
 [builtins fixtures/tuple.pyi]
 [out]
 
-# ----------------------------------------------------------------------------
-# Union-in-Tuple distribution
-# ----------------------------------------------------------------------------
+
+-- Union-in-Tuple distribution
+-- ---------------------------------------------------------
+
 
 [case testTupleUnionDistributionSuccess]
 from typing import Tuple, Optional, Union
@@ -1066,8 +1067,8 @@ def f5(x: Tuple[Union[int, str], Union[bool, None]]) -> Union[
     Tuple[str, None],
 ]:
     return x
-
 [builtins fixtures/tuple.pyi]
+[out]
 
 [case testTupleUnionDistributionFail]
 from typing import Tuple, Optional, Union
@@ -1077,8 +1078,9 @@ def g1(x: Tuple[float, Optional[float]]) -> Union[Tuple[float, float], Tuple[str
 
 def g2(x: Tuple[float, Optional[float]]) -> Union[Tuple[float, str], Tuple[float, None]]:
     return x  # E: Incompatible return value type (got "Tuple[float, Optional[float]]", expected "Union[Tuple[float, str], Tuple[float, None]]")
-
 [builtins fixtures/tuple.pyi]
+[out]
+
 
 -- Variable-length tuples (Tuple[t, ...] with literal '...')
 -- ---------------------------------------------------------
@@ -1854,3 +1856,6 @@ class tuple_aa_subclass(Tuple[A, A]): ...
 
 inst_tuple_aa_subclass: tuple_aa_subclass = tuple_aa_subclass((A(), A()))[:]  # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "tuple_aa_subclass")
 [builtins fixtures/tuple.pyi]
+
+-- 
+-- --------------------
