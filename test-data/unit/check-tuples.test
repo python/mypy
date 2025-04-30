@@ -1852,7 +1852,7 @@ def g1(x: Tuple[float, Optional[float]]) -> Union[Tuple[float, float], Tuple[str
     return x  # E: Incompatible return value type (got "Tuple[float, Optional[float]]", expected "Union[Tuple[float, float], Tuple[str, float]]")
 
 def g2(x: Tuple[float, Optional[float]]) -> Union[Tuple[float, str], Tuple[float, None]]:
-    return x # E: Incompatible return value type (got "Tuple[float, Optional[float]]", expected "Union[Tuple[float, str], Tuple[float, None]]")
+    return x  # E: Incompatible return value type (got "Tuple[float, Optional[float]]", expected "Union[Tuple[float, str], Tuple[float, None]]")
 
 [builtins fixtures/tuple.pyi]
 
