@@ -249,7 +249,7 @@ def gen_func_item(
         )
     )
     is_generator = builder.fn_info.is_generator
-    
+
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
     # store a variable denoting the next instruction to be executed when the __next__ function
@@ -286,9 +286,8 @@ def gen_func_item(
     else:
         load_env_registers(builder)
         gen_arg_defaults(builder)
-
-    if contains_nested and not is_generator:
-        finalize_env_class(builder)
+        if contains_nested:
+            finalize_env_class(builder)
 
     builder.ret_types[-1] = sig.ret_type
 
