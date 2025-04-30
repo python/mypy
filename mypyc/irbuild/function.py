@@ -78,7 +78,7 @@ from mypyc.irbuild.env_class import (
 )
 from mypyc.irbuild.generator import (
     add_methods_to_generator_class,
-    gen_generator_body_func,
+    gen_generator_func_body,
     gen_generator_func,
 )
 from mypyc.irbuild.targets import AssignmentTarget
@@ -266,15 +266,9 @@ def gen_func_item(
         )
 
         # Re-enter the FuncItem and visit the body of the function this time.
-        gen_generator_body_func(builder, fn_info, sig)
+        gen_generator_func_body(builder, fn_info, sig)
     else:
-        load_env_registers(builder)
-        gen_arg_defaults(builder)
-        if contains_nested:
-            finalize_env_class(builder)
-        add_vars_to_env(builder)
-        builder.accept(fitem.body)
-        builder.maybe_add_implicit_return()
+        gen_func_body(builder)
 
     # Hang on to the local symbol table for a while, since we use it
     # to calculate argument defaults below.
@@ -301,6 +295,16 @@ def gen_func_item(
         return gen_dispatch_func_ir(builder, fitem, fn_info.name, name, sig)
 
     return func_ir, func_reg
+
+
+def gen_func_body(builder: IRBuilder) -> None:
+    load_env_registers(builder)
+    gen_arg_defaults(builder)
+    if builder.fn_info.contains_nested:
+        finalize_env_class(builder)
+    add_vars_to_env(builder)
+    builder.accept(builder.fn_info.fitem.body)
+    builder.maybe_add_implicit_return()
 
 
 def has_nested_func_self_reference(builder: IRBuilder, fitem: FuncItem) -> bool:

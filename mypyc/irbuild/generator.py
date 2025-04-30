@@ -72,7 +72,7 @@ def gen_generator_func(
     return func_ir, func_reg
 
 
-def gen_generator_body_func(builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature) -> None:
+def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature) -> None:
     """Generate IR for the body of the generator function.
 
     This will be used by the generated "__next__".
