@@ -1855,4 +1855,3 @@ class tuple_aa_subclass(Tuple[A, A]): ...
 
 inst_tuple_aa_subclass: tuple_aa_subclass = tuple_aa_subclass((A(), A()))[:]  # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "tuple_aa_subclass")
 [builtins fixtures/tuple.pyi]
-
