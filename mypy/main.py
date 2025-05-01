@@ -1449,9 +1449,7 @@ def process_options(
         process_cache_map(parser, special_opts, options)
 
     # Process --strict-bytes
-    if options.strict_bytes:
-        options.disable_bytearray_promotion = True
-        options.disable_memoryview_promotion = True
+    options.process_strict_bytes()
 
     # An explicitly specified cache_fine_grained implies local_partial_types
     # (because otherwise the cache is not compatible with dmypy)
