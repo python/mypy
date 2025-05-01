@@ -3968,46 +3968,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         right_expr: Expression,
         context: Context,
     ) -> tuple[Type, Type]:
-        def lookup_operator(op_name: str, base_type: Type) -> Type | None:
-            """Looks up the given operator and returns the corresponding type,
-            if it exists."""
-
-            # This check is an important performance optimization,
-            # even though it is mostly a subset of
-            # analyze_member_access.
-            # TODO: Find a way to remove this call without performance implications.
-            if not self.has_member(base_type, op_name):
-                return None
-
-            with self.msg.filter_errors() as w:
-                member = analyze_member_access(
-                    name=op_name,
-                    typ=base_type,
-                    is_lvalue=False,
-                    is_super=False,
-                    is_operator=True,
-                    original_type=base_type,
-                    context=context,
-                    chk=self.chk,
-                    in_literal_context=self.is_literal_context(),
-                )
-                return None if w.has_new_errors() else member
-
-        def lookup_definer(typ: Instance, attr_name: str) -> str | None:
-            """Returns the name of the class that contains the actual definition of attr_name.
-
-            So if class A defines foo and class B subclasses A, running
-            'get_class_defined_in(B, "foo")` would return the full name of A.
-
-            However, if B were to override and redefine foo, that method call would
-            return the full name of B instead.
-
-            If the attr name is not present in the given class or its MRO, returns None.
-            """
-            for cls in typ.type.mro:
-                if cls.names.get(attr_name):
-                    return cls.fullname
-            return None
+        """Check a binary operator for types where evaluation order matters."""
 
         left_type = get_proper_type(left_type)
         right_type = get_proper_type(right_type)
@@ -4015,7 +3976,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # If either the LHS or the RHS are Any, we can't really concluding anything
         # about the operation since the Any type may or may not define an
         # __op__ or __rop__ method. So, we punt and return Any instead.
-
         if isinstance(left_type, AnyType):
             any_type = AnyType(TypeOfAny.from_another_any, source_any=left_type)
             return any_type, any_type
@@ -4025,29 +3985,102 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         # STEP 1:
         # We start by getting the __op__ and __rop__ methods, if they exist.
-
         rev_op_name = operators.reverse_op_methods[op_name]
+        left_op = self._lookup_operator(op_name, left_type, context)
+        right_op = self._lookup_operator(rev_op_name, right_type, context)
 
-        left_op = lookup_operator(op_name, left_type)
-        right_op = lookup_operator(rev_op_name, right_type)
-
-        # STEP 2a:
+        # STEP 2:
         # We figure out in which order Python will call the operator methods. As it
         # turns out, it's not as simple as just trying to call __op__ first and
         # __rop__ second.
         #
         # We store the determined order inside the 'variants_raw' variable,
         # which records tuples containing the method, base type, and the argument.
+        variants_raw = self._determine_operator_order(
+            op_name, rev_op_name, left_type, right_type, left_expr, right_expr, left_op, right_op
+        )
 
+        # STEP 3:
+        # We now filter out all non-existent operators. The 'variants' list contains
+        # all operator methods that are actually present, in the order that Python
+        # attempts to invoke them.
+        variants = [
+            (name, op, obj, arg) for (name, op, obj, arg) in variants_raw if op is not None
+        ]
+
+        # STEP 4:
+        # We now try invoking each one. If an operation succeeds, end early and return
+        # the corresponding result. Otherwise, return the result and errors associated
+        # with the first entry.
+        return self._attempt_operator_applications(
+            op_name, variants, left_type, right_type, left_expr, right_expr, context
+        )
+
+
+    def _lookup_operator(self, op_name: str, base_type: Type, context: Context) -> Type | None:
+        """Look up the given operator and return the corresponding type, if it exists."""
+
+        # This check is an important performance optimization,
+        # even though it is mostly a subset of analyze_member_access.
+        # TODO: Find a way to remove this call without performance implications.
+        if not self.has_member(base_type, op_name):
+            return None
+
+        with self.msg.filter_errors() as w:
+            member = analyze_member_access(
+                name=op_name,
+                typ=base_type,
+                is_lvalue=False,
+                is_super=False,
+                is_operator=True,
+                original_type=base_type,
+                context=context,
+                chk=self.chk,
+                in_literal_context=self.is_literal_context(),
+            )
+            return None if w.has_new_errors() else member
+
+
+    def _lookup_definer(self, typ: Instance, attr_name: str) -> str | None:
+        """Returns the name of the class that contains the actual definition of attr_name.
+
+        So if class A defines foo and class B subclasses A, running
+        'get_class_defined_in(B, "foo")` would return the full name of A.
+
+        However, if B were to override and redefine foo, that method call would
+        return the full name of B instead.
+
+        If the attr name is not present in the given class or its MRO, returns None.
+        """
+        for cls in typ.type.mro:
+            if cls.names.get(attr_name):
+                return cls.fullname
+        return None
+
+
+    def _determine_operator_order(
+        self,
+        op_name: str,
+        rev_op_name: str,
+        left_type: Type,
+        right_type: Type,
+        left_expr: Expression,
+        right_expr: Expression,
+        left_op: Type | None,
+        right_op: Type | None,
+    ) -> list[tuple[str, Type | None, Type, Expression]]:
+        """Determine in which order Python will attempt to call the operator methods."""
+
+        # When we do "A() + A()", for example, Python will only call the __add__ method,
+        # never the __radd__ method. This is the case even if the __add__ method is missing
+        # and the __radd__ method is defined.
         if op_name in operators.op_methods_that_shortcut and is_same_type(left_type, right_type):
-            # When we do "A() + A()", for example, Python will only call the __add__ method,
-            # never the __radd__ method.
-            #
-            # This is the case even if the __add__ method is completely missing and the __radd__
-            # method is defined.
+            return [(op_name, left_op, left_type, right_expr)]
 
-            variants_raw = [(op_name, left_op, left_type, right_expr)]
-        elif (
+        left_type = get_proper_type(left_type)
+        right_type = get_proper_type(right_type)
+
+        if (
             is_subtype(right_type, left_type)
             and isinstance(left_type, Instance)
             and isinstance(right_type, Instance)
@@ -4055,52 +4088,54 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 left_type.type.alt_promote is not None
                 and left_type.type.alt_promote.type is right_type.type
             )
-            and lookup_definer(left_type, op_name) != lookup_definer(right_type, rev_op_name)
+            and self._lookup_definer(left_type, op_name)
+            != self._lookup_definer(right_type, rev_op_name)
         ):
             # When we do "A() + B()" where B is a subclass of A, we'll actually try calling
-            # B's __radd__ method first, but ONLY if B explicitly defines or overrides the
-            # __radd__ method.
+            # B's __radd__ method first, but ONLY if B explicitly defines or overrides it.
             #
-            # This mechanism lets subclasses "refine" the expected outcome of the operation, even
-            # if they're located on the RHS.
+            # This mechanism lets subclasses "refine" the expected outcome of the operation,
+            # even if they're located on the RHS.
             #
             # As a special case, the alt_promote check makes sure that we don't use the
             # __radd__ method of int if the LHS is a native int type.
-
-            variants_raw = [
+            return [
                 (rev_op_name, right_op, right_type, left_expr),
                 (op_name, left_op, left_type, right_expr),
             ]
-        else:
-            # In all other cases, we do the usual thing and call __add__ first and
-            # __radd__ second when doing "A() + B()".
 
-            variants_raw = [
-                (op_name, left_op, left_type, right_expr),
-                (rev_op_name, right_op, right_type, left_expr),
-            ]
+        # In all other cases, we do the usual thing and call __add__ first and
+        # __radd__ second when doing "A() + B()".
+        return [
+            (op_name, left_op, left_type, right_expr),
+            (rev_op_name, right_op, right_type, left_expr),
+        ]
 
-        # STEP 3:
-        # We now filter out all non-existent operators. The 'variants' list contains
-        # all operator methods that are actually present, in the order that Python
-        # attempts to invoke them.
 
-        variants = [(na, op, obj, arg) for (na, op, obj, arg) in variants_raw if op is not None]
-
-        # STEP 4:
-        # We now try invoking each one. If an operation succeeds, end early and return
-        # the corresponding result. Otherwise, return the result and errors associated
-        # with the first entry.
+    def _attempt_operator_applications(
+        self,
+        op_name: str,
+        variants: list[tuple[str, Type, Type, Expression]],
+        left_type: Type,
+        right_type: Type,
+        left_expr: Expression,
+        right_expr: Expression,
+        context: Context,
+    ) -> tuple[Type, Type]:
+        """Try applying the operator methods and handle possible fallbacks."""
 
         errors = []
         results = []
+
         for name, method, obj, arg in variants:
             with self.msg.filter_errors(save_filtered_errors=True) as local_errors:
-                result = self.check_method_call(name, obj, method, [arg], [ARG_POS], context)
+                result = self.check_method_call(op_name, obj, method, [arg], [ARG_POS], context)
+
             if local_errors.has_new_errors():
                 errors.append(local_errors.filtered_errors())
                 results.append(result)
             else:
+                obj = get_proper_type(obj)
                 if isinstance(obj, Instance) and isinstance(
                     defn := obj.type.get_method(name), OverloadedFuncDef
                 ):
@@ -4112,6 +4147,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         ):
                             self.chk.check_deprecated(item.func, context)
                 return result
+
+        left_type = get_proper_type(left_type)
+        right_type = get_proper_type(right_type)
 
         # We finish invoking above operators and no early return happens. Therefore,
         # we check if either the LHS or the RHS is Instance and fallbacks to Any,
@@ -4125,13 +4163,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # STEP 4b:
         # Sometimes, the variants list is empty. In that case, we fall-back to attempting to
         # call the __op__ method (even though it's missing).
-
         if not variants:
             with self.msg.filter_errors(save_filtered_errors=True) as local_errors:
                 result = self.check_method_call_by_name(
                     op_name, left_type, [right_expr], [ARG_POS], context
                 )
-
             if local_errors.has_new_errors():
                 errors.append(local_errors.filtered_errors())
                 results.append(result)
@@ -4146,13 +4182,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # TODO: Remove this extra case
                 return result
 
+        # Return the result and emit the first error
         self.msg.add_errors(errors[0])
         if len(results) == 1:
             return results[0]
         else:
             error_any = AnyType(TypeOfAny.from_error)
-            result = error_any, error_any
-            return result
+            return error_any, error_any
 
     def check_op(
         self,
