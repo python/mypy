@@ -47,6 +47,7 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     )
     env_class.attributes[SELF_NAME] = RInstance(env_class)
     if builder.fn_info.is_nested:
+        assert False
         # If the function is nested, its environment class must contain an environment
         # attribute pointing to its encapsulating functions' environment class.
         env_class.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
@@ -58,7 +59,7 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
 
 def finalize_env_class(builder: IRBuilder) -> None:
     """Generate, instantiate, and set up the environment of an environment class."""
-    instantiate_env_class(builder)
+    #instantiate_env_class(builder)
 
     # Iterate through the function arguments and replace local definitions (using registers)
     # that were previously added to the environment with references to the function's
@@ -76,6 +77,7 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
     )
 
     if builder.fn_info.is_nested:
+        assert False
         builder.fn_info.callable_class._curr_env_reg = curr_env_reg
         builder.add(
             SetAttr(
@@ -125,6 +127,7 @@ def load_outer_env(
 
     Returns the register where the environment class was loaded.
     """
+    assert False
     env = builder.add(GetAttr(base, ENV_ATTR_NAME, builder.fn_info.fitem.line))
     assert isinstance(env.type, RInstance), f"{env} must be of type RInstance"
 
@@ -238,6 +241,7 @@ def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: Impli
     prev_env = builder.fn_infos[-2].env_class
     prev_env.attributes[fdef.name] = builder.type_to_rtype(fdef.type)
 
+    assert False
     if isinstance(base, GeneratorClass):
         # If we are dealing with a generator class, then we need to first get the register
         # holding the current environment class, and load the previous environment class from
