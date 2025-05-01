@@ -1207,7 +1207,6 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 self.import_tracker.reexport(name)
                 as_name = name
             import_names.append((name, as_name))
-        # here's required = False
         self.import_tracker.add_import_from("." * relative + module, import_names)
         self._vars[-1].extend(alias or name for name, alias in import_names)
         for name, alias in import_names:

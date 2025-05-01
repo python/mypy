@@ -1547,12 +1547,14 @@ alias = Union[T, List[T]]
 [case testExplicitTypeAlias]
 from typing import TypeAlias
 
-alias: TypeAlias = tuple[int, str]
+explicit_alias: TypeAlias = tuple[int, str]
+implicit_alias = list[int]
 
 [out]
 from typing import TypeAlias
 
-alias: TypeAlias = tuple[int, str]
+explicit_alias: TypeAlias = tuple[int, str]
+implicit_alias = list[int]
 
 
 [case testEllipsisAliasPreserved]
