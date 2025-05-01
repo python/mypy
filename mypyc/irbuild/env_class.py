@@ -192,12 +192,14 @@ def add_args_to_env(
 
 
 def add_vars_to_env(builder: IRBuilder) -> None:
-    # Add all variables and functions that are declared/defined within this
-    # function and are referenced in functions nested within this one to this
-    # function's environment class so the nested functions can reference
-    # them even if they are declared after the nested function's definition.
-    # Note that this is done before visiting the body of this function.
+    """Add relevant local variables and nested functions to the environment class.
 
+    Add all variables and functions that are declared/defined within current
+    function and are referenced in functions nested within this one to this
+    function's environment class so the nested functions can reference
+    them even if they are declared after the nested function's definition.
+    Note that this is done before visiting the body of the function.
+    """
     env_for_func: FuncInfo | ImplicitClass = builder.fn_info
     if builder.fn_info.is_generator:
         env_for_func = builder.fn_info.generator_class
