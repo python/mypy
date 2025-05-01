@@ -4016,7 +4016,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             op_name, variants, left_type, right_type, left_expr, right_expr, context
         )
 
-
     def _lookup_operator(self, op_name: str, base_type: Type, context: Context) -> Type | None:
         """Look up the given operator and return the corresponding type, if it exists."""
 
@@ -4040,7 +4039,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             )
             return None if w.has_new_errors() else member
 
-
     def _lookup_definer(self, typ: Instance, attr_name: str) -> str | None:
         """Returns the name of the class that contains the actual definition of attr_name.
 
@@ -4056,7 +4054,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if cls.names.get(attr_name):
                 return cls.fullname
         return None
-
 
     def _determine_operator_order(
         self,
@@ -4110,7 +4107,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             (op_name, left_op, left_type, right_expr),
             (rev_op_name, right_op, right_type, left_expr),
         ]
-
 
     def _attempt_operator_applications(
         self,
