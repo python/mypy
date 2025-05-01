@@ -180,7 +180,12 @@ class ClassIR:
         self.attrs_with_defaults: set[str] = set()
 
         # Attributes that are always initialized in __init__ or class body
-        # (inferred in mypyc.analysis.attrdefined using interprocedural analysis)
+        # (inferred in mypyc.analysis.attrdefined using interprocedural analysis).
+        # These can never raise AttributeError when accessed. If an attribute
+        # is *not* always initialized, we normally use the error value for
+        # an undefined value. If the attribute byte has an overlapping error value
+        # (the error_overlap attribute is true for the RType), we use a bitmap
+        # to track if the attribute is defined instead (see bitmap_attrs).
         self._always_initialized_attrs: set[str] = set()
 
         # Attributes that are sometimes initialized in __init__
@@ -191,8 +196,8 @@ class ClassIR:
 
         # Definedness of these attributes is backed by a bitmap. Index in the list
         # indicates the bit number. Includes inherited attributes. We need the
-        # bitmap for types such as native ints that can't have a dedicated error
-        # value that doesn't overlap a valid value. The bitmap is used if the
+        # bitmap for types such as native ints (i64 etc.) that can't have a dedicated
+        # error value that doesn't overlap a valid value. The bitmap is used if the
         # value of an attribute is the same as the error value.
         self.bitmap_attrs: list[str] = []
 

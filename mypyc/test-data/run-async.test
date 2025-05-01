@@ -455,3 +455,109 @@ def test_stolen() -> None:
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
 async def sleep(t: float) -> None: ...
+
+[case testRunAsyncMiscTypesInEnvironment]
+# Here we test that values of various kinds of types can be spilled to the
+# environment. In particular, types with "overlapping error values" such as
+# i64 can be tricky, since they require extra work to support undefined
+# attribute values (which raise AttributeError when accessed). For these,
+# the object struct has a bitfield which keeps track of whether certain
+# attributes have an assigned value.
+#
+# In practice we mark these attributes as "always defined", which causes these
+# checks to be skipped on attribute access, and thus we don't require the
+# bitfield to exist.
+#
+# See the comment of RType.error_overlap for more information.
+
+import asyncio
+
+from mypy_extensions import i64, i32, i16, u8
+
+async def inc_float(x: float) -> float:
+    return x + 1.0
+
+async def inc_i64(x: i64) -> i64:
+    return x + 1
+
+async def inc_i32(x: i32) -> i32:
+    return x + 1
+
+async def inc_i16(x: i16) -> i16:
+    return x + 1
+
+async def inc_u8(x: u8) -> u8:
+    return x + 1
+
+async def inc_tuple(x: tuple[i64, float]) -> tuple[i64, float]:
+    return x[0] + 1, x[1] + 1.5
+
+async def neg_bool(b: bool) -> bool:
+    return not b
+
+async def float_ops(x: float) -> float:
+    n = x
+    n = await inc_float(n)
+    n = float("0.5") + await inc_float(n)
+    return n
+
+def test_float() -> None:
+    assert asyncio.run(float_ops(2.5)) == 5.0
+
+async def i64_ops(x: i64) -> i64:
+    n = x
+    n = await inc_i64(n)
+    n = i64("1") + await inc_i64(n)
+    return n
+
+def test_i64() -> None:
+    assert asyncio.run(i64_ops(2)) == 5
+
+async def i32_ops(x: i32) -> i32:
+    n = x
+    n = await inc_i32(n)
+    n = i32("1") + await inc_i32(n)
+    return n
+
+def test_i32() -> None:
+    assert asyncio.run(i32_ops(3)) == 6
+
+async def i16_ops(x: i16) -> i16:
+    n = x
+    n = await inc_i16(n)
+    n = i16("1") + await inc_i16(n)
+    return n
+
+def test_i16() -> None:
+    assert asyncio.run(i16_ops(4)) == 7
+
+async def u8_ops(x: u8) -> u8:
+    n = x
+    n = await inc_u8(n)
+    n = u8("1") + await inc_u8(n)
+    return n
+
+def test_u8() -> None:
+    assert asyncio.run(u8_ops(5)) == 8
+
+async def tuple_ops(x: tuple[i64, float]) -> tuple[i64, float]:
+    n = x
+    n = await inc_tuple(n)
+    m = ((i64("1"), float("0.5")), await inc_tuple(n))
+    return m[1]
+
+def test_tuple() -> None:
+    assert asyncio.run(tuple_ops((1, 2.5))) == (3, 5.5)
+
+async def bool_ops(x: bool) -> bool:
+    n = x
+    n = await neg_bool(n)
+    m = (bool("1"), await neg_bool(n))
+    return m[0] and m[1]
+
+def test_bool() -> None:
+    assert asyncio.run(bool_ops(True)) is True
+    assert asyncio.run(bool_ops(False)) is False
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
