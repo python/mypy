@@ -1544,6 +1544,19 @@ from typing import TypeVar
 T = TypeVar('T')
 alias = Union[T, List[T]]
 
+[case testExplicitTypeAlias]
+from typing import TypeAlias
+
+explicit_alias: TypeAlias = tuple[int, str]
+implicit_alias = list[int]
+
+[out]
+from typing import TypeAlias
+
+explicit_alias: TypeAlias = tuple[int, str]
+implicit_alias = list[int]
+
+
 [case testEllipsisAliasPreserved]
 
 alias = Tuple[int, ...]

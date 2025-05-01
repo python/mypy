@@ -69,13 +69,18 @@ def split_blocks_at_uninits(
                     and not (isinstance(op, Branch) and op.op == Branch.IS_ERROR)
                     and not isinstance(op, LoadAddress)
                 ):
-                    new_block, error_block = BasicBlock(), BasicBlock()
-                    new_block.error_handler = error_block.error_handler = cur_block.error_handler
-                    new_blocks += [error_block, new_block]
-
                     if src not in init_registers_set:
                         init_registers.append(src)
                         init_registers_set.add(src)
+
+                    # XXX: if src.name is empty, it should be a
+                    # temp... and it should be OK??
+                    if not src.name:
+                        continue
+
+                    new_block, error_block = BasicBlock(), BasicBlock()
+                    new_block.error_handler = error_block.error_handler = cur_block.error_handler
+                    new_blocks += [error_block, new_block]
 
                     if not src.type.error_overlap:
                         cur_block.ops.append(

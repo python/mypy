@@ -1128,6 +1128,11 @@ def process_options(
     report_group.add_argument(
         "-a", dest="mypyc_annotation_file", type=str, default=None, help=argparse.SUPPRESS
     )
+    # Hidden mypyc feature: do not write any C files (keep existing ones and assume they exist).
+    # This can be useful when debugging mypyc bugs.
+    report_group.add_argument(
+        "--skip-c-gen", dest="mypyc_skip_c_generation", action="store_true", help=argparse.SUPPRESS
+    )
 
     other_group = parser.add_argument_group(title="Miscellaneous")
     other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
@@ -1444,9 +1449,7 @@ def process_options(
         process_cache_map(parser, special_opts, options)
 
     # Process --strict-bytes
-    if options.strict_bytes:
-        options.disable_bytearray_promotion = True
-        options.disable_memoryview_promotion = True
+    options.process_strict_bytes()
 
     # An explicitly specified cache_fine_grained implies local_partial_types
     # (because otherwise the cache is not compatible with dmypy)
