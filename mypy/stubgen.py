@@ -923,8 +923,12 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 and self.is_alias_expression(o.rvalue)
                 and not self.is_private_name(lvalue.name)
             ):
-                is_type_alias = o.unanalyzed_type and getattr(o.type, "name", None) == "TypeAlias"
-                if not o.unanalyzed_type or is_type_alias:
+                is_explicit_type_alias = o.unanalyzed_type and getattr(o.type, "name", None) == "TypeAlias"
+                if is_explicit_type_alias:
+                    self.process_typealias(lvalue, o.rvalue, is_explicit_type_alias=True)
+                    continue
+
+                if not o.unanalyzed_type:
                     self.process_typealias(lvalue, o.rvalue)
                     continue
 
@@ -1140,9 +1144,12 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         else:
             return False
 
-    def process_typealias(self, lvalue: NameExpr, rvalue: Expression) -> None:
+    def process_typealias(self, lvalue: NameExpr, rvalue: Expression, is_explicit_type_alias: bool = False) -> None:
         p = AliasPrinter(self)
-        self.add(f"{self._indent}{lvalue.name}: TypeAlias = {rvalue.accept(p)}\n")
+        if is_explicit_type_alias:
+            self.add(f"{self._indent}{lvalue.name}: TypeAlias = {rvalue.accept(p)}\n")
+        else:
+            self.add(f"{self._indent}{lvalue.name} = {rvalue.accept(p)}\n")
         self.record_name(lvalue.name)
         self._vars[-1].append(lvalue.name)
 
