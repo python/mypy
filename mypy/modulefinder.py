@@ -506,21 +506,24 @@ class FindModuleCache:
             dir_prefix = base_dir
             for _ in range(len(components) - 1):
                 dir_prefix = os.path.dirname(dir_prefix)
+
+            # Stubs-only packages always take precedence over py.typed packages
+            path_stubs = f"{base_path}-stubs{sepinit}.pyi"
+            if fscache.isfile_case(path_stubs, dir_prefix):
+                if verify and not verify_module(fscache, id, path_stubs, dir_prefix):
+                    near_misses.append((path_stubs, dir_prefix))
+                else:
+                    return path_stubs
+
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
-                path_stubs = base_path + "-stubs" + sepinit + extension
                 if fscache.isfile_case(path, dir_prefix):
                     has_init = True
                     if verify and not verify_module(fscache, id, path, dir_prefix):
                         near_misses.append((path, dir_prefix))
                         continue
                     return path
-                elif fscache.isfile_case(path_stubs, dir_prefix):
-                    if verify and not verify_module(fscache, id, path_stubs, dir_prefix):
-                        near_misses.append((path_stubs, dir_prefix))
-                        continue
-                    return path_stubs
 
             # In namespace mode, register a potential namespace package
             if self.options and self.options.namespace_packages:
