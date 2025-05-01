@@ -1219,10 +1219,9 @@ class IRBuilder:
             self_type: If not None, override default type of the implicit 'self'
                 argument (by default, derive type from class_ir)
         """
-        self.enter(fn_info)
+        self.enter(fn_info, ret_type=ret_type)
         self.function_name_stack.append(name)
         self.class_ir_stack.append(class_ir)
-        self.ret_types[-1] = ret_type
         if self_type is None:
             self_type = RInstance(class_ir)
         self.add_argument(SELF_NAME, self_type)
