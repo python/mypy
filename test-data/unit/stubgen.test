@@ -1550,7 +1550,7 @@ from typing import TypeAlias
 alias: TypeAlias = tuple[int, str]
 
 [out]
-alias = tuple[int, str]
+alias: TypeAlias = tuple[int, str]
 
 
 [case testEllipsisAliasPreserved]
