@@ -127,7 +127,7 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
-    elif isinstance(expr, OpExpr) and expr.op in ("and", "or"):
+    elif isinstance(expr, OpExpr):
         if expr.op not in ("or", "and"):
             return TRUTH_VALUE_UNKNOWN
 
