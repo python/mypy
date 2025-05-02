@@ -1261,12 +1261,10 @@ def _is_django_cached_property(runtime: Any) -> bool:  # pragma: no cover
     # https://docs.djangoproject.com/en/5.2/ref/utils/#django.utils.functional.cached_property
     # This is needed in `django-stubs` project:
     # https://github.com/typeddjango/django-stubs
-    try:
-        from django.utils.functional import cached_property  # type: ignore[import-not-found]
-    except Exception:
+    if repr(type(runtime)) != "<class 'django.utils.functional.cached_property'>":
         return False
     try:
-        return isinstance(runtime, cached_property) and bool(runtime.func)
+        return bool(runtime.func)
     except Exception:
         return False
 
