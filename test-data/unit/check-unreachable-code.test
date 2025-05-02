@@ -630,7 +630,7 @@ class Child(Parent):
 
     def bar(self) -> int:
         if 1:
-            self = super(Child, self).something()
+            # self = super(Child, self).something()
             reveal_type(self)       # N: Revealed type is "__main__.Child"
             if self is None:
                 reveal_type(self)
