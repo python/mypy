@@ -1,4 +1,6 @@
 from typing import Sequence, Iterator, TypeVar, Mapping, Iterable, Optional, Union, overload, Tuple, Generic, List
+import _typeshed
+
 
 class object:
     def __init__(self) -> None: ...
@@ -59,4 +61,3 @@ class dict(Mapping[KT, VT]):
     @overload
     def get(self, k: KT, default: Union[KT, T]) -> Union[VT, T]: pass
     def __len__(self) -> int: ...
-import _typeshed
