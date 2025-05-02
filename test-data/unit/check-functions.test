@@ -3569,7 +3569,8 @@ class Bar(Foo):
 
 [case testInvalidUnpack]
 from foo import bar  # type: ignore[import-not-found]
-from typing import Any
+from typing import Any, Optional
+
 
 def g(x: Any):
     pass
@@ -3586,7 +3587,6 @@ def f2(x: list[int]):
 def f3(x: Any):
     return g(*x)
 
-from typing import Optional
 def f4(x: Optional[int]):
     return g(*x) # E: Expected iterable as variadic argument
 
