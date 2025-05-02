@@ -6651,7 +6651,51 @@ from typing import TypeVar, Tuple, Callable
 T = TypeVar('T')
 def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [builtins fixtures/tuple.pyi]
-[out]
+
+[case testOverrideWithUntypedNotChecked]
+class Parent:
+    def foo(self, x):
+        ...
+    def bar(self, x):
+        ...
+    def baz(self, x: int) -> str:
+        return ""
+
+class Child(Parent):
+    def foo(self, y):  # OK: names not checked
+        ...
+    def bar(self, x, y):
+        ...
+    def baz(self, x, y):
+        return ""
+[builtins fixtures/tuple.pyi]
+
+[case testOverrideWithUntypedCheckedWithCheckUntypedDefs]
+# flags: --check-untyped-defs
+class Parent:
+    def foo(self, x):
+        ...
+    def bar(self, x):
+        ...
+    def baz(self, x: int) -> str:
+        return ""
+
+class Child(Parent):
+    def foo(self, y):  # OK: names not checked
+        ...
+    def bar(self, x, y) -> None:  # E: Signature of "bar" incompatible with supertype "Parent" \
+                                  # N:      Superclass: \
+                                  # N:          def bar(self, x: Any) -> Any \
+                                  # N:      Subclass: \
+                                  # N:          def bar(self, x: Any, y: Any) -> None
+        ...
+    def baz(self, x, y):  # E: Signature of "baz" incompatible with supertype "Parent" \
+                          # N:      Superclass: \
+                          # N:          def baz(self, x: int) -> str \
+                          # N:      Subclass: \
+                          # N:          def baz(self, x: Any, y: Any) -> Any
+        return ""
+[builtins fixtures/tuple.pyi]
 
 [case testOptionalDescriptorsBinder]
 from typing import Type, TypeVar, Optional
