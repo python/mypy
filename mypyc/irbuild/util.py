@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Tuple
+from typing import Any
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -179,7 +179,7 @@ def get_explicit_native_class(path: str, cdef: ClassDef, errors: Errors) -> bool
     return None
 
 
-def is_implicit_extension_class(cdef: ClassDef) -> Tuple[bool, str]:
+def is_implicit_extension_class(cdef: ClassDef) -> tuple[bool, str]:
     """Check if class can be extension class and return a user-friendly reason it can't be one."""
 
     for d in cdef.decorators:
