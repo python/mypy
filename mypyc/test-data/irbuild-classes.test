@@ -1381,4 +1381,3 @@ class M(type):  # E: Inheriting from most builtin types is unimplemented
 @mypyc_attr(native_class=True)
 class A(metaclass=M):  # E: Class is marked as native_class=True but it can't be a native class
     pass
-
