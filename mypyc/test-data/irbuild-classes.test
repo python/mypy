@@ -1370,3 +1370,14 @@ class NonNativeClassContradiction():  # E: Class is marked as native_class=True 
 @mypyc_attr(native_class="yes")
 class BadUse():  # E: native_class must be used with True or False only
     pass
+
+[case testMypycAttrNativeClassMetaError]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=True)
+class M(type):  # E: Inheriting from most builtin types is unimplemented
+    pass
+
+@mypyc_attr(native_class=True)
+class A(metaclass=M):  # E: Class is marked as native_class=True but it can't be a native class
+    pass
