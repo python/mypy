@@ -25,7 +25,6 @@ from mypy.nodes import (
     FuncItem,
     LambdaExpr,
     OverloadedFuncDef,
-    SymbolNode,
     TypeInfo,
     Var,
 )
@@ -44,7 +43,6 @@ from mypyc.ir.func_ir import (
 from mypyc.ir.ops import (
     BasicBlock,
     GetAttr,
-    InitStatic,
     Integer,
     LoadAddress,
     LoadLiteral,
@@ -62,7 +60,7 @@ from mypyc.ir.rtypes import (
     int_rprimitive,
     object_rprimitive,
 )
-from mypyc.irbuild.builder import IRBuilder, SymbolTarget, gen_arg_defaults
+from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.callable_class import (
     add_call_to_callable_class,
     add_get_to_callable_class,
@@ -78,7 +76,6 @@ from mypyc.irbuild.env_class import (
 )
 from mypyc.irbuild.generator import gen_generator_func, gen_generator_func_body
 from mypyc.irbuild.targets import AssignmentTarget
-from mypyc.irbuild.util import is_constant
 from mypyc.primitives.dict_ops import dict_get_method_with_none, dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op
 from mypyc.primitives.misc_ops import register_function
@@ -262,11 +259,7 @@ def gen_func_item(
         )
 
         # Re-enter the FuncItem and visit the body of the function this time.
-        symtable = gen_generator_func_body(builder, fn_info, sig)
-
-        # Evaluate argument defaults in the surrounding scope, since we
-        # calculate them *once* when the function definition is evaluated.
-        calculate_arg_defaults(builder, fn_info, func_reg, symtable)
+        gen_generator_func_body(builder, fn_info, sig, func_reg)
     else:
         func_ir, func_reg = gen_func_body(builder, sig, cdef, is_singledispatch)
 
@@ -460,33 +453,6 @@ def handle_non_ext_method(
         func_reg = builder.py_call(stat_meth, [func_reg], fdef.line)
 
     builder.add_to_non_ext_dict(non_ext, name, func_reg, fdef.line)
-
-
-def calculate_arg_defaults(
-    builder: IRBuilder,
-    fn_info: FuncInfo,
-    func_reg: Value | None,
-    symtable: dict[SymbolNode, SymbolTarget],
-) -> None:
-    """Calculate default argument values and store them.
-
-    They are stored in statics for top level functions and in
-    the function objects for nested functions (while constants are
-    still stored computed on demand).
-    """
-    fitem = fn_info.fitem
-    for arg in fitem.arguments:
-        # Constant values don't get stored but just recomputed
-        if arg.initializer and not is_constant(arg.initializer):
-            value = builder.coerce(
-                builder.accept(arg.initializer), symtable[arg.variable].type, arg.line
-            )
-            if not fn_info.is_nested:
-                name = fitem.fullname + "." + arg.variable.name
-                builder.add(InitStatic(value, name, builder.module_name))
-            else:
-                assert func_reg is not None
-                builder.add(SetAttr(func_reg, arg.variable.name, value, arg.line))
 
 
 def gen_func_ns(builder: IRBuilder) -> str:

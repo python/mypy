@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from mypy.nodes import ARG_OPT, FuncDef, SymbolNode, Var
+from mypy.nodes import ARG_OPT, FuncDef, Var
 from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
@@ -33,7 +33,7 @@ from mypyc.ir.ops import (
     Value,
 )
 from mypyc.ir.rtypes import RInstance, int_rprimitive, object_rprimitive
-from mypyc.irbuild.builder import IRBuilder, SymbolTarget, gen_arg_defaults
+from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
     add_args_to_env,
@@ -73,8 +73,8 @@ def gen_generator_func(
 
 
 def gen_generator_func_body(
-    builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature
-) -> dict[SymbolNode, SymbolTarget]:
+    builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature, func_reg: Value | None
+) -> None:
     """Generate IR based on the body of a generator function.
 
     Add "__next__", "__iter__" and other generator methods to the generator
@@ -113,7 +113,9 @@ def gen_generator_func_body(
 
     add_methods_to_generator_class(builder, fn_info, sig, args, blocks, fitem.is_coroutine)
 
-    return symtable
+    # Evaluate argument defaults in the surrounding scope, since we
+    # calculate them *once* when the function definition is evaluated.
+    calculate_arg_defaults(builder, fn_info, func_reg, symtable)
 
 
 def instantiate_generator_class(builder: IRBuilder) -> Value:
