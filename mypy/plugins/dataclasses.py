@@ -263,7 +263,11 @@ class DataclassTransformer:
             args = [
                 attr.to_argument(info, of="__init__")
                 for attr in attributes
-                if attr.is_in_init and not self._is_kw_only_type(attr.type)
+                if attr.is_in_init and not self._is_kw_only_type(attr.type) and not attr.kw_only
+            ] + [
+                attr.to_argument(info, of="__init__")
+                for attr in attributes
+                if attr.is_in_init and not self._is_kw_only_type(attr.type) and attr.kw_only
             ]
 
             if info.fallback_to_any:
@@ -546,7 +550,6 @@ class DataclassTransformer:
         # in the parent. We can implement this via a dict without disrupting the attr order
         # because dicts preserve insertion order in Python 3.7+.
         found_attrs: dict[str, DataclassAttribute] = {}
-        found_dataclass_supertype = False
         for info in reversed(cls.info.mro[1:-1]):
             if "dataclass_tag" in info.metadata and "dataclass" not in info.metadata:
                 # We haven't processed the base class yet. Need another pass.
@@ -556,7 +559,6 @@ class DataclassTransformer:
 
             # Each class depends on the set of attributes in its dataclass ancestors.
             self._api.add_plugin_dependency(make_wildcard_trigger(info.fullname))
-            found_dataclass_supertype = True
 
             for data in info.metadata["dataclass"]["attributes"]:
                 name: str = data["name"]
@@ -720,8 +722,7 @@ class DataclassTransformer:
             )
 
         all_attrs = list(found_attrs.values())
-        if found_dataclass_supertype:
-            all_attrs.sort(key=lambda a: a.kw_only)
+        all_attrs.sort(key=lambda a: a.kw_only)
 
         # Third, ensure that arguments without a default don't follow
         # arguments that have a default and that the KW_ONLY sentinel
