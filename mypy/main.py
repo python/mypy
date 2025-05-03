@@ -249,8 +249,8 @@ def show_messages(
 
 # Make the help output a little less jarring.
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def __init__(self, prog: str) -> None:
-        super().__init__(prog=prog, max_help_position=28)
+    def __init__(self, prog: str, **kwargs: Any) -> None:
+        super().__init__(prog=prog, max_help_position=28, **kwargs)
 
     def _fill_text(self, text: str, width: int, indent: str) -> str:
         if "\n" in text:
