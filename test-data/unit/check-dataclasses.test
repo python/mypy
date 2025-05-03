@@ -2623,3 +2623,19 @@ class User:
 
 User("Foo", id=0)
 [builtins fixtures/tuple.pyi]
+
+[case testDataclassKwOnlyArgsDefaultAllowedNonLast]
+from dataclasses import dataclass, field
+
+@dataclass
+class User:
+    id: int = field(kw_only=True, default=0)
+    name: str
+
+User()  # E: Missing positional argument "name" in call to "User"
+User("")
+User(0)  # E: Argument 1 to "User" has incompatible type "int"; expected "str"
+User("", 0)  # E: Too many positional arguments for "User"
+User("", id=0)
+User("", name="")  # E: "User" gets multiple values for keyword argument "name"
+[builtins fixtures/tuple.pyi]
