@@ -6340,6 +6340,9 @@ class SemanticAnalyzer(
                     return None
                 node = table[name]
                 return node
+        # 6. User Defined Builtins
+        if name in self.options.user_builtins_name:
+            return None
         # Give up.
         if not implicit_name and not suppress_errors:
             self.name_not_defined(name, ctx)
