@@ -1110,3 +1110,19 @@ plugins = """
   <ROOT>/test-data/unit/plugins/method_in_decorator.py,
 """
 [out]
+
+
+
+[case magicMethodReverse]
+# flags: --config-file tmp/mypy.ini
+from typing import Literal
+
+op1: Literal[3] = 3
+op2: Literal[4] = 4
+c = op1 + op2
+reveal_type(c) # N: Revealed type is "Literal[7]"
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/magic_method.py
+[builtins fixtures/ops.pyi]

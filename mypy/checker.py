@@ -750,6 +750,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 defn.is_explicit_override
                 and not found_method_base_classes
                 and found_method_base_classes is not None
+                # If the class has Any fallback, we can't be certain that a method
+                # is really missing - it might come from unfollowed import.
+                and not defn.info.fallback_to_any
             ):
                 self.msg.no_overridable_method(defn.name, defn)
             self.check_explicit_override_decorator(defn, found_method_base_classes, defn.impl)
@@ -5285,12 +5288,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # For overloaded functions/properties we already checked override for overload as a whole.
         if allow_empty or skip_first_item:
             return
-        if e.func.info and not e.func.is_dynamic() and not e.is_overload:
+        if e.func.info and not e.is_overload:
             found_method_base_classes = self.check_method_override(e)
             if (
                 e.func.is_explicit_override
                 and not found_method_base_classes
                 and found_method_base_classes is not None
+                # If the class has Any fallback, we can't be certain that a method
+                # is really missing - it might come from unfollowed import.
+                and not e.func.info.fallback_to_any
             ):
                 self.msg.no_overridable_method(e.func.name, e.func)
             self.check_explicit_override_decorator(e.func, found_method_base_classes)

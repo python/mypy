@@ -45,6 +45,10 @@ def spill_regs(
     for i, val in enumerate(to_spill):
         name = f"{TEMP_ATTR_NAME}2_{i}"
         env.attributes[name] = val.type
+        if val.type.error_overlap:
+            # We can safely treat as always initialized, since the type has no pointers.
+            # This way we also don't need to manage the defined attribute bitfield.
+            env._always_initialized_attrs.add(name)
         spill_locs[val] = name
 
     for block in blocks:
@@ -78,12 +82,13 @@ def spill_regs(
                 and not (isinstance(op, Branch) and op.op == Branch.IS_ERROR)
             ):
                 new_sources: list[Value] = []
+                stolen = op.stolen()
                 for src in op.sources():
                     if src in spill_locs:
                         read = GetAttr(env_reg, spill_locs[src], op.line)
                         block.ops.append(read)
                         new_sources.append(read)
-                        if src.type.is_refcounted:
+                        if src.type.is_refcounted and src not in stolen:
                             to_decref.append(read)
                     else:
                         new_sources.append(src)
