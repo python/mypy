@@ -263,11 +263,7 @@ class DataclassTransformer:
             args = [
                 attr.to_argument(info, of="__init__")
                 for attr in attributes
-                if attr.is_in_init and not self._is_kw_only_type(attr.type) and not attr.kw_only
-            ] + [
-                attr.to_argument(info, of="__init__")
-                for attr in attributes
-                if attr.is_in_init and not self._is_kw_only_type(attr.type) and attr.kw_only
+                if attr.is_in_init and not self._is_kw_only_type(attr.type)
             ]
 
             if info.fallback_to_any:
