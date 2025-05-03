@@ -29,8 +29,8 @@ from mypy.version import __version__
 
 
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def __init__(self, prog: str) -> None:
-        super().__init__(prog=prog, max_help_position=30)
+    def __init__(self, prog: str, **kwargs: Any) -> None:
+        super().__init__(prog=prog, max_help_position=30, **kwargs)
 
 
 parser = argparse.ArgumentParser(
