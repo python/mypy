@@ -16,6 +16,7 @@ from mypy.expandtype import (
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
+    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     EXCLUDED_ENUM_ATTRIBUTES,
@@ -216,6 +217,11 @@ def analyze_member_access(
         rvalue=rvalue,
         suppress_errors=suppress_errors,
     )
+
+    if name == "get" and isinstance(typ, Instance) and typ.type.fullname == "builtins.dict":
+        # Handle overload resolution for dict.get
+        return analyze_dict_get(typ, context)
+
     result = _analyze_member_access(name, typ, mx, override_info)
     possible_literal = get_proper_type(result)
     if (
@@ -226,6 +232,18 @@ def analyze_member_access(
         return possible_literal.last_known_value
     else:
         return result
+
+
+def analyze_dict_get(self, typ: Instance, context: Context) -> Type:
+    key_type = typ.args[0]
+    value_type = typ.args[1]
+    return CallableType(
+        [key_type, value_type],
+        [ARG_POS, ARG_OPT],
+        [None, None],
+        UnionType.make_union([value_type, NoneType()]),
+        self.named_type("builtins.function"),
+    )
 
 
 def _analyze_member_access(
