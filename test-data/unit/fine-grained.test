@@ -10471,7 +10471,7 @@ reveal_type(x)
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-a.py:3: note: Revealed type is "Union[def (x: builtins.int) -> builtins.int, def (*x: builtins.int) -> builtins.int]"
+a.py:3: note: Revealed type is "Union[def (x: builtins.int) -> builtins.int, def (*builtins.int) -> builtins.int]"
 
 [case testErrorInReAddedModule]
 # flags: --disallow-untyped-defs --follow-imports=error

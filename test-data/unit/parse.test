@@ -1922,7 +1922,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: str?, *a: int?) -> Any
+    def (x: str?, *int?) -> Any
     VarArg(
       Var(a))
     Block:1(
@@ -2766,7 +2766,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: X?, *y: Y?) -> Z?
+    def (x: X?, *Y?) -> Z?
     VarArg(
       Var(y))
     Block:2(
@@ -2781,7 +2781,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: X?, *y: Y?, **z: Z?) -> A?
+    def (x: X?, *Y?, **z: Z?) -> A?
     VarArg(
       Var(y))
     DictVarArg(

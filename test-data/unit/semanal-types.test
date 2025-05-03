@@ -797,7 +797,7 @@ MypyFile:1(
   OverloadedFuncDef:2(
     FuncDef:7(
       f
-      def (*args: Any)
+      def (*Any)
       VarArg(
         Var(args))
       Block:7(
@@ -1043,7 +1043,7 @@ MypyFile:1(
       default(
         Var(y)
         StrExpr()))
-    def (*x: builtins.int, y: builtins.str =) -> Any
+    def (*builtins.int, y: builtins.str =) -> Any
     VarArg(
       Var(x))
     Block:1(

@@ -3208,12 +3208,12 @@ class Bar(Foo):
 [out1]
 tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
 tmp/b.py:3: note:      Superclass:
-tmp/b.py:3: note:          def frobnicate(self, x: str, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:          def frobnicate(self, x: str, *Any, **kwargs: Any) -> Any
 tmp/b.py:3: note:      Subclass:
 tmp/b.py:3: note:          def frobnicate(self) -> None
 [out2]
 tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
 tmp/b.py:3: note:      Superclass:
-tmp/b.py:3: note:          def frobnicate(self, x: str, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:          def frobnicate(self, x: str, *Any, **kwargs: Any) -> Any
 tmp/b.py:3: note:      Subclass:
-tmp/b.py:3: note:          def frobnicate(self, *args: int) -> None
+tmp/b.py:3: note:          def frobnicate(self, *int) -> None

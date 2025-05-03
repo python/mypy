@@ -101,7 +101,7 @@ class C(Generic[T, *Ts]):
 
 ci: C[*tuple[int, ...]]
 reveal_type(ci)  # N: Revealed type is "__main__.C[Unpack[builtins.tuple[builtins.int, ...]]]"
-reveal_type(ci.meth)  # N: Revealed type is "def (*args: builtins.int) -> builtins.int"
+reveal_type(ci.meth)  # N: Revealed type is "def (*builtins.int) -> builtins.int"
 c3: C[str, str, str]
 reveal_type(c3)  # N: Revealed type is "__main__.C[builtins.str, builtins.str, builtins.str]"
 

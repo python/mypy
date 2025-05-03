@@ -2287,15 +2287,15 @@ func2(x)
 main:14: error: Argument 1 to "func1" has incompatible type "B"; expected "A"
 main:14: note: Following member(s) of "B" have conflicts:
 main:14: note:     Expected:
-main:14: note:         def execute(self, statement: Any, *args: Any, **kwargs: Any) -> None
+main:14: note:         def execute(self, statement: Any, *Any, **kwargs: Any) -> None
 main:14: note:     Got:
-main:14: note:         def execute(self, stmt: Any, *args: Any, **kwargs: Any) -> None
+main:14: note:         def execute(self, stmt: Any, *Any, **kwargs: Any) -> None
 main:15: error: Argument 1 to "func2" has incompatible type "B"; expected "Optional[A]"
 main:15: note: Following member(s) of "B" have conflicts:
 main:15: note:     Expected:
-main:15: note:         def execute(self, statement: Any, *args: Any, **kwargs: Any) -> None
+main:15: note:         def execute(self, statement: Any, *Any, **kwargs: Any) -> None
 main:15: note:     Got:
-main:15: note:         def execute(self, stmt: Any, *args: Any, **kwargs: Any) -> None
+main:15: note:         def execute(self, stmt: Any, *Any, **kwargs: Any) -> None
 
 [case testDontShowNotesForTupleAndIterableProtocol]
 from typing import Iterable, Sequence, Protocol, NamedTuple
@@ -2375,11 +2375,11 @@ x: P = C()
 main:10: error: Incompatible types in assignment (expression has type "C", variable has type "P")
 main:10: note: Following member(s) of "C" have conflicts:
 main:10: note:     Expected:
-main:10: note:         def meth(self, x: int, *args: str) -> None
+main:10: note:         def meth(self, x: int, *str) -> None
 main:10: note:     Got:
 main:10: note:         def meth(self) -> int
 main:10: note:     Expected:
-main:10: note:         def other(self, *args: Any, hint: Optional[str] = ..., **kwargs: str) -> None
+main:10: note:         def other(self, *Any, hint: Optional[str] = ..., **kwargs: str) -> None
 main:10: note:     Got:
 main:10: note:         def other(self) -> int
 
