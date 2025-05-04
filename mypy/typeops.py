@@ -846,14 +846,14 @@ def erase_def_to_union_or_bound(tdef: TypeVarLikeType) -> Type:
     if isinstance(tdef, ParamSpecType):
         return AnyType(TypeOfAny.from_error)
     if isinstance(tdef, TypeVarType) and tdef.values:
-        return make_simplified_union(tdef.values)
+        return UnionType.make_union(tdef.values)
     else:
         return tdef.upper_bound
 
 
 def erase_to_union_or_bound(typ: TypeVarType) -> ProperType:
     if typ.values:
-        return make_simplified_union(typ.values)
+        return UnionType.make_union(typ.values)
     else:
         return get_proper_type(typ.upper_bound)
 
