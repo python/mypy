@@ -1851,6 +1851,8 @@ def parse_options(args: list[str]) -> Options:
     parser = argparse.ArgumentParser(
         prog="stubgen", usage=HEADER, description=DESCRIPTION, fromfile_prefix_chars="@"
     )
+    if sys.version_info >= (3, 14):
+        parser.color = True  # Set as init arg in 3.14
 
     parser.add_argument(
         "--ignore-errors",

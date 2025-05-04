@@ -491,6 +491,8 @@ def process_options(
         stdout=stdout,
         stderr=stderr,
     )
+    if sys.version_info >= (3, 14):
+        parser.color = True  # Set as init arg in 3.14
 
     strict_flag_names: list[str] = []
     strict_flag_assignments: list[tuple[str, bool]] = []
