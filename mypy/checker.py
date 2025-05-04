@@ -750,9 +750,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 defn.is_explicit_override
                 and not found_method_base_classes
                 and found_method_base_classes is not None
-                # If the class has Any fallback, we can't be certain that a method
-                # is really missing - it might come from unfollowed import.
-                and not defn.info.fallback_to_any
             ):
                 self.msg.no_overridable_method(defn.name, defn)
             self.check_explicit_override_decorator(defn, found_method_base_classes, defn.impl)
@@ -789,7 +786,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if isinstance(inner_call, FunctionLike):
                 outer_type = inner_call
         elif isinstance(inner_type, UnionType):
-            union_type = make_simplified_union(inner_type.items)
+            union_type = UnionType.make_union(inner_type.items)
             if isinstance(union_type, UnionType):
                 items = []
                 for item in union_type.items:
@@ -1024,7 +1021,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if isinstance(return_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=return_type)
         elif isinstance(return_type, UnionType):
-            return make_simplified_union(
+            return UnionType.make_union(
                 [self.get_generator_yield_type(item, is_coroutine) for item in return_type.items]
             )
         elif not self.is_generator_return_type(
@@ -1058,7 +1055,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if isinstance(return_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=return_type)
         elif isinstance(return_type, UnionType):
-            return make_simplified_union(
+            return UnionType.make_union(
                 [self.get_generator_receive_type(item, is_coroutine) for item in return_type.items]
             )
         elif not self.is_generator_return_type(
@@ -1101,7 +1098,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if isinstance(return_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=return_type)
         elif isinstance(return_type, UnionType):
-            return make_simplified_union(
+            return UnionType.make_union(
                 [self.get_generator_return_type(item, is_coroutine) for item in return_type.items]
             )
         elif not self.is_generator_return_type(return_type, is_coroutine):
@@ -2332,7 +2329,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             raw_items = [self.get_op_other_domain(it) for it in tp.items]
             items = [it for it in raw_items if it]
             if items:
-                return make_simplified_union(items)
+                return UnionType.make_union(items)
             return None
         else:
             assert False, "Need to check all FunctionLike subtypes here"
@@ -3184,7 +3181,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             if not self.current_node_deferred:
                                 # Partial type can't be final, so strip any literal values.
                                 rvalue_type = remove_instance_last_known_values(rvalue_type)
-                                inferred_type = make_simplified_union([rvalue_type, NoneType()])
+                                inferred_type = UnionType.make_union([rvalue_type, NoneType()])
                                 self.set_inferred_type(var, lvalue, inferred_type)
                             else:
                                 var.type = None
@@ -4000,7 +3997,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # We can access _type_maps directly since temporary type maps are
                     # only created within expressions.
                     t.append(self._type_maps[0].pop(lv, AnyType(TypeOfAny.special_form)))
-        union_types = tuple(make_simplified_union(col) for col in transposed)
+        union_types = tuple(UnionType.make_union(col) for col in transposed)
         for expr, items in assignments.items():
             # Bind a union of types collected in 'assignments' to every expression.
             if isinstance(expr, StarExpr):
@@ -4016,8 +4013,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             types, declared_types = zip(*clean_items)
             self.binder.assign_type(
                 expr,
-                make_simplified_union(list(types)),
-                make_simplified_union(list(declared_types)),
+                UnionType.make_union(list(types)),
+                UnionType.make_union(list(declared_types)),
             )
         for union, lv in zip(union_types, self.flatten_lvalues(lvalues)):
             # Properly store the inferred types.
@@ -4510,7 +4507,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     # at module level or class bodies can't be widened in functions, or
                     # in another module.
                     if not self.refers_to_different_scope(lvalue):
-                        lvalue_type = make_simplified_union([inferred.type, new_inferred])
+                        lvalue_type = UnionType.make_union([inferred.type, new_inferred])
                         if not is_same_type(lvalue_type, inferred.type) and not isinstance(
                             inferred.type, PartialType
                         ):
@@ -5064,7 +5061,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 else:
                     new_all_types.append(typ)
             return self.wrap_exception_group(new_all_types)
-        return make_simplified_union(all_types)
+        return UnionType.make_union(all_types)
 
     def default_exception_type(self, is_star: bool) -> Type:
         """Exception type to return in case of a previous type error."""
@@ -5075,7 +5072,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def wrap_exception_group(self, types: Sequence[Type]) -> Type:
         """Transform except* variable type into an appropriate exception group."""
-        arg = make_simplified_union(types)
+        arg = UnionType.make_union(types)
         if is_subtype(arg, self.named_type("builtins.Exception")):
             base = "builtins.ExceptionGroup"
         else:
@@ -5288,15 +5285,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # For overloaded functions/properties we already checked override for overload as a whole.
         if allow_empty or skip_first_item:
             return
-        if e.func.info and not e.is_overload:
+        if e.func.info and not e.func.is_dynamic() and not e.is_overload:
             found_method_base_classes = self.check_method_override(e)
             if (
                 e.func.is_explicit_override
                 and not found_method_base_classes
                 and found_method_base_classes is not None
-                # If the class has Any fallback, we can't be certain that a method
-                # is really missing - it might come from unfollowed import.
-                and not e.func.info.fallback_to_any
             ):
                 self.msg.no_overridable_method(e.func.name, e.func)
             self.check_explicit_override_decorator(e.func, found_method_base_classes)
@@ -6569,7 +6563,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                             member_types = [new_parent_type.items[key] for key in str_literals]
                         except KeyError:
                             return None
-                        return make_simplified_union(member_types)
+                        return UnionType.make_union(member_types)
 
                 else:
                     int_literals = try_getting_int_literals_from_type(index_type)
@@ -6583,7 +6577,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                 member_types = [new_parent_type.items[key] for key in int_literals]
                             except IndexError:
                                 return None
-                            return make_simplified_union(member_types)
+                            return UnionType.make_union(member_types)
 
                     else:
                         return output
@@ -6623,7 +6617,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 return output
 
             expr = parent_expr
-            expr_type = output[parent_expr] = make_simplified_union(new_parent_types)
+            expr_type = output[parent_expr] = UnionType.make_union(new_parent_types)
 
     def refine_identity_comparison_expression(
         self,
@@ -6975,11 +6969,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             yes_types += other_types
             no_types += other_types
             if yes_types:
-                yes_type = make_simplified_union(yes_types)
+                yes_type = UnionType.make_union(yes_types)
             else:
                 yes_type = None
             if no_types:
-                no_type = make_simplified_union(no_types)
+                no_type = UnionType.make_union(no_types)
             else:
                 no_type = None
             return yes_type, no_type
@@ -7653,7 +7647,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 for types, reason in errors:
                     self.msg.impossible_intersection(types, reason, ctx)
             return UninhabitedType(), expr_type
-        new_yes_type = make_simplified_union(out)
+        new_yes_type = UnionType.make_union(out)
         return new_yes_type, expr_type
 
     def is_writable_attribute(self, node: Node) -> bool:
@@ -7777,7 +7771,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             )
         if isinstance(typ, UnionType):
             with_attr, without_attr = self.partition_union_by_attr(typ, name)
-            return make_simplified_union(
+            return UnionType.make_union(
                 with_attr + [self.add_any_attribute_to_type(typ, name) for typ in without_attr]
             )
         return orig_typ
@@ -7800,7 +7794,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if isinstance(source_type, UnionType):
             _, without_attr = self.partition_union_by_attr(source_type, name)
             yes_map = {expr: self.add_any_attribute_to_type(source_type, name)}
-            return yes_map, {expr: make_simplified_union(without_attr)}
+            return yes_map, {expr: UnionType.make_union(without_attr)}
 
         type_with_attr = self.add_any_attribute_to_type(source_type, name)
         if type_with_attr != source_type:
@@ -7945,7 +7939,7 @@ def conditional_types(
                 enum_name = target.fallback.type.fullname
                 current_type = try_expanding_sum_type_to_union(current_type, enum_name)
         proposed_items = [type_range.item for type_range in proposed_type_ranges]
-        proposed_type = make_simplified_union(proposed_items)
+        proposed_type = UnionType.make_union(proposed_items)
         if isinstance(proposed_type, AnyType):
             # We don't really know much about the proposed type, so we shouldn't
             # attempt to narrow anything. Instead, we broaden the expr to Any to
@@ -8084,7 +8078,7 @@ def builtin_item_type(tp: Type) -> Type | None:
             else:
                 normalized_items.append(it)
         if all(not isinstance(it, AnyType) for it in get_proper_types(normalized_items)):
-            return make_simplified_union(normalized_items)  # this type is not externally visible
+            return UnionType.make_union(normalized_items)  # this type is not externally visible
     elif isinstance(tp, TypedDictType):
         # TypedDict always has non-optional string keys. Find the key type from the Mapping
         # base class.
@@ -8147,7 +8141,7 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap, coalesce_any: bool = False) ->
                 if coalesce_any and isinstance(get_proper_type(m1[n1]), AnyType):
                     result[n1] = m1[n1]
                 else:
-                    result[n1] = make_simplified_union([m1[n1], m2[n2]])
+                    result[n1] = UnionType.make_union([m1[n1], m2[n2]])
     return result
 
 
