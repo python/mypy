@@ -33,16 +33,12 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
         super().__init__(prog=prog, max_help_position=30, **kwargs)
 
 
-parser_kwargs: dict[str, Any] = {}
-if sys.version_info >= (3, 14):
-    parser_kwargs["color"] = True
-
 parser = argparse.ArgumentParser(
-    prog="dmypy",
-    description="Client for mypy daemon mode",
-    fromfile_prefix_chars="@",
-    **parser_kwargs,
+    prog="dmypy", description="Client for mypy daemon mode", fromfile_prefix_chars="@"
 )
+if sys.version_info >= (3, 14):
+    parser.color = True  # Set as init arg in 3.14
+
 parser.set_defaults(action=None)
 parser.add_argument(
     "--status-file", default=DEFAULT_STATUS_FILE, help="status file to retrieve daemon details"

@@ -480,10 +480,6 @@ def process_options(
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
 
-    parser_kwargs: dict[str, Any] = {}
-    if sys.version_info >= (3, 14):
-        parser_kwargs["color"] = True
-
     parser = CapturableArgumentParser(
         prog=program,
         usage=header,
@@ -494,8 +490,9 @@ def process_options(
         add_help=False,
         stdout=stdout,
         stderr=stderr,
-        **parser_kwargs,
     )
+    if sys.version_info >= (3, 14):
+        parser.color = True  # Set as init arg in 3.14
 
     strict_flag_names: list[str] = []
     strict_flag_assignments: list[tuple[str, bool]] = []

@@ -48,7 +48,7 @@ import os.path
 import sys
 import traceback
 from collections.abc import Iterable, Iterator
-from typing import Any, Final
+from typing import Final
 
 import mypy.build
 import mypy.mixedtraverser
@@ -1848,17 +1848,11 @@ manual changes.  This directory is assumed to exist.
 
 
 def parse_options(args: list[str]) -> Options:
-    parser_kwargs: dict[str, Any] = {}
-    if sys.version_info >= (3, 14):
-        parser_kwargs["color"] = True
-
     parser = argparse.ArgumentParser(
-        prog="stubgen",
-        usage=HEADER,
-        description=DESCRIPTION,
-        fromfile_prefix_chars="@",
-        **parser_kwargs,
+        prog="stubgen", usage=HEADER, description=DESCRIPTION, fromfile_prefix_chars="@"
     )
+    if sys.version_info >= (3, 14):
+        parser.color = True  # Set as init arg in 3.14
 
     parser.add_argument(
         "--ignore-errors",
