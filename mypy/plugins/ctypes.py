@@ -72,7 +72,7 @@ def _autoconvertible_to_cdata(tp: Type, api: mypy.plugin.CheckerPluginInterface)
                     allowed_types.append(api.named_generic_type("builtins.int", []))
                     allowed_types.append(NoneType())
 
-    return make_simplified_union(allowed_types)
+    return UnionType.make_union(allowed_types)
 
 
 def _autounboxed_cdata(tp: Type) -> ProperType:
@@ -85,7 +85,7 @@ def _autounboxed_cdata(tp: Type) -> ProperType:
     tp = get_proper_type(tp)
 
     if isinstance(tp, UnionType):
-        return make_simplified_union([_autounboxed_cdata(t) for t in tp.items])
+        return UnionType.make_union([_autounboxed_cdata(t) for t in tp.items])
     elif isinstance(tp, Instance):
         for base in tp.type.bases:
             if base.type.fullname == "_ctypes._SimpleCData":
@@ -218,7 +218,7 @@ def array_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
                     ),
                     ctx.context,
                 )
-        return make_simplified_union(types)
+        return UnionType.make_union(types)
     return ctx.default_attr_type
 
 
@@ -241,5 +241,5 @@ def array_raw_callback(ctx: mypy.plugin.AttributeContext) -> Type:
                     ' with element type "c_char", not {}'.format(format_type(et, ctx.api.options)),
                     ctx.context,
                 )
-        return make_simplified_union(types)
+        return UnionType.make_union(types)
     return ctx.default_attr_type
