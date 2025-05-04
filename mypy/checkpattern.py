@@ -196,7 +196,7 @@ class PatternChecker(PatternVisitor[PatternType]):
 
             captures[capture_list[0][0]] = typ
 
-        union_type = make_simplified_union(types)
+        union_type = UnionType.make_union(types)
         return PatternType(union_type, current_type, captures)
 
     def visit_value_pattern(self, o: ValuePattern) -> PatternType:
@@ -359,7 +359,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             items = [self.get_sequence_type(item, context) for item in t.items]
             not_none_items = [item for item in items if item is not None]
             if not_none_items:
-                return make_simplified_union(not_none_items)
+                return UnionType.make_union(not_none_items)
             else:
                 return None
 
@@ -409,13 +409,13 @@ class PatternChecker(PatternVisitor[PatternType]):
                     new_middle.append(unpacked.args[0])
                 else:
                     new_middle.append(m)
-            return list(prefix) + [make_simplified_union(new_middle)] + list(suffix)
+            return list(prefix) + [UnionType.make_union(new_middle)] + list(suffix)
         else:
             if star_pos is None:
                 return types
             new_types = types[:star_pos]
             star_length = len(types) - num_patterns
-            new_types.append(make_simplified_union(types[star_pos : star_pos + star_length]))
+            new_types.append(UnionType.make_union(types[star_pos : star_pos + star_length]))
             new_types += types[star_pos + star_length :]
             return new_types
 
@@ -764,7 +764,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 for item in proper_type.items
                 if self.can_match_sequence(get_proper_type(item))
             ]
-            return make_simplified_union(types)
+            return UnionType.make_union(types)
         sequence = self.chk.named_generic_type("typing.Sequence", [inner_type])
         if is_subtype(outer_type, self.chk.named_type("typing.Sequence")):
             if isinstance(proper_type, TupleType):
