@@ -45,7 +45,6 @@ from mypy.typeops import (
     function_type,
     get_all_type_vars,
     get_type_vars,
-    make_simplified_union,
     supported_self_type,
     tuple_fallback,
     type_object_type,

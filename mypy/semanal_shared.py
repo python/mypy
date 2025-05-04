@@ -28,7 +28,6 @@ from mypy.nodes import (
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
-from mypy.typeops import make_simplified_union
 from mypy.types import (
     TPDICT_FB_NAMES,
     AnyType,
@@ -45,9 +44,9 @@ from mypy.types import (
     TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
+    UnionType,
     UnpackType,
     get_proper_type,
-    UnionType,
 )
 
 # Subclasses can override these Var attributes with incompatible types. This can also be

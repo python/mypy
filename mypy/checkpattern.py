@@ -31,7 +31,6 @@ from mypy.plugin import Plugin
 from mypy.subtypes import is_subtype
 from mypy.typeops import (
     coerce_to_literal,
-    make_simplified_union,
     try_getting_str_literals_from_type,
     tuple_fallback,
 )

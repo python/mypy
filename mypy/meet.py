@@ -15,7 +15,7 @@ from mypy.subtypes import (
     is_same_type,
     is_subtype,
 )
-from mypy.typeops import is_recursive_pair, make_simplified_union, tuple_fallback
+from mypy.typeops import is_recursive_pair, tuple_fallback
 from mypy.types import (
     MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
