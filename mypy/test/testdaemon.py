@@ -203,13 +203,14 @@ class DaemonWatchSuite(unittest.TestCase):
         subprocess.run([sys.executable, "-m", "mypy.dmypy", "stop"], cwd=self.temp_path)
 
         if self.process.poll() is None:
-            self.process.send_signal(
-                signal.CTRL_C_EVENT if sys.platform == "win32" else signal.SIGINT
-            )
-            try:
-                self.process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
+            if sys.platform == "win32":
                 self.process.kill()
+            else:
+                self.process.send_signal(signal.SIGINT)
+                try:
+                    self.process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
 
         self.stop_reader = True
         if self.reader_thread.is_alive():
