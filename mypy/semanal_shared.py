@@ -47,6 +47,7 @@ from mypy.types import (
     TypeVarTupleType,
     UnpackType,
     get_proper_type,
+    UnionType,
 )
 
 # Subclasses can override these Var attributes with incompatible types. This can also be
@@ -305,7 +306,7 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
                 raise NotImplementedError
         else:
             items.append(item)
-    fallback.args = (make_simplified_union(items),)
+    fallback.args = (UnionType.make_union(items),)
 
 
 class _NamedTypeCallback(Protocol):
