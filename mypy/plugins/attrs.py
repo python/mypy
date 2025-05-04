@@ -56,11 +56,7 @@ from mypy.plugins.common import (
 )
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
-from mypy.typeops import (
-    get_type_vars,
-    map_type_from_supertype,
-    type_object_type,
-)
+from mypy.typeops import get_type_vars, map_type_from_supertype, type_object_type
 from mypy.types import (
     AnyType,
     CallableType,
