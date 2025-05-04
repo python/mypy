@@ -1207,7 +1207,9 @@ def analyze_class_attribute_access(
             t, isuper, is_classmethod, is_staticmethod, mx.self_type, original_vars=original_vars
         )
         if is_decorated and not is_staticmethod:
-            t = expand_self_type_if_needed(t, mx, node.node.var, itype, is_class=is_classmethod)
+            t = expand_self_type_if_needed(
+                t, mx, cast(Decorator, node.node).var, itype, is_class=is_classmethod
+            )
 
         result = t
         # __set__ is not called on class objects.
