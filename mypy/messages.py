@@ -404,22 +404,38 @@ class MessageBuilder:
                     self.unsupported_left_operand(op, original_type, context)
                     return codes.OPERATOR
         elif member == "__neg__":
+            display_type = (
+            self.pretty_callable_or_overload(original_type)
+            if isinstance(original_type, CallableType)
+            else format_type(original_type, self.options)
+)
             self.fail(
-                f"Unsupported operand type for unary - ({format_type(original_type, self.options)})",
-                context,
-                code=codes.OPERATOR,
-            )
+            f"Unsupported operand type for unary - ({display_type})",
+            context,
+            code=codes.OPERATOR,
+)
             return codes.OPERATOR
         elif member == "__pos__":
+
+            display_type=(
+                self.pretty_callable_or_overload(original_type)
+                if isinstance(original_type, CallableType)
+                else format_type(original_type, self.options)
+            )
             self.fail(
-                f"Unsupported operand type for unary + ({format_type(original_type, self.options)})",
+                 f"Unsupported operand type for unary + ({display_type})",
                 context,
                 code=codes.OPERATOR,
             )
             return codes.OPERATOR
         elif member == "__invert__":
+            display_type=(
+                self.pretty_callable_or_overload(original_type)
+                if isinstance(original_type, CallableType)
+                else format_type(original_type, self.options)
+            )
             self.fail(
-                f"Unsupported operand type for ~ ({format_type(original_type, self.options)})",
+                f"Unsupported operand type for ~ ({display_type})",
                 context,
                 code=codes.OPERATOR,
             )
