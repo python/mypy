@@ -258,7 +258,7 @@ def _analyze_member_access(
     elif isinstance(typ, TypeVarLikeType):
         if isinstance(typ, TypeVarType) and typ.values:
             return _analyze_member_access(
-                name, make_simplified_union(typ.values), mx, override_info
+                name, UnionType.make_union(typ.values), mx, override_info
             )
         return _analyze_member_access(name, typ.upper_bound, mx, override_info)
     elif isinstance(typ, DeletedType):
@@ -486,7 +486,7 @@ def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) ->
             # Self types should be bound to every individual item of a union.
             item_mx = mx.copy_modified(self_type=subtype)
             results.append(_analyze_member_access(name, subtype, item_mx))
-    return make_simplified_union(results)
+    return UnionType.make_union(results)
 
 
 def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> Type:
@@ -668,7 +668,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
 
     if isinstance(descriptor_type, UnionType):
         # Map the access over union types
-        return make_simplified_union(
+        return UnionType.make_union(
             [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
         )
     elif not isinstance(descriptor_type, Instance):
