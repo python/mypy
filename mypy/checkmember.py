@@ -44,7 +44,6 @@ from mypy.typeops import (
     erase_to_bound,
     freeze_all_type_vars,
     function_type,
-    get_all_type_vars,
     get_type_vars,
     make_simplified_union,
     supported_self_type,
@@ -1060,12 +1059,8 @@ def check_self_arg(
             # better keep these two checks consistent.
             if subtypes.is_subtype(
                 dispatched_arg_type,
-                erase_typevars(erase_to_bound(selfarg)),
-                # This is to work around the fact that erased ParamSpec and TypeVarTuple
-                # callables are not always compatible with non-erased ones both ways.
-                always_covariant=any(
-                    not isinstance(tv, TypeVarType) for tv in get_all_type_vars(selfarg)
-                ),
+                erase_typevars(erase_to_bound(selfarg), use_upper_bound=True),
+                always_covariant=True,
                 ignore_pos_arg_names=True,
             ):
                 new_items.append(item)
