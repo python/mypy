@@ -127,7 +127,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if declared == narrowed:
         return original_declared
     if isinstance(declared, UnionType):
-        return make_simplified_union(
+        return UnionType.make_union(
             [
                 narrow_declared_type(x, narrowed)
                 for x in declared.relevant_items()
@@ -146,7 +146,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         # Quick check before reaching `is_overlapping_types`. If it's enum/literal overlap,
         # avoid full expansion and make it faster.
         assert isinstance(narrowed, UnionType)
-        return make_simplified_union(
+        return UnionType.make_union(
             [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
         )
     elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True):
@@ -155,7 +155,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         else:
             return NoneType()
     elif isinstance(narrowed, UnionType):
-        return make_simplified_union(
+        return UnionType.make_union(
             [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
         )
     elif isinstance(narrowed, AnyType):
@@ -745,7 +745,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     meets.append(meet_types(x, y))
         else:
             meets = [meet_types(x, self.s) for x in t.items]
-        return make_simplified_union(meets)
+        return UnionType.make_union(meets)
 
     def visit_none_type(self, t: NoneType) -> ProperType:
         if state.strict_optional:
