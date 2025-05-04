@@ -364,9 +364,7 @@ def analyze_instance_member_access(
                 signature = check_self_arg(
                     signature, mx.self_type, method.is_class, mx.context, name, mx.msg
                 )
-                signature = bind_self(
-                    signature, mx.self_type, is_classmethod=method.is_class, no_overlap_check=True
-                )
+                signature = bind_self(signature, mx.self_type, is_classmethod=method.is_class)
         # TODO: should we skip these steps for static methods as well?
         # Since generic static methods should not be allowed.
         typ = map_instance_to_supertype(typ, method.info)
@@ -965,7 +963,7 @@ def expand_and_bind_callable(
         typ = bind_self_fast(typ, mx.self_type)
     else:
         typ = check_self_arg(typ, mx.self_type, var.is_classmethod, mx.context, name, mx.msg)
-        typ = bind_self(typ, mx.self_type, var.is_classmethod, no_overlap_check=True)
+        typ = bind_self(typ, mx.self_type, var.is_classmethod)
     expanded = expand_type_by_instance(typ, itype)
     freeze_all_type_vars(expanded)
     if not var.is_property:
@@ -1421,7 +1419,7 @@ def add_class_tvars(
             if is_trivial_self:
                 t = bind_self_fast(t, original_type)
             else:
-                t = bind_self(t, original_type, is_classmethod=True, no_overlap_check=True)
+                t = bind_self(t, original_type, is_classmethod=True)
         if is_classmethod or is_staticmethod:
             assert isuper is not None
             t = expand_type_by_instance(t, isuper)
@@ -1469,9 +1467,7 @@ def analyze_decorator_or_funcbase_access(
     if is_trivial_self:
         return bind_self_fast(typ, mx.self_type)
     typ = check_self_arg(typ, mx.self_type, defn.is_class, mx.context, name, mx.msg)
-    return bind_self(
-        typ, original_type=mx.self_type, is_classmethod=defn.is_class, no_overlap_check=True
-    )
+    return bind_self(typ, original_type=mx.self_type, is_classmethod=defn.is_class)
 
 
 F = TypeVar("F", bound=FunctionLike)
