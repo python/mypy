@@ -140,9 +140,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         raise RuntimeError("Type aliases should be expanded before accepting this visitor")
 
 
-def erase_typevars(
-    t: Type, ids_to_erase: Container[TypeVarId] | None = None, use_upper_bound: bool = False
-) -> Type:
+def erase_typevars(t: Type, ids_to_erase: Container[TypeVarId] | None = None) -> Type:
     """Replace all type variables in a type with any,
     or just the ones in the provided collection.
     """
@@ -152,7 +150,7 @@ def erase_typevars(
             return True
         return id in ids_to_erase
 
-    return t.accept(TypeVarEraser(erase_id, AnyType(TypeOfAny.special_form), use_upper_bound))
+    return t.accept(TypeVarEraser(erase_id, AnyType(TypeOfAny.special_form)))
 
 
 def replace_meta_vars(t: Type, target_type: Type) -> Type:
@@ -163,21 +161,13 @@ def replace_meta_vars(t: Type, target_type: Type) -> Type:
 class TypeVarEraser(TypeTranslator):
     """Implementation of type erasure"""
 
-    def __init__(
-        self,
-        erase_id: Callable[[TypeVarId], bool],
-        replacement: Type,
-        use_upper_bound: bool = False,
-    ) -> None:
+    def __init__(self, erase_id: Callable[[TypeVarId], bool], replacement: Type) -> None:
         super().__init__()
         self.erase_id = erase_id
         self.replacement = replacement
-        self.use_upper_bound = use_upper_bound
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         if self.erase_id(t.id):
-            if self.use_upper_bound:
-                return t.upper_bound
             return self.replacement
         return t
 
@@ -214,16 +204,11 @@ class TypeVarEraser(TypeTranslator):
         return result
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        use_upper_bound = self.use_upper_bound
-        # This is to work around the fact that erased callables are not compatible
-        # with non-erased ones (due to contravariance in arg types).
-        self.use_upper_bound = False
         result = super().visit_callable_type(t)
         assert isinstance(result, ProperType) and isinstance(result, CallableType)
         # Usually this is done in semanal_typeargs.py, but erasure can create
         # a non-normal callable from normal one.
         result.normalize_trivial_unpack()
-        self.use_upper_bound = use_upper_bound
         return result
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:

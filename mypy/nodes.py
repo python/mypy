@@ -592,7 +592,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
                 if not item.is_trivial_self:
                     self._is_trivial_self = False
                     return False
-            elif len(item.decorators) > 1 or not item.func.is_trivial_self:
+            elif item.decorators or not item.func.is_trivial_self:
                 self._is_trivial_self = False
                 return False
         self._is_trivial_self = True

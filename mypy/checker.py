@@ -1373,12 +1373,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         if not is_same_type(arg_type, ref_type):
                             # This level of erasure matches the one in checkmember.check_self_arg(),
                             # better keep these two checks consistent.
-                            erased = get_proper_type(
-                                erase_typevars(erase_to_bound(arg_type), use_upper_bound=True)
-                            )
-                            if not is_subtype(
-                                ref_type, erased, ignore_type_params=True, always_covariant=True
-                            ):
+                            erased = get_proper_type(erase_typevars(erase_to_bound(arg_type)))
+                            if not is_subtype(ref_type, erased, ignore_type_params=True):
                                 if (
                                     isinstance(erased, Instance)
                                     and erased.type.is_protocol
