@@ -631,7 +631,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             self.check_str_format_call(e)
         ret_type = get_proper_type(ret_type)
         if isinstance(ret_type, UnionType):
-            ret_type = make_simplified_union(ret_type.items)
+            ret_type = UnionType.make_union(ret_type.items)
         if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
             self.chk.binder.unreachable()
         # Warn on calls to functions that always return None. The check
@@ -1529,7 +1529,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             res.append(
                 self.check_call_expr_with_callee_type(narrowed, e, callable_name, item_object_type)
             )
-        return make_simplified_union(res)
+        return UnionType.make_union(res)
 
     def check_call(
         self,
@@ -3205,12 +3205,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             union_type_guard = None
             union_type_is = None
         else:
-            union_type_guard = make_simplified_union(new_type_guards) if new_type_guards else None
+            union_type_guard = UnionType.make_union(new_type_guards) if new_type_guards else None
             union_type_is = (
-                make_simplified_union(new_type_narrowers) if new_type_narrowers else None
+                UnionType.make_union(new_type_narrowers) if new_type_narrowers else None
             )
 
-        union_return = make_simplified_union(new_returns)
+        union_return = UnionType.make_union(new_returns)
 
         if too_complex:
             any = AnyType(TypeOfAny.special_form)
@@ -3227,7 +3227,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         final_args = []
         for args_list in new_args:
-            new_type = make_simplified_union(args_list)
+            new_type = UnionType.make_union(args_list)
             final_args.append(new_type)
 
         return callables[0].copy_modified(
@@ -3334,7 +3334,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 for subtype in callee.relevant_items()
             ]
 
-        return (make_simplified_union([res[0] for res in results]), callee)
+        return (UnionType.make_union([res[0] for res in results]), callee)
 
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""
@@ -3927,7 +3927,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 )
             res.append(item)
             meth_res.append(meth_item)
-        return make_simplified_union(res), make_simplified_union(meth_res)
+        return UnionType.make_union(res), UnionType.make_union(meth_res)
 
     def check_method_call(
         self,
@@ -4096,7 +4096,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         results = []
         for name, method, obj, arg in variants:
             with self.msg.filter_errors(save_filtered_errors=True) as local_errors:
-                result = self.check_method_call(name, obj, method, [arg], [ARG_POS], context)
+                result = self.check_method_call(op_name, obj, method, [arg], [ARG_POS], context)
             if local_errors.has_new_errors():
                 errors.append(local_errors.filtered_errors())
                 results.append(result)
@@ -4194,8 +4194,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     all_inferred.append(inferred)
 
             if not local_errors.has_new_errors():
-                results_final = make_simplified_union(all_results)
-                inferred_final = make_simplified_union(all_inferred)
+                results_final = UnionType.make_union(all_results)
+                inferred_final = UnionType.make_union(all_inferred)
                 return results_final, inferred_final
 
             # Step 2: If that fails, we try again but also destructure the right argument.
@@ -4253,7 +4253,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # See the comment in 'check_overload_call' for more details on why
             # we call 'combine_function_signature' instead of just unioning the inferred
             # callable types.
-            results_final = make_simplified_union(all_results)
+            results_final = UnionType.make_union(all_results)
             inferred_final = self.combine_function_signatures(get_proper_types(all_inferred))
             return results_final, inferred_final
         else:
@@ -4338,7 +4338,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # The left operand is always the result
             return left_type
         else:
-            return make_simplified_union([restricted_left_type, right_type])
+            return UnionType.make_union([restricted_left_type, right_type])
 
     def check_list_multiply(self, e: OpExpr) -> Type:
         """Type check an expression of form '[...] * e'.
@@ -4451,7 +4451,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                             min_len = self.min_tuple_length(left_type)
                             self.chk.note(f"Variadic tuple can have length {min_len}", e)
                         return AnyType(TypeOfAny.from_error)
-                return make_simplified_union(out)
+                return UnionType.make_union(out)
             else:
                 return self.nonliteral_tuple_index_helper(left_type, index)
         elif isinstance(left_type, TypedDictType):
@@ -4567,7 +4567,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 self.chk.fail(message_registry.AMBIGUOUS_SLICE_OF_VARIADIC_TUPLE, slic)
                 return AnyType(TypeOfAny.from_error)
             items.append(item)
-        return make_simplified_union(items)
+        return UnionType.make_union(items)
 
     def try_getting_int_literals(self, index: Expression) -> list[int] | None:
         """If the given expression or type corresponds to an int literal
@@ -4632,7 +4632,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     raise NotImplementedError
             else:
                 items.append(item)
-        return make_simplified_union(items)
+        return UnionType.make_union(items)
 
     def visit_typeddict_index_expr(
         self, td_type: TypedDictType, index: Expression, setitem: bool = False
@@ -4669,7 +4669,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 return AnyType(TypeOfAny.from_error), set()
             else:
                 value_types.append(value_type)
-        return make_simplified_union(value_types), set(key_names)
+        return UnionType.make_union(value_types), set(key_names)
 
     def visit_enum_index_expr(
         self, enum_type: TypeInfo, index: Expression, context: Context
@@ -5899,7 +5899,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if is_literal_type_like(full_context_else_type) and not is_literal_type_like(else_type):
             else_type = full_context_else_type
 
-        res: Type = make_simplified_union([if_type, else_type])
+        res: Type = UnionType.make_union([if_type, else_type])
         if has_uninhabited_component(res) and not isinstance(
             get_proper_type(self.type_context[-1]), UnionType
         ):
@@ -6297,13 +6297,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     known_type, restriction, prohibit_none_typevar_overlap=True
                 ):
                     return None
-                narrowed = narrow_declared_type(known_type, restriction)
-                if isinstance(get_proper_type(narrowed), UninhabitedType):
-                    # If we hit this case, it means that we can't reliably mark the code as
-                    # unreachable, but the resulting type can't be expressed in type system.
-                    # Falling back to restriction is more intuitive in most cases.
-                    return restriction
-                return narrowed
+                return narrow_declared_type(known_type, restriction)
         return known_type
 
     def has_abstract_type_part(self, caller_type: ProperType, callee_type: ProperType) -> bool:
