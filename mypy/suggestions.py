@@ -60,7 +60,7 @@ from mypy.plugin import FunctionContext, MethodContext, Plugin
 from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
 from mypy.traverser import TraverserVisitor
-from mypy.typeops import bind_self, make_simplified_union
+from mypy.typeops import bind_self
 from mypy.types import (
     AnyType,
     CallableType,

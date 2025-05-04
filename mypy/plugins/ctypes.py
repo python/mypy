@@ -8,7 +8,6 @@ from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import format_type
 from mypy.subtypes import is_subtype
-from mypy.typeops import make_simplified_union
 from mypy.types import (
     AnyType,
     CallableType,

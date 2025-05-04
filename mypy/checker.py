@@ -161,7 +161,6 @@ from mypy.typeops import (
     function_type,
     is_literal_type_like,
     is_singleton_type,
-    make_simplified_union,
     true_only,
     try_expanding_sum_type_to_union,
     try_getting_int_literals_from_type,
@@ -4012,9 +4011,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
             types, declared_types = zip(*clean_items)
             self.binder.assign_type(
-                expr,
-                UnionType.make_union(list(types)),
-                UnionType.make_union(list(declared_types)),
+                expr, UnionType.make_union(list(types)), UnionType.make_union(list(declared_types))
             )
         for union, lv in zip(union_types, self.flatten_lvalues(lvalues)):
             # Properly store the inferred types.

@@ -20,7 +20,7 @@ import mypy.plugin  # To avoid circular imports.
 from mypy.nodes import TypeInfo
 from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
-from mypy.typeops import fixup_partial_type, make_simplified_union
+from mypy.typeops import fixup_partial_type
 from mypy.types import (
     CallableType,
     Instance,

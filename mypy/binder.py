@@ -11,7 +11,6 @@ from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_h
 from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, TypeInfo, Var
 from mypy.options import Options
 from mypy.subtypes import is_same_type, is_subtype
-from mypy.typeops import make_simplified_union
 from mypy.types import (
     AnyType,
     Instance,
