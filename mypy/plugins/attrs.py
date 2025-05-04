@@ -782,7 +782,7 @@ def _parse_converter(
             types.append(item.arg_types[0])
         # Make a union of all the valid types.
         if types:
-            converter_info.init_type = make_simplified_union(types)
+            converter_info.init_type = UnionType.make_union(types)
 
     if is_attr_converters_optional and converter_info.init_type:
         # If the converter was attr.converter.optional(type) then add None to
