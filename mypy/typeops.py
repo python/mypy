@@ -368,6 +368,7 @@ def bind_self(
     original_type: Type | None = None,
     is_classmethod: bool = False,
     ignore_instances: bool = False,
+    no_overlap_check: bool = False,
 ) -> F:
     """Return a copy of `method`, with the type of its first parameter (usually
     self or cls) bound to original_type.
@@ -390,8 +391,15 @@ def bind_self(
 
     b = B().copy()  # type: B
 
+    If no_overlap_check is True, the caller already checked that original_type
+    is a valid self type and filtered relevant overload items.
     """
     if isinstance(method, Overloaded):
+        if no_overlap_check:
+            items = [
+                bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
+            ]
+            return cast(F, Overloaded(items))
         items = []
         original_type = get_proper_type(original_type)
         for c in method.items:
