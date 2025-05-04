@@ -1203,9 +1203,13 @@ def analyze_class_attribute_access(
         t = get_proper_type(t)
         if isinstance(t, FunctionLike) and is_classmethod:
             t = check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
-        result = add_class_tvars(
+        t = add_class_tvars(
             t, isuper, is_classmethod, is_staticmethod, mx.self_type, original_vars=original_vars
         )
+        if is_decorated and not is_staticmethod:
+            t = expand_self_type_if_needed(t, mx, node.node.var, itype, is_class=is_classmethod)
+
+        result = t
         # __set__ is not called on class objects.
         if not mx.is_lvalue:
             result = analyze_descriptor_access(result, mx)
