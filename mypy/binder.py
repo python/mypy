@@ -277,7 +277,7 @@ class ConditionalTypeBinder:
                     # interfere with our (hacky) TypeGuard support.
                     type = possible_types[0]
                 else:
-                    type = make_simplified_union(possible_types)
+                    type = UnionType.make_union(possible_types)
                     # Legacy guard for corner case when the original type is TypeVarType.
                     if isinstance(declaration_type, TypeVarType) and not is_subtype(
                         type, declaration_type
