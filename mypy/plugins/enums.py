@@ -27,6 +27,7 @@ from mypy.types import (
     LiteralType,
     ProperType,
     Type,
+    UnionType,
     get_proper_type,
     is_named_instance,
 )
@@ -235,7 +236,7 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
                 for proper_type in proper_types
             )
             if all_equivalent_types:
-                return make_simplified_union(cast(Sequence[Type], proper_types))
+                return UnionType.make_union(cast(Sequence[Type], proper_types))
         return ctx.default_attr_type
 
     assert isinstance(ctx.type, Instance)
