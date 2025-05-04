@@ -131,7 +131,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         erased_items = [erase_type(item) for item in t.items]
         from mypy.typeops import make_simplified_union
 
-        return make_simplified_union(erased_items)
+        return UnionType.make_union(erased_items)
 
     def visit_type_type(self, t: TypeType) -> ProperType:
         return TypeType.make_normalized(t.item.accept(self), line=t.line)
@@ -271,7 +271,7 @@ class LastKnownValueEraser(TypeTranslator):
                         else:
                             from mypy.typeops import make_simplified_union
 
-                            merged.append(make_simplified_union(types))
+                            merged.append(UnionType.make_union(types))
                             del instances_by_name[item.type.fullname]
                 else:
                     merged.append(orig_item)
