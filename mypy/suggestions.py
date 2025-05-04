@@ -924,7 +924,7 @@ def generate_type_combinations(types: list[Type]) -> list[Type]:
     and unioning the types. We try both.
     """
     joined_type = join_type_list(types)
-    union_type = make_simplified_union(types)
+    union_type = UnionType.make_union(types)
     if joined_type == union_type:
         return [joined_type]
     else:
@@ -1018,7 +1018,7 @@ def refine_union(t: UnionType, s: ProperType) -> Type:
     # Turn strict optional on when simplifying the union since we
     # don't want to drop Nones.
     with state.strict_optional_set(True):
-        return make_simplified_union(new_items)
+        return UnionType.make_union(new_items)
 
 
 def refine_callable(t: CallableType, s: CallableType) -> CallableType:
