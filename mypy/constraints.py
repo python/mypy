@@ -127,9 +127,6 @@ def infer_constraints_for_callable(
     param_spec_arg_names = []
     param_spec_arg_kinds = []
 
-    own_vars = {t.id for t in callee.variables}
-    type_state.constraints_targets.append(own_vars)
-
     incomplete_star_mapping = False
     for i, actuals in enumerate(formal_to_actual):  # TODO: isn't this `enumerate(arg_types)`?
         for actual in actuals:
@@ -276,7 +273,6 @@ def infer_constraints_for_callable(
     if any(isinstance(v, ParamSpecType) for v in callee.variables):
         # As a perf optimization filter imprecise constraints only when we can have them.
         constraints = filter_imprecise_kinds(constraints)
-    type_state.constraints_targets.pop()
     return constraints
 
 
@@ -559,8 +555,8 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
     if filtered_options != options:
         return any_constraints(filtered_options, eager=eager)
 
-    # Try harder: if that didn't work, try to strip typevars not owned by current function.
-    filtered_options = [filter_own(o) for o in options]
+    # Try harder: if that didn't work, try to strip typevars that aren't meta vars.
+    filtered_options = [exclude_non_meta_vars(o) for o in options]
     if filtered_options != options:
         return any_constraints(filtered_options, eager=eager)
 
@@ -593,14 +589,13 @@ def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | No
     return satisfiable
 
 
-def filter_own(option: list[Constraint] | None) -> list[Constraint] | None:
-    """Keep only constraints that reference type vars local to current function, if any."""
-
-    if not option or not type_state.constraints_targets:
+def exclude_non_meta_vars(option: list[Constraint] | None) -> list[Constraint] | None:
+    # If we had an empty list, keep it intact
+    if not option:
         return option
-    own_vars = type_state.constraints_targets[-1]
-
-    return [c for c in option if c.type_var in own_vars] or None
+    # However, if none of the options actually references meta vars, better remove
+    # this constraint entirely.
+    return [c for c in option if c.type_var.is_meta_var()] or None
 
 
 def is_same_constraints(x: list[Constraint], y: list[Constraint]) -> bool:
