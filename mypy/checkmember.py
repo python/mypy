@@ -308,17 +308,20 @@ def report_missing_attribute(
 def analyze_instance_member_access(
     name: str, typ: Instance, mx: MemberContext, override_info: TypeInfo | None
 ) -> Type:
-    if name == "__init__" and not mx.is_super:
-        # Accessing __init__ in statically typed code would compromise
-        # type safety unless used via super().
-        mx.fail(message_registry.CANNOT_ACCESS_INIT)
-        return AnyType(TypeOfAny.from_error)
-
-    # The base object has an instance type.
-
     info = typ.type
     if override_info:
         info = override_info
+
+    method = info.get_method(name)
+
+    if name == "__init__" and not mx.is_super and not info.is_final:
+        if not method or not method.is_final:
+            # Accessing __init__ in statically typed code would compromise
+            # type safety unless used via super() or the method/class is final.
+            mx.fail(message_registry.CANNOT_ACCESS_INIT)
+            return AnyType(TypeOfAny.from_error)
+
+    # The base object has an instance type.
 
     if (
         state.find_occurrences
@@ -329,7 +332,6 @@ def analyze_instance_member_access(
         mx.msg.note("Occurrence of '{}.{}'".format(*state.find_occurrences), mx.context)
 
     # Look up the member. First look up the method dictionary.
-    method = info.get_method(name)
     if method and not isinstance(method, Decorator):
         if mx.is_super and not mx.suppress_errors:
             validate_super_call(method, mx)
