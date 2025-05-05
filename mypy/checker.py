@@ -6526,7 +6526,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # and create function that will try replaying the same lookup
             # operation against arbitrary types.
             if isinstance(expr, MemberExpr):
-                parent_expr = collapse_walrus(expr.expr)
+                parent_expr = self._propagate_walrus_assignments(expr.expr, output)
                 parent_type = self.lookup_type_or_none(parent_expr)
                 member_name = expr.name
 
@@ -6549,9 +6549,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         return member_type
 
             elif isinstance(expr, IndexExpr):
-                parent_expr = collapse_walrus(expr.base)
+                parent_expr = self._propagate_walrus_assignments(expr.base, output)
                 parent_type = self.lookup_type_or_none(parent_expr)
 
+                self._propagate_walrus_assignments(expr.index, output)
                 index_type = self.lookup_type_or_none(expr.index)
                 if index_type is None:
                     return output
@@ -6624,6 +6625,24 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
             expr = parent_expr
             expr_type = output[parent_expr] = make_simplified_union(new_parent_types)
+
+    def _propagate_walrus_assignments(
+        self, expr: Expression, type_map: dict[Expression, Type]
+    ) -> Expression:
+        """Add assignments from walrus expressions to inferred types.
+
+        Only considers nested assignment exprs, does not recurse into other types.
+        This may be added later if necessary by implementing a dedicated visitor.
+        """
+        if isinstance(expr, AssignmentExpr):
+            if isinstance(expr.value, AssignmentExpr):
+                self._propagate_walrus_assignments(expr.value, type_map)
+            assigned_type = self.lookup_type_or_none(expr.value)
+            parent_expr = collapse_walrus(expr)
+            if assigned_type is not None:
+                type_map[parent_expr] = assigned_type
+            return parent_expr
+        return expr
 
     def refine_identity_comparison_expression(
         self,
