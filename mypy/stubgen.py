@@ -556,7 +556,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 if not isinstance(get_proper_type(annotated_type), AnyType):
                     typename = self.print_annotation(annotated_type)
 
-            if actually_pos_only_args and (arg_.pos_only and kind != ARG_STAR):
+            if actually_pos_only_args and arg_.pos_only:
                 pos_only_marker_position += 1
 
             if kind.is_named() and not any(arg.name.startswith("*") for arg in args):

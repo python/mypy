@@ -7464,7 +7464,7 @@ class A:
 class B(A):
     pass
 
-reveal_type(A.__init_subclass__)  # N: Revealed type is "def (*Any, **kwargs: Any) -> Any"
+reveal_type(A.__init_subclass__)  # N: Revealed type is "def (*args: Any, **kwargs: Any) -> Any"
 [builtins fixtures/object_with_init_subclass.pyi]
 
 [case testInitSubclassUnannotatedMulti]

@@ -724,8 +724,8 @@ f(B(), B)
 f(B(), B, B)
 f(object()) # E: No overload variant of "f" matches argument type "object" \
             # N: Possible overload variants: \
-            # N:     def f(x: A, *Any) -> A \
-            # N:     def f(x: B, *Any) -> A
+            # N:     def f(x: A, *more: Any) -> A \
+            # N:     def f(x: B, *more: Any) -> A
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -742,12 +742,12 @@ f(A(), B())
 f(A(), B(), B())
 f(A(), A(), B()) # E: No overload variant of "f" matches argument types "A", "A", "B" \
                  # N: Possible overload variants: \
-                 # N:     def f(x: A, *B) -> A \
-                 # N:     def f(x: B, *A) -> A
+                 # N:     def f(x: A, *more: B) -> A \
+                 # N:     def f(x: B, *more: A) -> A
 f(A(), B(), A()) # E: No overload variant of "f" matches argument types "A", "B", "A" \
                  # N: Possible overload variants: \
-                 # N:     def f(x: A, *B) -> A \
-                 # N:     def f(x: B, *A) -> A
+                 # N:     def f(x: A, *more: B) -> A \
+                 # N:     def f(x: B, *more: A) -> A
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -1219,13 +1219,13 @@ def f(*x: str) -> str: pass
 f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]" \
            # N: Possible overload variants: \
            # N:     def f(x: int, y: str) -> int \
-           # N:     def f(*str) -> str
+           # N:     def f(*x: str) -> str
 f(*('',))() # E: "str" not callable
 f(*(1, ''))() # E: "int" not callable
 f(*(1, '', 1))() # E: No overload variant of "f" matches argument type "Tuple[int, str, int]" \
                  # N: Possible overload variants: \
                  # N:     def f(x: int, y: str) -> int \
-                 # N:     def f(*str) -> str
+                 # N:     def f(*x: str) -> str
 [builtins fixtures/tuple.pyi]
 
 [case testPreferExactSignatureMatchInOverload]
@@ -2543,7 +2543,7 @@ foo(*y)  # E: No overload variant of "foo" matches argument type "List[str]" \
          # N: Possible overload variants: \
          # N:     def foo(x: int) -> A \
          # N:     def foo(x: int, y: int) -> B \
-         # N:     def foo(x: int, y: int, z: int, *int) -> C
+         # N:     def foo(x: int, y: int, z: int, *args: int) -> C
 [builtins fixtures/list.pyi]
 
 [case testOverloadMultipleVarargDefinition]

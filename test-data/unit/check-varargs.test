@@ -1114,9 +1114,3 @@ foo(key="yes", value="ok")
 bad: Callable[[*TD], None]  # E: "TD" cannot be unpacked (must be tuple or TypeVarTuple)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
-
-[case testVarargsHasNoName]
-def foo(*args: str) -> None: ...  # N: "foo" defined here
-
-foo(args="hello")  # E: Unexpected keyword argument "args" for "foo"
-[builtins fixtures/dict.pyi]

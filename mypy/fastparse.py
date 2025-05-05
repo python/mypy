@@ -1101,7 +1101,7 @@ class ASTConverter:
 
         # *arg
         if args.vararg is not None:
-            new_args.append(self.make_argument(args.vararg, None, ARG_STAR, no_type_check, True))
+            new_args.append(self.make_argument(args.vararg, None, ARG_STAR, no_type_check))
             names.append(args.vararg)
 
         # keyword-only arguments with defaults

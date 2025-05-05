@@ -448,11 +448,11 @@ def foo2(*args: Unpack[Tuple[bool, Unpack[Tuple[int, str]], bool]]) -> None:
 
 # It is hard to normalize callable types in definition, because there is deep relation between `FuncDef.type`
 # and `FuncDef.arguments`, therefore various typeops need to be sure to normalize Callable types before using them.
-reveal_type(foo2)  # N: Revealed type is "def (*Unpack[Tuple[builtins.bool, builtins.int, builtins.str, builtins.bool]])"
+reveal_type(foo2)  # N: Revealed type is "def (*args: Unpack[Tuple[builtins.bool, builtins.int, builtins.str, builtins.bool]])"
 
 class C:
     def foo2(self, *args: Unpack[Tuple[bool, Unpack[Tuple[int, str]], bool]]) -> None: ...
-reveal_type(C().foo2)  # N: Revealed type is "def (*Unpack[Tuple[builtins.bool, builtins.int, builtins.str, builtins.bool]])"
+reveal_type(C().foo2)  # N: Revealed type is "def (*args: Unpack[Tuple[builtins.bool, builtins.int, builtins.str, builtins.bool]])"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple]
@@ -2015,7 +2015,7 @@ from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple("Ts")
 class B(Generic[Unpack[Ts]]):
     def __init__(self, x: Tuple[Unpack[Ts]], *args: Unpack[Ts]) -> None: ...
-reveal_type(B)  # N: Revealed type is "def [Ts] (x: Tuple[Unpack[Ts`1]], *Unpack[Ts`1]) -> __main__.B[Unpack[Ts`1]]"
+reveal_type(B)  # N: Revealed type is "def [Ts] (x: Tuple[Unpack[Ts`1]], *args: Unpack[Ts`1]) -> __main__.B[Unpack[Ts`1]]"
 
 T = TypeVar("T")
 S = TypeVar("S")
@@ -2140,7 +2140,7 @@ get_items(b)  # E: Argument 1 to "get_items" has incompatible type "Bad"; expect
 match(b)  # E: Argument 1 to "match" has incompatible type "Bad"; expected "PC[Unpack[Tuple[Never, ...]]]" \
           # N: Following member(s) of "Bad" have conflicts: \
           # N:     Expected: \
-          # N:         def meth(self, *Never) -> None \
+          # N:         def meth(self, *args: Never) -> None \
           # N:     Got: \
           # N:         def meth(self, *, named: int) -> None
 [builtins fixtures/tuple.pyi]
@@ -2178,14 +2178,14 @@ class Keywords(TypedDict):
 Ints = Tuple[int, ...]
 
 def f(*args: Unpack[Ints], other: str = "no", **kwargs: Unpack[Keywords]) -> None: ...
-reveal_type(f)  # N: Revealed type is "def (*builtins.int, other: builtins.str =, **kwargs: Unpack[TypedDict('__main__.Keywords', {'a': builtins.str, 'b': builtins.str})])"
+reveal_type(f)  # N: Revealed type is "def (*args: builtins.int, other: builtins.str =, **kwargs: Unpack[TypedDict('__main__.Keywords', {'a': builtins.str, 'b': builtins.str})])"
 f(1, 2, a="a", b="b")  # OK
 f(1, 2, 3)  # E: Missing named argument "a" for "f" \
             # E: Missing named argument "b" for "f"
 
 Ts = TypeVarTuple("Ts")
 def g(*args: Unpack[Ts], other: str = "no", **kwargs: Unpack[Keywords]) -> None: ...
-reveal_type(g)  # N: Revealed type is "def [Ts] (*Unpack[Ts`-1], other: builtins.str =, **kwargs: Unpack[TypedDict('__main__.Keywords', {'a': builtins.str, 'b': builtins.str})])"
+reveal_type(g)  # N: Revealed type is "def [Ts] (*args: Unpack[Ts`-1], other: builtins.str =, **kwargs: Unpack[TypedDict('__main__.Keywords', {'a': builtins.str, 'b': builtins.str})])"
 g(1, 2, a="a", b="b")  # OK
 g(1, 2, 3)  # E: Missing named argument "a" for "g" \
             # E: Missing named argument "b" for "g"
@@ -2194,7 +2194,7 @@ def bad(
     *args: Unpack[Keywords],  # E: "Keywords" cannot be unpacked (must be tuple or TypeVarTuple)
     **kwargs: Unpack[Ints],  # E: Unpack item in ** argument must be a TypedDict
 ) -> None: ...
-reveal_type(bad)  # N: Revealed type is "def (*Any, **kwargs: Any)"
+reveal_type(bad)  # N: Revealed type is "def (*args: Any, **kwargs: Any)"
 
 def bad2(
     one: int,
@@ -2202,7 +2202,7 @@ def bad2(
     other: str = "no",
      **kwargs: Unpack[Ints],  # E: Unpack item in ** argument must be a TypedDict
 ) -> None: ...
-reveal_type(bad2)  # N: Revealed type is "def (one: builtins.int, *Any, other: builtins.str =, **kwargs: Any)"
+reveal_type(bad2)  # N: Revealed type is "def (one: builtins.int, *args: Any, other: builtins.str =, **kwargs: Any)"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -2429,7 +2429,7 @@ Ts = TypeVarTuple("Ts")
 @cm
 def test(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]: ...
 
-reveal_type(test)  # N: Revealed type is "def [Ts] (*Unpack[Ts`-1]) -> __main__.CM[Tuple[Unpack[Ts`-1]]]"
+reveal_type(test)  # N: Revealed type is "def [Ts] (*args: Unpack[Ts`-1]) -> __main__.CM[Tuple[Unpack[Ts`-1]]]"
 reveal_type(test(1, 2, 3))  # N: Revealed type is "__main__.CM[Tuple[Literal[1]?, Literal[2]?, Literal[3]?]]"
 [builtins fixtures/tuple.pyi]
 
@@ -2447,7 +2447,7 @@ Ts = TypeVarTuple("Ts")
 @cm  # E: Argument 1 to "cm" has incompatible type "Callable[[VarArg(Unpack[Ts])], Tuple[Unpack[Ts]]]"; expected "Callable[[VarArg(Never)], List[Never]]"
 def test(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]: ...
 
-reveal_type(test)  # N: Revealed type is "def (*Never) -> __main__.CM[Never]"
+reveal_type(test)  # N: Revealed type is "def (*args: Never) -> __main__.CM[Never]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleAgainstParamSpecActualPrefix]
@@ -2465,7 +2465,7 @@ Ts = TypeVarTuple("Ts")
 @cm
 def test(x: T, *args: Unpack[Ts]) -> Tuple[T, Unpack[Ts]]: ...
 
-reveal_type(test)  # N: Revealed type is "def [T, Ts] (builtins.list[T`2], *Unpack[Ts`-2]) -> __main__.CM[Tuple[T`2, Unpack[Ts`-2]]]"
+reveal_type(test)  # N: Revealed type is "def [T, Ts] (builtins.list[T`2], *args: Unpack[Ts`-2]) -> __main__.CM[Tuple[T`2, Unpack[Ts`-2]]]"
 [builtins fixtures/tuple.pyi]
 
 [case testMixingTypeVarTupleAndParamSpec]
@@ -2585,7 +2585,7 @@ class C(Generic[Unpack[Ts]]):
     def foo(self, *args: Unpack[Ts]) -> None: ...
 
 c: C[Unpack[tuple[int, ...]]]
-reveal_type(c.foo)  # N: Revealed type is "def (*builtins.int)"
+reveal_type(c.foo)  # N: Revealed type is "def (*args: builtins.int)"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleJoinInstanceTypeVar]
