@@ -1,0 +1,140 @@
+mjd 	 51582 	 #2000/02/08 01:32:24.0
+observers 	 long
+version 	 NOCVS:v3_8_2:/p/iop/v3_8_2 	# version of IOP
+cameraVersion 	 EXEC v4_3 	# Camera code version
+parameters 
+parametersDir 
+
+# CCD configuration files
+configDir 	 .
+ccdConfig 	 opConfig-51582.par
+ccdECalib 	 opECalib-51567.par
+ccdBC     	 opBC-51392.par
+ccdCamera 	 opCamera-51257.par
+ccdVoltages 	 idCCDLog-%d-51582.par
+
+typedef enum {
+	 START,
+	 END
+} RUNMARK;
+
+typedef struct {
+	 char 	 program[20];
+	 int       stripe;
+	 char      strip[20];
+	 int       run;
+	 char      flavor[20];
+	 char      sys_scn[20];
+	 double    eqnx_scn;
+	 double    node;
+	 double    incl;
+	 double    muStart;
+	 double    muEnd;
+	 int       lastFrame;
+	 double    xBore;
+	 double    yBore;
+	 char      system[20];
+	 double    equinox;
+	 double    c_obs;
+	 double    tracking;
+	 char      quality[20];
+	 double    mjd;
+	 RUNMARK   mark;
+} IMAGINGRUN; 
+
+typedef struct { int run; char quality[20]; } QUALITY
+typedef struct { int run; int frame; char comment[240]; } IDCOMMENT
+IDCOMMENT 1122 119 {processing: end}
+
+imagingrun drifting 100 O 1113 bias \ 
+	 mean 2000 326.87783957  0.00160462  54.77 -9999 -9999 \ 
+	 0.0000 0.0000 -9999 -9999 \ 
+	 26322  15.041060 unknown 51582.06417 START
+imagingrun drifting 34 O 1113 bias \ 
+	 mean 2000 -9999  -9999 54.77 -9999 63 \ 
+	 -9999 -9999 -9999 -9999 \ 
+	 26322  -35996400.000000 unknown 51582.08626 END
+imagingrun drifting 100 O 1114 engineering \ 
+	 mean 2000 326.87440494  0.00160422  64.66 -9999 -9999 \ 
+	 0.0000 0.0000 -9999 -9999 \ 
+	 26322  15.041060 unknown 51582.09156 START
+imagingrun drifting 100 O 1114 engineering \ 
+	 mean 2000 326.87192765  0.00160394 64.66  71.81 61 \ 
+	 0.0000 0.0000 -9999 -9999 \ 
+	 26322  15.041060 unknown 51582.11138 END
+imagingrun drifting 100 O 1115 engineering \ 
+	 mean 2000 326.87133057  0.00160388  73.51 -9999 -9999 \ 
+	 0.0000 0.0000 -9999 -9999 \ 
+	 26322  15.041060 unknown 51582.11609 START
+imagingrun drifting 100 O 1115 engineering \ 
+	 mean 2000 326.86454277  0.00160312 73.51  92.99 143 \ 
+	 0.0000 0.0000 -9999 -9999 \ 
+	 26322  15.041060 good 51582.17005 END
+imagingrun drifting 100 O 1115 engineering \ 
+	 mean 2000 326.86430580  0.00160309 73.51  93.66 143 \ 
+	 0.0000 0.0000 -9999 -9999 \ 
+	 26322  15.041060 good 51582.17190 END
+imagingrun drifting 10 S 1116 science \ 
+	 mean 2000 95  0.0   0.00 -9999 -9999 \ 
+	 22.7402 0.0000 -9999 -9999 \ 
+	 26322  15.041060 unknown 51582.17351 START
+imagingrun drifting 10 S 1116 ignore \ 
+	 mean 2000 95  0.0 0.00   0.00 19 \ 
+	 22.7402 0.0000 -9999 -9999 \ 
+	 26322  15.041060 unknown 51582.17563 END
+imagingrun drifting 100 O 1117 engineering \ 
+	 mean 2000 326.86336139  0.00160299  96.35 -9999 -9999 \ 
+	 0.0000 0.0000 -9999 -9999 \ 
+	 26322  15.041060 unknown 51582.17937 START
+imagingrun drifting 100 O 1117 engineering \ 
+	 mean 2000 326.85919560  0.00160254 96.35 108.26 93 \ 
+	 0.0000 0.0000 MEAN 2000.0 \ 
+	 26322  15.041060 good 51582.21235 END
+imagingrun drifting 10 S 1118 science \ 
+	 mean 2000 95  0.0 125.90 -9999 -9999 \ 
+	 22.7402 0.0000 MEAN 2000.0 \ 
+	 26322  15.041060 unknown 51582.21679 START
+imagingrun drifting 10 S 1118 science \ 
+	 mean 2000 95  0.0 125.90 134.33 70 \ 
+	 22.7402 0.0000 MEAN 2000.0 \ 
+	 26322  15.041060 good 51582.24015 END
+imagingrun drifting 36 S 1119 science \ 
+	 mean 2000 95  65.0 155.72 -9999 -9999 \ 
+	 22.7402 0.0000 MEAN 2000.0 \ 
+	 26322  15.041060 unknown 51582.24225 START
+imagingrun drifting 36 S 1119 engineering \ 
+	 mean 2000 95  65.0 155.72 163.50 65 \ 
+	 22.7402 0.0000 MEAN 2000.0 \ 
+	 26322  15.041060 acceptable 51582.26381 END
+imagingrun drifting 36 S 1120 engineering \ 
+	 mean 2000 95  65.0 185.35 -9999 -9999 \ 
+	 22.7402 0.0000 MEAN 2000.0 \ 
+	 26322  15.041060 unknown 51582.26602 START
+imagingrun drifting 36 S 1120 engineering \ 
+	 mean 2000 95  65.0 185.35 192.53 62 \ 
+	 22.7402 0.0000 MEAN 2000.0 \ 
+	 26322  15.041060 acceptable 51582.28591 END
+imagingrun drifting 10 S 1121 ignore \ 
+	 mean 2000 95  0.0 125.63 -9999 -9999 \ 
+	 22.7402 0.0000 MEAN 2000.0 \ 
+	 26322  15.041060 unknown 51582.30102 START
+imagingrun drifting 10 S 1121 ignore \ 
+	 mean 2000 95  0.0 125.63 129.04 37 \ 
+	 22.7402 0.0000 MEAN 2000.0 \ 
+	 26322  15.041060 unknown 51582.31044 END
+imagingrun drifting 10 S 1122 science \ 
+	 mean 2000 95  0.0 125.19 -9999 -9999 \ 
+	 22.7402 0.0000 MEAN 2000.0 \ 
+	 26322  15.041060 unknown 51582.31205 START
+imagingrun drifting 10 S 1122 science \ 
+	 mean 2000 95  0.0 125.19 144.19 139 \ 
+	 22.7402 0.0000 MEAN 2000.0 \ 
+	 26322  15.041060 bad 51582.36464 END
+imagingrun drifting 100 O 1123 engineering \ 
+	 mean 2000 326.83964673  0.00160047 164.34 -9999 -9999 \ 
+	 0.0000 0.0000 -9999 -9999 \ 
+	 26322  15.041060 unknown 51582.36772 START
+imagingrun drifting 100 O 1123 engineering \ 
+	 mean 2000 326.83612355  0.00160010 164.34 174.53 81 \ 
+	 0.0000 0.0000 -9999 -9999 \ 
+	 26322  15.041060 bad 51582.39594 END

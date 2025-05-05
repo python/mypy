@@ -1,0 +1,4 @@
++ find . -print
++ /bin/cpio -o -H ustar
++ blocks2tape /dev/mt/tps4d3nrnsvc /dev/mt/tps3d6nrnsvc
+958740 blocks
