@@ -207,6 +207,36 @@ foo(B())
 (baz.B) -> Tuple[foo.A, foo:A.C]
 ==
 
+[case testSuggestReexportNamingNameMatchesModule1]
+# suggest: foo.foo
+[file foo.py]
+import bar
+def foo():
+    return bar.bar()
+
+[file bar.py]
+class bar: ...  # name matches module name
+
+[out]
+() -> bar.bar
+==
+
+[case testSuggestReexportNamingNameMatchesModule2]
+# suggest: foo.foo
+[file foo.py]
+import bar
+import qux
+def foo():
+    return qux.bar()
+
+[file bar.py]
+[file qux.py]
+class bar: ...  # name matches another module name
+
+[out]
+() -> qux.bar
+==
+
 [case testSuggestInferInit]
 # suggest: foo.Foo.__init__
 [file foo.py]
