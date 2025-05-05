@@ -1,0 +1,452 @@
+
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-109850660-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'UA-109850660-1', { 'anonymize_ip': true });
+  </script>
+<meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stellarium Astronomy Software</title>
+  <meta name="description" content="Stellarium is a planetarium software that shows exactly what you see when you look up at the stars. It&#39;s easy to use, and free.">
+  <meta name="Keywords" content="Stellarium, planetarium, astronomy, software, stars, planets, constellations, meteors, universe, open source, free software, astro, freeware, download, stars, planets, realistic, software, sky, program, scientific, educational, free, real, time, Windows, Linux, Apple, Mac, GPL, milky way, moon, mercury, venus, mars, earth, venus, jupiter, saturn, sun, real time, 3D, openGL, graphic, GL, chart, map, twinkle, photo-realistic, brightness, screenshot" />
+
+  <link rel="stylesheet" href="/css/all.css" type="text/css" media="screen" />
+  <link rel="stylesheet" href="/css/ltr.css" type="text/css" media="screen" />
+  <link rel="alternate" type="application/atom+xml" title="News" href="/feed.xml" />
+
+  <script>
+    function changelang(val) {
+      if (window.location.pathname === '/') {
+        window.location = '/' + val + '/';
+      } else {
+        var newPath = window.location.pathname.replace(/^\/[^\/]+/, '')
+        window.location = '/' + val + newPath;
+      }
+    }
+  </script>
+</head>
+
+  <body>
+    <div id="wrapper">
+     
+      <div id="langbar">Other languages:
+        <select id="language" onchange="changelang(this.value)">
+          <option value="af">Afrikaans (af)</option><option value="ar">‫العربية‬' (ar)</option><option value="az">Azərbaycan dili (az)</option><option value="be">Беларуская (be)</option><option value="bg">български (bg)</option><option value="bn">বাংলা (bn)</option><option value="bs">Bosanski (bs)</option><option value="ca">Català (ca)</option><option value="ca@valencia">Català (Valencià) (ca@valencia)</option><option value="cs">česky (cs)</option><option value="de">Deutsch (de)</option><option value="el">Ελληνικά (el)</option><option value="en" selected="selected">English (en)</option><option value="en_CA">English (Canada) (en_CA)</option><option value="en_GB">English (United Kingdom) (en_GB)</option><option value="en_IN">English (India) (en_IN)</option><option value="eo">Esperanto' (eo)</option><option value="es">Español (es)</option><option value="et">Eesti keel (et)</option><option value="eu">Euskara (eu)</option><option value="fa">فارسی (fa)</option><option value="fi">Suomen (fi)</option><option value="fr">Français (fr)</option><option value="fy">Frysk (fy)</option><option value="gd">Gàidhlig (gd)</option><option value="gl">Galego (gl)</option><option value="hr">Hrvatski (hr)</option><option value="hrx">Hunns-rikk (hrx)</option><option value="hu">Magyar nyelv (hu)</option><option value="id">Bahasa Indonesia (id)</option><option value="is">íslenska (is)</option><option value="it">Italiano (it)</option><option value="ja">日本語 (ja)</option><option value="ka">ქართული ენა (ka)</option><option value="ko">한국어/조선말 (ko)</option><option value="ky">Кыргызча (ky)</option><option value="la">Latin (la)</option><option value="lb">Lëtzebuergesch (lb)</option><option value="lv">Latviešu valoda (lv)</option><option value="lt">lietuvių kalba (lt)</option><option value="ms">Bahasa Melayu (ms)</option><option value="nb">Norsk bokmål (nb)</option><option value="nl">Nederlands (nl)</option><option value="pl">Polski (pl)</option><option value="pt">Português (pt)</option><option value="pt_BR">Português (Brazil) (pt_BR)</option><option value="ro">Română (ro)</option><option value="ru">Pусский (ru)</option><option value="sc">Sardu (sc)</option><option value="shi">ⵜⴰⵛⵍⵃⵉⵜ (shi)</option><option value="sk">Slovenčina (sk)</option><option value="sq">Gjuha shqipe (sq)</option><option value="sr">Српски (sr)</option><option value="sv">Svenska (sv)</option><option value="te">తెలుగు (te)</option><option value="th">ภาษาไทย (th)</option><option value="tl">Tagalog (tl)</option><option value="tr">Türkçe (tr)</option><option value="tt">Татарча (tt)</option><option value="uk">Yкраїнська (uk)</option><option value="ug">Uyƣurqə (ug)</option><option value="vi">Tiếng Việt (vi)</option><option value="zh_CN">简体中文 (中国) (zh_CN)</option><option value="zh_HK">繁體中文 (香港) (zh_HK)</option><option value="zh_TW">正體中文 (臺灣) (zh_TW)</option>
+        </select>
+      </div>
+      
+      <div id="header">
+  <div id="latestversion" class="block"><a href="/en/">latest version is 25.1</a></div>
+  <div id="downloadbar" class="block">
+    <div id="release" class="block">
+      <div class="download linux">
+          <a href="https://github.com/Stellarium/stellarium/releases/download/v25.1/stellarium-25.1.tar.xz">Linux<span>source</span></a>
+      </div>
+      <div class="download snap">
+          <a href="https://snapcraft.io/stellarium-daily">Linux<span>snap</span></a>
+      </div>
+      <div class="download appimage">
+          <a href="https://github.com/Stellarium/stellarium/releases/download/v25.1/stellarium-25.1-qt5-x86_64.AppImage">Linux<span>amd64; Qt5; AppImage</span></a>
+      </div>
+      <div class="download macosx">
+          <a href="https://github.com/Stellarium/stellarium/releases/download/v25.1/Stellarium-25.1-qt6-macOS.zip">macOS<span>11.0+; Qt6; universal</span></a>
+      </div>
+      <div class="download windows">
+          <a href="https://github.com/Stellarium/stellarium/releases/download/v25.1/stellarium-25.1-qt5-win64.exe">Windows<span>x86_64; Qt5; Windows 7+</span></a>
+      </div>
+      <div class="download windows">
+          <a href="https://github.com/Stellarium/stellarium/releases/download/v25.1/stellarium-25.1-qt6-win64.exe">Windows<span>x86_64; Qt6; Windows 10+</span></a>
+      </div>
+      <div class="download swe">
+          <a href="https://stellarium-web.org/">Stellarium Web</a>
+      </div>      
+    </div>
+  </div>
+</div>
+
+      <main class="page-content" aria-label="Content">
+        <div class="wrapper">
+          
+<div id="home">
+  <div id="home-describe" class="block">
+    <p>Stellarium is a free open source planetarium for your computer. It shows a realistic sky in 3D, just like what you see with the naked eye, binoculars or a telescope.</p>
+  </div>
+
+  <script type="text/javascript" src="/js/jq-ui-flplayer-sw-aggregated.js"></script>
+  <div class="block">
+    <div id="home-media">
+      <div class="slide-item first">
+        <img src="/img/slideshow/slide-1.jpg" class="photo" alt='A shooting star flashes past the Jupiter. You can select different intensities in the View window.' />
+        <h2></h2>
+        <div class="slide-desc">
+          <p>A shooting star flashes past the Jupiter. You can select different intensities in the View window.</p>
+          <a href="screenshots.html" class="read-more">view screenshots &raquo;</a>
+        </div>
+      </div>
+
+      <div class="slide-item">
+        <img src="/img/slideshow/slide-2.jpg" class="photo" alt='The great nebula in Orion. Press N to bring up the nebula labels. Also shown are constellation lines, press C to show or hide them.'/>
+        <h2></h2>
+        <div class="slide-desc">
+          <p>The great nebula in Orion. Press N to bring up the nebula labels.</p>
+          <a href="screenshots.html" class="read-more">view screenshots &raquo;</a>
+        </div>
+      </div>
+      <div class="slide-item">
+        <img src="/img/slideshow/slide-3.jpg" class="photo" alt='The dance of the planets above ESO headquarters, near Munich.'/>
+        <h2></h2>
+        <div class="slide-desc">
+          <p>The dance of the planets above ESO headquarters, near Munich.</p>
+          <a href="screenshots.html" class="read-more">view screenshots &raquo;</a>
+        </div>
+      </div>
+
+      <div class="slide-item">
+        <img src="/img/slideshow/slide-4.jpg" class="photo" alt='Full sky view of the constellations, their boundaries, the Milky Way.'/>
+        <h2></h2>
+        <div class="slide-desc">
+          <p>Full sky view of the constellations, their boundaries, the Milky Way.</p>
+          <a href="screenshots.html" class="read-more">view screenshots &raquo;</a>
+        </div>
+      </div>
+
+      <div class="slide-item">
+        <img src="/img/slideshow/slide-5.jpg" class="photo" alt='Constellation art turned on.'/>
+        <h2></h2>
+        <div class="slide-desc">
+          <p>Constellation art turned on.</p>
+          <a href="screenshots.html" class="read-more">view screenshots &raquo;</a>
+        </div>
+      </div>',
+
+      <div id="thumbs">
+        <div id="description"><p>Click on the picture to the left for details.</p></div>
+        <ul>
+          <li><a href="screenshots.html"><img src="/img/slideshow/thumbs/thumb-1.jpg" width="40" height="40" alt="Slide 1" title="Slide 1"/></a></li>
+          <li><a href="screenshots.html"><img src="/img/slideshow/thumbs/thumb-2.jpg" width="40" height="40" alt="Slide 2" title="Slide 2"/></a></li>
+          <li><a href="screenshots.html"><img src="/img/slideshow/thumbs/thumb-3.jpg" width="40" height="40" alt="Slide 3" title="Slide 3"/></a></li>
+          <li><a href="screenshots.html" ><img src="/img/slideshow/thumbs/thumb-4.jpg" width="40" height="40" alt="Slide 4" title="Slide 4"/></a></li>
+          <li class="last"><a href="screenshots.html"><img src="/img/slideshow/thumbs/thumb-5.jpg" width="40" height="40" alt="Slide 5" title="Slide 5"/></a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div id="content">
+  <div id="features" class="block">
+    <h2>features</h2>
+
+    <h3>sky</h3>
+    <ul class="smalllist">
+      <li>default catalogue of over 600,000 stars</li>
+      <li>extra catalogues with more than 220 million stars</li>
+      <li>default catalogue of over 80,000 deep-sky objects</li>
+      <li>extra catalogue with more than 1 million deep-sky objects</li>
+      <li>asterisms and illustrations of the constellations</li>
+      <li>constellations for 40+ different cultures</li>
+      <li>calendars of 35+ different cultures</li>
+      <li>images of nebulae (full Messier catalogue)</li>
+      <li>realistic Milky Way</li>
+      <li>very realistic atmosphere, sunrise and sunset</li>
+      <li>full 6D astrometry for bright stars</li>
+      <li>modelling movement for various of binary stars</li>
+      <li>the planets and their satellites</li>
+      <li>all-sky surveys (DSS, HiPS)</li>
+    </ul>
+
+    <h3>interface</h3>
+    <ul class="smalllist">
+      <li>a powerful zoom</li>
+      <li>time control</li>
+      <li>multilingual interface</li>
+      <li>scripting interface</li>
+      <li>fisheye projection for planetarium domes</li>
+      <li>spheric mirror projection for your own low-cost dome</li>
+      <li>graphical interface and extensive keyboard control</li>
+      <li>HTTP interface (web-based control, remote control API)</li>
+      <li>telescope control</li>
+    </ul>
+
+    <h3>visualisation</h3>
+    <ul class="smalllist">
+      <li>several coordinate grids</li>
+      <li>precession circles</li>
+      <li>star twinkling</li>
+      <li>shooting stars</li>
+      <li>tails of comets</li>
+      <li>eclipse simulation</li>
+      <li>supernovae and novae simulation</li>
+      <li>exoplanet locations</li>
+      <li>ocular view simulation</li>
+      <li>3D sceneries</li>
+      <li>skinnable landscapes with spheric panorama projection</li>
+    </ul>
+
+    <h3>customizability</h3>
+    <ul class="smalllist">
+      <li>plugin system adding artifical satellites, ocular simulation, telescope control and more</li>
+      <li>ability to add new solar system objects from online resources...</li>
+      <li>add your own deep sky objects, landscapes, constellation images, scripts...</li>
+    </ul>
+  
+    <h2>presentations</h2>
+    <ul class="smalllist">
+      <li>Susanne M. Hoffmann gave a <a href='https://www.youtube.com/watch?v=JF3Fy1iQfWE' target='_blank'>public lecture &quot;Painting Babylonian - Constellations of Ancient Mesopotamia&quot; (YouTube)</a> for the <a href='https://hk.space.museum/en/web/spm/home.html'>HK Space Museum</a> on November 22th, 2024</li>
+      <li>A. Wolf gave a <a href='https://rutube.ru/video/792ee7ab639739c902a9e69471729f32/' target='_blank'>common review of Stellarium's features (RuTube)</a> for the <a href='https://astroteacher.ru'>Open distance methodological seminar for teachers of astronomy and astropedagogues</a> on November 20th, 2024</li>
+      <li>G. Zotti gave a <a href='https://www.youtube.com/watch?v=H9WXLDzbFYU' target='_blank'>presentation about Virtual Archaeoastronomy with Stellarium (YouTube)</a> for the <a href='https://scaas.org'>Society for Cultural Astronomy in the American Southwest (SCAAS)</a> on February 25th, 2023</li>
+      <li>A. Wolf gave a <a href='https://www.youtube.com/watch?v=mx7waXJ3v_Q&t=4724s' target='_blank'>presentation about Stellarium 1.0 (YouTube)</a> at the <a href='https://sibastro.ru/report/uindex?year=2022'>Siberian Astronomical Forum SibAstro 2022</a> on September 25th, 2022</li>
+      <li>A. Wolf gave a <a href='https://www.youtube.com/watch?v=wlmTv28USvY' target='_blank'>presentation about Stellarium &mdash; key changes in the last 5 years (YouTube)</a> at the <a href='https://sibastro.ru/report/uindex?year=2021'>Siberian Astronomical Forum SibAstro 2021</a> on September 25th, 2021</li>
+      <li>G. Zotti gave a <a href='https://www.youtube.com/watch?v=FNdLMYwBgA4' target='_blank'>presentation about Stellarium (YouTube)</a> for the <a href='https://nadc.china-vo.org/article/20210105092323'>China-VO (Virtual Observatory of the Chinese Academy of Sciences)</a> on February 1st, 2021</li>
+      <li>G. Zotti gave an <a href='https://www.youtube.com/watch?v=uJBu_7qOSqQ' target='_blank'>invited talk (YouTube)</a> at the <a href='http://sion.frm.utn.edu.ar/iaus367/index.php/georg-zotti/'>IAU Symposium 367</a> on December 9th, 2020</li>
+      <li>G. Zotti gave a <a href='https://www.youtube.com/watch?v=7QdENQLx8FE' target='_blank'>talk about creating 3D sceneries (YouTube)</a> at the <a href='https://dougsarchaeology.wordpress.com/2017/10/02/visualising-skyscapes-material-forms-of-cultural-engagement-with-the-heavens/'>TAG2016 Skyscapes session</a> on December 20th, 2016</li>
+    </ul>
+  </div>
+
+  <div id="requirements" class="block">
+    <h2>news</h2>
+    <ul class="smalllist">
+      
+      
+      
+        
+        <li><a href="/release/2025/03/23/stellarium-25.1.html">Stellarium 25.1</a></li>
+        
+      
+        
+        <li><a href="/release/2024/12/22/stellarium-24.4.html">Stellarium 24.4</a></li>
+        
+      
+        
+        <li><a href="/release/2024/09/22/stellarium-24.3.html">Stellarium 24.3</a></li>
+        
+      
+        
+        <li><a href="/release/2024/06/23/stellarium-24.2.html">Stellarium 24.2</a></li>
+        
+      
+        
+        <li><a href="/release/2024/03/26/stellarium-24.1.html">Stellarium 24.1</a></li>
+        
+      
+        
+        <li><a href="/release/2023/12/23/stellarium-23.4.html">Stellarium 23.4</a></li>
+        
+      
+        
+        <li><a href="/release/2023/09/25/stellarium-23.3.html">Stellarium 23.3</a></li>
+        
+      
+        
+        <li><a href="/release/2023/07/02/stellarium-23.2.html">Stellarium 23.2</a></li>
+        
+      
+        
+        <li><a href="/release/2023/03/26/stellarium-23.1.html">Stellarium 23.1</a></li>
+        
+      
+        
+        <li><a href="/release/2022/12/25/stellarium-1.2.html">Stellarium 1.2</a></li>
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    </ul>
+
+    <h2>system requirements</h2>
+
+    <h3>minimal</h3>
+    <ul class="smalllist">
+      <li>64-bit operating system</li>
+      <li>Linux/Unix; Windows 7 and above; macOS 10.13 and above</li>
+      <li>3D graphics card which supports OpenGL 2.1 and GLSL 1.3 or OpenGL ES 2.0</li>
+      <li>512 MiB RAM</li>
+      <li>600 MiB on disk</li>
+      <li>Keyboard</li>
+      <li>Mouse, Touchpad or similar pointing device</li>
+    </ul>
+
+    <h3>recommended</h3>
+    <ul class="smalllist">
+      <li>64-bit operating system</li>
+      <li>Linux/Unix; Windows 10 and above; macOS 11.0 and above</li>
+      <li>3D graphics card which supports OpenGL 3.3 and above</li>
+      <li>1 GiB RAM or more</li>
+      <li>1.5 GiB on disk</li>
+      <li>Keyboard</li>
+      <li>Mouse, Touchpad or similar pointing device</li>
+      <li>Moderately dark environment (deep shadow or indoors)</li>
+    </ul>
+
+    <h2>developers</h2>
+    <p>
+      Project coordinator: <a href="http://f4bien.blogspot.com/">Fabien Ch&eacute;reau</a><br/>
+      Graphic designer: Mart&iacute;n Bernardi<br/>
+      Developers: <a href="http://astro.altspu.ru/~aw/">Alexander V. Wolf</a>, <a href="https://homepage.univie.ac.at/Georg.Zotti/">Georg Zotti</a>, <a href="https://blog.noctua-software.com/">Guillaume Ch&eacute;reau</a>, Ruslan Kabatsayev, Worachate Boonplod<br/>
+      Sky cultures researcher: <a href="https://scilogs.spektrum.de/uhura-uraniae/author/hoffmann/">Susanne M. Hoffmann</a><br/>
+      Collaborators: Jocelyn Girod 
+      <a href="https://github.com/Stellarium/stellarium/graphs/contributors">and everyone else in the community</a>.<br/>
+    </p>
+    
+    <h2>financial support</h2>
+    <p>
+      Many individuals and organizations are supporting the development of Stellarium by donations, and the most generous financial contributors (with donations of $250 or more) are 
+      Laurence Holt, Astronomie-Werkstatt &quot;Sterne ohne Grenzen&quot;, John Bellora, Jeff Moe (Spacecruft), BairesDev, Vernon Hermsen, Triplebyte, 
+      Marla Pinaire, Satish Mallesh, Vlad Magdalin, Philippe Renoux, Fito Martin. 
+    </p>
+
+    <h2>silver sponsors</h2>
+    <p>
+      <a href="https://www.bairesdev.com/sponsoring-open-source-projects/"><img src="/img/logos/BairesDev.png" border="0" alt="BairesDev logo"></a><br />
+      <a href="https://www.dotcom-monitor.com/sponsoring-open-source-projects/"><img src="/img/logos/DCM-Logo-54.png" width="300" border="0" alt="dotcom-monitor logo"></a><br />
+    </p>
+  </div>
+
+  <div id="development" class="block">
+    <h2>collaborate</h2>
+    <p>You can learn more about Stellarium, get support and help the project from these links:</p>
+    <ul class="largelist">
+      <li><a href="https://github.com/Stellarium/stellarium/discussions">discussions</a></li>
+      <li><a href="https://groups.google.com/group/stellarium">mailing list</a></li>
+      <li><a href="https://github.com/Stellarium/stellarium/wiki/">wiki</a></li>
+      <li><a href="https://github.com/Stellarium/stellarium/wiki/FAQ">FAQ</a></li>
+      <li><a href="./scripts.html">scripts</a></li>
+      <li><a href="./landscapes.html">landscapes</a></li>
+      <li><a href="./scenery3d.html">3D sceneries</a></li>
+      <li><a href="./skycultures.html">sky cultures</a></li>
+      <li><a href="/en/docs.html">developers documentation</a></li>
+      <li><a href="/doc/25.0/scripting.html">scripting</a></li>
+      <li><a href="https://www.transifex.com/stellarium/stellarium/">translations</a></li>
+      <li><a href="https://github.com/Stellarium/stellarium">get support, report bugs, request new features</a></li>
+      <li><a href="https://github.com/Stellarium/stellarium/releases">all releases</a>
+      <li><a href="/guide/">user guide</a> (<a href="/files/guide.pdf">PDF</a>)</li>
+      <li><a href="https://github.com/Stellarium/stellarium-data/releases/tag/weekly-snapshot">weekly snapshots</a>
+      <li><a href="https://launchpad.net/~stellarium">ppa for ubuntu linux</a>
+      <li><a href="http://dss.stellarium.org/stellarium/">archive</a>
+    </ul>
+
+    <h2>acknowledgment</h2>
+    <p>If the Stellarium planetarium was helpful for your research work, please cite the following paper in your acknowledgment:</p>
+    <p><em>This research has made use of the Stellarium planetarium</em></p>
+    <ul class="smalllist">
+      <li>Zotti, G., Hoffmann, S. M., Wolf, A., Chéreau, F., & Chéreau, G. (2021). The Simulated Sky: Stellarium for Cultural Astronomy Research. Journal of Skyscape Archaeology, 6(2), 221–258. <a href='https://doi.org/10.1558/jsa.17822'>DOI: 10.1558/jsa.17822</a></li>
+    </ul>
+    <p>Or you may <a href='/files/stellarium.bib'>download the BibTeX file of the paper</a> to create another citation format.</p>
+    <p>Please note that the software has several releases since these fundamentals were published:</p>
+    <ul class="smalllist">
+      <li>Stellarium contributors (2025). Stellarium v25.1 Astronomy Software. URL https://stellarium.org/. <a href='https://doi.org/10.5281/zenodo.15071984'>DOI: 10.5281/zenodo.15071984</a></li>
+      <li>Zotti, G., Wolf, A. (2022). Stellarium: Finally at Version 1.0! And Beyond. Journal of Skyscape Archaeology, 8(2), 332–334. <a href='https://doi.org/10.1558/jsa.25608'>DOI: 10.1558/jsa.25608</a></li>
+    </ul>
+
+
+    <h2>git</h2>
+    <p>The latest development snapshot of Stellarium is kept on github. If you want to compile development versions of Stellarium, this is the place to get the source code.</p>
+    <ul class="largelist">
+      <li><a href="https://github.com/Stellarium/stellarium">browse GitHub</a></li>
+    </ul>
+
+    <h2>books</h2>
+    <p>Documentation and description of the sky cultures, state March 2022, plus a lot of additional research:</p>
+    <ul class="smalllist">
+      <li>Hoffmann, S. and Wolfschmidt, G. (2022, eds.). <a href='https://shop.tredition.com/booktitle/Astronomy_in_Culture_--_Cultures_of_Astronomy__Astronomie_in_der_Kultur_--_Kulturen_der_Astronomie_/W-407-831-795' target='_blank'>Astronomy in Culture - Cultures of Astronomy</a>, Featuring the Proceedings of a splinter meeting in the German Astronomical Society. tredition, Ahrensburg.</li>
+    </ul>
+    
+    <!--
+    <h2>irc</h2>
+    <p>Real time chat about Stellarium can be had in the <a href='irc://irc.freenode.org/stellarium'>#stellarium</a> IRC channel on the <a href='http://freenode.net'>freenode</a> IRC network. Use your favorite IRC client to connect to <a href='irc://irc.freenode.org/stellarium'>chat.freenode.net</a> or try the <a href='http://webchat.freenode.net/?channels=stellarium&uio=MTE9MjQ255'>web-based interface</a>.</p>
+    -->
+
+    <h2>supporters and friends</h2>
+    
+    <p>
+    Stellarium is produced by the efforts of the developer team, with the help and support of the <a href='/en/sponsors.html'>following people and organisations</a>
+    .</p>
+  </div>
+</div>
+
+          <div>
+          <div id="footer">
+<a href="https://opencollective.com/stellarium/donate" target="_blank">
+  <img src="https://opencollective.com/stellarium/donate/button@2x.png?color=blue" width=300 />
+</a>
+</div>
+<div id="langlist">langlinks</div>
+
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html class="client-nojs skin-theme-clientpref-os mf-expand-sections-clientpref-1 mf-font-size-clientpref-regular mw-mf-amc-clientpref-1" lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>Parsoid/Parser Unification - MediaWiki</title>
+<script>document.documentElement.className="client-js skin-theme-clientpref-os mf-expand-sections-clientpref-1 mf-font-size-clientpref-regular mw-mf-amc-clientpref-1";RLCONF={"wgBreakFrames":false,"wgSeparatorTransformTable":["",""],"wgDigitTransformTable":["",""],"wgDefaultDateFormat":"dmy","wgMonthNames":["","January","February","March","April","May","June","July","August","September","October","November","December"],"wgRequestId":"dff140c5-4676-4868-a850-35257980c677","wgCanonicalNamespace":"","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":0,"wgPageName":"Parsoid/Parser_Unification","wgTitle":"Parsoid/Parser Unification","wgCurRevisionId":7571684,"wgRevisionId":7571684,"wgArticleId":808326,"wgIsArticle":true,"wgIsRedirect":false,"wgAction":"view","wgUserName":"NORMAL.DOT","wgUserGroups":["*","user","autoconfirmed"],"wgPageViewLanguage":"en","wgPageContentLanguage":"en","wgPageContentModel":"wikitext","wgRelevantPageName":"Parsoid/Parser_Unification","wgRelevantArticleId":808326,"wgUserId":18103340,"wgUserIsTemp":false,"wgUserEditCount":2,"wgUserRegistration":1745774337000,"wgUserFirstRegistration":1742661833000,"wgIsProbablyEditable":true,"wgRelevantPageIsProbablyEditable":true,"wgRestrictionEdit":[],"wgRestrictionMove":[],"wgNoticeProject":"mediawiki","wgNoticeUserData":{"registration":"20250427171857"},"wgCiteReferencePreviewsActive":false,"wgGlobalGroups":[],"wgMediaViewerOnClick":true,"wgMediaViewerEnabledByDefault":true,"wgVisualEditor":{"pageLanguageCode":"en","pageLanguageDir":"ltr","pageVariantFallbacks":"en"},"wgMFMode":"stable","wgMFAmc":true,"wgMFAmcOutreachActive":false,"wgMFAmcOutreachUserEligible":false,"wgMFLazyLoadImages":true,"wgMFEditNoticesFeatureConflict":false,"wgMFDisplayWikibaseDescriptions":{"search":true,"watchlist":true,"tagline":false,"nearby":true},"wgMFIsSupportedEditRequest":true,"wgMFScriptPath":"","wgWMESchemaEditAttemptStepOversample":false,"wgWMEPageLength":10000,"wgULSAcceptLanguageList":["tig","en-us","en"],"wgULSBabelLanguages":[],"wgInternalRedirectTargetUrl":"/wiki/Parsoid/Parser_Unification","parsermigration-parsoid":true,"parsermigration-notice-version":1,"parsermigration-notice-days":60,"wgTranslatePageTranslation":"source","wgEditSubmitButtonLabelPublish":true,"wgDiscussionToolsFeaturesEnabled":{"replytool":true,"newtopictool":true,"sourcemodetoolbar":true,"topicsubscription":true,"autotopicsub":false,"visualenhancements":false,"visualenhancements_reply":false,"visualenhancements_pageframe":false},"wgDiscussionToolsFallbackEditMode":"source","wgCheckUserClientHintsHeadersJsApi":["brands","architecture","bitness","fullVersionList","mobile","model","platform","platformVersion"],"wgMinervaPermissions":{"watchable":true,"watch":true},"wgMinervaFeatures":{"beta":false,"donateBanner":true,"donate":false,"mobileOptionsLink":true,"categories":true,"pageIssues":true,"talkAtTop":true,"historyInPageActions":true,"overflowSubmenu":true,"tabsOnSpecials":true,"personalMenu":true,"mainMenuExpanded":true,"echo":true,"nightMode":true},"wgMinervaDownloadNamespaces":[0],"wgEchoSeenTime":{"all":"1970-01-01T00:00:01Z"},"wgSiteNoticeId":"2.8"};
+RLSTATE={"ext.globalCssJs.user.styles":"ready","site.styles":"ready","user.styles":"ready","ext.globalCssJs.user":"ready","user":"ready","user.options":"loading","ext.translate.tag.languages":"ready","ext.discussionTools.init.styles":"ready","mediawiki.skinning.content.parsoid":"ready","ext.parsermigration.indicator":"ready","oojs-ui-core.styles":"ready","oojs-ui.styles.indicators":"ready","mediawiki.widgets.styles":"ready","oojs-ui-core.icons":"ready","skins.minerva.styles":"ready","skins.minerva.content.styles.images":"ready","mediawiki.hlist":"ready","skins.minerva.codex.styles":"ready","skins.minerva.icons":"ready","skins.minerva.loggedin.styles":"ready","skins.minerva.amc.styles":"ready","skins.minerva.categories.styles":"ready","skins.minerva.personalMenu.icons":"ready","skins.minerva.mainMenu.advanced.icons":"ready","skins.minerva.overflow.icons":"ready","ext.translate.edit.documentation.styles":"ready","ext.translate":"ready","ext.wikimediamessages.styles":"ready","mobile.init.styles":"ready","ext.echo.styles.badge":"ready","oojs-ui.styles.icons-alerts":"ready","ext.discussionTools.minervaicons":"ready","wikibase.client.init":"ready","ext.dismissableSiteNotice.styles":"ready"};
+RLPAGEMODULES=["mediawiki.action.view.redirect","ext.parsermigration.notice","site","mediawiki.page.ready","skins.minerva.scripts","mediawiki.page.watch.ajax","ext.centralNotice.geoIP","ext.centralNotice.startUp","ext.translate.pagetranslation.uls","ext.urlShortener.toolbar","ext.centralauth.centralautologin.clearcookie","mobile.init","ext.echo.init","ext.discussionTools.init","ext.eventLogging","ext.wikimediaEvents","ext.navigationTiming","ext.checkUser.clientHints","ext.dismissableSiteNotice"];</script>
+<script>(RLQ=window.RLQ||[]).push(function(){mw.loader.impl(function(){return["user.options@12s5i",function($,jQuery,require,module){mw.user.tokens.set({"patrolToken":"0c7770a1a4b323e1c7ac69dfea66302668190805+\\","watchToken":"070ac08b95e822d99afbccd8726152e168190805+\\","csrfToken":"8670a39fb6a51cb5e647e51deaa2b9c168190805+\\"});mw.user.options.set({"centralauth-use-sul3":"1","betafeatures-auto-enroll":"1","discussiontools-newtopictool-createpage":0,"discussiontools-replytool":"","discussiontools-topicsubscription":"","echo-email-format":"plain-text","echo-email-frequency":"1","echo-subscriptions-email-article-linked":"","echo-subscriptions-email-dt-subscription-archiving":"1","echo-subscriptions-email-edit-user-page":"1","echo-subscriptions-email-flow-discussion":"1","echo-subscriptions-email-newsletter":"","echo-subscriptions-email-reverted":"1","echo-subscriptions-email-translate-message-group-subscription":"1","echo-subscriptions-email-translationnotifications":"1","echo-subscriptions-email-wikibase-action":"1","echo-subscriptions-web-edit-thank":"","echo-subscriptions-web-mention-failure":"1","echo-subscriptions-web-mention-success":"1","echo-subscriptions-web-newsletter":"","editfont":"sans-serif","editrecovery":"1","ipinfo-beta-feature-enable":"1","mf-expand-sections":"1","mf-font-size":"regular","mf_amc_optin":"1","minerva-theme":"os","mobile-editor":"VisualEditor","parsermigration":"1","parsermigration-parsoid-readviews":"1","previewontop":"","realme-urls":"","translate-editlangs":"","usebetatoolbar":"","usecodemirror":"1","usecodemirror-colorblind":"1","visualeditor-newwikitext":"1","visualeditor-tabs":"prefer-wt","discussiontools-autotopicsub":1,"echo-subscriptions-email-edit-user-talk":1,"echo-subscriptions-web-article-linked":true,"echo-subscriptions-email-mention":true,"echo-subscriptions-email-dt-subscription":true});
+}];});});</script>
+<link rel="stylesheet" href="/w/load.php?lang=en&amp;modules=ext.discussionTools.init.styles%7Cext.discussionTools.minervaicons%7Cext.dismissableSiteNotice.styles%7Cext.echo.styles.badge%7Cext.parsermigration.indicator%7Cext.translate%7Cext.translate.edit.documentation.styles%7Cext.translate.tag.languages%7Cext.wikimediamessages.styles%7Cmediawiki.hlist%7Cmediawiki.skinning.content.parsoid%7Cmediawiki.widgets.styles%7Cmobile.init.styles%7Coojs-ui-core.icons%2Cstyles%7Coojs-ui.styles.icons-alerts%2Cindicators%7Cskins.minerva.amc.styles%7Cskins.minerva.categories.styles%7Cskins.minerva.codex.styles%7Cskins.minerva.content.styles.images%7Cskins.minerva.icons%2Cstyles%7Cskins.minerva.loggedin.styles%7Cskins.minerva.mainMenu.advanced.icons%7Cskins.minerva.overflow.icons%7Cskins.minerva.personalMenu.icons%7Cwikibase.client.init&amp;only=styles&amp;skin=minerva">
+<script async="" src="/w/load.php?lang=en&amp;modules=startup&amp;only=scripts&amp;raw=1&amp;skin=minerva"></script>
+<meta name="ResourceLoaderDynamicStyles" content="">
+<link rel="stylesheet" href="/w/load.php?lang=en&amp;modules=site.styles&amp;only=styles&amp;skin=minerva">
+<meta name="generator" content="MediaWiki 1.44.0-wmf.27">
+<meta name="referrer" content="origin">
+<meta name="referrer" content="origin-when-cross-origin">
+<meta name="robots" content="max-image-preview:standard">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#eaecf0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.25, maximum-scale=5.0">
+<meta property="og:site_name" content="MediaWiki">
+<meta property="og:title" content="Parsoid/Parser Unification - MediaWiki">
+<meta property="og:type" content="website">
+<link rel="manifest" href="/w/api.php?action=webapp-manifest">
+<link rel="alternate" type="application/x-wiki" title="Edit" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit">
+<link rel="apple-touch-icon" href="/static/apple-touch/mediawiki.png">
+<link rel="icon" href="/static/favicon/mediawiki.ico">
+<link rel="search" type="application/opensearchdescription+xml" href="/w/rest.php/v1/search" title="MediaWiki (en)">
+<link rel="EditURI" type="application/rsd+xml" href="//www.mediawiki.org/w/api.php?action=rsd">
+<link rel="canonical" href="https://www.mediawiki.org/wiki/Parsoid/Parser_Unification">
+<link rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+<link rel="dns-prefetch" href="//meta.wikimedia.org" />
+</head>
+<body class="ext-discussiontools-replytool-enabled ext-discussiontools-newtopictool-enabled ext-discussiontools-sourcemodetoolbar-enabled ext-discussiontools-topicsubscription-enabled mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject mw-editable page-Parsoid_Parser_Unification rootpage-Parsoid stable is-authenticated issues-group-B skin-minerva action-view skin--responsive minerva--history-page-action-enabled mw-mf"><div id="mw-mf-viewport">
+	<div id="mw-mf-page-center">
+		<a class="mw-mf-page-center__mask" href="#"></a>
+		<header class="header-container header-chrome">
+			<div class="minerva-header">
+				<nav class="navigation-drawer toggle-list view-border-box">
+					<input type="checkbox" id="main-menu-input"
+						data-event-name="ui.mainmenu"
+						class="toggle-list__checkbox" role="button" aria-haspopup="true" aria-expanded="false" aria-labelledby="mw-mf-main-menu-button">
+					<label for="main-menu-input" id="mw-mf-main-menu-button" aria-hidden="true" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet toggle-list__toggle">
+    <span class="minerva-icon minerva-icon--menu"></span>
+<span></span>
+</label>
+
+					<div id="mw-mf-page-left" class="menu view-border-box">
+	<ul id="p-navigation" class="toggle-list__list">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--home" href="/wiki/MediaWiki" data-mw="interface">
+					<span class="minerva-icon minerva-icon--home"></span>
+
+					<span class="toggle-list-item__label">Home</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--random" href="/wiki/Special:Random" data-mw="interface">
+					<span class="minerva-icon minerva-icon--die"></span>
+
+					<span class="toggle-list-item__label">Random</span>
+				</a>
+			</li>
+			<li class="toggle-list-item skin-minerva-list-item-jsonly">
+				<a class="toggle-list-item__anchor menu__item--nearby" href="/wiki/Special:Nearby" data-event-name="menu.nearby" data-mw="interface">
+					<span class="minerva-icon minerva-icon--mapPin"></span>
+
+					<span class="toggle-list-item__label">Nearby</span>
+				</a>
+			</li>
+	</ul>
+	<ul id="p-interaction" class="toggle-list__list">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--recentchanges" href="/wiki/Special:RecentChanges" data-event-name="menu.recentchanges" data-mw="interface">
+					<span class="minerva-icon minerva-icon--recentChanges"></span>
+
+					<span class="toggle-list-item__label">Recent changes</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--specialPages" href="/wiki/Special:SpecialPages" data-event-name="menu.specialPages" data-mw="interface">
+					<span class="minerva-icon minerva-icon--specialPages"></span>
+
+					<span class="toggle-list-item__label">Special pages</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--speechBubbles" href="/wiki/Project:Community_portal" data-event-name="menu.speechBubbles" data-mw="interface">
+					<span class="minerva-icon minerva-icon--speechBubbles"></span>
+
+					<span class="toggle-list-item__label">Community portal</span>
+				</a>
+			</li>
+	</ul>
+	<ul id="pt-preferences" class="toggle-list__list">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--settings" href="/w/index.php?title=Special:MobileOptions&amp;returnto=Parsoid%2FParser+Unification" data-event-name="menu.settings" data-mw="interface">
+					<span class="minerva-icon minerva-icon--settings"></span>
+
+					<span class="toggle-list-item__label">Settings</span>
+				</a>
+			</li>
+	</ul>
+	<ul class="hlist">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--about" href="/wiki/Project:About" data-mw="interface">
+					
+					<span class="toggle-list-item__label">About mediawiki.org</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--disclaimers" href="/wiki/Project:General_disclaimer" data-mw="interface">
+					
+					<span class="toggle-list-item__label">Disclaimers</span>
+				</a>
+			</li>
+	</ul>
+</div>
+
+					<label class="main-menu-mask" for="main-menu-input"></label>
+				</nav>
+				<div class="branding-box">
+					<a href="/wiki/MediaWiki">
+						<span><img src="/static/images/mobile/copyright/mediawikiwiki-wordmark.svg" alt="MediaWiki" width="120" height="18"
+	style="width: 7.5em; height: 1.125em;"/>
+
+</span>
+						
+					</a>
+				</div>
+					<form action="/w/index.php" method="get" class="minerva-search-form">
+				<div class="search-box">
+					<input type="hidden" name="title" value="Special:Search"/>
+					<input class="search skin-minerva-search-trigger" id="searchInput"
+						 type="search" name="search" placeholder="Search mediawiki.org" aria-label="Search mediawiki.org" autocapitalize="sentences" spellcheck="false" title="Search MediaWiki [f]" accesskey="f">
+					<span class="search-box-icon-overlay"><span class="minerva-icon minerva-icon--search"></span>
+</span>
+				</div>
+				<button id="searchIcon" class="cdx-button cdx-button--size-large cdx-button--icon-only cdx-button--weight-quiet skin-minerva-search-trigger">
+	    <span class="minerva-icon minerva-icon--search"></span>
+<span>Search</span>
+	</button>
+</form>
+		<nav class="minerva-user-navigation" aria-label="User navigation">
+							<div class="minerva-notifications">
+								<ul>
+								<li><a role="button" href="/wiki/Special:Notifications" data-event-name="ui.notifications" data-counter-num="0" data-counter-text="0" title="Your notifications" id="pt-notifications" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet mw-echo-notifications-badge mw-echo-notification-badge-nojs mw-echo-notifications-badge-all-read">
+    <span class="minerva-icon minerva-icon--bellOutline"></span>
+<span>Notifications (0)</span>
+</a>
+</li>
+								</ul>
+							</div>
+					<div class="toggle-list minerva-user-menu">
+	<input
+		type="checkbox"
+		id="minerva-user-menu-checkbox"
+		class="toggle-list__checkbox"
+		role="button"
+		data-event-name="ui.usermenu"
+		aria-labelledby="minerva-user-menu-toggle"
+		aria-expanded="false"
+		aria-haspopup="true">
+	<label id="minerva-user-menu-toggle" for="minerva-user-menu-checkbox" aria-hidden="true" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet toggle-list__toggle">
+    <span class="minerva-icon minerva-icon--userAvatarOutline"></span>
+<span>User menu</span>
+</label>
+
+	<ul class="toggle-list__list new minerva-user-menu-list toggle-list__list--drop-down" id="p-personal">
+				<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--user" href="/wiki/User:NORMAL.DOT" data-event-name="menu.profile">
+						<span class="minerva-icon minerva-icon--userAvatar"></span>
+
+						<span class="toggle-list-item__label">NORMAL.DOT</span>
+					</a>
+				</li>
+				<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor new mw-list-item menu__item--mytalk" href="/wiki/User_talk:NORMAL.DOT" data-event-name="menu.userTalk" data-mw="interface">
+						<span class="minerva-icon minerva-icon--userTalk"></span>
+
+						<span class="toggle-list-item__label">Talk</span>
+					</a>
+				</li>
+				<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor mw-list-item menu__item--watchlist" href="/wiki/Special:Watchlist" data-event-name="menu.unStar" data-mw="interface">
+						<span class="minerva-icon minerva-icon--watchlist"></span>
+
+						<span class="toggle-list-item__label">Watchlist</span>
+					</a>
+				</li>
+				<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor mw-list-item menu__item--mycontris" href="/wiki/Special:Contributions/NORMAL.DOT" data-event-name="menu.contributions" data-mw="interface">
+						<span class="minerva-icon minerva-icon--userContributions"></span>
+
+						<span class="toggle-list-item__label">Contributions</span>
+					</a>
+				</li>
+				<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor mw-list-item menu__item--logout" href="/w/index.php?title=Special:UserLogout&amp;returnto=Parsoid%2FParser+Unification" data-mw="interface">
+						<span class="minerva-icon minerva-icon--logOut"></span>
+
+						<span class="toggle-list-item__label">Log out</span>
+					</a>
+				</li>
+	</ul>
+</div>
+<!-- version 1.1.2 - used for partial template invalidation -->
+
+				</nav>
+			</div>
+		</header>
+		<main id="content" class="mw-body">
+			<div class="banner-container">
+			<div id="siteNotice"></div>
+			</div>
+			
+			<div class="pre-content heading-holder">
+				<div class="page-heading">
+					<h1 id="firstHeading" class="firstHeading mw-first-heading"><span class="mw-page-title-main">Parsoid/Parser Unification</span></h1>
+					<div class="tagline"></div>
+				</div>
+					<ul id="p-associated-pages" class="minerva__tab-container">
+							<li class="minerva__tab selected mw-list-item">
+								<a class="minerva__tab-text" href="/wiki/Parsoid/Parser_Unification" rel="" data-event-name="tabs.main">Page</a>
+							</li>
+							<li class="minerva__tab mw-list-item">
+								<a class="minerva__tab-text" href="/wiki/Talk:Parsoid/Parser_Unification" rel="discussion" data-event-name="tabs.talk">Discussion</a>
+							</li>
+					</ul>
+				<nav class="page-actions-menu">
+	<ul id="p-views" class="page-actions-menu__list minerva-icon-only-menu">
+		<li id="page-actions-watch" class="page-actions-menu__list-item">
+				<a role="button" id="ca-watch" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=watch" data-event-name="menu.watch" data-mw="interface" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet mw-watchlink  mw-list-item menu__item--page-actions-watch">
+				    <span class="minerva-icon minerva-icon--star"></span>
+<span>Watch</span>
+				</a>
+		</li>
+		<li id="page-actions-history" class="page-actions-menu__list-item">
+				<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=history" data-event-name="menu.history" data-mw="interface" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet menu__item--page-actions-history">
+				    <span class="minerva-icon minerva-icon--history"></span>
+<span>View history</span>
+				</a>
+		</li>
+		<li id="page-actions-edit" class="page-actions-menu__list-item">
+				<a role="button" id="ca-edit" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit" data-event-name="menu.edit" data-mw="interface" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet edit-page menu__item--page-actions-edit">
+				    <span class="minerva-icon minerva-icon--edit"></span>
+<span>Edit</span>
+				</a>
+		</li>
+			<li id="page-actions-overflow" class="page-actions-menu__list-item">
+				<div class="toggle-list ">
+					<input
+						type="checkbox"
+						id="page-actions-overflow-checkbox"
+						class="toggle-list__checkbox"
+						role="button"
+						data-event-name="ui.overflowmenu"
+						aria-labelledby="page-actions-overflow-toggle"
+						aria-expanded="false"
+						aria-haspopup="true">
+					<label id="page-actions-overflow-toggle" for="page-actions-overflow-checkbox" aria-hidden="true" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet toggle-list__toggle">
+    <span class="minerva-icon minerva-icon--ellipsis"></span>
+<span>More</span>
+</label>
+
+					<ul class="toggle-list__list new page-actions-overflow-list toggle-list__list--drop-down" id="p-tb">
+								<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--page-actions-overflow-whatlinkshere" href="/wiki/Special:WhatLinksHere/Parsoid/Parser_Unification" data-event-name="menu.whatlinkshere" data-mw="interface">
+						<span class="minerva-icon minerva-icon--articleRedirect"></span>
+
+						<span class="toggle-list-item__label">What links here</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--page-actions-overflow-permalink" href="/w/index.php?title=Parsoid/Parser_Unification&amp;oldid=7571684" data-event-name="menu.permalink" data-mw="interface">
+						<span class="minerva-icon minerva-icon--link"></span>
+
+						<span class="toggle-list-item__label">Permanent link</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--page-actions-overflow-info" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=info" data-event-name="menu.info" data-mw="interface">
+						<span class="minerva-icon minerva-icon--infoFilled"></span>
+
+						<span class="toggle-list-item__label">Page information</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--page-actions-overflow-citethispage" href="/w/index.php?title=Special:CiteThisPage&amp;page=Parsoid%2FParser_Unification&amp;id=7571684&amp;wpFormIdentifier=titleform" data-event-name="menu.citethispage" data-mw="interface">
+						<span class="minerva-icon minerva-icon--quotes"></span>
+
+						<span class="toggle-list-item__label">Cite this page</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--page-actions-overflow-t-page-subscribe" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=dtsubscribe&amp;commentname=p-topics-0%3AParsoid%2FParser_Unification" data-event-name="menu.t-page-subscribe" data-mw="interface">
+						<span class="minerva-icon minerva-icon--bellOutline"></span>
+
+						<span class="toggle-list-item__label">Subscribe</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor mw-list-item menu__item--page-actions-overflow-move" href="/wiki/Special:MovePage/Parsoid/Parser_Unification" data-event-name="menu.move" data-mw="interface">
+						<span class="minerva-icon minerva-icon--move"></span>
+
+						<span class="toggle-list-item__label">Move</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor ext-urlshortener-qrcode-download-minerva mw-list-item menu__item--page-actions-overflow-qrcode" href="/w/index.php?title=Special:QrCode&amp;url=https%3A%2F%2Fwww.mediawiki.org%2Fwiki%2FParsoid%2FParser_Unification" data-event-name="menu.qrcode" data-mw="interface">
+						<span class="minerva-icon minerva-icon--qrCode"></span>
+
+						<span class="toggle-list-item__label">Download QR code</span>
+					</a>
+				</li>
+				</ul>
+				</div>
+			</li>
+	</ul>
+</nav>
+<!-- version 1.0.2 (change every time you update a partial) -->
+				<div id="mw-content-subtitle"><div class="subpages">&lt; <bdi dir="ltr"><a href="/wiki/Special:MyLanguage/Parsoid" title="Special:MyLanguage/Parsoid">Parsoid</a></bdi></div></div>
+			</div>
+			<div id="bodyContent" class="content">
+				<div id="mw-content-text" class="mw-body-content"><script>function mfTempOpenSection(id){var block=document.getElementById("mf-section-"+id);block.className+=" open-block";block.previousSibling.className+=" open-block";}</script><div class="mw-pt-translate-header noprint nomobile" dir="ltr" lang="en"><a href="/w/index.php?title=Special:Translate&amp;group=page-Parsoid%2FParser+Unification&amp;action=page&amp;filter=&amp;action_source=translate_page" title="Special:Translate">Translate this page</a></div><div class="mw-content-ltr mw-parser-output" lang="en" dir="ltr" data-mw-parsoid-version="0.21.0.0-alpha26" data-mw-html-version="2.8.0"><section data-mw-section-id="0" id="mwAQ"><div class="mw-pt-languages noprint navigation-not-searchable" lang="en" dir="ltr" typeof="mw:Extension/languages" about="#mwt2" id="mwAg" data-mw='{"name":"languages","attrs":{}}'><div class="mw-pt-languages-label">Languages:</div><ul class="mw-pt-languages-list"><li><a href="/w/index.php?title=Special:Translate&amp;group=page-Parsoid%2FParser+Unification&amp;language=&amp;task=view" class="new" title="Start translation for this language" lang="" dir="ltr"></a></li>
+<li><span class="mw-pt-languages-ui mw-pt-languages-selected mw-pt-progress mw-pt-progress--complete" lang="en" dir="ltr">English</span></li>
+<li><a href="/wiki/Parsoid/Parser_Unification/fr" class="mw-pt-progress mw-pt-progress--low" title="Parsoid/Unification de l'analyseur syntaxique (12% translated)" lang="fr" dir="ltr">français</a></li>
+<li><a href="/wiki/Parsoid/Parser_Unification/pt-br" class="mw-pt-progress mw-pt-progress--med" title="Parsoid/Parser Unification/pt-br (38% translated)" lang="pt-BR" dir="ltr">português do Brasil</a></li>
+<li><a href="/wiki/Parsoid/Parser_Unification/zh" class="mw-pt-progress mw-pt-progress--complete" title="Parsoid/解析器统一 (100% translated)" lang="zh" dir="ltr">中文</a></li>
+<li><a href="/wiki/Parsoid/Parser_Unification/ja" class="mw-pt-progress mw-pt-progress--complete" title="Parsoid/パーサーの統一 (100% translated)" lang="ja" dir="ltr">日本語</a></li></ul></div>
+<p id="mwAw"><meta typeof="mw:Annotation/translate" id="mwBA" data-mw='{"rangeId":"mwa1","extendedRange":false,"wtOffsets":[13,24]}'><!--T:1--> Currently, we have two separate wikitext parsers that are used in MediaWiki on the Wikimedia cluster (and several other third-party MediaWiki installations).<meta typeof="mw:Annotation/translate/End" id="mwBQ" data-mw='{"wtOffsets":[192,204]}'>
+<meta typeof="mw:Annotation/translate" id="mwBg" data-mw='{"rangeId":"mwa2","extendedRange":false,"wtOffsets":[205,216]}'><!--T:2--> One is the <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Manual:Parser.php" title="Special:MyLanguage/Manual:Parser.php" about="#mwt3" typeof="mw:Transclusion" id="mwBw" data-mw='{"parts":[{"template":{"target":{"wt":"&lt;tvar name=1&gt;ll","href":"./Template:Ll"},"params":{"1":{"wt":"Manual:Parser.php&lt;/tvar&gt;"},"2":{"wt":"original core parser"}},"i":0}}]}'>original core parser</a><span style="display:none" about="#mwt3" id="mwCA"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Manual:Parser.php" title="Manual:Parser.php"> </a></span> (legacy parser), and the other is <meta typeof="mw:Annotation/tvar" id="mwCQ" data-mw='{"attrs":{"name":"2"},"rangeId":"mwa3","extendedRange":false,"wtOffsets":[338,351]}'><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Parsoid" title="Special:MyLanguage/Parsoid" about="#mwt4" typeof="mw:Transclusion" id="mwCg" data-mw='{"parts":[{"template":{"target":{"wt":"ll","href":"./Template:Ll"},"params":{"1":{"wt":"Parsoid"}},"i":0}}]}'>Parsoid</a><span style="display:none" about="#mwt4" id="mwCw"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid" title="Parsoid"> </a></span><meta typeof="mw:Annotation/tvar/End" id="mwDA" data-mw='{"wtOffsets":[365,372]}'>.<meta typeof="mw:Annotation/translate/End" id="mwDQ" data-mw='{"wtOffsets":[373,385]}'>
+<meta typeof="mw:Annotation/translate" id="mwDg" data-mw='{"rangeId":"mwa4","extendedRange":false,"wtOffsets":[386,397]}'><!--T:3--> As of early 2023, the core parser was used for all desktop and mobile web read views, while Parsoid was used to serve all editing clients (VisualEditor, Structured Discussions, Content Translation), linting tools (Extension:Linter), some gadgets, mobile apps, Kiwix offline reader, Wikimedia Enterprise, and the Google knowledge graph project.<meta typeof="mw:Annotation/translate/End" id="mwDw" data-mw='{"wtOffsets":[751,763]}'></p>
+
+<p id="mwEA"><meta typeof="mw:Annotation/translate" id="mwEQ" data-mw='{"rangeId":"mwa5","extendedRange":false,"wtOffsets":[765,776]}'><!--T:4--> The goal of this project is to arrive at a <b id="mwEg">single parser that supports all clients and use cases</b>.<meta typeof="mw:Annotation/translate/End" id="mwEw" data-mw='{"wtOffsets":[890,902]}'> <meta typeof="mw:Annotation/translate" id="mwFA" data-mw='{"rangeId":"mwa6","extendedRange":false,"wtOffsets":[903,914]}'><!--T:7--> This will make our wikis <b id="mwFQ">more reliable and consistent</b> for editors, readers, and tools to use. Having a single code base for wikitext processing will <b id="mwFg">facilitate future wikitext features</b>.<meta typeof="mw:Annotation/translate/End" id="mwFw" data-mw='{"wtOffsets":[1122,1134]}'></p>
+
+<meta typeof="mw:Annotation/translate" id="mwGA" data-mw='{"rangeId":"mwa7","extendedRange":false,"wtOffsets":[1136,1147]}'>
+<!--T:5-->
+<p id="mwGQ">This project is primarily driven by the <meta typeof="mw:Annotation/tvar" id="mwGg" data-mw='{"attrs":{"name":"1"},"rangeId":"mwa8","extendedRange":false,"wtOffsets":[1199,1212]}'><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Content_Transform_Team" title="Special:MyLanguage/Content Transform Team" about="#mwt5" typeof="mw:Transclusion" id="mwGw" data-mw='{"parts":[{"template":{"target":{"wt":"ll","href":"./Template:Ll"},"params":{"1":{"wt":"Content Transform Team"}},"i":0}}]}'>Content Transform Team</a><span style="display:none" about="#mwt5" id="mwHA"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Content_Transform_Team" title="Content Transform Team"> </a></span><meta typeof="mw:Annotation/tvar/End" id="mwHQ" data-mw='{"wtOffsets":[1241,1248]}'> (previously <meta typeof="mw:Annotation/tvar" id="mwHg" data-mw='{"attrs":{"name":"2"},"rangeId":"mwa9","extendedRange":false,"wtOffsets":[1261,1274]}'><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Parsing" title="Special:MyLanguage/Parsing" about="#mwt6" typeof="mw:Transclusion" id="mwHw" data-mw='{"parts":[{"template":{"target":{"wt":"ll","href":"./Template:Ll"},"params":{"1":{"wt":"Parsing"},"2":{"wt":"Parsing"}},"i":0}}]}'>Parsing</a><span style="display:none" about="#mwt6" id="mwIA"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsing" title="Parsing"> </a></span><meta typeof="mw:Annotation/tvar/End" id="mwIQ" data-mw='{"wtOffsets":[1296,1303]}'> Team) with participation from the MediaWiki Platform team, all the internal teams that develop Parsoid clients, <a typeof="mw:ExpandedAttrs mw:Annotation/tvar" about="#mwt7" rel="mw:WikiLink/Interwiki" href="https://meta.wikimedia.org/wiki/Special:MyLanguage/Communications/Movement%20Communications" title="m:Special:MyLanguage/Communications/Movement Communications" class="extiw" id="mwIg" data-mw="{&quot;attribs&quot;:[[{&quot;txt&quot;:&quot;href&quot;},{&quot;html&quot;:&quot;&lt;meta typeof=\&quot;mw:Annotation/tvar\&quot; data-parsoid='{\&quot;dsr\&quot;:[1418,1431,null,null]}' data-mw='{\&quot;attrs\&quot;:{\&quot;name\&quot;:\&quot;3\&quot;},\&quot;rangeId\&quot;:\&quot;mwa0\&quot;,\&quot;extendedRange\&quot;:false,\&quot;wtOffsets\&quot;:[1418,1431]}'/&gt;m:Special:MyLanguage/Communications/Movement Communications&lt;meta typeof=\&quot;mw:Annotation/tvar/End\&quot; data-parsoid='{\&quot;dsr\&quot;:[1490,1497,null,null]}' data-mw='{\&quot;wtOffsets\&quot;:[1490,1497]}'/&gt;&quot;}]]}">Movement Communications</a> team (previously Community Relations Specialists), Wikimedia wiki editor communities, and third party MediaWiki projects since this parser unification will touch them all.</p>
+<meta typeof="mw:Annotation/translate/End" id="mwIw" data-mw='{"wtOffsets":[1696,1708]}'>
+
+<meta typeof="mw:Annotation/translate" id="mwJA" data-mw='{"rangeId":"mwa10","extendedRange":false,"wtOffsets":[1710,1721]}'>
+<!--T:8-->
+<p id="mwJQ">This page contains an overview of the project; we also maintain a <b id="mwJg"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Parsoid/Parser_Unification/Updates" title="Special:MyLanguage/Parsoid/Parser Unification/Updates" about="#mwt8" typeof="mw:Transclusion" id="mwJw" data-mw='{"parts":[{"template":{"target":{"wt":"&lt;tvar name=1&gt;ll","href":"./Template:Ll"},"params":{"1":{"wt":"Parsoid/Parser Unification/Updates&lt;/tvar&gt;"},"2":{"wt":"roadmap, milestones, and updates"}},"i":0}}]}'>roadmap, milestones, and updates</a><span style="display:none" about="#mwt8" id="mwKA"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/Parser_Unification/Updates" title="Parsoid/Parser Unification/Updates"> </a></span></b> page, and a list of pages with additional <b id="mwKQ"><b about="#mwt9" typeof="mw:Transclusion" id="mwKg" data-mw='{"parts":[{"template":{"target":{"wt":"&lt;tvar name=2&gt;ll","href":"./Template:Ll"},"params":{"1":{"wt":"Parsoid/Parser Unification#Related documentation&lt;/tvar&gt;"},"2":{"wt":"technical information"}},"i":0}}]}'><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Parsoid/Parser_Unification#Related_documentation" title="Special:MyLanguage/Parsoid/Parser Unification">technical information</a></b><span style="display:none" about="#mwt9" id="mwKw"><a rel="mw:WikiLink" href="#Related_documentation" class="mw-selflink-fragment"> </a></span>.</b></p>
+<meta typeof="mw:Annotation/translate/End" id="mwLA" data-mw='{"wtOffsets":[2047,2059]}'>
+
+<div id="toc" class="toc" role="navigation" aria-labelledby="mw-toc-heading"><input type="checkbox" role="button" id="toctogglecheckbox" class="toctogglecheckbox" style="display:none"><div class="toctitle" lang="en" dir="ltr"><h2 id="mw-toc-heading">Contents</h2><span class="toctogglespan"><label class="toctogglelabel" for="toctogglecheckbox"></label></span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#Project_Goals"><span class="tocnumber">1</span> <span class="toctext">Project Goals</span></a></li>
+<li class="toclevel-1 tocsection-2"><a href="#Why"><span class="tocnumber">2</span> <span class="toctext">Why</span></a></li>
+<li class="toclevel-1 tocsection-3"><a href="#How_are_we_testing_this_change?"><span class="tocnumber">3</span> <span class="toctext">How are we testing this change?</span></a></li>
+<li class="toclevel-1 tocsection-4"><a href="#What_is_our_deployment_plan_/_strategy?"><span class="tocnumber">4</span> <span class="toctext">What is our deployment plan / strategy?</span></a>
+<ul>
+<li class="toclevel-2 tocsection-5"><a href="#Confidence_Framework"><span class="tocnumber">4.1</span> <span class="toctext">Confidence Framework</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-6"><a href="#How_does_this_impact_wikis?"><span class="tocnumber">5</span> <span class="toctext">How does this impact wikis?</span></a>
+<ul>
+<li class="toclevel-2 tocsection-7"><a href="#Readers"><span class="tocnumber">5.1</span> <span class="toctext">Readers</span></a></li>
+<li class="toclevel-2 tocsection-8"><a href="#Editors_and_bot,_gadget,_skin_developers"><span class="tocnumber">5.2</span> <span class="toctext">Editors and bot, gadget, skin developers</span></a></li>
+<li class="toclevel-2 tocsection-9"><a href="#Extension_developers"><span class="tocnumber">5.3</span> <span class="toctext">Extension developers</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-10"><a href="#What_kind_of_support_will_we_provide_to_impacted_editor_and_developer_communities?"><span class="tocnumber">6</span> <span class="toctext">What kind of support will we provide to impacted editor and developer communities?</span></a></li>
+<li class="toclevel-1 tocsection-11"><a href="#How_can_you_help_/_be_involved?"><span class="tocnumber">7</span> <span class="toctext">How can you help / be involved?</span></a></li>
+<li class="toclevel-1 tocsection-12"><a href="#Related_documentation"><span class="tocnumber">8</span> <span class="toctext">Related documentation</span></a></li>
+</ul>
+</div>
+</section><section data-mw-section-id="1" id="mwLg"><div class="mw-heading mw-heading2 ext-discussiontools-init-section"><h2 id="Project_Goals" data-mw-thread-id="h-Project_Goals"><span data-mw-comment-start="" id="h-Project_Goals"></span>Project Goals<span data-mw-comment-end="h-Project_Goals"></span></h2><span class="mw-editsection" id="mwAA">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=1" title="Edit section: Project Goals" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwnQ">
+    <span class="minerva-icon minerva-icon--edit" id="mwng"></span>
+<span id="mwnw">edit</span>
+</a>
+
+</span>
+
+<!--__DTELLIPSISBUTTON__{"threadItem":{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-Project_Goals","replies":[]}}--></div><div id="mwoA">
+
+<p id="mwLw"><b id="mwMA">Longer Term Goal</b>: Parsoid is the default wikitext engine for MediaWiki and the legacy parser is removed from the codebase</p>
+
+<p id="mwMQ"><b id="mwMg">Intermediate Goal</b>: Parsoid replaces the core parser for all wikitext use cases on the Wikimedia cluster.</p>
+
+</div></section><section data-mw-section-id="2" id="mwMw"><div class="mw-heading mw-heading2 ext-discussiontools-init-section"><h2 id="Why" data-mw-thread-id="h-Why"><span data-mw-comment-start="" id="h-Why"></span>Why<span data-mw-comment-end="h-Why"></span></h2><span class="mw-editsection" id="mwoQ">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=2" title="Edit section: Why" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwog">
+    <span class="minerva-icon minerva-icon--edit" id="mwow"></span>
+<span id="mwpA">edit</span>
+</a>
+
+</span>
+
+<!--__DTELLIPSISBUTTON__{"threadItem":{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-Why","replies":[]}}--></div><div id="mwpQ">
+<p id="mwNA"><b id="mwNQ">Why unification?</b>: Maintaining two wikitext engines requires a lot of resources and would require a duplication of efforts for new features.</p>
+
+<p id="mwNg"><b id="mwNw">Why Parsoid?</b>: Parsoid meets all the editing use cases, API use cases that are unique to Parsoid (ex: Enterprise, Kiwix), and active work is in progress for it to meet all the read use cases. The legacy parser does not support HTML-based editing use cases (ex: VisualEditor).</p>
+
+</div></section><section data-mw-section-id="3" id="mwOA"><div class="mw-heading mw-heading2 ext-discussiontools-init-section"><h2 id="How_are_we_testing_this_change?" data-mw-thread-id="h-How_are_we_testing_this_change?"><span data-mw-comment-start="" id="h-How_are_we_testing_this_change?"></span><span id="How_are_we_testing_this_change.3F" typeof="mw:FallbackId"></span>How are we testing this change?<span data-mw-comment-end="h-How_are_we_testing_this_change?"></span></h2><span class="mw-editsection" id="mwpg">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=3" title="Edit section: How are we testing this change?" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwpw">
+    <span class="minerva-icon minerva-icon--edit" id="mwqA"></span>
+<span id="mwqQ">edit</span>
+</a>
+
+</span>
+
+<!--__DTELLIPSISBUTTON__{"threadItem":{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-How_are_we_testing_this_change?","replies":[]}}--></div><div id="mwqg">
+
+<ul id="mwOQ"><li id="mwOg"><b id="mwOw">Parser tests:</b> This is how Parsoid has been developed since its inception. We ensure that Parsoid continues to pass parser tests, and where divergence is known, it is recorded after careful review. We have also vastly expanded parser test coverage over the years, and all patches against Parsoid need to pass tests.</li>
+<li id="mwPA"><b id="mwPQ">Round-tripping / Integration tests:</b> In this mode, before every production deployment, we convert wikitext to HTML and HTML back to wikitext on about 180K pages from about 50 production wikis. While this testing mode is primarily to ensure our HTML -&gt; wikitext conversion is not broken (which would impact our editing client tools), this also implicitly serves to flag any breakages in our HTML output. But, these aren't the most reliable tests for verifying that our HTML output is not broken.</li>
+<li id="mwPg"><b id="mwPw">Visual diff tests:</b> Here, we take renderings of legacy parser HTML and Parsoid HTML and compare the rendering screenshots and generate a numeric diff score. A typical run will involve <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/Parser_Unification/Pixel_Diff_Testing_Stats" title="Parsoid/Parser Unification/Pixel Diff Testing Stats" id="mwQA">25k+ pages from about 20 production wikis</a>. This has been a really reliable way to identify various breakages and bugs in Parsoid output. As we deploy we are expanding our testing to a wider range of wikis and improving the tool's ability to distinguish real issues from false positives.</li>
+<li id="mwQQ"><b id="mwQg">Parsoid reading and editing clients</b>: Parsoid's output has been used over the years by VisualEditor, Android and iOS mobile apps, Kiwix, and other clients. We have fixed a number of bugs and incompatibilities in Parsoid over the years and continue to fix the various long-tail edge cases as they are discovered and reported.</li></ul>
+
+<p id="mwQw">As our rollout progresses, we will continue identify other QA and testing methodologies as required to ensure we can roll out this change in as smooth and non-disruptive fashion as possible.</p>
+
+</div></section><section data-mw-section-id="4" id="mwRA"><div class="mw-heading mw-heading2 ext-discussiontools-init-section"><h2 id="What_is_our_deployment_plan_/_strategy?" data-mw-thread-id="h-What_is_our_deployment_plan_/_strategy?"><span data-mw-comment-start="" id="h-What_is_our_deployment_plan_/_strategy?"></span><span id="What_is_our_deployment_plan_.2F_strategy.3F" typeof="mw:FallbackId"></span>What is our deployment plan / strategy?<span data-mw-comment-end="h-What_is_our_deployment_plan_/_strategy?"></span></h2><span class="mw-editsection" id="mwqw">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=4" title="Edit section: What is our deployment plan / strategy?" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwrA">
+    <span class="minerva-icon minerva-icon--edit" id="mwrQ"></span>
+<span id="mwrg">edit</span>
+</a>
+
+</span>
+
+<!--__DTELLIPSISBUTTON__{"threadItem":{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-What_is_our_deployment_plan_\/_strategy?","replies":["h-Confidence_Framework-What_is_our_deployment_plan_\/_strategy?"]}}--></div><div id="mwrw">
+
+<p id="mwRQ">At this stage of this project, we have split this work into a number of steps to achieve the intermediate goal.</p>
+
+<ol id="mwRg"><li id="mwRw">✅ Deploy changes to core that makes media structure HTML largely identical to what Parsoid emits. This has <a rel="mw:WikiLink/Interwiki" href="https://phabricator.wikimedia.org/T314318" title="phab:T314318" class="extiw" id="mwSA">its own deployment plan</a>. This change has been live on mediawiki.org and officewiki since September 2021 and we expect to roll this out to all wikis gradually in 2022.</li>
+<li id="mwSQ">✅ Deploy individual user opt-in tools to use Parsoid for read views as part of the ParserMigration extension.</li>
+<li id="mwSg">✅ Deploy changes to Wikimedia production that lets DiscussionTools use Parsoid HTML directly. This lets us iron out bugs in a restricted use case.</li>
+<li id="mwSw">Turn on Parsoid HTML read views on additional wikis incrementally
+<ul id="mwTA"><li id="mwTQ">✅ officewiki</li>
+<li id="mwTg">✅ Talk pages on wikitech</li>
+<li id="mwTw">✅ wikivoyage (except zhwikivoyage)</li>
+<li id="mwUA">✅ Incubator and Dagbani Wikipedia</li>
+<li id="mwUQ">✅ Most wikitionaries</li>
+<li id="mwUg">(in progress) remaining wiktionaries (except those using LanguageConverter)</li>
+<li id="mwUw">(next) low-traffic wikipedias</li>
+<li id="mwVA">...</li></ul></li>
+<li id="mwVQ">Continued work to ensure Parsoid is able to generate identical <i id="mwVg">metadata</i> that the legacy parser generates (categories, backlink tables, page properties, etc). This is needed for tighter integration of Parsoid into MediaWiki core and to start replacing the legacy parser in additional wikitext use cases.</li>
+<li id="mwVw">Use of Parsoid to generate user interface messages</li>
+<li id="mwWA">Shipping a long-term support release (planned to be 1.47) with Parsoid as the default wikitext parser out of the box.</li></ol>
+
+<section data-mw-section-id="5" id="mwWQ"><div class="mw-heading mw-heading3" id="mwsA"><h3 id="Confidence_Framework" data-mw-thread-id="h-Confidence_Framework-What_is_our_deployment_plan_/_strategy?"><span data-mw-comment-start="" id="h-Confidence_Framework-What_is_our_deployment_plan_/_strategy?"></span>Confidence Framework<span data-mw-comment-end="h-Confidence_Framework-What_is_our_deployment_plan_/_strategy?"></span></h3><span class="mw-editsection" id="mwsQ">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=5" title="Edit section: Confidence Framework" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwsg">
+    <span class="minerva-icon minerva-icon--edit" id="mwsw"></span>
+<span id="mwtA">edit</span>
+</a>
+
+</span>
+
+</div><div id="mwtQ">
+
+<p id="mwWg">To validate our road-map evolution and use data-driven decision making for deployments, we have developed a <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/Parser_Unification/Confidence_Framework" title="Parsoid/Parser Unification/Confidence Framework" id="mwWw"> Confidence Framework</a> for Parsoid Read Views.
+This framework contains the guidelines for how we prioritise features, bugfixes, and deployments.</p>
+
+</div></section></div></section><section data-mw-section-id="6" id="mwXA"><div class="mw-heading mw-heading2 ext-discussiontools-init-section"><h2 id="How_does_this_impact_wikis?" data-mw-thread-id="h-How_does_this_impact_wikis?"><span data-mw-comment-start="" id="h-How_does_this_impact_wikis?"></span><span id="How_does_this_impact_wikis.3F" typeof="mw:FallbackId"></span>How does this impact wikis?<span data-mw-comment-end="h-How_does_this_impact_wikis?"></span></h2><span class="mw-editsection" id="mwtg">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=6" title="Edit section: How does this impact wikis?" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwtw">
+    <span class="minerva-icon minerva-icon--edit" id="mwuA"></span>
+<span id="mwuQ">edit</span>
+</a>
+
+</span>
+
+<!--__DTELLIPSISBUTTON__{"threadItem":{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-How_does_this_impact_wikis?","replies":["h-Readers-How_does_this_impact_wikis?","h-Editors_and_bot,_gadget,_skin_developers-How_does_this_impact_wikis?","h-Extension_developers-How_does_this_impact_wikis?"]}}--></div><div id="mwug">
+
+<p id="mwXQ">For the most part, the switch to Parsoid generated HTML should be transparent to most users.
+But, below, we outline some possible impacts on readers, editors, and developers.</p>
+
+<section data-mw-section-id="7" id="mwXg"><div class="mw-heading mw-heading3" id="mwuw"><h3 id="Readers" data-mw-thread-id="h-Readers-How_does_this_impact_wikis?"><span data-mw-comment-start="" id="h-Readers-How_does_this_impact_wikis?"></span>Readers<span data-mw-comment-end="h-Readers-How_does_this_impact_wikis?"></span></h3><span class="mw-editsection" id="mwvA">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=7" title="Edit section: Readers" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwvQ">
+    <span class="minerva-icon minerva-icon--edit" id="mwvg"></span>
+<span id="mwvw">edit</span>
+</a>
+
+</span>
+
+</div><div id="mwwA">
+
+<p id="mwXw">Parsoid models and processes wikitext differently compared to the legacy parser and this can sometimes <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/Known_differences_with_Core_Parser_output" title="Parsoid/Known differences with Core Parser output" id="mwYA">lead to differences in rendering</a> in some edge case scenarios.
+If some wikitext pattern is commonly used, we have attempted to support that in Parsoid where possible, and where not, by either fixing or providing support to fix them up.
+At this time, we believe all rendering differences we expect to run into will be edge cases that can likely be adjusted by fixing wikitext either on individual pages or on templates.</p>
+
+</div></section><section data-mw-section-id="8" id="mwYQ"><div class="mw-heading mw-heading3" id="mwwQ"><h3 id="Editors_and_bot,_gadget,_skin_developers" data-mw-thread-id="h-Editors_and_bot,_gadget,_skin_developers-How_does_this_impact_wikis?"><span data-mw-comment-start="" id="h-Editors_and_bot,_gadget,_skin_developers-How_does_this_impact_wikis?"></span><span id="Editors_and_bot.2C_gadget.2C_skin_developers" typeof="mw:FallbackId"></span>Editors and bot, gadget, skin developers<span data-mw-comment-end="h-Editors_and_bot,_gadget,_skin_developers-How_does_this_impact_wikis?"></span></h3><span class="mw-editsection" id="mwwg">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=8" title="Edit section: Editors and bot, gadget, skin developers" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwww">
+    <span class="minerva-icon minerva-icon--edit" id="mwxA"></span>
+<span id="mwxQ">edit</span>
+</a>
+
+</span>
+
+</div><div id="mwxg">
+
+<ul id="mwYg"><li id="mwYw">Parsoid's HTML for media wikitext is different from what the legacy parser has typically generated. As part of a separate project to use semantic HTML5 output for images, the legacy parser is currently <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/Parser_Unification/Media_structure/FAQ" title="Parsoid/Parser Unification/Media structure/FAQ" id="mwZA">being updated to generate HTML that is pretty close to Parsoid's HTML</a>. We expect to roll this out this year which might require some skins, gadgets, bots, and template styles to be updated.</li>
+<li id="mwZQ">The Cite extension that targets Parsoid relies on CSS rules to localize numbering of references rather than generate localized HTML. This requires editors with appropriate permissions to update <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/MediaWiki:Common.css" title="MediaWiki:Common.css" id="mwZg">MediaWiki:Common.css</a> on their wikis to add suitable CSS rules targeting this HTML.</li></ul>
+
+</div></section><section data-mw-section-id="9" id="mwZw"><div class="mw-heading mw-heading3" id="mwxw"><h3 id="Extension_developers" data-mw-thread-id="h-Extension_developers-How_does_this_impact_wikis?"><span data-mw-comment-start="" id="h-Extension_developers-How_does_this_impact_wikis?"></span>Extension developers<span data-mw-comment-end="h-Extension_developers-How_does_this_impact_wikis?"></span></h3><span class="mw-editsection" id="mwyA">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=9" title="Edit section: Extension developers" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwyQ">
+    <span class="minerva-icon minerva-icon--edit" id="mwyg"></span>
+<span id="mwyw">edit</span>
+</a>
+
+</span>
+
+</div><div id="mwzA">
+
+<p id="mwaA"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/Extension_API" title="Parsoid/Extension API" id="mwaQ">Parsoid's internal processing model</a> is different from <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/So_you_want_your_extension_to_work_with_Parsoid" title="Parsoid/So you want your extension to work with Parsoid" id="mwag">the legacy parser</a>.
+As a result, extensions may need to be updated.
+This only impacts extensions that do one or more of the following: (a) operate on wikitext (b) provide handlers for parser hooks (c) call a public method of the legacy parser.</p>
+
+<p id="mwaw">Extensions that process wikitext will definitely need to be updated to work with Parsoid.
+To date, the vast majority of such extensions have been updated.
+Since Parsoid continues to access the legacy parser for expanding templates, processing parser functions, any parser hooks triggered during this processing will continue to operate and extensions that rely on these hooks will continue to operate.
+For the rest, we are exploring strategies to minimize updates needed to extensions.</p>
+
+<p id="mwbA">We file phabricator tasks for all impacted extensions, and will fix whatever extensions we can within our team.
+If you are an extension developer, we would greatly appreciate any proactive work and prompt code review for patches we might submit.</p>
+
+</div></section></div></section><section data-mw-section-id="10" id="mwbQ"><div class="mw-heading mw-heading2 ext-discussiontools-init-section"><h2 id="What_kind_of_support_will_we_provide_to_impacted_editor_and_developer_communities?" data-mw-thread-id="h-What_kind_of_support_will_we_provide_to_impacted_editor_and_developer_communitie"><span data-mw-comment-start="" id="h-What_kind_of_support_will_we_provide_to_impacted_editor_and_developer_communitie"></span><span id="What_kind_of_support_will_we_provide_to_impacted_editor_and_developer_communities.3F" typeof="mw:FallbackId"></span>What kind of support will we provide to impacted editor and developer communities?<span data-mw-comment-end="h-What_kind_of_support_will_we_provide_to_impacted_editor_and_developer_communitie"></span></h2><span class="mw-editsection" id="mwzQ">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=10" title="Edit section: What kind of support will we provide to impacted editor and developer communities?" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwzg">
+    <span class="minerva-icon minerva-icon--edit" id="mwzw"></span>
+<span id="mw0A">edit</span>
+</a>
+
+</span>
+
+<!--__DTELLIPSISBUTTON__{"threadItem":{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-What_kind_of_support_will_we_provide_to_impacted_editor_and_developer_communitie","replies":[]}}--></div><div id="mw0Q">
+
+<p id="mwbg">The Content Transform Team is driving this project.
+Our goal is to make this switch to Parsoid as seamless as possible.
+So, we have tried to roll out changes over the years gradually.</p>
+
+<p id="mwbw">We started with replacing HTML4 Tidy with HTML5 RemexHtml in the 2015 - 2018 timeframe.
+In 2019, in preparation to integrate Parsoid into MediaWiki core more closely, we ported Parsoid from JS to PHP.
+This switch went very smoothly.
+In the 2020 - 2022 timeframe, we started work to unify the media output generated by Parsoid and by core.
+This has mostly involved making changes to core, but we have occasionally adjusted Parsoid's output based on feedback and other technical considerations.
+In 2024 we began deploying Parsoid as the default parser for page views on wikivoyage.</p>
+
+<p id="mwcA">Going forward, we will provide support in the following ways:</p>
+
+<ul id="mwcQ"><li id="mwcg">Linter rules for any wikitext that needs fixing.
+<ul id="mwcw"><li id="mwdA">The vast majority of this work was completed as part of the Tidy -&gt; Remex migration and we don't expect to introduce a large number of new linter categories for this</li></ul></li>
+<li id="mwdQ">Communication via this page, via tech news updates, and via updates and posts to village pump and other wiki-specific forums.</li>
+<li id="mwdg">Opt-in mechanisms for early adopter users / wikis to test and report problems.
+<ul id="mwdw"><li id="mweA">See the next section for more details!</li></ul></li></ul>
+
+</div></section><section data-mw-section-id="11" id="mweQ"><div class="mw-heading mw-heading2 ext-discussiontools-init-section"><h2 id="How_can_you_help_/_be_involved?" data-mw-thread-id="h-How_can_you_help_/_be_involved?"><span data-mw-comment-start="" id="h-How_can_you_help_/_be_involved?"></span><span id="How_can_you_help_.2F_be_involved.3F" typeof="mw:FallbackId"></span>How can you help / be involved?<span data-mw-comment-end="h-How_can_you_help_/_be_involved?"></span></h2><span class="mw-editsection" id="mw0g">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=11" title="Edit section: How can you help / be involved?" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mw0w">
+    <span class="minerva-icon minerva-icon--edit" id="mw1A"></span>
+<span id="mw1Q">edit</span>
+</a>
+
+</span>
+
+<!--__DTELLIPSISBUTTON__{"threadItem":{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-How_can_you_help_\/_be_involved?","replies":[]}}--></div><div id="mw1g">
+
+<p id="mweg">Starting November 2023, <b id="mwew">you can opt-in to using the new Parsoid parser for reading articles</b> on Wikipedia.
+See <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Help:Extension:ParserMigration" title="Help:Extension:ParserMigration" id="mwfA">Help:Extension:ParserMigration</a> for more information!</p>
+
+<p id="mwfQ">Other things you can do to help:</p>
+
+<ul id="mwfg"><li id="mwfw">Test your gadgets / user scripts against Parsoid HTML to identify / fix any breakages
+<ul id="mwgA"><li id="mwgQ"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Help:Extension:ParserMigration" title="Help:Extension:ParserMigration" id="mwgg">Use the ParserMigration extension</a> to allow you to easily swap between legacy and Parsoid HTML</li></ul></li>
+<li id="mwgw">Parsoid read views will be rolled out first on wikis whose communities have elected to be early adopters; watch this space for more details.</li></ul>
+
+</div></section><section data-mw-section-id="12" id="mwhA"><div class="mw-heading mw-heading2 ext-discussiontools-init-section"><h2 id="Related_documentation" data-mw-thread-id="h-Related_documentation"><span data-mw-comment-start="" id="h-Related_documentation"></span>Related documentation<span data-mw-comment-end="h-Related_documentation"></span></h2><span class="mw-editsection" id="mw1w">
+<a role="button" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=edit&amp;section=12" title="Edit section: Related documentation" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mw2A">
+    <span class="minerva-icon minerva-icon--edit" id="mw2Q"></span>
+<span id="mw2g">edit</span>
+</a>
+
+</span>
+
+<!--__DTELLIPSISBUTTON__{"threadItem":{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-Related_documentation","replies":[]}}--></div><div id="mw2w">
+
+<ul id="mwhQ"><li id="mwhg"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/Parser_Unification/Updates" title="Parsoid/Parser Unification/Updates" id="mwhw">Parsoid/Parser Unification/Updates</a> Project updates</li>
+<li id="mwiA"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/Parser_Unification/Known_Issues" title="Parsoid/Parser Unification/Known Issues" id="mwiQ">Parsoid/Parser Unification/Known Issues</a> lists differences between the Parsoid parser and the legacy parser which a user is likely to notice when using the <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Extension:ParserMigration" title="Extension:ParserMigration" id="mwig">ParserMigration extension</a>.</li>
+<li id="mwiw"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/Parser_Unification/Performance" title="Parsoid/Parser Unification/Performance" id="mwjA">Parsoid Performance Considerations</a> outlines performance work needed for Parsoid and acceptance criteria for deploy</li>
+<li id="mwjQ">Historical documents:
+<ul id="mwjg"><li id="mwjw"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/Known_differences_with_Core_Parser_output" title="Parsoid/Known differences with Core Parser output" id="mwkA">Known differences between Parsoid &amp; core parser output</a> is a more technical page listing specific differences in HTML output, of interest to developers and authors of CSS styles. This page is not as relevant anymore. We are now focused on more fine-grained problems found during visual diff testing.</li>
+<li id="mwkQ"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid/Parser_Unification/Pixel_Diff_Testing_Stats" title="Parsoid/Parser Unification/Pixel Diff Testing Stats" id="mwkg">The Pixel_Diff_Testing_Stats page</a> tracked progress in measuring (and achieving) rendering parity between Parsoid and core parser output. This page is no longer relevant right now because we are no longer doing generic visual diff tests but instead focusing on wikis we are rolling out to and doing focused visual diff tests for those wikis and fixing problems we find.</li>
+<li id="mwkw">February 2019 tech talk: <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Wikimedia_Technical_Talks#Episode_1:_The_long_and_winding_road_to_making_Parsoid_the_default_MediaWiki_parser" title="Wikimedia Technical Talks" id="mwlA">The long and winding road to making Parsoid the default MediaWiki parser</a></li>
+<li id="mwlQ"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsing/Replacing_Tidy" title="Parsing/Replacing Tidy" id="mwlg">Replacing Tidy</a>: Project page related to replacing Tidy</li>
+<li id="mwlw"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsing/Notes/Two_Systems_Problem" title="Parsing/Notes/Two Systems Problem" id="mwmA">Parsing/Notes/Two Systems Problem</a>. This 2016 document explored different options at arriving at a single parser</li>
+<li id="mwmQ"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsing/Notes/Moving_Parsoid_Into_Core" title="Parsing/Notes/Moving Parsoid Into Core" id="mwmg">Parsing/Notes/Moving Parsoid Into Core</a></li></ul></li></ul>
+
+<link typeof="mw:ExpandedAttrs" about="#mwt11" rel="mw:PageProp/Category" href="./Category:Parser" id="mwmw" data-mw="{&quot;attribs&quot;:[[{&quot;txt&quot;:&quot;href&quot;},{&quot;html&quot;:&quot;Category:Parser&lt;span about=\&quot;#mwt10\&quot; typeof=\&quot;mw:Transclusion\&quot; data-parsoid='{\&quot;pi\&quot;:[[]],\&quot;dsr\&quot;:[13078,13095,null,null]}' data-mw='{\&quot;parts\&quot;:[{\&quot;template\&quot;:{\&quot;target\&quot;:{\&quot;wt\&quot;:\&quot;#translation:\&quot;,\&quot;function\&quot;:\&quot;translation\&quot;},\&quot;params\&quot;:{},\&quot;i\&quot;:0}}]}'&gt;&lt;/span&gt;&quot;}]]}">
+<link typeof="mw:ExpandedAttrs" about="#mwt13" rel="mw:PageProp/Category" href="./Category:Parsoid" id="mwnA" data-mw="{&quot;attribs&quot;:[[{&quot;txt&quot;:&quot;href&quot;},{&quot;html&quot;:&quot;Category:Parsoid&lt;span about=\&quot;#mwt12\&quot; typeof=\&quot;mw:Transclusion\&quot; data-parsoid='{\&quot;pi\&quot;:[[]],\&quot;dsr\&quot;:[13116,13133,null,null]}' data-mw='{\&quot;parts\&quot;:[{\&quot;template\&quot;:{\&quot;target\&quot;:{\&quot;wt\&quot;:\&quot;#translation:\&quot;,\&quot;function\&quot;:\&quot;translation\&quot;},\&quot;params\&quot;:{},\&quot;i\&quot;:0}}]}'&gt;&lt;/span&gt;&quot;}]]}"></div></section>
+<!-- 
+NewPP limit report
+Parsed by mw‐web.eqiad.main‐779db5c946‐d55tk
+Cached time: 20250423021409
+Cache expiry: 2592000
+Reduced expiry: false
+Complications: [show‐toc, collapsible‐sections]
+DiscussionTools time usage: 0.003 seconds
+CPU time usage: 0.202 seconds
+Real time usage: 0.250 seconds
+Preprocessor visited node count: 361/1000000
+Post‐expand include size: 2654/2097152 bytes
+Template argument size: 1250/2097152 bytes
+Highest expansion depth: 13/100
+Expensive parser function count: 6/500
+Unstrip recursion depth: 0/20
+Unstrip post‐expand size: 1318/5000000 bytes
+Lua time usage: 0.010/10.000 seconds
+Lua memory usage: 1018686/52428800 bytes
+Number of Wikibase entities loaded: 0/500
+-->
+<!--
+Transclusion expansion time report (%,ms,calls,template)
+100.00%   67.605      1 -total
+ 78.23%   52.886      6 Template:Ll
+ 37.50%   25.352     12 Template:Translatable
+ 28.08%   18.981      6 Template:Pagelang
+ 17.65%   11.933      2 Template:TNTN
+  5.97%    4.035      1 Translations:Parsoid/Page_display_title/en
+  4.64%    3.134      1 Translations:Content_Transform_Team/Page_display_title/en
+-->
+
+<!-- Saved in parser cache with key mediawikiwiki:parsoid-pcache:808326:|#|:idhash:collapsibleSections=1!useParsoid=1 and timestamp 20250423021409 and revision id 7571684. Rendering was triggered because: page-view
+ -->
+
+<!--Parsoid 0.21.0.0-alpha26-->
+</div>
+<!-- MobileFormatter took 0.004 seconds --><!--esi <esi:include src="/esitest-fa8a495983347898/content" /> -->
+<div class="printfooter" data-nosnippet="">Retrieved from "<a dir="ltr" href="https://www.mediawiki.org/w/index.php?title=Parsoid/Parser_Unification&amp;oldid=7571684">https://www.mediawiki.org/w/index.php?title=Parsoid/Parser_Unification&amp;oldid=7571684</a>"</div></div>
+				
+			</div>
+			<div class="post-content" id="page-secondary-actions">
+			</div>
+			<div class="post-content"><div id="catlinks" class="catlinks" data-mw="interface"><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/Special:Categories" title="Special:Categories">Categories</a>: <ul><li><a href="/wiki/Category:Parser" title="Category:Parser">Parser</a></li><li><a href="/wiki/Category:Parsoid" title="Category:Parsoid">Parsoid</a></li></ul></div></div></div>
+		</main>
+		<footer class="mw-footer minerva-footer" role="contentinfo">
+		  <a class="last-modified-bar" href="/w/index.php?title=Parsoid/Parser_Unification&amp;action=history">
+  	<div class="post-content last-modified-bar__content">
+  		 <span class="minerva-icon minerva-icon-size-medium minerva-icon--modified-history"></span>
+ 
+  		<span class="last-modified-bar__text modified-enhancement"
+  				data-user-name="Cscott"
+  				data-user-gender="male"
+  				data-timestamp="1744898640">
+  				<span>Last edited on 17 April 2025, at 14:04</span>
+  		</span>
+  		 <span class="minerva-icon minerva-icon-size-small minerva-icon--expand"></span>
+ 
+  	</div>
+  </a>
+	<div class="post-content footer-content">
+			
+			<div id="p-lang">
+	    <h4>Languages</h4>
+	    <section>
+	        <ul id="p-variants" class="minerva-languages"></ul>
+	        <ul class="minerva-languages"></ul>
+	        <p>This page is not available in other languages.</p>
+	    </section>
+	</div>
+	<div class="minerva-footer-logo">
+				<img src="/static/images/mobile/copyright/mediawikiwiki-wordmark.svg" alt="MediaWiki" width="120" height="18"
+	style="width: 7.5em; height: 1.125em;"/>
+
+
+				<ul id="footer-icons" class="footer-icons">
+	<li id="footer-copyrightico"><a href="https://www.wikimedia.org/" class="cdx-button cdx-button--fake-button cdx-button--size-large cdx-button--fake-button--enabled"><picture><source media="(min-width: 500px)" srcset="/static/images/footer/wikimedia-button.svg" width="84" height="29"><img src="/static/images/footer/wikimedia.svg" width="25" height="25" alt="Wikimedia Foundation" lang="en" loading="lazy"></picture></a></li>
+	<li id="footer-poweredbyico"><a href="https://www.mediawiki.org/" class="cdx-button cdx-button--fake-button cdx-button--size-large cdx-button--fake-button--enabled"><picture><source media="(min-width: 500px)" srcset="/w/resources/assets/poweredby_mediawiki.svg" width="88" height="31"><img src="/w/resources/assets/mediawiki_compact.svg" alt="Powered by MediaWiki" lang="en" width="25" height="25" loading="lazy"></picture></a></li>
+</ul>
+			</div>
+			<ul id="footer-info" class="footer-info hlist hlist-separated">
+	<li id="footer-info-lastmod"> This page was last edited on 17 April 2025, at 14:04.</li>
+	<li id="footer-info-copyright">Text is available under the <a rel="nofollow" class="external text" href="https://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike License</a>; additional terms may apply. Text in <a class="external text" href="https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Contents">the Help: namespace</a> is available under the <a rel="nofollow" class="external text" href="https://creativecommons.org/publicdomain/zero/1.0/">Creative Commons CC0 License</a>.
+By using this site, you agree to the <a class="external text" href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Terms_of_Use">Terms of Use</a> and <a class="external text" href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy">Privacy Policy</a>.</li>
+</ul>
+
+			<ul id="footer-places" class="footer-places hlist hlist-separated">
+	<li id="footer-places-privacy"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy">Privacy policy</a></li>
+	<li id="footer-places-about"><a href="/wiki/Project:About">About mediawiki.org</a></li>
+	<li id="footer-places-disclaimers"><a href="/wiki/Project:General_disclaimer">Disclaimers</a></li>
+	<li id="footer-places-wm-codeofconduct"><a href="https://www.mediawiki.org/wiki/Special:MyLanguage/Code_of_Conduct">Code of Conduct</a></li>
+	<li id="footer-places-developers"><a href="https://developer.wikimedia.org">Developers</a></li>
+	<li id="footer-places-statslink"><a href="https://stats.wikimedia.org/#/www.mediawiki.org">Statistics</a></li>
+	<li id="footer-places-cookiestatement"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Cookie_statement">Cookie statement</a></li>
+	<li id="footer-places-terms-use"><a href="https://foundation.m.wikimedia.org/wiki/Special:MyLanguage/Policy:Terms_of_Use">Terms of Use</a></li>
+	<li id="footer-places-desktop-toggle"><a id="mw-mf-display-toggle" href="//www.mediawiki.org/w/index.php?title=Parsoid/Parser_Unification&amp;mobileaction=toggle_view_desktop" data-event-name="switch_to_desktop">Desktop</a></li>
+</ul>
+
+			</div>
+		</footer>
+			</div>
+</div>
+<div class="mw-portlet mw-portlet-dock-bottom emptyPortlet" id="p-dock-bottom">
+        <ul>
+                
+        </ul>
+</div>
+<div class="mw-notification-area" data-mw="interface"></div>
+<!-- v:8.3.1 -->
+<script>(RLQ=window.RLQ||[]).push(function(){mw.config.set({"wgHostname":"mw-web.eqiad.main-78c47d5d84-j2nq9","wgBackendResponseTime":230,"wgDiscussionToolsPageThreads":[{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-Project_Goals","replies":[]},{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-Why","replies":[]},{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-How_are_we_testing_this_change?","replies":[]},{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-What_is_our_deployment_plan_/_strategy?","replies":[{"headingLevel":3,"name":"h-","type":"heading","level":0,"id":"h-Confidence_Framework-What_is_our_deployment_plan_/_strategy?","replies":[]}]},{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-How_does_this_impact_wikis?","replies":[{"headingLevel":3,"name":"h-","type":"heading","level":0,"id":"h-Readers-How_does_this_impact_wikis?","replies":[]},{"headingLevel":3,"name":"h-","type":"heading","level":0,"id":"h-Editors_and_bot,_gadget,_skin_developers-How_does_this_impact_wikis?","replies":[]},{"headingLevel":3,"name":"h-","type":"heading","level":0,"id":"h-Extension_developers-How_does_this_impact_wikis?","replies":[]}]},{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-What_kind_of_support_will_we_provide_to_impacted_editor_and_developer_communitie","replies":[]},{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-How_can_you_help_/_be_involved?","replies":[]},{"headingLevel":2,"name":"h-","type":"heading","level":0,"id":"h-Related_documentation","replies":[]}],"wgPageParseReport":{"discussiontools":{"limitreport-timeusage":"0.010"},"limitreport":{"cputime":"0.202","walltime":"0.250","ppvisitednodes":{"value":361,"limit":1000000},"postexpandincludesize":{"value":2654,"limit":2097152},"templateargumentsize":{"value":1250,"limit":2097152},"expansiondepth":{"value":13,"limit":100},"expensivefunctioncount":{"value":6,"limit":500},"unstrip-depth":{"value":0,"limit":20},"unstrip-size":{"value":1318,"limit":5000000},"entityaccesscount":{"value":0,"limit":500},"timingprofile":["100.00%   67.605      1 -total"," 78.23%   52.886      6 Template:Ll"," 37.50%   25.352     12 Template:Translatable"," 28.08%   18.981      6 Template:Pagelang"," 17.65%   11.933      2 Template:TNTN","  5.97%    4.035      1 Translations:Parsoid/Page_display_title/en","  4.64%    3.134      1 Translations:Content_Transform_Team/Page_display_title/en"]},"scribunto":{"limitreport-timeusage":{"value":"0.010","limit":"10.000"},"limitreport-memusage":{"value":1018686,"limit":52428800}},"cachereport":{"origin":"mw-web.eqiad.main-779db5c946-d55tk","timestamp":"20250423021409","ttl":2592000,"transientcontent":false}}});});</script>
+<script>(window.NORLQ=window.NORLQ||[]).push(function(){var ns,i,p,img;ns=document.getElementsByTagName('noscript');for(i=0;i<ns.length;i++){p=ns[i].nextSibling;if(p&&p.className&&p.className.indexOf('lazy-image-placeholder')>-1){img=document.createElement('img');img.setAttribute('src',p.getAttribute('data-mw-src'));img.setAttribute('width',p.getAttribute('data-width'));img.setAttribute('height',p.getAttribute('data-height'));img.setAttribute('alt',p.getAttribute('data-alt'));p.parentNode.replaceChild(img,p);}}});</script>
+</body>
+</html>

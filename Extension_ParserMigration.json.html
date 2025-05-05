@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html class="client-nojs skin-theme-clientpref-os mf-expand-sections-clientpref-1 mf-font-size-clientpref-regular mw-mf-amc-clientpref-1" lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>Extension:ParserMigration - MediaWiki</title>
+<script>document.documentElement.className="client-js skin-theme-clientpref-os mf-expand-sections-clientpref-1 mf-font-size-clientpref-regular mw-mf-amc-clientpref-1";RLCONF={"wgBreakFrames":false,"wgSeparatorTransformTable":["",""],"wgDigitTransformTable":["",""],"wgDefaultDateFormat":"dmy","wgMonthNames":["","January","February","March","April","May","June","July","August","September","October","November","December"],"wgRequestId":"a1e83f93-3d52-4284-b372-8a4a091baab9","wgCanonicalNamespace":"Extension","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":102,"wgPageName":"Extension:ParserMigration","wgTitle":"ParserMigration","wgCurRevisionId":6942122,"wgRevisionId":6942122,"wgArticleId":597638,"wgIsArticle":true,"wgIsRedirect":false,"wgAction":"view","wgUserName":"NORMAL.DOT","wgUserGroups":["*","user","autoconfirmed"],"wgPageViewLanguage":"en","wgPageContentLanguage":"en","wgPageContentModel":"wikitext","wgRelevantPageName":"Extension:ParserMigration","wgRelevantArticleId":597638,"wgUserId":18103340,"wgUserIsTemp":false,"wgUserEditCount":2,"wgUserRegistration":1745774337000,"wgUserFirstRegistration":1742661833000,"wgIsProbablyEditable":true,"wgRelevantPageIsProbablyEditable":true,"wgRestrictionEdit":[],"wgRestrictionMove":[],"wgNoticeProject":"mediawiki","wgNoticeUserData":{"registration":"20250427171857"},"wgCiteReferencePreviewsActive":false,"wgGlobalGroups":[],"wgMediaViewerOnClick":true,"wgMediaViewerEnabledByDefault":true,"wgVisualEditor":{"pageLanguageCode":"en","pageLanguageDir":"ltr","pageVariantFallbacks":"en"},"wgMFMode":"stable","wgMFAmc":true,"wgMFAmcOutreachActive":false,"wgMFAmcOutreachUserEligible":false,"wgMFLazyLoadImages":true,"wgMFEditNoticesFeatureConflict":false,"wgMFDisplayWikibaseDescriptions":{"search":true,"watchlist":true,"tagline":false,"nearby":true},"wgMFIsSupportedEditRequest":true,"wgMFScriptPath":"","wgWMESchemaEditAttemptStepOversample":false,"wgWMEPageLength":3000,"wgULSAcceptLanguageList":["tig","en-us","en"],"wgULSBabelLanguages":[],"wgInternalRedirectTargetUrl":"/wiki/Extension:ParserMigration","parsermigration-parsoid":true,"parsermigration-notice-version":1,"parsermigration-notice-days":60,"wgTranslatePageTranslation":"source","wgEditSubmitButtonLabelPublish":true,"wgWikibaseItemId":"Q25860665","wgCheckUserClientHintsHeadersJsApi":["brands","architecture","bitness","fullVersionList","mobile","model","platform","platformVersion"],"wgMinervaPermissions":{"watchable":true,"watch":true},"wgMinervaFeatures":{"beta":false,"donateBanner":true,"donate":false,"mobileOptionsLink":true,"categories":true,"pageIssues":true,"talkAtTop":true,"historyInPageActions":true,"overflowSubmenu":true,"tabsOnSpecials":true,"personalMenu":true,"mainMenuExpanded":true,"echo":true,"nightMode":true},"wgMinervaDownloadNamespaces":[0],"wgEchoSeenTime":{"all":"1970-01-01T00:00:01Z"},"wgSiteNoticeId":"2.8"};
+RLSTATE={"ext.globalCssJs.user.styles":"ready","site.styles":"ready","user.styles":"ready","ext.globalCssJs.user":"ready","user":"ready","user.options":"loading","ext.translate.tag.languages":"ready","ext.pygments":"ready","mediawiki.skinning.content.parsoid":"ready","ext.parsermigration.indicator":"ready","skins.minerva.styles":"ready","skins.minerva.content.styles.images":"ready","mediawiki.hlist":"ready","skins.minerva.codex.styles":"ready","skins.minerva.icons":"ready","skins.minerva.loggedin.styles":"ready","skins.minerva.amc.styles":"ready","skins.minerva.categories.styles":"ready","skins.minerva.personalMenu.icons":"ready","skins.minerva.mainMenu.advanced.icons":"ready","skins.minerva.overflow.icons":"ready","ext.translate.edit.documentation.styles":"ready","ext.translate":"ready","ext.wikimediamessages.styles":"ready","mobile.init.styles":"ready","ext.echo.styles.badge":"ready","oojs-ui.styles.icons-alerts":"ready","wikibase.client.init":"ready","ext.dismissableSiteNotice.styles":"ready"};
+RLPAGEMODULES=["mediawiki.action.view.redirect","ext.pygments.view","ext.parsermigration.notice","site","mediawiki.page.ready","skins.minerva.scripts","mediawiki.page.watch.ajax","ext.centralNotice.geoIP","ext.centralNotice.startUp","ext.translate.pagetranslation.uls","ext.urlShortener.toolbar","ext.centralauth.centralautologin.clearcookie","mobile.init","ext.echo.init","ext.eventLogging","ext.wikimediaEvents","ext.navigationTiming","ext.checkUser.clientHints","ext.dismissableSiteNotice"];</script>
+<script>(RLQ=window.RLQ||[]).push(function(){mw.loader.impl(function(){return["user.options@12s5i",function($,jQuery,require,module){mw.user.tokens.set({"patrolToken":"fb7c216039107bda31af481d9d55d2ca6819080b+\\","watchToken":"de0d616758a8ffecc122ceb2a63c44fe6819080b+\\","csrfToken":"32ff10190ee3baacb616a318fc92a70e6819080b+\\"});mw.user.options.set({"centralauth-use-sul3":"1","betafeatures-auto-enroll":"1","discussiontools-newtopictool-createpage":0,"discussiontools-replytool":"","discussiontools-topicsubscription":"","echo-email-format":"plain-text","echo-email-frequency":"1","echo-subscriptions-email-article-linked":"","echo-subscriptions-email-dt-subscription-archiving":"1","echo-subscriptions-email-edit-user-page":"1","echo-subscriptions-email-flow-discussion":"1","echo-subscriptions-email-newsletter":"","echo-subscriptions-email-reverted":"1","echo-subscriptions-email-translate-message-group-subscription":"1","echo-subscriptions-email-translationnotifications":"1","echo-subscriptions-email-wikibase-action":"1","echo-subscriptions-web-edit-thank":"","echo-subscriptions-web-mention-failure":"1","echo-subscriptions-web-mention-success":"1","echo-subscriptions-web-newsletter":"","editfont":"sans-serif","editrecovery":"1","ipinfo-beta-feature-enable":"1","mf-expand-sections":"1","mf-font-size":"regular","mf_amc_optin":"1","minerva-theme":"os","mobile-editor":"VisualEditor","parsermigration":"1","parsermigration-parsoid-readviews":"1","previewontop":"","realme-urls":"","translate-editlangs":"","usebetatoolbar":"","usecodemirror":"1","usecodemirror-colorblind":"1","visualeditor-newwikitext":"1","visualeditor-tabs":"prefer-wt","discussiontools-autotopicsub":1,"echo-subscriptions-email-edit-user-talk":1,"echo-subscriptions-web-article-linked":true,"echo-subscriptions-email-mention":true,"echo-subscriptions-email-dt-subscription":true});
+}];});});</script>
+<link rel="stylesheet" href="/w/load.php?lang=en&amp;modules=ext.dismissableSiteNotice.styles%7Cext.echo.styles.badge%7Cext.parsermigration.indicator%7Cext.pygments%2Ctranslate%7Cext.translate.edit.documentation.styles%7Cext.translate.tag.languages%7Cext.wikimediamessages.styles%7Cmediawiki.hlist%7Cmediawiki.skinning.content.parsoid%7Cmobile.init.styles%7Coojs-ui.styles.icons-alerts%7Cskins.minerva.amc.styles%7Cskins.minerva.categories.styles%7Cskins.minerva.codex.styles%7Cskins.minerva.content.styles.images%7Cskins.minerva.icons%2Cstyles%7Cskins.minerva.loggedin.styles%7Cskins.minerva.mainMenu.advanced.icons%7Cskins.minerva.overflow.icons%7Cskins.minerva.personalMenu.icons%7Cwikibase.client.init&amp;only=styles&amp;skin=minerva">
+<script async="" src="/w/load.php?lang=en&amp;modules=startup&amp;only=scripts&amp;raw=1&amp;skin=minerva"></script>
+<meta name="ResourceLoaderDynamicStyles" content="">
+<link rel="stylesheet" href="/w/load.php?lang=en&amp;modules=site.styles&amp;only=styles&amp;skin=minerva">
+<meta name="generator" content="MediaWiki 1.44.0-wmf.27">
+<meta name="referrer" content="origin">
+<meta name="referrer" content="origin-when-cross-origin">
+<meta name="robots" content="max-image-preview:standard">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#eaecf0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.25, maximum-scale=5.0">
+<meta property="og:site_name" content="MediaWiki">
+<meta property="og:title" content="Extension:ParserMigration - MediaWiki">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="//upload.wikimedia.org">
+<link rel="manifest" href="/w/api.php?action=webapp-manifest">
+<link rel="alternate" type="application/x-wiki" title="Edit" href="/w/index.php?title=Extension:ParserMigration&amp;action=edit">
+<link rel="apple-touch-icon" href="/static/apple-touch/mediawiki.png">
+<link rel="icon" href="/static/favicon/mediawiki.ico">
+<link rel="search" type="application/opensearchdescription+xml" href="/w/rest.php/v1/search" title="MediaWiki (en)">
+<link rel="EditURI" type="application/rsd+xml" href="//www.mediawiki.org/w/api.php?action=rsd">
+<link rel="canonical" href="https://www.mediawiki.org/wiki/Extension:ParserMigration">
+<link rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
+<link rel="dns-prefetch" href="//meta.wikimedia.org" />
+</head>
+<body class="mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-102 ns-subject mw-editable page-Extension_ParserMigration rootpage-Extension_ParserMigration stable is-authenticated skin-minerva action-view skin--responsive minerva--history-page-action-enabled mw-mf"><div id="mw-mf-viewport">
+	<div id="mw-mf-page-center">
+		<a class="mw-mf-page-center__mask" href="#"></a>
+		<header class="header-container header-chrome">
+			<div class="minerva-header">
+				<nav class="navigation-drawer toggle-list view-border-box">
+					<input type="checkbox" id="main-menu-input"
+						data-event-name="ui.mainmenu"
+						class="toggle-list__checkbox" role="button" aria-haspopup="true" aria-expanded="false" aria-labelledby="mw-mf-main-menu-button">
+					<label for="main-menu-input" id="mw-mf-main-menu-button" aria-hidden="true" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet toggle-list__toggle">
+    <span class="minerva-icon minerva-icon--menu"></span>
+<span></span>
+</label>
+
+					<div id="mw-mf-page-left" class="menu view-border-box">
+	<ul id="p-navigation" class="toggle-list__list">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--home" href="/wiki/MediaWiki" data-mw="interface">
+					<span class="minerva-icon minerva-icon--home"></span>
+
+					<span class="toggle-list-item__label">Home</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--random" href="/wiki/Special:Random" data-mw="interface">
+					<span class="minerva-icon minerva-icon--die"></span>
+
+					<span class="toggle-list-item__label">Random</span>
+				</a>
+			</li>
+			<li class="toggle-list-item skin-minerva-list-item-jsonly">
+				<a class="toggle-list-item__anchor menu__item--nearby" href="/wiki/Special:Nearby" data-event-name="menu.nearby" data-mw="interface">
+					<span class="minerva-icon minerva-icon--mapPin"></span>
+
+					<span class="toggle-list-item__label">Nearby</span>
+				</a>
+			</li>
+	</ul>
+	<ul id="p-interaction" class="toggle-list__list">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--recentchanges" href="/wiki/Special:RecentChanges" data-event-name="menu.recentchanges" data-mw="interface">
+					<span class="minerva-icon minerva-icon--recentChanges"></span>
+
+					<span class="toggle-list-item__label">Recent changes</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--specialPages" href="/wiki/Special:SpecialPages" data-event-name="menu.specialPages" data-mw="interface">
+					<span class="minerva-icon minerva-icon--specialPages"></span>
+
+					<span class="toggle-list-item__label">Special pages</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--speechBubbles" href="/wiki/Project:Community_portal" data-event-name="menu.speechBubbles" data-mw="interface">
+					<span class="minerva-icon minerva-icon--speechBubbles"></span>
+
+					<span class="toggle-list-item__label">Community portal</span>
+				</a>
+			</li>
+	</ul>
+	<ul id="pt-preferences" class="toggle-list__list">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--settings" href="/w/index.php?title=Special:MobileOptions&amp;returnto=Extension%3AParserMigration" data-event-name="menu.settings" data-mw="interface">
+					<span class="minerva-icon minerva-icon--settings"></span>
+
+					<span class="toggle-list-item__label">Settings</span>
+				</a>
+			</li>
+	</ul>
+	<ul class="hlist">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--about" href="/wiki/Project:About" data-mw="interface">
+					
+					<span class="toggle-list-item__label">About mediawiki.org</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--disclaimers" href="/wiki/Project:General_disclaimer" data-mw="interface">
+					
+					<span class="toggle-list-item__label">Disclaimers</span>
+				</a>
+			</li>
+	</ul>
+</div>
+
+					<label class="main-menu-mask" for="main-menu-input"></label>
+				</nav>
+				<div class="branding-box">
+					<a href="/wiki/MediaWiki">
+						<span><img src="/static/images/mobile/copyright/mediawikiwiki-wordmark.svg" alt="MediaWiki" width="120" height="18"
+	style="width: 7.5em; height: 1.125em;"/>
+
+</span>
+						
+					</a>
+				</div>
+					<form action="/w/index.php" method="get" class="minerva-search-form">
+				<div class="search-box">
+					<input type="hidden" name="title" value="Special:Search"/>
+					<input class="search skin-minerva-search-trigger" id="searchInput"
+						 type="search" name="search" placeholder="Search mediawiki.org" aria-label="Search mediawiki.org" autocapitalize="sentences" spellcheck="false" title="Search MediaWiki [f]" accesskey="f">
+					<span class="search-box-icon-overlay"><span class="minerva-icon minerva-icon--search"></span>
+</span>
+				</div>
+				<button id="searchIcon" class="cdx-button cdx-button--size-large cdx-button--icon-only cdx-button--weight-quiet skin-minerva-search-trigger">
+	    <span class="minerva-icon minerva-icon--search"></span>
+<span>Search</span>
+	</button>
+</form>
+		<nav class="minerva-user-navigation" aria-label="User navigation">
+							<div class="minerva-notifications">
+								<ul>
+								<li><a role="button" href="/wiki/Special:Notifications" data-event-name="ui.notifications" data-counter-num="0" data-counter-text="0" title="Your notifications" id="pt-notifications" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet mw-echo-notifications-badge mw-echo-notification-badge-nojs mw-echo-notifications-badge-all-read">
+    <span class="minerva-icon minerva-icon--bellOutline"></span>
+<span>Notifications (0)</span>
+</a>
+</li>
+								</ul>
+							</div>
+					<div class="toggle-list minerva-user-menu">
+	<input
+		type="checkbox"
+		id="minerva-user-menu-checkbox"
+		class="toggle-list__checkbox"
+		role="button"
+		data-event-name="ui.usermenu"
+		aria-labelledby="minerva-user-menu-toggle"
+		aria-expanded="false"
+		aria-haspopup="true">
+	<label id="minerva-user-menu-toggle" for="minerva-user-menu-checkbox" aria-hidden="true" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet toggle-list__toggle">
+    <span class="minerva-icon minerva-icon--userAvatarOutline"></span>
+<span>User menu</span>
+</label>
+
+	<ul class="toggle-list__list new minerva-user-menu-list toggle-list__list--drop-down" id="p-personal">
+				<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--user" href="/wiki/User:NORMAL.DOT" data-event-name="menu.profile">
+						<span class="minerva-icon minerva-icon--userAvatar"></span>
+
+						<span class="toggle-list-item__label">NORMAL.DOT</span>
+					</a>
+				</li>
+				<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor new mw-list-item menu__item--mytalk" href="/wiki/User_talk:NORMAL.DOT" data-event-name="menu.userTalk" data-mw="interface">
+						<span class="minerva-icon minerva-icon--userTalk"></span>
+
+						<span class="toggle-list-item__label">Talk</span>
+					</a>
+				</li>
+				<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor mw-list-item menu__item--watchlist" href="/wiki/Special:Watchlist" data-event-name="menu.unStar" data-mw="interface">
+						<span class="minerva-icon minerva-icon--watchlist"></span>
+
+						<span class="toggle-list-item__label">Watchlist</span>
+					</a>
+				</li>
+				<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor mw-list-item menu__item--mycontris" href="/wiki/Special:Contributions/NORMAL.DOT" data-event-name="menu.contributions" data-mw="interface">
+						<span class="minerva-icon minerva-icon--userContributions"></span>
+
+						<span class="toggle-list-item__label">Contributions</span>
+					</a>
+				</li>
+				<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor mw-list-item menu__item--logout" href="/w/index.php?title=Special:UserLogout&amp;returnto=Extension%3AParserMigration" data-mw="interface">
+						<span class="minerva-icon minerva-icon--logOut"></span>
+
+						<span class="toggle-list-item__label">Log out</span>
+					</a>
+				</li>
+	</ul>
+</div>
+<!-- version 1.1.2 - used for partial template invalidation -->
+
+				</nav>
+			</div>
+		</header>
+		<main id="content" class="mw-body">
+			<div class="banner-container">
+			<div id="siteNotice"></div>
+			</div>
+			
+			<div class="pre-content heading-holder">
+				<div class="page-heading">
+					<h1 id="firstHeading" class="firstHeading mw-first-heading"><span class="mw-page-title-namespace">Extension</span><span class="mw-page-title-separator">:</span><span class="mw-page-title-main">ParserMigration</span></h1>
+					<div class="tagline"></div>
+				</div>
+					<ul id="p-associated-pages" class="minerva__tab-container">
+							<li class="minerva__tab selected mw-list-item">
+								<a class="minerva__tab-text" href="/wiki/Extension:ParserMigration" rel="" data-event-name="tabs.extension">Extension</a>
+							</li>
+							<li class="minerva__tab mw-list-item">
+								<a class="minerva__tab-text" href="/wiki/Extension_talk:ParserMigration" rel="discussion" data-event-name="tabs.extension_talk">Discussion</a>
+							</li>
+					</ul>
+				<nav class="page-actions-menu">
+	<ul id="p-views" class="page-actions-menu__list minerva-icon-only-menu">
+		<li id="page-actions-watch" class="page-actions-menu__list-item">
+				<a role="button" id="ca-watch" href="/w/index.php?title=Extension:ParserMigration&amp;action=watch" data-event-name="menu.watch" data-mw="interface" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet mw-watchlink  mw-list-item menu__item--page-actions-watch">
+				    <span class="minerva-icon minerva-icon--star"></span>
+<span>Watch</span>
+				</a>
+		</li>
+		<li id="page-actions-history" class="page-actions-menu__list-item">
+				<a role="button" href="/w/index.php?title=Extension:ParserMigration&amp;action=history" data-event-name="menu.history" data-mw="interface" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet menu__item--page-actions-history">
+				    <span class="minerva-icon minerva-icon--history"></span>
+<span>View history</span>
+				</a>
+		</li>
+		<li id="page-actions-edit" class="page-actions-menu__list-item">
+				<a role="button" id="ca-edit" href="/w/index.php?title=Extension:ParserMigration&amp;action=edit" data-event-name="menu.edit" data-mw="interface" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet edit-page menu__item--page-actions-edit">
+				    <span class="minerva-icon minerva-icon--edit"></span>
+<span>Edit</span>
+				</a>
+		</li>
+			<li id="page-actions-overflow" class="page-actions-menu__list-item">
+				<div class="toggle-list ">
+					<input
+						type="checkbox"
+						id="page-actions-overflow-checkbox"
+						class="toggle-list__checkbox"
+						role="button"
+						data-event-name="ui.overflowmenu"
+						aria-labelledby="page-actions-overflow-toggle"
+						aria-expanded="false"
+						aria-haspopup="true">
+					<label id="page-actions-overflow-toggle" for="page-actions-overflow-checkbox" aria-hidden="true" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet toggle-list__toggle">
+    <span class="minerva-icon minerva-icon--ellipsis"></span>
+<span>More</span>
+</label>
+
+					<ul class="toggle-list__list new page-actions-overflow-list toggle-list__list--drop-down" id="p-tb">
+								<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--page-actions-overflow-whatlinkshere" href="/wiki/Special:WhatLinksHere/Extension:ParserMigration" data-event-name="menu.whatlinkshere" data-mw="interface">
+						<span class="minerva-icon minerva-icon--articleRedirect"></span>
+
+						<span class="toggle-list-item__label">What links here</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--page-actions-overflow-permalink" href="/w/index.php?title=Extension:ParserMigration&amp;oldid=6942122" data-event-name="menu.permalink" data-mw="interface">
+						<span class="minerva-icon minerva-icon--link"></span>
+
+						<span class="toggle-list-item__label">Permanent link</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--page-actions-overflow-info" href="/w/index.php?title=Extension:ParserMigration&amp;action=info" data-event-name="menu.info" data-mw="interface">
+						<span class="minerva-icon minerva-icon--infoFilled"></span>
+
+						<span class="toggle-list-item__label">Page information</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--page-actions-overflow-citethispage" href="/w/index.php?title=Special:CiteThisPage&amp;page=Extension%3AParserMigration&amp;id=6942122&amp;wpFormIdentifier=titleform" data-event-name="menu.citethispage" data-mw="interface">
+						<span class="minerva-icon minerva-icon--quotes"></span>
+
+						<span class="toggle-list-item__label">Cite this page</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor menu__item--page-actions-overflow-wikibase" href="https://www.wikidata.org/wiki/Special:EntityPage/Q25860665" data-event-name="menu.wikibase" data-mw="interface">
+						<span class="minerva-icon minerva-icon--logoWikidata"></span>
+
+						<span class="toggle-list-item__label">Wikidata item</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor mw-list-item menu__item--page-actions-overflow-move" href="/wiki/Special:MovePage/Extension:ParserMigration" data-event-name="menu.move" data-mw="interface">
+						<span class="minerva-icon minerva-icon--move"></span>
+
+						<span class="toggle-list-item__label">Move</span>
+					</a>
+				</li>
+							<li class="toggle-list-item">
+					<a class="toggle-list-item__anchor ext-urlshortener-qrcode-download-minerva mw-list-item menu__item--page-actions-overflow-qrcode" href="/w/index.php?title=Special:QrCode&amp;url=https%3A%2F%2Fwww.mediawiki.org%2Fwiki%2FExtension%3AParserMigration" data-event-name="menu.qrcode" data-mw="interface">
+						<span class="minerva-icon minerva-icon--qrCode"></span>
+
+						<span class="toggle-list-item__label">Download QR code</span>
+					</a>
+				</li>
+				</ul>
+				</div>
+			</li>
+	</ul>
+</nav>
+<!-- version 1.0.2 (change every time you update a partial) -->
+				<div id="mw-content-subtitle"></div>
+			</div>
+			<div id="bodyContent" class="content">
+				<div id="mw-content-text" class="mw-body-content"><script>function mfTempOpenSection(id){var block=document.getElementById("mf-section-"+id);block.className+=" open-block";block.previousSibling.className+=" open-block";}</script><div class="mw-pt-translate-header noprint nomobile" dir="ltr" lang="en"><a href="/w/index.php?title=Special:Translate&amp;group=page-Extension%3AParserMigration&amp;action=page&amp;filter=&amp;action_source=translate_page" title="Special:Translate">Translate this page</a></div><div class="mw-content-ltr mw-parser-output" lang="en" dir="ltr" data-mw-parsoid-version="0.21.0.0-alpha27" data-mw-html-version="2.8.0"><section data-mw-section-id="0" id="mwAQ"><div class="mw-pt-languages noprint navigation-not-searchable" lang="en" dir="ltr" typeof="mw:Extension/languages" about="#mwt1" id="mwAg" data-mw='{"name":"languages","attrs":{}}'><div class="mw-pt-languages-label">Languages:</div><ul class="mw-pt-languages-list"><li><a href="/w/index.php?title=Special:Translate&amp;group=page-Extension%3AParserMigration&amp;language=&amp;task=view" class="new" title="Start translation for this language" lang="" dir="ltr"></a></li>
+<li><a href="/wiki/Extension:ParserMigration/de" class="mw-pt-progress mw-pt-progress--med" title="Erweiterung:ParserMigration (50% translated)" lang="de" dir="ltr">Deutsch</a></li>
+<li><span class="mw-pt-languages-ui mw-pt-languages-selected mw-pt-progress mw-pt-progress--complete" lang="en" dir="ltr">English</span></li>
+<li><a href="/wiki/Extension:ParserMigration/tr" class="mw-pt-progress mw-pt-progress--high" title="Extension:ParserMigration (70% translated)" lang="tr" dir="ltr">Türkçe</a></li>
+<li><a href="/wiki/Extension:ParserMigration/es" class="mw-pt-progress mw-pt-progress--med" title="Extensión:ParserMigration (20% translated)" lang="es" dir="ltr">español</a></li>
+<li><a href="/wiki/Extension:ParserMigration/fr" class="mw-pt-progress mw-pt-progress--med" title="Extension : ParserMigration (20% translated)" lang="fr" dir="ltr">français</a></li>
+<li><a href="/wiki/Extension:ParserMigration/pl" class="mw-pt-progress mw-pt-progress--med" title="Extension:ParserMigration/pl (20% translated)" lang="pl" dir="ltr">polski</a></li>
+<li><a href="/wiki/Extension:ParserMigration/pt-br" class="mw-pt-progress mw-pt-progress--high" title="Extension:ParserMigration (90% translated)" lang="pt-BR" dir="ltr">português do Brasil</a></li>
+<li><a href="/wiki/Extension:ParserMigration/ru" class="mw-pt-progress mw-pt-progress--med" title="Extension:ParserMigration/ru (20% translated)" lang="ru" dir="ltr">русский</a></li>
+<li><a href="/wiki/Extension:ParserMigration/ja" class="mw-pt-progress mw-pt-progress--complete" title="Extension:ParserMigration (100% translated)" lang="ja" dir="ltr">日本語</a></li></ul></div>
+<style data-mw-deduplicate="TemplateStyles:r6651102" typeof="mw:Extension/templatestyles mw:Transclusion" about="#mwt2" id="mwAw" data-mw='{"name":"templatestyles","attrs":{"src":"Template:Infobox/styles.css"},"parts":[{"template":{"target":{"wt":"Extension\n","href":"./Template:Extension"},"params":{"status":{"wt":"stable"},"type1":{"wt":"interface"},"type2":{"wt":""},"newhook1":{"wt":""},"newhook2":{"wt":""},"author":{"wt":"* [[User:Tim Starling|Tim Starling]],\n* [[User:cscott|C. Scott Ananian]],\n* [[Content Transform Team]]"},"description":{"wt":"&lt;translate&gt;<!--T:1--> Provides an interface for migrating article text to new versions of the MediaWiki parser&lt;/translate&gt;"},"image":{"wt":""},"imagesize":{"wt":""},"version":{"wt":"Continuous updates"},"update":{"wt":""},"version preview":{"wt":""},"update preview":{"wt":""},"mediawiki":{"wt":""},"php":{"wt":""},"needs-updatephp":{"wt":"No"},"composer":{"wt":""},"table1":{"wt":""},"table2":{"wt":""},"download":{"wt":"{{WikimediaDownload|ParserMigration|phab=EPMI}}"},"readme":{"wt":""},"changelog":{"wt":""},"example":{"wt":""},"namespace":{"wt":""},"tags":{"wt":""},"rights":{"wt":""},"compatibility policy":{"wt":"rel"},"bugzilla":{"wt":""},"phabricator":{"wt":"MediaWiki-extensions-ParserMigration"},"vagrant-role":{"wt":""}},"i":0}}]}'>.mw-parser-output .infobox{box-sizing:border-box;border:2px solid var(--border-color-base,#a2a9b1);width:280px;border-collapse:collapse;border-spacing:0;background-color:white;color:#333;clear:right;float:right;margin:0 0 0.5em 0.5em}.mw-parser-output .infobox-rtl{clear:left;float:left;margin:0 0.5em 0.5em 0}.mw-parser-output .infobox th{text-align:left;padding:0.2em 0.5em;vertical-align:top}.mw-parser-output .infobox-rtl th{text-align:right}@media(max-width:719px){body.mediawiki .mw-parser-output .infobox{float:none;clear:both;width:100%;margin:0 0 .5em 0}}.mw-parser-output .infobox td{border:none;padding:0.2em 0.5em;vertical-align:top}.mw-parser-output .infobox-header{background-color:#a2a9b1;color:#FFF;text-align:left}.mw-parser-output .infobox-header a{color:#FFF}.mw-parser-output .infobox-header td,.mw-parser-output .infobox-header th{padding:0.5em 0.5em}.mw-parser-output .infobox-header img{padding:0 0.2em 0 0.5em}@media screen{html.skin-theme-clientpref-night .mw-parser-output .infobox{background-color:inherit;color:inherit}}@media screen and (prefers-color-scheme:dark){html.skin-theme-clientpref-os .mw-parser-output .infobox{background-color:inherit;color:inherit}}</style><style data-mw-deduplicate="TemplateStyles:r5577029" typeof="mw:Extension/templatestyles" about="#mwt2" data-mw='{"name":"templatestyles","attrs":{"src":"Template:Extension/styles.css"}}'>.mw-parser-output .ext-infobox>tbody>tr>td:first-child{vertical-align:top}.mw-parser-output .ext-infobox>tbody>tr>td abbr{white-space:nowrap}.mw-parser-output .ext-infobox .mw-collapsible-header,.mw-parser-output .ext-infobox .mw-collapsible-toggle{font-weight:bold}.mw-parser-output .ext-infobox .mw-collapsible-content{margin-top:.2em;padding-top:.2em}.mw-parser-output .ext-infobox-header>th,.mw-parser-output .ext-infobox caption,.mw-parser-output .ext-infobox-image,.mw-parser-output .ext-infobox-translate{text-align:center}.mw-parser-output .ext-infobox-name{font-size:130%;line-height:100%}.mw-parser-output .ext-infobox-type{min-width:7em}</style><style data-mw-deduplicate="TemplateStyles:r6424453" typeof="mw:Extension/templatestyles" about="#mwt2" data-mw='{"name":"templatestyles","attrs":{"src":"Template:Extension/status.css"}}'>.mw-parser-output .ext-status-unstable,.mw-parser-output .ext-status-unstable td{border-color:#d33}.mw-parser-output .ext-status-unstable .ext-infobox-header{background-color:#d33;color:#fff}.mw-parser-output .ext-status-unstable .ext-infobox-header a{color:#fff}.mw-parser-output .ext-status-experimental,.mw-parser-output .ext-status-experimental td{border-color:#ff4500}.mw-parser-output .ext-status-experimental .ext-infobox-header{background-color:#ff4500;color:#FFF}.mw-parser-output .ext-status-experimental .ext-infobox-header a{color:#FFF}.mw-parser-output .ext-status-beta,.mw-parser-output .ext-status-beta td{border-color:#fc3}.mw-parser-output .ext-status-beta .ext-infobox-header{color:#000;background-color:#fc3}.mw-parser-output .ext-status-beta .ext-infobox-header a{color:#000}.mw-parser-output .ext-status-stable,.mw-parser-output .ext-status-stable td{border-color:#00af89}.mw-parser-output .ext-status-stable .ext-infobox-header{background-color:#068468;color:#FFF}.mw-parser-output .ext-status-stable .ext-infobox-header a{color:#fff}.mw-parser-output .ext-status-unmaintained,.mw-parser-output .ext-status-unmaintained td{border-color:#ac6600}.mw-parser-output .ext-status-unmaintained .ext-infobox-header{background-color:#ac6600;color:#FFF}.mw-parser-output .ext-status-unmaintained .ext-infobox-header a{color:#fff}</style><meta typeof="mw:Extension/indicator" about="#mwt2" id="mwBA" data-mw="{&quot;name&quot;:&quot;indicator&quot;,&quot;attrs&quot;:{&quot;name&quot;:&quot;phabricator-project&quot;},&quot;body&quot;:{&quot;extsrc&quot;:&quot;{{Badge|content=[[Special:MyLanguage/Phabricator|Issue tracker]]: [[phab:tag/{{lc:{{{1}}}}}/|'''#{{{1}}}''']]\n}}&quot;},&quot;html&quot;:&quot;&lt;div class=\&quot;mw-parser-output\&quot; data-parsoid='{\&quot;stx\&quot;:\&quot;html\&quot;}'&gt;&lt;style data-mw-deduplicate=\&quot;TemplateStyles:r6605561\&quot; typeof=\&quot;mw:Extension/templatestyles\&quot; about=\&quot;#mwt7\&quot; data-parsoid='{\&quot;src\&quot;:\&quot;&amp;lt;templatestyles src=\\\&quot;Template:Badge/styles.css\\\&quot;/&gt;\&quot;}' data-mw='{\&quot;name\&quot;:\&quot;templatestyles\&quot;,\&quot;attrs\&quot;:{\&quot;src\&quot;:\&quot;Template:Badge/styles.css\&quot;}}'&gt;.mw-parser-output .tpl-badge{background-color:var(--background-color-progressive-subtle,#eaf3ff);color:var(--color-base,#202122);border-radius:10px;display:inline-block;font-size:90%;padding:5px 8px}&lt;/style&gt;&lt;div class=\&quot;tpl-badge \&quot; data-parsoid='{\&quot;stx\&quot;:\&quot;html\&quot;}'&gt;&lt;a rel=\&quot;mw:WikiLink\&quot; href=\&quot;./Special:MyLanguage/Phabricator\&quot; title=\&quot;Special:MyLanguage/Phabricator\&quot; data-parsoid='{\&quot;stx\&quot;:\&quot;piped\&quot;,\&quot;a\&quot;:{\&quot;href\&quot;:\&quot;./Special:MyLanguage/Phabricator\&quot;},\&quot;sa\&quot;:{\&quot;href\&quot;:\&quot;Special:MyLanguage/Phabricator\&quot;}}'&gt;Issue tracker&lt;/a&gt;: [[phab:tag/{{{1}}}/|&lt;b data-parsoid=\&quot;{}\&quot;&gt;#{{{1}}}&lt;/b&gt;]]&lt;/div&gt;&lt;/div&gt;&quot;}"><span about="#mwt2">
+</span><link rel="mw:PageProp/Category" href="./Category:Extensions_without_an_image" about="#mwt2"><link rel="mw:PageProp/Category" href="./Category:Public_domain_licensed_extensions" about="#mwt2"><table class="infobox notheme infobox-ltr ext-infobox ext-status-stable" about="#mwt2">
+<caption><b><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Manual:Extensions" title="Special:MyLanguage/Manual:Extensions">MediaWiki extensions manual</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Manual:Extensions" title="Manual:Extensions"> </a></span></b></caption>
+<tbody><tr class="infobox-header ext-infobox-header notheme">
+<th colspan="2"><figure class="mw-halign-left" typeof="mw:File"><a href="//m.mediawiki.org/wiki/Special:MyLanguage/Template:Extension#Content" title="Special:MyLanguage/Template:Extension"><img resource="//m.mediawiki.org/wiki/File:OOjs_UI_icon_advanced-invert.svg" src="//upload.wikimedia.org/wikipedia/commons/thumb/1/1b/OOjs_UI_icon_advanced-invert.svg/40px-OOjs_UI_icon_advanced-invert.svg.png" decoding="async" data-file-width="20" data-file-height="20" data-file-type="drawing" height="40" width="40" srcset="//upload.wikimedia.org/wikipedia/commons/thumb/1/1b/OOjs_UI_icon_advanced-invert.svg/60px-OOjs_UI_icon_advanced-invert.svg.png 1.5x, //upload.wikimedia.org/wikipedia/commons/thumb/1/1b/OOjs_UI_icon_advanced-invert.svg/80px-OOjs_UI_icon_advanced-invert.svg.png 2x" class="mw-file-element"></a><figcaption></figcaption></figure> <span class="ext-infobox-name">ParserMigration</span><br>
+<a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Extension_status" title="Special:MyLanguage/Extension status">Release status:</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Extension_status" title="Extension status"> </a></span> stable<link rel="mw:PageProp/Category" href="./Category:Stable_extensions"></th>
+</tr>
+
+<tr>
+<td class="ext-infobox-type"><b><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Template:Extension#type" title="Special:MyLanguage/Template:Extension">Implementation</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Template:Extension#type" title="Template:Extension"> </a></span></b></td>
+<td>User interface<link rel="mw:PageProp/Category" href="./Category:User_interface_extensions"></td></tr>
+<tr>
+<td><b><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Template:Extension#description" title="Special:MyLanguage/Template:Extension">Description</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Template:Extension#description" title="Template:Extension"> </a></span></b></td>
+<td>Provides an interface for migrating article text to new versions of the MediaWiki parser</td>
+</tr>
+<tr>
+<td><b><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Template:Extension#username" title="Special:MyLanguage/Template:Extension">Author(s)</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Template:Extension#username" title="Template:Extension"> </a></span></b></td>
+<td>
+<ul><li><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/User:Tim_Starling" title="User:Tim Starling">Tim Starling</a>,</li>
+<li><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/User:Cscott" title="User:Cscott">C. Scott Ananian</a>,</li>
+<li><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Content_Transform_Team" title="Content Transform Team">Content Transform Team</a></li></ul></td>
+</tr>
+
+<tr>
+<td><b><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Template:Extension#version" title="Special:MyLanguage/Template:Extension">Latest version</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Template:Extension#version" title="Template:Extension"> </a></span></b></td>
+<td>Continuous updates</td>
+</tr>
+
+<tr>
+<td><b><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Compatibility#mediawiki_extensions" title="Special:MyLanguage/Compatibility">Compatibility policy</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Compatibility#mediawiki_extensions" title="Compatibility"> </a></span></b></td>
+<td>Snapshots releases along with MediaWiki. Master is not backward compatible.<link rel="mw:PageProp/Category" href="./Category:Extensions_with_release_branches_compatibility_policy"></td>
+</tr>
+
+
+<tr>
+<td><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Template:Extension#needs-updatephp" title="Special:MyLanguage/Template:Extension"><abbr title="'php update.php' needed after installation"><b>Database changes</b></abbr></a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Template:Extension#needs-updatephp" title="Template:Extension"> </a></span></td>
+<td>No</td>
+</tr>
+
+
+
+<tr>
+<td><b><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Template:Extension#license" title="Special:MyLanguage/Template:Extension">License</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Template:Extension#license" title="Template:Extension"> </a></span></b></td>
+<td><a rel="mw:ExtLink nofollow" href="//creativecommons.org/publicdomain/zero/1.0/" class="external text">Creative Commons Zero v1.0 Universal</a></td>
+</tr><tr>
+
+<td><b>Download</b></td>
+<td><div class="plainlinks"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:ExtensionDistributor/ParserMigration" title="Special:ExtensionDistributor/ParserMigration"><b>Download extension</b></a> <br>Git <sup>[<a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Download_from_Git" title="Special:MyLanguage/Download from Git">?</a>]</sup>: 
+<ul><li><a rel="mw:WikiLink/Interwiki" href="https://gerrit.wikimedia.org/g/mediawiki/extensions/ParserMigration" title="git:mediawiki/extensions/ParserMigration" class="extiw">Browse repository</a> (<a rel="mw:WikiLink/Interwiki" href="https://phabricator.wikimedia.org/diffusion/EPMI" title="phab:diffusion/EPMI" class="extiw">Phabricator</a> ·<span typeof="mw:Entity"> </span><a rel="mw:ExtLink nofollow" href="https://github.com/wikimedia/mediawiki-extensions-ParserMigration" class="external text">GitHub</a>)</li>
+<li><a rel="mw:WikiLink/Interwiki" href="https://gerrit.wikimedia.org/r/q/project:mediawiki/extensions/ParserMigration" title="gerrit:q/project:mediawiki/extensions/ParserMigration" class="extiw">Gerrit code review</a></li>
+<li><a rel="mw:WikiLink/Interwiki" href="https://gerrit.wikimedia.org/g/mediawiki/extensions/ParserMigration/+log/master" title="git:mediawiki/extensions/ParserMigration/+log/master" class="extiw">Git commit log</a></li>
+<li><span class="plainlinks"><a rel="mw:ExtLink nofollow" href="https://github.com/wikimedia/mediawiki-extensions-ParserMigration/archive/master.tar.gz" class="external text">Download source tarball</a></span></li></ul>
+</div><link rel="mw:PageProp/Category" href="./Category:Extensions_in_Wikimedia_version_control"></td>
+</tr>
+<tr>
+<td><b><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Template:Extension#help" title="Special:MyLanguage/Template:Extension">Help</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Template:Extension#help" title="Template:Extension"> </a></span></b></td>
+<td><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:ParserMigration" title="Special:MyLanguage/Help:Extension:ParserMigration">Help:Extension:ParserMigration</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Help:Extension:ParserMigration" title="Help:Extension:ParserMigration"> </a></span></td>
+</tr>
+
+
+<tr>
+<td class="mw-collapsible mw-collapsed" colspan="2">
+<div class="mw-collapsible-header"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Template:Extension#parameters" title="Special:MyLanguage/Template:Extension">Parameters</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Template:Extension#parameters" title="Template:Extension"> </a></span></div>
+<div class="mw-collapsible-content">
+<ul><li><span class="configvariable" title="Use a compact icon as a Parsoid Read Views indicator">$wgParserMigrationCompactIndicator</span></li>
+<li><span class="configvariable" title="Whether to use Parsoid by default on article pages">$wgParserMigrationEnableParsoidArticlePages</span></li>
+<li><span class="configvariable" title="The number of days before the user notice is reshown after being dismissed">$wgParserMigrationUserNoticeDays</span></li>
+<li><span class="configvariable" title="Whether to enable the ?useparsoid=1 query string for article views">$wgParserMigrationEnableQueryString</span></li>
+<li><span class="configvariable" title="Updated whenever the user notice is modified sufficient to merit redisplay">$wgParserMigrationUserNoticeVersion</span></li>
+<li><span class="configvariable" title="Whether to use Parsoid by default on discussion tools pages">$wgParserMigrationEnableParsoidDiscussionTools</span></li>
+<li><span class="configvariable" title="Whether to use Parsoid by default on mobile domains for talk pages, intersecting with the other default configs">$wgParserMigrationEnableParsoidMobileFrontendTalkPages</span></li>
+<li><span class="configvariable" title="Whether to use Parsoid by default on mobile domains, intersecting with the other default configs">$wgParserMigrationEnableParsoidMobileFrontend</span></li></ul></div></td>
+</tr>
+
+
+
+<tr>
+<td class="mw-collapsible mw-collapsed" colspan="2">
+<div class="mw-collapsible-header"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Template:Extension#hook" title="Special:MyLanguage/Template:Extension">Hooks used</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Template:Extension#hook" title="Template:Extension"> </a></span></div>
+<style data-mw-deduplicate="TemplateStyles:r6219282" typeof="mw:Extension/templatestyles" about="#mwt9" data-mw='{"name":"templatestyles","attrs":{"src":"Plainlist/styles.css"}}'>.mw-parser-output .plainlist ul{line-height:inherit;list-style:none none;margin:0}.mw-parser-output .plainlist ul li{margin-bottom:0}</style><div class="plainlist mw-collapsible-content"><ul><li><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Manual:Hooks/ArticleParserOptions" title="Special:MyLanguage/Manual:Hooks/ArticleParserOptions">ArticleParserOptions</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Manual:Hooks/ArticleParserOptions" title="Manual:Hooks/ArticleParserOptions"> </a></span><link rel="mw:PageProp/Category" href="./Category:ArticleParserOptions_extensions"></li><li><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Manual:Hooks/GetPreferences" title="Special:MyLanguage/Manual:Hooks/GetPreferences">GetPreferences</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Manual:Hooks/GetPreferences" title="Manual:Hooks/GetPreferences"> </a></span><link rel="mw:PageProp/Category" href="./Category:GetPreferences_extensions"></li><li><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Manual:Hooks/ParserOutputPostCacheTransform" title="Special:MyLanguage/Manual:Hooks/ParserOutputPostCacheTransform">ParserOutputPostCacheTransform</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Manual:Hooks/ParserOutputPostCacheTransform" title="Manual:Hooks/ParserOutputPostCacheTransform"> </a></span><link rel="mw:PageProp/Category" href="./Category:ParserOutputPostCacheTransform_extensions"></li><li><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Manual:Hooks/SidebarBeforeOutput" title="Special:MyLanguage/Manual:Hooks/SidebarBeforeOutput">SidebarBeforeOutput</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Manual:Hooks/SidebarBeforeOutput" title="Manual:Hooks/SidebarBeforeOutput"> </a></span><link rel="mw:PageProp/Category" href="./Category:SidebarBeforeOutput_extensions"></li></ul></div>
+</td>
+</tr>
+
+
+<tr>
+<td title="This only includes downloads from Special:ExtensionDistributor. Other download methods such as git or bundled extensions are not included."><b>Quarterly downloads</b></td>
+<td>18 (Ranked 110<sup>th</sup>)</td>
+</tr>
+
+<tr>
+<td colspan="2" class="ext-infobox-translate">
+<a rel="mw:WikiLink/Interwiki" href="https://translatewiki.net/wiki/Special:Translate/ext-parsermigration" title="translatewiki:Special:Translate/ext-parsermigration" class="extiw">Translate the ParserMigration extension</a> if it is available at translatewiki.net</td>
+</tr>
+
+<tr>
+<td>
+<b><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Phabricator" title="Special:MyLanguage/Phabricator">Issues</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Phabricator" title="Phabricator"> </a></span></b></td>
+<td><a rel="mw:WikiLink/Interwiki" href="https://phabricator.wikimedia.org/tag/mediawiki-extensions-parsermigration" title="phab:tag/mediawiki-extensions-parsermigration" class="extiw">Open tasks</a> · <a rel="mw:ExtLink" href="https://phabricator.wikimedia.org/maniphest/task/create/?projects=MediaWiki-extensions-ParserMigration" class="external text">Report a bug</a></td>
+</tr>
+
+</tbody></table><link rel="mw:PageProp/Category" href="./Category:All_extensions" about="#mwt2" id="mwBQ">
+<p id="mwBg"><meta typeof="mw:Annotation/translate" id="mwBw" data-mw='{"rangeId":"mwa1","extendedRange":false,"wtOffsets":[978,989]}'><!--T:3--> The <meta typeof="mw:Annotation/tvar" id="mwCA" data-mw='{"attrs":{"name":"3"},"rangeId":"mwa2","extendedRange":false,"wtOffsets":[1004,1017]}'><b id="mwCQ">ParserMigration</b><meta typeof="mw:Annotation/tvar/End" id="mwCg" data-mw='{"wtOffsets":[1038,1045]}'> extension provides an interface for comparing article rendering with a new non-default version of the MediaWiki <meta typeof="mw:Annotation/tvar" id="mwCw" data-mw='{"attrs":{"name":"1"},"rangeId":"mwa3","extendedRange":false,"wtOffsets":[1158,1171]}'><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/parser" title="Special:MyLanguage/parser" about="#mwt15" typeof="mw:Transclusion" id="mwDA" data-mw='{"parts":[{"template":{"target":{"wt":"ll","href":"./Template:Ll"},"params":{"1":{"wt":"parser"}},"i":0}}]}'>parser</a><span style="display:none" about="#mwt15" id="mwDQ"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parser" title="Parser" class="mw-redirect"> </a></span><meta typeof="mw:Annotation/tvar/End" id="mwDg" data-mw='{"wtOffsets":[1184,1191]}'>, thus serving as a <a typeof="mw:ExpandedAttrs mw:Annotation/tvar" about="#mwt16" rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Parsing/Replacing_Tidy" title="Special:MyLanguage/Parsing/Replacing Tidy" id="mwDw" data-mw="{&quot;attribs&quot;:[[{&quot;txt&quot;:&quot;href&quot;},{&quot;html&quot;:&quot;&lt;meta typeof=\&quot;mw:Annotation/tvar\&quot; data-parsoid='{\&quot;dsr\&quot;:[1213,1226,null,null]}' data-mw='{\&quot;attrs\&quot;:{\&quot;name\&quot;:\&quot;2\&quot;},\&quot;rangeId\&quot;:\&quot;mwa0\&quot;,\&quot;extendedRange\&quot;:false,\&quot;wtOffsets\&quot;:[1213,1226]}'/&gt;Special:MyLanguage/Parsing/Replacing Tidy&lt;meta typeof=\&quot;mw:Annotation/tvar/End\&quot; data-parsoid='{\&quot;dsr\&quot;:[1267,1274,null,null]}' data-mw='{\&quot;wtOffsets\&quot;:[1267,1274]}'/&gt;&quot;}]]}">parser migration tool</a>. <meta typeof="mw:Annotation/translate/End" id="mwEA" data-mw='{"wtOffsets":[1300,1312]}'></p>
+
+<p id="mwEQ"><meta typeof="mw:Annotation/translate" id="mwEg" data-mw='{"rangeId":"mwa4","extendedRange":false,"wtOffsets":[1314,1325]}'><!--T:4--> It was deployed on the Wikimedia production cluster until 2018 to compare Tidy-based output with a RemexHTML-based output.<meta typeof="mw:Annotation/translate/End" id="mwEw" data-mw='{"wtOffsets":[1458,1470]}'>
+<meta typeof="mw:Annotation/translate" id="mwFA" data-mw='{"rangeId":"mwa5","extendedRange":false,"wtOffsets":[1471,1482]}'><!--T:5--> <meta typeof="mw:Annotation/tvar" id="mwFQ" data-mw='{"attrs":{"name":"1"},"rangeId":"mwa6","extendedRange":false,"wtOffsets":[1493,1506]}'><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/RemexHTML" title="Special:MyLanguage/RemexHTML" about="#mwt17" typeof="mw:Transclusion" id="mwFg" data-mw='{"parts":[{"template":{"target":{"wt":"ll","href":"./Template:Ll"},"params":{"1":{"wt":"RemexHTML"}},"i":0}}]}'>RemexHTML</a><span style="display:none" about="#mwt17" id="mwFw"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/RemexHTML" title="RemexHTML" class="mw-redirect"> </a></span><meta typeof="mw:Annotation/tvar/End" id="mwGA" data-mw='{"wtOffsets":[1522,1529]}'> was the replacement for Tidy.<meta typeof="mw:Annotation/translate/End" id="mwGQ" data-mw='{"wtOffsets":[1559,1571]}'>
+<meta typeof="mw:Annotation/translate" id="mwGg" data-mw='{"rangeId":"mwa7","extendedRange":false,"wtOffsets":[1572,1583]}'><!--T:9--> In 2023 it was redeployed in order to compare legacy wikitext parser output with output generated by the <meta typeof="mw:Annotation/tvar" id="mwGw" data-mw='{"attrs":{"name":"1"},"rangeId":"mwa8","extendedRange":false,"wtOffsets":[1699,1712]}'><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Parsoid" title="Special:MyLanguage/Parsoid" about="#mwt18" typeof="mw:Transclusion" id="mwHA" data-mw='{"parts":[{"template":{"target":{"wt":"ll","href":"./Template:Ll"},"params":{"1":{"wt":"Parsoid"}},"i":0}}]}'>Parsoid</a><span style="display:none" about="#mwt18" id="mwHQ"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsoid" title="Parsoid"> </a></span><meta typeof="mw:Annotation/tvar/End" id="mwHg" data-mw='{"wtOffsets":[1726,1733]}'> wikitext parser.<meta typeof="mw:Annotation/translate/End" id="mwHw" data-mw='{"wtOffsets":[1750,1762]}'></p>
+
+<meta typeof="mw:Annotation/translate" id="mwIA" data-mw='{"rangeId":"mwa9","extendedRange":false,"wtOffsets":[1764,1775]}'>
+<!--T:6-->
+<p id="mwIQ">The availability of the tool can be controlled by a user via the "<meta typeof="mw:Annotation/tvar" id="mwIg" data-mw='{"attrs":{"name":"1"},"rangeId":"mwa10","extendedRange":false,"wtOffsets":[1853,1866]}'>parsermigration<meta typeof="mw:Annotation/tvar/End" id="mwIw" data-mw='{"wtOffsets":[1881,1888]}'>" preference option.</p>
+
+<div id="toc" class="toc" role="navigation" aria-labelledby="mw-toc-heading"><input type="checkbox" role="button" id="toctogglecheckbox" class="toctogglecheckbox" style="display:none"><div class="toctitle" lang="en" dir="ltr"><h2 id="mw-toc-heading">Contents</h2><span class="toctogglespan"><label class="toctogglelabel" for="toctogglecheckbox"></label></span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#Using_the_extension"><span class="tocnumber">1</span> <span class="toctext">Using the extension</span></a></li>
+<li class="toclevel-1 tocsection-2"><a href="#Installation"><span class="tocnumber">2</span> <span class="toctext">Installation</span></a></li>
+<li class="toclevel-1 tocsection-3"><a href="#Configuration"><span class="tocnumber">3</span> <span class="toctext">Configuration</span></a></li>
+<li class="toclevel-1 tocsection-4"><a href="#See_also"><span class="tocnumber">4</span> <span class="toctext">See also</span></a></li>
+</ul>
+</div>
+</section><section data-mw-section-id="1" id="mwJQ"><div class="mw-heading mw-heading2" id="mwAA"><h2 id="Using_the_extension">Using the extension</h2><span class="mw-editsection" id="mwUg">
+<a role="button" href="/w/index.php?title=Extension:ParserMigration&amp;action=edit&amp;section=1" title="Edit section: Using the extension" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwUw">
+    <span class="minerva-icon minerva-icon--edit" id="mwVA"></span>
+<span id="mwVQ">edit</span>
+</a>
+
+</span>
+
+</div><div id="mwVg"> <!--T:10-->
+<meta typeof="mw:Annotation/translate/End" id="mwJg" data-mw='{"wtOffsets":[1948,1960]}'>
+<p id="mwJw">See <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Help:Extension:ParserMigration" title="Special:MyLanguage/Help:Extension:ParserMigration" about="#mwt19" typeof="mw:Transclusion" id="mwKA" data-mw='{"parts":[{"template":{"target":{"wt":"ll","href":"./Template:Ll"},"params":{"1":{"wt":"Help:Extension:ParserMigration"}},"i":0}}]}'>Help:Extension:ParserMigration</a><span style="display:none" about="#mwt19" id="mwKQ"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Help:Extension:ParserMigration" title="Help:Extension:ParserMigration"> </a></span> and the extension's <a rel="mw:ExtLink nofollow" href="https://github.com/wikimedia/mediawiki-extensions-ParserMigration/blob/master/README.md" class="external text" id="mwKg">README</a> file.</p>
+
+<meta typeof="mw:Annotation/translate" id="mwKw" data-mw='{"rangeId":"mwa11","extendedRange":false,"wtOffsets":[2127,2138]}'>
+</div></section><section data-mw-section-id="2" id="mwLA"><div class="mw-heading mw-heading2" id="mwVw"><h2 id="Installation">Installation</h2><span class="mw-editsection" id="mwWA">
+<a role="button" href="/w/index.php?title=Extension:ParserMigration&amp;action=edit&amp;section=2" title="Edit section: Installation" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwWQ">
+    <span class="minerva-icon minerva-icon--edit" id="mwWg"></span>
+<span id="mwWw">edit</span>
+</a>
+
+</span>
+
+</div><div id="mwXA"> <!--T:7-->
+<meta typeof="mw:Annotation/translate/End" id="mwLQ" data-mw='{"wtOffsets":[2169,2181]}'>
+<span about="#mwt20" typeof="mw:Transclusion" id="mwLg" data-mw='{"parts":[{"template":{"target":{"wt":"ExtensionInstall\n","href":"./Template:ExtensionInstall"},"params":{"registration":{"wt":"required"}},"i":0}}]}'>
+</span><ul about="#mwt20"><li><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:ExtensionDistributor/ParserMigration" title="Special:ExtensionDistributor/ParserMigration">Download</a> and move the extracted <code>ParserMigration</code> folder to your <code>extensions/</code> directory.<br>Developers and code contributors should install the extension <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Download_from_Git" title="Special:MyLanguage/Download from Git">from Git</a> instead, using:<code class="mw-code mw-highlight" style="display:block">cd extensions/<br>git clone https://gerrit.wikimedia.org/r/mediawiki/extensions/ParserMigration</code></li>
+<li>Add the following code at the bottom of your <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Manual:LocalSettings.php" title="Special:MyLanguage/Manual:LocalSettings.php">LocalSettings.php</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Manual:LocalSettings.php" title="Manual:LocalSettings.php"> </a></span> file: <div class="mw-highlight mw-highlight-lang-php mw-content-ltr" dir="ltr" typeof="mw:Extension/syntaxhighlight" about="#mwt22" id="mwLw" data-mw="{&quot;name&quot;:&quot;syntaxhighlight&quot;,&quot;attrs&quot;:{&quot;lang&quot;:&quot;php&quot;},&quot;body&quot;:{&quot;extsrc&quot;:&quot;\n\nwfLoadExtension( 'ParserMigration' );\n\n&quot;}}"><pre id="mwMA"><span id="mwMQ"></span><span class="nx" id="mwMg">wfLoadExtension</span><span class="p" id="mwMw">(</span> <span class="s1" id="mwNA">'ParserMigration'</span> <span class="p" id="mwNQ">);</span>
+</pre></div></li>
+<li><span style="white-space:nowrap"><span typeof="mw:File"><span><img alt="Yes" resource="//m.mediawiki.org/wiki/File:OOjs_UI_icon_check-constructive.svg" src="//upload.wikimedia.org/wikipedia/commons/thumb/f/f6/OOjs_UI_icon_check-constructive.svg/20px-OOjs_UI_icon_check-constructive.svg.png" decoding="async" data-file-width="20" data-file-height="20" data-file-type="drawing" height="15" width="15" srcset="//upload.wikimedia.org/wikipedia/commons/thumb/f/f6/OOjs_UI_icon_check-constructive.svg/23px-OOjs_UI_icon_check-constructive.svg.png 1.5x, //upload.wikimedia.org/wikipedia/commons/thumb/f/f6/OOjs_UI_icon_check-constructive.svg/30px-OOjs_UI_icon_check-constructive.svg.png 2x" class="mw-file-element" loading="lazy"></span></span> <b>Done</b></span> – Navigate to <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:Version" title="Special:Version">Special:Version</a> on your wiki to verify that the extension is successfully installed.</li></ul>
+
+</div></section><section data-mw-section-id="3" id="mwNg"><div class="mw-heading mw-heading2" id="mwXQ"><h2 id="Configuration">Configuration</h2><span class="mw-editsection" id="mwXg">
+<a role="button" href="/w/index.php?title=Extension:ParserMigration&amp;action=edit&amp;section=3" title="Edit section: Configuration" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwXw">
+    <span class="minerva-icon minerva-icon--edit" id="mwYA"></span>
+<span id="mwYQ">edit</span>
+</a>
+
+</span>
+
+</div><div id="mwYg">
+<p id="mwNw">This extension adds a dropdown under "Developer tools" at the bottom of the "Editing" options for a user, which allows the user to opt-in, opt-out, or follow the wiki defaults for the use of the Parsoid wikitext parser to render article pages.</p>
+
+<p id="mwOA">If the user chooses to follow the wiki default, the use of Parsoid will be based on two configuration options:</p>
+<ul id="mwOQ"><li id="mwOg"><code id="mwOw">$wgParserMigrationEnableParsoidDiscussionTools</code> if set to true, will use Parsoid for all pages in the talk namespace, but not for other pages.  This is intended for use with the <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Extension:DiscussionTools" title="Extension:DiscussionTools" id="mwPA">DiscussionTools</a> extension, which is already powered by Parsoid and enabled by default on some wikis.</li>
+<li id="mwPQ"><code id="mwPg">$wgParserMigrationEnableParsoidArticlePages</code> if set to true, will use Parsoid for all pages in the main article namespace, but not for other pages.</li></ul>
+
+<meta typeof="mw:Annotation/translate" id="mwPw" data-mw='{"rangeId":"mwa12","extendedRange":false,"wtOffsets":[3088,3099]}'>
+</div></section><section data-mw-section-id="4" id="mwQA"><div class="mw-heading mw-heading2" id="mwYw"><h2 id="See_also">See also</h2><span class="mw-editsection" id="mwZA">
+<a role="button" href="/w/index.php?title=Extension:ParserMigration&amp;action=edit&amp;section=4" title="Edit section: See also" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet " id="mwZQ">
+    <span class="minerva-icon minerva-icon--edit" id="mwZg"></span>
+<span id="mwZw">edit</span>
+</a>
+
+</span>
+
+</div><div id="mwaA"> <!--T:8-->
+<meta typeof="mw:Annotation/translate/End" id="mwQQ" data-mw='{"wtOffsets":[3126,3138]}'>
+<ul id="mwQg"><li id="mwQw"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Parsing/Parser_Unification" title="Special:MyLanguage/Parsing/Parser Unification" about="#mwt23" typeof="mw:Transclusion" id="mwRA" data-mw='{"parts":[{"template":{"target":{"wt":"ll","href":"./Template:Ll"},"params":{"1":{"wt":"Parsing/Parser Unification"}},"i":0}}]}'>Parsing/Parser Unification</a><span style="display:none" about="#mwt23" id="mwRQ"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsing/Parser_Unification" title="Parsing/Parser Unification" class="mw-redirect"> </a></span></li></ul>
+
+<p id="mwRg">For the 2018-era deployment of the ParserMigration tool, see:</p>
+<ul id="mwRw"><li id="mwSA"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Parsing/Replacing_Tidy" title="Special:MyLanguage/Parsing/Replacing Tidy" about="#mwt24" typeof="mw:Transclusion" id="mwSQ" data-mw='{"parts":[{"template":{"target":{"wt":"ll","href":"./Template:Ll"},"params":{"1":{"wt":"Parsing/Replacing Tidy"}},"i":0}}]}'>Parsing/Replacing Tidy</a><span style="display:none" about="#mwt24" id="mwSg"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsing/Replacing_Tidy" title="Parsing/Replacing Tidy"> </a></span></li>
+<li id="mwSw"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Parsing/Replacing_Tidy/FAQ" title="Special:MyLanguage/Parsing/Replacing Tidy/FAQ" about="#mwt25" typeof="mw:Transclusion" id="mwTA" data-mw='{"parts":[{"template":{"target":{"wt":"ll","href":"./Template:Ll"},"params":{"1":{"wt":"Parsing/Replacing Tidy/FAQ"}},"i":0}}]}'>Parsing/Replacing Tidy/FAQ</a><span style="display:none" about="#mwt25" id="mwTQ"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Parsing/Replacing_Tidy/FAQ" title="Parsing/Replacing Tidy/FAQ"> </a></span></li></ul>
+
+<style data-mw-deduplicate="TemplateStyles:r7217340" typeof="mw:Extension/templatestyles mw:Transclusion" about="#mwt26" id="mwTg" data-mw='{"name":"templatestyles","attrs":{"src":"Module:Message box/ombox.css"},"body":{"extsrc":""},"parts":[{"template":{"target":{"wt":"OnWikimedia","href":"./Template:OnWikimedia"},"params":{},"i":0}}]}'>.mw-parser-output table.ombox{margin:4px 10%;border-collapse:collapse;border:1px solid #a2a9b1;background-color:#f8f9fa;color:#333;box-sizing:border-box}.mw-parser-output .ombox td.mbox-empty-cell{border:none;padding:0;width:1px}.mw-parser-output .ombox th.mbox-text,.mw-parser-output .ombox td.mbox-text{border:none;padding:0.25em 0.9em;width:100%}.mw-parser-output .ombox td.mbox-image{border:none;text-align:center;padding:2px 0 2px 0.9em}.mw-parser-output .ombox td.mbox-imageright{border:none;text-align:center;padding:2px 0.9em 2px 0}.mw-parser-output table.ombox-notice{border-color:#a2a9b1}.mw-parser-output table.ombox-speedy{background-color:#fee7e6;color:#333}.mw-parser-output table.ombox-speedy,.mw-parser-output table.ombox-delete{border-color:#b32424;border-width:2px}.mw-parser-output table.ombox-content{border-color:#f28500}.mw-parser-output table.ombox-style{border-color:#fc3}.mw-parser-output table.ombox-move{border-color:#9932cc}.mw-parser-output table.ombox-protection{border-color:#a2a9b1;border-width:2px}html body.mediawiki .mw-parser-output .ombox.mbox-small{clear:right;float:right;margin:4px 0 4px 1em;box-sizing:border-box;width:238px;font-size:88%;line-height:1.25em}@media screen{html.skin-theme-clientpref-night .mw-parser-output table.ombox{background-color:transparent;color:inherit}}@media screen and (prefers-color-scheme:dark){html.skin-theme-clientpref-os .mw-parser-output table.ombox{background-color:transparent;color:inherit}}@media screen and (max-width:720px){.mw-parser-output table.ombox{margin:4px auto}}</style><table class="ombox ombox-notice plainlinks" role="presentation" style="clear: both; margin-top: 0; margin-bottom: 0;" about="#mwt26"><tbody><tr><td class="mbox-text">This extension is being used on one or more <a rel="mw:WikiLink/Interwiki" href="https://meta.wikimedia.org/wiki/Special:MyLanguage/Wikimedia%20projects" title="m:Special:MyLanguage/Wikimedia projects" class="extiw">Wikimedia projects</a>. This probably means that the extension is stable and works well enough to be used by such high-traffic websites. Look for this extension's name in Wikimedia's <a rel="mw:ExtLink" href="https://noc.wikimedia.org/conf/highlight.php?file=CommonSettings.php" class="external text">CommonSettings.php</a> and <a rel="mw:ExtLink" href="https://noc.wikimedia.org/conf/highlight.php?file=InitialiseSettings.php" class="external text">InitialiseSettings.php</a> configuration files to see where it's installed. A full list of the extensions installed on a particular wiki can be seen on the wiki's <a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:Version" title="Special:Version">Special:Version</a> page.</td></tr></tbody></table><link rel="mw:PageProp/Category" href="./Category:Extensions_used_on_Wikimedia#ParserMigration" about="#mwt26" id="mwTw">
+<link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r7217340" about="#mwt28" typeof="mw:Extension/templatestyles mw:Transclusion" id="mwUA" data-mw='{"name":"templatestyles","attrs":{"src":"Module:Message box/ombox.css"},"body":{"extsrc":""},"parts":[{"template":{"target":{"wt":"used by","href":"./Template:Used_by"},"params":{},"i":0}}]}'><table class="ombox ombox-notice" role="presentation" about="#mwt28" id="mwUQ"><tbody><tr><td class="mbox-text">This extension is included in the following wiki farms/hosts and/or packages: <style data-mw-deduplicate="TemplateStyles:r6387430" typeof="mw:Extension/templatestyles" about="#mwt30" data-mw='{"name":"templatestyles","attrs":{"src":"Template:Flatlist/styles.css"}}'>.mw-parser-output .hlist dl,.mw-parser-output .hlist ol,.mw-parser-output .hlist ul{margin:0;padding:0}.mw-parser-output .hlist dd,.mw-parser-output .hlist dt,.mw-parser-output .hlist li{margin:0;display:inline}.mw-parser-output .hlist dl dl,.mw-parser-output .hlist dl ol,.mw-parser-output .hlist dl ul,.mw-parser-output .hlist ol dl,.mw-parser-output .hlist ol ol,.mw-parser-output .hlist ol ul,.mw-parser-output .hlist ul dl,.mw-parser-output .hlist ul ol,.mw-parser-output .hlist ul ul{display:inline}.mw-parser-output .hlist .mw-empty-li,.mw-parser-output .hlist .mw-empty-elt{display:none}.mw-parser-output .hlist dt:after{content:": "}.mw-parser-output .hlist dd:after,.mw-parser-output .hlist li:after{content:" · ";font-weight:bold}.mw-parser-output .hlist dd:last-child:after,.mw-parser-output .hlist dt:last-child:after,.mw-parser-output .hlist li:last-child:after{content:none}.mw-parser-output .hlist dd dd:first-child:before,.mw-parser-output .hlist dd dt:first-child:before,.mw-parser-output .hlist dd li:first-child:before,.mw-parser-output .hlist dt dd:first-child:before,.mw-parser-output .hlist dt dt:first-child:before,.mw-parser-output .hlist dt li:first-child:before,.mw-parser-output .hlist li dd:first-child:before,.mw-parser-output .hlist li dt:first-child:before,.mw-parser-output .hlist li li:first-child:before{content:" (";font-weight:normal}.mw-parser-output .hlist dd dd:last-child:after,.mw-parser-output .hlist dd dt:last-child:after,.mw-parser-output .hlist dd li:last-child:after,.mw-parser-output .hlist dt dd:last-child:after,.mw-parser-output .hlist dt dt:last-child:after,.mw-parser-output .hlist dt li:last-child:after,.mw-parser-output .hlist li dd:last-child:after,.mw-parser-output .hlist li dt:last-child:after,.mw-parser-output .hlist li li:last-child:after{content:")";font-weight:normal}.mw-parser-output .hlist ol{counter-reset:listitem}.mw-parser-output .hlist ol>li{counter-increment:listitem}.mw-parser-output .hlist ol>li:before{content:" "counter(listitem)"\a0 "}.mw-parser-output .hlist dd ol>li:first-child:before,.mw-parser-output .hlist dt ol>li:first-child:before,.mw-parser-output .hlist li ol>li:first-child:before{content:" ("counter(listitem)"\a0 "}</style><div class="hlist ">
+<ul><li><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Special:MyLanguage/Miraheze" title="Special:MyLanguage/Miraheze">Miraheze</a><span style="display:none"><a rel="mw:WikiLink" href="//m.mediawiki.org/wiki/Miraheze" title="Miraheze"> </a></span><link rel="mw:PageProp/Category" href="./Category:Extensions_included_in_Miraheze"></li></ul>
+
+</div>
+<small>This is not an authoritative list.</small> <small>Some wiki farms/hosts and/or packages may contain this extension even if they are not listed here.</small> <small>Always check with your wiki farms/hosts or bundle to confirm.</small></td></tr></tbody></table></div></section>
+<!-- 
+NewPP limit report
+Parsed by mw‐web.eqiad.main‐78c47d5d84‐nqzzd
+Cached time: 20250505184743
+Cache expiry: 2592000
+Reduced expiry: false
+Complications: [vary‐revision‐sha1, show‐toc, collapsible‐sections]
+CPU time usage: 0.685 seconds
+Real time usage: 0.826 seconds
+Preprocessor visited node count: 3407/1000000
+Post‐expand include size: 57653/2097152 bytes
+Template argument size: 12059/2097152 bytes
+Highest expansion depth: 20/100
+Expensive parser function count: 19/500
+Unstrip recursion depth: 0/20
+Unstrip post‐expand size: 12359/5000000 bytes
+Lua time usage: 0.197/10.000 seconds
+Lua memory usage: 13694141/52428800 bytes
+Number of Wikibase entities loaded: 0/500
+-->
+<!--
+Transclusion expansion time report (%,ms,calls,template)
+100.00%  581.006      1 -total
+ 54.19%  314.866      1 Template:Extension
+ 25.19%  146.349     46 Template:Ll
+ 14.55%   84.520     53 Template:Pagelang
+ 13.46%   78.195     97 Template:Translatable
+  5.84%   33.923      2 Template:Mbox
+  4.07%   23.651      1 Template:Used_by
+  3.90%   22.639      5 Template:TNTN
+  3.41%   19.789      1 Template:ExtensionInstall
+  3.25%   18.879      1 Template:OnWikimedia
+-->
+
+<!-- Saved in parser cache with key mediawikiwiki:parsoid-pcache:597638:|#|:idhash:collapsibleSections=1!useParsoid=1 and timestamp 20250505184743 and revision id 6942122. Rendering was triggered because: page-view
+ -->
+
+<!--Parsoid 0.21.0.0-alpha27-->
+</div>
+<!-- MobileFormatter took 0.004 seconds --><!--esi <esi:include src="/esitest-fa8a495983347898/content" /> -->
+<div class="printfooter" data-nosnippet="">Retrieved from "<a dir="ltr" href="https://www.mediawiki.org/w/index.php?title=Extension:ParserMigration&amp;oldid=6942122">https://www.mediawiki.org/w/index.php?title=Extension:ParserMigration&amp;oldid=6942122</a>"</div></div>
+				
+			</div>
+			<div class="post-content" id="page-secondary-actions">
+			</div>
+			<div class="post-content"><div id="catlinks" class="catlinks" data-mw="interface"><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/Special:Categories" title="Special:Categories">Categories</a>: <ul><li><a href="/wiki/Category:Stable_extensions" title="Category:Stable extensions">Stable extensions</a></li><li><a href="/wiki/Category:User_interface_extensions" title="Category:User interface extensions">User interface extensions</a></li><li><a href="/wiki/Category:Public_domain_licensed_extensions" title="Category:Public domain licensed extensions">Public domain licensed extensions</a></li><li><a href="/wiki/Category:Extensions_in_Wikimedia_version_control" title="Category:Extensions in Wikimedia version control">Extensions in Wikimedia version control</a></li><li><a href="/wiki/Category:ArticleParserOptions_extensions" title="Category:ArticleParserOptions extensions">ArticleParserOptions extensions</a></li><li><a href="/wiki/Category:GetPreferences_extensions" title="Category:GetPreferences extensions">GetPreferences extensions</a></li><li><a href="/wiki/Category:ParserOutputPostCacheTransform_extensions" title="Category:ParserOutputPostCacheTransform extensions">ParserOutputPostCacheTransform extensions</a></li><li><a href="/wiki/Category:SidebarBeforeOutput_extensions" title="Category:SidebarBeforeOutput extensions">SidebarBeforeOutput extensions</a></li><li><a href="/wiki/Category:All_extensions" title="Category:All extensions">All extensions</a></li><li><a href="/wiki/Category:Extensions_used_on_Wikimedia" title="Category:Extensions used on Wikimedia">Extensions used on Wikimedia</a></li><li><a href="/wiki/Category:Extensions_included_in_Miraheze" title="Category:Extensions included in Miraheze">Extensions included in Miraheze</a></li></ul></div><div id="mw-hidden-catlinks" class="mw-hidden-catlinks mw-hidden-cats-hidden">Hidden categories: <ul><li><a href="/wiki/Category:Extensions_without_an_image" title="Category:Extensions without an image">Extensions without an image</a></li><li><a href="/wiki/Category:Extensions_with_release_branches_compatibility_policy" title="Category:Extensions with release branches compatibility policy">Extensions with release branches compatibility policy</a></li></ul></div></div></div>
+		</main>
+		<footer class="mw-footer minerva-footer" role="contentinfo">
+		  <a class="last-modified-bar" href="/w/index.php?title=Extension:ParserMigration&amp;action=history">
+  	<div class="post-content last-modified-bar__content">
+  		 <span class="minerva-icon minerva-icon-size-medium minerva-icon--modified-history"></span>
+ 
+  		<span class="last-modified-bar__text modified-enhancement"
+  				data-user-name="Shirayuki"
+  				data-user-gender="male"
+  				data-timestamp="1735074605">
+  				<span>Last edited on 24 December 2024, at 21:10</span>
+  		</span>
+  		 <span class="minerva-icon minerva-icon-size-small minerva-icon--expand"></span>
+ 
+  	</div>
+  </a>
+	<div class="post-content footer-content">
+			
+			<div id="p-lang">
+	    <h4>Languages</h4>
+	    <section>
+	        <ul id="p-variants" class="minerva-languages"></ul>
+	        <ul class="minerva-languages"></ul>
+	        <p>This page is not available in other languages.</p>
+	    </section>
+	</div>
+	<div class="minerva-footer-logo">
+				<img src="/static/images/mobile/copyright/mediawikiwiki-wordmark.svg" alt="MediaWiki" width="120" height="18"
+	style="width: 7.5em; height: 1.125em;"/>
+
+
+				<ul id="footer-icons" class="footer-icons">
+	<li id="footer-copyrightico"><a href="https://www.wikimedia.org/" class="cdx-button cdx-button--fake-button cdx-button--size-large cdx-button--fake-button--enabled"><picture><source media="(min-width: 500px)" srcset="/static/images/footer/wikimedia-button.svg" width="84" height="29"><img src="/static/images/footer/wikimedia.svg" width="25" height="25" alt="Wikimedia Foundation" lang="en" loading="lazy"></picture></a></li>
+	<li id="footer-poweredbyico"><a href="https://www.mediawiki.org/" class="cdx-button cdx-button--fake-button cdx-button--size-large cdx-button--fake-button--enabled"><picture><source media="(min-width: 500px)" srcset="/w/resources/assets/poweredby_mediawiki.svg" width="88" height="31"><img src="/w/resources/assets/mediawiki_compact.svg" alt="Powered by MediaWiki" lang="en" width="25" height="25" loading="lazy"></picture></a></li>
+</ul>
+			</div>
+			<ul id="footer-info" class="footer-info hlist hlist-separated">
+	<li id="footer-info-lastmod"> This page was last edited on 24 December 2024, at 21:10.</li>
+	<li id="footer-info-copyright">Text is available under the <a rel="nofollow" class="external text" href="https://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike License</a>; additional terms may apply. Text in <a class="external text" href="https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Contents">the Help: namespace</a> is available under the <a rel="nofollow" class="external text" href="https://creativecommons.org/publicdomain/zero/1.0/">Creative Commons CC0 License</a>.
+By using this site, you agree to the <a class="external text" href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Terms_of_Use">Terms of Use</a> and <a class="external text" href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy">Privacy Policy</a>.</li>
+</ul>
+
+			<ul id="footer-places" class="footer-places hlist hlist-separated">
+	<li id="footer-places-privacy"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy">Privacy policy</a></li>
+	<li id="footer-places-about"><a href="/wiki/Project:About">About mediawiki.org</a></li>
+	<li id="footer-places-disclaimers"><a href="/wiki/Project:General_disclaimer">Disclaimers</a></li>
+	<li id="footer-places-wm-codeofconduct"><a href="https://www.mediawiki.org/wiki/Special:MyLanguage/Code_of_Conduct">Code of Conduct</a></li>
+	<li id="footer-places-developers"><a href="https://developer.wikimedia.org">Developers</a></li>
+	<li id="footer-places-statslink"><a href="https://stats.wikimedia.org/#/www.mediawiki.org">Statistics</a></li>
+	<li id="footer-places-cookiestatement"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Cookie_statement">Cookie statement</a></li>
+	<li id="footer-places-terms-use"><a href="https://foundation.m.wikimedia.org/wiki/Special:MyLanguage/Policy:Terms_of_Use">Terms of Use</a></li>
+	<li id="footer-places-desktop-toggle"><a id="mw-mf-display-toggle" href="//www.mediawiki.org/w/index.php?title=Extension:ParserMigration&amp;mobileaction=toggle_view_desktop" data-event-name="switch_to_desktop">Desktop</a></li>
+</ul>
+
+			</div>
+		</footer>
+			</div>
+</div>
+<div class="mw-portlet mw-portlet-dock-bottom emptyPortlet" id="p-dock-bottom">
+        <ul>
+                
+        </ul>
+</div>
+<div class="mw-notification-area" data-mw="interface"></div>
+<!-- v:8.3.1 -->
+<script>(RLQ=window.RLQ||[]).push(function(){mw.config.set({"wgHostname":"mw-web.eqiad.main-78c47d5d84-n5zf9","wgBackendResponseTime":249,"wgPageParseReport":{"limitreport":{"cputime":"0.685","walltime":"0.826","ppvisitednodes":{"value":3407,"limit":1000000},"postexpandincludesize":{"value":57653,"limit":2097152},"templateargumentsize":{"value":12059,"limit":2097152},"expansiondepth":{"value":20,"limit":100},"expensivefunctioncount":{"value":19,"limit":500},"unstrip-depth":{"value":0,"limit":20},"unstrip-size":{"value":12359,"limit":5000000},"entityaccesscount":{"value":0,"limit":500},"timingprofile":["100.00%  581.006      1 -total"," 54.19%  314.866      1 Template:Extension"," 25.19%  146.349     46 Template:Ll"," 14.55%   84.520     53 Template:Pagelang"," 13.46%   78.195     97 Template:Translatable","  5.84%   33.923      2 Template:Mbox","  4.07%   23.651      1 Template:Used_by","  3.90%   22.639      5 Template:TNTN","  3.41%   19.789      1 Template:ExtensionInstall","  3.25%   18.879      1 Template:OnWikimedia"]},"scribunto":{"limitreport-timeusage":{"value":"0.197","limit":"10.000"},"limitreport-memusage":{"value":13694141,"limit":52428800}},"cachereport":{"origin":"mw-web.eqiad.main-78c47d5d84-nqzzd","timestamp":"20250505184743","ttl":2592000,"transientcontent":false}}});});</script>
+<script>(window.NORLQ=window.NORLQ||[]).push(function(){var ns,i,p,img;ns=document.getElementsByTagName('noscript');for(i=0;i<ns.length;i++){p=ns[i].nextSibling;if(p&&p.className&&p.className.indexOf('lazy-image-placeholder')>-1){img=document.createElement('img');img.setAttribute('src',p.getAttribute('data-mw-src'));img.setAttribute('width',p.getAttribute('data-width'));img.setAttribute('height',p.getAttribute('data-height'));img.setAttribute('alt',p.getAttribute('data-alt'));p.parentNode.replaceChild(img,p);}}});</script>
+</body>
+</html>

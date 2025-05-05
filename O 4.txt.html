@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html class="client-nojs skin-theme-clientpref-day mf-expand-sections-clientpref-0 mf-font-size-clientpref-small mw-mf-amc-clientpref-0" lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>Asynchronous I/O - Wikipedia</title>
+<script>(function(){var className="client-js skin-theme-clientpref-day mf-expand-sections-clientpref-0 mf-font-size-clientpref-small mw-mf-amc-clientpref-0";var cookie=document.cookie.match(/(?:^|; )enwikimwclientpreferences=([^;]+)/);if(cookie){cookie[1].split('%2C').forEach(function(pref){className=className.replace(new RegExp('(^| )'+pref.replace(/-clientpref-\w+$|[^\w-]+/g,'')+'-clientpref-\\w+( |$)'),'$1'+pref+'$2');});}document.documentElement.className=className;}());RLCONF={"wgBreakFrames":false,"wgSeparatorTransformTable":["",""],"wgDigitTransformTable":["",""],"wgDefaultDateFormat":"dmy","wgMonthNames":["","January","February","March","April","May","June","July","August","September","October","November","December"],"wgRequestId":"1f6ed1b2-8b66-4e5f-9d6f-a966040ad7c2","wgCanonicalNamespace":"","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":0,"wgPageName":"Asynchronous_I/O","wgTitle":"Asynchronous I/O","wgCurRevisionId":1287796262,"wgRevisionId":1287796262,"wgArticleId":1880953,"wgIsArticle":true,"wgIsRedirect":false,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgPageViewLanguage":"en","wgPageContentLanguage":"en","wgPageContentModel":"wikitext","wgRelevantPageName":"Asynchronous_I/O","wgRelevantArticleId":1880953,"wgIsProbablyEditable":true,"wgRelevantPageIsProbablyEditable":true,"wgRestrictionEdit":[],"wgRestrictionMove":[],"wgNoticeProject":"wikipedia","wgCiteReferencePreviewsActive":false,"wgFlaggedRevsParams":{"tags":{"status":{"levels":1}}},"wgMediaViewerOnClick":true,"wgMediaViewerEnabledByDefault":true,"wgPopupsFlags":0,"wgVisualEditor":{"pageLanguageCode":"en","pageLanguageDir":"ltr","pageVariantFallbacks":"en"},"wgMFMode":"stable","wgMFAmc":false,"wgMFAmcOutreachActive":false,"wgMFAmcOutreachUserEligible":false,"wgMFLazyLoadImages":true,"wgMFEditNoticesFeatureConflict":false,"wgMFDisplayWikibaseDescriptions":{"search":true,"watchlist":true,"tagline":false,"nearby":true},"wgMFIsSupportedEditRequest":true,"wgMFScriptPath":"","wgWMESchemaEditAttemptStepOversample":false,"wgWMEPageLength":20000,"wgEditSubmitButtonLabelPublish":true,"wgSectionTranslationMissingLanguages":[{"lang":"ab","autonym":"аԥсшәа","dir":"ltr"},{"lang":"ace","autonym":"Acèh","dir":"ltr"},{"lang":"ady","autonym":"адыгабзэ","dir":"ltr"},{"lang":"af","autonym":"Afrikaans","dir":"ltr"},{"lang":"alt","autonym":"алтай тил","dir":"ltr"},{"lang":"am","autonym":"አማርኛ","dir":"ltr"},{"lang":"ami","autonym":"Pangcah","dir":"ltr"},{"lang":"an","autonym":"aragonés","dir":"ltr"},{"lang":"ang","autonym":"Ænglisc","dir":"ltr"},{"lang":"ann","autonym":"Obolo","dir":"ltr"},{"lang":"anp","autonym":"अंगिका","dir":"ltr"},{"lang":"ar","autonym":"العربية","dir":"rtl"},{"lang":"arc","autonym":"ܐܪܡܝܐ","dir":"rtl"},{"lang":"ary","autonym":"الدارجة","dir":"rtl"},{"lang":"arz","autonym":"مصرى","dir":"rtl"},{"lang":"as","autonym":"অসমীয়া","dir":"ltr"},{"lang":"ast","autonym":"asturianu","dir":"ltr"},{"lang":"atj","autonym":"Atikamekw","dir":"ltr"},{"lang":"av","autonym":"авар","dir":"ltr"},{"lang":"avk","autonym":"Kotava","dir":"ltr"},{"lang":"awa","autonym":"अवधी","dir":"ltr"},{"lang":"ay","autonym":"Aymar aru","dir":"ltr"},{"lang":"az","autonym":"azərbaycanca","dir":"ltr"},{"lang":"azb","autonym":"تۆرکجه","dir":"rtl"},{"lang":"ba","autonym":"башҡортса","dir":"ltr"},{"lang":"ban","autonym":"Basa Bali","dir":"ltr"},{"lang":"bar","autonym":"Boarisch","dir":"ltr"},{"lang":"bbc","autonym":"Batak Toba","dir":"ltr"},{"lang":"bcl","autonym":"Bikol Central","dir":"ltr"},{"lang":"bdr","autonym":"Bajau Sama","dir":"ltr"},{"lang":"be","autonym":"беларуская","dir":"ltr"},{"lang":"be-tarask","autonym":"беларуская (тарашкевіца)","dir":"ltr"},{"lang":"bew","autonym":"Betawi","dir":"ltr"},{"lang":"bg","autonym":"български","dir":"ltr"},{"lang":"bho","autonym":"भोजपुरी","dir":"ltr"},{"lang":"bi","autonym":"Bislama","dir":"ltr"},{"lang":"bjn","autonym":"Banjar","dir":"ltr"},{"lang":"blk","autonym":"ပအိုဝ်ႏဘာႏသာႏ","dir":"ltr"},{"lang":"bm","autonym":"bamanankan","dir":"ltr"},{"lang":"bn","autonym":"বাংলা","dir":"ltr"},{"lang":"bo","autonym":"བོད་ཡིག","dir":"ltr"},{"lang":"bpy","autonym":"বিষ্ণুপ্রিয়া মণিপুরী","dir":"ltr"},{"lang":"br","autonym":"brezhoneg","dir":"ltr"},{"lang":"bs","autonym":"bosanski","dir":"ltr"},{"lang":"btm","autonym":"Batak Mandailing","dir":"ltr"},{"lang":"bug","autonym":"Basa Ugi","dir":"ltr"},{"lang":"bxr","autonym":"буряад","dir":"ltr"},{"lang":"cbk-zam","autonym":"Chavacano de Zamboanga","dir":"ltr"},{"lang":"cdo","autonym":"閩東語 / Mìng-dĕ̤ng-ngṳ̄","dir":"ltr"},{"lang":"ce","autonym":"нохчийн","dir":"ltr"},{"lang":"ceb","autonym":"Cebuano","dir":"ltr"},{"lang":"ch","autonym":"Chamoru","dir":"ltr"},{"lang":"chr","autonym":"ᏣᎳᎩ","dir":"ltr"},{"lang":"chy","autonym":"Tsetsêhestâhese","dir":"ltr"},{"lang":"ckb","autonym":"کوردی","dir":"rtl"},{"lang":"co","autonym":"corsu","dir":"ltr"},{"lang":"cr","autonym":"Nēhiyawēwin / ᓀᐦᐃᔭᐍᐏᐣ","dir":"ltr"},{"lang":"crh","autonym":"qırımtatarca","dir":"ltr"},{"lang":"csb","autonym":"kaszëbsczi","dir":"ltr"},{"lang":"cu","autonym":"словѣньскъ / ⰔⰎⰑⰂⰡⰐⰠⰔⰍⰟ","dir":"ltr"},{"lang":"cv","autonym":"чӑвашла","dir":"ltr"},{"lang":"cy","autonym":"Cymraeg","dir":"ltr"},{"lang":"da","autonym":"dansk","dir":"ltr"},{"lang":"dag","autonym":"dagbanli","dir":"ltr"},{"lang":"de","autonym":"Deutsch","dir":"ltr"},{"lang":"dga","autonym":"Dagaare","dir":"ltr"},{"lang":"din","autonym":"Thuɔŋjäŋ","dir":"ltr"},{"lang":"diq","autonym":"Zazaki","dir":"ltr"},{"lang":"dsb","autonym":"dolnoserbski","dir":"ltr"},{"lang":"dtp","autonym":"Kadazandusun","dir":"ltr"},{"lang":"dty","autonym":"डोटेली","dir":"ltr"},{"lang":"dv","autonym":"ދިވެހިބަސް","dir":"rtl"},{"lang":"dz","autonym":"ཇོང་ཁ","dir":"ltr"},{"lang":"ee","autonym":"eʋegbe","dir":"ltr"},{"lang":"el","autonym":"Ελληνικά","dir":"ltr"},{"lang":"eml","autonym":"emiliàn e rumagnòl","dir":"ltr"},{"lang":"eo","autonym":"Esperanto","dir":"ltr"},{"lang":"et","autonym":"eesti","dir":"ltr"},{"lang":"eu","autonym":"euskara","dir":"ltr"},{"lang":"ext","autonym":"estremeñu","dir":"ltr"},{"lang":"fat","autonym":"mfantse","dir":"ltr"},{"lang":"ff","autonym":"Fulfulde","dir":"ltr"},{"lang":"fi","autonym":"suomi","dir":"ltr"},{"lang":"fj","autonym":"Na Vosa Vakaviti","dir":"ltr"},{"lang":"fo","autonym":"føroyskt","dir":"ltr"},{"lang":"fon","autonym":"fɔ̀ngbè","dir":"ltr"},{"lang":"fr","autonym":"français","dir":"ltr"},{"lang":"frp","autonym":"arpetan","dir":"ltr"},{"lang":"frr","autonym":"Nordfriisk","dir":"ltr"},{"lang":"fur","autonym":"furlan","dir":"ltr"},{"lang":"fy","autonym":"Frysk","dir":"ltr"},{"lang":"ga","autonym":"Gaeilge","dir":"ltr"},{"lang":"gag","autonym":"Gagauz","dir":"ltr"},{"lang":"gan","autonym":"贛語","dir":"ltr"},{"lang":"gcr","autonym":"kriyòl gwiyannen","dir":"ltr"},{"lang":"gd","autonym":"Gàidhlig","dir":"ltr"},{"lang":"gl","autonym":"galego","dir":"ltr"},{"lang":"glk","autonym":"گیلکی","dir":"rtl"},{"lang":"gn","autonym":"Avañe'ẽ","dir":"ltr"},{"lang":"gom","autonym":"गोंयची कोंकणी / Gõychi Konknni","dir":"ltr"},{"lang":"gor","autonym":"Bahasa Hulontalo","dir":"ltr"},{"lang":"got","autonym":"𐌲𐌿𐍄𐌹𐍃𐌺","dir":"ltr"},{"lang":"gpe","autonym":"Ghanaian Pidgin","dir":"ltr"},{"lang":"gsw","autonym":"Alemannisch","dir":"ltr"},{"lang":"gu","autonym":"ગુજરાતી","dir":"ltr"},{"lang":"guc","autonym":"wayuunaiki","dir":"ltr"},{"lang":"gur","autonym":"farefare","dir":"ltr"},{"lang":"guw","autonym":"gungbe","dir":"ltr"},{"lang":"gv","autonym":"Gaelg","dir":"ltr"},{"lang":"ha","autonym":"Hausa","dir":"ltr"},{"lang":"hak","autonym":"客家語 / Hak-kâ-ngî","dir":"ltr"},{"lang":"haw","autonym":"Hawaiʻi","dir":"ltr"},{"lang":"he","autonym":"עברית","dir":"rtl"},{"lang":"hi","autonym":"हिन्दी","dir":"ltr"},{"lang":"hif","autonym":"Fiji Hindi","dir":"ltr"},{"lang":"hr","autonym":"hrvatski","dir":"ltr"},{"lang":"hsb","autonym":"hornjoserbsce","dir":"ltr"},{"lang":"ht","autonym":"Kreyòl ayisyen","dir":"ltr"},{"lang":"hu","autonym":"magyar","dir":"ltr"},{"lang":"hy","autonym":"հայերեն","dir":"ltr"},{"lang":"hyw","autonym":"Արեւմտահայերէն","dir":"ltr"},{"lang":"ia","autonym":"interlingua","dir":"ltr"},{"lang":"iba","autonym":"Jaku Iban","dir":"ltr"},{"lang":"id","autonym":"Bahasa Indonesia","dir":"ltr"},{"lang":"ie","autonym":"Interlingue","dir":"ltr"},{"lang":"ig","autonym":"Igbo","dir":"ltr"},{"lang":"igl","autonym":"Igala","dir":"ltr"},{"lang":"ik","autonym":"Iñupiatun","dir":"ltr"},{"lang":"ilo","autonym":"Ilokano","dir":"ltr"},{"lang":"inh","autonym":"гӀалгӀай","dir":"ltr"},{"lang":"io","autonym":"Ido","dir":"ltr"},{"lang":"is","autonym":"íslenska","dir":"ltr"},{"lang":"it","autonym":"italiano","dir":"ltr"},{"lang":"iu","autonym":"ᐃᓄᒃᑎᑐᑦ / inuktitut","dir":"ltr"},{"lang":"jam","autonym":"Patois","dir":"ltr"},{"lang":"jbo","autonym":"la .lojban.","dir":"ltr"},{"lang":"jv","autonym":"Jawa","dir":"ltr"},{"lang":"ka","autonym":"ქართული","dir":"ltr"},{"lang":"kaa","autonym":"Qaraqalpaqsha","dir":"ltr"},{"lang":"kab","autonym":"Taqbaylit","dir":"ltr"},{"lang":"kbd","autonym":"адыгэбзэ","dir":"ltr"},{"lang":"kbp","autonym":"Kabɩyɛ","dir":"ltr"},{"lang":"kcg","autonym":"Tyap","dir":"ltr"},{"lang":"kg","autonym":"Kongo","dir":"ltr"},{"lang":"kge","autonym":"Kumoring","dir":"ltr"},{"lang":"ki","autonym":"Gĩkũyũ","dir":"ltr"},{"lang":"kk","autonym":"қазақша","dir":"ltr"},{"lang":"kl","autonym":"kalaallisut","dir":"ltr"},{"lang":"km","autonym":"ភាសាខ្មែរ","dir":"ltr"},{"lang":"kn","autonym":"ಕನ್ನಡ","dir":"ltr"},{"lang":"knc","autonym":"Yerwa Kanuri","dir":"ltr"},{"lang":"koi","autonym":"перем коми","dir":"ltr"},{"lang":"krc","autonym":"къарачай-малкъар","dir":"ltr"},{"lang":"ks","autonym":"कॉशुर / کٲشُر","dir":"rtl"},{"lang":"ksh","autonym":"Ripoarisch","dir":"ltr"},{"lang":"ku","autonym":"kurdî","dir":"ltr"},{"lang":"kus","autonym":"Kʋsaal","dir":"ltr"},{"lang":"kv","autonym":"коми","dir":"ltr"},{"lang":"kw","autonym":"kernowek","dir":"ltr"},{"lang":"ky","autonym":"кыргызча","dir":"ltr"},{"lang":"la","autonym":"Latina","dir":"ltr"},{"lang":"lad","autonym":"Ladino","dir":"ltr"},{"lang":"lb","autonym":"Lëtzebuergesch","dir":"ltr"},{"lang":"lbe","autonym":"лакку","dir":"ltr"},{"lang":"lez","autonym":"лезги","dir":"ltr"},{"lang":"lfn","autonym":"Lingua Franca Nova","dir":"ltr"},{"lang":"lg","autonym":"Luganda","dir":"ltr"},{"lang":"li","autonym":"Limburgs","dir":"ltr"},{"lang":"lij","autonym":"Ligure","dir":"ltr"},{"lang":"lld","autonym":"Ladin","dir":"ltr"},{"lang":"lmo","autonym":"lombard","dir":"ltr"},{"lang":"ln","autonym":"lingála","dir":"ltr"},{"lang":"lo","autonym":"ລາວ","dir":"ltr"},{"lang":"lt","autonym":"lietuvių","dir":"ltr"},{"lang":"ltg","autonym":"latgaļu","dir":"ltr"},{"lang":"lv","autonym":"latviešu","dir":"ltr"},{"lang":"lzh","autonym":"文言","dir":"ltr"},{"lang":"mad","autonym":"Madhurâ","dir":"ltr"},{"lang":"mai","autonym":"मैथिली","dir":"ltr"},{"lang":"map-bms","autonym":"Basa Banyumasan","dir":"ltr"},{"lang":"mdf","autonym":"мокшень","dir":"ltr"},{"lang":"mg","autonym":"Malagasy","dir":"ltr"},{"lang":"mhr","autonym":"олык марий","dir":"ltr"},{"lang":"mi","autonym":"Māori","dir":"ltr"},{"lang":"min","autonym":"Minangkabau","dir":"ltr"},{"lang":"mk","autonym":"македонски","dir":"ltr"},{"lang":"ml","autonym":"മലയാളം","dir":"ltr"},{"lang":"mn","autonym":"монгол","dir":"ltr"},{"lang":"mni","autonym":"ꯃꯤꯇꯩ ꯂꯣꯟ","dir":"ltr"},{"lang":"mnw","autonym":"ဘာသာမန်","dir":"ltr"},{"lang":"mos","autonym":"moore","dir":"ltr"},{"lang":"mr","autonym":"मराठी","dir":"ltr"},{"lang":"mrj","autonym":"кырык мары","dir":"ltr"},{"lang":"mt","autonym":"Malti","dir":"ltr"},{"lang":"mwl","autonym":"Mirandés","dir":"ltr"},{"lang":"my","autonym":"မြန်မာဘာသာ","dir":"ltr"},{"lang":"myv","autonym":"эрзянь","dir":"ltr"},{"lang":"mzn","autonym":"مازِرونی","dir":"rtl"},{"lang":"nah","autonym":"Nāhuatl","dir":"ltr"},{"lang":"nan","autonym":"閩南語 / Bân-lâm-gú","dir":"ltr"},{"lang":"nap","autonym":"Napulitano","dir":"ltr"},{"lang":"nb","autonym":"norsk bokmål","dir":"ltr"},{"lang":"nds","autonym":"Plattdüütsch","dir":"ltr"},{"lang":"nds-nl","autonym":"Nedersaksies","dir":"ltr"},{"lang":"ne","autonym":"नेपाली","dir":"ltr"},{"lang":"new","autonym":"नेपाल भाषा","dir":"ltr"},{"lang":"nia","autonym":"Li Niha","dir":"ltr"},{"lang":"nl","autonym":"Nederlands","dir":"ltr"},{"lang":"nn","autonym":"norsk nynorsk","dir":"ltr"},{"lang":"nov","autonym":"Novial","dir":"ltr"},{"lang":"nqo","autonym":"ߒߞߏ","dir":"rtl"},{"lang":"nr","autonym":"isiNdebele seSewula","dir":"ltr"},{"lang":"nrm","autonym":"Nouormand","dir":"ltr"},{"lang":"nso","autonym":"Sesotho sa Leboa","dir":"ltr"},{"lang":"nv","autonym":"Diné bizaad","dir":"ltr"},{"lang":"ny","autonym":"Chi-Chewa","dir":"ltr"},{"lang":"oc","autonym":"occitan","dir":"ltr"},{"lang":"olo","autonym":"livvinkarjala","dir":"ltr"},{"lang":"om","autonym":"Oromoo","dir":"ltr"},{"lang":"or","autonym":"ଓଡ଼ିଆ","dir":"ltr"},{"lang":"os","autonym":"ирон","dir":"ltr"},{"lang":"pa","autonym":"ਪੰਜਾਬੀ","dir":"ltr"},{"lang":"pag","autonym":"Pangasinan","dir":"ltr"},{"lang":"pam","autonym":"Kapampangan","dir":"ltr"},{"lang":"pap","autonym":"Papiamentu","dir":"ltr"},{"lang":"pcd","autonym":"Picard","dir":"ltr"},{"lang":"pcm","autonym":"Naijá","dir":"ltr"},{"lang":"pdc","autonym":"Deitsch","dir":"ltr"},{"lang":"pfl","autonym":"Pälzisch","dir":"ltr"},{"lang":"pi","autonym":"पालि","dir":"ltr"},{"lang":"pih","autonym":"Norfuk / Pitkern","dir":"ltr"},{"lang":"pl","autonym":"polski","dir":"ltr"},{"lang":"pms","autonym":"Piemontèis","dir":"ltr"},{"lang":"pnb","autonym":"پنجابی","dir":"rtl"},{"lang":"pnt","autonym":"Ποντιακά","dir":"ltr"},{"lang":"ps","autonym":"پښتو","dir":"rtl"},{"lang":"pt","autonym":"português","dir":"ltr"},{"lang":"pwn","autonym":"pinayuanan","dir":"ltr"},{"lang":"qu","autonym":"Runa Simi","dir":"ltr"},{"lang":"rm","autonym":"rumantsch","dir":"ltr"},{"lang":"rmy","autonym":"romani čhib","dir":"ltr"},{"lang":"rn","autonym":"ikirundi","dir":"ltr"},{"lang":"ro","autonym":"română","dir":"ltr"},{"lang":"roa-tara","autonym":"tarandíne","dir":"ltr"},{"lang":"rsk","autonym":"руски","dir":"ltr"},{"lang":"rue","autonym":"русиньскый","dir":"ltr"},{"lang":"rup","autonym":"armãneashti","dir":"ltr"},{"lang":"rw","autonym":"Ikinyarwanda","dir":"ltr"},{"lang":"sa","autonym":"संस्कृतम्","dir":"ltr"},{"lang":"sah","autonym":"саха тыла","dir":"ltr"},{"lang":"sat","autonym":"ᱥᱟᱱᱛᱟᱲᱤ","dir":"ltr"},{"lang":"sc","autonym":"sardu","dir":"ltr"},{"lang":"scn","autonym":"sicilianu","dir":"ltr"},{"lang":"sco","autonym":"Scots","dir":"ltr"},{"lang":"sd","autonym":"سنڌي","dir":"rtl"},{"lang":"se","autonym":"davvisámegiella","dir":"ltr"},{"lang":"sg","autonym":"Sängö","dir":"ltr"},{"lang":"sgs","autonym":"žemaitėška","dir":"ltr"},{"lang":"sh","autonym":"srpskohrvatski / српскохрватски","dir":"ltr"},{"lang":"shi","autonym":"Taclḥit","dir":"ltr"},{"lang":"shn","autonym":"တႆး","dir":"ltr"},{"lang":"si","autonym":"සිංහල","dir":"ltr"},{"lang":"simple","autonym":"Simple English","dir":"ltr"},{"lang":"sk","autonym":"slovenčina","dir":"ltr"},{"lang":"skr","autonym":"سرائیکی","dir":"rtl"},{"lang":"sl","autonym":"slovenščina","dir":"ltr"},{"lang":"sm","autonym":"Gagana Samoa","dir":"ltr"},{"lang":"smn","autonym":"anarâškielâ","dir":"ltr"},{"lang":"sn","autonym":"chiShona","dir":"ltr"},{"lang":"so","autonym":"Soomaaliga","dir":"ltr"},{"lang":"sq","autonym":"shqip","dir":"ltr"},{"lang":"sr","autonym":"српски / srpski","dir":"ltr"},{"lang":"srn","autonym":"Sranantongo","dir":"ltr"},{"lang":"ss","autonym":"SiSwati","dir":"ltr"},{"lang":"st","autonym":"Sesotho","dir":"ltr"},{"lang":"stq","autonym":"Seeltersk","dir":"ltr"},{"lang":"su","autonym":"Sunda","dir":"ltr"},{"lang":"sv","autonym":"svenska","dir":"ltr"},{"lang":"sw","autonym":"Kiswahili","dir":"ltr"},{"lang":"syl","autonym":"ꠍꠤꠟꠐꠤ","dir":"ltr"},{"lang":"szl","autonym":"ślůnski","dir":"ltr"},{"lang":"szy","autonym":"Sakizaya","dir":"ltr"},{"lang":"ta","autonym":"தமிழ்","dir":"ltr"},{"lang":"tay","autonym":"Tayal","dir":"ltr"},{"lang":"tcy","autonym":"ತುಳು","dir":"ltr"},{"lang":"tdd","autonym":"ᥖᥭᥰ ᥖᥬᥲ ᥑᥨᥒᥰ","dir":"ltr"},{"lang":"te","autonym":"తెలుగు","dir":"ltr"},{"lang":"tet","autonym":"tetun","dir":"ltr"},{"lang":"tg","autonym":"тоҷикӣ","dir":"ltr"},{"lang":"th","autonym":"ไทย","dir":"ltr"},{"lang":"ti","autonym":"ትግርኛ","dir":"ltr"},{"lang":"tig","autonym":"ትግሬ","dir":"ltr"},{"lang":"tk","autonym":"Türkmençe","dir":"ltr"},{"lang":"tl","autonym":"Tagalog","dir":"ltr"},{"lang":"tly","autonym":"tolışi","dir":"ltr"},{"lang":"tn","autonym":"Setswana","dir":"ltr"},{"lang":"to","autonym":"lea faka-Tonga","dir":"ltr"},{"lang":"tpi","autonym":"Tok Pisin","dir":"ltr"},{"lang":"tr","autonym":"Türkçe","dir":"ltr"},{"lang":"trv","autonym":"Seediq","dir":"ltr"},{"lang":"ts","autonym":"Xitsonga","dir":"ltr"},{"lang":"tt","autonym":"татарча / tatarça","dir":"ltr"},{"lang":"tum","autonym":"chiTumbuka","dir":"ltr"},{"lang":"tw","autonym":"Twi","dir":"ltr"},{"lang":"ty","autonym":"reo tahiti","dir":"ltr"},{"lang":"tyv","autonym":"тыва дыл","dir":"ltr"},{"lang":"udm","autonym":"удмурт","dir":"ltr"},{"lang":"ug","autonym":"ئۇيغۇرچە / Uyghurche","dir":"rtl"},{"lang":"ur","autonym":"اردو","dir":"rtl"},{"lang":"uz","autonym":"oʻzbekcha / ўзбекча","dir":"ltr"},{"lang":"ve","autonym":"Tshivenda","dir":"ltr"},{"lang":"vec","autonym":"vèneto","dir":"ltr"},{"lang":"vep","autonym":"vepsän kel’","dir":"ltr"},{"lang":"vi","autonym":"Tiếng Việt","dir":"ltr"},{"lang":"vls","autonym":"West-Vlams","dir":"ltr"},{"lang":"vo","autonym":"Volapük","dir":"ltr"},{"lang":"vro","autonym":"võro","dir":"ltr"},{"lang":"wa","autonym":"walon","dir":"ltr"},{"lang":"war","autonym":"Winaray","dir":"ltr"},{"lang":"wo","autonym":"Wolof","dir":"ltr"},{"lang":"wuu","autonym":"吴语","dir":"ltr"},{"lang":"xal","autonym":"хальмг","dir":"ltr"},{"lang":"xh","autonym":"isiXhosa","dir":"ltr"},{"lang":"xmf","autonym":"მარგალური","dir":"ltr"},{"lang":"yi","autonym":"ייִדיש","dir":"rtl"},{"lang":"yo","autonym":"Yorùbá","dir":"ltr"},{"lang":"yue","autonym":"粵語","dir":"ltr"},{"lang":"za","autonym":"Vahcuengh","dir":"ltr"},{"lang":"zea","autonym":"Zeêuws","dir":"ltr"},{"lang":"zgh","autonym":"ⵜⴰⵎⴰⵣⵉⵖⵜ ⵜⴰⵏⴰⵡⴰⵢⵜ","dir":"ltr"},{"lang":"zu","autonym":"isiZulu","dir":"ltr"}],"wgSectionTranslationTargetLanguages":["ab","ace","ady","af","alt","am","ami","an","ang","ann","anp","ar","arc","ary","arz","as","ast","atj","av","avk","awa","ay","az","azb","ba","ban","bar","bbc","bcl","bdr","be","be-tarask","bew","bg","bho","bi","bjn","blk","bm","bn","bo","bpy","br","bs","btm","bug","bxr","ca","cbk-zam","cdo","ce","ceb","ch","chr","chy","ckb","co","cr","crh","cs","csb","cu","cv","cy","da","dag","de","dga","din","diq","dsb","dtp","dty","dv","dz","ee","el","eml","en","eo","es","et","eu","ext","fa","fat","ff","fi","fj","fo","fon","fr","frp","frr","fur","fy","ga","gag","gan","gcr","gd","gl","glk","gn","gom","gor","got","gpe","gsw","gu","guc","gur","guw","gv","ha","hak","haw","he","hi","hif","hr","hsb","ht","hu","hy","hyw","ia","iba","id","ie","ig","igl","ik","ilo","inh","io","is","it","iu","ja","jam","jbo","jv","ka","kaa","kab","kbd","kbp","kcg","kg","kge","ki","kk","kl","km","kn","knc","ko","koi","krc","ks","ksh","ku","kus","kv","kw","ky","la","lad","lb","lbe","lez","lfn","lg","li","lij","lld","lmo","ln","lo","lt","ltg","lv","lzh","mad","mai","map-bms","mdf","mg","mhr","mi","min","mk","ml","mn","mni","mnw","mos","mr","mrj","ms","mt","mwl","my","myv","mzn","nah","nan","nap","nb","nds","nds-nl","ne","new","nia","nl","nn","nov","nqo","nr","nrm","nso","nv","ny","oc","olo","om","or","os","pa","pag","pam","pap","pcd","pcm","pdc","pfl","pi","pih","pl","pms","pnb","pnt","ps","pt","pwn","qu","rm","rmy","rn","ro","roa-tara","rsk","ru","rue","rup","rw","sa","sah","sat","sc","scn","sco","sd","se","sg","sgs","sh","shi","shn","si","simple","sk","skr","sl","sm","smn","sn","so","sq","sr","srn","ss","st","stq","su","sv","sw","syl","szl","szy","ta","tay","tcy","tdd","te","tet","tg","th","ti","tig","tk","tl","tly","tn","to","tpi","tr","trv","ts","tt","tum","tw","ty","tyv","udm","ug","uk","ur","uz","ve","vec","vep","vi","vls","vo","vro","wa","war","wo","wuu","xal","xh","xmf","yi","yo","yue","za","zea","zgh","zh","zu"],"isLanguageSearcherCXEntrypointEnabled":true,"mintEntrypointLanguages":["tn","vec","ast","lmo"],"wgWikibaseItemId":"Q752741","wgCheckUserClientHintsHeadersJsApi":["brands","architecture","bitness","fullVersionList","mobile","model","platform","platformVersion"],"GEHomepageSuggestedEditsEnableTopics":true,"wgGETopicsMatchModeEnabled":false,"wgGELevelingUpEnabledForUser":false,"wgMinervaPermissions":{"watchable":true,"watch":false},"wgMinervaFeatures":{"beta":false,"donateBanner":true,"donate":false,"mobileOptionsLink":true,"categories":false,"pageIssues":true,"talkAtTop":true,"historyInPageActions":false,"overflowSubmenu":false,"tabsOnSpecials":true,"personalMenu":false,"mainMenuExpanded":false,"echo":true,"nightMode":true},"wgMinervaDownloadNamespaces":[0]};
+RLSTATE={"ext.globalCssJs.user.styles":"ready","site.styles":"ready","user.styles":"ready","ext.globalCssJs.user":"ready","user":"ready","user.options":"loading","ext.cite.styles":"ready","ext.pygments":"ready","skins.minerva.styles":"ready","skins.minerva.content.styles.images":"ready","mediawiki.hlist":"ready","skins.minerva.codex.styles":"ready","skins.minerva.icons":"ready","skins.minerva.amc.styles":"ready","ext.wikimediamessages.styles":"ready","mobile.init.styles":"ready","ext.relatedArticles.styles":"ready","wikibase.client.init":"ready"};RLPAGEMODULES=["ext.cite.ux-enhancements","ext.pygments.view","site","mediawiki.page.ready","skins.minerva.scripts","ext.centralNotice.geoIP","ext.centralNotice.startUp","ext.gadget.switcher","ext.urlShortener.toolbar","ext.centralauth.centralautologin","ext.popups","mobile.init","ext.echo.centralauth","ext.relatedArticles.readMore.bootstrap","ext.eventLogging","ext.wikimediaEvents","ext.navigationTiming","ext.cx.eventlogging.campaigns","ext.cx.entrypoints.mffrequentlanguages","ext.cx.entrypoints.languagesearcher.init","mw.externalguidance.init","ext.checkUser.clientHints","ext.quicksurveys.init","ext.growthExperiments.SuggestedEditSession"];</script>
+<script>(RLQ=window.RLQ||[]).push(function(){mw.loader.impl(function(){return["user.options@12s5i",function($,jQuery,require,module){mw.user.tokens.set({"patrolToken":"+\\","watchToken":"+\\","csrfToken":"+\\"});
+}];});});</script>
+<link rel="stylesheet" href="/w/load.php?lang=en&amp;modules=ext.cite.styles%7Cext.pygments%7Cext.relatedArticles.styles%7Cext.wikimediamessages.styles%7Cmediawiki.hlist%7Cmobile.init.styles%7Cskins.minerva.amc.styles%7Cskins.minerva.codex.styles%7Cskins.minerva.content.styles.images%7Cskins.minerva.icons%2Cstyles%7Cwikibase.client.init&amp;only=styles&amp;skin=minerva">
+<script async="" src="/w/load.php?lang=en&amp;modules=startup&amp;only=scripts&amp;raw=1&amp;skin=minerva"></script>
+<meta name="ResourceLoaderDynamicStyles" content="">
+<link rel="stylesheet" href="/w/load.php?lang=en&amp;modules=site.styles&amp;only=styles&amp;skin=minerva">
+<meta name="generator" content="MediaWiki 1.44.0-wmf.25">
+<meta name="referrer" content="origin">
+<meta name="referrer" content="origin-when-cross-origin">
+<meta name="robots" content="max-image-preview:standard">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#eaecf0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.25, maximum-scale=5.0">
+<meta property="og:title" content="Asynchronous I/O - Wikipedia">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="//upload.wikimedia.org">
+<link rel="manifest" href="/w/api.php?action=webapp-manifest">
+<link rel="alternate" type="application/x-wiki" title="Edit this page" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit">
+<link rel="apple-touch-icon" href="/static/apple-touch/wikipedia.png">
+<link rel="icon" href="/static/favicon/wikipedia.ico">
+<link rel="search" type="application/opensearchdescription+xml" href="/w/rest.php/v1/search" title="Wikipedia (en)">
+<link rel="EditURI" type="application/rsd+xml" href="//en.wikipedia.org/w/api.php?action=rsd">
+<link rel="canonical" href="https://en.wikipedia.org/wiki/Asynchronous_I/O">
+<link rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/deed.en">
+<link rel="dns-prefetch" href="//meta.wikimedia.org" />
+<link rel="dns-prefetch" href="auth.wikimedia.org">
+</head>
+<body class="mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject mw-editable page-Asynchronous_I_O rootpage-Asynchronous_I_O stable issues-group-B skin-minerva action-view skin--responsive mw-mf-amc-disabled mw-mf"><div id="mw-mf-viewport">
+	<div id="mw-mf-page-center">
+		<a class="mw-mf-page-center__mask" href="#"></a>
+		<header class="header-container header-chrome">
+			<div class="minerva-header">
+				<nav class="navigation-drawer toggle-list view-border-box">
+					<input type="checkbox" id="main-menu-input"
+						data-event-name="ui.mainmenu"
+						class="toggle-list__checkbox" role="button" aria-haspopup="true" aria-expanded="false" aria-labelledby="mw-mf-main-menu-button">
+					<label for="main-menu-input" id="mw-mf-main-menu-button" aria-hidden="true" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet toggle-list__toggle">
+    <span class="minerva-icon minerva-icon--menu"></span>
+<span></span>
+</label>
+
+					<div id="mw-mf-page-left" class="menu view-border-box">
+	<ul id="p-navigation" class="toggle-list__list">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--home" href="/wiki/Main_Page" data-mw="interface">
+					<span class="minerva-icon minerva-icon--home"></span>
+
+					<span class="toggle-list-item__label">Home</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--random" href="/wiki/Special:Random" data-mw="interface">
+					<span class="minerva-icon minerva-icon--die"></span>
+
+					<span class="toggle-list-item__label">Random</span>
+				</a>
+			</li>
+			<li class="toggle-list-item skin-minerva-list-item-jsonly">
+				<a class="toggle-list-item__anchor menu__item--nearby" href="/wiki/Special:Nearby" data-event-name="menu.nearby" data-mw="interface">
+					<span class="minerva-icon minerva-icon--mapPin"></span>
+
+					<span class="toggle-list-item__label">Nearby</span>
+				</a>
+			</li>
+	</ul>
+	<ul id="p-personal" class="toggle-list__list">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor mw-list-item menu__item--login" href="/w/index.php?title=Special:UserLogin&amp;returnto=Asynchronous+I%2FO" data-event-name="menu.login" data-mw="interface">
+					<span class="minerva-icon minerva-icon--logIn"></span>
+
+					<span class="toggle-list-item__label">Log in</span>
+				</a>
+			</li>
+	</ul>
+	<ul id="pt-preferences" class="toggle-list__list">
+			<li class="toggle-list-item skin-minerva-list-item-jsonly">
+				<a class="toggle-list-item__anchor menu__item--settings" href="/w/index.php?title=Special:MobileOptions&amp;returnto=Asynchronous+I%2FO" data-event-name="menu.settings" data-mw="interface">
+					<span class="minerva-icon minerva-icon--settings"></span>
+
+					<span class="toggle-list-item__label">Settings</span>
+				</a>
+			</li>
+	</ul>
+			<div class="donate-banner">
+				<a href="https://donate.wikimedia.org/?wmf_source=donate&amp;wmf_medium=sidebar&amp;wmf_campaign=en.wikipedia.org&amp;uselang=en" class="donate-banner__link"
+					data-event-name="menu.donateBanner">
+					<div class="donate-banner__text-container">
+						<span class="donate-banner__text">Donate Now</span>
+						<span class="donate-banner__subtitle">If Wikipedia is useful to you, please give today.</span>
+					</div>
+					<picture>
+						<source
+			    			srcset="https://en.wikipedia.org/static/images/donate/donate.png"
+			   				media="(prefers-reduced-motion)" />
+						<img src="https://en.wikipedia.org/static/images/donate/donate.gif" alt="" class="donate-banner__gif" loading="lazy">
+					</picture>
+				</a>
+			</div>
+	<ul class="hlist">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--about" href="/wiki/Wikipedia:About" data-mw="interface">
+					
+					<span class="toggle-list-item__label">About Wikipedia</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--disclaimers" href="/wiki/Wikipedia:General_disclaimer" data-mw="interface">
+					
+					<span class="toggle-list-item__label">Disclaimers</span>
+				</a>
+			</li>
+	</ul>
+</div>
+
+					<label class="main-menu-mask" for="main-menu-input"></label>
+				</nav>
+				<div class="branding-box">
+					<a href="/wiki/Main_Page">
+						<span><img src="/static/images/mobile/copyright/wikipedia-wordmark-en.svg" alt="Wikipedia" width="120" height="18"
+	style="width: 7.5em; height: 1.125em;"/>
+
+</span>
+						
+					</a>
+				</div>
+					<form action="/w/index.php" method="get" class="minerva-search-form">
+				<div class="search-box">
+					<input type="hidden" name="title" value="Special:Search"/>
+					<input class="search skin-minerva-search-trigger" id="searchInput"
+						 type="search" name="search" placeholder="Search Wikipedia" aria-label="Search Wikipedia" autocapitalize="sentences" title="Search Wikipedia [f]" accesskey="f">
+					<span class="search-box-icon-overlay"><span class="minerva-icon minerva-icon--search"></span>
+</span>
+				</div>
+				<button id="searchIcon" class="cdx-button cdx-button--size-large cdx-button--icon-only cdx-button--weight-quiet skin-minerva-search-trigger">
+	    <span class="minerva-icon minerva-icon--search"></span>
+<span>Search</span>
+	</button>
+</form>
+		<nav class="minerva-user-navigation" aria-label="User navigation">
+					
+				</nav>
+			</div>
+		</header>
+		<main id="content" class="mw-body">
+			<div class="banner-container">
+			<div id="siteNotice"></div>
+			</div>
+			
+			<div class="pre-content heading-holder">
+				<div class="page-heading">
+					<h1 id="firstHeading" class="firstHeading mw-first-heading"><span class="mw-page-title-main">Asynchronous I/O</span></h1>
+					<div class="tagline"></div>
+				</div>
+					<ul id="p-associated-pages" class="minerva__tab-container">
+							<li class="minerva__tab selected mw-list-item">
+								<a class="minerva__tab-text" href="/wiki/Asynchronous_I/O" rel="" data-event-name="tabs.main">Article</a>
+							</li>
+							<li class="minerva__tab mw-list-item">
+								<a class="minerva__tab-text" href="/wiki/Talk:Asynchronous_I/O" rel="discussion" data-event-name="tabs.talk">Talk</a>
+							</li>
+					</ul>
+				<nav class="page-actions-menu">
+	<ul id="p-views" class="page-actions-menu__list minerva-icon-only-menu">
+		<li id="language-selector" class="page-actions-menu__list-item">
+				<a role="button" href="#p-lang" data-mw="interface" data-event-name="menu.languages" title="Language" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet language-selector">
+				    <span class="minerva-icon minerva-icon--language"></span>
+<span>Language</span>
+				</a>
+		</li>
+		<li id="page-actions-watch" class="page-actions-menu__list-item">
+				<a role="button" id="ca-watch" href="/w/index.php?title=Special:UserLogin&amp;returnto=Asynchronous+I%2FO" data-event-name="menu.watch" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet menu__item--page-actions-watch">
+				    <span class="minerva-icon minerva-icon--star"></span>
+<span>Watch</span>
+				</a>
+		</li>
+		<li id="page-actions-edit" class="page-actions-menu__list-item">
+				<a role="button" id="ca-edit" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit" data-event-name="menu.edit" data-mw="interface" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet edit-page menu__item--page-actions-edit">
+				    <span class="minerva-icon minerva-icon--edit"></span>
+<span>Edit</span>
+				</a>
+		</li>
+	</ul>
+</nav>
+<!-- version 1.0.2 (change every time you update a partial) -->
+				<div id="mw-content-subtitle"></div>
+			</div>
+			<div id="bodyContent" class="content">
+				<div id="mw-content-text" class="mw-body-content"><script>function mfTempOpenSection(id){var block=document.getElementById("mf-section-"+id);block.className+=" open-block";block.previousSibling.className+=" open-block";}</script><div class="mw-content-ltr mw-parser-output" lang="en" dir="ltr"><section class="mf-section-0" id="mf-section-0">
+<style data-mw-deduplicate="TemplateStyles:r1236090951">.mw-parser-output .hatnote{font-style:italic}.mw-parser-output div.hatnote{padding-left:1.6em;margin-bottom:0.5em}.mw-parser-output .hatnote i{font-style:normal}.mw-parser-output .hatnote+link+.hatnote{margin-top:-0.5em}@media print{body.ns-0 .mw-parser-output .hatnote{display:none!important}}</style><div role="note" class="hatnote navigation-not-searchable">Not to be confused with <a href="/wiki/Non-blocking_algorithm" title="Non-blocking algorithm">non-blocking algorithm</a>.</div>
+<style data-mw-deduplicate="TemplateStyles:r1251242444">.mw-parser-output .ambox{border:1px solid #a2a9b1;border-left:10px solid #36c;background-color:#fbfbfb;box-sizing:border-box}.mw-parser-output .ambox+link+.ambox,.mw-parser-output .ambox+link+style+.ambox,.mw-parser-output .ambox+link+link+.ambox,.mw-parser-output .ambox+.mw-empty-elt+link+.ambox,.mw-parser-output .ambox+.mw-empty-elt+link+style+.ambox,.mw-parser-output .ambox+.mw-empty-elt+link+link+.ambox{margin-top:-1px}html body.mediawiki .mw-parser-output .ambox.mbox-small-left{margin:4px 1em 4px 0;overflow:hidden;width:238px;border-collapse:collapse;font-size:88%;line-height:1.25em}.mw-parser-output .ambox-speedy{border-left:10px solid #b32424;background-color:#fee7e6}.mw-parser-output .ambox-delete{border-left:10px solid #b32424}.mw-parser-output .ambox-content{border-left:10px solid #f28500}.mw-parser-output .ambox-style{border-left:10px solid #fc3}.mw-parser-output .ambox-move{border-left:10px solid #9932cc}.mw-parser-output .ambox-protection{border-left:10px solid #a2a9b1}.mw-parser-output .ambox .mbox-text{border:none;padding:0.25em 0.5em;width:100%}.mw-parser-output .ambox .mbox-image{border:none;padding:2px 0 2px 0.5em;text-align:center}.mw-parser-output .ambox .mbox-imageright{border:none;padding:2px 0.5em 2px 0;text-align:center}.mw-parser-output .ambox .mbox-empty-cell{border:none;padding:0;width:1px}.mw-parser-output .ambox .mbox-image-div{width:52px}@media(min-width:720px){.mw-parser-output .ambox{margin:0 10%}}@media print{body.ns-0 .mw-parser-output .ambox{display:none!important}}</style><table class="box-More_citations_needed plainlinks metadata ambox ambox-content ambox-Refimprove" role="presentation"><tbody><tr><td class="mbox-text"><div class="mbox-text-span">This article <b>needs additional citations for <a href="/wiki/Wikipedia:Verifiability" title="Wikipedia:Verifiability">verification</a></b>.<span class="hide-when-compact"> Please help <a href="/wiki/Special:EditPage/Asynchronous_I/O" title="Special:EditPage/Asynchronous I/O">improve this article</a> by <a href="/wiki/Help:Referencing_for_beginners" title="Help:Referencing for beginners">adding citations to reliable sources</a>. Unsourced material may be challenged and removed.<br><small><span class="plainlinks"><i>Find sources:</i> <a rel="nofollow" class="external text" href="https://www.google.com/search?as_eq=wikipedia&amp;q=%22Asynchronous+I%2FO%22">"Asynchronous I/O"</a> – <a rel="nofollow" class="external text" href="https://www.google.com/search?tbm=nws&amp;q=%22Asynchronous+I%2FO%22+-wikipedia&amp;tbs=ar:1">news</a> <b>·</b> <a rel="nofollow" class="external text" href="https://www.google.com/search?&amp;q=%22Asynchronous+I%2FO%22&amp;tbs=bkt:s&amp;tbm=bks">newspapers</a> <b>·</b> <a rel="nofollow" class="external text" href="https://www.google.com/search?tbs=bks:1&amp;q=%22Asynchronous+I%2FO%22+-wikipedia">books</a> <b>·</b> <a rel="nofollow" class="external text" href="https://scholar.google.com/scholar?q=%22Asynchronous+I%2FO%22">scholar</a> <b>·</b> <a rel="nofollow" class="external text" href="https://www.jstor.org/action/doBasicSearch?Query=%22Asynchronous+I%2FO%22&amp;acc=on&amp;wc=on">JSTOR</a></span></small></span>  <span class="date-container"><i>(<span class="date">June 2014</span>)</i></span><span class="hide-when-compact"><i> (<small><a href="/wiki/Help:Maintenance_template_removal" title="Help:Maintenance template removal">Learn how and when to remove this message</a></small>)</i></span></div></td></tr></tbody></table>
+<link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1251242444"><table class="box-Cleanup plainlinks metadata ambox ambox-style ambox-Cleanup" role="presentation"><tbody><tr><td class="mbox-text"><div class="mbox-text-span">This article may <b>require <a href="/wiki/Wikipedia:Cleanup" title="Wikipedia:Cleanup">cleanup</a></b> to meet Wikipedia's <a href="/wiki/Wikipedia:Manual_of_Style" title="Wikipedia:Manual of Style">quality standards</a>. The specific problem is: <b>async and nonblocking are different approaches.</b><span class="hide-when-compact"> Relevant discussion may be found on the <a href="/wiki/Talk:Asynchronous_I/O#async_is_not_nonblocking" title="Talk:Asynchronous I/O">talk page</a>. Please help <a href="/wiki/Special:EditPage/Asynchronous_I/O" title="Special:EditPage/Asynchronous I/O">improve this article</a> if you can.</span>  <span class="date-container"><i>(<span class="date">September 2017</span>)</i></span><span class="hide-when-compact"><i> (<small><a href="/wiki/Help:Maintenance_template_removal" title="Help:Maintenance template removal">Learn how and when to remove this message</a></small>)</i></span></div></td></tr></tbody></table>
+<p>In computer science, <b>asynchronous I/O</b> (also <b>non-sequential I/O</b>) is a form of <a href="/wiki/Input/output" title="Input/output">input/output</a> processing that permits other <a href="/wiki/Process_(computing)" title="Process (computing)">processing</a> to continue before the I/O operation has finished. A name used for asynchronous I/O in the Windows API is <i><a href="/wiki/Overlapped_I/O" title="Overlapped I/O">overlapped I/O</a></i>.
+</p><p><a href="/wiki/Input_and_output" class="mw-redirect" title="Input and output">Input and output</a> (I/O) operations on a computer can be extremely slow compared to the processing of data. An I/O device can incorporate mechanical devices that must physically move, such as a hard drive seeking a track to read or write; this is often <a href="/wiki/Orders_of_magnitude" class="mw-redirect" title="Orders of magnitude">orders of magnitude</a> slower than the switching of electric current. For example, during a disk operation that takes ten milliseconds to perform, a processor that is clocked at one <a href="/wiki/Gigahertz" class="mw-redirect" title="Gigahertz">gigahertz</a> could have performed ten million instruction-processing cycles.
+</p><p>A simple approach to I/O would be to start the access and then wait for it to complete. But such an approach, called <b>synchronous I/O</b> or <b>blocking I/O</b>, would block the progress of a program while the communication is in progress, leaving <a href="/wiki/System_resources" class="mw-redirect" title="System resources">system resources</a> idle. When a program makes many I/O operations (such as a program mainly or largely dependent on <a href="/wiki/User_input" class="mw-redirect" title="User input">user input</a>), this means that the processor can spend almost all of its time idle waiting for I/O operations to complete.
+</p><p>Alternatively, it is possible to start the communication and then perform processing that does not require that the I/O be completed. This approach is called asynchronous input/output. Any task that depends on the I/O having completed (this includes both using the input values and critical operations that claim to assure that a write operation has been completed) still needs to wait for the I/O operation to complete, and thus is still blocked, but other processing that does not have a dependency on the I/O operation can continue.
+</p><p>Many operating system functions exist to implement asynchronous I/O at many levels. In fact, one of the main functions of all but the most rudimentary of <a href="/wiki/Operating_systems" class="mw-redirect" title="Operating systems">operating systems</a> is to perform at least some form of basic asynchronous I/O, though this may not be particularly apparent to the user or the programmer. In the simplest software solution, the hardware device status is <a href="/wiki/Polling_(computer_science)" title="Polling (computer science)">polled</a> at intervals to detect whether the device is ready for its next operation. (For example, the <a href="/wiki/CP/M" title="CP/M">CP/M</a> operating system was built this way. Its <a href="/wiki/System_call" title="System call">system call</a> semantics did not require any more elaborate I/O structure than this, though most implementations were more complex, and thereby more efficient.) <a href="/wiki/Direct_memory_access" title="Direct memory access">Direct memory access</a> (DMA) can greatly increase the efficiency of a polling-based system, and <a href="/wiki/Hardware_interrupt" class="mw-redirect" title="Hardware interrupt">hardware interrupts</a> can eliminate the need for polling entirely. <a href="/wiki/Computer_multitasking" title="Computer multitasking">Multitasking</a> operating systems can exploit the functionality provided by hardware interrupts, whilst hiding the complexity of interrupt handling from the user. <a href="/wiki/Spooling" title="Spooling">Spooling</a> was one of the first forms of multitasking designed to exploit asynchronous I/O. Finally, <a href="/wiki/Multithreading_(computer_architecture)" title="Multithreading (computer architecture)">multithreading</a> and explicit asynchronous I/O <a href="/wiki/API" title="API">APIs</a> within user processes can exploit asynchronous I/O further, at the cost of extra software complexity.
+</p><p>Asynchronous I/O is used to improve energy efficiency, and in some cases, throughput. However, it can have negative effects on latency and throughput in some cases.
+</p>
+<div id="toc" class="toc" role="navigation" aria-labelledby="mw-toc-heading"><input type="checkbox" role="button" id="toctogglecheckbox" class="toctogglecheckbox" style="display:none"><div class="toctitle" lang="en" dir="ltr"><h2 id="mw-toc-heading">Contents</h2><span class="toctogglespan"><label class="toctogglelabel" for="toctogglecheckbox"></label></span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#Forms"><span class="tocnumber">1</span> <span class="toctext">Forms</span></a>
+<ul>
+<li class="toclevel-2 tocsection-2"><a href="#Process"><span class="tocnumber">1.1</span> <span class="toctext">Process</span></a></li>
+<li class="toclevel-2 tocsection-3"><a href="#Polling"><span class="tocnumber">1.2</span> <span class="toctext">Polling</span></a></li>
+<li class="toclevel-2 tocsection-4"><a href="#Select(/poll)_loops"><span class="tocnumber">1.3</span> <span class="toctext">Select(/poll) loops</span></a></li>
+<li class="toclevel-2 tocsection-5"><a href="#Signals_(interrupts)"><span class="tocnumber">1.4</span> <span class="toctext">Signals (interrupts)</span></a></li>
+<li class="toclevel-2 tocsection-6"><a href="#Callback_functions"><span class="tocnumber">1.5</span> <span class="toctext">Callback functions</span></a></li>
+<li class="toclevel-2 tocsection-7"><a href="#Light-weight_processes_or_threads"><span class="tocnumber">1.6</span> <span class="toctext">Light-weight processes or threads</span></a></li>
+<li class="toclevel-2 tocsection-8"><a href="#Completion_queues/ports"><span class="tocnumber">1.7</span> <span class="toctext">Completion queues/ports</span></a></li>
+<li class="toclevel-2 tocsection-9"><a href="#Event_flags"><span class="tocnumber">1.8</span> <span class="toctext">Event flags</span></a></li>
+<li class="toclevel-2 tocsection-10"><a href="#Channel_I/O"><span class="tocnumber">1.9</span> <span class="toctext">Channel I/O</span></a></li>
+<li class="toclevel-2 tocsection-11"><a href="#Registered_I/O"><span class="tocnumber">1.10</span> <span class="toctext">Registered I/O</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-12"><a href="#Implementation"><span class="tocnumber">2</span> <span class="toctext">Implementation</span></a>
+<ul>
+<li class="toclevel-2 tocsection-13"><a href="#Synthesis"><span class="tocnumber">2.1</span> <span class="toctext">Synthesis</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-14"><a href="#Examples"><span class="tocnumber">3</span> <span class="toctext">Examples</span></a></li>
+<li class="toclevel-1 tocsection-15"><a href="#See_also"><span class="tocnumber">4</span> <span class="toctext">See also</span></a></li>
+<li class="toclevel-1 tocsection-16"><a href="#References"><span class="tocnumber">5</span> <span class="toctext">References</span></a></li>
+<li class="toclevel-1 tocsection-17"><a href="#External_links"><span class="tocnumber">6</span> <span class="toctext">External links</span></a></li>
+</ul>
+</div>
+
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(1)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="Forms">Forms</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=1" title="Edit section: Forms" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-1 collapsible-block" id="mf-section-1">
+<p>Forms of I/O and examples of POSIX functions:
+</p>
+<table class="wikitable">
+
+<tbody><tr>
+<th></th>
+<th>Blocking</th>
+<th>Non-blocking</th>
+<th>Asynchronous
+</th></tr>
+<tr>
+<th>API
+</th>
+<td>write, read</td>
+<td>write, read + poll / select</td>
+<td>aio_write, aio_read
+</td></tr></tbody></table>
+<p>All forms of asynchronous I/O open applications up to potential resource conflicts and associated failure. Careful programming (often using <a href="/wiki/Mutual_exclusion" title="Mutual exclusion">mutual exclusion</a>, <a href="/wiki/Semaphore_(programming)" title="Semaphore (programming)">semaphores</a>, etc.) is required to prevent this.
+</p><p>When exposing asynchronous I/O to applications there are a few broad classes of implementation. The form of the <a href="/wiki/API" title="API">API</a> provided to the application does not necessarily correspond with the mechanism actually provided by the operating system; emulations are possible. Furthermore, more than one method may be used by a single application, depending on its needs and the desires of its programmer(s). Many operating systems provide more than one of these mechanisms, it is possible that some may provide all of them.
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Process">Process</h3><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=2" title="Edit section: Process" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div>
+<p>Available in early Unix. In a <a href="/wiki/Computer_multitasking" title="Computer multitasking">multitasking</a> operating system, processing can be distributed across different processes, which run independently, have their own memory, and process their own I/O flows; these flows are typically connected in <a href="/wiki/Pipe_(Unix)" class="mw-redirect" title="Pipe (Unix)">pipelines</a>. Processes are fairly expensive to create and maintain,<sup class="noprint Inline-Template Template-Fact" style="white-space:nowrap;">[<i><a href="/wiki/Wikipedia:Citation_needed" title="Wikipedia:Citation needed"><span title="This claim needs references to reliable sources. (November 2013)">citation needed</span></a></i>]</sup> so this solution only works well if the set of processes is small and relatively stable. It also assumes that the individual processes can operate independently, apart from processing each other's I/O; if they need to communicate in other ways, coordinating them can become difficult.<sup class="noprint Inline-Template Template-Fact" style="white-space:nowrap;">[<i><a href="/wiki/Wikipedia:Citation_needed" title="Wikipedia:Citation needed"><span title="This claim needs references to reliable sources. (November 2013)">citation needed</span></a></i>]</sup>
+</p><p>An extension of this approach is <a href="/wiki/Dataflow_programming" title="Dataflow programming">dataflow programming</a>, which allows more complicated networks than just the chains that pipes support.
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Polling">Polling</h3><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=3" title="Edit section: Polling" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div>
+<p>Variations:
+</p>
+<ul><li>Error if it cannot be done yet (reissue later)</li>
+<li>Report when it can be done without blocking (then issue it)</li></ul>
+<p>Polling provides non-blocking synchronous API which may be used to implement some asynchronous API. Available in traditional Unix and <a href="/wiki/Windows" class="mw-redirect" title="Windows">Windows</a>. Its major problem is that it can waste CPU time polling repeatedly when there is nothing else for the issuing process to do, reducing the time available for other processes. Also, because a polling application is essentially single-threaded it may be unable to fully exploit I/O parallelism that the hardware is capable of.
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Select(/poll)_loops"><span id="Select.28.2Fpoll.29_loops"></span>Select(/poll) loops</h3><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=4" title="Edit section: Select(/poll) loops" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div>
+<p>Available in <a href="/wiki/BSD" class="mw-redirect" title="BSD">BSD</a> <a href="/wiki/Unix" title="Unix">Unix</a>, and almost anything else with a <a href="/wiki/TCP/IP" class="mw-redirect" title="TCP/IP">TCP/IP</a> protocol stack that either utilizes or is modeled after the BSD implementation. A variation on the theme of polling, a select loop uses the <code><a href="/wiki/Select_(Unix)" title="Select (Unix)">select</a></code> system call to <a href="/wiki/Sleep_(system_call)" title="Sleep (system call)">sleep</a> until a condition occurs on a <a href="/wiki/File_descriptor" title="File descriptor">file descriptor</a> (e.g., when data is available for reading), a <a href="/wiki/Timeout_(computing)" title="Timeout (computing)">timeout</a> occurs, or a <a href="/wiki/Signal_(computing)" class="mw-redirect" title="Signal (computing)">signal</a> is received (e.g., when a child process dies). By examining the return parameters of the <code>select</code> call, the loop finds out which file descriptor has changed and executes the appropriate code. Often, for ease of use, the select loop is implemented as an <a href="/wiki/Event_loop" title="Event loop">event loop</a>, perhaps using <a href="/wiki/Callback_(computer_programming)" title="Callback (computer programming)">callback functions</a>; the situation lends itself particularly well to <a href="/wiki/Event-driven_programming" title="Event-driven programming">event-driven programming</a>.
+</p><p>While this method is reliable and relatively efficient, it depends heavily on the <a href="/wiki/Unix" title="Unix">Unix</a> paradigm that "<a href="/wiki/Everything_is_a_file" title="Everything is a file">everything is a file</a>"; any blocking I/O that does not involve a file descriptor will block the process. The select loop also relies on being able to involve all I/O in the central <code>select</code> call; libraries that conduct their own I/O are particularly problematic in this respect. An additional potential problem is that the select and the I/O operations are still sufficiently decoupled that select's result may effectively be a lie: if two processes are reading from a single file descriptor (arguably bad design) the select may indicate the availability of read data that has disappeared by the time that the read is issued, thus resulting in blocking; if two processes are writing to a single file descriptor (not that uncommon) the select may indicate immediate writability yet the write may still block, because a buffer has been filled by the other process in the interim, or due to the write being too large for the available buffer or in other ways unsuitable to the recipient.
+</p><p>The select loop does not reach the ultimate system efficiency possible with, say, the <i>completion queues</i> method, because the semantics of the <code>select</code> call, allowing as it does for per-call tuning of the acceptable event set, consumes some amount of time per invocation traversing the selection array. This creates little overhead for user applications that might have open one file descriptor for the <a href="/wiki/Windowing_system" title="Windowing system">windowing system</a> and a few for open files, but becomes more of a problem as the number of potential event sources grows, and can hinder development of many-client server applications, as in the <a href="/wiki/C10k_problem" title="C10k problem">C10k problem</a>; other asynchronous methods may be noticeably more efficient in such cases. Some Unixes provide system-specific calls with better scaling; for example, <code><a href="/wiki/Epoll" title="Epoll">epoll</a></code> in <a href="/wiki/Linux" title="Linux">Linux</a> (that fills the return selection array with only those event sources on which an event has occurred), <code><a href="/wiki/Kqueue" title="Kqueue">kqueue</a></code> in <a href="/wiki/FreeBSD" title="FreeBSD">FreeBSD</a>, and <a href="/w/index.php?title=Event_port&amp;action=edit&amp;redlink=1" class="new" title="Event port (page does not exist)">event ports</a> (and <code>/dev/poll</code>) in <a href="/wiki/Solaris_(operating_system)" class="mw-redirect" title="Solaris (operating system)">Solaris</a>.
+</p><p><a href="/wiki/UNIX_System_V" title="UNIX System V">SVR3</a> <a href="/wiki/Unix" title="Unix">Unix</a> provided the <code>poll</code> system call. Arguably better-named than <code>select</code>, for the purposes of this discussion it is essentially the same thing. SVR4 Unixes (and thus <a href="/wiki/POSIX" title="POSIX">POSIX</a>) offer both calls.
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Signals_(interrupts)"><span id="Signals_.28interrupts.29"></span>Signals (interrupts)</h3><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=5" title="Edit section: Signals (interrupts)" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div>
+<p>Available in <a href="/wiki/BSD" class="mw-redirect" title="BSD">BSD</a> and <a href="/wiki/POSIX" title="POSIX">POSIX</a> Unix. I/O is issued asynchronously, and when it is completed a <a href="/wiki/Signal_(computing)" class="mw-redirect" title="Signal (computing)">signal</a> (<a href="/wiki/Interrupt" title="Interrupt">interrupt</a>) is generated. As in low-level kernel programming, the facilities available for safe use within the signal handler are limited, and the main flow of the process could have been interrupted at nearly any point, resulting in inconsistent data structures as seen by the signal handler. The signal handler is usually not able to issue further asynchronous I/O by itself.
+</p><p>The <i>signal</i> approach, though relatively simple to implement within the OS, brings to the application program the unwelcome baggage associated with writing an operating system's kernel interrupt system. Its worst characteristic is that <i>every</i> blocking (synchronous) system call is potentially interruptible; the programmer must usually incorporate retry code at each call. <sup class="noprint Inline-Template Template-Fact" style="white-space:nowrap;">[<i><a href="/wiki/Wikipedia:Citation_needed" title="Wikipedia:Citation needed"><span title="This claim needs references to reliable sources. (November 2013)">citation needed</span></a></i>]</sup>
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Callback_functions">Callback functions</h3><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=6" title="Edit section: Callback functions" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div>
+<link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1251242444"><table class="box-More_citations_needed plainlinks metadata ambox ambox-content ambox-Refimprove" role="presentation"><tbody><tr><td class="mbox-text"><div class="mbox-text-span">This section <b>needs additional citations for <a href="/wiki/Wikipedia:Verifiability" title="Wikipedia:Verifiability">verification</a></b>.<span class="hide-when-compact"> Please help <a href="/wiki/Special:EditPage/Asynchronous_I/O" title="Special:EditPage/Asynchronous I/O">improve this article</a> by <a href="/wiki/Help:Referencing_for_beginners" title="Help:Referencing for beginners">adding citations to reliable sources</a> in this section. Unsourced material may be challenged and removed.<br><small><span class="plainlinks"><i>Find sources:</i> <a rel="nofollow" class="external text" href="https://www.google.com/search?as_eq=wikipedia&amp;q=%22Asynchronous+I%2FO%22">"Asynchronous I/O"</a> – <a rel="nofollow" class="external text" href="https://www.google.com/search?tbm=nws&amp;q=%22Asynchronous+I%2FO%22+-wikipedia&amp;tbs=ar:1">news</a> <b>·</b> <a rel="nofollow" class="external text" href="https://www.google.com/search?&amp;q=%22Asynchronous+I%2FO%22&amp;tbs=bkt:s&amp;tbm=bks">newspapers</a> <b>·</b> <a rel="nofollow" class="external text" href="https://www.google.com/search?tbs=bks:1&amp;q=%22Asynchronous+I%2FO%22+-wikipedia">books</a> <b>·</b> <a rel="nofollow" class="external text" href="https://scholar.google.com/scholar?q=%22Asynchronous+I%2FO%22">scholar</a> <b>·</b> <a rel="nofollow" class="external text" href="https://www.jstor.org/action/doBasicSearch?Query=%22Asynchronous+I%2FO%22&amp;acc=on&amp;wc=on">JSTOR</a></span></small></span>  <span class="date-container"><i>(<span class="date">July 2022</span>)</i></span><span class="hide-when-compact"><i> (<small><a href="/wiki/Help:Maintenance_template_removal" title="Help:Maintenance template removal">Learn how and when to remove this message</a></small>)</i></span></div></td></tr></tbody></table>
+<p>Available in the <a href="/wiki/Classic_Mac_OS" title="Classic Mac OS">classic Mac OS</a>, <a href="/wiki/OpenVMS" title="OpenVMS">VMS</a> and <a href="/wiki/Microsoft_Windows" title="Microsoft Windows">Windows</a>. Bears many of the characteristics of the <i>signal</i> method as it is fundamentally the same thing, though rarely recognized as such. The difference is that each I/O request usually can have its own completion function, whereas the <i>signal</i> system has a single callback.
+</p><p>On the other hand, a potential problem of using callbacks is that stack depth can grow unmanageably, as an extremely common thing to do when one I/O is finished is to schedule another. If this should be satisfied immediately, the first <a href="/wiki/Callback_(computer_science)" class="mw-redirect" title="Callback (computer science)">callback</a> is not 'unwound' off the stack before the next one is invoked. Systems to prevent this (like 'mid-ground' scheduling of new work) add complexity and reduce performance. In practice, however, this is generally not a problem because the new I/O will itself usually return as soon as the new I/O is started allowing the stack to be 'unwound'. The problem can also be prevented by avoiding any further callbacks, by means of a queue, until the first callback returns.
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Light-weight_processes_or_threads">Light-weight processes or threads</h3><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=7" title="Edit section: Light-weight processes or threads" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div>
+<p><a href="/wiki/Light-weight_process" title="Light-weight process">Light-weight processes</a> (LWPs) or <a href="/wiki/Thread_(computer_science)" class="mw-redirect" title="Thread (computer science)">threads</a> are available in most modern operating systems. Like the <i>process</i> method, but with lower overhead and without the data isolation that hampers coordination of the flows. Each LWP or thread itself uses traditional blocking synchronous I/O, which simplifies programming logic; this is a common paradigm used in many programming languages including Java and Rust. Multithreading needs to use kernel-provided synchronization mechanisms and <a href="/wiki/Thread-safe" class="mw-redirect" title="Thread-safe">thread-safe</a> libraries. This method is not most suitable for extremely large-scale applications like web servers due to the large numbers of threads needed. 
+</p><p>This approach is also used in the <a href="/wiki/Erlang_(programming_language)" title="Erlang (programming language)">Erlang</a> programming language runtime system. The Erlang <a href="/wiki/Virtual_machine" title="Virtual machine">virtual machine</a> uses asynchronous I/O using a small pool of only a few threads or sometimes just one process, to handle I/O from up to millions of Erlang processes. I/O handling in each process is written mostly using blocking synchronous I/O. This way high performance of asynchronous I/O is merged with simplicity of normal I/O (cf. the <a href="/wiki/Actor_model" title="Actor model">Actor model</a>). Many I/O problems in Erlang are mapped to message passing, which can be easily processed using built-in selective receive.
+</p><p><a href="/wiki/Fiber_(computer_science)" title="Fiber (computer science)">Fibers</a> / <a href="/wiki/Coroutine" title="Coroutine">Coroutines</a> can be viewed as a similarly lightweight approach to do asynchronous I/O outside of the Erlang runtime system, although they do not provide exactly the same guarantees as Erlang processes.
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Completion_queues/ports"><span id="Completion_queues.2Fports"></span>Completion queues/ports</h3><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=8" title="Edit section: Completion queues/ports" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div>
+<p>Available in <a href="/wiki/Microsoft_Windows" title="Microsoft Windows">Microsoft Windows</a>, <a href="/wiki/Solaris_(operating_system)" class="mw-redirect" title="Solaris (operating system)">Solaris</a>, <a href="/wiki/AmigaOS" title="AmigaOS">AmigaOS</a>, <a href="/wiki/DNIX" title="DNIX">DNIX</a> and <a href="/wiki/Linux_kernel" title="Linux kernel">Linux</a> (using <a href="/wiki/Io_uring" title="Io uring">io_uring</a>, available on 5.1 and above).<sup id="cite_ref-1" class="reference"><a href="#cite_note-1"><span class="cite-bracket">[</span>1<span class="cite-bracket">]</span></a></sup> I/O requests are issued asynchronously, but notifications of completion are provided via a synchronizing queue mechanism in the order they are completed. Usually associated with a <a href="/wiki/Finite-state_machine" title="Finite-state machine">state-machine</a> structuring of the main process (<a href="/wiki/Event-driven_programming" title="Event-driven programming">event-driven programming</a>), which can bear little resemblance to a process that does not use asynchronous I/O or that uses one of the other forms, hampering code reuse<sup class="noprint Inline-Template Template-Fact" style="white-space:nowrap;">[<i><a href="/wiki/Wikipedia:Citation_needed" title="Wikipedia:Citation needed"><span title="This claim needs references to reliable sources. (April 2017)">citation needed</span></a></i>]</sup>. Does not require additional special synchronization mechanisms or <a href="/wiki/Thread-safe" class="mw-redirect" title="Thread-safe">thread-safe</a> libraries, nor are the textual (code) and time (event) flows separated.
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Event_flags">Event flags</h3><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=9" title="Edit section: Event flags" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div>
+<p>Available in <a href="/wiki/OpenVMS" title="OpenVMS">VMS</a> and <a href="/wiki/AmigaOS" title="AmigaOS">AmigaOS</a> (often used in conjunction with a completion port). Bears many of the characteristics of the <i>completion queue</i> method, as it is essentially a completion queue of depth one. To simulate the effect of queue 'depth', an additional event flag is required for each potential unprocessed (but completed) event, or event information can be lost. Waiting for the next available event in such a clump requires synchronizing mechanisms that may not scale well to larger numbers of potentially parallel events.
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Channel_I/O"><span id="Channel_I.2FO"></span>Channel I/O</h3><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=10" title="Edit section: Channel I/O" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div>
+<p>Available in mainframes by <a href="/wiki/IBM" title="IBM">IBM</a>, <a href="/wiki/Groupe_Bull" title="Groupe Bull">Groupe Bull</a>, and <a href="/wiki/Unisys" title="Unisys">Unisys</a>. <a href="/wiki/Channel_I/O" title="Channel I/O">Channel I/O</a> is designed to maximize CPU utilization and throughput by offloading most I/O onto a coprocessor. The coprocessor has onboard DMA, handles device interrupts, is controlled by the main CPU, and only interrupts the main CPU when it's truly necessary. This architecture also supports so-called channel programs that run on the channel processor to do heavy lifting for I/O activities and protocols.
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Registered_I/O"><span id="Registered_I.2FO"></span>Registered I/O</h3><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=11" title="Edit section: Registered I/O" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div>
+<p>Available in <a href="/wiki/Windows_Server_2012" title="Windows Server 2012">Windows Server 2012</a> and <a href="/wiki/Windows_8" title="Windows 8">Windows 8</a>. Optimized for applications that process large numbers of small messages to achieve higher <a href="/wiki/IOPS" title="IOPS">I/O operations per second</a> with reduced jitter and latency.<sup id="cite_ref-2" class="reference"><a href="#cite_note-2"><span class="cite-bracket">[</span>2<span class="cite-bracket">]</span></a></sup>
+</p>
+<link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1251242444"><table class="box-Expand_section plainlinks metadata ambox mbox-small-left ambox-content" role="presentation"><tbody><tr><td class="mbox-text"><div class="mbox-text-span">This section <b>needs expansion</b>. You can help by <a class="external text" href="https://en.wikipedia.org/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=">adding to it</a>.  <span class="date-container"><i>(<span class="date">May 2014</span>)</i></span></div></td></tr></tbody></table>
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(2)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="Implementation">Implementation</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=12" title="Edit section: Implementation" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-2 collapsible-block" id="mf-section-2">
+<link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1251242444"><table class="box-Essay-like plainlinks metadata ambox ambox-style ambox-essay-like" role="presentation"><tbody><tr><td class="mbox-text"><div class="mbox-text-span">This section <b>is written like a <a href="/wiki/Wikipedia:What_Wikipedia_is_not#Wikipedia_is_not_a_publisher_of_original_thought" title="Wikipedia:What Wikipedia is not">personal reflection, personal essay, or argumentative essay</a></b> that states a Wikipedia editor's personal feelings or presents an original argument about a topic.<span class="hide-when-compact"> Please <a class="external text" href="https://en.wikipedia.org/w/index.php?title=Asynchronous_I/O&amp;action=edit">help improve it</a> by rewriting it in an <a href="/wiki/Wikipedia:Writing_better_articles#Information_style_and_tone" title="Wikipedia:Writing better articles">encyclopedic style</a>.</span>  <span class="date-container"><i>(<span class="date">February 2016</span>)</i></span><span class="hide-when-compact"><i> (<small><a href="/wiki/Help:Maintenance_template_removal" title="Help:Maintenance template removal">Learn how and when to remove this message</a></small>)</i></span></div></td></tr></tbody></table>
+<link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1251242444"><table class="box-Unreferenced_section plainlinks metadata ambox ambox-content ambox-Unreferenced" role="presentation"><tbody><tr><td class="mbox-text"><div class="mbox-text-span">This section <b>does not <a href="/wiki/Wikipedia:Citing_sources" title="Wikipedia:Citing sources">cite</a> any <a href="/wiki/Wikipedia:Verifiability" title="Wikipedia:Verifiability">sources</a></b>.<span class="hide-when-compact"> Please help <a href="/wiki/Special:EditPage/Asynchronous_I/O" title="Special:EditPage/Asynchronous I/O">improve this section</a> by <a href="/wiki/Help:Referencing_for_beginners" title="Help:Referencing for beginners">adding citations to reliable sources</a>. Unsourced material may be challenged and <a href="/wiki/Wikipedia:Verifiability#Burden_of_evidence" title="Wikipedia:Verifiability">removed</a>.</span>  <span class="date-container"><i>(<span class="date">February 2016</span>)</i></span><span class="hide-when-compact"><i> (<small><a href="/wiki/Help:Maintenance_template_removal" title="Help:Maintenance template removal">Learn how and when to remove this message</a></small>)</i></span></div></td></tr></tbody></table>
+<p>The vast majority of general-purpose computing hardware relies entirely upon two methods of implementing asynchronous I/O: polling and interrupts. Usually both methods are used together, the balance depends heavily upon the design of the hardware and its required performance characteristics. (<a href="/wiki/Direct_memory_access" title="Direct memory access">DMA</a> is not itself another independent method, it is merely a means by which more work can be done per poll or interrupt.)
+</p><p>Pure polling systems are entirely possible, small microcontrollers (such as systems using the <a href="/wiki/PIC_microcontroller" class="mw-redirect" title="PIC microcontroller">PIC</a>) are often built this way. <a href="/wiki/CP/M" title="CP/M">CP/M</a> systems could also be built this way (though rarely were), with or without DMA. Also, when the utmost performance is necessary for only a <i>few</i> tasks, at the expense of any other potential tasks, polling may also be appropriate as the overhead of taking interrupts may be unwelcome. (Servicing an interrupt requires time [and space] to save at least part of the processor state, along with the time required to resume the interrupted task.)
+</p><p>Most general-purpose computing systems rely heavily upon interrupts. A pure interrupt system may be possible, though usually some component of polling is also required, as it is very common for multiple potential sources of interrupts to share a common interrupt signal line, in which case polling is used within the <a href="/wiki/Device_driver" title="Device driver">device driver</a> to resolve the actual source. (This resolution time also contributes to an interrupt system's performance penalty. Over the years a great deal of work has been done to try to minimize the overhead associated with servicing an interrupt. Current interrupt systems are rather <a href="https://en.wiktionary.org/wiki/lackadaisical" class="extiw" title="wiktionary:lackadaisical">lackadaisical</a> when compared to some highly tuned earlier ones, but the general increase in hardware performance has greatly mitigated this.)
+</p><p>Hybrid approaches are also possible, wherein an interrupt can trigger the beginning of some burst of asynchronous I/O, and polling is used within the burst itself. This technique is common in high-speed device drivers, such as network or disk, where the time lost in returning to the pre-interrupt task is greater than the time until the next required servicing. (Common I/O hardware in use these days relies heavily upon DMA and large data buffers to make up for a relatively poorly-performing interrupt system. These characteristically use polling inside the driver loops, and can exhibit tremendous throughput. Ideally the per-datum polls are always successful, or at most repeated a small number of times.)
+</p><p>At one time this sort of hybrid approach was common in disk and network drivers where there was not DMA or significant buffering available. Because the desired transfer speeds were faster even than could tolerate the minimum four-operation per-datum loop (bit-test, conditional-branch-to-self, fetch, and store), the hardware would often be built with automatic <a href="/wiki/Wait_state" title="Wait state">wait state</a> generation on the I/O device, pushing the data ready poll out of software and onto the processor's fetch or store hardware and reducing the programmed loop to two operations. (In effect using the processor  itself as a DMA engine.) The <a href="/wiki/MOS_Technology_6502" title="MOS Technology 6502">6502</a> processor offered an unusual means to provide a three-element per-datum loop, as it had a hardware pin that, when asserted, would cause the processor's Overflow bit to be set directly. (Obviously one would have to take great care in the hardware design to avoid overriding the Overflow bit outside of the device driver!)
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Synthesis">Synthesis</h3><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=13" title="Edit section: Synthesis" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div>
+<p>Using only these two tools (polling, and interrupts), all the other forms of asynchronous I/O discussed above may be (and in fact, are) synthesized.
+</p><p>In an environment such as a <a href="/wiki/Java_virtual_machine" title="Java virtual machine">Java virtual machine</a> (JVM), asynchronous I/O can be synthesized <i>even though</i> the environment the JVM is running in may not offer it at all. This is due to the interpreted nature of the JVM. The JVM may poll (or take an interrupt) periodically to institute an internal flow of control change, effecting the appearance of multiple simultaneous processes, at least some of which presumably exist in order to perform asynchronous I/O. (Of course, at the microscopic level the parallelism may be rather coarse and exhibit some non-ideal characteristics, but on the surface it will appear to be as desired.)
+</p><p>That, in fact, is the problem with using polling in any form to synthesize a different form of asynchronous I/O. Every CPU cycle that is a poll is wasted, and lost to overhead rather than  accomplishing a desired task. Every CPU cycle that is <i>not</i> a poll represents an increase in latency of reaction to pending I/O. Striking an acceptable balance between these two opposing forces is difficult. (This is why hardware interrupt systems were invented in the first place.)
+</p><p>The trick to maximize efficiency is to minimize the amount of work that has to be done upon reception of an interrupt in order to awaken the appropriate application. Secondarily (but perhaps no less important) is the method the application itself uses to determine what it needs to do.
+</p><p>Particularly problematic (for application efficiency) are the exposed polling methods, including the select/poll mechanisms. Though the underlying I/O events they are interested in are in all likelihood interrupt-driven, the interaction <i>to</i> this mechanism is polled and can consume a large amount of time in the poll. This is particularly true of the potentially large-scale polling possible through select (and poll). Interrupts map very well to Signals, Callback functions, Completion Queues, and Event flags, such systems can be very efficient.
+</p>
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(3)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="Examples">Examples</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=14" title="Edit section: Examples" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-3 collapsible-block" id="mf-section-3">
+<p>The following examples show three approaches to reading I/O. The objects and functions are abstract.
+</p><p>1. Blocking, synchronous:
+</p>
+<div class="mw-highlight mw-highlight-lang-python mw-content-ltr" dir="ltr"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>  <span class="c1"># thread will be blocked until there is data in the device</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+<p>2. Blocking and non-blocking, synchronous: (here <code>IO.poll()</code> blocks for up to 5 seconds, but <code>device.read()</code> doesn't)
+</p>
+<div class="mw-highlight mw-highlight-lang-python mw-content-ltr" dir="ltr"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+<span class="n">ready</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="k">while</span> <span class="ow">not</span> <span class="n">ready</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"There is no data to read!"</span><span class="p">)</span>
+    <span class="n">ready</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">poll</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">IO</span><span class="o">.</span><span class="n">INPUT</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>  <span class="c1"># returns control if 5 seconds have elapsed or there is data to read(INPUT)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+<p>3. Non-blocking, asynchronous:
+</p>
+<div class="mw-highlight mw-highlight-lang-python mw-content-ltr" dir="ltr"><pre><span></span><span class="n">ios</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">IOService</span><span class="p">()</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">ios</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">input_handler</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">err</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Input data handler"""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">err</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+<span class="n">device</span><span class="o">.</span><span class="n">read_some</span><span class="p">(</span><span class="n">input_handler</span><span class="p">)</span>
+<span class="n">ios</span><span class="o">.</span><span class="n">loop</span><span class="p">()</span>  <span class="c1"># wait till all operations have been completed and call all appropriate handlers</span>
+</pre></div>
+<p>Here is the same example with <a href="/wiki/Async/await" title="Async/await">async/await</a>:
+</p>
+<div class="mw-highlight mw-highlight-lang-python mw-content-ltr" dir="ltr"><pre><span></span><span class="n">ios</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">IOService</span><span class="p">()</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">ios</span><span class="p">)</span>
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">task</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span> 
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">device</span><span class="o">.</span><span class="n">read_some</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+<span class="n">ios</span><span class="o">.</span><span class="n">addTask</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+<span class="n">ios</span><span class="o">.</span><span class="n">loop</span><span class="p">()</span>  <span class="c1"># wait till all operations have been completed and call all appropriate handlers</span>
+</pre></div>
+<p>Here is the example with <a href="/wiki/Reactor_pattern" title="Reactor pattern">Reactor pattern</a>:
+</p>
+<div class="mw-highlight mw-highlight-lang-python mw-content-ltr" dir="ltr"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+<span class="n">reactor</span> <span class="o">=</span> <span class="n">IO</span><span class="o">.</span><span class="n">Reactor</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">input_handler</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Input data handler"""</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">reactor</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+<span class="n">reactor</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="n">input_handler</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">IO</span><span class="o">.</span><span class="n">INPUT</span><span class="p">)</span>
+<span class="n">reactor</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>  <span class="c1"># run reactor, which handles events and calls appropriate handlers</span>
+</pre></div>
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(4)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="See_also">See also</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=15" title="Edit section: See also" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-4 collapsible-block" id="mf-section-4">
+<ul><li><a href="/wiki/Input/output_completion_port" title="Input/output completion port">Input/output completion port</a> (IOCP)</li>
+<li><a href="/wiki/C10k_problem" title="C10k problem">C10k problem</a></li></ul>
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(5)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="References">References</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=16" title="Edit section: References" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-5 collapsible-block" id="mf-section-5">
+<div class="mw-references-wrap"><ol class="references">
+<li id="cite_note-1"><span class="mw-cite-backlink"><b><a href="#cite_ref-1">^</a></b></span> <span class="reference-text"><style data-mw-deduplicate="TemplateStyles:r1238218222">.mw-parser-output cite.citation{font-style:inherit;word-wrap:break-word}.mw-parser-output .citation q{quotes:"\"""\"""'""'"}.mw-parser-output .citation:target{background-color:rgba(0,127,255,0.133)}.mw-parser-output .id-lock-free.id-lock-free a{background:url("//upload.wikimedia.org/wikipedia/commons/6/65/Lock-green.svg")right 0.1em center/9px no-repeat}.mw-parser-output .id-lock-limited.id-lock-limited a,.mw-parser-output .id-lock-registration.id-lock-registration a{background:url("//upload.wikimedia.org/wikipedia/commons/d/d6/Lock-gray-alt-2.svg")right 0.1em center/9px no-repeat}.mw-parser-output .id-lock-subscription.id-lock-subscription a{background:url("//upload.wikimedia.org/wikipedia/commons/a/aa/Lock-red-alt-2.svg")right 0.1em center/9px no-repeat}.mw-parser-output .cs1-ws-icon a{background:url("//upload.wikimedia.org/wikipedia/commons/4/4c/Wikisource-logo.svg")right 0.1em center/12px no-repeat}body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-free a,body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-limited a,body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-registration a,body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-subscription a,body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .cs1-ws-icon a{background-size:contain;padding:0 1em 0 0}.mw-parser-output .cs1-code{color:inherit;background:inherit;border:none;padding:inherit}.mw-parser-output .cs1-hidden-error{display:none;color:var(--color-error,#d33)}.mw-parser-output .cs1-visible-error{color:var(--color-error,#d33)}.mw-parser-output .cs1-maint{display:none;color:#085;margin-left:0.3em}.mw-parser-output .cs1-kern-left{padding-left:0.2em}.mw-parser-output .cs1-kern-right{padding-right:0.2em}.mw-parser-output .citation .mw-selflink{font-weight:inherit}@media screen{.mw-parser-output .cs1-format{font-size:95%}html.skin-theme-clientpref-night .mw-parser-output .cs1-maint{color:#18911f}}@media screen and (prefers-color-scheme:dark){html.skin-theme-clientpref-os .mw-parser-output .cs1-maint{color:#18911f}}</style><cite id="CITEREFCorbet" class="citation web cs1">Corbet, Jonathan. <a rel="nofollow" class="external text" href="https://lwn.net/Articles/776703/">"Ringing in a new asynchronous I/O API"</a>. <i>LWN.net</i><span class="reference-accessdate">. Retrieved <span class="nowrap">27 July</span> 2020</span>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=unknown&amp;rft.jtitle=LWN.net&amp;rft.atitle=Ringing+in+a+new+asynchronous+I%2FO+API&amp;rft.aulast=Corbet&amp;rft.aufirst=Jonathan&amp;rft_id=https%3A%2F%2Flwn.net%2FArticles%2F776703%2F&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AAsynchronous+I%2FO" class="Z3988"></span></span>
+</li>
+<li id="cite_note-2"><span class="mw-cite-backlink"><b><a href="#cite_ref-2">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1238218222"><cite class="citation web cs1"><a rel="nofollow" class="external text" href="https://technet.microsoft.com/en-us/library/hh997032.aspx">"Registered Input-Output (RIO) API Extensions"</a>. <i>technet.microsoft.com</i>. 31 August 2016.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=unknown&amp;rft.jtitle=technet.microsoft.com&amp;rft.atitle=Registered+Input-Output+%28RIO%29+API+Extensions&amp;rft.date=2016-08-31&amp;rft_id=https%3A%2F%2Ftechnet.microsoft.com%2Fen-us%2Flibrary%2Fhh997032.aspx&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AAsynchronous+I%2FO" class="Z3988"></span></span>
+</li>
+</ol></div>
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(6)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="External_links">External links</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=Asynchronous_I/O&amp;action=edit&amp;section=17" title="Edit section: External links" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-6 collapsible-block" id="mf-section-6">
+<ul><li><a rel="nofollow" class="external text" href="https://web.archive.org/web/20130722134723/http://www.kegel.com/c10k.html">The C10K Problem</a>; a survey of asynchronous I/O methods with emphasis on scaling – by Dan Kegel</li>
+<li>Article "<a rel="nofollow" class="external text" href="https://web.archive.org/web/20160422074109/https://www.ibm.com/developerworks/library/l-async/">Boost application performance using asynchronous I/O</a>" by <a href="/w/index.php?title=M._Tim_Jones&amp;action=edit&amp;redlink=1" class="new" title="M. Tim Jones (page does not exist)">M. Tim Jones</a></li>
+<li>Article "<a rel="nofollow" class="external text" href="http://www.usenix.org/event/usenix04/tech/general/full_papers/elmeleegy/elmeleegy_html/html.html">Lazy Asynchronous I/O For Event-Driven Servers</a>" by <a href="/wiki/Willy_Zwaenepoel" title="Willy Zwaenepoel">Willy Zwaenepoel</a>, <a href="/w/index.php?title=Khaled_Elmeleegy&amp;action=edit&amp;redlink=1" class="new" title="Khaled Elmeleegy (page does not exist)">Khaled Elmeleegy</a>, <a href="/w/index.php?title=Anupam_Chanda&amp;action=edit&amp;redlink=1" class="new" title="Anupam Chanda (page does not exist)">Anupam Chanda</a> and <a href="/w/index.php?title=Alan_L._Cox&amp;action=edit&amp;redlink=1" class="new" title="Alan L. Cox (page does not exist)">Alan L. Cox</a></li>
+<li><a rel="nofollow" class="external text" href="https://www.gnu.org/software/libc/manual/html_node/Asynchronous-I_002fO.html">Perform I/O Operations in Parallel</a></li>
+<li><a rel="nofollow" class="external text" href="http://opengroup.org/onlinepubs/009695399/basedefs/aio.h.html">Description from POSIX standard</a></li>
+<li><a rel="nofollow" class="external text" href="https://web.archive.org/web/20101101112358/http://doc.sch130.nsc.ru/www.sysinternals.com/ntw2k/info/comport.shtml">Inside I/O Completion Ports</a> by <a href="/wiki/Mark_Russinovich" title="Mark Russinovich">Mark Russinovich</a></li>
+<li><a rel="nofollow" class="external text" href="http://msdn.microsoft.com/en-US/library/kztecsys%28v=vs.100%29.aspx">Description from .NET Framework Developer's Guide</a></li>
+<li><a rel="nofollow" class="external text" href="http://www.flounder.com/asynchexplorer.htm">Asynchronous I/O and The Asynchronous Disk I/O Explorer</a></li>
+<li><a rel="nofollow" class="external text" href="http://software.schmorp.de/pkg/IO-AIO.html">IO::AIO is a Perl module offering an asynchronous interface for most I/O operations</a></li>
+<li><a rel="nofollow" class="external text" href="https://web.archive.org/web/20170623060116/http://www.cs.wustl.edu/~schmidt/PDF/proactor.pdf">ACE Proactor</a></li></ul>
+<!-- 
+NewPP limit report
+Parsed by mw‐api‐ext.eqiad.main‐76db5ccb98‐bfg4r
+Cached time: 20250428143722
+Cache expiry: 2592000
+Reduced expiry: false
+Complications: [vary‐revision‐sha1, show‐toc]
+CPU time usage: 0.383 seconds
+Real time usage: 0.560 seconds
+Preprocessor visited node count: 1883/1000000
+Post‐expand include size: 56068/2097152 bytes
+Template argument size: 5132/2097152 bytes
+Highest expansion depth: 15/100
+Expensive parser function count: 20/500
+Unstrip recursion depth: 1/20
+Unstrip post‐expand size: 23056/5000000 bytes
+Lua time usage: 0.222/10.000 seconds
+Lua memory usage: 4555038/52428800 bytes
+Number of Wikibase entities loaded: 0/500
+-->
+<!--
+Transclusion expansion time report (%,ms,calls,template)
+100.00%  491.458      1 -total
+ 25.85%  127.059      2 Template:Cite_web
+ 24.22%  119.051      6 Template:Ambox
+ 19.43%   95.486      1 Template:Short_description
+ 16.55%   81.337      1 Template:Refimprove
+ 11.78%   57.897      2 Template:Pagetype
+ 10.32%   50.716      1 Template:Cleanup
+ 10.27%   50.484      4 Template:Citation_needed
+  9.11%   44.752      7 Template:Main_other
+  8.11%   39.842      4 Template:Fix
+-->
+
+<!-- Saved in parser cache with key enwiki:pcache:1880953:|#|:idhash:canonical and timestamp 20250428143722 and revision id 1287796262. Rendering was triggered because: api-parse
+ -->
+</section></div>
+<!-- MobileFormatter took 0.009 seconds --><!--esi <esi:include src="/esitest-fa8a495983347898/content" /> --><noscript><img src="https://en.m.wikipedia.org/wiki/Special:CentralAutoLogin/start?type=1x1&amp;usesul3=1" alt="" width="1" height="1" style="border: none; position: absolute;"></noscript>
+<div class="printfooter" data-nosnippet="">Retrieved from "<a dir="ltr" href="https://en.wikipedia.org/w/index.php?title=Asynchronous_I/O&amp;oldid=1287796262">https://en.wikipedia.org/w/index.php?title=Asynchronous_I/O&amp;oldid=1287796262</a>"</div></div>
+				
+			</div>
+			<div class="post-content" id="page-secondary-actions">
+			</div>
+		</main>
+		<footer class="mw-footer minerva-footer" role="contentinfo">
+		  <a class="last-modified-bar" href="/w/index.php?title=Asynchronous_I/O&amp;action=history">
+  	<div class="post-content last-modified-bar__content">
+  		 <span class="minerva-icon minerva-icon-size-medium minerva-icon--modified-history"></span>
+ 
+  		<span class="last-modified-bar__text modified-enhancement"
+  				data-user-name="John of Reading"
+  				data-user-gender="male"
+  				data-timestamp="1745851039">
+  				<span>Last edited on 28 April 2025, at 14:37</span>
+  		</span>
+  		 <span class="minerva-icon minerva-icon-size-small minerva-icon--expand"></span>
+ 
+  	</div>
+  </a>
+	<div class="post-content footer-content">
+			<div id='mw-data-after-content'>
+	<div class="read-more-container"></div>
+</div>
+
+			<div id="p-lang">
+	    <h4>Languages</h4>
+	    <section>
+	        <ul id="p-variants" class="minerva-languages"></ul>
+	        <ul class="minerva-languages"><li class="interlanguage-link interwiki-ca mw-list-item"><a href="https://ca.wikipedia.org/wiki/E/S_as%C3%ADncrona" title="E/S asíncrona – Catalan" lang="ca" hreflang="ca" data-title="E/S asíncrona" data-language-autonym="Català" data-language-local-name="Catalan" class="interlanguage-link-target"><span>Català</span></a></li><li class="interlanguage-link interwiki-cs mw-list-item"><a href="https://cs.wikipedia.org/wiki/Asynchronn%C3%AD_vstup/v%C3%BDstup" title="Asynchronní vstup/výstup – Czech" lang="cs" hreflang="cs" data-title="Asynchronní vstup/výstup" data-language-autonym="Čeština" data-language-local-name="Czech" class="interlanguage-link-target"><span>Čeština</span></a></li><li class="interlanguage-link interwiki-es mw-list-item"><a href="https://es.wikipedia.org/wiki/E/S_as%C3%ADncrona" title="E/S asíncrona – Spanish" lang="es" hreflang="es" data-title="E/S asíncrona" data-language-autonym="Español" data-language-local-name="Spanish" class="interlanguage-link-target"><span>Español</span></a></li><li class="interlanguage-link interwiki-fa mw-list-item"><a href="https://fa.wikipedia.org/wiki/%D9%88%D8%B1%D9%88%D8%AF%DB%8C/%D8%AE%D8%B1%D9%88%D8%AC%DB%8C_%D9%86%D8%A7%D9%87%D9%85%DA%AF%D8%A7%D9%85" title="ورودی/خروجی ناهمگام – Persian" lang="fa" hreflang="fa" data-title="ورودی/خروجی ناهمگام" data-language-autonym="فارسی" data-language-local-name="Persian" class="interlanguage-link-target"><span>فارسی</span></a></li><li class="interlanguage-link interwiki-ko mw-list-item"><a href="https://ko.wikipedia.org/wiki/%EB%B9%84%EB%8F%99%EA%B8%B0_%EC%9E%85%EC%B6%9C%EB%A0%A5" title="비동기 입출력 – Korean" lang="ko" hreflang="ko" data-title="비동기 입출력" data-language-autonym="한국어" data-language-local-name="Korean" class="interlanguage-link-target"><span>한국어</span></a></li><li class="interlanguage-link interwiki-ms mw-list-item"><a href="https://ms.wikipedia.org/wiki/I/O_tak_segerak" title="I/O tak segerak – Malay" lang="ms" hreflang="ms" data-title="I/O tak segerak" data-language-autonym="Bahasa Melayu" data-language-local-name="Malay" class="interlanguage-link-target"><span>Bahasa Melayu</span></a></li><li class="interlanguage-link interwiki-ja mw-list-item"><a href="https://ja.wikipedia.org/wiki/%E9%9D%9E%E5%90%8C%E6%9C%9FIO" title="非同期IO – Japanese" lang="ja" hreflang="ja" data-title="非同期IO" data-language-autonym="日本語" data-language-local-name="Japanese" class="interlanguage-link-target"><span>日本語</span></a></li><li class="interlanguage-link interwiki-no mw-list-item"><a href="https://no.wikipedia.org/wiki/Asynkron_kommunikasjon" title="Asynkron kommunikasjon – Norwegian Bokmål" lang="nb" hreflang="nb" data-title="Asynkron kommunikasjon" data-language-autonym="Norsk bokmål" data-language-local-name="Norwegian Bokmål" class="interlanguage-link-target"><span>Norsk bokmål</span></a></li><li class="interlanguage-link interwiki-ru mw-list-item"><a href="https://ru.wikipedia.org/wiki/%D0%90%D1%81%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%BD%D1%8B%D0%B9_%D0%B2%D0%B2%D0%BE%D0%B4-%D0%B2%D1%8B%D0%B2%D0%BE%D0%B4" title="Асинхронный ввод-вывод – Russian" lang="ru" hreflang="ru" data-title="Асинхронный ввод-вывод" data-language-autonym="Русский" data-language-local-name="Russian" class="interlanguage-link-target"><span>Русский</span></a></li><li class="interlanguage-link interwiki-uk mw-list-item"><a href="https://uk.wikipedia.org/wiki/%D0%90%D1%81%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%BD%D0%B8%D0%B9_%D0%B2%D0%B2%D1%96%D0%B4/%D0%B2%D0%B8%D0%B2%D1%96%D0%B4" title="Асинхронний ввід/вивід – Ukrainian" lang="uk" hreflang="uk" data-title="Асинхронний ввід/вивід" data-language-autonym="Українська" data-language-local-name="Ukrainian" class="interlanguage-link-target"><span>Українська</span></a></li><li class="interlanguage-link interwiki-zh-yue mw-list-item"><a href="https://zh-yue.wikipedia.org/wiki/%E7%95%B0%E6%AD%A5%E8%BC%B8%E5%85%A5%E8%BC%B8%E5%87%BA" title="異步輸入輸出 – Cantonese" lang="yue" hreflang="yue" data-title="異步輸入輸出" data-language-autonym="粵語" data-language-local-name="Cantonese" class="interlanguage-link-target"><span>粵語</span></a></li><li class="interlanguage-link interwiki-zh mw-list-item"><a href="https://zh.wikipedia.org/wiki/%E7%95%B0%E6%AD%A5I/O" title="異步I/O – Chinese" lang="zh" hreflang="zh" data-title="異步I/O" data-language-autonym="中文" data-language-local-name="Chinese" class="interlanguage-link-target"><span>中文</span></a></li></ul>
+	    </section>
+	</div>
+	<div class="minerva-footer-logo">
+				<img src="/static/images/mobile/copyright/wikipedia-wordmark-en.svg" alt="Wikipedia" width="120" height="18"
+	style="width: 7.5em; height: 1.125em;"/>
+
+
+				<ul id="footer-icons" class="footer-icons">
+	<li id="footer-copyrightico"><a href="https://www.wikimedia.org/" class="cdx-button cdx-button--fake-button cdx-button--size-large cdx-button--fake-button--enabled"><picture><source media="(min-width: 500px)" srcset="/static/images/footer/wikimedia-button.svg" width="84" height="29"><img src="/static/images/footer/wikimedia.svg" width="25" height="25" alt="Wikimedia Foundation" lang="en" loading="lazy"></picture></a></li>
+	<li id="footer-poweredbyico"><a href="https://www.mediawiki.org/" class="cdx-button cdx-button--fake-button cdx-button--size-large cdx-button--fake-button--enabled"><picture><source media="(min-width: 500px)" srcset="/w/resources/assets/poweredby_mediawiki.svg" width="88" height="31"><img src="/w/resources/assets/mediawiki_compact.svg" alt="Powered by MediaWiki" lang="en" width="25" height="25" loading="lazy"></picture></a></li>
+</ul>
+			</div>
+			<ul id="footer-info" class="footer-info hlist hlist-separated">
+	<li id="footer-info-lastmod"> This page was last edited on 28 April 2025, at 14:37<span class="anonymous-show">&#160;(UTC)</span>.</li>
+	<li id="footer-info-copyright">Content is available under <a class="external" rel="nofollow" href="https://creativecommons.org/licenses/by-sa/4.0/deed.en">CC BY-SA 4.0</a> unless otherwise noted.</li>
+</ul>
+
+			<ul id="footer-places" class="footer-places hlist hlist-separated">
+	<li id="footer-places-privacy"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy">Privacy policy</a></li>
+	<li id="footer-places-about"><a href="/wiki/Wikipedia:About">About Wikipedia</a></li>
+	<li id="footer-places-disclaimers"><a href="/wiki/Wikipedia:General_disclaimer">Disclaimers</a></li>
+	<li id="footer-places-contact"><a href="//en.wikipedia.org/wiki/Wikipedia:Contact_us">Contact Wikipedia</a></li>
+	<li id="footer-places-wm-codeofconduct"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Universal_Code_of_Conduct">Code of Conduct</a></li>
+	<li id="footer-places-developers"><a href="https://developer.wikimedia.org">Developers</a></li>
+	<li id="footer-places-statslink"><a href="https://stats.wikimedia.org/#/en.wikipedia.org">Statistics</a></li>
+	<li id="footer-places-cookiestatement"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Cookie_statement">Cookie statement</a></li>
+	<li id="footer-places-terms-use"><a href="https://foundation.m.wikimedia.org/wiki/Special:MyLanguage/Policy:Terms_of_Use">Terms of Use</a></li>
+	<li id="footer-places-desktop-toggle"><a id="mw-mf-display-toggle" href="//en.wikipedia.org/w/index.php?title=Asynchronous_I/O&amp;mobileaction=toggle_view_desktop" data-event-name="switch_to_desktop">Desktop</a></li>
+</ul>
+
+			</div>
+		</footer>
+			</div>
+</div>
+<div class="mw-portlet mw-portlet-dock-bottom emptyPortlet" id="p-dock-bottom">
+        <ul>
+                
+        </ul>
+</div>
+<div class="mw-notification-area" data-mw="interface"></div>
+<!-- v:8.3.1 -->
+<script>(RLQ=window.RLQ||[]).push(function(){mw.config.set({"wgHostname":"mw-web.eqiad.main-65f77498cc-hg5j8","wgBackendResponseTime":181,"wgPageParseReport":{"limitreport":{"cputime":"0.383","walltime":"0.560","ppvisitednodes":{"value":1883,"limit":1000000},"postexpandincludesize":{"value":56068,"limit":2097152},"templateargumentsize":{"value":5132,"limit":2097152},"expansiondepth":{"value":15,"limit":100},"expensivefunctioncount":{"value":20,"limit":500},"unstrip-depth":{"value":1,"limit":20},"unstrip-size":{"value":23056,"limit":5000000},"entityaccesscount":{"value":0,"limit":500},"timingprofile":["100.00%  491.458      1 -total"," 25.85%  127.059      2 Template:Cite_web"," 24.22%  119.051      6 Template:Ambox"," 19.43%   95.486      1 Template:Short_description"," 16.55%   81.337      1 Template:Refimprove"," 11.78%   57.897      2 Template:Pagetype"," 10.32%   50.716      1 Template:Cleanup"," 10.27%   50.484      4 Template:Citation_needed","  9.11%   44.752      7 Template:Main_other","  8.11%   39.842      4 Template:Fix"]},"scribunto":{"limitreport-timeusage":{"value":"0.222","limit":"10.000"},"limitreport-memusage":{"value":4555038,"limit":52428800}},"cachereport":{"origin":"mw-api-ext.eqiad.main-76db5ccb98-bfg4r","timestamp":"20250428143722","ttl":2592000,"transientcontent":false}}});});</script>
+<script type="application/ld+json">{"@context":"https:\/\/schema.org","@type":"Article","name":"Asynchronous I\/O","url":"https:\/\/en.wikipedia.org\/wiki\/Asynchronous_I\/O","sameAs":"http:\/\/www.wikidata.org\/entity\/Q752741","mainEntity":"http:\/\/www.wikidata.org\/entity\/Q752741","author":{"@type":"Organization","name":"Contributors to Wikimedia projects"},"publisher":{"@type":"Organization","name":"Wikimedia Foundation, Inc.","logo":{"@type":"ImageObject","url":"https:\/\/www.wikimedia.org\/static\/images\/wmf-hor-googpub.png"}},"datePublished":"2005-05-13T06:25:28Z","dateModified":"2025-04-28T14:37:19Z","headline":"form of input\/output processing"}</script><script>(window.NORLQ=window.NORLQ||[]).push(function(){var ns,i,p,img;ns=document.getElementsByTagName('noscript');for(i=0;i<ns.length;i++){p=ns[i].nextSibling;if(p&&p.className&&p.className.indexOf('lazy-image-placeholder')>-1){img=document.createElement('img');img.setAttribute('src',p.getAttribute('data-mw-src'));img.setAttribute('width',p.getAttribute('data-width'));img.setAttribute('height',p.getAttribute('data-height'));img.setAttribute('alt',p.getAttribute('data-alt'));p.parentNode.replaceChild(img,p);}}});</script>
+</body>
+</html>

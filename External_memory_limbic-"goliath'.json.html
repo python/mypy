@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html class="client-nojs skin-theme-clientpref-day mf-expand-sections-clientpref-0 mf-font-size-clientpref-small mw-mf-amc-clientpref-0" lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>External memory algorithm - Wikipedia</title>
+<script>(function(){var className="client-js skin-theme-clientpref-day mf-expand-sections-clientpref-0 mf-font-size-clientpref-small mw-mf-amc-clientpref-0";var cookie=document.cookie.match(/(?:^|; )enwikimwclientpreferences=([^;]+)/);if(cookie){cookie[1].split('%2C').forEach(function(pref){className=className.replace(new RegExp('(^| )'+pref.replace(/-clientpref-\w+$|[^\w-]+/g,'')+'-clientpref-\\w+( |$)'),'$1'+pref+'$2');});}document.documentElement.className=className;}());RLCONF={"wgBreakFrames":false,"wgSeparatorTransformTable":["",""],"wgDigitTransformTable":["",""],"wgDefaultDateFormat":"dmy","wgMonthNames":["","January","February","March","April","May","June","July","August","September","October","November","December"],"wgRequestId":"2755383b-60cc-4a50-9243-ed63cb09485c","wgCanonicalNamespace":"","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":0,"wgPageName":"External_memory_algorithm","wgTitle":"External memory algorithm","wgCurRevisionId":1270502931,"wgRevisionId":1270502931,"wgArticleId":1881722,"wgIsArticle":true,"wgIsRedirect":false,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgPageViewLanguage":"en","wgPageContentLanguage":"en","wgPageContentModel":"wikitext","wgRelevantPageName":"External_memory_algorithm","wgRelevantArticleId":1881722,"wgIsProbablyEditable":true,"wgRelevantPageIsProbablyEditable":true,"wgRestrictionEdit":[],"wgRestrictionMove":[],"wgNoticeProject":"wikipedia","wgCiteReferencePreviewsActive":false,"wgFlaggedRevsParams":{"tags":{"status":{"levels":1}}},"wgMediaViewerOnClick":true,"wgMediaViewerEnabledByDefault":true,"wgPopupsFlags":0,"wgVisualEditor":{"pageLanguageCode":"en","pageLanguageDir":"ltr","pageVariantFallbacks":"en"},"wgMFMode":"stable","wgMFAmc":false,"wgMFAmcOutreachActive":false,"wgMFAmcOutreachUserEligible":false,"wgMFLazyLoadImages":true,"wgMFEditNoticesFeatureConflict":false,"wgMFDisplayWikibaseDescriptions":{"search":true,"watchlist":true,"tagline":false,"nearby":true},"wgMFIsSupportedEditRequest":true,"wgMFScriptPath":"","wgWMESchemaEditAttemptStepOversample":false,"wgWMEPageLength":9000,"wgEditSubmitButtonLabelPublish":true,"wgSectionTranslationMissingLanguages":[{"lang":"ab","domain":"ab","autonym":"аԥсшәа","dir":"ltr"},{"lang":"ace","domain":"ace","autonym":"Acèh","dir":"ltr"},{"lang":"ady","domain":"ady","autonym":"адыгабзэ","dir":"ltr"},{"lang":"af","domain":"af","autonym":"Afrikaans","dir":"ltr"},{"lang":"alt","domain":"alt","autonym":"алтай тил","dir":"ltr"},{"lang":"am","domain":"am","autonym":"አማርኛ","dir":"ltr"},{"lang":"ami","domain":"ami","autonym":"Pangcah","dir":"ltr"},{"lang":"an","domain":"an","autonym":"aragonés","dir":"ltr"},{"lang":"ang","domain":"ang","autonym":"Ænglisc","dir":"ltr"},{"lang":"ann","domain":"ann","autonym":"Obolo","dir":"ltr"},{"lang":"anp","domain":"anp","autonym":"अंगिका","dir":"ltr"},{"lang":"ar","domain":"ar","autonym":"العربية","dir":"rtl"},{"lang":"arc","domain":"arc","autonym":"ܐܪܡܝܐ","dir":"rtl"},{"lang":"ary","domain":"ary","autonym":"الدارجة","dir":"rtl"},{"lang":"arz","domain":"arz","autonym":"مصرى","dir":"rtl"},{"lang":"as","domain":"as","autonym":"অসমীয়া","dir":"ltr"},{"lang":"ast","domain":"ast","autonym":"asturianu","dir":"ltr"},{"lang":"atj","domain":"atj","autonym":"Atikamekw","dir":"ltr"},{"lang":"av","domain":"av","autonym":"авар","dir":"ltr"},{"lang":"avk","domain":"avk","autonym":"Kotava","dir":"ltr"},{"lang":"awa","domain":"awa","autonym":"अवधी","dir":"ltr"},{"lang":"ay","domain":"ay","autonym":"Aymar aru","dir":"ltr"},{"lang":"az","domain":"az","autonym":"azərbaycanca","dir":"ltr"},{"lang":"azb","domain":"azb","autonym":"تۆرکجه","dir":"rtl"},{"lang":"ba","domain":"ba","autonym":"башҡортса","dir":"ltr"},{"lang":"ban","domain":"ban","autonym":"Basa Bali","dir":"ltr"},{"lang":"bar","domain":"bar","autonym":"Boarisch","dir":"ltr"},{"lang":"bbc","domain":"bbc","autonym":"Batak Toba","dir":"ltr"},{"lang":"bcl","domain":"bcl","autonym":"Bikol Central","dir":"ltr"},{"lang":"bdr","domain":"bdr","autonym":"Bajau Sama","dir":"ltr"},{"lang":"be","domain":"be","autonym":"беларуская","dir":"ltr"},{"lang":"be-x-old","domain":"be-tarask","autonym":"беларуская (тарашкевіца)","dir":"ltr"},{"lang":"bew","domain":"bew","autonym":"Betawi","dir":"ltr"},{"lang":"bg","domain":"bg","autonym":"български","dir":"ltr"},{"lang":"bho","domain":"bh","autonym":"भोजपुरी","dir":"ltr"},{"lang":"bi","domain":"bi","autonym":"Bislama","dir":"ltr"},{"lang":"bjn","domain":"bjn","autonym":"Banjar","dir":"ltr"},{"lang":"blk","domain":"blk","autonym":"ပအိုဝ်ႏဘာႏသာႏ","dir":"ltr"},{"lang":"bm","domain":"bm","autonym":"bamanankan","dir":"ltr"},{"lang":"bn","domain":"bn","autonym":"বাংলা","dir":"ltr"},{"lang":"bo","domain":"bo","autonym":"བོད་ཡིག","dir":"ltr"},{"lang":"bpy","domain":"bpy","autonym":"বিষ্ণুপ্রিয়া মণিপুরী","dir":"ltr"},{"lang":"br","domain":"br","autonym":"brezhoneg","dir":"ltr"},{"lang":"bs","domain":"bs","autonym":"bosanski","dir":"ltr"},{"lang":"btm","domain":"btm","autonym":"Batak Mandailing","dir":"ltr"},{"lang":"bug","domain":"bug","autonym":"Basa Ugi","dir":"ltr"},{"lang":"bxr","domain":"bxr","autonym":"буряад","dir":"ltr"},{"lang":"ca","domain":"ca","autonym":"català","dir":"ltr"},{"lang":"cbk-zam","domain":"cbk-zam","autonym":"Chavacano de Zamboanga","dir":"ltr"},{"lang":"cdo","domain":"cdo","autonym":"閩東語 / Mìng-dĕ̤ng-ngṳ̄","dir":"ltr"},{"lang":"ce","domain":"ce","autonym":"нохчийн","dir":"ltr"},{"lang":"ceb","domain":"ceb","autonym":"Cebuano","dir":"ltr"},{"lang":"ch","domain":"ch","autonym":"Chamoru","dir":"ltr"},{"lang":"chr","domain":"chr","autonym":"ᏣᎳᎩ","dir":"ltr"},{"lang":"chy","domain":"chy","autonym":"Tsetsêhestâhese","dir":"ltr"},{"lang":"ckb","domain":"ckb","autonym":"کوردی","dir":"rtl"},{"lang":"co","domain":"co","autonym":"corsu","dir":"ltr"},{"lang":"cr","domain":"cr","autonym":"Nēhiyawēwin / ᓀᐦᐃᔭᐍᐏᐣ","dir":"ltr"},{"lang":"crh","domain":"crh","autonym":"qırımtatarca","dir":"ltr"},{"lang":"cs","domain":"cs","autonym":"čeština","dir":"ltr"},{"lang":"csb","domain":"csb","autonym":"kaszëbsczi","dir":"ltr"},{"lang":"cu","domain":"cu","autonym":"словѣньскъ / ⰔⰎⰑⰂⰡⰐⰠⰔⰍⰟ","dir":"ltr"},{"lang":"cv","domain":"cv","autonym":"чӑвашла","dir":"ltr"},{"lang":"cy","domain":"cy","autonym":"Cymraeg","dir":"ltr"},{"lang":"dag","domain":"dag","autonym":"dagbanli","dir":"ltr"},{"lang":"dga","domain":"dga","autonym":"Dagaare","dir":"ltr"},{"lang":"din","domain":"din","autonym":"Thuɔŋjäŋ","dir":"ltr"},{"lang":"diq","domain":"diq","autonym":"Zazaki","dir":"ltr"},{"lang":"dsb","domain":"dsb","autonym":"dolnoserbski","dir":"ltr"},{"lang":"dtp","domain":"dtp","autonym":"Kadazandusun","dir":"ltr"},{"lang":"dty","domain":"dty","autonym":"डोटेली","dir":"ltr"},{"lang":"dv","domain":"dv","autonym":"ދިވެހިބަސް","dir":"rtl"},{"lang":"dz","domain":"dz","autonym":"ཇོང་ཁ","dir":"ltr"},{"lang":"ee","domain":"ee","autonym":"eʋegbe","dir":"ltr"},{"lang":"el","domain":"el","autonym":"Ελληνικά","dir":"ltr"},{"lang":"eml","domain":"eml","autonym":"emiliàn e rumagnòl","dir":"ltr"},{"lang":"en","domain":"en","autonym":"English","dir":"ltr"},{"lang":"eo","domain":"eo","autonym":"Esperanto","dir":"ltr"},{"lang":"es","domain":"es","autonym":"español","dir":"ltr"},{"lang":"et","domain":"et","autonym":"eesti","dir":"ltr"},{"lang":"eu","domain":"eu","autonym":"euskara","dir":"ltr"},{"lang":"ext","domain":"ext","autonym":"estremeñu","dir":"ltr"},{"lang":"fat","domain":"fat","autonym":"mfantse","dir":"ltr"},{"lang":"ff","domain":"ff","autonym":"Fulfulde","dir":"ltr"},{"lang":"fi","domain":"fi","autonym":"suomi","dir":"ltr"},{"lang":"fj","domain":"fj","autonym":"Na Vosa Vakaviti","dir":"ltr"},{"lang":"fo","domain":"fo","autonym":"føroyskt","dir":"ltr"},{"lang":"fon","domain":"fon","autonym":"fɔ̀ngbè","dir":"ltr"},{"lang":"fr","domain":"fr","autonym":"français","dir":"ltr"},{"lang":"frp","domain":"frp","autonym":"arpetan","dir":"ltr"},{"lang":"frr","domain":"frr","autonym":"Nordfriisk","dir":"ltr"},{"lang":"fur","domain":"fur","autonym":"furlan","dir":"ltr"},{"lang":"fy","domain":"fy","autonym":"Frysk","dir":"ltr"},{"lang":"ga","domain":"ga","autonym":"Gaeilge","dir":"ltr"},{"lang":"gag","domain":"gag","autonym":"Gagauz","dir":"ltr"},{"lang":"gan","domain":"gan","autonym":"贛語","dir":"ltr"},{"lang":"gcr","domain":"gcr","autonym":"kriyòl gwiyannen","dir":"ltr"},{"lang":"gd","domain":"gd","autonym":"Gàidhlig","dir":"ltr"},{"lang":"gl","domain":"gl","autonym":"galego","dir":"ltr"},{"lang":"glk","domain":"glk","autonym":"گیلکی","dir":"rtl"},{"lang":"gn","domain":"gn","autonym":"Avañe'ẽ","dir":"ltr"},{"lang":"gom","domain":"gom","autonym":"गोंयची कोंकणी / Gõychi Konknni","dir":"ltr"},{"lang":"gor","domain":"gor","autonym":"Bahasa Hulontalo","dir":"ltr"},{"lang":"got","domain":"got","autonym":"𐌲𐌿𐍄𐌹𐍃𐌺","dir":"ltr"},{"lang":"gpe","domain":"gpe","autonym":"Ghanaian Pidgin","dir":"ltr"},{"lang":"gsw","domain":"als","autonym":"Alemannisch","dir":"ltr"},{"lang":"gu","domain":"gu","autonym":"ગુજરાતી","dir":"ltr"},{"lang":"guc","domain":"guc","autonym":"wayuunaiki","dir":"ltr"},{"lang":"gur","domain":"gur","autonym":"farefare","dir":"ltr"},{"lang":"guw","domain":"guw","autonym":"gungbe","dir":"ltr"},{"lang":"gv","domain":"gv","autonym":"Gaelg","dir":"ltr"},{"lang":"ha","domain":"ha","autonym":"Hausa","dir":"ltr"},{"lang":"hak","domain":"hak","autonym":"客家語 / Hak-kâ-ngî","dir":"ltr"},{"lang":"haw","domain":"haw","autonym":"Hawaiʻi","dir":"ltr"},{"lang":"he","domain":"he","autonym":"עברית","dir":"rtl"},{"lang":"hi","domain":"hi","autonym":"हिन्दी","dir":"ltr"},{"lang":"hif","domain":"hif","autonym":"Fiji Hindi","dir":"ltr"},{"lang":"hr","domain":"hr","autonym":"hrvatski","dir":"ltr"},{"lang":"hsb","domain":"hsb","autonym":"hornjoserbsce","dir":"ltr"},{"lang":"ht","domain":"ht","autonym":"Kreyòl ayisyen","dir":"ltr"},{"lang":"hu","domain":"hu","autonym":"magyar","dir":"ltr"},{"lang":"hy","domain":"hy","autonym":"հայերեն","dir":"ltr"},{"lang":"hyw","domain":"hyw","autonym":"Արեւմտահայերէն","dir":"ltr"},{"lang":"ia","domain":"ia","autonym":"interlingua","dir":"ltr"},{"lang":"iba","domain":"iba","autonym":"Jaku Iban","dir":"ltr"},{"lang":"id","domain":"id","autonym":"Bahasa Indonesia","dir":"ltr"},{"lang":"ie","domain":"ie","autonym":"Interlingue","dir":"ltr"},{"lang":"ig","domain":"ig","autonym":"Igbo","dir":"ltr"},{"lang":"igl","domain":"igl","autonym":"Igala","dir":"ltr"},{"lang":"ik","domain":"ik","autonym":"Iñupiatun","dir":"ltr"},{"lang":"ilo","domain":"ilo","autonym":"Ilokano","dir":"ltr"},{"lang":"inh","domain":"inh","autonym":"гӀалгӀай","dir":"ltr"},{"lang":"io","domain":"io","autonym":"Ido","dir":"ltr"},{"lang":"is","domain":"is","autonym":"íslenska","dir":"ltr"},{"lang":"it","domain":"it","autonym":"italiano","dir":"ltr"},{"lang":"iu","domain":"iu","autonym":"ᐃᓄᒃᑎᑐᑦ / inuktitut","dir":"ltr"},{"lang":"ja","domain":"ja","autonym":"日本語","dir":"ltr"},{"lang":"jam","domain":"jam","autonym":"Patois","dir":"ltr"},{"lang":"jbo","domain":"jbo","autonym":"la .lojban.","dir":"ltr"},{"lang":"jv","domain":"jv","autonym":"Jawa","dir":"ltr"},{"lang":"ka","domain":"ka","autonym":"ქართული","dir":"ltr"},{"lang":"kaa","domain":"kaa","autonym":"Qaraqalpaqsha","dir":"ltr"},{"lang":"kab","domain":"kab","autonym":"Taqbaylit","dir":"ltr"},{"lang":"kbd","domain":"kbd","autonym":"адыгэбзэ","dir":"ltr"},{"lang":"kbp","domain":"kbp","autonym":"Kabɩyɛ","dir":"ltr"},{"lang":"kcg","domain":"kcg","autonym":"Tyap","dir":"ltr"},{"lang":"kg","domain":"kg","autonym":"Kongo","dir":"ltr"},{"lang":"kge","domain":"kge","autonym":"Kumoring","dir":"ltr"},{"lang":"ki","domain":"ki","autonym":"Gĩkũyũ","dir":"ltr"},{"lang":"kk","domain":"kk","autonym":"қазақша","dir":"ltr"},{"lang":"kl","domain":"kl","autonym":"kalaallisut","dir":"ltr"},{"lang":"km","domain":"km","autonym":"ភាសាខ្មែរ","dir":"ltr"},{"lang":"kn","domain":"kn","autonym":"ಕನ್ನಡ","dir":"ltr"},{"lang":"knc","domain":"knc","autonym":"Yerwa Kanuri","dir":"ltr"},{"lang":"ko","domain":"ko","autonym":"한국어","dir":"ltr"},{"lang":"koi","domain":"koi","autonym":"перем коми","dir":"ltr"},{"lang":"krc","domain":"krc","autonym":"къарачай-малкъар","dir":"ltr"},{"lang":"ks","domain":"ks","autonym":"कॉशुर / کٲشُر","dir":"rtl"},{"lang":"ksh","domain":"ksh","autonym":"Ripoarisch","dir":"ltr"},{"lang":"ku","domain":"ku","autonym":"kurdî","dir":"ltr"},{"lang":"kus","domain":"kus","autonym":"Kʋsaal","dir":"ltr"},{"lang":"kv","domain":"kv","autonym":"коми","dir":"ltr"},{"lang":"kw","domain":"kw","autonym":"kernowek","dir":"ltr"},{"lang":"ky","domain":"ky","autonym":"кыргызча","dir":"ltr"},{"lang":"la","domain":"la","autonym":"Latina","dir":"ltr"},{"lang":"lad","domain":"lad","autonym":"Ladino","dir":"ltr"},{"lang":"lb","domain":"lb","autonym":"Lëtzebuergesch","dir":"ltr"},{"lang":"lbe","domain":"lbe","autonym":"лакку","dir":"ltr"},{"lang":"lez","domain":"lez","autonym":"лезги","dir":"ltr"},{"lang":"lfn","domain":"lfn","autonym":"Lingua Franca Nova","dir":"ltr"},{"lang":"lg","domain":"lg","autonym":"Luganda","dir":"ltr"},{"lang":"li","domain":"li","autonym":"Limburgs","dir":"ltr"},{"lang":"lij","domain":"lij","autonym":"Ligure","dir":"ltr"},{"lang":"lld","domain":"lld","autonym":"Ladin","dir":"ltr"},{"lang":"lmo","domain":"lmo","autonym":"lombard","dir":"ltr"},{"lang":"ln","domain":"ln","autonym":"lingála","dir":"ltr"},{"lang":"lo","domain":"lo","autonym":"ລາວ","dir":"ltr"},{"lang":"lt","domain":"lt","autonym":"lietuvių","dir":"ltr"},{"lang":"ltg","domain":"ltg","autonym":"latgaļu","dir":"ltr"},{"lang":"lv","domain":"lv","autonym":"latviešu","dir":"ltr"},{"lang":"lzh","domain":"zh-classical","autonym":"文言","dir":"ltr"},{"lang":"mad","domain":"mad","autonym":"Madhurâ","dir":"ltr"},{"lang":"mai","domain":"mai","autonym":"मैथिली","dir":"ltr"},{"lang":"map-bms","domain":"map-bms","autonym":"Basa Banyumasan","dir":"ltr"},{"lang":"mdf","domain":"mdf","autonym":"мокшень","dir":"ltr"},{"lang":"mg","domain":"mg","autonym":"Malagasy","dir":"ltr"},{"lang":"mhr","domain":"mhr","autonym":"олык марий","dir":"ltr"},{"lang":"mi","domain":"mi","autonym":"Māori","dir":"ltr"},{"lang":"min","domain":"min","autonym":"Minangkabau","dir":"ltr"},{"lang":"mk","domain":"mk","autonym":"македонски","dir":"ltr"},{"lang":"ml","domain":"ml","autonym":"മലയാളം","dir":"ltr"},{"lang":"mn","domain":"mn","autonym":"монгол","dir":"ltr"},{"lang":"mni","domain":"mni","autonym":"ꯃꯤꯇꯩ ꯂꯣꯟ","dir":"ltr"},{"lang":"mnw","domain":"mnw","autonym":"ဘာသာမန်","dir":"ltr"},{"lang":"mos","domain":"mos","autonym":"moore","dir":"ltr"},{"lang":"mr","domain":"mr","autonym":"मराठी","dir":"ltr"},{"lang":"mrj","domain":"mrj","autonym":"кырык мары","dir":"ltr"},{"lang":"ms","domain":"ms","autonym":"Bahasa Melayu","dir":"ltr"},{"lang":"mt","domain":"mt","autonym":"Malti","dir":"ltr"},{"lang":"mwl","domain":"mwl","autonym":"Mirandés","dir":"ltr"},{"lang":"my","domain":"my","autonym":"မြန်မာဘာသာ","dir":"ltr"},{"lang":"myv","domain":"myv","autonym":"эрзянь","dir":"ltr"},{"lang":"mzn","domain":"mzn","autonym":"مازِرونی","dir":"rtl"},{"lang":"nah","domain":"nah","autonym":"Nāhuatl","dir":"ltr"},{"lang":"nan","domain":"zh-min-nan","autonym":"閩南語 / Bân-lâm-gú","dir":"ltr"},{"lang":"nap","domain":"nap","autonym":"Napulitano","dir":"ltr"},{"lang":"nb","domain":"no","autonym":"norsk bokmål","dir":"ltr"},{"lang":"nds","domain":"nds","autonym":"Plattdüütsch","dir":"ltr"},{"lang":"nds-nl","domain":"nds-nl","autonym":"Nedersaksies","dir":"ltr"},{"lang":"ne","domain":"ne","autonym":"नेपाली","dir":"ltr"},{"lang":"new","domain":"new","autonym":"नेपाल भाषा","dir":"ltr"},{"lang":"nia","domain":"nia","autonym":"Li Niha","dir":"ltr"},{"lang":"nl","domain":"nl","autonym":"Nederlands","dir":"ltr"},{"lang":"nn","domain":"nn","autonym":"norsk nynorsk","dir":"ltr"},{"lang":"nov","domain":"nov","autonym":"Novial","dir":"ltr"},{"lang":"nqo","domain":"nqo","autonym":"ߒߞߏ","dir":"rtl"},{"lang":"nr","domain":"nr","autonym":"isiNdebele seSewula","dir":"ltr"},{"lang":"nrm","domain":"nrm","autonym":"Nouormand","dir":"ltr"},{"lang":"nso","domain":"nso","autonym":"Sesotho sa Leboa","dir":"ltr"},{"lang":"nv","domain":"nv","autonym":"Diné bizaad","dir":"ltr"},{"lang":"ny","domain":"ny","autonym":"Chi-Chewa","dir":"ltr"},{"lang":"oc","domain":"oc","autonym":"occitan","dir":"ltr"},{"lang":"olo","domain":"olo","autonym":"livvinkarjala","dir":"ltr"},{"lang":"om","domain":"om","autonym":"Oromoo","dir":"ltr"},{"lang":"or","domain":"or","autonym":"ଓଡ଼ିଆ","dir":"ltr"},{"lang":"os","domain":"os","autonym":"ирон","dir":"ltr"},{"lang":"pa","domain":"pa","autonym":"ਪੰਜਾਬੀ","dir":"ltr"},{"lang":"pag","domain":"pag","autonym":"Pangasinan","dir":"ltr"},{"lang":"pam","domain":"pam","autonym":"Kapampangan","dir":"ltr"},{"lang":"pap","domain":"pap","autonym":"Papiamentu","dir":"ltr"},{"lang":"pcd","domain":"pcd","autonym":"Picard","dir":"ltr"},{"lang":"pcm","domain":"pcm","autonym":"Naijá","dir":"ltr"},{"lang":"pdc","domain":"pdc","autonym":"Deitsch","dir":"ltr"},{"lang":"pfl","domain":"pfl","autonym":"Pälzisch","dir":"ltr"},{"lang":"pi","domain":"pi","autonym":"पालि","dir":"ltr"},{"lang":"pih","domain":"pih","autonym":"Norfuk / Pitkern","dir":"ltr"},{"lang":"pl","domain":"pl","autonym":"polski","dir":"ltr"},{"lang":"pms","domain":"pms","autonym":"Piemontèis","dir":"ltr"},{"lang":"pnb","domain":"pnb","autonym":"پنجابی","dir":"rtl"},{"lang":"pnt","domain":"pnt","autonym":"Ποντιακά","dir":"ltr"},{"lang":"ps","domain":"ps","autonym":"پښتو","dir":"rtl"},{"lang":"pwn","domain":"pwn","autonym":"pinayuanan","dir":"ltr"},{"lang":"qu","domain":"qu","autonym":"Runa Simi","dir":"ltr"},{"lang":"rm","domain":"rm","autonym":"rumantsch","dir":"ltr"},{"lang":"rmy","domain":"rmy","autonym":"romani čhib","dir":"ltr"},{"lang":"rn","domain":"rn","autonym":"ikirundi","dir":"ltr"},{"lang":"ro","domain":"ro","autonym":"română","dir":"ltr"},{"lang":"roa-tara","domain":"roa-tara","autonym":"tarandíne","dir":"ltr"},{"lang":"rsk","domain":"rsk","autonym":"руски","dir":"ltr"},{"lang":"ru","domain":"ru","autonym":"русский","dir":"ltr"},{"lang":"rue","domain":"rue","autonym":"русиньскый","dir":"ltr"},{"lang":"rup","domain":"roa-rup","autonym":"armãneashti","dir":"ltr"},{"lang":"rw","domain":"rw","autonym":"Ikinyarwanda","dir":"ltr"},{"lang":"sa","domain":"sa","autonym":"संस्कृतम्","dir":"ltr"},{"lang":"sah","domain":"sah","autonym":"саха тыла","dir":"ltr"},{"lang":"sat","domain":"sat","autonym":"ᱥᱟᱱᱛᱟᱲᱤ","dir":"ltr"},{"lang":"sc","domain":"sc","autonym":"sardu","dir":"ltr"},{"lang":"scn","domain":"scn","autonym":"sicilianu","dir":"ltr"},{"lang":"sco","domain":"sco","autonym":"Scots","dir":"ltr"},{"lang":"sd","domain":"sd","autonym":"سنڌي","dir":"rtl"},{"lang":"se","domain":"se","autonym":"davvisámegiella","dir":"ltr"},{"lang":"sg","domain":"sg","autonym":"Sängö","dir":"ltr"},{"lang":"sgs","domain":"bat-smg","autonym":"žemaitėška","dir":"ltr"},{"lang":"sh","domain":"sh","autonym":"srpskohrvatski / српскохрватски","dir":"ltr"},{"lang":"shi","domain":"shi","autonym":"Taclḥit","dir":"ltr"},{"lang":"shn","domain":"shn","autonym":"တႆး","dir":"ltr"},{"lang":"si","domain":"si","autonym":"සිංහල","dir":"ltr"},{"lang":"en-simple","domain":"simple","autonym":"Simple English","dir":"ltr"},{"lang":"sk","domain":"sk","autonym":"slovenčina","dir":"ltr"},{"lang":"skr","domain":"skr","autonym":"سرائیکی","dir":"rtl"},{"lang":"sl","domain":"sl","autonym":"slovenščina","dir":"ltr"},{"lang":"sm","domain":"sm","autonym":"Gagana Samoa","dir":"ltr"},{"lang":"smn","domain":"smn","autonym":"anarâškielâ","dir":"ltr"},{"lang":"sn","domain":"sn","autonym":"chiShona","dir":"ltr"},{"lang":"so","domain":"so","autonym":"Soomaaliga","dir":"ltr"},{"lang":"sq","domain":"sq","autonym":"shqip","dir":"ltr"},{"lang":"sr","domain":"sr","autonym":"српски / srpski","dir":"ltr"},{"lang":"srn","domain":"srn","autonym":"Sranantongo","dir":"ltr"},{"lang":"ss","domain":"ss","autonym":"SiSwati","dir":"ltr"},{"lang":"st","domain":"st","autonym":"Sesotho","dir":"ltr"},{"lang":"stq","domain":"stq","autonym":"Seeltersk","dir":"ltr"},{"lang":"su","domain":"su","autonym":"Sunda","dir":"ltr"},{"lang":"sv","domain":"sv","autonym":"svenska","dir":"ltr"},{"lang":"sw","domain":"sw","autonym":"Kiswahili","dir":"ltr"},{"lang":"syl","domain":"syl","autonym":"ꠍꠤꠟꠐꠤ","dir":"ltr"},{"lang":"szl","domain":"szl","autonym":"ślůnski","dir":"ltr"},{"lang":"szy","domain":"szy","autonym":"Sakizaya","dir":"ltr"},{"lang":"ta","domain":"ta","autonym":"தமிழ்","dir":"ltr"},{"lang":"tay","domain":"tay","autonym":"Tayal","dir":"ltr"},{"lang":"tcy","domain":"tcy","autonym":"ತುಳು","dir":"ltr"},{"lang":"tdd","domain":"tdd","autonym":"ᥖᥭᥰ ᥖᥬᥲ ᥑᥨᥒᥰ","dir":"ltr"},{"lang":"te","domain":"te","autonym":"తెలుగు","dir":"ltr"},{"lang":"tet","domain":"tet","autonym":"tetun","dir":"ltr"},{"lang":"tg","domain":"tg","autonym":"тоҷикӣ","dir":"ltr"},{"lang":"th","domain":"th","autonym":"ไทย","dir":"ltr"},{"lang":"ti","domain":"ti","autonym":"ትግርኛ","dir":"ltr"},{"lang":"tig","domain":"tig","autonym":"ትግሬ","dir":"ltr"},{"lang":"tk","domain":"tk","autonym":"Türkmençe","dir":"ltr"},{"lang":"tl","domain":"tl","autonym":"Tagalog","dir":"ltr"},{"lang":"tly","domain":"tly","autonym":"tolışi","dir":"ltr"},{"lang":"tn","domain":"tn","autonym":"Setswana","dir":"ltr"},{"lang":"to","domain":"to","autonym":"lea faka-Tonga","dir":"ltr"},{"lang":"tpi","domain":"tpi","autonym":"Tok Pisin","dir":"ltr"},{"lang":"tr","domain":"tr","autonym":"Türkçe","dir":"ltr"},{"lang":"trv","domain":"trv","autonym":"Seediq","dir":"ltr"},{"lang":"ts","domain":"ts","autonym":"Xitsonga","dir":"ltr"},{"lang":"tt","domain":"tt","autonym":"татарча / tatarça","dir":"ltr"},{"lang":"tum","domain":"tum","autonym":"chiTumbuka","dir":"ltr"},{"lang":"tw","domain":"tw","autonym":"Twi","dir":"ltr"},{"lang":"ty","domain":"ty","autonym":"reo tahiti","dir":"ltr"},{"lang":"tyv","domain":"tyv","autonym":"тыва дыл","dir":"ltr"},{"lang":"udm","domain":"udm","autonym":"удмурт","dir":"ltr"},{"lang":"ug","domain":"ug","autonym":"ئۇيغۇرچە / Uyghurche","dir":"rtl"},{"lang":"uk","domain":"uk","autonym":"українська","dir":"ltr"},{"lang":"ur","domain":"ur","autonym":"اردو","dir":"rtl"},{"lang":"uz","domain":"uz","autonym":"oʻzbekcha / ўзбекча","dir":"ltr"},{"lang":"ve","domain":"ve","autonym":"Tshivenda","dir":"ltr"},{"lang":"vec","domain":"vec","autonym":"vèneto","dir":"ltr"},{"lang":"vep","domain":"vep","autonym":"vepsän kel’","dir":"ltr"},{"lang":"vi","domain":"vi","autonym":"Tiếng Việt","dir":"ltr"},{"lang":"vls","domain":"vls","autonym":"West-Vlams","dir":"ltr"},{"lang":"vo","domain":"vo","autonym":"Volapük","dir":"ltr"},{"lang":"vro","domain":"fiu-vro","autonym":"võro","dir":"ltr"},{"lang":"wa","domain":"wa","autonym":"walon","dir":"ltr"},{"lang":"war","domain":"war","autonym":"Winaray","dir":"ltr"},{"lang":"wo","domain":"wo","autonym":"Wolof","dir":"ltr"},{"lang":"wuu","domain":"wuu","autonym":"吴语","dir":"ltr"},{"lang":"xal","domain":"xal","autonym":"хальмг","dir":"ltr"},{"lang":"xh","domain":"xh","autonym":"isiXhosa","dir":"ltr"},{"lang":"xmf","domain":"xmf","autonym":"მარგალური","dir":"ltr"},{"lang":"yi","domain":"yi","autonym":"ייִדיש","dir":"rtl"},{"lang":"yo","domain":"yo","autonym":"Yorùbá","dir":"ltr"},{"lang":"yue","domain":"zh-yue","autonym":"粵語","dir":"ltr"},{"lang":"za","domain":"za","autonym":"Vahcuengh","dir":"ltr"},{"lang":"zea","domain":"zea","autonym":"Zeêuws","dir":"ltr"},{"lang":"zgh","domain":"zgh","autonym":"ⵜⴰⵎⴰⵣⵉⵖⵜ ⵜⴰⵏⴰⵡⴰⵢⵜ","dir":"ltr"},{"lang":"zh","domain":"zh","autonym":"中文","dir":"ltr"},{"lang":"zu","domain":"zu","autonym":"isiZulu","dir":"ltr"}],"wgSectionTranslationTargetLanguages":["ab","ace","ady","af","alt","am","ami","an","ang","ann","anp","ar","arc","ary","arz","as","ast","atj","av","avk","awa","ay","az","azb","ba","ban","bar","bbc","bcl","bdr","be","be-tarask","bew","bg","bho","bi","bjn","blk","bm","bn","bo","bpy","br","bs","btm","bug","bxr","ca","cbk-zam","cdo","ce","ceb","ch","chr","chy","ckb","co","cr","crh","cs","csb","cu","cv","cy","da","dag","de","dga","din","diq","dsb","dtp","dty","dv","dz","ee","el","eml","en","eo","es","et","eu","ext","fa","fat","ff","fi","fj","fo","fon","fr","frp","frr","fur","fy","ga","gag","gan","gcr","gd","gl","glk","gn","gom","gor","got","gpe","gsw","gu","guc","gur","guw","gv","ha","hak","haw","he","hi","hif","hr","hsb","ht","hu","hy","hyw","ia","iba","id","ie","ig","igl","ik","ilo","inh","io","is","it","iu","ja","jam","jbo","jv","ka","kaa","kab","kbd","kbp","kcg","kg","kge","ki","kk","kl","km","kn","knc","ko","koi","krc","ks","ksh","ku","kus","kv","kw","ky","la","lad","lb","lbe","lez","lfn","lg","li","lij","lld","lmo","ln","lo","lt","ltg","lv","lzh","mad","mai","map-bms","mdf","mg","mhr","mi","min","mk","ml","mn","mni","mnw","mos","mr","mrj","ms","mt","mwl","my","myv","mzn","nah","nan","nap","nb","nds","nds-nl","ne","new","nia","nl","nn","nov","nqo","nr","nrm","nso","nv","ny","oc","olo","om","or","os","pa","pag","pam","pap","pcd","pcm","pdc","pfl","pi","pih","pl","pms","pnb","pnt","ps","pt","pwn","qu","rm","rmy","rn","ro","roa-tara","rsk","ru","rue","rup","rw","sa","sah","sat","sc","scn","sco","sd","se","sg","sgs","sh","shi","shn","si","simple","sk","skr","sl","sm","smn","sn","so","sq","sr","srn","ss","st","stq","su","sv","sw","syl","szl","szy","ta","tay","tcy","tdd","te","tet","tg","th","ti","tig","tk","tl","tly","tn","to","tpi","tr","trv","ts","tt","tum","tw","ty","tyv","udm","ug","uk","ur","uz","ve","vec","vep","vi","vls","vo","vro","wa","war","wo","wuu","xal","xh","xmf","yi","yo","yue","za","zea","zgh","zh","zu"],"isLanguageSearcherCXEntrypointEnabled":true,"mintEntrypointLanguages":["tn","vec","ast","lmo"],"wgWikibaseItemId":"Q279748","wgCheckUserClientHintsHeadersJsApi":["brands","architecture","bitness","fullVersionList","mobile","model","platform","platformVersion"],"GEHomepageSuggestedEditsEnableTopics":true,"wgGETopicsMatchModeEnabled":false,"wgGELevelingUpEnabledForUser":false,"wgMinervaPermissions":{"watchable":true,"watch":false},"wgMinervaFeatures":{"beta":false,"donateBanner":true,"donate":false,"mobileOptionsLink":true,"categories":false,"pageIssues":true,"talkAtTop":true,"historyInPageActions":false,"overflowSubmenu":false,"tabsOnSpecials":true,"personalMenu":false,"mainMenuExpanded":false,"echo":true,"nightMode":true},"wgMinervaDownloadNamespaces":[0]};
+RLSTATE={"ext.globalCssJs.user.styles":"ready","site.styles":"ready","user.styles":"ready","ext.globalCssJs.user":"ready","user":"ready","user.options":"loading","ext.cite.styles":"ready","ext.math.styles":"ready","skins.minerva.styles":"ready","skins.minerva.content.styles.images":"ready","mediawiki.hlist":"ready","skins.minerva.codex.styles":"ready","skins.minerva.icons":"ready","skins.minerva.amc.styles":"ready","ext.wikimediamessages.styles":"ready","mobile.init.styles":"ready","ext.relatedArticles.styles":"ready","wikibase.client.init":"ready"};RLPAGEMODULES=["ext.cite.ux-enhancements","mediawiki.page.media","site","mediawiki.page.ready","skins.minerva.scripts","ext.centralNotice.geoIP","ext.centralNotice.startUp","ext.gadget.switcher","ext.urlShortener.toolbar","ext.centralauth.centralautologin","ext.popups","mobile.init","ext.echo.centralauth","ext.relatedArticles.readMore.bootstrap","ext.eventLogging","ext.wikimediaEvents","ext.navigationTiming","ext.cx.eventlogging.campaigns","ext.cx.entrypoints.mffrequentlanguages","ext.cx.entrypoints.languagesearcher.init","mw.externalguidance.init","ext.checkUser.clientHints","ext.quicksurveys.init","ext.growthExperiments.SuggestedEditSession"];</script>
+<script>(RLQ=window.RLQ||[]).push(function(){mw.loader.impl(function(){return["user.options@12s5i",function($,jQuery,require,module){mw.user.tokens.set({"patrolToken":"+\\","watchToken":"+\\","csrfToken":"+\\"});
+}];});});</script>
+<link rel="stylesheet" href="/w/load.php?lang=en&amp;modules=ext.cite.styles%7Cext.math.styles%7Cext.relatedArticles.styles%7Cext.wikimediamessages.styles%7Cmediawiki.hlist%7Cmobile.init.styles%7Cskins.minerva.amc.styles%7Cskins.minerva.codex.styles%7Cskins.minerva.content.styles.images%7Cskins.minerva.icons%2Cstyles%7Cwikibase.client.init&amp;only=styles&amp;skin=minerva">
+<script async="" src="/w/load.php?lang=en&amp;modules=startup&amp;only=scripts&amp;raw=1&amp;skin=minerva"></script>
+<meta name="ResourceLoaderDynamicStyles" content="">
+<link rel="stylesheet" href="/w/load.php?lang=en&amp;modules=site.styles&amp;only=styles&amp;skin=minerva">
+<meta name="generator" content="MediaWiki 1.44.0-wmf.27">
+<meta name="referrer" content="origin">
+<meta name="referrer" content="origin-when-cross-origin">
+<meta name="robots" content="max-image-preview:standard">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#eaecf0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.25, maximum-scale=5.0">
+<meta property="og:title" content="External memory algorithm - Wikipedia">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="//upload.wikimedia.org">
+<link rel="manifest" href="/w/api.php?action=webapp-manifest">
+<link rel="alternate" type="application/x-wiki" title="Edit this page" href="/w/index.php?title=External_memory_algorithm&amp;action=edit">
+<link rel="apple-touch-icon" href="/static/apple-touch/wikipedia.png">
+<link rel="icon" href="/static/favicon/wikipedia.ico">
+<link rel="search" type="application/opensearchdescription+xml" href="/w/rest.php/v1/search" title="Wikipedia (en)">
+<link rel="EditURI" type="application/rsd+xml" href="//en.wikipedia.org/w/api.php?action=rsd">
+<link rel="canonical" href="https://en.wikipedia.org/wiki/External_memory_algorithm">
+<link rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/deed.en">
+<link rel="dns-prefetch" href="//meta.wikimedia.org" />
+<link rel="dns-prefetch" href="auth.wikimedia.org">
+</head>
+<body class="mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject mw-editable page-External_memory_algorithm rootpage-External_memory_algorithm stable issues-group-B skin-minerva action-view skin--responsive mw-mf-amc-disabled mw-mf"><div id="mw-mf-viewport">
+	<div id="mw-mf-page-center">
+		<a class="mw-mf-page-center__mask" href="#"></a>
+		<header class="header-container header-chrome">
+			<div class="minerva-header">
+				<nav class="navigation-drawer toggle-list view-border-box">
+					<input type="checkbox" id="main-menu-input"
+						data-event-name="ui.mainmenu"
+						class="toggle-list__checkbox" role="button" aria-haspopup="true" aria-expanded="false" aria-labelledby="mw-mf-main-menu-button">
+					<label for="main-menu-input" id="mw-mf-main-menu-button" aria-hidden="true" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet toggle-list__toggle">
+    <span class="minerva-icon minerva-icon--menu"></span>
+<span></span>
+</label>
+
+					<div id="mw-mf-page-left" class="menu view-border-box">
+	<ul id="p-navigation" class="toggle-list__list">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--home" href="/wiki/Main_Page" data-mw="interface">
+					<span class="minerva-icon minerva-icon--home"></span>
+
+					<span class="toggle-list-item__label">Home</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--random" href="/wiki/Special:Random" data-mw="interface">
+					<span class="minerva-icon minerva-icon--die"></span>
+
+					<span class="toggle-list-item__label">Random</span>
+				</a>
+			</li>
+			<li class="toggle-list-item skin-minerva-list-item-jsonly">
+				<a class="toggle-list-item__anchor menu__item--nearby" href="/wiki/Special:Nearby" data-event-name="menu.nearby" data-mw="interface">
+					<span class="minerva-icon minerva-icon--mapPin"></span>
+
+					<span class="toggle-list-item__label">Nearby</span>
+				</a>
+			</li>
+	</ul>
+	<ul id="p-personal" class="toggle-list__list">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor mw-list-item menu__item--login" href="/w/index.php?title=Special:UserLogin&amp;returnto=External+memory+algorithm" data-event-name="menu.login" data-mw="interface">
+					<span class="minerva-icon minerva-icon--logIn"></span>
+
+					<span class="toggle-list-item__label">Log in</span>
+				</a>
+			</li>
+	</ul>
+	<ul id="pt-preferences" class="toggle-list__list">
+			<li class="toggle-list-item skin-minerva-list-item-jsonly">
+				<a class="toggle-list-item__anchor menu__item--settings" href="/w/index.php?title=Special:MobileOptions&amp;returnto=External+memory+algorithm" data-event-name="menu.settings" data-mw="interface">
+					<span class="minerva-icon minerva-icon--settings"></span>
+
+					<span class="toggle-list-item__label">Settings</span>
+				</a>
+			</li>
+	</ul>
+			<div class="donate-banner">
+				<a href="https://donate.wikimedia.org/?wmf_source=donate&amp;wmf_medium=sidebar&amp;wmf_campaign=en.wikipedia.org&amp;uselang=en&amp;wmf_key=minerva" class="donate-banner__link"
+					data-event-name="menu.donateBanner">
+					<div class="donate-banner__text-container">
+						<span class="donate-banner__text">Donate Now</span>
+						<span class="donate-banner__subtitle">If Wikipedia is useful to you, please give today.</span>
+					</div>
+					<picture>
+						<source
+			    			srcset="https://en.wikipedia.org/static/images/donate/donate.png"
+			   				media="(prefers-reduced-motion)" />
+						<img src="https://en.wikipedia.org/static/images/donate/donate.gif" alt="" class="donate-banner__gif" loading="lazy">
+					</picture>
+				</a>
+			</div>
+	<ul class="hlist">
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--about" href="/wiki/Wikipedia:About" data-mw="interface">
+					
+					<span class="toggle-list-item__label">About Wikipedia</span>
+				</a>
+			</li>
+			<li class="toggle-list-item ">
+				<a class="toggle-list-item__anchor menu__item--disclaimers" href="/wiki/Wikipedia:General_disclaimer" data-mw="interface">
+					
+					<span class="toggle-list-item__label">Disclaimers</span>
+				</a>
+			</li>
+	</ul>
+</div>
+
+					<label class="main-menu-mask" for="main-menu-input"></label>
+				</nav>
+				<div class="branding-box">
+					<a href="/wiki/Main_Page">
+						<span><img src="/static/images/mobile/copyright/wikipedia-wordmark-en.svg" alt="Wikipedia" width="120" height="18"
+	style="width: 7.5em; height: 1.125em;"/>
+
+</span>
+						
+					</a>
+				</div>
+					<form action="/w/index.php" method="get" class="minerva-search-form">
+				<div class="search-box">
+					<input type="hidden" name="title" value="Special:Search"/>
+					<input class="search skin-minerva-search-trigger" id="searchInput"
+						 type="search" name="search" placeholder="Search Wikipedia" aria-label="Search Wikipedia" autocapitalize="sentences" spellcheck="false" title="Search Wikipedia [f]" accesskey="f">
+					<span class="search-box-icon-overlay"><span class="minerva-icon minerva-icon--search"></span>
+</span>
+				</div>
+				<button id="searchIcon" class="cdx-button cdx-button--size-large cdx-button--icon-only cdx-button--weight-quiet skin-minerva-search-trigger">
+	    <span class="minerva-icon minerva-icon--search"></span>
+<span>Search</span>
+	</button>
+</form>
+		<nav class="minerva-user-navigation" aria-label="User navigation">
+					
+				</nav>
+			</div>
+		</header>
+		<main id="content" class="mw-body">
+			<div class="banner-container">
+			<div id="siteNotice"></div>
+			</div>
+			
+			<div class="pre-content heading-holder">
+				<div class="page-heading">
+					<h1 id="firstHeading" class="firstHeading mw-first-heading"><span class="mw-page-title-main">External memory algorithm</span></h1>
+					<div class="tagline"></div>
+				</div>
+					<ul id="p-associated-pages" class="minerva__tab-container">
+							<li class="minerva__tab selected mw-list-item">
+								<a class="minerva__tab-text" href="/wiki/External_memory_algorithm" rel="" data-event-name="tabs.main">Article</a>
+							</li>
+							<li class="minerva__tab mw-list-item">
+								<a class="minerva__tab-text" href="/wiki/Talk:External_memory_algorithm" rel="discussion" data-event-name="tabs.talk">Talk</a>
+							</li>
+					</ul>
+				<nav class="page-actions-menu">
+	<ul id="p-views" class="page-actions-menu__list minerva-icon-only-menu">
+		<li id="language-selector" class="page-actions-menu__list-item">
+				<a role="button" href="#p-lang" data-mw="interface" data-event-name="menu.languages" title="Language" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet language-selector">
+				    <span class="minerva-icon minerva-icon--language"></span>
+<span>Language</span>
+				</a>
+		</li>
+		<li id="page-actions-watch" class="page-actions-menu__list-item">
+				<a role="button" id="ca-watch" href="/w/index.php?title=Special:UserLogin&amp;returnto=External+memory+algorithm" data-event-name="menu.watch" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet menu__item--page-actions-watch">
+				    <span class="minerva-icon minerva-icon--star"></span>
+<span>Watch</span>
+				</a>
+		</li>
+		<li id="page-actions-edit" class="page-actions-menu__list-item">
+				<a role="button" id="ca-edit" href="/w/index.php?title=External_memory_algorithm&amp;action=edit" data-event-name="menu.edit" data-mw="interface" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet edit-page menu__item--page-actions-edit">
+				    <span class="minerva-icon minerva-icon--edit"></span>
+<span>Edit</span>
+				</a>
+		</li>
+	</ul>
+</nav>
+<!-- version 1.0.2 (change every time you update a partial) -->
+				<div id="mw-content-subtitle"></div>
+			</div>
+			<div id="bodyContent" class="content">
+				<div id="mw-content-text" class="mw-body-content"><script>function mfTempOpenSection(id){var block=document.getElementById("mf-section-"+id);block.className+=" open-block";block.previousSibling.className+=" open-block";}</script><div class="mw-content-ltr mw-parser-output" lang="en" dir="ltr"><section class="mf-section-0" id="mf-section-0">
+<p>In <a href="/wiki/Computing" title="Computing">computing</a>, <b>external memory algorithms</b> or <b>out-of-core algorithms</b> are <a href="/wiki/Algorithms" class="mw-redirect" title="Algorithms">algorithms</a> that are designed to process data that are too large to fit into a computer's <a href="/wiki/Main_memory" class="mw-redirect" title="Main memory">main memory</a> at once. Such algorithms must be optimized to efficiently fetch and access data stored in slow bulk memory (<a href="/wiki/Auxiliary_memory" class="mw-redirect" title="Auxiliary memory">auxiliary memory</a>) such as <a href="/wiki/Hard_drives" class="mw-redirect" title="Hard drives">hard drives</a> or <a href="/wiki/Tape_drives" class="mw-redirect" title="Tape drives">tape drives</a>, or when memory is on a <a href="/wiki/Computer_network" title="Computer network">computer network</a>.<sup id="cite_ref-1" class="reference"><a href="#cite_note-1"><span class="cite-bracket">[</span>1<span class="cite-bracket">]</span></a></sup><sup id="cite_ref-Vitter_2-0" class="reference"><a href="#cite_note-Vitter-2"><span class="cite-bracket">[</span>2<span class="cite-bracket">]</span></a></sup> External memory algorithms are analyzed in the <b>external memory model</b>.
+</p>
+<div id="toc" class="toc" role="navigation" aria-labelledby="mw-toc-heading"><input type="checkbox" role="button" id="toctogglecheckbox" class="toctogglecheckbox" style="display:none"><div class="toctitle" lang="en" dir="ltr"><h2 id="mw-toc-heading">Contents</h2><span class="toctogglespan"><label class="toctogglelabel" for="toctogglecheckbox"></label></span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#Model"><span class="tocnumber">1</span> <span class="toctext">Model</span></a></li>
+<li class="toclevel-1 tocsection-2"><a href="#Algorithms"><span class="tocnumber">2</span> <span class="toctext">Algorithms</span></a></li>
+<li class="toclevel-1 tocsection-3"><a href="#Applications"><span class="tocnumber">3</span> <span class="toctext">Applications</span></a></li>
+<li class="toclevel-1 tocsection-4"><a href="#History"><span class="tocnumber">4</span> <span class="toctext">History</span></a></li>
+<li class="toclevel-1 tocsection-5"><a href="#See_also"><span class="tocnumber">5</span> <span class="toctext">See also</span></a></li>
+<li class="toclevel-1 tocsection-6"><a href="#References"><span class="tocnumber">6</span> <span class="toctext">References</span></a></li>
+<li class="toclevel-1 tocsection-7"><a href="#External_links"><span class="tocnumber">7</span> <span class="toctext">External links</span></a></li>
+</ul>
+</div>
+
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(1)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="Model">Model</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=External_memory_algorithm&amp;action=edit&amp;section=1" title="Edit section: Model" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-1 collapsible-block" id="mf-section-1">
+<figure class="mw-default-size" typeof="mw:File/Thumb"><a href="/wiki/File:External_memory.svg" class="mw-file-description"><noscript><img src="//upload.wikimedia.org/wikipedia/commons/thumb/c/c1/External_memory.svg/250px-External_memory.svg.png" decoding="async" width="250" height="250" class="mw-file-element" data-file-width="496" data-file-height="496"></noscript><span class="lazy-image-placeholder" style="width: 250px;height: 250px;" data-mw-src="//upload.wikimedia.org/wikipedia/commons/thumb/c/c1/External_memory.svg/250px-External_memory.svg.png" data-width="250" data-height="250" data-mw-srcset="//upload.wikimedia.org/wikipedia/commons/thumb/c/c1/External_memory.svg/375px-External_memory.svg.png 1.5x, //upload.wikimedia.org/wikipedia/commons/thumb/c/c1/External_memory.svg/500px-External_memory.svg.png 2x" data-class="mw-file-element">&nbsp;</span></a><figcaption>The cache on the left holds <span class="mwe-math-element"><span class="mwe-math-mathml-inline mwe-math-mathml-a11y" style="display: none;"><math xmlns="http://www.w3.org/1998/Math/MathML" alttext="{\displaystyle {\tfrac {M}{B}}}">
+  <semantics>
+    <mrow class="MJX-TeXAtom-ORD">
+      <mstyle displaystyle="true" scriptlevel="0">
+        <mrow class="MJX-TeXAtom-ORD">
+          <mstyle displaystyle="false" scriptlevel="0">
+            <mfrac>
+              <mi>M</mi>
+              <mi>B</mi>
+            </mfrac>
+          </mstyle>
+        </mrow>
+      </mstyle>
+    </mrow>
+    <annotation encoding="application/x-tex">{\displaystyle {\tfrac {M}{B}}}</annotation>
+  </semantics>
+</math></span><noscript><img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/860c96a1698eb35072253cf373ad394015efe974" class="mwe-math-fallback-image-inline mw-invert skin-invert" aria-hidden="true" style="vertical-align: -1.171ex; width:2.563ex; height:3.509ex;" alt="{\displaystyle {\tfrac {M}{B}}}"></noscript><span class="lazy-image-placeholder" style="width: 2.563ex;height: 3.509ex;vertical-align: -1.171ex;" data-mw-src="https://wikimedia.org/api/rest_v1/media/math/render/svg/860c96a1698eb35072253cf373ad394015efe974" data-alt="{\displaystyle {\tfrac {M}{B}}}" data-class="mwe-math-fallback-image-inline mw-invert skin-invert">&nbsp;</span></span> blocks of size <span class="mwe-math-element"><span class="mwe-math-mathml-inline mwe-math-mathml-a11y" style="display: none;"><math xmlns="http://www.w3.org/1998/Math/MathML" alttext="{\displaystyle B}">
+  <semantics>
+    <mrow class="MJX-TeXAtom-ORD">
+      <mstyle displaystyle="true" scriptlevel="0">
+        <mi>B</mi>
+      </mstyle>
+    </mrow>
+    <annotation encoding="application/x-tex">{\displaystyle B}</annotation>
+  </semantics>
+</math></span><noscript><img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/47136aad860d145f75f3eed3022df827cee94d7a" class="mwe-math-fallback-image-inline mw-invert skin-invert" aria-hidden="true" style="vertical-align: -0.338ex; width:1.764ex; height:2.176ex;" alt="{\displaystyle B}"></noscript><span class="lazy-image-placeholder" style="width: 1.764ex;height: 2.176ex;vertical-align: -0.338ex;" data-mw-src="https://wikimedia.org/api/rest_v1/media/math/render/svg/47136aad860d145f75f3eed3022df827cee94d7a" data-alt="{\displaystyle B}" data-class="mwe-math-fallback-image-inline mw-invert skin-invert">&nbsp;</span></span> each, for a total of <span class="texhtml mvar" style="font-style:italic;">M</span> objects. The external memory on the right is unbounded.</figcaption></figure>
+<p>External memory algorithms are analyzed in an idealized <a href="/wiki/Model_of_computation" title="Model of computation">model of computation</a> called the external memory model (or <b>I/O model</b>, or <b>disk access model</b>). The external memory model is an <a href="/wiki/Abstract_machine" title="Abstract machine">abstract machine</a> similar to the <a href="/wiki/RAM_model" class="mw-redirect" title="RAM model">RAM machine model</a>, but with a <a href="/wiki/Cache_(computing)" title="Cache (computing)">cache</a> in addition to <a href="/wiki/Main_memory" class="mw-redirect" title="Main memory">main memory</a>. The model captures the fact that read and write operations are much faster in a <a href="/wiki/Cache_(computing)" title="Cache (computing)">cache</a> than in <a href="/wiki/Main_memory" class="mw-redirect" title="Main memory">main memory</a>, and that <a href="/wiki/Reading_(computer)" title="Reading (computer)">reading</a> long contiguous blocks is faster than reading randomly using a <a href="/wiki/Disk_read-and-write_head" title="Disk read-and-write head">disk read-and-write head</a>. The <a href="/wiki/Running_time" class="mw-redirect" title="Running time">running time</a> of an <a href="/wiki/Algorithm" title="Algorithm">algorithm</a> in the external memory model is defined by the number of reads and writes to memory required.<sup id="cite_ref-Springer_3-0" class="reference"><a href="#cite_note-Springer-3"><span class="cite-bracket">[</span>3<span class="cite-bracket">]</span></a></sup> The model was introduced by Alok Aggarwal and <a href="/wiki/Jeffrey_Vitter" title="Jeffrey Vitter">Jeffrey Vitter</a> in 1988.<sup id="cite_ref-Aggarwal88_4-0" class="reference"><a href="#cite_note-Aggarwal88-4"><span class="cite-bracket">[</span>4<span class="cite-bracket">]</span></a></sup> The external memory model is related to the <a href="/wiki/Cache-oblivious_algorithm#Idealized_cache_model" title="Cache-oblivious algorithm">cache-oblivious model</a>, but algorithms in the external memory model may know both the <a href="/wiki/Block_(data_storage)" title="Block (data storage)">block size</a> and the <a href="/wiki/Cache_(computing)" title="Cache (computing)">cache</a> size. For this reason, the model is sometimes referred to as the <b>cache-aware model</b>.<sup id="cite_ref-Demaine02_5-0" class="reference"><a href="#cite_note-Demaine02-5"><span class="cite-bracket">[</span>5<span class="cite-bracket">]</span></a></sup>
+</p><p>The model consists of a <a href="/wiki/Processor_(computing)" title="Processor (computing)">processor</a> with an internal memory or <a href="/wiki/Cache_(computing)" title="Cache (computing)">cache</a> of size <span class="texhtml mvar" style="font-style:italic;">M</span>, connected to an <a href="/wiki/Infinity" title="Infinity">unbounded</a> external memory. Both the internal and external memory are divided into <a href="/wiki/Block_(data_storage)" title="Block (data storage)">blocks</a> of size <span class="texhtml mvar" style="font-style:italic;">B</span>. One input/output or memory transfer operation consists of moving a block of <span class="texhtml mvar" style="font-style:italic;">B</span> contiguous elements from external to internal memory, and the <a href="/wiki/Running_time" class="mw-redirect" title="Running time">running time</a> of an algorithm is determined by the number of these input/output operations.<sup id="cite_ref-Aggarwal88_4-1" class="reference"><a href="#cite_note-Aggarwal88-4"><span class="cite-bracket">[</span>4<span class="cite-bracket">]</span></a></sup>
+</p>
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(2)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="Algorithms">Algorithms</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=External_memory_algorithm&amp;action=edit&amp;section=2" title="Edit section: Algorithms" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-2 collapsible-block" id="mf-section-2">
+<p>Algorithms in the external memory model take advantage of the fact that retrieving one object from external memory retrieves an entire block of size <span class="texhtml mvar" style="font-style:italic;">B</span>. This property is sometimes referred to as locality.
+</p><p>Searching for an element among <span class="texhtml mvar" style="font-style:italic;">N</span> objects is possible in the external memory model using a <a href="/wiki/B-tree" title="B-tree">B-tree</a> with branching factor <span class="texhtml mvar" style="font-style:italic;">B</span>. Using a B-tree, searching, insertion, and deletion can be achieved in <span class="mwe-math-element"><span class="mwe-math-mathml-inline mwe-math-mathml-a11y" style="display: none;"><math xmlns="http://www.w3.org/1998/Math/MathML" alttext="{\displaystyle O(\log _{B}N)}">
+  <semantics>
+    <mrow class="MJX-TeXAtom-ORD">
+      <mstyle displaystyle="true" scriptlevel="0">
+        <mi>O</mi>
+        <mo stretchy="false">(</mo>
+        <msub>
+          <mi>log</mi>
+          <mrow class="MJX-TeXAtom-ORD">
+            <mi>B</mi>
+          </mrow>
+        </msub>
+        <mo>⁡<!-- ⁡ --></mo>
+        <mi>N</mi>
+        <mo stretchy="false">)</mo>
+      </mstyle>
+    </mrow>
+    <annotation encoding="application/x-tex">{\displaystyle O(\log _{B}N)}</annotation>
+  </semantics>
+</math></span><noscript><img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/8fd2f191d0616093946fa7a3e57d778471a67450" class="mwe-math-fallback-image-inline mw-invert skin-invert" aria-hidden="true" style="vertical-align: -0.838ex; width:10.485ex; height:2.843ex;" alt="{\displaystyle O(\log _{B}N)}"></noscript><span class="lazy-image-placeholder" style="width: 10.485ex;height: 2.843ex;vertical-align: -0.838ex;" data-mw-src="https://wikimedia.org/api/rest_v1/media/math/render/svg/8fd2f191d0616093946fa7a3e57d778471a67450" data-alt="{\displaystyle O(\log _{B}N)}" data-class="mwe-math-fallback-image-inline mw-invert skin-invert">&nbsp;</span></span> time (in <a href="/wiki/Big_O_notation" title="Big O notation">Big O notation</a>). <a href="/wiki/Information_theory" title="Information theory">Information theoretically</a>, this is the minimum <a href="/wiki/Running_time" class="mw-redirect" title="Running time">running time</a> possible for these operations, so using a B-tree is <a href="/wiki/Asymptotically_optimal" class="mw-redirect" title="Asymptotically optimal">asymptotically optimal</a>.<sup id="cite_ref-Aggarwal88_4-2" class="reference"><a href="#cite_note-Aggarwal88-4"><span class="cite-bracket">[</span>4<span class="cite-bracket">]</span></a></sup>
+</p><p><a href="/wiki/External_sorting" title="External sorting">External sorting</a> is sorting in an external memory setting. External sorting can be done via distribution sort, which is similar to <a href="/wiki/Quicksort" title="Quicksort">quicksort</a>, or via a <span class="mwe-math-element"><span class="mwe-math-mathml-inline mwe-math-mathml-a11y" style="display: none;"><math xmlns="http://www.w3.org/1998/Math/MathML" alttext="{\displaystyle {\tfrac {M}{B}}}">
+  <semantics>
+    <mrow class="MJX-TeXAtom-ORD">
+      <mstyle displaystyle="true" scriptlevel="0">
+        <mrow class="MJX-TeXAtom-ORD">
+          <mstyle displaystyle="false" scriptlevel="0">
+            <mfrac>
+              <mi>M</mi>
+              <mi>B</mi>
+            </mfrac>
+          </mstyle>
+        </mrow>
+      </mstyle>
+    </mrow>
+    <annotation encoding="application/x-tex">{\displaystyle {\tfrac {M}{B}}}</annotation>
+  </semantics>
+</math></span><noscript><img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/860c96a1698eb35072253cf373ad394015efe974" class="mwe-math-fallback-image-inline mw-invert skin-invert" aria-hidden="true" style="vertical-align: -1.171ex; width:2.563ex; height:3.509ex;" alt="{\displaystyle {\tfrac {M}{B}}}"></noscript><span class="lazy-image-placeholder" style="width: 2.563ex;height: 3.509ex;vertical-align: -1.171ex;" data-mw-src="https://wikimedia.org/api/rest_v1/media/math/render/svg/860c96a1698eb35072253cf373ad394015efe974" data-alt="{\displaystyle {\tfrac {M}{B}}}" data-class="mwe-math-fallback-image-inline mw-invert skin-invert">&nbsp;</span></span><a href="/wiki/K-way_merge_algorithm" title="K-way merge algorithm">-way merge sort</a>. Both variants achieve the <a href="/wiki/Asymptotically_optimal" class="mw-redirect" title="Asymptotically optimal">asymptotically optimal</a> runtime of <span class="mwe-math-element"><span class="mwe-math-mathml-inline mwe-math-mathml-a11y" style="display: none;"><math xmlns="http://www.w3.org/1998/Math/MathML" alttext="{\displaystyle O\left({\frac {N}{B}}\log _{\frac {M}{B}}{\frac {N}{B}}\right)}">
+  <semantics>
+    <mrow class="MJX-TeXAtom-ORD">
+      <mstyle displaystyle="true" scriptlevel="0">
+        <mi>O</mi>
+        <mrow>
+          <mo>(</mo>
+          <mrow>
+            <mrow class="MJX-TeXAtom-ORD">
+              <mfrac>
+                <mi>N</mi>
+                <mi>B</mi>
+              </mfrac>
+            </mrow>
+            <msub>
+              <mi>log</mi>
+              <mrow class="MJX-TeXAtom-ORD">
+                <mfrac>
+                  <mi>M</mi>
+                  <mi>B</mi>
+                </mfrac>
+              </mrow>
+            </msub>
+            <mo>⁡<!-- ⁡ --></mo>
+            <mrow class="MJX-TeXAtom-ORD">
+              <mfrac>
+                <mi>N</mi>
+                <mi>B</mi>
+              </mfrac>
+            </mrow>
+          </mrow>
+          <mo>)</mo>
+        </mrow>
+      </mstyle>
+    </mrow>
+    <annotation encoding="application/x-tex">{\displaystyle O\left({\frac {N}{B}}\log _{\frac {M}{B}}{\frac {N}{B}}\right)}</annotation>
+  </semantics>
+</math></span><noscript><img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/3e90f59e132c2d7f25dd2336684b999c3dac901c" class="mwe-math-fallback-image-inline mw-invert skin-invert" aria-hidden="true" style="vertical-align: -2.505ex; width:17.597ex; height:6.176ex;" alt="{\displaystyle O\left({\frac {N}{B}}\log _{\frac {M}{B}}{\frac {N}{B}}\right)}"></noscript><span class="lazy-image-placeholder" style="width: 17.597ex;height: 6.176ex;vertical-align: -2.505ex;" data-mw-src="https://wikimedia.org/api/rest_v1/media/math/render/svg/3e90f59e132c2d7f25dd2336684b999c3dac901c" data-alt="{\displaystyle O\left({\frac {N}{B}}\log _{\frac {M}{B}}{\frac {N}{B}}\right)}" data-class="mwe-math-fallback-image-inline mw-invert skin-invert">&nbsp;</span></span> to sort <span class="texhtml mvar" style="font-style:italic;">N</span> objects. This bound also applies to the <a href="/wiki/Fast_Fourier_transform" title="Fast Fourier transform">fast Fourier transform</a> in the external memory model.<sup id="cite_ref-Vitter_2-1" class="reference"><a href="#cite_note-Vitter-2"><span class="cite-bracket">[</span>2<span class="cite-bracket">]</span></a></sup>
+</p><p>The permutation problem is to rearrange <span class="texhtml mvar" style="font-style:italic;">N</span> elements into a specific <a href="/wiki/Permutation" title="Permutation">permutation</a>. This can either be done either by sorting, which requires the above sorting runtime, or inserting each element in order and ignoring the benefit of locality. Thus, permutation can be done in <span class="mwe-math-element"><span class="mwe-math-mathml-inline mwe-math-mathml-a11y" style="display: none;"><math xmlns="http://www.w3.org/1998/Math/MathML" alttext="{\displaystyle O\left(\min \left(N,{\frac {N}{B}}\log _{\frac {M}{B}}{\frac {N}{B}}\right)\right)}">
+  <semantics>
+    <mrow class="MJX-TeXAtom-ORD">
+      <mstyle displaystyle="true" scriptlevel="0">
+        <mi>O</mi>
+        <mrow>
+          <mo>(</mo>
+          <mrow>
+            <mo movablelimits="true" form="prefix">min</mo>
+            <mrow>
+              <mo>(</mo>
+              <mrow>
+                <mi>N</mi>
+                <mo>,</mo>
+                <mrow class="MJX-TeXAtom-ORD">
+                  <mfrac>
+                    <mi>N</mi>
+                    <mi>B</mi>
+                  </mfrac>
+                </mrow>
+                <msub>
+                  <mi>log</mi>
+                  <mrow class="MJX-TeXAtom-ORD">
+                    <mfrac>
+                      <mi>M</mi>
+                      <mi>B</mi>
+                    </mfrac>
+                  </mrow>
+                </msub>
+                <mo>⁡<!-- ⁡ --></mo>
+                <mrow class="MJX-TeXAtom-ORD">
+                  <mfrac>
+                    <mi>N</mi>
+                    <mi>B</mi>
+                  </mfrac>
+                </mrow>
+              </mrow>
+              <mo>)</mo>
+            </mrow>
+          </mrow>
+          <mo>)</mo>
+        </mrow>
+      </mstyle>
+    </mrow>
+    <annotation encoding="application/x-tex">{\displaystyle O\left(\min \left(N,{\frac {N}{B}}\log _{\frac {M}{B}}{\frac {N}{B}}\right)\right)}</annotation>
+  </semantics>
+</math></span><noscript><img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/acc62aa7820b9a947afa5a46b5dfa6456a0c9ee1" class="mwe-math-fallback-image-inline mw-invert skin-invert" aria-hidden="true" style="vertical-align: -2.505ex; width:28.378ex; height:6.176ex;" alt="{\displaystyle O\left(\min \left(N,{\frac {N}{B}}\log _{\frac {M}{B}}{\frac {N}{B}}\right)\right)}"></noscript><span class="lazy-image-placeholder" style="width: 28.378ex;height: 6.176ex;vertical-align: -2.505ex;" data-mw-src="https://wikimedia.org/api/rest_v1/media/math/render/svg/acc62aa7820b9a947afa5a46b5dfa6456a0c9ee1" data-alt="{\displaystyle O\left(\min \left(N,{\frac {N}{B}}\log _{\frac {M}{B}}{\frac {N}{B}}\right)\right)}" data-class="mwe-math-fallback-image-inline mw-invert skin-invert">&nbsp;</span></span> time.
+</p>
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(3)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="Applications">Applications</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=External_memory_algorithm&amp;action=edit&amp;section=3" title="Edit section: Applications" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-3 collapsible-block" id="mf-section-3">
+<p>The external memory model captures the <a href="/wiki/Memory_hierarchy" title="Memory hierarchy">memory hierarchy</a>, which is not modeled in other common models used in analyzing <a href="/wiki/Data_structures" class="mw-redirect" title="Data structures">data structures</a>, such as the <a href="/wiki/Random-access_machine" title="Random-access machine">random-access machine</a>, and is useful for proving <a href="/wiki/Lower_bound" class="mw-redirect" title="Lower bound">lower bounds</a> for data structures. The model is also useful for analyzing algorithms that work on datasets too big to fit in internal memory.<sup id="cite_ref-Aggarwal88_4-3" class="reference"><a href="#cite_note-Aggarwal88-4"><span class="cite-bracket">[</span>4<span class="cite-bracket">]</span></a></sup>
+</p><p>A typical example is <a href="/wiki/Geographic_information_system" title="Geographic information system">geographic information systems</a>, especially <a href="/wiki/Digital_elevation_model" title="Digital elevation model">digital elevation models</a>, where the full data set easily exceeds several <a href="/wiki/Gigabytes" class="mw-redirect" title="Gigabytes">gigabytes</a> or even <a href="/wiki/Terabytes" class="mw-redirect" title="Terabytes">terabytes</a> of data.
+</p><p>This methodology extends beyond <a href="/wiki/Central_processing_unit" title="Central processing unit">general purpose CPUs</a> and also includes <a href="/wiki/Graphics_processing_unit" title="Graphics processing unit">GPU</a> computing as well as classical <a href="/wiki/Digital_signal_processing" title="Digital signal processing">digital signal processing</a>. In <a href="/wiki/General-purpose_computing_on_graphics_processing_units" title="General-purpose computing on graphics processing units">general-purpose computing on graphics processing units</a> (GPGPU), powerful graphics cards (GPUs) with little memory (compared with the more familiar system memory, which is most often referred to simply as <a href="/wiki/Random-access_memory" title="Random-access memory">RAM</a>) are utilized with relatively slow CPU-to-GPU memory transfer (when compared with computation bandwidth).
+</p>
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(4)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="History">History</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=External_memory_algorithm&amp;action=edit&amp;section=4" title="Edit section: History" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-4 collapsible-block" id="mf-section-4">
+<p>An early use of the term "out-of-core" as an adjective is in 1962 in reference to <i>devices</i> that are other than the <a href="/wiki/Magnetic-core_memory" title="Magnetic-core memory">core memory</a> of an <a href="/wiki/IBM_360" class="mw-redirect" title="IBM 360">IBM 360</a>.<sup id="cite_ref-6" class="reference"><a href="#cite_note-6"><span class="cite-bracket">[</span>6<span class="cite-bracket">]</span></a></sup> An early use of the term "out-of-core" with respect to <i>algorithms</i> appears in 1971.<sup id="cite_ref-7" class="reference"><a href="#cite_note-7"><span class="cite-bracket">[</span>7<span class="cite-bracket">]</span></a></sup>
+</p>
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(5)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="See_also">See also</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=External_memory_algorithm&amp;action=edit&amp;section=5" title="Edit section: See also" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-5 collapsible-block" id="mf-section-5">
+<ul><li><a href="/wiki/Cache-oblivious_algorithm" title="Cache-oblivious algorithm">Cache-oblivious algorithm</a></li>
+<li><a href="/wiki/External_memory_graph_traversal" title="External memory graph traversal">External memory graph traversal</a></li>
+<li><a href="/wiki/Online_algorithm" title="Online algorithm">Online algorithm</a></li>
+<li><a href="/wiki/Parallel_external_memory" title="Parallel external memory">Parallel external memory</a></li>
+<li><a href="/wiki/Streaming_algorithm" title="Streaming algorithm">Streaming algorithm</a></li></ul>
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(6)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="References">References</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=External_memory_algorithm&amp;action=edit&amp;section=6" title="Edit section: References" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-6 collapsible-block" id="mf-section-6">
+<style data-mw-deduplicate="TemplateStyles:r1239543626">.mw-parser-output .reflist{margin-bottom:0.5em;list-style-type:decimal}@media screen{.mw-parser-output .reflist{font-size:90%}}.mw-parser-output .reflist .references{font-size:100%;margin-bottom:0;list-style-type:inherit}.mw-parser-output .reflist-columns-2{column-width:30em}.mw-parser-output .reflist-columns-3{column-width:25em}.mw-parser-output .reflist-columns{margin-top:0.3em}.mw-parser-output .reflist-columns ol{margin-top:0}.mw-parser-output .reflist-columns li{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .reflist-upper-alpha{list-style-type:upper-alpha}.mw-parser-output .reflist-upper-roman{list-style-type:upper-roman}.mw-parser-output .reflist-lower-alpha{list-style-type:lower-alpha}.mw-parser-output .reflist-lower-greek{list-style-type:lower-greek}.mw-parser-output .reflist-lower-roman{list-style-type:lower-roman}</style><div class="reflist">
+<div class="mw-references-wrap"><ol class="references">
+<li id="cite_note-1"><span class="mw-cite-backlink"><b><a href="#cite_ref-1">^</a></b></span> <span class="reference-text"><style data-mw-deduplicate="TemplateStyles:r1238218222">.mw-parser-output cite.citation{font-style:inherit;word-wrap:break-word}.mw-parser-output .citation q{quotes:"\"""\"""'""'"}.mw-parser-output .citation:target{background-color:rgba(0,127,255,0.133)}.mw-parser-output .id-lock-free.id-lock-free a{background:url("//upload.wikimedia.org/wikipedia/commons/6/65/Lock-green.svg")right 0.1em center/9px no-repeat}.mw-parser-output .id-lock-limited.id-lock-limited a,.mw-parser-output .id-lock-registration.id-lock-registration a{background:url("//upload.wikimedia.org/wikipedia/commons/d/d6/Lock-gray-alt-2.svg")right 0.1em center/9px no-repeat}.mw-parser-output .id-lock-subscription.id-lock-subscription a{background:url("//upload.wikimedia.org/wikipedia/commons/a/aa/Lock-red-alt-2.svg")right 0.1em center/9px no-repeat}.mw-parser-output .cs1-ws-icon a{background:url("//upload.wikimedia.org/wikipedia/commons/4/4c/Wikisource-logo.svg")right 0.1em center/12px no-repeat}body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-free a,body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-limited a,body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-registration a,body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .id-lock-subscription a,body:not(.skin-timeless):not(.skin-minerva) .mw-parser-output .cs1-ws-icon a{background-size:contain;padding:0 1em 0 0}.mw-parser-output .cs1-code{color:inherit;background:inherit;border:none;padding:inherit}.mw-parser-output .cs1-hidden-error{display:none;color:var(--color-error,#d33)}.mw-parser-output .cs1-visible-error{color:var(--color-error,#d33)}.mw-parser-output .cs1-maint{display:none;color:#085;margin-left:0.3em}.mw-parser-output .cs1-kern-left{padding-left:0.2em}.mw-parser-output .cs1-kern-right{padding-right:0.2em}.mw-parser-output .citation .mw-selflink{font-weight:inherit}@media screen{.mw-parser-output .cs1-format{font-size:95%}html.skin-theme-clientpref-night .mw-parser-output .cs1-maint{color:#18911f}}@media screen and (prefers-color-scheme:dark){html.skin-theme-clientpref-os .mw-parser-output .cs1-maint{color:#18911f}}</style><cite id="CITEREFVitter,_J._S.2001" class="citation journal cs1">Vitter, J. S. (2001). "External Memory Algorithms and Data Structures: Dealing with MASSIVE DATA". <i>ACM Computing Surveys</i>. <b>33</b> (2): <span class="nowrap">209–</span>271. <a href="/wiki/CiteSeerX_(identifier)" class="mw-redirect" title="CiteSeerX (identifier)">CiteSeerX</a> <span class="id-lock-free" title="Freely accessible"><a rel="nofollow" class="external text" href="https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.42.7064">10.1.1.42.7064</a></span>. <a href="/wiki/Doi_(identifier)" class="mw-redirect" title="Doi (identifier)">doi</a>:<a rel="nofollow" class="external text" href="https://doi.org/10.1145%2F384192.384193">10.1145/384192.384193</a>. <a href="/wiki/S2CID_(identifier)" class="mw-redirect" title="S2CID (identifier)">S2CID</a> <a rel="nofollow" class="external text" href="https://api.semanticscholar.org/CorpusID:2155038">2155038</a>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=article&amp;rft.jtitle=ACM+Computing+Surveys&amp;rft.atitle=External+Memory+Algorithms+and+Data+Structures%3A+Dealing+with+MASSIVE+DATA&amp;rft.volume=33&amp;rft.issue=2&amp;rft.pages=209-271&amp;rft.date=2001&amp;rft_id=https%3A%2F%2Fciteseerx.ist.psu.edu%2Fviewdoc%2Fsummary%3Fdoi%3D10.1.1.42.7064%23id-name%3DCiteSeerX&amp;rft_id=https%3A%2F%2Fapi.semanticscholar.org%2FCorpusID%3A2155038%23id-name%3DS2CID&amp;rft_id=info%3Adoi%2F10.1145%2F384192.384193&amp;rft.au=Vitter%2C+J.+S.&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AExternal+memory+algorithm" class="Z3988"></span></span>
+</li>
+<li id="cite_note-Vitter-2"><span class="mw-cite-backlink">^ <a href="#cite_ref-Vitter_2-0"><sup><i><b>a</b></i></sup></a> <a href="#cite_ref-Vitter_2-1"><sup><i><b>b</b></i></sup></a></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1238218222"><cite id="CITEREFVitter,_J._S.2008" class="citation book cs1">Vitter, J. S. (2008). <a rel="nofollow" class="external text" href="http://www.ittc.ku.edu/~jsv/Papers/Vit.IO_book.pdf"><i>Algorithms and Data Structures for External Memory</i></a> <span class="cs1-format">(PDF)</span>. Series on Foundations and Trends in Theoretical Computer Science. Vol. 2. Hanover, MA: Now Publishers. pp. <span class="nowrap">305–</span>474. <a href="/wiki/CiteSeerX_(identifier)" class="mw-redirect" title="CiteSeerX (identifier)">CiteSeerX</a> <span class="id-lock-free" title="Freely accessible"><a rel="nofollow" class="external text" href="https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.140.3731">10.1.1.140.3731</a></span>. <a href="/wiki/Doi_(identifier)" class="mw-redirect" title="Doi (identifier)">doi</a>:<a rel="nofollow" class="external text" href="https://doi.org/10.1561%2F0400000014">10.1561/0400000014</a>. <a href="/wiki/ISBN_(identifier)" class="mw-redirect" title="ISBN (identifier)">ISBN</a> <a href="/wiki/Special:BookSources/978-1-60198-106-6" title="Special:BookSources/978-1-60198-106-6"><bdi>978-1-60198-106-6</bdi></a>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=book&amp;rft.btitle=Algorithms+and+Data+Structures+for+External+Memory&amp;rft.place=Hanover%2C+MA&amp;rft.series=Series+on+Foundations+and+Trends+in+Theoretical+Computer+Science&amp;rft.pages=305-474&amp;rft.pub=Now+Publishers&amp;rft.date=2008&amp;rft_id=https%3A%2F%2Fciteseerx.ist.psu.edu%2Fviewdoc%2Fsummary%3Fdoi%3D10.1.1.140.3731%23id-name%3DCiteSeerX&amp;rft_id=info%3Adoi%2F10.1561%2F0400000014&amp;rft.isbn=978-1-60198-106-6&amp;rft.au=Vitter%2C+J.+S.&amp;rft_id=http%3A%2F%2Fwww.ittc.ku.edu%2F~jsv%2FPapers%2FVit.IO_book.pdf&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AExternal+memory+algorithm" class="Z3988"></span> <span class="cs1-visible-error citation-comment"><code class="cs1-code">{{<a href="/wiki/Template:Cite_book" title="Template:Cite book">cite book</a>}}</code>: </span><span class="cs1-visible-error citation-comment"><code class="cs1-code">|journal=</code> ignored (<a href="/wiki/Help:CS1_errors#periodical_ignored" title="Help:CS1 errors">help</a>)</span></span>
+</li>
+<li id="cite_note-Springer-3"><span class="mw-cite-backlink"><b><a href="#cite_ref-Springer_3-0">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1238218222"><cite id="CITEREFZhangTsotrasLevialdiGrinstein2009" class="citation encyclopaedia cs1">Zhang, Donghui; Tsotras, Vassilis J.; Levialdi, Stefano; Grinstein, Georges; Berry, Damon Andrew; Gouet-Brunet, Valerie; Kosch, Harald; Döller, Mario; Döller, Mario; Kosch, Harald; Maier, Paul; Bhattacharya, Arnab; Ljosa, Vebjorn; Nack, Frank; Bartolini, Ilaria; Gouet-Brunet, Valerie; Mei, Tao; Rui, Yong; Crucianu, Michel; Shih, Frank Y.; Fan, Wenfei; Ullman-Cullere, Mollie; Clark, Eugene; Aronson, Samuel; Mellin, Jonas; Berndtsson, Mikael; Grahne, Gösta; Bertossi, Leopoldo; Dong, Guozhu; et al. (2009). "I/O Model of Computation". <i>Encyclopedia of Database Systems</i>. <a href="/wiki/Springer_Science%2BBusiness_Media" title="Springer Science+Business Media">Springer Science+Business Media</a>. pp. <span class="nowrap">1333–</span>1334. <a href="/wiki/Doi_(identifier)" class="mw-redirect" title="Doi (identifier)">doi</a>:<a rel="nofollow" class="external text" href="https://doi.org/10.1007%2F978-0-387-39940-9_752">10.1007/978-0-387-39940-9_752</a>. <a href="/wiki/ISBN_(identifier)" class="mw-redirect" title="ISBN (identifier)">ISBN</a> <a href="/wiki/Special:BookSources/978-0-387-35544-3" title="Special:BookSources/978-0-387-35544-3"><bdi>978-0-387-35544-3</bdi></a>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=bookitem&amp;rft.atitle=I%2FO+Model+of+Computation&amp;rft.btitle=Encyclopedia+of+Database+Systems&amp;rft.pages=1333-1334&amp;rft.pub=Springer+Science%2BBusiness+Media&amp;rft.date=2009&amp;rft_id=info%3Adoi%2F10.1007%2F978-0-387-39940-9_752&amp;rft.isbn=978-0-387-35544-3&amp;rft.aulast=Zhang&amp;rft.aufirst=Donghui&amp;rft.au=Tsotras%2C+Vassilis+J.&amp;rft.au=Levialdi%2C+Stefano&amp;rft.au=Grinstein%2C+Georges&amp;rft.au=Berry%2C+Damon+Andrew&amp;rft.au=Gouet-Brunet%2C+Valerie&amp;rft.au=Kosch%2C+Harald&amp;rft.au=D%C3%B6ller%2C+Mario&amp;rft.au=D%C3%B6ller%2C+Mario&amp;rft.au=Kosch%2C+Harald&amp;rft.au=Maier%2C+Paul&amp;rft.au=Bhattacharya%2C+Arnab&amp;rft.au=Ljosa%2C+Vebjorn&amp;rft.au=Nack%2C+Frank&amp;rft.au=Bartolini%2C+Ilaria&amp;rft.au=Gouet-Brunet%2C+Valerie&amp;rft.au=Mei%2C+Tao&amp;rft.au=Rui%2C+Yong&amp;rft.au=Crucianu%2C+Michel&amp;rft.au=Shih%2C+Frank+Y.&amp;rft.au=Fan%2C+Wenfei&amp;rft.au=Ullman-Cullere%2C+Mollie&amp;rft.au=Clark%2C+Eugene&amp;rft.au=Aronson%2C+Samuel&amp;rft.au=Mellin%2C+Jonas&amp;rft.au=Berndtsson%2C+Mikael&amp;rft.au=Grahne%2C+G%C3%B6sta&amp;rft.au=Bertossi%2C+Leopoldo&amp;rft.au=Dong%2C+Guozhu&amp;rft.au=Su%2C+Jianwen&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AExternal+memory+algorithm" class="Z3988"></span></span>
+</li>
+<li id="cite_note-Aggarwal88-4"><span class="mw-cite-backlink">^ <a href="#cite_ref-Aggarwal88_4-0"><sup><i><b>a</b></i></sup></a> <a href="#cite_ref-Aggarwal88_4-1"><sup><i><b>b</b></i></sup></a> <a href="#cite_ref-Aggarwal88_4-2"><sup><i><b>c</b></i></sup></a> <a href="#cite_ref-Aggarwal88_4-3"><sup><i><b>d</b></i></sup></a></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1238218222"><cite id="CITEREFAggarwalVitter1988" class="citation journal cs1">Aggarwal, Alok; <a href="/wiki/Jeffrey_Vitter" title="Jeffrey Vitter">Vitter, Jeffrey</a> (1988). <a rel="nofollow" class="external text" href="https://hal.inria.fr/inria-00075827">"The input/output complexity of sorting and related problems"</a>. <i><a href="/wiki/Communications_of_the_ACM" title="Communications of the ACM">Communications of the ACM</a></i>. <b>31</b> (9): <span class="nowrap">1116–</span>1127. <a href="/wiki/Doi_(identifier)" class="mw-redirect" title="Doi (identifier)">doi</a>:<span class="id-lock-free" title="Freely accessible"><a rel="nofollow" class="external text" href="https://doi.org/10.1145%2F48529.48535">10.1145/48529.48535</a></span>. <a href="/wiki/S2CID_(identifier)" class="mw-redirect" title="S2CID (identifier)">S2CID</a> <a rel="nofollow" class="external text" href="https://api.semanticscholar.org/CorpusID:6264984">6264984</a>.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.genre=article&amp;rft.jtitle=Communications+of+the+ACM&amp;rft.atitle=The+input%2Foutput+complexity+of+sorting+and+related+problems&amp;rft.volume=31&amp;rft.issue=9&amp;rft.pages=1116-1127&amp;rft.date=1988&amp;rft_id=info%3Adoi%2F10.1145%2F48529.48535&amp;rft_id=https%3A%2F%2Fapi.semanticscholar.org%2FCorpusID%3A6264984%23id-name%3DS2CID&amp;rft.aulast=Aggarwal&amp;rft.aufirst=Alok&amp;rft.au=Vitter%2C+Jeffrey&amp;rft_id=https%3A%2F%2Fhal.inria.fr%2Finria-00075827&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AExternal+memory+algorithm" class="Z3988"></span></span>
+</li>
+<li id="cite_note-Demaine02-5"><span class="mw-cite-backlink"><b><a href="#cite_ref-Demaine02_5-0">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1238218222"><cite id="CITEREFDemaine2002" class="citation conference cs1"><a href="/wiki/Erik_Demaine" title="Erik Demaine">Demaine, Erik</a> (2002). <a rel="nofollow" class="external text" href="http://erikdemaine.org/papers/BRICS2002/paper.pdf"><i>Cache-Oblivious Algorithms and Data Structures</i></a> <span class="cs1-format">(PDF)</span>. Lecture Notes from the EEF Summer School on Massive Data Sets. Aarhus: BRICS.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=conference&amp;rft.btitle=Cache-Oblivious+Algorithms+and+Data+Structures&amp;rft.place=Aarhus&amp;rft.pub=BRICS&amp;rft.date=2002&amp;rft.aulast=Demaine&amp;rft.aufirst=Erik&amp;rft_id=http%3A%2F%2Ferikdemaine.org%2Fpapers%2FBRICS2002%2Fpaper.pdf&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AExternal+memory+algorithm" class="Z3988"></span></span>
+</li>
+<li id="cite_note-6"><span class="mw-cite-backlink"><b><a href="#cite_ref-6">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1238218222"><cite class="citation book cs1"><a rel="nofollow" class="external text" href="https://books.google.com/books?id=oOOj8pHh6t8C&amp;q=%22out-of-core%22+algorithm"><i>NASA SP</i></a>. NASA. 1962. p. 276.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=book&amp;rft.btitle=NASA+SP&amp;rft.pages=276&amp;rft.pub=NASA&amp;rft.date=1962&amp;rft_id=https%3A%2F%2Fbooks.google.com%2Fbooks%3Fid%3DoOOj8pHh6t8C%26q%3D%2522out-of-core%2522%2Balgorithm&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AExternal+memory+algorithm" class="Z3988"></span></span>
+</li>
+<li id="cite_note-7"><span class="mw-cite-backlink"><b><a href="#cite_ref-7">^</a></b></span> <span class="reference-text"><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r1238218222"><cite class="citation book cs1"><a rel="nofollow" class="external text" href="https://books.google.com/books?id=eHVQAAAAMAAJ&amp;q=%22out-of-core%22"><i>Computers in Crisis</i></a>. ACM. 1971. p. 296.</cite><span title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=book&amp;rft.btitle=Computers+in+Crisis&amp;rft.pages=296&amp;rft.pub=ACM&amp;rft.date=1971&amp;rft_id=https%3A%2F%2Fbooks.google.com%2Fbooks%3Fid%3DeHVQAAAAMAAJ%26q%3D%2522out-of-core%2522&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AExternal+memory+algorithm" class="Z3988"></span></span>
+</li>
+</ol></div></div>
+</section><div class="mw-heading mw-heading2 section-heading" onclick="mfTempOpenSection(7)"><span class="indicator mf-icon mf-icon-expand mf-icon--small"></span><h2 id="External_links">External links</h2><span class="mw-editsection">
+<a role="button" href="/w/index.php?title=External_memory_algorithm&amp;action=edit&amp;section=7" title="Edit section: External links" class="cdx-button cdx-button--size-large cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--icon-only cdx-button--weight-quiet ">
+    <span class="minerva-icon minerva-icon--edit"></span>
+<span>edit</span>
+</a>
+
+</span>
+
+</div><section class="mf-section-7 collapsible-block" id="mf-section-7">
+<ul><li><a rel="nofollow" class="external text" href="http://www.tau.ac.il/~stoledo/Bib/Pubs/pp01-qr.pdf">Out of Core SVD and QR</a></li>
+<li><a rel="nofollow" class="external text" href="http://cis.poly.edu/chiang/Vis02-tutorial4.pdf">Out of core graphics</a></li>
+<li><a rel="nofollow" class="external text" href="http://www.netlib.org/utk/people/JackDongarra/pdf/ooc-scalapack.pdf">Scalapack design</a></li></ul>
+<!-- 
+NewPP limit report
+Parsed by mw‐web.eqiad.main‐d68c94cb‐wqq6h
+Cached time: 20250419123220
+Cache expiry: 2592000
+Reduced expiry: false
+Complications: [vary‐revision‐sha1, show‐toc]
+CPU time usage: 0.225 seconds
+Real time usage: 0.318 seconds
+Preprocessor visited node count: 851/1000000
+Post‐expand include size: 18834/2097152 bytes
+Template argument size: 935/2097152 bytes
+Highest expansion depth: 8/100
+Expensive parser function count: 1/500
+Unstrip recursion depth: 1/20
+Unstrip post‐expand size: 29167/5000000 bytes
+Lua time usage: 0.144/10.000 seconds
+Lua memory usage: 4358236/52428800 bytes
+Number of Wikibase entities loaded: 0/500
+-->
+<!--
+Transclusion expansion time report (%,ms,calls,template)
+100.00%  245.605      1 -total
+ 68.52%  168.281      1 Template:Reflist
+ 42.57%  104.542      2 Template:Cite_journal
+ 28.47%   69.921      1 Template:Short_description
+ 15.52%   38.129      2 Template:Pagetype
+  9.03%   22.174      1 Template:Cite_encyclopedia
+  8.82%   21.661      3 Template:Main_other
+  8.04%   19.737      1 Template:SDcat
+  6.24%   15.329      3 Template:Cite_book
+  2.85%    6.997      1 Template:Cite_conference
+-->
+
+<!-- Saved in parser cache with key enwiki:pcache:1881722:|#|:idhash:canonical and timestamp 20250419123220 and revision id 1270502931. Rendering was triggered because: page-view
+ -->
+</section></div>
+<!-- MobileFormatter took 0.009 seconds --><!--esi <esi:include src="/esitest-fa8a495983347898/content" /> --><noscript><img src="https://en.m.wikipedia.org/wiki/Special:CentralAutoLogin/start?type=1x1&amp;usesul3=1" alt="" width="1" height="1" style="border: none; position: absolute;"></noscript>
+<div class="printfooter" data-nosnippet="">Retrieved from "<a dir="ltr" href="https://en.wikipedia.org/w/index.php?title=External_memory_algorithm&amp;oldid=1270502931">https://en.wikipedia.org/w/index.php?title=External_memory_algorithm&amp;oldid=1270502931</a>"</div></div>
+				
+			</div>
+			<div class="post-content" id="page-secondary-actions">
+			</div>
+		</main>
+		<footer class="mw-footer minerva-footer" role="contentinfo">
+		  <a class="last-modified-bar" href="/w/index.php?title=External_memory_algorithm&amp;action=history">
+  	<div class="post-content last-modified-bar__content">
+  		 <span class="minerva-icon minerva-icon-size-medium minerva-icon--modified-history"></span>
+ 
+  		<span class="last-modified-bar__text modified-enhancement"
+  				data-user-name="Cornmazes"
+  				data-user-gender="unknown"
+  				data-timestamp="1737321632">
+  				<span>Last edited on 19 January 2025, at 21:20</span>
+  		</span>
+  		 <span class="minerva-icon minerva-icon-size-small minerva-icon--expand"></span>
+ 
+  	</div>
+  </a>
+	<div class="post-content footer-content">
+			<div id='mw-data-after-content'>
+	<div class="read-more-container"></div>
+</div>
+
+			<div id="p-lang">
+	    <h4>Languages</h4>
+	    <section>
+	        <ul id="p-variants" class="minerva-languages"></ul>
+	        <ul class="minerva-languages"><li class="interlanguage-link interwiki-da mw-list-item"><a href="https://da.wikipedia.org/wiki/Out-of-core-algoritme" title="Out-of-core-algoritme – Danish" lang="da" hreflang="da" data-title="Out-of-core-algoritme" data-language-autonym="Dansk" data-language-local-name="Danish" class="interlanguage-link-target"><span>Dansk</span></a></li><li class="interlanguage-link interwiki-de mw-list-item"><a href="https://de.wikipedia.org/wiki/External_Memory_Algorithmus" title="External Memory Algorithmus – German" lang="de" hreflang="de" data-title="External Memory Algorithmus" data-language-autonym="Deutsch" data-language-local-name="German" class="interlanguage-link-target"><span>Deutsch</span></a></li><li class="interlanguage-link interwiki-fa mw-list-item"><a href="https://fa.wikipedia.org/wiki/%D8%A7%D9%84%DA%AF%D9%88%D8%B1%DB%8C%D8%AA%D9%85_%D8%AD%D8%A7%D9%81%D8%B8%D9%87_%D8%AE%D8%A7%D8%B1%D8%AC%DB%8C" title="الگوریتم حافظه خارجی – Persian" lang="fa" hreflang="fa" data-title="الگوریتم حافظه خارجی" data-language-autonym="فارسی" data-language-local-name="Persian" class="interlanguage-link-target"><span>فارسی</span></a></li><li class="interlanguage-link interwiki-pt mw-list-item"><a href="https://pt.wikipedia.org/wiki/Algoritmo_de_mem%C3%B3ria_externa" title="Algoritmo de memória externa – Portuguese" lang="pt" hreflang="pt" data-title="Algoritmo de memória externa" data-language-autonym="Português" data-language-local-name="Portuguese" class="interlanguage-link-target"><span>Português</span></a></li></ul>
+	    </section>
+	</div>
+	<div class="minerva-footer-logo">
+				<img src="/static/images/mobile/copyright/wikipedia-wordmark-en.svg" alt="Wikipedia" width="120" height="18"
+	style="width: 7.5em; height: 1.125em;"/>
+
+
+				<ul id="footer-icons" class="footer-icons">
+	<li id="footer-copyrightico"><a href="https://www.wikimedia.org/" class="cdx-button cdx-button--fake-button cdx-button--size-large cdx-button--fake-button--enabled"><picture><source media="(min-width: 500px)" srcset="/static/images/footer/wikimedia-button.svg" width="84" height="29"><img src="/static/images/footer/wikimedia.svg" width="25" height="25" alt="Wikimedia Foundation" lang="en" loading="lazy"></picture></a></li>
+	<li id="footer-poweredbyico"><a href="https://www.mediawiki.org/" class="cdx-button cdx-button--fake-button cdx-button--size-large cdx-button--fake-button--enabled"><picture><source media="(min-width: 500px)" srcset="/w/resources/assets/poweredby_mediawiki.svg" width="88" height="31"><img src="/w/resources/assets/mediawiki_compact.svg" alt="Powered by MediaWiki" lang="en" width="25" height="25" loading="lazy"></picture></a></li>
+</ul>
+			</div>
+			<ul id="footer-info" class="footer-info hlist hlist-separated">
+	<li id="footer-info-lastmod"> This page was last edited on 19 January 2025, at 21:20<span class="anonymous-show">&#160;(UTC)</span>.</li>
+	<li id="footer-info-copyright">Content is available under <a class="external" rel="nofollow" href="https://creativecommons.org/licenses/by-sa/4.0/deed.en">CC BY-SA 4.0</a> unless otherwise noted.</li>
+</ul>
+
+			<ul id="footer-places" class="footer-places hlist hlist-separated">
+	<li id="footer-places-privacy"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy">Privacy policy</a></li>
+	<li id="footer-places-about"><a href="/wiki/Wikipedia:About">About Wikipedia</a></li>
+	<li id="footer-places-disclaimers"><a href="/wiki/Wikipedia:General_disclaimer">Disclaimers</a></li>
+	<li id="footer-places-contact"><a href="//en.wikipedia.org/wiki/Wikipedia:Contact_us">Contact Wikipedia</a></li>
+	<li id="footer-places-wm-codeofconduct"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Universal_Code_of_Conduct">Code of Conduct</a></li>
+	<li id="footer-places-developers"><a href="https://developer.wikimedia.org">Developers</a></li>
+	<li id="footer-places-statslink"><a href="https://stats.wikimedia.org/#/en.wikipedia.org">Statistics</a></li>
+	<li id="footer-places-cookiestatement"><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Cookie_statement">Cookie statement</a></li>
+	<li id="footer-places-terms-use"><a href="https://foundation.m.wikimedia.org/wiki/Special:MyLanguage/Policy:Terms_of_Use">Terms of Use</a></li>
+	<li id="footer-places-desktop-toggle"><a id="mw-mf-display-toggle" href="//en.wikipedia.org/w/index.php?title=External_memory_algorithm&amp;mobileaction=toggle_view_desktop" data-event-name="switch_to_desktop">Desktop</a></li>
+</ul>
+
+			</div>
+		</footer>
+			</div>
+</div>
+<div class="mw-portlet mw-portlet-dock-bottom emptyPortlet" id="p-dock-bottom">
+        <ul>
+                
+        </ul>
+</div>
+<div class="mw-notification-area" data-mw="interface"></div>
+<!-- v:8.3.1 -->
+<script>(RLQ=window.RLQ||[]).push(function(){mw.config.set({"wgHostname":"mw-web.eqiad.main-9ffcf875f-sgrh7","wgBackendResponseTime":182,"wgPageParseReport":{"limitreport":{"cputime":"0.225","walltime":"0.318","ppvisitednodes":{"value":851,"limit":1000000},"postexpandincludesize":{"value":18834,"limit":2097152},"templateargumentsize":{"value":935,"limit":2097152},"expansiondepth":{"value":8,"limit":100},"expensivefunctioncount":{"value":1,"limit":500},"unstrip-depth":{"value":1,"limit":20},"unstrip-size":{"value":29167,"limit":5000000},"entityaccesscount":{"value":0,"limit":500},"timingprofile":["100.00%  245.605      1 -total"," 68.52%  168.281      1 Template:Reflist"," 42.57%  104.542      2 Template:Cite_journal"," 28.47%   69.921      1 Template:Short_description"," 15.52%   38.129      2 Template:Pagetype","  9.03%   22.174      1 Template:Cite_encyclopedia","  8.82%   21.661      3 Template:Main_other","  8.04%   19.737      1 Template:SDcat","  6.24%   15.329      3 Template:Cite_book","  2.85%    6.997      1 Template:Cite_conference"]},"scribunto":{"limitreport-timeusage":{"value":"0.144","limit":"10.000"},"limitreport-memusage":{"value":4358236,"limit":52428800}},"cachereport":{"origin":"mw-web.eqiad.main-d68c94cb-wqq6h","timestamp":"20250419123220","ttl":2592000,"transientcontent":false}}});});</script>
+<script type="application/ld+json">{"@context":"https:\/\/schema.org","@type":"Article","name":"External memory algorithm","url":"https:\/\/en.wikipedia.org\/wiki\/External_memory_algorithm","sameAs":"http:\/\/www.wikidata.org\/entity\/Q279748","mainEntity":"http:\/\/www.wikidata.org\/entity\/Q279748","author":{"@type":"Organization","name":"Contributors to Wikimedia projects"},"publisher":{"@type":"Organization","name":"Wikimedia Foundation, Inc.","logo":{"@type":"ImageObject","url":"https:\/\/www.wikimedia.org\/static\/images\/wmf-hor-googpub.png"}},"datePublished":"2005-05-13T12:03:18Z","dateModified":"2025-01-19T21:20:32Z","headline":"algorithm to process data that is too large to fit into a computer's main memory at one time, optimized to efficiently fetch and access data stored in slow bulk memory (e.g. hard drives, tape drives, remote network)"}</script><script>(window.NORLQ=window.NORLQ||[]).push(function(){var ns,i,p,img;ns=document.getElementsByTagName('noscript');for(i=0;i<ns.length;i++){p=ns[i].nextSibling;if(p&&p.className&&p.className.indexOf('lazy-image-placeholder')>-1){img=document.createElement('img');img.setAttribute('src',p.getAttribute('data-mw-src'));img.setAttribute('width',p.getAttribute('data-width'));img.setAttribute('height',p.getAttribute('data-height'));img.setAttribute('alt',p.getAttribute('data-alt'));p.parentNode.replaceChild(img,p);}}});</script>
+</body>
+</html>
