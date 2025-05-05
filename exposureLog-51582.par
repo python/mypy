@@ -1,0 +1,46 @@
+typedef struct {
+  int frame;
+  char flavor[20];
+  char action[8];
+  int timeStamp;
+} EXPACTION;
+
+expaction 2324 "arc" "END" 949971435
+expaction 2325 "arc" "END" 949971549
+expaction 2326 "arc" "END" 949972193
+expaction 2327 "arc" "END" 949972306
+expaction 2328 "arc" "END" 949972575
+expaction 2329 "arc" "END" 949972689
+expaction 2330 "arc" "END" 949973275
+expaction 2331 "arc" "END" 949973389
+expaction 2332 "arc" "END" 949973664
+expaction 2333 "arc" "END" 949973779
+expaction 2334 "arc" "END" 949974026
+expaction 2335 "arc" "END" 949974140
+expaction 2336 "arc" "END" 950000541
+expaction 2337 "arc" "END" 950000698
+expaction 2338 "bias" "END" 950006685
+expaction 2339 "engineering" "BEGIN" 950006915
+expaction 2339 "engineering" "END" 950007817
+expaction 2340 "engineering" "BEGIN" 950008607
+expaction 2340 "engineering" "END" 950009509
+expaction 2341 "flat" "BEGIN" 950010939
+expaction 2341 "flat" "END" 950010951
+expaction 2342 "arc" "BEGIN" 950011079
+expaction 2342 "arc" "END" 950011083
+expaction 2343 "target" "BEGIN" 950014048
+expaction 2343 "target" "END" 950014955
+expaction 2344 "target" "BEGIN" 950015070
+expaction 2344 "target" "END" 950015977
+expaction 2345 "callibration" "BEGIN" 950016136
+expaction 2345 "callibration" "END" 950016198
+expaction 2346 "callibration" "BEGIN" 950016251
+expaction 2346 "callibration" "END" 950016313
+expaction 2347 "callibration" "BEGIN" 950016473
+expaction 2347 "callibration" "END" 950016535
+expaction 2348 "callibration" "BEGIN" 950016588
+expaction 2348 "callibration" "END" 950016650
+expaction 2349 "flat" "BEGIN" 950016785
+expaction 2349 "flat" "END" 950016797
+expaction 2350 "arc" "BEGIN" 950016924
+expaction 2350 "arc" "END" 950016928
