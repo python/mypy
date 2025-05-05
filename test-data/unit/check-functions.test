@@ -3285,6 +3285,39 @@ class C(B):
     def __f(self, y: int) -> str: pass  # OK
 [typing fixtures/typing-override.pyi]
 
+[case testOverrideUntypedDef]
+# flags: --python-version 3.12
+from typing import override
+
+class Parent: pass
+
+class Child(Parent):
+    @override
+    def foo(self, y): pass  # E: Method "foo" is marked as an override, but no base method was found with this name
+
+[typing fixtures/typing-override.pyi]
+
+[case testOverrideOnUnknownBaseClass]
+# flags: --python-version 3.12
+from typing import overload, override
+
+from unknown import UnknownParent  # type: ignore[import-not-found]
+
+class UnknownChild(UnknownParent):
+    @override
+    def foo(self, y): pass  # OK
+    @override
+    def bar(self, y: str) -> None: pass  # OK
+
+    @override
+    @overload
+    def baz(self, y: str) -> None: ...
+    @override
+    @overload
+    def baz(self, y: int) -> None: ...
+    def baz(self, y: str | int) -> None: ...
+[typing fixtures/typing-override.pyi]
+
 [case testCallableProperty]
 from typing import Callable
 

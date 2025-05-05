@@ -466,6 +466,16 @@ class Options:
             if feature in COMPLETE_FEATURES:
                 warning_callback(f"Warning: {feature} is already enabled by default")
 
+    def process_strict_bytes(self) -> None:
+        # Sync `--strict-bytes` and `--disable-{bytearray,memoryview}-promotion`
+        if self.strict_bytes:
+            # backwards compatibility
+            self.disable_bytearray_promotion = True
+            self.disable_memoryview_promotion = True
+        elif self.disable_bytearray_promotion and self.disable_memoryview_promotion:
+            # forwards compatibility
+            self.strict_bytes = True
+
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.
         new_options = Options()

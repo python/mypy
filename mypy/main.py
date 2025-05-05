@@ -249,8 +249,8 @@ def show_messages(
 
 # Make the help output a little less jarring.
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def __init__(self, prog: str) -> None:
-        super().__init__(prog=prog, max_help_position=28)
+    def __init__(self, prog: str, **kwargs: Any) -> None:
+        super().__init__(prog=prog, max_help_position=28, **kwargs)
 
     def _fill_text(self, text: str, width: int, indent: str) -> str:
         if "\n" in text:
@@ -491,6 +491,8 @@ def process_options(
         stdout=stdout,
         stderr=stderr,
     )
+    if sys.version_info >= (3, 14):
+        parser.color = True  # Set as init arg in 3.14
 
     strict_flag_names: list[str] = []
     strict_flag_assignments: list[tuple[str, bool]] = []
@@ -1449,9 +1451,7 @@ def process_options(
         process_cache_map(parser, special_opts, options)
 
     # Process --strict-bytes
-    if options.strict_bytes:
-        options.disable_bytearray_promotion = True
-        options.disable_memoryview_promotion = True
+    options.process_strict_bytes()
 
     # An explicitly specified cache_fine_grained implies local_partial_types
     # (because otherwise the cache is not compatible with dmypy)
