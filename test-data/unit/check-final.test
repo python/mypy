@@ -1229,3 +1229,24 @@ reveal_type(B() and 42)  # N: Revealed type is "Literal[42]?"
 reveal_type(C() and 42)  # N: Revealed type is "__main__.C"
 
 [builtins fixtures/bool.pyi]
+
+[case testCanAccessFinalClassInit]
+from typing import final
+
+@final
+class FinalClass:
+    pass
+
+def check_final_class() -> None:
+    new_instance = FinalClass()
+    new_instance.__init__()
+
+class FinalInit:
+    @final
+    def __init__(self) -> None:
+        pass
+
+def check_final_init() -> None:
+    new_instance = FinalInit()
+    new_instance.__init__()
+[builtins fixtures/tuple.pyi]
