@@ -681,8 +681,8 @@ class B:
 s: str
 s = A() + B() # E: Unsupported operand types for + ("A" and "B")
 
-[case testReverseBinaryOperator4]
 
+[case testReverseBinaryOperator4]
 from typing import assert_type, Never
 
 class Size(tuple[int, ...]):
