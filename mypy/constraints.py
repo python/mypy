@@ -556,6 +556,9 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
         return any_constraints(filtered_options, eager=eager)
 
     # Try harder: if that didn't work, try to strip typevars that aren't meta vars.
+    # Note this is what we would always do, but unfortunately some callers may not
+    # set the meta var status correctly (for historical reasons), so we use this as
+    # a fallback only.
     filtered_options = [exclude_non_meta_vars(o) for o in options]
     if filtered_options != options:
         return any_constraints(filtered_options, eager=eager)
