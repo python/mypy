@@ -1169,7 +1169,7 @@ class IRBuilder:
                     return None
             return res
 
-    def enter(self, fn_info: FuncInfo | str = "") -> None:
+    def enter(self, fn_info: FuncInfo | str = "", *, ret_type: RType = none_rprimitive) -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
         self.builder = LowLevelIRBuilder(self.errors, self.options)
@@ -1179,7 +1179,7 @@ class IRBuilder:
         self.runtime_args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
-        self.ret_types.append(none_rprimitive)
+        self.ret_types.append(ret_type)
         if fn_info.is_generator:
             self.nonlocal_control.append(GeneratorNonlocalControl())
         else:
@@ -1219,10 +1219,9 @@ class IRBuilder:
             self_type: If not None, override default type of the implicit 'self'
                 argument (by default, derive type from class_ir)
         """
-        self.enter(fn_info)
+        self.enter(fn_info, ret_type=ret_type)
         self.function_name_stack.append(name)
         self.class_ir_stack.append(class_ir)
-        self.ret_types[-1] = ret_type
         if self_type is None:
             self_type = RInstance(class_ir)
         self.add_argument(SELF_NAME, self_type)
@@ -1498,3 +1497,30 @@ def create_type_params(
         builder.init_type_var(tv, type_param.name, line)
         tvs.append(tv)
     return tvs
+
+
+def calculate_arg_defaults(
+    builder: IRBuilder,
+    fn_info: FuncInfo,
+    func_reg: Value | None,
+    symtable: dict[SymbolNode, SymbolTarget],
+) -> None:
+    """Calculate default argument values and store them.
+
+    They are stored in statics for top level functions and in
+    the function objects for nested functions (while constants are
+    still stored computed on demand).
+    """
+    fitem = fn_info.fitem
+    for arg in fitem.arguments:
+        # Constant values don't get stored but just recomputed
+        if arg.initializer and not is_constant(arg.initializer):
+            value = builder.coerce(
+                builder.accept(arg.initializer), symtable[arg.variable].type, arg.line
+            )
+            if not fn_info.is_nested:
+                name = fitem.fullname + "." + arg.variable.name
+                builder.add(InitStatic(value, name, builder.module_name))
+            else:
+                assert func_reg is not None
+                builder.add(SetAttr(func_reg, arg.variable.name, value, arg.line))

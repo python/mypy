@@ -2887,3 +2887,78 @@ def test_function():
     explicit_ext_inst = AnnotatedExtensionClass()
     with assertRaises(AttributeError):
         setattr(explicit_ext_inst, 'attr_instance', 6)
+
+[case testMypycAttrNativeClassDunder]
+from mypy_extensions import mypyc_attr
+from typing import Generic, Optional, TypeVar
+
+_T = TypeVar("_T")
+
+get_count = set_count = del_count = 0
+
+@mypyc_attr(native_class=False)
+class Bar(Generic[_T]):
+    # Note the lack of __deletable__
+    def __init__(self) -> None:
+        self.value: str = 'start'
+    def __get__(self, instance: _T, owner: Optional[type[_T]] = None) -> str:
+        global get_count
+        get_count += 1
+        return self.value
+    def __set__(self, instance: _T, value: str) -> None:
+        global set_count
+        set_count += 1
+        self.value = value
+    def __delete__(self, instance: _T) -> None:
+        global del_count
+        del_count += 1
+        del self.value
+
+@mypyc_attr(native_class=False)
+class Foo(object):
+    bar: Bar = Bar()
+
+[file driver.py]
+import native
+
+f = native.Foo()
+assert(hasattr(f, 'bar'))
+assert(native.get_count == 1)
+assert(f.bar == 'start')
+assert(native.get_count == 2)
+f.bar = 'test'
+assert(f.bar == 'test')
+assert(native.set_count == 1)
+del f.bar
+assert(not hasattr(f, 'bar'))
+assert(native.del_count == 1)
+
+[case testMypycAttrNativeClassMeta]
+from mypy_extensions import mypyc_attr
+from typing import ClassVar, TypeVar
+
+_T = TypeVar("_T")
+
+@mypyc_attr(native_class=False)
+class M(type):
+    count: ClassVar[int] = 0
+    def make(cls: type[_T]) -> _T:
+        M.count += 1
+        return cls()
+
+# implicit native_class=False
+# see testMypycAttrNativeClassMetaError for when trying to set it True
+class A(metaclass=M):
+    pass
+
+[file driver.py]
+import native
+
+a: native.A = native.A.make()
+assert(native.A.count == 1)
+
+class B(native.A):
+    pass
+
+b: B = B.make()
+assert(B.count == 2)
