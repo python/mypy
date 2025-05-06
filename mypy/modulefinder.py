@@ -397,6 +397,11 @@ class FindModuleCache:
         return False
 
     def _find_module(self, id: str, use_typeshed: bool) -> tuple[ModuleSearchResult, bool]:
+        """Try to find a module in all available sources.
+
+        Returns:
+            ``(result, can_be_cached)`` pair.
+        """
         fscache = self.fscache
 
         # Fast path for any modules in the current source set.
