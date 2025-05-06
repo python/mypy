@@ -3976,5 +3976,6 @@ class Mapping(Generic[_K, _V]):
 
 def check(mapping: Mapping[str, _T]) -> None:
     ok1 = mapping.get("", "")
+    reveal_type(ok1)  # N: Revealed type is "Union[_T`-1, builtins.str]"
     ok2: Union[_T, str] = mapping.get("", "")
 [builtins fixtures/tuple.pyi]
