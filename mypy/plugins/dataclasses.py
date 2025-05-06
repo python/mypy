@@ -467,8 +467,8 @@ class DataclassTransformer:
         else:
             # Python sets `__hash__ = None` otherwise, do the same.
             parent_method = self._cls.info.get_method("__hash__")
-            if parent_method is not None:
-                # If we inherited `__hash__`, ensure it isn't overridden
+            if parent_method is not None and parent_method.info.fullname != "builtins.object":
+                # If we inherited `__hash__` not from `object`, ensure it isn't overridden
                 self._api.fail(
                     "Incompatible override of '__hash__': dataclasses without"
                     " 'frozen' or 'unsafe_hash' have '__hash__' set to None",
