@@ -259,8 +259,9 @@ from dataclasses import dataclass
 class FrozenBase:
     pass
 
-@dataclass  # E: Incompatible override of '__hash__': dataclasses without 'frozen' or 'unsafe_hash' have '__hash__' set to None
-class BadNormalDerived(FrozenBase):  # E: Non-frozen dataclass cannot inherit from a frozen dataclass
+@dataclass
+class BadNormalDerived(FrozenBase):  # E: Incompatible override of '__hash__': dataclasses without 'frozen' or 'unsafe_hash' have '__hash__' set to None \
+                                     # E: Non-frozen dataclass cannot inherit from a frozen dataclass
     pass
 
 @dataclass
@@ -275,6 +276,11 @@ class BadFrozenDerived(NormalBase):  # E: Signature of "__hash__" incompatible w
                                      # N:          def __hash__() -> int \
                                      # E: Frozen dataclass cannot inherit from a non-frozen dataclass
     pass
+
+
+
+
+
 
 
 
@@ -2639,8 +2645,8 @@ class Good(Hashable):
 class AlsoGood(Hashable):
     a: int
 
-@dataclasses.dataclass()  # E: Incompatible override of '__hash__': dataclasses without 'frozen' or 'unsafe_hash' have '__hash__' set to None
-class Bad(Hashable):
+@dataclasses.dataclass()
+class Bad(Hashable):  # E: Incompatible override of '__hash__': dataclasses without 'frozen' or 'unsafe_hash' have '__hash__' set to None
     a: int
 
 Good(4)
