@@ -2610,3 +2610,29 @@ class B2(B1):  # E: A NamedTuple cannot be a dataclass
     pass
 
 [builtins fixtures/tuple.pyi]
+
+[case testDataclassHash]
+from abc import ABC, abstractmethod
+import dataclasses
+
+class Hashable(ABC):
+    @abstractmethod
+    def __hash__(self) -> int:
+        ...
+
+@dataclasses.dataclass(frozen=True)
+class Good(Hashable):
+    a: int
+
+@dataclasses.dataclass(unsafe_hash=True)
+class AlsoGood(Hashable):
+    a: int
+
+@dataclasses.dataclass()
+class Bad(Hashable):  # E: Incompatible override of '__hash__': dataclasses without 'frozen' or 'unsafe_hash' have '__hash__' set to None
+    a: int
+
+Good(4)
+AlsoGood(4)
+Bad(4)
+[builtins fixtures/tuple.pyi]
