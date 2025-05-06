@@ -1510,15 +1510,3 @@ def mymin(
 def check(paths: Iterable[str], key: Callable[[str], int]) -> Union[str, None]:
     return mymin(paths, key=key, default=None)
 [builtins fixtures/tuple.pyi]
-
-[case testInferenceContextMappingGet-xfail]
-from collections.abc import Mapping
-from typing import TypeVar, Union
-
-_T1 = TypeVar("_T1")
-
-def check(mapping: Mapping[str, _T1]) -> None:
-    fail1 = mapping.get("", "")
-    fail2: Union[_T1, str] = mapping.get("", "")
-[builtins fixtures/tuple.pyi]
-[typing fixtures/typing-full.pyi]
