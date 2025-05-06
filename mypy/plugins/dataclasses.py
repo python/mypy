@@ -472,7 +472,7 @@ class DataclassTransformer:
                 self._api.fail(
                     "Incompatible override of '__hash__': dataclasses without"
                     " 'frozen' or 'unsafe_hash' have '__hash__' set to None",
-                    self._cls,
+                    self._reason,
                 )
             add_attribute_to_class(
                 self._api, self._cls, "__hash__", typ=NoneType(), is_classvar=True
