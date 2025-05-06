@@ -111,6 +111,7 @@ from mypy.plugin import (
 from mypy.semanal_enum import ENUM_BASES
 from mypy.state import state
 from mypy.subtypes import (
+    covers_at_runtime,
     find_member,
     is_equivalent,
     is_same_type,
@@ -4048,14 +4049,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
             variants_raw = [(op_name, left_op, left_type, right_expr)]
         elif (
-            is_subtype(right_type, left_type)
-            and isinstance(left_type, Instance)
-            and isinstance(right_type, Instance)
-            and not (
-                left_type.type.alt_promote is not None
-                and left_type.type.alt_promote.type is right_type.type
+            # Note: use covers_at_runtime instead of is_subtype.
+            #    fixes https://github.com/python/mypy/issues/19006
+            covers_at_runtime(right_type, left_type)
+            and (
+                not (isinstance(left_type, Instance) and isinstance(right_type, Instance))
+                or (
+                    (
+                        left_type.type.alt_promote is None
+                        or left_type.type.alt_promote.type is not right_type.type
+                    )
+                    and lookup_definer(left_type, op_name)
+                    != lookup_definer(right_type, rev_op_name)
+                )
             )
-            and lookup_definer(left_type, op_name) != lookup_definer(right_type, rev_op_name)
         ):
             # When we do "A() + B()" where B is a subclass of A, we'll actually try calling
             # B's __radd__ method first, but ONLY if B explicitly defines or overrides the
