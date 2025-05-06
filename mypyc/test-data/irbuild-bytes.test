@@ -191,31 +191,40 @@ def f(b: bytes) -> None:
     b.decode()
     b.decode('utf8')
     b.decode('utf-8', 'strict')
-    b.decode('utf-8', 'strict')
+    b.decode('latin-1')
     b.decode('latin1', 'strict')
     b.decode('ascii')
-    b.decode('latin-1')
+    b.decode('ascii', 'strict')
     b.decode('utf-8', 'ignore')
     b.decode('ascii', 'replace')
     b.decode('latin1', 'ignore')
+    b'test_utf8'.decode('utf8')
+    b'test_latin1'.decode('latin1')
+    b'test_ascii'.decode('ascii')
 [out]
 def f(b):
     b :: bytes
     r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21 :: str
+    r22 :: bytes
+    r23 :: str
+    r24 :: bytes
+    r25 :: str
+    r26 :: bytes
+    r27 :: str
 L0:
     r0 = CPy_DecodeUtf8(b)
     r1 = CPy_DecodeUtf8(b)
     r2 = 'utf-8'
     r3 = 'strict'
     r4 = CPy_Decode(b, r2, r3)
-    r5 = 'utf-8'
-    r6 = 'strict'
-    r7 = CPy_Decode(b, r5, r6)
-    r8 = 'latin1'
-    r9 = 'strict'
-    r10 = CPy_Decode(b, r8, r9)
-    r11 = CPy_DecodeAscii(b)
-    r12 = CPy_DecodeLatin1(b)
+    r5 = CPy_DecodeLatin1(b)
+    r6 = 'latin1'
+    r7 = 'strict'
+    r8 = CPy_Decode(b, r6, r7)
+    r9 = CPy_DecodeAscii(b)
+    r10 = 'ascii'
+    r11 = 'strict'
+    r12 = CPy_Decode(b, r10, r11)
     r13 = 'utf-8'
     r14 = 'ignore'
     r15 = CPy_Decode(b, r13, r14)
@@ -225,4 +234,10 @@ L0:
     r19 = 'latin1'
     r20 = 'ignore'
     r21 = CPy_Decode(b, r19, r20)
+    r22 = b'test_utf8'
+    r23 = CPy_DecodeUtf8(r22)
+    r24 = b'test_latin1'
+    r25 = CPy_DecodeLatin1(r24)
+    r26 = b'test_ascii'
+    r27 = CPy_DecodeAscii(r26)
     return 1
