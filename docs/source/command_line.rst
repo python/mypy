@@ -754,9 +754,6 @@ of the above sections.
     strict will catch type errors as long as intentional methods like type ignore
     or casting were not used.)
 
-    Note: the :option:`--warn-unreachable` flag
-    is not automatically enabled by the strict flag.
-
     The strict flag does not take precedence over other strict-related flags.
     Directly specifying a flag of alternate behavior will override the
     behavior of strict, regardless of the order in which they are passed.
