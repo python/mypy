@@ -451,7 +451,11 @@ class Options:
             error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
 
         self.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
-        self.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+        #TODO: does this also apply for configuration files as well, or just the command line?
+        if "all" in enabled_codes:
+            self.enabled_error_codes = set(error_codes.values())
+        else:
+            self.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
 
         # Enabling an error code always overrides disabling
         self.disabled_error_codes -= self.enabled_error_codes
