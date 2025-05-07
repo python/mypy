@@ -5,6 +5,12 @@
 #include <Python.h>
 #include "CPy.h"
 
+// The _PyUnicode_CheckConsistency definition has been moved to the internal API
+// https://github.com/python/cpython/pull/106398
+#if defined(Py_DEBUG) && defined(CPY_3_13_FEATURES)
+#include "internal/pycore_unicodeobject.h"
+#endif
+
 // Copied from cpython.git:Objects/unicodeobject.c@0ef4ffeefd1737c18dc9326133c7894d58108c2e.
 #define BLOOM_MASK unsigned long
 #define BLOOM(mask, ch)     ((mask &  (1UL << ((ch) & (BLOOM_WIDTH - 1)))))
@@ -182,7 +188,9 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
         assert(res_offset == PyUnicode_GET_LENGTH(res));
     }
 
+#ifdef Py_DEBUG
     assert(_PyUnicode_CheckConsistency(res, 1));
+#endif
     return res;
 }
 
