@@ -45,6 +45,7 @@ class ErrorCode:
     def __hash__(self) -> int:
         return hash((self.code,))
 
+
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
 NAME_DEFINED: Final = ErrorCode("name-defined", "Check that name is defined", "General")
 CALL_ARG: Final[ErrorCode] = ErrorCode(
