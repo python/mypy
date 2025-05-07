@@ -686,7 +686,7 @@ s = A() + B() # E: Unsupported operand types for + ("A" and "B")
 from typing import assert_type, Never
 
 class Size(tuple[int, ...]):
-    def __add__(self, other: tuple[int, ...], /) -> "Size": return Size()
+    def __add__(self, other: tuple[int, ...], /) -> "Size": return Size()  # type: ignore[override]
     def __radd__(self, other: tuple[int, ...], /) -> "Size": return Size()
 
 size: Size = Size([3, 4])
@@ -702,7 +702,7 @@ assert_type(tup2 + size, Size)
 assert_type(tupN + size, Size)
 assert_type(tupX + size, Size)
 
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/tuple-typeshed.pyi]
 
 [case testBinaryOperatorWithAnyRightOperand]
 from typing import Any, cast
