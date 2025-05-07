@@ -320,13 +320,21 @@ class FindModuleCache:
                 use_typeshed = self._typeshed_has_version(id)
             elif top_level in self.stdlib_py_versions:
                 use_typeshed = self._typeshed_has_version(top_level)
-            self.results[id] = self._find_module(id, use_typeshed)
-            if (
-                not (fast_path or (self.options is not None and self.options.fast_module_lookup))
-                and self.results[id] is ModuleNotFoundReason.NOT_FOUND
-                and self._can_find_module_in_parent_dir(id)
-            ):
-                self.results[id] = ModuleNotFoundReason.WRONG_WORKING_DIRECTORY
+            result, should_cache = self._find_module(id, use_typeshed)
+            if should_cache:
+                if (
+                    not (
+                        fast_path or (self.options is not None and self.options.fast_module_lookup)
+                    )
+                    and result is ModuleNotFoundReason.NOT_FOUND
+                    and self._can_find_module_in_parent_dir(id)
+                ):
+                    self.results[id] = ModuleNotFoundReason.WRONG_WORKING_DIRECTORY
+                else:
+                    self.results[id] = result
+                return self.results[id]
+            else:
+                return result
         return self.results[id]
 
     def _typeshed_has_version(self, module: str) -> bool:
@@ -384,11 +392,16 @@ class FindModuleCache:
         while any(is_init_file(file) for file in os.listdir(working_dir)):
             working_dir = os.path.dirname(working_dir)
             parent_search.search_paths = SearchPaths((working_dir,), (), (), ())
-            if not isinstance(parent_search._find_module(id, False), ModuleNotFoundReason):
+            if not isinstance(parent_search._find_module(id, False)[0], ModuleNotFoundReason):
                 return True
         return False
 
-    def _find_module(self, id: str, use_typeshed: bool) -> ModuleSearchResult:
+    def _find_module(self, id: str, use_typeshed: bool) -> tuple[ModuleSearchResult, bool]:
+        """Try to find a module in all available sources.
+
+        Returns:
+            ``(result, can_be_cached)`` pair.
+        """
         fscache = self.fscache
 
         # Fast path for any modules in the current source set.
@@ -424,7 +437,7 @@ class FindModuleCache:
             else None
         )
         if p:
-            return p
+            return p, True
 
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
         # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
@@ -444,6 +457,9 @@ class FindModuleCache:
             for component in (components[0], components[0] + "-stubs")
             for package_dir in self.find_lib_path_dirs(component, self.search_paths.package_path)
         }
+        # Caching FOUND_WITHOUT_TYPE_HINTS is not always safe. That causes issues with
+        # typed subpackages in namespace packages.
+        can_cache_any_result = True
         for pkg_dir in self.search_paths.package_path:
             if pkg_dir not in candidate_package_dirs:
                 continue
@@ -475,6 +491,7 @@ class FindModuleCache:
             if isinstance(non_stub_match, ModuleNotFoundReason):
                 if non_stub_match is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     found_possible_third_party_missing_type_hints = True
+                    can_cache_any_result = False
             else:
                 third_party_inline_dirs.append(non_stub_match)
                 self._update_ns_ancestors(components, non_stub_match)
@@ -513,7 +530,7 @@ class FindModuleCache:
                 if verify and not verify_module(fscache, id, path_stubs, dir_prefix):
                     near_misses.append((path_stubs, dir_prefix))
                 else:
-                    return path_stubs
+                    return path_stubs, True
 
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
@@ -523,7 +540,7 @@ class FindModuleCache:
                     if verify and not verify_module(fscache, id, path, dir_prefix):
                         near_misses.append((path, dir_prefix))
                         continue
-                    return path
+                    return path, True
 
             # In namespace mode, register a potential namespace package
             if self.options and self.options.namespace_packages:
@@ -541,7 +558,7 @@ class FindModuleCache:
                     if verify and not verify_module(fscache, id, path, dir_prefix):
                         near_misses.append((path, dir_prefix))
                         continue
-                    return path
+                    return path, True
 
         # In namespace mode, re-check those entries that had 'verify'.
         # Assume search path entries xxx, yyy and zzz, and we're
@@ -570,7 +587,7 @@ class FindModuleCache:
                 for path, dir_prefix in near_misses
             ]
             index = levels.index(max(levels))
-            return near_misses[index][0]
+            return near_misses[index][0], True
 
         # Finally, we may be asked to produce an ancestor for an
         # installed package with a py.typed marker that is a
@@ -578,12 +595,12 @@ class FindModuleCache:
         # if we would otherwise return "not found".
         ancestor = self.ns_ancestors.get(id)
         if ancestor is not None:
-            return ancestor
+            return ancestor, True
 
         approved_dist_name = stub_distribution_name(id)
         if approved_dist_name:
             if len(components) == 1:
-                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
+                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED, True
             # If we're a missing submodule of an already installed approved stubs, we don't want to
             # error with APPROVED_STUBS_NOT_INSTALLED, but rather want to return NOT_FOUND.
             for i in range(1, len(components)):
@@ -591,14 +608,14 @@ class FindModuleCache:
                 if stub_distribution_name(parent_id) == approved_dist_name:
                     break
             else:
-                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
+                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED, True
             if self.find_module(parent_id) is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-            return ModuleNotFoundReason.NOT_FOUND
+                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED, True
+            return ModuleNotFoundReason.NOT_FOUND, True
 
         if found_possible_third_party_missing_type_hints:
-            return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
-        return ModuleNotFoundReason.NOT_FOUND
+            return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS, can_cache_any_result
+        return ModuleNotFoundReason.NOT_FOUND, True
 
     def find_modules_recursive(self, module: str) -> list[BuildSource]:
         module_path = self.find_module(module, fast_path=True)
