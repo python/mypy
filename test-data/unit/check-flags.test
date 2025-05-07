@@ -2408,6 +2408,21 @@ f(bytearray(b"asdf"))
 f(memoryview(b"asdf"))
 [builtins fixtures/primitives.pyi]
 
+[case testStrictBytesDisabledByDefault]
+# TODO: probably change this default in Mypy v2.0, with https://github.com/python/mypy/pull/18371
+# (this would also obsolete the testStrictBytesEnabledByStrict test, below)
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))
+f(memoryview(b"asdf"))
+[builtins fixtures/primitives.pyi]
+
+[case testStrictBytesEnabledByStrict]
+# flags: --strict
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+[builtins fixtures/primitives.pyi]
+
 [case testNoCrashFollowImportsForStubs]
 # flags: --config-file tmp/mypy.ini
 {**{"x": "y"}}
