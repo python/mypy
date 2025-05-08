@@ -154,7 +154,7 @@ def main() -> None:
     foreign_repo: str | None = args.r
 
     if not (os.path.isdir(".git") and os.path.isdir("mypyc")):
-        sys.exit("error: Run this the mypy repo root")
+        sys.exit("error: You must run this script from the mypy repo root")
 
     target_dirs = []
     for i, commit in enumerate(commits):
