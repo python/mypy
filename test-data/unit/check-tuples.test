@@ -1041,6 +1041,47 @@ reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.Tes
 [out]
 
 
+-- Union-in-Tuple distribution
+-- ---------------------------------------------------------
+
+
+[case testTupleUnionDistributionSuccess]
+from typing import Tuple, Optional, Union
+
+def f1(x: Tuple[float, Optional[float]]) -> Union[Tuple[float, float], Tuple[float, None]]:
+    return x
+
+def f2(x: Tuple[Union[int, str], float]) -> Union[Tuple[int, float], Tuple[str, float]]:
+    return x
+
+def f3(x: Tuple[int, Union[str, None]]) -> Union[Tuple[int, str], Tuple[int, None]]:
+    return x
+
+def f4(x: Tuple[Union[int, float]]) -> Union[Tuple[int], Tuple[float]]:
+    return x
+
+def f5(x: Tuple[Union[int, str], Union[bool, None]]) -> Union[
+    Tuple[int, bool],
+    Tuple[int, None],
+    Tuple[str, bool],
+    Tuple[str, None],
+]:
+    return x
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testTupleUnionDistributionFail]
+from typing import Tuple, Optional, Union
+
+def g1(x: Tuple[float, Optional[float]]) -> Union[Tuple[float, float], Tuple[str, float]]:
+    return x  # E: Incompatible return value type (got "Tuple[float, Optional[float]]", expected "Union[Tuple[float, float], Tuple[str, float]]")
+
+def g2(x: Tuple[float, Optional[float]]) -> Union[Tuple[float, str], Tuple[float, None]]:
+    return x  # E: Incompatible return value type (got "Tuple[float, Optional[float]]", expected "Union[Tuple[float, str], Tuple[float, None]]")
+[builtins fixtures/tuple.pyi]
+[out]
+
+
 -- Variable-length tuples (Tuple[t, ...] with literal '...')
 -- ---------------------------------------------------------
 
