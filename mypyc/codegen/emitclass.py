@@ -292,6 +292,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             "{0}",
             "};",
         )
+        if emitter.capi_version < (3, 12):
+            fields["tp_weaklistoffset"] = base_size
     else:
         fields["tp_basicsize"] = base_size
 
