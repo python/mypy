@@ -2477,22 +2477,24 @@ class Parent:
     def f(self, x: int) -> None:
         pass
 
-    def g(self, y: int) -> bool:
-        return True
+    def g(self, y: int) -> None:
+        pass
 
 class Child(Parent):
     def f(self, x: int) -> None: # E: Method "f" is not using @override but is overriding a method in class "__main__.Parent"
         pass
 
     @override
-    def g(self, y: int) -> bool: #type: ignore # E: Unused "type: ignore" comment # E: "type: ignore" comment without error code
-        return True
+    def g(self, y: int) -> None: #type: ignore # E: Unused "type: ignore" comment # E: "type: ignore" comment without error code
+        pass
 [builtins fixtures/tuple-simple.pyi]
 
 [case testSpotCheckErrorCodeAllNotUsed]
 # This test case exists purely to ensure that the testSpotCheckErrorCodeAll test does not become obsolete.
 # (For example, if all the errors expected by testSpotCheckErrorCodeAll get turned on by default, then
-#  the testSpotCheckErrorCodeAll test would fail to guarantee the enablement of any additional errors!)
+#  the testSpotCheckErrorCodeAll test would fail to guarantee the enablement of any additional errors!
+#  (hint: if that does happen, breaking this test, then consider changing these two tests to pick *different*,
+#   not-enabled-by-default, error codes.))
 
 from typing_extensions import override
 
@@ -2500,14 +2502,14 @@ class Parent:
     def f(self, x: int) -> None:
         pass
 
-    def g(self, y: int) -> bool:
-        return True
+    def g(self, y: int) -> None:
+        pass
 
 class Child(Parent):
     def f(self, x: int) -> None:
         pass
 
     @override
-    def g(self, y: int) -> bool: #type: ignore
-        return True
+    def g(self, y: int) -> None: #type: ignore
+        pass
 [builtins fixtures/tuple-simple.pyi]
