@@ -101,6 +101,9 @@ def main(
             options,
         )
 
+    if options.color_output and os.getenv("NO_COLOR"):
+        options.color_output = False
+
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
         fail("error: --install-types not supported in this mode of running mypy", stderr, options)
