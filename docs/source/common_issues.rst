@@ -222,7 +222,7 @@ Furthermore: as of [mypy 1.13](https://mypy-lang.blogspot.com/2024/10/mypy-113-r
 
     python3 -m pip install -U mypy[faster-cache]
 
-Mypy may depend on orjson by default in the future. 
+Mypy may depend on orjson by default in the future.
 
 Types of empty collections
 --------------------------
