@@ -19,3 +19,6 @@ class function: pass
 class int: pass
 class str: pass # For convenience
 class dict: pass
+
+# Had to define this testSpotCheckErrorCodeAll*, for whatever reason:
+class ellipsis: pass
