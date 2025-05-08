@@ -5166,7 +5166,7 @@ def foo() -> None: ...
 def foo(iterable: Iterable[_T]) -> None: ...
 def foo(iterable = None) -> None: pass
 
-foo(bar('lol').foo())  # E: Item "int" of "Union[A, int]" has no attribute "foo" \
+foo(bar('lol').foo())  # E: Item "int" of "Union[A, int]" has no attribute "foo," use if <variable_name> is not None to prevent this issue \
                        # E: Argument 1 to "bar" has incompatible type "str"; expected "int"
 
 
