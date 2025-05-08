@@ -2487,6 +2487,7 @@ class Child(Parent):
     @override
     def g(self, y: int) -> bool: #type: ignore # E: Unused "type: ignore" comment # E: "type: ignore" comment without error code
         return True
+[builtins fixtures/tuple.pyi]
 
 [case testSpotCheckErrorCodeAllNotUsed]
 # This test case exists purely to ensure that the testSpotCheckErrorCodeAll test does not become obsolete.
@@ -2509,3 +2510,4 @@ class Child(Parent):
     @override
     def g(self, y: int) -> bool: #type: ignore
         return True
+[builtins fixtures/tuple.pyi]
