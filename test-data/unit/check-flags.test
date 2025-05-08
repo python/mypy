@@ -2471,7 +2471,7 @@ def f():
 [case testSpotCheckErrorCodeAll]
 # flags: --enable-error-code all
 # It would be annoying to check every error here, so let's just check a couple.
-from typing import override
+from typing_extensions import override
 
 class Parent:
     def f(self, x: int) -> None:
@@ -2493,7 +2493,7 @@ class Child(Parent):
 # (For example, if all the errors expected by testSpotCheckErrorCodeAll get turned on by default, then
 #  the testSpotCheckErrorCodeAll test would fail to guarantee the enablement of any additional errors!)
 
-from typing import override
+from typing_extensions import override
 
 class Parent:
     def f(self, x: int) -> None:
