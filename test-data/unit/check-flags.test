@@ -2417,7 +2417,9 @@ f(memoryview(b"asdf"))
 [builtins fixtures/primitives.pyi]
 
 [case testStrictBytesEnabledByStrict]
-# flags: --strict
+# flags: --strict --disable-error-code type-arg
+# The type-arg thing is just work around the primitives.pyi isinstance Tuple not having type parameters,
+#   which isn't important for this.
 def f(x: bytes) -> None: ...
 f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
 f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
