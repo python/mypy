@@ -2467,3 +2467,45 @@ A = Union[C, List]  # OK
 -- check_untyped_defs is False by default.
 def f():
     x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+
+[case testSpotCheckErrorCodeAll]
+# flags: --enable-error-code all
+# It would be annoying to check every error here, so let's just check a couple.
+from typing import override
+
+class Parent:
+    def f(self, x: int) -> None:
+        pass
+
+    def g(self, y: int) -> bool:
+        return True
+
+class Child(Parent):
+    def f(self, x: int) -> None: # E: Missing @override decorator
+        pass
+
+    @override
+    def g(self, y: int) -> bool: #type: ignore # E: Unused "type: ignore" comment # E: "type: ignore" comment without error code
+        return True
+
+[case testSpotCheckErrorCodeAllNotUsed]
+# This test case exists purely to ensure that the testSpotCheckErrorCodeAll test does not become obsolete.
+# (For example, if all the errors expected by testSpotCheckErrorCodeAll get turned on by default, then
+#  the testSpotCheckErrorCodeAll test would fail to guarantee the enablement of any additional errors!)
+
+from typing import override
+
+class Parent:
+    def f(self, x: int) -> None:
+        pass
+
+    def g(self, y: int) -> bool:
+        return True
+
+class Child(Parent):
+    def f(self, x: int) -> None:
+        pass
+
+    @override
+    def g(self, y: int) -> bool: #type: ignore
+        return True
