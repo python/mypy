@@ -94,7 +94,7 @@ class ClassIR:
         is_abstract: bool = False,
         is_ext_class: bool = True,
         is_final_class: bool = False,
-        supports_weakref: bool = False
+        supports_weakref: bool = False,
     ) -> None:
         self.name = name
         self.module_name = module_name
