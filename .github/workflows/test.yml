@@ -167,7 +167,7 @@ jobs:
         echo debug build; python -c 'import sysconfig; print(bool(sysconfig.get_config_var("Py_DEBUG")))'
         echo os.cpu_count; python -c 'import os; print(os.cpu_count())'
         echo os.sched_getaffinity; python -c 'import os; print(len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
-        pip install tox==4.21.2
+        pip install setuptools==75.1.0 tox==4.21.2
 
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
@@ -230,7 +230,7 @@ jobs:
           default: 3.11.1
           command: python -c "import platform; print(f'{platform.architecture()=} {platform.machine()=}');"
       - name: Install tox
-        run: pip install tox==4.21.2
+        run: pip install setuptools==75.1.0 tox==4.21.2
       - name: Setup tox environment
         run: tox run -e py --notest
       - name: Test
