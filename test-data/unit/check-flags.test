@@ -2481,14 +2481,13 @@ class Parent:
         return True
 
 class Child(Parent):
-    def f(self, x: int) -> None: # E: Missing @override decorator
+    def f(self, x: int) -> None: # E: Method "f" is not using @override but is overriding a method in class "__main__.Parent"
         pass
 
     @override
     def g(self, y: int) -> bool: #type: ignore # E: Unused "type: ignore" comment # E: "type: ignore" comment without error code
         return True
-[builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple-simple.pyi]
 
 [case testSpotCheckErrorCodeAllNotUsed]
 # This test case exists purely to ensure that the testSpotCheckErrorCodeAll test does not become obsolete.
@@ -2511,5 +2510,4 @@ class Child(Parent):
     @override
     def g(self, y: int) -> bool: #type: ignore
         return True
-[builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple-simple.pyi]
