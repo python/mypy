@@ -21,11 +21,18 @@ from mypy.nodes import PARAM_SPEC_KIND, TYPE_VAR_TUPLE_KIND, ClassDef, FuncDef, 
 from mypy.stubdoc import ArgSig, FunctionSig
 from mypy.types import (
     AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    Instance,
     NoneType,
     Type,
+    TypedDictType,
     TypeList,
     TypeStrVisitor,
+    TypeVarType,
     UnboundType,
+    UninhabitedType,
     UnionType,
     UnpackType,
 )
@@ -251,6 +258,23 @@ class AnnotationPrinter(TypeStrVisitor):
         self.known_modules = known_modules
         self.local_modules = local_modules or ["builtins"]
 
+    def track_imports(self, s: str) -> str | None:
+        if self.known_modules is not None and "." in s:
+            # see if this object is from any of the modules that we're currently processing.
+            # reverse sort so that subpackages come before parents: e.g. "foo.bar" before "foo".
+            for module_name in self.local_modules + sorted(self.known_modules, reverse=True):
+                if s.startswith(module_name + "."):
+                    if module_name in self.local_modules:
+                        s = s[len(module_name) + 1 :]
+                    arg_module = module_name
+                    break
+            else:
+                arg_module = s[: s.rindex(".")]
+            if arg_module not in self.local_modules:
+                self.stubgen.import_tracker.add_import(arg_module, require=True)
+            return s
+        return None
+
     def visit_any(self, t: AnyType) -> str:
         s = super().visit_any(t)
         self.stubgen.import_tracker.require_name(s)
@@ -267,19 +291,9 @@ class AnnotationPrinter(TypeStrVisitor):
             return self.stubgen.add_name("_typeshed.Incomplete")
         if fullname in TYPING_BUILTIN_REPLACEMENTS:
             s = self.stubgen.add_name(TYPING_BUILTIN_REPLACEMENTS[fullname], require=True)
-        if self.known_modules is not None and "." in s:
-            # see if this object is from any of the modules that we're currently processing.
-            # reverse sort so that subpackages come before parents: e.g. "foo.bar" before "foo".
-            for module_name in self.local_modules + sorted(self.known_modules, reverse=True):
-                if s.startswith(module_name + "."):
-                    if module_name in self.local_modules:
-                        s = s[len(module_name) + 1 :]
-                    arg_module = module_name
-                    break
-            else:
-                arg_module = s[: s.rindex(".")]
-            if arg_module not in self.local_modules:
-                self.stubgen.import_tracker.add_import(arg_module, require=True)
+
+        if new_s := self.track_imports(s):
+            s = new_s
         elif s == "NoneType":
             # when called without analysis all types are unbound, so this won't hit
             # visit_none_type().
@@ -291,6 +305,9 @@ class AnnotationPrinter(TypeStrVisitor):
         elif t.empty_tuple_index:
             s += "[()]"
         return s
+
+    def typeddict_item_str(self, t: TypedDictType, name: str, typ: str) -> str:
+        return f"{name!r}: {typ}"
 
     def visit_none_type(self, t: NoneType) -> str:
         return "None"
@@ -321,6 +338,55 @@ class AnnotationPrinter(TypeStrVisitor):
             else:
                 res.append(arg_str)
         return ", ".join(res)
+
+    def visit_type_var(self, t: TypeVarType) -> str:
+        return t.name
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> str:
+        return self.stubgen.add_name("typing.Any")
+
+    def visit_erased_type(self, t: ErasedType) -> str:
+        return self.stubgen.add_name("typing.Any")
+
+    def visit_deleted_type(self, t: DeletedType) -> str:
+        return self.stubgen.add_name("typing.Any")
+
+    def visit_instance(self, t: Instance) -> str:
+        if t.last_known_value and not t.args:
+            # Instances with a literal fallback should never be generic. If they are,
+            # something went wrong so we fall back to showing the full Instance repr.
+            s = f"{t.last_known_value.accept(self)}"
+        else:
+            s = t.type.fullname or t.type.name or self.stubgen.add_name("_typeshed.Incomplete")
+
+        s = self.track_imports(s) or s
+
+        if t.args:
+            if t.type.fullname == "builtins.tuple":
+                assert len(t.args) == 1
+                s += f"[{self.list_str(t.args)}, ...]"
+            else:
+                s += f"[{self.list_str(t.args)}]"
+        elif t.type.has_type_var_tuple_type and len(t.type.type_vars) == 1:
+            s += "[()]"
+
+        return s
+
+    def visit_callable_type(self, t: CallableType) -> str:
+        from mypy.suggestions import is_tricky_callable
+
+        if is_tricky_callable(t):
+            arg_str = "..."
+        else:
+            # Note: for default arguments, we just assume that they
+            # are required.  This isn't right, but neither is the
+            # other thing, and I suspect this will produce more better
+            # results than falling back to `...`
+            args = [typ.accept(self) for typ in t.arg_types]
+            arg_str = f"[{', '.join(args)}]"
+
+        callable = self.stubgen.add_name("typing.Callable")
+        return f"{callable}[{arg_str}, {t.ret_type.accept(self)}]"
 
 
 class ClassInfo:
@@ -454,11 +520,11 @@ class ImportTracker:
 
     def __init__(self) -> None:
         # module_for['foo'] has the module name where 'foo' was imported from, or None if
-        # 'foo' is a module imported directly;
+        #   'foo' is a module imported directly;
         # direct_imports['foo'] is the module path used when the name 'foo' was added to the
-        # namespace.
+        #   namespace.
         # reverse_alias['foo'] is the name that 'foo' had originally when imported with an
-        # alias; examples
+        #   alias; examples
         #     'from pkg import mod'      ==> module_for['mod'] == 'pkg'
         #     'from pkg import mod as m' ==> module_for['m'] == 'pkg'
         #                                ==> reverse_alias['m'] == 'mod'
@@ -618,7 +684,9 @@ class BaseStubGenerator:
         include_private: bool = False,
         export_less: bool = False,
         include_docstrings: bool = False,
+        known_modules: list[str] | None = None,
     ) -> None:
+        self.known_modules = known_modules or []
         # Best known value of __all__.
         self._all_ = _all_
         self._include_private = include_private
@@ -839,7 +907,9 @@ class BaseStubGenerator:
         known_modules: list[str] | None = None,
         local_modules: list[str] | None = None,
     ) -> str:
-        printer = AnnotationPrinter(self, known_modules, local_modules)
+        printer = AnnotationPrinter(
+            self, known_modules, local_modules or ["builtins", self.module_name]
+        )
         return t.accept(printer)
 
     def is_not_in_all(self, name: str) -> bool:
