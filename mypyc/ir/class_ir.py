@@ -94,6 +94,7 @@ class ClassIR:
         is_abstract: bool = False,
         is_ext_class: bool = True,
         is_final_class: bool = False,
+        supports_weakref: bool = False
     ) -> None:
         self.name = name
         self.module_name = module_name
@@ -102,6 +103,7 @@ class ClassIR:
         self.is_abstract = is_abstract
         self.is_ext_class = is_ext_class
         self.is_final_class = is_final_class
+        self.supports_weakref = supports_weakref
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
