@@ -262,6 +262,7 @@ from mypy.types import (
     NEVER_NAMES,
     OVERLOAD_NAMES,
     OVERRIDE_DECORATOR_NAMES,
+    PROPERTY_DECORATOR_NAMES,
     PROTOCOL_NAMES,
     REVEAL_TYPE_NAMES,
     TPDICT_NAMES,
@@ -1687,16 +1688,7 @@ class SemanticAnalyzer(
                 removed.append(i)
                 dec.func.is_explicit_override = True
                 self.check_decorated_function_is_method("override", dec)
-            elif refers_to_fullname(
-                d,
-                (
-                    "builtins.property",
-                    "abc.abstractproperty",
-                    "functools.cached_property",
-                    "enum.property",
-                    "types.DynamicClassAttribute",
-                ),
-            ):
+            elif refers_to_fullname(d, PROPERTY_DECORATOR_NAMES):
                 removed.append(i)
                 dec.func.is_property = True
                 dec.var.is_property = True
