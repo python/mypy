@@ -12,7 +12,7 @@ from sphinx.application import Sphinx
 from sphinx.builders.html import StandaloneHTMLBuilder
 from sphinx.environment import BuildEnvironment
 
-from mypy.api import run
+from mypy.main import process_options
 
 class MypyHTMLBuilder(StandaloneHTMLBuilder):
     def __init__(self, app: Sphinx, env: BuildEnvironment) -> None:
@@ -34,15 +34,10 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
             raise ValueError(complaint+"it was not there.")
         elif c > 1:
             raise ValueError(complaint+"it occurred in multiple locations, so I don't know what to do.")
-        help_text = run(['--help'])[0]
-        strict_regex = r"Strict mode; enables the following flags: (.*?)\r?\n  --"
-        strict_part = re.match(strict_regex, help_text, re.DOTALL)
-        if strict_part is None:
-            print(help_text)
-            raise ValueError(f"Needed to match the regex r'{strict_regex}' in mypy --help, to enhance the docs, but it was not there.")
-        strict_part = strict_part[0]
+        help_text = process_options(['-c', 'pass'])
+        strict_part = help_text[2].split(": ")[1]
         if not strict_part or strict_part.isspace() or len(strict_part) < 20 or len(strict_part) > 2000:
-            raise ValueError(f"List of strict flags in the output is {strict_part}, which doesn't look right")
+           raise ValueError(f"{strict_part=}, which doesn't look right.")
         p.write_bytes(text.replace(lead_in, lead_in+b" The current list is: " + bytes(strict_part, encoding="ascii")))
 
     def _verify_error_codes(self) -> None:
