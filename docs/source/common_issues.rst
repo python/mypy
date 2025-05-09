@@ -510,7 +510,7 @@ to see the types of all local variables at once. Example:
    if you don't import them, then they don't exist at runtime! Therefore,
    you'll have to remove any ``reveal_type`` and ``reveal_locals`` calls from your program
    or else Python will give you an error at runtime about those names being undefined.
-   Alternatively, you can import ``reveal_type`` from ``typing_extensions``
+   Alternatively, you can import :py:data:`~typing.reveal_type` from ``typing_extensions``
    (or, in more recent versions of python, from ``typing``)
    so its name will be defined at runtime.
    There is no analogous fix for ``reveal_locals``.
