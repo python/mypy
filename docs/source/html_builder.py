@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import textwrap
 from pathlib import Path
 from typing import Any
@@ -18,27 +17,18 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
     def __init__(self, app: Sphinx, env: BuildEnvironment) -> None:
         super().__init__(app, env)
         self._ref_to_doc = {}
+        self._add_strict_list()
 
     def write_doc(self, docname: str, doctree: document) -> None:
         super().write_doc(docname, doctree)
         self._ref_to_doc.update({_id: docname for _id in doctree.ids})
 
-    def _add_strict_to_doc(self) -> None:
-        target_filename = "command_line.html"
-        p = Path(self.outdir) / target_filename
-        text = p.read_bytes()
-        lead_in = b"over time."
-        c = text.count(lead_in)
-        complaint = f"Expected '{lead_in}' in {target_filename}, so I could add the strict flags after it, but "
-        if c < 1:
-            raise ValueError(complaint+"it was not there.")
-        elif c > 1:
-            raise ValueError(complaint+"it occurred in multiple locations, so I don't know what to do.")
-        help_text = process_options(['-c', 'pass'])
-        strict_part = help_text[2].split(": ")[1]
+    def _add_strict_list(self) -> None:
+        p = Path(self.outdir).parent.parent / "source" / "strict_list.rst"
+        strict_part = ", ".join(f":option:`{s} <mypy {s}>`" for s in process_options(['-c', 'pass'])[2])
         if not strict_part or strict_part.isspace() or len(strict_part) < 20 or len(strict_part) > 2000:
-           raise ValueError(f"{strict_part=}, which doesn't look right.")
-        p.write_bytes(text.replace(lead_in, lead_in+b" The current list is: " + bytes(strict_part, encoding="ascii")))
+           raise ValueError(f"{strict_part=}, which doesn't look right (by a simple heuristic).")
+        p.write_text(strict_part)
 
     def _verify_error_codes(self) -> None:
         from mypy.errorcodes import error_codes
@@ -74,7 +64,6 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
     def finish(self) -> None:
         super().finish()
         self._write_ref_redirector()
-        self._add_strict_to_doc()
 
 
 def setup(app: Sphinx) -> dict[str, Any]:
