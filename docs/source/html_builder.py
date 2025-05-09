@@ -16,6 +16,7 @@ from mypy.main import process_options
 
 class MypyHTMLBuilder(StandaloneHTMLBuilder):
     strict_file: Path
+
     def __init__(self, app: Sphinx, env: BuildEnvironment) -> None:
         super().__init__(app, env)
         self._ref_to_doc = {}
