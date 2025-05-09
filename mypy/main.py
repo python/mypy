@@ -471,13 +471,18 @@ def process_options(
     fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
-) -> tuple[list[BuildSource], Options, list[str]]:
+    list_to_fill_with_strict_flags: list[str] | None = None
+) -> tuple[list[BuildSource], Options]:
     """Parse command line arguments.
 
     If a FileSystemCache is passed in, and package_root options are given,
     call fscache.set_package_root() to set the cache's package root.
 
-    Returns a tuple of: a list of source file, an Options collected from flags, and the computed list of strict flags.
+    Returns a tuple of: a list of source files, an Options collected from flags.
+
+    If list_to_fill_with_strict_flags is provided and not none,
+      then that list will be extended with the computed list of flags that --strict enables
+      (as a sort of secret return option).
     """
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
@@ -1534,7 +1539,9 @@ def process_options(
         # exceptions of different types.
         except InvalidSourceList as e2:
             fail(str(e2), stderr, options)
-    return targets, options, strict_flag_names
+    if list_to_fill_with_strict_flags is not None:
+        list_to_fill_with_strict_flags.extend(strict_flag_names)
+    return targets, options
 
 
 def process_package_roots(
