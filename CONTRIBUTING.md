@@ -202,7 +202,7 @@ Core developers should follow these rules when processing pull requests:
     message is under 80 characters, including the subject line.
   - Capitalize the subject and each paragraph.
   - Make sure that the subject of the commit message has no trailing dot.
-  - Use the imperative mood in the subject line (e.g. "Fix typo in README").
+  - Use the bare infinitive in the subject line (e.g. "Fix typo in README").
   - If the PR fixes an issue, make sure something like "Fixes #xxx." occurs
     in the body of the message (not in the subject).
   - Use Markdown for formatting.
