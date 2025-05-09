@@ -15,9 +15,11 @@ from mypy.main import process_options
 
 
 class MypyHTMLBuilder(StandaloneHTMLBuilder):
+    strict_file: Path
     def __init__(self, app: Sphinx, env: BuildEnvironment) -> None:
         super().__init__(app, env)
         self._ref_to_doc = {}
+        self.strict_file = Path(self.outdir) / "strict_list.rst"
         self._add_strict_list()
 
     def write_doc(self, docname: str, doctree: document) -> None:
@@ -25,7 +27,6 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
         self._ref_to_doc.update({_id: docname for _id in doctree.ids})
 
     def _add_strict_list(self) -> None:
-        p = Path(self.outdir).parent.parent / "source" / "strict_list.rst"
         strict_flags: list[str] = []
         process_options(["-c", "pass"], list_to_fill_with_strict_flags=strict_flags)
         strict_part = ", ".join(f":option:`{s} <mypy {s}>`" for s in strict_flags)
@@ -36,7 +37,7 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
             or len(strict_part) > 2000
         ):
             raise ValueError(f"{strict_part=}, which doesn't look right (by a simple heuristic).")
-        p.write_text(strict_part)
+        self.strict_file.write_text(strict_part)
 
     def _verify_error_codes(self) -> None:
         from mypy.errorcodes import error_codes
@@ -72,6 +73,7 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
     def finish(self) -> None:
         super().finish()
         self._write_ref_redirector()
+        self.strict_file.unlink()
 
 
 def setup(app: Sphinx) -> dict[str, Any]:
