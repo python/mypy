@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import textwrap
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ from sphinx.application import Sphinx
 from sphinx.builders.html import StandaloneHTMLBuilder
 from sphinx.environment import BuildEnvironment
 
+from mypy.api import run
 
 class MypyHTMLBuilder(StandaloneHTMLBuilder):
     def __init__(self, app: Sphinx, env: BuildEnvironment) -> None:
@@ -20,6 +22,28 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
     def write_doc(self, docname: str, doctree: document) -> None:
         super().write_doc(docname, doctree)
         self._ref_to_doc.update({_id: docname for _id in doctree.ids})
+
+    def _add_strict_to_doc(self) -> None:
+        target_filename = "command_line.html"
+        p = Path(self.outdir) / target_filename
+        text = p.read_bytes()
+        lead_in = b"over time."
+        c = text.count(lead_in)
+        complaint = f"Expected '{lead_in}' in {target_filename}, so I could add the strict flags after it, but "
+        if c < 1:
+            raise ValueError(complaint+"it was not there.")
+        elif c > 1:
+            raise ValueError(complaint+"it occurred in multiple locations, so I don't know what to do.")
+        help_text = run(['--help'])[0]
+        strict_regex = r"Strict mode; enables the following flags: (.*?)\r?\n  --"
+        strict_part = re.match(strict_regex, help_text, re.DOTALL)
+        if strict_part is None:
+            print(help_text)
+            raise ValueError(f"Needed to match the regex r'{strict_regex}' in mypy --help, to enhance the docs, but it was not there.")
+        strict_part = strict_part[0]
+        if not strict_part or strict_part.isspace() or len(strict_part) < 20 or len(strict_part) > 2000:
+            raise ValueError(f"List of strict flags in the output is {strict_part}, which doesn't look right")
+        p.write_bytes(text.replace(lead_in, lead_in+b" The current list is: " + bytes(strict_part, encoding="ascii")))
 
     def _verify_error_codes(self) -> None:
         from mypy.errorcodes import error_codes
@@ -55,6 +79,7 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
     def finish(self) -> None:
         super().finish()
         self._write_ref_redirector()
+        self._add_strict_to_doc()
 
 
 def setup(app: Sphinx) -> dict[str, Any]:
