@@ -15,12 +15,12 @@ from mypy.main import process_options
 
 
 class MypyHTMLBuilder(StandaloneHTMLBuilder):
-    strict_file: Path
+    strict_file: Sphinx._StrPath
 
     def __init__(self, app: Sphinx, env: BuildEnvironment) -> None:
         super().__init__(app, env)
         self._ref_to_doc = {}
-        self.strict_file = Path(self.outdir) / "strict_list.rst"
+        self.strict_file = Path(self.srcdir) / "strict_list.rst"
         self._add_strict_list()
 
     def write_doc(self, docname: str, doctree: document) -> None:
