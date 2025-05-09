@@ -557,14 +557,6 @@ def process_options(
     #     do end the group description with a link, omit the 'http://' prefix. (Some links are too
     #     long and will break up into multiple lines if we include that prefix, so for consistency
     #     we omit the prefix on all links.)
-    # # Mypy documentation
-    # ## Formatting
-    # Our documentation is rendered using the Read the Docs sphinx theme. See the following link for
-    # a list of different formatting options:
-    # https://sphinx-rtd-theme.readthedocs.io/en/latest/
-    # It can also be helpful to consult the source code of the above guide when you're trying to figure
-    # out how to format certain things:
-    # https://github.com/rtfd/sphinx_rtd_theme/tree/master/docs/demo
 
     general_group = parser.add_argument_group(title="Optional arguments")
     general_group.add_argument(
