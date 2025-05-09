@@ -13,6 +13,7 @@ from sphinx.environment import BuildEnvironment
 
 from mypy.main import process_options
 
+
 class MypyHTMLBuilder(StandaloneHTMLBuilder):
     def __init__(self, app: Sphinx, env: BuildEnvironment) -> None:
         super().__init__(app, env)
@@ -25,9 +26,16 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
 
     def _add_strict_list(self) -> None:
         p = Path(self.outdir).parent.parent / "source" / "strict_list.rst"
-        strict_part = ", ".join(f":option:`{s} <mypy {s}>`" for s in process_options(['-c', 'pass'])[2])
-        if not strict_part or strict_part.isspace() or len(strict_part) < 20 or len(strict_part) > 2000:
-           raise ValueError(f"{strict_part=}, which doesn't look right (by a simple heuristic).")
+        strict_part = ", ".join(
+            f":option:`{s} <mypy {s}>`" for s in process_options(["-c", "pass"])[2]
+        )
+        if (
+            not strict_part
+            or strict_part.isspace()
+            or len(strict_part) < 20
+            or len(strict_part) > 2000
+        ):
+            raise ValueError(f"{strict_part=}, which doesn't look right (by a simple heuristic).")
         p.write_text(strict_part)
 
     def _verify_error_codes(self) -> None:
