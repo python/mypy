@@ -26,8 +26,10 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
 
     def _add_strict_list(self) -> None:
         p = Path(self.outdir).parent.parent / "source" / "strict_list.rst"
+        strict_flags: list[str] = []
+        process_options(["-c", "pass"], list_to_fill_with_strict_flags=strict_flags)
         strict_part = ", ".join(
-            f":option:`{s} <mypy {s}>`" for s in process_options(["-c", "pass"])[2]
+            f":option:`{s} <mypy {s}>`" for s in strict_flags
         )
         if (
             not strict_part
