@@ -102,7 +102,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=__doc__,
-        epilog="Remember: you usually want the first argument to this command to be 'master'."
+        epilog="Remember: you usually want the first argument to this command to be 'master'.",
     )
     parser.add_argument(
         "--incremental",
@@ -115,7 +115,7 @@ def main() -> None:
         default=False,
         action="store_true",
         help="don't make the clones or compile mypy, just run the performance measurement benchmark "
-          + "(this will fail unless the clones already exist, such as from a previous run that was canceled before it deleted them)",
+        + "(this will fail unless the clones already exist, such as from a previous run that was canceled before it deleted them)",
     )
     parser.add_argument(
         "--num-runs",
@@ -147,7 +147,11 @@ def main() -> None:
         type=str,
         help="measure time to type check Python code fragment instead of mypy self-check",
     )
-    parser.add_argument("commit", nargs="+", help="git revision(s), e.g. branch name or commit id, to measure the performance of")
+    parser.add_argument(
+        "commit",
+        nargs="+",
+        help="git revision(s), e.g. branch name or commit id, to measure the performance of",
+    )
     args = parser.parse_args()
     incremental: bool = args.incremental
     dont_setup: bool = args.dont_setup
