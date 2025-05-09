@@ -546,7 +546,7 @@ def process_options(
     #
     # Groups:
     # 1.  The group title and description should start with a capital letter.
-    # 2.  The first sentence of a group description should be written in the imperative mood.
+    # 2.  The first sentence of a group description should be written in the bare infinitive.
     #     Tip: try substituting the group title and description into the following sentence:
     #     > {group_title}: these flags will {group_description}
     #     Feel free to add subsequent sentences that add additional details.
