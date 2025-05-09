@@ -471,11 +471,13 @@ def process_options(
     fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
-) -> tuple[list[BuildSource], Options, str]:
+) -> tuple[list[BuildSource], Options, list[str]]:
     """Parse command line arguments.
 
     If a FileSystemCache is passed in, and package_root options are given,
     call fscache.set_package_root() to set the cache's package root.
+
+    Returns a tuple of: a list of source file, an Options collected from flags, and the computed list of strict flags.
     """
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
@@ -1532,7 +1534,7 @@ def process_options(
         # exceptions of different types.
         except InvalidSourceList as e2:
             fail(str(e2), stderr, options)
-    return targets, options, strict_help
+    return targets, options, strict_flag_names
 
 
 def process_package_roots(

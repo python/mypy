@@ -764,7 +764,10 @@ of the above sections.
     :option:`mypy --help` output.
 
     Note: the exact list of flags enabled by running :option:`--strict` may change
-    over time.
+    over time. For the current version of mypy, the list is:
+
+    .. include:: strict_list.rst
+
 
 .. option:: --disable-error-code
 
