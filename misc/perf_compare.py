@@ -9,7 +9,7 @@ What this does:
  * Create a temp clone of the mypy repo for each target commit to measure
  * Checkout a target commit in each of the clones
  * Compile mypyc in each of the clones *in parallel*
- * Create another temp clone of the mypy repo as the code to check
+ * Create another temp clone of the first provided revision (or, with -r, a foreign repo) as the code to check
  * Self check with each of the compiled mypys N times
  * Report the average runtimes and relative performance
  * Remove the temp clones
@@ -100,6 +100,8 @@ def run_benchmark(
 def main() -> None:
     whole_program_time_0 = time.time()
     parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=__doc__,
         epilog="Remember: you usually want the first argument to this command to be 'master'."
     )
     parser.add_argument(
@@ -112,7 +114,8 @@ def main() -> None:
         "--dont-setup",
         default=False,
         action="store_true",
-        help="don't make the dirs or compile mypy, just run the performance measurement benchmark",
+        help="don't make the clones or compile mypy, just run the performance measurement benchmark "
+          + "(this will fail unless the clones already exist, such as from a previous run that was canceled before it deleted them)",
     )
     parser.add_argument(
         "--num-runs",
@@ -133,8 +136,9 @@ def main() -> None:
         metavar="FOREIGN_REPOSITORY",
         default=None,
         type=str,
-        help="measure time to type check the project at FOREIGN_REPOSITORY instead of mypy self-check; "
-        + "provided value must be the URL or path of a git repo",
+        help="measure time to typecheck the project at FOREIGN_REPOSITORY instead of mypy self-check; "
+        + "the provided value must be the URL or path of a git repo "
+        + "(note that this script will take no special steps to *install* the foreign repo, so you will probably get a lot of missing import errors)",
     )
     parser.add_argument(
         "-c",
@@ -143,7 +147,7 @@ def main() -> None:
         type=str,
         help="measure time to type check Python code fragment instead of mypy self-check",
     )
-    parser.add_argument("commit", nargs="+", help="git revision to measure (e.g. branch name)")
+    parser.add_argument("commit", nargs="+", help="git revision(s), e.g. branch name or commit id, to measure the performance of")
     args = parser.parse_args()
     incremental: bool = args.incremental
     dont_setup: bool = args.dont_setup
