@@ -508,12 +508,14 @@ to see the types of all local variables at once. Example:
    ``reveal_type`` and ``reveal_locals`` are understood by mypy during typechecking,
    and don't have to be imported as functions. However,
    if you don't import them, then they don't exist at runtime! Therefore,
-   in that case, if you try to run your program, you'll have to
-   remove any ``reveal_type`` and ``reveal_locals`` calls
+   you'll have to remove any ``reveal_type`` and ``reveal_locals`` calls from your program
    or else Python will give you an error at runtime about those names being undefined.
-   Alternatively, you can import ``reveal_type`` from ``typing_extensions`` (or, in more recent versions of python, from ``typing``) so its name will be defined at runtime.
+   Alternatively, you can import ``reveal_type`` from :py:data:`typing_extensions`
+   (or, in more recent versions of python, from :py:data:`typing`) so its name will be defined at runtime.
    There is no analogous fix for ``reveal_locals``. It simply must be removed from the code before the code is run.
-   (Although, technically, if you really didn't want to remove those calls, you could use ``if not TYPE_CHECKING: reveal_locals = lambda: None`` or similar to define the function to something else at runtime.)
+   (Although, technically, if you really didn't want to remove those calls, you could use
+   ``if not typing.TYPE_CHECKING: reveal_locals = lambda: None``
+   or similar to define the function to something else at runtime.)
 
 .. _silencing-linters:
 
