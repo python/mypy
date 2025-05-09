@@ -28,9 +28,7 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
         p = Path(self.outdir).parent.parent / "source" / "strict_list.rst"
         strict_flags: list[str] = []
         process_options(["-c", "pass"], list_to_fill_with_strict_flags=strict_flags)
-        strict_part = ", ".join(
-            f":option:`{s} <mypy {s}>`" for s in strict_flags
-        )
+        strict_part = ", ".join(f":option:`{s} <mypy {s}>`" for s in strict_flags)
         if (
             not strict_part
             or strict_part.isspace()

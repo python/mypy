@@ -471,7 +471,7 @@ def process_options(
     fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
-    list_to_fill_with_strict_flags: list[str] | None = None
+    list_to_fill_with_strict_flags: list[str] | None = None,
 ) -> tuple[list[BuildSource], Options]:
     """Parse command line arguments.
 
