@@ -218,7 +218,9 @@ daemon <mypy_daemon>`, which can speed up incremental mypy runtimes by
 a factor of 10 or more. :ref:`Remote caching <remote-cache>` can
 make cold mypy runs several times faster.
 
-Furthermore: as of [mypy 1.13](https://mypy-lang.blogspot.com/2024/10/mypy-113-released.html), mypy allows use of the orjson library for handling the cache instead of the stdlib json, for improved performance. You can ensure the presence of orjson using the faster-cache extra:
+Furthermore: as of `mypy 1.13 <https://mypy-lang.blogspot.com/2024/10/mypy-113-released.html>`_,
+mypy allows use of the orjson library for handling the cache instead of the stdlib json, for
+improved performance. You can ensure the presence of orjson using the faster-cache extra:
 
     python3 -m pip install -U mypy[faster-cache]
 
