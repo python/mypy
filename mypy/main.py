@@ -471,7 +471,7 @@ def process_options(
     fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
-) -> tuple[list[BuildSource], Options]:
+) -> tuple[list[BuildSource], Options, str]:
     """Parse command line arguments.
 
     If a FileSystemCache is passed in, and package_root options are given,
@@ -1521,11 +1521,9 @@ def process_options(
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
-        return targets, options
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
         targets = [BuildSource(None, None, "\n".join(special_opts.command))]
-        return targets, options
     else:
         try:
             targets = create_source_list(special_opts.files, options, fscache)
@@ -1534,7 +1532,7 @@ def process_options(
         # exceptions of different types.
         except InvalidSourceList as e2:
             fail(str(e2), stderr, options)
-        return targets, options
+    return targets, options, strict_help
 
 
 def process_package_roots(
