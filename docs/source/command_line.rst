@@ -766,6 +766,9 @@ of the above sections.
     Note: the exact list of flags enabled by running :option:`--strict` may change
     over time.
 
+    .. include:: strict_list.rst
+
+
 .. option:: --disable-error-code
 
     This flag allows disabling one or multiple error codes globally.
