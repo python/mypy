@@ -573,7 +573,8 @@ def define_options(
         "-O",
         "--output",
         metavar="FORMAT",
-        help="Set a custom output format",
+        # The metavar overrides the default of displaying the choices, so we have to explicitly display them.
+        help=f"Set a custom output format (choices: {set(OUTPUT_CHOICES.keys())})",
         choices=OUTPUT_CHOICES,
     )
 
