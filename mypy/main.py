@@ -369,18 +369,43 @@ FOOTER: Final = """Environment variables:
   Define MYPYPATH for additional module search path entries.
   Define MYPY_CACHE_DIR to override configuration cache_dir path."""
 
+def is_terminal_punctuation(char: str) -> bool:
+    return char in (".", "?", "!")
 
 class CapturableArgumentParser(argparse.ArgumentParser):
     """Override ArgumentParser methods that use sys.stdout/sys.stderr directly.
 
     This is needed because hijacking sys.std* is not thread-safe,
     yet output must be captured to properly support mypy.api.run.
+
+    Also enforces our style guides for groups and flags (ie, capitalization).
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.stdout = kwargs.pop("stdout", sys.stdout)
         self.stderr = kwargs.pop("stderr", sys.stderr)
         super().__init__(*args, **kwargs)
+
+    # =====================
+    # Enforce style guide
+    # =====================
+    # We just hard fail on these, as CI will ensure the runtime errors never get to users.
+    def add_argument_group(
+        self,
+        title: str,
+        description: str | None = None,
+        **kwargs,
+    ) -> argparse._ArgumentGroup:
+        if title not in ["positional arguments", "options"]: # These are built-in names, ignore them.
+            if not title[0].isupper():
+                raise ValueError(f"CLI documentation style error: Title of group {title} must start with a capital letter. (Currently, '{title[0]}'.)")
+            if description and not description[0].isupper():
+                raise ValueError(f"CLI documentation style error: Description of group {title} must start with a capital letter. (Currently, '{description[0]}'.)")
+            if is_terminal_punctuation(title[-1]):
+                raise ValueError(f"CLI documentation style error: Title of group {title} must NOT end with terminal punction. (Currently, '{title[-1]}'.)")
+            if description and not is_terminal_punctuation(title[-1]):
+                raise ValueError(f"CLI documentation style error: Description of group {title} must end with terminal punction. (Currently, '{description[-1]}'.)")
+        return super().add_argument_group(title, description, **kwargs)
 
     # =====================
     # Help-printing methods
