@@ -8,6 +8,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 import mypy.applytype
 import mypy.constraints
 import mypy.typeops
+from mypy.checker_state import checker_state
 from mypy.erasetype import erase_type
 from mypy.expandtype import (
     expand_self_type,
@@ -1267,7 +1268,7 @@ def find_member(
     class_obj: bool = False,
     is_lvalue: bool = False,
 ) -> Type | None:
-    type_checker = state.type_checker
+    type_checker = checker_state.type_checker
     if type_checker is None:
         # Unfortunately, there are many scenarios where someone calls is_subtype() before
         # type checking phase. In this case we fallback to old (incomplete) logic.

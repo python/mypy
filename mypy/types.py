@@ -32,6 +32,7 @@ from mypy.nodes import (
     SymbolNode,
 )
 from mypy.options import Options
+from mypy.state import state
 from mypy.util import IdMapper
 
 T = TypeVar("T")
@@ -2978,8 +2979,6 @@ class UnionType(ProperType):
 
     def relevant_items(self) -> list[Type]:
         """Removes NoneTypes from Unions when strict Optional checking is off."""
-        from mypy.state import state
-
         if state.strict_optional:
             return self.items
         else:
