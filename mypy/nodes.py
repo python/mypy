@@ -148,18 +148,6 @@ reverse_builtin_aliases: Final = {
     "builtins.frozenset": "typing.FrozenSet",
 }
 
-_nongen_builtins: Final = {"builtins.tuple": "typing.Tuple", "builtins.enumerate": ""}
-_nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
-# Drop OrderedDict from this for backward compatibility
-del _nongen_builtins["collections.OrderedDict"]
-# HACK: consequence of hackily treating LiteralString as an alias for str
-del _nongen_builtins["builtins.str"]
-
-
-def get_nongen_builtins(python_version: tuple[int, int]) -> dict[str, str]:
-    # After 3.9 with pep585 generic builtins are allowed
-    return _nongen_builtins if python_version < (3, 9) else {}
-
 
 RUNTIME_PROTOCOL_DECOS: Final = (
     "typing.runtime_checkable",
