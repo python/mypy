@@ -10,7 +10,9 @@ mypyc.irbuild.function.
 
 from __future__ import annotations
 
-from mypy.nodes import ARG_OPT, Var
+from typing import Callable
+
+from mypy.nodes import ARG_OPT, FuncDef, Var
 from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
@@ -31,13 +33,16 @@ from mypyc.ir.ops import (
     Value,
 )
 from mypyc.ir.rtypes import RInstance, int_rprimitive, object_rprimitive
-from mypyc.irbuild.builder import IRBuilder, gen_arg_defaults
+from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
     add_args_to_env,
+    add_vars_to_env,
     finalize_env_class,
     load_env_registers,
     load_outer_env,
+    load_outer_envs,
+    setup_func_for_recursive_call,
 )
 from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl
 from mypyc.primitives.exc_ops import (
@@ -49,12 +54,68 @@ from mypyc.primitives.exc_ops import (
 )
 
 
-def gen_generator_func(builder: IRBuilder) -> None:
+def gen_generator_func(
+    builder: IRBuilder,
+    gen_func_ir: Callable[
+        [list[Register], list[BasicBlock], FuncInfo], tuple[FuncIR, Value | None]
+    ],
+) -> tuple[FuncIR, Value | None]:
+    """Generate IR for generator function that returns generator object."""
     setup_generator_class(builder)
     load_env_registers(builder)
     gen_arg_defaults(builder)
     finalize_env_class(builder)
     builder.add(Return(instantiate_generator_class(builder)))
+
+    args, _, blocks, ret_type, fn_info = builder.leave()
+    func_ir, func_reg = gen_func_ir(args, blocks, fn_info)
+    return func_ir, func_reg
+
+
+def gen_generator_func_body(
+    builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature, func_reg: Value | None
+) -> None:
+    """Generate IR based on the body of a generator function.
+
+    Add "__next__", "__iter__" and other generator methods to the generator
+    class that implements the function (each function gets a separate class).
+
+    Return the symbol table for the body.
+    """
+    builder.enter(fn_info, ret_type=sig.ret_type)
+    setup_env_for_generator_class(builder)
+
+    load_outer_envs(builder, builder.fn_info.generator_class)
+    top_level = builder.top_level_fn_info()
+    fitem = fn_info.fitem
+    if (
+        builder.fn_info.is_nested
+        and isinstance(fitem, FuncDef)
+        and top_level
+        and top_level.add_nested_funcs_to_env
+    ):
+        setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
+    create_switch_for_generator_class(builder)
+    add_raise_exception_blocks_to_generator_class(builder, fitem.line)
+
+    add_vars_to_env(builder)
+
+    builder.accept(fitem.body)
+    builder.maybe_add_implicit_return()
+
+    populate_switch_for_generator_class(builder)
+
+    # Hang on to the local symbol table, since the caller will use it
+    # to calculate argument defaults.
+    symtable = builder.symtables[-1]
+
+    args, _, blocks, ret_type, fn_info = builder.leave()
+
+    add_methods_to_generator_class(builder, fn_info, sig, args, blocks, fitem.is_coroutine)
+
+    # Evaluate argument defaults in the surrounding scope, since we
+    # calculate them *once* when the function definition is evaluated.
+    calculate_arg_defaults(builder, fn_info, func_reg, symtable)
 
 
 def instantiate_generator_class(builder: IRBuilder) -> Value:
@@ -181,6 +242,8 @@ def add_helper_to_generator_class(
     )
     fn_info.generator_class.ir.methods["__mypyc_generator_helper__"] = helper_fn_ir
     builder.functions.append(helper_fn_ir)
+    fn_info.env_class.env_user_function = helper_fn_ir
+
     return helper_fn_decl
 
 

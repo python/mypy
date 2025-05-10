@@ -213,3 +213,23 @@ from typedpkg_ns.a.bbb import bf
 [file dummy.py.2]
 [out]
 [out2]
+
+[case testTypedNamespaceSubpackage]
+# pkgs: typedpkg_ns_nested
+import our
+[file our/__init__.py]
+import our.bar
+import our.foo
+[file our/bar.py]
+from typedpkg_ns.b import Something
+[file our/foo.py]
+import typedpkg_ns.a
+
+[file dummy.py.2]
+
+[out]
+our/bar.py:1: error: Skipping analyzing "typedpkg_ns.b": module is installed, but missing library stubs or py.typed marker
+our/bar.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+[out2]
+our/bar.py:1: error: Skipping analyzing "typedpkg_ns.b": module is installed, but missing library stubs or py.typed marker
+our/bar.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports

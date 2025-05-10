@@ -602,6 +602,55 @@ def bar() -> None:
 (str) -> str
 ==
 
+[case testSuggestInferFuncDecorator5]
+# suggest: foo.foo1
+# suggest: foo.foo2
+# suggest: foo.foo3
+[file foo.py]
+from __future__ import annotations
+
+from typing import TypeVar, Generator, Callable
+
+F = TypeVar('F')
+
+# simplified `@contextmanager
+class _impl:
+    def __call__(self, f: F) -> F: return f
+def contextmanager(gen: Callable[[], Generator[None, None, None]]) -> Callable[[], _impl]: return _impl
+
+@contextmanager
+def gen() -> Generator[None, None, None]:
+    yield
+
+@gen()
+def foo1(x):
+    return x
+
+foo1('hi')
+
+inst = gen()
+
+@inst
+def foo2(x):
+    return x
+
+foo2('hello')
+
+ref = gen
+
+@ref()
+def foo3(x):
+    return x
+
+foo3('hello hello')
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+(str) -> str
+(str) -> str
+==
+
 [case testSuggestFlexAny1]
 # suggest: --flex-any=0.4 m.foo
 # suggest: --flex-any=0.7 m.foo

@@ -359,12 +359,12 @@ class DataclassTransformer:
 
         if decorator_arguments["frozen"]:
             if any(not parent["frozen"] for parent in parent_decorator_arguments):
-                self._api.fail("Cannot inherit frozen dataclass from a non-frozen one", info)
+                self._api.fail("Frozen dataclass cannot inherit from a non-frozen dataclass", info)
             self._propertize_callables(attributes, settable=False)
             self._freeze(attributes)
         else:
             if any(parent["frozen"] for parent in parent_decorator_arguments):
-                self._api.fail("Cannot inherit non-frozen dataclass from a frozen one", info)
+                self._api.fail("Non-frozen dataclass cannot inherit from a frozen dataclass", info)
             self._propertize_callables(attributes)
 
         if decorator_arguments["slots"]:

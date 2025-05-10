@@ -389,6 +389,7 @@ def semantic_analyze_target(
     analyzer.global_decls = [set()]
     analyzer.nonlocal_decls = [set()]
     analyzer.globals = tree.names
+    analyzer.imports = set()
     analyzer.progress = False
     with state.wrap_context(check_blockers=False):
         refresh_node = node

@@ -1256,12 +1256,28 @@ def verify_paramspecexpr(
         return
 
 
+def _is_django_cached_property(runtime: Any) -> bool:  # pragma: no cover
+    # This is a special case for
+    # https://docs.djangoproject.com/en/5.2/ref/utils/#django.utils.functional.cached_property
+    # This is needed in `django-stubs` project:
+    # https://github.com/typeddjango/django-stubs
+    if type(runtime).__name__ != "cached_property":
+        return False
+    try:
+        return bool(runtime.func)
+    except Exception:
+        return False
+
+
 def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     assert stub.func.is_property
     if isinstance(runtime, property):
         yield from _verify_final_method(stub.func, runtime.fget, MISSING)
         return
     if isinstance(runtime, functools.cached_property):
+        yield from _verify_final_method(stub.func, runtime.func, MISSING)
+        return
+    if _is_django_cached_property(runtime):
         yield from _verify_final_method(stub.func, runtime.func, MISSING)
         return
     if inspect.isdatadescriptor(runtime):
@@ -2003,6 +2019,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     options.process_incomplete_features(
         error_callback=error_callback, warning_callback=warning_callback
     )
+    options.process_strict_bytes()
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
@@ -2083,6 +2100,8 @@ def parse_options(args: list[str]) -> _Arguments:
     parser = argparse.ArgumentParser(
         description="Compares stubs to objects introspected from the runtime."
     )
+    if sys.version_info >= (3, 14):
+        parser.color = True  # Set as init arg in 3.14
     parser.add_argument("modules", nargs="*", help="Modules to test")
     parser.add_argument(
         "--concise",

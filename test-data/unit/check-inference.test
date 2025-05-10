@@ -3963,3 +3963,19 @@ def f() -> None:
 
     # The type below should not be Any.
     reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[case testInferenceMappingTypeVarGet]
+from typing import Generic, TypeVar, Union
+
+_T = TypeVar("_T")
+_K = TypeVar("_K")
+_V = TypeVar("_V")
+
+class Mapping(Generic[_K, _V]):
+    def get(self, key: _K, default: Union[_V, _T]) -> Union[_V, _T]: ...
+
+def check(mapping: Mapping[str, _T]) -> None:
+    ok1 = mapping.get("", "")
+    reveal_type(ok1)  # N: Revealed type is "Union[_T`-1, builtins.str]"
+    ok2: Union[_T, str] = mapping.get("", "")
+[builtins fixtures/tuple.pyi]

@@ -1085,6 +1085,7 @@ class SemanticAnalyzer(
                         assert self.type is not None and self.type.self_type is not None
                         leading_type: Type = self.type.self_type
                     else:
+                        func.is_trivial_self = True
                         leading_type = fill_typevars(info)
                     if func.is_class or func.name == "__new__":
                         leading_type = self.class_type(leading_type)
@@ -5591,7 +5592,7 @@ class SemanticAnalyzer(
                 self.msg.unimported_type_becomes_any("Type alias target", res, s)
                 res = make_any_non_unimported(res)
             eager = self.is_func_scope()
-            if isinstance(res, ProperType) and isinstance(res, Instance) and not res.args:
+            if isinstance(res, ProperType) and isinstance(res, Instance):
                 fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
             alias_node = TypeAlias(
                 res,
@@ -6382,6 +6383,8 @@ class SemanticAnalyzer(
             if node.name not in self.globals:
                 return True
             global_node = self.globals[node.name]
+            if not self.is_textually_before_class(global_node.node):
+                return True
             return not self.is_type_like(global_node.node)
         return False
 
@@ -6408,6 +6411,13 @@ class SemanticAnalyzer(
             return line_diff > len(node.original_decorators)
         else:
             return line_diff > 0
+
+    def is_textually_before_class(self, node: SymbolNode | None) -> bool:
+        """Similar to above, but check if a node is defined before current class."""
+        assert self.type is not None
+        if node is None:
+            return False
+        return node.line < self.type.defn.line
 
     def is_overloaded_item(self, node: SymbolNode, statement: Statement) -> bool:
         """Check whether the function belongs to the overloaded variants"""
