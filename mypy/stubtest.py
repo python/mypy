@@ -1256,12 +1256,28 @@ def verify_paramspecexpr(
         return
 
 
+def _is_django_cached_property(runtime: Any) -> bool:  # pragma: no cover
+    # This is a special case for
+    # https://docs.djangoproject.com/en/5.2/ref/utils/#django.utils.functional.cached_property
+    # This is needed in `django-stubs` project:
+    # https://github.com/typeddjango/django-stubs
+    if type(runtime).__name__ != "cached_property":
+        return False
+    try:
+        return bool(runtime.func)
+    except Exception:
+        return False
+
+
 def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     assert stub.func.is_property
     if isinstance(runtime, property):
         yield from _verify_final_method(stub.func, runtime.fget, MISSING)
         return
     if isinstance(runtime, functools.cached_property):
+        yield from _verify_final_method(stub.func, runtime.func, MISSING)
+        return
+    if _is_django_cached_property(runtime):
         yield from _verify_final_method(stub.func, runtime.func, MISSING)
         return
     if inspect.isdatadescriptor(runtime):
