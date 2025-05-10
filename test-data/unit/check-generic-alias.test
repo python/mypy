@@ -37,7 +37,6 @@ t10: collections.ChainMap[int, str]
 
 
 [case testGenericAliasBuiltinsReveal]
-# flags: --python-version 3.9
 t1: list
 t2: list[int]
 t3: list[str]
@@ -70,7 +69,6 @@ reveal_type(t11)  # N: Revealed type is "Type[builtins.int]"
 
 
 [case testGenericAliasBuiltinsSetReveal]
-# flags: --python-version 3.9
 t1: set
 t2: set[int]
 t3: set[str]
@@ -82,7 +80,6 @@ reveal_type(t3)  # N: Revealed type is "builtins.set[builtins.str]"
 
 
 [case testGenericAliasCollectionsReveal]
-# flags: --python-version 3.9
 import collections
 
 t1: collections.deque[int]
@@ -100,7 +97,6 @@ reveal_type(t5)  # N: Revealed type is "collections.ChainMap[builtins.int, built
 
 
 [case testGenericAliasCollectionsABCReveal]
-# flags: --python-version 3.9
 import collections.abc
 
 t01: collections.abc.Awaitable[int]
@@ -170,8 +166,6 @@ t09: Tuple[int, ...] = (1, 2, 3)
 
 
 [case testGenericBuiltinTuple]
-# flags: --python-version 3.9
-
 t01: tuple = ()
 t02: tuple[int] = (1, )
 t03: tuple[int, str] = (1, 'a')
@@ -187,8 +181,6 @@ t10: Tuple[int, ...] = t09
 [builtins fixtures/tuple.pyi]
 
 [case testTypeAliasWithBuiltinTuple]
-# flags: --python-version 3.9
-
 A = tuple[int, ...]
 a: A = ()
 b: A = (1, 2, 3)

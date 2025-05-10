@@ -579,7 +579,6 @@ def bar(f: S) -> S:
 [builtins fixtures/primitives.pyi]
 
 [case testFunctoolsPartialAbstractType]
-# flags: --python-version 3.9
 from abc import ABC, abstractmethod
 from functools import partial
 
