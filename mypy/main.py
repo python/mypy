@@ -1339,7 +1339,7 @@ def process_options(
     stderr = stderr if stderr is not None else sys.stderr
 
     parser, _, strict_flag_assignments = define_options(
-        header, program, stdout, stderr, server_options
+        program, header, stdout, stderr, server_options
     )
 
     # Parse arguments once into a dummy namespace so we can get the
