@@ -160,8 +160,9 @@ def main() -> None:
         print(
             "Run the given tests. If given no arguments, run everything except"
             + " pytest-extra and mypyc-extra. Unrecognized arguments will be"
-            + " interpreted as individual test names (or, if they end in .test,"
-            + " individual test files) and this script will try to run them."
+            + " interpreted as individual test names / substring expressions"
+            + " (or, if they end in .test, individual test files)"
+            + " and this script will try to run them."
         )
         if "-h" in args or "--help" in args:
             exit(1)
