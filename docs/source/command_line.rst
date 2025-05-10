@@ -1093,8 +1093,8 @@ Experimental features
 
       .. code-block:: python
 
-         def test_values() -> {"int": int, "str": str}:
-             return {"int": 42, "str": "test"}
+         def test_values() -> {"foo": int, "bar": str}:
+             return {"foo": 42, "bar": "test"}
 
 .. option:: --find-occurrences CLASS.MEMBER
 
