@@ -11,7 +11,7 @@ from sphinx.application import Sphinx
 from sphinx.builders.html import StandaloneHTMLBuilder
 from sphinx.environment import BuildEnvironment
 
-from mypy.main import process_options
+from mypy.main import define_options
 
 
 class MypyHTMLBuilder(StandaloneHTMLBuilder):
@@ -28,8 +28,8 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
         self._ref_to_doc.update({_id: docname for _id in doctree.ids})
 
     def _add_strict_list(self) -> None:
-        strict_flags: list[str] = []
-        process_options(["-c", "pass"], list_to_fill_with_strict_flags=strict_flags)
+        strict_flags: list[str]
+        _, strict_flags, _ = define_options()
         strict_part = ", ".join(f":option:`{s} <mypy {s}>`" for s in strict_flags)
         if (
             not strict_part
