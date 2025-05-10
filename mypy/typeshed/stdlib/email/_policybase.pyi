@@ -2,12 +2,12 @@ from abc import ABCMeta, abstractmethod
 from email.errors import MessageDefect
 from email.header import Header
 from email.message import Message
-from typing import Generic, Protocol, TypeVar, type_check_only
+from typing import Any, Generic, Protocol, TypeVar, type_check_only
 from typing_extensions import Self
 
 __all__ = ["Policy", "Compat32", "compat32"]
 
-_MessageT = TypeVar("_MessageT", bound=Message, default=Message)
+_MessageT = TypeVar("_MessageT", bound=Message[Any, Any], default=Message[str, str])
 
 @type_check_only
 class _MessageFactory(Protocol[_MessageT]):
@@ -23,7 +23,7 @@ class _PolicyBase(Generic[_MessageT]):
     raise_on_defect: bool
     mangle_from_: bool
     message_factory: _MessageFactory[_MessageT] | None
-    # Added in Python 3.8.20, 3.9.20, 3.10.15, 3.11.10, 3.12.5
+    # Added in Python 3.9.20, 3.10.15, 3.11.10, 3.12.5
     verify_generated_headers: bool
 
     def __init__(
@@ -35,7 +35,7 @@ class _PolicyBase(Generic[_MessageT]):
         raise_on_defect: bool = False,
         mangle_from_: bool = ...,  # default depends on sub-class
         message_factory: _MessageFactory[_MessageT] | None = None,
-        # Added in Python 3.8.20, 3.9.20, 3.10.15, 3.11.10, 3.12.5
+        # Added in Python 3.9.20, 3.10.15, 3.11.10, 3.12.5
         verify_generated_headers: bool = True,
     ) -> None: ...
     def clone(
@@ -47,7 +47,7 @@ class _PolicyBase(Generic[_MessageT]):
         raise_on_defect: bool = ...,
         mangle_from_: bool = ...,
         message_factory: _MessageFactory[_MessageT] | None = ...,
-        # Added in Python 3.8.20, 3.9.20, 3.10.15, 3.11.10, 3.12.5
+        # Added in Python 3.9.20, 3.10.15, 3.11.10, 3.12.5
         verify_generated_headers: bool = ...,
     ) -> Self: ...
     def __add__(self, other: Policy) -> Self: ...
@@ -74,4 +74,4 @@ class Compat32(Policy[_MessageT]):
     def fold(self, name: str, value: str) -> str: ...
     def fold_binary(self, name: str, value: str) -> bytes: ...
 
-compat32: Compat32[Message]
+compat32: Compat32[Message[str, str]]

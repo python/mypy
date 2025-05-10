@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterable, Iterator, Mapping
 from gzip import _ReadableFileobj as _GzipReadableFileobj, _WritableFileobj as _GzipWritableFileobj
 from types import TracebackType
 from typing import IO, ClassVar, Literal, Protocol, overload
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
     "TarFile",
@@ -306,11 +306,49 @@ class TarFile:
     @classmethod
     def open(
         cls,
+        name: StrOrBytesPath | ReadableBuffer | None,
+        mode: Literal["r|*", "r|", "r|gz", "r|bz2", "r|xz"],
+        fileobj: _Fileobj | None = None,
+        bufsize: int = 10240,
+        *,
+        format: int | None = ...,
+        tarinfo: type[TarInfo] | None = ...,
+        dereference: bool | None = ...,
+        ignore_zeros: bool | None = ...,
+        encoding: str | None = ...,
+        errors: str = ...,
+        pax_headers: Mapping[str, str] | None = ...,
+        debug: int | None = ...,
+        errorlevel: int | None = ...,
+    ) -> Self: ...
+    @overload
+    @classmethod
+    def open(
+        cls,
         name: StrOrBytesPath | ReadableBuffer | None = None,
         *,
         mode: Literal["r|*", "r|", "r|gz", "r|bz2", "r|xz"],
         fileobj: _Fileobj | None = None,
         bufsize: int = 10240,
+        format: int | None = ...,
+        tarinfo: type[TarInfo] | None = ...,
+        dereference: bool | None = ...,
+        ignore_zeros: bool | None = ...,
+        encoding: str | None = ...,
+        errors: str = ...,
+        pax_headers: Mapping[str, str] | None = ...,
+        debug: int | None = ...,
+        errorlevel: int | None = ...,
+    ) -> Self: ...
+    @overload
+    @classmethod
+    def open(
+        cls,
+        name: StrOrBytesPath | WriteableBuffer | None,
+        mode: Literal["w|", "w|xz"],
+        fileobj: _Fileobj | None = None,
+        bufsize: int = 10240,
+        *,
         format: int | None = ...,
         tarinfo: type[TarInfo] | None = ...,
         dereference: bool | None = ...,
@@ -339,6 +377,26 @@ class TarFile:
         pax_headers: Mapping[str, str] | None = ...,
         debug: int | None = ...,
         errorlevel: int | None = ...,
+    ) -> Self: ...
+    @overload
+    @classmethod
+    def open(
+        cls,
+        name: StrOrBytesPath | WriteableBuffer | None,
+        mode: Literal["w|gz", "w|bz2"],
+        fileobj: _Fileobj | None = None,
+        bufsize: int = 10240,
+        *,
+        format: int | None = ...,
+        tarinfo: type[TarInfo] | None = ...,
+        dereference: bool | None = ...,
+        ignore_zeros: bool | None = ...,
+        encoding: str | None = ...,
+        errors: str = ...,
+        pax_headers: Mapping[str, str] | None = ...,
+        debug: int | None = ...,
+        errorlevel: int | None = ...,
+        compresslevel: int = 9,
     ) -> Self: ...
     @overload
     @classmethod
@@ -520,11 +578,7 @@ class TarFile:
 
 open = TarFile.open
 
-if sys.version_info >= (3, 9):
-    def is_tarfile(name: StrOrBytesPath | IO[bytes]) -> bool: ...
-
-else:
-    def is_tarfile(name: StrOrBytesPath) -> bool: ...
+def is_tarfile(name: StrOrBytesPath | IO[bytes]) -> bool: ...
 
 class TarError(Exception): ...
 class ReadError(TarError): ...
@@ -568,7 +622,6 @@ class TarInfo:
     offset: int
     offset_data: int
     sparse: bytes | None
-    tarfile: TarFile | None
     mode: int
     type: bytes
     linkname: str
@@ -578,6 +631,16 @@ class TarInfo:
     gname: str
     pax_headers: Mapping[str, str]
     def __init__(self, name: str = "") -> None: ...
+    if sys.version_info >= (3, 13):
+        @property
+        @deprecated("Deprecated in Python 3.13; removal scheduled for Python 3.16")
+        def tarfile(self) -> TarFile | None: ...
+        @tarfile.setter
+        @deprecated("Deprecated in Python 3.13; removal scheduled for Python 3.16")
+        def tarfile(self, tarfile: TarFile | None) -> None: ...
+    else:
+        tarfile: TarFile | None
+
     @classmethod
     def frombuf(cls, buf: bytes | bytearray, encoding: str, errors: str) -> Self: ...
     @classmethod

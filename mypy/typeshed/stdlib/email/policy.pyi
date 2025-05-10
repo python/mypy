@@ -1,13 +1,11 @@
 from collections.abc import Callable
-from email._policybase import Compat32 as Compat32, Policy as Policy, _MessageFactory, compat32 as compat32
+from email._policybase import Compat32 as Compat32, Policy as Policy, _MessageFactory, _MessageT, compat32 as compat32
 from email.contentmanager import ContentManager
-from email.message import EmailMessage, Message
-from typing import Any, TypeVar, overload
+from email.message import EmailMessage
+from typing import Any, overload
 from typing_extensions import Self
 
 __all__ = ["Compat32", "compat32", "Policy", "EmailPolicy", "default", "strict", "SMTP", "HTTP"]
-
-_MessageT = TypeVar("_MessageT", bound=Message, default=Message)
 
 class EmailPolicy(Policy[_MessageT]):
     utf8: bool
@@ -24,7 +22,7 @@ class EmailPolicy(Policy[_MessageT]):
         raise_on_defect: bool = ...,
         mangle_from_: bool = ...,
         message_factory: None = None,
-        # Added in Python 3.8.20, 3.9.20, 3.10.15, 3.11.10, 3.12.5
+        # Added in Python 3.9.20, 3.10.15, 3.11.10, 3.12.5
         verify_generated_headers: bool = ...,
         utf8: bool = ...,
         refold_source: str = ...,
@@ -41,7 +39,7 @@ class EmailPolicy(Policy[_MessageT]):
         raise_on_defect: bool = ...,
         mangle_from_: bool = ...,
         message_factory: _MessageFactory[_MessageT] | None = ...,
-        # Added in Python 3.8.20, 3.9.20, 3.10.15, 3.11.10, 3.12.5
+        # Added in Python 3.9.20, 3.10.15, 3.11.10, 3.12.5
         verify_generated_headers: bool = ...,
         utf8: bool = ...,
         refold_source: str = ...,
@@ -62,7 +60,7 @@ class EmailPolicy(Policy[_MessageT]):
         raise_on_defect: bool = ...,
         mangle_from_: bool = ...,
         message_factory: _MessageFactory[_MessageT] | None = ...,
-        # Added in Python 3.8.20, 3.9.20, 3.10.15, 3.11.10, 3.12.5
+        # Added in Python 3.9.20, 3.10.15, 3.11.10, 3.12.5
         verify_generated_headers: bool = ...,
         utf8: bool = ...,
         refold_source: str = ...,
