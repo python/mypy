@@ -1097,11 +1097,22 @@ def define_options(
     internals_group.add_argument(
         "--new-type-inference", action="store_true", help=argparse.SUPPRESS
     )
-    parser.add_argument(
+    experimental_group = parser.add_argument_group(
+        title="Experimental options", description="Enable features that work well enough to be useful,"
+        + " but perhaps not as well as you might wish."
+        + " These features may be enabled by default in the future, or perhaps moved to another section."
+    )
+    experimental_group.add_argument(
         "--enable-incomplete-feature",
         action="append",
         metavar="{" + ",".join(sorted(INCOMPLETE_FEATURES)) + "}",
         help="Enable support of incomplete/experimental features for early preview",
+    )
+    experimental_group.add_argument(
+        "--find-occurrences",
+        metavar="CLASS.MEMBER",
+        dest="special-opts:find_occurrences",
+        help="Print out all usages of a class member",
     )
     internals_group.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
@@ -1155,22 +1166,16 @@ def define_options(
         "--skip-c-gen", dest="mypyc_skip_c_generation", action="store_true", help=argparse.SUPPRESS
     )
 
-    other_group = parser.add_argument_group(title="Miscellaneous")
-    other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
-    other_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
+    misc_group = parser.add_argument_group(title="Miscellaneous")
+    misc_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
+    misc_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
     imports_group.add_argument(
         "--junit-format",
         choices=["global", "per_file"],
         default="global",
         help="If --junit-xml is set, specifies format. global: single test with all errors; per_file: one test entry per file with failures",
     )
-    other_group.add_argument(
-        "--find-occurrences",
-        metavar="CLASS.MEMBER",
-        dest="special-opts:find_occurrences",
-        help="Print out all usages of a class member (experimental)",
-    )
-    other_group.add_argument(
+    misc_group.add_argument(
         "--scripts-are-modules",
         action="store_true",
         help="Script x becomes module x instead of __main__",
@@ -1181,7 +1186,7 @@ def define_options(
         default=False,
         strict_flag=False,
         help="Install detected missing library stub packages using pip",
-        group=other_group,
+        group=misc_group,
     )
     add_invertible_flag(
         "--non-interactive",
@@ -1191,7 +1196,7 @@ def define_options(
             "Install stubs without asking for confirmation and hide "
             + "errors, with --install-types"
         ),
-        group=other_group,
+        group=misc_group,
         inverse="--interactive",
     )
 
