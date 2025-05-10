@@ -461,7 +461,14 @@ class CapturableVersionAction(argparse.Action):
         parser._print_message(formatter.format_help(), self.stdout)
         parser.exit()
 
-def define_options(program: str = "mypy", header: str = HEADER, stdout: TextIO = sys.stdout, stderr: TextIO = sys.stderr, server_options: bool = False) -> tuple[CapturableArgumentParser, list[str], list[tuple[str, bool]]]:
+
+def define_options(
+    program: str = "mypy",
+    header: str = HEADER,
+    stdout: TextIO = sys.stdout,
+    stderr: TextIO = sys.stderr,
+    server_options: bool = False,
+) -> tuple[CapturableArgumentParser, list[str], list[tuple[str, bool]]]:
     """Define the options in the parser (by calling a bunch of methods that express/build our desired command-line flags).
     Returns a tuple of:
       a parser object, that can parse command line arguments to mypy (expected consumer: main's process_options),
@@ -1310,6 +1317,7 @@ def define_options(program: str = "mypy", header: str = HEADER, stdout: TextIO =
     )
     return parser, strict_flag_names, strict_flag_assignments
 
+
 def process_options(
     args: list[str],
     stdout: TextIO | None = None,
@@ -1330,7 +1338,9 @@ def process_options(
     stdout = stdout if stdout is not None else sys.stdout
     stderr = stderr if stderr is not None else sys.stderr
 
-    parser, _, strict_flag_assignments = define_options(header, program, stdout, stderr, server_options)
+    parser, _, strict_flag_assignments = define_options(
+        header, program, stdout, stderr, server_options
+    )
 
     # Parse arguments once into a dummy namespace so we can get the
     # filename for the config file and know if the user requested all strict options.
