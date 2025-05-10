@@ -1,48 +1,5 @@
 -- Test cases for generic aliases
 
-[case testGenericBuiltinWarning]
-# flags: --python-version 3.8
-t1: list
-t2: list[int]  # E: "list" is not subscriptable, use "typing.List" instead
-t3: list[str]  # E: "list" is not subscriptable, use "typing.List" instead
-
-t4: tuple
-t5: tuple[int]  # E: "tuple" is not subscriptable, use "typing.Tuple" instead
-t6: tuple[int, str]  # E: "tuple" is not subscriptable, use "typing.Tuple" instead
-t7: tuple[int, ...]  # E: Unexpected "..." \
-                     # E: "tuple" is not subscriptable, use "typing.Tuple" instead
-
-t8: dict = {}
-t9: dict[int, str]  # E: "dict" is not subscriptable, use "typing.Dict" instead
-
-t10: type
-t11: type[int]  # E: "type" expects no type arguments, but 1 given
-[builtins fixtures/dict.pyi]
-
-
-[case testGenericBuiltinSetWarning]
-# flags: --python-version 3.8
-t1: set
-t2: set[int]  # E: "set" is not subscriptable, use "typing.Set" instead
-[builtins fixtures/set.pyi]
-
-
-[case testGenericCollectionsWarning]
-# flags: --python-version 3.8
-import collections
-
-t01: collections.deque
-t02: collections.deque[int]  # E: "deque" is not subscriptable, use "typing.Deque" instead
-t03: collections.defaultdict
-t04: collections.defaultdict[int, str]  # E: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
-t05: collections.OrderedDict
-t06: collections.OrderedDict[int, str]
-t07: collections.Counter
-t08: collections.Counter[int]  # E: "Counter" is not subscriptable, use "typing.Counter" instead
-t09: collections.ChainMap
-t10: collections.ChainMap[int, str]  # E: "ChainMap" is not subscriptable, use "typing.ChainMap" instead
-
-
 [case testGenericBuiltinFutureAnnotations]
 from __future__ import annotations
 t1: list

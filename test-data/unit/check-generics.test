@@ -515,9 +515,8 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
-# flags: --python-version 3.8
 import types
-type[int] # this was crashing, see #2302 (comment)  # E: The type "Type[type]" is not generic and not indexable
+type[int]
 [builtins fixtures/tuple.pyi]
 
 
@@ -1130,11 +1129,10 @@ Bad = A[int] # type: ignore
 reveal_type(Bad) # N: Revealed type is "Any"
 [out]
 
-[case testNoSubscriptionOfBuiltinAliases]
-# flags: --python-version 3.8
+[case testSubscriptionOfBuiltinAliases]
 from typing import List, TypeVar
 
-list[int]() # E: "list" is not subscriptable
+list[int]()
 
 ListAlias = List
 def fun() -> ListAlias[int]:
@@ -1143,11 +1141,10 @@ def fun() -> ListAlias[int]:
 reveal_type(fun())  # N: Revealed type is "builtins.list[builtins.int]"
 
 BuiltinAlias = list
-BuiltinAlias[int]() # E: "list" is not subscriptable
+BuiltinAlias[int]()
 
-#check that error is reported only once, and type is still stored
 T = TypeVar('T')
-BadGenList = list[T] # E: "list" is not subscriptable
+BadGenList = list[T]
 
 reveal_type(BadGenList[int]()) # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(BadGenList()) # N: Revealed type is "builtins.list[Any]"
