@@ -8,6 +8,16 @@ with default options. See :ref:`error-codes` for general documentation
 about error codes. :ref:`error-codes-optional` documents additional
 error codes that you can enable.
 
+.. _code-all:
+
+Enable all error codes
+----------------------
+
+While not really an error code mypy will ever display, providing ``all``
+as an error code to be enabled (via the command-line) enables
+all optional error codes. (Remember that enabling takes priority over
+disabling, so other --disable-error-code flags will not countermand this.)
+
 .. _code-attr-defined:
 
 Check that attribute exists [attr-defined]
