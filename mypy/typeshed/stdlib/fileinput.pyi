@@ -1,12 +1,9 @@
 import sys
 from _typeshed import AnyStr_co, StrOrBytesPath
-from collections.abc import Callable, Iterable, Iterator
-from types import TracebackType
-from typing import IO, Any, AnyStr, Literal, Protocol, overload
+from collections.abc import Callable, Iterable
+from types import GenericAlias, TracebackType
+from typing import IO, Any, AnyStr, Generic, Literal, Protocol, overload
 from typing_extensions import Self, TypeAlias
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
 
 __all__ = [
     "input",
@@ -107,7 +104,7 @@ def fileno() -> int: ...
 def isfirstline() -> bool: ...
 def isstdin() -> bool: ...
 
-class FileInput(Iterator[AnyStr]):
+class FileInput(Generic[AnyStr]):
     if sys.version_info >= (3, 10):
         # encoding and errors are added
         @overload
@@ -199,8 +196,7 @@ class FileInput(Iterator[AnyStr]):
     def fileno(self) -> int: ...
     def isfirstline(self) -> bool: ...
     def isstdin(self) -> bool: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 if sys.version_info >= (3, 10):
     def hook_compressed(

@@ -2,7 +2,7 @@ import sys
 from _typeshed import SupportsWrite, sentinel
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
-from typing import IO, Any, ClassVar, Final, Generic, NewType, NoReturn, Protocol, TypeVar, overload
+from typing import IO, Any, ClassVar, Final, Generic, NoReturn, Protocol, TypeVar, overload
 from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
@@ -17,6 +17,7 @@ __all__ = [
     "MetavarTypeHelpFormatter",
     "Namespace",
     "Action",
+    "BooleanOptionalAction",
     "ONE_OR_MORE",
     "OPTIONAL",
     "PARSER",
@@ -24,9 +25,6 @@ __all__ = [
     "SUPPRESS",
     "ZERO_OR_MORE",
 ]
-
-if sys.version_info >= (3, 9):
-    __all__ += ["BooleanOptionalAction"]
 
 _T = TypeVar("_T")
 _ActionT = TypeVar("_ActionT", bound=Action)
@@ -38,9 +36,7 @@ ONE_OR_MORE: Final = "+"
 OPTIONAL: Final = "?"
 PARSER: Final = "A..."
 REMAINDER: Final = "..."
-_SUPPRESS_T = NewType("_SUPPRESS_T", str)
-SUPPRESS: _SUPPRESS_T | str  # not using Literal because argparse sometimes compares SUPPRESS with is
-# the | str is there so that foo = argparse.SUPPRESS; foo = "test" checks out in mypy
+SUPPRESS: Final = "==SUPPRESS=="
 ZERO_OR_MORE: Final = "*"
 _UNRECOGNIZED_ARGS_ATTR: Final = "_unrecognized_args"  # undocumented
 
@@ -83,7 +79,7 @@ class _ActionsContainer:
         # more precisely, Literal["?", "*", "+", "...", "A...", "==SUPPRESS=="],
         # but using this would make it hard to annotate callers that don't use a
         # literal argument and for subclasses to override this method.
-        nargs: int | str | _SUPPRESS_T | None = None,
+        nargs: int | str | None = None,
         const: Any = ...,
         default: Any = ...,
         type: _ActionType = ...,
@@ -134,40 +130,22 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     _subparsers: _ArgumentGroup | None
 
     # Note: the constructor arguments are also used in _SubParsersAction.add_parser.
-    if sys.version_info >= (3, 9):
-        def __init__(
-            self,
-            prog: str | None = None,
-            usage: str | None = None,
-            description: str | None = None,
-            epilog: str | None = None,
-            parents: Sequence[ArgumentParser] = [],
-            formatter_class: _FormatterClass = ...,
-            prefix_chars: str = "-",
-            fromfile_prefix_chars: str | None = None,
-            argument_default: Any = None,
-            conflict_handler: str = "error",
-            add_help: bool = True,
-            allow_abbrev: bool = True,
-            exit_on_error: bool = True,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            prog: str | None = None,
-            usage: str | None = None,
-            description: str | None = None,
-            epilog: str | None = None,
-            parents: Sequence[ArgumentParser] = [],
-            formatter_class: _FormatterClass = ...,
-            prefix_chars: str = "-",
-            fromfile_prefix_chars: str | None = None,
-            argument_default: Any = None,
-            conflict_handler: str = "error",
-            add_help: bool = True,
-            allow_abbrev: bool = True,
-        ) -> None: ...
-
+    def __init__(
+        self,
+        prog: str | None = None,
+        usage: str | None = None,
+        description: str | None = None,
+        epilog: str | None = None,
+        parents: Sequence[ArgumentParser] = [],
+        formatter_class: _FormatterClass = ...,
+        prefix_chars: str = "-",
+        fromfile_prefix_chars: str | None = None,
+        argument_default: Any = None,
+        conflict_handler: str = "error",
+        add_help: bool = True,
+        allow_abbrev: bool = True,
+        exit_on_error: bool = True,
+    ) -> None: ...
     @overload
     def parse_args(self, args: Sequence[str] | None = None, namespace: None = None) -> Namespace: ...
     @overload
@@ -354,8 +332,7 @@ class Action(_AttributeHolder):
     def __call__(
         self, parser: ArgumentParser, namespace: Namespace, values: str | Sequence[Any] | None, option_string: str | None = None
     ) -> None: ...
-    if sys.version_info >= (3, 9):
-        def format_usage(self) -> str: ...
+    def format_usage(self) -> str: ...
 
 if sys.version_info >= (3, 12):
     class BooleanOptionalAction(Action):
@@ -420,7 +397,7 @@ if sys.version_info >= (3, 12):
                 metavar: str | tuple[str, ...] | None = sentinel,
             ) -> None: ...
 
-elif sys.version_info >= (3, 9):
+else:
     class BooleanOptionalAction(Action):
         @overload
         def __init__(
@@ -715,29 +692,6 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
             exit_on_error: bool = ...,
             **kwargs: Any,  # Accepting any additional kwargs for custom parser classes
         ) -> _ArgumentParserT: ...
-    elif sys.version_info >= (3, 9):
-        def add_parser(
-            self,
-            name: str,
-            *,
-            help: str | None = ...,
-            aliases: Sequence[str] = ...,
-            # Kwargs from ArgumentParser constructor
-            prog: str | None = ...,
-            usage: str | None = ...,
-            description: str | None = ...,
-            epilog: str | None = ...,
-            parents: Sequence[_ArgumentParserT] = ...,
-            formatter_class: _FormatterClass = ...,
-            prefix_chars: str = ...,
-            fromfile_prefix_chars: str | None = ...,
-            argument_default: Any = ...,
-            conflict_handler: str = ...,
-            add_help: bool = ...,
-            allow_abbrev: bool = ...,
-            exit_on_error: bool = ...,
-            **kwargs: Any,  # Accepting any additional kwargs for custom parser classes
-        ) -> _ArgumentParserT: ...
     else:
         def add_parser(
             self,
@@ -758,6 +712,7 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
             conflict_handler: str = ...,
             add_help: bool = ...,
             allow_abbrev: bool = ...,
+            exit_on_error: bool = ...,
             **kwargs: Any,  # Accepting any additional kwargs for custom parser classes
         ) -> _ArgumentParserT: ...
 
