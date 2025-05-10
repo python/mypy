@@ -4568,117 +4568,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 lvalue, is_lvalue=False
             )
 
-<<<<<<< HEAD
-        if not isinstance(attribute_type, Instance):
-            # TODO: support __set__() for union types.
-            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
-            return rvalue_type, attribute_type, use_binder
-
-        mx = MemberContext(
-            is_lvalue=False,
-            is_super=False,
-            is_operator=False,
-            original_type=instance_type,
-            context=context,
-            self_type=None,
-            msg=self.msg,
-            chk=self,
-        )
-        get_type = analyze_descriptor_access(attribute_type, mx, assignment=True)
-        if not attribute_type.type.has_readable_member("__set__"):
-            # If there is no __set__, we type-check that the assigned value matches
-            # the return type of __get__. This doesn't match the python semantics,
-            # (which allow you to override the descriptor with any value), but preserves
-            # the type of accessing the attribute (even after the override).
-            rvalue_type = self.check_simple_assignment(get_type, rvalue, context)
-            return rvalue_type, get_type, use_binder
-
-        dunder_set = attribute_type.type.get_method("__set__")
-        if dunder_set is None:
-            self.fail(
-                message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(
-                    attribute_type.str_with_options(self.options)
-                ),
-                context,
-            )
-            return AnyType(TypeOfAny.from_error), get_type, False
-
-        bound_method = analyze_decorator_or_funcbase_access(
-            defn=dunder_set,
-            itype=attribute_type,
-            name="__set__",
-            mx=mx.copy_modified(self_type=attribute_type),
-        )
-        typ = map_instance_to_supertype(attribute_type, dunder_set.info)
-        dunder_set_type = expand_type_by_instance(bound_method, typ)
-
-        callable_name = self.expr_checker.method_fullname(attribute_type, "__set__")
-        dunder_set_type = self.expr_checker.transform_callee_type(
-            callable_name,
-            dunder_set_type,
-            [TempNode(instance_type, context=context), rvalue],
-            [nodes.ARG_POS, nodes.ARG_POS],
-            context,
-            object_type=attribute_type,
-        )
-
-        # For non-overloaded setters, the result should be type-checked like a regular assignment.
-        # Hence, we first only try to infer the type by using the rvalue as type context.
-        type_context = rvalue
-        with self.msg.filter_errors():
-            _, inferred_dunder_set_type = self.expr_checker.check_call(
-                dunder_set_type,
-                [TempNode(instance_type, context=context), type_context],
-                [nodes.ARG_POS, nodes.ARG_POS],
-                context,
-                object_type=attribute_type,
-                callable_name=callable_name,
-            )
-
-        # And now we in fact type check the call, to show errors related to wrong arguments
-        # count, etc., replacing the type context for non-overloaded setters only.
-        inferred_dunder_set_type = get_proper_type(inferred_dunder_set_type)
-        if isinstance(inferred_dunder_set_type, CallableType):
-            type_context = TempNode(AnyType(TypeOfAny.special_form), context=context)
-        self.expr_checker.check_call(
-            dunder_set_type,
-            [TempNode(instance_type, context=context), type_context],
-            [nodes.ARG_POS, nodes.ARG_POS],
-            context,
-            object_type=attribute_type,
-            callable_name=callable_name,
-        )
-
-        # Search for possible deprecations:
-        mx.chk.check_deprecated(dunder_set, mx.context)
-        mx.chk.warn_deprecated_overload_item(
-            dunder_set, mx.context, target=inferred_dunder_set_type, selftype=attribute_type
-        )
-
-        # In the following cases, a message already will have been recorded in check_call.
-        if (not isinstance(inferred_dunder_set_type, CallableType)) or (
-            len(inferred_dunder_set_type.arg_types) < 2
-        ):
-            return AnyType(TypeOfAny.from_error), get_type, False
-
-        set_type = inferred_dunder_set_type.arg_types[1]
-=======
->>>>>>> df9ddfcac (Consolidate descriptor handling in checkmember.py (#18831))
         # Special case: if the rvalue_type is a subtype of both '__get__' and '__set__' types,
         # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
         # by this assignment. Technically, this is not safe, but in practice this is
         # what a user expects.
-<<<<<<< HEAD
-        rvalue_type = self.check_simple_assignment(set_type, rvalue, context)
-        infer = is_subtype(rvalue_type, get_type) and is_subtype(get_type, set_type)
-        return rvalue_type if infer else set_type, get_type, infer
-=======
-        rvalue_type, _ = self.check_simple_assignment(attribute_type, rvalue, context)
+        rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
         infer = is_subtype(rvalue_type, get_lvalue_type) and is_subtype(
             get_lvalue_type, attribute_type
         )
         return rvalue_type if infer else attribute_type, attribute_type, infer
->>>>>>> df9ddfcac (Consolidate descriptor handling in checkmember.py (#18831))
 
     def check_indexed_assignment(
         self, lvalue: IndexExpr, rvalue: Expression, context: Context
