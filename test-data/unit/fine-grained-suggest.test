@@ -651,6 +651,38 @@ foo3('hello hello')
 (str) -> str
 ==
 
+[case testSuggestInferFuncDecorator6]
+# suggest: foo.f
+[file foo.py]
+from __future__ import annotations
+
+from typing import Callable, Protocol, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+R = TypeVar('R')
+R_co = TypeVar('R_co', covariant=True)
+
+class Proto(Protocol[P, R_co]):
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R_co: ...
+
+def dec1(f: Callable[P, R]) -> Callable[P, R]: ...
+def dec2(f: Callable[..., R]) -> Callable[..., R]: ...
+def dec3(f: Proto[P, R_co]) -> Proto[P, R_co]: ...
+
+@dec1
+@dec2
+@dec3
+def f(x):
+    return x
+
+f('hi')
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
 [case testSuggestFlexAny1]
 # suggest: --flex-any=0.4 m.foo
 # suggest: --flex-any=0.7 m.foo
