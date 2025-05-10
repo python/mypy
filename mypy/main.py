@@ -372,6 +372,30 @@ FOOTER: Final = """Environment variables:
 def is_terminal_punctuation(char: str) -> bool:
     return char in (".", "?", "!")
 
+class ArgumentGroup:
+    """A wrapper for argparse's ArgumentGroup class that lets us enforce capitalization
+    on the added arguments."""
+    def __init__(self, argument_group: argparse._ArgumentGroup) -> None:
+        self.argument_group = argument_group
+
+    def add_argument(self, *name_or_flags, help=None, **kwargs) -> argparse.Action:        
+        if self.argument_group.title == "Report generation":
+            if help and help != argparse.SUPPRESS:
+                raise ValueError(f"CLI documentation style error: help description for the Report generation flag {name_or_flags} was unexpectedly provided. (Currently, '{help}'.)"
+                    + " This check is in the code because we assume there's nothing help to say about the report flags."
+                    + " If you're improving that situation, feel free to remove this check."
+                )
+        else:
+            if not help:
+                raise ValueError(f"CLI documentation style error: flag help description for {name_or_flags} must be provided. (Currently, '{help}'.)")
+            if help[0] != help[0].upper():
+                raise ValueError(f"CLI documentation style error: flag help description for {name_or_flags} must start with a capital letter (or unicameral symbol). (Currently, '{help}'.)")
+            if help[-1] == '.':
+                raise ValueError(f"CLI documentation style error: flag help description for {name_or_flags} must NOT end with a period. (Currently, '{help}'.)")
+        return self.argument_group.add_argument(*name_or_flags, help=help, **kwargs)
+    
+    def _add_action(self, action) -> None:
+        self.argument_group._add_action(action)
 class CapturableArgumentParser(argparse.ArgumentParser):
     """Override ArgumentParser methods that use sys.stdout/sys.stderr directly.
 
@@ -395,7 +419,7 @@ class CapturableArgumentParser(argparse.ArgumentParser):
         title: str,
         description: str | None = None,
         **kwargs,
-    ) -> argparse._ArgumentGroup:
+    ) -> ArgumentGroup:
         if title not in ["positional arguments", "options"]: # These are built-in names, ignore them.
             if not title[0].isupper():
                 raise ValueError(f"CLI documentation style error: Title of group {title} must start with a capital letter. (Currently, '{title[0]}'.)")
@@ -403,9 +427,9 @@ class CapturableArgumentParser(argparse.ArgumentParser):
                 raise ValueError(f"CLI documentation style error: Description of group {title} must start with a capital letter. (Currently, '{description[0]}'.)")
             if is_terminal_punctuation(title[-1]):
                 raise ValueError(f"CLI documentation style error: Title of group {title} must NOT end with terminal punction. (Currently, '{title[-1]}'.)")
-            if description and not is_terminal_punctuation(title[-1]):
+            if description and not is_terminal_punctuation(description[-1]):
                 raise ValueError(f"CLI documentation style error: Description of group {title} must end with terminal punction. (Currently, '{description[-1]}'.)")
-        return super().add_argument_group(title, description, **kwargs)
+        return ArgumentGroup(super().add_argument_group(title, description, **kwargs))
 
     # =====================
     # Help-printing methods
@@ -805,7 +829,7 @@ def define_options(
         title="None and Optional handling",
         description="Adjust how values of type 'None' are handled. For more context on "
         "how mypy handles values of type 'None', see: "
-        "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional",
+        ".",
     )
     add_invertible_flag(
         "--implicit-optional",
@@ -1052,7 +1076,7 @@ def define_options(
         "Mypy caches type information about modules into a cache to "
         "let you speed up future invocations of mypy. Also see "
         "mypy's daemon mode: "
-        "mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon",
+        "https://mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon.",
     )
     incremental_group.add_argument(
         "-i", "--incremental", action="store_true", help=argparse.SUPPRESS
@@ -1157,7 +1181,7 @@ def define_options(
         dest="shadow_file",
         action="append",
         help="When encountering SOURCE_FILE, read and type check "
-        "the contents of SHADOW_FILE instead.",
+        "the contents of SHADOW_FILE instead",
     )
     internals_group.add_argument("--fast-exit", action="store_true", help=argparse.SUPPRESS)
     internals_group.add_argument(
@@ -1178,7 +1202,7 @@ def define_options(
         if report_type not in {"memory-xml"}:
             report_group.add_argument(
                 f"--{report_type.replace('_', '-')}-report",
-                metavar="DIR",
+                metavar="OUTPUT_DIR",
                 dest=f"special-opts:{report_type}_report",
             )
 
@@ -1294,7 +1318,7 @@ def define_options(
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
-        "mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy",
+        "https://mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy.",
     )
     add_invertible_flag(
         "--explicit-package-bases",
