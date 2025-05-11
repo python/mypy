@@ -409,14 +409,15 @@ class NameMangler(ast3.NodeTransformer):
 
     def _visit_funcdef(self, node: _T_FuncDef) -> _T_FuncDef:
         node.name = self._mangle_name(node.name)
-        self = NameMangler(self._classname_complete, self._mangle_annotations)
-        self.visit(node.args)
+        new = NameMangler(self._classname_complete, self._mangle_annotations)
+        new.mangled2unmangled = self.mangled2unmangled
+        new.visit(node.args)
         for dec in node.decorator_list:
-            self.visit(dec)
-        if self._mangle_annotations and (node.returns is not None):
-            self.visit(node.returns)
+            new.visit(dec)
+        if new._mangle_annotations and (node.returns is not None):
+            new.visit(node.returns)
         for stmt in node.body:
-            self.visit(stmt)
+            new.visit(stmt)
         return node
 
     def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
