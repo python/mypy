@@ -954,9 +954,7 @@ def process_options(
         help="Enable a specific error code",
     )
     strictness_group.add_argument(
-        "--enable-all-error-codes",
-        action="store_true",
-        help="Enable all error codes",
+        "--enable-all-error-codes", action="store_true", help="Enable all error codes"
     )
 
     error_group = parser.add_argument_group(
