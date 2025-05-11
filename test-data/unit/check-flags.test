@@ -2534,3 +2534,11 @@ enable_all_error_codes = True
 
 \[mypy-tests.*]
 disable_error_code = ignore-without-code
+
+[case testSpotCheckEnableAllErrorCodesCountermand]
+# flags: --enable-all-error-codes --disable-error-code unused-ignore
+x = 2 # type: ignore # E: "type: ignore" comment without error code
+
+[case testSpotCheckEnableAllErrorCodesCountermandCountermand]
+# flags: --enable-all-error-codes --disable-error-code ignore-without-code --disable-error-code unused-ignore --enable-error-code ignore-without-code
+x = 2 # type: ignore # E: "type: ignore" comment without error code
