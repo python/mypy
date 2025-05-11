@@ -384,23 +384,27 @@ class ArgumentGroup:
     def add_argument(self, *name_or_flags, help=None, **kwargs) -> argparse.Action:
         if self.argument_group.title == "Report generation":
             if help and help != argparse.SUPPRESS:
-                raise ValueError(
-                    f"CLI documentation style error: help description for the Report generation flag {name_or_flags} was unexpectedly provided. (Currently, '{help}'.)"
-                    + " This check is in the code because we assume there's nothing help to say about the report flags."
-                    + " If you're improving that situation, feel free to remove this check."
+                ValueError(
+                    "Mypy-internal CLI documentation style error: help description for the Report generation flag"
+                     + f" {name_or_flags} was unexpectedly provided. (Currently, '{help}'.)"
+                     + " This check is in the code because we assume there's nothing help to say about the report flags."
+                     + " If you're improving that situation, feel free to remove this check."
                 )
         else:
             if not help:
                 raise ValueError(
-                    f"CLI documentation style error: flag help description for {name_or_flags} must be provided. (Currently, '{help}'.)"
+                    f"Mypy-internal CLI documentation style error: flag help description for {name_or_flags}"
+                     + f" must be provided. (Currently, '{help}'.)"
                 )
             if help[0] != help[0].upper():
                 raise ValueError(
-                    f"CLI documentation style error: flag help description for {name_or_flags} must start with a capital letter (or unicameral symbol). (Currently, '{help}'.)"
+                    f"Mypy-internal CLI documentation style error: flag help description for {name_or_flags}"
+                     + f" must start with a capital letter (or unicameral symbol). (Currently, '{help}'.)"
                 )
             if help[-1] == ".":
                 raise ValueError(
-                    f"CLI documentation style error: flag help description for {name_or_flags} must NOT end with a period. (Currently, '{help}'.)"
+                    f"Mypy-internal CLI documentation style error: flag help description for {name_or_flags}"
+                    + f" must NOT end with a period. (Currently, '{help}'.)"
                 )
         return self.argument_group.add_argument(*name_or_flags, help=help, **kwargs)
 
@@ -435,19 +439,23 @@ class CapturableArgumentParser(argparse.ArgumentParser):
         ]:  # These are built-in names, ignore them.
             if not title[0].isupper():
                 raise ValueError(
-                    f"CLI documentation style error: Title of group {title} must start with a capital letter. (Currently, '{title[0]}'.)"
+                    f"CLI documentation style error: Title of group {title}"
+                    + f" must start with a capital letter. (Currently, '{title[0]}'.)"
                 )
             if description and not description[0].isupper():
                 raise ValueError(
-                    f"CLI documentation style error: Description of group {title} must start with a capital letter. (Currently, '{description[0]}'.)"
+                    f"CLI documentation style error: Description of group {title}"
+                    + f" must start with a capital letter. (Currently, '{description[0]}'.)"
                 )
             if is_terminal_punctuation(title[-1]):
                 raise ValueError(
-                    f"CLI documentation style error: Title of group {title} must NOT end with terminal punction. (Currently, '{title[-1]}'.)"
+                    f"CLI documentation style error: Title of group {title}"
+                    + f" must NOT end with terminal punction. (Currently, '{title[-1]}'.)"
                 )
             if description and not is_terminal_punctuation(description[-1]):
                 raise ValueError(
-                    f"CLI documentation style error: Description of group {title} must end with terminal punction. (Currently, '{description[-1]}'.)"
+                    f"CLI documentation style error: Description of group {title}"
+                    + f" must end with terminal punction. (Currently, '{description[-1]}'.)"
                 )
         return ArgumentGroup(super().add_argument_group(title, description, **kwargs))
 
@@ -538,7 +546,8 @@ def define_options(
     stderr: TextIO = sys.stderr,
     server_options: bool = False,
 ) -> tuple[CapturableArgumentParser, list[str], list[tuple[str, bool]]]:
-    """Define the options in the parser (by calling a bunch of methods that express/build our desired command-line flags).
+    """Define the options in the parser
+    (by calling a bunch of methods that express/build our desired command-line flags).
     Returns a tuple of:
       a parser object, that can parse command line arguments to mypy (expected consumer: main's process_options),
       a list of what flags are strict (expected consumer: docs' html_builder's _add_strict_list),
@@ -638,7 +647,8 @@ def define_options(
         "-O",
         "--output",
         metavar="FORMAT",
-        # The metavar overrides the default of displaying the choices, so we have to explicitly display them.
+        # The metavar overrides the default of displaying the choices,
+        # so we have to explicitly display them.
         help=f"Set a custom output format (choices: {set(OUTPUT_CHOICES.keys())})",
         choices=OUTPUT_CHOICES,
     )
@@ -1167,7 +1177,8 @@ def define_options(
         title="Experimental options",
         description="Enable features that work well enough to be useful,"
         + " but perhaps not as well as you might wish."
-        + " These features may be enabled by default in the future, or perhaps moved to another section.",
+        + " These features may be enabled by default in the future,"
+        + " or perhaps moved to another section.",
     )
     experimental_group.add_argument(
         "--enable-incomplete-feature",
@@ -1240,7 +1251,9 @@ def define_options(
         "--junit-format",
         choices=["global", "per_file"],
         default="global",
-        help="If --junit-xml is set, specifies format. global: single test with all errors; per_file: one test entry per file with failures",
+        help="If --junit-xml is set, specifies format."
+        + " global: single test with all errors;"
+        + " per_file: one test entry per file with failures",
     )
     misc_group.add_argument(
         "--scripts-are-modules",
@@ -1596,7 +1609,8 @@ def process_options(
                 reason = cache.find_module(p)
                 if reason is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     fail(
-                        f"Package '{p}' cannot be type checked due to missing py.typed marker. See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
+                        f"Package '{p}' cannot be type checked due to missing py.typed marker."
+                        + " See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
                         stderr,
                         options,
                     )
