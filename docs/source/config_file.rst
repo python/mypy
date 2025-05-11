@@ -768,7 +768,7 @@ section of the command line docs.
 
     Enables all mypy error codes.
 
-    Note: This option will override disabled error codes from the disable_error_code option.
+    Note: This option will be overridden by disabled error codes from the disable_error_code option.
 
 .. confval:: extra_checks
 

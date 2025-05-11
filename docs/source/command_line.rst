@@ -808,8 +808,8 @@ of the above sections.
     See :ref:`error-codes` and :ref:`error-codes-optional`
     for more information.
 
-    This flag will override disabled error codes from the
-    :option:`--disable-error-code <mypy --disable-error-code>` flag.
+    (Unlike the other flag for error code enablement, these can be countermanded
+    with :option:`--disable-error-code`.)
 
     Note that future releases of mypy will likely introduce more error codes,
     so the effective result of using this flag will change from release to

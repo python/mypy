@@ -452,13 +452,17 @@ class Options:
             error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
 
         self.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
-        if self.enable_all_error_codes:
-            self.enabled_error_codes = set(error_codes.values())
-        else:
-            self.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+        self.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
 
         # Enabling an error code always overrides disabling
         self.disabled_error_codes -= self.enabled_error_codes
+
+        # enable_all_error_codes codes can be countermanded by disabled_error_codes, which
+        # can in turn be countermanded by enabled_error_codes. But we've just computed the
+        # latter countermanding, so we can use the set of disabled_error_codes that weren't
+        # countermanded to figure out what to really turn off.
+        if self.enable_all_error_codes:
+            self.enabled_error_codes = set(error_codes.values()) - self.disabled_error_codes
 
     def process_incomplete_features(
         self, *, error_callback: Callable[[str], Any], warning_callback: Callable[[str], Any]
