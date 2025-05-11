@@ -444,7 +444,7 @@ class CapturableArgumentParser(argparse.ArgumentParser):
         if title not in [
             "positional arguments",
             "options",
-            "optional argument",  # name in python 3.9
+            "optional arguments",  # name in python 3.9
         ]:  # These are built-in names, ignore them.
             if not title[0].isupper():
                 raise ValueError(
