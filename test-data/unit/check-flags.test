@@ -2494,7 +2494,7 @@ class Child(Parent):
 # (For example, if all the errors expected by testSpotCheckErrorCodeAll get turned on by default, then
 #  the testSpotCheckErrorCodeAll test would fail to guarantee the enablement of any additional errors!
 #  (hint: if that does happen, breaking this test, then consider changing these two tests to pick *different*,
-#   not-enabled-by-default, error codes.))
+#   not-enabled-by-default, error codes. Also, testSpotCheckEnableAllErrorCodesConfig.))
 from typing_extensions import override
 
 class Parent:
@@ -2512,3 +2512,25 @@ class Child(Parent):
     def g(self, y: int) -> None: #type: ignore
         pass
 [builtins fixtures/tuple-simple.pyi]
+
+[case testSpotCheckEnableAllErrorCodesConfig]
+# flags: --config-file tmp/mypy.ini
+# This test just makes sure that the user can still countermand
+# enable_all_error_codes on a more-specific level.
+import tests.foo
+import bar
+[file bar.py]
+def foo() -> int: ...
+if foo: ...  # E: Function "foo" could always be true in boolean context
+42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
+[file tests/__init__.py]
+[file tests/foo.py]
+def foo() -> int: ...
+if foo: ...  # E: Function "foo" could always be true in boolean context
+42 + "no"  # type: ignore
+[file mypy.ini]
+\[mypy]
+enable_all_error_codes = True
+
+\[mypy-tests.*]
+disable_error_code = ignore-without-code

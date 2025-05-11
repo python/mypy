@@ -799,6 +799,24 @@ of the above sections.
         x = 'a string'
         x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
+.. option:: --enable-all-error-codes
+
+    This flag enables all of the error codes for mypy,
+    including the optional ones that are off by default.
+    See :ref:`error-codes` for more information.
+
+    This flag will override disabled error codes from the
+    :option:`--disable-error-code <mypy --disable-error-code>` flag.
+
+    Note that future releases of mypy will likely introduce more error codes,
+    so the effective behavior of this flag will change from release to release.
+
+    While often useful, this flag will enable **all** error codes,
+    including those that may be experimental, wrongheaded, or contradictory.
+
+    It is not the same as enabling all checks that mypy could perform;
+    for example, :option:`--strict-bytes` is not enabled by this flag.
+
 .. _configuring-error-messages:
 
 Configuring error messages

@@ -761,6 +761,15 @@ section of the command line docs.
 
     Note: This option will override disabled error codes from the disable_error_code option.
 
+.. confval:: enable_all_error_codes
+
+    :type: boolean
+    :default: False
+
+    Enables all mypy error codes.
+
+    Note: This option will override disabled error codes from the disable_error_code option.
+
 .. confval:: extra_checks
 
    :type: boolean
