@@ -369,33 +369,45 @@ FOOTER: Final = """Environment variables:
   Define MYPYPATH for additional module search path entries.
   Define MYPY_CACHE_DIR to override configuration cache_dir path."""
 
+
 def is_terminal_punctuation(char: str) -> bool:
     return char in (".", "?", "!")
+
 
 class ArgumentGroup:
     """A wrapper for argparse's ArgumentGroup class that lets us enforce capitalization
     on the added arguments."""
+
     def __init__(self, argument_group: argparse._ArgumentGroup) -> None:
         self.argument_group = argument_group
 
-    def add_argument(self, *name_or_flags, help=None, **kwargs) -> argparse.Action:        
+    def add_argument(self, *name_or_flags, help=None, **kwargs) -> argparse.Action:
         if self.argument_group.title == "Report generation":
             if help and help != argparse.SUPPRESS:
-                raise ValueError(f"CLI documentation style error: help description for the Report generation flag {name_or_flags} was unexpectedly provided. (Currently, '{help}'.)"
+                raise ValueError(
+                    f"CLI documentation style error: help description for the Report generation flag {name_or_flags} was unexpectedly provided. (Currently, '{help}'.)"
                     + " This check is in the code because we assume there's nothing help to say about the report flags."
                     + " If you're improving that situation, feel free to remove this check."
                 )
         else:
             if not help:
-                raise ValueError(f"CLI documentation style error: flag help description for {name_or_flags} must be provided. (Currently, '{help}'.)")
+                raise ValueError(
+                    f"CLI documentation style error: flag help description for {name_or_flags} must be provided. (Currently, '{help}'.)"
+                )
             if help[0] != help[0].upper():
-                raise ValueError(f"CLI documentation style error: flag help description for {name_or_flags} must start with a capital letter (or unicameral symbol). (Currently, '{help}'.)")
-            if help[-1] == '.':
-                raise ValueError(f"CLI documentation style error: flag help description for {name_or_flags} must NOT end with a period. (Currently, '{help}'.)")
+                raise ValueError(
+                    f"CLI documentation style error: flag help description for {name_or_flags} must start with a capital letter (or unicameral symbol). (Currently, '{help}'.)"
+                )
+            if help[-1] == ".":
+                raise ValueError(
+                    f"CLI documentation style error: flag help description for {name_or_flags} must NOT end with a period. (Currently, '{help}'.)"
+                )
         return self.argument_group.add_argument(*name_or_flags, help=help, **kwargs)
-    
+
     def _add_action(self, action) -> None:
         self.argument_group._add_action(action)
+
+
 class CapturableArgumentParser(argparse.ArgumentParser):
     """Override ArgumentParser methods that use sys.stdout/sys.stderr directly.
 
@@ -415,20 +427,28 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     # =====================
     # We just hard fail on these, as CI will ensure the runtime errors never get to users.
     def add_argument_group(
-        self,
-        title: str,
-        description: str | None = None,
-        **kwargs,
+        self, title: str, description: str | None = None, **kwargs
     ) -> ArgumentGroup:
-        if title not in ["positional arguments", "options"]: # These are built-in names, ignore them.
+        if title not in [
+            "positional arguments",
+            "options",
+        ]:  # These are built-in names, ignore them.
             if not title[0].isupper():
-                raise ValueError(f"CLI documentation style error: Title of group {title} must start with a capital letter. (Currently, '{title[0]}'.)")
+                raise ValueError(
+                    f"CLI documentation style error: Title of group {title} must start with a capital letter. (Currently, '{title[0]}'.)"
+                )
             if description and not description[0].isupper():
-                raise ValueError(f"CLI documentation style error: Description of group {title} must start with a capital letter. (Currently, '{description[0]}'.)")
+                raise ValueError(
+                    f"CLI documentation style error: Description of group {title} must start with a capital letter. (Currently, '{description[0]}'.)"
+                )
             if is_terminal_punctuation(title[-1]):
-                raise ValueError(f"CLI documentation style error: Title of group {title} must NOT end with terminal punction. (Currently, '{title[-1]}'.)")
+                raise ValueError(
+                    f"CLI documentation style error: Title of group {title} must NOT end with terminal punction. (Currently, '{title[-1]}'.)"
+                )
             if description and not is_terminal_punctuation(description[-1]):
-                raise ValueError(f"CLI documentation style error: Description of group {title} must end with terminal punction. (Currently, '{description[-1]}'.)")
+                raise ValueError(
+                    f"CLI documentation style error: Description of group {title} must end with terminal punction. (Currently, '{description[-1]}'.)"
+                )
         return ArgumentGroup(super().add_argument_group(title, description, **kwargs))
 
     # =====================
@@ -1148,9 +1168,10 @@ def define_options(
         "--new-type-inference", action="store_true", help=argparse.SUPPRESS
     )
     experimental_group = parser.add_argument_group(
-        title="Experimental options", description="Enable features that work well enough to be useful,"
+        title="Experimental options",
+        description="Enable features that work well enough to be useful,"
         + " but perhaps not as well as you might wish."
-        + " These features may be enabled by default in the future, or perhaps moved to another section."
+        + " These features may be enabled by default in the future, or perhaps moved to another section.",
     )
     experimental_group.add_argument(
         "--enable-incomplete-feature",
