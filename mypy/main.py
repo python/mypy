@@ -855,7 +855,7 @@ def define_options(
         title="None and Optional handling",
         description="Adjust how values of type 'None' are handled. For more context on "
         "how mypy handles values of type 'None', see: "
-        ".",
+        "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional.",
     )
     add_invertible_flag(
         "--implicit-optional",
