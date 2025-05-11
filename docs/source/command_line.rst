@@ -768,7 +768,7 @@ of the above sections.
 
 .. option:: --disable-error-code
 
-    This flag allows disabling one or multiple error codes globally.
+    This flag disables one or multiple error codes globally.
     See :ref:`error-codes` for more information.
 
     .. code-block:: python
@@ -783,7 +783,7 @@ of the above sections.
 
 .. option:: --enable-error-code
 
-    This flag allows enabling one or multiple error codes globally.
+    This flag enables one or multiple error codes globally.
     See :ref:`error-codes` for more information.
 
     Note: This flag will override disabled error codes from the
@@ -803,19 +803,22 @@ of the above sections.
 
     This flag enables all of the error codes for mypy,
     including the optional ones that are off by default.
-    See :ref:`error-codes` for more information.
+    See :ref:`error-codes` and :ref:`error-codes-optional`
+    for more information.
 
     This flag will override disabled error codes from the
     :option:`--disable-error-code <mypy --disable-error-code>` flag.
 
     Note that future releases of mypy will likely introduce more error codes,
-    so the effective behavior of this flag will change from release to release.
+    so the effective result of using this flag will change from release to
+    release.
 
-    While often useful, this flag will enable **all** error codes,
-    including those that may be experimental, wrongheaded, or contradictory.
+    While often useful, keep in mind that this flag will enable **all** error
+    codes, including any that may be experimental, wrongheaded, or
+    contradictory.
 
-    It is not the same as enabling all checks that mypy could perform;
-    for example, :option:`--strict-bytes` is not enabled by this flag.
+    Enabling all codes is not the same as enabling all checks that mypy could
+    perform; for example, :option:`--strict-bytes` is not enabled by this flag.
 
 .. _configuring-error-messages:
 
