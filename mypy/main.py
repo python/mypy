@@ -374,14 +374,16 @@ def is_terminal_punctuation(char: str) -> bool:
     return char in (".", "?", "!")
 
 
-class ArgumentGroup:
+class ArgumentGroup(argparse._ArgumentGroup):
     """A wrapper for argparse's ArgumentGroup class that lets us enforce capitalization
     on the added arguments."""
 
     def __init__(self, argument_group: argparse._ArgumentGroup) -> None:
         self.argument_group = argument_group
 
-    def add_argument(self, *name_or_flags, help=None, **kwargs) -> argparse.Action:
+    def add_argument(
+        self, *name_or_flags: str, help: str | None = None, **kwargs: Any
+    ) -> argparse.Action:
         if self.argument_group.title == "Report generation":
             if help and help != argparse.SUPPRESS:
                 ValueError(
@@ -408,8 +410,9 @@ class ArgumentGroup:
                 )
         return self.argument_group.add_argument(*name_or_flags, help=help, **kwargs)
 
-    def _add_action(self, action) -> None:
-        self.argument_group._add_action(action)
+    def _add_action(self, action: Any) -> Any:
+        """This is used by the internal argparse machinery so we have to provide it."""
+        return self.argument_group._add_action(action)
 
 
 class CapturableArgumentParser(argparse.ArgumentParser):
@@ -431,8 +434,13 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     # =====================
     # We just hard fail on these, as CI will ensure the runtime errors never get to users.
     def add_argument_group(
-        self, title: str, description: str | None = None, **kwargs
+        self, title: str | None = None, description: str | None = None, **kwargs: str | Any
     ) -> ArgumentGroup:
+        if title is None:
+            raise ValueError(
+                "CLI documentation style error: all argument groups must have titles,"
+                + " and at least one currently does not."
+            )
         if title not in [
             "positional arguments",
             "options",
