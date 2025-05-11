@@ -754,8 +754,10 @@ of the above sections.
     strict will catch type errors as long as intentional methods like type ignore
     or casting were not used.)
 
-    Note: the :option:`--warn-unreachable` flag
-    is not automatically enabled by the strict flag.
+    Note: the :option:`--warn-unreachable` flag, among others, is not
+    enabled by the strict flag. If you are interested in enabling even more
+    useful checks, you may be interested in :option:`--enable-all-error-codes`
+    and/or :option:`--enable-error-code`.
 
     The strict flag does not take precedence over other strict-related flags.
     Directly specifying a flag of alternate behavior will override the
@@ -819,6 +821,9 @@ of the above sections.
 
     Enabling all codes is not the same as enabling all checks that mypy could
     perform; for example, :option:`--strict-bytes` is not enabled by this flag.
+    However, :option:`--strict` and :option:`--enable-all-error-codes` used in
+    tandem should be sufficient to get you virtually every useful check mypy
+    can perform.
 
 .. _configuring-error-messages:
 
