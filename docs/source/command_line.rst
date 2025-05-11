@@ -372,7 +372,7 @@ definitions or calls.
 
 .. option:: --untyped-calls-exclude
 
-    This flag allows to selectively disable :option:`--disallow-untyped-calls`
+    This flag allows one to selectively disable :option:`--disallow-untyped-calls`
     for functions and methods defined in specific packages, modules, or classes.
     Note that each exclude entry acts as a prefix. For example (assuming there
     are no type annotations for ``third_party_lib`` available):
@@ -562,7 +562,7 @@ potentially problematic or redundant in some way.
 
 .. option:: --deprecated-calls-exclude
 
-    This flag allows to selectively disable :ref:`deprecated<code-deprecated>` warnings
+    This flag allows one to selectively disable :ref:`deprecated<code-deprecated>` warnings
     for functions and methods defined in specific packages, modules, or classes.
     Note that each exclude entry acts as a prefix. For example (assuming ``foo.A.func`` is deprecated):
 
