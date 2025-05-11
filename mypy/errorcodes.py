@@ -156,12 +156,6 @@ AWAIT_NOT_ASYNC: Final = ErrorCode(
     "await-not-async", 'Warn about "await" outside coroutine ("async def")', "General"
 )
 # These error codes aren't enabled by default.
-ALL: Final[ErrorCode] = ErrorCode(
-    "all",
-    "Enable all error codes for mypy (although not necessarily for plugins), including the optional ones that are off by default",
-    "General",
-    default_enabled=False,
-)
 NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
     "no-untyped-def", "Check that every function has an annotation", "General"
 )

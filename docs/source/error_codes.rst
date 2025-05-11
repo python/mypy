@@ -50,8 +50,7 @@ and :option:`--disable-error-code <mypy --disable-error-code>`
 to enable or disable specific error codes that don't have a dedicated
 command-line flag or config file setting.
 
-While not really an error code mypy will ever display, providing ``all``
-as an error code to be enabled (via the command-line) enables
+:option:`--enable-all-error-codes <mypy --enable-all-error-codes>` enables
 all optional error codes. (Remember that enabling takes priority over
 disabling, so other --disable-error-code flags will not countermand this.)
 
@@ -103,7 +102,6 @@ still keep the other two error codes enabled. The overall logic is following:
 So one can e.g. enable some code globally, disable it for all tests in
 the corresponding config section, and then re-enable it with an inline
 comment in some specific test.
-
 
 Subcodes of error codes
 -----------------------
