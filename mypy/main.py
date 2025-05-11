@@ -386,20 +386,20 @@ class ArgumentGroup:
             if help and help != argparse.SUPPRESS:
                 ValueError(
                     "Mypy-internal CLI documentation style error: help description for the Report generation flag"
-                     + f" {name_or_flags} was unexpectedly provided. (Currently, '{help}'.)"
-                     + " This check is in the code because we assume there's nothing help to say about the report flags."
-                     + " If you're improving that situation, feel free to remove this check."
+                    + f" {name_or_flags} was unexpectedly provided. (Currently, '{help}'.)"
+                    + " This check is in the code because we assume there's nothing help to say about the report flags."
+                    + " If you're improving that situation, feel free to remove this check."
                 )
         else:
             if not help:
                 raise ValueError(
                     f"Mypy-internal CLI documentation style error: flag help description for {name_or_flags}"
-                     + f" must be provided. (Currently, '{help}'.)"
+                    + f" must be provided. (Currently, '{help}'.)"
                 )
             if help[0] != help[0].upper():
                 raise ValueError(
                     f"Mypy-internal CLI documentation style error: flag help description for {name_or_flags}"
-                     + f" must start with a capital letter (or unicameral symbol). (Currently, '{help}'.)"
+                    + f" must start with a capital letter (or unicameral symbol). (Currently, '{help}'.)"
                 )
             if help[-1] == ".":
                 raise ValueError(
