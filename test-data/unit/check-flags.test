@@ -2468,8 +2468,8 @@ A = Union[C, List]  # OK
 def f():
     x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
 
-[case testSpotCheckErrorCodeAll]
-# flags: --enable-error-code all
+[case testSpotCheckEnableAllErrorCodes]
+# flags: --enable-all-error-codes
 # It would be annoying to check every error here, so let's just check a couple.
 from typing_extensions import override
 
@@ -2489,13 +2489,12 @@ class Child(Parent):
         pass
 [builtins fixtures/tuple-simple.pyi]
 
-[case testSpotCheckErrorCodeAllNotUsed]
+[case testSpotCheckEnableAllErrorCodesNot]
 # This test case exists purely to ensure that the testSpotCheckErrorCodeAll test does not become obsolete.
 # (For example, if all the errors expected by testSpotCheckErrorCodeAll get turned on by default, then
 #  the testSpotCheckErrorCodeAll test would fail to guarantee the enablement of any additional errors!
 #  (hint: if that does happen, breaking this test, then consider changing these two tests to pick *different*,
 #   not-enabled-by-default, error codes.))
-
 from typing_extensions import override
 
 class Parent:

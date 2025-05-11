@@ -254,6 +254,7 @@ class Options:
         # Error codes to enable
         self.enable_error_code: list[str] = []
         self.enabled_error_codes: set[ErrorCode] = set()
+        self.enable_all_error_codes = False
 
         # Use script name instead of __main__
         self.scripts_are_modules = False
@@ -451,7 +452,7 @@ class Options:
             error_callback(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
 
         self.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
-        if "all" in enabled_codes:
+        if self.enable_all_error_codes:
             self.enabled_error_codes = set(error_codes.values())
         else:
             self.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
