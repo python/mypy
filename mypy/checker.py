@@ -1557,6 +1557,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         Note that this doesn't do a full CFG analysis but uses a line number based
         heuristic that isn't correct in some (rare) cases.
         """
+        if v.is_final:
+            # Final vars are definitely never reassigned.
+            return False
+
         outers = self.tscope.outer_functions()
         if not outers:
             # Top-level function -- outer context is top level, and we can't reason about
