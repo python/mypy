@@ -265,6 +265,30 @@ class MyDict(dict):
         else:
             return super().setdefault(k, v) + 10
 
+def test_dict_keys() -> None:
+    d: Dict[str, Optional[int]] = {'a': 1, 'b': 2}
+    assert list(d.keys()) == ['a', 'b']
+
+def test_dict_subclass_keys() -> None:
+    d = MyDict({'a': 1, 'b': 2})
+    assert list(d.keys()) == ['a', 'b']
+
+def test_dict_values() -> None:
+    d: Dict[str, Optional[int]] = {'a': 1, 'b': 2}
+    assert list(d.values()) == [1, 2]
+
+def test_dict_subclass_values() -> None:
+    d = MyDict({'a': 1, 'b': 2})
+    assert list(d.values()) == [1, 2]
+
+def test_dict_items() -> None:
+    d: Dict[str, Optional[int]] = {'a': 1, 'b': 2}
+    assert list(d.items()) == [('a', 1), ('b', 2)]
+
+def test_dict_subclass_items() -> None:
+    d = MyDict({'a': 1, 'b': 2})
+    assert list(d.items()) == [('a', 1), ('b', 2)]
+
 def test_dict_setdefault() -> None:
     d: Dict[str, Optional[int]] = {'a': 1, 'b': 2}
     assert d.setdefault('a', 2) == 1
