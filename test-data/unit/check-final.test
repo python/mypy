@@ -1258,9 +1258,6 @@ def _init() -> Union[int, None]:
     return 0
 
 FOO: Final = _init()
-# For some reason the following isn't narrowed at all
-# (always stays int | None):
-# FOO: Final[Union[int, None]] = 0
 
 class Example:
 
