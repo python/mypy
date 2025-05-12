@@ -639,7 +639,7 @@ def parse_mypy_comments(
     Returns a dictionary of options to be applied and a list of error messages
     generated.
     """
-
+    print("args", args)
     errors: list[tuple[int, str]] = []
     sections = {}
 
@@ -649,7 +649,7 @@ def parse_mypy_comments(
         # method is to create a config parser.
         parser = configparser.RawConfigParser()
         options, parse_errors = mypy_comments_to_config_map(line, template)
-
+        print("options", options)
         if "python_version" in options:
             errors.append((lineno, "python_version not supported in inline configuration"))
             del options["python_version"]
@@ -667,6 +667,7 @@ def parse_mypy_comments(
         new_sections, reports = parse_section(
             "", template, set_strict_flags, parser["dummy"], ini_config_types, stderr=stderr
         )
+        print(f"{new_sections=}")
         errors.extend((lineno, x) for x in stderr.getvalue().strip().split("\n") if x)
         if reports:
             errors.append((lineno, "Reports not supported in inline configuration"))
@@ -681,7 +682,8 @@ def parse_mypy_comments(
             )
 
         sections.update(new_sections)
-
+        print(f"{sections_updated=}")
+    print(f"{sections=}")
     return sections, errors
 
 

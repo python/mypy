@@ -328,45 +328,20 @@ if foo: ...
 [case testInlinePythonVersion]
 # mypy: python-version=3.10  # E: python_version not supported in inline configuration
 
-[case testInline12342base]
-# mypy: disable_error_code = name-defined
-a
-
 [case testInline12342]
 # https://github.com/python/mypy/issues/12342
-# mypy: AMONGUS
-# mypy: sussy=baka
-# mypy: disable-error-code=name-defined python-verion="3.6"
 # mypy: disable-error-code=name-defined
-# mypy: disable-error-code = name-defined
-# mypy: python-verion="3.6"
+a
+[case testInline12342Two]
+# mypy: disable-error-code=name-defined
+# mypy: AMONGUS
 a
 [out]
 main:2: error: Unrecognized option: amongus = True
-main:3: error: Unrecognized option: sussy = baka
-main:4: error: disable_error_code: Invalid error code(s): name-defined python-verion=3.6
-???
-???
-main:7: error: Unrecognized option: python_verion = 3.6
-main:8: error: Name "a" is not defined
-
-[case testInline12342Two]
-# flags: --config-file tmp/mypy.ini  --show-error-codes
-a
-[file mypy.ini]
-\[mypy]
-disable_error_code = name-defined
-python_verion="3.6"
-
 [case testInline12342Three]
-# flags: --config-file tmp/mypy.ini  --show-error-codes
-a # E: Name "a" is not defined  [name-defined]
-[file mypy.ini]
-\[mypy]
-# It's unclear to me if something in quotes is, like, *supposed to* work.
-# I'd also like to record the fact that it has a warning,
-# > tmp/mypy.ini: [mypy]: disable_error_code: Invalid error code(s): "name-defined"
-# but there doesn't seem to be a way.
-disable_error_code = "name-defined"
-python_verion="3.6"
-
+# mypy: AMONGUS
+# mypy: disable-error-code=name-defined
+a
+[out]
+main:1: error: Unrecognized option: amongus = True
+asdfasdfasdf
