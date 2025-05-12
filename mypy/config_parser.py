@@ -663,7 +663,7 @@ def parse_mypy_comments(
         def set_strict_flags() -> None:
             nonlocal strict_found
             strict_found = True
-        # HERE! vvv
+
         new_sections, reports = parse_section(
             "", template, set_strict_flags, parser["dummy"], ini_config_types, stderr=stderr
         )
@@ -680,7 +680,12 @@ def parse_mypy_comments(
                     '(see "mypy -h" for the list of flags enabled in strict mode)',
                 )
             )
-
+        # Because this is currently special-cased
+        # (the new_sections for an inline config without these two options always includes
+        # {'disable_error_code': [], 'enable_error_code': []}, which overwrites the old ones),
+        # we have to manipulate them specially.
+        new_sections['enable_error_code'] = list(set(new_sections['enable_error_code'] + sections.get('enable_error_code', [])))
+        new_sections['disable_error_code'] = list(set(new_sections['disable_error_code'] + sections.get('disable_error_code', [])))
         sections.update(new_sections)
         print(f"sections_updated={sections}")
     print(f"{sections=}")

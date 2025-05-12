@@ -324,37 +324,51 @@ foo = Foo()
 if foo: ...
 42 + "no"  # type: ignore
 
-
 [case testInlinePythonVersion]
 # mypy: python-version=3.10  # E: python_version not supported in inline configuration
 
-[case testInline12342]
-# https://github.com/python/mypy/issues/12342
+[case testInlineErrorCodesArentRuinedByOthersBaseCase]
 # mypy: disable-error-code=name-defined
 a
-[case testInline12342Two]
+
+[case testInlineErrorCodesArentRuinedByOthersInvalid]
 # mypy: disable-error-code=name-defined
 # mypy: AMONGUS
 a
 [out]
 main:2: error: Unrecognized option: amongus = True
-[case testInline12342Three]
+
+[case testInlineErrorCodesArentRuinedByOthersInvalidBefore]
 # mypy: AMONGUS
 # mypy: disable-error-code=name-defined
 a
 [out]
 main:1: error: Unrecognized option: amongus = True
-asdfasdfasdf
-[case testInline12342Four]
+
+[case testInlineErrorCodesArentRuinedByOthersSe]
+# mypy: disable-error-code=name-defined
+# mypy: strict-equality
+def is_magic(x: bytes) -> bool:
+    y
+    return x == 'magic' # E: Unsupported left operand type for == ("bytes")
+
+[case testInlineConfigErrorCodesOffAndOn]
+# mypy: disable-error-code=name-defined
+# mypy: enable-error-code=name-defined
+a # E: Name "a" is not defined
+
+[case testInlineConfigErrorCodesOnAndOff]
+# mypy: enable-error-code=name-defined
+# mypy: disable-error-code=name-defined
+a # E: Name "a" is not defined
+
+[case testInlineConfigBaseCaseWui]
 # mypy: warn_unused_ignores
 x = 1 # type: ignore # E: Unused "type: ignore" comment
-[case testInline12342Five]
+
+[case testInlineConfigIsntRuinedByOthersInvalidWui]
 # mypy: warn_unused_ignores
 # mypy: AMONGUS
 x = 1 # type: ignore # E: Unused "type: ignore" comment
 [out]
 main:2: error: Unrecognized option: amongus = True
-[case 12342]
-# mypy: disable-error-code=name-defined
-# mypy: warn_unused_ignores
-x = 1 # type: ignore # E: Unused "type: ignore" comment
