@@ -354,3 +354,7 @@ x = 1 # type: ignore # E: Unused "type: ignore" comment
 x = 1 # type: ignore # E: Unused "type: ignore" comment
 [out]
 main:2: error: Unrecognized option: amongus = True
+[case 12342]
+# mypy: disable-error-code=name-defined
+# mypy: warn_unused_ignores
+x = 1 # type: ignore # E: Unused "type: ignore" comment
