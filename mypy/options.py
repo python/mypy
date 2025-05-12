@@ -492,6 +492,7 @@ class Options:
         # Similar to global codes enabling overrides disabling, so we start from latter.
         new_options.disabled_error_codes = self.disabled_error_codes.copy()
         new_options.enabled_error_codes = self.enabled_error_codes.copy()
+        print(f"{(new_options.disabled_error_codes, new_options.disable_error_code, new_options.enabled_error_codes, new_options.enable_error_code)=}")
         for code_str in new_options.disable_error_code:
             code = error_codes[code_str]
             new_options.disabled_error_codes.add(code)
@@ -500,7 +501,7 @@ class Options:
             code = error_codes[code_str]
             new_options.enabled_error_codes.add(code)
             new_options.disabled_error_codes.discard(code)
-
+        print(f"{(new_options.disabled_error_codes, new_options.enabled_error_codes)=}")
         return new_options
 
     def compare_stable(self, other_snapshot: dict[str, object]) -> bool:
