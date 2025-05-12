@@ -16,7 +16,7 @@ else:
     import tomli as tomllib
 
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Callable, Final, TextIO, TypedDict, Union
+from typing import Any, Callable, Final, TextIO, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import defaults
@@ -681,6 +681,7 @@ def parse_mypy_comments(
         # (the new_sections for an inline config *always* includes 'disable_error_code' and
         # 'enable_error_code' fields, usually empty, which overwrite the old ones),
         # we have to manipulate them specially.
+        # This could use a refactor, but so could the whole subsystem.
         assert isinstance(neec:=new_sections.get("enable_error_code", []), list)
         assert isinstance(eec:=sections.get("enable_error_code", []), list)
         assert isinstance(ndec:=new_sections.get("disable_error_code", []), list)
