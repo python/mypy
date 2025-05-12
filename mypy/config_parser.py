@@ -16,7 +16,7 @@ else:
     import tomli as tomllib
 
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Callable, Final, TextIO, Union
+from typing import Any, Callable, Final, TextIO, TypedDict, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import defaults
@@ -640,7 +640,7 @@ def parse_mypy_comments(
     generated.
     """
     errors: list[tuple[int, str]] = []
-    sections = {}
+    sections: dict[str, object] = {"enable_error_code": [], "disable_error_code": []}
 
     for lineno, line in args:
         # In order to easily match the behavior for bools, we abuse configparser.
@@ -681,16 +681,12 @@ def parse_mypy_comments(
         # (the new_sections for an inline config *always* includes 'disable_error_code' and
         # 'enable_error_code' fields, usually empty, which overwrite the old ones),
         # we have to manipulate them specially.
-        if "enable_error_code" in new_sections:
-            assert isinstance(new_sections["enable_error_code"], list)
-        if "disable_error_code" in new_sections:
-            assert isinstance(new_sections["disable_error_code"], list)
-        new_sections["enable_error_code"] = list(
-            set(new_sections["enable_error_code"] + sections.get("enable_error_code", []))
-        )
-        new_sections["disable_error_code"] = list(
-            set(new_sections["disable_error_code"] + sections.get("disable_error_code", []))
-        )
+        assert isinstance(neec:=new_sections.get("enable_error_code", []), list)
+        assert isinstance(eec:=sections.get("enable_error_code", []), list)
+        assert isinstance(ndec:=new_sections.get("disable_error_code", []), list)
+        assert isinstance(dec:=new_sections.get("disable_error_code", []), list)
+        new_sections["enable_error_code"] = list(set(neec + eec))
+        new_sections["disable_error_code"] = list(set(ndec + dec))
         sections.update(new_sections)
     return sections, errors
 
