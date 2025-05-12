@@ -256,7 +256,7 @@ import tests.baz
 42 + "no"  # type: ignore # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
 [file tests/bar.py]
 # mypy: disable-error-code="ignore-without-code"
-42 + "no"  # type: ignore 
+42 + "no"  # type: ignore
 
 [file mypy.ini]
 \[mypy]
