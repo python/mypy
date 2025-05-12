@@ -665,7 +665,6 @@ def parse_mypy_comments(
         new_sections, reports = parse_section(
             "", template, set_strict_flags, parser["dummy"], ini_config_types, stderr=stderr
         )
-        print("new_sections", new_sections)
         errors.extend((lineno, x) for x in stderr.getvalue().strip().split("\n") if x)
         if reports:
             errors.append((lineno, "Reports not supported in inline configuration"))
@@ -688,18 +687,14 @@ def parse_mypy_comments(
             and isinstance(neec := new_sections["enable_error_code"], list)
             and isinstance(eec := sections.get("enable_error_code", []), list)
         ):
-            print("bing", neec, eec)
             new_sections["enable_error_code"] = sorted(set(neec + eec))
         if (
             "disable_error_code" in new_sections
             and isinstance(ndec := new_sections["disable_error_code"], list)
             and isinstance(dec := sections.get("disable_error_code", []), list)
         ):
-            print("bong", ndec, dec)
             new_sections["disable_error_code"] = sorted(set(ndec + dec))
         sections.update(new_sections)
-        print("sections", sections)
-    print("sections final", sections)
     return sections, errors
 
 
