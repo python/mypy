@@ -682,10 +682,10 @@ def parse_mypy_comments(
         # 'enable_error_code' fields, usually empty, which overwrite the old ones),
         # we have to manipulate them specially.
         # This could use a refactor, but so could the whole subsystem.
-        assert isinstance(neec:=new_sections.get("enable_error_code", []), list)
-        assert isinstance(eec:=sections.get("enable_error_code", []), list)
-        assert isinstance(ndec:=new_sections.get("disable_error_code", []), list)
-        assert isinstance(dec:=new_sections.get("disable_error_code", []), list)
+        assert isinstance(neec := new_sections.get("enable_error_code", []), list)
+        assert isinstance(eec := sections.get("enable_error_code", []), list)
+        assert isinstance(ndec := new_sections.get("disable_error_code", []), list)
+        assert isinstance(dec := new_sections.get("disable_error_code", []), list)
         new_sections["enable_error_code"] = list(set(neec + eec))
         new_sections["disable_error_code"] = list(set(ndec + dec))
         sections.update(new_sections)
