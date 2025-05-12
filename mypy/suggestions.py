@@ -238,7 +238,7 @@ def _arg_accepts_function(typ: ProperType) -> bool:
         # Protocol with __call__
         isinstance(typ, Instance)
         and typ.type.is_protocol
-        and isinstance(typ.type.get_method("__call__"), FuncDef)
+        and typ.type.get_method("__call__") is not None
     )
 
 
