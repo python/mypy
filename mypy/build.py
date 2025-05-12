@@ -2209,7 +2209,6 @@ class State:
     def parse_inline_configuration(self, source: str) -> None:
         """Check for inline mypy: options directive and parse them."""
         flags = get_mypy_comments(source)
-        print(f"{flags=}")
         if flags:
             changes, config_errors = parse_mypy_comments(flags, self.options)
             self.options = self.options.apply_changes(changes)

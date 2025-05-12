@@ -639,7 +639,6 @@ def parse_mypy_comments(
     Returns a dictionary of options to be applied and a list of error messages
     generated.
     """
-    print("args", args)
     errors: list[tuple[int, str]] = []
     sections = {}
 
@@ -649,7 +648,6 @@ def parse_mypy_comments(
         # method is to create a config parser.
         parser = configparser.RawConfigParser()
         options, parse_errors = mypy_comments_to_config_map(line, template)
-        print("options", options)
         if "python_version" in options:
             errors.append((lineno, "python_version not supported in inline configuration"))
             del options["python_version"]
@@ -667,7 +665,6 @@ def parse_mypy_comments(
         new_sections, reports = parse_section(
             "", template, set_strict_flags, parser["dummy"], ini_config_types, stderr=stderr
         )
-        print(f"{new_sections=}")
         errors.extend((lineno, x) for x in stderr.getvalue().strip().split("\n") if x)
         if reports:
             errors.append((lineno, "Reports not supported in inline configuration"))
@@ -681,14 +678,16 @@ def parse_mypy_comments(
                 )
             )
         # Because this is currently special-cased
-        # (the new_sections for an inline config without these two options always includes
-        # {'disable_error_code': [], 'enable_error_code': []}, which overwrites the old ones),
+        # (the new_sections for an inline config *always* includes 'disable_error_code' and
+        # 'enable_error_code' fields, usually empty, which overwrite the old ones),
         # we have to manipulate them specially.
-        new_sections['enable_error_code'] = list(set(new_sections['enable_error_code'] + sections.get('enable_error_code', [])))
-        new_sections['disable_error_code'] = list(set(new_sections['disable_error_code'] + sections.get('disable_error_code', [])))
+        new_sections["enable_error_code"] = list(
+            set(new_sections["enable_error_code"] + sections.get("enable_error_code", []))
+        )
+        new_sections["disable_error_code"] = list(
+            set(new_sections["disable_error_code"] + sections.get("disable_error_code", []))
+        )
         sections.update(new_sections)
-        print(f"sections_updated={sections}")
-    print(f"{sections=}")
     return sections, errors
 
 
