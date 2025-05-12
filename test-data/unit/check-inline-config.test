@@ -345,3 +345,12 @@ a
 [out]
 main:1: error: Unrecognized option: amongus = True
 asdfasdfasdf
+[case testInline12342Four]
+# mypy: warn_unused_ignores
+x = 1 # type: ignore # E: Unused "type: ignore" comment
+[case testInline12342Five]
+# mypy: warn_unused_ignores
+# mypy: AMONGUS
+x = 1 # type: ignore # E: Unused "type: ignore" comment
+[out]
+main:2: error: Unrecognized option: amongus = True

@@ -663,7 +663,7 @@ def parse_mypy_comments(
         def set_strict_flags() -> None:
             nonlocal strict_found
             strict_found = True
-
+        # HERE! vvv
         new_sections, reports = parse_section(
             "", template, set_strict_flags, parser["dummy"], ini_config_types, stderr=stderr
         )
@@ -682,7 +682,7 @@ def parse_mypy_comments(
             )
 
         sections.update(new_sections)
-        print(f"{sections_updated=}")
+        print(f"sections_updated={sections}")
     print(f"{sections=}")
     return sections, errors
 
