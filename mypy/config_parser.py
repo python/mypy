@@ -533,7 +533,7 @@ def parse_section(
                 else:
                     continue
             ct = type(dv)
-        v = None
+        v: Any = None
         try:
             if ct is bool:
                 if isinstance(section, dict):
