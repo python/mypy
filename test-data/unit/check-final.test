@@ -1275,5 +1275,3 @@ if FOO is not None:
 
     def func() -> int:
         return FOO
-
-[builtins fixtures/tuple.pyi]
