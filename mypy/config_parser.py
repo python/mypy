@@ -533,7 +533,7 @@ def parse_section(
                 else:
                     continue
             ct = type(dv)
-        v: Any = None
+        v = None
         try:
             if ct is bool:
                 if isinstance(section, dict):
@@ -681,6 +681,10 @@ def parse_mypy_comments(
         # (the new_sections for an inline config *always* includes 'disable_error_code' and
         # 'enable_error_code' fields, usually empty, which overwrite the old ones),
         # we have to manipulate them specially.
+        if "enable_error_code" in new_sections:
+            assert isinstance(new_sections["enable_error_code"], list)
+        if "disable_error_code" in new_sections:
+            assert isinstance(new_sections["disable_error_code"], list)
         new_sections["enable_error_code"] = list(
             set(new_sections["enable_error_code"] + sections.get("enable_error_code", []))
         )
