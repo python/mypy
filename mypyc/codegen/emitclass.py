@@ -858,6 +858,13 @@ def generate_dealloc_for_class(
     emitter.emit_line("static void")
     emitter.emit_line(f"{dealloc_func_name}({cl.struct_name(emitter.names)} *self)")
     emitter.emit_line("{")
+    if cl.supports_weakref:
+        if emitter.capi_version < (3, 12):
+            emitter.emit_line("if (self->weakreflist != NULL) {")
+            emitter.emit_line("PyObject_ClearWeakRefs((PyObject *) self);")
+            emitter.emit_line("}")
+        else:
+            emitter.emit_line("PyObject_ClearWeakRefs((PyObject *) self);")
     if has_tp_finalize:
         emitter.emit_line("if (!PyObject_GC_IsFinalized((PyObject *)self)) {")
         emitter.emit_line("Py_TYPE(self)->tp_finalize((PyObject *)self);")
