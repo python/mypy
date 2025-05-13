@@ -323,7 +323,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             "};",
         )
         if emitter.capi_version < (3, 12):
-            # versions >= 3.12 do not define tp_weaklistoffset, but set Py_TPFLAGS_MANAGED_WEAKREF flag instead
+            # versions >= 3.12 set Py_TPFLAGS_MANAGED_WEAKREF flag instead
+            # https://docs.python.org/3.12/extending/newtypes.html#weak-reference-support
             fields["tp_weaklistoffset"] = base_size
     else:
         fields["tp_basicsize"] = base_size
