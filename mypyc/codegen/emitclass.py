@@ -357,7 +357,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         flags.append("Py_TPFLAGS_MANAGED_DICT")
     if cl.supports_weakref and emitter.capi_version >= (3, 12):
         flags.append("Py_TPFLAGS_MANAGED_WEAKREF")
-    
+
     fields["tp_flags"] = " | ".join(flags)
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
