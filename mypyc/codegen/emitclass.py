@@ -293,6 +293,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             "};",
         )
         if emitter.capi_version < (3, 12):
+            # versions >= 3.12 do not define tp_weaklistoffset, but set Py_TPFLAGS_MANAGED_WEAKREF flag instead
             fields["tp_weaklistoffset"] = base_size
     else:
         fields["tp_basicsize"] = base_size
@@ -354,6 +355,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             fields["tp_call"] = "PyVectorcall_Call"
     if has_managed_dict(cl, emitter):
         flags.append("Py_TPFLAGS_MANAGED_DICT")
+    if cl.supports_weakref and emitter.capi_version >= (3, 12):
+        flags.append("Py_TPFLAGS_MANAGED_WEAKREF")
+    
     fields["tp_flags"] = " | ".join(flags)
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
