@@ -387,7 +387,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         flags.append("Py_TPFLAGS_MANAGED_DICT")
     if cl.supports_weakref and emitter.capi_version >= (3, 12):
         flags.append("Py_TPFLAGS_MANAGED_WEAKREF")
-    
+
     fields["tp_flags"] = " | ".join(flags)
 
     fields["tp_doc"] = native_class_doc_initializer(cl)
