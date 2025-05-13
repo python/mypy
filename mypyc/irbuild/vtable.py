@@ -15,6 +15,7 @@ def compute_vtable(cls: ClassIR) -> None:
 
     if not cls.is_generated:
         cls.has_dict = any(x.inherits_python for x in cls.mro)
+        # TODO: define more weakref triggers
         cls.supports_weakref = cls.supports_weakref or cls.has_dict
 
     for t in cls.mro[1:]:
