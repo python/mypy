@@ -764,6 +764,9 @@ CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
 PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 CPyTagged CPyBytes_Ord(PyObject *obj);
+PyObject *CPy_DecodeUtf8(PyObject *bytes_obj);
+PyObject *CPy_DecodeLatin1(PyObject *bytes_obj);
+PyObject *CPy_DecodeAscii(PyObject *bytes_obj);
 
 
 int CPyBytes_Compare(PyObject *left, PyObject *right);

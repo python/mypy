@@ -162,3 +162,42 @@ CPyTagged CPyBytes_Ord(PyObject *obj) {
     PyErr_SetString(PyExc_TypeError, "ord() expects a character");
     return CPY_INT_TAG;
 }
+
+
+PyObject *CPy_DecodeUtf8(PyObject *bytes_obj) {
+    if (!PyBytes_Check(bytes_obj)) {
+        PyErr_SetString(PyExc_TypeError, "expected bytes object");
+        return NULL;
+    }
+
+    char *data = PyBytes_AS_STRING(bytes_obj);
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+
+    return PyUnicode_DecodeUTF8(data, size, NULL);
+}
+
+
+PyObject *CPy_DecodeLatin1(PyObject *bytes_obj) {
+    if (!PyBytes_Check(bytes_obj)) {
+        PyErr_SetString(PyExc_TypeError, "expected bytes object");
+        return NULL;
+    }
+
+    char *data = PyBytes_AS_STRING(bytes_obj);
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+
+    return PyUnicode_DecodeLatin1(data, size, NULL);
+}
+
+
+PyObject *CPy_DecodeAscii(PyObject *bytes_obj) {
+    if (!PyBytes_Check(bytes_obj)) {
+        PyErr_SetString(PyExc_TypeError, "expected bytes object");
+        return NULL;
+    }
+
+    char *data = PyBytes_AS_STRING(bytes_obj);
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+
+    return PyUnicode_DecodeASCII(data, size, NULL);
+}
