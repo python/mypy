@@ -1,4 +1,6 @@
 from typing import Sequence, Iterator, TypeVar, Mapping, Iterable, Optional, Union, overload, Tuple, Generic, List
+import _typeshed
+
 
 class object:
     def __init__(self) -> None: ...
