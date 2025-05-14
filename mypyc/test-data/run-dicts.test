@@ -230,7 +230,8 @@ c
 
 [case testDictMethods]
 from collections import defaultdict
-from typing import DefaultDict, Dict, Optional, List, Set
+from typing import DefaultDict  # type: ignore [attr-defined]
+from typing import Dict, Optional, List, Set
 
 def test_dict_clear() -> None:
     d = {'a': 1, 'b': 2}
