@@ -267,7 +267,11 @@ class MyDict(dict):
             return super().setdefault(k, v) + 10
 
 class MyComplexDict(DefaultDict, MyDict):
-    pass
+    def __init__(self, vals: Dict[str, int]):
+        # The custom init is necessary for this test as we cannot init a DefaultDict with a dict
+        DefaultDict.__init__(int)
+        for k, v in vals.items():
+            self[k] = v
 
 def test_dict_keys() -> None:
     d: Dict[str, Optional[int]] = {'a': 1, 'b': 2}
