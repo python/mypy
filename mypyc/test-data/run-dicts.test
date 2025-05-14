@@ -269,7 +269,7 @@ class MyDict(dict):
 class MyComplexDict(DefaultDict, MyDict):
     def __init__(self, vals: Dict[str, int]):
         # The custom init is necessary for this test as we cannot init a DefaultDict with a dict
-        DefaultDict.__init__(int)
+        DefaultDict.__init__(self, int)
         for k, v in vals.items():
             self[k] = v
 
