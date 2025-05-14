@@ -769,7 +769,11 @@ class InspectionStubGenerator(BaseStubGenerator):
             return "Any"
         typename = getattr(typ, "__qualname__", typ.__name__)
         module_name = self.get_obj_module(typ)
-        assert module_name is not None, typ
+        if module_name is None:
+            # This should not normally happen, but some types may resist our
+            # introspection attempts too hard. See
+            # https://github.com/python/mypy/issues/19031
+            return "_typeshed.Incomplete"
         if module_name != "builtins":
             typename = f"{module_name}.{typename}"
         return typename
