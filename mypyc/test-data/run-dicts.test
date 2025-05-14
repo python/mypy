@@ -266,12 +266,8 @@ class MyDict(dict):
         else:
             return super().setdefault(k, v) + 10
 
-class MyComplexDict(DefaultDict, MyDict):
-    def __init__(self, vals: Dict[str, int]):
-        # The custom init is necessary for this test as we cannot init a DefaultDict with a dict
-        DefaultDict.__init__(self, int)
-        for k, v in vals.items():
-            self[k] = v
+class MyComplexDict(DefaultDict[str, int], MyDict):
+    pass
 
 def test_dict_keys() -> None:
     d: Dict[str, Optional[int]] = {'a': 1, 'b': 2}
@@ -282,7 +278,7 @@ def test_dict_subclass_keys() -> None:
     assert list(d.keys()) == ['a', 'b']
 
 def test_dict_subclass_complex_keys() -> None:
-    d = MyComplexDict({'a': 1, 'b': 2})
+    d = MyComplexDict(int, {'a': 1, 'b': 2})
     assert list(d.keys()) == ['a', 'b']
 
 def test_dict_values() -> None:
@@ -294,7 +290,7 @@ def test_dict_subclass_values() -> None:
     assert list(d.values()) == [1, 2]
 
 def test_dict_subclass_complex_values() -> None:
-    d = MyComplexDict({'a': 1, 'b': 2})
+    d = MyComplexDict(int, {'a': 1, 'b': 2})
     assert list(d.values()) == [1, 2]
 
 def test_dict_items() -> None:
@@ -306,7 +302,7 @@ def test_dict_subclass_items() -> None:
     assert list(d.items()) == [('a', 1), ('b', 2)]
 
 def test_dict_subclass_complex_items() -> None:
-    d = MyComplexDict({'a': 1, 'b': 2})
+    d = MyComplexDict(int, {'a': 1, 'b': 2})
     assert list(d.items()) == [('a', 1), ('b', 2)]
 
 def test_dict_setdefault() -> None:
