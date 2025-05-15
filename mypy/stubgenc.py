@@ -171,8 +171,8 @@ def generate_stub_for_c_module(
 
     gen = InspectionStubGenerator(
         module_name,
-        known_modules,
-        doc_dir,
+        known_modules=known_modules,
+        doc_dir=doc_dir,
         include_private=include_private,
         export_less=export_less,
         include_docstrings=include_docstrings,
@@ -240,9 +240,8 @@ class InspectionStubGenerator(BaseStubGenerator):
         else:
             self.module = module
         self.is_c_module = is_c_module(self.module)
-        self.known_modules = known_modules
         self.resort_members = self.is_c_module
-        super().__init__(_all_, include_private, export_less, include_docstrings)
+        super().__init__(_all_, include_private, export_less, include_docstrings, known_modules)
         self.module_name = module_name
         if self.is_c_module:
             # Add additional implicit imports.
@@ -393,10 +392,9 @@ class InspectionStubGenerator(BaseStubGenerator):
         Arguments:
             typ: name of the type
         """
-        local_modules = ["builtins", self.module_name]
         parsed_type = parse_type_comment(type_name, 0, 0, None)[1]
         assert parsed_type is not None, type_name
-        return self.print_annotation(parsed_type, self.known_modules, local_modules)
+        return self.print_annotation(parsed_type, self.known_modules)
 
     def get_obj_module(self, obj: object) -> str | None:
         """Return module name of the object."""
