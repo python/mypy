@@ -810,10 +810,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             self.processing_dataclass = True
             self.dataclass_field_specifier = spec.field_specifiers
         is_pydantic_model = False
-        for base in o.base_type_exprs:
-            if isinstance(base, (NameExpr, MemberExpr)) and self.get_fullname(base).endswith(
-                "BaseModel"
-            ):
+        for base_type_expr in o.base_type_exprs:
+            if isinstance(base_type_expr, (NameExpr, MemberExpr)) and self.get_fullname(base_type_expr).endswith("BaseModel"):
                 is_pydantic_model = True
                 break
         self.processing_pydantic_model = is_pydantic_model
