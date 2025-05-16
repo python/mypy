@@ -1238,6 +1238,13 @@ Miscellaneous
     stubs at the end of the run, but only if any missing modules were
     detected.
 
+    It is not recommended to use this option in `CI/CD
+    <https://en.wikipedia.org/wiki/CI/CD>`_, as it will make your
+    dependencies less reproducible. Instead, you should require and
+    install type dependencies like you would any other (test) dependency,
+    eg by using an dependency section in your `pyproject.toml
+    <https://packaging.python.org/en/latest/guides/writing-pyproject-toml/>`_.
+
     .. note::
 
         This is new in mypy 0.900. Previous mypy versions included a
@@ -1257,6 +1264,10 @@ Miscellaneous
    this run only if no missing stub packages were found. If missing
    stub packages were found, they are installed and then another run
    is performed.
+
+   It is not recommended to use ``--install-types --non-interactive``
+   in `CI/CD <https://en.wikipedia.org/wiki/CI/CD>`_; see the other
+   flag for more details.
 
 .. option:: --junit-xml JUNIT_XML_OUTPUT_FILE
 
