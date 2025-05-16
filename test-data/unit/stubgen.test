@@ -30,12 +30,10 @@ def g(b=-1, c=0): ...
 def f(a, b: int = 2) -> None: ...
 def g(b: int = -1, c: int = 0) -> None: ...
 
-[case testDefaultArgNone]
+[case testFuncDefaultArgNone]
 def f(x=None): ...
 [out]
-from _typeshed import Incomplete
-
-def f(x: Incomplete | None = None) -> None: ...
+def f(x=None) -> None: ...
 
 [case testDefaultArgBool]
 def f(x=True, y=False): ...
@@ -1379,7 +1377,7 @@ async def f(a):
 [out]
 async def f(a) -> None: ...
 
-[case testInferOptionalOnlyFunc]
+[case testMethodDefaultArgNone]
 class A:
     x = None
     def __init__(self, a=None):
@@ -1391,8 +1389,8 @@ from _typeshed import Incomplete
 
 class A:
     x: Incomplete
-    def __init__(self, a: Incomplete | None = None) -> None: ...
-    def method(self, a: Incomplete | None = None) -> None: ...
+    def __init__(self, a=None) -> None: ...
+    def method(self, a=None) -> None: ...
 
 [case testAnnotationImportsFrom]
 import foo
@@ -2618,31 +2616,28 @@ class A(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def x(self): ...
 
-[case testClassWithNameIncompleteOrOptional]
+[case testClassWithNameIncomplete]
 Y = object()
 
-def g(x=None): pass
+def g():
+    yield 1
 
 x = g()
 
 class Incomplete:
     pass
 
-def Optional():
-    return 0
-
 [out]
 from _typeshed import Incomplete as _Incomplete
+from collections.abc import Generator
 
 Y: _Incomplete
 
-def g(x: _Incomplete | None = None) -> None: ...
+def g() -> Generator[_Incomplete]: ...
 
 x: _Incomplete
 
 class Incomplete: ...
-
-def Optional(): ...
 
 [case testExportedNameImported]
 # modules: main a b
