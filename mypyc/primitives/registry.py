@@ -364,12 +364,3 @@ def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
 
 
 # Import various modules that set up global state.
-import mypyc.primitives.bytes_ops
-import mypyc.primitives.dict_ops
-import mypyc.primitives.float_ops
-import mypyc.primitives.int_ops
-import mypyc.primitives.list_ops
-import mypyc.primitives.misc_ops
-import mypyc.primitives.str_ops
-import mypyc.primitives.tuple_ops  # noqa: F401
-import mypyc.primitives.weakref_ops
