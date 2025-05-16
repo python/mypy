@@ -565,7 +565,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             default = "..."
             if arg_.initializer:
                 if not typename:
-                    typename = self.get_str_type_of_node(arg_.initializer, False)
+                    typename = self.get_str_type_of_node(arg_.initializer, can_be_incomplete=False)
                 potential_default, valid = self.get_str_default_of_node(arg_.initializer)
                 if valid and len(potential_default) <= 200:
                     default = potential_default
@@ -1305,7 +1305,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         parts = fullname.split(".")
         return any(self.is_private_name(part) for part in parts)
 
-    def get_str_type_of_node(self, rvalue: Expression, can_be_incomplete: bool = True) -> str:
+    def get_str_type_of_node(self, rvalue: Expression, *, can_be_incomplete: bool = True) -> str:
         rvalue = self.maybe_unwrap_unary_expr(rvalue)
 
         if isinstance(rvalue, IntExpr):
