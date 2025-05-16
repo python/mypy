@@ -246,6 +246,7 @@ class Invariant[T]:
 inv1: Invariant[float] = Invariant[int]([1])  # E: Incompatible types in assignment (expression has type "Invariant[int]", variable has type "Invariant[float]")
 inv2: Invariant[int] = Invariant[float]([1])  # E: Incompatible types in assignment (expression has type "Invariant[float]", variable has type "Invariant[int]")
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testPEP695InferVarianceCalculateOnDemand]
 class Covariant[T]:
@@ -1635,8 +1636,8 @@ class M[T: (int, str)](NamedTuple):
 c: M[int]
 d: M[str]
 e: M[bool]  # E: Value of type variable "T" of "M" cannot be "bool"
-
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testPEP695GenericTypedDict]
 from typing import TypedDict
