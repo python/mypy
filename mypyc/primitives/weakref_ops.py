@@ -1,9 +1,5 @@
-from mypyc.ir.rtypes import (
-    object_rprimitive,
-)
-from mypyc.primitives.registry import (
-    function_op,
-)
+from mypyc.ir.rtypes import object_rprimitive
+from mypyc.primitives.registry import function_op
 
 # Weakref operations
 
