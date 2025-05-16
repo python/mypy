@@ -638,7 +638,6 @@ class Server:
 
         # Process changes directly reachable from roots.
         messages = fine_grained_manager.update(changed, [], followed=True)
-
         # Follow deps from changed modules (still within graph).
         worklist = changed.copy()
         while worklist:
