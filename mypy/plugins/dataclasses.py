@@ -247,6 +247,7 @@ class DataclassTransformer:
             "order": self._get_bool_arg("order", self._spec.order_default),
             "frozen": self._get_bool_arg("frozen", self._spec.frozen_default),
             "slots": self._get_bool_arg("slots", False),
+            "unsafe_hash": self._get_bool_arg("unsafe_hash", False),
             "match_args": self._get_bool_arg("match_args", True),
         }
         py_version = self._api.options.python_version
@@ -289,6 +290,14 @@ class DataclassTransformer:
 
             add_method_to_class(
                 self._api, self._cls, "__init__", args=args, return_type=NoneType()
+            )
+
+        if "__hash__" not in info.names or info.names["__hash__"].plugin_generated:
+            # Presence of __hash__ usually isn't checked. However, when inheriting from
+            # an abstract Hashable, we need to override the abstract __hash__ to avoid
+            # false positives.
+            self._add_dunder_hash(
+                is_hashable=decorator_arguments["unsafe_hash"] or decorator_arguments["frozen"]
             )
 
         if (
@@ -445,6 +454,30 @@ class DataclassTransformer:
             ],
             return_type=NoneType(),
         )
+
+    def _add_dunder_hash(self, is_hashable: bool) -> None:
+        if is_hashable:
+            add_method_to_class(
+                self._api,
+                self._cls,
+                "__hash__",
+                args=[],
+                return_type=self._api.named_type("builtins.int"),
+            )
+        else:
+            # Python sets `__hash__ = None` otherwise, do the same.
+            parent_method = self._cls.info.get_method("__hash__")
+            if parent_method is not None and parent_method.info.fullname != "builtins.object":
+                # If we inherited `__hash__` not from `object`, ensure it isn't overridden
+                self._api.fail(
+                    "Incompatible override of '__hash__': dataclasses without"
+                    " 'frozen' or 'unsafe_hash' have '__hash__' set to None",
+                    self._cls,
+                    code=errorcodes.OVERRIDE,
+                )
+            add_attribute_to_class(
+                self._api, self._cls, "__hash__", typ=NoneType(), is_classvar=True
+            )
 
     def add_slots(
         self, info: TypeInfo, attributes: list[DataclassAttribute], *, correct_version: bool
