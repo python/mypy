@@ -1060,6 +1060,15 @@ class StringFormatterChecker:
                 return UnionType(
                     [self.named_type("builtins.int"), self.named_type("builtins.str")]
                 )
+        elif p.startswith(("<", ">", "=", "^")):
+            # THIS CODE IS WRONG
+            return UnionType(
+                [
+                    self.named_type("builtins.int"),
+                    self.named_type("builtins.float"),
+                    self.named_type("builtins.str"),
+                ]
+            )
         else:
             self.msg.unsupported_placeholder(p, context)
             return None
