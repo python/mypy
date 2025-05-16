@@ -7,7 +7,7 @@ from mypyc.primitives.registry import function_op
 py_new_weak_ref_op = function_op(
     name="weakref.weakref",
     arg_types=[object_rprimitive],
-    # TODO: how do I pass NULL as the 2nd arg? 
+    # TODO: how do I pass NULL as the 2nd arg?
     #extra_int_constants=[],
     result_type=object_rprimitive,
     c_function_name="PyWeakref_NewRef",
