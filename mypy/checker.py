@@ -5088,8 +5088,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         """Helper for check_except_handler_test to retrieve handler types."""
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
-            return typ.items
+            # avoid recursion here, since we can accidentally unpack tuples inside
+            merged_type = make_simplified_union(typ.items)
+            if isinstance(merged_type, UnionType):
+                return merged_type.relevant_items()
+            return [merged_type]
         elif isinstance(typ, UnionType):
+            # recursion is fine here for top-level Union
             return [
                 union_typ
                 for item in typ.relevant_items()
@@ -5097,7 +5102,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             ]
         elif is_named_instance(typ, "builtins.tuple"):
             # variadic tuple
-            return [typ.args[0]]
+            # avoid recursion here too
+            merged_type = make_simplified_union((typ.args[0],))
+            if isinstance(merged_type, UnionType):
+                return merged_type.relevant_items()
+            return [merged_type]
         else:
             return [typ]
 
