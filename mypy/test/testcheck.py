@@ -50,7 +50,7 @@ class TypeCheckSuite(DataSuite):
     files = typecheck_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        if import_exists("lmxl") and os.path.basename(testcase.file) == "check-reports.test":
+        if not import_exists("lxml") and os.path.basename(testcase.file) == "check-reports.test":
             pytest.skip("Cannot import lxml. Is it installed?")
         incremental = (
             "incremental" in testcase.name.lower()
