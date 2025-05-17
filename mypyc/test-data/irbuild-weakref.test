@@ -1,7 +1,8 @@
 [case testWeakrefRef]
+from typing import Any, Callable
 from weakref import ref
-def f(x: object, cb: object) -> object:
-    return proxy(x, cb)
+def f(x: object, cb: Callable[[object], Any]) -> object:
+    return ref(x, cb)
 
 [out]
 def f(x):
@@ -13,8 +14,9 @@ L0:
     return r0
 
 [case testWeakrefProxy]
+from typing import Any, Callable
 from weakref import proxy
-def f(x: object, cb: object) -> object:
+def f(x: object, cb: Callable[[object], Any]) -> object:
     return proxy(x, cb)
 
 [out]
