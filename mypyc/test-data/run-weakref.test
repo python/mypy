@@ -22,24 +22,22 @@ def test_weakref_ref_with_callback():
 import pytest  # type: ignore [import-not-found]
 from weakref import proxy
 
+class MyClass():
+    def do_thing(self):
+        return True
+
 def test_weakref_proxy():
-    class MyClass():
-        def test(self):
-            return True
     obj = MyClass()
     p = proxy(obj)
-    assert p.test() is True
+    assert p.do_thing() is True
     del obj
     with pytest.raises(ReferenceError):
-        p.test()
+        p.do_thing()
 
 def test_weakref_proxy_with_callback():
-    class MyClass():
-        def test(self):
-            return True
     obj = MyClass()
     p = proxy(obj, lambda x: x)
-    assert p.test() is True
+    assert p.do_thing() is True
     del obj
     with pytest.raises(ReferenceError):
-        p.test()
+        p.do_thing()
