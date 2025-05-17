@@ -711,6 +711,8 @@ Example:
 In some cases, these errors can be fixed by installing an appropriate
 stub package. See :ref:`ignore-missing-imports` for more details.
 
+.. _code-import-untyped-stubs-available:
+
 Check that import target with known stubs can be found [import-untyped-stubs-available]
 --------------------------------------------------------
 
