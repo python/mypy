@@ -400,7 +400,7 @@ the second time to type check your code properly after mypy has
 installed the stubs. It also can make controlling stub versions harder,
 resulting in less reproducible type checking — it might even install
 incompatible versions of your project's non-type dependencies, if the
-type stubs require them! 
+type stubs require them!
 
 By default, :option:`--install-types <mypy --install-types>` shows a confirmation prompt.
 Use :option:`--non-interactive <mypy --non-interactive>` to install all suggested
