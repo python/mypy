@@ -25,7 +25,7 @@ from mypy.test.helpers import (
 from mypy.test.update_data import update_testcase_output
 
 try:
-    import lxml
+    pass  # import lxml #try just passing for now...
 except ImportError:
     lxml_import_failure = True
 

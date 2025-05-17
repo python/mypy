@@ -20,7 +20,7 @@ from mypy.test.helpers import (
 )
 
 try:
-    import lxml
+    pass  # import lxml #try just passing for now...
 except ImportError:
     lxml_import_failure = True
 
