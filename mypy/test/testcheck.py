@@ -5,6 +5,9 @@ from __future__ import annotations
 import os
 import re
 import sys
+from importlib.util import find_spec as import_exists
+
+import pytest
 
 from mypy import build
 from mypy.build import Graph
@@ -23,14 +26,6 @@ from mypy.test.helpers import (
     perform_file_operations,
 )
 from mypy.test.update_data import update_testcase_output
-
-try:
-    pass  # import lxml #try just passing for now...
-except ImportError:
-    lxml_import_failure = True
-
-
-import pytest
 
 # List of files that contain test case descriptions.
 # Includes all check-* files with the .test extension in the test-data/unit directory
@@ -55,7 +50,7 @@ class TypeCheckSuite(DataSuite):
     files = typecheck_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        if lxml_import_failure and os.path.basename(testcase.file) == "check-reports.test":
+        if import_exists("lmxl") and os.path.basename(testcase.file) == "check-reports.test":
             pytest.skip("Cannot import lxml. Is it installed?")
         incremental = (
             "incremental" in testcase.name.lower()
