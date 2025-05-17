@@ -1,6 +1,7 @@
 # Test cases for weakrefs (compile and run)
 
 [case testWeakrefRef]
+import pytest
 from weakref import ref
 
 def test_weakref_ref():
@@ -18,6 +19,7 @@ def test_weakref_ref_with_callback():
     assert r() is None
 
 [case testWeakrefProxy]
+import pytest
 from weakref import proxy
 
 def test_weakref_proxy():
