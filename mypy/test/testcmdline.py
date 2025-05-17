@@ -22,7 +22,7 @@ from mypy.test.helpers import (
 try:
     import lxml
 except ImportError:
-    lxml = None
+    lxml_import_failure = True
 
 import pytest
 
@@ -38,7 +38,7 @@ class PythonCmdlineSuite(DataSuite):
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        if lxml is None and os.path.basename(testcase.file) == "reports.test":
+        if lxml_import_failure and os.path.basename(testcase.file) == "reports.test":
             pytest.skip("Cannot import lxml. Is it installed?")
         for step in [1] + sorted(testcase.output2):
             test_python_cmdline(testcase, step)

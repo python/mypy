@@ -27,7 +27,7 @@ from mypy.test.update_data import update_testcase_output
 try:
     import lxml
 except ImportError:
-    lxml = None
+    lxml_import_failure = True
 
 
 import pytest
@@ -55,7 +55,7 @@ class TypeCheckSuite(DataSuite):
     files = typecheck_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        if lxml is None and os.path.basename(testcase.file) == "check-reports.test":
+        if lxml_import_failure and os.path.basename(testcase.file) == "check-reports.test":
             pytest.skip("Cannot import lxml. Is it installed?")
         incremental = (
             "incremental" in testcase.name.lower()
