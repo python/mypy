@@ -1250,3 +1250,25 @@ def check_final_init() -> None:
     new_instance = FinalInit()
     new_instance.__init__()
 [builtins fixtures/tuple.pyi]
+
+[case testNarrowingOfFinalPersistsInFunctions]
+from typing import Final, Union
+
+def _init() -> Union[int, None]:
+    return 0
+
+FOO: Final = _init()
+
+class Example:
+
+    if FOO is not None:
+        reveal_type(FOO)  # N: Revealed type is "builtins.int"
+
+        def fn(self) -> int:
+            return FOO
+
+if FOO is not None:
+    reveal_type(FOO)  # N: Revealed type is "builtins.int"
+
+    def func() -> int:
+        return FOO

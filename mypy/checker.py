@@ -437,12 +437,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self._type_maps[0].clear()
         self.temp_type_map = None
         self.expr_checker.reset()
-
-        assert self.inferred_attribute_types is None
-        assert self.partial_types == []
-        assert self.deferred_nodes == []
-        assert len(self.scope.stack) == 1
-        assert self.partial_types == []
+        self.deferred_nodes = []
+        self.partial_types = []
+        self.inferred_attribute_types = None
+        self.scope = CheckerScope(self.tree)
 
     def check_first_pass(self) -> None:
         """Type check the entire file, but defer functions with unresolved references.
@@ -1557,6 +1555,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         Note that this doesn't do a full CFG analysis but uses a line number based
         heuristic that isn't correct in some (rare) cases.
         """
+        if v.is_final:
+            # Final vars are definitely never reassigned.
+            return False
+
         outers = self.tscope.outer_functions()
         if not outers:
             # Top-level function -- outer context is top level, and we can't reason about
