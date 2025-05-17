@@ -684,12 +684,19 @@ def matches_exclude(
     if fscache.isdir(subpath):
         subpath_str += "/"
     for exclude in excludes:
-        if re.search(exclude, subpath_str):
-            if verbose:
-                print(
-                    f"TRACE: Excluding {subpath_str} (matches pattern {exclude})", file=sys.stderr
-                )
-            return True
+        try:
+            if re.search(exclude, subpath_str):
+                if verbose:
+                    print(
+                        f"TRACE: Excluding {subpath_str} (matches pattern {exclude})", file=sys.stderr
+                    )
+                return True
+        except re.error as e:
+            print(f"error: The exclude {exclude} is an invalid regular expression, because:", e)
+            if '\\' in exclude:
+                print("(Hint: use / as a path separator, even if you're on Windows!)")
+            print("For more information on Python's flavor of regex, see: https://docs.python.org/3/library/re.html")
+            sys.exit(2)
     return False
 
 
