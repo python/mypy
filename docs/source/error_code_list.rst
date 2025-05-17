@@ -694,7 +694,7 @@ See :ref:`ignore-missing-imports` for how to work around these errors.
 .. _code-import-untyped:
 
 Check that import target can be found [import-untyped]
---------------------------------------------------------
+------------------------------------------------------
 
 Mypy generates an error if it can find the source code for an imported module,
 but that module does not provide type annotations (via :ref:`PEP 561 <installed-packages>`).
@@ -714,7 +714,7 @@ stub package. See :ref:`ignore-missing-imports` for more details.
 .. _code-import-untyped-stubs-available:
 
 Check that import target with known stubs can be found [import-untyped-stubs-available]
---------------------------------------------------------
+---------------------------------------------------------------------------------------
 
 Like :ref:`code-import-untyped`, but used when mypy knows there is an appropriate
 type stub package corresponding to the library, which you could install.
