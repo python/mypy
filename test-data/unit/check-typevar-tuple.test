@@ -2628,3 +2628,19 @@ def fn(f: Callable[[*tuple[T]], int]) -> Callable[[*tuple[T]], int]: ...
 def test(*args: Unpack[tuple[T]]) -> int: ...
 reveal_type(fn(test))  # N: Revealed type is "def [T] (T`1) -> builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testConstraintsIncludeTupleFallback]
+from typing import Generic, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+_FT = TypeVar("_FT", bound=type)
+
+def identity(smth: _FT) -> _FT:
+    return smth
+
+@identity
+class S(tuple[Unpack[Ts]], Generic[T, Unpack[Ts]]):
+    def f(self, x: T, /) -> T: ...
+[builtins fixtures/tuple.pyi]
