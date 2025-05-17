@@ -1,0 +1,25 @@
+[case testWeakrefRef]
+from weakref import ref
+def f(x: object) -> object:
+    return proxy(x, None)
+
+[out]
+def f(x):
+    x :: object
+    r0 :: object
+L0:
+    r0 = PyWeakref_NewRef(x, 0)
+    return r0
+
+[case testWeakrefProxy]
+from weakref import proxy
+def f(x: object) -> object:
+    return proxy(x, None)
+
+[out]
+def f(x):
+    x :: object
+    r0 :: object
+L0:
+    r0 = PyWeakref_NewProxy(x, 0)
+    return r0
