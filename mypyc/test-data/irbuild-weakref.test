@@ -5,9 +5,8 @@ def f(x: object, cb: Callable[[object], Any]) -> object:
     return ref(x, cb)
 
 [out]
-def f(x):
-    x :: object
-    cb :: object
+def f(x, cb):
+    x, cb :: object
     r0 :: object
 L0:
     r0 = PyWeakref_NewRef(x, cb)
@@ -20,9 +19,8 @@ def f(x: object, cb: Callable[[object], Any]) -> object:
     return proxy(x, cb)
 
 [out]
-def f(x):
-    x :: object
-    cb :: object
+def f(x, cb):
+    x, cb :: object
     r0 :: object
 L0:
     r0 = PyWeakref_NewProxy(x, cb)
