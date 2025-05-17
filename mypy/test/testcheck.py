@@ -25,7 +25,7 @@ from mypy.test.helpers import (
 from mypy.test.update_data import update_testcase_output
 
 try:
-    import lxml  # type: ignore[import-untyped]
+    import lxml
 except ImportError:
     lxml = None
 

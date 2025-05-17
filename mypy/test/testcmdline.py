@@ -20,7 +20,7 @@ from mypy.test.helpers import (
 )
 
 try:
-    import lxml  # type: ignore[import-untyped]
+    import lxml
 except ImportError:
     lxml = None
 
