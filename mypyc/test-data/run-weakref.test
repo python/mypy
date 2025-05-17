@@ -1,0 +1,25 @@
+# Test cases for weakrefs (compile and run)
+
+[case testWeakrefRef]
+from weakref import ref
+
+def test_weakref_ref():
+    obj = object()
+    r = ref(obj)
+    assert r() is obj
+    del obj
+    assert r() is None
+
+[case testWeakrefRef]
+from weakref import proxy
+
+def test_weakref_proxy():
+    class MyClass():
+        def test(self):
+            return True
+    obj = MyClass()
+    p = proxy(obj)
+    assert p.test() is True
+    del obj
+    with pytest.raises(ReferenceError):
+        p.test()
