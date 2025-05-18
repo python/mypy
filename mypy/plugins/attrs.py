@@ -1030,8 +1030,16 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     if magic_attr is None or not magic_attr.plugin_generated:
         return None
     init_method = typ.type.get_method("__init__") or typ.type.get_method(ATTRS_INIT_NAME)
-    if not isinstance(init_method, FuncDef) or not isinstance(init_method.type, CallableType):
-        return None
+    # case 1: normal FuncDef    
+    if isinstance(init_method, FuncDef) and isinstance(init_method.type, CallableType):
+        return init_method.type
+
+    # case 2: overloaded method
+    if isinstance(init_method, OverloadedFuncDef) and isinstance(init_method.type, Overloaded):
+        # use the first overload item as a representative
+        first = init_method.type.items[0]
+        if isinstance(first, CallableType):
+            return first
     return init_method.type
 
 
