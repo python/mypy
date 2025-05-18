@@ -1030,7 +1030,10 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     if magic_attr is None or not magic_attr.plugin_generated:
         return None
     init_method = typ.type.get_method("__init__") or typ.type.get_method(ATTRS_INIT_NAME)
-    # case 1: normal FuncDef    
+    if init_method is None:
+        return None
+
+    # case 1: normal FuncDef
     if isinstance(init_method, FuncDef) and isinstance(init_method.type, CallableType):
         return init_method.type
 
@@ -1040,7 +1043,8 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None:
         first = init_method.type.items[0]
         if isinstance(first, CallableType):
             return first
-    return init_method.type
+
+    return None
 
 
 def _fail_not_attrs_class(ctx: mypy.plugin.FunctionSigContext, t: Type, parent_t: Type) -> None:
