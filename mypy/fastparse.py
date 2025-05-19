@@ -263,7 +263,7 @@ def parse(
             raise e
 
     except SyntaxError as e:
-        message = e.msg
+        message = e.msg.capitalize()
         if feature_version > sys.version_info.minor and message.startswith("invalid syntax"):
             python_version_str = f"{options.python_version[0]}.{options.python_version[1]}"
             message += f"; you likely need to run mypy using Python {python_version_str} or newer"
