@@ -3563,3 +3563,18 @@ def foo(x: T):
     reveal_type(C)  # N: Revealed type is "Overload(def [T, S] (x: builtins.int, y: S`-1) -> __main__.C[__main__.Int[S`-1]], def [T, S] (x: builtins.str, y: S`-1) -> __main__.C[__main__.Str[S`-1]])"
     reveal_type(C(0, x))  # N: Revealed type is "__main__.C[__main__.Int[T`-1]]"
     reveal_type(C("yes", x))  # N: Revealed type is "__main__.C[__main__.Str[T`-1]]"
+
+[case testInstanceMethodBoundOnClass]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+class B(Generic[T]):
+    def foo(self) -> T: ...
+class C(B[T]): ...
+class D(C[int]): ...
+
+reveal_type(B.foo)  # N: Revealed type is "def [T] (self: __main__.B[T`1]) -> T`1"
+reveal_type(B[int].foo)  # N: Revealed type is "def (self: __main__.B[builtins.int]) -> builtins.int"
+reveal_type(C.foo)  # N: Revealed type is "def [T] (self: __main__.B[T`1]) -> T`1"
+reveal_type(C[int].foo)  # N: Revealed type is "def (self: __main__.B[builtins.int]) -> builtins.int"
+reveal_type(D.foo)  # N: Revealed type is "def (self: __main__.B[builtins.int]) -> builtins.int"
