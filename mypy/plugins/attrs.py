@@ -1094,7 +1094,7 @@ def _get_expanded_attr_types(
             _fail_not_attrs_class(ctx, display_typ, parent_typ)
             return None
         if isinstance(init_func, AnyType):
-            return AnyType(TypeOfAny.special_form)
+            return None
         init_func = expand_type_by_instance(init_func, typ)
         # [1:] to skip the self argument of AttrClass.__init__
         field_names = cast(list[str], init_func.arg_names[1:])
