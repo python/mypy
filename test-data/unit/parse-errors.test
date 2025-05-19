@@ -12,7 +12,7 @@
 def f()
   pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testUnexpectedIndent]
 1
@@ -39,18 +39,18 @@ file:3: error: unindent does not match any outer indentation level
 a*
 a+1*
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testDoubleStar]
 **a
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testMissingSuperClass]
 class A(:
   pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testUnexpectedEof]
 if 1:
@@ -70,12 +70,12 @@ file:1: error: positional argument follows keyword argument unpacking
 [case testInvalidBareAsteriskAndVarArgs2]
 def f(*x: A, *) -> None: pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidBareAsteriskAndVarArgs3]
 def f(*, *x: A) -> None: pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidBareAsteriskAndVarArgs4]
 def f(*, **x: A) -> None: pass
@@ -101,13 +101,13 @@ file:1: error: non-default argument follows default argument
 def f(**x, y):
    pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidFuncDefArgs4]
 def f(**x, y=x):
     pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidTypeComment]
 0
@@ -288,76 +288,76 @@ file:1: error: Missing parentheses in call to 'print'. Did you mean print(1)?
 [case testInvalidConditionInConditionalExpression]
 1 if 2, 3 else 4
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidConditionInConditionalExpression2]
 1 if x for y in z else 4
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidConditionInConditionalExpression3]
 1 if x else for y in z
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testYieldFromNotRightParameter]
 def f():
     yield from
 [out]
-file:2: error: invalid syntax
+file:2: error: Invalid syntax
 
 [case testYieldFromAfterReturn]
 def f():
     return yield from h()
 [out]
-file:2: error: invalid syntax
+file:2: error: Invalid syntax
 
 [case testImportDotModule]
 import .x
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testImportDot]
 import .
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidFunctionName]
 def while(): pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testInvalidEllipsis1]
 ...0
 ..._
 ...a
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testBlockStatementInSingleLineIf]
 if 1: if 2: pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testBlockStatementInSingleLineIf2]
 if 1: while 2: pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testBlockStatementInSingleLineIf3]
 if 1: for x in y: pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testUnexpectedEllipsis]
 a = a...
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testParseErrorBeforeUnicodeLiteral]
 x u'y'
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testParseErrorInExtendedSlicing]
 x[:,
@@ -409,27 +409,27 @@ file:0: error: unknown encoding: uft8
 2L
 0x2L
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testPython2LegacyInequalityInPython3]
 1 <> 2
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testLambdaInListComprehensionInPython3]
 ([ 0 for x in 1, 2 if 3 ])
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testTupleArgListInPython3]
 def f(x, (y, z)): pass
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testBackquoteInPython3]
 `1 + 2`
 [out]
-file:1: error: invalid syntax
+file:1: error: Invalid syntax
 
 [case testSmartQuotes]
 foo = ‘bar’
@@ -442,4 +442,4 @@ try:
 except KeyError, IndexError:
     pass
 [out]
-file:3: error: invalid syntax
+file:3: error: Invalid syntax
