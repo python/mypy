@@ -97,7 +97,7 @@ from mypy.types import (
     get_proper_types,
 )
 from mypy.typetraverser import TypeTraverserVisitor
-from mypy.util import plural_s, unmangle
+from mypy.util import plural_s, unmangle, get_qualified_name
 
 TYPES_FOR_UNIMPORTED_HINTS: Final = {
     "typing.Any",
@@ -1379,15 +1379,7 @@ class MessageBuilder:
             )
 
     def override_target(self, name: str, name_in_super: str, supertype: str) -> str:
-        def _get_qualified_name(class_name: str) -> str:
-            import sys
-            current_module = sys.modules[__name__]
-            cls = getattr(current_module, class_name, None)
-            if cls is None:
-                return class_name
-            return f"{cls.__module__}.{cls.__name__}"
-
-        target = f'supertype "{_get_qualified_name(supertype)}"'
+        target = f'supertype "{get_qualified_name(supertype)}"'
         if name_in_super != name:
             target = f'"{name_in_super}" of {target}'
         return target

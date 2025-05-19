@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import io
 import json
 import os
@@ -942,3 +943,16 @@ def json_loads(data: bytes) -> Any:
     if orjson is not None:
         return orjson.loads(data)
     return json.loads(data)
+
+
+def get_qualified_name(class_name: str) -> str:
+    for module_name, module in sys.modules.items():
+        if module is None:
+            continue
+        if hasattr(module, class_name):
+            cls = getattr(module, class_name)
+            if inspect.isclass(cls):
+                return f"{module.__name__}.{class_name}"
+    return class_name
+
+
