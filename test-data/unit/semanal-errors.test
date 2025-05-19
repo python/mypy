@@ -498,7 +498,7 @@ main:2: error: Cannot delete function call
 x = 1
 del x + 1
 [out]
-main:2: error: cannot delete operator
+main:2: error: Cannot delete operator
 [out version>=3.10]
 main:2: error: Cannot delete expression
 
