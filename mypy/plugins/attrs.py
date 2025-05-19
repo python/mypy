@@ -1032,18 +1032,15 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     init_method = typ.type.get_method("__init__") or typ.type.get_method(ATTRS_INIT_NAME)
     if init_method is None:
         return None
-
+    
     # case 1: normal FuncDef
     if isinstance(init_method, FuncDef) and isinstance(init_method.type, CallableType):
         return init_method.type
 
     # case 2: overloaded method
     if isinstance(init_method, OverloadedFuncDef) and isinstance(init_method.type, Overloaded):
-        # use the first overload item as a representative
-        first = init_method.type.items[0]
-        if isinstance(first, CallableType):
-            return first
-
+        if len(init_method.type.items) >= 1:
+            return AnyType(TypeOfAny.explicit)
     return None
 
 
@@ -1096,6 +1093,9 @@ def _get_expanded_attr_types(
     elif isinstance(typ, Instance):
         init_func = _get_attrs_init_type(typ)
         if init_func is None:
+            _fail_not_attrs_class(ctx, display_typ, parent_typ)
+            return None
+        if isinstance(init_func, AnyType):
             _fail_not_attrs_class(ctx, display_typ, parent_typ)
             return None
         init_func = expand_type_by_instance(init_func, typ)
