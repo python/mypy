@@ -693,11 +693,16 @@ def matches_exclude(
                     )
                 return True
         except re.error as e:
-            print(f"error: The exclude {exclude} is an invalid regular expression, because:", e)
-            if "\\" in exclude:
-                print("(Hint: use / as a path separator, even if you're on Windows!)")
             print(
-                "For more information on Python's flavor of regex, see: https://docs.python.org/3/library/re.html"
+                f"error: The exclude {exclude} is an invalid regular expression, because: {e}"
+                + (
+                    "\n(Hint: use / as a path separator, even if you're on Windows!)"
+                    if "\\" in exclude
+                    else ""
+                )
+                + "\nFor more information on Python's flavor of regex, see:"
+                + " https://docs.python.org/3/library/re.html",
+                file=sys.stderr,
             )
             sys.exit(2)
     return False
@@ -796,7 +801,8 @@ def default_lib_path(
             print(
                 "error: --custom-typeshed-dir does not point to a valid typeshed ({})".format(
                     custom_typeshed_dir
-                )
+                ),
+                file=sys.stderr,
             )
             sys.exit(2)
     else:
