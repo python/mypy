@@ -4277,6 +4277,35 @@ class Y(missing.Base):
     generated_kwargs: float
     generated_kwargs_: float
 
+[case testDataclassAliasPrinterVariations_semanal]
+from dataclasses import dataclass, field
+
+@dataclass
+class X:
+    a: int = field(default=-1)
+    b: set[int] = field(default={0})
+    c: list[int] = field(default=[x for x in range(5)])
+    d: dict[int, int] = field(default={x: x for x in range(5)})
+    e: tuple[int, int] = field(default=(1, 2, 3)[1:])
+    f: tuple[int, int] = field(default=(1, 2, 3)[:2])
+    g: tuple[int, int] = field(default=(1, 2, 3)[::2])
+    h: tuple[int] = field(default=(1, 2, 3)[1::2])
+
+[out]
+from _typeshed import Incomplete
+from dataclasses import dataclass, field
+
+@dataclass
+class X:
+    a: int = field(default=-1)
+    b: set[int] = field(default={0})
+    c: list[int] = field(default=Incomplete)
+    d: dict[int, int] = field(default=Incomplete)
+    e: tuple[int, int] = field(default=(1, 2, 3)[1:])
+    f: tuple[int, int] = field(default=(1, 2, 3)[:2])
+    g: tuple[int, int] = field(default=(1, 2, 3)[::2])
+    h: tuple[int] = field(default=(1, 2, 3)[1::2])
+
 [case testDataclassTransform]
 # dataclass_transform detection only works with semantic analysis.
 # Test stubgen doesn't break too badly without it.
