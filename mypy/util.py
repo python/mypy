@@ -954,5 +954,3 @@ def get_qualified_name(class_name: str) -> str:
             if inspect.isclass(cls):
                 return f"{module.__name__}.{class_name}"
     return class_name
-
-

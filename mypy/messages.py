@@ -97,7 +97,7 @@ from mypy.types import (
     get_proper_types,
 )
 from mypy.typetraverser import TypeTraverserVisitor
-from mypy.util import plural_s, unmangle, get_qualified_name
+from mypy.util import get_qualified_name, plural_s, unmangle
 
 TYPES_FOR_UNIMPORTED_HINTS: Final = {
     "typing.Any",
