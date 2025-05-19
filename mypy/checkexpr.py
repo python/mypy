@@ -8,7 +8,7 @@ import time
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Callable, ClassVar, Final, Optional, cast, overload
+from typing import Any, Callable, ClassVar, Final, Optional, cast, overload
 from typing_extensions import TypeAlias as _TypeAlias, assert_never
 
 import mypy.checker
@@ -3587,7 +3587,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def literal_value_from_expr(
         self, expr: Expression, typ: Type
-    ) -> tuple[list[str | int], str, bool] | None:
+    ) -> tuple[list[Any], str, bool] | None:
         if isinstance(expr, StrExpr):
             return [expr.value], "builtins.str", False
         if isinstance(expr, IntExpr):
@@ -3632,10 +3632,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             return None
 
         values: list[int | str] = sorted(
-            {
-                val[0] + val[1]  # type: ignore[operator]
-                for val in itertools.product(lvalue[0], rvalue[0])
-            }
+            {val[0] + val[1] for val in itertools.product(lvalue[0], rvalue[0])}
         )
         if len(values) == 1:
             return LiteralType(values[0], self.named_type(lvalue[1]))
