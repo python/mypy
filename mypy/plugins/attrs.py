@@ -1022,7 +1022,7 @@ class MethodAdder:
         )
 
 
-def _get_attrs_init_type(typ: Instance) -> CallableType | None:
+def _get_attrs_init_type(typ: Instance) -> CallableType | None | AnyType:
     """
     If `typ` refers to an attrs class, get the type of its initializer method.
     """
@@ -1032,7 +1032,6 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     init_method = typ.type.get_method("__init__") or typ.type.get_method(ATTRS_INIT_NAME)
     if init_method is None:
         return None
-
     # case 1: normal FuncDef
     if isinstance(init_method, FuncDef) and isinstance(init_method.type, CallableType):
         return init_method.type
