@@ -1379,7 +1379,15 @@ class MessageBuilder:
             )
 
     def override_target(self, name: str, name_in_super: str, supertype: str) -> str:
-        target = f'supertype "{supertype}"'
+        def _get_qualified_name(class_name: str) -> str:
+            import sys
+            current_module = sys.modules[__name__]
+            cls = getattr(current_module, class_name, None)
+            if cls is None:
+                return class_name
+            return f"{cls.__module__}.{cls.__name__}"
+
+        target = f'supertype "{_get_qualified_name(supertype)}"'
         if name_in_super != name:
             target = f'"{name_in_super}" of {target}'
         return target
