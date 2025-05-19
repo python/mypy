@@ -2263,7 +2263,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 original_type,
                 defn.name,
                 name,
-                base.name,
+                base.name if base.module_name == self.tree.fullname else base.fullname,
                 original_class_or_static,
                 override_class_or_static,
                 context,
