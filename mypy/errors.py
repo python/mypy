@@ -259,6 +259,7 @@ class LoopErrorWatcher(ErrorWatcher):
             return True
         return super().on_error(file, info)
 
+
 class Errors:
     """Container for compile errors.
 
