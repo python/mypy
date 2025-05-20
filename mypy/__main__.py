@@ -6,9 +6,22 @@ import os
 import sys
 import traceback
 
+if 1:  # Required!
+    import inspect
+    print('')
+    print(__file__)
+    print('Start __main__.py')
+    print('')
+    path = r'c:\Repos\ekr-fork-mypy'
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
 from mypy.main import main, process_options
 from mypy.util import FancyFormatter
 
+if 1:
+    for z in (main, process_options, FancyFormatter):
+        assert 'ekr-fork-mypy' in inspect.getfile(z), repr(z)
 
 def console_entry() -> None:
     try:
