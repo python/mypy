@@ -513,6 +513,7 @@ class GroupGenerator:
         self.use_shared_lib = group_name is not None
         self.compiler_options = compiler_options
         self.multi_file = compiler_options.multi_file
+        self.multi_phase_init = True
 
     @property
     def group_suffix(self) -> str:
@@ -869,9 +870,23 @@ class GroupGenerator:
         """Emit the PyModuleDef struct for a module and the module init function."""
         module_prefix = emitter.names.private_name(module_name)
         self.emit_module_exec_func(emitter, module_name, module_prefix, module)
+        if self.multi_phase_init:
+            self.emit_module_def_slots(emitter, module_prefix)
         self.emit_module_methods(emitter, module_name, module_prefix, module)
         self.emit_module_def_struct(emitter, module_name, module_prefix)
         self.emit_module_init_func(emitter, module_name, module_prefix)
+
+    def emit_module_def_slots(self, emitter: Emitter, module_prefix: str) -> None:
+        name = f"{module_prefix}_slots"
+        exec_name = f"{module_prefix}_exec"
+
+        emitter.emit_line(f"static PyModuleDef_Slot {name}[] = {{")
+        emitter.emit_line(f"{{Py_mod_exec, {exec_name}}},")
+        emitter.emit_line(
+            "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},"
+        )
+        emitter.emit_line("{0, NULL},")
+        emitter.emit_line("};")
 
     def emit_module_methods(
         self, emitter: Emitter, module_name: str, module_prefix: str, module: ModuleIR
@@ -905,11 +920,15 @@ class GroupGenerator:
             "PyModuleDef_HEAD_INIT,",
             f'"{module_name}",',
             "NULL, /* docstring */",
-            "-1,       /* size of per-interpreter state of the module,",
-            "             or -1 if the module keeps state in global variables. */",
-            f"{module_prefix}module_methods",
-            "};",
+            "0,       /* size of per-interpreter state of the module */",
+            f"{module_prefix}module_methods,",
         )
+        if self.multi_phase_init:
+            slots_name = f"{module_prefix}_slots"
+            emitter.emit_line(f"{slots_name}, /* m_slots */")
+        else:
+            emitter.emit_line("NULL,")
+        emitter.emit_line("};")
         emitter.emit_line()
 
     def emit_module_exec_func(
@@ -927,6 +946,8 @@ class GroupGenerator:
         module_static = self.module_internal_static_name(module_name, emitter)
         emitter.emit_lines(declaration, "{")
         emitter.emit_line("PyObject* modname = NULL;")
+        if self.multi_phase_init:
+            emitter.emit_line(f"{module_static} = module;")
         emitter.emit_line(
             f'modname = PyObject_GetAttrString((PyObject *){module_static}, "__name__");'
         )
@@ -958,7 +979,10 @@ class GroupGenerator:
 
         emitter.emit_line("return 0;")
         emitter.emit_lines("fail:")
-        emitter.emit_lines(f"Py_CLEAR({module_static});", "Py_CLEAR(modname);")
+        if self.multi_phase_init:
+            emitter.emit_lines(f"{module_static} = NULL;", "Py_CLEAR(modname);")
+        else:
+            emitter.emit_lines(f"Py_CLEAR({module_static});", "Py_CLEAR(modname);")
         for name, typ in module.final_names:
             static_name = emitter.static_name(name, module_name)
             emitter.emit_dec_ref(static_name, typ, is_xdec=True)
@@ -979,6 +1003,12 @@ class GroupGenerator:
         else:
             declaration = f"PyObject *CPyInit_{exported_name(module_name)}(void)"
         emitter.emit_lines(declaration, "{")
+
+        if self.multi_phase_init:
+            def_name = f"{module_prefix}module"
+            emitter.emit_line(f"return PyModuleDef_Init(&{def_name});")
+            emitter.emit_line("}")
+            return
 
         exec_func = f"{module_prefix}_exec"
 
