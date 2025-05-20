@@ -867,8 +867,15 @@ class GroupGenerator:
 
     def generate_module_def(self, emitter: Emitter, module_name: str, module: ModuleIR) -> None:
         """Emit the PyModuleDef struct for a module and the module init function."""
-        # Emit module methods
         module_prefix = emitter.names.private_name(module_name)
+        self.emit_module_methods(emitter, module_name, module_prefix, module)
+        self.emit_module_def_struct(emitter, module_name, module_prefix)
+        self.emit_module_init_func(emitter, module_name, module_prefix, module)
+
+    def emit_module_methods(
+        self, emitter: Emitter, module_name: str, module_prefix: str, module: ModuleIR
+    ) -> None:
+        """Emit module methods (the static PyMethodDef table)."""
         emitter.emit_line(f"static PyMethodDef {module_prefix}module_methods[] = {{")
         for fn in module.functions:
             if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
@@ -888,7 +895,10 @@ class GroupGenerator:
         emitter.emit_line("};")
         emitter.emit_line()
 
-        # Emit module definition struct
+    def emit_module_def_struct(
+        self, emitter: Emitter, module_name: str, module_prefix: str
+    ) -> None:
+        """Emit the static module definition struct (PyModuleDef)."""
         emitter.emit_lines(
             f"static struct PyModuleDef {module_prefix}module = {{",
             "PyModuleDef_HEAD_INIT,",
@@ -900,11 +910,18 @@ class GroupGenerator:
             "};",
         )
         emitter.emit_line()
-        # Emit module init function. If we are compiling just one module, this
-        # will be the C API init function. If we are compiling 2+ modules, we
-        # generate a shared library for the modules and shims that call into
-        # the shared library, and in this case we use an internal module
-        # initialized function that will be called by the shim.
+
+    def emit_module_init_func(
+        self, emitter: Emitter, module_name: str, module_prefix: str, module: ModuleIR
+    ) -> None:
+        """Emit the module init function.
+
+        If we are compiling just one module, this will be the C API init
+        function. If we are compiling 2+ modules, we generate a shared
+        library for the modules and shims that call into the shared
+        library, and in this case we use an internal module initialized
+        function that will be called by the shim.
+        """
         if not self.use_shared_lib:
             declaration = f"PyMODINIT_FUNC PyInit_{module_name}(void)"
         else:
