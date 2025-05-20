@@ -24,7 +24,7 @@ from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
-from mypy.errors import Errors, ErrorWatcher, report_internal_error
+from mypy.errors import Errors, ErrorWatcher, LoopErrorWatcher, report_internal_error
 from mypy.expandtype import expand_type
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
@@ -600,19 +600,23 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # on without bound otherwise)
             widened_old = len(self.widened_vars)
 
-            # Disable error types that we cannot safely identify in intermediate iteration steps:
-            warn_unreachable = self.options.warn_unreachable
-            warn_redundant = codes.REDUNDANT_EXPR in self.options.enabled_error_codes
-            self.options.warn_unreachable = False
-            self.options.enabled_error_codes.discard(codes.REDUNDANT_EXPR)
-
             iter = 1
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
                     if on_enter_body is not None:
                         on_enter_body()
 
-                    self.accept(body)
+                    # We collect errors that indicate unreachability or redundant expressions
+                    # in the first iteration and remove them in subsequent iterations if the
+                    # related statement becomes reachable or non-redundant due to changes in
+                    # partial types:
+                    with LoopErrorWatcher(self.msg.errors) as watcher:
+                        self.accept(body)
+                    if iter == 1:
+                        uselessness_errors = watcher.useless_statements
+                    else:
+                        uselessness_errors.intersection_update(watcher.useless_statements)
+
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
                 widened_new = len(self.widened_vars)
                 # Perform multiple iterations if something changed that might affect
@@ -633,16 +637,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if iter == 20:
                     raise RuntimeError("Too many iterations when checking a loop")
 
-            # If necessary, reset the modified options and make up for the postponed error checks:
-            self.options.warn_unreachable = warn_unreachable
-            if warn_redundant:
-                self.options.enabled_error_codes.add(codes.REDUNDANT_EXPR)
-            if warn_unreachable or warn_redundant:
-                with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
-                    if on_enter_body is not None:
-                        on_enter_body()
-
-                    self.accept(body)
+            # Report those unreachable and redundant expression errors that have been
+            # identified in all iteration steps, as well as the revealed types identified
+            # in the last iteration step:
+            for notes_and_errors in itertools.chain(uselessness_errors, watcher.revealed_types):
+                context = Context(line=notes_and_errors[2], column=notes_and_errors[3])
+                context.end_line = notes_and_errors[4]
+                context.end_column = notes_and_errors[5]
+                reporter = self.msg.note if notes_and_errors[0] == codes.MISC else self.msg.fail
+                reporter(notes_and_errors[1], context, code=notes_and_errors[0])
 
             # If exit_condition is set, assume it must be False on exit from the loop:
             if exit_condition:

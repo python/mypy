@@ -6,7 +6,7 @@ import traceback
 from collections import defaultdict
 from collections.abc import Iterable
 from typing import Callable, Final, NoReturn, Optional, TextIO, TypeVar
-from typing_extensions import Literal, TypeAlias as _TypeAlias
+from typing_extensions import Literal, Self, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
 from mypy.error_formatter import ErrorFormatter
@@ -179,7 +179,7 @@ class ErrorWatcher:
         self._filter_deprecated = filter_deprecated
         self._filtered: list[ErrorInfo] | None = [] if save_filtered_errors else None
 
-    def __enter__(self) -> ErrorWatcher:
+    def __enter__(self) -> Self:
         self.errors._watchers.append(self)
         return self
 
@@ -219,6 +219,45 @@ class ErrorWatcher:
         assert self._filtered is not None
         return self._filtered
 
+
+class LoopErrorWatcher(ErrorWatcher):
+    """Error watcher that filters and separately collects unreachable errors, redundant
+    expression errors, and revealed type notes when analysing loops iteratively to help
+    avoid making too-hasty reports."""
+
+    # Meaning of the entries: ErrorCode, message, line, column, end_line, end_column:
+    useless_statements: set[tuple[ErrorCode, str, int, int, int, int]]
+    revealed_types: set[tuple[ErrorCode, str, int, int, int, int]]
+
+    def __init__(
+        self,
+        errors: Errors,
+        *,
+        filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
+        save_filtered_errors: bool = False,
+        filter_deprecated: bool = False,
+    ) -> None:
+        super().__init__(
+            errors,
+            filter_errors=filter_errors,
+            save_filtered_errors=save_filtered_errors,
+            filter_deprecated=filter_deprecated,
+        )
+        self.useless_statements = set()
+        self.revealed_types = set()
+
+    def on_error(self, file: str, info: ErrorInfo) -> bool:
+        if info.code in (codes.UNREACHABLE, codes.REDUNDANT_EXPR):
+            self.useless_statements.add(
+                (info.code, info.message, info.line, info.column, info.end_line, info.end_column)
+            )
+            return True
+        if info.code == codes.MISC and info.message.startswith("Revealed type is "):
+            self.revealed_types.add(
+                (info.code, info.message, info.line, info.column, info.end_line, info.end_column)
+            )
+            return True
+        return super().on_error(file, info)
 
 class Errors:
     """Container for compile errors.
