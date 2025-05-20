@@ -289,7 +289,7 @@ x in 1,  # E: Unsupported right operand type for in ("int")
 [case testTrailingCommaInIfParsing]
 if x in 1, : pass
 [out]
-main:1: error: invalid syntax
+main:1: error: Invalid syntax
 
 [case testInitReturnTypeError]
 class C:

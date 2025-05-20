@@ -1,5 +1,5 @@
 [case testNewSyntaxSyntaxError]
-x: int: int  # E: invalid syntax
+x: int: int  # E: Invalid syntax
 [out]
 
 [case testNewSyntaxBasics]
@@ -126,4 +126,4 @@ reveal_type(f'{1}') # N: Revealed type is "builtins.str"
 # flags: --python-version 3.99
 x *** x this is what future python looks like public static void main String[] args await goto exit
 [out]
-main:2: error: invalid syntax; you likely need to run mypy using Python 3.99 or newer
+main:2: error: Invalid syntax; you likely need to run mypy using Python 3.99 or newer

@@ -270,7 +270,9 @@ def parse(
         errors.report(
             e.lineno if e.lineno is not None else -1,
             e.offset,
-            message,
+            re.sub(
+                r"^(\s*\w)", lambda m: m.group(1).upper(), message
+            ),  # Standardizing error message
             blocker=True,
             code=codes.SYNTAX,
         )
