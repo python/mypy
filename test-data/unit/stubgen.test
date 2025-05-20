@@ -4742,7 +4742,7 @@ import pydantic
 class ConfigSettings(pydantic.BaseModel):
     # Fields without initialization
     db_name: str
-    port: int 
+    port: int
     debug: bool
 [out]
 import pydantic
@@ -4758,7 +4758,7 @@ from pydantic import BaseModel
 class Address(BaseModel):
     street: str
     city: str
-    
+
 class User(BaseModel):
     name: str
     age: int
@@ -4820,10 +4820,10 @@ from pydantic import BaseModel
 class User(BaseModel):
     id: int
     name: str
-    
+
     def get_display_name(self) -> str:
         return f"User {self.name}"
-    
+
     @property
     def display_id(self) -> str:
         return f"ID: {self.id}"
