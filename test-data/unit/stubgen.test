@@ -4718,3 +4718,121 @@ class DCMeta(type): ...
 
 class DC(metaclass=DCMeta):
     x: str
+
+[case testPydanticBaseModel]
+import pydantic
+
+class User(pydantic.BaseModel):
+    id: int
+    name: str
+    active: bool = True
+    optional_field: str | None = None
+[out]
+import pydantic
+
+class User(pydantic.BaseModel):
+    id: int
+    name: str
+    active: bool = ...
+    optional_field: str | None = ...
+
+[case testPydanticBaseModelWithAnnotationsOnly]
+import pydantic
+
+class ConfigSettings(pydantic.BaseModel):
+    # Fields without initialization
+    db_name: str
+    port: int 
+    debug: bool
+[out]
+import pydantic
+
+class ConfigSettings(pydantic.BaseModel):
+    db_name: str
+    port: int
+    debug: bool
+
+[case testPydanticNestedBaseModel]
+from pydantic import BaseModel
+
+class Address(BaseModel):
+    street: str
+    city: str
+    
+class User(BaseModel):
+    name: str
+    age: int
+    address: Address | None = None
+[out]
+from pydantic import BaseModel
+
+class Address(BaseModel):
+    street: str
+    city: str
+
+class User(BaseModel):
+    name: str
+    age: int
+    address: Address | None = ...
+
+[case testPydanticBaseModelComplex]
+from pydantic import BaseModel
+from typing import Dict, List, Optional, Union
+
+class Item(BaseModel):
+    name: str
+    description: Optional[str] = None
+    tags: List[str] = []
+    properties: Dict[str, Union[str, int, float, bool]] = {}
+[out]
+from pydantic import BaseModel
+
+class Item(BaseModel):
+    name: str
+    description: str | None = ...
+    tags: list[str] = ...
+    properties: dict[str, str | int | float | bool] = ...
+
+[case testPydanticBaseModelInheritance]
+from pydantic import BaseModel
+
+class BaseUser(BaseModel):
+    id: int
+    active: bool = True
+
+class User(BaseUser):
+    name: str
+    email: str
+[out]
+from pydantic import BaseModel
+
+class BaseUser(BaseModel):
+    id: int
+    active: bool = ...
+
+class User(BaseUser):
+    name: str
+    email: str
+
+[case testPydanticModelWithMethods]
+from pydantic import BaseModel
+
+class User(BaseModel):
+    id: int
+    name: str
+    
+    def get_display_name(self) -> str:
+        return f"User {self.name}"
+    
+    @property
+    def display_id(self) -> str:
+        return f"ID: {self.id}"
+[out]
+from pydantic import BaseModel
+
+class User(BaseModel):
+    id: int
+    name: str
+    def get_display_name(self) -> str: ...
+    @property
+    def display_id(self) -> str: ...
