@@ -885,6 +885,7 @@ class GroupGenerator:
         emitter.emit_line(
             "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},"
         )
+        emitter.emit_line("{Py_mod_gil, Py_MOD_GIL_NOT_USED},")
         emitter.emit_line("{0, NULL},")
         emitter.emit_line("};")
 
