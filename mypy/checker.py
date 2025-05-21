@@ -1687,16 +1687,21 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
 
         if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
-            if fdef.type is None:
-                if not has_explicit_annotation and self.options.disallow_untyped_defs:
+            if fdef.type is None and self.options.disallow_untyped_defs:
+                if not fdef.arguments or (
+                    len(fdef.arguments) == 1
+                    and (fdef.arguments[0].variable.is_self or fdef.arguments[0].variable.is_cls)
+                ):
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                else:
                     self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
-                    if not has_return_statement(fdef) and not fdef.is_generator:
-                        self.note(
-                            'Use "-> None" if function does not return a value',
-                            fdef,
-                            code=codes.NO_UNTYPED_DEF,
-                        )
 
+                if not has_return_statement(fdef) and not fdef.is_generator:
+                    self.note(
+                        'Use "-> None" if function does not return a value',
+                        fdef,
+                        code=codes.NO_UNTYPED_DEF,
+                    )
             elif isinstance(fdef.type, CallableType):
                 handle_return_type_annotation()
                 handle_function_args_type_annotation()

@@ -371,13 +371,13 @@ def g(x: int):  # E: Function is missing a return type annotation  [no-untyped-d
 def h(x) -> None:  # E: Function is missing a type annotation for one or more arguments: "x"  [no-untyped-def]
     pass
 
-def gen():  # E: Function is missing a type annotation  [no-untyped-def]
+def gen():  # E: Function is missing a return type annotation  [no-untyped-def]
     yield 1
 
 def gen2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     yield 1
 
-async def asyncf():  # E: Function is missing a type annotation  [no-untyped-def]
+async def asyncf():  # E: Function is missing a return type annotation  [no-untyped-def]
     return 0
 
 async def asyncf2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
