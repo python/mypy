@@ -3777,6 +3777,8 @@ class MatchNames:
     def __exit__(self, type, value, traceback): ...
 
 [out]
+import types
+
 class MismatchNames:
     def __exit__(self, tp: type[BaseException] | None, val: BaseException | None, tb: types.TracebackType | None) -> None: ...
 
