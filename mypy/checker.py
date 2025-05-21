@@ -2117,7 +2117,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             and (self.options.check_untyped_defs or not defn.is_dynamic())
             and (
                 # don't check override for synthesized __replace__ methods from dataclasses
-                defn.name != "__replace__" or defn.info.metadata.get("dataclass_tag") is None
+                defn.name != "__replace__"
+                or defn.info.metadata.get("dataclass_tag") is None
             )
         )
         found_method_base_classes: list[TypeInfo] = []
@@ -4291,8 +4292,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, (TupleExpr, ListExpr)):
             types = [
-                self.check_lvalue(sub_expr)[0]
-                or
+                self.check_lvalue(sub_expr)[0] or
                 # This type will be used as a context for further inference of rvalue,
                 # we put Uninhabited if there is no information available from lvalue.
                 UninhabitedType()
