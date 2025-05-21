@@ -685,6 +685,12 @@ g(p)  # type: ignore[arg-type]
 def f():  # type: ignore[no-untyped-def]
     pass
 
+[case testErrorCodeNoneReturnNoteIgnoreMultipleArgs]
+# flags: --disallow-untyped-defs
+
+def f(a, b:int, c):  # type: ignore[no-untyped-def]
+    pass
+
 [case testErrorCodeVarianceNoteIgnore]
 from typing import List
 def f(x: List[object]) -> None: pass
