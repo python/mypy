@@ -50,10 +50,12 @@ Some important properties:
 
 from __future__ import annotations
 
+import re
+import warnings
 from collections.abc import Collection, Iterable, Iterator
 from contextlib import contextmanager
 from typing import Any, Callable, Final, TypeVar, cast
-from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
+from typing_extensions import TypeAlias as _TypeAlias, TypeGuard, assert_never
 
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
@@ -136,6 +138,7 @@ from mypy.nodes import (
     ListExpr,
     Lvalue,
     MatchStmt,
+    MaybeTypeExpression,
     MemberExpr,
     MypyFile,
     NamedTupleExpr,
@@ -172,6 +175,7 @@ from mypy.nodes import (
     TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
+    TypeFormExpr,
     TypeInfo,
     TypeParam,
     TypeVarExpr,
@@ -191,7 +195,7 @@ from mypy.nodes import (
     type_aliases_source_versions,
     typing_extensions_aliases,
 )
-from mypy.options import Options
+from mypy.options import TYPE_FORM, Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -339,6 +343,15 @@ SCOPE_ANNOTATION: Final = 4  # Annotation scopes for type parameters and aliases
 
 # Used for tracking incomplete references
 Tag: _TypeAlias = int
+
+
+# Matches two words separated by whitespace, where each word lacks
+# any symbols which have special meaning in a type expression.
+#
+# Any string literal matching this common pattern cannot be a valid
+# type expression and can be ignored quickly when attempting to parse a
+# string literal as a type expression.
+_MULTIPLE_WORDS_NONTYPE_RE = re.compile(r'\s*[^\s.\'"|\[]+\s+[^\s.\'"|\[]')
 
 
 class SemanticAnalyzer(
@@ -3245,6 +3258,7 @@ class SemanticAnalyzer(
         self.store_final_status(s)
         self.check_classvar(s)
         self.process_type_annotation(s)
+        self.analyze_rvalue_as_type_form(s)
         self.apply_dynamic_class_hook(s)
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
@@ -3579,6 +3593,10 @@ class SemanticAnalyzer(
                 is_final=s.is_final_def,
                 has_explicit_value=has_explicit_value,
             )
+
+    def analyze_rvalue_as_type_form(self, s: AssignmentStmt) -> None:
+        if TYPE_FORM in self.options.enable_incomplete_feature:
+            self.try_parse_as_type_expression(s.rvalue)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
         if not isinstance(s.rvalue, CallExpr):
@@ -5316,6 +5334,8 @@ class SemanticAnalyzer(
             self.fail('"return" not allowed in except* block', s, serious=True)
         if s.expr:
             s.expr.accept(self)
+            if TYPE_FORM in self.options.enable_incomplete_feature:
+                self.try_parse_as_type_expression(s.expr)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
         self.statement = s
@@ -5836,10 +5856,31 @@ class SemanticAnalyzer(
             with self.allow_unbound_tvars_set():
                 for a in expr.args:
                     a.accept(self)
+        elif refers_to_fullname(expr.callee, ("typing.TypeForm", "typing_extensions.TypeForm")):
+            # Special form TypeForm(...).
+            if not self.check_fixed_args(expr, 1, "TypeForm"):
+                return
+            # Translate first argument to an unanalyzed type.
+            try:
+                typ = self.expr_to_unanalyzed_type(expr.args[0])
+            except TypeTranslationError:
+                self.fail("TypeForm argument is not a type", expr)
+                # Suppress future error: "<typing special form>" not callable
+                expr.analyzed = CastExpr(expr.args[0], AnyType(TypeOfAny.from_error))
+                return
+            # Piggyback TypeFormExpr object to the CallExpr object; it takes
+            # precedence over the CallExpr semantics.
+            expr.analyzed = TypeFormExpr(typ)
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
+            expr.analyzed.accept(self)
         else:
             # Normal call expression.
+            calculate_type_forms = TYPE_FORM in self.options.enable_incomplete_feature
             for a in expr.args:
                 a.accept(self)
+                if calculate_type_forms:
+                    self.try_parse_as_type_expression(a)
 
             if (
                 isinstance(expr.callee, MemberExpr)
@@ -6106,6 +6147,11 @@ class SemanticAnalyzer(
 
     def visit_cast_expr(self, expr: CastExpr) -> None:
         expr.expr.accept(self)
+        analyzed = self.anal_type(expr.type)
+        if analyzed is not None:
+            expr.type = analyzed
+
+    def visit_type_form_expr(self, expr: TypeFormExpr) -> None:
         analyzed = self.anal_type(expr.type)
         if analyzed is not None:
             expr.type = analyzed
@@ -7639,6 +7685,111 @@ class SemanticAnalyzer(
 
     def visit_singleton_pattern(self, o: SingletonPattern, /) -> None:
         return None
+
+    def try_parse_as_type_expression(self, maybe_type_expr: Expression) -> None:
+        """Try to parse a value Expression as a type expression.
+        If success then annotate the Expression with the type that it spells.
+        If fails then emit no errors and take no further action.
+
+        A value expression that is parsable as a type expression may be used
+        where a TypeForm is expected to represent the spelled type.
+
+        Unlike ExpressionChecker.try_parse_as_type_expression()
+        (used in the later TypeChecker pass), this function can recognize
+        ALL kinds of type expressions, including type expressions containing
+        string annotations.
+
+        If the provided Expression will be parsable later in
+        ExpressionChecker.try_parse_as_type_expression(), this function will
+        skip parsing the Expression to improve performance, because the later
+        function is called many fewer times (i.e. only lazily in a rare TypeForm
+        type context) than this function is called (i.e. eagerly for EVERY
+        expression in certain syntactic positions).
+        """
+
+        # Bail ASAP if the Expression matches a common pattern that cannot possibly
+        # be a valid type expression, because this function is called very frequently
+        if not isinstance(maybe_type_expr, MaybeTypeExpression):
+            return
+        # Check types in order from most common to least common, for best performance
+        if isinstance(maybe_type_expr, (NameExpr, MemberExpr)):
+            # Defer parsing to the later TypeChecker pass,
+            # and only lazily in contexts where a TypeForm is expected
+            return
+        elif isinstance(maybe_type_expr, StrExpr):
+            # Filter out string literals with common patterns that could not
+            # possibly be in a type expression
+            if _MULTIPLE_WORDS_NONTYPE_RE.match(maybe_type_expr.value):
+                # A common pattern in string literals containing a sentence.
+                # But cannot be a type expression.
+                maybe_type_expr.as_type = None
+                return
+        elif isinstance(maybe_type_expr, IndexExpr):
+            if isinstance(maybe_type_expr.base, NameExpr):
+                if isinstance(maybe_type_expr.base.node, Var):
+                    # Leftmost part of IndexExpr refers to a Var. Not a valid type.
+                    maybe_type_expr.as_type = None
+                    return
+            elif isinstance(maybe_type_expr.base, MemberExpr):
+                next_leftmost = maybe_type_expr.base
+                while True:
+                    leftmost = next_leftmost.expr
+                    if not isinstance(leftmost, MemberExpr):
+                        break
+                    next_leftmost = leftmost
+                if isinstance(leftmost, NameExpr):
+                    if isinstance(leftmost.node, Var):
+                        # Leftmost part of IndexExpr refers to a Var. Not a valid type.
+                        maybe_type_expr.as_type = None
+                        return
+                else:
+                    # Leftmost part of IndexExpr is not a NameExpr. Not a valid type.
+                    maybe_type_expr.as_type = None
+                    return
+            else:
+                # IndexExpr base is neither a NameExpr nor MemberExpr. Not a valid type.
+                maybe_type_expr.as_type = None
+                return
+        elif isinstance(maybe_type_expr, OpExpr):
+            if maybe_type_expr.op != "|":
+                # Binary operators other than '|' never spell a valid type
+                maybe_type_expr.as_type = None
+                return
+        else:
+            assert_never(maybe_type_expr)
+
+        # Save SemanticAnalyzer state
+        original_errors = self.errors  # altered by fail()
+        original_num_incomplete_refs = (
+            self.num_incomplete_refs
+        )  # altered by record_incomplete_ref()
+        original_progress = self.progress  # altered by defer()
+        original_deferred = self.deferred  # altered by defer()
+        original_deferral_debug_context_len = len(
+            self.deferral_debug_context
+        )  # altered by defer()
+
+        self.errors = Errors(Options())
+        try:
+            # Ignore warnings that look like:
+            # <type_comment>:1: SyntaxWarning: invalid escape sequence '\('
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=SyntaxWarning)
+                t = self.expr_to_analyzed_type(maybe_type_expr)
+            if self.errors.is_errors():
+                t = None
+        except TypeTranslationError:
+            # Not a type expression
+            t = None
+        finally:
+            # Restore SemanticAnalyzer state
+            self.errors = original_errors
+            self.num_incomplete_refs = original_num_incomplete_refs
+            self.progress = original_progress
+            self.deferred = original_deferred
+            del self.deferral_debug_context[original_deferral_debug_context_len:]
+
+        maybe_type_expr.as_type = t
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

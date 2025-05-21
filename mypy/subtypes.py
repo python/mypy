@@ -1089,6 +1089,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_type_type(self, left: TypeType) -> bool:
         right = self.right
+        if left.is_type_form:
+            if isinstance(right, TypeType):
+                if not right.is_type_form:
+                    return False
+                return self._is_subtype(left.item, right.item)
+            if isinstance(right, Instance):
+                if right.type.fullname == "builtins.object":
+                    return True
+                return False
+            return False
         if isinstance(right, TypeType):
             return self._is_subtype(left.item, right.item)
         if isinstance(right, Overloaded) and right.is_type_obj():
@@ -1101,26 +1111,35 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # We can't accept `Type[X]` as a *proper* subtype of Callable[P, X]
                 # since this will break transitivity of subtyping.
                 return False
-            # This is unsound, we don't check the __init__ signature.
-            return self._is_subtype(left.item, right.ret_type)
-        if isinstance(right, Instance):
-            if right.type.fullname in ["builtins.object", "builtins.type"]:
-                # TODO: Strictly speaking, the type builtins.type is considered equivalent to
-                #       Type[Any]. However, this would break the is_proper_subtype check in
-                #       conditional_types for cases like isinstance(x, type) when the type
-                #       of x is Type[int]. It's unclear what's the right way to address this.
-                return True
-            item = left.item
-            if isinstance(item, TypeVarType):
-                item = get_proper_type(item.upper_bound)
-            if isinstance(item, Instance):
-                if right.type.is_protocol and is_protocol_implementation(
-                    item, right, proper_subtype=self.proper_subtype, class_obj=True
-                ):
+            return False
+        else:  # not left.is_type_form
+            if isinstance(right, TypeType):
+                return self._is_subtype(left.item, right.item)
+            if isinstance(right, CallableType):
+                if self.proper_subtype and not right.is_type_obj():
+                    # We can't accept `Type[X]` as a *proper* subtype of Callable[P, X]
+                    # since this will break transitivity of subtyping.
+                    return False
+                # This is unsound, we don't check the __init__ signature.
+                return self._is_subtype(left.item, right.ret_type)
+            if isinstance(right, Instance):
+                if right.type.fullname in ["builtins.object", "builtins.type"]:
+                    # TODO: Strictly speaking, the type builtins.type is considered equivalent to
+                    #       Type[Any]. However, this would break the is_proper_subtype check in
+                    #       conditional_types for cases like isinstance(x, type) when the type
+                    #       of x is Type[int]. It's unclear what's the right way to address this.
                     return True
-                metaclass = item.type.metaclass_type
-                return metaclass is not None and self._is_subtype(metaclass, right)
-        return False
+                item = left.item
+                if isinstance(item, TypeVarType):
+                    item = get_proper_type(item.upper_bound)
+                if isinstance(item, Instance):
+                    if right.type.is_protocol and is_protocol_implementation(
+                        item, right, proper_subtype=self.proper_subtype, class_obj=True
+                    ):
+                        return True
+                    metaclass = item.type.metaclass_type
+                    return metaclass is not None and self._is_subtype(metaclass, right)
+            return False
 
     def visit_type_alias_type(self, left: TypeAliasType) -> bool:
         assert False, f"This should be never called, got {left}"

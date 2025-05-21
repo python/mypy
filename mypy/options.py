@@ -80,7 +80,8 @@ UNPACK: Final = "Unpack"
 PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
 NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
 INLINE_TYPEDDICT: Final = "InlineTypedDict"
-INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT))
+TYPE_FORM: Final = "TypeForm"
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, INLINE_TYPEDDICT, TYPE_FORM))
 COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK, NEW_GENERIC_SYNTAX))
 
 
@@ -334,7 +335,10 @@ class Options:
         self.dump_type_stats = False
         self.dump_inference_stats = False
         self.dump_build_stats = False
-        self.enable_incomplete_feature: list[str] = []
+        # FIXME: Temporarily TypeForm support by default so that mypy_primer
+        #        can check how enabling it by default would affect typechecker
+        #        for projects that are already trying to use TypeForm.
+        self.enable_incomplete_feature: list[str] = [TYPE_FORM]
         self.timing_stats: str | None = None
         self.line_checking_stats: str | None = None
 
