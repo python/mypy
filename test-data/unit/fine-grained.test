@@ -10485,13 +10485,13 @@ def f(): pass
 def f(): pass
 [file unrelated.txt.3]
 [out]
-a.py:1: error: Function is missing a return type annotation
+a.py:1: error: Function is missing a type annotation
 a.py:1: note: Use "-> None" if function does not return a value
 ==
-b.py:1: error: Function is missing a return type annotation
+b.py:1: error: Function is missing a type annotation
 b.py:1: note: Use "-> None" if function does not return a value
 ==
-a.py:1: error: Function is missing a return type annotation
+a.py:1: error: Function is missing a type annotation
 a.py:1: note: Use "-> None" if function does not return a value
 
 [case testModuleLevelGetAttrInStub]

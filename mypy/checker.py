@@ -1649,21 +1649,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             unannotated_args + [fdef.type.ret_type]
         )
 
-        show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
-        check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
-
         def handle_function_args_type_annotation() -> None:
-            if fdef.type is None:
-                if fdef.arguments:
-                    if len(fdef.arguments) == 1 and (
-                        fdef.arguments[0].variable.is_cls or fdef.arguments[0].variable.is_self
-                    ):
-                        # its not an error
-                        pass
-                    else:
-                        self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
-
-            elif isinstance(fdef.type, CallableType):
+            if isinstance(fdef.type, CallableType):
                 if unannotated_args:
                     if len(unannotated_args) < 5:
                         self.fail(
@@ -1681,17 +1668,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         )
 
         def handle_return_type_annotation() -> None:
-            if fdef.type is None:
-                has_return = has_return_statement(fdef)
-                if has_return:
-                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-                if not has_return and not fdef.is_generator:
-                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-                    self.note(
-                        'Use "-> None" if function does not return a value',
-                        fdef,
-                        code=codes.NO_UNTYPED_DEF,
-                    )
+            if fdef.type is None and self.options.disallow_untyped_defs:
+                self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
                 ret_type = get_proper_type(fdef.type.ret_type)
                 if is_unannotated_any(ret_type):
@@ -1705,10 +1683,21 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
 
+        show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
+        check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
+
         if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
-            if (isinstance(fdef.type, CallableType) and check_incomplete_defs) or (
-                self.options.disallow_untyped_defs
-            ):
+            if fdef.type is None:
+                if not has_explicit_annotation and self.options.disallow_untyped_defs:
+                    self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
+                    if not has_return_statement(fdef) and not fdef.is_generator:
+                        self.note(
+                            'Use "-> None" if function does not return a value',
+                            fdef,
+                            code=codes.NO_UNTYPED_DEF,
+                        )
+
+            elif isinstance(fdef.type, CallableType):
                 handle_return_type_annotation()
                 handle_function_args_type_annotation()
 
@@ -2117,8 +2106,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             and (self.options.check_untyped_defs or not defn.is_dynamic())
             and (
                 # don't check override for synthesized __replace__ methods from dataclasses
-                defn.name != "__replace__"
-                or defn.info.metadata.get("dataclass_tag") is None
+                defn.name != "__replace__" or defn.info.metadata.get("dataclass_tag") is None
             )
         )
         found_method_base_classes: list[TypeInfo] = []
@@ -4292,7 +4280,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, (TupleExpr, ListExpr)):
             types = [
-                self.check_lvalue(sub_expr)[0] or
+                self.check_lvalue(sub_expr)[0]
+                or
                 # This type will be used as a context for further inference of rvalue,
                 # we put Uninhabited if there is no information available from lvalue.
                 UninhabitedType()

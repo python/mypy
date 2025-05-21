@@ -175,7 +175,7 @@ if int():
     def f(x: int): # E:5: Function is missing a return type annotation
         pass
 
-    def g(x): # E:5: Function is missing a type annotation
+    def g(x): # E:5: Function is missing a type annotation # N:5: Use "-> None" if function does not return a value
         pass
 
 [case testColumnNameIsNotDefined]

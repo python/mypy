@@ -65,17 +65,17 @@ files = ./foo.py
 [case testDaemonRunMultipleStrict]
 $ dmypy run -- foo.py --strict --follow-imports=error
 Daemon started
-foo.py:1: error: Function is missing a return type annotation
+foo.py:1: error: Function is missing a type annotation
 foo.py:1: note: Use "-> None" if function does not return a value
 Found 1 error in 1 file (checked 1 source file)
 == Return code: 1
 $ dmypy run -- bar.py --strict --follow-imports=error
-bar.py:1: error: Function is missing a return type annotation
+bar.py:1: error: Function is missing a type annotation
 bar.py:1: note: Use "-> None" if function does not return a value
 Found 1 error in 1 file (checked 1 source file)
 == Return code: 1
 $ dmypy run -- foo.py --strict --follow-imports=error
-foo.py:1: error: Function is missing a return type annotation
+foo.py:1: error: Function is missing a type annotation
 foo.py:1: note: Use "-> None" if function does not return a value
 Found 1 error in 1 file (checked 1 source file)
 == Return code: 1
@@ -96,7 +96,7 @@ $ dmypy run -- foo.py --follow-imports=error
 Restarting: configuration changed
 Daemon stopped
 Daemon started
-foo.py:1: error: Function is missing a return type annotation
+foo.py:1: error: Function is missing a type annotation
 foo.py:1: note: Use "-> None" if function does not return a value
 Found 1 error in 1 file (checked 1 source file)
 == Return code: 1
@@ -120,7 +120,7 @@ $ dmypy run -- foo.py --follow-imports=error --pretty
 Restarting: configuration changed
 Daemon stopped
 Daemon started
-foo.py:1: error: Function is missing a return type annotation
+foo.py:1: error: Function is missing a type annotation
     def f():
     ^
 foo.py:1: note: Use "-> None" if function does not return a value

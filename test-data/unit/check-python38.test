@@ -10,7 +10,7 @@ class C: ...  # E: Name "C" already defined on line 4
 def d(f): ...  # type: ignore
 @d
 
-def f(): ...  # E: Function is missing a return type annotation \
+def f(): ...  # E: Function is missing a type annotation \
               # N: Use "-> None" if function does not return a value
 
 [case testIgnoreDecoratedFunction1]
@@ -116,7 +116,7 @@ def g(x: int): ...
 
 [case testPEP570ArgTypesMissing]
 # flags: --disallow-untyped-defs
-def f(arg, /) -> None: ...  # E: Function is missing a type annotation for one or more arguments
+def f(arg, /) -> None: ...  # E: Function is missing a type annotation for one or more arguments: "arg"
 
 [case testPEP570ArgTypesBadDefault]
 def f(arg: int = "ERROR", /) -> None: ...  # E: Incompatible default for argument "arg" (default has type "str", argument has type "int")

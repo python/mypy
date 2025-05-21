@@ -203,7 +203,9 @@ def f(a): pass
 def f(a): pass
 [out]
 z.py:1: error: Function is missing a type annotation
+z.py:1: note: Use "-> None" if function does not return a value
 x.py:1: error: Function is missing a type annotation
+x.py:1: note: Use "-> None" if function does not return a value
 
 [case testConfigErrorNoSection]
 # cmd: mypy -c pass

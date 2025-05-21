@@ -362,26 +362,27 @@ a.x  # E: Item "B" of "Union[A, B]" has no attribute "x"  [union-attr]
 [case testErrorCodeFunctionHasNoAnnotation]
 # flags: --disallow-untyped-defs
 
-def f(x):  # E: Function is missing a type annotation  [no-untyped-def]
+def f(x):  # E: Function is missing a type annotation  [no-untyped-def] # N: Use "-> None" if function does not return a value
     pass
 
 def g(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     pass
 
-def h(x) -> None:  # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+def h(x) -> None:  # E: Function is missing a type annotation for one or more arguments: "x"  [no-untyped-def]
     pass
 
-def gen():  # E: Function is missing a return type annotation  [no-untyped-def]
+def gen():  # E: Function is missing a type annotation  [no-untyped-def]
     yield 1
 
 def gen2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     yield 1
 
-async def asyncf():  # E: Function is missing a return type annotation  [no-untyped-def]
+async def asyncf():  # E: Function is missing a type annotation  [no-untyped-def]
     return 0
 
 async def asyncf2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     return 0
+
 [typing fixtures/typing-async.pyi]
 [builtins fixtures/tuple.pyi]
 

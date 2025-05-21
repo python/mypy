@@ -2,9 +2,8 @@
 # flags: --disallow-untyped-defs
 def f(x): pass
 [out]
-main:2: error: Function is missing a return type annotation
-main:2: note: Use "-> None" if function does not return a value
 main:2: error: Function is missing a type annotation
+main:2: note: Use "-> None" if function does not return a value
 
 [case testUnannotatedArgumentSingle]
 # flags: --disallow-untyped-defs
@@ -33,7 +32,7 @@ def f() -> int: return 1
 # flags: --disallow-untyped-defs
 def f(): return 5
 [out]
-main:2: error: Function is missing a return type annotation
+main:2: error: Function is missing a type annotation
 
 [case testUnannotatedReturn]
 # flags: --disallow-untyped-defs
@@ -57,27 +56,25 @@ lambda x: x
 def f():
     1 + "str"
 [out]
-main:2: error: Function is missing a return type annotation
+main:2: error: Function is missing a type annotation
 main:2: note: Use "-> None" if function does not return a value
 
 [case testUnannotatedReturnWithOnlySelfArgument]
 # flags: --disallow-untyped-defs
 def f(self): pass
 [out]
-main:2: error: Function is missing a return type annotation
-main:2: note: Use "-> None" if function does not return a value
 main:2: error: Function is missing a type annotation
+main:2: note: Use "-> None" if function does not return a value
 
 [case testUnannotatedReturnWithNontrivialReturn]
 # flags: --disallow-untyped-defs
 def f(): return 1
 [out]
-main:2: error: Function is missing a return type annotation
+main:2: error: Function is missing a type annotation
 
 [case testUntypedAsyncDef]
 # flags: --disallow-untyped-defs
-async def f():  # E: Function is missing a return type annotation \
-                # N: Use "-> None" if function does not return a value
+async def f():  # E: Function is missing a type annotation # N: Use "-> None" if function does not return a value
     pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -105,7 +102,6 @@ async def g(x: int) -> Any:
 def get_tasks(self):
     return 'whatever'
 [out]
-main:2: error: Function is missing a return type annotation
 main:2: error: Function is missing a type annotation
 
 [case testDisallowUntypedDefsUntypedDecorator]
@@ -2323,13 +2319,13 @@ ignore_errors = True
 # flags: --config-file tmp/mypy.ini
 import x, y, z
 [file x.py]
-def f(a): ...  # E: Function is missing a return type annotation # N: Use "-> None" if function does not return a value # E: Function is missing a type annotation
+def f(a): ...  # E: Function is missing a type annotation # N: Use "-> None" if function does not return a value
 def g(a: int) -> int: return f(a)
 [file y.py]
 def f(a): pass
 def g(a: int) -> int: return f(a)
 [file z.py]
-def f(a): pass  # E: Function is missing a return type annotation # N: Use "-> None" if function does not return a value # E: Function is missing a type annotation
+def f(a): pass  # E: Function is missing a type annotation # N: Use "-> None" if function does not return a value
 def g(a: int) -> int: return f(a)  # E: Call to untyped function "f" in typed context
 [file mypy.ini]
 \[mypy]
