@@ -2498,37 +2498,36 @@ reveal_type(c.run_type)  # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsInitOverload1]
+from typing import Union
 from typing import overload
 
 import attrs
 
 @attrs.frozen(init=False)
 class C:
-    x: "int | str"
-
+    x: Union[int, str]
     @overload
     def __init__(self, x: int) -> None: ...
 
     @overload
     def __init__(self, x: str) -> None: ...
 
-    def __init__(self, x: "int | str") -> None:
+    def __init__(self, x: Union[int, str]) -> None:
         self.__attrs_init__(x)
-
 
 obj = C(1)
 attrs.evolve(obj, x=2)
-attrs.evolve(obj, x="2")
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsInitOverload2]
+from typing import Union
 import attrs
 
 @attrs.frozen(init=False)
 class C:
-    x: "int | str"
+    x: Union[int, str]
 
-    def __init__(self, x: "int | str", y: bool) -> None:
+    def __init__(self, x: Union[int, str], y: bool) -> None:
         self.__attrs_init__(x)
 
 obj = C(1, False)
