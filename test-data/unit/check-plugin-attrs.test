@@ -2496,3 +2496,63 @@ Parent(run_type = None)
 c = Child(run_type = None)
 reveal_type(c.run_type)  # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsInitOverload1]
+from typing import overload
+
+import attrs
+
+@attrs.frozen(init=False)
+class C:
+    x: "int | str"
+
+    @overload
+    def __init__(self, x: int) -> None: ...
+
+    @overload
+    def __init__(self, x: str) -> None: ...
+
+    def __init__(self, x: "int | str") -> None:
+        self.__attrs_init__(x)
+
+
+obj = C(1)
+attrs.evolve(obj, x=2)
+attrs.evolve(obj, x="2")
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsInitOverload2]
+import attrs
+
+@attrs.frozen(init=False)
+class C:
+    x: "int | str"
+
+    def __init__(self, x: "int | str", y: bool) -> None:
+        self.__attrs_init__(x)
+
+obj = C(1, False)
+attrs.evolve(obj, x=2)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsInitOverload3]
+from typing import overload
+
+import attrs
+
+@attrs.frozen(init=False)
+class C:
+    x: int | str
+
+    @overload
+    def __init__(self, x: int) -> None: ...
+
+    @overload
+    def __init__(self, x: str) -> None: ...
+
+    def __init__(self, x: int | str) -> None:
+        self.__attrs_init__(x)
+
+obj = C(1)
+attrs.evolve(obj, x=2)
+[builtins fixtures/plugin_attrs.pyi]
