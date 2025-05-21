@@ -2518,8 +2518,8 @@ class C:
 
 
 obj = C(1)
-attrs.evolve(obj, x=2) # E: Argument 1 to "evolve" has incompatible type "C"; expected an attrs class
-attrs.evolve(obj, x="2") # E: Argument 1 to "evolve" has incompatible type "C"; expected an attrs class
+attrs.evolve(obj, x=2)
+attrs.evolve(obj, x="2")
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsInitOverload2]
@@ -2542,5 +2542,5 @@ class C:
         self.__attrs_init__(x)
 
 obj = C(1)
-attrs.evolve(obj, x=2) # E: Argument 1 to "evolve" has incompatible type "C"; expected an attrs class
+attrs.evolve(obj, x=2)
 [builtins fixtures/plugin_attrs.pyi]
