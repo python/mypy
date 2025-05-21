@@ -1003,7 +1003,6 @@ class GroupGenerator:
         )
         emitter.emit_lines(f"if ({exec_func}({module_static}) != 0)", "    goto fail;")
         emitter.emit_line(f"return {module_static};")
-        # TODO: Proper cleanup
         emitter.emit_lines("fail:", "return NULL;")
         emitter.emit_lines("}")
 
