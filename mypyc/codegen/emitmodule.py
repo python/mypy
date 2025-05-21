@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from collections.abc import Iterable
 from typing import Optional, TypeVar
 
@@ -882,10 +883,12 @@ class GroupGenerator:
 
         emitter.emit_line(f"static PyModuleDef_Slot {name}[] = {{")
         emitter.emit_line(f"{{Py_mod_exec, {exec_name}}},")
-        emitter.emit_line(
-            "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},"
-        )
-        emitter.emit_line("{Py_mod_gil, Py_MOD_GIL_NOT_USED},")
+        if sys.version_info >= (3, 12):
+            emitter.emit_line(
+                "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},"
+            )
+        if sys.version_info >= (3, 13):
+            emitter.emit_line("{Py_mod_gil, Py_MOD_GIL_NOT_USED},")
         emitter.emit_line("{0, NULL},")
         emitter.emit_line("};")
 
