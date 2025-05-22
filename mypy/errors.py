@@ -222,12 +222,13 @@ class ErrorWatcher:
 
 class LoopErrorWatcher(ErrorWatcher):
     """Error watcher that filters and separately collects unreachable errors, redundant
-    expression errors, and revealed type notes when analysing loops iteratively to help
-    avoid making too-hasty reports."""
+    expression errors, and revealed types when analysing loops iteratively to help avoid
+    making too-hasty reports."""
 
-    # Meaning of the entries: ErrorCode, message, line, column, end_line, end_column:
+    # Meaning of the tuple items: ErrorCode, message, line, column, end_line, end_column:
     useless_statements: set[tuple[ErrorCode, str, int, int, int, int]]
-    revealed_types: set[tuple[ErrorCode, str, int, int, int, int]]
+    # Meaning of the tuple items: function_or_member, line, column, end_line, end_column:
+    revealed_types: dict[tuple[str | None, int, int, int, int], set[str]]
 
     def __init__(
         self,
@@ -244,7 +245,7 @@ class LoopErrorWatcher(ErrorWatcher):
             filter_deprecated=filter_deprecated,
         )
         self.useless_statements = set()
-        self.revealed_types = set()
+        self.revealed_types = defaultdict(set)
 
     def on_error(self, file: str, info: ErrorInfo) -> bool:
         if info.code in (codes.UNREACHABLE, codes.REDUNDANT_EXPR):
@@ -253,9 +254,12 @@ class LoopErrorWatcher(ErrorWatcher):
             )
             return True
         if info.code == codes.MISC and info.message.startswith("Revealed type is "):
-            self.revealed_types.add(
-                (info.code, info.message, info.line, info.column, info.end_line, info.end_column)
-            )
+            key = info.function_or_member, info.line, info.column, info.end_line, info.end_column
+            types = info.message.split('"')[1]
+            if types.startswith("Union["):
+                self.revealed_types[key].update(types[6:-1].split(", "))
+            else:
+                self.revealed_types[key].add(types)
             return True
         return super().on_error(file, info)
 

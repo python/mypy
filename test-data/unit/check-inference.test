@@ -343,7 +343,7 @@ for var2 in [g, h, i, j, k, l]:
     reveal_type(var2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 for var3 in [m, n, o, p, q, r]:
-    reveal_type(var3)  # N: Revealed type is "Union[builtins.int, Any]"
+    reveal_type(var3)  # N: Revealed type is "Union[Any, builtins.int]"
 
 T = TypeVar("T", bound=Type[Foo])
 
@@ -1247,7 +1247,7 @@ class X(TypedDict):
 
 x: X
 for a in ("hourly", "daily"):
-    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
+    reveal_type(a)  # N: Revealed type is "Union[Literal['daily']?, Literal['hourly']?]"
     reveal_type(x[a])  # N: Revealed type is "builtins.int"
     reveal_type(a.upper())  # N: Revealed type is "builtins.str"
     c = a

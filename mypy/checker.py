@@ -637,15 +637,21 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if iter == 20:
                     raise RuntimeError("Too many iterations when checking a loop")
 
-            # Report those unreachable and redundant expression errors that have been
-            # identified in all iteration steps, as well as the revealed types identified
-            # in the last iteration step:
-            for notes_and_errors in itertools.chain(uselessness_errors, watcher.revealed_types):
-                context = Context(line=notes_and_errors[2], column=notes_and_errors[3])
-                context.end_line = notes_and_errors[4]
-                context.end_column = notes_and_errors[5]
-                reporter = self.msg.note if notes_and_errors[0] == codes.MISC else self.msg.fail
-                reporter(notes_and_errors[1], context, code=notes_and_errors[0])
+            # Report those unreachable and redundant expression errors identified in all
+            # iteration steps:
+            for error_info in uselessness_errors:
+                context = Context(line=error_info[2], column=error_info[3])
+                context.end_line = error_info[4]
+                context.end_column = error_info[5]
+                self.msg.fail(error_info[1], context, code=error_info[0])
+            #  Report all types revealed in at least one iteration step:
+            for note_info, types in watcher.revealed_types.items():
+                sorted_ = sorted(types, key=lambda typ: typ.lower())
+                revealed = sorted_[0] if len(types) == 1 else f"Union[{', '.join(sorted_)}]"
+                context = Context(line=note_info[1], column=note_info[2])
+                context.end_line = note_info[3]
+                context.end_column = note_info[4]
+                self.note(f'Revealed type is "{revealed}"', context)
 
             # If exit_condition is set, assume it must be False on exit from the loop:
             if exit_condition:
