@@ -2141,8 +2141,6 @@ class TypeConverter:
         )
 
     def visit_Dict(self, n: ast3.Dict) -> Type:
-        if not n.keys:
-            return self.invalid_type(n)
         items: dict[str, Type] = {}
         extra_items_from = []
         for item_name, value in zip(n.keys, n.values):
