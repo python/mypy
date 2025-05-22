@@ -636,7 +636,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 iter += 1
                 if iter == 20:
                     raise RuntimeError("Too many iterations when checking a loop")
-asdf
+
             # Report those unreachable and redundant expression errors identified in all
             # iteration steps:
             for error_info in uselessness_errors:
