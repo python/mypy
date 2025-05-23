@@ -6,31 +6,78 @@
 
 ### Different Property Getter and Setter Types
 
-Mypy now supports using different types for property getter and setter.
+Mypy now supports using different types for a property getter and setter:
 
 ```python
 class A:
-    value: int
+    _value: int
 
     @property
-    def f(self) -> int:
-        return self.value
-    @f.setter
-    def f(self, x: str | int) -> None:
+    def foo(self) -> int:
+        return self._value
+
+    @foo.setter
+    def foo(self, x: str | int) -> None:
         try:
-            self.value = int(x)
+            self._value = int(x)
         except ValueError:
-            raise Exception(f"'{x}' is not a valid value for 'f'")
+            raise Exception(f"'{x}' is not a valid value for 'foo'")
 ```
-Contributed by Ivan Levkivskyi (PR [18510](https://github.com/python/mypy/pull/18510))
+This was contributed by Ivan Levkivskyi (PR [18510](https://github.com/python/mypy/pull/18510)).
 
 ### Flexible Variable Redefinitions (Experimental)
 
- * Add flag to allow more flexible variable redefinition (Jukka Lehtosalo, PR [18727](https://github.com/python/mypy/pull/18727))
+Mypy now allows unannotated variables to be freely redefined with
+different types when using the experimental `--allow-redefinition-new`
+flag. You will also need to enable `--local-partial-types`. Mypy will
+now infer a union type when different types are assigned to a
+variable:
+
+```py
+# mypy: allow-redefinition-new, local-partial-types
+
+def f(n: int, b: bool) -> int | str:
+    if b:
+        x = n
+    else:
+        x = str(n)
+    # Type of 'x' is int | str here.
+    return x
+```
+
+Without the new flag, mypy only supports inferring optional types (`X
+| None`) from multiple assignments, but now mypy can infer arbitrary
+union types.
+
+An unannotated variable can now also have different types in different
+code locations:
+
+```py
+# mypy: allow-redefinition-new, local-partial-types
+...
+
+if cond():
+    for x in range(n):
+        # Type of 'x' is 'int' here
+        ...
+else:
+    for x in ['a', 'b']:
+        # Type of 'x' is 'str' here
+        ...
+```
+
+We are planning to turn this flag on by default in mypy 2.0, along
+with `--local-partial-types`. The feature is still experimental and
+has known issues, and the semantics may still change in the
+future. You may need to update or add type annotations when switching
+to the new behavior, but if you encounter anything unexpected, please
+create a GitHub issue.
+
+This was contributed by Jukka Lehtosalo (PR [18727](https://github.com/python/mypy/pull/18727)).
 
 ### Stricter Type Checking with Imprecise Types
 
-TODO:
+Mypy can now detect additional errors in code that uses `Any` types or has missing function annotations.
 
  * `dict.get`
  * Use union types instead of join in binder (Ivan Levkivskyi, PR [18538](https://github.com/python/mypy/pull/18538))
@@ -38,15 +85,15 @@ TODO:
 
 ### Improvements to Attribute Resolution
 
-This release includes various fixes to inconsistent resolution of attribute access.
+This release includes several fixes to inconsistent resolution of attribute, method and descriptor types.
 
- * Consolidate descriptor handling in checkmember.py (Ivan Levkivskyi, PR [18831](https://github.com/python/mypy/pull/18831))
- * Use checkmember.py to check multiple inheritance (Ivan Levkivskyi, PR [18876](https://github.com/python/mypy/pull/18876))
- * Use checkmember.py to check method override (Ivan Levkivskyi, PR [18870](https://github.com/python/mypy/pull/18870))
+ * Consolidate descriptor handling (Ivan Levkivskyi, PR [18831](https://github.com/python/mypy/pull/18831))
+ * Make multiple inheritance checking use common semantics (Ivan Levkivskyi, PR [18876](https://github.com/python/mypy/pull/18876))
+ * Make method override checking use common semantics  (Ivan Levkivskyi, PR [18870](https://github.com/python/mypy/pull/18870))
  * Fix descriptor overload selection (Ivan Levkivskyi, PR [18868](https://github.com/python/mypy/pull/18868))
- * Handle union types when binding self (Ivan Levkivskyi, PR [18867](https://github.com/python/mypy/pull/18867))
- * Use checkmember.py to check variable overrides (Ivan Levkivskyi, PR [18847](https://github.com/python/mypy/pull/18847))
- * Consolidate descriptor handling in checkmember.py (Ivan Levkivskyi, PR [18831](https://github.com/python/mypy/pull/18831))
+ * Handle union types when binding `self` (Ivan Levkivskyi, PR [18867](https://github.com/python/mypy/pull/18867))
+ * Make variable override checking use common semantics (Ivan Levkivskyi, PR [18847](https://github.com/python/mypy/pull/18847))
+ * Make descriptor handling behave consistently (Ivan Levkivskyi, PR [18831](https://github.com/python/mypy/pull/18831))
 
 ### Make Implementation for Abstract Overloads Optional
 
@@ -61,7 +108,7 @@ This release includes various fixes to inconsistent resolution of attribute acce
 It's now possible to selectively disable warnings generated from
 [`warnings.deprecated`](https://docs.python.org/3/library/warnings.html#warnings.deprecated)
 using the [`--deprecated-calls-exclude`](https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-deprecated-calls-exclude)
-option.
+option:
 
 ```python
 # mypy --enable-error-code deprecated
@@ -69,12 +116,18 @@ option.
 import foo
 
 foo.A().func()  # OK, the deprecated warning is ignored
+```
 
+```python
 # file foo.py
+
 from typing_extensions import deprecated
+
 class A:
     @deprecated("Use A.func2 instead")
     def func(self): pass
+
+    ...
 ```
 
 Contributed by Marc Mueller (PR [18641](https://github.com/python/mypy/pull/18641))
