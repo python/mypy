@@ -79,7 +79,34 @@ This was contributed by Jukka Lehtosalo (PR [18727](https://github.com/python/my
 
 Mypy can now detect additional errors in code that uses `Any` types or has missing function annotations.
 
- * `dict.get`
+When calling `dict.get(x, None)` on an object of type `dict[str, Any]`, this
+now results in an optional type (in the past it was `Any`):
+
+```python
+def f(d: dict[str, Any]) -> int:
+    # Error: Return value has type "Any | None" but expected "int"
+    return d.get("x", None)
+```
+
+Type narrowing using assignments can result in more precise types in
+the presence of `Any` types:
+
+```python
+def foo(): ...
+
+def bar(n: int) -> None:
+    x = foo()
+    # Type of 'x' is 'Any' here
+    if n > 5:
+        x = str(n)
+        # Type of 'x' is 'str' here
+```
+
+When using `--check-untyped-defs`, unannotated overrides are now
+checked more strictly against superclass definitions.
+
+Related PRs:
+
  * Use union types instead of join in binder (Ivan Levkivskyi, PR [18538](https://github.com/python/mypy/pull/18538))
  * Check superclass compatibility of untyped methods if `--check-untyped-defs` is set (Stanislav Terliakov, PR [18970](https://github.com/python/mypy/pull/18970))
 
