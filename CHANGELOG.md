@@ -124,7 +124,26 @@ This release includes several fixes to inconsistent resolution of attribute, met
 
 ### Make Implementation for Abstract Overloads Optional
 
- * Allow omitting implementation for abstract overloads (Ivan Levkivskyi, PR [18882](https://github.com/python/mypy/pull/18882))
+The implementation can now be omitted for abstract overloaded methods,
+even outside stubs:
+
+```py
+from abc import abstractmethod
+from typing import overload
+
+class C:
+    @abstractmethod
+    @overload
+    def foo(self, x: int) -> int: ...
+
+    @abstractmethod
+    @overload
+    deef foo(self, x: str) -> str: ...
+
+    # No implementation required for "foo"
+```
+
+This was contributed by Ivan Levkivskyi (PR [18882](https://github.com/python/mypy/pull/18882)).
 
 ### Option to Exclude Everything in .gitignore
 
