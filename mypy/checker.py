@@ -4844,9 +4844,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         (x is None) and (x == 1 or x == 2) and (x != 3 and x != 4)
 
-        This transformation is supposed to enable narrowing literals and enums using the in
-        (and the not in) operator in combination with tuple expressions without the need to
-        implement additional narrowing logic.
+        This transformation is supposed to enable narrowing literals and enums using the
+        in (and the not in) operator in combination with tuple, list, and set expressions
+        without the need to implement additional narrowing logic.
         """
         if isinstance(e, OpExpr):
             e.left = self._transform_sequence_expressions_for_narrowing_with_in(e.left)
