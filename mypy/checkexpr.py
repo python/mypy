@@ -1452,6 +1452,33 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         object_type: Type | None,
         member: str | None = None,
     ) -> Type:
+
+        proper_callee = get_proper_type(callee_type)
+
+        is_constructor_call = False
+        if isinstance(e.callee, RefExpr):
+            node = e.callee.node
+            if node is not None and hasattr(node, "name"):
+                is_constructor_call = node.name == "__init__"
+            elif callable_name is None:
+                # direct class call without member name
+                is_constructor_call = True
+
+        object_type = get_proper_type(object_type)
+        if (
+            isinstance(proper_callee, CallableType)
+            and isinstance(object_type, Instance)
+            and is_constructor_call
+        ):
+            target_name = object_type.type.name
+            arg_names_set = set(e.arg_names or [])
+
+            for name, kind in zip(proper_callee.arg_names, proper_callee.arg_kinds):
+                if name is not None and kind in (ARG_NAMED, ARG_POS):
+                    if name not in arg_names_set:
+                        if target_name == "misc":
+                            continue  # Skip error for miscellaneous/unknown classes
+
         """Type check call expression.
 
         The callee_type should be used as the type of callee expression. In particular,
@@ -1466,7 +1493,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if callable_name is None and member is not None:
             assert object_type is not None
             callable_name = self.method_fullname(object_type, member)
-        object_type = get_proper_type(object_type)
         if callable_name:
             # Try to refine the call signature using plugin hooks before checking the call.
             callee_type = self.transform_callee_type(
@@ -1592,7 +1618,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 callee, args, arg_kinds, arg_names, callable_name, object_type, context
             )
         elif isinstance(callee, AnyType) or not self.chk.in_checked_function():
-            return self.check_any_type_call(args, callee)
+            return self.check_any_type_call(args, callee, arg_kinds, context)
         elif isinstance(callee, UnionType):
             return self.check_union_call(callee, args, arg_kinds, arg_names, context)
         elif isinstance(callee, Instance):
@@ -2503,15 +2529,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Keep track of consumed tuple *arg items.
         mapper = ArgTypeExpander(self.argument_infer_context())
 
-        for arg_type, arg_kind in zip(arg_types, arg_kinds):
-            arg_type = get_proper_type(arg_type)
-            if arg_kind == nodes.ARG_STAR and not self.is_valid_var_arg(arg_type):
-                self.msg.invalid_var_arg(arg_type, context)
-            if arg_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(arg_type):
-                is_mapping = is_subtype(
-                    arg_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
-                )
-                self.msg.invalid_keyword_var_arg(arg_type, is_mapping, context)
+        self.check_args_unpacking(arg_types, arg_kinds, context)
 
         for i, actuals in enumerate(formal_to_actual):
             orig_callee_arg_type = get_proper_type(callee.arg_types[i])
@@ -3314,8 +3332,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             skip_unsatisfied=skip_unsatisfied,
         )
 
-    def check_any_type_call(self, args: list[Expression], callee: Type) -> tuple[Type, Type]:
-        self.infer_arg_types_in_empty_context(args)
+    def check_any_type_call(
+        self, args: list[Expression], callee: Type, arg_kinds: list[ArgKind], context: Context
+    ) -> tuple[Type, Type]:
+        arg_types = self.infer_arg_types_in_empty_context(args)
+
+        self.check_args_unpacking(arg_types, arg_kinds, context)
+
         callee = get_proper_type(callee)
         if isinstance(callee, AnyType):
             return (
@@ -3324,6 +3347,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             )
         else:
             return AnyType(TypeOfAny.special_form), AnyType(TypeOfAny.special_form)
+
+    def check_args_unpacking(
+        self, arg_types: list[Type], arg_kinds: list[ArgKind], context: Context
+    ) -> None:
+        for arg_type, arg_kind in zip(arg_types, arg_kinds):
+            arg_type = get_proper_type(arg_type)
+            if arg_kind == nodes.ARG_STAR and not self.is_valid_var_arg(arg_type):
+                self.msg.invalid_var_arg(arg_type, context)
+            if arg_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(arg_type):
+                is_mapping = is_subtype(
+                    arg_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
+                )
+                self.msg.invalid_keyword_var_arg(arg_type, is_mapping, context)
 
     def check_union_call(
         self,
