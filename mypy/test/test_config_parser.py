@@ -206,6 +206,6 @@ class ExtendConfigFileSuite(unittest.TestCase):
 
                 assert stdout.getvalue() == ""
                 assert stderr.getvalue() == (
-                    f"Circular extend detected: /private{pyproject}\n"
-                    f"../pyproject.toml is not a valid path to extend from /private{ini}\n"
+                    f"Circular extend detected: {pyproject}\n"
+                    f"../pyproject.toml is not a valid path to extend from {ini}\n"
                 )
