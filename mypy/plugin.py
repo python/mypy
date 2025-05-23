@@ -114,9 +114,6 @@ a forward reference to a class in a top-level annotation. Example:
 Note that a forward reference in a function signature won't trigger another
 pass, since all functions are processed only after the top level has been fully
 analyzed.
-
-You can use `api.options.new_semantic_analyzer` to check whether the new
-semantic analyzer is enabled (it's always true in mypy 0.730 and later).
 """
 
 from __future__ import annotations
@@ -173,12 +170,12 @@ class TypeAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type(self, name: str, args: list[Type]) -> Instance:
+    def named_type(self, fullname: str, args: list[Type], /) -> Instance:
         """Construct an instance of a builtin type with given name."""
         raise NotImplementedError
 
     @abstractmethod
-    def analyze_type(self, typ: Type) -> Type:
+    def analyze_type(self, typ: Type, /) -> Type:
         """Analyze an unbound type using the default mypy logic."""
         raise NotImplementedError
 
@@ -322,7 +319,8 @@ class SemanticAnalyzerPluginInterface:
     @abstractmethod
     def anal_type(
         self,
-        t: Type,
+        typ: Type,
+        /,
         *,
         tvar_scope: TypeVarLikeScope | None = None,
         allow_tuple_literal: bool = False,
@@ -343,7 +341,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+    def lookup_fully_qualified(self, fullname: str, /) -> SymbolTableNode:
         """Lookup a symbol by its fully qualified name.
 
         Raise an error if not found.
@@ -351,7 +349,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified_or_none(self, name: str) -> SymbolTableNode | None:
+    def lookup_fully_qualified_or_none(self, fullname: str, /) -> SymbolTableNode | None:
         """Lookup a symbol by its fully qualified name.
 
         Return None if not found.
@@ -387,12 +385,12 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> Any:
+    def add_symbol_table_node(self, name: str, symbol: SymbolTableNode) -> Any:
         """Add node to global symbol table (or to nearest class if there is one)."""
         raise NotImplementedError
 
     @abstractmethod
-    def qualified_name(self, n: str) -> str:
+    def qualified_name(self, name: str) -> str:
         """Make qualified name using current module and enclosing class (if any)."""
         raise NotImplementedError
 

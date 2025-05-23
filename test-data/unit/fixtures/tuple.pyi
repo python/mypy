@@ -1,13 +1,14 @@
 # Builtins stub used in tuple-related test cases.
 
 import _typeshed
-from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Optional, overload, Tuple, Type
+from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Optional, overload, Tuple, Type, Self
 
 _T = TypeVar("_T")
 _Tco = TypeVar('_Tco', covariant=True)
 
 class object:
     def __init__(self) -> None: pass
+    def __new__(cls) -> Self: pass
     def __eq__(self, other: object) -> bool: pass
 
 class type:

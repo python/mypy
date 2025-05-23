@@ -7,7 +7,7 @@ from _asyncio import (
     _register_task as _register_task,
     _unregister_task as _unregister_task,
 )
-from collections.abc import Awaitable, Coroutine, Generator, Iterable, Iterator
+from collections.abc import AsyncIterator, Awaitable, Coroutine, Generator, Iterable, Iterator
 from typing import Any, Literal, Protocol, TypeVar, overload
 from typing_extensions import TypeAlias
 
@@ -18,6 +18,7 @@ from .futures import Future
 if sys.version_info >= (3, 11):
     from contextvars import Context
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 12):
     __all__ = (
         "Task",
@@ -78,13 +79,19 @@ if sys.version_info >= (3, 12):
     _FutureLike: TypeAlias = Future[_T] | Awaitable[_T]
 else:
     _FutureLike: TypeAlias = Future[_T] | Generator[Any, None, _T] | Awaitable[_T]
+
 _TaskYieldType: TypeAlias = Future[object] | None
 
 FIRST_COMPLETED = concurrent.futures.FIRST_COMPLETED
 FIRST_EXCEPTION = concurrent.futures.FIRST_EXCEPTION
 ALL_COMPLETED = concurrent.futures.ALL_COMPLETED
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 13):
+    class _SyncAndAsyncIterator(Iterator[_T_co], AsyncIterator[_T_co], Protocol[_T_co]): ...
+
+    def as_completed(fs: Iterable[_FutureLike[_T]], *, timeout: float | None = None) -> _SyncAndAsyncIterator[Future[_T]]: ...
+
+elif sys.version_info >= (3, 10):
     def as_completed(fs: Iterable[_FutureLike[_T]], *, timeout: float | None = None) -> Iterator[Future[_T]]: ...
 
 else:
@@ -341,7 +348,8 @@ else:
         *coros_or_futures: _FutureLike[_T], loop: AbstractEventLoop | None = None, return_exceptions: bool
     ) -> Future[list[_T | BaseException]]: ...
 
-def run_coroutine_threadsafe(coro: _FutureLike[_T], loop: AbstractEventLoop) -> concurrent.futures.Future[_T]: ...
+# unlike some asyncio apis, This does strict runtime checking of actually being a coroutine, not of any future-like.
+def run_coroutine_threadsafe(coro: Coroutine[Any, Any, _T], loop: AbstractEventLoop) -> concurrent.futures.Future[_T]: ...
 
 if sys.version_info >= (3, 10):
     def shield(arg: _FutureLike[_T]) -> Future[_T]: ...

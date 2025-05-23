@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import os
 from collections import Counter
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Final, Iterator
+from typing import Final
 
 from mypy import nodes
 from mypy.argmap import map_formals_to_actuals

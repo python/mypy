@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable, Mapping
 from functools import reduce
-from typing import Final, Iterable, List, Mapping, cast
-from typing_extensions import Literal
+from typing import Final, Literal, cast
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.applytype import apply_generic_arguments
@@ -56,7 +56,12 @@ from mypy.plugins.common import (
 )
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
-from mypy.typeops import get_type_vars, make_simplified_union, map_type_from_supertype
+from mypy.typeops import (
+    get_type_vars,
+    make_simplified_union,
+    map_type_from_supertype,
+    type_object_type,
+)
 from mypy.types import (
     AnyType,
     CallableType,
@@ -726,8 +731,6 @@ def _parse_converter(
         ):
             converter_type = converter_expr.node.type
         elif isinstance(converter_expr.node, TypeInfo):
-            from mypy.checkmember import type_object_type  # To avoid import cycle.
-
             converter_type = type_object_type(converter_expr.node, ctx.api.named_type)
     elif (
         isinstance(converter_expr, IndexExpr)
@@ -736,8 +739,6 @@ def _parse_converter(
         and isinstance(converter_expr.base.node, TypeInfo)
     ):
         # The converter is a generic type.
-        from mypy.checkmember import type_object_type  # To avoid import cycle.
-
         converter_type = type_object_type(converter_expr.base.node, ctx.api.named_type)
         if isinstance(converter_type, CallableType):
             converter_type = apply_generic_arguments(
@@ -806,7 +807,7 @@ def _parse_assignments(
     rvalues: list[Expression] = []
     if isinstance(lvalue, (TupleExpr, ListExpr)):
         if all(isinstance(item, NameExpr) for item in lvalue.items):
-            lvalues = cast(List[NameExpr], lvalue.items)
+            lvalues = cast(list[NameExpr], lvalue.items)
         if isinstance(stmt.rvalue, (TupleExpr, ListExpr)):
             rvalues = stmt.rvalue.items
     elif isinstance(lvalue, NameExpr):
@@ -1087,7 +1088,7 @@ def _get_expanded_attr_types(
             return None
         init_func = expand_type_by_instance(init_func, typ)
         # [1:] to skip the self argument of AttrClass.__init__
-        field_names = cast(List[str], init_func.arg_names[1:])
+        field_names = cast(list[str], init_func.arg_names[1:])
         field_types = init_func.arg_types[1:]
         return [dict(zip(field_names, field_types))]
     else:

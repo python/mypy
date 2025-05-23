@@ -14,7 +14,8 @@ Also build a mapping from mypy TypeInfos to ClassIR objects.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, NamedTuple, Tuple
+from collections.abc import Iterable
+from typing import NamedTuple
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -87,7 +88,7 @@ def build_type_map(
             is_abstract=cdef.info.is_abstract,
             is_final_class=cdef.info.is_final,
         )
-        class_ir.is_ext_class = is_extension_class(cdef)
+        class_ir.is_ext_class = is_extension_class(module.path, cdef, errors)
         if class_ir.is_ext_class:
             class_ir.deletable = cdef.info.deletable_attributes.copy()
         # If global optimizations are disabled, turn of tracking of class children
@@ -381,8 +382,12 @@ def prepare_methods_and_attributes(
 
             # Handle case for regular function overload
             else:
-                assert node.node.impl
-                prepare_method_def(ir, module_name, cdef, mapper, node.node.impl, options)
+                if not node.node.impl:
+                    errors.error(
+                        "Overloads without implementation are not supported", path, cdef.line
+                    )
+                else:
+                    prepare_method_def(ir, module_name, cdef, mapper, node.node.impl, options)
 
     if ir.builtin_base:
         ir.attributes.clear()
@@ -524,7 +529,7 @@ def prepare_non_ext_class_def(
         )
 
 
-RegisterImplInfo = Tuple[TypeInfo, FuncDef]
+RegisterImplInfo = tuple[TypeInfo, FuncDef]
 
 
 class SingledispatchInfo(NamedTuple):

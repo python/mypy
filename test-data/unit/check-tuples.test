@@ -1438,6 +1438,12 @@ reveal_type(t[x:])  # N: Revealed type is "builtins.tuple[Union[builtins.int, bu
 t[y:]  # E: Slice index must be an integer, SupportsIndex or None
 [builtins fixtures/tuple.pyi]
 
+[case testTupleSliceStepZeroNoCrash]
+# This was crashing: https://github.com/python/mypy/issues/18062
+# TODO: emit better error when 0 is used for step
+()[::0]  # E: Ambiguous slice of a variadic tuple
+[builtins fixtures/tuple.pyi]
+
 [case testInferTupleTypeFallbackAgainstInstance]
 from typing import TypeVar, Generic, Tuple
 T = TypeVar('T')
@@ -1600,6 +1606,83 @@ t5: Tuple[int, int] = (1, 2, "s", 4)  # E: Incompatible types in assignment (exp
 t6: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8, "str", "str", "str", "str", 1, 1, 1, 1, 1) # E: Incompatible types in assignment (expression has type Tuple[int, int, ... <15 more items>], variable has type Tuple[int, int, ... <10 more items>])
 
 [builtins fixtures/tuple.pyi]
+
+[case testPropertyLongTupleReturnTypeMismatchUnion]
+from typing import Tuple, Union
+class A:
+    a: str
+    b: str
+    c: str
+    d: str
+    e: str
+    f: str
+    g: Union[str, int]
+    h: Union[str, float]
+    i: Union[str, None]
+    j: Union[str, None]
+    k: Union[str, None]
+    l: Union[str, None]
+
+    @property
+    def x(self) -> Tuple[str, str, str, str, str, str, str, str, str, str, str, str]:
+        return (
+            self.a,
+            self.b,
+            self.c,
+            self.d,
+            self.e,
+            self.f,
+            self.g,
+            self.h,
+            self.i,
+            self.j,
+            self.k,
+            self.l,
+        )
+[out]
+main:18: error: Incompatible return value type (6 tuple items are incompatible; 3 items are omitted)
+main:18: note: Expression tuple item 6 has type "Union[str, int]"; "str" expected;
+main:18: note: Expression tuple item 7 has type "Union[str, float]"; "str" expected;
+main:18: note: Expression tuple item 8 has type "Optional[str]"; "str" expected;
+[builtins fixtures/property.pyi]
+
+[case testPropertyLongTupleReturnTypeMismatchUnionWiderExpected]
+from typing import Tuple, Union
+class A:
+    a: str
+    b: str
+    c: str
+    d: str
+    e: str
+    f: str
+    g: str
+    h: str
+    i: str
+    j: str
+    k: str
+    l: Union[float, int]
+
+    @property
+    def x(self) -> Tuple[Union[str, int], Union[str, float], int, Union[str, None], Union[str, None], Union[str, None], str, str, str, str, str, str]:
+        return (
+            self.a,
+            self.b,
+            self.c,
+            self.d,
+            self.e,
+            self.f,
+            self.g,
+            self.h,
+            self.i,
+            self.j,
+            self.k,
+            self.l,
+        )
+[out]
+main:18: error: Incompatible return value type (2 tuple items are incompatible)
+main:18: note: Expression tuple item 2 has type "str"; "int" expected;
+main:18: note: Expression tuple item 11 has type "Union[float, int]"; "str" expected;
+[builtins fixtures/property.pyi]
 
 [case testTupleWithStarExpr]
 from typing import Tuple, List

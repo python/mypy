@@ -38,7 +38,10 @@ class TestStruct:
     def __init__(self, *args, **kwargs) -> None:
         """Initialize self.  See help(type(self)) for accurate signature."""
     @property
-    def field_readonly(self) -> int: ...
+    def field_readonly(self) -> int:
+        """some docstring
+        (arg0: pybind11_fixtures.TestStruct) -> int
+        """
 
 def func_incomplete_signature(*args, **kwargs):
     """func_incomplete_signature() -> dummy_sub_namespace::HasNoBinding"""

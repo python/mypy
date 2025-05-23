@@ -160,12 +160,7 @@ class C(A[int]):
     def f(self) -> int: ...
 
 class D(A[str]):
-    def f(self) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
-                             # N:      Superclass:            \
-                             # N:          @overload          \
-                             # N:          def f(self) -> str \
-                             # N:      Subclass:              \
-                             # N:          def f(self) -> int
+    def f(self) -> int: ...  # E: Return type "int" of "f" incompatible with return type "str" in supertype "A"
 
 class E(A[T]):
     def f(self) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
@@ -201,7 +196,6 @@ class I(A[int]):
 class J(A[int]):
     def f(self, arg) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
                                   # N:      Superclass:            \
-                                  # N:          @overload          \
                                   # N:          def f(self) -> int \
                                   # N:      Subclass:              \
                                   # N:          def f(self, arg: Any) -> int
@@ -224,12 +218,10 @@ class B(A[int]):
     def f(self, s: int) -> int: ...
 
 class C(A[None]):
-    def f(self, s: int) -> int: ...  # E: Signature of "f" incompatible with supertype "A" \
-                                     # N:      Superclass:            \
-                                     # N:          @overload          \
-                                     # N:          def f(self, s: None) -> None \
-                                     # N:      Subclass:              \
-                                     # N:          def f(self, s: int) -> int
+    def f(self, s: int) -> int: ...  # E: Return type "int" of "f" incompatible with return type "None" in supertype "A" \
+                                     # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "None" \
+                                     # N: This violates the Liskov substitution principle \
+                                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [builtins fixtures/tuple.pyi]
 
 [case testSelfTypeOverrideCompatibilityTypeVar]
@@ -784,8 +776,7 @@ reveal_type(x)  # N: Revealed type is "__main__.SubP[Any]"
 y: SubP[str] = SubP(use_str=True)
 
 [file lib.pyi]
-from typing import TypeVar, Generic, overload, Tuple
-from typing_extensions import Literal
+from typing import Literal, TypeVar, Generic, overload, Tuple
 
 T = TypeVar('T')
 class P(Generic[T]):
@@ -809,8 +800,7 @@ xx = PFallBack(t)  # E: Need type annotation for "xx"
 yy = PFallBackAny(t)  # OK
 
 [file lib.pyi]
-from typing import TypeVar, Generic, overload, Tuple, Any
-from typing_extensions import Literal
+from typing import Literal, TypeVar, Generic, overload, Tuple, Any
 
 class PFallBack(Generic[T]):
     @overload
@@ -858,8 +848,7 @@ BadSub().get_item()  # E: Invalid self argument "BadSub" to attribute function "
 [builtins fixtures/list.pyi]
 
 [case testMixinAllowedWithProtocol]
-from typing import TypeVar
-from typing_extensions import Protocol
+from typing import Protocol, TypeVar
 
 class Resource(Protocol):
     def close(self) -> int: ...
@@ -910,8 +899,7 @@ class Bad:
 class CC(TweakFunc, Bad): pass  # E: Definition of "func" in base class "TweakFunc" is incompatible with definition in base class "Bad"
 
 [case testBadClassLevelDecoratorHack]
-from typing_extensions import Protocol
-from typing import TypeVar, Any
+from typing import Protocol, TypeVar, Any
 
 class FuncLike(Protocol):
     __call__: Any
@@ -1807,7 +1795,7 @@ class C:
     def bar(self) -> Self: ...
     foo: Callable[[S, Self], Tuple[Self, S]]
 
-reveal_type(C().foo)  # N: Revealed type is "def [S] (S`1, __main__.C) -> Tuple[__main__.C, S`1]"
+reveal_type(C().foo)  # N: Revealed type is "def [S] (S`2, __main__.C) -> Tuple[__main__.C, S`2]"
 reveal_type(C().foo(42, C()))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
 class This: ...
 [builtins fixtures/tuple.pyi]
@@ -1903,7 +1891,7 @@ class C:
 
 class D(C): ...
 
-reveal_type(D.f)  # N: Revealed type is "def [T] (T`1) -> T`1"
+reveal_type(D.f)  # N: Revealed type is "def [T] (T`3) -> T`3"
 reveal_type(D().f)  # N: Revealed type is "def () -> __main__.D"
 
 [case testTypingSelfOnSuperTypeVarValues]
@@ -2213,4 +2201,23 @@ class Test2:
     def method(self, foo: int, *, bar: str) -> bytes: ...
 
 reveal_type(Test2().method) # N: Revealed type is "def (foo: builtins.int, *, bar: builtins.str) -> builtins.bytes"
+[builtins fixtures/tuple.pyi]
+
+[case testSelfInMultipleInheritance]
+from typing_extensions import Self
+
+class A:
+    foo: int
+    def method(self: Self, other: Self) -> None:
+        self.foo
+        other.foo
+
+class B:
+    bar: str
+    def method(self: Self, other: Self) -> None:
+        self.bar
+        other.bar
+
+class C(A, B):  # OK: both methods take Self
+    pass
 [builtins fixtures/tuple.pyi]
