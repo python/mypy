@@ -10,6 +10,9 @@ import os
 import re
 import subprocess
 import sys
+from importlib.util import find_spec as import_exists
+
+import pytest
 
 from mypy.test.config import PREFIX, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -18,13 +21,6 @@ from mypy.test.helpers import (
     check_test_output_files,
     normalize_error_messages,
 )
-
-try:
-    import lxml  # type: ignore[import-untyped]
-except ImportError:
-    lxml = None
-
-import pytest
 
 # Path to Python 3 interpreter
 python3_path = sys.executable
@@ -38,7 +34,7 @@ class PythonCmdlineSuite(DataSuite):
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        if lxml is None and os.path.basename(testcase.file) == "reports.test":
+        if not import_exists("lxml") and os.path.basename(testcase.file) == "reports.test":
             pytest.skip("Cannot import lxml. Is it installed?")
         for step in [1] + sorted(testcase.output2):
             test_python_cmdline(testcase, step)
