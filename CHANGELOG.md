@@ -147,7 +147,12 @@ This was contributed by Ivan Levkivskyi (PR [18882](https://github.com/python/my
 
 ### Option to Exclude Everything in .gitignore
 
- * Add an option to exclude everything in .gitignore (Ivan Levkivskyi, PR [18696](https://github.com/python/mypy/pull/18696))
+You can now use `--exclude-gitignore` to exclude everything in a
+`.gitignore` file from the mypy build. This behaves similar to
+excluding the paths using `--exclude`. We might enable this by default
+in a future mypy release.
+
+This was contributed by Ivan Levkivskyi (PR [18696](https://github.com/python/mypy/pull/18696)).
 
 ### Selectively Disable Deprecated Warnings
 
