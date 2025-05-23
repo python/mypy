@@ -931,6 +931,13 @@ def process_options(
         "and makes arguments prepended via Concatenate positional-only",
         group=strictness_group,
     )
+    add_invertible_flag(
+        "--only-allow-exhaustive-match-statements",
+        default=False,
+        strict_flag=False,
+        help="Raise type error for match statements that do not match exhaustively",
+        group=strictness_group,
+    )
 
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names)

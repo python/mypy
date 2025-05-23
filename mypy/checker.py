@@ -5511,8 +5511,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 self.push_type_map(else_map, from_assignment=False)
                 unmatched_types = else_map
 
-            if unmatched_types is not None:
-                # for expr, typ in unmatched_types.items():
+            if (
+                self.options.only_allow_exhaustive_match_statements is True
+                and unmatched_types is not None
+            ):
                 for typ in set(unmatched_types.values()):
                     self.msg.match_statement_unexhaustive_match(typ, s)
 
