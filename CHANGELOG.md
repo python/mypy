@@ -28,12 +28,13 @@ Contributed by Ivan Levkivskyi (PR [18510](https://github.com/python/mypy/pull/1
 
  * Add flag to allow more flexible variable redefinition (Jukka Lehtosalo, PR [18727](https://github.com/python/mypy/pull/18727))
 
-### Stricter Type Checking with Any Types
+### Stricter Type Checking with Imprecise Types
 
 TODO:
 
  * `dict.get`
  * Use union types instead of join in binder (Ivan Levkivskyi, PR [18538](https://github.com/python/mypy/pull/18538))
+ * Check superclass compatibility of untyped methods if `--check-untyped-defs` is set (Stanislav Terliakov, PR [18970](https://github.com/python/mypy/pull/18970))
 
 ### Improvements to Attribute Resolution
 
@@ -124,14 +125,15 @@ Contributed by Marc Mueller (PR [18641](https://github.com/python/mypy/pull/1864
 ### Fixes to Crashes
 
  * Fix crash on multiple unpacks in a bare type application (Stanislav Terliakov, PR [18857](https://github.com/python/mypy/pull/18857))
- * Prevent crash when enum/typeddict call is stored as a class attribute (Stanislav Terliakov, PR [18861](https://github.com/python/mypy/pull/18861))
+ * Prevent crash when enum/TypedDict call is stored as a class attribute (Stanislav Terliakov, PR [18861](https://github.com/python/mypy/pull/18861))
  * Fix crash on multiple unpacks in a bare type application (Stanislav Terliakov, PR [18857](https://github.com/python/mypy/pull/18857))
  * Fix crash on type inference against non-normal callables (Ivan Levkivskyi, PR [18858](https://github.com/python/mypy/pull/18858))
  * Fix crash on decorated getter in settable property (Ivan Levkivskyi, PR [18787](https://github.com/python/mypy/pull/18787))
- * Fix crash for callable with *args and suffix against Any (Ivan Levkivskyi, PR [18781](https://github.com/python/mypy/pull/18781))
+ * Fix crash on callable with `*args` and suffix against Any (Ivan Levkivskyi, PR [18781](https://github.com/python/mypy/pull/18781))
  * Fix crash on deferred supertype and setter override (Ivan Levkivskyi, PR [18649](https://github.com/python/mypy/pull/18649))
  * Fix crashes on incorectly detected recursive aliases (Ivan Levkivskyi, PR [18625](https://github.com/python/mypy/pull/18625))
  * Report that `NamedTuple` and `dataclass` are incompatile instead of crashing (Christoph Tyralla, PR [18633](https://github.com/python/mypy/pull/18633))
+ * Fix mypy daemon crash (Valentin Stanciu, PR [19087](https://github.com/python/mypy/pull/19087))
 
 ### Performance Improvements
 
@@ -142,12 +144,11 @@ These are specific to mypy. Mypyc-related performance improvements are discussed
 
 ### Documentation Updates
 
- * Re-add documentation for formatting mypy `--help` text (wyattscarpenter, PR [19063](https://github.com/python/mypy/pull/19063))
- * Clarified strict documentation (lenayoung8, PR [18903](https://github.com/python/mypy/pull/18903))
- * Docs: remove a note about `from __future__ import annotations` (Ageev Maxim, PR [18915](https://github.com/python/mypy/pull/18915))
- * Improve docs on type narrowing (Tim Hoffmann, PR [18767](https://github.com/python/mypy/pull/18767))
+ * Improve documentation of `--strict` (lenayoung8, PR [18903](https://github.com/python/mypy/pull/18903))
+ * Remove a note about `from __future__ import annotations` (Ageev Maxim, PR [18915](https://github.com/python/mypy/pull/18915))
+ * Improve documentation on type narrowing (Tim Hoffmann, PR [18767](https://github.com/python/mypy/pull/18767))
  * Fix metaclass usage example (Georg, PR [18686](https://github.com/python/mypy/pull/18686))
- * Update docs on extra_checks flag (Ivan Levkivskyi, PR [18537](https://github.com/python/mypy/pull/18537))
+ * Update documentation on `extra_checks` flag (Ivan Levkivskyi, PR [18537](https://github.com/python/mypy/pull/18537))
 
 ### Stubgen Improvements
 
@@ -156,7 +157,7 @@ These are specific to mypy. Mypyc-related performance improvements are discussed
  * Fix valid type detection to allow pipe unions (Chad Dombrova, PR [18726](https://github.com/python/mypy/pull/18726))
  * Include simple decorators in stub files (Marc Mueller, PR [18489](https://github.com/python/mypy/pull/18489))
  * Support positional and keyword-only arguments in stubdoc (Paul Ganssle, PR [18762](https://github.com/python/mypy/pull/18762))
- * Fall back to Incomplete if we are unable to determine the module name (Stanislav Terliakov, PR [19084](https://github.com/python/mypy/pull/19084))
+ * Fall back to `Incomplete` if we are unable to determine the module name (Stanislav Terliakov, PR [19084](https://github.com/python/mypy/pull/19084))
 
 ### Stubtest Improvements
 
@@ -166,58 +167,52 @@ These are specific to mypy. Mypyc-related performance improvements are discussed
  * Understand override (Shantanu, PR [18815](https://github.com/python/mypy/pull/18815))
  * Better checking of runtime arguments with dunder names (Shantanu, PR [18756](https://github.com/python/mypy/pull/18756))
  * Ignore setattr and delattr inherited from object (Stephen Morton, PR [18325](https://github.com/python/mypy/pull/18325))
- * Replace old typing_extensions imports in tests (Marc Mueller, PR [18691](https://github.com/python/mypy/pull/18691))
 
 ### Miscellanous Fixes and Improvements
 
- * Clear more data in TypeChecker.reset() instead of asserting (Valentin Stanciu, PR [19087](https://github.com/python/mypy/pull/19087))
  * Add `--strict-bytes` to `--strict` (wyattscarpenter, PR [19049](https://github.com/python/mypy/pull/19049))
  * Admit that Final variables are never redefined (Stanislav Terliakov, PR [19083](https://github.com/python/mypy/pull/19083))
  * Add special support for `@django.cached_property` needed in `django-stubs` (sobolevn, PR [18959](https://github.com/python/mypy/pull/18959))
- * Do not narrow types to Never with binder (Ivan Levkivskyi, PR [18972](https://github.com/python/mypy/pull/18972))
- * Local forward refs should precede global forward refs (Ivan Levkivskyi, PR [19000](https://github.com/python/mypy/pull/19000))
- * Do not cache module lookup results that may become invalid in future (Stanislav Terliakov, PR [19044](https://github.com/python/mypy/pull/19044))
+ * Do not narrow types to `Never` with binder (Ivan Levkivskyi, PR [18972](https://github.com/python/mypy/pull/18972))
+ * Local forward references should precede global forward references (Ivan Levkivskyi, PR [19000](https://github.com/python/mypy/pull/19000))
+ * Do not cache module lookup results in incremental mode that may become invalid (Stanislav Terliakov, PR [19044](https://github.com/python/mypy/pull/19044))
  * Only consider meta variables in ambiguous "any of" constraints (Stanislav Terliakov, PR [18986](https://github.com/python/mypy/pull/18986))
  * Allow accessing `__init__` on final classes and when `__init__` is final (Stanislav Terliakov, PR [19035](https://github.com/python/mypy/pull/19035))
- * Mark varargs as pos-only (A5rocks, PR [19022](https://github.com/python/mypy/pull/19022))
+ * Treat varargs as positional-only (A5rocks, PR [19022](https://github.com/python/mypy/pull/19022))
  * Enable colored output for argparse help in Python 3.14 (Marc Mueller, PR [19021](https://github.com/python/mypy/pull/19021))
  * Fix argparse for Python 3.14 (Marc Mueller, PR [19020](https://github.com/python/mypy/pull/19020))
  * `dmypy suggest` can now suggest through contextmanager-based decorators (Anthony Sottile, PR [18948](https://github.com/python/mypy/pull/18948))
- * Check superclass compatibility of untyped methods if `--check-untyped-defs` is set (Stanislav Terliakov, PR [18970](https://github.com/python/mypy/pull/18970))
- * Bug fix of `__r<magic_methods>__` being used under the same `__<magic_method>__` hook (Arnav Jain, PR [18995](https://github.com/python/mypy/pull/18995))
+ * Fix `__r<magic_methods>__` being used under the same `__<magic_method>__` hook (Arnav Jain, PR [18995](https://github.com/python/mypy/pull/18995))
  * Prioritize `.pyi` from `-stubs` packages over bundled `.pyi` (Joren Hammudoglu, PR [19001](https://github.com/python/mypy/pull/19001))
  * Do not narrow types to Never with binder (Ivan Levkivskyi, PR [18972](https://github.com/python/mypy/pull/18972))
- * Local forward refs should precede global forward refs (Ivan Levkivskyi, PR [19000](https://github.com/python/mypy/pull/19000))
- * Add missing branch for `is_subtype(TypeType, Overload)` (Stanislav Terliakov, PR [18975](https://github.com/python/mypy/pull/18975))
- * use is_same_type when determining if a cast is redundant (Anthony Sottile, PR [18588](https://github.com/python/mypy/pull/18588))
+ * Fix missing subtype check case for `type[T]` (Stanislav Terliakov, PR [18975](https://github.com/python/mypy/pull/18975))
+ * Fixes to the detection of redundant casts (Anthony Sottile, PR [18588](https://github.com/python/mypy/pull/18588))
  * Make some parse errors non-blocking (Shantanu, PR [18941](https://github.com/python/mypy/pull/18941))
- * Fix PEP 695 type alias with mix of type args (PEP 696) (Marc Mueller, PR [18919](https://github.com/python/mypy/pull/18919))
+ * Fix PEP 695 type alias with a mix of type arguments (PEP 696) (Marc Mueller, PR [18919](https://github.com/python/mypy/pull/18919))
  * Allow deeper recursion in mypy daemon, better error reporting (Carter Dodd, PR [17707](https://github.com/python/mypy/pull/17707))
  * Fix swapped errors for frozen/non-frozen dataclass inheritance (Nazrawi Demeke, PR [18918](https://github.com/python/mypy/pull/18918))
  * Traverse module ancestors when traversing reachable graph nodes during dmypy update (Stanislav Terliakov, PR [18906](https://github.com/python/mypy/pull/18906))
- * Fix incremental issue with namespace packages (option 1) (Shantanu, PR [18907](https://github.com/python/mypy/pull/18907))
- * Exclude irrelevant members in `narrow_declared_type` from union overlapping with enum (Stanislav Terliakov, PR [18897](https://github.com/python/mypy/pull/18897))
+ * Fix incremental issue with namespace packages (Shantanu, PR [18907](https://github.com/python/mypy/pull/18907))
+ * Exclude irrelevant members when narrowing union overlapping with enum (Stanislav Terliakov, PR [18897](https://github.com/python/mypy/pull/18897))
  * Flatten union before contracting literals when checking subtyping (Stanislav Terliakov, PR [18898](https://github.com/python/mypy/pull/18898))
  * Do not add `kw_only` dataclass fields to `__match_args__` (sobolevn, PR [18892](https://github.com/python/mypy/pull/18892))
  * Fix error message when returning long tuple with type mismatch (Thomas Mattone, PR [18881](https://github.com/python/mypy/pull/18881))
  * Treat `TypedDict` (old-style) aliases as regular `TypedDict`s (Stanislav Terliakov, PR [18852](https://github.com/python/mypy/pull/18852))
  * Warn about unused `type: ignore` comments when error code is disabled (Brian Schubert, PR [18849](https://github.com/python/mypy/pull/18849))
  * Reject duplicate `ParamSpec.{args,kwargs}` at call site (Stanislav Terliakov, PR [18854](https://github.com/python/mypy/pull/18854))
- * Always use `.enum_members` to find enum members (sobolevn, PR [18675](https://github.com/python/mypy/pull/18675))
+ * Make detection of enum members more consistent (sobolevn, PR [18675](https://github.com/python/mypy/pull/18675))
  * Admit that `**kwargs` mapping subtypes may have no direct type parameters (Stanislav Terliakov, PR [18850](https://github.com/python/mypy/pull/18850))
- * Drop pkg_resources from stubinfo (Shantanu, PR [18840](https://github.com/python/mypy/pull/18840))
- * Add `scipy-stubs` as non-typeshed stub package (Joren Hammudoglu, PR [18832](https://github.com/python/mypy/pull/18832))
- * Fix dict.get issue for typeshed update (Marc Mueller, PR [18806](https://github.com/python/mypy/pull/18806))
+ * Drop don't suggest `types-setuptools for `pkg_resources` (Shantanu, PR [18840](https://github.com/python/mypy/pull/18840))
+ * Suggest `scipy-stubs` for `scipy` as non-typeshed stub package (Joren Hammudoglu, PR [18832](https://github.com/python/mypy/pull/18832))
  * Narrow tagged unions in match statements (Gene Parmesan Thomas, PR [18791](https://github.com/python/mypy/pull/18791))
  * Consistently store settable property type (Ivan Levkivskyi, PR [18774](https://github.com/python/mypy/pull/18774))
- * Restrict type of `AssignmentExpr.target` to `NameExpr` (bzoracler, PR [18714](https://github.com/python/mypy/pull/18714))
- * Do not blindly undefer on leaving fuction (Ivan Levkivskyi, PR [18674](https://github.com/python/mypy/pull/18674))
+ * Do not blindly undefer on leaving function (Ivan Levkivskyi, PR [18674](https://github.com/python/mypy/pull/18674))
  * Process superclass methods before subclass methods in semanal (Ivan Levkivskyi, PR [18723](https://github.com/python/mypy/pull/18723))
  * Only defer top-level functions (Ivan Levkivskyi, PR [18718](https://github.com/python/mypy/pull/18718))
  * Add one more type-checking pass (Ivan Levkivskyi, PR [18717](https://github.com/python/mypy/pull/18717))
- * Properly account for `member` and `nonmember` in `TypeInfo.enum_members` (sobolevn, PR [18559](https://github.com/python/mypy/pull/18559))
+ * Properly account for `member` and `nonmember` in enums (sobolevn, PR [18559](https://github.com/python/mypy/pull/18559))
  * Fix instance vs tuple subtyping edge case (Ivan Levkivskyi, PR [18664](https://github.com/python/mypy/pull/18664))
- * Better handling of Any/object in variadic generics (Ivan Levkivskyi, PR [18643](https://github.com/python/mypy/pull/18643))
+ * Improve handling of Any/object in variadic generics (Ivan Levkivskyi, PR [18643](https://github.com/python/mypy/pull/18643))
  * Fix handling of named tuples in class match pattern (Ivan Levkivskyi, PR [18663](https://github.com/python/mypy/pull/18663))
  * Fix regression for user config files (Shantanu, PR [18656](https://github.com/python/mypy/pull/18656))
  * Fix dmypy socket issue on GNU/Hurd (Mattias Ellert, PR [18630](https://github.com/python/mypy/pull/18630))
@@ -233,16 +228,16 @@ These are specific to mypy. Mypyc-related performance improvements are discussed
  * Fix inference when class and instance match protocol (Ivan Levkivskyi, PR [18587](https://github.com/python/mypy/pull/18587))
  * Remove support for `builtins.Any` (Marc Mueller, PR [18578](https://github.com/python/mypy/pull/18578))
  * Update the overlapping check for tuples to account for NamedTuples (A5rocks, PR [18564](https://github.com/python/mypy/pull/18564))
- * PEP 702 (`@deprecated`): "normal" overloaded methods (Christoph Tyralla, PR [18477](https://github.com/python/mypy/pull/18477))
- * Start propagating end columns/lines through for `type-arg` errors (A5rocks, PR [18533](https://github.com/python/mypy/pull/18533))
- * Retain None (unreachable) when typemap is None with `type(x) is Foo` check (Stanislav Terliakov, PR [18486](https://github.com/python/mypy/pull/18486))
+ * Fix `@deprecated` (PEP 702) with normal overloaded methods (Christoph Tyralla, PR [18477](https://github.com/python/mypy/pull/18477))
+ * Start propagating end columns/lines for `type-arg` errors (A5rocks, PR [18533](https://github.com/python/mypy/pull/18533))
+ * Improve handling of `type(x) is Foo` checks (Stanislav Terliakov, PR [18486](https://github.com/python/mypy/pull/18486))
  * Suggest `typing.Literal` for exit-return error messages (Marc Mueller, PR [18541](https://github.com/python/mypy/pull/18541))
  * Allow redefinitions in except/else/finally (Stanislav Terliakov, PR [18515](https://github.com/python/mypy/pull/18515))
- * Disallow inline config of Python version (Shantanu, PR [18497](https://github.com/python/mypy/pull/18497))
- * Improve inference in tuple multiplication plugin (Shantanu, PR [18521](https://github.com/python/mypy/pull/18521))
- * Add missing linen numberto `yield from` with wrong type (Stanislav Terliakov, PR [18518](https://github.com/python/mypy/pull/18518))
+ * Disallow setting Python version using inline config (Shantanu, PR [18497](https://github.com/python/mypy/pull/18497))
+ * Improve type inference in tuple multiplication plugin (Shantanu, PR [18521](https://github.com/python/mypy/pull/18521))
+ * Add missing line nnumber to `yield from` with wrong type (Stanislav Terliakov, PR [18518](https://github.com/python/mypy/pull/18518))
  * Hint at argument names when formatting callables with compatible return types in error messages (Stanislav Terliakov, PR [18495](https://github.com/python/mypy/pull/18495))
- * Better names of and more compatibility between ad hoc intersections of instances (Christoph Tyralla, PR [18506](https://github.com/python/mypy/pull/18506))
+ * Add better naming and improve compatibility for ad hoc intersections of instances (Christoph Tyralla, PR [18506](https://github.com/python/mypy/pull/18506))
  * Infer correct types with overloads of `Type[Guard | Is]` (sobolevn, PR [17678](https://github.com/python/mypy/pull/17678))
 
 ## Mypy 1.15
