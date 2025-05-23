@@ -3,17 +3,36 @@
 def f(x): pass
 [out]
 main:2: error: Function is missing a type annotation
+main:2: note: Use "-> None" if function does not return a value
 
-[case testUnannotatedArgument]
+[case testUnannotatedArgumentSingle]
 # flags: --disallow-untyped-defs
-def f(x) -> int: pass
+def f(x) -> int: return 1
 [out]
-main:2: error: Function is missing a type annotation for one or more arguments
+main:2: error: Function is missing a type annotation for one or more arguments: "x"
 
-[case testNoArgumentFunction]
+[case testUnannotatedArgumentLessThan5]
 # flags: --disallow-untyped-defs
-def f() -> int: pass
+def f(x, y, z, a:int, b) -> int: return 1
 [out]
+main:2: error: Function is missing a type annotation for one or more arguments: "x", "y", "z", "b"
+
+[case testUnannotatedArgument5orMore]
+# flags: --disallow-untyped-defs
+def f(x, y, z, a:int, b, c, d, e, f:int) -> int: return 1
+[out]
+main:2: error: Function is missing a type annotation for one or more arguments: "x", "y", "z", "b", "c"...
+
+[case testNoArgumentValidReturnType]
+# flags: --disallow-untyped-defs
+def f() -> int: return 1
+[out]
+
+[case testNoArgumentMissingReturnTypeFunction]
+# flags: --disallow-untyped-defs
+def f(): return 5
+[out]
+main:2: error: Function is missing a return type annotation
 
 [case testUnannotatedReturn]
 # flags: --disallow-untyped-defs
@@ -44,7 +63,7 @@ main:2: note: Use "-> None" if function does not return a value
 # flags: --disallow-untyped-defs
 def f(self): pass
 [out]
-main:2: error: Function is missing a return type annotation
+main:2: error: Function is missing a type annotation
 main:2: note: Use "-> None" if function does not return a value
 
 [case testUnannotatedReturnWithNontrivialReturn]
@@ -55,15 +74,14 @@ main:2: error: Function is missing a return type annotation
 
 [case testUntypedAsyncDef]
 # flags: --disallow-untyped-defs
-async def f():  # E: Function is missing a return type annotation \
-                # N: Use "-> None" if function does not return a value
+async def f():  # E: Function is missing a return type annotation # N: Use "-> None" if function does not return a value
     pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testAsyncUnannotatedArgument]
 # flags: --disallow-untyped-defs
-async def f(x) -> None:  # E: Function is missing a type annotation for one or more arguments
+async def f(x) -> None:  # E: Function is missing a type annotation for one or more arguments: "x"
     pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
@@ -84,7 +102,7 @@ async def g(x: int) -> Any:
 def get_tasks(self):
     return 'whatever'
 [out]
-main:2: error: Function is missing a return type annotation
+main:2: error: Function is missing a type annotation
 
 [case testDisallowUntypedDefsUntypedDecorator]
 # flags: --disallow-untyped-decorators
@@ -659,7 +677,7 @@ import standard, incomplete
 def incomplete(x) -> int:
     return 0
 [file incomplete.py]
-def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more arguments
+def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more arguments: "x"
     return 0
 [file mypy.ini]
 \[mypy]
@@ -676,7 +694,7 @@ import standard, incomplete
 def incomplete(x) -> int:
     return 0
 [file incomplete.py]
-def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more arguments
+def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more arguments: "x"
     return 0
 [file pyproject.toml]
 \[tool.mypy]
@@ -1351,7 +1369,7 @@ def g(m: Movie) -> Movie:
 
 def f(i: int):  # E: Function is missing a return type annotation
     pass
-def g(i) -> None:  # E: Function is missing a type annotation for one or more arguments
+def g(i) -> None:  # E: Function is missing a type annotation for one or more arguments: "i"
     pass
 def h(i: int) -> int:  # no error
     return i
@@ -1378,7 +1396,7 @@ def f(i: int, s):
 
 [out]
 main:3: error: Function is missing a return type annotation
-main:3: error: Function is missing a type annotation for one or more arguments
+main:3: error: Function is missing a type annotation for one or more arguments: "s"
 
 [case testDisallowIncompleteDefsAttrsNoAnnotations]
 # flags: --disallow-incomplete-defs
@@ -1405,7 +1423,7 @@ class Annotated:
 import attrs
 
 @attrs.define
-class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
+class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments: "baz"
     bar: int = attrs.field()
     baz = attrs.field()
 
@@ -2301,13 +2319,13 @@ ignore_errors = True
 # flags: --config-file tmp/mypy.ini
 import x, y, z
 [file x.py]
-def f(a): ...  # E: Function is missing a type annotation
+def f(a): ...  # E: Function is missing a type annotation # N: Use "-> None" if function does not return a value
 def g(a: int) -> int: return f(a)
 [file y.py]
 def f(a): pass
 def g(a: int) -> int: return f(a)
 [file z.py]
-def f(a): pass  # E: Function is missing a type annotation
+def f(a): pass  # E: Function is missing a type annotation # N: Use "-> None" if function does not return a value
 def g(a: int) -> int: return f(a)  # E: Call to untyped function "f" in typed context
 [file mypy.ini]
 \[mypy]
