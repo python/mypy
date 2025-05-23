@@ -16,7 +16,7 @@ else:
     import tomli as tomllib
 
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Callable, Final, TextIO, Union
+from typing import Any, Callable, Final, TextIO, Union, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import defaults
@@ -329,10 +329,16 @@ def parse_config_file(
 
 def _merge_updates(existing: dict[str, object], new: dict[str, object]) -> None:
     existing["disable_error_code"] = list(
-        set(existing.get("disable_error_code", []) + new.pop("disable_error_code"))
+        set(
+            cast(list[str], existing.get("disable_error_code", []))
+            + cast(list[str], new.pop("disable_error_code", []))
+        )
     )
     existing["enable_error_code"] = list(
-        set(existing.get("enable_error_code", []) + new.pop("enable_error_code"))
+        set(
+            cast(list[str], existing.get("enable_error_code", []))
+            + cast(list[str], new.pop("enable_error_code", []))
+        )
     )
     existing.update(new)
 
