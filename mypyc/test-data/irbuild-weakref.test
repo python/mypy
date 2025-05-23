@@ -1,0 +1,25 @@
+[case testWeakrefRefCallback]
+import weakref
+from typing import Any, Callable
+def f(x: object, cb: Callable[[object], Any]) -> object:
+    return weakref.ref(x, cb)
+
+[out]
+def f(x, cb):
+    x, cb, r0 :: object
+L0:
+    r0 = PyWeakref_NewRef(x, cb)
+    return r0
+
+[case testFromWeakrefRefCallback]
+from typing import Any, Callable
+from weakref import ref
+def f(x: object, cb: Callable[[object], Any]) -> object:
+    return ref(x, cb)
+
+[out]
+def f(x, cb):
+    x, cb, r0 :: object
+L0:
+    r0 = PyWeakref_NewRef(x, cb)
+    return r0
