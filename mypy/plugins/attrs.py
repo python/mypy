@@ -1037,7 +1037,7 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None | AnyType:
         if getattr(init_method, "plugin_generated", False):
             return init_method.type
         else:
-            return AnyType(TypeOfAny.special_form)
+            return AnyType(TypeOfAny.special_form) 
 
     # case 2: overloaded method
     if isinstance(init_method, OverloadedFuncDef) and isinstance(init_method.type, Overloaded):
