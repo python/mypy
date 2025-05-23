@@ -81,7 +81,47 @@ Contributed by Marc Mueller (PR [18641](https://github.com/python/mypy/pull/1864
 
 ### Annotating Native/Non-Native Classes in Mypyc
 
- * Support for annotating classes to be native or not (native_class=True/False) (Valentin Stanciu, PR [18802](https://github.com/python/mypy/pull/18802))
+You can now declare a class as a non-native class when compiling with
+mypyc. Unlike native classes, which are extension classes and have an
+immutable structure, non-native classes are normal Python classes at
+runtime and are fully dynamic.  Example:
+
+```python
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class NonNativeClass:
+    ...
+
+o = NonNativeClass()
+
+# Ok, even if attribute "foo" not declared in class body
+setattr(o, "foo", 1)
+```
+
+Classes are native by default in compiled modules, but classes that
+use certain features (such as most metaclasses) are implicitly
+non-native.
+
+You can also explicitly declare a class as native. In this case mypyc
+will generate an error if it can't compile the class as a native
+class, instead of falling back to a non-native class:
+
+```python
+from mypy_extensions import mypyc_attr
+from foo import MyMeta
+
+# Error: Unsupported metaclass for a native class
+@mypyc_attr(native_class=True)
+class C(metaclass=MyMeta):
+    ...
+```
+
+Since native classes are significantly more efficient that non-native
+classes, you may want to ensure that certain classes always compiled
+as native classes.
+
+This feature was contributed by Valentin Stanciu (PR [18802](https://github.com/python/mypy/pull/18802)).
 
 ### Mypyc Fixes and Improvements
 
