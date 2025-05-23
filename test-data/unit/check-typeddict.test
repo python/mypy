@@ -3760,20 +3760,24 @@ del x["optional_key"]  # E: Key "optional_key" of TypedDict "TP" cannot be delet
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictReadOnlyMutateMethods]
-from typing import ReadOnly, TypedDict
+from typing import ReadOnly, NotRequired, TypedDict
 
 class TP(TypedDict):
     key: ReadOnly[str]
+    optional_key: ReadOnly[NotRequired[str]]
     other: ReadOnly[int]
     mutable: bool
 
 x: TP
 reveal_type(x.pop("key"))  # N: Revealed type is "builtins.str" \
                            # E: Key "key" of TypedDict "TP" cannot be deleted
+reveal_type(x.pop("optional_key"))  # N: Revealed type is "builtins.str" \
+                                    # E: Key "optional_key" of TypedDict "TP" cannot be deleted
 
 
 x.update({"key": "abc", "other": 1, "mutable": True})  # E: ReadOnly TypedDict keys ("key", "other") TypedDict are mutated
 x.setdefault("key", "abc")  # E: ReadOnly TypedDict key "key" TypedDict is mutated
+x.setdefault("optional_key", "foo")  # E: ReadOnly TypedDict key "optional_key" TypedDict is mutated
 x.setdefault("other", 1)  # E: ReadOnly TypedDict key "other" TypedDict is mutated
 x.setdefault("mutable", False)  # ok
 [builtins fixtures/dict.pyi]
