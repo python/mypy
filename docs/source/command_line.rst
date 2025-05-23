@@ -799,6 +799,44 @@ of the above sections.
         x = 'a string'
         x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
+.. option:: --only-allow-exhaustive-match-statements
+
+   This flag will cause mypy to report an error whenever it encounters a match statement
+   that does not cover all possible cases.
+
+    .. code-block:: python
+
+        import enum
+
+
+        class Color(enum.Enum):
+            RED = 1
+            BLUE = 2
+
+        val: Color = Color.RED
+
+        match val: # error: Cases within match statement do not exhaustively handle all values: "Literal[Color.BLUE]". If not intended to handle all cases, use `case _: pass`
+            case Color.RED:
+                print("red")
+        # without --only-allow-exhaustive-match-statements
+        match val:
+            case Color.RED:
+                print("red")
+        # with --only-allow-exhaustive-match-statements
+        match val: # error: Cases within match statement do not exhaustively handle all values: "Literal[Color.BLUE]". If not intended to handle all cases, use `case _: pass`
+            case Color.RED:
+                print("red")
+
+
+        # no error with --only-allow-exhaustive-match-statements since all cases are handled
+        match val: # error: Cases within match statement do not exhaustively handle all values: "Literal[Color.BLUE]". If not intended to handle all cases, use `case _: pass`
+            case Color.RED:
+                print("red")
+            case _:
+                print("other")
+
+
+
 .. _configuring-error-messages:
 
 Configuring error messages
