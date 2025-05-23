@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import contextlib
+import io
 import os
 import tempfile
 import unittest
 from collections.abc import Iterator
 from pathlib import Path
 
-from mypy.config_parser import _find_config_file
+from mypy.config_parser import _find_config_file, parse_config_file
 from mypy.defaults import CONFIG_NAMES, SHARED_CONFIG_NAMES
+from mypy.options import Options
 
 
 @contextlib.contextmanager
@@ -128,3 +130,82 @@ class FindConfigFileSuite(unittest.TestCase):
                 result = _find_config_file()
                 assert result is not None
                 assert Path(result[2]).resolve() == parent_mypy.resolve()
+
+
+class ExtendConfigFileSuite(unittest.TestCase):
+
+    def test_extend_success(self) -> None:
+        with tempfile.TemporaryDirectory() as _tmpdir:
+            tmpdir = Path(_tmpdir)
+            with chdir(tmpdir):
+                pyproject = tmpdir / "pyproject.toml"
+                write_config(
+                    pyproject,
+                    "[tool.mypy]\n"
+                    'extend = "./folder/mypy.ini"\n'
+                    "strict = false\n"
+                    "[[tool.mypy.overrides]]\n"
+                    'module = "c"\n'
+                    'enable_error_code = ["explicit-override"]\n'
+                    "disallow_untyped_defs = true",
+                )
+                folder = tmpdir / "folder"
+                folder.mkdir()
+                write_config(
+                    folder / "mypy.ini",
+                    "[mypy]\n"
+                    "strict = True\n"
+                    "ignore_missing_imports_per_module = True\n"
+                    "[mypy-c]\n"
+                    "disallow_incomplete_defs = True",
+                )
+
+                options = Options()
+                strict_option_set = False
+
+                def set_strict_flags() -> None:
+                    nonlocal strict_option_set
+                    strict_option_set = True
+
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                parse_config_file(options, set_strict_flags, None, stdout, stderr)
+
+                assert strict_option_set is True
+                assert options.ignore_missing_imports_per_module is True
+                assert options.config_file == str(pyproject.name)
+                os.environ["MYPY_CONFIG_FILE_DIR"] = str(pyproject.parent)
+
+                assert options.per_module_options["c"] == {
+                    "disable_error_code": [],
+                    "enable_error_code": ["explicit-override"],
+                    "disallow_untyped_defs": True,
+                    "disallow_incomplete_defs": True,
+                }
+
+                assert stdout.getvalue() == ""
+                assert stderr.getvalue() == ""
+
+    def test_extend_cyclic(self) -> None:
+        with tempfile.TemporaryDirectory() as _tmpdir:
+            tmpdir = Path(_tmpdir)
+            with chdir(tmpdir):
+                pyproject = tmpdir / "pyproject.toml"
+                write_config(pyproject, '[tool.mypy]\nextend = "./folder/mypy.ini"\n')
+
+                folder = tmpdir / "folder"
+                folder.mkdir()
+                ini = folder / "mypy.ini"
+                write_config(ini, "[mypy]\nextend = ../pyproject.toml\n")
+
+                options = Options()
+
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                parse_config_file(options, lambda: None, None, stdout, stderr)
+
+                assert stdout.getvalue() == ""
+                assert stderr.getvalue() == (
+                    f"Circular extend detected: /private{pyproject}\n"
+                    f"../pyproject.toml is not a valid path to extend from /private{ini}\n"
+                )

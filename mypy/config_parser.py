@@ -292,7 +292,7 @@ def parse_config_file(
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> None:
-    """Parse a config file into an Options object.
+    """Parse a config file into an Options object, following config extend arguments.
 
     Errors are written to stderr but are not fatal.
 
@@ -301,30 +301,104 @@ def parse_config_file(
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
 
+    ret = _parse_and_extend_config_file(
+        options=options,
+        set_strict_flags=set_strict_flags,
+        filename=filename,
+        stdout=stdout,
+        stderr=stderr,
+        visited=set(),
+    )
+
+    if ret is None:
+        return
+
+    file_read, mypy_updates, mypy_report_dirs, module_updates = ret
+
+    options.config_file = file_read
+    os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(os.path.abspath(file_read))
+
+    for k, v in mypy_updates.items():
+        setattr(options, k, v)
+
+    options.report_dirs.update(mypy_report_dirs)
+
+    for glob, updates in module_updates.items():
+        options.per_module_options[glob] = updates
+
+
+def _merge_updates(existing: dict[str, object], new: dict[str, object]) -> None:
+    existing["disable_error_code"] = list(
+        set(existing.get("disable_error_code", []) + new.pop("disable_error_code"))
+    )
+    existing["enable_error_code"] = list(
+        set(existing.get("enable_error_code", []) + new.pop("enable_error_code"))
+    )
+    existing.update(new)
+
+
+def _parse_and_extend_config_file(
+    options: Options,
+    set_strict_flags: Callable[[], None],
+    filename: str | None,
+    stdout: TextIO,
+    stderr: TextIO,
+    visited: set[str],
+) -> tuple[str, dict[str, object], dict[str, str], dict[str, dict[str, object]]] | None:
     ret = (
         _parse_individual_file(filename, stderr)
         if filename is not None
         else _find_config_file(stderr)
     )
     if ret is None:
-        return
+        return None
     parser, config_types, file_read = ret
 
-    options.config_file = file_read
-    os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(os.path.abspath(file_read))
+    abs_file_read = os.path.abspath(file_read)
+    if abs_file_read in visited:
+        print(f"Circular extend detected: {abs_file_read}", file=stderr)
+        return None
+    visited.add(abs_file_read)
+
+    mypy_updates: dict[str, object] = {}
+    mypy_report_dirs: dict[str, str] = {}
+    module_updates: dict[str, dict[str, object]] = {}
 
     if "mypy" not in parser:
         if filename or os.path.basename(file_read) not in defaults.SHARED_CONFIG_NAMES:
             print(f"{file_read}: No [mypy] section in config file", file=stderr)
     else:
         section = parser["mypy"]
+
+        extend = parser["mypy"].pop("extend", None)
+        if extend:
+            cwd = os.getcwd()
+            try:
+                # process extend relative to the directory where we found current config
+                os.chdir(os.path.dirname(abs_file_read))
+                parse_ret = _parse_and_extend_config_file(
+                    options=options,
+                    set_strict_flags=set_strict_flags,
+                    filename=os.path.abspath(expand_path(extend)),
+                    stdout=stdout,
+                    stderr=stderr,
+                    visited=visited,
+                )
+            finally:
+                os.chdir(cwd)
+
+            if parse_ret is None:
+                print(f"{extend} is not a valid path to extend from {abs_file_read}", file=stderr)
+            else:
+                _, mypy_updates, mypy_report_dirs, module_updates = parse_ret
+
         prefix = f"{file_read}: [mypy]: "
         updates, report_dirs = parse_section(
             prefix, options, set_strict_flags, section, config_types, stderr
         )
-        for k, v in updates.items():
-            setattr(options, k, v)
-        options.report_dirs.update(report_dirs)
+        # extend and overwrite existing values with new ones
+        _merge_updates(mypy_updates, updates)
+        mypy_report_dirs.update(report_dirs)
 
     for name, section in parser.items():
         if name.startswith("mypy-"):
@@ -367,7 +441,10 @@ def parse_config_file(
                         file=stderr,
                     )
                 else:
-                    options.per_module_options[glob] = updates
+                    # extend and overwrite existing values with new ones
+                    _merge_updates(module_updates.setdefault(glob, {}), updates)
+
+    return file_read, mypy_updates, mypy_report_dirs, module_updates
 
 
 def get_prefix(file_read: str, name: str) -> str:
