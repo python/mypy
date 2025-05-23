@@ -22,6 +22,7 @@ class BuildType:
 PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
     "allow_redefinition",
+    "allow_redefinition_new",
     "allow_untyped_globals",
     "always_false",
     "always_true",
@@ -219,6 +220,10 @@ class Options:
         # and the same nesting level as the initialization
         self.allow_redefinition = False
 
+        # Allow flexible variable redefinition with an arbitrary type, in different
+        # blocks and and at different nesting levels
+        self.allow_redefinition_new = False
+
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
@@ -401,6 +406,12 @@ class Options:
         # Sets custom output format
         self.output: str | None = None
 
+        # Output html file for mypyc -a
+        self.mypyc_annotation_file: str | None = None
+        # Skip writing C output files, but perform all other steps of a build (allows
+        # preserving manual tweaks to generated C file)
+        self.mypyc_skip_c_generation = False
+
     def use_lowercase_names(self) -> bool:
         if self.python_version >= (3, 9):
             return not self.force_uppercase_builtins
@@ -454,6 +465,16 @@ class Options:
                 error_callback(f"Unknown incomplete feature: {feature}")
             if feature in COMPLETE_FEATURES:
                 warning_callback(f"Warning: {feature} is already enabled by default")
+
+    def process_strict_bytes(self) -> None:
+        # Sync `--strict-bytes` and `--disable-{bytearray,memoryview}-promotion`
+        if self.strict_bytes:
+            # backwards compatibility
+            self.disable_bytearray_promotion = True
+            self.disable_memoryview_promotion = True
+        elif self.disable_bytearray_promotion and self.disable_memoryview_promotion:
+            # forwards compatibility
+            self.strict_bytes = True
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.

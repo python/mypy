@@ -803,3 +803,33 @@ def test() -> None:
         return
     reveal_type(x)  # N: Revealed type is "builtins.list[__main__.C]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardedTypeDoesNotLeak]
+# https://github.com/python/mypy/issues/18895
+from enum import Enum
+from typing import Literal, Union
+from typing_extensions import TypeGuard
+
+class Model(str, Enum):
+    A1 = 'model_a1'
+    A2 = 'model_a2'
+    B = 'model_b'
+
+MODEL_A = Literal[Model.A1, Model.A2]
+MODEL_B = Literal[Model.B]
+
+def is_model_a(model: str) -> TypeGuard[MODEL_A]:
+    return True
+
+def is_model_b(model: str) -> TypeGuard[MODEL_B]:
+    return True
+
+def process_model(model: Union[MODEL_A, MODEL_B]) -> int:
+    return 42
+
+def handle(model: Model) -> int:
+    if is_model_a(model) or is_model_b(model):
+        reveal_type(model)  # N: Revealed type is "__main__.Model"
+        return process_model(model)
+    return 0
+[builtins fixtures/tuple.pyi]

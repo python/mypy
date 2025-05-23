@@ -61,6 +61,7 @@ files = [
     "run-classes.test",
     "run-traits.test",
     "run-generators.test",
+    "run-generics.test",
     "run-multimodule.test",
     "run-bench.test",
     "run-mypy-sim.test",
@@ -250,7 +251,7 @@ class TestRun(MypycDataSuite):
                 alt_lib_path=".",
             )
             errors = Errors(options)
-            ir, cfiles = emitmodule.compile_modules_to_c(
+            ir, cfiles, _ = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )
             if errors.num_errors:

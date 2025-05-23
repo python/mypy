@@ -130,8 +130,7 @@ if sys.version_info >= (3, 12):
 if sys.version_info >= (3, 13):
     __all__ += ["get_protocol_members", "is_protocol", "NoDefault", "TypeIs", "ReadOnly"]
 
-Any = object()
-
+class Any: ...
 class _Final: ...
 
 def final(f: _T) -> _T: ...
@@ -510,15 +509,15 @@ class Awaitable(Protocol[_T_co]):
     def __await__(self) -> Generator[Any, Any, _T_co]: ...
 
 # Non-default variations to accommodate couroutines, and `AwaitableGenerator` having a 4th type parameter.
-_SendT_contra_nd = TypeVar("_SendT_contra_nd", contravariant=True)
-_ReturnT_co_nd = TypeVar("_ReturnT_co_nd", covariant=True)
+_SendT_nd_contra = TypeVar("_SendT_nd_contra", contravariant=True)
+_ReturnT_nd_co = TypeVar("_ReturnT_nd_co", covariant=True)
 
-class Coroutine(Awaitable[_ReturnT_co_nd], Generic[_YieldT_co, _SendT_contra_nd, _ReturnT_co_nd]):
+class Coroutine(Awaitable[_ReturnT_nd_co], Generic[_YieldT_co, _SendT_nd_contra, _ReturnT_nd_co]):
     __name__: str
     __qualname__: str
 
     @abstractmethod
-    def send(self, value: _SendT_contra_nd, /) -> _YieldT_co: ...
+    def send(self, value: _SendT_nd_contra, /) -> _YieldT_co: ...
     @overload
     @abstractmethod
     def throw(
@@ -534,9 +533,9 @@ class Coroutine(Awaitable[_ReturnT_co_nd], Generic[_YieldT_co, _SendT_contra_nd,
 # The parameters correspond to Generator, but the 4th is the original type.
 @type_check_only
 class AwaitableGenerator(
-    Awaitable[_ReturnT_co_nd],
-    Generator[_YieldT_co, _SendT_contra_nd, _ReturnT_co_nd],
-    Generic[_YieldT_co, _SendT_contra_nd, _ReturnT_co_nd, _S],
+    Awaitable[_ReturnT_nd_co],
+    Generator[_YieldT_co, _SendT_nd_contra, _ReturnT_nd_co],
+    Generic[_YieldT_co, _SendT_nd_contra, _ReturnT_nd_co, _S],
     metaclass=ABCMeta,
 ): ...
 
@@ -950,6 +949,9 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     # so we only add it to the stub on 3.12+
     if sys.version_info >= (3, 12):
         __orig_bases__: ClassVar[tuple[Any, ...]]
+    if sys.version_info >= (3, 13):
+        __readonly_keys__: ClassVar[frozenset[str]]
+        __mutable_keys__: ClassVar[frozenset[str]]
 
     def copy(self) -> typing_extensions.Self: ...
     # Using Never so that only calls using mypy plugin hook that specialize the signature
@@ -957,7 +959,7 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     def setdefault(self, k: _Never, default: object) -> object: ...
     # Mypy plugin hook for 'pop' expects that 'default' has a type variable type.
     def pop(self, k: _Never, default: _T = ...) -> object: ...  # pyright: ignore[reportInvalidTypeVarUse]
-    def update(self: _T, m: _T, /) -> None: ...
+    def update(self, m: typing_extensions.Self, /) -> None: ...
     def __delitem__(self, k: _Never) -> None: ...
     def items(self) -> dict_items[str, object]: ...
     def keys(self) -> dict_keys[str, object]: ...

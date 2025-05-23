@@ -34,6 +34,7 @@ from mypy.fscache import FileSystemCache
 from mypy.main import process_options
 from mypy.options import Options
 from mypy.util import write_junit_xml
+from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
 from mypyc.common import RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
@@ -241,7 +242,7 @@ def generate_c(
         print(f"Parsed and typechecked in {t1 - t0:.3f}s")
 
     errors = Errors(options)
-    modules, ctext = emitmodule.compile_modules_to_c(
+    modules, ctext, mapper = emitmodule.compile_modules_to_c(
         result, compiler_options=compiler_options, errors=errors, groups=groups
     )
     t2 = time.time()
@@ -252,6 +253,9 @@ def generate_c(
 
     if compiler_options.verbose:
         print(f"Compiled to C in {t2 - t1:.3f}s")
+
+    if options.mypyc_annotation_file:
+        generate_annotated_html(options.mypyc_annotation_file, result, modules, mapper)
 
     return ctext, "\n".join(format_modules(modules))
 
@@ -448,7 +452,8 @@ def mypyc_build(
         cfilenames = []
         for cfile, ctext in cfiles:
             cfile = os.path.join(compiler_options.target_dir, cfile)
-            write_file(cfile, ctext)
+            if not options.mypyc_skip_c_generation:
+                write_file(cfile, ctext)
             if os.path.splitext(cfile)[1] == ".c":
                 cfilenames.append(cfile)
 

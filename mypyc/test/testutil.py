@@ -12,10 +12,12 @@ from typing import Callable
 
 from mypy import build
 from mypy.errors import CompileError
+from mypy.nodes import Expression, MypyFile
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
+from mypy.types import Type
 from mypyc.analysis.ircheck import assert_func_ir_valid
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
 from mypyc.errors import Errors
@@ -93,12 +95,12 @@ def perform_test(
 def build_ir_for_single_file(
     input_lines: list[str], compiler_options: CompilerOptions | None = None
 ) -> list[FuncIR]:
-    return build_ir_for_single_file2(input_lines, compiler_options).functions
+    return build_ir_for_single_file2(input_lines, compiler_options)[0].functions
 
 
 def build_ir_for_single_file2(
     input_lines: list[str], compiler_options: CompilerOptions | None = None
-) -> ModuleIR:
+) -> tuple[ModuleIR, MypyFile, dict[Expression, Type], Mapper]:
     program_text = "\n".join(input_lines)
 
     # By default generate IR compatible with the earliest supported Python C API.
@@ -123,13 +125,9 @@ def build_ir_for_single_file2(
         raise CompileError(result.errors)
 
     errors = Errors(options)
+    mapper = Mapper({"__main__": None})
     modules = build_ir(
-        [result.files["__main__"]],
-        result.graph,
-        result.types,
-        Mapper({"__main__": None}),
-        compiler_options,
-        errors,
+        [result.files["__main__"]], result.graph, result.types, mapper, compiler_options, errors
     )
     if errors.num_errors:
         raise CompileError(errors.new_messages())
@@ -137,7 +135,9 @@ def build_ir_for_single_file2(
     module = list(modules.values())[0]
     for fn in module.functions:
         assert_func_ir_valid(fn)
-    return module
+    tree = result.graph[module.fullname].tree
+    assert tree is not None
+    return module, tree, result.types, mapper
 
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: list[str]) -> None:

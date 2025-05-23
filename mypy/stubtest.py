@@ -654,10 +654,10 @@ def _verify_arg_name(
     if is_dunder(function_name, exclude_special=True):
         return
 
-    def strip_prefix(s: str, prefix: str) -> str:
-        return s.removeprefix(prefix)
-
-    if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:
+    if (
+        stub_arg.variable.name == runtime_arg.name
+        or stub_arg.variable.name.removeprefix("__") == runtime_arg.name
+    ):
         return
 
     nonspecific_names = {"object", "args"}
@@ -858,7 +858,7 @@ class Signature(Generic[T]):
 
         all_args: dict[str, list[tuple[nodes.Argument, int]]] = {}
         for func in map(_resolve_funcitem_from_decorator, stub.items):
-            assert func is not None
+            assert func is not None, "Failed to resolve decorated overload"
             args = maybe_strip_cls(stub.name, func.arguments)
             for index, arg in enumerate(args):
                 # For positional-only args, we allow overloads to have different names for the same
@@ -948,6 +948,7 @@ def _verify_signature(
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
             and (stub_arg.pos_only or stub_arg.variable.name.startswith("__"))
+            and not runtime_arg.name.startswith("__")
             and stub_arg.variable.name.strip("_") != "self"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
@@ -1255,12 +1256,28 @@ def verify_paramspecexpr(
         return
 
 
+def _is_django_cached_property(runtime: Any) -> bool:  # pragma: no cover
+    # This is a special case for
+    # https://docs.djangoproject.com/en/5.2/ref/utils/#django.utils.functional.cached_property
+    # This is needed in `django-stubs` project:
+    # https://github.com/typeddjango/django-stubs
+    if type(runtime).__name__ != "cached_property":
+        return False
+    try:
+        return bool(runtime.func)
+    except Exception:
+        return False
+
+
 def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     assert stub.func.is_property
     if isinstance(runtime, property):
         yield from _verify_final_method(stub.func, runtime.fget, MISSING)
         return
     if isinstance(runtime, functools.cached_property):
+        yield from _verify_final_method(stub.func, runtime.func, MISSING)
+        return
+    if _is_django_cached_property(runtime):
         yield from _verify_final_method(stub.func, runtime.func, MISSING)
         return
     if inspect.isdatadescriptor(runtime):
@@ -1329,6 +1346,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
         if (
             decorator.fullname in ("builtins.staticmethod", "abc.abstractmethod")
             or decorator.fullname in mypy.types.OVERLOAD_NAMES
+            or decorator.fullname in mypy.types.OVERRIDE_DECORATOR_NAMES
             or decorator.fullname in mypy.types.FINAL_DECORATOR_NAMES
         ):
             return func
@@ -1476,6 +1494,7 @@ IGNORED_MODULE_DUNDERS: Final = frozenset(
         "__loader__",
         "__spec__",
         "__annotations__",
+        "__annotate__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
         # Created by `warnings.warn`, does not make much sense to have in stubs:
@@ -1492,6 +1511,9 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         # Special attributes
         "__dict__",
         "__annotations__",
+        "__annotate__",
+        "__annotations_cache__",
+        "__annotate_func__",
         "__text_signature__",
         "__weakref__",
         "__hash__",
@@ -1500,6 +1522,7 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         "__vectorcalloffset__",  # undocumented implementation detail of the vectorcall protocol
         "__firstlineno__",
         "__static_attributes__",
+        "__classdictcell__",
         # isinstance/issubclass hooks that type-checkers don't usually care about
         "__instancecheck__",
         "__subclasshook__",
@@ -1518,6 +1541,7 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         "__getinitargs__",
         "__reduce_ex__",
         "__reduce__",
+        "__slotnames__",  # Cached names of slots added by `copyreg` module.
         # ctypes weirdness
         "__ctype_be__",
         "__ctype_le__",
@@ -2001,6 +2025,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     options.process_incomplete_features(
         error_callback=error_callback, warning_callback=warning_callback
     )
+    options.process_strict_bytes()
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
@@ -2081,6 +2106,8 @@ def parse_options(args: list[str]) -> _Arguments:
     parser = argparse.ArgumentParser(
         description="Compares stubs to objects introspected from the runtime."
     )
+    if sys.version_info >= (3, 14):
+        parser.color = True  # Set as init arg in 3.14
     parser.add_argument("modules", nargs="*", help="Modules to test")
     parser.add_argument(
         "--concise",

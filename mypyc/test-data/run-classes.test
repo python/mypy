@@ -78,16 +78,21 @@ assert hasattr(c, 'x')
 
 [case testTypedDictWithFields]
 import collections
+import json
 from typing import TypedDict
 class C(TypedDict):
     x: collections.deque
+    spam: json.JSONDecoder
 [file driver.py]
 from native import C
 from collections import deque
+from json import JSONDecoder
 
 print(C.__annotations__["x"] is deque)
+print(C.__annotations__["spam"] is JSONDecoder)
 [typing fixtures/typing-full.pyi]
 [out]
+True
 True
 
 [case testClassWithDeletableAttributes]
@@ -2829,3 +2834,131 @@ Traceback (most recent call last):
   File "native.py", line 5, in __del__
     raise Exception("e2")
 Exception: e2
+
+[case testMypycAttrNativeClass]
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+
+@mypyc_attr(native_class=False)
+class AnnontatedNonExtensionClass:
+    pass
+
+class DerivedClass(AnnontatedNonExtensionClass):
+    pass
+
+class ImplicitExtensionClass():
+    pass
+
+@mypyc_attr(native_class=True)
+class AnnotatedExtensionClass():
+    pass
+
+def test_function():
+    setattr(AnnontatedNonExtensionClass, 'attr_class', 5)
+    assert(hasattr(AnnontatedNonExtensionClass, 'attr_class') == True)
+    assert(getattr(AnnontatedNonExtensionClass, 'attr_class') == 5)
+    delattr(AnnontatedNonExtensionClass, 'attr_class')
+    assert(hasattr(AnnontatedNonExtensionClass, 'attr_class') == False)
+
+    inst = AnnontatedNonExtensionClass()
+    setattr(inst, 'attr_instance', 6)
+    assert(hasattr(inst, 'attr_instance') == True)
+    assert(getattr(inst, 'attr_instance') == 6)
+    delattr(inst, 'attr_instance')
+    assert(hasattr(inst, 'attr_instance') == False)
+
+    setattr(DerivedClass, 'attr_class', 5)
+    assert(hasattr(DerivedClass, 'attr_class') == True)
+    assert(getattr(DerivedClass, 'attr_class') == 5)
+    delattr(DerivedClass, 'attr_class')
+    assert(hasattr(DerivedClass, 'attr_class') == False)
+
+    derived_inst = DerivedClass()
+    setattr(derived_inst, 'attr_instance', 6)
+    assert(hasattr(derived_inst, 'attr_instance') == True)
+    assert(getattr(derived_inst, 'attr_instance') == 6)
+    delattr(derived_inst, 'attr_instance')
+    assert(hasattr(derived_inst, 'attr_instance') == False)
+
+    ext_inst = ImplicitExtensionClass()
+    with assertRaises(AttributeError):
+        setattr(ext_inst, 'attr_instance', 6)
+
+    explicit_ext_inst = AnnotatedExtensionClass()
+    with assertRaises(AttributeError):
+        setattr(explicit_ext_inst, 'attr_instance', 6)
+
+[case testMypycAttrNativeClassDunder]
+from mypy_extensions import mypyc_attr
+from typing import Generic, Optional, TypeVar
+
+_T = TypeVar("_T")
+
+get_count = set_count = del_count = 0
+
+@mypyc_attr(native_class=False)
+class Bar(Generic[_T]):
+    # Note the lack of __deletable__
+    def __init__(self) -> None:
+        self.value: str = 'start'
+    def __get__(self, instance: _T, owner: Optional[type[_T]] = None) -> str:
+        global get_count
+        get_count += 1
+        return self.value
+    def __set__(self, instance: _T, value: str) -> None:
+        global set_count
+        set_count += 1
+        self.value = value
+    def __delete__(self, instance: _T) -> None:
+        global del_count
+        del_count += 1
+        del self.value
+
+@mypyc_attr(native_class=False)
+class Foo(object):
+    bar: Bar = Bar()
+
+[file driver.py]
+import native
+
+f = native.Foo()
+assert(hasattr(f, 'bar'))
+assert(native.get_count == 1)
+assert(f.bar == 'start')
+assert(native.get_count == 2)
+f.bar = 'test'
+assert(f.bar == 'test')
+assert(native.set_count == 1)
+del f.bar
+assert(not hasattr(f, 'bar'))
+assert(native.del_count == 1)
+
+[case testMypycAttrNativeClassMeta]
+from mypy_extensions import mypyc_attr
+from typing import ClassVar, TypeVar
+
+_T = TypeVar("_T")
+
+@mypyc_attr(native_class=False)
+class M(type):
+    count: ClassVar[int] = 0
+    def make(cls: type[_T]) -> _T:
+        M.count += 1
+        return cls()
+
+# implicit native_class=False
+# see testMypycAttrNativeClassMetaError for when trying to set it True
+class A(metaclass=M):
+    pass
+
+[file driver.py]
+import native
+
+a: native.A = native.A.make()
+assert(native.A.count == 1)
+
+class B(native.A):
+    pass
+
+b: B = B.make()
+assert(B.count == 2)

@@ -29,6 +29,7 @@ from mypy.nodes import (
 )
 from mypy.semanal import refers_to_fullname
 from mypy.types import FINAL_DECORATOR_NAMES
+from mypyc.errors import Errors
 
 DATACLASS_DECORATORS = {"dataclasses.dataclass", "attr.s", "attr.attrs"}
 
@@ -125,26 +126,90 @@ def get_mypyc_attrs(stmt: ClassDef | Decorator) -> dict[str, Any]:
     return attrs
 
 
-def is_extension_class(cdef: ClassDef) -> bool:
-    if any(
-        not is_trait_decorator(d)
-        and not is_dataclass_decorator(d)
-        and not get_mypyc_attr_call(d)
-        and not is_final_decorator(d)
-        for d in cdef.decorators
-    ):
+def is_extension_class(path: str, cdef: ClassDef, errors: Errors) -> bool:
+    # Check for @mypyc_attr(native_class=True/False) decorator.
+    explicit_native_class = get_explicit_native_class(path, cdef, errors)
+
+    # Classes with native_class=False are explicitly marked as non extension.
+    if explicit_native_class is False:
         return False
+
+    implicit_extension_class, reason = is_implicit_extension_class(cdef)
+
+    # Classes with native_class=True should be extension classes, but they might
+    # not be able to be due to other reasons. Print an error in that case.
+    if explicit_native_class is True and not implicit_extension_class:
+        errors.error(
+            f"Class is marked as native_class=True but it can't be a native class. {reason}",
+            path,
+            cdef.line,
+        )
+
+    return implicit_extension_class
+
+
+def get_explicit_native_class(path: str, cdef: ClassDef, errors: Errors) -> bool | None:
+    """Return value of @mypyc_attr(native_class=True/False) decorator.
+
+    Look for a @mypyc_attr decorator with native_class=True/False and return
+    the value assigned or None if it doesn't exist. Other values are an error.
+    """
+
+    for d in cdef.decorators:
+        mypyc_attr_call = get_mypyc_attr_call(d)
+        if not mypyc_attr_call:
+            continue
+
+        for i, name in enumerate(mypyc_attr_call.arg_names):
+            if name != "native_class":
+                continue
+
+            arg = mypyc_attr_call.args[i]
+            if not isinstance(arg, NameExpr):
+                errors.error("native_class must be used with True or False only", path, cdef.line)
+                return None
+
+            if arg.name == "False":
+                return False
+            elif arg.name == "True":
+                return True
+            else:
+                errors.error("native_class must be used with True or False only", path, cdef.line)
+                return None
+    return None
+
+
+def is_implicit_extension_class(cdef: ClassDef) -> tuple[bool, str]:
+    """Check if class can be extension class and return a user-friendly reason it can't be one."""
+
+    for d in cdef.decorators:
+        if (
+            not is_trait_decorator(d)
+            and not is_dataclass_decorator(d)
+            and not get_mypyc_attr_call(d)
+            and not is_final_decorator(d)
+        ):
+            return (
+                False,
+                "Classes that have decorators other than supported decorators"
+                " can't be native classes.",
+            )
+
     if cdef.info.typeddict_type:
-        return False
+        return False, "TypedDict classes can't be native classes."
     if cdef.info.is_named_tuple:
-        return False
+        return False, "NamedTuple classes can't be native classes."
     if cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
         "abc.ABCMeta",
         "typing.TypingMeta",
         "typing.GenericMeta",
     ):
-        return False
-    return True
+        return (
+            False,
+            "Classes with a metaclass other than ABCMeta, TypingMeta or"
+            " GenericMeta can't be native classes.",
+        )
+    return True, ""
 
 
 def get_func_def(op: FuncDef | Decorator | OverloadedFuncDef) -> FuncDef:

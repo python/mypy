@@ -261,3 +261,31 @@ print("imported foo")
 importing...
 imported foo
 done
+
+[case testImportFromInitPy]
+# cmd: foo.py
+import foo
+
+[file pkg2/__init__.py]
+
+[file pkg2/mod2.py]
+class A:
+    class B:
+        pass
+
+[file pkg1/__init__.py]
+from pkg2.mod2 import A
+
+[file foo.py]
+import pkg1
+from typing import TypedDict
+
+class Eggs(TypedDict):
+    obj1: pkg1.A.B
+
+print(type(Eggs(obj1=pkg1.A.B())["obj1"]).__name__)
+print(type(Eggs(obj1=pkg1.A.B())["obj1"]).__module__)
+
+[out]
+B
+pkg2.mod2
