@@ -612,3 +612,50 @@ Example:
     # mypy: disallow-any-explicit
     from typing import Any
     x: Any = 1  # Error: Explicit "Any" type annotation  [explicit-any]
+
+
+.. _code-match-exhaustive:
+
+Check that match statements match exhaustively [match-exhaustive]
+-----------------------------------------------------------------------
+
+If you use :option:`--disallow-inexhaustive-match-statements <mypy --disallow-inexhaustive-match-statements>`,
+mypy generates an error if a match statement does not match all possible cases/types.
+
+
+Example:
+
+.. code-block:: python
+        import enum
+
+
+        class Color(enum.Enum):
+            RED = 1
+            BLUE = 2
+
+        val: Color = Color.RED
+
+        # without --disallow-inexhaustive-match-statements
+        match val:
+            case Color.RED:
+                print("red")
+
+        # Also no issues without --disallow-inexhaustive-match-statements, but this is exhaustive
+        match val:
+            case Color.RED:
+                print("red")
+            case _:
+                print("other")
+
+        # with --disallow-inexhaustive-match-statements
+        # error: Cases within match statement do not exhaustively handle all values: "Literal[Color.BLUE]". If not intended to handle all cases, use `case _: pass`
+        match val:
+            case Color.RED:
+                print("red")
+
+        # no error with --disallow-inexhaustive-match-statements since all cases are handled
+        match val:
+            case Color.RED:
+                print("red")
+            case _:
+                print("other")
