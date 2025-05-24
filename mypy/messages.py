@@ -2486,13 +2486,13 @@ class MessageBuilder:
             code=codes.VALID_TYPE,
         )
 
-    def match_statement_unexhaustive_match(self, typ: Type, context: Context) -> None:
+    def match_statement_inexhaustive_match(self, typ: Type, context: Context) -> None:
         type_str = format_type(typ, self.options)
         msg = (
             f"Cases within match statement do not exhaustively handle all values: {type_str}."
             " If not intended to handle all cases, use `case _: pass`"
         )
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.EXHAUSTIVE_MATCH)
 
 
 def quote_type_string(type_string: str) -> str:

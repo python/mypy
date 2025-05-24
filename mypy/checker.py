@@ -5516,7 +5516,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 and unmatched_types is not None
             ):
                 for typ in set(unmatched_types.values()):
-                    self.msg.match_statement_unexhaustive_match(typ, s)
+                    self.msg.match_statement_inexhaustive_match(typ, s)
 
             # This is needed due to a quirk in frame_context. Without it types will stay narrowed
             # after the match.
