@@ -350,8 +350,7 @@ class Options:
         self.test_env = False
 
         # Only allow exhaustive match statements
-        # TODO: Set this to default to False once a commit in CI runs mypy_primer
-        self.disallow_inexhaustive_match_statements = True
+        self.disallow_inexhaustive_match_statements = False
 
         # -- experimental options --
         self.shadow_file: list[list[str]] | None = None
