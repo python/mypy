@@ -265,9 +265,7 @@ MUTABLE_OVERRIDE: Final[ErrorCode] = ErrorCode(
     default_enabled=False,
 )
 EXHAUSTIVE_MATCH: Final = ErrorCode(
-    "exhaustive-match",
-    "Reject match statements that are not exhaustive",
-    "General",
+    "exhaustive-match", "Reject match statements that are not exhaustive", "General"
 )
 
 # Syntax errors are often blocking.
