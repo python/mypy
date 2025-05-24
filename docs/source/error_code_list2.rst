@@ -626,6 +626,7 @@ mypy generates an error if a match statement does not match all possible cases/t
 Example:
 
 .. code-block:: python
+
         import enum
 
 
