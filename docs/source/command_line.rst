@@ -828,7 +828,8 @@ of the above sections.
                 print("other")
 
         # with --disallow-inexhaustive-match-statements
-        match val: # error: Cases within match statement do not exhaustively handle all values: "Literal[Color.BLUE]". If not intended to handle all cases, use `case _: pass`
+        # error: Cases within match statement do not exhaustively handle all values: "Literal[Color.BLUE]". If not intended to handle all cases, use `case _: pass`
+        match val:
             case Color.RED:
                 print("red")
 
