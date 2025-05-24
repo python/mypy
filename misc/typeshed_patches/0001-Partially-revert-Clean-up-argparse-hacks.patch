@@ -1,4 +1,4 @@
-From b5f2cc9633f9f6cd9326eee96a32efb3aff70701 Mon Sep 17 00:00:00 2001
+From 05f351f6a37fe8b73c698c348bf6aa5108363049 Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
 Date: Sat, 15 Feb 2025 20:11:06 +0100
 Subject: [PATCH] Partially revert Clean up argparse hacks
@@ -8,7 +8,7 @@ Subject: [PATCH] Partially revert Clean up argparse hacks
  1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/argparse.pyi b/mypy/typeshed/stdlib/argparse.pyi
-index 029bfeefe..9dbd8c308 100644
+index 95ad6c7da..79e6cfde1 100644
 --- a/mypy/typeshed/stdlib/argparse.pyi
 +++ b/mypy/typeshed/stdlib/argparse.pyi
 @@ -2,7 +2,7 @@ import sys
@@ -20,7 +20,7 @@ index 029bfeefe..9dbd8c308 100644
  from typing_extensions import Self, TypeAlias, deprecated
  
  __all__ = [
-@@ -38,7 +38,9 @@ ONE_OR_MORE: Final = "+"
+@@ -36,7 +36,9 @@ ONE_OR_MORE: Final = "+"
  OPTIONAL: Final = "?"
  PARSER: Final = "A..."
  REMAINDER: Final = "..."
@@ -31,7 +31,7 @@ index 029bfeefe..9dbd8c308 100644
  ZERO_OR_MORE: Final = "*"
  _UNRECOGNIZED_ARGS_ATTR: Final = "_unrecognized_args"  # undocumented
  
-@@ -81,7 +83,7 @@ class _ActionsContainer:
+@@ -79,7 +81,7 @@ class _ActionsContainer:
          # more precisely, Literal["?", "*", "+", "...", "A...", "==SUPPRESS=="],
          # but using this would make it hard to annotate callers that don't use a
          # literal argument and for subclasses to override this method.
@@ -41,5 +41,5 @@ index 029bfeefe..9dbd8c308 100644
          default: Any = ...,
          type: _ActionType = ...,
 -- 
-2.48.1
+2.49.0
 
