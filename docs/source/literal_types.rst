@@ -469,6 +469,11 @@ If we forget to handle one of the cases, mypy will generate an error:
 
 Exhaustiveness checking is also supported for match statements (Python 3.10 and later).
 
+For match statements specifically, inexhaustive matches can be caught
+without needing to use ``assert_never`` by using
+:option:`--disallow-inexhaustive-match-statements <mypy --disallow-inexhaustive-match-statements>`.
+
+
 Extra Enum checks
 *****************
 
