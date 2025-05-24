@@ -600,22 +600,25 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # on without bound otherwise)
             widened_old = len(self.widened_vars)
 
+            # one set of `unreachable` and `redundant-expr`errors per iteration step:
+            uselessness_errors = []
+            # one set of unreachable line numbers per iteration step:
+            unreachable_lines = []
+            # one set of revealed types per line where `reveal_type` is used (each
+            # created set can grow during the iteration):
+            revealed_types = defaultdict(set)
             iter = 1
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
                     if on_enter_body is not None:
                         on_enter_body()
 
-                    # We collect errors that indicate unreachability or redundant expressions
-                    # in the first iteration and remove them in subsequent iterations if the
-                    # related statement becomes reachable or non-redundant due to changes in
-                    # partial types:
                     with LoopErrorWatcher(self.msg.errors) as watcher:
                         self.accept(body)
-                    if iter == 1:
-                        uselessness_errors = watcher.useless_statements
-                    else:
-                        uselessness_errors.intersection_update(watcher.useless_statements)
+                    uselessness_errors.append(watcher.uselessness_errors)
+                    unreachable_lines.append(watcher.unreachable_lines)
+                    for key, values in watcher.revealed_types.items():
+                        revealed_types[key].update(values)
 
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
                 widened_new = len(self.widened_vars)
@@ -637,15 +640,23 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if iter == 20:
                     raise RuntimeError("Too many iterations when checking a loop")
 
-            # Report those unreachable and redundant expression errors identified in all
-            # iteration steps:
-            for error_info in uselessness_errors:
+            # Report only those `unreachable` and `redundant-expr` errors that could not
+            # be ruled out in any iteration step:
+            persistent_uselessness_errors = set()
+            for candidate in set(itertools.chain(*uselessness_errors)):
+                if all(
+                    (candidate in errors) or (candidate[2] in lines)
+                    for errors, lines in zip(uselessness_errors, unreachable_lines)
+                ):
+                    persistent_uselessness_errors.add(candidate)
+            for error_info in persistent_uselessness_errors:
                 context = Context(line=error_info[2], column=error_info[3])
                 context.end_line = error_info[4]
                 context.end_column = error_info[5]
                 self.msg.fail(error_info[1], context, code=error_info[0])
+
             #  Report all types revealed in at least one iteration step:
-            for note_info, types in watcher.revealed_types.items():
+            for note_info, types in revealed_types.items():
                 sorted_ = sorted(types, key=lambda typ: typ.lower())
                 revealed = sorted_[0] if len(types) == 1 else f"Union[{', '.join(sorted_)}]"
                 context = Context(line=note_info[1], column=note_info[2])

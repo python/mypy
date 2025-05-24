@@ -2369,6 +2369,19 @@ class A:
 
 [builtins fixtures/primitives.pyi]
 
+[case testPersistentUnreachableLinesNestedInInpersistentUnreachableLines]
+# flags: --warn-unreachable --python-version 3.11
+
+x = None
+y = None
+while True:
+    if x is not None:
+        if y is not None:
+            reveal_type(y)  # E: Statement is unreachable
+    x = 1
+
+[builtins fixtures/bool.pyi]
+
 [case testAvoidFalseUnreachableInLoop1]
 # flags: --warn-unreachable --python-version 3.11
 
