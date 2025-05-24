@@ -471,7 +471,7 @@ Exhaustiveness checking is also supported for match statements (Python 3.10 and 
 
 For match statements specifically, inexhaustive matches can be caught
 without needing to use ``assert_never`` by using
-:option:`--disallow-inexhaustive-match-statements <mypy --disallow-inexhaustive-match-statements>`.
+:option:`--enable-error-code exhaustive-match <mypy --enable-error-code>`.
 
 
 Extra Enum checks

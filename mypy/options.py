@@ -349,9 +349,6 @@ class Options:
         # Use this sparingly to avoid tests diverging from non-test behavior.
         self.test_env = False
 
-        # Only allow exhaustive match statements
-        self.disallow_inexhaustive_match_statements = False
-
         # -- experimental options --
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
