@@ -350,7 +350,7 @@ class Options:
         self.test_env = False
 
         # Only allow exhaustive match statements
-        self.only_allow_exhaustive_match_statements = False
+        self.disallow_inexhaustive_match_statements = False
 
         # -- experimental options --
         self.shadow_file: list[list[str]] | None = None

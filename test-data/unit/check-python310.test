@@ -2669,7 +2669,7 @@ match b:
 
 
 [case testExhaustiveMatchWithFlag]
-# flags: --only-allow-exhaustive-match-statements
+# flags: --disallow-inexhaustive-match-statements
 
 a: int = 5
 match a:
@@ -2686,7 +2686,7 @@ match b:
         pass
 
 [case testNonExhaustiveMatchWithFlag]
-# flags: --only-allow-exhaustive-match-statements
+# flags: --disallow-inexhaustive-match-statements
 
 a: int = 5
 match a: # E: Cases within match statement do not exhaustively handle all values: "int". If not intended to handle all cases, use `case _: pass`
@@ -2699,7 +2699,7 @@ match b: # E: Cases within match statement do not exhaustively handle all values
         pass
 
 [case testNonExhaustiveMatchEnumWithFlag]
-# flags: --only-allow-exhaustive-match-statements
+# flags: --disallow-inexhaustive-match-statements
 
 import enum
 
@@ -2720,7 +2720,7 @@ match val: # E: Cases within match statement do not exhaustively handle all valu
 
 
 [case testExhaustiveMatchEnumWithFlag]
-# flags: --only-allow-exhaustive-match-statements
+# flags: --disallow-inexhaustive-match-statements
 
 import enum
 
@@ -2739,7 +2739,7 @@ match val:
 [builtins fixtures/enum.pyi]
 
 [case testNonExhaustiveMatchEnumMultipleMissingMatchesWithFlag]
-# flags: --only-allow-exhaustive-match-statements
+# flags: --disallow-inexhaustive-match-statements
 
 import enum
 
@@ -2758,7 +2758,7 @@ match val: # E: Cases within match statement do not exhaustively handle all valu
 [builtins fixtures/enum.pyi]
 
 [case testExhaustiveMatchEnumFallbackWithFlag]
-# flags: --only-allow-exhaustive-match-statements
+# flags: --disallow-inexhaustive-match-statements
 
 import enum
 

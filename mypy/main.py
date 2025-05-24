@@ -932,7 +932,7 @@ def process_options(
         group=strictness_group,
     )
     add_invertible_flag(
-        "--only-allow-exhaustive-match-statements",
+        "--disallow-inexhaustive-match-statements",
         default=False,
         strict_flag=False,
         help="Raise type error for match statements that do not match exhaustively",
