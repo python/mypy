@@ -800,6 +800,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "dataclass_transform_spec",
         "docstring",
         "deprecated",
+        "plugin_generated",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -812,6 +813,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         body: Block | None = None,
         typ: mypy.types.FunctionLike | None = None,
         type_args: list[TypeParam] | None = None,
+        plugin_generated: bool | None = None,
     ) -> None:
         super().__init__(arguments, body, typ, type_args)
         self._name = name
@@ -832,6 +834,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # the majority). In cases where self is not annotated and there are no Self
         # in the signature we can simply drop the first argument.
         self.is_trivial_self = False
+        self.plugin_generated = False
 
     @property
     def name(self) -> str:
