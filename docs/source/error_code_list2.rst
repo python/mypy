@@ -614,7 +614,7 @@ Example:
     x: Any = 1  # Error: Explicit "Any" type annotation  [explicit-any]
 
 
-.. _code-match-exhaustive:
+.. _code-exhaustive-match:
 
 Check that match statements match exhaustively [match-exhaustive]
 -----------------------------------------------------------------------
