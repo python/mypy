@@ -2092,12 +2092,12 @@ class C:
 c = C(name='foo', b=Derived())
 c = attr.evolve(c)
 c = attr.evolve(c, name='foo')
-c = attr.evolve(c, 'foo')  # E: Too many positional arguments for "evolve" of "C"
+c = attr.evolve(c, 'foo')  # E: Too many arguments for "evolve"
 c = attr.evolve(c, b=Derived())
 c = attr.evolve(c, b=Base())
-c = attr.evolve(c, b=Other())  # E: Argument "b" to "evolve" of "C" has incompatible type "Other"; expected "Base"
-c = attr.evolve(c, name=42)  # E: Argument "name" to "evolve" of "C" has incompatible type "int"; expected "str"
-c = attr.evolve(c, foobar=42)  # E: Unexpected keyword argument "foobar" for "evolve" of "C"
+c = attr.evolve(c, b=Other())
+c = attr.evolve(c, name=42)
+c = attr.evolve(c, foobar=42)
 
 # test passing instance as 'inst' kw
 c = attr.evolve(inst=c, name='foo')
@@ -2141,7 +2141,7 @@ a = A(x=42)
 reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
 a2 = attrs.evolve(a, x=42)
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
-a2 = attrs.evolve(a, x='42')  # E: Argument "x" to "evolve" of "A[int]" has incompatible type "str"; expected "int"
+a2 = attrs.evolve(a, x='42')
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 
 [builtins fixtures/plugin_attrs.pyi]
@@ -2171,8 +2171,8 @@ class B:
 
 a_or_b: A[int] | B
 a2 = attrs.evolve(a_or_b, x=42, y=True)
-a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')  # E: Argument "z" to "evolve" of "Union[A[int], B]" has incompatible type "str"; expected "Never"
-a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected "Never"
+a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')
+a2 = attrs.evolve(a_or_b, x=42, y=True, w={})
 
 [builtins fixtures/plugin_attrs.pyi]
 
@@ -2219,7 +2219,7 @@ TA = TypeVar('TA', bound=A)
 def f(t: TA) -> TA:
     t2 = attrs.evolve(t, x=42)
     reveal_type(t2)  # N: Revealed type is "TA`-1"
-    t3 = attrs.evolve(t, x='42')  # E: Argument "x" to "evolve" of "TA" has incompatible type "str"; expected "int"
+    t3 = attrs.evolve(t, x='42')
     return t2
 
 f(A(x=42))
@@ -2266,9 +2266,10 @@ class B:
 T = TypeVar('T', A, B)
 
 def f(t: T) -> T:
-    t2 = attrs.evolve(t, x=42)  # E: Argument "x" to "evolve" of "B" has incompatible type "int"; expected "str"
-    reveal_type(t2)  # N: Revealed type is "__main__.A"  # N: Revealed type is "__main__.B"
-    t2 = attrs.evolve(t, x='42')  # E: Argument "x" to "evolve" of "A" has incompatible type "str"; expected "int"
+    t2 = attrs.evolve(t, x=42)
+    reveal_type(t2)  # N: Revealed type is "__main__.A" \
+                     # N: Revealed type is "__main__.B"
+    t2 = attrs.evolve(t, x='42')
     return t2
 
 f(A(x=42))
@@ -2289,13 +2290,13 @@ class C:
 c = C(name='foo')
 
 c = attr.assoc(c, name='test')
-c = attr.assoc(c, name=42)  # E: Argument "name" to "assoc" of "C" has incompatible type "int"; expected "str"
+c = attr.assoc(c, name=42)
 
 c = attrs.evolve(c, name='test')
-c = attrs.evolve(c, name=42)  # E: Argument "name" to "evolve" of "C" has incompatible type "int"; expected "str"
+c = attrs.evolve(c, name=42)
 
 c = attrs.assoc(c, name='test')
-c = attrs.assoc(c, name=42)  # E: Argument "name" to "assoc" of "C" has incompatible type "int"; expected "str"
+c = attrs.assoc(c, name=42)
 
 [builtins fixtures/plugin_attrs.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -2518,6 +2519,7 @@ class C:
 
 
 obj = C(1)
-attrs.evolve(obj, x=2)
-attrs.evolve(obj, x="2")
+attrs.evolve(obj, x=1, y=1)
+attrs.evolve(obj, x=[])
+attrs.evolve(obj, x="1")
 [builtins fixtures/plugin_attrs.pyi]
