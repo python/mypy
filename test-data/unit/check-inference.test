@@ -3889,7 +3889,7 @@ def a4(x: List[str], y: List[Never]) -> None:
 [builtins fixtures/dict.pyi]
 
 
-[case testNonDeterminismFromNonCommuativeJoinInvolvingProtocolBaseAndPromotableType]
+[case testDeterminismCommutativityWithJoinInvolvingProtocolBaseAndPromotableType]
 # flags: --python-version 3.11
 # Regression test for https://github.com/python/mypy/issues/16979#issuecomment-1982246306
 from __future__ import annotations
@@ -3907,13 +3907,6 @@ class _SupportsCompare(Protocol):
 class Comparable(_SupportsCompare):
     pass
 
-class A(Generic[T, U]):
-    @overload
-    def __init__(self: A[T, T], a: T, b: T, /) -> None: ...  # type: ignore[overload-overlap]
-    @overload
-    def __init__(self: A[T, U], a: T, b: U, /) -> Never: ...
-    def __init__(self, *a) -> None: ...
-
 comparable: Comparable = Comparable()
 
 from typing import _promote
@@ -3925,9 +3918,21 @@ class floatlike:
 class intlike:
     def __lt__(self, other: intlike, /) -> bool: ...
 
+
+class A(Generic[T, U]):
+    @overload
+    def __init__(self: A[T, T], a: T, b: T, /) -> None: ...  # type: ignore[overload-overlap]
+    @overload
+    def __init__(self: A[T, U], a: T, b: U, /) -> Never: ...
+    def __init__(self, *a) -> None: ...
+
+def join(a: T, b: T) -> T: ...
+
+reveal_type(join(intlike(), comparable))  # N: Revealed type is "__main__._SupportsCompare"
 reveal_type(A(intlike(), comparable))  # N: Revealed type is "__main__.A[__main__._SupportsCompare, __main__._SupportsCompare]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
+
 [case testTupleJoinFallbackInference]
 foo = [
     (1, ("a", "b")),

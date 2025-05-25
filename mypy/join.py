@@ -671,9 +671,10 @@ def is_better(t: Type, s: Type) -> bool:
     if isinstance(t, Instance):
         if not isinstance(s, Instance):
             return True
-        if t.type.is_protocol != s.type.is_protocol and s.type.fullname != "builtins.object":
-            # mro of protocol is not really relevant
-            return not t.type.is_protocol
+        if t.type.is_protocol != s.type.is_protocol:
+            if t.type.fullname != "builtins.object" and s.type.fullname != "builtins.object":
+                # mro of protocol is not really relevant
+                return not t.type.is_protocol
         # Use len(mro) as a proxy for the better choice.
         if len(t.type.mro) > len(s.type.mro):
             return True
