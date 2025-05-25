@@ -291,9 +291,8 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
         # Note that joins in theory should be commutative, but in practice some bugs mean this is
         # also a source of non-deterministic type checking results.
         sorted_lowers = sorted(lowers, key=_join_sorted_key)
-        bottom = join_type_list(sorted_lowers)
-        if isinstance(bottom, UninhabitedType):
-            bottom = None
+        if sorted_lowers:
+            bottom = join_type_list(sorted_lowers)
 
     for target in uppers:
         if top is None:
