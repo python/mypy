@@ -172,11 +172,12 @@ class InstanceJoiner:
         # Go over both sets of bases in case there's an explicit Protocol base. This is important
         # to ensure commutativity of join (although in cases where both classes have relevant
         # Protocol bases this maybe might still not be commutative)
-        base_types: dict[TypeInfo, None] = {}
+        base_types: dict[TypeInfo, None] = {}  # dict to deduplicate but preserve order
         for base in t.type.bases:
             base_types[base.type] = None
         for base in s.type.bases:
-            base_types[base.type] = None
+            if is_subtype(t, base):
+                base_types[base.type] = None
 
         best: ProperType | None = None
         for base_type in base_types:
