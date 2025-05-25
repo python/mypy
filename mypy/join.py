@@ -176,7 +176,7 @@ class InstanceJoiner:
         for base in t.type.bases:
             base_types[base.type] = None
         for base in s.type.bases:
-            if is_subtype(t, base):
+            if base.type.is_protocol and is_subtype(t, base):
                 base_types[base.type] = None
 
         best: ProperType | None = None
