@@ -33,9 +33,9 @@ reveal_type(1) # N: Revealed type is "Literal[1]?"
 [case testErrorCodeSyntaxError]
 1 ''
 [out]
-main:1: error: invalid syntax  [syntax]
+main:1: error: Invalid syntax  [syntax]
 [out version==3.10.0]
-main:1: error: invalid syntax. Perhaps you forgot a comma?  [syntax]
+main:1: error: Invalid syntax. Perhaps you forgot a comma?  [syntax]
 
 [case testErrorCodeSyntaxError2]
 def f(): # E: Type signature has too many arguments  [syntax]
@@ -104,6 +104,19 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 [case testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode]
 # flags: --warn-unused-ignores
 "x" # type: ignore[name-defined] # E: Unused "type: ignore" comment  [unused-ignore]
+
+[case testErrorCodeWarnUnusedIgnores7_WarnWhenErrorCodeDisabled]
+# flags: --warn-unused-ignores --disable-error-code name-defined
+x              # type: ignore                              # E: Unused "type: ignore" comment  [unused-ignore]
+x              # type: ignore[name-defined]                # E: Unused "type: ignore" comment  [unused-ignore]
+"x".foobar(y)  # type: ignore[name-defined, attr-defined]  # E: Unused "type: ignore[name-defined]" comment  [unused-ignore]
+
+[case testErrorCodeWarnUnusedIgnores8_IgnoreUnusedIgnore]
+# flags: --warn-unused-ignores --disable-error-code name-defined
+"x"  # type: ignore[unused-ignore]
+"x"  # type: ignore[name-defined, unused-ignore]
+"x"  # type: ignore[xyz, unused-ignore]
+x    # type: ignore[name-defined, unused-ignore]
 
 [case testErrorCodeMissingWhenRequired]
 # flags: --enable-error-code ignore-without-code
@@ -449,7 +462,7 @@ y: Dict[int, int] = {1: ''}  # E: Dict entry 0 has incompatible type "int": "str
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeTypedDict]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class D(TypedDict):
     x: int
 class E(TypedDict):
@@ -472,7 +485,7 @@ a['y']  # E: TypedDict "D" has no key "y"  [typeddict-item]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testErrorCodeTypedDictNoteIgnore]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class A(TypedDict):
     one_commonpart: int
     two_commonparts: int
@@ -484,7 +497,7 @@ not_exist = a['not_exist'] # type: ignore[typeddict-item]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testErrorCodeTypedDictSubCodeIgnore]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class D(TypedDict):
     x: int
 d: D = {'x': 1, 'y': 2}  # type: ignore[typeddict-item]
@@ -652,7 +665,7 @@ def g() -> int:
 x: List[int]  # type: ignore[name-defined]
 
 [case testErrorCodeProtocolProblemsIgnore]
-from typing_extensions import Protocol
+from typing import Protocol
 
 class P(Protocol):
     def f(self, x: str) -> None: ...
@@ -729,7 +742,7 @@ main:2: error: Syntax error in type comment "int"  [syntax]
 [case testErrorCode__exit__Return]
 class InvalidReturn:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False  [exit-return] \
-# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: Use "typing.Literal[False]" as the return type or change it to "None" \
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         return False
 [builtins fixtures/bool.pyi]
@@ -831,10 +844,11 @@ Foo = NamedTuple("Bar", [])  # E: First argument to namedtuple() should be "Foo"
 [builtins fixtures/tuple.pyi]
 
 [case testTypedDictNameMismatch]
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTruthyBool]
 # flags: --enable-error-code truthy-bool --no-local-partial-types
@@ -993,7 +1007,7 @@ reveal_type(t)  # N: Revealed type is "__main__.TensorType"
 [builtins fixtures/tuple.pyi]
 
 [case testNoteAboutChangedTypedDictErrorCode]
-from typing_extensions import TypedDict
+from typing import TypedDict
 class D(TypedDict):
     x: int
 

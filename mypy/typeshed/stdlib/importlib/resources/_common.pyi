@@ -7,7 +7,7 @@ if sys.version_info >= (3, 11):
     from contextlib import AbstractContextManager
     from importlib.abc import ResourceReader, Traversable
     from pathlib import Path
-    from typing import overload
+    from typing import Literal, overload
     from typing_extensions import TypeAlias, deprecated
 
     Package: TypeAlias = str | types.ModuleType
@@ -16,7 +16,7 @@ if sys.version_info >= (3, 11):
         Anchor: TypeAlias = Package
 
         def package_to_anchor(
-            func: Callable[[Anchor | None], Traversable]
+            func: Callable[[Anchor | None], Traversable],
         ) -> Callable[[Anchor | None, Anchor | None], Traversable]: ...
         @overload
         def files(anchor: Anchor | None = None) -> Traversable: ...
@@ -39,4 +39,4 @@ if sys.version_info >= (3, 11):
         def get_package(package: Package) -> types.ModuleType: ...
 
     def from_package(package: types.ModuleType) -> Traversable: ...
-    def as_file(path: Traversable) -> AbstractContextManager[Path]: ...
+    def as_file(path: Traversable) -> AbstractContextManager[Path, Literal[False]]: ...

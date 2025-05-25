@@ -15,7 +15,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from collections.abc import Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import Any, Callable, Final, TextIO, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
@@ -55,8 +55,10 @@ def parse_version(v: str | float) -> tuple[int, int]:
 def try_split(v: str | Sequence[str], split_regex: str = "[,]") -> list[str]:
     """Split and trim a str or list of str into a list of str"""
     if isinstance(v, str):
-        return [p.strip() for p in re.split(split_regex, v)]
-
+        items = [p.strip() for p in re.split(split_regex, v)]
+        if items and items[-1] == "":
+            items.pop(-1)
+        return items
     return [p.strip() for p in v]
 
 
@@ -126,7 +128,7 @@ def split_and_match_files(paths: str) -> list[str]:
     Returns a list of file paths
     """
 
-    return split_and_match_files_list(paths.split(","))
+    return split_and_match_files_list(split_commas(paths))
 
 
 def check_follow_imports(choice: str) -> str:
@@ -217,6 +219,72 @@ toml_config_types.update(
 )
 
 
+def _parse_individual_file(
+    config_file: str, stderr: TextIO | None = None
+) -> tuple[MutableMapping[str, Any], dict[str, _INI_PARSER_CALLABLE], str] | None:
+
+    if not os.path.exists(config_file):
+        return None
+
+    parser: MutableMapping[str, Any]
+    try:
+        if is_toml(config_file):
+            with open(config_file, "rb") as f:
+                toml_data = tomllib.load(f)
+            # Filter down to just mypy relevant toml keys
+            toml_data = toml_data.get("tool", {})
+            if "mypy" not in toml_data:
+                return None
+            toml_data = {"mypy": toml_data["mypy"]}
+            parser = destructure_overrides(toml_data)
+            config_types = toml_config_types
+        else:
+            parser = configparser.RawConfigParser()
+            parser.read(config_file)
+            config_types = ini_config_types
+
+    except (tomllib.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
+        print(f"{config_file}: {err}", file=stderr)
+        return None
+
+    if os.path.basename(config_file) in defaults.SHARED_CONFIG_NAMES and "mypy" not in parser:
+        return None
+
+    return parser, config_types, config_file
+
+
+def _find_config_file(
+    stderr: TextIO | None = None,
+) -> tuple[MutableMapping[str, Any], dict[str, _INI_PARSER_CALLABLE], str] | None:
+
+    current_dir = os.path.abspath(os.getcwd())
+
+    while True:
+        for name in defaults.CONFIG_NAMES + defaults.SHARED_CONFIG_NAMES:
+            config_file = os.path.relpath(os.path.join(current_dir, name))
+            ret = _parse_individual_file(config_file, stderr)
+            if ret is None:
+                continue
+            return ret
+
+        if any(
+            os.path.exists(os.path.join(current_dir, cvs_root)) for cvs_root in (".git", ".hg")
+        ):
+            break
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir == current_dir:
+            break
+        current_dir = parent_dir
+
+    for config_file in defaults.USER_CONFIG_FILES:
+        ret = _parse_individual_file(config_file, stderr)
+        if ret is None:
+            continue
+        return ret
+
+    return None
+
+
 def parse_config_file(
     options: Options,
     set_strict_flags: Callable[[], None],
@@ -233,47 +301,20 @@ def parse_config_file(
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
 
-    if filename is not None:
-        config_files: tuple[str, ...] = (filename,)
-    else:
-        config_files_iter: Iterable[str] = map(os.path.expanduser, defaults.CONFIG_FILES)
-        config_files = tuple(config_files_iter)
-
-    config_parser = configparser.RawConfigParser()
-
-    for config_file in config_files:
-        if not os.path.exists(config_file):
-            continue
-        try:
-            if is_toml(config_file):
-                with open(config_file, "rb") as f:
-                    toml_data = tomllib.load(f)
-                # Filter down to just mypy relevant toml keys
-                toml_data = toml_data.get("tool", {})
-                if "mypy" not in toml_data:
-                    continue
-                toml_data = {"mypy": toml_data["mypy"]}
-                parser: MutableMapping[str, Any] = destructure_overrides(toml_data)
-                config_types = toml_config_types
-            else:
-                config_parser.read(config_file)
-                parser = config_parser
-                config_types = ini_config_types
-        except (tomllib.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
-            print(f"{config_file}: {err}", file=stderr)
-        else:
-            if config_file in defaults.SHARED_CONFIG_FILES and "mypy" not in parser:
-                continue
-            file_read = config_file
-            options.config_file = file_read
-            break
-    else:
+    ret = (
+        _parse_individual_file(filename, stderr)
+        if filename is not None
+        else _find_config_file(stderr)
+    )
+    if ret is None:
         return
+    parser, config_types, file_read = ret
 
-    os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(os.path.abspath(config_file))
+    options.config_file = file_read
+    os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(os.path.abspath(file_read))
 
     if "mypy" not in parser:
-        if filename or file_read not in defaults.SHARED_CONFIG_FILES:
+        if filename or os.path.basename(file_read) not in defaults.SHARED_CONFIG_NAMES:
             print(f"{file_read}: No [mypy] section in config file", file=stderr)
     else:
         section = parser["mypy"]
@@ -608,6 +649,11 @@ def parse_mypy_comments(
         # method is to create a config parser.
         parser = configparser.RawConfigParser()
         options, parse_errors = mypy_comments_to_config_map(line, template)
+
+        if "python_version" in options:
+            errors.append((lineno, "python_version not supported in inline configuration"))
+            del options["python_version"]
+
         parser["dummy"] = options
         errors.extend((lineno, x) for x in parse_errors)
 

@@ -1495,3 +1495,18 @@ def g(b: Optional[str]) -> None:
         z: Callable[[], str] = lambda: reveal_type(b)  # N: Revealed type is "builtins.str"
         f2(lambda: reveal_type(b))  # N: Revealed type is "builtins.str"
         lambda: reveal_type(b)  # N: Revealed type is "builtins.str"
+
+[case testInferenceContextReturningTypeVarUnion]
+from collections.abc import Callable, Iterable
+from typing import TypeVar, Union
+
+_T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
+
+def mymin(
+    iterable: Iterable[_T1], /, *, key: Callable[[_T1], int], default: _T2
+) -> Union[_T1, _T2]: ...
+
+def check(paths: Iterable[str], key: Callable[[str], int]) -> Union[str, None]:
+    return mymin(paths, key=key, default=None)
+[builtins fixtures/tuple.pyi]

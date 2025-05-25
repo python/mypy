@@ -11,7 +11,6 @@ from typing_extensions import Literal, TypeAlias as _TypeAlias
 from mypy import errorcodes as codes
 from mypy.error_formatter import ErrorFormatter
 from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode, mypy_error_codes
-from mypy.message_registry import ErrorMessage
 from mypy.options import Options
 from mypy.scope import Scope
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
@@ -39,7 +38,7 @@ HIDE_LINK_CODES: Final = {
     codes.OVERRIDE,
 }
 
-allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
+allowed_duplicates: Final = ["@overload", "Got:", "Expected:", "Expected setter type:"]
 
 BASE_RTD_URL: Final = "https://mypy.rtfd.io/en/stable/_refs.html#code"
 
@@ -172,10 +171,12 @@ class ErrorWatcher:
         *,
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
         save_filtered_errors: bool = False,
+        filter_deprecated: bool = False,
     ) -> None:
         self.errors = errors
         self._has_new_errors = False
         self._filter = filter_errors
+        self._filter_deprecated = filter_deprecated
         self._filtered: list[ErrorInfo] | None = [] if save_filtered_errors else None
 
     def __enter__(self) -> ErrorWatcher:
@@ -196,7 +197,8 @@ class ErrorWatcher:
         ErrorWatcher further down the stack and from being recorded by Errors
         """
         if info.code == codes.DEPRECATED:
-            return False
+            # Deprecated is not a type error, so it is handled on opt-in basis here.
+            return self._filter_deprecated
 
         self._has_new_errors = True
         if isinstance(self._filter, bool):
@@ -504,10 +506,13 @@ class Errors:
                 # line == end_line for most nodes, so we only loop once.
                 for scope_line in lines:
                     if self.is_ignored_error(scope_line, info, self.ignored_lines[file]):
+                        err_code = info.code or codes.MISC
+                        if not self.is_error_code_enabled(err_code):
+                            # Error code is disabled - don't mark the current
+                            # "type: ignore" comment as used.
+                            return
                         # Annotation requests us to ignore all errors on this line.
-                        self.used_ignored_lines[file][scope_line].append(
-                            (info.code or codes.MISC).code
-                        )
+                        self.used_ignored_lines[file][scope_line].append(err_code.code)
                         return
             if file in self.ignored_files:
                 return
@@ -1066,34 +1071,19 @@ class Errors:
                         (file, -1, -1, -1, -1, "note", f'In class "{e.type}":', e.allow_dups, None)
                     )
 
-            if isinstance(e.message, ErrorMessage):
-                result.append(
-                    (
-                        file,
-                        e.line,
-                        e.column,
-                        e.end_line,
-                        e.end_column,
-                        e.severity,
-                        e.message.value,
-                        e.allow_dups,
-                        e.code,
-                    )
+            result.append(
+                (
+                    file,
+                    e.line,
+                    e.column,
+                    e.end_line,
+                    e.end_column,
+                    e.severity,
+                    e.message,
+                    e.allow_dups,
+                    e.code,
                 )
-            else:
-                result.append(
-                    (
-                        file,
-                        e.line,
-                        e.column,
-                        e.end_line,
-                        e.end_column,
-                        e.severity,
-                        e.message,
-                        e.allow_dups,
-                        e.code,
-                    )
-                )
+            )
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member

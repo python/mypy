@@ -14,7 +14,7 @@ P5 = ParamSpec("P5", covariant=True, bound=int)  # E: The variance and bound arg
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecLocations]
-from typing import Callable, List
+from typing import Any, Callable, List, Type
 from typing_extensions import ParamSpec, Concatenate
 P = ParamSpec('P')
 
@@ -36,6 +36,25 @@ def foo5(x: Callable[[int, str], P]) -> None: ...  # E: Invalid location for Par
 
 def foo6(x: Callable[[P], int]) -> None: ...  # E: Invalid location for ParamSpec "P" \
                                               # N: You can use ParamSpec as the first argument to Callable, e.g., "Callable[P, int]"
+
+def foo7(
+    *args: P.args, **kwargs: P.kwargs  # E: ParamSpec "P" is unbound
+) -> Callable[[Callable[P, T]], Type[T]]:
+    ...
+
+def wrapper(f: Callable[P, int]) -> None:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> None: ...  # OK
+
+    def extra_args_left(x: int, *args: P.args, **kwargs: P.kwargs) -> None: ...  # OK
+    def extra_args_between(*args: P.args, x: int, **kwargs: P.kwargs) -> None: ...  # E: Arguments not allowed after ParamSpec.args
+
+    def swapped(*args: P.kwargs, **kwargs: P.args) -> None: ... # E: Use "P.args" for variadic "*" parameter \
+                                                                # E: Use "P.kwargs" for variadic "**" parameter
+    def bad_kwargs(*args: P.args, **kwargs: P.args) -> None: ...  # E: Use "P.kwargs" for variadic "**" parameter
+    def bad_args(*args: P.kwargs, **kwargs: P.kwargs) -> None: ...  # E: Use "P.args" for variadic "*" parameter
+
+    def misplaced(x: P.args) -> None:  ...  # E: ParamSpec components are not allowed here
+    def bad_kwargs_any(*args: P.args, **kwargs: Any) -> None: ... # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecImports]
@@ -324,8 +343,9 @@ class C(Generic[P]):
         a = kwargs
         args = kwargs  # E: Incompatible types in assignment (expression has type "P.kwargs", variable has type "P.args")
         kwargs = args  # E: Incompatible types in assignment (expression has type "P.args", variable has type "P.kwargs")
-        args = a
-        kwargs = a
+        a1: Any
+        args = a1
+        kwargs = a1
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecSubtypeChecking2]
@@ -1264,7 +1284,7 @@ def f1(f: Callable[P, int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSp
 def f2(f: Callable[P, int], *args: P.args, **kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f3(f: Callable[P, int], *args: P.args) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f4(f: Callable[P, int], **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
-def f5(f: Callable[P, int], *args: P.args, extra_keyword_arg: int, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f5(f: Callable[P, int], *args: P.args, extra_keyword_arg: int, **kwargs: P.kwargs) -> int: ...  # E: Arguments not allowed after ParamSpec.args
 
 # Error message test:
 P1 = ParamSpec('P1')
@@ -1294,7 +1314,7 @@ def f1(f: Callable[Concatenate[int, P], int], *args, **kwargs: P.kwargs) -> int:
 def f2(f: Callable[Concatenate[int, P], int], *args: P.args, **kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f3(f: Callable[Concatenate[int, P], int], *args: P.args) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f4(f: Callable[Concatenate[int, P], int], **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
-def f5(f: Callable[Concatenate[int, P], int], *args: P.args, extra_keyword_arg: int, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
+def f5(f: Callable[Concatenate[int, P], int], *args: P.args, extra_keyword_arg: int, **kwargs: P.kwargs) -> int: ...  # E: Arguments not allowed after ParamSpec.args
 [builtins fixtures/paramspec.pyi]
 
 
@@ -1326,22 +1346,28 @@ from typing import Callable, ParamSpec
 P1 = ParamSpec('P1')
 P2 = ParamSpec('P2')
 
-def f0(f: Callable[P1, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f0(f: Callable[P1, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs" \
+                                                                        # E: ParamSpec "P2" is unbound
 
-def f1(*args: P1.args): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
-def f2(**kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
-def f3(*args: P1.args, **kwargs: int): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
-def f4(*args: int, **kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f1(*args: P1.args): ...  # E: ParamSpec "P1" is unbound
+def f2(**kwargs: P1.kwargs): ...  # E: ParamSpec "P1" is unbound
+def f3(*args: P1.args, **kwargs: int): ...  # E: ParamSpec "P1" is unbound
+def f4(*args: int, **kwargs: P1.kwargs): ...  # E: ParamSpec "P1" is unbound
 
 # Error message is based on the `args` definition:
-def f5(*args: P2.args, **kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P2.args" and "**kwargs" typed as "P2.kwargs"
-def f6(*args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+def f5(*args: P2.args, **kwargs: P1.kwargs): ...  # E: ParamSpec "P2" is unbound \
+                                                  # E: ParamSpec "P1" is unbound
+def f6(*args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec "P1" is unbound \
+                                                  # E: ParamSpec "P2" is unbound
 
 # Multiple `ParamSpec` variables can be found, they should not affect error message:
 P3 = ParamSpec('P3')
 
-def f7(first: Callable[P3, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
-def f8(first: Callable[P3, int], *args: P2.args, **kwargs: P1.kwargs): ...  # E: ParamSpec must have "*args" typed as "P2.args" and "**kwargs" typed as "P2.kwargs"
+def f7(first: Callable[P3, int], *args: P1.args, **kwargs: P2.kwargs): ...  # E: ParamSpec "P1" is unbound \
+                                                                            # E: ParamSpec "P2" is unbound
+def f8(first: Callable[P3, int], *args: P2.args, **kwargs: P1.kwargs): ...  # E: ParamSpec "P2" is unbound \
+                                                                            # E: ParamSpec "P1" is unbound
+
 [builtins fixtures/paramspec.pyi]
 
 
@@ -1354,7 +1380,8 @@ P = ParamSpec('P')
 class Some(Generic[P]):
     def call(self, *args: P.args, **kwargs: P.kwargs): ...
 
-def call(*args: P.args, **kwargs: P.kwargs): ...
+def call(*args: P.args, **kwargs: P.kwargs): ...  # E: ParamSpec "P" is unbound
+
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecInferenceCrash]
@@ -2137,28 +2164,6 @@ submit(
 )
 [builtins fixtures/paramspec.pyi]
 
-[case testParamSpecGenericWithNamedArg2]
-from typing import Callable, TypeVar, Type
-from typing_extensions import ParamSpec
-
-P= ParamSpec("P")
-T = TypeVar("T")
-
-def smoke_testable(*args: P.args, **kwargs: P.kwargs) -> Callable[[Callable[P, T]], Type[T]]:
-    ...
-
-@smoke_testable(name="bob", size=512, flt=0.5)
-class SomeClass:
-    def __init__(self, size: int, name: str, flt: float) -> None:
-        pass
-
-# Error message is confusing, but this is a known issue, see #4530.
-@smoke_testable(name=42, size="bad", flt=0.5)  # E: Argument 1 has incompatible type "Type[OtherClass]"; expected "Callable[[int, str, float], OtherClass]"
-class OtherClass:
-    def __init__(self, size: int, name: str, flt: float) -> None:
-        pass
-[builtins fixtures/paramspec.pyi]
-
 [case testInferenceAgainstGenericCallableUnionParamSpec]
 from typing import Callable, TypeVar, List, Union
 from typing_extensions import ParamSpec
@@ -2472,4 +2477,129 @@ def run(func: Callable[Concatenate[int, str, P], T], *args: P.args, **kwargs: P.
                                 # E: Argument 2 has incompatible type "*Tuple[int, str]"; expected "P.args"
     return func2(*args_prefix, *args)
 
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecScoping]
+from typing import Any, Callable, Generic
+from typing_extensions import Concatenate, ParamSpec
+
+P = ParamSpec("P")
+P2 = ParamSpec("P2")
+
+def contains(c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+def contains_other(f: Callable[P2, None], c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+
+def contains_only_other(c: Callable[P2, None], *args: P.args, **kwargs: P.kwargs) -> None: ...  # E: ParamSpec "P" is unbound
+
+def puts_p_into_scope(f: Callable[P, int]) -> None:
+    def contains(c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+    def inherits(*args: P.args, **kwargs: P.kwargs) -> None: ...
+
+def puts_p_into_scope_concatenate(f: Callable[Concatenate[int, P], int]) -> None:
+    def contains(c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+    def inherits(*args: P.args, **kwargs: P.kwargs) -> None: ...
+
+def wrapper() -> None:
+    def puts_p_into_scope1(f: Callable[P, int]) -> None:
+        def contains(c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+        def inherits(*args: P.args, **kwargs: P.kwargs) -> None: ...
+
+class Wrapper:
+    def puts_p_into_scope1(self, f: Callable[P, int]) -> None:
+        def contains(c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+        def inherits(*args: P.args, **kwargs: P.kwargs) -> None: ...
+
+    def contains(self, c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+
+    def uses(self, *args: P.args, **kwargs: P.kwargs) -> None: ...  # E: ParamSpec "P" is unbound
+
+    def method(self) -> None:
+        def contains(c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+        def inherits(*args: P.args, **kwargs: P.kwargs) -> None: ...  # E: ParamSpec "P" is unbound
+
+class GenericWrapper(Generic[P]):
+    x: P.args  # E: ParamSpec components are not allowed here
+    y: P.kwargs  # E: ParamSpec components are not allowed here
+
+    def contains(self, c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+
+    def puts_p_into_scope1(self, f: Callable[P, int]) -> None:
+        def contains(c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+        def inherits(*args: P.args, **kwargs: P.kwargs) -> None: ...
+
+    def uses(self, *args: P.args, **kwargs: P.kwargs) -> None: ...
+
+    def method(self) -> None:
+        def contains(c: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+        def inherits(*args: P.args, **kwargs: P.kwargs) -> None: ...
+[builtins fixtures/paramspec.pyi]
+
+[case testCallbackProtocolClassObjectParamSpec]
+from typing import Any, Callable, Protocol, Optional, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+class App: ...
+
+class MiddlewareFactory(Protocol[P]):
+    def __call__(self, app: App, /, *args: P.args, **kwargs: P.kwargs) -> App:
+        ...
+
+class Capture(Generic[P]): ...
+
+class ServerErrorMiddleware(App):
+    def __init__(
+        self,
+        app: App,
+        handler: Optional[str] = None,
+        debug: bool = False,
+    ) -> None: ...
+
+def fn(f: MiddlewareFactory[P]) -> Capture[P]: ...
+
+reveal_type(fn(ServerErrorMiddleware))  # N: Revealed type is "__main__.Capture[[handler: Union[builtins.str, None] =, debug: builtins.bool =]]"
+[builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecDuplicateArgsKwargs]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, Union
+
+_P = ParamSpec("_P")
+
+def run(predicate: Callable[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    predicate(*args, *args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(*args, **kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once
+    predicate(*args, *args, **kwargs, **kwargs)  # E: ParamSpec.args should only be passed once \
+                                                 # E: ParamSpec.kwargs should only be passed once
+    copy_args = args
+    copy_kwargs = kwargs
+    predicate(*args, *copy_args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(*copy_args, *args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(*args, **copy_kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once
+    predicate(*args, **kwargs, **copy_kwargs)  # E: ParamSpec.kwargs should only be passed once
+
+def run2(predicate: Callable[Concatenate[int, _P], None], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    predicate(*args, *args, **kwargs)  # E: ParamSpec.args should only be passed once \
+                                       # E: Argument 1 has incompatible type "*_P.args"; expected "int"
+    predicate(*args, **kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once \
+                                          # E: Argument 1 has incompatible type "*_P.args"; expected "int"
+    predicate(1, *args, *args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(1, *args, **kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once
+    predicate(1, *args, *args, **kwargs, **kwargs)  # E: ParamSpec.args should only be passed once \
+                                                    # E: ParamSpec.kwargs should only be passed once
+    copy_args = args
+    copy_kwargs = kwargs
+    predicate(1, *args, *copy_args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(1, *copy_args, *args, **kwargs)  # E: ParamSpec.args should only be passed once
+    predicate(1, *args, **copy_kwargs, **kwargs)  # E: ParamSpec.kwargs should only be passed once
+    predicate(1, *args, **kwargs, **copy_kwargs)  # E: ParamSpec.kwargs should only be passed once
+
+def run3(predicate: Callable[Concatenate[int, str, _P], None], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    base_ok: tuple[int, str]
+    predicate(*base_ok, *args, **kwargs)
+    base_bad: tuple[Union[int, str], ...]
+    predicate(*base_bad, *args, **kwargs)  # E: Argument 1 has incompatible type "*Tuple[Union[int, str], ...]"; expected "int" \
+                                           # E: Argument 1 has incompatible type "*Tuple[Union[int, str], ...]"; expected "str" \
+                                           # E: Argument 1 has incompatible type "*Tuple[Union[int, str], ...]"; expected "_P.args"
 [builtins fixtures/paramspec.pyi]

@@ -68,10 +68,11 @@ for full details, see :ref:`running-mypy`.
     checked. For instance, ``mypy --exclude '/setup.py$'
     but_still_check/setup.py``.
 
-    In particular, ``--exclude`` does not affect mypy's :ref:`import following
-    <follow-imports>`. You can use a per-module :confval:`follow_imports` config
-    option to additionally avoid mypy from following imports and checking code
-    you do not wish to be checked.
+    In particular, ``--exclude`` does not affect mypy's discovery of files
+    via :ref:`import following <follow-imports>`. You can use a per-module
+    :confval:`ignore_errors` config option to silence errors from a given module,
+    or a per-module :confval:`follow_imports` config option to additionally avoid
+    mypy from following imports and checking code you do not wish to be checked.
 
     Note that mypy will never recursively discover files and directories named
     "site-packages", "node_modules" or "__pycache__", or those whose name starts
@@ -79,6 +80,10 @@ for full details, see :ref:`running-mypy`.
     '/(site-packages|node_modules|__pycache__|\..*)/$'`` would. Mypy will also
     never recursively discover files with extensions other than ``.py`` or
     ``.pyi``.
+
+.. option:: --exclude-gitignore
+
+    This flag will add everything that matches ``.gitignore`` file(s) to :option:`--exclude`.
 
 
 Optional arguments
@@ -555,6 +560,26 @@ potentially problematic or redundant in some way.
     notes, causing mypy to eventually finish with a zero exit code. Features
     are considered deprecated when decorated with ``warnings.deprecated``.
 
+.. option:: --deprecated-calls-exclude
+
+    This flag allows to selectively disable :ref:`deprecated<code-deprecated>` warnings
+    for functions and methods defined in specific packages, modules, or classes.
+    Note that each exclude entry acts as a prefix. For example (assuming ``foo.A.func`` is deprecated):
+
+    .. code-block:: python
+
+        # mypy --enable-error-code deprecated
+        #      --deprecated-calls-exclude=foo.A
+        import foo
+
+        foo.A().func()  # OK, the deprecated warning is ignored
+
+        # file foo.py
+        from typing_extensions import deprecated
+        class A:
+            @deprecated("Use A.func2 instead")
+            def func(self): pass
+
 .. _miscellaneous-strictness-flags:
 
 Miscellaneous strictness flags
@@ -691,9 +716,8 @@ of the above sections.
 .. option:: --extra-checks
 
     This flag enables additional checks that are technically correct but may be
-    impractical in real code. In particular, it prohibits partial overlap in
-    ``TypedDict`` updates, and makes arguments prepended via ``Concatenate``
-    positional-only. For example:
+    impractical. In particular, it prohibits partial overlap in ``TypedDict`` updates,
+    and makes arguments prepended via ``Concatenate`` positional-only. For example:
 
     .. code-block:: python
 
@@ -716,10 +740,28 @@ of the above sections.
        bad: Bad = {"a": 0, "b": "no"}
        test(bad, bar)
 
+    In future more checks may be added to this flag if:
+
+    * The corresponding use cases are rare, thus not justifying a dedicated
+      strictness flag.
+
+    * The new check cannot be supported as an opt-in error code.
+
 .. option:: --strict
 
-    This flag mode enables all optional error checking flags.  You can see the
-    list of flags enabled by strict mode in the full :option:`mypy --help` output.
+    This flag mode enables a defined subset of optional error-checking flags.
+    This subset primarily includes checks for inadvertent type unsoundness (i.e
+    strict will catch type errors as long as intentional methods like type ignore
+    or casting were not used.)
+
+    Note: the :option:`--warn-unreachable` flag
+    is not automatically enabled by the strict flag.
+
+    The strict flag does not take precedence over other strict-related flags.
+    Directly specifying a flag of alternate behavior will override the
+    behavior of strict, regardless of the order in which they are passed.
+    You can see the list of flags enabled by strict mode in the full
+    :option:`mypy --help` output.
 
     Note: the exact list of flags enabled by running :option:`--strict` may change
     over time.

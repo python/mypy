@@ -97,8 +97,7 @@ assert f(Sub(3, 2)) == 3
 
 -- Ref: https://github.com/mypyc/mypyc/issues/924
 [case testNamedTupleClassSyntax]
-from typing import Dict, List, NamedTuple, Optional, Tuple, Union
-from typing_extensions import final
+from typing import Dict, List, NamedTuple, Optional, Tuple, Union, final
 
 class FuncIR: pass
 
@@ -128,8 +127,16 @@ class Inextensible(NamedTuple):
     x: int
 
 [file driver.py]
-from typing import ForwardRef, Optional
+import sys
+from typing import Optional
 from native import ClassIR, FuncIR, Record
+
+if sys.version_info >= (3, 14):
+    from test.support import EqualToForwardRef
+    type_forward_ref = EqualToForwardRef
+else:
+    from typing import ForwardRef
+    type_forward_ref = ForwardRef
 
 assert Record.__annotations__ == {
     'st_mtime': float,
@@ -137,7 +144,7 @@ assert Record.__annotations__ == {
     'is_borrowed': bool,
     'hash': str,
     'python_path': tuple,
-    'type': ForwardRef('ClassIR'),
+    'type': type_forward_ref('ClassIR'),
     'method': FuncIR,
     'shadow_method': type,
     'classes': dict,
@@ -147,8 +154,8 @@ assert Record.__annotations__ == {
 }, Record.__annotations__
 
 [case testTupleOps]
-from typing import Tuple, List, Any, Optional
-from typing_extensions import Final
+from typing import Tuple, Final, List, Any, Optional, cast
+from testutil import assertRaises
 
 def f() -> Tuple[()]:
     return ()
@@ -256,3 +263,18 @@ TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
 def test_final_boxed_tuple() -> None:
     t = TUPLE
     assert t == ('x', 'y')
+
+def test_add() -> None:
+    res = (1, 2, 3, 4)
+    assert (1, 2) + (3, 4) == res
+    with assertRaises(TypeError, 'can only concatenate tuple (not "list") to tuple'):
+        assert (1, 2) + cast(Any, [3, 4]) == res
+
+def multiply(a: Tuple[Any, ...], b: int) -> Tuple[Any, ...]:
+    return a * b
+
+def test_multiply() -> None:
+    res = (1, 1, 1)
+    assert (1,) * 3 == res
+    assert 3 * (1,) == res
+    assert multiply((1,), 3) == res

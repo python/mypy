@@ -338,7 +338,8 @@ def verify_mypyfile(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
     if not isinstance(runtime, types.ModuleType):
-        yield Error(object_path, "is not a module", stub, runtime)
+        # Can possibly happen:
+        yield Error(object_path, "is not a module", stub, runtime)  # type: ignore[unreachable]
         return
 
     runtime_all_as_set: set[str] | None
@@ -524,7 +525,8 @@ def verify_typeinfo(
         yield Error(object_path, "is not present at runtime", stub, runtime, stub_desc=repr(stub))
         return
     if not isinstance(runtime, type):
-        yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
+        # Yes, some runtime objects can be not types, no way to tell mypy about that.
+        yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))  # type: ignore[unreachable]
         return
 
     yield from _verify_final(stub, runtime, object_path)
@@ -572,9 +574,23 @@ def verify_typeinfo(
 
         # If it came from the metaclass, consider the runtime_attr to be MISSING
         # for a more accurate message
-        if runtime_attr is not MISSING and type(runtime) is not runtime:
-            if getattr(runtime_attr, "__objclass__", None) is type(runtime):
-                runtime_attr = MISSING
+        if (
+            runtime_attr is not MISSING
+            and type(runtime) is not runtime
+            and getattr(runtime_attr, "__objclass__", None) is type(runtime)
+        ):
+            runtime_attr = MISSING
+
+        # __setattr__ and __delattr__ on object are a special case,
+        # so if we only have these methods inherited from there, pretend that
+        # we don't have them. See python/typeshed#7385.
+        if (
+            entry in ("__setattr__", "__delattr__")
+            and runtime_attr is not MISSING
+            and runtime is not object
+            and getattr(runtime_attr, "__objclass__", None) is object
+        ):
+            runtime_attr = MISSING
 
         # Do not error for an object missing from the stub
         # If the runtime object is a types.WrapperDescriptorType object
@@ -638,10 +654,10 @@ def _verify_arg_name(
     if is_dunder(function_name, exclude_special=True):
         return
 
-    def strip_prefix(s: str, prefix: str) -> str:
-        return s[len(prefix) :] if s.startswith(prefix) else s
-
-    if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:
+    if (
+        stub_arg.variable.name == runtime_arg.name
+        or stub_arg.variable.name.removeprefix("__") == runtime_arg.name
+    ):
         return
 
     nonspecific_names = {"object", "args"}
@@ -842,7 +858,7 @@ class Signature(Generic[T]):
 
         all_args: dict[str, list[tuple[nodes.Argument, int]]] = {}
         for func in map(_resolve_funcitem_from_decorator, stub.items):
-            assert func is not None
+            assert func is not None, "Failed to resolve decorated overload"
             args = maybe_strip_cls(stub.name, func.arguments)
             for index, arg in enumerate(args):
                 # For positional-only args, we allow overloads to have different names for the same
@@ -932,6 +948,7 @@ def _verify_signature(
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
             and (stub_arg.pos_only or stub_arg.variable.name.startswith("__"))
+            and not runtime_arg.name.startswith("__")
             and stub_arg.variable.name.strip("_") != "self"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
@@ -1090,9 +1107,11 @@ def verify_funcitem(
 
 
 @verify.register(Missing)
-def verify_none(
+def verify_missing(
     stub: Missing, runtime: MaybeMissing[Any], object_path: list[str]
 ) -> Iterator[Error]:
+    if runtime is MISSING:
+        return
     yield Error(object_path, "is not present in stub", stub, runtime)
 
 
@@ -1237,12 +1256,28 @@ def verify_paramspecexpr(
         return
 
 
+def _is_django_cached_property(runtime: Any) -> bool:  # pragma: no cover
+    # This is a special case for
+    # https://docs.djangoproject.com/en/5.2/ref/utils/#django.utils.functional.cached_property
+    # This is needed in `django-stubs` project:
+    # https://github.com/typeddjango/django-stubs
+    if type(runtime).__name__ != "cached_property":
+        return False
+    try:
+        return bool(runtime.func)
+    except Exception:
+        return False
+
+
 def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     assert stub.func.is_property
     if isinstance(runtime, property):
         yield from _verify_final_method(stub.func, runtime.fget, MISSING)
         return
     if isinstance(runtime, functools.cached_property):
+        yield from _verify_final_method(stub.func, runtime.func, MISSING)
+        return
+    if _is_django_cached_property(runtime):
         yield from _verify_final_method(stub.func, runtime.func, MISSING)
         return
     if inspect.isdatadescriptor(runtime):
@@ -1311,6 +1346,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
         if (
             decorator.fullname in ("builtins.staticmethod", "abc.abstractmethod")
             or decorator.fullname in mypy.types.OVERLOAD_NAMES
+            or decorator.fullname in mypy.types.OVERRIDE_DECORATOR_NAMES
             or decorator.fullname in mypy.types.FINAL_DECORATOR_NAMES
         ):
             return func
@@ -1458,6 +1494,7 @@ IGNORED_MODULE_DUNDERS: Final = frozenset(
         "__loader__",
         "__spec__",
         "__annotations__",
+        "__annotate__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
         # Created by `warnings.warn`, does not make much sense to have in stubs:
@@ -1474,6 +1511,9 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         # Special attributes
         "__dict__",
         "__annotations__",
+        "__annotate__",
+        "__annotations_cache__",
+        "__annotate_func__",
         "__text_signature__",
         "__weakref__",
         "__hash__",
@@ -1482,6 +1522,7 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         "__vectorcalloffset__",  # undocumented implementation detail of the vectorcall protocol
         "__firstlineno__",
         "__static_attributes__",
+        "__classdictcell__",
         # isinstance/issubclass hooks that type-checkers don't usually care about
         "__instancecheck__",
         "__subclasshook__",
@@ -1500,6 +1541,7 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         "__getinitargs__",
         "__reduce_ex__",
         "__reduce__",
+        "__slotnames__",  # Cached names of slots added by `copyreg` module.
         # ctypes weirdness
         "__ctype_be__",
         "__ctype_le__",
@@ -1532,8 +1574,15 @@ def is_probably_private(name: str) -> bool:
 
 def is_probably_a_function(runtime: Any) -> bool:
     return (
-        isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
-        or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
+        isinstance(
+            runtime,
+            (
+                types.FunctionType,
+                types.BuiltinFunctionType,
+                types.MethodType,
+                types.BuiltinMethodType,
+            ),
+        )
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
         or (isinstance(runtime, types.MethodWrapperType) and callable(runtime))
     )
@@ -1976,6 +2025,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     options.process_incomplete_features(
         error_callback=error_callback, warning_callback=warning_callback
     )
+    options.process_strict_bytes()
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
@@ -2056,6 +2106,8 @@ def parse_options(args: list[str]) -> _Arguments:
     parser = argparse.ArgumentParser(
         description="Compares stubs to objects introspected from the runtime."
     )
+    if sys.version_info >= (3, 14):
+        parser.color = True  # Set as init arg in 3.14
     parser.add_argument("modules", nargs="*", help="Modules to test")
     parser.add_argument(
         "--concise",

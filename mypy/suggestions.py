@@ -52,6 +52,7 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     TypeInfo,
+    Var,
     reverse_builtin_aliases,
 )
 from mypy.options import Options
@@ -59,7 +60,7 @@ from mypy.plugin import FunctionContext, MethodContext, Plugin
 from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
 from mypy.traverser import TraverserVisitor
-from mypy.typeops import make_simplified_union
+from mypy.typeops import bind_self, make_simplified_union
 from mypy.types import (
     AnyType,
     CallableType,
@@ -454,7 +455,7 @@ class SuggestionEngine:
             pnode = parent.names.get(node.name)
             if pnode and isinstance(pnode.node, (FuncDef, Decorator)):
                 typ = get_proper_type(pnode.node.type)
-                # FIXME: Doesn't work right with generic tyeps
+                # FIXME: Doesn't work right with generic types
                 if isinstance(typ, CallableType) and len(typ.arg_types) == len(node.arguments):
                     # Return the first thing we find, since it probably doesn't make sense
                     # to grab things further up in the chain if an earlier parent has it.
@@ -638,15 +639,20 @@ class SuggestionEngine:
     def extract_from_decorator(self, node: Decorator) -> FuncDef | None:
         for dec in node.decorators:
             typ = None
-            if isinstance(dec, RefExpr) and isinstance(dec.node, FuncDef):
-                typ = dec.node.type
+            if isinstance(dec, RefExpr) and isinstance(dec.node, (Var, FuncDef)):
+                typ = get_proper_type(dec.node.type)
             elif (
                 isinstance(dec, CallExpr)
                 and isinstance(dec.callee, RefExpr)
-                and isinstance(dec.callee.node, FuncDef)
-                and isinstance(dec.callee.node.type, CallableType)
+                and isinstance(dec.callee.node, (Decorator, FuncDef, Var))
+                and isinstance((call_tp := get_proper_type(dec.callee.node.type)), CallableType)
             ):
-                typ = get_proper_type(dec.callee.node.type.ret_type)
+                typ = get_proper_type(call_tp.ret_type)
+
+            if isinstance(typ, Instance):
+                call_method = typ.type.get_method("__call__")
+                if isinstance(call_method, FuncDef) and isinstance(call_method.type, FunctionLike):
+                    typ = bind_self(call_method.type, None)
 
             if not isinstance(typ, FunctionLike):
                 return None

@@ -3,6 +3,7 @@
 # See the README.md file in this directory for more information.
 
 import sys
+import typing_extensions
 from collections.abc import Awaitable, Callable, Iterable, Sequence, Set as AbstractSet, Sized
 from dataclasses import Field
 from os import PathLike
@@ -117,6 +118,12 @@ class SupportsSub(Protocol[_T_contra, _T_co]):
 class SupportsRSub(Protocol[_T_contra, _T_co]):
     def __rsub__(self, x: _T_contra, /) -> _T_co: ...
 
+class SupportsMul(Protocol[_T_contra, _T_co]):
+    def __mul__(self, x: _T_contra, /) -> _T_co: ...
+
+class SupportsRMul(Protocol[_T_contra, _T_co]):
+    def __rmul__(self, x: _T_contra, /) -> _T_co: ...
+
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, other: _T_contra, /) -> _T_co: ...
 
@@ -151,11 +158,8 @@ class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
     def keys(self) -> Iterable[_KT]: ...
     def __getitem__(self, key: _KT, /) -> _VT_co: ...
 
-# This protocol is currently under discussion. Use SupportsContainsAndGetItem
-# instead, if you require the __contains__ method.
-# See https://github.com/python/typeshed/issues/11822.
+# stable
 class SupportsGetItem(Protocol[_KT_contra, _VT_co]):
-    def __contains__(self, x: Any, /) -> bool: ...
     def __getitem__(self, key: _KT_contra, /) -> _VT_co: ...
 
 # stable
@@ -325,9 +329,9 @@ class structseq(Generic[_T_co]):
     # The second parameter will accept a dict of any kind without raising an exception,
     # but only has any meaning if you supply it a dict where the keys are strings.
     # https://github.com/python/typeshed/pull/6560#discussion_r767149830
-    def __new__(cls: type[Self], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self: ...
+    def __new__(cls, sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> typing_extensions.Self: ...
     if sys.version_info >= (3, 13):
-        def __replace__(self: Self, **kwargs: Any) -> Self: ...
+        def __replace__(self, **kwargs: Any) -> typing_extensions.Self: ...
 
 # Superset of typing.AnyStr that also includes LiteralString
 AnyOrLiteralStr = TypeVar("AnyOrLiteralStr", str, bytes, LiteralString)  # noqa: Y001

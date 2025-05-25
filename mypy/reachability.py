@@ -221,7 +221,7 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
     Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
     """
     # Cases supported:
-    # - sys.platform == 'posix'
+    # - sys.platform == 'linux'
     # - sys.platform != 'win32'
     # - sys.platform.startswith('win')
     if isinstance(expr, ComparisonExpr):

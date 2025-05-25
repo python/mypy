@@ -10,7 +10,9 @@ from mypy.nodes import (
     NamedTupleExpr,
     NewTypeExpr,
     PromoteExpr,
+    TypeAlias,
     TypeAliasExpr,
+    TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
     TypeVarExpr,
@@ -48,9 +50,7 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
 
     def visit_type_alias_expr(self, o: TypeAliasExpr, /) -> None:
         super().visit_type_alias_expr(o)
-        self.in_type_alias_expr = True
-        o.node.target.accept(self)
-        self.in_type_alias_expr = False
+        o.node.accept(self)
 
     def visit_type_var_expr(self, o: TypeVarExpr, /) -> None:
         super().visit_type_var_expr(o)
@@ -80,6 +80,17 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
     def visit_assignment_stmt(self, o: AssignmentStmt, /) -> None:
         super().visit_assignment_stmt(o)
         self.visit_optional_type(o.type)
+
+    def visit_type_alias_stmt(self, o: TypeAliasStmt, /) -> None:
+        super().visit_type_alias_stmt(o)
+        if o.alias_node is not None:
+            o.alias_node.accept(self)
+
+    def visit_type_alias(self, o: TypeAlias, /) -> None:
+        super().visit_type_alias(o)
+        self.in_type_alias_expr = True
+        o.target.accept(self)
+        self.in_type_alias_expr = False
 
     def visit_for_stmt(self, o: ForStmt, /) -> None:
         super().visit_for_stmt(o)

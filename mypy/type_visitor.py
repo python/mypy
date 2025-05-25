@@ -344,7 +344,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     common use cases involve a boolean query using `any` or `all`.
 
     Note: this visitor keeps an internal state (tracks type aliases to avoid
-    recursion), so it should *never* be re-used for querying different types,
+    recursion), so it should *never* be reused for querying different types,
     create a new visitor instance instead.
 
     # TODO: check that we don't have existing violations of this rule.
@@ -410,7 +410,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.arg_types + [t.ret_type])
 
     def visit_tuple_type(self, t: TupleType, /) -> T:
-        return self.query_types(t.items)
+        return self.query_types([t.partial_fallback] + t.items)
 
     def visit_typeddict_type(self, t: TypedDictType, /) -> T:
         return self.query_types(t.items.values())
@@ -467,7 +467,7 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
     be ANY_STRATEGY or ALL_STRATEGY.
 
     Note: This visitor keeps an internal state (tracks type aliases to avoid
-    recursion), so it should *never* be re-used for querying different types
+    recursion), so it should *never* be reused for querying different types
     unless you call reset() first.
     """
 
@@ -550,7 +550,7 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
             return args and ret
 
     def visit_tuple_type(self, t: TupleType, /) -> bool:
-        return self.query_types(t.items)
+        return self.query_types([t.partial_fallback] + t.items)
 
     def visit_typeddict_type(self, t: TypedDictType, /) -> bool:
         return self.query_types(list(t.items.values()))

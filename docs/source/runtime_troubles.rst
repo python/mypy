@@ -8,10 +8,9 @@ version of Python considers legal code. This section describes these scenarios
 and explains how to get your code running again. Generally speaking, we have
 three tools at our disposal:
 
-* Use of ``from __future__ import annotations`` (:pep:`563`)
-  (this behaviour may eventually be made the default in a future Python version)
 * Use of string literal types or type comments
 * Use of ``typing.TYPE_CHECKING``
+* Use of ``from __future__ import annotations`` (:pep:`563`)
 
 We provide a description of these before moving onto discussion of specific
 problems you may encounter.
@@ -274,7 +273,7 @@ libraries if types are generic only in stubs.
 Using types defined in stubs but not at runtime
 -----------------------------------------------
 
-Sometimes stubs that you're using may define types you wish to re-use that do
+Sometimes stubs that you're using may define types you wish to reuse that do
 not exist at runtime. Importing these types naively will cause your code to fail
 at runtime with ``ImportError`` or ``ModuleNotFoundError``. Similar to previous
 sections, these can be dealt with by using :ref:`typing.TYPE_CHECKING
@@ -335,16 +334,14 @@ Using new additions to the typing module
 ----------------------------------------
 
 You may find yourself wanting to use features added to the :py:mod:`typing`
-module in earlier versions of Python than the addition, for example, using any
-of ``Literal``, ``Protocol``, ``TypedDict`` with Python 3.6.
+module in earlier versions of Python than the addition.
 
 The easiest way to do this is to install and use the ``typing_extensions``
 package from PyPI for the relevant imports, for example:
 
 .. code-block:: python
 
-   from typing_extensions import Literal
-   x: Literal["open", "close"]
+   from typing_extensions import TypeIs
 
 If you don't want to rely on ``typing_extensions`` being installed on newer
 Pythons, you could alternatively use:
@@ -352,12 +349,10 @@ Pythons, you could alternatively use:
 .. code-block:: python
 
    import sys
-   if sys.version_info >= (3, 8):
-       from typing import Literal
+   if sys.version_info >= (3, 13):
+       from typing import TypeIs
    else:
-       from typing_extensions import Literal
-
-   x: Literal["open", "close"]
+       from typing_extensions import TypeIs
 
 This plays nicely well with following :pep:`508` dependency specification:
-``typing_extensions; python_version<"3.8"``
+``typing_extensions; python_version<"3.13"``

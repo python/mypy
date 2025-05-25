@@ -12,10 +12,12 @@ from typing import Callable
 
 from mypy import build
 from mypy.errors import CompileError
+from mypy.nodes import Expression, MypyFile
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
+from mypy.types import Type
 from mypyc.analysis.ircheck import assert_func_ir_valid
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
 from mypyc.errors import Errors
@@ -93,23 +95,23 @@ def perform_test(
 def build_ir_for_single_file(
     input_lines: list[str], compiler_options: CompilerOptions | None = None
 ) -> list[FuncIR]:
-    return build_ir_for_single_file2(input_lines, compiler_options).functions
+    return build_ir_for_single_file2(input_lines, compiler_options)[0].functions
 
 
 def build_ir_for_single_file2(
     input_lines: list[str], compiler_options: CompilerOptions | None = None
-) -> ModuleIR:
+) -> tuple[ModuleIR, MypyFile, dict[Expression, Type], Mapper]:
     program_text = "\n".join(input_lines)
 
     # By default generate IR compatible with the earliest supported Python C API.
     # If a test needs more recent API features, this should be overridden.
-    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 7))
+    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 9))
     options = Options()
     options.show_traceback = True
     options.hide_error_codes = True
     options.use_builtins_fixtures = True
     options.strict_optional = True
-    options.python_version = compiler_options.python_version or (3, 6)
+    options.python_version = compiler_options.python_version or (3, 8)
     options.export_types = True
     options.preserve_asts = True
     options.allow_empty_bodies = True
@@ -123,13 +125,9 @@ def build_ir_for_single_file2(
         raise CompileError(result.errors)
 
     errors = Errors(options)
+    mapper = Mapper({"__main__": None})
     modules = build_ir(
-        [result.files["__main__"]],
-        result.graph,
-        result.types,
-        Mapper({"__main__": None}),
-        compiler_options,
-        errors,
+        [result.files["__main__"]], result.graph, result.types, mapper, compiler_options, errors
     )
     if errors.num_errors:
         raise CompileError(errors.new_messages())
@@ -137,7 +135,9 @@ def build_ir_for_single_file2(
     module = list(modules.values())[0]
     for fn in module.functions:
         assert_func_ir_valid(fn)
-    return module
+    tree = result.graph[module.fullname].tree
+    assert tree is not None
+    return module, tree, result.types, mapper
 
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: list[str]) -> None:
@@ -273,8 +273,8 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
         return None
     if "_32bit" in name and not IS_32_BIT_PLATFORM:
         return None
-    options = CompilerOptions(strip_asserts="StripAssert" in name, capi_version=(3, 7))
-    # A suffix like _python3.8 is used to set the target C API version.
+    options = CompilerOptions(strip_asserts="StripAssert" in name, capi_version=(3, 9))
+    # A suffix like _python3_9 is used to set the target C API version.
     m = re.search(r"_python([3-9]+)_([0-9]+)(_|\b)", name)
     if m:
         options.capi_version = (int(m.group(1)), int(m.group(2)))

@@ -226,6 +226,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             if isinstance(arg, UnpackType):
                 unpacked = get_proper_type(arg.type)
                 if isinstance(unpacked, Instance):
+                    # TODO: this and similar asserts below may be unsafe because get_proper_type()
+                    # may be called during semantic analysis before all invalid types are removed.
                     assert unpacked.type.fullname == "builtins.tuple"
                     args = list(unpacked.args)
         return t.copy_modified(args=args)
@@ -333,10 +335,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
         var_arg_type = get_proper_type(var_arg.type)
         new_unpack: Type
-        if isinstance(var_arg_type, Instance):
-            # we have something like Unpack[Tuple[Any, ...]]
-            new_unpack = UnpackType(var_arg.type.accept(self))
-        elif isinstance(var_arg_type, TupleType):
+        if isinstance(var_arg_type, TupleType):
             # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
             expanded_tuple = var_arg_type.accept(self)
             assert isinstance(expanded_tuple, ProperType) and isinstance(expanded_tuple, TupleType)
@@ -348,6 +347,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             fallback = var_arg_type.tuple_fallback
             expanded_items = self.expand_unpack(var_arg)
             new_unpack = UnpackType(TupleType(expanded_items, fallback))
+        # Since get_proper_type() may be called in semanal.py before callable
+        # normalization happens, we need to also handle non-normal cases here.
+        elif isinstance(var_arg_type, Instance):
+            # we have something like Unpack[Tuple[Any, ...]]
+            new_unpack = UnpackType(var_arg.type.accept(self))
         else:
             # We have invalid type in Unpack. This can happen when expanding aliases
             # to Callable[[*Invalid], Ret]

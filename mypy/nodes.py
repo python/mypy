@@ -14,7 +14,7 @@ from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.options import Options
-from mypy.util import is_typeshed_file, short_type
+from mypy.util import is_sunder, is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
 if TYPE_CHECKING:
@@ -89,9 +89,14 @@ UNBOUND_IMPORTED: Final = 3
 REVEAL_TYPE: Final = 0
 REVEAL_LOCALS: Final = 1
 
-LITERAL_YES: Final = 2
-LITERAL_TYPE: Final = 1
-LITERAL_NO: Final = 0
+# Kinds of 'literal' expressions.
+#
+# Use the function mypy.literals.literal to calculate these.
+#
+# TODO: Can we make these less confusing?
+LITERAL_YES: Final = 2  # Value of expression known statically
+LITERAL_TYPE: Final = 1  # Type of expression can be narrowed (e.g. variable reference)
+LITERAL_NO: Final = 0  # None of the above
 
 node_kinds: Final = {LDEF: "Ldef", GDEF: "Gdef", MDEF: "Mdef", UNBOUND_IMPORTED: "UnboundImported"}
 inverse_node_kinds: Final = {_kind: _name for _name, _kind in node_kinds.items()}
@@ -171,15 +176,12 @@ class Node(Context):
     __slots__ = ()
 
     def __str__(self) -> str:
-        ans = self.accept(mypy.strconv.StrConv(options=Options()))
-        if ans is None:
-            return repr(self)
-        return ans
+        return self.accept(mypy.strconv.StrConv(options=Options()))
 
     def str_with_options(self, options: Options) -> str:
-        ans = self.accept(mypy.strconv.StrConv(options=options))
-        assert ans
-        return ans
+        a = self.accept(mypy.strconv.StrConv(options=options))
+        assert a
+        return a
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
@@ -548,7 +550,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     Overloaded variants must be consecutive in the source file.
     """
 
-    __slots__ = ("items", "unanalyzed_items", "impl", "deprecated")
+    __slots__ = ("items", "unanalyzed_items", "impl", "deprecated", "_is_trivial_self")
 
     items: list[OverloadPart]
     unanalyzed_items: list[OverloadPart]
@@ -561,6 +563,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         self.deprecated = None
+        self._is_trivial_self: bool | None = None
         if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
@@ -573,6 +576,27 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             # This may happen for malformed overload
             assert self.impl is not None
             return self.impl.name
+
+    @property
+    def is_trivial_self(self) -> bool:
+        """Check we can use bind_self() fast path for this overload.
+
+        This will return False if at least one overload:
+          * Has an explicit self annotation, or Self in signature.
+          * Has a non-trivial decorator.
+        """
+        if self._is_trivial_self is not None:
+            return self._is_trivial_self
+        for item in self.items:
+            if isinstance(item, FuncDef):
+                if not item.is_trivial_self:
+                    self._is_trivial_self = False
+                    return False
+            elif item.decorators or not item.func.is_trivial_self:
+                self._is_trivial_self = False
+                return False
+        self._is_trivial_self = True
+        return True
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
@@ -745,6 +769,7 @@ FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
     "is_decorated",
     "is_conditional",
     "is_trivial_body",
+    "is_trivial_self",
     "is_mypy_only",
 ]
 
@@ -768,8 +793,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "is_conditional",
         "abstract_status",
         "original_def",
-        "deco_line",
         "is_trivial_body",
+        "is_trivial_self",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
@@ -798,13 +823,15 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_trivial_body = False
         # Original conditional definition
         self.original_def: None | FuncDef | Var | Decorator = None
-        # Used for error reporting (to keep backward compatibility with pre-3.8)
-        self.deco_line: int | None = None
         # Definitions that appear in if TYPE_CHECKING are marked with this flag.
         self.is_mypy_only = False
         self.dataclass_transform_spec: DataclassTransformSpec | None = None
         self.docstring: str | None = None
         self.deprecated: str | None = None
+        # This is used to simplify bind_self() logic in trivial cases (which are
+        # the majority). In cases where self is not annotated and there are no Self
+        # in the signature we can simply drop the first argument.
+        self.is_trivial_self = False
 
     @property
     def name(self) -> str:
@@ -873,7 +900,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
 
 # All types that are both SymbolNodes and FuncBases. See the FuncBase
 # docstring for the rationale.
-SYMBOL_FUNCBASE_TYPES = (OverloadedFuncDef, FuncDef)
+# See https://github.com/python/mypy/pull/13607#issuecomment-1236357236
+# TODO: we want to remove this at some point and just use `FuncBase` ideally.
+SYMBOL_FUNCBASE_TYPES: Final = (OverloadedFuncDef, FuncDef)
 
 
 class Decorator(SymbolNode, Statement):
@@ -980,6 +1009,7 @@ class Var(SymbolNode):
         "_fullname",
         "info",
         "type",
+        "setter_type",
         "final_value",
         "is_self",
         "is_cls",
@@ -1014,6 +1044,8 @@ class Var(SymbolNode):
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
         self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
+        # The setter type for settable properties.
+        self.setter_type: mypy.types.CallableType | None = None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
         # Is this the first argument to a classmethod (typically "cls")?
@@ -1068,6 +1100,10 @@ class Var(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
+    def __repr__(self) -> str:
+        name = self.fullname or self.name
+        return f"<Var {name!r} at {hex(id(self))}>"
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
 
@@ -1079,6 +1115,7 @@ class Var(SymbolNode):
             "name": self._name,
             "fullname": self._fullname,
             "type": None if self.type is None else self.type.serialize(),
+            "setter_type": None if self.setter_type is None else self.setter_type.serialize(),
             "flags": get_flags(self, VAR_FLAGS),
         }
         if self.final_value is not None:
@@ -1090,7 +1127,18 @@ class Var(SymbolNode):
         assert data[".class"] == "Var"
         name = data["name"]
         type = None if data["type"] is None else mypy.types.deserialize_type(data["type"])
+        setter_type = (
+            None
+            if data["setter_type"] is None
+            else mypy.types.deserialize_type(data["setter_type"])
+        )
         v = Var(name, type)
+        assert (
+            setter_type is None
+            or isinstance(setter_type, mypy.types.ProperType)
+            and isinstance(setter_type, mypy.types.CallableType)
+        )
+        v.setter_type = setter_type
         v.is_ready = False  # Override True default set in __init__
         v._fullname = data["fullname"]
         set_flags(v, data["flags"])
@@ -1115,7 +1163,6 @@ class ClassDef(Statement):
         "keywords",
         "analyzed",
         "has_incompatible_baseclass",
-        "deco_line",
         "docstring",
         "removed_statements",
     )
@@ -1166,8 +1213,6 @@ class ClassDef(Statement):
         self.keywords = dict(keywords) if keywords else {}
         self.analyzed = None
         self.has_incompatible_baseclass = False
-        # Used for error reporting (to keep backward compatibility with pre-3.8)
-        self.deco_line: int | None = None
         self.docstring: str | None = None
         self.removed_statements = []
 
@@ -1621,11 +1666,12 @@ class WithStmt(Statement):
 
 
 class MatchStmt(Statement):
-    __slots__ = ("subject", "patterns", "guards", "bodies")
+    __slots__ = ("subject", "subject_dummy", "patterns", "guards", "bodies")
 
     __match_args__ = ("subject", "patterns", "guards", "bodies")
 
     subject: Expression
+    subject_dummy: NameExpr | None
     patterns: list[Pattern]
     guards: list[Expression | None]
     bodies: list[Block]
@@ -1640,6 +1686,7 @@ class MatchStmt(Statement):
         super().__init__()
         assert len(patterns) == len(guards) == len(bodies)
         self.subject = subject
+        self.subject_dummy = None
         self.patterns = patterns
         self.guards = guards
         self.bodies = bodies
@@ -2059,7 +2106,7 @@ class AssignmentExpr(Expression):
 
     __match_args__ = ("target", "value")
 
-    def __init__(self, target: Expression, value: Expression) -> None:
+    def __init__(self, target: NameExpr, value: Expression) -> None:
         super().__init__()
         self.target = target
         self.value = value
@@ -2556,6 +2603,11 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     @property
     def fullname(self) -> str:
         return self._fullname
+
+
+# All types that are both SymbolNodes and Expressions.
+# Use when common children of them are needed.
+SYMBOL_NODE_EXPRESSION_TYPES: Final = (TypeVarLikeExpr,)
 
 
 class TypeVarExpr(TypeVarLikeExpr):
@@ -3222,16 +3274,55 @@ class TypeInfo(SymbolNode):
 
     @property
     def enum_members(self) -> list[str]:
-        return [
-            name
-            for name, sym in self.names.items()
-            if (
-                isinstance(sym.node, Var)
-                and name not in EXCLUDED_ENUM_ATTRIBUTES
-                and not name.startswith("__")
-                and sym.node.has_explicit_value
-            )
-        ]
+        # TODO: cache the results?
+        members = []
+        for name, sym in self.names.items():
+            # Case 1:
+            #
+            # class MyEnum(Enum):
+            #     @member
+            #     def some(self): ...
+            if isinstance(sym.node, Decorator):
+                if any(
+                    dec.fullname == "enum.member"
+                    for dec in sym.node.decorators
+                    if isinstance(dec, RefExpr)
+                ):
+                    members.append(name)
+                    continue
+            # Case 2:
+            #
+            # class MyEnum(Enum):
+            #     x = 1
+            #
+            # Case 3:
+            #
+            # class MyEnum(Enum):
+            #     class Other: ...
+            elif isinstance(sym.node, (Var, TypeInfo)):
+                if (
+                    # TODO: properly support ignored names from `_ignore_`
+                    name in EXCLUDED_ENUM_ATTRIBUTES
+                    or is_sunder(name)
+                    or name.startswith("__")  # dunder and private
+                ):
+                    continue  # name is excluded
+
+                if isinstance(sym.node, Var):
+                    if not sym.node.has_explicit_value:
+                        continue  # unannotated value not a member
+
+                    typ = mypy.types.get_proper_type(sym.node.type)
+                    if isinstance(
+                        typ, mypy.types.FunctionLike
+                    ) or (  # explicit `@member` is required
+                        isinstance(typ, mypy.types.Instance)
+                        and typ.type.fullname == "enum.nonmember"
+                    ):
+                        continue  # name is not a member
+
+                members.append(name)
+        return members
 
     def __getitem__(self, name: str) -> SymbolTableNode:
         n = self.get(name)
@@ -3256,7 +3347,7 @@ class TypeInfo(SymbolNode):
         for cls in self.mro:
             if name in cls.names:
                 node = cls.names[name].node
-                if isinstance(node, FuncBase):
+                if isinstance(node, SYMBOL_FUNCBASE_TYPES):
                     return node
                 elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
                     return node
@@ -4015,7 +4106,8 @@ class SymbolTable(dict[str, SymbolTableNode]):
                 ):
                     a.append("  " + str(key) + " : " + str(value))
             else:
-                a.append("  <invalid item>")
+                # Used in debugging:
+                a.append("  <invalid item>")  # type: ignore[unreachable]
         a = sorted(a)
         a.insert(0, "SymbolTable(")
         a[-1] += ")"

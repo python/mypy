@@ -18,7 +18,7 @@ if int():
 
 [case testEnumCreatedFromStringLiteral]
 from enum import Enum
-from typing_extensions import Literal
+from typing import Literal
 
 x: Literal['ANT BEE CAT DOG'] = 'ANT BEE CAT DOG'
 Animal = Enum('Animal', x)
@@ -31,7 +31,7 @@ reveal_type(Animal.DOG)  # N: Revealed type is "Literal[__main__.Animal.DOG]?"
 
 [case testEnumCreatedFromFinalValue]
 from enum import Enum
-from typing_extensions import Final
+from typing import Final
 
 x: Final['str'] = 'ANT BEE CAT DOG'
 Animal = Enum('Animal', x)
@@ -181,7 +181,7 @@ def infer_truth(truth: Truth) -> None:
 [case testEnumTruthyness]
 # mypy: warn-unreachable
 import enum
-from typing_extensions import Literal
+from typing import Literal
 
 class E(enum.Enum):
     zero = 0
@@ -213,7 +213,7 @@ def main(zero: Literal[E.zero], one: Literal[E.one]) -> None:
 [case testEnumTruthynessCustomDunderBool]
 # mypy: warn-unreachable
 import enum
-from typing_extensions import Literal
+from typing import Literal
 
 class E(enum.Enum):
     zero = 0
@@ -247,7 +247,7 @@ def main(zero: Literal[E.zero], one: Literal[E.one]) -> None:
 [case testEnumTruthynessStrEnum]
 # mypy: warn-unreachable
 import enum
-from typing_extensions import Literal
+from typing import Literal
 
 class E(enum.StrEnum):
     empty = ""
@@ -726,7 +726,7 @@ reveal_type(Test.a)  # N: Revealed type is "Literal[__main__.Test.a]?"
 
 [case testEnumAttributeAccessMatrix]
 from enum import Enum, IntEnum, IntFlag, Flag, EnumMeta, auto
-from typing_extensions import Literal
+from typing import Literal
 
 def is_x(val: Literal['x']) -> None: pass
 
@@ -872,7 +872,7 @@ main:2: note: Revealed type is "Literal['foo']?"
 
 [case testEnumReachabilityChecksBasic]
 from enum import Enum
-from typing_extensions import Literal
+from typing import Literal
 
 class Foo(Enum):
     A = 1
@@ -924,7 +924,7 @@ reveal_type(y) # N: Revealed type is "__main__.Foo"
 
 [case testEnumReachabilityChecksWithOrdering]
 from enum import Enum
-from typing_extensions import Literal
+from typing import Literal
 
 class Foo(Enum):
     _order_ = "A B"
@@ -975,7 +975,7 @@ else:
 
 [case testEnumReachabilityChecksIndirect]
 from enum import Enum
-from typing_extensions import Literal, Final
+from typing import Final, Literal
 
 class Foo(Enum):
     A = 1
@@ -1040,7 +1040,7 @@ else:
 
 [case testEnumReachabilityNoNarrowingForUnionMessiness]
 from enum import Enum
-from typing_extensions import Literal
+from typing import Literal
 
 class Foo(Enum):
     A = 1
@@ -1096,8 +1096,7 @@ reveal_type(x) # N: Revealed type is "Union[__main__.Foo, None]"
 
 [case testEnumReachabilityWithMultipleEnums]
 from enum import Enum
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 
 class Foo(Enum):
     A = 1
@@ -1130,8 +1129,7 @@ reveal_type(x3) # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityPEP484ExampleWithFinal]
-from typing import Union
-from typing_extensions import Final
+from typing import Final, Union
 from enum import Enum
 
 class Empty(Enum):
@@ -1176,8 +1174,7 @@ def process(response: Union[str, Reason] = '') -> str:
 
 
 [case testEnumReachabilityPEP484ExampleSingleton]
-from typing import Union
-from typing_extensions import Final
+from typing import Final, Union
 from enum import Enum
 
 class Empty(Enum):
@@ -1200,17 +1197,20 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
 [builtins fixtures/primitives.pyi]
 
 [case testEnumReachabilityPEP484ExampleSingletonWithMethod]
-from typing import Union
-from typing_extensions import Final
-from enum import Enum
+# flags: --python-version 3.11
+from typing import Final, Union
+from enum import Enum, member
 
 class Empty(Enum):
-    token = lambda x: x
+    # note, that without `member` we cannot tell that `token` is a member:
+    token = member(lambda x: x)
 
     def f(self) -> int:
         return 1
 
 _empty = Empty.token
+reveal_type(_empty)  # N: Revealed type is "__main__.Empty"
+reveal_type(Empty.f) # N: Revealed type is "def (self: __main__.Empty) -> builtins.int"
 
 def func(x: Union[int, None, Empty] = _empty) -> int:
     boom = x + 42       # E: Unsupported left operand type for + ("None") \
@@ -1331,7 +1331,7 @@ reveal_type(x)      # N: Revealed type is "__main__.Foo"
 [case testEnumReachabilityWithChainingDirectConflict]
 # flags: --warn-unreachable
 from enum import Enum
-from typing_extensions import Literal, Final
+from typing import Final, Literal
 
 class Foo(Enum):
     A = 1
@@ -1366,7 +1366,7 @@ reveal_type(x)      # N: Revealed type is "__main__.Foo"
 [case testEnumReachabilityWithChainingBigDisjoints]
 # flags: --warn-unreachable
 from enum import Enum
-from typing_extensions import Literal, Final
+from typing import Final, Literal
 
 class Foo(Enum):
     A = 1
@@ -1488,8 +1488,7 @@ reveal_type(a._value_)  # N: Revealed type is "Any"
 # as the full type, regardless of the amount of elements
 # the enum contains.
 from enum import Enum
-from typing import Union
-from typing_extensions import Literal
+from typing import Literal, Union
 
 class Foo(Enum):
     A = 1
@@ -1507,7 +1506,7 @@ def f(x: Foo):
 
 [case testEnumTypeCompatibleWithLiteralUnion]
 from enum import Enum
-from typing_extensions import Literal
+from typing import Literal
 
 class E(Enum):
     A = 1
@@ -1618,6 +1617,65 @@ class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot extend enum with existin
     pass
 class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot extend enum with existing members: "NonEmptyIntFlag"
     pass
+[builtins fixtures/bool.pyi]
+
+[case testEnumImplicitlyFinalForSubclassingWithCallableMember]
+# flags: --python-version 3.11
+from enum import Enum, IntEnum, Flag, IntFlag, member
+
+class NonEmptyEnum(Enum):
+    @member
+    def call(self) -> None: ...
+class NonEmptyIntEnum(IntEnum):
+    @member
+    def call(self) -> None: ...
+class NonEmptyFlag(Flag):
+    @member
+    def call(self) -> None: ...
+class NonEmptyIntFlag(IntFlag):
+    @member
+    def call(self) -> None: ...
+
+class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot extend enum with existing members: "NonEmptyEnum"
+    pass
+class ErrorIntEnumWithoutValue(NonEmptyIntEnum):  # E: Cannot extend enum with existing members: "NonEmptyIntEnum"
+    pass
+class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot extend enum with existing members: "NonEmptyFlag"
+    pass
+class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot extend enum with existing members: "NonEmptyIntFlag"
+    pass
+[builtins fixtures/bool.pyi]
+
+[case testEnumCanExtendEnumsWithNonMembers]
+# flags: --python-version 3.11
+from enum import Enum, IntEnum, Flag, IntFlag, nonmember
+
+class NonEmptyEnum(Enum):
+    x = nonmember(1)
+class NonEmptyIntEnum(IntEnum):
+    x = nonmember(1)
+class NonEmptyFlag(Flag):
+    x = nonmember(1)
+class NonEmptyIntFlag(IntFlag):
+    x = nonmember(1)
+
+class ErrorEnumWithoutValue(NonEmptyEnum):
+    pass
+class ErrorIntEnumWithoutValue(NonEmptyIntEnum):
+    pass
+class ErrorFlagWithoutValue(NonEmptyFlag):
+    pass
+class ErrorIntFlagWithoutValue(NonEmptyIntFlag):
+    pass
+[builtins fixtures/bool.pyi]
+
+[case testLambdaIsNotEnumMember]
+from enum import Enum
+
+class My(Enum):
+    x = lambda a: a
+
+class Other(My): ...
 [builtins fixtures/bool.pyi]
 
 [case testSubclassingNonFinalEnums]
@@ -1844,6 +1902,10 @@ from enum import Enum
 class A(Enum):
     class Inner: pass
 class B(A): pass  # E: Cannot extend enum with existing members: "A"
+
+class A1(Enum):
+    class __Inner: pass
+class B1(A1): pass
 [builtins fixtures/bool.pyi]
 
 [case testEnumFinalSpecialProps]
@@ -1927,7 +1989,7 @@ from enum import Enum
 class A(Enum):  # E: Detected enum "lib.A" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership. If so, use `member = value` to mark an enum member, instead of `member: type` \
                 # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
     x: int
-class B(A):  # E: Cannot extend enum with existing members: "A"
+class B(A):
     x = 1    # E: Cannot override writable attribute "x" with a final one
 
 class C(Enum):
@@ -1936,6 +1998,18 @@ class D(C):  # E: Cannot extend enum with existing members: "C" \
              # E: Detected enum "lib.D" in a type stub with zero members. There is a chance this is due to a recent change in the semantics of enum membership. If so, use `member = value` to mark an enum member, instead of `member: type` \
              # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members
     x: int   # E: Cannot assign to final name "x"
+[builtins fixtures/bool.pyi]
+
+[case testEnumNotFinalWithMethodsAndUninitializedValuesStubMember]
+# flags: --python-version 3.11
+# This was added in 3.11
+import lib
+
+[file lib.pyi]
+from enum import Enum, member
+class A(Enum):
+    @member
+    def x(self) -> None: ...
 [builtins fixtures/bool.pyi]
 
 [case testEnumLiteralValues]
@@ -2330,6 +2404,28 @@ def some_a(a: A):
 [builtins fixtures/dict.pyi]
 
 
+[case testEnumMemberAndNonMemberSupport]
+# flags: --python-version 3.11 --warn-unreachable
+# This was added in 3.11
+from enum import Enum, member, nonmember
+
+class A(Enum):
+    x = 1
+    y = member(2)
+    z = nonmember(3)
+
+def some_a(a: A):
+    if a is not A.x and a is not A.z:
+        reveal_type(a)  # N: Revealed type is "Literal[__main__.A.y]"
+    if a is not A.y and a is not A.z:
+        reveal_type(a)  # N: Revealed type is "Literal[__main__.A.x]"
+    if a is not A.x:
+        reveal_type(a)  # N: Revealed type is "Literal[__main__.A.y]"
+    if a is not A.y:
+        reveal_type(a)  # N: Revealed type is "Literal[__main__.A.x]"
+[builtins fixtures/dict.pyi]
+
+
 [case testErrorOnAnnotatedMember]
 from enum import Enum
 
@@ -2394,3 +2490,37 @@ def do_check(value: E) -> None:
 
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testStrEnumClassCorrectIterable]
+from enum import StrEnum
+from typing import Type, TypeVar
+
+class Choices(StrEnum):
+    LOREM = "lorem"
+    IPSUM = "ipsum"
+
+var = list(Choices)
+reveal_type(var)  # N: Revealed type is "builtins.list[__main__.Choices]"
+
+e: type[StrEnum]
+reveal_type(list(e))  # N: Revealed type is "builtins.list[enum.StrEnum]"
+
+T = TypeVar("T", bound=StrEnum)
+def list_vals(e: Type[T]) -> list[T]:
+    reveal_type(list(e))  # N: Revealed type is "builtins.list[T`-1]"
+    return list(e)
+
+reveal_type(list_vals(Choices))  # N: Revealed type is "builtins.list[__main__.Choices]"
+[builtins fixtures/enum.pyi]
+
+[case testEnumAsClassMemberNoCrash]
+# https://github.com/python/mypy/issues/18736
+from enum import Enum
+
+class Base:
+    def __init__(self, namespace: tuple[str, ...]) -> None:
+        # Not a bug: trigger defer
+        names = [name for name in namespace if fail]  # E: Name "fail" is not defined
+        self.o = Enum("o", names)  # E: Enum type as attribute is not supported \
+                                   # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
+[builtins fixtures/tuple.pyi]

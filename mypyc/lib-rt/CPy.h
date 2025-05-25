@@ -662,9 +662,12 @@ int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 int CPyList_Remove(PyObject *list, PyObject *obj);
 CPyTagged CPyList_Index(PyObject *list, PyObject *obj);
+PyObject *CPySequence_Sort(PyObject *seq);
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
+PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+PyObject *CPyList_Copy(PyObject *list);
 int CPySequence_Check(PyObject *obj);
 
 
@@ -717,15 +720,34 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 
 // Str operations
 
+// Macros for strip type. These values are copied from CPython.
+#define LEFTSTRIP  0
+#define RIGHTSTRIP 1
+#define BOTHSTRIP  2
 
 PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
+CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction);
+CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
+PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split);
+PyObject *_CPyStr_Strip(PyObject *self, int strip_type, PyObject *sep);
+static inline PyObject *CPyStr_Strip(PyObject *self, PyObject *sep) {
+    return _CPyStr_Strip(self, BOTHSTRIP, sep);
+}
+static inline PyObject *CPyStr_LStrip(PyObject *self, PyObject *sep) {
+    return _CPyStr_Strip(self, LEFTSTRIP, sep);
+}
+static inline PyObject *CPyStr_RStrip(PyObject *self, PyObject *sep) {
+    return _CPyStr_Strip(self, RIGHTSTRIP, sep);
+}
 PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace);
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
 PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
-bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
-bool CPyStr_Endswith(PyObject *self, PyObject *subobj);
+int CPyStr_Startswith(PyObject *self, PyObject *subobj);
+int CPyStr_Endswith(PyObject *self, PyObject *subobj);
+PyObject *CPyStr_Removeprefix(PyObject *self, PyObject *prefix);
+PyObject *CPyStr_Removesuffix(PyObject *self, PyObject *suffix);
 bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
@@ -860,11 +882,13 @@ PyObject *CPyType_FromTemplateWrapper(PyObject *template_,
                                       PyObject *orig_bases,
                                       PyObject *modname);
 int CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
-                               PyObject *dict, PyObject *annotations);
+                               PyObject *dict, PyObject *annotations,
+                               PyObject *dataclass_type);
 PyObject *CPyPickle_SetState(PyObject *obj, PyObject *state);
 PyObject *CPyPickle_GetState(PyObject *obj);
 CPyTagged CPyTagged_Id(PyObject *o);
 void CPyDebug_Print(const char *msg);
+void CPyDebug_PrintObject(PyObject *obj);
 void CPy_Init(void);
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, const char *, const char * const *, ...);

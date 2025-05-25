@@ -7,6 +7,7 @@ requires = [
     # the following is from mypy-requirements.txt/setup.py
     "typing_extensions>=4.6.0",
     "mypy_extensions>=1.0.0",
+    "pathspec>=0.9.0",
     "tomli>=1.1.0; python_version<'3.11'",
     # the following is from build-requirements.txt
     "types-psutil",
@@ -49,6 +50,7 @@ dependencies = [
   # When changing this, also update build-system.requires and mypy-requirements.txt
   "typing_extensions>=4.6.0",
   "mypy_extensions>=1.0.0",
+  "pathspec>=0.9.0",
   "tomli>=1.1.0; python_version<'3.11'",
 ]
 dynamic = ["version"]
@@ -77,6 +79,7 @@ mypyc = "mypyc.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["mypy*", "mypyc*", "*__mypyc*"]
+exclude = ["mypyc.test-data*"]
 namespaces = false
 
 [tool.setuptools.package-data]
@@ -88,6 +91,15 @@ mypy = [
   "xml/*.xsd",
   "xml/*.xslt",
   "xml/*.css",
+]
+[tool.setuptools.exclude-package-data]
+mypyc = [
+  "README.md",
+  "doc/**",
+  "external/**",
+  "lib-rt/test_capi.cc",
+  "lib-rt/setup.py",
+  "test-data/**",
 ]
 
 [tool.black]
@@ -132,7 +144,12 @@ select = [
   "PGH004",  # blanket noqa comments
   "UP",      # pyupgrade
   "C4",      # flake8-comprehensions
+  "SIM101",  # merge duplicate isinstance calls
   "SIM201", "SIM202", "SIM222", "SIM223",  # flake8-simplify
+  "FURB168", # Prefer is operator over isinstance for None checks
+  "FURB169", # Do not use is comparison with type(None). Use None
+  "FURB187", # avoid list reverse copy
+  "FURB188", # use str.remove(pre|suf)fix
   "ISC001",  # implicitly concatenated string
   "RET501", "RET502",  # better return None handling
 ]

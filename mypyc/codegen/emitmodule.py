@@ -45,7 +45,6 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
     shared_lib_name,
     short_id_from_name,
-    use_vectorcall,
 )
 from mypyc.errors import Errors
 from mypyc.ir.func_ir import FuncIR
@@ -62,6 +61,7 @@ from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
 from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
+from mypyc.transform.spill import insert_spills
 from mypyc.transform.uninit import insert_uninit_checks
 
 # All of the modules being compiled are divided into "groups". A group
@@ -229,6 +229,12 @@ def compile_scc_to_ir(
     if errors.num_errors > 0:
         return modules
 
+    env_user_functions = {}
+    for module in modules.values():
+        for cls in module.classes:
+            if cls.env_user_function:
+                env_user_functions[cls.env_user_function] = cls
+
     for module in modules.values():
         for fn in module.functions:
             # Insert uninit checks.
@@ -237,6 +243,10 @@ def compile_scc_to_ir(
             insert_exception_handling(fn)
             # Insert refcount handling.
             insert_ref_count_opcodes(fn)
+
+            if fn in env_user_functions:
+                insert_spills(fn, env_user_functions[fn])
+
             # Switch to lower abstraction level IR.
             lower_ir(fn, compiler_options)
             # Perform optimizations.
@@ -398,7 +408,7 @@ def load_scc_from_cache(
 
 def compile_modules_to_c(
     result: BuildResult, compiler_options: CompilerOptions, errors: Errors, groups: Groups
-) -> tuple[ModuleIRs, list[FileContents]]:
+) -> tuple[ModuleIRs, list[FileContents], Mapper]:
     """Compile Python module(s) to the source of Python C extension modules.
 
     This generates the source code for the "shared library" module
@@ -428,12 +438,12 @@ def compile_modules_to_c(
 
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
     if errors.num_errors > 0:
-        return {}, []
+        return {}, [], Mapper({})
 
     ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
     write_cache(modules, result, group_map, ctext)
 
-    return modules, [ctext[name] for _, name in groups]
+    return modules, [ctext[name] for _, name in groups], mapper
 
 
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
@@ -1106,7 +1116,7 @@ def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
     if fn.class_name is not None:
         if fn.name == "__call__":
             # We can use vectorcalls (PEP 590) when supported
-            return use_vectorcall(capi_version)
+            return True
         # TODO: Support fastcall for __init__.
         return fn.name != "__init__"
     return True
