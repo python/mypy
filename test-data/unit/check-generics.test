@@ -2,8 +2,8 @@
 -- --------------------
 
 
-[case testGenericMethodReturnType]
 from typing import TypeVar, Generic
+[case testGenericMethodReturnType]
 T = TypeVar('T')
 a: A[B]
 b: B
@@ -3563,3 +3563,53 @@ def foo(x: T):
     reveal_type(C)  # N: Revealed type is "Overload(def [T, S] (x: builtins.int, y: S`-1) -> __main__.C[__main__.Int[S`-1]], def [T, S] (x: builtins.str, y: S`-1) -> __main__.C[__main__.Str[S`-1]])"
     reveal_type(C(0, x))  # N: Revealed type is "__main__.C[__main__.Int[T`-1]]"
     reveal_type(C("yes", x))  # N: Revealed type is "__main__.C[__main__.Str[T`-1]]"
+
+[case testDeterminismFromJoinOrderingInSolver]
+# Used to fail non-deterministically
+# https://github.com/python/mypy/issues/19121
+from __future__ import annotations
+from typing import Generic, Iterable, Iterator, Self, TypeVar
+
+_T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
+_T3 = TypeVar("_T3")
+_T_co = TypeVar("_T_co", covariant=True)
+
+class Base(Iterable[_T1]):
+    def __iter__(self) -> Iterator[_T1]: ...
+class A(Base[_T1]): ...
+class B(Base[_T1]): ...
+class C(Base[_T1]): ...
+class D(Base[_T1]): ...
+class E(Base[_T1]): ...
+
+class zip2(Generic[_T_co]):
+    def __new__(
+        cls,
+        iter1: Iterable[_T1],
+        iter2: Iterable[_T2],
+        iter3: Iterable[_T3],
+    ) -> zip2[tuple[_T1, _T2, _T3]]: ...
+    def __iter__(self) -> Self: ...
+    def __next__(self) -> _T_co: ...
+
+def draw(
+    colors1: A[str] | B[str] | C[int] | D[int | str],
+    colors2: A[str] | B[str] | C[int] | D[int | str],
+    colors3: A[str] | B[str] | C[int] | D[int | str],
+) -> None:
+    for c1, c2, c3 in zip2(colors1, colors2, colors3):
+        reveal_type(c1)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(c2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(c3)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+def draw_again(
+    colors1: B[str] | A[int | str] | C[str] | E[int] | D[int],
+    colors2: B[str] | A[int | str] | C[str] | E[int] | D[int],
+    colors3: B[str] | A[int | str] | C[str] | E[int] | D[int],
+) -> None:
+    for c1, c2, c3 in zip2(colors1, colors2, colors3):
+        reveal_type(c1)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(c2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(c3)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
