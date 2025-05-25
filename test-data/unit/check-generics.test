@@ -2,8 +2,8 @@
 -- --------------------
 
 
-from typing import TypeVar, Generic
 [case testGenericMethodReturnType]
+from typing import TypeVar, Generic
 T = TypeVar('T')
 a: A[B]
 b: B
