@@ -94,6 +94,50 @@ reveal_type(Truth.true.name)    # N: Revealed type is "Literal['true']?"
 reveal_type(Truth.false.value)  # N: Revealed type is "Literal[False]?"
 [builtins fixtures/bool.pyi]
 
+[case testEnumNameValueOnType]
+from enum import Enum, Flag, IntEnum, member, nonmember
+class Colors(Enum):
+    red = 1
+    blue = 2
+    green = 3
+    white = nonmember(0)
+x: Colors = Colors.red
+reveal_type(x.name)  # N: Revealed type is "Union[Literal['red'], Literal['blue'], Literal['green']]"
+
+class Numbers(IntEnum):
+    one = 1
+    two = 2
+    three = 3
+    _magic_ = member(4)
+y: Numbers = Numbers.one
+reveal_type(y.name)  # N: Revealed type is "Union[Literal['one'], Literal['two'], Literal['three'], Literal['_magic_']]"
+
+class Flags(Flag):
+    en = "en"
+    us = "us"
+    @member
+    def all(self) -> str:
+        return "all"
+z: Flags = Flags.en
+reveal_type(z.name)  # N: Revealed type is "Union[Literal['en'], Literal['us'], Literal['all']]"
+
+class Empty(Enum): ...
+e: Empty
+reveal_type(e.name)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testEnumNameValueOnUnionOfLiteral]
+from enum import Enum
+from typing import Literal
+class Colors(Enum):
+    red = 1
+    blue = 2
+    green = 3
+
+color: Literal[Colors.red, Colors.blue]
+reveal_type(color.name)  # N: Revealed type is "Union[Literal['red'], Literal['blue']]"
+[builtins fixtures/tuple.pyi]
+
 [case testEnumValueExtended]
 from enum import Enum
 class Truth(Enum):

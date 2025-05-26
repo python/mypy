@@ -27,6 +27,7 @@ from mypy.types import (
     LiteralType,
     ProperType,
     Type,
+    UnionType,
     get_proper_type,
     is_named_instance,
 )
@@ -54,13 +55,25 @@ def enum_name_callback(ctx: mypy.plugin.AttributeContext) -> Type:
     This plugin assumes that the provided context is an attribute access
     matching one of the strings found in 'ENUM_NAME_ACCESS'.
     """
+    # This might be `SomeEnum.Field.name` case:
     enum_field_name = _extract_underlying_field_name(ctx.type)
-    if enum_field_name is None:
-        return ctx.default_attr_type
-    else:
+    if enum_field_name is not None:
         str_type = ctx.api.named_generic_type("builtins.str", [])
         literal_type = LiteralType(enum_field_name, fallback=str_type)
         return str_type.copy_modified(last_known_value=literal_type)
+
+    # Or `field: SomeEnum = SomeEnum.field; field.name` case,
+    # Or `field: Literal[Some.A, Some.B]; field.name` case:
+    enum_names = _extract_enum_names_from_type(ctx.type) or _extract_enum_names_from_literal_union(
+        ctx.type
+    )
+    if enum_names:
+        str_type = ctx.api.named_generic_type("builtins.str", [])
+        return make_simplified_union(
+            [LiteralType(enum_name, fallback=str_type) for enum_name in enum_names]
+        )
+
+    return ctx.default_attr_type
 
 
 _T = TypeVar("_T")
@@ -285,3 +298,27 @@ def _extract_underlying_field_name(typ: Type) -> str | None:
     # as a string.
     assert isinstance(underlying_literal.value, str)
     return underlying_literal.value
+
+
+def _extract_enum_names_from_type(typ: ProperType) -> list[str] | None:
+    if not isinstance(typ, Instance) or not typ.type.is_enum:
+        return None
+    return typ.type.enum_members
+
+
+def _extract_enum_names_from_literal_union(typ: ProperType) -> list[str] | None:
+    if not isinstance(typ, UnionType):
+        return None
+
+    names = []
+    for item in typ.relevant_items():
+        pitem = get_proper_type(item)
+        if isinstance(pitem, Instance) and pitem.last_known_value and pitem.type.is_enum:
+            assert isinstance(pitem.last_known_value.value, str)
+            names.append(pitem.last_known_value.value)
+        elif isinstance(pitem, LiteralType):
+            assert isinstance(pitem.value, str)
+            names.append(pitem.value)
+        else:
+            return None
+    return names
