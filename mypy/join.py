@@ -635,6 +635,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         typ = get_proper_type(typ)
         if isinstance(typ, Instance):
             return object_from_instance(typ)
+        elif isinstance(typ, TypeType):
+            return self.default(typ.item)
         elif isinstance(typ, UnboundType):
             return AnyType(TypeOfAny.special_form)
         elif isinstance(typ, TupleType):
