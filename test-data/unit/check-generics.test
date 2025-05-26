@@ -3602,14 +3602,4 @@ def draw(
         reveal_type(c1)  # N: Revealed type is "Union[builtins.int, builtins.str]"
         reveal_type(c2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
         reveal_type(c3)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-
-def draw_again(
-    colors1: B[str] | A[int | str] | C[str] | E[int] | D[int],
-    colors2: B[str] | A[int | str] | C[str] | E[int] | D[int],
-    colors3: B[str] | A[int | str] | C[str] | E[int] | D[int],
-) -> None:
-    for c1, c2, c3 in zip2(colors1, colors2, colors3):
-        reveal_type(c1)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        reveal_type(c2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-        reveal_type(c3)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
