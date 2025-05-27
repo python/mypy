@@ -380,7 +380,7 @@ def _parse_and_extend_config_file(
     else:
         section = parser["mypy"]
 
-        extend = parser["mypy"].pop("extend", None)
+        extend = section.pop("extend", None)
         if extend:
             parse_ret = _parse_and_extend_config_file(
                 template=template,
