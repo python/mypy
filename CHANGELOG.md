@@ -73,7 +73,8 @@ future. You may need to update or add type annotations when switching
 to the new behavior, but if you encounter anything unexpected, please
 create a GitHub issue.
 
-This was contributed by Jukka Lehtosalo (PR [18727](https://github.com/python/mypy/pull/18727)).
+This was contributed by Jukka Lehtosalo
+(PR [18727](https://github.com/python/mypy/pull/18727), PR [19153](https://github.com/python/mypy/pull/19153)).
 
 ### Stricter Type Checking with Imprecise Types
 
@@ -229,6 +230,7 @@ This feature was contributed by Valentin Stanciu (PR [18802](https://github.com/
 
 ### Mypyc Fixes and Improvements
 
+ * Improve documentation of native and non-native classes (Jukka Lehtosalo, PR [19154](https://github.com/python/mypy/pull/19154))
  * Fix compilation when using Python 3.13 debug build (Valentin Stanciu, PR [19045](https://github.com/python/mypy/pull/19045))
  * Show the reason why a class can't be a native class (Valentin Stanciu, PR [19016](https://github.com/python/mypy/pull/19016))
  * Support await/yield while temporary values are live (Michael J. Sullivan, PR [16305](https://github.com/python/mypy/pull/16305))
