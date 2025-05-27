@@ -90,7 +90,7 @@ You need to install ``mypy-extensions`` to use ``@mypyc_attr``:
     pip install --upgrade mypy-extensions
 
 Additionally, mypyc recognizes these base classes as special, and
-undersands how they alter the behavior of classes (including native
+understands how they alter the behavior of classes (including native
 classes) that subclass them:
 
 * ``typing.NamedTuple``
