@@ -257,7 +257,7 @@ This feature was contributed by Valentin Stanciu (PR [18802](https://github.com/
  * Optimize `str.rsplit` (Marc Mueller, PR [18673](https://github.com/python/mypy/pull/18673))
  * Optimize `str.removeprefix` and `str.removesuffix` (Marc Mueller, PR [18672](https://github.com/python/mypy/pull/18672))
  * Recognize literal types in `__match_args__` (Stanislav Terliakov, PR [18636](https://github.com/python/mypy/pull/18636))
- * Fix non extention classes with attribute annotations using forward references (Valentin Stanciu, PR [18577](https://github.com/python/mypy/pull/18577))
+ * Fix non extension classes with attribute annotations using forward references (Valentin Stanciu, PR [18577](https://github.com/python/mypy/pull/18577))
  * Use lower-case generic types such as `list[t]` in documentation (Jukka Lehtosalo, PR [18576](https://github.com/python/mypy/pull/18576))
  * Improve support for `frozenset` (Marc Mueller, PR [18571](https://github.com/python/mypy/pull/18571))
  * Fix wheel build for cp313-win (Marc Mueller, PR [18560](https://github.com/python/mypy/pull/18560))
@@ -276,7 +276,7 @@ This feature was contributed by Valentin Stanciu (PR [18802](https://github.com/
  * Fix crash on decorated getter in settable property (Ivan Levkivskyi, PR [18787](https://github.com/python/mypy/pull/18787))
  * Fix crash on callable with `*args` and suffix against Any (Ivan Levkivskyi, PR [18781](https://github.com/python/mypy/pull/18781))
  * Fix crash on deferred supertype and setter override (Ivan Levkivskyi, PR [18649](https://github.com/python/mypy/pull/18649))
- * Fix crashes on incorectly detected recursive aliases (Ivan Levkivskyi, PR [18625](https://github.com/python/mypy/pull/18625))
+ * Fix crashes on incorrectly detected recursive aliases (Ivan Levkivskyi, PR [18625](https://github.com/python/mypy/pull/18625))
  * Report that `NamedTuple` and `dataclass` are incompatile instead of crashing (Christoph Tyralla, PR [18633](https://github.com/python/mypy/pull/18633))
  * Fix mypy daemon crash (Valentin Stanciu, PR [19087](https://github.com/python/mypy/pull/19087))
 
@@ -313,7 +313,7 @@ These are specific to mypy. Mypyc-related performance improvements are discussed
  * Better checking of runtime arguments with dunder names (Shantanu, PR [18756](https://github.com/python/mypy/pull/18756))
  * Ignore setattr and delattr inherited from object (Stephen Morton, PR [18325](https://github.com/python/mypy/pull/18325))
 
-### Miscellanous Fixes and Improvements
+### Miscellaneous Fixes and Improvements
 
  * Add `--strict-bytes` to `--strict` (wyattscarpenter, PR [19049](https://github.com/python/mypy/pull/19049))
  * Admit that Final variables are never redefined (Stanislav Terliakov, PR [19083](https://github.com/python/mypy/pull/19083))
@@ -378,7 +378,7 @@ These are specific to mypy. Mypyc-related performance improvements are discussed
  * Allow redefinitions in except/else/finally (Stanislav Terliakov, PR [18515](https://github.com/python/mypy/pull/18515))
  * Disallow setting Python version using inline config (Shantanu, PR [18497](https://github.com/python/mypy/pull/18497))
  * Improve type inference in tuple multiplication plugin (Shantanu, PR [18521](https://github.com/python/mypy/pull/18521))
- * Add missing line nnumber to `yield from` with wrong type (Stanislav Terliakov, PR [18518](https://github.com/python/mypy/pull/18518))
+ * Add missing line number to `yield from` with wrong type (Stanislav Terliakov, PR [18518](https://github.com/python/mypy/pull/18518))
  * Hint at argument names when formatting callables with compatible return types in error messages (Stanislav Terliakov, PR [18495](https://github.com/python/mypy/pull/18495))
  * Add better naming and improve compatibility for ad hoc intersections of instances (Christoph Tyralla, PR [18506](https://github.com/python/mypy/pull/18506))
  * Infer correct types with overloads of `Type[Guard | Is]` (sobolevn, PR [17678](https://github.com/python/mypy/pull/17678))
