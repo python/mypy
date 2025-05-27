@@ -316,7 +316,6 @@ def parse_config_file(
     file_read, mypy_updates, mypy_report_dirs, module_updates = ret
 
     options.config_file = file_read
-    os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(os.path.abspath(file_read))
 
     for k, v in mypy_updates.items():
         setattr(options, k, v)
@@ -365,6 +364,11 @@ def _parse_and_extend_config_file(
         print(f"Circular extend detected: {abs_file_read}", file=stderr)
         return None
     visited.add(abs_file_read)
+
+    if not os.environ.get("MYPY_CONFIG_FILE_DIR"):
+        # set it only if unset to allow for path variable expansions when parsing below,
+        # so recursive calls for config extend references won't overwrite it
+        os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(abs_file_read)
 
     mypy_updates: dict[str, object] = {}
     mypy_report_dirs: dict[str, str] = {}
