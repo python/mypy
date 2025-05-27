@@ -302,7 +302,7 @@ def parse_config_file(
     stderr = stderr or sys.stderr
 
     ret = _parse_and_extend_config_file(
-        options=options,
+        template=options,
         set_strict_flags=set_strict_flags,
         filename=filename,
         stdout=stdout,
@@ -344,7 +344,7 @@ def _merge_updates(existing: dict[str, object], new: dict[str, object]) -> None:
 
 
 def _parse_and_extend_config_file(
-    options: Options,
+    template: Options,
     set_strict_flags: Callable[[], None],
     filename: str | None,
     stdout: TextIO,
@@ -379,7 +379,7 @@ def _parse_and_extend_config_file(
         extend = parser["mypy"].pop("extend", None)
         if extend:
             parse_ret = _parse_and_extend_config_file(
-                options=options,
+                template=template,
                 set_strict_flags=set_strict_flags,
                 # refer to extend relative to directory where we found current config
                 filename=os.path.relpath(
@@ -399,7 +399,7 @@ def _parse_and_extend_config_file(
 
         prefix = f"{file_read}: [mypy]: "
         updates, report_dirs = parse_section(
-            prefix, options, set_strict_flags, section, config_types, stderr
+            prefix, template, set_strict_flags, section, config_types, stderr
         )
         # extend and overwrite existing values with new ones
         _merge_updates(mypy_updates, updates)
@@ -409,7 +409,7 @@ def _parse_and_extend_config_file(
         if name.startswith("mypy-"):
             prefix = get_prefix(file_read, name)
             updates, report_dirs = parse_section(
-                prefix, options, set_strict_flags, section, config_types, stderr
+                prefix, template, set_strict_flags, section, config_types, stderr
             )
             if report_dirs:
                 print(
