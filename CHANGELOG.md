@@ -138,7 +138,7 @@ class C:
 
     @abstractmethod
     @overload
-    deef foo(self, x: str) -> str: ...
+    def foo(self, x: str) -> str: ...
 
     # No implementation required for "foo"
 ```
@@ -268,6 +268,7 @@ This feature was contributed by Valentin Stanciu (PR [18802](https://github.com/
 
 ### Fixes to Crashes
 
+ * Traverse module ancestors when traversing reachable graph nodes during dmypy update (Stanislav Terliakov, PR [18906](https://github.com/python/mypy/pull/18906))
  * Fix crash on multiple unpacks in a bare type application (Stanislav Terliakov, PR [18857](https://github.com/python/mypy/pull/18857))
  * Prevent crash when enum/TypedDict call is stored as a class attribute (Stanislav Terliakov, PR [18861](https://github.com/python/mypy/pull/18861))
  * Fix crash on multiple unpacks in a bare type application (Stanislav Terliakov, PR [18857](https://github.com/python/mypy/pull/18857))
@@ -328,14 +329,12 @@ These are specific to mypy. Mypyc-related performance improvements are discussed
  * `dmypy suggest` can now suggest through contextmanager-based decorators (Anthony Sottile, PR [18948](https://github.com/python/mypy/pull/18948))
  * Fix `__r<magic_methods>__` being used under the same `__<magic_method>__` hook (Arnav Jain, PR [18995](https://github.com/python/mypy/pull/18995))
  * Prioritize `.pyi` from `-stubs` packages over bundled `.pyi` (Joren Hammudoglu, PR [19001](https://github.com/python/mypy/pull/19001))
- * Do not narrow types to Never with binder (Ivan Levkivskyi, PR [18972](https://github.com/python/mypy/pull/18972))
  * Fix missing subtype check case for `type[T]` (Stanislav Terliakov, PR [18975](https://github.com/python/mypy/pull/18975))
  * Fixes to the detection of redundant casts (Anthony Sottile, PR [18588](https://github.com/python/mypy/pull/18588))
  * Make some parse errors non-blocking (Shantanu, PR [18941](https://github.com/python/mypy/pull/18941))
  * Fix PEP 695 type alias with a mix of type arguments (PEP 696) (Marc Mueller, PR [18919](https://github.com/python/mypy/pull/18919))
  * Allow deeper recursion in mypy daemon, better error reporting (Carter Dodd, PR [17707](https://github.com/python/mypy/pull/17707))
  * Fix swapped errors for frozen/non-frozen dataclass inheritance (Nazrawi Demeke, PR [18918](https://github.com/python/mypy/pull/18918))
- * Traverse module ancestors when traversing reachable graph nodes during dmypy update (Stanislav Terliakov, PR [18906](https://github.com/python/mypy/pull/18906))
  * Fix incremental issue with namespace packages (Shantanu, PR [18907](https://github.com/python/mypy/pull/18907))
  * Exclude irrelevant members when narrowing union overlapping with enum (Stanislav Terliakov, PR [18897](https://github.com/python/mypy/pull/18897))
  * Flatten union before contracting literals when checking subtyping (Stanislav Terliakov, PR [18898](https://github.com/python/mypy/pull/18898))
