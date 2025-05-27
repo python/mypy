@@ -1,4 +1,4 @@
-From b4259edd94188f9e4cc77a22e768eea183a32053 Mon Sep 17 00:00:00 2001
+From e6995c91231e1915eba43a29a22dd4cbfaf9e08e Mon Sep 17 00:00:00 2001
 From: Shantanu <12621235+hauntsaninja@users.noreply.github.com>
 Date: Mon, 26 Sep 2022 12:55:07 -0700
 Subject: [PATCH] Remove use of LiteralString in builtins (#13743)
@@ -8,10 +8,10 @@ Subject: [PATCH] Remove use of LiteralString in builtins (#13743)
  1 file changed, 1 insertion(+), 99 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
-index 63c53a5f6..d55042b56 100644
+index 00728f42d..ea77a730f 100644
 --- a/mypy/typeshed/stdlib/builtins.pyi
 +++ b/mypy/typeshed/stdlib/builtins.pyi
-@@ -63,7 +63,6 @@ from typing import (  # noqa: Y022
+@@ -63,7 +63,6 @@ from typing import (  # noqa: Y022,UP035
  from typing_extensions import (  # noqa: Y023
      Concatenate,
      Literal,
@@ -19,7 +19,7 @@ index 63c53a5f6..d55042b56 100644
      ParamSpec,
      Self,
      TypeAlias,
-@@ -438,31 +437,16 @@ class str(Sequence[str]):
+@@ -453,31 +452,16 @@ class str(Sequence[str]):
      def __new__(cls, object: object = ...) -> Self: ...
      @overload
      def __new__(cls, object: ReadableBuffer, encoding: str = ..., errors: str = ...) -> Self: ...
@@ -51,7 +51,7 @@ index 63c53a5f6..d55042b56 100644
      def format(self, *args: object, **kwargs: object) -> str: ...
      def format_map(self, mapping: _FormatMapMapping, /) -> str: ...
      def index(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
-@@ -478,99 +462,35 @@ class str(Sequence[str]):
+@@ -493,98 +477,34 @@ class str(Sequence[str]):
      def isspace(self) -> bool: ...
      def istitle(self) -> bool: ...
      def isupper(self) -> bool: ...
@@ -89,16 +89,15 @@ index 63c53a5f6..d55042b56 100644
 -        ) -> LiteralString: ...
 -        @overload
          def replace(self, old: str, new: str, count: SupportsIndex = -1, /) -> str: ...  # type: ignore[misc]
-     if sys.version_info >= (3, 9):
--        @overload
--        def removeprefix(self: LiteralString, prefix: LiteralString, /) -> LiteralString: ...
--        @overload
-         def removeprefix(self, prefix: str, /) -> str: ...  # type: ignore[misc]
--        @overload
--        def removesuffix(self: LiteralString, suffix: LiteralString, /) -> LiteralString: ...
--        @overload
-         def removesuffix(self, suffix: str, /) -> str: ...  # type: ignore[misc]
  
+-    @overload
+-    def removeprefix(self: LiteralString, prefix: LiteralString, /) -> LiteralString: ...
+-    @overload
+     def removeprefix(self, prefix: str, /) -> str: ...  # type: ignore[misc]
+-    @overload
+-    def removesuffix(self: LiteralString, suffix: LiteralString, /) -> LiteralString: ...
+-    @overload
+     def removesuffix(self, suffix: str, /) -> str: ...  # type: ignore[misc]
      def rfind(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
      def rindex(self, sub: str, start: SupportsIndex | None = ..., end: SupportsIndex | None = ..., /) -> int: ...
 -    @overload
@@ -151,7 +150,7 @@ index 63c53a5f6..d55042b56 100644
      def zfill(self, width: SupportsIndex, /) -> str: ...  # type: ignore[misc]
      @staticmethod
      @overload
-@@ -581,39 +501,21 @@ class str(Sequence[str]):
+@@ -595,39 +515,21 @@ class str(Sequence[str]):
      @staticmethod
      @overload
      def maketrans(x: str, y: str, z: str, /) -> dict[int, int | None]: ...
@@ -193,5 +192,5 @@ index 63c53a5f6..d55042b56 100644
      def __getnewargs__(self) -> tuple[str]: ...
  
 -- 
-2.47.0
+2.49.0
 

@@ -932,20 +932,20 @@ MypyFile:1(
 [case testNotAsBinaryOp]
 x not y
 [out]
-main:1: error: invalid syntax
+main:1: error: Invalid syntax
 [out version==3.10.0]
-main:1: error: invalid syntax. Perhaps you forgot a comma?
+main:1: error: Invalid syntax. Perhaps you forgot a comma?
 
 [case testNotIs]
-x not is y # E: invalid syntax
+x not is y # E: Invalid syntax
 [out]
 
 [case testBinaryNegAsBinaryOp]
 1 ~ 2
 [out]
-main:1: error: invalid syntax
+main:1: error: Invalid syntax
 [out version==3.10.0]
-main:1: error: invalid syntax. Perhaps you forgot a comma?
+main:1: error: Invalid syntax. Perhaps you forgot a comma?
 
 [case testSliceInList39]
 # flags: --python-version 3.9
@@ -3211,7 +3211,7 @@ MypyFile:1(
 [case testParseExtendedSlicing4]
 m[*index, :]
 [out]
-main:1: error: invalid syntax
+main:1: error: Invalid syntax
 [out version>=3.11]
 MypyFile:1(
   ExpressionStmt:1(

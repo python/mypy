@@ -512,7 +512,7 @@ def handle_recursive_union(template: UnionType, actual: Type, direction: int) ->
     ) or infer_constraints(UnionType.make_union(type_var_items), actual, direction)
 
 
-def any_constraints(options: list[list[Constraint] | None], eager: bool) -> list[Constraint]:
+def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> list[Constraint]:
     """Deduce what we can from a collection of constraint lists.
 
     It's a given that at least one of the lists must be satisfied. A
@@ -547,11 +547,19 @@ def any_constraints(options: list[list[Constraint] | None], eager: bool) -> list
                 if option in trivial_options:
                     continue
                 merged_options.append([merge_with_any(c) for c in option])
-            return any_constraints(list(merged_options), eager)
+            return any_constraints(list(merged_options), eager=eager)
 
     # If normal logic didn't work, try excluding trivially unsatisfiable constraint (due to
     # upper bounds) from each option, and comparing them again.
     filtered_options = [filter_satisfiable(o) for o in options]
+    if filtered_options != options:
+        return any_constraints(filtered_options, eager=eager)
+
+    # Try harder: if that didn't work, try to strip typevars that aren't meta vars.
+    # Note this is what we would always do, but unfortunately some callers may not
+    # set the meta var status correctly (for historical reasons), so we use this as
+    # a fallback only.
+    filtered_options = [exclude_non_meta_vars(o) for o in options]
     if filtered_options != options:
         return any_constraints(filtered_options, eager=eager)
 
@@ -569,6 +577,7 @@ def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | No
     """
     if not option:
         return option
+
     satisfiable = []
     for c in option:
         if isinstance(c.origin_type_var, TypeVarType) and c.origin_type_var.values:
@@ -581,6 +590,15 @@ def filter_satisfiable(option: list[Constraint] | None) -> list[Constraint] | No
     if not satisfiable:
         return None
     return satisfiable
+
+
+def exclude_non_meta_vars(option: list[Constraint] | None) -> list[Constraint] | None:
+    # If we had an empty list, keep it intact
+    if not option:
+        return option
+    # However, if none of the options actually references meta vars, better remove
+    # this constraint entirely.
+    return [c for c in option if c.type_var.is_meta_var()] or None
 
 
 def is_same_constraints(x: list[Constraint], y: list[Constraint]) -> bool:

@@ -1,6 +1,6 @@
 [case testFastParseSyntaxError]
 
-1 +  # E: invalid syntax
+1 +  # E: Invalid syntax
 
 [case testFastParseTypeCommentSyntaxError]
 
@@ -158,7 +158,7 @@ def f(a,        # type: A
 
 [case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
 
-def f(*, # type: int  # E: bare * has associated type comment
+def f(*, # type: int  # E: Bare * has associated type comment
       x  # type: str
       ):
       # type: (...) -> int

@@ -36,6 +36,9 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
 parser = argparse.ArgumentParser(
     prog="dmypy", description="Client for mypy daemon mode", fromfile_prefix_chars="@"
 )
+if sys.version_info >= (3, 14):
+    parser.color = True  # Set as init arg in 3.14
+
 parser.set_defaults(action=None)
 parser.add_argument(
     "--status-file", default=DEFAULT_STATUS_FILE, help="status file to retrieve daemon details"
@@ -559,6 +562,10 @@ def check_output(
 
     Call sys.exit() unless the status code is zero.
     """
+    if os.name == "nt":
+        # Enable ANSI color codes for Windows cmd using this strange workaround
+        # ( see https://github.com/python/cpython/issues/74261 )
+        os.system("")
     if "error" in response:
         fail(response["error"])
     try:

@@ -1861,7 +1861,7 @@ None < None  # E: Unsupported left operand type for < ("None")
 
 [case testDictWithStarExpr]
 
-b = {'z': 26, *a}  # E: invalid syntax
+b = {'z': 26, *a}  # E: Invalid syntax
 [builtins fixtures/dict.pyi]
 
 [case testDictWithStarStarExpr]
