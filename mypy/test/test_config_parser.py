@@ -174,6 +174,7 @@ class ExtendConfigFileSuite(unittest.TestCase):
                 assert strict_option_set is True
                 assert options.ignore_missing_imports_per_module is True
                 assert options.config_file == str(pyproject.name)
+                assert os.environ["MYPY_CONFIG_FILE_DIR"] == str(pyproject.parent)
 
                 assert options.per_module_options["c"] == {
                     "disable_error_code": [],

@@ -365,9 +365,9 @@ def _parse_and_extend_config_file(
         return None
     visited.add(abs_file_read)
 
-    if not os.environ.get("MYPY_CONFIG_FILE_DIR"):
-        # set it only if unset to allow for path variable expansions when parsing below,
-        # so recursive calls for config extend references won't overwrite it
+    if len(visited) == 1:
+        # set it only after the first config file is visited to allow for path variable expansions
+        # when parsing below, so recursive calls for config extend references won't overwrite it
         os.environ["MYPY_CONFIG_FILE_DIR"] = os.path.dirname(abs_file_read)
 
     mypy_updates: dict[str, object] = {}
