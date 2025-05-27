@@ -378,20 +378,19 @@ def _parse_and_extend_config_file(
 
         extend = parser["mypy"].pop("extend", None)
         if extend:
-            cwd = os.getcwd()
-            try:
-                # process extend relative to the directory where we found current config
-                os.chdir(os.path.dirname(abs_file_read))
-                parse_ret = _parse_and_extend_config_file(
-                    options=options,
-                    set_strict_flags=set_strict_flags,
-                    filename=os.path.abspath(expand_path(extend)),
-                    stdout=stdout,
-                    stderr=stderr,
-                    visited=visited,
-                )
-            finally:
-                os.chdir(cwd)
+            parse_ret = _parse_and_extend_config_file(
+                options=options,
+                set_strict_flags=set_strict_flags,
+                # refer to extend relative to directory where we found current config
+                filename=os.path.relpath(
+                    os.path.normpath(
+                        os.path.join(os.path.dirname(abs_file_read), expand_path(extend))
+                    )
+                ),
+                stdout=stdout,
+                stderr=stderr,
+                visited=visited,
+            )
 
             if parse_ret is None:
                 print(f"{extend} is not a valid path to extend from {abs_file_read}", file=stderr)
