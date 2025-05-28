@@ -174,8 +174,12 @@ class ExtendConfigFileSuite(unittest.TestCase):
                 assert strict_option_set is True
                 assert options.ignore_missing_imports_per_module is True
                 assert options.config_file == str(pyproject.name)
-                # MacOS has some odd symlinks for tmp folder, resolve them to get the actual values
-                assert os.environ["MYPY_CONFIG_FILE_DIR"] == os.path.realpath(pyproject.parent)
+                if os.path.realpath(pyproject.parent).startswith("/private"):
+                    # MacOS has some odd symlinks for tmp folder, resolve them to get the actual values
+                    expected_path = os.path.realpath(pyproject.parent)
+                else:
+                    expected_path = str(pyproject.parent)
+                assert os.environ["MYPY_CONFIG_FILE_DIR"] == expected_path
 
                 assert options.per_module_options["c"] == {
                     "disable_error_code": [],
@@ -205,11 +209,18 @@ class ExtendConfigFileSuite(unittest.TestCase):
                 stderr = io.StringIO()
                 parse_config_file(options, lambda: None, None, stdout, stderr)
 
-                # MacOS has some odd symlinks for tmp folder, resolve them to get the actual values
+                if os.path.realpath(pyproject).startswith("/private"):
+                    # MacOS has some odd symlinks for tmp folder, resolve them to get the actual values
+                    expected_pyproject = os.path.realpath(pyproject)
+                    expected_ini = os.path.realpath(ini)
+                else:
+                    expected_pyproject = str(pyproject)
+                    expected_ini = str(ini)
+
                 assert stdout.getvalue() == ""
                 assert stderr.getvalue() == (
-                    f"Circular extend detected: {os.path.realpath(pyproject)}\n"
-                    f"../pyproject.toml is not a valid path to extend from {os.path.realpath(ini)}\n"
+                    f"Circular extend detected: {expected_pyproject}\n"
+                    f"../pyproject.toml is not a valid path to extend from {expected_ini}\n"
                 )
 
     def test_extend_strict_override(self) -> None:
