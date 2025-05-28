@@ -397,7 +397,46 @@ These are specific to mypy. Mypyc-related performance improvements are discussed
 
 Thanks to all mypy contributors who contributed to this release:
 
-- 
+- A5rocks
+- Aaron Gokaslan
+- Advait Dixit
+- Ageev Maxim
+- Alexey Makridenko
+- Ali Hamdan
+- Anthony Sottile
+- Arnav Jain
+- Brian Schubert
+- bzoracler
+- Carter Dodd
+- Chad Dombrova
+- Christoph Tyralla
+- Dimitri Papadopoulos Orfanos
+- Emma Smith
+- exertustfm
+- Gene Parmesan Thomas
+- Georg
+- Ivan Levkivskyi
+- Jared Hance
+- Jelle Zijlstra
+- Joren Hammudoglu
+- lenayoung8
+- Marc Mueller
+- Mattias Ellert
+- Michael J. Sullivan
+- Michael R. Crusoe
+- Nazrawi Demeke
+- Nick Pope
+- Paul Ganssle
+- Shantanu
+- sobolevn
+- Stanislav Terliakov
+- Stephen Morton
+- Thomas Mattone
+- Tim Hoffmann
+- Tim Ruffing
+- Valentin Stanciu
+- Wesley Collin Wright
+- wyattscarpenter
 
 I’d also like to thank my employer, Dropbox, for supporting mypy development.
 
