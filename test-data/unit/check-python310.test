@@ -2715,9 +2715,7 @@ match val: # E: Cases within match statement do not exhaustively handle all valu
         a = "red"
     case Color.BLUE:
         a= "blue"
-
 [builtins fixtures/enum.pyi]
-
 
 [case testExhaustiveMatchEnumWithFlag]
 # flags: --enable-error-code exhaustive-match
@@ -2735,7 +2733,6 @@ match val:
         a = "red"
     case Color.BLUE:
         a= "blue"
-
 [builtins fixtures/enum.pyi]
 
 [case testNonExhaustiveMatchEnumMultipleMissingMatchesWithFlag]
