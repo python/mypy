@@ -3602,4 +3602,17 @@ def draw(
         reveal_type(c1)  # N: Revealed type is "Union[builtins.int, builtins.str]"
         reveal_type(c2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
         reveal_type(c3)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+def takes_int_str_none(x: int | str | None) -> None: ...
+
+def draw_none(
+    colors1: A[str] | B[str] | C[int] | D[None],
+    colors2: A[str] | B[str] | C[int] | D[None],
+    colors3: A[str] | B[str] | C[int] | D[None],
+) -> None:
+    for c1, c2, c3 in zip2(colors1, colors2, colors3):
+        # TODO: can't do reveal type because the union order is not deterministic
+        takes_int_str_none(c1)
+        takes_int_str_none(c2)
+        takes_int_str_none(c3)
 [builtins fixtures/tuple.pyi]
