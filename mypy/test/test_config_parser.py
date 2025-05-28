@@ -174,7 +174,8 @@ class ExtendConfigFileSuite(unittest.TestCase):
                 assert strict_option_set is True
                 assert options.ignore_missing_imports_per_module is True
                 assert options.config_file == str(pyproject.name)
-                assert os.environ["MYPY_CONFIG_FILE_DIR"] == str(pyproject.parent)
+                # MacOS has some odd symlinks for tmp folder, resolve them to get the actual values
+                assert os.environ["MYPY_CONFIG_FILE_DIR"] == os.path.realpath(pyproject.parent)
 
                 assert options.per_module_options["c"] == {
                     "disable_error_code": [],
@@ -204,10 +205,11 @@ class ExtendConfigFileSuite(unittest.TestCase):
                 stderr = io.StringIO()
                 parse_config_file(options, lambda: None, None, stdout, stderr)
 
+                # MacOS has some odd symlinks for tmp folder, resolve them to get the actual values
                 assert stdout.getvalue() == ""
                 assert stderr.getvalue() == (
-                    f"Circular extend detected: {pyproject}\n"
-                    f"../pyproject.toml is not a valid path to extend from {ini}\n"
+                    f"Circular extend detected: {os.path.realpath(pyproject)}\n"
+                    f"../pyproject.toml is not a valid path to extend from {os.path.realpath(ini)}\n"
                 )
 
     def test_extend_strict_override(self) -> None:
