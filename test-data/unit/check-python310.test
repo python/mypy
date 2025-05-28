@@ -2638,3 +2638,24 @@ def f2() -> None:
                 return
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/list.pyi]
+
+[case testEnumTypeObjectMember]
+import enum
+from typing import NoReturn
+
+def assert_never(x: NoReturn) -> None: ...
+
+class ValueType(enum.Enum):
+    INT = int
+    STR = str
+
+value_type: ValueType = ValueType.INT
+
+match value_type:
+    case ValueType.INT:
+        pass
+    case ValueType.STR:
+        pass
+    case _:
+        assert_never(value_type)
+[builtins fixtures/tuple.pyi]
