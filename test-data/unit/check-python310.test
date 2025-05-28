@@ -2791,3 +2791,24 @@ match d["tag"]: # E: Cases within match statement do not exhaustively handle all
         reveal_type(d)  # N: Revealed type is "TypedDict('__main__.A', {'tag': Literal['a'], 'name': builtins.str})"
         reveal_type(d["name"])  # N: Revealed type is "builtins.str"
 [typing fixtures/typing-typeddict.pyi]
+
+[case testEnumTypeObjectMember]
+import enum
+from typing import NoReturn
+
+def assert_never(x: NoReturn) -> None: ...
+
+class ValueType(enum.Enum):
+    INT = int
+    STR = str
+
+value_type: ValueType = ValueType.INT
+
+match value_type:
+    case ValueType.INT:
+        pass
+    case ValueType.STR:
+        pass
+    case _:
+        assert_never(value_type)
+[builtins fixtures/tuple.pyi]
