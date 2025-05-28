@@ -289,11 +289,10 @@ p1("a", "b")  # TODO: false negative
 [builtins fixtures/dict.pyi]
 
 [case testFunctoolsPartialTypeGuard]
-# flags: --python-version 3.8
 import functools
 from typing_extensions import TypeGuard
 
-def is_str_list(val: list[object]) -> TypeGuard[list[str]]: ...  # E: "list" is not subscriptable, use "typing.List" instead
+def is_str_list(val: list[object]) -> TypeGuard[list[str]]: ...
 
 reveal_type(functools.partial(is_str_list, [1, 2, 3]))  # N: Revealed type is "functools.partial[builtins.bool]"
 reveal_type(functools.partial(is_str_list, [1, 2, 3])())  # N: Revealed type is "builtins.bool"
@@ -580,7 +579,6 @@ def bar(f: S) -> S:
 [builtins fixtures/primitives.pyi]
 
 [case testFunctoolsPartialAbstractType]
-# flags: --python-version 3.9
 from abc import ABC, abstractmethod
 from functools import partial
 

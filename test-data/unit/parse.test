@@ -947,18 +947,17 @@ main:1: error: Invalid syntax
 [out version==3.10.0]
 main:1: error: Invalid syntax. Perhaps you forgot a comma?
 
-[case testSliceInList39]
-# flags: --python-version 3.9
+[case testSliceInList]
 x = [1, 2][1:2]
 [out]
 MypyFile:1(
-  AssignmentStmt:2(
+  AssignmentStmt:1(
     NameExpr(x)
-    IndexExpr:2(
-      ListExpr:2(
+    IndexExpr:1(
+      ListExpr:1(
         IntExpr(1)
         IntExpr(2))
-      SliceExpr:2(
+      SliceExpr:1(
         IntExpr(1)
         IntExpr(2)))))
 
