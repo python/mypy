@@ -556,9 +556,9 @@ def parse_section(
                     continue
                 try:
                     v = ct(section.get(key))
-                except VersionTypeError as err:
-                    print(f"{prefix}{key}: {err}", file=stderr)
-                    v = err.fallback
+                except VersionTypeError as err_version:
+                    print(f"{prefix}{key}: {err_version}", file=stderr)
+                    v = err_version.fallback
                 except argparse.ArgumentTypeError as err:
                     print(f"{prefix}{key}: {err}", file=stderr)
                     continue
