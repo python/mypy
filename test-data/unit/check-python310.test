@@ -2753,8 +2753,6 @@ val: Color = Color.RED
 match val: # E: Cases within match statement do not exhaustively handle all values: "Literal[Color.BLUE, Color.GREEN]". If not intended to handle all cases, use `case _: pass`
     case Color.RED:
         a = "red"
-
-
 [builtins fixtures/enum.pyi]
 
 [case testExhaustiveMatchEnumFallbackWithFlag]
@@ -2774,6 +2772,4 @@ match val:
         a = "red"
     case _:
         a = "other"
-
-
 [builtins fixtures/enum.pyi]
