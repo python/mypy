@@ -209,3 +209,32 @@ class ExtendConfigFileSuite(unittest.TestCase):
                     f"Circular extend detected: {pyproject}\n"
                     f"../pyproject.toml is not a valid path to extend from {ini}\n"
                 )
+
+    def test_extend_strict_override(self) -> None:
+        with tempfile.TemporaryDirectory() as _tmpdir:
+            tmpdir = Path(_tmpdir)
+            with chdir(tmpdir):
+                pyproject = tmpdir / "pyproject.toml"
+                write_config(
+                    pyproject, '[tool.mypy]\nextend = "./folder/mypy.ini"\nstrict = True\n'
+                )
+
+                folder = tmpdir / "folder"
+                folder.mkdir()
+                ini = folder / "mypy.ini"
+                write_config(ini, "[mypy]\nstrict = false\n")
+
+                options = Options()
+
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+
+                strict_called = False
+
+                def set_strict_flags() -> None:
+                    nonlocal strict_called
+                    strict_called = True
+
+                parse_config_file(options, set_strict_flags, None, stdout, stderr)
+
+                assert strict_called is False

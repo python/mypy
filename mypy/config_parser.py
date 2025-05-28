@@ -301,9 +301,15 @@ def parse_config_file(
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
 
+    strict_found = False
+
+    def set_strict(value: bool) -> None:
+        nonlocal strict_found
+        strict_found = value
+
     ret = _parse_and_extend_config_file(
         template=options,
-        set_strict_flags=set_strict_flags,
+        set_strict=set_strict,
         filename=filename,
         stdout=stdout,
         stderr=stderr,
@@ -314,6 +320,9 @@ def parse_config_file(
         return
 
     file_read, mypy_updates, mypy_report_dirs, module_updates = ret
+
+    if strict_found:
+        set_strict_flags()
 
     options.config_file = file_read
 
@@ -344,7 +353,7 @@ def _merge_updates(existing: dict[str, object], new: dict[str, object]) -> None:
 
 def _parse_and_extend_config_file(
     template: Options,
-    set_strict_flags: Callable[[], None],
+    set_strict: Callable[[bool], None],
     filename: str | None,
     stdout: TextIO,
     stderr: TextIO,
@@ -384,7 +393,7 @@ def _parse_and_extend_config_file(
         if extend:
             parse_ret = _parse_and_extend_config_file(
                 template=template,
-                set_strict_flags=set_strict_flags,
+                set_strict=set_strict,
                 # refer to extend relative to directory where we found current config
                 filename=os.path.relpath(
                     os.path.normpath(
@@ -403,7 +412,7 @@ def _parse_and_extend_config_file(
 
         prefix = f"{file_read}: [mypy]: "
         updates, report_dirs = parse_section(
-            prefix, template, set_strict_flags, section, config_types, stderr
+            prefix, template, set_strict, section, config_types, stderr
         )
         # extend and overwrite existing values with new ones
         _merge_updates(mypy_updates, updates)
@@ -413,7 +422,7 @@ def _parse_and_extend_config_file(
         if name.startswith("mypy-"):
             prefix = get_prefix(file_read, name)
             updates, report_dirs = parse_section(
-                prefix, template, set_strict_flags, section, config_types, stderr
+                prefix, template, set_strict, section, config_types, stderr
             )
             if report_dirs:
                 print(
@@ -555,7 +564,7 @@ def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
 def parse_section(
     prefix: str,
     template: Options,
-    set_strict_flags: Callable[[], None],
+    set_strict: Callable[[bool], None],
     section: Mapping[str, Any],
     config_types: dict[str, Any],
     stderr: TextIO = sys.stderr,
@@ -644,8 +653,7 @@ def parse_section(
             print(f"{prefix}{key}: {err}", file=stderr)
             continue
         if key == "strict":
-            if v:
-                set_strict_flags()
+            set_strict(v)
             continue
         results[options_key] = v
 
@@ -746,12 +754,12 @@ def parse_mypy_comments(
         stderr = StringIO()
         strict_found = False
 
-        def set_strict_flags() -> None:
+        def set_strict(value: bool) -> None:
             nonlocal strict_found
-            strict_found = True
+            strict_found = value
 
         new_sections, reports = parse_section(
-            "", template, set_strict_flags, parser["dummy"], ini_config_types, stderr=stderr
+            "", template, set_strict, parser["dummy"], ini_config_types, stderr=stderr
         )
         errors.extend((lineno, x) for x in stderr.getvalue().strip().split("\n") if x)
         if reports:
