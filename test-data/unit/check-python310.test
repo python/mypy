@@ -2770,3 +2770,24 @@ match val:
     case _:
         a = "other"
 [builtins fixtures/enum.pyi]
+
+# Fork of testMatchNarrowingUnionTypedDictViaIndex to check behaviour with exhaustive match flag
+[case testExhaustiveMatchNarrowingUnionTypedDictViaIndex]
+# flags: --enable-error-code exhaustive-match
+
+from typing import Literal, TypedDict
+
+class A(TypedDict):
+    tag: Literal["a"]
+    name: str
+
+class B(TypedDict):
+    tag: Literal["b"]
+    num: int
+
+d: A | B
+match d["tag"]: # E: Cases within match statement do not exhaustively handle all values: "B". If not intended to handle all cases, use `case _: pass` # E: Cases within match statement do not exhaustively handle all values: "Literal['b']". If not intended to handle all cases, use `case _: pass`
+    case "a":
+        reveal_type(d)  # N: Revealed type is "TypedDict('__main__.A', {'tag': Literal['a'], 'name': builtins.str})"
+        reveal_type(d["name"])  # N: Revealed type is "builtins.str"
+[typing fixtures/typing-typeddict.pyi]
