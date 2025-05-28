@@ -38,6 +38,9 @@
 //
 // Py_INCREF and other CPython operations check for immortality. This
 // can be expensive when we know that an object cannot be immortal.
+//
+// This optimization cannot be performed in free-threaded mode so we
+// fall back to just calling the normal incref/decref operations.
 
 static inline void CPy_INCREF_NO_IMM(PyObject *op)
 {
