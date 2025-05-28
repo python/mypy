@@ -47,12 +47,11 @@ jobs:
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
-        - name: Test suite with py311-ubuntu, mypyc-compiled
+        - name: Test suite with py311-ubuntu
           python: '3.11'
           os: ubuntu-24.04-arm
           toxenv: py
           tox_extra_args: "-n 4"
-          test_mypyc: true
         - name: Test suite with py312-ubuntu, mypyc-compiled
           python: '3.12'
           os: ubuntu-24.04-arm
@@ -66,13 +65,13 @@ jobs:
           tox_extra_args: "-n 4"
           test_mypyc: true
 
-        # - name: Test suite with py314-dev-ubuntu
-        #   python: '3.14-dev'
-        #   os: ubuntu-24.04-arm
-        #   toxenv: py
-        #   tox_extra_args: "-n 4"
-        #   allow_failure: true
-        #   test_mypyc: true
+        - name: Test suite with py314-dev-ubuntu
+          python: '3.14-dev'
+          os: ubuntu-24.04-arm
+          toxenv: py
+          tox_extra_args: "-n 4"
+          # allow_failure: true
+          test_mypyc: true
 
         - name: mypyc runtime tests with py39-macos
           python: '3.9.21'
@@ -115,6 +114,8 @@ jobs:
       FORCE_COLOR: ${{ !(startsWith(matrix.os, 'windows-') && startsWith(matrix.toxenv, 'py')) && 1 || 0 }}
       # Tox
       PY_COLORS: 1
+      # Python -- Disable argparse help colors (3.14+)
+      PYTHON_COLORS: 0
       # Mypy (see https://github.com/python/mypy/issues/7771)
       TERM: xterm-color
       MYPY_FORCE_COLOR: 1
