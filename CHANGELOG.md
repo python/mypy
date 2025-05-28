@@ -4,6 +4,14 @@
 
 ## Mypy 1.16 (unreleased)
 
+We’ve just uploaded mypy 1.16 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. This release includes new features and bug fixes.
+You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
 ### Different Property Getter and Setter Types
 
 Mypy now supports using different types for a property getter and setter:
@@ -347,7 +355,7 @@ These are specific to mypy. Mypyc-related performance improvements are discussed
  * Reject duplicate `ParamSpec.{args,kwargs}` at call site (Stanislav Terliakov, PR [18854](https://github.com/python/mypy/pull/18854))
  * Make detection of enum members more consistent (sobolevn, PR [18675](https://github.com/python/mypy/pull/18675))
  * Admit that `**kwargs` mapping subtypes may have no direct type parameters (Stanislav Terliakov, PR [18850](https://github.com/python/mypy/pull/18850))
- * Drop don't suggest `types-setuptools for `pkg_resources` (Shantanu, PR [18840](https://github.com/python/mypy/pull/18840))
+ * Don't suggest `types-setuptools` for `pkg_resources` (Shantanu, PR [18840](https://github.com/python/mypy/pull/18840))
  * Suggest `scipy-stubs` for `scipy` as non-typeshed stub package (Joren Hammudoglu, PR [18832](https://github.com/python/mypy/pull/18832))
  * Narrow tagged unions in match statements (Gene Parmesan Thomas, PR [18791](https://github.com/python/mypy/pull/18791))
  * Consistently store settable property type (Ivan Levkivskyi, PR [18774](https://github.com/python/mypy/pull/18774))
@@ -384,6 +392,14 @@ These are specific to mypy. Mypyc-related performance improvements are discussed
  * Hint at argument names when formatting callables with compatible return types in error messages (Stanislav Terliakov, PR [18495](https://github.com/python/mypy/pull/18495))
  * Add better naming and improve compatibility for ad hoc intersections of instances (Christoph Tyralla, PR [18506](https://github.com/python/mypy/pull/18506))
  * Infer correct types with overloads of `Type[Guard | Is]` (sobolevn, PR [17678](https://github.com/python/mypy/pull/17678))
+
+### Acknowledgements
+
+Thanks to all mypy contributors who contributed to this release:
+
+- 
+
+I’d also like to thank my employer, Dropbox, for supporting mypy development.
 
 ## Mypy 1.15
 
