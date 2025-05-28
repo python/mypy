@@ -143,7 +143,7 @@ class ExtendConfigFileSuite(unittest.TestCase):
                     pyproject,
                     "[tool.mypy]\n"
                     'extend = "./folder/mypy.ini"\n'
-                    "strict = false\n"
+                    "strict = true\n"
                     "[[tool.mypy.overrides]]\n"
                     'module = "c"\n'
                     'enable_error_code = ["explicit-override"]\n'
@@ -154,7 +154,7 @@ class ExtendConfigFileSuite(unittest.TestCase):
                 write_config(
                     folder / "mypy.ini",
                     "[mypy]\n"
-                    "strict = True\n"
+                    "strict = False\n"
                     "ignore_missing_imports_per_module = True\n"
                     "[mypy-c]\n"
                     "disallow_incomplete_defs = True",
