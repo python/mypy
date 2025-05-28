@@ -5512,7 +5512,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 unmatched_types = else_map
 
             if unmatched_types is not None:
-                for typ in set(unmatched_types.values()):
+                for typ in list(unmatched_types.values()):
                     self.msg.match_statement_inexhaustive_match(typ, s)
 
             # This is needed due to a quirk in frame_context. Without it types will stay narrowed
