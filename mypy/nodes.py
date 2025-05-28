@@ -3301,8 +3301,8 @@ class TypeInfo(SymbolNode):
                         continue  # unannotated value not a member
 
                     typ = mypy.types.get_proper_type(sym.node.type)
-                    if isinstance(
-                        typ, mypy.types.FunctionLike
+                    if (
+                        isinstance(typ, mypy.types.FunctionLike) and not typ.is_type_obj()
                     ) or (  # explicit `@member` is required
                         isinstance(typ, mypy.types.Instance)
                         and typ.type.fullname == "enum.nonmember"
