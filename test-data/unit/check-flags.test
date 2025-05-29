@@ -1501,16 +1501,14 @@ GroupsDict = Dict[str, GroupDataDict]  # type: ignore
 
 
 [case testCheckDisallowAnyGenericsStubOnly]
-# flags: --disallow-any-generics --python-version 3.8
+# flags: --disallow-any-generics
 from asyncio import Future
 from queue import Queue
 x: Future[str]
 y: Queue[int]
 
-p: Future  # E: Missing type parameters for generic type "Future" \
-           # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/stable/runtime_troubles.html#not-generic-runtime
-q: Queue  # E: Missing type parameters for generic type "Queue" \
-          # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/stable/runtime_troubles.html#not-generic-runtime
+p: Future  # E: Missing type parameters for generic type "Future"
+q: Queue  # E: Missing type parameters for generic type "Queue"
 [file asyncio/__init__.pyi]
 from asyncio.futures import Future as Future
 [file asyncio/futures.pyi]
@@ -1524,28 +1522,28 @@ class Queue(Generic[_T]): ...
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testDisallowAnyGenericsBuiltinTuplePre39]
-# flags: --disallow-any-generics --python-version 3.8
+[case testDisallowAnyGenericsBuiltinTuple]
+# flags: --disallow-any-generics
 s = tuple([1, 2, 3])
-def f(t: tuple) -> None: pass  # E: Implicit generic "Any". Use "typing.Tuple" and specify generic parameters
+def f(t: tuple) -> None: pass  # E: Missing type parameters for generic type "tuple"
 [builtins fixtures/tuple.pyi]
 
-[case testDisallowAnyGenericsBuiltinListPre39]
-# flags: --disallow-any-generics --python-version 3.8
+[case testDisallowAnyGenericsBuiltinList]
+# flags: --disallow-any-generics
 l = list([1, 2, 3])
-def f(t: list) -> None: pass  # E: Implicit generic "Any". Use "typing.List" and specify generic parameters
+def f(t: list) -> None: pass  # E: Missing type parameters for generic type "List"
 [builtins fixtures/list.pyi]
 
-[case testDisallowAnyGenericsBuiltinSetPre39]
-# flags: --disallow-any-generics --python-version 3.8
+[case testDisallowAnyGenericsBuiltinSet]
+# flags: --disallow-any-generics
 l = set({1, 2, 3})
-def f(s: set) -> None: pass  # E: Implicit generic "Any". Use "typing.Set" and specify generic parameters
+def f(s: set) -> None: pass  # E: Missing type parameters for generic type "Set"
 [builtins fixtures/set.pyi]
 
-[case testDisallowAnyGenericsBuiltinDictPre39]
-# flags: --disallow-any-generics --python-version 3.8
+[case testDisallowAnyGenericsBuiltinDict]
+# flags: --disallow-any-generics
 l = dict([('a', 1)])
-def f(d: dict) -> None: pass  # E: Implicit generic "Any". Use "typing.Dict" and specify generic parameters
+def f(d: dict) -> None: pass  # E: Missing type parameters for generic type "Dict"
 [builtins fixtures/dict.pyi]
 
 [case testCheckDefaultAllowAnyGeneric]

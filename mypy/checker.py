@@ -6160,31 +6160,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         # considered "always right" (i.e. even if the types are not overlapping).
                         # Also note that a care must be taken to unwrap this back at read places
                         # where we use this to narrow down declared type.
-                        with self.msg.filter_errors(), self.local_type_map():
-                            # `node.callee` can be an `overload`ed function,
-                            # we need to resolve the real `overload` case.
-                            _, real_func = self.expr_checker.check_call(
-                                get_proper_type(self.lookup_type(node.callee)),
-                                node.args,
-                                node.arg_kinds,
-                                node,
-                                node.arg_names,
-                            )
-                        real_func = get_proper_type(real_func)
-                        if not isinstance(real_func, CallableType) or not (
-                            real_func.type_guard or real_func.type_is
-                        ):
-                            return {}, {}
-
-                        if real_func.type_guard is not None:
-                            return {expr: TypeGuardedType(real_func.type_guard)}, {}
+                        if node.callee.type_guard is not None:
+                            return {expr: TypeGuardedType(node.callee.type_guard)}, {}
                         else:
-                            assert real_func.type_is is not None
+                            assert node.callee.type_is is not None
                             return conditional_types_to_typemaps(
                                 expr,
                                 *self.conditional_types_with_intersection(
                                     self.lookup_type(expr),
-                                    [TypeRange(real_func.type_is, is_upper_bound=False)],
+                                    [TypeRange(node.callee.type_is, is_upper_bound=False)],
                                     expr,
                                 ),
                             )
