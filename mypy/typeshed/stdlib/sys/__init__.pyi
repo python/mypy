@@ -1,5 +1,5 @@
 import sys
-from _typeshed import MaybeNone, OptExcInfo, ProfileFunction, TraceFunction, structseq
+from _typeshed import MaybeNone, OptExcInfo, ProfileFunction, StrOrBytesPath, TraceFunction, structseq
 from _typeshed.importlib import MetaPathFinderProtocol, PathEntryFinderProtocol
 from builtins import object as _object
 from collections.abc import AsyncGenerator, Callable, Sequence
@@ -46,8 +46,7 @@ path: list[str]
 path_hooks: list[Callable[[str], PathEntryFinderProtocol]]
 path_importer_cache: dict[str, PathEntryFinderProtocol | None]
 platform: LiteralString
-if sys.version_info >= (3, 9):
-    platlibdir: str
+platlibdir: str
 prefix: str
 pycache_prefix: str | None
 ps1: object
@@ -97,7 +96,7 @@ flags: _flags
 # This can be re-visited when typeshed drops support for 3.10,
 # at which point all supported versions will include int_max_str_digits
 # in all patch versions.
-# 3.8 and 3.9 are 15 or 16-tuple
+# 3.9 is 15 or 16-tuple
 # 3.10 is 16 or 17-tuple
 # 3.11+ is an 18-tuple.
 @final
@@ -185,7 +184,7 @@ class _flags(_UninstantiableStructseq, tuple[int, ...]):
     # Whether or not this exists on lower versions of Python
     # may depend on which patch release you're using
     # (it was backported to all Python versions on 3.8+ as a security fix)
-    # Added in: 3.8.14, 3.9.14, 3.10.7
+    # Added in: 3.9.14, 3.10.7
     # and present in all versions of 3.11 and later.
     @property
     def int_max_str_digits(self) -> int: ...
@@ -397,6 +396,7 @@ def intern(string: str, /) -> str: ...
 if sys.version_info >= (3, 13):
     def _is_gil_enabled() -> bool: ...
     def _clear_internal_caches() -> None: ...
+    def _is_interned(string: str, /) -> bool: ...
 
 def is_finalizing() -> bool: ...
 def breakpointhook(*args: Any, **kwargs: Any) -> Any: ...
@@ -409,14 +409,6 @@ if sys.platform != "win32":
 def setrecursionlimit(limit: int, /) -> None: ...
 def setswitchinterval(interval: float, /) -> None: ...
 def gettotalrefcount() -> int: ...  # Debug builds only
-
-if sys.version_info < (3, 9):
-    def getcheckinterval() -> int: ...  # deprecated
-    def setcheckinterval(n: int, /) -> None: ...  # deprecated
-
-if sys.version_info < (3, 9):
-    # An 11-tuple or None
-    def callstats() -> tuple[int, int, int, int, int, int, int, int, int, int, int] | None: ...
 
 # Doesn't exist at runtime, but exported in the stubs so pytest etc. can annotate their code more easily.
 @type_check_only
@@ -456,7 +448,7 @@ if sys.platform == "win32":
 def get_coroutine_origin_tracking_depth() -> int: ...
 def set_coroutine_origin_tracking_depth(depth: int) -> None: ...
 
-# The following two functions were added in 3.11.0, 3.10.7, 3.9.14, and 3.8.14,
+# The following two functions were added in 3.11.0, 3.10.7, and 3.9.14,
 # as part of the response to CVE-2020-10735
 def set_int_max_str_digits(maxdigits: int) -> None: ...
 def get_int_max_str_digits() -> int: ...
@@ -478,3 +470,7 @@ if sys.version_info >= (3, 12):
     from . import _monitoring
 
     monitoring = _monitoring
+
+if sys.version_info >= (3, 14):
+    def is_remote_debug_enabled() -> bool: ...
+    def remote_exec(pid: int, script: StrOrBytesPath) -> None: ...

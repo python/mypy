@@ -134,13 +134,15 @@ def is_extension_class(path: str, cdef: ClassDef, errors: Errors) -> bool:
     if explicit_native_class is False:
         return False
 
-    implicit_extension_class = is_implicit_extension_class(cdef)
+    implicit_extension_class, reason = is_implicit_extension_class(cdef)
 
     # Classes with native_class=True should be extension classes, but they might
     # not be able to be due to other reasons. Print an error in that case.
     if explicit_native_class is True and not implicit_extension_class:
         errors.error(
-            "Class is marked as native_class=True but it can't be a native class", path, cdef.line
+            f"Class is marked as native_class=True but it can't be a native class. {reason}",
+            path,
+            cdef.line,
         )
 
     return implicit_extension_class
@@ -177,28 +179,37 @@ def get_explicit_native_class(path: str, cdef: ClassDef, errors: Errors) -> bool
     return None
 
 
-def is_implicit_extension_class(cdef: ClassDef) -> bool:
+def is_implicit_extension_class(cdef: ClassDef) -> tuple[bool, str]:
+    """Check if class can be extension class and return a user-friendly reason it can't be one."""
+
     for d in cdef.decorators:
-        # Classes that have any decorator other than supported decorators, are not extension classes
         if (
             not is_trait_decorator(d)
             and not is_dataclass_decorator(d)
             and not get_mypyc_attr_call(d)
             and not is_final_decorator(d)
         ):
-            return False
+            return (
+                False,
+                "Classes that have decorators other than supported decorators"
+                " can't be native classes.",
+            )
 
     if cdef.info.typeddict_type:
-        return False
+        return False, "TypedDict classes can't be native classes."
     if cdef.info.is_named_tuple:
-        return False
+        return False, "NamedTuple classes can't be native classes."
     if cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
         "abc.ABCMeta",
         "typing.TypingMeta",
         "typing.GenericMeta",
     ):
-        return False
-    return True
+        return (
+            False,
+            "Classes with a metaclass other than ABCMeta, TypingMeta or"
+            " GenericMeta can't be native classes.",
+        )
+    return True, ""
 
 
 def get_func_def(op: FuncDef | Decorator | OverloadedFuncDef) -> FuncDef:

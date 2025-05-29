@@ -63,5 +63,5 @@ virtualenv==20.29.1
     # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==77.0.3
+setuptools==75.8.0
     # via -r test-requirements.in
