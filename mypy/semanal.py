@@ -2030,6 +2030,15 @@ class SemanticAnalyzer(
             self.setup_self_type()
         defn.defs.accept(self)
         self.apply_class_plugin_hooks(defn)
+
+        if "__eq__" in defn.info.names and "__hash__" not in defn.info.names:
+            # If a class defines `__eq__` without `__hash__`, it's no longer hashable.
+            hash_none = Var("__hash__", NoneType())
+            hash_none.info = defn.info
+            hash_none.set_line(defn)
+            hash_none.is_classvar = True
+            self.add_symbol("__hash__", hash_none, defn)
+
         self.leave_class()
 
     def analyze_typeddict_classdef(self, defn: ClassDef) -> bool:

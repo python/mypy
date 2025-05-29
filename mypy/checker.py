@@ -2215,6 +2215,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # Will always fail to typecheck below, since we know the node is a method
                 original_type = NoneType()
 
+        if name == "__hash__" and isinstance(original_type, NoneType):
+            # Allow defining `__hash__` even if parent class was explicitly made unhashable
+            return False
+
         always_allow_covariant = False
         if is_settable_property(defn) and (
             is_settable_property(original_node) or isinstance(original_node, Var)
@@ -3443,6 +3447,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if lvalue_node.allow_incompatible_override and not (
                     lvalue_node.name == "__slots__" and base.fullname == "builtins.object"
                 ):
+                    continue
+                if (
+                    lvalue_node.name == "__hash__"
+                    and base.fullname == "builtins.object"
+                    and isinstance(get_proper_type(lvalue_type), NoneType)
+                ):
+                    # allow `__hash__ = None` if the overridden `__hash__` comes from object
+                    # This isn't LSP-compliant, but too common in real code.
                     continue
 
                 if is_private(lvalue_node.name):
