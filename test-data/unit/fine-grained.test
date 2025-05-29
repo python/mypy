@@ -1340,7 +1340,7 @@ class A:
 [out]
 ==
 -- This is a bad error message
-main:7: error: Argument 1 to "use" has incompatible type "Type[A]"; expected "Callable[[], A]"
+main:7: error: Argument 1 to "use" has incompatible type "type[A]"; expected "Callable[[], A]"
 
 [case testConstructorSignatureChanged3]
 from a import C
@@ -2674,9 +2674,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:7: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
+main:7: error: Need type annotation for "x" (hint: "x: dict[<type>, <type>] = ...")
 ==
-main:7: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
+main:7: error: Need type annotation for "x" (hint: "x: dict[<type>, <type>] = ...")
 
 [case testRefreshPartialTypeInClass]
 import a
@@ -2692,9 +2692,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:5: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
+main:5: error: Need type annotation for "x" (hint: "x: dict[<type>, <type>] = ...")
 ==
-main:5: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
+main:5: error: Need type annotation for "x" (hint: "x: dict[<type>, <type>] = ...")
 
 [case testRefreshPartialTypeInferredAttributeIndex]
 from c import C
@@ -2833,7 +2833,7 @@ class M(type):
 ==
 a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 ==
-a.py:4: error: "Type[C]" has no attribute "x"
+a.py:4: error: "type[C]" has no attribute "x"
 ==
 
 [case testMetaclassAttributesDirect]
@@ -2862,7 +2862,7 @@ class M(type):
 ==
 a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 ==
-a.py:3: error: "Type[C]" has no attribute "x"
+a.py:3: error: "type[C]" has no attribute "x"
 ==
 
 [case testMetaclassOperators]
@@ -2886,7 +2886,7 @@ class M(type):
         pass
 [out]
 ==
-a.py:4: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+a.py:4: error: Unsupported operand types for + ("type[C]" and "type[C]")
 
 [case testMetaclassOperatorsDirect]
 import a
@@ -2907,7 +2907,7 @@ class M(type):
     def __add__(self, other: M) -> M:
         pass
 [out]
-a.py:3: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+a.py:3: error: Unsupported operand types for + ("type[C]" and "type[C]")
 ==
 
 [case testFineMetaclassUpdate]
@@ -2931,7 +2931,7 @@ class B(metaclass=c.M): pass
 class M(type):
     pass
 [out]
-a.py:6: error: Argument 1 to "f" has incompatible type "Type[B]"; expected "M"
+a.py:6: error: Argument 1 to "f" has incompatible type "type[B]"; expected "M"
 ==
 
 [case testFineMetaclassRecalculation]
@@ -2990,7 +2990,7 @@ class M(type):
     x: int
 [out]
 ==
-a.py:3: error: "Type[B]" has no attribute "x"
+a.py:3: error: "type[B]" has no attribute "x"
 
 [case testFineMetaclassRemoveFromClass2]
 import a
@@ -3015,7 +3015,7 @@ class M(type):
     x: int
 [out]
 ==
-a.py:3: error: Argument 1 to "test" has incompatible type "Type[B]"; expected "M"
+a.py:3: error: Argument 1 to "test" has incompatible type "type[B]"; expected "M"
 
 [case testBadMetaclassCorrected]
 import a
@@ -3052,7 +3052,7 @@ class C(metaclass=c.M):
 class M(type):
     x: int
 [out]
-a.py:3: error: "Type[C]" has no attribute "x"
+a.py:3: error: "type[C]" has no attribute "x"
 ==
 
 [case testIndirectSubclassReferenceMetaclass]
@@ -3088,7 +3088,7 @@ class M(type):
 ==
 a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 ==
-b.py:2: error: "Type[D]" has no attribute "x"
+b.py:2: error: "type[D]" has no attribute "x"
 ==
 
 [case testMetaclassDeletion]
@@ -3407,8 +3407,8 @@ lol(b.x)
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-c.py:7: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
-c.py:9: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
+c.py:7: error: Argument 1 to "lol" has incompatible type "M"; expected "tuple[tuple[int]]"
+c.py:9: error: Argument 1 to "lol" has incompatible type "M"; expected "tuple[tuple[int]]"
 
 [case testNamedTupleUpdate4]
 import b
@@ -3522,9 +3522,9 @@ reveal_type(a.n)
 [out]
 ==
 ==
-c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
-c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+c.py:7: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveFine]
 import c
@@ -3555,7 +3555,7 @@ def f(x: a.N) -> None:
 [out]
 ==
 ==
-c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveFine]
@@ -3587,7 +3587,7 @@ def f(x: a.N) -> None:
 [out]
 ==
 ==
-c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int], None], builtins.int]"
+c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int], None], builtins.int]"
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypedDictRefresh]
@@ -5422,7 +5422,7 @@ class C(Enum):
 [typing fixtures/typing-medium.pyi]
 [out]
 ==
-a.py:5: error: "Type[C]" has no attribute "Y"
+a.py:5: error: "type[C]" has no attribute "Y"
 
 [case testClassBasedEnumPropagation2]
 import a
@@ -5522,7 +5522,7 @@ C = Enum('C', 'X')
 [typing fixtures/typing-medium.pyi]
 [out]
 ==
-a.py:5: error: "Type[C]" has no attribute "Y"
+a.py:5: error: "type[C]" has no attribute "Y"
 
 [case testFuncBasedEnumPropagation2]
 import a
@@ -6167,7 +6167,7 @@ class C:
         pass
 [out]
 ==
-a.py:6: error: Argument 1 to "func" has incompatible type "Type[C]"; expected "Callable[[int], Any]"
+a.py:6: error: Argument 1 to "func" has incompatible type "type[C]"; expected "Callable[[int], Any]"
 
 [case testDunderNewDefine]
 import a
@@ -6781,7 +6781,7 @@ class M(type):
     x: int
 [out]
 ==
-a.py:4: error: Argument 1 to "func" has incompatible type "Type[B]"; expected "P"
+a.py:4: error: Argument 1 to "func" has incompatible type "type[B]"; expected "P"
 
 [case testProtocolVsProtocolSubUpdated]
 import a
@@ -7509,7 +7509,7 @@ def g() -> Tuple[str, str]: pass
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-main:5: error: Incompatible return value type (got "List[str]", expected "List[int]")
+main:5: error: Incompatible return value type (got "list[str]", expected "list[int]")
 
 [case testUnpackInExpression1-only_when_nocache]
 from typing import Tuple, List
@@ -7532,8 +7532,8 @@ def t() -> Tuple[str]: ...
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:5: error: Incompatible return value type (got "Tuple[int, str]", expected "Tuple[int, int]")
-main:8: error: List item 1 has incompatible type "Tuple[str]"; expected "int"
+main:5: error: Incompatible return value type (got "tuple[int, str]", expected "tuple[int, int]")
+main:8: error: List item 1 has incompatible type "tuple[str]"; expected "int"
 
 [case testUnpackInExpression2-only_when_nocache]
 from typing import Set
@@ -7553,7 +7553,7 @@ def t() -> Tuple[str]: pass
 [builtins fixtures/set.pyi]
 [out]
 ==
-main:5: error: Argument 2 to <set> has incompatible type "*Tuple[str]"; expected "int"
+main:5: error: Argument 2 to <set> has incompatible type "*tuple[str]"; expected "int"
 
 [case testUnpackInExpression3-only_when_nocache]
 from typing import Dict
@@ -7573,7 +7573,7 @@ def d() -> Dict[int, int]: pass
 [builtins fixtures/dict.pyi]
 [out]
 ==
-main:5: error: Unpacked dict entry 1 has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
+main:5: error: Unpacked dict entry 1 has incompatible type "dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
 
 [case testAwaitAndAsyncDef-only_when_nocache]
 from a import g
@@ -7814,7 +7814,7 @@ class B:
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:6: error: Incompatible types in assignment (expression has type "List[str]", base class "B" defined the type as "List[int]")
+main:6: error: Incompatible types in assignment (expression has type "list[str]", base class "B" defined the type as "list[int]")
 
 [case testLiskovFineVariableCleanDefInMethodNested-only_when_nocache]
 from b import B
@@ -8060,7 +8060,7 @@ A = NamedTuple('A', F)  # type: ignore
 [builtins fixtures/list.pyi]
 [out]
 ==
-b.py:3: note: Revealed type is "Tuple[(), fallback=a.A]"
+b.py:3: note: Revealed type is "tuple[(), fallback=a.A]"
 
 [case testImportOnTopOfAlias1]
 from a import A
@@ -8100,7 +8100,7 @@ def A(x: str) -> str: pass
 [builtins fixtures/list.pyi]
 [out]
 ==
-a.py:4: error: Incompatible import of "A" (imported name has type "Callable[[str], str]", local name has type "Type[List[Any]]")
+a.py:4: error: Incompatible import of "A" (imported name has type "Callable[[str], str]", local name has type "type[list[Any]]")
 
 [case testFakeOverloadCrash]
 import b
@@ -9937,7 +9937,7 @@ x = 0  # Arbitrary change to trigger reprocessing
 [builtins fixtures/dict.pyi]
 [out]
 ==
-a.py:3: note: Revealed type is "Tuple[Literal[1]?, Literal['x']?]"
+a.py:3: note: Revealed type is "tuple[Literal[1]?, Literal['x']?]"
 
 [case testVariadicClassFineUpdateRegularToVariadic]
 from typing import Any
