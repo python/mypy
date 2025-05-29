@@ -1032,17 +1032,19 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None | AnyType:
     init_method = typ.type.get_method("__init__") or typ.type.get_method(ATTRS_INIT_NAME)
     if init_method is None:
         return None
+
     # case 1: normal FuncDef
     if isinstance(init_method, FuncDef) and isinstance(init_method.type, CallableType):
         init_node = typ.type.get("__init__") or typ.type.get(ATTRS_INIT_NAME)
-        if init_node.plugin_generated:
-            return init_method.type
+        if init_node is None or not init_node.plugin_generated:
+            return None
         else:
             return AnyType(TypeOfAny.special_form)
 
     # case 2: overloaded method
     if isinstance(init_method, OverloadedFuncDef) and isinstance(init_method.type, Overloaded):
         return AnyType(TypeOfAny.special_form)
+
     return None
 
 
