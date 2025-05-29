@@ -258,9 +258,10 @@ def local_sys_path_set() -> Iterator[None]:
 
 
 def testfile_pyversion(path: str) -> tuple[int, int]:
-    m = re.search(r"python3([0-9]+)\.test$", path)
-    if m:
-        return 3, int(m.group(1))
+    if m := re.search(r"python3([0-9]+)\.test$", path):
+        # For older unsupported version like python38,
+        # default to that earliest supported version.
+        return max((3, int(m.group(1))), defaults.PYTHON3_VERSION)
     else:
         return defaults.PYTHON3_VERSION
 
@@ -353,7 +354,6 @@ def parse_options(
         options = Options()
         options.error_summary = False
         options.hide_error_codes = True
-        options.force_uppercase_builtins = True
         options.force_union_syntax = True
 
     # Allow custom python version to override testfile_pyversion.
