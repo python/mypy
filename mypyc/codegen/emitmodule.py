@@ -887,10 +887,14 @@ class GroupGenerator:
         emitter.emit_line(f"static PyModuleDef_Slot {name}[] = {{")
         emitter.emit_line(f"{{Py_mod_exec, {exec_name}}},")
         if sys.version_info >= (3, 12):
+            # Multiple interpreter support requires not using any C global state,
+            # which we don't support yet.
             emitter.emit_line(
                 "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},"
             )
         if sys.version_info >= (3, 13):
+            # Declare support for free-threading to enable experimentation,
+            # even if we don't properly support it.
             emitter.emit_line("{Py_mod_gil, Py_MOD_GIL_NOT_USED},")
         emitter.emit_line("{0, NULL},")
         emitter.emit_line("};")
