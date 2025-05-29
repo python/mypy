@@ -391,7 +391,6 @@ These are specific to mypy. Mypyc-related performance improvements are discussed
  * Add missing line number to `yield from` with wrong type (Stanislav Terliakov, PR [18518](https://github.com/python/mypy/pull/18518))
  * Hint at argument names when formatting callables with compatible return types in error messages (Stanislav Terliakov, PR [18495](https://github.com/python/mypy/pull/18495))
  * Add better naming and improve compatibility for ad hoc intersections of instances (Christoph Tyralla, PR [18506](https://github.com/python/mypy/pull/18506))
- * Infer correct types with overloads of `Type[Guard | Is]` (sobolevn, PR [17678](https://github.com/python/mypy/pull/17678))
 
 ### Acknowledgements
 
