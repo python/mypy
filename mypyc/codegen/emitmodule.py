@@ -39,6 +39,7 @@ from mypyc.codegen.emitwrapper import (
 )
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
+    IS_FREE_THREADED,
     MODULE_PREFIX,
     PREFIX,
     RUNTIME_C_FILES,
@@ -514,7 +515,9 @@ class GroupGenerator:
         self.use_shared_lib = group_name is not None
         self.compiler_options = compiler_options
         self.multi_file = compiler_options.multi_file
-        self.multi_phase_init = True
+        # Multi-phase init is needed to enable free-threading. In the future we'll
+        # probably want to enable it always, but we'll wait until it's stable.
+        self.multi_phase_init = IS_FREE_THREADED
 
     @property
     def group_suffix(self) -> str:
