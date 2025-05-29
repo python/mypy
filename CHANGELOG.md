@@ -802,6 +802,7 @@ This was contributed by Marc Mueller (PR [18014](https://github.com/python/mypy/
 
 ### Other Notables Fixes and Improvements
 
+ * Allow enum members to have type objects as values (Jukka Lehtosalo, PR [19160](https://github.com/python/mypy/pull/19160))
  * Show `Protocol` `__call__` for arguments with incompatible types (MechanicalConstruct, PR [18214](https://github.com/python/mypy/pull/18214))
  * Make join and meet symmetric with `strict_optional` (MechanicalConstruct, PR [18227](https://github.com/python/mypy/pull/18227))
  * Preserve block unreachablility when checking function definitions with constrained TypeVars (Brian Schubert, PR [18217](https://github.com/python/mypy/pull/18217))
