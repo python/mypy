@@ -357,7 +357,7 @@ class A:
 class B:
     y: str
 a: Union[A, B]
-a.x  # E: Item "B" of "Union[A, B]" has no attribute "x"  [union-attr]
+a.x  # E: Item "B" of "Union[A, B]" has no attribute "x", use "if <variableName> not \'None' to avoid this issue  [union-attr]
 
 [case testErrorCodeFunctionHasNoAnnotation]
 # flags: --disallow-untyped-defs

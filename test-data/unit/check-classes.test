@@ -3646,7 +3646,7 @@ def process(cls: Type[Union[BasicUser, ProUser]]):
     obj = cls()
     cls.bar(obj)
     cls.mro()  # Defined in class type
-    cls.error  # E: Item "type" of "Union[Type[BasicUser], Type[ProUser]]" has no attribute "error"
+    cls.error  # E: Item "type" of "Union[Type[BasicUser], Type[ProUser]]" has no attribute "error", try using "if <variableName> is not \'None' to avoid this error
 [builtins fixtures/classmethod.pyi]
 [out]
 
