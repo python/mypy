@@ -1034,7 +1034,8 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None | AnyType:
         return None
     # case 1: normal FuncDef
     if isinstance(init_method, FuncDef) and isinstance(init_method.type, CallableType):
-        if init_method.plugin_generated:
+        init_node = typ.type.get("__init__") or typ.type.get(ATTRS_INIT_NAME)
+        if init_node.plugin_generated:
             return init_method.type
         else:
             return AnyType(TypeOfAny.special_form)
