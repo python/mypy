@@ -184,7 +184,6 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
     get_member_expr_fullname,
-    get_nongen_builtins,
     implicit_module_attrs,
     is_final_node,
     type_aliases,
@@ -247,7 +246,6 @@ from mypy.typeanal import (
     find_self_type,
     fix_instance,
     has_any_from_unimported_type,
-    no_subscript_builtin_alias,
     type_constructors,
     validate_instance,
 )
@@ -1085,6 +1083,7 @@ class SemanticAnalyzer(
                         assert self.type is not None and self.type.self_type is not None
                         leading_type: Type = self.type.self_type
                     else:
+                        func.is_trivial_self = True
                         leading_type = fill_typevars(info)
                     if func.is_class or func.name == "__new__":
                         leading_type = self.class_type(leading_type)
@@ -5995,30 +5994,6 @@ class SemanticAnalyzer(
         expr.analyzed = TypeApplication(base, types)
         expr.analyzed.line = expr.line
         expr.analyzed.column = expr.column
-        # Types list, dict, set are not subscriptable, prohibit this if
-        # subscripted either via type alias...
-        if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
-            alias = base.node
-            target = get_proper_type(alias.target)
-            if isinstance(target, Instance):
-                name = target.type.fullname
-                if (
-                    alias.no_args
-                    and name  # this avoids bogus errors for already reported aliases
-                    in get_nongen_builtins(self.options.python_version)
-                    and not self.is_stub_file
-                    and not alias.normalized
-                ):
-                    self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
-        # ...or directly.
-        else:
-            n = self.lookup_type_node(base)
-            if (
-                n
-                and n.fullname in get_nongen_builtins(self.options.python_version)
-                and not self.is_stub_file
-            ):
-                self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
 
     def analyze_type_application_args(self, expr: IndexExpr) -> list[Type] | None:
         """Analyze type arguments (index) in a type application.
@@ -6382,6 +6357,8 @@ class SemanticAnalyzer(
             if node.name not in self.globals:
                 return True
             global_node = self.globals[node.name]
+            if not self.is_textually_before_class(global_node.node):
+                return True
             return not self.is_type_like(global_node.node)
         return False
 
@@ -6408,6 +6385,13 @@ class SemanticAnalyzer(
             return line_diff > len(node.original_decorators)
         else:
             return line_diff > 0
+
+    def is_textually_before_class(self, node: SymbolNode | None) -> bool:
+        """Similar to above, but check if a node is defined before current class."""
+        assert self.type is not None
+        if node is None:
+            return False
+        return node.line < self.type.defn.line
 
     def is_overloaded_item(self, node: SymbolNode, statement: Statement) -> bool:
         """Check whether the function belongs to the overloaded variants"""

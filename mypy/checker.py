@@ -437,12 +437,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         self._type_maps[0].clear()
         self.temp_type_map = None
         self.expr_checker.reset()
-
-        assert self.inferred_attribute_types is None
-        assert self.partial_types == []
-        assert self.deferred_nodes == []
-        assert len(self.scope.stack) == 1
-        assert self.partial_types == []
+        self.deferred_nodes = []
+        self.partial_types = []
+        self.inferred_attribute_types = None
+        self.scope = CheckerScope(self.tree)
 
     def check_first_pass(self) -> None:
         """Type check the entire file, but defer functions with unresolved references.
@@ -750,6 +748,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 defn.is_explicit_override
                 and not found_method_base_classes
                 and found_method_base_classes is not None
+                # If the class has Any fallback, we can't be certain that a method
+                # is really missing - it might come from unfollowed import.
+                and not defn.info.fallback_to_any
             ):
                 self.msg.no_overridable_method(defn.name, defn)
             self.check_explicit_override_decorator(defn, found_method_base_classes, defn.impl)
@@ -1554,6 +1555,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         Note that this doesn't do a full CFG analysis but uses a line number based
         heuristic that isn't correct in some (rare) cases.
         """
+        if v.is_final:
+            # Final vars are definitely never reassigned.
+            return False
+
         outers = self.tscope.outer_functions()
         if not outers:
             # Top-level function -- outer context is top level, and we can't reason about
@@ -5285,12 +5290,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         # For overloaded functions/properties we already checked override for overload as a whole.
         if allow_empty or skip_first_item:
             return
-        if e.func.info and not e.func.is_dynamic() and not e.is_overload:
+        if e.func.info and not e.is_overload:
             found_method_base_classes = self.check_method_override(e)
             if (
                 e.func.is_explicit_override
                 and not found_method_base_classes
                 and found_method_base_classes is not None
+                # If the class has Any fallback, we can't be certain that a method
+                # is really missing - it might come from unfollowed import.
+                and not e.func.info.fallback_to_any
             ):
                 self.msg.no_overridable_method(e.func.name, e.func)
             self.check_explicit_override_decorator(e.func, found_method_base_classes)
@@ -6152,31 +6160,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         # considered "always right" (i.e. even if the types are not overlapping).
                         # Also note that a care must be taken to unwrap this back at read places
                         # where we use this to narrow down declared type.
-                        with self.msg.filter_errors(), self.local_type_map():
-                            # `node.callee` can be an `overload`ed function,
-                            # we need to resolve the real `overload` case.
-                            _, real_func = self.expr_checker.check_call(
-                                get_proper_type(self.lookup_type(node.callee)),
-                                node.args,
-                                node.arg_kinds,
-                                node,
-                                node.arg_names,
-                            )
-                        real_func = get_proper_type(real_func)
-                        if not isinstance(real_func, CallableType) or not (
-                            real_func.type_guard or real_func.type_is
-                        ):
-                            return {}, {}
-
-                        if real_func.type_guard is not None:
-                            return {expr: TypeGuardedType(real_func.type_guard)}, {}
+                        if node.callee.type_guard is not None:
+                            return {expr: TypeGuardedType(node.callee.type_guard)}, {}
                         else:
-                            assert real_func.type_is is not None
+                            assert node.callee.type_is is not None
                             return conditional_types_to_typemaps(
                                 expr,
                                 *self.conditional_types_with_intersection(
                                     self.lookup_type(expr),
-                                    [TypeRange(real_func.type_is, is_upper_bound=False)],
+                                    [TypeRange(node.callee.type_is, is_upper_bound=False)],
                                     expr,
                                 ),
                             )

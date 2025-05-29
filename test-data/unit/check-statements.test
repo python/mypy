@@ -1311,7 +1311,7 @@ def f() -> Iterator[List[int]]:
 
 [case testYieldFromNotAppliedToNothing]
 def h():
-    yield from  # E: invalid syntax
+    yield from  # E: Invalid syntax
 [out]
 
 [case testYieldFromAndYieldTogether]

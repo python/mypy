@@ -1827,7 +1827,6 @@ def Arg(x, y): pass
 F = Callable[[Arg(int, 'x')], int]  # E: Invalid argument constructor "__main__.Arg"
 
 [case testCallableParsingFromExpr]
-# flags: --python-version 3.9
 from typing import Callable, List
 from mypy_extensions import Arg, VarArg, KwArg
 import mypy_extensions
@@ -1858,13 +1857,6 @@ Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias: expression is 
 R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias: expression is not a valid type \
                                               # E: Value of type "int" is not indexable \
                                               # E: "Arg" gets multiple values for keyword argument "name"
-
-
-
-
-
-
-
 [builtins fixtures/dict.pyi]
 
 [case testCallableParsing]
@@ -3283,6 +3275,39 @@ class B:
 
 class C(B):
     def __f(self, y: int) -> str: pass  # OK
+[typing fixtures/typing-override.pyi]
+
+[case testOverrideUntypedDef]
+# flags: --python-version 3.12
+from typing import override
+
+class Parent: pass
+
+class Child(Parent):
+    @override
+    def foo(self, y): pass  # E: Method "foo" is marked as an override, but no base method was found with this name
+
+[typing fixtures/typing-override.pyi]
+
+[case testOverrideOnUnknownBaseClass]
+# flags: --python-version 3.12
+from typing import overload, override
+
+from unknown import UnknownParent  # type: ignore[import-not-found]
+
+class UnknownChild(UnknownParent):
+    @override
+    def foo(self, y): pass  # OK
+    @override
+    def bar(self, y: str) -> None: pass  # OK
+
+    @override
+    @overload
+    def baz(self, y: str) -> None: ...
+    @override
+    @overload
+    def baz(self, y: int) -> None: ...
+    def baz(self, y: str | int) -> None: ...
 [typing fixtures/typing-override.pyi]
 
 [case testCallableProperty]
