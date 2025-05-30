@@ -5,6 +5,11 @@ __version__: str
 
 class Point:
     class AngleUnit:
+        """Members:
+
+          radian
+
+          degree"""
         __members__: ClassVar[dict] = ...  # read-only
         __entries: ClassVar[dict] = ...
         degree: ClassVar[Point.AngleUnit] = ...
@@ -22,11 +27,23 @@ class Point:
         def __ne__(self, other: object) -> bool:
             """__ne__(self: object, other: object) -> bool"""
         @property
-        def name(self) -> str: ...
+        def name(self) -> str:
+            """name(self: handle) -> str
+
+            name(self: handle) -> str
+            """
         @property
-        def value(self) -> int: ...
+        def value(self) -> int:
+            """(arg0: pybind11_fixtures.demo.Point.AngleUnit) -> int"""
 
     class LengthUnit:
+        """Members:
+
+          mm
+
+          pixel
+
+          inch"""
         __members__: ClassVar[dict] = ...  # read-only
         __entries: ClassVar[dict] = ...
         inch: ClassVar[Point.LengthUnit] = ...
@@ -45,9 +62,14 @@ class Point:
         def __ne__(self, other: object) -> bool:
             """__ne__(self: object, other: object) -> bool"""
         @property
-        def name(self) -> str: ...
+        def name(self) -> str:
+            """name(self: handle) -> str
+
+            name(self: handle) -> str
+            """
         @property
-        def value(self) -> int: ...
+        def value(self) -> int:
+            """(arg0: pybind11_fixtures.demo.Point.LengthUnit) -> int"""
     angle_unit: ClassVar[Point.AngleUnit] = ...
     length_unit: ClassVar[Point.LengthUnit] = ...
     x_axis: ClassVar[Point] = ...  # read-only
@@ -94,7 +116,8 @@ class Point:
         2. distance_to(self: pybind11_fixtures.demo.Point, other: pybind11_fixtures.demo.Point) -> float
         """
     @property
-    def length(self) -> float: ...
+    def length(self) -> float:
+        """(arg0: pybind11_fixtures.demo.Point) -> float"""
 
 def answer() -> int:
     '''answer() -> int
