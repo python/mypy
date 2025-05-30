@@ -416,13 +416,11 @@ class Options:
 
     def use_lowercase_names(self) -> bool:
         warnings.warn(
-            "options.use_lowercase_names is deprecated and will be removed in a future version",
+            "options.use_lowercase_names() is deprecated and will be removed in a future version",
             DeprecationWarning,
             stacklevel=2,
         )
-        if self.python_version >= (3, 9):
-            return not self.force_uppercase_builtins
-        return False
+        return True
 
     def use_or_syntax(self) -> bool:
         if self.python_version >= (3, 10):
