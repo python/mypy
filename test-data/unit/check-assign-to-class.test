@@ -20,3 +20,5 @@ class E:
     x = 1
     def baz(self):
         self.x = 2  # OK
+
+# Trigger GitHub Actions for testing
