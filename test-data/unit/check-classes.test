@@ -3688,7 +3688,7 @@ def process(cls: Type[U]):
 [case testTypeUsingTypeCErrorUnsupportedType]
 from typing import Type, Tuple
 def foo(arg: Type[Tuple[int]]):
-    arg()  # E: Cannot instantiate type "Type[tuple[int]]"
+    arg()  # E: Cannot instantiate type "type[tuple[int]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeUsingTypeCOverloadedClass]
@@ -3732,7 +3732,7 @@ def f(a: T): pass
 [case testTypeUsingTypeCTuple]
 from typing import Type, Tuple
 def f(a: Type[Tuple[int, int]]):
-    a()  # E: Cannot instantiate type "Type[tuple[int, int]]"
+    a()  # E: Cannot instantiate type "type[tuple[int, int]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeUsingTypeCNamedTuple]
