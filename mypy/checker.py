@@ -8881,7 +8881,7 @@ class VarAssignVisitor(TraverserVisitor):
         for lv in s.lvalues:
             lv.accept(self)
             if isinstance(lv, MemberExpr):
-                if lv.name == '__class__':
+                if lv.name == "__class__":
                     self.fail("Assignment to '__class__' is unsafe and not allowed", lv)
         self.lvalue = False
 
