@@ -8880,6 +8880,9 @@ class VarAssignVisitor(TraverserVisitor):
         self.lvalue = True
         for lv in s.lvalues:
             lv.accept(self)
+            if isinstance(lv, MemberExpr):
+                if lv.name == '__class__':
+                    self.fail("Assignment to '__class__' is unsafe and not allowed", lv)
         self.lvalue = False
 
     def visit_name_expr(self, e: NameExpr) -> None:
