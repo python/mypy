@@ -272,7 +272,7 @@ from typing import TypeVar
 T = TypeVar('T')
 def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same TypeVar  [type-var]
 x = f()  # E: Need type annotation for "x"  [var-annotated]
-y = []  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")  [var-annotated]
+y = []  # E: Need type annotation for "y" (hint: "y: list[<type>] = ...")  [var-annotated]
 [builtins fixtures/list.pyi]
 
 [case testErrorCodeBadOverride]
@@ -344,7 +344,7 @@ a.x = ''  # E: Incompatible types in assignment (expression has type "str", vari
 # flags: --disallow-any-generics
 from typing import List, TypeVar
 x: List  # E: Missing type parameters for generic type "List"  [type-arg]
-y: list  # E: Missing type parameters for generic type "List"  [type-arg]
+y: list  # E: Missing type parameters for generic type "list"  [type-arg]
 T = TypeVar('T')
 L = List[List[T]]
 z: L  # E: Missing type parameters for generic type "L"  [type-arg]
@@ -397,7 +397,7 @@ def g():
 [case testErrorCodeIndexing]
 from typing import Dict
 x: Dict[int, int]
-x['']  # E: Invalid index type "str" for "Dict[int, int]"; expected type "int"  [index]
+x['']  # E: Invalid index type "str" for "dict[int, int]"; expected type "int"  [index]
 1['']  # E: Value of type "int" is not indexable  [index]
 1[''] = 1  # E: Unsupported target for indexed assignment ("int")  [index]
 [builtins fixtures/dict.pyi]
@@ -1071,12 +1071,12 @@ class C(abc.ABC):
 
 T = TypeVar("T")
 def test(tp: Type[T]) -> T: ...
-test(C)  # E: Only concrete class can be given where "Type[C]" is expected  [type-abstract]
+test(C)  # E: Only concrete class can be given where "type[C]" is expected  [type-abstract]
 
 class D(C):
     @abc.abstractmethod
     def bar(self) -> None: ...
-cls: Type[C] = D  # E: Can only assign concrete classes to a variable of type "Type[C]"  [type-abstract]
+cls: Type[C] = D  # E: Can only assign concrete classes to a variable of type "type[C]"  [type-abstract]
 
 [case testUncheckedAnnotationCodeShown]
 def f():

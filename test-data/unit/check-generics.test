@@ -458,7 +458,7 @@ import types
 a: A
 class A: pass
 a[A]()  # E: Value of type "A" is not indexable
-A[A]()  # E: The type "Type[A]" is not generic and not indexable
+A[A]()  # E: The type "type[A]" is not generic and not indexable
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -729,7 +729,7 @@ l.meth().append(1)
 reveal_type(l.meth()) # N: Revealed type is "builtins.list[builtins.int]"
 l.meth().append('x') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 
-ListedNode[str]([]).x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "List[str]")
+ListedNode[str]([]).x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "list[str]")
 
 [builtins fixtures/list.pyi]
 
@@ -751,10 +751,10 @@ def f_bad(x: T) -> D[T]:
     return D(1)  # Error, see out
 
 L[int]().append(Node((1, 1)))
-L[int]().append(5) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "Node[Tuple[int, int]]"
+L[int]().append(5) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "Node[tuple[int, int]]"
 
 x = D((1, 1)) # type: D[int]
-y = D(5) # type: D[int] # E: Argument 1 to "D" has incompatible type "int"; expected "Tuple[int, int]"
+y = D(5) # type: D[int] # E: Argument 1 to "D" has incompatible type "int"; expected "tuple[int, int]"
 
 def f(x: T) -> D[T]:
     return D((x, x))
@@ -762,7 +762,7 @@ reveal_type(f('a'))  # N: Revealed type is "__main__.D[builtins.str]"
 
 [builtins fixtures/list.pyi]
 [out]
-main:15: error: Argument 1 to "D" has incompatible type "int"; expected "Tuple[T, T]"
+main:15: error: Argument 1 to "D" has incompatible type "int"; expected "tuple[T, T]"
 
 [case testGenericTypeAliasesSubclassingBad]
 
@@ -838,8 +838,8 @@ reveal_type(x) # N: Revealed type is "builtins.int"
 def f2(x: IntTP[T]) -> IntTP[T]:
     return x
 
-f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[int, int, int]"; expected "Tuple[int, Never]"
-reveal_type(f2((1, 'x'))) # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "tuple[int, int, int]"; expected "tuple[int, Never]"
+reveal_type(f2((1, 'x'))) # N: Revealed type is "tuple[builtins.int, builtins.str]"
 
 [builtins fixtures/for.pyi]
 
@@ -878,8 +878,8 @@ T = TypeVar('T', int, bool)
 Vec = List[Tuple[T, T]]
 
 vec = []  # type: Vec[bool]
-vec.append('x') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "Tuple[bool, bool]"
-reveal_type(vec[0]) # N: Revealed type is "Tuple[builtins.bool, builtins.bool]"
+vec.append('x') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "tuple[bool, bool]"
+reveal_type(vec[0]) # N: Revealed type is "tuple[builtins.bool, builtins.bool]"
 
 def fun1(v: Vec[T]) -> T:
     return v[0][0]
@@ -887,10 +887,10 @@ def fun2(v: Vec[T], scale: T) -> Vec[T]:
     return v
 
 reveal_type(fun1([(1, 1)])) # N: Revealed type is "builtins.int"
-fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected "List[Tuple[bool, bool]]"
+fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected "list[tuple[bool, bool]]"
 fun1([(1, 'x')]) # E: Cannot infer type argument 1 of "fun1"
 
-reveal_type(fun2([(1, 1)], 1)) # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.int]]"
+reveal_type(fun2([(1, 1)], 1)) # N: Revealed type is "builtins.list[tuple[builtins.int, builtins.int]]"
 fun2([('x', 'x')], 'x') # E: Value of type variable "T" of "fun2" cannot be "str"
 
 [builtins fixtures/list.pyi]
@@ -903,7 +903,7 @@ T = TypeVar('T')
 n: TupledNode[int]
 n.x = 1
 n.y = (1, 1)
-n.y = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "Tuple[int, int]")
+n.y = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "tuple[int, int]")
 
 def f(x: Node[T, T]) -> TupledNode[T]:
     return Node(x.x, (x.x, x.x))
@@ -935,7 +935,7 @@ def int_tf(m: int) -> Transform[int, str]:
     return transform
 
 var: Transform[int, str]
-reveal_type(var)  # N: Revealed type is "def (builtins.int, builtins.int) -> Tuple[builtins.int, builtins.str]"
+reveal_type(var)  # N: Revealed type is "def (builtins.int, builtins.int) -> tuple[builtins.int, builtins.str]"
 [file lib.py]
 from typing import Callable, TypeVar, Tuple
 
@@ -966,9 +966,9 @@ NewAlias = Alias[int, int, S, S]
 class C: pass
 
 x: NewAlias[str]
-reveal_type(x)  # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.int, builtins.str, builtins.str]]"
+reveal_type(x)  # N: Revealed type is "builtins.list[tuple[builtins.int, builtins.int, builtins.str, builtins.str]]"
 y: Alias[int, str, C, C]
-reveal_type(y)  # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.str, __main__.C, __main__.C]]"
+reveal_type(y)  # N: Revealed type is "builtins.list[tuple[builtins.int, builtins.str, __main__.C, __main__.C]]"
 
 [file mod.py]
 from typing import TypeVar, List, Tuple
@@ -1223,7 +1223,7 @@ class C(A[S, B[T, int]], B[U, A[int, T]]):
     pass
 
 c = C[object, int, str]()
-reveal_type(c.m()) # N: Revealed type is "Tuple[builtins.str, __main__.A[builtins.int, builtins.int]]"
+reveal_type(c.m()) # N: Revealed type is "tuple[builtins.str, __main__.A[builtins.int, builtins.int]]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -1770,7 +1770,7 @@ T = TypeVar('T')
 class C(Generic[T]):
     def __init__(self) -> None: pass
 x = C # type: Callable[[], C[int]]
-y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type "Type[C[T]]", variable has type "Callable[[], int]")
+y = C # type: Callable[[], int] # E: Incompatible types in assignment (expression has type "type[C[T]]", variable has type "Callable[[], int]")
 
 -- Special cases
 -- -------------
@@ -1964,8 +1964,8 @@ class C(Generic[T]):
 class D(C[Tuple[T, T]]): ...
 class E(D[str]): ...
 
-reveal_type(E.get())  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
-reveal_type(E().get())  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+reveal_type(E.get())  # N: Revealed type is "tuple[builtins.str, builtins.str]"
+reveal_type(E().get())  # N: Revealed type is "tuple[builtins.str, builtins.str]"
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassMethodExpansionReplacingTypeVar]
@@ -2013,10 +2013,10 @@ class C(Generic[T]):
 class D(C[Tuple[T, S]]): ...
 class E(D[S, str]): ...
 
-reveal_type(D.make_one)  # N: Revealed type is "def [T, S] (x: Tuple[T`1, S`2]) -> __main__.C[Tuple[T`1, S`2]]"
-reveal_type(D[int, str].make_one)  # N: Revealed type is "def (x: Tuple[builtins.int, builtins.str]) -> __main__.C[Tuple[builtins.int, builtins.str]]"
-reveal_type(E.make_one)  # N: Revealed type is "def [S] (x: Tuple[S`1, builtins.str]) -> __main__.C[Tuple[S`1, builtins.str]]"
-reveal_type(E[int].make_one)  # N: Revealed type is "def (x: Tuple[builtins.int, builtins.str]) -> __main__.C[Tuple[builtins.int, builtins.str]]"
+reveal_type(D.make_one)  # N: Revealed type is "def [T, S] (x: tuple[T`1, S`2]) -> __main__.C[tuple[T`1, S`2]]"
+reveal_type(D[int, str].make_one)  # N: Revealed type is "def (x: tuple[builtins.int, builtins.str]) -> __main__.C[tuple[builtins.int, builtins.str]]"
+reveal_type(E.make_one)  # N: Revealed type is "def [S] (x: tuple[S`1, builtins.str]) -> __main__.C[tuple[S`1, builtins.str]]"
+reveal_type(E[int].make_one)  # N: Revealed type is "def (x: tuple[builtins.int, builtins.str]) -> __main__.C[tuple[builtins.int, builtins.str]]"
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassClsNonGeneric]
@@ -2161,7 +2161,7 @@ class Sub(Base[str]): ...
 Sub.make_some(1)  # E: No overload variant of "make_some" of "Base" matches argument type "int" \
                   # N: Possible overload variants: \
                   # N:     def make_some(cls, item: str) -> Sub \
-                  # N:     def make_some(cls, item: str, n: int) -> Tuple[Sub, ...]
+                  # N:     def make_some(cls, item: str, n: int) -> tuple[Sub, ...]
 [builtins fixtures/classmethod.pyi]
 
 [case testNoGenericAccessOnImplicitAttributes]
@@ -2191,11 +2191,11 @@ class A(Generic[T]):
 
 class B(A[T], Generic[T, S]):
     def meth(self) -> None:
-        reveal_type(A[T].foo)  # N: Revealed type is "def () -> Tuple[T`1, __main__.A[T`1]]"
+        reveal_type(A[T].foo)  # N: Revealed type is "def () -> tuple[T`1, __main__.A[T`1]]"
     @classmethod
     def other(cls) -> None:
-        reveal_type(cls.foo)  # N: Revealed type is "def () -> Tuple[T`1, __main__.B[T`1, S`2]]"
-reveal_type(B.foo)  # N: Revealed type is "def [T, S] () -> Tuple[T`1, __main__.B[T`1, S`2]]"
+        reveal_type(cls.foo)  # N: Revealed type is "def () -> tuple[T`1, __main__.B[T`1, S`2]]"
+reveal_type(B.foo)  # N: Revealed type is "def [T, S] () -> tuple[T`1, __main__.B[T`1, S`2]]"
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassAlternativeConstructorPrecise2]
@@ -2211,7 +2211,7 @@ class Base(Generic[T]):
 class Sub(Base[T]):
     ...
 
-reveal_type(Sub.make_pair('yes'))  # N: Revealed type is "Tuple[__main__.Sub[builtins.str], __main__.Sub[builtins.str]]"
+reveal_type(Sub.make_pair('yes'))  # N: Revealed type is "tuple[__main__.Sub[builtins.str], __main__.Sub[builtins.str]]"
 Sub[int].make_pair('no')  # E: Argument 1 to "make_pair" of "Base" has incompatible type "str"; expected "int"
 [builtins fixtures/classmethod.pyi]
 
@@ -3029,7 +3029,7 @@ def dec(f: Callable[[T], S], g: Callable[[T], U]) -> Callable[[T], Tuple[S, U]]:
 def id(x: V) -> V:
     ...
 
-reveal_type(dec(id, id))  # N: Revealed type is "def [T] (T`1) -> Tuple[T`1, T`1]"
+reveal_type(dec(id, id))  # N: Revealed type is "def [T] (T`1) -> tuple[T`1, T`1]"
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericSecondary]
@@ -3123,7 +3123,7 @@ reveal_type(dec1(lambda x: 1))  # N: Revealed type is "def (builtins.int) -> bui
 reveal_type(dec5(lambda x: x))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
 reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`20) -> builtins.list[S`20]"
 reveal_type(dec4(lambda x: x))  # N: Revealed type is "def [T] (builtins.list[T`24]) -> T`24"
-dec4_bound(lambda x: x)  # E: Value of type variable "I" of "dec4_bound" cannot be "List[T]"
+dec4_bound(lambda x: x)  # E: Value of type variable "I" of "dec4_bound" cannot be "list[T]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecBasicInList]
@@ -3142,7 +3142,7 @@ def either(x: U, y: U) -> U: ...
 def pair(x: U, y: V) -> Tuple[U, V]: ...
 reveal_type(dec(id))  # N: Revealed type is "def [T] (x: T`3) -> builtins.list[T`3]"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (x: T`5, y: T`5) -> builtins.list[T`5]"
-reveal_type(dec(pair))  # N: Revealed type is "def [U, V] (x: U`-1, y: V`-2) -> builtins.list[Tuple[U`-1, V`-2]]"
+reveal_type(dec(pair))  # N: Revealed type is "def [U, V] (x: U`-1, y: V`-2) -> builtins.list[tuple[U`-1, V`-2]]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecBasicDeList]
@@ -3179,7 +3179,7 @@ def either(x: U, y: U) -> U: ...
 def pair(x: U, y: V) -> Tuple[U, V]: ...
 reveal_type(dec(id))  # N: Revealed type is "def () -> def [T] (T`2) -> T`2"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (y: T`5) -> def (T`5) -> T`5"
-reveal_type(dec(pair))  # N: Revealed type is "def [V] (y: V`-2) -> def [T] (T`8) -> Tuple[T`8, V`-2]"
+reveal_type(dec(pair))  # N: Revealed type is "def [V] (y: V`-2) -> def [T] (T`8) -> tuple[T`8, V`-2]"
 reveal_type(dec(dec))  # N: Revealed type is "def () -> def [T, P, S] (def (T`-1, *P.args, **P.kwargs) -> S`-3) -> def (*P.args, **P.kwargs) -> def (T`-1) -> S`-3"
 [builtins fixtures/list.pyi]
 
@@ -3200,7 +3200,7 @@ def either(x: U) -> Callable[[U], U]: ...
 def pair(x: U) -> Callable[[V], Tuple[V, U]]: ...
 reveal_type(dec(id))  # N: Revealed type is "def [T] (T`3) -> T`3"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (T`6, x: T`6) -> T`6"
-reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`9, x: U`-1) -> Tuple[T`9, U`-1]"
+reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`9, x: U`-1) -> tuple[T`9, U`-1]"
 # This is counter-intuitive but looks correct, dec matches itself only if P can be empty
 reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`13, f: def () -> def (T`13) -> S`14) -> S`14"
 [builtins fixtures/list.pyi]
@@ -3337,7 +3337,7 @@ def pair(x: U, y: V) -> Tuple[U, V]: ...
 
 reveal_type(dec(id))  # N: Revealed type is "def [T] (T`3) -> builtins.list[T`3]"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (T`5, T`5) -> builtins.list[T`5]"
-reveal_type(dec(pair))  # N: Revealed type is "def [U, V] (U`-1, V`-2) -> builtins.list[Tuple[U`-1, V`-2]]"
+reveal_type(dec(pair))  # N: Revealed type is "def [U, V] (U`-1, V`-2) -> builtins.list[tuple[U`-1, V`-2]]"
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericVariadicBasicDeList]
@@ -3376,7 +3376,7 @@ def pair(x: U, y: V) -> Tuple[U, V]: ...
 
 reveal_type(dec(id))  # N: Revealed type is "def () -> def [T] (T`2) -> T`2"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (T`5) -> def (T`5) -> T`5"
-reveal_type(dec(pair))  # N: Revealed type is "def [V] (V`-2) -> def [T] (T`8) -> Tuple[T`8, V`-2]"
+reveal_type(dec(pair))  # N: Revealed type is "def [V] (V`-2) -> def [T] (T`8) -> tuple[T`8, V`-2]"
 reveal_type(dec(dec))  # N: Revealed type is "def () -> def [T, Ts, S] (def (T`-1, *Unpack[Ts`-2]) -> S`-3) -> def (*Unpack[Ts`-2]) -> def (T`-1) -> S`-3"
 [builtins fixtures/list.pyi]
 
@@ -3398,7 +3398,7 @@ def pair(x: U) -> Callable[[V], Tuple[V, U]]: ...
 
 reveal_type(dec(id))  # N: Revealed type is "def [T] (T`3) -> T`3"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (T`6, T`6) -> T`6"
-reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`9, U`-1) -> Tuple[T`9, U`-1]"
+reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`9, U`-1) -> tuple[T`9, U`-1]"
 # This is counter-intuitive but looks correct, dec matches itself only if Ts is empty
 reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`13, def () -> def (T`13) -> S`14) -> S`14"
 [builtins fixtures/list.pyi]

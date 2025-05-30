@@ -443,7 +443,7 @@ reveal_type(D(x=[]))  # N: Revealed type is "TypedDict('__main__.D', {'x': built
 from typing import Dict, MutableMapping, TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 def as_dict(p: Point) -> Dict[str, int]:
-    return p  # E: Incompatible return value type (got "Point", expected "Dict[str, int]")
+    return p  # E: Incompatible return value type (got "Point", expected "dict[str, int]")
 def as_mutable_mapping(p: Point) -> MutableMapping[str, object]:
     return p  # E: Incompatible return value type (got "Point", expected "MutableMapping[str, object]")
 [builtins fixtures/dict.pyi]
@@ -470,9 +470,9 @@ c: C
 def f(a: A) -> None: pass
 
 l = [a, b]  # Join generates an anonymous TypedDict
-f(l) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x': int})]"; expected "A"
+f(l) # E: Argument 1 to "f" has incompatible type "list[TypedDict({'x': int})]"; expected "A"
 ll = [b, c]
-f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x': int, 'z': str})]"; expected "A"
+f(ll) # E: Argument 1 to "f" has incompatible type "list[TypedDict({'x': int, 'z': str})]"; expected "A"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -826,7 +826,7 @@ class C:
         A = TypedDict('A', {'x': int})
     def g(self):
         A = TypedDict('A', {'y': int})
-C.A  # E: "Type[C]" has no attribute "A"
+C.A  # E: "type[C]" has no attribute "A"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -923,7 +923,7 @@ A = TypedDict('A', {'@type': Literal['a-type'], 'value': int})
 B = TypedDict('B', {'@type': Literal['b-type'], 'value': int})
 
 c: Union[A, B] = {'@type': 'a-type', 'value': 'Test'}  # E: Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly \
-                                                       # E: Incompatible types in assignment (expression has type "Dict[str, str]", variable has type "Union[A, B]")
+                                                       # E: Incompatible types in assignment (expression has type "dict[str, str]", variable has type "Union[A, B]")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1231,9 +1231,9 @@ c: C
 def f(a: A) -> None: pass
 
 l = [a, b]  # Join generates an anonymous TypedDict
-f(l) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x'?: int})]"; expected "A"
+f(l) # E: Argument 1 to "f" has incompatible type "list[TypedDict({'x'?: int})]"; expected "A"
 ll = [b, c]
-f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x'?: int, 'z'?: str})]"; expected "A"
+f(ll) # E: Argument 1 to "f" has incompatible type "list[TypedDict({'x'?: int, 'z'?: str})]"; expected "A"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1694,7 +1694,7 @@ a.clear() # E: "A" has no attribute "clear"
 a.setdefault('invalid', 1) # E: TypedDict "A" has no key "invalid"
 reveal_type(a.setdefault('x', 1)) # N: Revealed type is "builtins.int"
 reveal_type(a.setdefault('y', [])) # N: Revealed type is "builtins.list[builtins.int]"
-a.setdefault('y', '') # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "str"; expected "List[int]"
+a.setdefault('y', '') # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "str"; expected "list[int]"
 x = ''
 a.setdefault(x, 1) # E: Expected TypedDict key to be string literal
 alias = a.setdefault
@@ -1709,7 +1709,7 @@ a.update({'z': 1}) # E: Unexpected TypedDict key "z"
 a.update({'z': 1, 'zz': 1}) # E: Unexpected TypedDict keys ("z", "zz")
 a.update({'z': 1, 'x': 1}) # E: Expected TypedDict key "x" but found keys ("z", "x")
 d = {'x': 1}
-a.update(d) # E: Argument 1 to "update" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'x'?: int, 'y'?: List[int]})"
+a.update(d) # E: Argument 1 to "update" of "TypedDict" has incompatible type "dict[str, int]"; expected "TypedDict({'x'?: int, 'y'?: list[int]})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1724,7 +1724,7 @@ b: B
 reveal_type(a.pop('x')) # N: Revealed type is "builtins.int"
 reveal_type(a.pop('y', [])) # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(a.pop('x', '')) # N: Revealed type is "Union[builtins.int, Literal['']?]"
-reveal_type(a.pop('x', (1, 2))) # N: Revealed type is "Union[builtins.int, Tuple[Literal[1]?, Literal[2]?]]"
+reveal_type(a.pop('x', (1, 2))) # N: Revealed type is "Union[builtins.int, tuple[Literal[1]?, Literal[2]?]]"
 a.pop('invalid', '') # E: TypedDict "A" has no key "invalid"
 b.pop('x') # E: Key "x" of TypedDict "B" cannot be deleted
 x = ''
@@ -1863,7 +1863,7 @@ class Config(TypedDict):
 x: Dict[str, str]
 y: Config
 
-x == y  # E: Non-overlapping equality check (left operand type: "Dict[str, str]", right operand type: "Config")
+x == y  # E: Non-overlapping equality check (left operand type: "dict[str, str]", right operand type: "Config")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1893,7 +1893,7 @@ class Config(TypedDict, total=False):
 x: Dict[str, str]
 y: Config
 
-x == y  # E: Non-overlapping equality check (left operand type: "Dict[str, str]", right operand type: "Config")
+x == y  # E: Non-overlapping equality check (left operand type: "dict[str, str]", right operand type: "Config")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1906,7 +1906,7 @@ class Config(TypedDict):
     b: str
 
 x: Config
-x == {}  # E: Non-overlapping equality check (left operand type: "Config", right operand type: "Dict[Never, Never]")
+x == {}  # E: Non-overlapping equality check (left operand type: "Config", right operand type: "dict[Never, Never]")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -2797,11 +2797,11 @@ Alias = TD[List[T]]
 
 ad: Alias[str]
 reveal_type(ad)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.list[builtins.str]})"
-Alias[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "List[str]")
+Alias[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "list[str]")
 
 # Generic aliases are *always* filled with Any, so this is different from TD(...) call.
 Alias(key=0, value=0)  # E: Missing type parameters for generic type "Alias" \
-                       # E: Incompatible types (expression has type "int", TypedDict item "value" has type "List[Any]")
+                       # E: Incompatible types (expression has type "int", TypedDict item "value" has type "list[Any]")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -2902,7 +2902,7 @@ def method(message: Response) -> None: ...
 method({'type': 'a', 'value': True})  # OK
 method({'type': 'b', 'value': 'abc'})  # OK
 method({'type': 'a', 'value': 'abc'})  # E: Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly \
-                                       # E: Argument 1 to "method" has incompatible type "Dict[str, str]"; expected "Union[A, B]"
+                                       # E: Argument 1 to "method" has incompatible type "dict[str, str]"; expected "Union[A, B]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -2921,7 +2921,7 @@ class D(TypedDict, total=False):
 def foo(data: Union[A, B]) -> None: ...
 foo({"foo": {"c": "foo"}})  # OK
 foo({"foo": {"e": "foo"}})  # E: Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly \
-                            # E: Argument 1 to "foo" has incompatible type "Dict[str, Dict[str, str]]"; expected "Union[A, B]"
+                            # E: Argument 1 to "foo" has incompatible type "dict[str, dict[str, str]]"; expected "Union[A, B]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -3196,7 +3196,7 @@ class Bar(TypedDict):
     pass
 
 foo: Dict[str, Any] = {}
-bar: Bar = {**foo}  # E: Unsupported type "Dict[str, Any]" for ** expansion in TypedDict
+bar: Bar = {**foo}  # E: Unsupported type "dict[str, Any]" for ** expansion in TypedDict
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -3326,7 +3326,7 @@ d1: Dict[str, int]
 d2: Dict[int, str]
 
 reveal_type(foo1 | d1)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
-foo1 | d2  # E: Unsupported operand types for | ("Foo" and "Dict[int, str]")
+foo1 | d2  # E: Unsupported operand types for | ("Foo" and "dict[int, str]")
 
 
 class Bar(TypedDict):
@@ -3344,7 +3344,7 @@ reveal_type(bar | {'key': 'a', 'value': 1})  # N: Revealed type is "builtins.dic
 
 reveal_type(bar | foo1)  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
 reveal_type(bar | d1)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
-bar | d2  # E: Unsupported operand types for | ("Bar" and "Dict[int, str]")
+bar | d2  # E: Unsupported operand types for | ("Bar" and "dict[int, str]")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
 
@@ -3363,11 +3363,11 @@ foo | SubDict()
 main:7: error: No overload variant of "__or__" of "TypedDict" matches argument type "int"
 main:7: note: Possible overload variants:
 main:7: note:     def __or__(self, TypedDict({'key'?: int}), /) -> Foo
-main:7: note:     def __or__(self, Dict[str, Any], /) -> Dict[str, object]
+main:7: note:     def __or__(self, dict[str, Any], /) -> dict[str, object]
 main:10: error: No overload variant of "__ror__" of "dict" matches argument type "Foo"
 main:10: note: Possible overload variants:
-main:10: note:     def __ror__(self, Dict[Any, Any], /) -> Dict[Any, Any]
-main:10: note:     def [T, T2] __ror__(self, Dict[T, T2], /) -> Dict[Union[Any, T], Union[Any, T2]]
+main:10: note:     def __ror__(self, dict[Any, Any], /) -> dict[Any, Any]
+main:10: note:     def [T, T2] __ror__(self, dict[T, T2], /) -> dict[Union[Any, T], Union[Any, T2]]
 [builtins fixtures/dict-full.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
 
@@ -3388,7 +3388,7 @@ d1: Dict[str, int]
 d2: Dict[int, str]
 
 reveal_type(d1 | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
-d2 | foo  # E: Unsupported operand types for | ("Dict[int, str]" and "Foo")
+d2 | foo  # E: Unsupported operand types for | ("dict[int, str]" and "Foo")
 1 | foo  # E: Unsupported left operand type for | ("int")
 
 
@@ -3406,7 +3406,7 @@ reveal_type({'value': 1} | bar)  # N: Revealed type is "builtins.dict[builtins.s
 reveal_type({'key': 'a', 'value': 1} | bar)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
 
 reveal_type(d1 | bar)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
-d2 | bar  # E: Unsupported operand types for | ("Dict[int, str]" and "Bar")
+d2 | bar  # E: Unsupported operand types for | ("dict[int, str]" and "Bar")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
 
@@ -3427,8 +3427,8 @@ foo |= {'b': 2}  # E: Unexpected TypedDict key "b"
 d1: Dict[str, int]
 d2: Dict[int, str]
 
-foo |= d1  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'key'?: int})"
-foo |= d2  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[int, str]"; expected "TypedDict({'key'?: int})"
+foo |= d1  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "dict[str, int]"; expected "TypedDict({'key'?: int})"
+foo |= d2  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "dict[int, str]"; expected "TypedDict({'key'?: int})"
 
 
 class Bar(TypedDict):
@@ -3442,8 +3442,8 @@ bar |= {'key': 'a', 'value': 'a', 'b': 'a'}  # E: Expected TypedDict keys ("key"
                                              # E: Incompatible types (expression has type "str", TypedDict item "key" has type "int")
 
 bar |= foo
-bar |= d1  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'key'?: int, 'value'?: str})"
-bar |= d2  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[int, str]"; expected "TypedDict({'key'?: int, 'value'?: str})"
+bar |= d1  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "dict[str, int]"; expected "TypedDict({'key'?: int, 'value'?: str})"
+bar |= d2  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "dict[int, str]"; expected "TypedDict({'key'?: int, 'value'?: str})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
 
@@ -3526,7 +3526,7 @@ class Point(TypedDict, total=False):
     y: int
 
 def func(cls: Type[Point]) -> None:
-    reveal_type(cls)  # N: Revealed type is "Type[TypedDict('__main__.Point', {'x': builtins.int, 'y'?: builtins.int})]"
+    reveal_type(cls)  # N: Revealed type is "type[TypedDict('__main__.Point', {'x': builtins.int, 'y'?: builtins.int})]"
     cls(x=1, y=2)
     cls(1, 2)  # E: Too many positional arguments
     cls(x=1)
@@ -3550,7 +3550,7 @@ class A(Generic[T]):
         self.a = a
 
     def func(self) -> T:
-        reveal_type(self.a)  # N: Revealed type is "Type[T`1]"
+        reveal_type(self.a)  # N: Revealed type is "type[T`1]"
         self.a(x=1, y=2)
         self.a(y=2)  # E: Missing named argument "x"
         return self.a(x=1)
@@ -3863,7 +3863,7 @@ tp: TP = {**r, **m}
 tp1: TP = {**tp, **m}
 tp2: TP = {**r, **m}
 tp3: TP = {**tp, **r}
-tp4: TP = {**tp, **d}  # E: Unsupported type "Dict[str, object]" for ** expansion in TypedDict
+tp4: TP = {**tp, **d}  # E: Unsupported type "dict[str, object]" for ** expansion in TypedDict
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -3984,7 +3984,7 @@ def accepts_dict(d: Dict[str, object]): ...
 x: TP
 accepts_mapping(x)
 accepts_mutable_mapping(x)  # E: Argument 1 to "accepts_mutable_mapping" has incompatible type "TP"; expected "MutableMapping[str, object]"
-accepts_dict(x)  # E: Argument 1 to "accepts_dict" has incompatible type "TP"; expected "Dict[str, object]"
+accepts_dict(x)  # E: Argument 1 to "accepts_dict" has incompatible type "TP"; expected "dict[str, object]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

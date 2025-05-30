@@ -12,7 +12,7 @@ U = Union[int, str]
 def f(x: U) -> None: pass
 f(1)
 f('')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "tuple[()]"; expected "Union[int, str]"
 [targets __main__, __main__.f]
 [builtins fixtures/tuple.pyi]
 
@@ -21,7 +21,7 @@ from typing import Tuple
 T = Tuple[int, str]
 def f(x: T) -> None: pass
 f((1, 'x'))
-f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[int, str]"
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "tuple[int, str]"
 [targets __main__, __main__.f]
 [builtins fixtures/tuple.pyi]
 
@@ -64,7 +64,7 @@ from _m import U
 def f(x: U) -> None: pass
 f(1)
 f('x')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "tuple[()]"; expected "Union[int, str]"
 [file _m.py]
 from typing import Union
 U = Union[int, str]
@@ -168,11 +168,11 @@ f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
 from typing import Tuple, Callable
 EmptyTuple = Tuple[()]
 x: EmptyTuple
-reveal_type(x)  # N: Revealed type is "Tuple[()]"
+reveal_type(x)  # N: Revealed type is "tuple[()]"
 
 EmptyTupleCallable = Callable[[Tuple[()]], None]
 f: EmptyTupleCallable
-reveal_type(f)  # N: Revealed type is "def (Tuple[()])"
+reveal_type(f)  # N: Revealed type is "def (tuple[()])"
 [builtins fixtures/list.pyi]
 
 [case testForwardTypeAlias]
@@ -188,7 +188,7 @@ from typing import TypeVar, Tuple
 def f(p: 'Alias[str]') -> None:
     pass
 
-reveal_type(f) # N: Revealed type is "def (p: Tuple[builtins.int, builtins.str])"
+reveal_type(f) # N: Revealed type is "def (p: tuple[builtins.int, builtins.str])"
 T = TypeVar('T')
 Alias = Tuple[int, T]
 [builtins fixtures/tuple.pyi]
@@ -375,25 +375,25 @@ class Cls:
 
 A1('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 a1 = A1(1)
-reveal_type(a1)  # N: Revealed type is "Tuple[builtins.int, fallback=nt.C]"
+reveal_type(a1)  # N: Revealed type is "tuple[builtins.int, fallback=nt.C]"
 
 A2(0)  # E: Argument 1 to "D" has incompatible type "int"; expected "str"
 a2 = A2('yes')
-reveal_type(a2)  # N: Revealed type is "Tuple[builtins.str, fallback=nt.D]"
+reveal_type(a2)  # N: Revealed type is "tuple[builtins.str, fallback=nt.D]"
 
 a3 = A3()
-reveal_type(a3)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=nt.E]"
+reveal_type(a3)  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=nt.E]"
 
 Cls.A1('no')  # E: Argument 1 has incompatible type "str"; expected "int"
 ca1 = Cls.A1(1)
-reveal_type(ca1)  # N: Revealed type is "Tuple[builtins.int, fallback=nt.C]"
+reveal_type(ca1)  # N: Revealed type is "tuple[builtins.int, fallback=nt.C]"
 
 Cls.A2(0)  # E: Argument 1 has incompatible type "int"; expected "str"
 ca2 = Cls.A2('yes')
-reveal_type(ca2)  # N: Revealed type is "Tuple[builtins.str, fallback=nt.D]"
+reveal_type(ca2)  # N: Revealed type is "tuple[builtins.str, fallback=nt.D]"
 
 ca3 = Cls.A3()
-reveal_type(ca3)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=nt.E]"
+reveal_type(ca3)  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=nt.E]"
 [file nt.pyi]
 from typing import NamedTuple, Tuple
 
@@ -927,29 +927,29 @@ p = Parent()
 c = Child()
 
 NormalImplicit = 4   # E: Cannot assign multiple types to name "NormalImplicit" without an explicit "Type[...]" annotation \
-                     # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+                     # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
 NormalExplicit = 4   # E: Cannot assign multiple types to name "NormalExplicit" without an explicit "Type[...]" annotation \
-                     # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+                     # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
 SpecialImplicit = 4  # E: Cannot assign multiple types to name "SpecialImplicit" without an explicit "Type[...]" annotation
 SpecialExplicit = 4  # E: Cannot assign multiple types to name "SpecialExplicit" without an explicit "Type[...]" annotation
 
-Parent.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
-Parent.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+Parent.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
+Parent.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
 Parent.SpecialImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "<typing special form>")
 Parent.SpecialExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "<typing special form>")
 
-Child.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
-Child.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+Child.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
+Child.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
 Child.SpecialImplicit = 4
 Child.SpecialExplicit = 4
 
-p.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
-p.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+p.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
+p.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
 p.SpecialImplicit = 4
 p.SpecialExplicit = 4
 
-c.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
-c.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+c.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
+c.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
 c.SpecialImplicit = 4
 c.SpecialExplicit = 4
 [builtins fixtures/tuple.pyi]
@@ -1105,7 +1105,7 @@ reveal_type(t3)  # N: Revealed type is "Any"
 
 T4 = TypeAliasType("T4")  # E: Missing positional argument "value" in call to "TypeAliasType"
 T5 = TypeAliasType("T5", int, str)  # E: Too many positional arguments for "TypeAliasType" \
-                                    # E: Argument 3 to "TypeAliasType" has incompatible type "Type[str]"; expected "Tuple[Union[TypeVar?, ParamSpec?, TypeVarTuple?], ...]"
+                                    # E: Argument 3 to "TypeAliasType" has incompatible type "type[str]"; expected "tuple[Union[TypeVar?, ParamSpec?, TypeVarTuple?], ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1136,7 +1136,7 @@ VariadicAlias1 = TypeAliasType("VariadicAlias1", Tuple[Unpack[Ts]], type_params=
 VariadicAlias2 = TypeAliasType("VariadicAlias2", Tuple[Unpack[Ts], K], type_params=(Ts, K))
 VariadicAlias3 = TypeAliasType("VariadicAlias3", Callable[[Unpack[Ts]], int], type_params=(Ts,))
 xv: VariadicAlias1[int, str] = (1, 'a')
-yv: VariadicAlias1[str, int] = (1, 'a')  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "Tuple[str, int]")
+yv: VariadicAlias1[str, int] = (1, 'a')  # E: Incompatible types in assignment (expression has type "tuple[int, str]", variable has type "tuple[str, int]")
 zv: VariadicAlias2[int, str] = (1, 'a')
 def int_in_int_out(x: int) -> int: return x
 wv: VariadicAlias3[int] = int_in_int_out

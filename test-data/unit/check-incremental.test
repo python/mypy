@@ -3517,7 +3517,7 @@ class M(type):
     y: int
 [out]
 [out2]
-tmp/a.py:2: error: "Type[B]" has no attribute "x"
+tmp/a.py:2: error: "type[B]" has no attribute "x"
 
 [case testIncrementalLotsOfInheritance]
 import a
@@ -4654,7 +4654,7 @@ B = TypedDict('B', {'x': A})
 [typing fixtures/typing-typeddict.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "Tuple[TypedDict('other.B', {'x': Tuple[..., fallback=lib.A]}), fallback=lib.A]"
+tmp/a.py:3: note: Revealed type is "tuple[TypedDict('other.B', {'x': tuple[..., fallback=lib.A]}), fallback=lib.A]"
 
 [case testFollowImportSkipNotInvalidatedOnPresent]
 # flags: --follow-imports=skip
@@ -5123,7 +5123,7 @@ NT = NamedTuple('BadName', [('x', int)])
 tmp/b.py:2: error: First argument to namedtuple() should be "NT", not "BadName"
 [out2]
 tmp/b.py:2: error: First argument to namedtuple() should be "NT", not "BadName"
-tmp/a.py:3: note: Revealed type is "Tuple[builtins.int, fallback=b.NT]"
+tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.NT]"
 
 [case testNewAnalyzerIncrementalBrokenNamedTupleNested]
 
@@ -5164,7 +5164,7 @@ class C:
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is "Tuple[builtins.int, fallback=b.C.Hidden@5]"
+tmp/a.py:3: note: Revealed type is "tuple[builtins.int, fallback=b.C.Hidden@5]"
 
 [case testIncrementalNodeCreatedFromGetattr]
 import a
@@ -5314,7 +5314,7 @@ reveal_type(Foo().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 [out2]
-tmp/b.py:2: note: Revealed type is "a.<subclass of "Tuple[builtins.int, ...]" and "a.B">"
+tmp/b.py:2: note: Revealed type is "a.<subclass of "tuple[builtins.int, ...]" and "a.B">"
 
 [case testIsInstanceAdHocIntersectionIncrementalIsInstanceChange]
 import c
@@ -5845,9 +5845,9 @@ reveal_type(a.n)
 [out]
 [out2]
 [out3]
-tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+tmp/c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
-tmp/c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+tmp/c.py:7: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveCoarse]
 import c
@@ -5878,7 +5878,7 @@ def f(x: a.N) -> None:
 [out]
 [out2]
 [out3]
-tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+tmp/c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveCoarse]
@@ -5910,7 +5910,7 @@ def f(x: a.N) -> None:
 [out]
 [out2]
 [out3]
-tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int], None], builtins.int]"
+tmp/c.py:4: note: Revealed type is "tuple[Union[tuple[Union[..., None], builtins.int], None], builtins.int]"
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypedDictUpdateNonRecursiveToRecursiveCoarse]

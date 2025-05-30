@@ -478,7 +478,7 @@ disallow_any_generics = True
 [file m.py]
 def j(s: frozenset) -> None: pass
 [out]
-m.py:1: error: Missing type parameters for generic type "FrozenSet"
+m.py:1: error: Missing type parameters for generic type "frozenset"
 
 [case testDisallowAnyGenericsTypingCollections]
 # cmd: mypy m.py
@@ -525,7 +525,7 @@ strict_optional = True
 ignore_errors = False
 [out]
 a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type "List"
-a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "List[Any]"
+a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "list[Any]"
 
 [case testMissingFile]
 # cmd: mypy nope.py
@@ -650,7 +650,7 @@ def foo() -> str:
     return 9
 [out]
 s4.py:2: error: Incompatible return value type (got "int", expected "str")
-s3.py:2: error: Incompatible return value type (got "List[int]", expected "int")
+s3.py:2: error: Incompatible return value type (got "list[int]", expected "int")
 s1.py:2: error: Incompatible return value type (got "int", expected "str")
 
 [case testShadowFileWithPretty]
@@ -830,7 +830,7 @@ x = []  # type: List[float]
 y = []  # type: List[int]
 x = y
 [out]
-bad.py:4: error: Incompatible types in assignment (expression has type "List[int]", variable has type "List[float]")
+bad.py:4: error: Incompatible types in assignment (expression has type "list[int]", variable has type "list[float]")
 bad.py:4: note: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 bad.py:4: note: Consider using "Sequence" instead, which is covariant
 Found 1 error in 1 file (checked 1 source file)
