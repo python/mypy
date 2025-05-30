@@ -78,17 +78,21 @@ from mypy.nodes import (
     Block,
     BytesExpr,
     CallExpr,
+    CastExpr,
     ClassDef,
     ComparisonExpr,
     ComplexExpr,
+    ConditionalExpr,
     Decorator,
     DictExpr,
+    DictionaryComprehension,
     EllipsisExpr,
     Expression,
     ExpressionStmt,
     FloatExpr,
     FuncBase,
     FuncDef,
+    GeneratorExpr,
     IfStmt,
     Import,
     ImportAll,
@@ -96,13 +100,16 @@ from mypy.nodes import (
     IndexExpr,
     IntExpr,
     LambdaExpr,
+    ListComprehension,
     ListExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
     OpExpr,
     OverloadedFuncDef,
+    SetComprehension,
     SetExpr,
+    SliceExpr,
     StarExpr,
     Statement,
     StrExpr,
@@ -355,6 +362,9 @@ class AliasPrinter(NodeVisitor[str]):
     def visit_list_expr(self, node: ListExpr) -> str:
         return f"[{', '.join(n.accept(self) for n in node.items)}]"
 
+    def visit_set_expr(self, node: SetExpr) -> str:
+        return f"{{{', '.join(n.accept(self) for n in node.items)}}}"
+
     def visit_dict_expr(self, o: DictExpr) -> str:
         dict_items = []
         for key, value in o.items:
@@ -369,12 +379,49 @@ class AliasPrinter(NodeVisitor[str]):
     def visit_op_expr(self, o: OpExpr) -> str:
         return f"{o.left.accept(self)} {o.op} {o.right.accept(self)}"
 
+    def visit_unary_expr(self, o: UnaryExpr, /) -> str:
+        return f"{o.op}{o.expr.accept(self)}"
+
+    def visit_slice_expr(self, o: SliceExpr, /) -> str:
+        blocks = [
+            o.begin_index.accept(self) if o.begin_index is not None else "",
+            o.end_index.accept(self) if o.end_index is not None else "",
+        ]
+        if o.stride is not None:
+            blocks.append(o.stride.accept(self))
+        return ":".join(blocks)
+
     def visit_star_expr(self, o: StarExpr) -> str:
         return f"*{o.expr.accept(self)}"
 
     def visit_lambda_expr(self, o: LambdaExpr) -> str:
         # TODO: Required for among other things dataclass.field default_factory
         return self.stubgen.add_name("_typeshed.Incomplete")
+
+    def _visit_unsupported_expr(self, o: object) -> str:
+        # Something we do not understand.
+        return self.stubgen.add_name("_typeshed.Incomplete")
+
+    def visit_comparison_expr(self, o: ComparisonExpr) -> str:
+        return self._visit_unsupported_expr(o)
+
+    def visit_cast_expr(self, o: CastExpr) -> str:
+        return self._visit_unsupported_expr(o)
+
+    def visit_conditional_expr(self, o: ConditionalExpr) -> str:
+        return self._visit_unsupported_expr(o)
+
+    def visit_list_comprehension(self, o: ListComprehension) -> str:
+        return self._visit_unsupported_expr(o)
+
+    def visit_set_comprehension(self, o: SetComprehension) -> str:
+        return self._visit_unsupported_expr(o)
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> str:
+        return self._visit_unsupported_expr(o)
+
+    def visit_generator_expr(self, o: GeneratorExpr) -> str:
+        return self._visit_unsupported_expr(o)
 
 
 def find_defined_names(file: MypyFile) -> set[str]:
@@ -565,7 +612,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             default = "..."
             if arg_.initializer:
                 if not typename:
-                    typename = self.get_str_type_of_node(arg_.initializer, True, False)
+                    typename = self.get_str_type_of_node(arg_.initializer, can_be_incomplete=False)
                 potential_default, valid = self.get_str_default_of_node(arg_.initializer)
                 if valid and len(potential_default) <= 200:
                     default = potential_default
@@ -586,6 +633,11 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             new_args = infer_method_arg_types(
                 ctx.name, ctx.class_info.self_var, [arg.name for arg in args]
             )
+
+            if ctx.name == "__exit__":
+                self.import_tracker.add_import("types")
+                self.import_tracker.require_name("types")
+
             if new_args is not None:
                 args = new_args
 
@@ -1305,9 +1357,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         parts = fullname.split(".")
         return any(self.is_private_name(part) for part in parts)
 
-    def get_str_type_of_node(
-        self, rvalue: Expression, can_infer_optional: bool = False, can_be_any: bool = True
-    ) -> str:
+    def get_str_type_of_node(self, rvalue: Expression, *, can_be_incomplete: bool = True) -> str:
         rvalue = self.maybe_unwrap_unary_expr(rvalue)
 
         if isinstance(rvalue, IntExpr):
@@ -1327,9 +1377,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 return "complex"
         if isinstance(rvalue, NameExpr) and rvalue.name in ("True", "False"):
             return "bool"
-        if can_infer_optional and isinstance(rvalue, NameExpr) and rvalue.name == "None":
-            return f"{self.add_name('_typeshed.Incomplete')} | None"
-        if can_be_any:
+        if can_be_incomplete:
             return self.add_name("_typeshed.Incomplete")
         else:
             return ""

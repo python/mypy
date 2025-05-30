@@ -715,7 +715,7 @@ c: C
 var: P2[int, int] = c
 var2: P2[int, str] = c # E: Incompatible types in assignment (expression has type "C", variable has type "P2[int, str]") \
                        # N: Following member(s) of "C" have conflicts: \
-                       # N:     attr2: expected "Tuple[int, str]", got "Tuple[int, int]"
+                       # N:     attr2: expected "tuple[int, str]", got "tuple[int, int]"
 
 class D(Generic[T]):
     attr1: T
@@ -973,7 +973,7 @@ class B:
 t: P1
 t = A() # E: Incompatible types in assignment (expression has type "A", variable has type "P1") \
         # N: Following member(s) of "A" have conflicts: \
-        # N:     attr1: expected "Sequence[P2]", got "List[B]"
+        # N:     attr1: expected "Sequence[P2]", got "list[B]"
 [builtins fixtures/list.pyi]
 
 [case testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable]
@@ -1607,13 +1607,13 @@ def f(cls: Type[P]) -> P:
 def g() -> P:
     return P()  # E: Cannot instantiate protocol class "P"
 
-f(P)  # E: Only concrete class can be given where "Type[P]" is expected
+f(P)  # E: Only concrete class can be given where "type[P]" is expected
 f(B)  # OK
 f(C)  # OK
 x: Type[P1]
 xbad: Type[Pbad]
 f(x)  # OK
-f(xbad)  # E: Argument 1 to "f" has incompatible type "Type[Pbad]"; expected "Type[P]"
+f(xbad)  # E: Argument 1 to "f" has incompatible type "type[Pbad]"; expected "type[P]"
 
 [case testInstantiationProtocolInTypeForAliases]
 from typing import Type, Protocol
@@ -1631,7 +1631,7 @@ Alias = P
 GoodAlias = C
 Alias()  # E: Cannot instantiate protocol class "P"
 GoodAlias()
-f(Alias)  # E: Only concrete class can be given where "Type[P]" is expected
+f(Alias)  # E: Only concrete class can be given where "type[P]" is expected
 f(GoodAlias)
 
 [case testInstantiationProtocolInTypeForVariables]
@@ -1648,14 +1648,14 @@ class C:
 var: Type[P]
 var()
 if int():
-    var = P # E: Can only assign concrete classes to a variable of type "Type[P]"
+    var = P # E: Can only assign concrete classes to a variable of type "type[P]"
     var = B # OK
     var = C # OK
 
 var_old = None # type: Type[P] # Old syntax for variable annotations
 var_old()
 if int():
-    var_old = P # E: Can only assign concrete classes to a variable of type "Type[P]"
+    var_old = P # E: Can only assign concrete classes to a variable of type "type[P]"
     var_old = B # OK
     var_old = C # OK
 
@@ -1825,7 +1825,7 @@ def f(x: MyProto[int]) -> None:
 f(t)  # OK
 
 y: MyProto[str]
-y = t # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "MyProto[str]")
+y = t # E: Incompatible types in assignment (expression has type "tuple[int, str]", variable has type "MyProto[str]")
 [builtins fixtures/isinstancelist.pyi]
 
 [case testBasicNamedTupleStructuralSubtyping]
@@ -1943,7 +1943,7 @@ class Actual:
     def __call__(self, arg: int) -> str: pass
 
 def fun(cb: Callable[[T], S]) -> Tuple[T, S]: pass
-reveal_type(fun(Actual())) # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+reveal_type(fun(Actual())) # N: Revealed type is "tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 -- Standard protocol types (SupportsInt, Sized, etc.)
@@ -2439,9 +2439,9 @@ cls: Type[Union[C, E]]
 issubclass(cls, PBad)  # E: Only protocols that don't have non-method members can be used with issubclass() \
                        # N: Protocol "PBad" has non-method member(s): x
 if issubclass(cls, P):
-    reveal_type(cls)  # N: Revealed type is "Type[__main__.C]"
+    reveal_type(cls)  # N: Revealed type is "type[__main__.C]"
 else:
-    reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
+    reveal_type(cls)  # N: Revealed type is "type[__main__.E]"
 
 @runtime_checkable
 class POverload(Protocol):
@@ -2491,7 +2491,7 @@ def call(x: int, y: str) -> Tuple[int, str]: ...
 def func(caller: Caller[T, S]) -> Tuple[T, S]:
     pass
 
-reveal_type(func(call))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+reveal_type(func(call))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2531,7 +2531,7 @@ def func(caller: Caller) -> None:
     pass
 
 func(call)
-func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[T], Tuple[T, T]]"; expected "Caller" \
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[T], tuple[T, T]]"; expected "Caller" \
            # N: "Caller.__call__" has type "Callable[[Arg(int, 'x')], int]"
 [builtins fixtures/tuple.pyi]
 [out]
@@ -2711,7 +2711,7 @@ class A(Protocol[T, S]):
 
 def f() -> int: ...
 def test(func: A[T, S]) -> Tuple[T, S]: ...
-reveal_type(test(f))  # N: Revealed type is "Tuple[builtins.str, builtins.int]"
+reveal_type(test(f))  # N: Revealed type is "tuple[builtins.str, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testProtocolsAlwaysABCs]
@@ -2917,7 +2917,7 @@ class Blooper:
         reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
 
 class Gleemer:
-    flap = []  # E: Need type annotation for "flap" (hint: "flap: List[<type>] = ...")
+    flap = []  # E: Need type annotation for "flap" (hint: "flap: list[<type>] = ...")
 
     def gleem(self, x: Flapper) -> None:
         reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
@@ -3287,7 +3287,7 @@ class C:
 def foo(t: Template) -> None: ...
 foo(B())  # E: Argument 1 to "foo" has incompatible type "B"; expected "Template" \
           # N: Following member(s) of "B" have conflicts: \
-          # N:     Meta: expected "Type[__main__.Template.Meta]", got "Type[__main__.B.Meta]"
+          # N:     Meta: expected "type[__main__.Template.Meta]", got "type[__main__.B.Meta]"
 foo(C())  # OK
 
 [case testProtocolClassObjectAttribute]
@@ -3308,10 +3308,10 @@ class D:
 def test(arg: P) -> None: ...
 test(A)  # OK
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     foo: expected "int", got "str"
-test(D)  # E: Argument 1 to "test" has incompatible type "Type[D]"; expected "P" \
+test(D)  # E: Argument 1 to "test" has incompatible type "type[D]"; expected "P" \
          # N: Only class variables allowed for class object access on protocols, foo is an instance variable of "D"
 
 [case testProtocolClassObjectClassVarRejected]
@@ -3324,7 +3324,7 @@ class B:
     foo: ClassVar[int]
 
 def test(arg: P) -> None: ...
-test(B)  # E: Argument 1 to "test" has incompatible type "Type[B]"; expected "P" \
+test(B)  # E: Argument 1 to "test" has incompatible type "type[B]"; expected "P" \
          # N: ClassVar protocol member P.foo can never be matched by a class object
 
 [case testProtocolClassObjectPropertyRejected]
@@ -3344,11 +3344,11 @@ class D:
 
 def test(arg: P) -> None: ...
 # TODO: skip type mismatch diagnostics in this case.
-test(B)  # E: Argument 1 to "test" has incompatible type "Type[B]"; expected "P" \
+test(B)  # E: Argument 1 to "test" has incompatible type "type[B]"; expected "P" \
          # N: Following member(s) of "B" have conflicts: \
          # N:     foo: expected "int", got "Callable[[B], int]" \
          # N: Only class variables allowed for class object access on protocols, foo is an instance variable of "B"
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Only class variables allowed for class object access on protocols, foo is an instance variable of "C"
 test(D)  # OK
 [builtins fixtures/property.pyi]
@@ -3366,7 +3366,7 @@ class C:
 
 def test(arg: P) -> None: ...
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
          # N:         def foo(obj: Any) -> int \
@@ -3386,7 +3386,7 @@ class C:
 
 def test(arg: P) -> None: ...
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
          # N:         def foo(obj: B) -> int \
@@ -3420,7 +3420,7 @@ class C:
 
 def test(arg: P) -> None: ...
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
          # N:         @overload \
@@ -3448,7 +3448,7 @@ class C:
 
 def test(arg: P) -> None: ...
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
          # N:         def foo() -> int \
@@ -3471,7 +3471,7 @@ class C:
 
 def test(arg: P) -> None: ...
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
          # N:         def foo() -> int \
@@ -3495,12 +3495,12 @@ class C(AA[str]): ...
 
 def test(arg: P) -> None: ...
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
-         # N:         def foo(obj: Any) -> List[int] \
+         # N:         def foo(obj: Any) -> list[int] \
          # N:     Got: \
-         # N:         def foo(self: A[List[str]]) -> List[str]
+         # N:         def foo(self: A[list[str]]) -> list[str]
 [builtins fixtures/list.pyi]
 
 [case testProtocolClassObjectGenericClassMethod]
@@ -3520,12 +3520,12 @@ class C(AA[str]): ...
 
 def test(arg: P) -> None: ...
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
-         # N:         def foo() -> List[int] \
+         # N:         def foo() -> list[int] \
          # N:     Got: \
-         # N:         def foo() -> List[str]
+         # N:         def foo() -> list[str]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testProtocolClassObjectSelfTypeInstanceMethod]
@@ -3542,7 +3542,7 @@ class C:
 
 def test(arg: P) -> None: ...
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
          # N:         def [T] foo(arg: T) -> T \
@@ -3565,7 +3565,7 @@ class C:
 
 def test(arg: P) -> None: ...
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
          # N:         def foo() -> B \
@@ -3589,7 +3589,7 @@ class C:
 
 def test(arg: P) -> None: ...
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: "C" has constructor incompatible with "__call__" of "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
@@ -3611,7 +3611,7 @@ class C:
 
 def test(arg: P) -> None: ...
 test(B)  # OK
-test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(C)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: "C" has constructor incompatible with "__call__" of "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
@@ -3635,7 +3635,7 @@ class C:
     def __call__(self, el: str) -> None:
         return None
 
-p: P = C  # E: Incompatible types in assignment (expression has type "Type[C]", variable has type "P") \
+p: P = C  # E: Incompatible types in assignment (expression has type "type[C]", variable has type "P") \
           # N: Following member(s) of "C" have conflicts: \
           # N:     Expected: \
           # N:         def __call__(app: int) -> Callable[[str], None] \
@@ -3667,10 +3667,10 @@ c: Type[C]
 d: Type[D]
 test(a)  # OK
 test(b)  # OK
-test(c)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(c)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     foo: expected "int", got "str"
-test(d)  # E: Argument 1 to "test" has incompatible type "Type[D]"; expected "P" \
+test(d)  # E: Argument 1 to "test" has incompatible type "type[D]"; expected "P" \
          # N: Only class variables allowed for class object access on protocols, foo is an instance variable of "D"
 
 [case testProtocolTypeTypeInstanceMethod]
@@ -3688,7 +3688,7 @@ def test(arg: P) -> None: ...
 b: Type[B]
 c: Type[C]
 test(b)  # OK
-test(c)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(c)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
          # N:         def foo(cls: Any) -> int \
@@ -3712,7 +3712,7 @@ def test(arg: P) -> None: ...
 b: Type[B]
 c: Type[C]
 test(b)  # OK
-test(c)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(c)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
          # N:         def foo() -> int \
@@ -3736,7 +3736,7 @@ def test(arg: P) -> None: ...
 b: Type[B]
 c: Type[C]
 test(b)  # OK
-test(c)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+test(c)  # E: Argument 1 to "test" has incompatible type "type[C]"; expected "P" \
          # N: Following member(s) of "C" have conflicts: \
          # N:     Expected: \
          # N:         def [T] foo(arg: T) -> T \

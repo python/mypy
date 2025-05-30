@@ -55,7 +55,7 @@ class A:
             return A()  # E: Incompatible return value type (got "A", expected "T")
         elif A():
             return B()  # E: Incompatible return value type (got "B", expected "T")
-        reveal_type(_type(self))  # N: Revealed type is "Type[T`-1]"
+        reveal_type(_type(self))  # N: Revealed type is "type[T`-1]"
         return reveal_type(_type(self)())  # N: Revealed type is "T`-1"
 
 class B(A):
@@ -306,7 +306,7 @@ class A:
 
     @classmethod
     def new(cls: Type[T], factory: Callable[[T], T]) -> T:
-        reveal_type(cls)   # N: Revealed type is "Type[T`-1]"
+        reveal_type(cls)   # N: Revealed type is "type[T`-1]"
         reveal_type(cls())   # N: Revealed type is "T`-1"
         cls(2)  # E: Too many arguments for "A"
         return cls()
@@ -413,7 +413,7 @@ class A:
         return self
 
     @classmethod
-    def cfoo(cls: Type[T]) -> T:  # E: The erased type of self "Type[builtins.str]" is not a supertype of its class "Type[__main__.A]"
+    def cfoo(cls: Type[T]) -> T:  # E: The erased type of self "type[builtins.str]" is not a supertype of its class "type[__main__.A]"
         return cls()
 
 Q = TypeVar('Q', bound='B')
@@ -441,7 +441,7 @@ class D:
         return self
 
     @classmethod
-    def cfoo(cls: Type[Q]) -> Q:  # E: The erased type of self "Type[__main__.B]" is not a supertype of its class "Type[__main__.D]"
+    def cfoo(cls: Type[Q]) -> Q:  # E: The erased type of self "type[__main__.B]" is not a supertype of its class "type[__main__.D]"
         return cls()
 
 [builtins fixtures/classmethod.pyi]
@@ -473,10 +473,10 @@ class A:
         pass
 
 class B:
-    def __new__(cls: Type[T]) -> T:  # E: The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]"
+    def __new__(cls: Type[T]) -> T:  # E: The erased type of self "type[__main__.A]" is not a supertype of its class "type[__main__.B]"
         return cls()
 
-    def __init_subclass__(cls: Type[T]) -> None:  # E: The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]"
+    def __init_subclass__(cls: Type[T]) -> None:  # E: The erased type of self "type[__main__.A]" is not a supertype of its class "type[__main__.B]"
         pass
 
 class C:
@@ -487,19 +487,19 @@ class C:
         pass
 
 class D:
-    def __new__(cls: D) -> D:  # E: The erased type of self "__main__.D" is not a supertype of its class "Type[__main__.D]"
+    def __new__(cls: D) -> D:  # E: The erased type of self "__main__.D" is not a supertype of its class "type[__main__.D]"
         return cls
 
-    def __init_subclass__(cls: D) -> None:  # E: The erased type of self "__main__.D" is not a supertype of its class "Type[__main__.D]"
+    def __init_subclass__(cls: D) -> None:  # E: The erased type of self "__main__.D" is not a supertype of its class "type[__main__.D]"
         pass
 
 class E:
     def __new__(cls) -> E:
-        reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
+        reveal_type(cls)  # N: Revealed type is "type[__main__.E]"
         return cls()
 
     def __init_subclass__(cls) -> None:
-        reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
+        reveal_type(cls)  # N: Revealed type is "type[__main__.E]"
 
 [case testSelfTypeNew_explicit]
 from typing import TypeVar, Type
@@ -516,11 +516,11 @@ class A:
 
 class B:
     @staticmethod
-    def __new__(cls: Type[T]) -> T:  # E: The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]"
+    def __new__(cls: Type[T]) -> T:  # E: The erased type of self "type[__main__.A]" is not a supertype of its class "type[__main__.B]"
         return cls()
 
     @classmethod
-    def __init_subclass__(cls: Type[T]) -> None:  # E: The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]"
+    def __init_subclass__(cls: Type[T]) -> None:  # E: The erased type of self "type[__main__.A]" is not a supertype of its class "type[__main__.B]"
         pass
 
 class C:
@@ -534,22 +534,22 @@ class C:
 
 class D:
     @staticmethod
-    def __new__(cls: D) -> D:  # E: The erased type of self "__main__.D" is not a supertype of its class "Type[__main__.D]"
+    def __new__(cls: D) -> D:  # E: The erased type of self "__main__.D" is not a supertype of its class "type[__main__.D]"
         return cls
 
     @classmethod
-    def __init_subclass__(cls: D) -> None:  # E: The erased type of self "__main__.D" is not a supertype of its class "Type[__main__.D]"
+    def __init_subclass__(cls: D) -> None:  # E: The erased type of self "__main__.D" is not a supertype of its class "type[__main__.D]"
         pass
 
 class E:
     @staticmethod
     def __new__(cls) -> E:
-        reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
+        reveal_type(cls)  # N: Revealed type is "type[__main__.E]"
         return cls()
 
     @classmethod
     def __init_subclass__(cls) -> None:
-        reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
+        reveal_type(cls)  # N: Revealed type is "type[__main__.E]"
 
 [builtins fixtures/classmethod.pyi]
 
@@ -608,13 +608,13 @@ class B(A):
     pass
 
 reveal_type(A().g)  # N: Revealed type is "builtins.int"
-reveal_type(A().gt)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.A]"
+reveal_type(A().gt)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.A]"
 reveal_type(A().f())  # N: Revealed type is "builtins.int"
-reveal_type(A().ft())  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.A]"
+reveal_type(A().ft())  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.A]"
 reveal_type(B().g)  # N: Revealed type is "builtins.int"
-reveal_type(B().gt)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.B]"
+reveal_type(B().gt)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.B]"
 reveal_type(B().f())  # N: Revealed type is "builtins.int"
-reveal_type(B().ft())  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.B]"
+reveal_type(B().ft())  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.B]"
 
 [builtins fixtures/property.pyi]
 
@@ -645,9 +645,9 @@ reveal_type(Y.gt)  # N: Revealed type is "def (x: builtins.int) -> __main__.Y"
 reveal_type(Y.f())  # N: Revealed type is "builtins.int"
 reveal_type(Y.ft())  # N: Revealed type is "def (x: builtins.int) -> __main__.Y"
 reveal_type(X1.g)  # N: Revealed type is "builtins.int"
-reveal_type(X1.gt)  # N: Revealed type is "Type[__main__.X]"
+reveal_type(X1.gt)  # N: Revealed type is "type[__main__.X]"
 reveal_type(X1.f())  # N: Revealed type is "builtins.int"
-reveal_type(X1.ft())  # N: Revealed type is "Type[__main__.X]"
+reveal_type(X1.ft())  # N: Revealed type is "type[__main__.X]"
 
 [builtins fixtures/property.pyi]
 
@@ -703,9 +703,9 @@ class C(Generic[T]):
 class DI(C[int]): ...
 class DS(C[str]): ...
 
-DI().from_item()  # E: Invalid self argument "Type[DI]" to class attribute function "from_item" with type "Callable[[Type[C[str]]], None]"
+DI().from_item()  # E: Invalid self argument "type[DI]" to class attribute function "from_item" with type "Callable[[type[C[str]]], None]"
 DS().from_item()
-DI.from_item()  # E: Invalid self argument "Type[DI]" to attribute function "from_item" with type "Callable[[Type[C[str]]], None]"
+DI.from_item()  # E: Invalid self argument "type[DI]" to attribute function "from_item" with type "Callable[[type[C[str]]], None]"
 DS.from_item()
 [builtins fixtures/classmethod.pyi]
 
@@ -723,7 +723,7 @@ class C(Generic[T]):
 
 ci: C[int]
 cs: C[str]
-reveal_type(ci.from_item)  # N: Revealed type is "def (item: Tuple[builtins.int])"
+reveal_type(ci.from_item)  # N: Revealed type is "def (item: tuple[builtins.int])"
 reveal_type(cs.from_item)  # N: Revealed type is "def (item: builtins.str)"
 [builtins fixtures/tuple.pyi]
 
@@ -844,7 +844,7 @@ class Sub(Base[List[int]]): ...
 class BadSub(Base[int]): ...
 
 reveal_type(Sub().get_item())  # N: Revealed type is "builtins.int"
-BadSub().get_item()  # E: Invalid self argument "BadSub" to attribute function "get_item" with type "Callable[[Base[List[S]]], S]"
+BadSub().get_item()  # E: Invalid self argument "BadSub" to attribute function "get_item" with type "Callable[[Base[list[S]]], S]"
 [builtins fixtures/list.pyi]
 
 [case testMixinAllowedWithProtocol]
@@ -963,7 +963,7 @@ c: Lnk[int, float] = Lnk()
 
 d: Lnk[str, float] = b >> c  # OK
 e: Lnk[str, Tuple[int, float]] = a >> (b, c)  # OK
-f: Lnk[str, Tuple[float, int]] = a >> (c, b) # E: Unsupported operand types for >> ("Lnk[str, Tuple[str, int]]" and "Tuple[Lnk[int, float], Lnk[str, int]]")
+f: Lnk[str, Tuple[float, int]] = a >> (c, b) # E: Unsupported operand types for >> ("Lnk[str, tuple[str, int]]" and "tuple[Lnk[int, float], Lnk[str, int]]")
 [builtins fixtures/tuple.pyi]
 
 [case testSelfTypeMutuallyExclusiveRestrictions]
@@ -1019,7 +1019,7 @@ class Bad(metaclass=Meta):
     pass
 
 Good.do_x()
-Bad.do_x()  # E: Invalid self argument "Type[Bad]" to attribute function "do_x" with type "Callable[[Type[T]], T]"
+Bad.do_x()  # E: Invalid self argument "type[Bad]" to attribute function "do_x" with type "Callable[[type[T]], T]"
 
 [case testSelfTypeProtocolClassmethodMatch]
 from typing import Type, TypeVar, Protocol
@@ -1120,7 +1120,7 @@ class C(Generic[T]):
 
 class D(Generic[V]):
     def f(self) -> None:
-        reveal_type(C[Tuple[V, str]]().magic())  # N: Revealed type is "Tuple[Tuple[V`1, builtins.str], V`1, builtins.str]"
+        reveal_type(C[Tuple[V, str]]().magic())  # N: Revealed type is "tuple[tuple[V`1, builtins.str], V`1, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfTypeOnUnion]
@@ -1414,7 +1414,7 @@ class C(Generic[T]):
 
     def f(self) -> None:
         for x, y in Z(self.a, self.b):
-            reveal_type((x, y))  # N: Revealed type is "Tuple[T`1, builtins.str]"
+            reveal_type((x, y))  # N: Revealed type is "tuple[T`1, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testEnumerateReturningSelfFromIter]
@@ -1508,7 +1508,7 @@ from typing import Self, TypeVar, Tuple
 T = TypeVar("T")
 class C:
     def meth(self: T) -> Tuple[Self, T]: ...  # E: Method cannot have explicit self annotation and Self type
-reveal_type(C().meth())  # N: Revealed type is "Tuple[Never, __main__.C]"
+reveal_type(C().meth())  # N: Revealed type is "tuple[Never, __main__.C]"
 [builtins fixtures/property.pyi]
 
 [case testTypingSelfProperty]
@@ -1571,7 +1571,7 @@ Pairs = List[Tuple[T, T]]
 class C(Generic[T]):
     def pairs(self) -> Pairs[Self]: ...
 class D(C[T]): ...
-reveal_type(D[int]().pairs())  # N: Revealed type is "builtins.list[Tuple[__main__.D[builtins.int], __main__.D[builtins.int]]]"
+reveal_type(D[int]().pairs())  # N: Revealed type is "builtins.list[tuple[__main__.D[builtins.int], __main__.D[builtins.int]]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingSelfOverrideVar]
@@ -1609,11 +1609,11 @@ class C(Generic[T]):
     def __init__(self, val: T) -> None: ...
     @classmethod
     def pair(cls, val: T) -> Tuple[Self, Self]:
-        return (cls(val), C(val))  # E: Incompatible return value type (got "Tuple[Self, C[T]]", expected "Tuple[Self, Self]")
+        return (cls(val), C(val))  # E: Incompatible return value type (got "tuple[Self, C[T]]", expected "tuple[Self, Self]")
 
 class D(C[int]): pass
-reveal_type(C.pair(42))  # N: Revealed type is "Tuple[__main__.C[builtins.int], __main__.C[builtins.int]]"
-reveal_type(D.pair("no"))  # N: Revealed type is "Tuple[__main__.D, __main__.D]" \
+reveal_type(C.pair(42))  # N: Revealed type is "tuple[__main__.C[builtins.int], __main__.C[builtins.int]]"
+reveal_type(D.pair("no"))  # N: Revealed type is "tuple[__main__.D, __main__.D]" \
     # E: Argument 1 to "pair" of "C" has incompatible type "str"; expected "int"
 [builtins fixtures/classmethod.pyi]
 
@@ -1630,8 +1630,8 @@ class D(C[int]): ...
 
 c: C[int]
 d: D
-reveal_type(c.meth("test"))  # N: Revealed type is "Tuple[__main__.C[builtins.int], builtins.str, builtins.int]"
-reveal_type(d.meth("test"))  # N: Revealed type is "Tuple[__main__.D, builtins.str, builtins.int]"
+reveal_type(c.meth("test"))  # N: Revealed type is "tuple[__main__.C[builtins.int], builtins.str, builtins.int]"
+reveal_type(d.meth("test"))  # N: Revealed type is "tuple[__main__.D, builtins.str, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingSelfRecursiveInit]
@@ -1781,8 +1781,8 @@ class C:
     def bar(self) -> Self: ...
     def foo(self, x: S) -> Tuple[Self, S]: ...
 
-reveal_type(C.foo)  # N: Revealed type is "def [Self <: __main__.C, S] (self: Self`1, x: S`2) -> Tuple[Self`1, S`2]"
-reveal_type(C().foo(42))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
+reveal_type(C.foo)  # N: Revealed type is "def [Self <: __main__.C, S] (self: Self`1, x: S`2) -> tuple[Self`1, S`2]"
+reveal_type(C().foo(42))  # N: Revealed type is "tuple[__main__.C, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingSelfTypeVarClashAttr]
@@ -1795,8 +1795,8 @@ class C:
     def bar(self) -> Self: ...
     foo: Callable[[S, Self], Tuple[Self, S]]
 
-reveal_type(C().foo)  # N: Revealed type is "def [S] (S`2, __main__.C) -> Tuple[__main__.C, S`2]"
-reveal_type(C().foo(42, C()))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
+reveal_type(C().foo)  # N: Revealed type is "def [S] (S`2, __main__.C) -> tuple[__main__.C, S`2]"
+reveal_type(C().foo(42, C()))  # N: Revealed type is "tuple[__main__.C, builtins.int]"
 class This: ...
 [builtins fixtures/tuple.pyi]
 
@@ -2105,9 +2105,9 @@ class C(Tuple[int, str]):
         return reveal_type(self.y)  # N: Revealed type is "Self`0"
 
 c: C
-reveal_type(c.x)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.C]"
-reveal_type(c.y)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.C]"
-reveal_type(C.y)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.C]"
+reveal_type(c.x)  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.C]"
+reveal_type(c.y)  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.C]"
+reveal_type(C.y)  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.C]"
 C.x  # E: Access to generic instance variables via class is ambiguous
 [builtins fixtures/classmethod.pyi]
 
