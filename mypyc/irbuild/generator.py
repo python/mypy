@@ -64,10 +64,13 @@ def gen_generator_func(
     setup_generator_class(builder)
     load_env_registers(builder)
     gen_arg_defaults(builder)
-    gen = instantiate_generator_class(builder)
     if builder.fn_info.can_merge_generator_and_env_classes():
+        gen = instantiate_generator_class(builder)
         builder.fn_info._curr_env_reg = gen
-    finalize_env_class(builder)
+        finalize_env_class(builder)
+    else:
+        finalize_env_class(builder)
+        gen = instantiate_generator_class(builder)
     builder.add(Return(gen))
 
     args, _, blocks, ret_type, fn_info = builder.leave()
