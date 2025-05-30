@@ -2220,8 +2220,13 @@ class MessageBuilder:
                 exp = get_proper_type(exp)
                 got = get_proper_type(got)
                 setter_suffix = " setter type" if is_lvalue else ""
-                if not isinstance(exp, (CallableType, Overloaded)) or not isinstance(
-                    got, (CallableType, Overloaded)
+                if (
+                    not isinstance(exp, (CallableType, Overloaded))
+                    or not isinstance(got, (CallableType, Overloaded))
+                    # If expected type is a type object, it means it is a nested class.
+                    # Showing constructor signature in errors would be confusing in this case,
+                    # since we don't check the signature, only subclassing of type objects.
+                    or exp.is_type_obj()
                 ):
                     self.note(
                         "{}: expected{} {}, got {}".format(
