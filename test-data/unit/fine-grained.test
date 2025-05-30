@@ -10233,7 +10233,7 @@ class Base(Protocol):
 main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
 [case testPrettyMessageSorting]
-# flags: --python-version 3.8 --pretty
+# flags: --pretty
 import a
 
 [file a.py]
@@ -10248,14 +10248,14 @@ object + 1
 1()
 
 [out]
-b.py:1: error: Unsupported left operand type for + ("Type[object]")
+b.py:1: error: Unsupported left operand type for + ("type[object]")
     object + 1
     ^~~~~~~~~~
 a.py:1: error: Unsupported operand types for + ("int" and "str")
     1 + ''
         ^~
 ==
-b.py:1: error: Unsupported left operand type for + ("Type[object]")
+b.py:1: error: Unsupported left operand type for + ("type[object]")
     object + 1
     ^~~~~~~~~~
 b.py:2: error: "int" not callable

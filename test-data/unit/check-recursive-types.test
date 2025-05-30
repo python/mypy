@@ -54,7 +54,7 @@ reveal_type(flatten([1, [2, [3]]]))  # N: Revealed type is "builtins.list[builti
 
 class Bad: ...
 x: Nested[int] = [1, [2, [3]]]
-x = [1, [Bad()]]  # E: List item 0 has incompatible type "Bad"; expected "Union[int, Nested[int]]"
+x = [1, [Bad()]]  # E: List item 1 has incompatible type "List[Bad]"; expected "Union[int, Nested[int]]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasGenericInferenceNested]
@@ -605,7 +605,7 @@ class NT(NamedTuple, Generic[T]):
 class A: ...
 class B(A): ...
 
-nti: NT[int] = NT(key=0, value=NT(key=1, value=A()))  # E: Argument "value" to "NT" has incompatible type "A"; expected "Union[int, NT[int]]"
+nti: NT[int] = NT(key=0, value=NT(key=1, value=A()))  # E: Argument "value" to "NT" has incompatible type "NT[A]"; expected "Union[int, NT[int]]"
 reveal_type(nti)  # N: Revealed type is "Tuple[builtins.int, Union[builtins.int, ...], fallback=__main__.NT[builtins.int]]"
 
 nta: NT[A]

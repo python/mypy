@@ -341,10 +341,10 @@ a: A
 a.x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 
 [case testErrorCodeMissingTypeArg]
-# flags: --python-version 3.8 --disallow-any-generics
+# flags: --disallow-any-generics
 from typing import List, TypeVar
 x: List  # E: Missing type parameters for generic type "List"  [type-arg]
-y: list  # E: Implicit generic "Any". Use "typing.List" and specify generic parameters  [type-arg]
+y: list  # E: Missing type parameters for generic type "List"  [type-arg]
 T = TypeVar('T')
 L = List[List[T]]
 z: L  # E: Missing type parameters for generic type "L"  [type-arg]
@@ -970,22 +970,21 @@ def f(arg: int) -> int:
 def f(arg: str) -> str:
     ...
 
-[case testSliceInDict39]
-# flags: --python-version 3.9 --show-column-numbers
-from typing import Dict
-b: Dict[int, x:y]
-c: Dict[x:y]
+[case testSliceInDictBuiltin]
+# flags: --show-column-numbers
+b: dict[int, x:y]
+c: dict[x:y]
 
 [builtins fixtures/dict.pyi]
 [out]
-main:3:14: error: Invalid type comment or annotation  [valid-type]
-main:3:14: note: did you mean to use ',' instead of ':' ?
-main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
-main:4:9: error: Invalid type comment or annotation  [valid-type]
-main:4:9: note: did you mean to use ',' instead of ':' ?
+main:2:14: error: Invalid type comment or annotation  [valid-type]
+main:2:14: note: did you mean to use ',' instead of ':' ?
+main:3:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
+main:3:9: error: Invalid type comment or annotation  [valid-type]
+main:3:9: note: did you mean to use ',' instead of ':' ?
 
-[case testSliceInDict38]
-# flags: --python-version 3.8 --show-column-numbers
+[case testSliceInDictTyping]
+# flags: --show-column-numbers
 from typing import Dict
 b: Dict[int, x:y]
 c: Dict[x:y]

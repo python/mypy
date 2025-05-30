@@ -515,9 +515,8 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
-# flags: --python-version 3.8
 import types
-type[int] # this was crashing, see #2302 (comment)  # E: The type "Type[type]" is not generic and not indexable
+type[int]
 [builtins fixtures/tuple.pyi]
 
 
@@ -1130,11 +1129,10 @@ Bad = A[int] # type: ignore
 reveal_type(Bad) # N: Revealed type is "Any"
 [out]
 
-[case testNoSubscriptionOfBuiltinAliases]
-# flags: --python-version 3.8
+[case testSubscriptionOfBuiltinAliases]
 from typing import List, TypeVar
 
-list[int]() # E: "list" is not subscriptable
+list[int]()
 
 ListAlias = List
 def fun() -> ListAlias[int]:
@@ -1143,11 +1141,10 @@ def fun() -> ListAlias[int]:
 reveal_type(fun())  # N: Revealed type is "builtins.list[builtins.int]"
 
 BuiltinAlias = list
-BuiltinAlias[int]() # E: "list" is not subscriptable
+BuiltinAlias[int]()
 
-#check that error is reported only once, and type is still stored
 T = TypeVar('T')
-BadGenList = list[T] # E: "list" is not subscriptable
+BadGenList = list[T]
 
 reveal_type(BadGenList[int]()) # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(BadGenList()) # N: Revealed type is "builtins.list[Any]"
@@ -3563,3 +3560,56 @@ def foo(x: T):
     reveal_type(C)  # N: Revealed type is "Overload(def [T, S] (x: builtins.int, y: S`-1) -> __main__.C[__main__.Int[S`-1]], def [T, S] (x: builtins.str, y: S`-1) -> __main__.C[__main__.Str[S`-1]])"
     reveal_type(C(0, x))  # N: Revealed type is "__main__.C[__main__.Int[T`-1]]"
     reveal_type(C("yes", x))  # N: Revealed type is "__main__.C[__main__.Str[T`-1]]"
+
+[case testDeterminismFromJoinOrderingInSolver]
+# Used to fail non-deterministically
+# https://github.com/python/mypy/issues/19121
+from __future__ import annotations
+from typing import Generic, Iterable, Iterator, Self, TypeVar
+
+_T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
+_T3 = TypeVar("_T3")
+_T_co = TypeVar("_T_co", covariant=True)
+
+class Base(Iterable[_T1]):
+    def __iter__(self) -> Iterator[_T1]: ...
+class A(Base[_T1]): ...
+class B(Base[_T1]): ...
+class C(Base[_T1]): ...
+class D(Base[_T1]): ...
+class E(Base[_T1]): ...
+
+class zip2(Generic[_T_co]):
+    def __new__(
+        cls,
+        iter1: Iterable[_T1],
+        iter2: Iterable[_T2],
+        iter3: Iterable[_T3],
+    ) -> zip2[tuple[_T1, _T2, _T3]]: ...
+    def __iter__(self) -> Self: ...
+    def __next__(self) -> _T_co: ...
+
+def draw(
+    colors1: A[str] | B[str] | C[int] | D[int | str],
+    colors2: A[str] | B[str] | C[int] | D[int | str],
+    colors3: A[str] | B[str] | C[int] | D[int | str],
+) -> None:
+    for c1, c2, c3 in zip2(colors1, colors2, colors3):
+        reveal_type(c1)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(c2)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(c3)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+def takes_int_str_none(x: int | str | None) -> None: ...
+
+def draw_none(
+    colors1: A[str] | B[str] | C[int] | D[None],
+    colors2: A[str] | B[str] | C[int] | D[None],
+    colors3: A[str] | B[str] | C[int] | D[None],
+) -> None:
+    for c1, c2, c3 in zip2(colors1, colors2, colors3):
+        # TODO: can't do reveal type because the union order is not deterministic
+        takes_int_str_none(c1)
+        takes_int_str_none(c2)
+        takes_int_str_none(c3)
+[builtins fixtures/tuple.pyi]

@@ -798,7 +798,7 @@ def baz(x: int) -> int:
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableFlagIgnoresSemanticAnalysisUnreachable]
-# flags: --warn-unreachable --python-version 3.8 --platform win32 --always-false FOOBAR
+# flags: --warn-unreachable --python-version 3.9 --platform win32 --always-false FOOBAR
 import sys
 from typing import TYPE_CHECKING
 
@@ -828,7 +828,7 @@ if sys.version_info == (2, 7):
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
-if sys.version_info == (3, 8):
+if sys.version_info == (3, 9):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(x)

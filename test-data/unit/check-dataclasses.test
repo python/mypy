@@ -1911,7 +1911,6 @@ SecondClass().SECOND_CONST = 42  # E: Cannot assign to final attribute "SECOND_C
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassFieldsProtocol]
-# flags: --python-version 3.9
 from dataclasses import dataclass
 from typing import Any, Protocol
 

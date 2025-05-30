@@ -1,5 +1,4 @@
 [case testInferTupleType]
-# flags: --python-version 3.9
 from typing import TypeVar, Generic, Type
 from abc import abstractmethod
 import types  # Explicitly bring in stubs for 'types'

@@ -1827,7 +1827,6 @@ def Arg(x, y): pass
 F = Callable[[Arg(int, 'x')], int]  # E: Invalid argument constructor "__main__.Arg"
 
 [case testCallableParsingFromExpr]
-# flags: --python-version 3.9
 from typing import Callable, List
 from mypy_extensions import Arg, VarArg, KwArg
 import mypy_extensions
@@ -1858,13 +1857,6 @@ Q = Callable[[Arg(int, type=int)], int]  # E: Invalid type alias: expression is 
 R = Callable[[Arg(int, 'x', name='y')], int]  # E: Invalid type alias: expression is not a valid type \
                                               # E: Value of type "int" is not indexable \
                                               # E: "Arg" gets multiple values for keyword argument "name"
-
-
-
-
-
-
-
 [builtins fixtures/dict.pyi]
 
 [case testCallableParsing]

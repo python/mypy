@@ -1064,6 +1064,10 @@ class JoinSuite(Suite):
             self.tuple(UnpackType(Instance(self.fx.std_tuplei, [self.fx.a])), self.fx.a),
         )
 
+    def test_join_type_type_type_var(self) -> None:
+        self.assert_join(self.fx.type_a, self.fx.t, self.fx.o)
+        self.assert_join(self.fx.t, self.fx.type_a, self.fx.o)
+
     # There are additional test cases in check-inference.test.
 
     # TODO: Function types + varargs and default args.

@@ -593,12 +593,58 @@ of the above sections.
     This flag causes mypy to suppress errors caused by not being able to fully
     infer the types of global and class variables.
 
-.. option:: --allow-redefinition
+.. option:: --allow-redefinition-new
 
     By default, mypy won't allow a variable to be redefined with an
-    unrelated type. This flag enables redefinition of a variable with an
+    unrelated type. This *experimental* flag enables the redefinition of
+    unannotated variables with an arbitrary type. You will also need to enable
+    :option:`--local-partial-types <mypy --local-partial-types>`.
+    Example:
+
+    .. code-block:: python
+
+        def maybe_convert(n: int, b: bool) -> int | str:
+            if b:
+                x = str(n)  # Assign "str"
+            else:
+                x = n       # Assign "int"
+            # Type of "x" is "int | str" here.
+            return x
+
+    Without the new flag, mypy only supports inferring optional types
+    (``X | None``) from multiple assignments. With this option enabled,
+    mypy can infer arbitrary union types.
+
+    This also enables an unannotated variable to have different types in different
+    code locations:
+
+    .. code-block:: python
+
+        if check():
+            for x in range(n):
+                # Type of "x" is "int" here.
+                ...
+        else:
+            for x in ['a', 'b']:
+                # Type of "x" is "str" here.
+                ...
+
+    Note: We are planning to turn this flag on by default in a future mypy
+    release, along with :option:`--local-partial-types <mypy --local-partial-types>`.
+    The feature is still experimental, and the semantics may still change.
+
+.. option:: --allow-redefinition
+
+    This is an older variant of
+    :option:`--allow-redefinition-new <mypy --allow-redefinition-new>`.
+    This flag enables redefinition of a variable with an
     arbitrary type *in some contexts*: only redefinitions within the
     same block and nesting depth as the original definition are allowed.
+
+    We have no plans to remove this flag, but we expect that
+    :option:`--allow-redefinition-new <mypy --allow-redefinition-new>`
+    will replace this flag for new use cases eventually.
+
     Example where this can be useful:
 
     .. code-block:: python

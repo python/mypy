@@ -93,6 +93,9 @@ if sys.version_info >= (3, 12):
 if sys.version_info >= (3, 13):
     __all__ += ["TokenError", "open"]
 
+if sys.version_info >= (3, 14):
+    __all__ += ["TSTRING_START", "TSTRING_MIDDLE", "TSTRING_END"]
+
 cookie_re: Pattern[str]
 blank_re: Pattern[bytes]
 
@@ -125,7 +128,7 @@ class Untokenizer:
     prev_col: int
     encoding: str | None
     def add_whitespace(self, start: _Position) -> None: ...
-    if sys.version_info >= (3, 13):
+    if sys.version_info >= (3, 12):
         def add_backslash_continuation(self, start: _Position) -> None: ...
 
     def untokenize(self, iterable: Iterable[_Token]) -> str: ...
