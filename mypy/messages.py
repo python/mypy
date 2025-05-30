@@ -1784,7 +1784,7 @@ class MessageBuilder:
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail(
-            f'Cannot instantiate type "Type[{format_type_bare(item, self.options)}]"', context
+            f'Cannot instantiate type "type[{format_type_bare(item, self.options)}]"', context
         )
 
     def redundant_cast(self, typ: Type, context: Context) -> None:

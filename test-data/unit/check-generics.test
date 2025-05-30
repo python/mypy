@@ -1019,7 +1019,7 @@ class C:
     if int():
         a = B
     if int():
-        b = int  # E: Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
+        b = int  # E: Cannot assign multiple types to name "b" without an explicit "type[...]" annotation
     if int():
         c = int
     def f(self, x: a) -> None: pass  # E: Variable "__main__.C.a" is not valid as a type \

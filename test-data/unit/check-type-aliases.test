@@ -73,7 +73,7 @@ U = Union[int, str]
 [case testProhibitReassigningAliases]
 A = float
 if int():
-    A = int  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
+    A = int  # E: Cannot assign multiple types to name "A" without an explicit "type[...]" annotation
 [out]
 
 [case testProhibitReassigningSubscriptedAliases]
@@ -81,7 +81,7 @@ from typing import Callable
 A = Callable[[], float]
 if int():
     A = Callable[[], int] \
-      # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
+      # E: Cannot assign multiple types to name "A" without an explicit "type[...]" annotation \
       # E: Value of type "int" is not indexable
       # the second error is because of `Callable = 0` in lib-stub/typing.pyi
 [builtins fixtures/list.pyi]
@@ -93,7 +93,7 @@ T = TypeVar('T')
 
 A = Tuple[T, T]
 if int():
-    A = Union[T, int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
+    A = Union[T, int]  # E: Cannot assign multiple types to name "A" without an explicit "type[...]" annotation
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -926,12 +926,12 @@ class Child(Parent): pass
 p = Parent()
 c = Child()
 
-NormalImplicit = 4   # E: Cannot assign multiple types to name "NormalImplicit" without an explicit "Type[...]" annotation \
+NormalImplicit = 4   # E: Cannot assign multiple types to name "NormalImplicit" without an explicit "type[...]" annotation \
                      # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
-NormalExplicit = 4   # E: Cannot assign multiple types to name "NormalExplicit" without an explicit "Type[...]" annotation \
+NormalExplicit = 4   # E: Cannot assign multiple types to name "NormalExplicit" without an explicit "type[...]" annotation \
                      # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
-SpecialImplicit = 4  # E: Cannot assign multiple types to name "SpecialImplicit" without an explicit "Type[...]" annotation
-SpecialExplicit = 4  # E: Cannot assign multiple types to name "SpecialExplicit" without an explicit "Type[...]" annotation
+SpecialImplicit = 4  # E: Cannot assign multiple types to name "SpecialImplicit" without an explicit "type[...]" annotation
+SpecialExplicit = 4  # E: Cannot assign multiple types to name "SpecialExplicit" without an explicit "type[...]" annotation
 
 Parent.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
 Parent.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "type[Foo]")
