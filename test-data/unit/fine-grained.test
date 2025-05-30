@@ -10436,14 +10436,14 @@ D = "y"
 C = str
 D = int
 [out]
-a.py:4: note: Revealed type is "Union[builtins.int, builtins.str]"
+a.py:4: note: Revealed type is "builtins.int | builtins.str"
 ==
 a.py:2: error: Unsupported left operand type for | ("str")
 a.py:3: error: Variable "a.A" is not valid as a type
 a.py:3: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 a.py:4: note: Revealed type is "A?"
 ==
-a.py:4: note: Revealed type is "Union[builtins.str, builtins.int]"
+a.py:4: note: Revealed type is "builtins.str | builtins.int"
 
 [case testUnionOfSimilarCallablesCrash]
 import b
