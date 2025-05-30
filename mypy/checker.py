@@ -600,7 +600,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # on without bound otherwise)
             widened_old = len(self.widened_vars)
 
-            # one set of `unreachable` and `redundant-expr`errors per iteration step:
+            # one set of `unreachable`, `redundant-expr`, and `redundant-casts` errors
+            # per iteration step:
             uselessness_errors = []
             # one set of unreachable line numbers per iteration step:
             unreachable_lines = []
@@ -640,8 +641,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if iter == 20:
                     raise RuntimeError("Too many iterations when checking a loop")
 
-            # Report only those `unreachable` and `redundant-expr` errors that could not
-            # be ruled out in any iteration step:
+            # Report only those `unreachable`, `redundant-expr`, and `redundant-casts`
+            # errors that could not be ruled out in any iteration step:
             persistent_uselessness_errors = set()
             for candidate in set(itertools.chain(*uselessness_errors)):
                 if all(

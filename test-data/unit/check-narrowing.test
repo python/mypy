@@ -2382,6 +2382,28 @@ while True:
 
 [builtins fixtures/bool.pyi]
 
+[case testAvoidFalseRedundantCastInLoops]
+# flags: --warn-redundant-casts
+
+from typing import Callable, cast, Union
+
+ProcessorReturnValue = Union[str, int]
+Processor = Callable[[str], ProcessorReturnValue]
+
+def main_cast(p: Processor) -> None:
+    ed: ProcessorReturnValue
+    ed = cast(str, ...)
+    while True:
+        ed = p(cast(str, ed))
+
+def main_no_cast(p: Processor) -> None:
+    ed: ProcessorReturnValue
+    ed = cast(str, ...)
+    while True:
+        ed = p(ed)  # E: Argument 1 has incompatible type "Union[str, int]"; expected "str"
+
+[builtins fixtures/bool.pyi]
+
 [case testAvoidFalseUnreachableInLoop1]
 # flags: --warn-unreachable --python-version 3.11
 

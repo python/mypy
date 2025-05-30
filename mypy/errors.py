@@ -222,8 +222,8 @@ class ErrorWatcher:
 
 class LoopErrorWatcher(ErrorWatcher):
     """Error watcher that filters and separately collects `unreachable` errors,
-    `redundant-expr` errors, and revealed types when analysing loops iteratively
-    to help avoid making too-hasty reports."""
+    `redundant-expr` and `redundant-casts` errors, and revealed types when analysing
+    loops iteratively to help avoid making too-hasty reports."""
 
     # Meaning of the tuple items: ErrorCode, message, line, column, end_line, end_column:
     uselessness_errors: set[tuple[ErrorCode, str, int, int, int, int]]
@@ -254,7 +254,7 @@ class LoopErrorWatcher(ErrorWatcher):
 
     def on_error(self, file: str, info: ErrorInfo) -> bool:
 
-        if info.code in (codes.UNREACHABLE, codes.REDUNDANT_EXPR):
+        if info.code in (codes.UNREACHABLE, codes.REDUNDANT_EXPR, codes.REDUNDANT_CAST):
             self.uselessness_errors.add(
                 (info.code, info.message, info.line, info.column, info.end_line, info.end_column)
             )
