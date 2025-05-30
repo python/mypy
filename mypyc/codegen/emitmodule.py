@@ -246,8 +246,8 @@ def compile_scc_to_ir(
             # Insert refcount handling.
             insert_ref_count_opcodes(fn)
 
-            #if fn in env_user_functions:
-            #    insert_spills(fn, env_user_functions[fn])
+            if fn in env_user_functions:
+                insert_spills(fn, env_user_functions[fn])
 
             # Switch to lower abstraction level IR.
             lower_ir(fn, compiler_options)
