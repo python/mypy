@@ -213,8 +213,8 @@ functools.partial(foo, 1, "a", "b", "c", d="a")  # E: Argument 3 to "foo" has in
 def bar(*a: bytes, **k: int):
     p1("a", 2, 3, 4, d="a", **k)
     p1("a", d="a", **k)
-    p1("a", **k)  # E: Argument 2 to "foo" has incompatible type "**Dict[str, int]"; expected "str"
-    p1(**k)  # E: Argument 1 to "foo" has incompatible type "**Dict[str, int]"; expected "str"
+    p1("a", **k)  # E: Argument 2 to "foo" has incompatible type "**dict[str, int]"; expected "str"
+    p1(**k)  # E: Argument 1 to "foo" has incompatible type "**dict[str, int]"; expected "str"
     p1(*a)  # E: Expected iterable as variadic argument
 
 
@@ -382,7 +382,7 @@ T = TypeVar("T")
 def generic(string: str, integer: int, resulting_type: Type[T]) -> T: ...
 
 p: partial[str] = partial(generic, resulting_type=str)
-q: partial[bool] = partial(generic, resulting_type=str)  # E: Argument "resulting_type" to "generic" has incompatible type "Type[str]"; expected "Type[bool]"
+q: partial[bool] = partial(generic, resulting_type=str)  # E: Argument "resulting_type" to "generic" has incompatible type "type[str]"; expected "type[bool]"
 
 pc: Callable[..., str] = partial(generic, resulting_type=str)
 qc: Callable[..., bool] = partial(generic, resulting_type=str)  # E: Incompatible types in assignment (expression has type "partial[str]", variable has type "Callable[..., bool]") \
@@ -531,7 +531,7 @@ reveal_type(first_kw(args=[1]))  # N: Revealed type is "builtins.int"
 # TODO: this is indeed invalid, but the error is incomprehensible.
 first_kw([1])  # E: Too many positional arguments for "get" \
                # E: Too few arguments for "get" \
-               # E: Argument 1 to "get" has incompatible type "List[int]"; expected "int"
+               # E: Argument 1 to "get" has incompatible type "list[int]"; expected "int"
 [builtins fixtures/list.pyi]
 
 [case testFunctoolsPartialHigherOrder]

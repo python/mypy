@@ -423,7 +423,7 @@ import typing
 __all__ = [1, 2, 3]
 [builtins fixtures/module_all.pyi]
 [out]
-main:2: error: Type of __all__ must be "Sequence[str]", not "List[int]"
+main:2: error: Type of __all__ must be "Sequence[str]", not "list[int]"
 
 [case testUnderscoreExportedValuesInImportAll]
 import typing
@@ -666,9 +666,9 @@ import mod
 X: Type[mod.A]
 Y: Type[mod.B]
 from mod import B as X
-from mod import A as Y  # E: Incompatible import of "Y" (imported name has type "Type[A]", local name has type "Type[B]")
+from mod import A as Y  # E: Incompatible import of "Y" (imported name has type "type[A]", local name has type "type[B]")
 
-import mod as X  # E: Incompatible import of "X" (imported name has type "object", local name has type "Type[A]")
+import mod as X  # E: Incompatible import of "X" (imported name has type "object", local name has type "type[A]")
 
 [file mod.py]
 class A: ...
@@ -1049,7 +1049,7 @@ class z: pass
 [out]
 main:2: error: Incompatible import of "x" (imported name has type "str", local name has type "int")
 main:2: error: Incompatible import of "y" (imported name has type "Callable[[], str]", local name has type "Callable[[], int]")
-main:2: error: Incompatible import of "z" (imported name has type "Type[b.z]", local name has type "Type[a.z]")
+main:2: error: Incompatible import of "z" (imported name has type "type[b.z]", local name has type "type[a.z]")
 
 -- Misc
 

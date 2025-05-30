@@ -1118,13 +1118,13 @@ def f1() -> None:
     reveal_type(x) # N: Revealed type is "builtins.int"
 
 def f2() -> None:
-    x, *y = t() # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")
+    x, *y = t() # E: Need type annotation for "y" (hint: "y: list[<type>] = ...")
 
 def f3() -> None:
     x, _ = 1, []
 
 def f4() -> None:
-    a, b = 1, [] # E: Need type annotation for "b" (hint: "b: List[<type>] = ...")
+    a, b = 1, [] # E: Need type annotation for "b" (hint: "b: list[<type>] = ...")
 [builtins fixtures/tuple.pyi]
 
 [case testNewRedefineUseInferredTypedDictTypeForContext]

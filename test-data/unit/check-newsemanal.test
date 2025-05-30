@@ -863,8 +863,8 @@ In = NamedTuple('In', [('s', str), ('t', Other)])
 Out = NamedTuple('Out', [('x', In), ('y', Other)])
 o: Out
 i: In
-reveal_type(o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
-reveal_type(o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.Other, fallback=__main__.In]"
+reveal_type(o)  # N: Revealed type is "tuple[tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
+reveal_type(o.x)  # N: Revealed type is "tuple[builtins.str, __main__.Other, fallback=__main__.In]"
 reveal_type(o.y)  # N: Revealed type is "__main__.Other"
 reveal_type(o.x.t)  # N: Revealed type is "__main__.Other"
 reveal_type(i.t)  # N: Revealed type is "__main__.Other"
@@ -880,8 +880,8 @@ class Out(NamedTuple):
     x: In
     y: Other
 
-reveal_type(o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
-reveal_type(o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.Other, fallback=__main__.In]"
+reveal_type(o)  # N: Revealed type is "tuple[tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
+reveal_type(o.x)  # N: Revealed type is "tuple[builtins.str, __main__.Other, fallback=__main__.In]"
 reveal_type(o.y)  # N: Revealed type is "__main__.Other"
 reveal_type(o.x.t)  # N: Revealed type is "__main__.Other"
 reveal_type(i.t)  # N: Revealed type is "__main__.Other"
@@ -898,8 +898,8 @@ from typing import NamedTuple
 o: C.Out
 i: C.In
 
-reveal_type(o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In], __main__.C.Other, fallback=__main__.C.Out]"
-reveal_type(o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In]"
+reveal_type(o)  # N: Revealed type is "tuple[tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In], __main__.C.Other, fallback=__main__.C.Out]"
+reveal_type(o.x)  # N: Revealed type is "tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In]"
 reveal_type(o.y)  # N: Revealed type is "__main__.C.Other"
 reveal_type(o.x.t)  # N: Revealed type is "__main__.C.Other"
 reveal_type(i.t)  # N: Revealed type is "__main__.C.Other"
@@ -917,8 +917,8 @@ from typing import NamedTuple
 o: C.Out
 i: C.In
 
-reveal_type(o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In], __main__.C.Other, fallback=__main__.C.Out]"
-reveal_type(o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In]"
+reveal_type(o)  # N: Revealed type is "tuple[tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In], __main__.C.Other, fallback=__main__.C.Out]"
+reveal_type(o.x)  # N: Revealed type is "tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In]"
 reveal_type(o.y)  # N: Revealed type is "__main__.C.Other"
 reveal_type(o.x.t)  # N: Revealed type is "__main__.C.Other"
 reveal_type(i.t)  # N: Revealed type is "__main__.C.Other"
@@ -944,8 +944,8 @@ class C:
         self.o: Out
 
 c = C()
-reveal_type(c.o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other@7, fallback=__main__.C.In@6], __main__.Other@7, fallback=__main__.C.Out@5]"
-reveal_type(c.o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.Other@7, fallback=__main__.C.In@6]"
+reveal_type(c.o)  # N: Revealed type is "tuple[tuple[builtins.str, __main__.Other@7, fallback=__main__.C.In@6], __main__.Other@7, fallback=__main__.C.Out@5]"
+reveal_type(c.o.x)  # N: Revealed type is "tuple[builtins.str, __main__.Other@7, fallback=__main__.C.In@6]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleClassNestedMethod]
@@ -964,16 +964,16 @@ class C:
         self.o: Out
 
 c = C()
-reveal_type(c.o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other@12, fallback=__main__.C.In@9], __main__.Other@12, fallback=__main__.C.Out@5]"
-reveal_type(c.o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.Other@12, fallback=__main__.C.In@9]"
-reveal_type(c.o.method())  # N: Revealed type is "Tuple[builtins.str, __main__.Other@12, fallback=__main__.C.In@9]"
+reveal_type(c.o)  # N: Revealed type is "tuple[tuple[builtins.str, __main__.Other@12, fallback=__main__.C.In@9], __main__.Other@12, fallback=__main__.C.Out@5]"
+reveal_type(c.o.x)  # N: Revealed type is "tuple[builtins.str, __main__.Other@12, fallback=__main__.C.In@9]"
+reveal_type(c.o.method())  # N: Revealed type is "tuple[builtins.str, __main__.Other@12, fallback=__main__.C.In@9]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleClassForwardMethod]
 from typing import NamedTuple
 
 n: NT
-reveal_type(n.get_other())  # N: Revealed type is "Tuple[builtins.str, fallback=__main__.Other]"
+reveal_type(n.get_other())  # N: Revealed type is "tuple[builtins.str, fallback=__main__.Other]"
 reveal_type(n.get_other().s)  # N: Revealed type is "builtins.str"
 
 class NT(NamedTuple):
@@ -995,8 +995,8 @@ class SubO(Out): pass
 
 o: SubO
 
-reveal_type(SubO._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any]) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]"
-reveal_type(o._replace(y=Other()))  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]"
+reveal_type(SubO._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any]) -> tuple[tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]"
+reveal_type(o._replace(y=Other()))  # N: Revealed type is "tuple[tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleBaseClass]
@@ -1009,10 +1009,10 @@ class Out(NamedTuple('Out', [('x', In), ('y', Other)])):
     pass
 
 o: Out
-reveal_type(o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
-reveal_type(o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.Other, fallback=__main__.In]"
+reveal_type(o)  # N: Revealed type is "tuple[tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
+reveal_type(o.x)  # N: Revealed type is "tuple[builtins.str, __main__.Other, fallback=__main__.In]"
 reveal_type(o.x.t)  # N: Revealed type is "__main__.Other"
-reveal_type(Out._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any]) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
+reveal_type(Out._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any]) -> tuple[tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerIncompleteRefShadowsBuiltin1]
@@ -1078,7 +1078,7 @@ from b import C
 import a
 [file a.py]
 C = 1
-from b import C  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+from b import C  # E: Incompatible import of "C" (imported name has type "type[C]", local name has type "int")
 
 [file b.py]
 import a
@@ -1092,7 +1092,7 @@ import a
 C = 1
 MYPY = False
 if MYPY:  # Tweak processing order
-    from b import *  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+    from b import *  # E: Incompatible import of "C" (imported name has type "type[C]", local name has type "int")
 
 [file b.py]
 import a
@@ -1104,7 +1104,7 @@ class B: ...
 import a
 [file a.py]
 C = 1
-from b import *  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
+from b import *  # E: Incompatible import of "C" (imported name has type "type[C]", local name has type "int")
 
 [file b.py]
 MYPY = False
@@ -1432,7 +1432,7 @@ from a import x
 
 class B(List[B], Generic[T]): pass
 T = TypeVar('T')
-reveal_type(x)  # N: Revealed type is "b.B[Tuple[builtins.int, builtins.int]]"
+reveal_type(x)  # N: Revealed type is "b.B[tuple[builtins.int, builtins.int]]"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyClassInGeneric]
@@ -1449,7 +1449,7 @@ from a import x
 
 class B(List[B]): pass
 
-reveal_type(x)  # N: Revealed type is "Tuple[b.B, b.B]"
+reveal_type(x)  # N: Revealed type is "tuple[b.B, b.B]"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyClassDoubleGeneric]
@@ -1570,7 +1570,7 @@ import a
 [file a.py]
 from b import B
 def func() -> B: ...
-reveal_type(func())  # N: Revealed type is "builtins.list[Tuple[b.C, b.C]]"
+reveal_type(func())  # N: Revealed type is "builtins.list[tuple[b.C, b.C]]"
 
 [file b.py]
 from typing import List, Tuple
@@ -1597,7 +1597,7 @@ abl: List[Tuple[A, B]]
 abd = {a: b for a, b in abl}
 x: Dict[B, A] = {a: b for a, b in abl} # E: Key expression in dictionary comprehension has incompatible type "A"; expected type "B" \
   # E: Value expression in dictionary comprehension has incompatible type "B"; expected type "A"
-y: A = {a: b for a, b in abl} # E: Incompatible types in assignment (expression has type "Dict[A, B]", variable has type "A")
+y: A = {a: b for a, b in abl} # E: Incompatible types in assignment (expression has type "dict[A, B]", variable has type "A")
 class A: pass
 class B: pass
 [builtins fixtures/dict.pyi]
@@ -1840,7 +1840,7 @@ x.extend(y)
 import b
 [file a.py]
 from b import x
-reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 [file b.py]
 import a
 x = (1, 2)
@@ -1850,7 +1850,7 @@ x = (1, 2)
 import a
 [file a.py]
 from b import x
-reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 [file b.py]
 import a
 x = (1, 2)
@@ -1974,7 +1974,7 @@ S = TypeVar('S', bound='Tuple[G[A], ...]')
 
 class GG(Generic[S]): pass
 
-g: GG[Tuple[G[B], G[C]]] # E: Type argument "Tuple[G[B], G[C]]" of "GG" must be a subtype of "Tuple[G[A], ...]" \
+g: GG[Tuple[G[B], G[C]]] # E: Type argument "tuple[G[B], G[C]]" of "GG" must be a subtype of "tuple[G[A], ...]" \
                          # E: Type argument "B" of "G" must be a subtype of "A" \
                          # E: Type argument "C" of "G" must be a subtype of "A"
 
@@ -2176,7 +2176,7 @@ def test() -> None:
     reveal_type(y.x)  # N: Revealed type is "builtins.int"
     reveal_type(y[0])  # N: Revealed type is "builtins.int"
     x: A
-    reveal_type(x)  # N: Revealed type is "__main__.G@7[Tuple[builtins.int, fallback=__main__.C@5]]"
+    reveal_type(x)  # N: Revealed type is "__main__.G@7[tuple[builtins.int, fallback=__main__.C@5]]"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerDuplicateTypeVar]
@@ -2314,7 +2314,7 @@ from typing import cast, NamedTuple
 
 x = cast('C', None)
 
-reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+reveal_type(x)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.C]"
 reveal_type(x.x)  # N: Revealed type is "builtins.int"
 
 C = NamedTuple('C', [('x', int)])
@@ -2746,7 +2746,7 @@ class C(Generic[T]):
     pass
 
 C = C[int]  # E: Cannot assign to a type \
-            # E: Incompatible types in assignment (expression has type "Type[C[int]]", variable has type "Type[C[T]]")
+            # E: Incompatible types in assignment (expression has type "type[C[int]]", variable has type "type[C[T]]")
 x: C
 reveal_type(x) # N: Revealed type is "__main__.C[Any]"
 

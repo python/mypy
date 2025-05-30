@@ -109,7 +109,7 @@ b: X  # E: Variable "__main__.X" is not valid as a type \
 from __future__ import annotations
 from typing import List
 T = int | str  # E: Invalid type alias: expression is not a valid type \
-               # E: Unsupported left operand type for | ("Type[int]")
+               # E: Unsupported left operand type for | ("type[int]")
 class C(List[int | str]):  # E: Type expected within [...] \
                            # E: Invalid base class "List"
     pass
@@ -181,7 +181,7 @@ def f(x: int | str | C) -> None:
 
 def g(x: int | str | tuple[int, str] | C) -> None:
     if isinstance(x, int | str | tuple):
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, Tuple[builtins.int, builtins.str]]"
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, tuple[builtins.int, builtins.str]]"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.C"
 [builtins fixtures/isinstance_python3_10.pyi]

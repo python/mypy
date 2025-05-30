@@ -454,7 +454,7 @@ def g(x: object) -> None: ...
 def test(x: List[Any]) -> None:
     if not(f(x) or isinstance(x, A)):
         return
-    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "List[Any]" and "__main__.A">]"
+    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "builtins.list[Any]" and "__main__.A">]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsMultipleCondition]
@@ -640,7 +640,7 @@ def is_two_element_tuple(val: Tuple[_T, ...]) -> TypeIs[Tuple[_T, _T]]:
 def func(names: Tuple[str, ...]):
     reveal_type(names)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
     if is_two_element_tuple(names):
-        reveal_type(names)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+        reveal_type(names)  # N: Revealed type is "tuple[builtins.str, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsErroneousDefinitionFails]
@@ -761,7 +761,7 @@ def f(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of inpu
 
 T = TypeVar('T')
 
-def g(x: List[T]) -> TypeIs[Sequence[T]]:  # E: Narrowed type "Sequence[T]" is not a subtype of input type "List[T]"
+def g(x: List[T]) -> TypeIs[Sequence[T]]:  # E: Narrowed type "Sequence[T]" is not a subtype of input type "list[T]"
     pass
 
 [builtins fixtures/tuple.pyi]

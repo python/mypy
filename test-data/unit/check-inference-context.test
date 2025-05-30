@@ -372,7 +372,7 @@ ao: List[object]
 a: A
 def f(): a, aa, ao # Prevent redefinition
 
-a = [] # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "A")
+a = [] # E: Incompatible types in assignment (expression has type "list[Never]", variable has type "A")
 
 aa = []
 ao = []
@@ -424,7 +424,7 @@ class B(A): pass
 [case testLocalVariableInferenceFromEmptyList]
 import typing
 def f() -> None:
-    a = []     # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
+    a = []     # E: Need type annotation for "a" (hint: "a: list[<type>] = ...")
     b = [None]
     c = [B()]
     if int():
@@ -437,14 +437,14 @@ class B: pass
 [case testNestedListExpressions]
 # flags: --no-strict-optional
 from typing import List
-aao = None # type: List[List[object]]
-aab = None # type: List[List[B]]
-ab = None # type: List[B]
+aao = None # type: list[list[object]]
+aab = None # type: list[list[B]]
+ab = None # type: list[B]
 b = None # type: B
 o = None # type: object
 def f(): aao, aab # Prevent redefinition
 
-aao = [[o], ab] # E: List item 1 has incompatible type "List[B]"; expected "List[object]"
+aao = [[o], ab] # E: List item 1 has incompatible type "list[B]"; expected "list[object]"
 aab = [[], [o]] # E: List item 0 has incompatible type "object"; expected "B"
 
 aao = [[None], [b], [], [o]]
@@ -733,7 +733,7 @@ class B: pass
 
 m = map(g, [A()])
 b = m # type: List[B]
-a = m # type: List[A] # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
+a = m # type: List[A] # E: Incompatible types in assignment (expression has type "list[B]", variable has type "list[A]")
 [builtins fixtures/list.pyi]
 
 
@@ -756,9 +756,9 @@ if int():
 if int():
     b = b or [C()]
 if int():
-    a = a or b # E: Incompatible types in assignment (expression has type "Union[List[A], List[B]]", variable has type "List[A]")
+    a = a or b # E: Incompatible types in assignment (expression has type "Union[list[A], list[B]]", variable has type "list[A]")
 if int():
-    b = b or c # E: Incompatible types in assignment (expression has type "Union[List[B], List[C]]", variable has type "List[B]")
+    b = b or c # E: Incompatible types in assignment (expression has type "Union[list[B], list[C]]", variable has type "list[B]")
 [builtins fixtures/list.pyi]
 
 
@@ -814,7 +814,7 @@ s: List[str]
 if int():
     i = i = []
 if int():
-    i = s = [] # E: Incompatible types in assignment (expression has type "List[str]", variable has type "List[int]")
+    i = s = [] # E: Incompatible types in assignment (expression has type "list[str]", variable has type "list[int]")
 [builtins fixtures/list.pyi]
 
 [case testContextForAttributeDeclaredInInit]
@@ -842,7 +842,7 @@ T = TypeVar('T')
 def f(x: Union[List[T], str]) -> None: pass
 f([1])
 f('')
-f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[List[Never], str]"
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Union[list[Never], str]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIgnoringInferenceContext]

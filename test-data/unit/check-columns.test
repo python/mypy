@@ -47,13 +47,13 @@ aaa: str
 h(x=1, y=aaa, z=2) # E:10: Argument "y" to "h" has incompatible type "str"; expected "int"
 a: A
 ff(a.x) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
-ff([1]) # E:4: Argument 1 to "ff" has incompatible type "List[int]"; expected "int"
+ff([1]) # E:4: Argument 1 to "ff" has incompatible type "list[int]"; expected "int"
 # TODO: Different column in Python 3.8+
-#ff([1 for x in [1]]) # Argument 1 to "ff" has incompatible type "List[int]"; expected "int"
-ff({1: 2}) # E:4: Argument 1 to "ff" has incompatible type "Dict[int, int]"; expected "int"
+#ff([1 for x in [1]]) # Argument 1 to "ff" has incompatible type "list[int]"; expected "int"
+ff({1: 2}) # E:4: Argument 1 to "ff" has incompatible type "dict[int, int]"; expected "int"
 ff(1.1) # E:4: Argument 1 to "ff" has incompatible type "float"; expected "int"
 # TODO: Different column in Python 3.8+
-#ff( ( 1, 1)) # Argument 1 to "ff" has incompatible type "Tuple[int, int]"; expected "int"
+#ff( ( 1, 1)) # Argument 1 to "ff" has incompatible type "tuple[int, int]"; expected "int"
 ff(-a) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
 ff(a + 1) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
 ff(a < 1) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
@@ -69,9 +69,9 @@ def f(*x: int) -> None: pass
 def g(**x: int) -> None: pass
 
 a = ['']
-f(*a)  # E:4: Argument 1 to "f" has incompatible type "*List[str]"; expected "int"
+f(*a)  # E:4: Argument 1 to "f" has incompatible type "*list[str]"; expected "int"
 b = {'x': 'y'}
-g(**b) # E:5: Argument 1 to "g" has incompatible type "**Dict[str, str]"; expected "int"
+g(**b) # E:5: Argument 1 to "g" has incompatible type "**dict[str, str]"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testColumnsMultipleStatementsPerLine]
@@ -183,7 +183,7 @@ if int():
 
 [case testColumnNeedTypeAnnotation]
 if 1:
-    x = [] # E:5: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+    x = [] # E:5: Need type annotation for "x" (hint: "x: list[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testColumnCallToUntypedFunction]
@@ -216,7 +216,7 @@ x = None
 
 [case testColumnInvalidIndexing]
 from typing import List
-([1]['']) # E:6: Invalid index type "str" for "List[int]"; expected type "int"
+([1]['']) # E:6: Invalid index type "str" for "list[int]"; expected type "int"
 (1[1]) # E:2: Value of type "int" is not indexable
 def f() -> None:
     1[1] = 1 # E:5: Unsupported target for indexed assignment ("int")
@@ -264,7 +264,7 @@ class D(A):
 # flags: --disallow-any-generics
 from typing import List, Callable
 def f(x: List) -> None: pass # E:10: Missing type parameters for generic type "List"
-def g(x: list) -> None: pass # E:10: Missing type parameters for generic type "List"
+def g(x: list) -> None: pass # E:10: Missing type parameters for generic type "list"
 if int():
     c: Callable # E:8: Missing type parameters for generic type "Callable"
 [builtins fixtures/list.pyi]

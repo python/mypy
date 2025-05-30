@@ -163,7 +163,7 @@ MypyFile:1(
     TupleExpr:4(
       NameExpr(None [builtins.None])
       NameExpr(None [builtins.None]))
-    Tuple[__main__.A, __main__.B])
+    tuple[__main__.A, __main__.B])
   AssignmentStmt:5(
     NameExpr(x* [__main__.x])
     TupleExpr:5(
@@ -366,7 +366,7 @@ MypyFile:1(
   ExpressionStmt:2(
     CastExpr:2(
       NameExpr(None [builtins.None])
-      Tuple[builtins.int, builtins.str])))
+      tuple[builtins.int, builtins.str])))
 
 [case testCastToFunctionType]
 from typing import Callable, cast
@@ -493,7 +493,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def [t] (x: Tuple[builtins.int, t`-1])
+    def [t] (x: tuple[builtins.int, t`-1])
     Block:4(
       PassStmt:4())))
 
@@ -694,11 +694,11 @@ MypyFile:1(
   AssignmentStmt:3(
     NameExpr(t1 [__main__.t1])
     NameExpr(None [builtins.None])
-    Tuple[builtins.object])
+    tuple[builtins.object])
   AssignmentStmt:4(
     NameExpr(t2 [__main__.t2])
     NameExpr(None [builtins.None])
-    Tuple[builtins.int, builtins.object]))
+    tuple[builtins.int, builtins.object]))
 
 [case testVariableLengthTuple]
 from typing import Tuple

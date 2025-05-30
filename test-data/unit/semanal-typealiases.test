@@ -177,12 +177,12 @@ MypyFile:1(
   ImportFrom:1(typing, [Tuple])
   AssignmentStmt:2(
     NameExpr(T* [__main__.T])
-    TypeAliasExpr(Tuple[builtins.int, builtins.str]))
+    TypeAliasExpr(tuple[builtins.int, builtins.str]))
   FuncDef:3(
     f
     Args(
       Var(x))
-    def (x: Tuple[builtins.int, builtins.str])
+    def (x: tuple[builtins.int, builtins.str])
     Block:3(
       PassStmt:3())))
 
@@ -439,8 +439,8 @@ MypyFile:1(
   ImportFrom:1(typing, [Union, Tuple, Any])
   AssignmentStmt:2(
     NameExpr(A* [__main__.A])
-    TypeAliasExpr(Union[builtins.int, Tuple[builtins.int, Any]]))
+    TypeAliasExpr(Union[builtins.int, tuple[builtins.int, Any]]))
   AssignmentStmt:3(
     NameExpr(a [__main__.a])
     IntExpr(1)
-    Union[builtins.int, Tuple[builtins.int, Any]]))
+    Union[builtins.int, tuple[builtins.int, Any]]))

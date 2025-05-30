@@ -547,7 +547,7 @@ class A(Tuple[int, str]):
 [builtins fixtures/tuple.pyi]
 [out2]
 tmp/a.py:3: error: Too many arguments for "f" of "A"
-tmp/a.py:4: note: Revealed type is "Tuple[builtins.int, builtins.str]"
+tmp/a.py:4: note: Revealed type is "tuple[builtins.int, builtins.str]"
 
 [case testSerializeVariableLengthTupleBaseClass]
 import a
@@ -565,7 +565,7 @@ class A(Tuple[int, ...]):
 [builtins fixtures/tuple.pyi]
 [out2]
 tmp/a.py:3: error: Too many arguments for "f" of "A"
-tmp/a.py:4: note: Revealed type is "Tuple[builtins.int, builtins.int]"
+tmp/a.py:4: note: Revealed type is "tuple[builtins.int, builtins.int]"
 
 [case testSerializePlainTupleBaseClass]
 import a
@@ -583,7 +583,7 @@ class A(tuple):
 [builtins fixtures/tuple.pyi]
 [out2]
 tmp/a.py:3: error: Too many arguments for "f" of "A"
-tmp/a.py:4: note: Revealed type is "Tuple[Any, Any]"
+tmp/a.py:4: note: Revealed type is "tuple[Any, Any]"
 
 [case testSerializeNamedTupleBaseClass]
 import a
@@ -602,8 +602,8 @@ class A(NamedTuple('N', [('x', int), ('y', str)])):
 [builtins fixtures/tuple.pyi]
 [out2]
 tmp/a.py:3: error: Too many arguments for "f" of "A"
-tmp/a.py:4: note: Revealed type is "Tuple[builtins.int, builtins.str]"
-tmp/a.py:5: note: Revealed type is "Tuple[builtins.int, builtins.str]"
+tmp/a.py:4: note: Revealed type is "tuple[builtins.int, builtins.str]"
+tmp/a.py:5: note: Revealed type is "tuple[builtins.int, builtins.str]"
 
 [case testSerializeAnyBaseClass]
 import a
@@ -727,13 +727,13 @@ class C:
         self.c = A
 [builtins fixtures/tuple.pyi]
 [out1]
-main:2: note: Revealed type is "Tuple[builtins.int, fallback=ntcrash.C.A@4]"
-main:3: note: Revealed type is "Tuple[builtins.int, fallback=ntcrash.C.A@4]"
-main:4: note: Revealed type is "def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:2: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:3: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:4: note: Revealed type is "def (x: builtins.int) -> tuple[builtins.int, fallback=ntcrash.C.A@4]"
 [out2]
-main:2: note: Revealed type is "Tuple[builtins.int, fallback=ntcrash.C.A@4]"
-main:3: note: Revealed type is "Tuple[builtins.int, fallback=ntcrash.C.A@4]"
-main:4: note: Revealed type is "def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:2: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:3: note: Revealed type is "tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:4: note: Revealed type is "def (x: builtins.int) -> tuple[builtins.int, fallback=ntcrash.C.A@4]"
 
 --
 -- Strict optional
@@ -941,9 +941,9 @@ N = NamedTuple('N', [('x', int)])
 x: N
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:5: error: Incompatible types in assignment (expression has type "Tuple[int]", variable has type "N")
-tmp/a.py:6: error: Incompatible types in assignment (expression has type "Tuple[int]", variable has type "N")
-tmp/a.py:9: note: Revealed type is "Tuple[builtins.int, fallback=b.N]"
+tmp/a.py:5: error: Incompatible types in assignment (expression has type "tuple[int]", variable has type "N")
+tmp/a.py:6: error: Incompatible types in assignment (expression has type "tuple[int]", variable has type "N")
+tmp/a.py:9: note: Revealed type is "tuple[builtins.int, fallback=b.N]"
 tmp/a.py:10: note: Revealed type is "builtins.int"
 tmp/a.py:11: error: Argument "x" to "N" has incompatible type "str"; expected "int"
 
@@ -993,9 +993,9 @@ tmp/a.py:9: note: Revealed type is "b.DD"
 tmp/a.py:10: note: Revealed type is "Any"
 tmp/a.py:11: note: Revealed type is "Union[builtins.int, builtins.str]"
 tmp/a.py:12: note: Revealed type is "builtins.list[builtins.int]"
-tmp/a.py:13: note: Revealed type is "Tuple[builtins.int, builtins.str]"
+tmp/a.py:13: note: Revealed type is "tuple[builtins.int, builtins.str]"
 tmp/a.py:14: note: Revealed type is "def (builtins.int) -> builtins.str"
-tmp/a.py:15: note: Revealed type is "Type[builtins.int]"
+tmp/a.py:15: note: Revealed type is "type[builtins.int]"
 tmp/a.py:17: note: Revealed type is "def (*Any, **Any) -> builtins.str"
 tmp/a.py:19: note: Revealed type is "builtins.type"
 
@@ -1010,9 +1010,9 @@ X = TypeVar('X')
 Y = Tuple[X, str]
 [builtins fixtures/tuple.pyi]
 [out1]
-main:4: note: Revealed type is "Tuple[builtins.int, builtins.str]"
+main:4: note: Revealed type is "tuple[builtins.int, builtins.str]"
 [out2]
-main:4: note: Revealed type is "Tuple[builtins.int, builtins.str]"
+main:4: note: Revealed type is "tuple[builtins.int, builtins.str]"
 
 [case testSerializeTuple]
 # Don't repreat types tested by testSerializeTypeAliases here.

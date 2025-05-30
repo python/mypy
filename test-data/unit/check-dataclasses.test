@@ -549,7 +549,7 @@ class A:
 
     @classmethod
     def foo(cls, x: Union[int, str]) -> Union[int, str]:
-        reveal_type(cls)            # N: Revealed type is "Type[__main__.A]"
+        reveal_type(cls)            # N: Revealed type is "type[__main__.A]"
         reveal_type(cls.other())    # N: Revealed type is "builtins.str"
         return x
 
@@ -700,7 +700,7 @@ class A(Generic[T]):
     return self.z[0]
 
   def problem(self) -> T:
-    return self.z  # E: Incompatible return value type (got "List[T]", expected "T")
+    return self.z  # E: Incompatible return value type (got "list[T]", expected "T")
 
 reveal_type(A)  # N: Revealed type is "def [T] (x: T`1, y: T`1, z: builtins.list[T`1]) -> __main__.A[T`1]"
 A(1, 2, ["a", "b"])  # E: Cannot infer type argument 1 of "A"
@@ -836,7 +836,7 @@ class A(Generic[T]):
 
   @classmethod
   def foo(cls) -> None:
-      reveal_type(cls)  # N: Revealed type is "Type[__main__.A[T`1]]"
+      reveal_type(cls)  # N: Revealed type is "type[__main__.A[T`1]]"
       cls.x  # E: Access to generic instance variables via class is ambiguous
 
   @classmethod
@@ -936,7 +936,7 @@ T = TypeVar('T', bound='A')
 class A:
     @classmethod
     def make(cls: Type[T]) -> T:
-        reveal_type(cls)  # N: Revealed type is "Type[T`-1]"
+        reveal_type(cls)  # N: Revealed type is "type[T`-1]"
         reveal_type(cls())  # N: Revealed type is "T`-1"
         return cls()
 [builtins fixtures/dataclasses.pyi]
@@ -1386,7 +1386,7 @@ class Foo:
     bar: float = field(**{"repr": False})
 [out]
 main:6: error: Unpacking **kwargs in "field()" is not supported
-main:6: error: No overload variant of "field" matches argument type "Dict[str, bool]"
+main:6: error: No overload variant of "field" matches argument type "dict[str, bool]"
 main:6: note: Possible overload variants:
 main:6: note:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
 main:6: note:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
@@ -1520,14 +1520,14 @@ class Some:
     y: str
     z: bool
 
-reveal_type(Some.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.str]"
+reveal_type(Some.__slots__)  # N: Revealed type is "tuple[builtins.str, builtins.str, builtins.str]"
 
 @dataclass(slots=True)
 class Other:
     x: int
     y: str
 
-reveal_type(Other.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+reveal_type(Other.__slots__)  # N: Revealed type is "tuple[builtins.str, builtins.str]"
 
 
 @dataclass
@@ -1535,7 +1535,7 @@ class NoSlots:
     x: int
     y: str
 
-NoSlots.__slots__  # E: "Type[NoSlots]" has no attribute "__slots__"
+NoSlots.__slots__  # E: "type[NoSlots]" has no attribute "__slots__"
 [builtins fixtures/dataclasses.pyi]
 
 
@@ -1834,17 +1834,17 @@ class One:
     bar: int
     baz: str
 o: One
-reveal_type(o.__match_args__)  # N: Revealed type is "Tuple[Literal['bar'], Literal['baz']]"
+reveal_type(o.__match_args__)  # N: Revealed type is "tuple[Literal['bar'], Literal['baz']]"
 @dataclass(match_args=True)
 class Two:
     bar: int
 t: Two
-reveal_type(t.__match_args__)  # N: Revealed type is "Tuple[Literal['bar']]"
+reveal_type(t.__match_args__)  # N: Revealed type is "tuple[Literal['bar']]"
 @dataclass
 class Empty:
     ...
 e: Empty
-reveal_type(e.__match_args__)  # N: Revealed type is "Tuple[()]"
+reveal_type(e.__match_args__)  # N: Revealed type is "tuple[()]"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithMatchArgsAndKwOnly]
@@ -1854,13 +1854,13 @@ from dataclasses import dataclass, field
 class One:
     a: int
     b: str
-reveal_type(One.__match_args__)  # N: Revealed type is "Tuple[()]"
+reveal_type(One.__match_args__)  # N: Revealed type is "tuple[()]"
 
 @dataclass(kw_only=True)
 class Two:
     a: int = field(kw_only=False)
     b: str
-reveal_type(Two.__match_args__)  # N: Revealed type is "Tuple[Literal['a']]"
+reveal_type(Two.__match_args__)  # N: Revealed type is "tuple[Literal['a']]"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithoutMatchArgs]
@@ -2097,7 +2097,7 @@ a_or_b: Union[A[int], B]
 _ = replace(a_or_b, x=42, y=True, init_var=42)
 _ = replace(a_or_b, x=42, y=True)  # E: Missing named argument "init_var" for "replace" of "Union[A[int], B]"
 _ = replace(a_or_b, x=42, y=True, z='42', init_var=42)  # E: Argument "z" to "replace" of "Union[A[int], B]" has incompatible type "str"; expected "Never"
-_ = replace(a_or_b, x=42, y=True, w={}, init_var=42)  # E: Argument "w" to "replace" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected "Never"
+_ = replace(a_or_b, x=42, y=True, w={}, init_var=42)  # E: Argument "w" to "replace" of "Union[A[int], B]" has incompatible type "dict[Never, Never]"; expected "Never"
 _ = replace(a_or_b, y=42, init_var=42)  # E: Argument "y" to "replace" of "Union[A[int], B]" has incompatible type "int"; expected "bool"
 
 [builtins fixtures/tuple.pyi]
@@ -2202,7 +2202,7 @@ from dataclasses import is_dataclass, replace
 def f(x: object) -> None:
   _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "object"
   if is_dataclass(x):
-    _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "Union[DataclassInstance, Type[DataclassInstance]]"
+    _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "Union[DataclassInstance, type[DataclassInstance]]"
     if not isinstance(x, type):
       _ = replace(x)
 
@@ -2423,7 +2423,7 @@ main:7: note:      Superclass:
 main:7: note:          def __post_init__(self: Test, y: str) -> None
 main:7: note:      Subclass:
 main:7: note:          @classmethod
-main:7: note:          def __post_init__(cls: Type[Test]) -> None
+main:7: note:          def __post_init__(cls: type[Test]) -> None
 
 [case testPostInitStaticMethod]
 from dataclasses import dataclass, InitVar

@@ -57,14 +57,14 @@ reveal_type(t2)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(t3)  # N: Revealed type is "builtins.list[builtins.str]"
 reveal_type(t4)  # N: Revealed type is "builtins.tuple[Any, ...]"
 # TODO: ideally these would reveal builtins.tuple
-reveal_type(t5)  # N: Revealed type is "Tuple[builtins.int]"
-reveal_type(t6)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+reveal_type(t5)  # N: Revealed type is "tuple[builtins.int]"
+reveal_type(t6)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 # TODO: this is incorrect, see #9522
 reveal_type(t7)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 reveal_type(t8)  # N: Revealed type is "builtins.dict[Any, Any]"
 reveal_type(t9)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
 reveal_type(t10)  # N: Revealed type is "builtins.type"
-reveal_type(t11)  # N: Revealed type is "Type[builtins.int]"
+reveal_type(t11)  # N: Revealed type is "type[builtins.int]"
 [builtins fixtures/dict.pyi]
 
 
@@ -184,11 +184,11 @@ t10: Tuple[int, ...] = t09
 A = tuple[int, ...]
 a: A = ()
 b: A = (1, 2, 3)
-c: A = ('x', 'y')  # E: Incompatible types in assignment (expression has type "Tuple[str, str]", variable has type "Tuple[int, ...]")
+c: A = ('x', 'y')  # E: Incompatible types in assignment (expression has type "tuple[str, str]", variable has type "tuple[int, ...]")
 
 B = tuple[int, str]
 x: B = (1, 'x')
-y: B = ('x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[str, int]", variable has type "Tuple[int, str]")
+y: B = ('x', 1)  # E: Incompatible types in assignment (expression has type "tuple[str, int]", variable has type "tuple[int, str]")
 
 reveal_type(tuple[int, ...]())  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
@@ -196,7 +196,7 @@ reveal_type(tuple[int, ...]())  # N: Revealed type is "builtins.tuple[builtins.i
 [case testTypeAliasWithBuiltinTupleInStub]
 import m
 reveal_type(m.a)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(m.b)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+reveal_type(m.b)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 
 [file m.pyi]
 A = tuple[int, ...]
@@ -210,7 +210,7 @@ import m
 reveal_type(m.a)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(m.b)  # N: Revealed type is "builtins.list[builtins.list[builtins.int]]"
 m.C  # has complex representation, ignored
-reveal_type(m.d)  # N: Revealed type is "Type[builtins.str]"
+reveal_type(m.d)  # N: Revealed type is "type[builtins.str]"
 
 [file m.pyi]
 A = list[int]

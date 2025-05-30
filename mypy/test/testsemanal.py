@@ -44,7 +44,6 @@ def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Opti
     options.semantic_analysis_only = True
     options.show_traceback = True
     options.python_version = PYTHON3_VERSION
-    options.force_uppercase_builtins = True
     return options
 
 

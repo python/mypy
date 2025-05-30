@@ -979,9 +979,9 @@ def foo(l: List[Unchecked]) -> List[Unchecked]:
     return l
 [builtins fixtures/list.pyi]
 [out]
-main:5: error: Return type becomes "List[Any]" due to an unfollowed import
-main:5: error: Argument 1 to "foo" becomes "List[Any]" due to an unfollowed import
-main:6: error: Type of variable becomes "List[Any]" due to an unfollowed import
+main:5: error: Return type becomes "list[Any]" due to an unfollowed import
+main:5: error: Argument 1 to "foo" becomes "list[Any]" due to an unfollowed import
+main:6: error: Type of variable becomes "list[Any]" due to an unfollowed import
 
 [case testDisallowImplicitAnyInherit]
 # flags: --ignore-missing-imports --disallow-any-unimported
@@ -991,7 +991,7 @@ from typing import List
 class C(Unchecked): # E: Base type Unchecked becomes "Any" due to an unfollowed import
     pass
 
-class A(List[Unchecked]): # E: Base type becomes "List[Any]" due to an unfollowed import
+class A(List[Unchecked]): # E: Base type becomes "list[Any]" due to an unfollowed import
     pass
 [builtins fixtures/list.pyi]
 
@@ -1000,7 +1000,7 @@ class A(List[Unchecked]): # E: Base type becomes "List[Any]" due to an unfollowe
 from missing import Unchecked
 from typing import List
 
-X = List[Unchecked]  # E: Type alias target becomes "List[Any]" due to an unfollowed import
+X = List[Unchecked]  # E: Type alias target becomes "list[Any]" due to an unfollowed import
 
 def f(x: X) -> None:
     pass
@@ -1013,7 +1013,7 @@ from typing import List, cast
 
 
 foo = [1, 2, 3]
-cast(List[Unchecked], foo)  # E: Target type of cast becomes "List[Any]" due to an unfollowed import
+cast(List[Unchecked], foo)  # E: Target type of cast becomes "list[Any]" due to an unfollowed import
 cast(Unchecked, foo)  # E: Target type of cast becomes "Any" due to an unfollowed import
 [builtins fixtures/list.pyi]
 
@@ -1026,7 +1026,7 @@ Point = NamedTuple('Point', [('x', List[Unchecked]),
                              ('y', Unchecked)])
 [builtins fixtures/list.pyi]
 [out]
-main:5: error: NamedTuple type becomes "Tuple[List[Any], Any]" due to an unfollowed import
+main:5: error: NamedTuple type becomes "tuple[list[Any], Any]" due to an unfollowed import
 
 [case testDisallowImplicitAnyTypeVarConstraints]
 # flags: --ignore-missing-imports --disallow-any-unimported
@@ -1037,7 +1037,7 @@ T = TypeVar('T', Unchecked, List[Unchecked], str)
 [builtins fixtures/list.pyi]
 [out]
 main:5: error: Constraint 1 becomes "Any" due to an unfollowed import
-main:5: error: Constraint 2 becomes "List[Any]" due to an unfollowed import
+main:5: error: Constraint 2 becomes "list[Any]" due to an unfollowed import
 
 [case testDisallowImplicitAnyNewType]
 # flags: --ignore-missing-imports --disallow-any-unimported
@@ -1045,7 +1045,7 @@ from typing import NewType, List
 from missing import Unchecked
 
 Baz = NewType('Baz', Unchecked)  # E: Argument 2 to NewType(...) must be subclassable (got "Any")
-Bar = NewType('Bar', List[Unchecked])  # E: Argument 2 to NewType(...) becomes "List[Any]" due to an unfollowed import
+Bar = NewType('Bar', List[Unchecked])  # E: Argument 2 to NewType(...) becomes "list[Any]" due to an unfollowed import
 
 [builtins fixtures/list.pyi]
 
@@ -1058,7 +1058,7 @@ def foo(f: Callable[[], Unchecked]) -> Tuple[Unchecked]:
     return f()
 [builtins fixtures/list.pyi]
 [out]
-main:5: error: Return type becomes "Tuple[Any]" due to an unfollowed import
+main:5: error: Return type becomes "tuple[Any]" due to an unfollowed import
 main:5: error: Argument 1 to "foo" becomes "Callable[[], Any]" due to an unfollowed import
 
 [case testDisallowImplicitAnySubclassingExplicitAny]
@@ -1096,7 +1096,7 @@ def f(m: M) -> M: pass  # no error
 from typing import List, TypedDict
 from x import Unchecked
 
-M = TypedDict('M', {'x': str, 'y': List[Unchecked]})  # E: Type of a TypedDict key becomes "List[Any]" due to an unfollowed import
+M = TypedDict('M', {'x': str, 'y': List[Unchecked]})  # E: Type of a TypedDict key becomes "list[Any]" due to an unfollowed import
 
 def f(m: M) -> M: pass  # no error
 [builtins fixtures/dict.pyi]
@@ -1170,10 +1170,10 @@ def d3(f) -> Callable[[Any], List[str]]: pass
 def f(i: int, s: str) -> None:  # E: Type of decorated function contains type "Any" ("Callable[[int, Any], Any]")
     pass
 @d2
-def g(i: int) -> None:  # E: Type of decorated function contains type "Any" ("Callable[[int], List[Any]]")
+def g(i: int) -> None:  # E: Type of decorated function contains type "Any" ("Callable[[int], list[Any]]")
     pass
 @d3
-def h(i: int) -> None:  # E: Type of decorated function contains type "Any" ("Callable[[Any], List[str]]")
+def h(i: int) -> None:  # E: Type of decorated function contains type "Any" ("Callable[[Any], list[str]]")
     pass
 [builtins fixtures/list.pyi]
 
@@ -1260,9 +1260,9 @@ def g(s: List[Any]) -> None:
 
 f(0)
 
-# type of list below is inferred with expected type of "List[Any]", so that becomes it's type
-# instead of List[str]
-g([''])  # E: Expression type contains "Any" (has type "List[Any]")
+# type of list below is inferred with expected type of "list[Any]", so that becomes it's type
+# instead of list[str]
+g([''])  # E: Expression type contains "Any" (has type "list[Any]")
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExprAllowsAnyInCast]
@@ -1293,8 +1293,8 @@ n = Foo().g  # type: Any  # E: Expression has type "Any"
 from typing import List
 
 l: List = []
-l.append(1)  # E: Expression type contains "Any" (has type "List[Any]")
-k = l[0]  # E: Expression type contains "Any" (has type "List[Any]")  # E: Expression has type "Any"
+l.append(1)  # E: Expression type contains "Any" (has type "list[Any]")
+k = l[0]  # E: Expression type contains "Any" (has type "list[Any]")  # E: Expression has type "Any"
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExprTypeVar]
@@ -1531,19 +1531,19 @@ def f(t: tuple) -> None: pass  # E: Missing type parameters for generic type "tu
 [case testDisallowAnyGenericsBuiltinList]
 # flags: --disallow-any-generics
 l = list([1, 2, 3])
-def f(t: list) -> None: pass  # E: Missing type parameters for generic type "List"
+def f(t: list) -> None: pass  # E: Missing type parameters for generic type "list"
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyGenericsBuiltinSet]
 # flags: --disallow-any-generics
 l = set({1, 2, 3})
-def f(s: set) -> None: pass  # E: Missing type parameters for generic type "Set"
+def f(s: set) -> None: pass  # E: Missing type parameters for generic type "set"
 [builtins fixtures/set.pyi]
 
 [case testDisallowAnyGenericsBuiltinDict]
 # flags: --disallow-any-generics
 l = dict([('a', 1)])
-def f(d: dict) -> None: pass  # E: Missing type parameters for generic type "Dict"
+def f(d: dict) -> None: pass  # E: Missing type parameters for generic type "dict"
 [builtins fixtures/dict.pyi]
 
 [case testCheckDefaultAllowAnyGeneric]
@@ -2012,7 +2012,7 @@ def h(l: List[List]) -> None: pass   # E: Missing type parameters for generic ty
 def i(l: List[List[List[List]]]) -> None: pass  # E: Missing type parameters for generic type "List"
 def j() -> List: pass  # E: Missing type parameters for generic type "List"
 
-x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+x = []  # E: Need type annotation for "x" (hint: "x: list[<type>] = ...")
 y: List = []  # E: Missing type parameters for generic type "List"
 [builtins fixtures/list.pyi]
 
@@ -2270,7 +2270,7 @@ untyped_calls_exclude = foo, bar.A
 import tests.foo
 import bar
 [file bar.py]
-x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+x = []  # E: Need type annotation for "x" (hint: "x: list[<type>] = ...")
 [file tests/__init__.py]
 [file tests/foo.py]
 x = []  # OK
@@ -2450,13 +2450,13 @@ cb(fn)
 x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 list(1)  # E: No overload variant of "list" matches argument type "int"  [call-overload] \
          # N: Possible overload variants: \
-         # N:     def [T] __init__(self) -> List[T] \
-         # N:     def [T] __init__(self, x: Iterable[T]) -> List[T] \
+         # N:     def [T] __init__(self) -> list[T] \
+         # N:     def [T] __init__(self, x: Iterable[T]) -> list[T] \
          # N: See https://mypy.rtfd.io/en/stable/_refs.html#code-call-overload for more info
 list(2)  # E: No overload variant of "list" matches argument type "int"  [call-overload] \
          # N: Possible overload variants: \
-         # N:     def [T] __init__(self) -> List[T] \
-         # N:     def [T] __init__(self, x: Iterable[T]) -> List[T]
+         # N:     def [T] __init__(self) -> list[T] \
+         # N:     def [T] __init__(self, x: Iterable[T]) -> list[T]
 [builtins fixtures/list.pyi]
 
 [case testNestedGenericInAliasDisallow]

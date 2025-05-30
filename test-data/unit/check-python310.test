@@ -240,7 +240,7 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.int"
         reveal_type(b)  # N: Revealed type is "builtins.str"
         reveal_type(c)  # N: Revealed type is "builtins.bool"
-        reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
+        reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.bool]"
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleTooLong]
@@ -270,7 +270,7 @@ m: Tuple[object, object]
 
 match m:
     case [1, "str"]:
-        reveal_type(m)  # N: Revealed type is "Tuple[Literal[1], Literal['str']]"
+        reveal_type(m)  # N: Revealed type is "tuple[Literal[1], Literal['str']]"
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleStarred]
@@ -282,7 +282,7 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.int"
         reveal_type(b)  # N: Revealed type is "builtins.list[builtins.str]"
         reveal_type(c)  # N: Revealed type is "builtins.bool"
-        reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
+        reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.bool]"
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleStarredUnion]
@@ -294,13 +294,13 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.int"
         reveal_type(b)  # N: Revealed type is "builtins.list[Union[builtins.str, builtins.float]]"
         reveal_type(c)  # N: Revealed type is "builtins.bool"
-        reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.float, builtins.bool]"
+        reveal_type(m)  # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.float, builtins.bool]"
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternTupleStarredTooShort]
 from typing import Tuple
 m: Tuple[int]
-reveal_type(m)  # N: Revealed type is "Tuple[builtins.int]"
+reveal_type(m)  # N: Revealed type is "tuple[builtins.int]"
 
 match m:
     case [a, *b, c]:
@@ -326,7 +326,7 @@ class Example:
 SubClass: type[Example]
 
 match [SubClass("a"), SubClass("b")]:
-    case [SubClass(value), *rest]:  # E: Expected type in class pattern; found "Type[__main__.Example]"
+    case [SubClass(value), *rest]:  # E: Expected type in class pattern; found "type[__main__.Example]"
         reveal_type(value)  # E: Cannot determine type of "value" \
                             # N: Revealed type is "Any"
         reveal_type(rest)  # N: Revealed type is "builtins.list[__main__.Example]"
@@ -1519,43 +1519,43 @@ m2: Tuple[int | str]
 
 match m2:
     case (int(),):
-        reveal_type(m2)  # N: Revealed type is "Tuple[builtins.int]"
+        reveal_type(m2)  # N: Revealed type is "tuple[builtins.int]"
     case r2:
-        reveal_type(m2)  # N: Revealed type is "Tuple[builtins.str]"
+        reveal_type(m2)  # N: Revealed type is "tuple[builtins.str]"
 
 m3: Tuple[Union[int, str]]
 
 match m3:
     case (1,):
-        reveal_type(m3)  # N: Revealed type is "Tuple[Literal[1]]"
+        reveal_type(m3)  # N: Revealed type is "tuple[Literal[1]]"
     case r2:
-        reveal_type(m3)  # N: Revealed type is "Tuple[Union[builtins.int, builtins.str]]"
+        reveal_type(m3)  # N: Revealed type is "tuple[Union[builtins.int, builtins.str]]"
 
 m4: Tuple[Literal[1], int]
 
 match m4:
     case (1, 5):
-        reveal_type(m4)  # N: Revealed type is "Tuple[Literal[1], Literal[5]]"
+        reveal_type(m4)  # N: Revealed type is "tuple[Literal[1], Literal[5]]"
     case (1, 6):
-        reveal_type(m4)  # N: Revealed type is "Tuple[Literal[1], Literal[6]]"
+        reveal_type(m4)  # N: Revealed type is "tuple[Literal[1], Literal[6]]"
     case _:
-        reveal_type(m4)  # N: Revealed type is "Tuple[Literal[1], builtins.int]"
+        reveal_type(m4)  # N: Revealed type is "tuple[Literal[1], builtins.int]"
 
 m5: Tuple[Literal[1, 2], Literal["a", "b"]]
 
 match m5:
     case (1, str()):
-        reveal_type(m5)  # N: Revealed type is "Tuple[Literal[1], Union[Literal['a'], Literal['b']]]"
+        reveal_type(m5)  # N: Revealed type is "tuple[Literal[1], Union[Literal['a'], Literal['b']]]"
     case _:
-        reveal_type(m5)  # N: Revealed type is "Tuple[Literal[2], Union[Literal['a'], Literal['b']]]"
+        reveal_type(m5)  # N: Revealed type is "tuple[Literal[2], Union[Literal['a'], Literal['b']]]"
 
 m6: Tuple[Literal[1, 2], Literal["a", "b"]]
 
 match m6:
     case (1, "a"):
-        reveal_type(m6)  # N: Revealed type is "Tuple[Literal[1], Literal['a']]"
+        reveal_type(m6)  # N: Revealed type is "tuple[Literal[1], Literal['a']]"
     case _:
-        reveal_type(m6)  # N: Revealed type is "Tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
+        reveal_type(m6)  # N: Revealed type is "tuple[Union[Literal[1], Literal[2]], Union[Literal['a'], Literal['b']]]"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1896,9 +1896,9 @@ class AnnAssign(stmt):
    value: str
    simple: int
 
-reveal_type(AST.__match_args__)  # N: Revealed type is "Tuple[()]"
-reveal_type(stmt.__match_args__)  # N: Revealed type is "Tuple[()]"
-reveal_type(AnnAssign.__match_args__)  # N: Revealed type is "Tuple[Literal['target']?, Literal['annotation']?, Literal['value']?, Literal['simple']?]"
+reveal_type(AST.__match_args__)  # N: Revealed type is "tuple[()]"
+reveal_type(stmt.__match_args__)  # N: Revealed type is "tuple[()]"
+reveal_type(AnnAssign.__match_args__)  # N: Revealed type is "tuple[Literal['target']?, Literal['annotation']?, Literal['value']?, Literal['simple']?]"
 
 AnnAssign.__match_args__ = ('a', 'b', 'c', 'd')  # E: Cannot assign to "__match_args__"
 __match_args__ = 0
@@ -2041,12 +2041,12 @@ S = TypeVar("S", int, str)
 
 def my_func(pairs: Iterable[tuple[S, S]]) -> None:
     for pair in pairs:
-        reveal_type(pair)  # N: Revealed type is "Tuple[builtins.int, builtins.int]" \
-                           # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+        reveal_type(pair)  # N: Revealed type is "tuple[builtins.int, builtins.int]" \
+                           # N: Revealed type is "tuple[builtins.str, builtins.str]"
         match pair:
             case _:
-                reveal_type(pair)  # N: Revealed type is "Tuple[builtins.int, builtins.int]" \
-                                   # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+                reveal_type(pair)  # N: Revealed type is "tuple[builtins.int, builtins.int]" \
+                                   # N: Revealed type is "tuple[builtins.str, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testPossiblyUndefinedMatch]
@@ -2236,7 +2236,7 @@ def match_stmt_error4(x: Optional[list[str]]) -> None:
     if x is None:
         x = ["a"]
     def nested() -> list[str]:
-        return x  # E: Incompatible return value type (got "Optional[List[str]]", expected "List[str]")
+        return x  # E: Incompatible return value type (got "Optional[list[str]]", expected "list[str]")
     match ["a"]:
         case [*x]:
             pass
@@ -2542,8 +2542,8 @@ from typing import Literal
 def x() -> tuple[Literal["test"]]: ...
 
 match x():
-    case (x,) if x == "test":  # E: Incompatible types in capture pattern (pattern captures type "Literal['test']", variable has type "Callable[[], Tuple[Literal['test']]]")
-        reveal_type(x)  # N: Revealed type is "def () -> Tuple[Literal['test']]"
+    case (x,) if x == "test":  # E: Incompatible types in capture pattern (pattern captures type "Literal['test']", variable has type "Callable[[], tuple[Literal['test']]]")
+        reveal_type(x)  # N: Revealed type is "def () -> tuple[Literal['test']]"
     case foo:
         foo
 
@@ -2598,7 +2598,7 @@ class K(NamedTuple):
 def f(t: T) -> None:
     match t:
         case T([K() as k]):
-            reveal_type(k)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.K]"
+            reveal_type(k)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.K]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewRedefineMatchBasics]
