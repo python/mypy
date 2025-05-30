@@ -2609,3 +2609,15 @@ class B2(B1):  # E: A NamedTuple cannot be a dataclass
     pass
 
 [builtins fixtures/tuple.pyi]
+
+[case testOrderedDataclassSelfTVARNotExist]
+from dataclasses import dataclass
+
+@dataclass(order=True)
+class A:
+    b: int
+
+a = A(1)
+a._DT  # E: "A" has no attribute "_DT"
+
+[builtins fixtures/tuple.pyi]
