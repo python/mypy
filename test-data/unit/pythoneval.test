@@ -1632,8 +1632,8 @@ def foo(x: T) -> T:
     return x
 [out]
 _testTypeAliasWithNewStyleUnion.py:5: note: Revealed type is "typing._SpecialForm"
-_testTypeAliasWithNewStyleUnion.py:25: note: Revealed type is "Union[type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnion.py:28: note: Revealed type is "Union[type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnion.py:25: note: Revealed type is "type[builtins.int] | builtins.str"
+_testTypeAliasWithNewStyleUnion.py:28: note: Revealed type is "type[builtins.int] | builtins.str"
 
 [case testTypeAliasWithNewStyleUnionInStub]
 import m
@@ -1711,7 +1711,7 @@ reveal_type(e.foo)
 reveal_type(E.Y.foo)
 [out]
 _testEnumNameWorkCorrectlyOn311.py:11: note: Revealed type is "builtins.str"
-_testEnumNameWorkCorrectlyOn311.py:12: note: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+_testEnumNameWorkCorrectlyOn311.py:12: note: Revealed type is "Literal[1]? | Literal[2]?"
 _testEnumNameWorkCorrectlyOn311.py:13: note: Revealed type is "Literal['X']?"
 _testEnumNameWorkCorrectlyOn311.py:14: note: Revealed type is "builtins.int"
 _testEnumNameWorkCorrectlyOn311.py:15: note: Revealed type is "builtins.int"
@@ -1780,9 +1780,9 @@ WrongEllipsis = tuple[float, float, ...] | str  # Error
 
 reveal_type(tuple[int, str]((1, "x")))
 [out]
-_testTupleWithDifferentArgsPy310.py:15: note: Revealed type is "Union[builtins.str, tuple[builtins.float, builtins.float, builtins.str]]"
-_testTupleWithDifferentArgsPy310.py:16: note: Revealed type is "Union[tuple[builtins.float], builtins.str]"
-_testTupleWithDifferentArgsPy310.py:17: note: Revealed type is "Union[builtins.tuple[builtins.float, ...], builtins.str]"
+_testTupleWithDifferentArgsPy310.py:15: note: Revealed type is "builtins.str | tuple[builtins.float, builtins.float, builtins.str]"
+_testTupleWithDifferentArgsPy310.py:16: note: Revealed type is "tuple[builtins.float] | builtins.str"
+_testTupleWithDifferentArgsPy310.py:17: note: Revealed type is "builtins.tuple[builtins.float, ...] | builtins.str"
 _testTupleWithDifferentArgsPy310.py:18: note: Revealed type is "tuple[builtins.float, builtins.str]"
 _testTupleWithDifferentArgsPy310.py:19: note: Revealed type is "builtins.tuple[builtins.float, ...]"
 _testTupleWithDifferentArgsPy310.py:20: note: Revealed type is "builtins.list[tuple[builtins.int, builtins.str]]"

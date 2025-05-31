@@ -67,6 +67,7 @@ jobs:
             --debug \
             --additional-flags="--debug-serialize" \
             --output concise \
+            --show-speed-regression \
             | tee diff_${{ matrix.shard-index }}.txt
           ) || [ $? -eq 1 ]
       - if: ${{ matrix.shard-index == 0 }}
