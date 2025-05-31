@@ -628,8 +628,7 @@ def f1() -> None:
 def f2() -> None:
     x = None
     while int():
-        reveal_type(x) # N: Revealed type is "None" \
-                       # N: Revealed type is "Union[None, builtins.str]"
+        reveal_type(x) # N: Revealed type is "Union[builtins.str, None]"
         if int():
             x = ""
     reveal_type(x) # N: Revealed type is "Union[None, builtins.str]"
@@ -709,8 +708,7 @@ def b() -> None:
 def c() -> None:
     x = 0
     while int():
-        reveal_type(x) # N: Revealed type is "builtins.int" \
-                       # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
         if int():
             x = ""
             continue
@@ -810,8 +808,7 @@ def f4() -> None:
                         x = None
                         break
         finally:
-            reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None]" \
-                # N: Revealed type is "Union[builtins.int, None]"
+            reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
         reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/exception.pyi]
 
@@ -927,7 +924,7 @@ class X(TypedDict):
 
 x: X
 for a in ("hourly", "daily"):
-    reveal_type(a)  # N: Revealed type is "Union[Literal['hourly']?, Literal['daily']?]"
+    reveal_type(a)  # N: Revealed type is "Union[Literal['daily']?, Literal['hourly']?]"
     reveal_type(x[a])  # N: Revealed type is "builtins.int"
     reveal_type(a.upper())  # N: Revealed type is "builtins.str"
     c = a
