@@ -260,7 +260,8 @@ class FrozenBase:
     pass
 
 @dataclass
-class BadNormalDerived(FrozenBase):  # E: Non-frozen dataclass cannot inherit from a frozen dataclass
+class BadNormalDerived(FrozenBase):  # E: Incompatible override of '__hash__': dataclasses without 'frozen' or 'unsafe_hash' have '__hash__' set to None \
+                                     # E: Non-frozen dataclass cannot inherit from a frozen dataclass
     pass
 
 @dataclass
@@ -268,8 +269,24 @@ class NormalBase:
     pass
 
 @dataclass(frozen=True)
-class BadFrozenDerived(NormalBase):  # E: Frozen dataclass cannot inherit from a non-frozen dataclass
+class BadFrozenDerived(NormalBase):  # E: Signature of "__hash__" incompatible with supertype "NormalBase" \
+                                     # N:      Superclass: \
+                                     # N:          None \
+                                     # N:      Subclass: \
+                                     # N:          def __hash__() -> int \
+                                     # E: Frozen dataclass cannot inherit from a non-frozen dataclass
     pass
+
+
+
+
+
+
+
+
+
+
+
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -2608,4 +2625,60 @@ class B1(NamedTuple):
 class B2(B1):  # E: A NamedTuple cannot be a dataclass
     pass
 
+[builtins fixtures/tuple.pyi]
+
+[case testDataclassHash]
+from abc import ABC, abstractmethod
+import dataclasses
+
+class Hashable(ABC):
+    @abstractmethod
+    def __hash__(self) -> int:
+        ...
+
+@dataclasses.dataclass(frozen=True)
+class Good(Hashable):
+    a: int
+
+@dataclasses.dataclass(unsafe_hash=True)
+class AlsoGood(Hashable):
+    a: int
+
+@dataclasses.dataclass()
+class Bad(Hashable):  # E: Incompatible override of '__hash__': dataclasses without 'frozen' or 'unsafe_hash' have '__hash__' set to None
+    a: int
+
+Good(4)
+AlsoGood(4)
+Bad(4)
+[builtins fixtures/tuple.pyi]
+
+[case testDataclassHash2]
+import dataclasses
+
+# This
+@dataclasses.dataclass()
+class Parent:
+    a: int
+
+# is (at runtime, ignoring other methods) the same as
+class ExplicitParent:
+    a: int
+    __hash__ = None
+
+class Child(Parent):
+    def __hash__(self) -> int:  # E: Signature of "__hash__" incompatible with supertype "Parent" \
+                                # N:      Superclass: \
+                                # N:          None \
+                                # N:      Subclass: \
+                                # N:          def __hash__(self) -> int
+        return 0
+
+class ExplicitChild(ExplicitParent):
+    def __hash__(self) -> int:  # E: Signature of "__hash__" incompatible with supertype "ExplicitParent" \
+                                # N:      Superclass: \
+                                # N:          None \
+                                # N:      Subclass: \
+                                # N:          def __hash__(self) -> int
+        return 0
 [builtins fixtures/tuple.pyi]
