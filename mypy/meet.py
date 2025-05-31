@@ -150,6 +150,10 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return make_simplified_union(
             [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
         )
+    elif isinstance(narrowed, UnionType):
+        return make_simplified_union(
+            [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
+        )
     elif (
         isinstance(declared, TypeVarType)
         and not has_type_vars(original_narrowed)
@@ -161,10 +165,6 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
             return UninhabitedType()
         else:
             return NoneType()
-    elif isinstance(narrowed, UnionType):
-        return make_simplified_union(
-            [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
-        )
     elif isinstance(narrowed, AnyType):
         return original_narrowed
     elif isinstance(narrowed, TypeVarType) and is_subtype(narrowed.upper_bound, declared):
