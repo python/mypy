@@ -2754,6 +2754,18 @@ def test_function():
     assert(isinstance(d.fitem, ForwardDefinedClass))
     assert(isinstance(d.fitems, ForwardDefinedClass))
 
+[case testDelForDictSubclass]
+class DictSubclass(dict):
+    def __del__(self):
+        print("deleting DictSubclass...")
+
+[file driver.py]
+import native
+native.DictSubclass()
+
+[out]
+deleting DictSubclass...
+
 [case testDel]
 class A:
     def __del__(self):
