@@ -214,12 +214,14 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if not cl.builtin_base:
         fields["tp_new"] = new_name
 
-    if generate_full:
-        fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
-        fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
-        fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
     # Populate .tp_finalize and generate a finalize method only if __del__ is defined for this class.
     del_method = next((e.method for e in cl.vtable_entries if e.name == "__del__"), None)
+    # Del method is called from dealloc method. So, dealloc should be generated whenever there is a del method.
+    if generate_full or del_method:
+        fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
+    if generate_full:
+        fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
+        fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
     if del_method:
         fields["tp_finalize"] = f"(destructor){finalize_name}"
     if needs_getseters:
@@ -300,13 +302,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
         generate_traverse_for_class(cl, traverse_name, emitter)
         emit_line()
-        generate_clear_for_class(cl, clear_name, emitter)
-        emit_line()
-        generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
-        emit_line()
-        if del_method:
-            generate_finalize_for_class(del_method, finalize_name, emitter)
-            emit_line()
 
         if cl.allow_interpreted_subclasses:
             shadow_vtable_name: str | None = generate_vtables(
@@ -316,6 +311,14 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         else:
             shadow_vtable_name = None
         vtable_name = generate_vtables(cl, vtable_setup_name, vtable_name, emitter, shadow=False)
+        emit_line()
+    if generate_full or del_method:
+        generate_clear_for_class(cl, clear_name, emitter)
+        emit_line()
+        generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
+        emit_line()
+    if del_method:
+        generate_finalize_for_class(del_method, finalize_name, emitter)
         emit_line()
     if needs_getseters:
         generate_getseter_declarations(cl, emitter)
