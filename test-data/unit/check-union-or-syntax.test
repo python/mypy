@@ -67,8 +67,7 @@ x: List[int | str]
 reveal_type(x)  # N: Revealed type is "builtins.list[Union[builtins.int, builtins.str]]"
 [builtins fixtures/list.pyi]
 
-[case testUnionOrSyntaxWithQuotedFunctionTypesPre310]
-# flags: --python-version 3.9
+[case testUnionOrSyntaxWithQuotedFunctionTypes]
 from typing import Union
 def f(x: 'Union[int, str, None]') -> 'Union[int, None]':
     reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
@@ -80,8 +79,7 @@ def g(x: "int | str | None") -> "int | None":
     return 42
 reveal_type(g)  # N: Revealed type is "def (x: Union[builtins.int, builtins.str, None]) -> Union[builtins.int, None]"
 
-[case testUnionOrSyntaxWithQuotedVariableTypesPre310]
-# flags: --python-version 3.9
+[case testUnionOrSyntaxWithQuotedVariableTypes]
 y: "int | str" = 42
 reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
@@ -137,7 +135,6 @@ x: int | None
 x: int | None  # E: X | Y syntax for unions requires Python 3.10
 
 [case testUnionOrSyntaxInStubFile]
-# flags: --python-version 3.9
 from lib import x
 [file lib.pyi]
 x: int | None
@@ -187,7 +184,6 @@ def g(x: int | str | tuple[int, str] | C) -> None:
 [builtins fixtures/isinstance_python3_10.pyi]
 
 [case testUnionOrSyntaxInIsinstanceNotSupported]
-# flags: --python-version 3.9
 from typing import Union
 def f(x: Union[int, str, None]) -> None:
     if isinstance(x, int | str):
