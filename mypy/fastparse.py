@@ -631,7 +631,7 @@ class ASTConverter:
         ret: list[Statement] = []
         current_overload: list[OverloadPart] = []
         current_overload_name: str | None = None
-        seen_unconditional_func_def = False
+        last_unconditional_func_def: str | None = None
         last_if_stmt: IfStmt | None = None
         last_if_overload: Decorator | FuncDef | OverloadedFuncDef | None = None
         last_if_stmt_overload_name: str | None = None
@@ -641,7 +641,7 @@ class ASTConverter:
             if_overload_name: str | None = None
             if_block_with_overload: Block | None = None
             if_unknown_truth_value: IfStmt | None = None
-            if isinstance(stmt, IfStmt) and seen_unconditional_func_def is False:
+            if isinstance(stmt, IfStmt):
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
                 if if_overload_name is not None:
@@ -669,11 +669,18 @@ class ASTConverter:
                     last_if_unknown_truth_value = None
                 current_overload.append(stmt)
                 if isinstance(stmt, FuncDef):
-                    seen_unconditional_func_def = True
+                    # This is, strictly speaking, wrong: there might be a decorated
+                    # implementation. However, it only affects the error message we show:
+                    # ideally it's "already defined", but "implementation must come last"
+                    # is also reasonable.
+                    # TODO: can we get rid of this completely and just always emit
+                    # "implementation must come last" instead?
+                    last_unconditional_func_def = stmt.name
             elif (
                 current_overload_name is not None
                 and isinstance(stmt, IfStmt)
                 and if_overload_name == current_overload_name
+                and last_unconditional_func_def != current_overload_name
             ):
                 # IfStmt only contains stmts relevant to current_overload.
                 # Check if stmts are reachable and add them to current_overload,
@@ -729,7 +736,7 @@ class ASTConverter:
                 # most of mypy/mypyc assumes that all the functions in an OverloadedFuncDef are
                 # related, but multiple underscore functions next to each other aren't necessarily
                 # related
-                seen_unconditional_func_def = False
+                last_unconditional_func_def = None
                 if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
                     current_overload_name = stmt.name
