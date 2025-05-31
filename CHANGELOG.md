@@ -2,6 +2,10 @@
 
 ## Next Release
 
+### Deprecated Flag: \--force-uppercase-builtins
+
+Mypy only supports Python 3.9+. The \--force-uppercase-builtins flag is now deprecated and a no-op. It will be removed in a future version.
+
 ## Mypy 1.16
 
 We’ve just uploaded mypy 1.16 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
