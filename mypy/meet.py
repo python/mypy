@@ -150,21 +150,23 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return make_simplified_union(
             [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
         )
-    elif isinstance(narrowed, UnionType):
-        return make_simplified_union(
-            [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
-        )
     elif (
         isinstance(declared, TypeVarType)
         and not has_type_vars(original_narrowed)
         and is_subtype(original_narrowed, declared.upper_bound)
     ):
+        # We put this branch early to get T(bound=Union[A, B]) instead of
+        # Union[T(bound=A), T(bound=B)] that will be confusing for users.
         return declared.copy_modified(upper_bound=original_narrowed)
     elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True):
         if state.strict_optional:
             return UninhabitedType()
         else:
             return NoneType()
+    elif isinstance(narrowed, UnionType):
+        return make_simplified_union(
+            [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
+        )
     elif isinstance(narrowed, AnyType):
         return original_narrowed
     elif isinstance(narrowed, TypeVarType) and is_subtype(narrowed.upper_bound, declared):

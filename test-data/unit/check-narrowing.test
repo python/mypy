@@ -2440,3 +2440,26 @@ def test(cls: Type[T]) -> T:
         return cls()
     return cls()
 [builtins fixtures/isinstance.pyi]
+
+[case testNarrowTypeVarBoundUnion]
+from typing import TypeVar
+
+class A:
+    x: int
+class B:
+    x: str
+
+T = TypeVar("T")
+def test(x: T) -> T:
+    if not isinstance(x, (A, B)):
+        return x
+    reveal_type(x)  # N: Revealed type is "T`-1"
+    reveal_type(x.x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    if isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "T`-1"
+        reveal_type(x.x)  # N: Revealed type is "builtins.int"
+        return x
+    reveal_type(x)  # N: Revealed type is "T`-1"
+    reveal_type(x.x)  # N: Revealed type is "builtins.str"
+    return x
+[builtins fixtures/isinstance.pyi]
