@@ -1051,9 +1051,9 @@ class A:
 [file n.py.3]
 [out]
 ==
-main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "A"
+main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "m.A"
 ==
-main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "A"
+main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "m.A"
 
 [case testModifyBaseClassMethodCausingInvalidOverride]
 import m
@@ -1067,7 +1067,7 @@ class A:
     def f(self) -> int: pass
 [out]
 ==
-main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "A"
+main:3: error: Return type "str" of "f" incompatible with return type "int" in supertype "m.A"
 
 [case testAddBaseClassAttributeCausingErrorInSubclass]
 import m
@@ -1974,11 +1974,11 @@ class B:
 class B:
     def foo(self) -> int: return 12
 [out]
-a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "B"
+a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "b.B"
 ==
-a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "B"
+a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "b.B"
 ==
-a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "B"
+a.py:9: error: Return type "int" of "foo" incompatible with return type "str" in supertype "b.B"
 ==
 
 [case testPreviousErrorInMethodSemanal1]
@@ -7337,7 +7337,7 @@ class Parent:
     def f(self, arg: Any) -> Any: ...
 [out]
 ==
-main:4: error: Signature of "f" incompatible with supertype "Parent"
+main:4: error: Signature of "f" incompatible with supertype "b.Parent"
 main:4: note:      Superclass:
 main:4: note:          @overload
 main:4: note:          def f(self, arg: int) -> int
@@ -7380,7 +7380,7 @@ class Parent:
     def f(self, arg: Any) -> Any: ...
 [out]
 ==
-main:4: error: Signature of "f" incompatible with supertype "Parent"
+main:4: error: Signature of "f" incompatible with supertype "b.Parent"
 main:4: note:      Superclass:
 main:4: note:          @overload
 main:4: note:          def f(self, arg: int) -> int
@@ -7765,7 +7765,7 @@ def deco(f: F) -> F:
 [out]
 main:7: error: Unsupported operand types for + ("str" and "int")
 ==
-main:5: error: Return type "str" of "m" incompatible with return type "int" in supertype "B"
+main:5: error: Return type "str" of "m" incompatible with return type "int" in supertype "b.B"
 
 [case testLiskovFineVariableClean-only_when_nocache]
 import b
@@ -7870,7 +7870,7 @@ def deco(f: F) -> F:
     pass
 [out]
 ==
-main:5: error: Return type "str" of "m" incompatible with return type "int" in supertype "B"
+main:5: error: Return type "str" of "m" incompatible with return type "int" in supertype "b.B"
 
 [case testAddAbstractMethod]
 from b import D
@@ -8518,7 +8518,7 @@ class D:
 ==
 ==
 a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
-a.py:3: error: Signature of "meth" incompatible with supertype "C"
+a.py:3: error: Signature of "meth" incompatible with supertype "c.C"
 a.py:3: note:      Superclass:
 a.py:3: note:          @overload
 a.py:3: note:          def meth(self, x: int) -> int
@@ -8565,7 +8565,7 @@ class D:
 ==
 ==
 a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
-a.py:3: error: Signature of "meth" incompatible with supertype "C"
+a.py:3: error: Signature of "meth" incompatible with supertype "c.C"
 a.py:3: note:      Superclass:
 a.py:3: note:          @overload
 a.py:3: note:          def meth(x: int) -> int
