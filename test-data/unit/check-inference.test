@@ -4071,3 +4071,13 @@ def check_or_nested(maybe: bool) -> None:
         reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int]"
         reveal_type(bar)  # N: Revealed type is "builtins.list[builtins.int]"
         reveal_type(baz)  # N: Revealed type is "builtins.list[builtins.int]"
+
+[case testInferOptionalAgainstAny]
+from typing import Any, Optional, TypeVar
+
+a: Any
+oa: Optional[Any]
+T = TypeVar("T")
+def f(x: Optional[T]) -> T: ...
+reveal_type(f(a))  # N: Revealed type is "Any"
+reveal_type(f(oa))  # N: Revealed type is "Any"
