@@ -416,7 +416,7 @@ def _infer_constraints(
                 infer_constraints_if_possible(t_item, actual, direction)
                 for t_item in template.items
             ],
-            eager=False,
+            eager=isinstance(actual, AnyType),
         )
         if result:
             return result
