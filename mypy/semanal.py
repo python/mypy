@@ -2031,8 +2031,14 @@ class SemanticAnalyzer(
         defn.defs.accept(self)
         self.apply_class_plugin_hooks(defn)
 
-        if "__eq__" in defn.info.names and "__hash__" not in defn.info.names:
+        if (
+            "__eq__" in defn.info.names
+            and "__hash__" not in defn.info.names
+            and not defn.info.is_protocol
+        ):
             # If a class defines `__eq__` without `__hash__`, it's no longer hashable.
+            # Excludes Protocol from consideration as we don't want to enforce unhashability
+            # of their instances.
             hash_none = Var("__hash__", NoneType())
             hash_none.info = defn.info
             hash_none.set_line(defn)
