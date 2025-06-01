@@ -166,6 +166,18 @@ class B(A):
     __hash__ = None  # E: Incompatible types in assignment (expression has type "None", base class "A" defined the type as "Callable[[], int]")
 [builtins fixtures/primitives.pyi]
 
+[case testHashOverrideInMultipleInheritance]
+class Foo:
+    def __eq__(self, other: "Foo") -> bool: ...
+
+class Bar:
+    def __hash__(self) -> int: ...
+
+class BadChild(Foo, Bar): ...  # E: Definition of "__hash__" in base class "Foo" is incompatible with definition in base class "Bar"
+class GoodChild(Bar, Foo): ...
+[builtins fixtures/tuple.pyi]
+
+
 [case testOverridePartialAttributeWithMethod]
 # This was crashing: https://github.com/python/mypy/issues/11686.
 class Base:

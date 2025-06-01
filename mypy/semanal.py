@@ -2037,6 +2037,12 @@ class SemanticAnalyzer(
             hash_none.info = defn.info
             hash_none.set_line(defn)
             hash_none.is_classvar = True
+            # Making a class hashable is allowed even if its parents weren't.
+            # The only possible consequence of this LSP violation would be
+            # `assert child.__hash__ is None` no longer passing, probably nobody
+            # cares about that - it's impossible to statically restrict to non-hashable
+            # anyway.
+            hash_none.allow_incompatible_override = True
             self.add_symbol("__hash__", hash_none, defn)
 
         self.leave_class()
