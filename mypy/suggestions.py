@@ -53,7 +53,6 @@ from mypy.nodes import (
     SymbolTable,
     TypeInfo,
     Var,
-    reverse_builtin_aliases,
 )
 from mypy.options import Options
 from mypy.plugin import FunctionContext, MethodContext, Plugin
@@ -830,8 +829,6 @@ class TypeFormatter(TypeStrVisitor):
         s = t.type.fullname or t.type.name or None
         if s is None:
             return "<???>"
-        if s in reverse_builtin_aliases:
-            s = reverse_builtin_aliases[s]
 
         mod_obj = split_target(self.graph, s)
         assert mod_obj

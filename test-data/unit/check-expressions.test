@@ -750,17 +750,17 @@ i = 8
 f = 8.0
 d = Decimal(8)
 
-reveal_type(divmod(i, i))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
-reveal_type(divmod(f, i))  # N: Revealed type is "Tuple[builtins.float, builtins.float]"
-reveal_type(divmod(d, i))  # N: Revealed type is "Tuple[__main__.Decimal, __main__.Decimal]"
+reveal_type(divmod(i, i))  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+reveal_type(divmod(f, i))  # N: Revealed type is "tuple[builtins.float, builtins.float]"
+reveal_type(divmod(d, i))  # N: Revealed type is "tuple[__main__.Decimal, __main__.Decimal]"
 
-reveal_type(divmod(i, f))  # N: Revealed type is "Tuple[builtins.float, builtins.float]"
-reveal_type(divmod(f, f))  # N: Revealed type is "Tuple[builtins.float, builtins.float]"
+reveal_type(divmod(i, f))  # N: Revealed type is "tuple[builtins.float, builtins.float]"
+reveal_type(divmod(f, f))  # N: Revealed type is "tuple[builtins.float, builtins.float]"
 divmod(d, f)  # E: Unsupported operand types for divmod ("Decimal" and "float")
 
-reveal_type(divmod(i, d))  # N: Revealed type is "Tuple[__main__.Decimal, __main__.Decimal]"
+reveal_type(divmod(i, d))  # N: Revealed type is "tuple[__main__.Decimal, __main__.Decimal]"
 divmod(f, d)  # E: Unsupported operand types for divmod ("float" and "Decimal")
-reveal_type(divmod(d, d))  # N: Revealed type is "Tuple[__main__.Decimal, __main__.Decimal]"
+reveal_type(divmod(d, d))  # N: Revealed type is "tuple[__main__.Decimal, __main__.Decimal]"
 
 # Now some bad calls
 divmod()  # E: "divmod" expects 2 arguments \
@@ -1378,7 +1378,7 @@ class B: pass
 [out]
 main:5: error: Key expression in dictionary comprehension has incompatible type "A"; expected type "B"
 main:5: error: Value expression in dictionary comprehension has incompatible type "B"; expected type "A"
-main:6: error: Incompatible types in assignment (expression has type "Dict[A, B]", variable has type "A")
+main:6: error: Incompatible types in assignment (expression has type "dict[A, B]", variable has type "A")
 
 
 [case testDictionaryComprehensionWithNonDirectMapping]
@@ -1661,13 +1661,13 @@ d1 = dict(a=1, b=2) # type: Dict[str, int]
 d2 = dict(a=1, b='') # type: Dict[str, int] # E: Dict entry 1 has incompatible type "str": "str"; expected "str": "int"
 d3 = dict(a=1) # type: Dict[int, int] # E: Dict entry 0 has incompatible type "str": "int"; expected "int": "int"
 d4 = dict(a=1, b=1)
-d4.xyz # E: "Dict[str, int]" has no attribute "xyz"
+d4.xyz # E: "dict[str, int]" has no attribute "xyz"
 d5 = dict(a=1, b='') # type: Dict[str, Any]
 [builtins fixtures/dict.pyi]
 
 [case testDictWithoutKeywordArgs]
 from typing import Dict
-d = dict() # E: Need type annotation for "d" (hint: "d: Dict[<type>, <type>] = ...")
+d = dict() # E: Need type annotation for "d" (hint: "d: dict[<type>, <type>] = ...")
 d2 = dict() # type: Dict[int, str]
 dict(undefined) # E: Name "undefined" is not defined
 [builtins fixtures/dict.pyi]
@@ -1675,8 +1675,8 @@ dict(undefined) # E: Name "undefined" is not defined
 [case testDictFromList]
 from typing import Dict
 d = dict([(1, 'x'), (2, 'y')])
-d() # E: "Dict[int, str]" not callable
-d2 = dict([(1, 'x')]) # type: Dict[str, str] # E: List item 0 has incompatible type "Tuple[int, str]"; expected "Tuple[str, str]"
+d() # E: "dict[int, str]" not callable
+d2 = dict([(1, 'x')]) # type: Dict[str, str] # E: List item 0 has incompatible type "tuple[int, str]"; expected "tuple[str, str]"
 [builtins fixtures/dict.pyi]
 
 [case testDictFromIterableAndKeywordArg]
@@ -1684,10 +1684,10 @@ from typing import Dict
 it = [('x', 1)]
 
 d = dict(it, x=1)
-d() # E: "Dict[str, int]" not callable
+d() # E: "dict[str, int]" not callable
 
 d2 = dict(it, x='')
-d2() # E: "Dict[str, object]" not callable
+d2() # E: "dict[str, object]" not callable
 
 d3 = dict(it, x='') # type: Dict[str, int] # E: Argument "x" to "dict" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
@@ -1699,7 +1699,7 @@ dict(it, x='y') # E: Keyword argument only valid with "str" key type in call to 
 
 [case testDictFromIterableAndKeywordArg3]
 d = dict([], x=1)
-d() # E: "Dict[str, int]" not callable
+d() # E: "dict[str, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testDictFromIterableAndStarStarArgs]
@@ -1708,20 +1708,20 @@ it = [('x', 1)]
 
 kw = {'x': 1}
 d = dict(it, **kw)
-d() # E: "Dict[str, int]" not callable
+d() # E: "dict[str, int]" not callable
 
 kw2 = {'x': ''}
 d2 = dict(it, **kw2)
-d2() # E: "Dict[str, object]" not callable
+d2() # E: "dict[str, object]" not callable
 
-d3 = dict(it, **kw2) # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type "**Dict[str, str]"; expected "int"
+d3 = dict(it, **kw2) # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type "**dict[str, str]"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testDictFromIterableAndStarStarArgs2]
 it = [(1, 'x')]
 kw = {'x': 'y'}
 d = dict(it, **kw) # E: Keyword argument only valid with "str" key type in call to "dict"
-d() # E: "Dict[int, str]" not callable
+d() # E: "dict[int, str]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testUserDefinedClassNamedDict]
@@ -1880,7 +1880,7 @@ c = {**b}
 d = {**a, **b, 'c': 3}
 e = {1: 'a', **a}  # E: Cannot infer type argument 1 of <dict> \
                    # N: Try assigning the literal to a variable annotated as dict[<key>, <val>]
-f = {**b}  # type: Dict[int, int]  # E: Unpacked dict entry 0 has incompatible type "Dict[str, int]"; expected "SupportsKeysAndGetItem[int, int]"
+f = {**b}  # type: Dict[int, int]  # E: Unpacked dict entry 0 has incompatible type "dict[str, int]"; expected "SupportsKeysAndGetItem[int, int]"
 g = {**Thing()}
 h = {**a, **Thing()}
 i = {**Thing()}  # type: Dict[int, int]  # E: Unpacked dict entry 0 has incompatible type "Thing"; expected "SupportsKeysAndGetItem[int, int]" \
@@ -1938,8 +1938,8 @@ class B: ...
 [builtins fixtures/dict.pyi]
 
 [case testTypeAnnotationNeededMultipleAssignment]
-x, y = [], [] # E: Need type annotation for "x" (hint: "x: List[<type>] = ...") \
-            # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")
+x, y = [], [] # E: Need type annotation for "x" (hint: "x: list[<type>] = ...") \
+            # E: Need type annotation for "y" (hint: "y: list[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testStrictEqualityEq]
@@ -2169,7 +2169,7 @@ class CustomMeta(type):
 class Normal: ...
 class Custom(metaclass=CustomMeta): ...
 
-Normal == int()  # E: Non-overlapping equality check (left operand type: "Type[Normal]", right operand type: "int")
+Normal == int()  # E: Non-overlapping equality check (left operand type: "type[Normal]", right operand type: "int")
 Normal == Normal
 Custom == int()
 [builtins fixtures/bool.pyi]
@@ -2194,7 +2194,7 @@ class Bad: ...
 subclasses: List[Type[C]]
 object in subclasses
 D in subclasses
-Bad in subclasses  # E: Non-overlapping container check (element type: "Type[Bad]", container item type: "Type[C]")
+Bad in subclasses  # E: Non-overlapping container check (element type: "type[Bad]", container item type: "type[C]")
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -2216,7 +2216,7 @@ exp: List[Meta]
 
 A in exp
 B in exp
-C in exp  # E: Non-overlapping container check (element type: "Type[C]", container item type: "Meta")
+C in exp  # E: Non-overlapping container check (element type: "type[C]", container item type: "Meta")
 
 o in exp
 a in exp
@@ -2391,7 +2391,7 @@ assert a == b
 
 R2 = Dict[int, R2]
 c: R2
-assert a == c  # E: Non-overlapping equality check (left operand type: "Dict[str, R]", right operand type: "Dict[int, R2]")
+assert a == c  # E: Non-overlapping equality check (left operand type: "dict[str, R]", right operand type: "dict[int, R2]")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
