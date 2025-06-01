@@ -2,6 +2,24 @@
 
 ## Next Release
 
+### Remove Support for targeting Python 3.8
+
+Mypy now requires `--python-version 3.9` or greater. Support for only Python `3.8` is
+fully removed now. Given an unsupported version, mypy will now default to the oldest
+supported one, currently `3.9`.
+
+Contributed by Marc Mueller
+(PR [19157](https://github.com/python/mypy/pull/19157), PR [19162](https://github.com/python/mypy/pull/19162)).
+
+### Initial support for Python 3.14
+
+Mypy is now tested on `3.14` and mypyc works with `3.14.0b3` and later.
+Mypyc compiled wheels of mypy itself will be available for new versions after `3.14.0rc1` is released.
+
+Note that not all new features might be supported just yet.
+
+Contributed by Marc Mueller (PR [19164](https://github.com/python/mypy/pull/19164))
+
 ## Mypy 1.16
 
 We’ve just uploaded mypy 1.16 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
