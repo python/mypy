@@ -90,6 +90,7 @@ class str:
     def __add__(self, x: str) -> str: pass
     def __mul__(self, x: int) -> str: pass
     def __rmul__(self, x: int) -> str: pass
+    def __hash__(self) -> int: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
     def __lt__(self, x: str) -> bool: ...
