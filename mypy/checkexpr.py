@@ -3161,13 +3161,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 too_complex = True
                 break
             for i, (k1, k2) in enumerate(zip(new_kinds, target.arg_kinds)):
-                if k1 == k2: continue
+                if k1 == k2:
+                    continue
                 if k1.is_positional() and k2.is_positional():
                     new_kinds[i] = ARG_POS
                 else:
                     too_complex = True
                     break
-            if too_complex: break
+            if too_complex:
+                break
             for i, arg in enumerate(target.arg_types):
                 new_args[i].append(arg)
             new_returns.append(target.ret_type)
