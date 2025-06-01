@@ -10,7 +10,7 @@ class object:
     def __str__(self) -> str: pass
     def __eq__(self, other: object) -> bool: pass
     def __ne__(self, other: object) -> bool: pass
-    def __hash__(self) -> int: ...
+    def __hash__(self) -> int: pass
 
 class type:
     def __init__(self, x: object) -> None: pass
