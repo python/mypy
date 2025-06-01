@@ -3148,7 +3148,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         callables, variables = merge_typevars_in_callables_by_name(callables)
 
         new_args: list[list[Type]] = [[] for _ in callables[0].arg_types]
-        new_kinds, new_returns = list(callables[0].arg_kinds), []
+        new_kinds = list(callables[0].arg_kinds)
+        new_returns: list[Type] = []
         too_complex = False
 
         for target in callables:
@@ -3160,10 +3161,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if len(new_kinds) != len(target.arg_kinds):
                 too_complex = True
                 break
-            for i, (k1, k2) in enumerate(zip(new_kinds, target.arg_kinds)):
-                if k1 == k2:
+            for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
+                if new_kind == target_kind:
                     continue
-                if k1.is_positional() and k2.is_positional():
+                if new_kind.is_positional() and target_kind.is_positional():
                     new_kinds[i] = ARG_POS
                 else:
                     too_complex = True
