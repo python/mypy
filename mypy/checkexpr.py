@@ -3129,6 +3129,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         assert types, "Trying to merge no callables"
         if not all(isinstance(c, CallableType) for c in types):
             return AnyType(TypeOfAny.special_form)
+
         callables = cast("list[CallableType]", types)
         if len(callables) == 1:
             return callables[0]
@@ -3146,11 +3147,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # confusing and ought to be re-written anyways.)
         callables, variables = merge_typevars_in_callables_by_name(callables)
 
-        new_args: list[list[Type]] = [[] for _ in range(len(callables[0].arg_types))]
-        new_kinds = list(callables[0].arg_kinds)
-        new_returns: list[Type] = []
-
+        new_args: list[list[Type]] = [[] for _ in callables[0].arg_types]
+        new_kinds, new_returns = list(callables[0].arg_kinds), []
         too_complex = False
+
         for target in callables:
             # We fall back to Callable[..., Union[<returns>]] if the functions do not have
             # the exact same signature. The only exception is if one arg is optional and
@@ -3160,18 +3160,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if len(new_kinds) != len(target.arg_kinds):
                 too_complex = True
                 break
-            for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
-                if new_kind == target_kind:
-                    continue
-                elif new_kind.is_positional() and target_kind.is_positional():
+            for i, (k1, k2) in enumerate(zip(new_kinds, target.arg_kinds)):
+                if k1 == k2: continue
+                if k1.is_positional() and k2.is_positional():
                     new_kinds[i] = ARG_POS
                 else:
                     too_complex = True
                     break
-
-            if too_complex:
-                break  # outer loop
-
+            if too_complex: break
             for i, arg in enumerate(target.arg_types):
                 new_args[i].append(arg)
             new_returns.append(target.ret_type)
@@ -3188,13 +3184,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 implicit=True,
             )
 
-        final_args = []
-        for args_list in new_args:
-            new_type = make_simplified_union(args_list)
-            final_args.append(new_type)
-
         return callables[0].copy_modified(
-            arg_types=final_args,
+            arg_types=[make_simplified_union(args) for args in new_args],
             arg_kinds=new_kinds,
             ret_type=union_return,
             variables=variables,
