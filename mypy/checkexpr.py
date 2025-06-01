@@ -2886,9 +2886,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             assert self.msg is self.chk.msg
             with self.msg.filter_errors() as w, self.chk.local_type_map() as m:
                 ret_type, infer_type = self.check_call(
-                    callee=typ, args=args, arg_kinds=arg_kinds, arg_names=arg_names,
-                    context=context, callable_name=callable_name, object_type=object_type)
-            if w.has_new_errors(): continue
+                    callee=typ,
+                    args=args,
+                    arg_kinds=arg_kinds,
+                    arg_names=arg_names,
+                    context=context,
+                    callable_name=callable_name,
+                    object_type=object_type,
+                )
+            if w.has_new_errors():
+                continue
 
             # Return early if possible; otherwise record info, so we can
             # check for ambiguity due to 'Any' below.
@@ -2918,9 +2925,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 self.chk.store_types(type_maps[0])
                 return erase_type(return_types[0]), erase_type(inferred_types[0])
             return self.check_call(
-                callee=AnyType(TypeOfAny.special_form), args=args, arg_kinds=arg_kinds,
-                arg_names=arg_names, context=context, callable_name=callable_name,
-                object_type=object_type)
+                callee=AnyType(TypeOfAny.special_form),
+                args=args,
+                arg_kinds=arg_kinds,
+                arg_names=arg_names,
+                context=context,
+                callable_name=callable_name,
+                object_type=object_type,
+            )
 
         # Success! No ambiguity; return the first match.
         self.chk.store_types(type_maps[0])
