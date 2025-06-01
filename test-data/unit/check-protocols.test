@@ -4529,3 +4529,25 @@ def bad() -> Proto:
 class Impl:
     @defer
     def f(self) -> int: ...
+
+[case testInferCallableProtoWithAnySubclass]
+from typing import Any, Generic, Protocol, TypeVar
+
+T = TypeVar("T", covariant=True)
+
+Unknown: Any
+class Mock(Unknown):
+    def __init__(self, **kwargs: Any) -> None: ...
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+class Factory(Protocol[T]):
+    def __call__(self, **kwargs: Any) -> T: ...
+
+
+class Test(Generic[T]):
+    def __init__(self, f: Factory[T]) -> None:
+        ...
+
+t = Test(Mock())
+reveal_type(t)  # N: Revealed type is "__main__.Test[Any]"
+[builtins fixtures/dict.pyi]
