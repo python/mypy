@@ -75,6 +75,8 @@ class _CData:
     _objects: Mapping[Any, int] | None
     def __buffer__(self, flags: int, /) -> memoryview: ...
     def __ctypes_from_outparam__(self, /) -> Self: ...
+    if sys.version_info >= (3, 14):
+        __pointer_type__: type
 
 # this is a union of all the subclasses of _CData, which is useful because of
 # the methods that are present on each of those subclasses which are not present
@@ -289,7 +291,11 @@ class Array(_CData, Generic[_CT], metaclass=_PyCArrayType):
     def _type_(self) -> type[_CT]: ...
     @_type_.setter
     def _type_(self, value: type[_CT]) -> None: ...
-    raw: bytes  # Note: only available if _CT == c_char
+    # Note: only available if _CT == c_char
+    @property
+    def raw(self) -> bytes: ...
+    @raw.setter
+    def raw(self, value: ReadableBuffer) -> None: ...
     value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
     # TODO: These methods cannot be annotated correctly at the moment.
     # All of these "Any"s stand for the array's element type, but it's not possible to use _CT
