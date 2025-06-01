@@ -3929,7 +3929,9 @@ class A(Generic[T, U]):
 def join(a: T, b: T) -> T: ...
 
 reveal_type(join(intlike(), comparable))  # N: Revealed type is "__main__._SupportsCompare"
+reveal_type(join(comparable, intlike()))  # N: Revealed type is "__main__._SupportsCompare"
 reveal_type(A(intlike(), comparable))  # N: Revealed type is "__main__.A[__main__._SupportsCompare, __main__._SupportsCompare]"
+reveal_type(A(comparable, intlike()))  # N: Revealed type is "__main__.A[__main__._SupportsCompare, __main__._SupportsCompare]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
 
