@@ -32,8 +32,11 @@ def insert_spills(ir: FuncIR, env: ClassIR) -> None:
 
 
 def spill_regs(
-    blocks: list[BasicBlock], env: ClassIR, to_spill: set[Value], live: AnalysisResult[Value],
-    self_reg: Register
+    blocks: list[BasicBlock],
+    env: ClassIR,
+    to_spill: set[Value],
+    live: AnalysisResult[Value],
+    self_reg: Register,
 ) -> list[BasicBlock]:
     for op in blocks[0].ops:
         if isinstance(op, GetAttr) and op.attr == "__mypyc_env__":
