@@ -821,7 +821,11 @@ from typing import dataclass_transform, Type
 class Meta(type): ...
 class Base(metaclass=Meta):
     base: int
-class Foo(Base, frozen=True):
+class Foo(Base, frozen=True):  # E: Signature of "__hash__" incompatible with supertype "Base" \
+                               # N:      Superclass: \
+                               # N:          None \
+                               # N:      Subclass: \
+                               # N:          def __hash__() -> int
     foo: int
 class Bar(Base, frozen=False):
     bar: int
