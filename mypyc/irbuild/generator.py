@@ -64,8 +64,14 @@ def gen_generator_func(
     setup_generator_class(builder)
     load_env_registers(builder)
     gen_arg_defaults(builder)
-    finalize_env_class(builder)
-    builder.add(Return(instantiate_generator_class(builder)))
+    if builder.fn_info.can_merge_generator_and_env_classes():
+        gen = instantiate_generator_class(builder)
+        builder.fn_info._curr_env_reg = gen
+        finalize_env_class(builder)
+    else:
+        finalize_env_class(builder)
+        gen = instantiate_generator_class(builder)
+    builder.add(Return(gen))
 
     args, _, blocks, ret_type, fn_info = builder.leave()
     func_ir, func_reg = gen_func_ir(args, blocks, fn_info)
@@ -122,22 +128,27 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
     fitem = builder.fn_info.fitem
     generator_reg = builder.add(Call(builder.fn_info.generator_class.ir.ctor, [], fitem.line))
 
-    # Get the current environment register. If the current function is nested, then the
-    # generator class gets instantiated from the callable class' '__call__' method, and hence
-    # we use the callable class' environment register. Otherwise, we use the original
-    # function's environment register.
-    if builder.fn_info.is_nested:
-        curr_env_reg = builder.fn_info.callable_class.curr_env_reg
+    if builder.fn_info.can_merge_generator_and_env_classes():
+        # Set the generator instance to the initial state (zero).
+        zero = Integer(0)
+        builder.add(SetAttr(generator_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
     else:
-        curr_env_reg = builder.fn_info.curr_env_reg
+        # Get the current environment register. If the current function is nested, then the
+        # generator class gets instantiated from the callable class' '__call__' method, and hence
+        # we use the callable class' environment register. Otherwise, we use the original
+        # function's environment register.
+        if builder.fn_info.is_nested:
+            curr_env_reg = builder.fn_info.callable_class.curr_env_reg
+        else:
+            curr_env_reg = builder.fn_info.curr_env_reg
 
-    # Set the generator class' environment attribute to point at the environment class
-    # defined in the current scope.
-    builder.add(SetAttr(generator_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
+        # Set the generator class' environment attribute to point at the environment class
+        # defined in the current scope.
+        builder.add(SetAttr(generator_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
 
-    # Set the generator class' environment class' NEXT_LABEL_ATTR_NAME attribute to 0.
-    zero = Integer(0)
-    builder.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
+        # Set the generator instance's environment to the initial state (zero).
+        zero = Integer(0)
+        builder.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
     return generator_reg
 
 
@@ -145,7 +156,10 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
     name = f"{builder.fn_info.namespaced_name()}_gen"
 
     generator_class_ir = ClassIR(name, builder.module_name, is_generated=True)
-    generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
+    if builder.fn_info.can_merge_generator_and_env_classes():
+        builder.fn_info.env_class = generator_class_ir
+    else:
+        generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
     generator_class_ir.mro = [generator_class_ir]
 
     builder.classes.append(generator_class_ir)
@@ -392,7 +406,10 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     cls.send_arg_reg = exc_arg
 
     cls.self_reg = builder.read(self_target, fitem.line)
-    cls.curr_env_reg = load_outer_env(builder, cls.self_reg, builder.symtables[-1])
+    if builder.fn_info.can_merge_generator_and_env_classes():
+        cls.curr_env_reg = cls.self_reg
+    else:
+        cls.curr_env_reg = load_outer_env(builder, cls.self_reg, builder.symtables[-1])
 
     # Define a variable representing the label to go to the next time
     # the '__next__' function of the generator is called, and add it

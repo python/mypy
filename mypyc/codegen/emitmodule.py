@@ -306,7 +306,10 @@ def compile_ir_to_c(
         for source in sources
     }
 
-    names = NameGenerator([[source.module for source in sources] for sources, _ in groups])
+    names = NameGenerator(
+        [[source.module for source in sources] for sources, _ in groups],
+        separate=compiler_options.separate,
+    )
 
     # Generate C code for each compilation group. Each group will be
     # compiled into a separate extension module.
