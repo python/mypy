@@ -561,3 +561,33 @@ def test_bool() -> None:
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
+
+[case testRunAsyncNestedFunctions]
+import asyncio
+from typing import cast
+
+def normal_contains_async_def(x: int) -> int:
+    async def f(y: int) -> int:
+        return x + y
+
+    return 5 + cast(int, asyncio.run(f(6)))
+
+def test_def_contains_async_def() -> None:
+    assert normal_contains_async_def(3) == 14
+
+async def inc(x: int) -> int:
+    return x + 1
+
+async def async_def_contains_normal(x: int) -> int:
+    def nested(y: int, z: int) -> int:
+        return x + y + z
+
+    a = x
+    a += nested((await inc(3)), (await inc(4)))
+    return a
+
+def test_async_def_contains_normal() -> None:
+    assert normal_contains_async_def(2) == (2 + 2 + 4 + 5)
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
