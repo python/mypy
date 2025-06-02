@@ -38,6 +38,7 @@ def spill_regs(
     live: AnalysisResult[Value],
     self_reg: Register,
 ) -> list[BasicBlock]:
+    env_reg: Value
     for op in blocks[0].ops:
         if isinstance(op, GetAttr) and op.attr == "__mypyc_env__":
             env_reg = op
