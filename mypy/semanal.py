@@ -265,6 +265,7 @@ from mypy.types import (
     TPDICT_NAMES,
     TYPE_ALIAS_NAMES,
     TYPE_CHECK_ONLY_NAMES,
+    TYPE_NAMES,
     TYPE_VAR_LIKE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
     UNPACK_TYPE_NAMES,
@@ -1116,21 +1117,7 @@ class SemanticAnalyzer(
                 return self.is_expected_self_type(typ.item, is_classmethod=False)
             if isinstance(typ, UnboundType):
                 sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
-                if (
-                    sym is not None
-                    and (
-                        sym.fullname == "typing.Type"
-                        or (
-                            sym.fullname == "builtins.type"
-                            and (
-                                self.is_stub_file
-                                or self.is_future_flag_set("annotations")
-                                or self.options.python_version >= (3, 9)
-                            )
-                        )
-                    )
-                    and typ.args
-                ):
+                if sym is not None and sym.fullname in TYPE_NAMES and typ.args:
                     return self.is_expected_self_type(typ.args[0], is_classmethod=False)
             return False
         if isinstance(typ, TypeVarType):

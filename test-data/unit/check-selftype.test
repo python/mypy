@@ -1707,7 +1707,6 @@ class C:
 [builtins fixtures/classmethod.pyi]
 
 [case testTypingSelfRedundantAllowed_pep585]
-# flags: --python-version 3.9
 from typing import Self
 
 class C:
@@ -1742,7 +1741,6 @@ class C:
 [builtins fixtures/classmethod.pyi]
 
 [case testTypingSelfRedundantWarning_pep585]
-# flags: --python-version 3.9
 # mypy: enable-error-code="redundant-self"
 
 from typing import Self

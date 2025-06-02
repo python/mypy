@@ -4420,7 +4420,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         elif isinstance(left_type, FunctionLike) and left_type.is_type_obj():
             if left_type.type_object().is_enum:
                 return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
-            elif self.chk.options.python_version >= (3, 9) and (
+            elif (
                 left_type.type_object().type_vars
                 or left_type.type_object().fullname == "builtins.type"
             ):

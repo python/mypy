@@ -65,7 +65,9 @@ from mypy.types import (
     FINAL_TYPE_NAMES,
     LITERAL_TYPE_NAMES,
     NEVER_NAMES,
+    TUPLE_NAMES,
     TYPE_ALIAS_NAMES,
+    TYPE_NAMES,
     UNPACK_TYPE_NAMES,
     AnyType,
     BoolTypeQuery,
@@ -607,10 +609,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         code=codes.VALID_TYPE,
                     )
             return AnyType(TypeOfAny.from_error)
-        elif fullname == "typing.Tuple" or (
-            fullname == "builtins.tuple"
-            and (self.always_allow_new_syntax or self.options.python_version >= (3, 9))
-        ):
+        elif fullname in TUPLE_NAMES:
             # Tuple is special because it is involved in builtin import cycle
             # and may be not ready when used.
             sym = self.api.lookup_fully_qualified_or_none("builtins.tuple")
@@ -645,10 +644,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return make_optional_type(item)
         elif fullname == "typing.Callable":
             return self.analyze_callable_type(t)
-        elif fullname == "typing.Type" or (
-            fullname == "builtins.type"
-            and (self.always_allow_new_syntax or self.options.python_version >= (3, 9))
-        ):
+        elif fullname in TYPE_NAMES:
             if len(t.args) == 0:
                 if fullname == "typing.Type":
                     any_type = self.get_omitted_any(t)

@@ -3888,6 +3888,53 @@ def a4(x: List[str], y: List[Never]) -> None:
     z1[1].append("asdf")  # E: "object" has no attribute "append"
 [builtins fixtures/dict.pyi]
 
+
+[case testDeterminismCommutativityWithJoinInvolvingProtocolBaseAndPromotableType]
+# flags: --python-version 3.11
+# Regression test for https://github.com/python/mypy/issues/16979#issuecomment-1982246306
+from __future__ import annotations
+
+from typing import Any, Generic, Protocol, TypeVar, overload, cast
+from typing_extensions import Never
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class _SupportsCompare(Protocol):
+    def __lt__(self, other: Any, /) -> bool:
+        return True
+
+class Comparable(_SupportsCompare):
+    pass
+
+comparable: Comparable = Comparable()
+
+from typing import _promote
+
+class floatlike:
+    def __lt__(self, other: floatlike, /) -> bool: ...
+
+@_promote(floatlike)
+class intlike:
+    def __lt__(self, other: intlike, /) -> bool: ...
+
+
+class A(Generic[T, U]):
+    @overload
+    def __init__(self: A[T, T], a: T, b: T, /) -> None: ...  # type: ignore[overload-overlap]
+    @overload
+    def __init__(self: A[T, U], a: T, b: U, /) -> Never: ...
+    def __init__(self, *a) -> None: ...
+
+def join(a: T, b: T) -> T: ...
+
+reveal_type(join(intlike(), comparable))  # N: Revealed type is "__main__._SupportsCompare"
+reveal_type(join(comparable, intlike()))  # N: Revealed type is "__main__._SupportsCompare"
+reveal_type(A(intlike(), comparable))  # N: Revealed type is "__main__.A[__main__._SupportsCompare, __main__._SupportsCompare]"
+reveal_type(A(comparable, intlike()))  # N: Revealed type is "__main__.A[__main__._SupportsCompare, __main__._SupportsCompare]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
+
 [case testTupleJoinFallbackInference]
 foo = [
     (1, ("a", "b")),
@@ -4071,3 +4118,13 @@ def check_or_nested(maybe: bool) -> None:
         reveal_type(foo)  # N: Revealed type is "builtins.list[builtins.int]"
         reveal_type(bar)  # N: Revealed type is "builtins.list[builtins.int]"
         reveal_type(baz)  # N: Revealed type is "builtins.list[builtins.int]"
+
+[case testInferOptionalAgainstAny]
+from typing import Any, Optional, TypeVar
+
+a: Any
+oa: Optional[Any]
+T = TypeVar("T")
+def f(x: Optional[T]) -> T: ...
+reveal_type(f(a))  # N: Revealed type is "Any"
+reveal_type(f(oa))  # N: Revealed type is "Any"

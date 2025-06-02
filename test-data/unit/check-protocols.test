@@ -4461,6 +4461,30 @@ f2(a4)  # E: Argument 1 to "f2" has incompatible type "A4"; expected "P2" \
         # N:     foo: expected setter type "C1", got "str"
 [builtins fixtures/property.pyi]
 
+
+[case testExplicitProtocolJoinPreference]
+from typing import Protocol, TypeVar
+
+T = TypeVar("T")
+
+class Proto1(Protocol):
+    def foo(self) -> int: ...
+class Proto2(Proto1):
+    def bar(self) -> str: ...
+class Proto3(Proto2):
+    def baz(self) -> str: ...
+
+class Base: ...
+
+class A(Base, Proto3): ...
+class B(Base, Proto3): ...
+
+def join(a: T, b: T) -> T: ...
+
+def main(a: A, b: B) -> None:
+    reveal_type(join(a, b))  # N: Revealed type is "__main__.Proto3"
+    reveal_type(join(b, a))  # N: Revealed type is "__main__.Proto3"
+
 [case testProtocolImplementationWithDescriptors]
 from typing import Any, Protocol
 
@@ -4505,3 +4529,25 @@ def bad() -> Proto:
 class Impl:
     @defer
     def f(self) -> int: ...
+
+[case testInferCallableProtoWithAnySubclass]
+from typing import Any, Generic, Protocol, TypeVar
+
+T = TypeVar("T", covariant=True)
+
+Unknown: Any
+class Mock(Unknown):
+    def __init__(self, **kwargs: Any) -> None: ...
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+class Factory(Protocol[T]):
+    def __call__(self, **kwargs: Any) -> T: ...
+
+
+class Test(Generic[T]):
+    def __init__(self, f: Factory[T]) -> None:
+        ...
+
+t = Test(Mock())
+reveal_type(t)  # N: Revealed type is "__main__.Test[Any]"
+[builtins fixtures/dict.pyi]
