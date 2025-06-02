@@ -589,5 +589,14 @@ async def async_def_contains_normal(x: int) -> int:
 def test_async_def_contains_normal() -> None:
     assert normal_contains_async_def(2) == (2 + 2 + 4 + 5)
 
+async def async_def_contains_async_def(x: int) -> int:
+    async def f(y: int) -> int:
+        return (await inc(x)) + (await inc(y))
+
+    return (await f(1)) + (await f(2))
+
+def test_async_def_contains_async_def() -> None:
+    assert asyncio.run(async_def_contains_async_def(3)) == (3 + 1 + 1 + 1) + (3 + 1 + 2 + 1)
+
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
