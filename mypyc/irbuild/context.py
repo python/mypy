@@ -95,6 +95,11 @@ class FuncInfo:
         assert self._curr_env_reg is not None
         return self._curr_env_reg
 
+    def can_merge_generator_and_env_classes(self) -> bool:
+        # In simple cases we can place the environment into the generator class,
+        # instead of having two separate classes.
+        return self.is_generator and not self.is_nested and not self.contains_nested
+
 
 class ImplicitClass:
     """Contains information regarding implicitly generated classes.
