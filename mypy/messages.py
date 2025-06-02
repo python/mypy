@@ -405,39 +405,37 @@ class MessageBuilder:
                     return codes.OPERATOR
         elif member == "__neg__":
             display_type = (
-            self.pretty_callable_or_overload(original_type)
-            if isinstance(original_type, CallableType)
-            else format_type(original_type, self.options)
-)
-            self.fail(
-            f"Unsupported operand type for unary - ({display_type})",
-            context,
-            code=codes.OPERATOR,
-)
-            return codes.OPERATOR
-        elif member == "__pos__":
-
-            display_type=(
                 self.pretty_callable_or_overload(original_type)
                 if isinstance(original_type, CallableType)
                 else format_type(original_type, self.options)
             )
             self.fail(
-                 f"Unsupported operand type for unary + ({display_type})",
+                f"Unsupported operand type for unary - ({display_type})",
+                context,
+                code=codes.OPERATOR,
+            )
+            return codes.OPERATOR
+        elif member == "__pos__":
+
+            display_type = (
+                self.pretty_callable_or_overload(original_type)
+                if isinstance(original_type, CallableType)
+                else format_type(original_type, self.options)
+            )
+            self.fail(
+                f"Unsupported operand type for unary + ({display_type})",
                 context,
                 code=codes.OPERATOR,
             )
             return codes.OPERATOR
         elif member == "__invert__":
-            display_type=(
+            display_type = (
                 self.pretty_callable_or_overload(original_type)
                 if isinstance(original_type, CallableType)
                 else format_type(original_type, self.options)
             )
             self.fail(
-                f"Unsupported operand type for ~ ({display_type})",
-                context,
-                code=codes.OPERATOR,
+                f"Unsupported operand type for ~ ({display_type})", context, code=codes.OPERATOR
             )
             return codes.OPERATOR
         elif member == "__getitem__":
