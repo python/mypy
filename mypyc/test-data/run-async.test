@@ -616,5 +616,16 @@ async def async_def_contains_generator(x: int) -> tuple[int, int, int]:
 def test_async_def_contains_generator() -> None:
     assert asyncio.run(async_def_contains_generator(3)) == (13, 4, 7)
 
+def generator_contains_async_def(x: int) -> Iterator[int]:
+    async def f(y: int) -> int:
+        return (await inc(x)) + (await inc(y))
+
+    yield cast(int, asyncio.run(f(2)))
+    yield cast(int, asyncio.run(f(3)))
+    yield x + 10
+
+def test_generator_contains_async_def() -> None:
+    assert list(generator_contains_async_def(5)) == [6 + 3, 6 + 4, 15]
+
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
