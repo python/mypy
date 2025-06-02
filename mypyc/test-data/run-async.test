@@ -564,7 +564,9 @@ def run(x: object) -> object: ...
 
 [case testRunAsyncNestedFunctions]
 import asyncio
-from typing import cast
+from typing import cast, Iterator
+
+from testutil import assertRaises
 
 def normal_contains_async_def(x: int) -> int:
     async def f(y: int) -> int:
@@ -597,6 +599,22 @@ async def async_def_contains_async_def(x: int) -> int:
 
 def test_async_def_contains_async_def() -> None:
     assert asyncio.run(async_def_contains_async_def(3)) == (3 + 1 + 1 + 1) + (3 + 1 + 2 + 1)
+
+async def async_def_contains_generator(x: int) -> tuple[int, int, int]:
+    def gen(y: int) -> Iterator[int]:
+        yield x + 1
+        yield x + y
+
+    it = gen(4)
+    res = x + 10, next(it), next(it)
+
+    with assertRaises(StopIteration):
+        next(it)
+
+    return res
+
+def test_async_def_contains_generator() -> None:
+    assert asyncio.run(async_def_contains_generator(3)) == (13, 4, 7)
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
