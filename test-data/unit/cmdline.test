@@ -433,11 +433,11 @@ mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to
 python_version = 3.9
 [out]
 
-[case testPythonVersionAccepted313]
+[case testPythonVersionAccepted314]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.13
+python_version = 3.14
 [out]
 
 -- This should be a dumping ground for tests of plugins that are sensitive to
