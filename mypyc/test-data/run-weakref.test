@@ -11,6 +11,13 @@ class Object:
     """some random weakreffable object"""
     pass
 
+def test_weakref_ref():
+    obj = Object()
+    r = ref(obj)
+    assert r() is obj
+    obj = None
+    assert r() is None, r()
+
 def test_weakref_ref_with_callback():
     obj = Object()
     r = ref(obj, lambda x: x)
