@@ -627,5 +627,19 @@ def generator_contains_async_def(x: int) -> Iterator[int]:
 def test_generator_contains_async_def() -> None:
     assert list(generator_contains_async_def(5)) == [6 + 3, 6 + 4, 15]
 
+async def async_def_contains_two_nested_functions(x: int, y: int) -> tuple[int, int]:
+    def f(a: int) -> int:
+        return x + a
+
+    def g(b: int, c: int) -> int:
+        return y + b + c
+
+    return (await inc(f(3))), (await inc(g(4, 10)))
+
+def test_async_def_contains_two_nested_functions() -> None:
+    assert asyncio.run(async_def_contains_two_nested_functions(5, 7)) == (
+        (5 + 3 + 1), (7 + 4 + 10 + 1)
+    )
+
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
