@@ -5,7 +5,7 @@ def f(x: object) -> object:
     return weakref.ref(x)
 
 [out]
-def f(x, cb):
+def f(x):
     x, r0 :: object
 L0:
     r0 = PyWeakref_NewRef(x, NULL)
@@ -31,7 +31,7 @@ def f(x: object) -> object:
     return ref(x)
 
 [out]
-def f(x, cb):
+def f(x):
     x, r0 :: object
 L0:
     r0 = PyWeakref_NewRef(x, NULL)
