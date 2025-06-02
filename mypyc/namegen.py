@@ -38,17 +38,23 @@ class NameGenerator:
     profiles and when debugging using native debuggers.
     """
 
-    def __init__(self, groups: Iterable[list[str]]) -> None:
+    def __init__(self, groups: Iterable[list[str]], *, separate: bool = False) -> None:
         """Initialize with a list of modules in each compilation group.
 
         The names of modules are used to shorten names referring to
         modules, for convenience. Arbitrary module
         names are supported for generated names, but uncompiled modules
         will use long names.
+
+        If separate is True, assume separate compilation. This implies
+        that we don't have knowledge of all sources that will be linked
+        together. In this case we won't trim module prefixes, since we
+        don't have enough information to determine common module prefix.
         """
         self.module_map: dict[str, str] = {}
-        for names in groups:
-            self.module_map.update(make_module_translation_map(names))
+        if not separate:
+            for names in groups:
+                self.module_map.update(make_module_translation_map(names))
         self.translations: dict[tuple[str, str], str] = {}
         self.used_names: set[str] = set()
 
