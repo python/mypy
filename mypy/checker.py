@@ -3077,7 +3077,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if not (s.is_alias_def and self.is_stub):
             with self.enter_final_context(s.is_final_def):
                 self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
-
+        
+        for lv in s.lvalues:
+            if isinstance(lv, MemberExpr):
+                if lv.name == '__class__':
+                    self.fail("Assignment to '__class__' is unsafe and not allowed", lv)
+        
         if s.is_alias_def:
             self.check_type_alias_rvalue(s)
 
@@ -8880,9 +8885,6 @@ class VarAssignVisitor(TraverserVisitor):
         self.lvalue = True
         for lv in s.lvalues:
             lv.accept(self)
-            if isinstance(lv, MemberExpr):
-                if lv.name == '__class__':
-                    self.fail("Assignment to '__class__' is unsafe and not allowed", lv)
         self.lvalue = False
 
     def visit_name_expr(self, e: NameExpr) -> None:
