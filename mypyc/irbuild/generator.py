@@ -129,6 +129,7 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
     generator_reg = builder.add(Call(builder.fn_info.generator_class.ir.ctor, [], fitem.line))
 
     if builder.fn_info.can_merge_generator_and_env_classes():
+        # Set the generator instance to the initial state (zero).
         zero = Integer(0)
         builder.add(SetAttr(generator_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
     else:
@@ -145,7 +146,7 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
         # defined in the current scope.
         builder.add(SetAttr(generator_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
 
-        # Set the generator class' environment class' NEXT_LABEL_ATTR_NAME attribute to 0.
+        # Set the generator instance's environment to the initial state (zero).
         zero = Integer(0)
         builder.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
     return generator_reg
