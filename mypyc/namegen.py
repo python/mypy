@@ -49,12 +49,15 @@ class NameGenerator:
         If separate is True, assume separate compilation. This implies
         that we don't have knowledge of all sources that will be linked
         together. In this case we won't trim module prefixes, since we
-        don't have enough information to determine common module prefix.
+        don't have enough information to determine common module prefixes.
         """
         self.module_map: dict[str, str] = {}
-        if not separate:
-            for names in groups:
+        for names in groups:
+            if not separate:
                 self.module_map.update(make_module_translation_map(names))
+            else:
+                for name in names:
+                    self.module_map[name] = name + "."
         self.translations: dict[tuple[str, str], str] = {}
         self.used_names: set[str] = set()
 
