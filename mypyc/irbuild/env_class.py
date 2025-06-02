@@ -58,7 +58,8 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
 
 def finalize_env_class(builder: IRBuilder) -> None:
     """Generate, instantiate, and set up the environment of an environment class."""
-    instantiate_env_class(builder)
+    if not builder.fn_info.can_merge_generator_and_env_classes():
+        instantiate_env_class(builder)
 
     # Iterate through the function arguments and replace local definitions (using registers)
     # that were previously added to the environment with references to the function's

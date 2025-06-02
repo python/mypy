@@ -1276,8 +1276,8 @@ def c3(f: Callable[P, int], *args, **kwargs) -> int: ...
 # It is ok to define,
 def c4(f: Callable[P, int], *args: int, **kwargs: str) -> int:
     # but not ok to call:
-    f(*args, **kwargs)  # E: Argument 1 has incompatible type "*Tuple[int, ...]"; expected "P.args" \
-                        # E: Argument 2 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
+    f(*args, **kwargs)  # E: Argument 1 has incompatible type "*tuple[int, ...]"; expected "P.args" \
+                        # E: Argument 2 has incompatible type "**dict[str, str]"; expected "P.kwargs"
     return 1
 
 def f1(f: Callable[P, int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
@@ -1306,8 +1306,8 @@ def c3(f: Callable[Concatenate[int, P], int], *args, **kwargs) -> int: ...
 # It is ok to define,
 def c4(f: Callable[Concatenate[int, P], int], *args: int, **kwargs: str) -> int:
     # but not ok to call:
-    f(1, *args, **kwargs)  # E: Argument 2 has incompatible type "*Tuple[int, ...]"; expected "P.args" \
-                           # E: Argument 3 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
+    f(1, *args, **kwargs)  # E: Argument 2 has incompatible type "*tuple[int, ...]"; expected "P.args" \
+                           # E: Argument 3 has incompatible type "**dict[str, str]"; expected "P.kwargs"
     return 1
 
 def f1(f: Callable[Concatenate[int, P], int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
@@ -2409,19 +2409,19 @@ def run2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwar
     func2 = partial(func, **kwargs)
     p = [""]
     func2(1, *p)  # E: Too few arguments \
-                  # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
+                  # E: Argument 2 has incompatible type "*list[str]"; expected "P.args"
     func2(1, 2, *p)  # E: Too few arguments \
                      # E: Argument 2 has incompatible type "int"; expected "P.args" \
-                     # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
-    func2(1, *args, *p)  # E: Argument 3 has incompatible type "*List[str]"; expected "P.args"
-    func2(1, *p, *args)  # E: Argument 2 has incompatible type "*List[str]"; expected "P.args"
+                     # E: Argument 3 has incompatible type "*list[str]"; expected "P.args"
+    func2(1, *args, *p)  # E: Argument 3 has incompatible type "*list[str]"; expected "P.args"
+    func2(1, *p, *args)  # E: Argument 2 has incompatible type "*list[str]"; expected "P.args"
     return func2(1, *args)
 
 def run3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
     func2 = partial(func, 1, *args)
     d = {"":""}
     func2(**d)  # E: Too few arguments \
-                # E: Argument 1 has incompatible type "**Dict[str, str]"; expected "P.kwargs"
+                # E: Argument 1 has incompatible type "**dict[str, str]"; expected "P.kwargs"
     return func2(**kwargs)
 
 def run4(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
@@ -2474,7 +2474,7 @@ def run(func: Callable[Concatenate[int, str, P], T], *args: P.args, **kwargs: P.
     func2(*args_prefix)  # E: Too few arguments
     func2(*args, *args_prefix)  # E: Argument 1 has incompatible type "*P.args"; expected "int" \
                                 # E: Argument 1 has incompatible type "*P.args"; expected "str" \
-                                # E: Argument 2 has incompatible type "*Tuple[int, str]"; expected "P.args"
+                                # E: Argument 2 has incompatible type "*tuple[int, str]"; expected "P.args"
     return func2(*args_prefix, *args)
 
 [builtins fixtures/paramspec.pyi]
@@ -2599,7 +2599,7 @@ def run3(predicate: Callable[Concatenate[int, str, _P], None], *args: _P.args, *
     base_ok: tuple[int, str]
     predicate(*base_ok, *args, **kwargs)
     base_bad: tuple[Union[int, str], ...]
-    predicate(*base_bad, *args, **kwargs)  # E: Argument 1 has incompatible type "*Tuple[Union[int, str], ...]"; expected "int" \
-                                           # E: Argument 1 has incompatible type "*Tuple[Union[int, str], ...]"; expected "str" \
-                                           # E: Argument 1 has incompatible type "*Tuple[Union[int, str], ...]"; expected "_P.args"
+    predicate(*base_bad, *args, **kwargs)  # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "int" \
+                                           # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "str" \
+                                           # E: Argument 1 has incompatible type "*tuple[Union[int, str], ...]"; expected "_P.args"
 [builtins fixtures/paramspec.pyi]
