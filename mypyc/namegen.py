@@ -34,7 +34,8 @@ class NameGenerator:
 
     The generated should be internal to a build and thus the mapping is
     arbitrary. Just generating names '1', '2', ... would be correct,
-    though not very usable.
+    though not very usable. The generated names may be visible in CPU
+    profiles and when debugging using native debuggers.
     """
 
     def __init__(self, groups: Iterable[list[str]]) -> None:
