@@ -8882,11 +8882,7 @@ class VarAssignVisitor(TraverserVisitor):
             lv.accept(self)
             if isinstance(lv, MemberExpr):
                 if lv.name == '__class__':
-                    self.errors.report(
-                        lv.line,
-                        lv.column,
-                        "Assignment to '__class__' is unsafe and not allowed"
-                        )
+                    self.fail("Assignment to '__class__' is unsafe and not allowed", lv)
         self.lvalue = False
 
     def visit_name_expr(self, e: NameExpr) -> None:
