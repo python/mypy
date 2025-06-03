@@ -2216,6 +2216,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 # Will always fail to typecheck below, since we know the node is a method
                 original_type = NoneType()
 
+        if isinstance(original_node, Var) and original_node.allow_incompatible_override:
+            return False
+
         always_allow_covariant = False
         if is_settable_property(defn) and (
             is_settable_property(original_node) or isinstance(original_node, Var)
@@ -2238,14 +2241,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         typ = get_proper_type(typ)
         original_type = get_proper_type(original_type)
-
-        if name == "__hash__" and isinstance(original_type, NoneType):
-            # Allow defining `__hash__` even if parent class was explicitly made unhashable
-            if base.fullname == "builtins.object":
-                # This is only for test stubs to avoid adding object.__hash__
-                # to all of them.
-                return True
-            return self.check_method_override_for_base_with_name(defn, name, base.mro[-1])
 
         if (
             is_property(defn)
@@ -3448,13 +3443,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 return
 
             for base in lvalue_node.info.mro[1:]:
-                # The type of "__slots__" and some other attributes usually doesn't need to
-                # be compatible with a base class. We'll still check the type of "__slots__"
-                # against "object" as an exception.
-                if lvalue_node.allow_incompatible_override and not (
-                    lvalue_node.name == "__slots__" and base.fullname == "builtins.object"
-                ):
-                    continue
                 if (
                     lvalue_node.name == "__hash__"
                     and base.fullname == "builtins.object"
@@ -3468,6 +3456,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     continue
 
                 base_type, base_node = self.node_type_from_base(lvalue_node.name, base, lvalue)
+                # The type of "__slots__" and some other attributes usually doesn't need to
+                # be compatible with a base class. We'll still check the type of "__slots__"
+                # against "object" as an exception.
+                if (
+                    isinstance(base_node, Var)
+                    and base_node.allow_incompatible_override
+                    and not (
+                        lvalue_node.name == "__slots__" and base.fullname == "builtins.object"
+                    )
+                ):
+                    continue
                 custom_setter = is_custom_settable_property(base_node)
                 if isinstance(base_type, PartialType):
                     base_type = None
@@ -3497,7 +3496,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                 lvalue, lvalue_type, base_type, base
                             )
                             return
-                    if base is last_immediate_base and base_node.name != "__hash__":
+                    if base is last_immediate_base:
                         # At this point, the attribute was found to be compatible with all
                         # immediate parents.
                         break
@@ -3511,9 +3510,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         base_node: Node,
         always_allow_covariant: bool,
     ) -> bool:
-        if base_node.name == "__hash__" and isinstance(base_type, NoneType):
-            # Allow defining `__hash__` even if parent class was explicitly made unhashable
-            return True
         # TODO: check __set__() type override for custom descriptors.
         # TODO: for descriptors check also class object access override.
         ok = self.check_subtype(

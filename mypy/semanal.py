@@ -3257,6 +3257,22 @@ class SemanticAnalyzer(
         self.process__all__(s)
         self.process__deletable__(s)
         self.process__slots__(s)
+        self.process__hash__(s)
+
+    def process__hash__(self, s: AssignmentStmt) -> None:
+        # Allow overriding `__hash__ = None` in subclasses.
+        if (
+            isinstance(self.type, TypeInfo)
+            and len(s.lvalues) == 1
+            and isinstance(s.lvalues[0], NameExpr)
+            and s.lvalues[0].name == "__hash__"
+            and s.lvalues[0].kind == MDEF
+            and isinstance(s.rvalue, NameExpr)
+            and s.rvalue.name == "None"
+        ):
+            var = s.lvalues[0].node
+            if isinstance(var, Var):
+                var.allow_incompatible_override = True
 
     def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
         """Special case 'X = X' in global scope.
