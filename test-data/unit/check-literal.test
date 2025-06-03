@@ -70,9 +70,9 @@ def foo(x: Tuple[1]) -> None: ...   # E: Invalid type: try using Literal[1] inst
 
 y: Tuple[Literal[2]]
 def bar(x: Tuple[Literal[2]]) -> None: ...
-reveal_type(x)                      # N: Revealed type is "Tuple[Any]"
-reveal_type(y)                      # N: Revealed type is "Tuple[Literal[2]]"
-reveal_type(bar)                    # N: Revealed type is "def (x: Tuple[Literal[2]])"
+reveal_type(x)                      # N: Revealed type is "tuple[Any]"
+reveal_type(y)                      # N: Revealed type is "tuple[Literal[2]]"
+reveal_type(bar)                    # N: Revealed type is "def (x: tuple[Literal[2]])"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -88,9 +88,9 @@ y = None  # type: Optional[Tuple[Literal[2]]]
 def bar(x):
     # type: (Tuple[Literal[2]]) -> None
     pass
-reveal_type(x)                      # N: Revealed type is "Union[Tuple[Any], None]"
-reveal_type(y)                      # N: Revealed type is "Union[Tuple[Literal[2]], None]"
-reveal_type(bar)                    # N: Revealed type is "def (x: Tuple[Literal[2]])"
+reveal_type(x)                      # N: Revealed type is "Union[tuple[Any], None]"
+reveal_type(y)                      # N: Revealed type is "Union[tuple[Literal[2]], None]"
+reveal_type(bar)                    # N: Revealed type is "def (x: tuple[Literal[2]])"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -946,12 +946,12 @@ def bar(x: Sequence[Literal[1, 2]]) -> None: pass
 a: List[Literal[1]]
 b: List[Literal[1, 2, 3]]
 
-foo(a)  # E: Argument 1 to "foo" has incompatible type "List[Literal[1]]"; expected "List[Literal[1, 2]]" \
+foo(a)  # E: Argument 1 to "foo" has incompatible type "list[Literal[1]]"; expected "list[Literal[1, 2]]" \
         # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
         # N: Consider using "Sequence" instead, which is covariant
-foo(b)  # E: Argument 1 to "foo" has incompatible type "List[Literal[1, 2, 3]]"; expected "List[Literal[1, 2]]"
+foo(b)  # E: Argument 1 to "foo" has incompatible type "list[Literal[1, 2, 3]]"; expected "list[Literal[1, 2]]"
 bar(a)
-bar(b)  # E: Argument 1 to "bar" has incompatible type "List[Literal[1, 2, 3]]"; expected "Sequence[Literal[1, 2]]"
+bar(b)  # E: Argument 1 to "bar" has incompatible type "list[Literal[1, 2, 3]]"; expected "Sequence[Literal[1, 2]]"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1186,10 +1186,10 @@ from typing import Literal, Tuple
 
 a: Tuple[Literal[1], Literal[2]] = (1, 2)
 b: Tuple[int, Literal[1, 2], Literal[3], Tuple[Literal["foo"]]] = (1, 2, 3, ("foo",))
-c: Tuple[Literal[1], Literal[2]] = (2, 1)  # E: Incompatible types in assignment (expression has type "Tuple[Literal[2], Literal[1]]", variable has type "Tuple[Literal[1], Literal[2]]")
+c: Tuple[Literal[1], Literal[2]] = (2, 1)  # E: Incompatible types in assignment (expression has type "tuple[Literal[2], Literal[1]]", variable has type "tuple[Literal[1], Literal[2]]")
 d = (1, 2)
 
-reveal_type(d)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(d)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 
 [builtins fixtures/tuple.pyi]
 [out]
@@ -1477,13 +1477,13 @@ Alias = Literal[3]
 
 isinstance(3, Literal[3])           # E: Cannot use isinstance() with Literal type
 isinstance(3, Alias)                # E: Cannot use isinstance() with Literal type \
-                                    # E: Argument 2 to "isinstance" has incompatible type "<typing special form>"; expected "Union[type, Tuple[Any, ...]]"
+                                    # E: Argument 2 to "isinstance" has incompatible type "<typing special form>"; expected "Union[type, tuple[Any, ...]]"
 isinstance(3, Renamed[3])           # E: Cannot use isinstance() with Literal type
 isinstance(3, indirect.Literal[3])  # E: Cannot use isinstance() with Literal type
 
 issubclass(int, Literal[3])           # E: Cannot use issubclass() with Literal type
 issubclass(int, Alias)                # E: Cannot use issubclass() with Literal type \
-                                      # E: Argument 2 to "issubclass" has incompatible type "<typing special form>"; expected "Union[type, Tuple[Any, ...]]"
+                                      # E: Argument 2 to "issubclass" has incompatible type "<typing special form>"; expected "Union[type, tuple[Any, ...]]"
 issubclass(int, Renamed[3])           # E: Cannot use issubclass() with Literal type
 issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with Literal type
 [builtins fixtures/isinstancelist.pyi]
@@ -1842,8 +1842,8 @@ reveal_type(tup1[idx3])       # N: Revealed type is "__main__.D"
 reveal_type(tup1[idx4])       # N: Revealed type is "__main__.E"
 reveal_type(tup1[idx_neg1])   # N: Revealed type is "__main__.E"
 tup1[idx5]                    # E: Tuple index out of range
-reveal_type(tup1[idx2:idx4])  # N: Revealed type is "Tuple[Union[__main__.C, None], __main__.D]"
-reveal_type(tup1[::idx2])     # N: Revealed type is "Tuple[__main__.A, Union[__main__.C, None], __main__.E]"
+reveal_type(tup1[idx2:idx4])  # N: Revealed type is "tuple[Union[__main__.C, None], __main__.D]"
+reveal_type(tup1[::idx2])     # N: Revealed type is "tuple[__main__.A, Union[__main__.C, None], __main__.E]"
 if tup1[idx2] is not None:
     reveal_type(tup1[idx2])   # N: Revealed type is "Union[__main__.C, None]"
 if tup1[idx_final] is not None:
@@ -1858,9 +1858,9 @@ reveal_type(tup2[idx3])       # N: Revealed type is "__main__.D"
 reveal_type(tup2[idx4])       # N: Revealed type is "__main__.E"
 reveal_type(tup2[idx_neg1])   # N: Revealed type is "__main__.E"
 tup2[idx5]                    # E: Tuple index out of range
-reveal_type(tup2[idx2:idx4])  # N: Revealed type is "Tuple[__main__.C, __main__.D]"
-reveal_type(tup2[::idx2])     # N: Revealed type is "Tuple[__main__.A, __main__.C, __main__.E]"
-tup3: Tup2Class = tup2[:]     # E: Incompatible types in assignment (expression has type "Tuple[A, B, C, D, E]", variable has type "Tup2Class")
+reveal_type(tup2[idx2:idx4])  # N: Revealed type is "tuple[__main__.C, __main__.D]"
+reveal_type(tup2[::idx2])     # N: Revealed type is "tuple[__main__.A, __main__.C, __main__.E]"
+tup3: Tup2Class = tup2[:]     # E: Incompatible types in assignment (expression has type "tuple[A, B, C, D, E]", variable has type "Tup2Class")
 [builtins fixtures/slice.pyi]
 
 [case testLiteralIntelligentIndexingTypedDict]
@@ -1956,13 +1956,13 @@ Tup2Class = NamedTuple('Tup2Class', [('a', A), ('b', B), ('c', C), ('d', D), ('e
 tup2: Tup2Class
 
 reveal_type(tup1[idx1])         # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(tup1[idx1:idx2])    # N: Revealed type is "Union[Tuple[__main__.B, __main__.C], Tuple[__main__.B, __main__.C, __main__.D], Tuple[__main__.C], Tuple[__main__.C, __main__.D]]"
-reveal_type(tup1[0::idx1])      # N: Revealed type is "Union[Tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E], Tuple[__main__.A, __main__.C, __main__.E]]"
+reveal_type(tup1[idx1:idx2])    # N: Revealed type is "Union[tuple[__main__.B, __main__.C], tuple[__main__.B, __main__.C, __main__.D], tuple[__main__.C], tuple[__main__.C, __main__.D]]"
+reveal_type(tup1[0::idx1])      # N: Revealed type is "Union[tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E], tuple[__main__.A, __main__.C, __main__.E]]"
 tup1[idx_bad]                   # E: Tuple index out of range
 
 reveal_type(tup2[idx1])         # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(tup2[idx1:idx2])    # N: Revealed type is "Union[Tuple[__main__.B, __main__.C], Tuple[__main__.B, __main__.C, __main__.D], Tuple[__main__.C], Tuple[__main__.C, __main__.D]]"
-reveal_type(tup2[0::idx1])      # N: Revealed type is "Union[Tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E], Tuple[__main__.A, __main__.C, __main__.E]]"
+reveal_type(tup2[idx1:idx2])    # N: Revealed type is "Union[tuple[__main__.B, __main__.C], tuple[__main__.B, __main__.C, __main__.D], tuple[__main__.C], tuple[__main__.C, __main__.D]]"
+reveal_type(tup2[0::idx1])      # N: Revealed type is "Union[tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E], tuple[__main__.A, __main__.C, __main__.E]]"
 tup2[idx_bad]                   # E: Tuple index out of range
 [builtins fixtures/slice.pyi]
 [out]
@@ -2228,7 +2228,7 @@ var1: Final = [0, None]
 var2: Final = (0, None)
 
 reveal_type(var1)  # N: Revealed type is "builtins.list[Union[builtins.int, None]]"
-reveal_type(var2)  # N: Revealed type is "Tuple[Literal[0]?, None]"
+reveal_type(var2)  # N: Revealed type is "tuple[Literal[0]?, None]"
 [builtins fixtures/tuple.pyi]
 
 [case testLiteralFinalErasureInMutableDatastructures2]
@@ -2289,7 +2289,7 @@ def force1(x: Literal[1]) -> None: pass
 def force2(x: Tuple[Literal[1], Literal[2]]) -> None: pass
 
 reveal_type(a)          # N: Revealed type is "Literal[1]?"
-reveal_type(b)          # N: Revealed type is "Tuple[Literal[1]?, Literal[2]?]"
+reveal_type(b)          # N: Revealed type is "tuple[Literal[1]?, Literal[2]?]"
 
 force1(a)  # ok
 force2(b)  # ok
@@ -2308,7 +2308,7 @@ def force1(x: List[Literal[1]]) -> None: pass
 def force2(x: Literal[1]) -> None: pass
 
 reveal_type(implicit)            # N: Revealed type is "builtins.list[builtins.int]"
-force1(reveal_type(implicit))    # E: Argument 1 to "force1" has incompatible type "List[int]"; expected "List[Literal[1]]" \
+force1(reveal_type(implicit))    # E: Argument 1 to "force1" has incompatible type "list[int]"; expected "list[Literal[1]]" \
                                  # N: Revealed type is "builtins.list[builtins.int]"
 force2(reveal_type(implicit[0])) # E: Argument 1 to "force2" has incompatible type "int"; expected "Literal[1]" \
                                  # N: Revealed type is "builtins.int"
@@ -2318,7 +2318,7 @@ force1(reveal_type(explicit))    # N: Revealed type is "builtins.list[Literal[1]
 force2(reveal_type(explicit[0])) # N: Revealed type is "Literal[1]"
 
 reveal_type(direct)              # N: Revealed type is "builtins.list[builtins.int]"
-force1(reveal_type(direct))      # E: Argument 1 to "force1" has incompatible type "List[int]"; expected "List[Literal[1]]" \
+force1(reveal_type(direct))      # E: Argument 1 to "force1" has incompatible type "list[int]"; expected "list[Literal[1]]" \
                                  # N: Revealed type is "builtins.list[builtins.int]"
 force2(reveal_type(direct[0]))   # E: Argument 1 to "force2" has incompatible type "int"; expected "Literal[1]" \
                                  # N: Revealed type is "builtins.int"
@@ -2876,7 +2876,7 @@ def f() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
     else:
         return (False, 'oops')
 
-reveal_type(f())  # N: Revealed type is "Union[Tuple[Literal[True], builtins.int], Tuple[Literal[False], builtins.str]]"
+reveal_type(f())  # N: Revealed type is "Union[tuple[Literal[True], builtins.int], tuple[Literal[False], builtins.str]]"
 
 def does_work() -> Tuple[Literal[1]]:
     x: Final = (1,)
@@ -2888,23 +2888,23 @@ def also_works() -> Tuple[Literal[1]]:
 
 def invalid_literal_value() -> Tuple[Literal[1]]:
     x: Final = (2,)
-    return x  # E: Incompatible return value type (got "Tuple[int]", expected "Tuple[Literal[1]]")
+    return x  # E: Incompatible return value type (got "tuple[int]", expected "tuple[Literal[1]]")
 
 def invalid_literal_type() -> Tuple[Literal[1]]:
     x: Final = (True,)
-    return x  # E: Incompatible return value type (got "Tuple[bool]", expected "Tuple[Literal[1]]")
+    return x  # E: Incompatible return value type (got "tuple[bool]", expected "tuple[Literal[1]]")
 
 def incorrect_return1() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
     if x:
-        return (False, 5)  # E: Incompatible return value type (got "Tuple[bool, int]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+        return (False, 5)  # E: Incompatible return value type (got "tuple[bool, int]", expected "Union[tuple[Literal[True], int], tuple[Literal[False], str]]")
     else:
-        return (True, 'oops')  # E: Incompatible return value type (got "Tuple[bool, str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+        return (True, 'oops')  # E: Incompatible return value type (got "tuple[bool, str]", expected "Union[tuple[Literal[True], int], tuple[Literal[False], str]]")
 
 def incorrect_return2() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
     if x:
-        return (bool(), 5)  # E: Incompatible return value type (got "Tuple[bool, int]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+        return (bool(), 5)  # E: Incompatible return value type (got "tuple[bool, int]", expected "Union[tuple[Literal[True], int], tuple[Literal[False], str]]")
     else:
-        return (bool(), 'oops')  # E: Incompatible return value type (got "Tuple[bool, str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+        return (bool(), 'oops')  # E: Incompatible return value type (got "tuple[bool, str]", expected "Union[tuple[Literal[True], int], tuple[Literal[False], str]]")
 [builtins fixtures/bool.pyi]
 
 [case testLiteralSubtypeContext]

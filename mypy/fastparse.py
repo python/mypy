@@ -2060,7 +2060,6 @@ class TypeConverter:
             contents = bytes_to_human_readable_repr(val)
             return RawExpressionType(contents, "builtins.bytes", self.line, column=n.col_offset)
         # Everything else is invalid.
-        return self.invalid_type(n)
 
     # UnaryOp(op, operand)
     def visit_UnaryOp(self, n: UnaryOp) -> Type:

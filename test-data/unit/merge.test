@@ -671,12 +671,12 @@ TypeInfo<2>(
     _NT<6>
     __annotations__<7> (builtins.dict[builtins.str<8>, Any]<9>)
     __doc__<10> (builtins.str<8>)
-    __match_args__<11> (Tuple[Literal['x']])
+    __match_args__<11> (tuple[Literal['x']])
     __new__<12>
     _asdict<13>
     _field_defaults<14> (builtins.dict[builtins.str<8>, Any]<9>)
     _field_types<15> (builtins.dict[builtins.str<8>, Any]<9>)
-    _fields<16> (Tuple[builtins.str<8>])
+    _fields<16> (tuple[builtins.str<8>])
     _make<17>
     _replace<18>
     _source<19> (builtins.str<8>)
@@ -695,12 +695,12 @@ TypeInfo<2>(
     _NT<6>
     __annotations__<7> (builtins.dict[builtins.str<8>, Any]<9>)
     __doc__<10> (builtins.str<8>)
-    __match_args__<11> (Tuple[Literal['x'], Literal['y']])
+    __match_args__<11> (tuple[Literal['x'], Literal['y']])
     __new__<12>
     _asdict<13>
     _field_defaults<14> (builtins.dict[builtins.str<8>, Any]<9>)
     _field_types<15> (builtins.dict[builtins.str<8>, Any]<9>)
-    _fields<16> (Tuple[builtins.str<8>, builtins.str<8>])
+    _fields<16> (tuple[builtins.str<8>, builtins.str<8>])
     _make<17>
     _replace<18>
     _source<19> (builtins.str<8>)
@@ -736,7 +736,7 @@ TypeInfo<2>(
     _asdict<12>
     _field_defaults<13> (builtins.dict[builtins.str<8>, Any]<9>)
     _field_types<14> (builtins.dict[builtins.str<8>, Any]<9>)
-    _fields<15> (Tuple[builtins.str<8>])
+    _fields<15> (tuple[builtins.str<8>])
     _make<16>
     _replace<17>
     _source<18> (builtins.str<8>)
@@ -759,7 +759,7 @@ TypeInfo<2>(
     _asdict<12>
     _field_defaults<13> (builtins.dict[builtins.str<8>, Any]<9>)
     _field_types<14> (builtins.dict[builtins.str<8>, Any]<9>)
-    _fields<15> (Tuple[builtins.str<8>, builtins.str<8>])
+    _fields<15> (tuple[builtins.str<8>, builtins.str<8>])
     _make<16>
     _replace<17>
     _source<18> (builtins.str<8>)
@@ -795,10 +795,10 @@ class A: pass
 a: Type[A]
 [out]
 ## target
-NameExpr:3: Type[target.A<0>]
+NameExpr:3: type[target.A<0>]
 ==>
 ## target
-NameExpr:3: Type[target.A<0>]
+NameExpr:3: type[target.A<0>]
 
 [case testTypeVar_types]
 import target

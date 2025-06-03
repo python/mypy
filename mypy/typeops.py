@@ -415,10 +415,10 @@ def bind_self(
             ]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
-    func = method
+    func: CallableType = method
     if not func.arg_types:
         # Invalid method, return something.
-        return cast(F, func)
+        return method
     if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
@@ -427,7 +427,7 @@ def bind_self(
 
         # In the case of **kwargs we should probably emit an error, but
         # for now we simply skip it, to avoid crashes down the line.
-        return cast(F, func)
+        return method
     self_param_type = get_proper_type(func.arg_types[0])
 
     variables: Sequence[TypeVarLikeType]
@@ -1257,7 +1257,7 @@ def get_protocol_member(
 
         return type_object_type(left.type, named_type)
 
-    if member == "__call__" and left.type.is_metaclass():
+    if member == "__call__" and left.type.is_metaclass(precise=True):
         # Special case: we want to avoid falling back to metaclass __call__
         # if constructor signature didn't match, this can cause many false negatives.
         return None

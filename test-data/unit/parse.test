@@ -548,7 +548,7 @@ MypyFile:1(
       NameExpr(x)
       NameExpr(y))
     NameExpr(z)
-    Tuple[int?, a?[c?]]))
+    tuple[int?, a?[c?]]))
 
 [case testMultipleVarDef2]
 (xx, z, i) = 1 # type: (a[c], Any, int)
@@ -560,7 +560,7 @@ MypyFile:1(
       NameExpr(z)
       NameExpr(i))
     IntExpr(1)
-    Tuple[a?[c?], Any?, int?]))
+    tuple[a?[c?], Any?, int?]))
 
 [case testMultipleVarDef3]
 (xx, (z, i)) = 1 # type: (a[c], (Any, int))
@@ -573,7 +573,7 @@ MypyFile:1(
         NameExpr(z)
         NameExpr(i)))
     IntExpr(1)
-    Tuple[a?[c?], Tuple[Any?, int?]]))
+    tuple[a?[c?], tuple[Any?, int?]]))
 
 [case testAnnotateAssignmentViaSelf]
 class A:
@@ -617,7 +617,7 @@ MypyFile:1(
     TupleExpr:2(
       IntExpr(1)
       IntExpr(2))
-    Tuple[foo?, bar?]))
+    tuple[foo?, bar?]))
 
 [case testWhitespaceAndCommentAnnotation]
 x = 1#type:int

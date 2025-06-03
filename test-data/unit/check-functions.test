@@ -369,7 +369,7 @@ t: type
 a: A
 
 if int():
-    a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
+    a = A # E: Incompatible types in assignment (expression has type "type[A]", variable has type "A")
 if int():
     t = f # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "type")
 if int():
@@ -464,10 +464,10 @@ def f(x: C) -> C: pass
 from typing import Any, Callable, List
 def f(fields: List[Callable[[Any], Any]]): pass
 class C: pass
-f([C])  # E: List item 0 has incompatible type "Type[C]"; expected "Callable[[Any], Any]"
+f([C])  # E: List item 0 has incompatible type "type[C]"; expected "Callable[[Any], Any]"
 class D:
     def __init__(self, a, b): pass
-f([D])  # E: List item 0 has incompatible type "Type[D]"; expected "Callable[[Any], Any]"
+f([D])  # E: List item 0 has incompatible type "type[D]"; expected "Callable[[Any], Any]"
 [builtins fixtures/list.pyi]
 
 [case testSubtypingTypeTypeAsCallable]
@@ -483,7 +483,7 @@ class A: pass
 x: Callable[..., A]
 y: Type[A]
 if int():
-    y = x  # E: Incompatible types in assignment (expression has type "Callable[..., A]", variable has type "Type[A]")
+    y = x  # E: Incompatible types in assignment (expression has type "Callable[..., A]", variable has type "type[A]")
 
 -- Default argument values
 -- -----------------------
@@ -945,7 +945,7 @@ def f(x): pass
 def faulty(c: Callable[[int], None]) -> Callable[[tuple[int, int]], None]:
     return lambda x: None
 
-@faulty  # E: Argument 1 to "faulty" has incompatible type "Callable[[Tuple[int, int]], None]"; expected "Callable[[int], None]"
+@faulty  # E: Argument 1 to "faulty" has incompatible type "Callable[[tuple[int, int]], None]"; expected "Callable[[int], None]"
 @faulty  # E: Argument 1 to "faulty" has incompatible type "Callable[[str], None]"; expected "Callable[[int], None]"
 def g(x: str) -> None:
     return None
@@ -1614,11 +1614,11 @@ if g(C()):
     def f(x: B) -> B: pass
 
 [case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
-f = [] # E: Need type annotation for "f" (hint: "f: List[<type>] = ...")
+f = [] # E: Need type annotation for "f" (hint: "f: list[<type>] = ...")
 if object():
     def f(): pass # E: Incompatible redefinition
-f()  # E: "List[Any]" not callable
-f(1)  # E: "List[Any]" not callable
+f()  # E: "list[Any]" not callable
+f(1)  # E: "list[Any]" not callable
 [builtins fixtures/list.pyi]
 
 [case testDefineConditionallyAsImportedAndDecorated]
@@ -2111,7 +2111,7 @@ f(x=1, y="hello", z=[])
 from typing import Dict
 def f(x, **kwargs): # type: (...) -> None
     success_dict_type = kwargs # type: Dict[str, str]
-    failure_dict_type = kwargs # type: Dict[int, str] # E: Incompatible types in assignment (expression has type "Dict[str, Any]", variable has type "Dict[int, str]")
+    failure_dict_type = kwargs # type: Dict[int, str] # E: Incompatible types in assignment (expression has type "dict[str, Any]", variable has type "dict[int, str]")
 f(1, thing_in_kwargs=["hey"])
 [builtins fixtures/dict.pyi]
 [out]
@@ -2120,7 +2120,7 @@ f(1, thing_in_kwargs=["hey"])
 from typing import Tuple, Any
 def f(x, *args): # type: (...) -> None
     success_tuple_type = args # type: Tuple[Any, ...]
-    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type "Tuple[Any, ...]", variable has type "None")
+    fail_tuple_type = args # type: None # E: Incompatible types in assignment (expression has type "tuple[Any, ...]", variable has type "None")
 f(1, "hello")
 [builtins fixtures/tuple.pyi]
 [out]
@@ -2447,7 +2447,7 @@ def make_list() -> List[T]: pass
 
 l: List[int] = make_list()
 
-bad = make_list()  # E: Need type annotation for "bad" (hint: "bad: List[<type>] = ...")
+bad = make_list()  # E: Need type annotation for "bad" (hint: "bad: list[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testAnonymousArgumentError]
@@ -2494,26 +2494,26 @@ def fn(
 from typing import Union, Dict, List
 def f() -> List[Union[str, int]]:
     x = ['a']
-    return x # E: Incompatible return value type (got "List[str]", expected "List[Union[str, int]]") \
+    return x # E: Incompatible return value type (got "list[str]", expected "list[Union[str, int]]") \
       # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant \
-      # N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[str, int]]"
+      # N: Perhaps you need a type annotation for "x"? Suggestion: "list[Union[str, int]]"
 
 def g() -> Dict[str, Union[str, int]]:
     x = {'a': 'a'}
-    return x # E: Incompatible return value type (got "Dict[str, str]", expected "Dict[str, Union[str, int]]") \
+    return x # E: Incompatible return value type (got "dict[str, str]", expected "dict[str, Union[str, int]]") \
       # N: "dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Mapping" instead, which is covariant in the value type \
-      # N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[str, Union[str, int]]"
+      # N: Perhaps you need a type annotation for "x"? Suggestion: "dict[str, Union[str, int]]"
 
 def h() -> Dict[Union[str, int], str]:
     x = {'a': 'a'}
-    return x # E: Incompatible return value type (got "Dict[str, str]", expected "Dict[Union[str, int], str]") \
-# N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[Union[str, int], str]"
+    return x # E: Incompatible return value type (got "dict[str, str]", expected "dict[Union[str, int], str]") \
+# N: Perhaps you need a type annotation for "x"? Suggestion: "dict[Union[str, int], str]"
 
 def i() -> List[Union[int, float]]:
     x: List[int] = [1]
-    return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]") \
+    return x # E: Incompatible return value type (got "list[int]", expected "list[Union[int, float]]") \
       # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 
@@ -2523,11 +2523,11 @@ def i() -> List[Union[int, float]]:
 from typing import Union, List
 def f() -> List[Union[int, float]]:
     x = ['a']
-    return x # E: Incompatible return value type (got "List[str]", expected "List[Union[int, float]]")
+    return x # E: Incompatible return value type (got "list[str]", expected "list[Union[int, float]]")
 
 def g() -> List[Union[str, int]]:
     x = ('a', 2)
-    return x # E: Incompatible return value type (got "Tuple[str, int]", expected "List[Union[str, int]]")
+    return x # E: Incompatible return value type (got "tuple[str, int]", expected "list[Union[str, int]]")
 
 [builtins fixtures/list.pyi]
 
@@ -2535,7 +2535,7 @@ def g() -> List[Union[str, int]]:
 from typing import Union, Dict, List
 def f() -> Dict[str, Union[str, int]]:
     x = {'a': 'a', 'b': 2}
-    return x # E: Incompatible return value type (got "Dict[str, object]", expected "Dict[str, Union[str, int]]")
+    return x # E: Incompatible return value type (got "dict[str, object]", expected "dict[str, Union[str, int]]")
 
 def g() -> Dict[str, Union[str, int]]:
     x: Dict[str, Union[str, int]] = {'a': 'a', 'b': 2}
@@ -2543,7 +2543,7 @@ def g() -> Dict[str, Union[str, int]]:
 
 def h() -> List[Union[str, int]]:
     x = ['a', 2]
-    return x # E: Incompatible return value type (got "List[object]", expected "List[Union[str, int]]")
+    return x # E: Incompatible return value type (got "list[object]", expected "list[Union[str, int]]")
 
 def i() -> List[Union[str, int]]:
     x: List[Union[str, int]] = ['a', 2]

@@ -472,7 +472,7 @@ MypyFile:1(
         Args(
           Var(cls)
           Var(z))
-        def (cls: Type[__main__.A], z: builtins.int) -> builtins.str
+        def (cls: type[__main__.A], z: builtins.int) -> builtins.str
         Class
         Block:3(
           PassStmt:3())))))
@@ -492,7 +492,7 @@ MypyFile:1(
         f
         Args(
           Var(cls))
-        def (cls: Type[__main__.A]) -> builtins.str
+        def (cls: type[__main__.A]) -> builtins.str
         Class
         Block:3(
           PassStmt:3())))))
@@ -583,7 +583,7 @@ MypyFile:1(
   ClassDef:2(
     A
     TupleType(
-      Tuple[builtins.int, builtins.str])
+      tuple[builtins.int, builtins.str])
     BaseType(
       builtins.tuple[Union[builtins.int, builtins.str], ...])
     PassStmt:2()))
