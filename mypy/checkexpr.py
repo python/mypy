@@ -4010,9 +4010,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
             variants_raw = [(op_name, left_op, left_type, right_expr)]
         elif (
-            # Note: use `covers_at_runtime` instead of `is_subtype` (#19006)
-            covers_at_runtime(right_type, left_type)
-            and (
+            (
                 # Checking (A implies B) using the logically equivalent (not A or B), where
                 #    A: left and right are both `Instance` objects
                 #    B: right's __rop__ method is different from left's __op__ method
@@ -4025,6 +4023,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                 )
             )
+            # Note: use `covers_at_runtime` instead of `is_subtype` (#19006)
+            and covers_at_runtime(right_type, left_type)
         ):
             # When we do "A() + B()" where B is a subclass of A, we'll actually try calling
             # B's __radd__ method first, but ONLY if B explicitly defines or overrides the
