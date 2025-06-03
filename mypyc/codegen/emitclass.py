@@ -186,6 +186,16 @@ def generate_class_type_decl(
         )
 
 
+def generate_class_reuse(
+    cl: ClassIR, c_emitter: Emitter, external_emitter: Emitter, emitter: Emitter
+) -> None:
+    assert cl.reuse_freed_instance
+    context = c_emitter.context
+    name = cl.name_prefix(c_emitter.names) + "_free_instance"
+    struct_name = cl.struct_name(c_emitter.names)
+    context.declarations[name] = HeaderDeclaration(f"{struct_name} *{name};", needs_export=True)
+
+
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     """Generate C code for a class.
 
@@ -557,7 +567,17 @@ def generate_setup_for_class(
     emitter.emit_line("static PyObject *")
     emitter.emit_line(f"{func_name}(PyTypeObject *type)")
     emitter.emit_line("{")
-    emitter.emit_line(f"{cl.struct_name(emitter.names)} *self;")
+    struct_name = cl.struct_name(emitter.names)
+    emitter.emit_line(f"{struct_name} *self;")
+
+    prefix = cl.name_prefix(emitter.names)
+    if cl.reuse_freed_instance:
+        emitter.emit_line(f"if ({prefix}_free_instance != NULL) {{")
+        emitter.emit_line(f"self = {prefix}_free_instance;")
+        emitter.emit_line(f"{prefix}_free_instance = NULL;")
+        emitter.emit_line("return (PyObject *)self;")
+        emitter.emit_line("}")
+
     emitter.emit_line(f"self = ({cl.struct_name(emitter.names)} *)type->tp_alloc(type, 0);")
     emitter.emit_line("if (self == NULL)")
     emitter.emit_line("    return NULL;")
@@ -786,12 +806,30 @@ def generate_dealloc_for_class(
         emitter.emit_line("if (!PyObject_GC_IsFinalized((PyObject *)self)) {")
         emitter.emit_line("Py_TYPE(self)->tp_finalize((PyObject *)self);")
         emitter.emit_line("}")
+    if cl.reuse_freed_instance:
+        emit_reuse_dealloc(cl, emitter)
     emitter.emit_line("PyObject_GC_UnTrack(self);")
     # The trashcan is needed to handle deep recursive deallocations
     emitter.emit_line(f"CPy_TRASHCAN_BEGIN(self, {dealloc_func_name})")
     emitter.emit_line(f"{clear_func_name}(self);")
     emitter.emit_line("Py_TYPE(self)->tp_free((PyObject *)self);")
     emitter.emit_line("CPy_TRASHCAN_END(self)")
+    emitter.emit_line("}")
+
+
+def emit_reuse_dealloc(cl: ClassIR, emitter: Emitter) -> None:
+    prefix = cl.name_prefix(emitter.names)
+    emitter.emit_line(f"if ({prefix}_free_instance == NULL) {{")
+    emitter.emit_line(f"{prefix}_free_instance = self;")
+    emitter.emit_line("Py_INCREF(self);")
+
+    # TODO: emit_clear_bitmaps(cl, emitter)
+
+    for base in reversed(cl.base_mro):
+        for attr, rtype in base.attributes.items():
+            emitter.emit_reuse_clear(f"self->{emitter.attr(attr)}", rtype)
+
+    emitter.emit_line("return;")
     emitter.emit_line("}")
 
 
