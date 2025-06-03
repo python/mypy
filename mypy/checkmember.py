@@ -981,6 +981,10 @@ def expand_and_bind_callable(
     assert isinstance(expanded, CallableType)
     if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
         # TODO: use check_call() to infer better type, same as for __set__().
+        if not expanded.arg_types:
+            # This can happen when accessing invalid property from its own body,
+            # error will be reported elsewhere.
+            return AnyType(TypeOfAny.from_error)
         return expanded.arg_types[0]
     else:
         return expanded.ret_type

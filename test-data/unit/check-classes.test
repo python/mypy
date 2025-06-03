@@ -8726,3 +8726,16 @@ class Fields:
 reveal_type(Fields.bool_f)  # N: Revealed type is "__main__.BoolField"
 reveal_type(Fields.int_f)  # N: Revealed type is "__main__.NumField"
 reveal_type(Fields.custom_f)  # N: Revealed type is "__main__.AnyField[__main__.Custom]"
+
+[case testRecursivePropertyWithInvalidSetterNoCrash]
+class NoopPowerResource:
+    _hardware_type: int
+
+    @property
+    def hardware_type(self) -> int:
+        return self._hardware_type
+
+    @hardware_type.setter
+    def hardware_type(self) -> None:  # E: Invalid property setter signature
+        self.hardware_type = None  # Note: intentionally recursive
+[builtins fixtures/property.pyi]
