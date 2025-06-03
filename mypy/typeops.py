@@ -1257,7 +1257,7 @@ def get_protocol_member(
 
         return type_object_type(left.type, named_type)
 
-    if member == "__call__" and left.type.is_metaclass():
+    if member == "__call__" and left.type.is_metaclass(precise=True):
         # Special case: we want to avoid falling back to metaclass __call__
         # if constructor signature didn't match, this can cause many false negatives.
         return None

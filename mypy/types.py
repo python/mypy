@@ -84,6 +84,9 @@ if TYPE_CHECKING:
         TypeVisitor as TypeVisitor,
     )
 
+TUPLE_NAMES: Final = ("builtins.tuple", "typing.Tuple")
+TYPE_NAMES: Final = ("builtins.type", "typing.Type")
+
 TYPE_VAR_LIKE_NAMES: Final = (
     "typing.TypeVar",
     "typing_extensions.TypeVar",
