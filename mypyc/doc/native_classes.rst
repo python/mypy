@@ -48,11 +48,13 @@ can be assigned to (similar to using ``__slots__``)::
 Inheritance
 -----------
 
-Only single inheritance is supported (except for :ref:`traits
-<trait-types>`). Most non-native classes can't be used as base
-classes.
+Only single inheritance is supported from native classes (except for
+:ref:`traits <trait-types>`). Most non-native extension classes can't
+be used as base classes, but regular Python classes can be used as
+base classes unless they use unsupported metaclasses (see below for
+more about this).
 
-These non-native classes can be used as base classes of native
+These non-native extension classes can be used as base classes of native
 classes:
 
 * ``object``
@@ -63,8 +65,6 @@ classes:
 * ``IndexError``
 * ``LookupError``
 * ``UserWarning``
-* ``typing.NamedTuple``
-* ``enum.Enum``
 
 By default, a non-native class can't inherit a native class, and you
 can't inherit from a native class outside the compilation unit that
@@ -88,6 +88,15 @@ You need to install ``mypy-extensions`` to use ``@mypyc_attr``:
 .. code-block:: text
 
     pip install --upgrade mypy-extensions
+
+Additionally, mypyc recognizes these base classes as special, and
+understands how they alter the behavior of classes (including native
+classes) that subclass them:
+
+* ``typing.NamedTuple``
+* ``typing.Generic``
+* ``typing.Protocol``
+* ``enum.Enum``
 
 Class variables
 ---------------
@@ -145,7 +154,8 @@ behavior is too dynamic. You can use these metaclasses, however:
 .. note::
 
    If a class definition uses an unsupported metaclass, *mypyc
-   compiles the class into a regular Python class*.
+   compiles the class into a regular Python class* (non-native
+   class).
 
 Class decorators
 ----------------
@@ -165,7 +175,63 @@ efficient as pure native classes.
 .. note::
 
    If a class definition uses an unsupported class decorator, *mypyc
-   compiles the class into a regular Python class*.
+   compiles the class into a regular Python class* (non-native class).
+
+Defining non-native classes
+---------------------------
+
+You can use the ``@mypy_extensions.mypyc_attr(...)`` class decorator
+with an argument ``native_class=False`` to explicitly define normal
+Python classes (non-native classes)::
+
+    from mypy_extensions import mypyc_attr
+
+    @mypyc_attr(native_class=False)
+    class NonNative:
+        def __init__(self) -> None:
+            self.attr = 1
+
+    setattr(NonNative, "extra", 1)  # Ok
+
+This only has an effect in classes compiled using mypyc. Non-native
+classes are significantly less efficient than native classes, but they
+are sometimes necessary to work around the limitations of native classes.
+
+Non-native classes can use arbitrary metaclasses and class decorators,
+and they support flexible multiple inheritance.  Mypyc will still
+generate a compile-time error if you try to assign to a method, or an
+attribute that is not defined in a class body, since these are static
+type errors detected by mypy::
+
+    o = NonNative()
+    o.extra = "x"  # Static type error: "extra" not defined
+
+However, these operations still work at runtime, including in modules
+that are not compiled using mypyc. You can also use ``setattr`` and
+``getattr`` for dynamic access of arbitrary attributes. Expressions
+with an ``Any`` type are also not type checked statically, allowing
+access to arbitrary attributes::
+
+    a: Any = o
+    a.extra = "x"  # Ok
+
+    setattr(o, "extra", "y")  # Also ok
+
+Implicit non-native classes
+---------------------------
+
+If a compiled class uses an unsupported metaclass or an unsupported
+class decorator, it will implicitly be a non-native class, as
+discussed above. You can still use ``@mypyc_attr(native_class=False)``
+to explicitly mark it as a non-native class.
+
+Explicit native classes
+-----------------------
+
+You can use ``@mypyc_attr(native_class=True)`` to explicitly declare a
+class as a native class. It will be a compile-time error if mypyc
+can't compile the class as a native class. You can use this to avoid
+accidentally defining implicit non-native classes.
 
 Deleting attributes
 -------------------

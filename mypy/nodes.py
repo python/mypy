@@ -148,18 +148,6 @@ reverse_builtin_aliases: Final = {
     "builtins.frozenset": "typing.FrozenSet",
 }
 
-_nongen_builtins: Final = {"builtins.tuple": "typing.Tuple", "builtins.enumerate": ""}
-_nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
-# Drop OrderedDict from this for backward compatibility
-del _nongen_builtins["collections.OrderedDict"]
-# HACK: consequence of hackily treating LiteralString as an alias for str
-del _nongen_builtins["builtins.str"]
-
-
-def get_nongen_builtins(python_version: tuple[int, int]) -> dict[str, str]:
-    # After 3.9 with pep585 generic builtins are allowed
-    return _nongen_builtins if python_version < (3, 9) else {}
-
 
 RUNTIME_PROTOCOL_DECOS: Final = (
     "typing.runtime_checkable",
@@ -3313,8 +3301,8 @@ class TypeInfo(SymbolNode):
                         continue  # unannotated value not a member
 
                     typ = mypy.types.get_proper_type(sym.node.type)
-                    if isinstance(
-                        typ, mypy.types.FunctionLike
+                    if (
+                        isinstance(typ, mypy.types.FunctionLike) and not typ.is_type_obj()
                     ) or (  # explicit `@member` is required
                         isinstance(typ, mypy.types.Instance)
                         and typ.type.fullname == "enum.nonmember"
@@ -3371,11 +3359,11 @@ class TypeInfo(SymbolNode):
                 return c
         return None
 
-    def is_metaclass(self) -> bool:
+    def is_metaclass(self, *, precise: bool = False) -> bool:
         return (
             self.has_base("builtins.type")
             or self.fullname == "abc.ABCMeta"
-            or self.fallback_to_any
+            or (self.fallback_to_any and not precise)
         )
 
     def has_base(self, fullname: str) -> bool:

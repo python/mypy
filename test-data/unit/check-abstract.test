@@ -191,8 +191,8 @@ def f(cls: Type[A]) -> A:
 def g() -> A:
     return A()  # E: Cannot instantiate abstract class "A" with abstract attribute "m"
 
-f(A)  # E: Only concrete class can be given where "Type[A]" is expected
-f(B)  # E: Only concrete class can be given where "Type[A]" is expected
+f(A)  # E: Only concrete class can be given where "type[A]" is expected
+f(B)  # E: Only concrete class can be given where "type[A]" is expected
 f(C)  # OK
 x: Type[B]
 f(x)  # OK
@@ -207,7 +207,7 @@ class Class:
     def method(self) -> None:
         pass
 
-my_dict_init: Dict[int, Type[Class]] = {0: Class}  # E: Only concrete class can be given where "Tuple[int, Type[Class]]" is expected
+my_dict_init: Dict[int, Type[Class]] = {0: Class}  # E: Only concrete class can be given where "tuple[int, type[Class]]" is expected
 
 class Child(Class):
     def method(self) -> None: ...
@@ -235,7 +235,7 @@ Alias = A
 GoodAlias = C
 Alias()  # E: Cannot instantiate abstract class "A" with abstract attribute "m"
 GoodAlias()
-f(Alias)  # E: Only concrete class can be given where "Type[A]" is expected
+f(Alias)  # E: Only concrete class can be given where "type[A]" is expected
 f(GoodAlias)
 [out]
 
@@ -255,18 +255,18 @@ class C(B):
 var: Type[A]
 var()
 if int():
-    var = A # E: Can only assign concrete classes to a variable of type "Type[A]"
+    var = A # E: Can only assign concrete classes to a variable of type "type[A]"
 if int():
-    var = B # E: Can only assign concrete classes to a variable of type "Type[A]"
+    var = B # E: Can only assign concrete classes to a variable of type "type[A]"
 if int():
     var = C # OK
 
 var_old = None # type: Type[A] # Old syntax for variable annotations
 var_old()
 if int():
-    var_old = A # E: Can only assign concrete classes to a variable of type "Type[A]"
+    var_old = A # E: Can only assign concrete classes to a variable of type "type[A]"
 if int():
-    var_old = B # E: Can only assign concrete classes to a variable of type "Type[A]"
+    var_old = B # E: Can only assign concrete classes to a variable of type "type[A]"
 if int():
     var_old = C # OK
 
@@ -277,7 +277,7 @@ class D(A):
     def __new__(cls) -> "D": ...
     def __new__(cls, a=None) -> "D": ...
 if int():
-    var = D # E: Can only assign concrete classes to a variable of type "Type[A]"
+    var = D # E: Can only assign concrete classes to a variable of type "type[A]"
 [out]
 
 [case testInstantiationAbstractsInTypeForClassMethods]

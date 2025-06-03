@@ -620,7 +620,7 @@ t: type
 a: A
 
 if int():
-    a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
+    a = A # E: Incompatible types in assignment (expression has type "type[A]", variable has type "A")
     t = A
 
 class A:
@@ -811,7 +811,7 @@ n = 1
 m = 1
 n = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 m = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-f(list_object) # E: Argument 1 to "f" has incompatible type "List[object]"; expected "List[int]"
+f(list_object) # E: Argument 1 to "f" has incompatible type "list[object]"; expected "list[int]"
 [builtins fixtures/list.pyi]
 
 [case testOverlappingOverloadSignatures]
@@ -1147,7 +1147,7 @@ def f(x: str) -> None: pass
 f(1.1)
 f('')
 f(1)
-f(()) # E: No overload variant of "f" matches argument type "Tuple[()]" \
+f(()) # E: No overload variant of "f" matches argument type "tuple[()]" \
       # N: Possible overload variants: \
       # N:     def f(x: float) -> None \
       # N:     def f(x: str) -> None
@@ -1216,13 +1216,13 @@ from typing import overload
 def f(x: int, y: str) -> int: pass
 @overload
 def f(*x: str) -> str: pass
-f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]" \
+f(*(1,))() # E: No overload variant of "f" matches argument type "tuple[int]" \
            # N: Possible overload variants: \
            # N:     def f(x: int, y: str) -> int \
            # N:     def f(*x: str) -> str
 f(*('',))() # E: "str" not callable
 f(*(1, ''))() # E: "int" not callable
-f(*(1, '', 1))() # E: No overload variant of "f" matches argument type "Tuple[int, str, int]" \
+f(*(1, '', 1))() # E: No overload variant of "f" matches argument type "tuple[int, str, int]" \
                  # N: Possible overload variants: \
                  # N:     def f(x: int, y: str) -> int \
                  # N:     def f(*x: str) -> str
@@ -1239,7 +1239,7 @@ def f(x: int, y: List[int] = None) -> int: pass
 def f(x: int, y: List[str] = None) -> int: pass
 f(y=[1], x=0)() # E: "int" not callable
 f(y=[''], x=0)() # E: "int" not callable
-a = f(y=[['']], x=0) # E: List item 0 has incompatible type "List[str]"; expected "int"
+a = f(y=[['']], x=0) # E: List item 0 has incompatible type "list[str]"; expected "int"
 reveal_type(a)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
@@ -1299,7 +1299,7 @@ def g(x: U, y: V) -> None:
     f(y) # E: No overload variant of "f" matches argument type "V" \
          # N: Possible overload variants: \
          # N:     def [T: str] f(x: T) -> T \
-         # N:     def [T: str] f(x: List[T]) -> None
+         # N:     def [T: str] f(x: list[T]) -> None
     a = f([x])
     reveal_type(a)  # N: Revealed type is "None"
     f([y]) # E: Value of type variable "T" of "f" cannot be "V"
@@ -1414,11 +1414,11 @@ main:17: note: Revealed type is "builtins.int"
 main:18: note: Revealed type is "builtins.str"
 main:19: note: Revealed type is "Any"
 main:20: note: Revealed type is "Union[builtins.int, builtins.str]"
-main:21: error: Argument 1 to "foo" has incompatible type "List[bool]"; expected "List[int]"
+main:21: error: Argument 1 to "foo" has incompatible type "list[bool]"; expected "list[int]"
 main:21: note: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 main:21: note: Consider using "Sequence" instead, which is covariant
-main:22: error: Argument 1 to "foo" has incompatible type "List[object]"; expected "List[int]"
-main:23: error: Argument 1 to "foo" has incompatible type "List[Union[int, str]]"; expected "List[int]"
+main:22: error: Argument 1 to "foo" has incompatible type "list[object]"; expected "list[int]"
+main:23: error: Argument 1 to "foo" has incompatible type "list[Union[int, str]]"; expected "list[int]"
 
 [case testOverloadAgainstEmptyCollections]
 from typing import overload, List
@@ -1482,7 +1482,7 @@ class A(Generic[T]):
 
 b = A()  # type: A[Tuple[int, int]]
 b.f((0, 0))
-b.f((0, '')) # E: Argument 1 to "f" of "A" has incompatible type "Tuple[int, str]"; expected "Tuple[int, int]"
+b.f((0, '')) # E: Argument 1 to "f" of "A" has incompatible type "tuple[int, str]"; expected "tuple[int, int]"
 [builtins fixtures/tuple.pyi]
 
 [case testSingleOverloadStub]
@@ -1554,14 +1554,14 @@ def f(x: int, y: Tuple[str, ...]) -> None: pass
 @overload
 def f(x: int, y: str) -> None: pass
 f(1, ('2', '3'))
-f(1, (2, '3')) # E: Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected "Tuple[str, ...]"
+f(1, (2, '3')) # E: Argument 2 to "f" has incompatible type "tuple[int, str]"; expected "tuple[str, ...]"
 f(1, ('2',))
 f(1, '2')
-f(1, (2, 3)) # E: Argument 2 to "f" has incompatible type "Tuple[int, int]"; expected "Tuple[str, ...]"
+f(1, (2, 3)) # E: Argument 2 to "f" has incompatible type "tuple[int, int]"; expected "tuple[str, ...]"
 x = ('2', '3')  # type: Tuple[str, ...]
 f(1, x)
 y = (2, 3)  # type: Tuple[int, ...]
-f(1, y) # E: Argument 2 to "f" has incompatible type "Tuple[int, ...]"; expected "Tuple[str, ...]"
+f(1, y) # E: Argument 2 to "f" has incompatible type "tuple[int, ...]"; expected "tuple[str, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testCallableSpecificOverload]
@@ -2539,7 +2539,7 @@ x: List[int]
 reveal_type(foo(*x))  # N: Revealed type is "__main__.C"
 
 y: List[str]
-foo(*y)  # E: No overload variant of "foo" matches argument type "List[str]" \
+foo(*y)  # E: No overload variant of "foo" matches argument type "list[str]" \
          # N: Possible overload variants: \
          # N:     def foo(x: int) -> A \
          # N:     def foo(x: int, y: int) -> B \
@@ -2626,8 +2626,8 @@ def f(*xs: int) -> Tuple[int, ...]: ...
 def f(*args): pass
 
 i: int
-reveal_type(f(i))           # N: Revealed type is "Tuple[builtins.int]"
-reveal_type(f(i, i))        # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(f(i))           # N: Revealed type is "tuple[builtins.int]"
+reveal_type(f(i, i))        # N: Revealed type is "tuple[builtins.int, builtins.int]"
 reveal_type(f(i, i, i))     # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 reveal_type(f(*[]))         # N: Revealed type is "builtins.tuple[builtins.int, ...]"
@@ -2648,8 +2648,8 @@ def f(*args): pass
 
 i: int
 reveal_type(f(*()))         # N: Revealed type is "builtins.tuple[builtins.int, ...]"
-reveal_type(f(*(i,)))       # N: Revealed type is "Tuple[builtins.int]"
-reveal_type(f(*(i, i)))     # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(f(*(i,)))       # N: Revealed type is "tuple[builtins.int]"
+reveal_type(f(*(i, i)))     # N: Revealed type is "tuple[builtins.int, builtins.int]"
 reveal_type(f(*(i, i, i)))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
@@ -2668,8 +2668,8 @@ C = NamedTuple('C', [('a', int), ('b', int), ('c', int)])
 a: A
 b: B
 c: C
-reveal_type(f(*a))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
-reveal_type(f(*b))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(f(*a))  # N: Revealed type is "tuple[builtins.int, builtins.int]"
+reveal_type(f(*b))  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 reveal_type(f(*c))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
@@ -2708,8 +2708,8 @@ a: A
 b: B
 c: C
 
-reveal_type(f(**a))  # N: Revealed type is "Tuple[builtins.int]"
-reveal_type(f(**b))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(f(**a))  # N: Revealed type is "tuple[builtins.int]"
+reveal_type(f(**b))  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 reveal_type(f(**c))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -3497,12 +3497,12 @@ def t_is_same_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
     x3: Union[List[S], List[Tuple[S, T1]]]
     y3: S
     Dummy[T1]().foo(x3, y3)  # E: Cannot infer type argument 1 of "foo" of "Dummy" \
-                             # E: Argument 1 to "foo" of "Dummy" has incompatible type "Union[List[S], List[Tuple[S, T1]]]"; expected "List[Tuple[T1, Any]]"
+                             # E: Argument 1 to "foo" of "Dummy" has incompatible type "Union[list[S], list[tuple[S, T1]]]"; expected "list[tuple[T1, Any]]"
 
     x4: Union[List[int], List[Tuple[C, int]]]
     y4: int
     reveal_type(Dummy[C]().foo(x4, y4))  # N: Revealed type is "Union[builtins.int, __main__.C]"
-    Dummy[A]().foo(x4, y4)               # E: Argument 1 to "foo" of "Dummy" has incompatible type "Union[List[int], List[Tuple[C, int]]]"; expected "List[Tuple[A, int]]"
+    Dummy[A]().foo(x4, y4)               # E: Argument 1 to "foo" of "Dummy" has incompatible type "Union[list[int], list[tuple[C, int]]]"; expected "list[tuple[A, int]]"
 
     return arg1, arg2
 
@@ -4264,7 +4264,7 @@ class Wrapper:
 
     @classmethod    # E: Overloaded function implementation cannot produce return type of signature 1
     def foo(cls, x: Union[int, str]) -> str:
-        reveal_type(cls)          # N: Revealed type is "Type[__main__.Wrapper]"
+        reveal_type(cls)          # N: Revealed type is "type[__main__.Wrapper]"
         reveal_type(cls.other())  # N: Revealed type is "builtins.str"
         return "..."
 
@@ -4589,10 +4589,10 @@ class Child(Parent):
     def child_only(self) -> int: pass
 
 x: Union[int, str]
-reveal_type(Parent.foo(3))                  # N: Revealed type is "Type[__main__.Parent]"
-reveal_type(Child.foo(3))                   # N: Revealed type is "Type[__main__.Child]"
+reveal_type(Parent.foo(3))                  # N: Revealed type is "type[__main__.Parent]"
+reveal_type(Child.foo(3))                   # N: Revealed type is "type[__main__.Child]"
 reveal_type(Child.foo("..."))               # N: Revealed type is "builtins.str"
-reveal_type(Child.foo(x))                   # N: Revealed type is "Union[Type[__main__.Child], builtins.str]"
+reveal_type(Child.foo(x))                   # N: Revealed type is "Union[type[__main__.Child], builtins.str]"
 reveal_type(Child.foo(3)().child_only())    # N: Revealed type is "builtins.int"
 [builtins fixtures/classmethod.pyi]
 
@@ -5079,7 +5079,7 @@ a = multiple_plausible(Other())  # E: No overload variant of "multiple_plausible
                                  # N:     def multiple_plausible(x: str) -> str
 reveal_type(a)                   # N: Revealed type is "Any"
 
-b = single_plausible(Other)      # E: Argument 1 to "single_plausible" has incompatible type "Type[Other]"; expected "Type[int]"
+b = single_plausible(Other)      # E: Argument 1 to "single_plausible" has incompatible type "type[Other]"; expected "type[int]"
 reveal_type(b)                   # N: Revealed type is "builtins.int"
 
 c = single_plausible([Other()])  # E: List item 0 has incompatible type "Other"; expected "str"

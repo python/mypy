@@ -184,7 +184,6 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
     get_member_expr_fullname,
-    get_nongen_builtins,
     implicit_module_attrs,
     is_final_node,
     type_aliases,
@@ -247,7 +246,6 @@ from mypy.typeanal import (
     find_self_type,
     fix_instance,
     has_any_from_unimported_type,
-    no_subscript_builtin_alias,
     type_constructors,
     validate_instance,
 )
@@ -267,6 +265,7 @@ from mypy.types import (
     TPDICT_NAMES,
     TYPE_ALIAS_NAMES,
     TYPE_CHECK_ONLY_NAMES,
+    TYPE_NAMES,
     TYPE_VAR_LIKE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
     UNPACK_TYPE_NAMES,
@@ -1118,21 +1117,7 @@ class SemanticAnalyzer(
                 return self.is_expected_self_type(typ.item, is_classmethod=False)
             if isinstance(typ, UnboundType):
                 sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
-                if (
-                    sym is not None
-                    and (
-                        sym.fullname == "typing.Type"
-                        or (
-                            sym.fullname == "builtins.type"
-                            and (
-                                self.is_stub_file
-                                or self.is_future_flag_set("annotations")
-                                or self.options.python_version >= (3, 9)
-                            )
-                        )
-                    )
-                    and typ.args
-                ):
+                if sym is not None and sym.fullname in TYPE_NAMES and typ.args:
                     return self.is_expected_self_type(typ.args[0], is_classmethod=False)
             return False
         if isinstance(typ, TypeVarType):
@@ -3987,7 +3972,7 @@ class SemanticAnalyzer(
             if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
                 self.fail(
                     'Cannot assign multiple types to name "{}"'
-                    ' without an explicit "Type[...]" annotation'.format(lvalue.name),
+                    ' without an explicit "type[...]" annotation'.format(lvalue.name),
                     lvalue,
                 )
             return False
@@ -5996,30 +5981,6 @@ class SemanticAnalyzer(
         expr.analyzed = TypeApplication(base, types)
         expr.analyzed.line = expr.line
         expr.analyzed.column = expr.column
-        # Types list, dict, set are not subscriptable, prohibit this if
-        # subscripted either via type alias...
-        if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
-            alias = base.node
-            target = get_proper_type(alias.target)
-            if isinstance(target, Instance):
-                name = target.type.fullname
-                if (
-                    alias.no_args
-                    and name  # this avoids bogus errors for already reported aliases
-                    in get_nongen_builtins(self.options.python_version)
-                    and not self.is_stub_file
-                    and not alias.normalized
-                ):
-                    self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
-        # ...or directly.
-        else:
-            n = self.lookup_type_node(base)
-            if (
-                n
-                and n.fullname in get_nongen_builtins(self.options.python_version)
-                and not self.is_stub_file
-            ):
-                self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
 
     def analyze_type_application_args(self, expr: IndexExpr) -> list[Type] | None:
         """Analyze type arguments (index) in a type application.

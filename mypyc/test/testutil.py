@@ -111,7 +111,7 @@ def build_ir_for_single_file2(
     options.hide_error_codes = True
     options.use_builtins_fixtures = True
     options.strict_optional = True
-    options.python_version = compiler_options.python_version or (3, 8)
+    options.python_version = compiler_options.python_version or (3, 9)
     options.export_types = True
     options.preserve_asts = True
     options.allow_empty_bodies = True
