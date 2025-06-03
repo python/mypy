@@ -2983,3 +2983,31 @@ class B(native.A):
 
 b: B = B.make()
 assert(B.count == 2)
+
+[case testTypeVarNarrowing]
+from typing import TypeVar
+
+class B:
+    def __init__(self, x: int) -> None:
+        self.x = x
+class C(B):
+    def __init__(self, x: int, y: str) -> None:
+        self.x = x
+        self.y = y
+
+T = TypeVar("T", bound=B)
+def f(x: T) -> T:
+    if isinstance(x, C):
+        print("C", x.y)
+        return x
+    print("B", x.x)
+    return x
+
+[file driver.py]
+from native import f, B, C
+
+f(B(1))
+f(C(1, "yes"))
+[out]
+B 1
+C yes

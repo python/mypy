@@ -50,6 +50,7 @@ from mypy.types import (
     find_unpack_in_list,
     get_proper_type,
     get_proper_types,
+    has_type_vars,
     is_named_instance,
     split_with_prefix_and_suffix,
 )
@@ -149,6 +150,14 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return make_simplified_union(
             [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
         )
+    elif (
+        isinstance(declared, TypeVarType)
+        and not has_type_vars(original_narrowed)
+        and is_subtype(original_narrowed, declared.upper_bound)
+    ):
+        # We put this branch early to get T(bound=Union[A, B]) instead of
+        # Union[T(bound=A), T(bound=B)] that will be confusing for users.
+        return declared.copy_modified(upper_bound=original_narrowed)
     elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True):
         if state.strict_optional:
             return UninhabitedType()
@@ -777,7 +786,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
-            return self.s
+            if self.s.upper_bound == t.upper_bound:
+                return self.s
+            return self.s.copy_modified(upper_bound=self.meet(self.s.upper_bound, t.upper_bound))
         else:
             return self.default(self.s)
 
