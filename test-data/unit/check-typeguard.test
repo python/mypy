@@ -777,3 +777,22 @@ def handle(model: Model) -> int:
         return process_model(model)
     return 0
 [builtins fixtures/tuple.pyi]
+
+
+[case testOverloadedTypeGuardType]
+from __future__ import annotations
+from typing_extensions import TypeIs, Never, overload
+
+class X: ...
+
+@overload  # E: An overloaded function outside a stub file must have an implementation
+def is_xlike(obj: Never) -> TypeIs[X | type[X]]: ...  # type: ignore
+@overload
+def is_xlike(obj: type) -> TypeIs[type[X]]: ...
+@overload
+def is_xlike(obj: object) -> TypeIs[X | type[X]]: ...
+
+raw_target: object
+if isinstance(raw_target, type) and is_xlike(raw_target):
+    reveal_type(raw_target)  # N: Revealed type is "type[__main__.X]"
+[builtins fixtures/tuple.pyi]

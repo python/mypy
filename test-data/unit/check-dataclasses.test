@@ -2609,3 +2609,12 @@ class B2(B1):  # E: A NamedTuple cannot be a dataclass
     pass
 
 [builtins fixtures/tuple.pyi]
+
+[case testDataclassesTypeGuard]
+import dataclasses
+
+raw_target: object
+
+if isinstance(raw_target, type) and dataclasses.is_dataclass(raw_target):
+    reveal_type(raw_target)  # N: Revealed type is "type[dataclasses.DataclassInstance]"
+[builtins fixtures/tuple.pyi]
