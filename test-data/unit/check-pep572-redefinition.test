@@ -1,0 +1,72 @@
+-- Test cases for interaction with allow-redefinition flag 
+-- and PEP572 (the walrus operator, :=)
+
+-- Base cases for no walrus operator usage & without flag
+[case testRedefine_noUsage]
+# flags: --allow-redefinition
+a: int
+a = 1
+a = 1.0 # E: Incompatible types in assignment (expression has type "float", variable has type "int")
+if (a == 1.0):
+    reveal_type(a) # N: Revealed type is "builtins.int"
+reveal_type(a) # N: Revealed type is "builtins.int"
+
+[builtins fixtures/float.pyi]
+
+[case testRedefine_withUsage]
+# flags: --allow-redefinition
+a: int
+b: int
+a = 1
+b = 2
+b = b + a
+reveal_type(a) # N: Revealed type is "builtins.int"
+a = 1.0
+if (a == 1.0):
+    reveal_type(a) # N: Revealed type is "builtins.float"
+reveal_type(a) # N: Revealed type is "builtins.float"
+
+[builtins fixtures/float.pyi]
+
+[case test_withUsage]
+# flags:
+a: int
+b: int
+a = 1
+b = 2
+b = b + a
+reveal_type(a) # N: Revealed type is "builtins.int"
+a = 1.0 # E: Incompatible types in assignment (expression has type "float", variable has type "int")
+if (a == 1.0):
+    reveal_type(a) # N: Revealed type is "builtins.int"
+reveal_type(a) # N: Revealed type is "builtins.int"
+
+[builtins fixtures/float.pyi]
+
+-- This should error due to no usage before attempted redefinition
+[case testRedefine_PEP572_noUsage]
+# flags: --allow-redefinition
+a: int
+a = 1
+
+if (a := 1.0): # E: Incompatible types in assignment (expression has type "float", variable has type "int")
+    reveal_type(a) # N: Revealed type is "builtins.int"
+reveal_type(a) # N: Revealed type is "builtins.int"
+
+[builtins fixtures/float.pyi]
+
+-- This should pass as 'a' is used before it is attempted to be redefined
+[case testRedefine_PEP572_withUsage]
+# flags: --allow-redefinition
+a: int
+b: int
+a = 1
+b = 2
+b = b + a
+reveal_type(a) # N: Revealed type is "builtins.int"
+
+if (a := 1.0):
+    reveal_type(a) # N: Revealed type is "builtins.float"
+reveal_type(a) # N: Revealed type is "builtins.float"
+
+[builtins fixtures/float.pyi]
