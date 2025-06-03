@@ -1,4 +1,4 @@
--- Test cases for interaction with allow-redefinition flag 
+-- Test cases for interaction with allow-redefinition flag
 -- and PEP572 (the walrus operator, :=)
 
 -- Base cases for no walrus operator usage & without flag
