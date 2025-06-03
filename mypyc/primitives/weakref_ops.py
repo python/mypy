@@ -14,7 +14,7 @@ new_ref_op = function_op(
 )
 
 new_ref__with_callback_op = function_op(
-    name="weakref.ReferenceType",
+    name="weakref.proxy",
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PyWeakref_NewRef",
@@ -22,7 +22,7 @@ new_ref__with_callback_op = function_op(
 )
 
 new_proxy_op = function_op(
-    name="weakref.ProxyType",
+    name="weakref.proxy",
     arg_types=[object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PyWeakref_NewProxy",
