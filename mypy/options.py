@@ -88,12 +88,33 @@ class Options:
     """Options collected from flags."""
 
     def __init__(self) -> None:
+        self._initialize_caches()
+        self._initialize_build_options()
+        self._initialize_disallow_options()
+        self._initialize_warning_and_reporting_options()
+        self._initialize_misc_behavior()
+        self._initialize_error_code_controls()
+        self._initialize_target_definitions()
+        self._initialize_caching_options()
+        self._initialize_integration_flags()
+        self._initialize_development_options()
+        self._initialize_test_options()
+        self._initialize_experimental_options()
+
+    def _initialize_caches(self) -> None:
         # Cache for clone_for_module()
         self._per_module_cache: dict[str, Options] | None = None
 
+        # Per-module options (raw)
+        self.per_module_options: dict[str, dict[str, object]] = {}
+        self._glob_options: list[tuple[str, Pattern[str]]] = []
+        self.unused_configs: set[str] = set()
+
+    def _initialize_build_options(self) -> None:
         # -- build options --
         self.build_type = BuildType.STANDARD
         self.python_version: tuple[int, int] = sys.version_info[:2]
+
         # The executable used to search for PEP 561 packages. If this is None,
         # then mypy does not search for PEP 561 packages.
         self.python_executable: str | None = sys.executable
@@ -108,37 +129,46 @@ class Options:
 
         self.custom_typing_module: str | None = None
         self.custom_typeshed_dir: str | None = None
+
         # The abspath() version of the above, we compute it once as an optimization.
         self.abs_custom_typeshed_dir: str | None = None
         self.mypy_path: list[str] = []
         self.report_dirs: dict[str, str] = {}
+
         # Show errors in PEP 561 packages/site-packages modules
         self.no_silence_site_packages = False
         self.no_site_packages = False
         self.ignore_missing_imports = False
+
         # Is ignore_missing_imports set in a per-module section
         self.ignore_missing_imports_per_module = False
+
         # Typecheck modules without stubs or py.typed marker
         self.follow_untyped_imports = False
         self.follow_imports = "normal"  # normal|silent|skip|error
+
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
         self.follow_imports_for_stubs = False
+
         # PEP 420 namespace packages
         # This allows definitions of packages without __init__.py and allows packages to span
         # multiple directories. This flag affects both import discovery and the association of
         # input files/modules/packages to the relevant file and fully qualified module name.
         self.namespace_packages = True
+
         # Use current directory and MYPYPATH to determine fully qualified module names of files
         # passed by automatically considering their subdirectories as packages. This is only
         # relevant if namespace packages are enabled, since otherwise examining __init__.py's is
         # sufficient to determine module names for files. As a possible alternative, add a single
         # top-level __init__.py to your packages.
         self.explicit_package_bases = False
+
         # File names, directory names or subpaths to avoid checking
         self.exclude: list[str] = []
         self.exclude_gitignore: bool = False
 
+    def _initialize_disallow_options(self) -> None:
         # disallow_any options
         self.disallow_any_generics = False
         self.disallow_any_unimported = False
@@ -168,6 +198,7 @@ class Options:
         # Disallow subclassing values of type 'Any'
         self.disallow_subclassing_any = False
 
+    def _initialize_warning_and_reporting_options(self) -> None:
         # Also check typeshed for missing annotations
         self.warn_incomplete_stub = False
 
@@ -194,6 +225,7 @@ class Options:
         # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
         self.warn_unused_configs = False
 
+    def _initialize_misc_behavior(self) -> None:
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
 
@@ -241,6 +273,7 @@ class Options:
         # type analysis.
         self.warn_unreachable = False
 
+    def _initialize_error_code_controls(self) -> None:
         # Variable names considered True
         self.always_true: list[str] = []
 
@@ -255,6 +288,7 @@ class Options:
         self.enable_error_code: list[str] = []
         self.enabled_error_codes: set[ErrorCode] = set()
 
+    def _initialize_target_definitions(self) -> None:
         # Use script name instead of __main__
         self.scripts_are_modules = False
 
@@ -281,6 +315,7 @@ class Options:
 
         self.junit_format: str = "global"  # global|per_file
 
+    def _initialize_caching_options(self) -> None:
         # Caching and incremental checking options
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
@@ -293,10 +328,10 @@ class Options:
         self.cache_fine_grained = False
         # Read cache files in fine-grained incremental mode (cache must include dependencies)
         self.use_fine_grained_cache = False
-
         # Run tree.serialize() even if cache generation is disabled
         self.debug_serialize = False
 
+    def _initialize_integration_flags(self) -> None:
         # Tune certain behaviors when being used as a front-end to mypyc. Set per-module
         # in modules being compiled. Not in the config file or command line.
         self.mypyc = False
@@ -321,11 +356,7 @@ class Options:
         # Paths of user plugins
         self.plugins: list[str] = []
 
-        # Per-module options (raw)
-        self.per_module_options: dict[str, dict[str, object]] = {}
-        self._glob_options: list[tuple[str, Pattern[str]]] = []
-        self.unused_configs: set[str] = set()
-
+    def _initialize_development_options(self) -> None:
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
         self.pdb = False
@@ -338,6 +369,7 @@ class Options:
         self.timing_stats: str | None = None
         self.line_checking_stats: str | None = None
 
+    def _initialize_test_options(self) -> None:
         # -- test options --
         # Stop after the semantic analysis phase
         self.semantic_analysis_only = False
@@ -349,6 +381,7 @@ class Options:
         # Use this sparingly to avoid tests diverging from non-test behavior.
         self.test_env = False
 
+    def _initialize_experimental_options(self) -> None:
         # -- experimental options --
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
@@ -408,6 +441,7 @@ class Options:
 
         # Output html file for mypyc -a
         self.mypyc_annotation_file: str | None = None
+
         # Skip writing C output files, but perform all other steps of a build (allows
         # preserving manual tweaks to generated C file)
         self.mypyc_skip_c_generation = False
