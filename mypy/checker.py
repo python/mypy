@@ -7691,9 +7691,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         types: list[TypeRange] = []
         for typ in all_types:
             if isinstance(typ, FunctionLike) and typ.is_type_obj():
-                # Type variables may be present -- erase them, which is the best
-                # we can do (outside disallowing them here).
-                erased_type = erase_typevars(typ.items[0].ret_type)
+                # If a type is generic, `isinstance` can only narrow its variables to Any.
+                erased_type = fill_typevars_with_any(typ.type_object())
                 types.append(TypeRange(erased_type, is_upper_bound=False))
             elif isinstance(typ, TypeType):
                 # Type[A] means "any type that is a subtype of A" rather than "precisely type A"

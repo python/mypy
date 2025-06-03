@@ -2463,3 +2463,50 @@ def test(x: T) -> T:
     reveal_type(x.x)  # N: Revealed type is "builtins.str"
     return x
 [builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceNarrowingWithSelfTypes]
+from typing import Generic, TypeVar, overload
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __init__(self: A[int]) -> None:
+        pass
+
+def check_a(obj: "A[T] | str") -> None:
+    reveal_type(obj)  # N: Revealed type is "Union[__main__.A[T`-1], builtins.str]"
+    if isinstance(obj, A):
+        reveal_type(obj)  # N: Revealed type is "__main__.A[T`-1]"
+    else:
+        reveal_type(obj)  # N: Revealed type is "builtins.str"
+
+class B(Generic[T]):
+    @overload
+    def __init__(self, x: T) -> None: ...
+    @overload
+    def __init__(self: B[int]) -> None: ...
+    def __init__(self, x: "T | None" = None) -> None:
+        pass
+
+def check_b(obj: "B[T] | str") -> None:
+    reveal_type(obj)  # N: Revealed type is "Union[__main__.B[T`-1], builtins.str]"
+    if isinstance(obj, B):
+        reveal_type(obj)  # N: Revealed type is "__main__.B[T`-1]"
+    else:
+        reveal_type(obj)  # N: Revealed type is "builtins.str"
+
+class C(Generic[T]):
+    @overload
+    def __init__(self: C[int]) -> None: ...
+    @overload
+    def __init__(self, x: T) -> None: ...
+    def __init__(self, x: "T | None" = None) -> None:
+        pass
+
+def check_c(obj: "C[T] | str") -> None:
+    reveal_type(obj)  # N: Revealed type is "Union[__main__.C[T`-1], builtins.str]"
+    if isinstance(obj, C):
+        reveal_type(obj)  # N: Revealed type is "__main__.C[T`-1]"
+    else:
+        reveal_type(obj)  # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstance.pyi]
