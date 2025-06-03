@@ -786,7 +786,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
-            return self.s
+            if self.s.upper_bound == t.upper_bound:
+                return self.s
+            return self.s.copy_modified(upper_bound=self.meet(self.s.upper_bound, t.upper_bound))
         else:
             return self.default(self.s)
 
