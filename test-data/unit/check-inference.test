@@ -4128,3 +4128,24 @@ T = TypeVar("T")
 def f(x: Optional[T]) -> T: ...
 reveal_type(f(a))  # N: Revealed type is "Any"
 reveal_type(f(oa))  # N: Revealed type is "Any"
+
+[case testNoCrashOnPartialTypeAsContext]
+from typing import overload, TypeVar, Optional, Protocol
+
+T = TypeVar("T")
+class DbManager(Protocol):
+    @overload
+    def get(self, key: str) -> Optional[T]:
+        pass
+
+    @overload
+    def get(self, key: str, default: T) -> T:
+        pass
+
+class Foo:
+    def __init__(self, db: DbManager, bar: bool) -> None:
+        if bar:
+            self.qux = db.get("qux")
+        else:
+            self.qux = {}  # E: Need type annotation for "qux" (hint: "qux: dict[<type>, <type>] = ...")
+[builtins fixtures/dict.pyi]
