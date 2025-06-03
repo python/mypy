@@ -562,6 +562,10 @@ def check_output(
 
     Call sys.exit() unless the status code is zero.
     """
+    if os.name == "nt":
+        # Enable ANSI color codes for Windows cmd using this strange workaround
+        # ( see https://github.com/python/cpython/issues/74261 )
+        os.system("")
     if "error" in response:
         fail(response["error"])
     try:
