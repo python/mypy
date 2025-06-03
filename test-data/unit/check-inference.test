@@ -3979,3 +3979,24 @@ def check(mapping: Mapping[str, _T]) -> None:
     reveal_type(ok1)  # N: Revealed type is "Union[_T`-1, builtins.str]"
     ok2: Union[_T, str] = mapping.get("", "")
 [builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnPartialTypeAsContext]
+from typing import overload, TypeVar, Optional, Protocol
+
+T = TypeVar("T")
+class DbManager(Protocol):
+    @overload
+    def get(self, key: str) -> Optional[T]:
+        pass
+
+    @overload
+    def get(self, key: str, default: T) -> T:
+        pass
+
+class Foo:
+    def __init__(self, db: DbManager, bar: bool) -> None:
+        if bar:
+            self.qux = db.get("qux")
+        else:
+            self.qux = {}  # E: Need type annotation for "qux" (hint: "qux: Dict[<type>, <type>] = ...")
+[builtins fixtures/dict.pyi]
