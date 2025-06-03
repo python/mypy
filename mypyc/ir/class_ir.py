@@ -408,6 +408,7 @@ class ClassIR:
             "_sometimes_initialized_attrs": sorted(self._sometimes_initialized_attrs),
             "init_self_leak": self.init_self_leak,
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
+            "reuse_freed_instance": self.reuse_freed_instance,
         }
 
     @classmethod
@@ -463,6 +464,7 @@ class ClassIR:
         ir.env_user_function = (
             ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
         )
+        ir.reuse_freed_instance = data["reuse_freed_instance"]
 
         return ir
 
