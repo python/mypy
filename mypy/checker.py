@@ -3427,7 +3427,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # store the rvalue type on the variable.
             actual_lvalue_type = None
             if lvalue_node.is_inferred and not lvalue_node.explicit_self_type:
-                rvalue_type = self.expr_checker.accept(rvalue, lvalue_node.type)
+                # Don't use partial types as context, similar to regular code path.
+                ctx = lvalue_node.type if not isinstance(lvalue_node.type, PartialType) else None
+                rvalue_type = self.expr_checker.accept(rvalue, ctx)
                 actual_lvalue_type = lvalue_node.type
                 lvalue_node.type = rvalue_type
             lvalue_type, _ = self.node_type_from_base(lvalue_node.name, lvalue_node.info, lvalue)
