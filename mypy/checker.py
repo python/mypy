@@ -2241,7 +2241,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
         if name == "__hash__" and isinstance(original_type, NoneType):
             # Allow defining `__hash__` even if parent class was explicitly made unhashable
-            return False
+            if base.fullname == "builtins.object":
+                # This is only for test stubs to avoid adding object.__hash__
+                # to all of them.
+                return True
+            return self.check_method_override_for_base_with_name(defn, name, base.mro[-1])
 
         if (
             is_property(defn)
@@ -3493,7 +3497,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                                 lvalue, lvalue_type, base_type, base
                             )
                             return
-                    if base is last_immediate_base:
+                    if base is last_immediate_base and base_node.name != "__hash__":
                         # At this point, the attribute was found to be compatible with all
                         # immediate parents.
                         break
@@ -3507,6 +3511,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         base_node: Node,
         always_allow_covariant: bool,
     ) -> bool:
+        if base_node.name == "__hash__" and isinstance(base_type, NoneType):
+            # Allow defining `__hash__` even if parent class was explicitly made unhashable
+            return True
         # TODO: check __set__() type override for custom descriptors.
         # TODO: for descriptors check also class object access override.
         ok = self.check_subtype(

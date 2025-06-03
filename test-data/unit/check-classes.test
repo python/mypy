@@ -155,7 +155,30 @@ class A:
     __hash__ = None
 
 class B(A):
-    def __hash__(self) -> int: return 0
+    def __hash__(self) -> int:
+        return 0
+
+class C(A):
+    __hash__ = object.__hash__
+
+class D(A):
+    def __hash__(self, x: int) -> str:  # E: Signature of "__hash__" incompatible with supertype "object" \
+                                        # N:      Superclass: \
+                                        # N:          def __hash__(self) -> int \
+                                        # N:      Subclass: \
+                                        # N:          def __hash__(self, x: int) -> str \
+                                        # N:      Superclass: \
+                                        # N:          def __hash__(self) -> int \
+                                        # N:      Subclass: \
+                                        # N:          def __hash__(self, x: int) -> str
+        return ''
+
+def bad_hash(x: E, y: str) -> str:
+    return y
+
+class E(A):
+    __hash__ = bad_hash  # E: Incompatible types in assignment (expression has type "Callable[[str], str]", base class "object" defined the type as "Callable[[], int]")
+
 [builtins fixtures/primitives.pyi]
 
 [case testHashNoneBadOverride]
