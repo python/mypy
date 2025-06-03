@@ -2689,15 +2689,16 @@ match b:
 # flags: --enable-error-code exhaustive-match
 
 a: int = 5
-match a: # E: Cases within match statement do not exhaustively handle all values: "int". If not intended to handle all cases, use `case _: pass`
+match a: # E: Match statement has unhandled case for values of type "int" \
+         # N: If match statement is intended to be non-exhaustive, add `case _: pass`
     case 1:
         pass
 
 b: str = "hello"
-match b: # E: Cases within match statement do not exhaustively handle all values: "str". If not intended to handle all cases, use `case _: pass`
+match b: # E: Match statement has unhandled case for values of type "str" \
+         # N: If match statement is intended to be non-exhaustive, add `case _: pass`
     case "bye":
         pass
-
 [case testNonExhaustiveMatchEnumWithFlag]
 # flags: --enable-error-code exhaustive-match
 
@@ -2710,7 +2711,8 @@ class Color(enum.Enum):
 
 val: Color = Color.RED
 
-match val: # E: Cases within match statement do not exhaustively handle all values: "Literal[Color.GREEN]". If not intended to handle all cases, use `case _: pass`
+match val: # E: Match statement has unhandled case for values of type "Literal[Color.GREEN]" \
+           # N: If match statement is intended to be non-exhaustive, add `case _: pass`
     case Color.RED:
         a = "red"
     case Color.BLUE:
@@ -2747,7 +2749,8 @@ class Color(enum.Enum):
 
 val: Color = Color.RED
 
-match val: # E: Cases within match statement do not exhaustively handle all values: "Literal[Color.BLUE, Color.GREEN]". If not intended to handle all cases, use `case _: pass`
+match val: # E: Match statement has unhandled case for values of type "Literal[Color.BLUE, Color.GREEN]" \
+           # N: If match statement is intended to be non-exhaustive, add `case _: pass`
     case Color.RED:
         a = "red"
 [builtins fixtures/enum.pyi]
@@ -2786,8 +2789,9 @@ class B(TypedDict):
     num: int
 
 d: A | B
-match d["tag"]: # E: Cases within match statement do not exhaustively handle all values: "Literal['b']". If not intended to handle all cases, use `case _: pass` \
-                # E: Cases within match statement do not exhaustively handle all values: "B". If not intended to handle all cases, use `case _: pass`
+match d["tag"]: # E: Match statement has unhandled case for values of type "Literal['b']" \
+                # N: If match statement is intended to be non-exhaustive, add `case _: pass` \
+                # E: Match statement has unhandled case for values of type "B"
     case "a":
         reveal_type(d)  # N: Revealed type is "TypedDict('__main__.A', {'tag': Literal['a'], 'name': builtins.str})"
         reveal_type(d["name"])  # N: Revealed type is "builtins.str"
