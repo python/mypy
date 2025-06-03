@@ -6891,10 +6891,11 @@ reveal_type(i.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceTypeTypeVar]
-from typing import Type, TypeVar, Generic
+from typing import Type, TypeVar, Generic, ClassVar
 
 class Base: ...
-class Sub(Base): ...
+class Sub(Base):
+    other: ClassVar[int]
 
 T = TypeVar('T', bound=Base)
 
@@ -6902,13 +6903,9 @@ class C(Generic[T]):
     def meth(self, cls: Type[T]) -> None:
         if not issubclass(cls, Sub):
             return
-        reveal_type(cls)  # N: Revealed type is "type[__main__.Sub]"
-    def other(self, cls: Type[T]) -> None:
-        if not issubclass(cls, Sub):
-            return
-        reveal_type(cls)  # N: Revealed type is "type[__main__.Sub]"
-
-[builtins fixtures/isinstancelist.pyi]
+        reveal_type(cls)  # N: Revealed type is "type[T`1]"
+        reveal_type(cls.other)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceTypeSubclass]
 from typing import Type, Optional
@@ -7602,7 +7599,7 @@ class C1:
 class C2(Generic[TypeT]):
     def method(self, other: TypeT) -> int:
         if issubclass(other, Base):
-            reveal_type(other)  # N: Revealed type is "type[__main__.Base]"
+            reveal_type(other)  # N: Revealed type is "TypeT`1"
             return other.field
         return 0
 

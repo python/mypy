@@ -461,6 +461,11 @@ class TypeGuardedType(Type):
     def __repr__(self) -> str:
         return f"TypeGuard({self.type_guard})"
 
+    # This may hide some real bugs, but it is convenient for various "synthetic"
+    # visitors, similar to RequiredType and ReadOnlyType below.
+    def accept(self, visitor: TypeVisitor[T]) -> T:
+        return self.type_guard.accept(visitor)
+
 
 class RequiredType(Type):
     """Required[T] or NotRequired[T]. Only usable at top-level of a TypedDict definition."""
