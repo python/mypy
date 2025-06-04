@@ -90,10 +90,10 @@ reveal_type(ident('x'))  # N: Revealed type is "builtins.str"
 a: TV  # E: Name "TV" is not defined
 
 def tup[T, S](x: T, y: S) -> tuple[T, S]:
-    reveal_type((x, y))  # N: Revealed type is "Tuple[T`-1, S`-2]"
+    reveal_type((x, y))  # N: Revealed type is "tuple[T`-1, S`-2]"
     return (x, y)
 
-reveal_type(tup(1, 'x'))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+reveal_type(tup(1, 'x'))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testPEP695GenericClassSyntax]
@@ -246,6 +246,7 @@ class Invariant[T]:
 inv1: Invariant[float] = Invariant[int]([1])  # E: Incompatible types in assignment (expression has type "Invariant[int]", variable has type "Invariant[float]")
 inv2: Invariant[int] = Invariant[float]([1])  # E: Incompatible types in assignment (expression has type "Invariant[float]", variable has type "Invariant[int]")
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testPEP695InferVarianceCalculateOnDemand]
 class Covariant[T]:
@@ -910,10 +911,10 @@ reveal_type(f)  # N: Revealed type is "def (builtins.str, Union[builtins.int, No
 
 [case testPEP695TypeVarTuple]
 def f[*Ts](t: tuple[*Ts]) -> tuple[*Ts]:
-    reveal_type(t)  # N: Revealed type is "Tuple[Unpack[Ts`-1]]"
+    reveal_type(t)  # N: Revealed type is "tuple[Unpack[Ts`-1]]"
     return t
 
-reveal_type(f((1, 'x')))  # N: Revealed type is "Tuple[Literal[1]?, Literal['x']?]"
+reveal_type(f((1, 'x')))  # N: Revealed type is "tuple[Literal[1]?, Literal['x']?]"
 a: tuple[int, ...]
 reveal_type(f(a))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
@@ -933,7 +934,7 @@ from typing import Callable
 type C[*Ts] = tuple[*Ts, int]
 
 a: C[str, None]
-reveal_type(a)  # N: Revealed type is "Tuple[builtins.str, None, builtins.int]"
+reveal_type(a)  # N: Revealed type is "tuple[builtins.str, None, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testPEP695IncrementalFunction]
@@ -1370,8 +1371,8 @@ class C:
 class D(C):
     pass
 
-reveal_type(C.m(1))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
-reveal_type(D.m(1))  # N: Revealed type is "Tuple[__main__.D, builtins.int]"
+reveal_type(C.m(1))  # N: Revealed type is "tuple[__main__.C, builtins.int]"
+reveal_type(D.m(1))  # N: Revealed type is "tuple[__main__.D, builtins.int]"
 
 class E[T]:
     def m(self) -> Self:
@@ -1384,9 +1385,9 @@ class F[T](E[T]):
     pass
 
 reveal_type(E[int]().m())  # N: Revealed type is "__main__.E[builtins.int]"
-reveal_type(E[int]().mm(b'x'))  # N: Revealed type is "Tuple[__main__.E[builtins.int], builtins.bytes]"
+reveal_type(E[int]().mm(b'x'))  # N: Revealed type is "tuple[__main__.E[builtins.int], builtins.bytes]"
 reveal_type(F[str]().m())  # N: Revealed type is "__main__.F[builtins.str]"
-reveal_type(F[str]().mm(b'x'))  # N: Revealed type is "Tuple[__main__.F[builtins.str], builtins.bytes]"
+reveal_type(F[str]().mm(b'x'))  # N: Revealed type is "tuple[__main__.F[builtins.str], builtins.bytes]"
 [builtins fixtures/tuple.pyi]
 
 [case testPEP695CallAlias]
@@ -1487,7 +1488,7 @@ class C:
 reveal_type(C.a)  # N: Revealed type is "builtins.int"
 reveal_type(C.b)  # N: Revealed type is "Union[builtins.list[builtins.str], None]"
 
-C.A = str  # E: Incompatible types in assignment (expression has type "Type[str]", variable has type "TypeAliasType")
+C.A = str  # E: Incompatible types in assignment (expression has type "type[str]", variable has type "TypeAliasType")
 
 x: C.A
 y: C.B[int]
@@ -1635,8 +1636,8 @@ class M[T: (int, str)](NamedTuple):
 c: M[int]
 d: M[str]
 e: M[bool]  # E: Value of type variable "T" of "M" cannot be "bool"
-
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testPEP695GenericTypedDict]
 from typing import TypedDict
@@ -2004,15 +2005,18 @@ reveal_type(x.related_resources)  # N: Revealed type is "__main__.ResourceRule"
 
 [case testPEP695TypeAliasRecursiveOuterClass]
 class A:
-    type X = X
+    type X = X  # E: Cannot resolve name "X" (possible cyclic definition)
 class X: ...
+
+class AA:
+    XX = XX  # OK, we allow this as a special case.
+class XX: ...
 
 class Y: ...
 class B:
     type Y = Y
 
-x: A.X
-reveal_type(x)  # N: Revealed type is "__main__.X"
+reveal_type(AA.XX)  # N: Revealed type is "def () -> __main__.XX"
 y: B.Y
 reveal_type(y)  # N: Revealed type is "__main__.Y"
 [builtins fixtures/tuple.pyi]
@@ -2042,3 +2046,17 @@ tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type i
 b: tuple[*tuple[int, ...], *tuple[int, ...]]  # E: More than one Unpack in a type is not allowed
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testForwardNestedPrecedesForwardGlobal]
+from typing import NewType
+
+class W[T]: pass
+
+class R:
+    class M(W[Action.V], type):
+        FOO = R.Action.V(0)
+    class Action(metaclass=M):
+        V = NewType('V', int)
+
+class Action:
+    pass

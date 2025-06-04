@@ -1363,10 +1363,23 @@ def decorator(cls):
 
 @mypyc_attr(native_class=True)
 @decorator
-class NonNativeClassContradiction():  # E: Class is marked as native_class=True but it can't be a native class
+class NonNativeClassContradiction():  # E: Class is marked as native_class=True but it can't be a native class. Classes that have decorators other than supported decorators can't be native classes.
     pass
 
 
 @mypyc_attr(native_class="yes")
 class BadUse():  # E: native_class must be used with True or False only
+    pass
+
+[case testMypycAttrNativeClassMetaError]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=True)
+class M(type):  # E: Inheriting from most builtin types is unimplemented \
+                # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+@mypyc_attr(native_class=True)
+class A(metaclass=M):  # E: Class is marked as native_class=True but it can't be a native class. Classes with a metaclass other than ABCMeta, TypingMeta or GenericMeta can't be native classes.
     pass

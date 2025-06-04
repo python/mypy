@@ -1784,7 +1784,7 @@ class MessageBuilder:
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail(
-            f'Cannot instantiate type "Type[{format_type_bare(item, self.options)}]"', context
+            f'Cannot instantiate type "type[{format_type_bare(item, self.options)}]"', context
         )
 
     def redundant_cast(self, typ: Type, context: Context) -> None:
@@ -2220,8 +2220,13 @@ class MessageBuilder:
                 exp = get_proper_type(exp)
                 got = get_proper_type(got)
                 setter_suffix = " setter type" if is_lvalue else ""
-                if not isinstance(exp, (CallableType, Overloaded)) or not isinstance(
-                    got, (CallableType, Overloaded)
+                if (
+                    not isinstance(exp, (CallableType, Overloaded))
+                    or not isinstance(got, (CallableType, Overloaded))
+                    # If expected type is a type object, it means it is a nested class.
+                    # Showing constructor signature in errors would be confusing in this case,
+                    # since we don't check the signature, only subclassing of type objects.
+                    or exp.is_type_obj()
                 ):
                     self.note(
                         "{}: expected{} {}, got {}".format(
@@ -2484,6 +2489,16 @@ class MessageBuilder:
             message_registry.TYPE_PARAMETERS_SHOULD_BE_DECLARED.format(names),
             context,
             code=codes.VALID_TYPE,
+        )
+
+    def match_statement_inexhaustive_match(self, typ: Type, context: Context) -> None:
+        type_str = format_type(typ, self.options)
+        msg = f"Match statement has unhandled case for values of type {type_str}"
+        self.fail(msg, context, code=codes.EXHAUSTIVE_MATCH)
+        self.note(
+            "If match statement is intended to be non-exhaustive, add `case _: pass`",
+            context,
+            code=codes.EXHAUSTIVE_MATCH,
         )
 
 

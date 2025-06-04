@@ -408,6 +408,9 @@ class Options:
 
         # Output html file for mypyc -a
         self.mypyc_annotation_file: str | None = None
+        # Skip writing C output files, but perform all other steps of a build (allows
+        # preserving manual tweaks to generated C file)
+        self.mypyc_skip_c_generation = False
 
     def use_lowercase_names(self) -> bool:
         if self.python_version >= (3, 9):
@@ -462,6 +465,16 @@ class Options:
                 error_callback(f"Unknown incomplete feature: {feature}")
             if feature in COMPLETE_FEATURES:
                 warning_callback(f"Warning: {feature} is already enabled by default")
+
+    def process_strict_bytes(self) -> None:
+        # Sync `--strict-bytes` and `--disable-{bytearray,memoryview}-promotion`
+        if self.strict_bytes:
+            # backwards compatibility
+            self.disable_bytearray_promotion = True
+            self.disable_memoryview_promotion = True
+        elif self.disable_bytearray_promotion and self.disable_memoryview_promotion:
+            # forwards compatibility
+            self.strict_bytes = True
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
         # Note: effects of this method *must* be idempotent.
