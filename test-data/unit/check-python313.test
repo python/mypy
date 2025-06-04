@@ -14,7 +14,7 @@ def f2[**P1 = [int, str]](a: Callable[P1, None]) -> Callable[P1, None]: ...
 reveal_type(f2)  # N: Revealed type is "def [P1 = [builtins.int, builtins.str]] (a: def (*P1.args, **P1.kwargs)) -> def (*P1.args, **P1.kwargs)"
 
 def f3[*Ts1 = *tuple[int, str]](a: tuple[*Ts1]) -> tuple[*Ts1]: ...
-reveal_type(f3)  # N: Revealed type is "def [Ts1 = Unpack[Tuple[builtins.int, builtins.str]]] (a: Tuple[Unpack[Ts1`-1 = Unpack[Tuple[builtins.int, builtins.str]]]]) -> Tuple[Unpack[Ts1`-1 = Unpack[Tuple[builtins.int, builtins.str]]]]"
+reveal_type(f3)  # N: Revealed type is "def [Ts1 = Unpack[tuple[builtins.int, builtins.str]]] (a: tuple[Unpack[Ts1`-1 = Unpack[tuple[builtins.int, builtins.str]]]]) -> tuple[Unpack[Ts1`-1 = Unpack[tuple[builtins.int, builtins.str]]]]"
 
 
 class ClassA1[T1 = int]: ...
@@ -23,7 +23,7 @@ class ClassA3[*Ts1 = *tuple[int, str]]: ...
 
 reveal_type(ClassA1)  # N: Revealed type is "def [T1 = builtins.int] () -> __main__.ClassA1[T1`1 = builtins.int]"
 reveal_type(ClassA2)  # N: Revealed type is "def [P1 = [builtins.int, builtins.str]] () -> __main__.ClassA2[P1`1 = [builtins.int, builtins.str]]"
-reveal_type(ClassA3)  # N: Revealed type is "def [Ts1 = Unpack[Tuple[builtins.int, builtins.str]]] () -> __main__.ClassA3[Unpack[Ts1`1 = Unpack[Tuple[builtins.int, builtins.str]]]]"
+reveal_type(ClassA3)  # N: Revealed type is "def [Ts1 = Unpack[tuple[builtins.int, builtins.str]]] () -> __main__.ClassA3[Unpack[Ts1`1 = Unpack[tuple[builtins.int, builtins.str]]]]"
 [builtins fixtures/tuple.pyi]
 
 [case testPEP695TypeParameterDefaultValid]
@@ -141,7 +141,7 @@ reveal_type(func_b1(2))  # N: Revealed type is "def (builtins.int, builtins.str)
 
 def func_c1[*Ts = *tuple[int, str]](x: int | Callable[[*Ts], None]) -> tuple[*Ts]: ...
 # reveal_type(func_c1(callback1))  # Revealed type is "Tuple[str]"  # TODO
-reveal_type(func_c1(2))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+reveal_type(func_c1(2))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testPEP695TypeParameterDefaultClass1]
@@ -251,7 +251,7 @@ def func_c1(
     b: TC1[float],
 ) -> None:
     # reveal_type(a)  # Revealed type is "Tuple[builtins.int, builtins.str]"  # TODO
-    reveal_type(b)  # N: Revealed type is "Tuple[builtins.float]"
+    reveal_type(b)  # N: Revealed type is "tuple[builtins.float]"
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]

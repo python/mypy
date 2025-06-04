@@ -3,7 +3,6 @@
 # See the README.md file in this directory for more information.
 
 import sys
-import typing_extensions
 from collections.abc import Awaitable, Callable, Iterable, Sequence, Set as AbstractSet, Sized
 from dataclasses import Field
 from os import PathLike
@@ -23,7 +22,7 @@ from typing import (
     final,
     overload,
 )
-from typing_extensions import Buffer, LiteralString, TypeAlias
+from typing_extensions import Buffer, LiteralString, Self as _Self, TypeAlias
 
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
@@ -299,9 +298,6 @@ class SupportsGetItemBuffer(SliceableBuffer, IndexableBuffer, Protocol):
 
 class SizedBuffer(Sized, Buffer, Protocol): ...
 
-# for compatibility with third-party stubs that may use this
-_BufferWithLen: TypeAlias = SizedBuffer  # not stable  # noqa: Y047
-
 ExcInfo: TypeAlias = tuple[type[BaseException], BaseException, TracebackType]
 OptExcInfo: TypeAlias = ExcInfo | tuple[None, None, None]
 
@@ -329,9 +325,9 @@ class structseq(Generic[_T_co]):
     # The second parameter will accept a dict of any kind without raising an exception,
     # but only has any meaning if you supply it a dict where the keys are strings.
     # https://github.com/python/typeshed/pull/6560#discussion_r767149830
-    def __new__(cls, sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> typing_extensions.Self: ...
+    def __new__(cls, sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> _Self: ...
     if sys.version_info >= (3, 13):
-        def __replace__(self, **kwargs: Any) -> typing_extensions.Self: ...
+        def __replace__(self, **kwargs: Any) -> _Self: ...
 
 # Superset of typing.AnyStr that also includes LiteralString
 AnyOrLiteralStr = TypeVar("AnyOrLiteralStr", str, bytes, LiteralString)  # noqa: Y001
@@ -354,7 +350,10 @@ class DataclassInstance(Protocol):
     __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
 
 # Anything that can be passed to the int/float constructors
-ConvertibleToInt: TypeAlias = str | ReadableBuffer | SupportsInt | SupportsIndex | SupportsTrunc
+if sys.version_info >= (3, 14):
+    ConvertibleToInt: TypeAlias = str | ReadableBuffer | SupportsInt | SupportsIndex
+else:
+    ConvertibleToInt: TypeAlias = str | ReadableBuffer | SupportsInt | SupportsIndex | SupportsTrunc
 ConvertibleToFloat: TypeAlias = str | ReadableBuffer | SupportsFloat | SupportsIndex
 
 # A few classes updated from Foo(str, Enum) to Foo(StrEnum). This is a convenience so these
@@ -365,3 +364,14 @@ else:
     from enum import Enum
 
     class StrEnum(str, Enum): ...
+
+# Objects that appear in annotations or in type expressions.
+# Similar to PEP 747's TypeForm but a little broader.
+AnnotationForm: TypeAlias = Any
+
+if sys.version_info >= (3, 14):
+    from annotationlib import Format
+
+    # These return annotations, which can be arbitrary objects
+    AnnotateFunc: TypeAlias = Callable[[Format], dict[str, AnnotationForm]]
+    EvaluateFunc: TypeAlias = Callable[[Format], AnnotationForm]

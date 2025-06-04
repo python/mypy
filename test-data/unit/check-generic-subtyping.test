@@ -279,9 +279,9 @@ class C(A):
 [out]
 main:11: error: Signature of "f" incompatible with supertype "A"
 main:11: note:      Superclass:
-main:11: note:          def [T, S] f(self, x: List[T], y: List[S]) -> None
+main:11: note:          def [T, S] f(self, x: list[T], y: list[S]) -> None
 main:11: note:      Subclass:
-main:11: note:          def [T] f(self, x: List[T], y: List[T]) -> None
+main:11: note:          def [T] f(self, x: list[T], y: list[T]) -> None
 
 [case testOverrideGenericMethodInNonGenericClassGeneralize]
 from typing import TypeVar

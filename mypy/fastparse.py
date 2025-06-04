@@ -270,7 +270,9 @@ def parse(
         errors.report(
             e.lineno if e.lineno is not None else -1,
             e.offset,
-            message,
+            re.sub(
+                r"^(\s*\w)", lambda m: m.group(1).upper(), message
+            ),  # Standardizing error message
             blocker=True,
             code=codes.SYNTAX,
         )
@@ -2058,7 +2060,6 @@ class TypeConverter:
             contents = bytes_to_human_readable_repr(val)
             return RawExpressionType(contents, "builtins.bytes", self.line, column=n.col_offset)
         # Everything else is invalid.
-        return self.invalid_type(n)
 
     # UnaryOp(op, operand)
     def visit_UnaryOp(self, n: UnaryOp) -> Type:

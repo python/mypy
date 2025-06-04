@@ -150,8 +150,8 @@ di: Dict[int, int]
 '%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is "SupportsKeysAndGetItem[str, Any]")
 '%()d' % a
 '%()d' % ds
-'%()d' % do  # E: Format requires a mapping (expression has type "Dict[object, int]", expected type for mapping is "SupportsKeysAndGetItem[str, Any]")
-b'%()d' % ds  # E: Format requires a mapping (expression has type "Dict[str, int]", expected type for mapping is "SupportsKeysAndGetItem[bytes, Any]")
+'%()d' % do  # E: Format requires a mapping (expression has type "dict[object, int]", expected type for mapping is "SupportsKeysAndGetItem[str, Any]")
+b'%()d' % ds  # E: Format requires a mapping (expression has type "dict[str, int]", expected type for mapping is "SupportsKeysAndGetItem[bytes, Any]")
 '%()s' % StringThing()
 b'%()s' % BytesThing()
 [builtins fixtures/primitives.pyi]

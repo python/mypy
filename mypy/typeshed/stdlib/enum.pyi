@@ -53,6 +53,7 @@ _EnumerationT = TypeVar("_EnumerationT", bound=type[Enum])
 # >>> Enum('Foo', names={'RED': 1, 'YELLOW': 2})
 # <enum 'Foo'>
 _EnumNames: TypeAlias = str | Iterable[str] | Iterable[Iterable[str | Any]] | Mapping[str, Any]
+_Signature: TypeAlias = Any  # TODO: Unable to import Signature from inspect module
 
 if sys.version_info >= (3, 11):
     class nonmember(Generic[_EnumMemberT]):
@@ -100,20 +101,13 @@ class EnumMeta(type):
             _simple: bool = False,
             **kwds: Any,
         ) -> _typeshed.Self: ...
-    elif sys.version_info >= (3, 9):
+    else:
         def __new__(
             metacls: type[_typeshed.Self], cls: str, bases: tuple[type, ...], classdict: _EnumDict, **kwds: Any
         ) -> _typeshed.Self: ...
-    else:
-        def __new__(metacls: type[_typeshed.Self], cls: str, bases: tuple[type, ...], classdict: _EnumDict) -> _typeshed.Self: ...
 
-    if sys.version_info >= (3, 9):
-        @classmethod
-        def __prepare__(metacls, cls: str, bases: tuple[type, ...], **kwds: Any) -> _EnumDict: ...  # type: ignore[override]
-    else:
-        @classmethod
-        def __prepare__(metacls, cls: str, bases: tuple[type, ...]) -> _EnumDict: ...  # type: ignore[override]
-
+    @classmethod
+    def __prepare__(metacls, cls: str, bases: tuple[type, ...], **kwds: Any) -> _EnumDict: ...  # type: ignore[override]
     def __iter__(self: type[_EnumMemberT]) -> Iterator[_EnumMemberT]: ...
     def __reversed__(self: type[_EnumMemberT]) -> Iterator[_EnumMemberT]: ...
     if sys.version_info >= (3, 12):
@@ -173,6 +167,9 @@ class EnumMeta(type):
     if sys.version_info >= (3, 12):
         @overload
         def __call__(cls: type[_EnumMemberT], value: Any, *values: Any) -> _EnumMemberT: ...
+    if sys.version_info >= (3, 14):
+        @property
+        def __signature__(cls) -> _Signature: ...
 
     _member_names_: list[str]  # undocumented
     _member_map_: dict[str, Enum]  # undocumented
@@ -219,7 +216,7 @@ class Enum(metaclass=EnumMeta):
     if sys.version_info >= (3, 11):
         def __copy__(self) -> Self: ...
         def __deepcopy__(self, memo: Any) -> Self: ...
-    if sys.version_info >= (3, 12):
+    if sys.version_info >= (3, 12) and sys.version_info < (3, 14):
         @classmethod
         def __signature__(cls) -> str: ...
 
@@ -306,6 +303,7 @@ if sys.version_info >= (3, 11):
         def __or__(self, other: int) -> Self: ...
         def __and__(self, other: int) -> Self: ...
         def __xor__(self, other: int) -> Self: ...
+        def __invert__(self) -> Self: ...
         __ror__ = __or__
         __rand__ = __and__
         __rxor__ = __xor__
@@ -316,6 +314,7 @@ else:
         def __or__(self, other: int) -> Self: ...
         def __and__(self, other: int) -> Self: ...
         def __xor__(self, other: int) -> Self: ...
+        def __invert__(self) -> Self: ...
         __ror__ = __or__
         __rand__ = __and__
         __rxor__ = __xor__

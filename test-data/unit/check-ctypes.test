@@ -16,7 +16,7 @@ a[2] = MyCInt(42)
 a[3] = b"bytes"  # E: No overload variant of "__setitem__" of "Array" matches argument types "int", "bytes" \
                  # N: Possible overload variants: \
                  # N:     def __setitem__(self, int, Union[c_int, int], /) -> None \
-                 # N:     def __setitem__(self, slice, List[Union[c_int, int]], /) -> None
+                 # N:     def __setitem__(self, slice, list[Union[c_int, int]], /) -> None
 for x in a:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/floatdict.pyi]
@@ -40,12 +40,12 @@ mya[0] = 42
 mya[1] = ctypes.c_int(42)  # E: No overload variant of "__setitem__" of "Array" matches argument types "int", "c_int" \
                            # N: Possible overload variants: \
                            # N:     def __setitem__(self, int, Union[MyCInt, int], /) -> None \
-                           # N:     def __setitem__(self, slice, List[Union[MyCInt, int]], /) -> None
+                           # N:     def __setitem__(self, slice, list[Union[MyCInt, int]], /) -> None
 mya[2] = MyCInt(42)
 mya[3] = b"bytes"  # E: No overload variant of "__setitem__" of "Array" matches argument types "int", "bytes" \
                    # N: Possible overload variants: \
                    # N:     def __setitem__(self, int, Union[MyCInt, int], /) -> None \
-                   # N:     def __setitem__(self, slice, List[Union[MyCInt, int]], /) -> None
+                   # N:     def __setitem__(self, slice, list[Union[MyCInt, int]], /) -> None
 for myx in mya:
     reveal_type(myx)  # N: Revealed type is "__main__.MyCInt"
 
@@ -74,7 +74,7 @@ mya[2] = MyCInt(42)
 mya[3] = b"bytes"  # E: No overload variant of "__setitem__" of "Array" matches argument types "int", "bytes" \
                    # N: Possible overload variants: \
                    # N:     def __setitem__(self, int, Union[MyCInt, int, c_uint], /) -> None \
-                   # N:     def __setitem__(self, slice, List[Union[MyCInt, int, c_uint]], /) -> None
+                   # N:     def __setitem__(self, slice, list[Union[MyCInt, int, c_uint]], /) -> None
 for myx in mya:
     reveal_type(myx)  # N: Revealed type is "Union[__main__.MyCInt, builtins.int]"
 [builtins fixtures/floatdict.pyi]

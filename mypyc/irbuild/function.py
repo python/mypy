@@ -243,7 +243,9 @@ def gen_func_item(
     # are free in their nested functions. Generator functions need an environment class to
     # store a variable denoting the next instruction to be executed when the __next__ function
     # is called, along with all the variables inside the function itself.
-    if contains_nested or is_generator:
+    if contains_nested or (
+        is_generator and not builder.fn_info.can_merge_generator_and_env_classes()
+    ):
         setup_env_class(builder)
 
     if is_nested or in_non_ext:

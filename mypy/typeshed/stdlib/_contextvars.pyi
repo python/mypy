@@ -1,10 +1,8 @@
 import sys
 from collections.abc import Callable, Iterator, Mapping
+from types import GenericAlias, TracebackType
 from typing import Any, ClassVar, Generic, TypeVar, final, overload
 from typing_extensions import ParamSpec, Self
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
 
 _T = TypeVar("_T")
 _D = TypeVar("_D")
@@ -27,8 +25,7 @@ class ContextVar(Generic[_T]):
     def get(self, default: _D, /) -> _D | _T: ...
     def set(self, value: _T, /) -> Token[_T]: ...
     def reset(self, token: Token[_T], /) -> None: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 @final
 class Token(Generic[_T]):
@@ -38,8 +35,12 @@ class Token(Generic[_T]):
     def old_value(self) -> Any: ...  # returns either _T or MISSING, but that's hard to express
     MISSING: ClassVar[object]
     __hash__: ClassVar[None]  # type: ignore[assignment]
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    if sys.version_info >= (3, 14):
+        def __enter__(self) -> Self: ...
+        def __exit__(
+            self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
+        ) -> None: ...
 
 def copy_context() -> Context: ...
 

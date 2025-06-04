@@ -105,7 +105,7 @@ from typing_extensions import Annotated
 T = TypeVar('T')
 Alias = Annotated[Tuple[T, T], ...]
 x: Alias[int]
-reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotatedAliasGenericUnion]
@@ -144,15 +144,7 @@ def f4(a: Annotated[T, "metadata"]):
 reveal_type(f4)  # N: Revealed type is "def [T] (a: T`-1) -> Any"
 [builtins fixtures/tuple.pyi]
 
-[case testSliceAnnotated39]
-# flags: --python-version 3.9
-from typing_extensions import Annotated
-a: Annotated[int, 1:2]
-reveal_type(a)  # N: Revealed type is "builtins.int"
-[builtins fixtures/tuple.pyi]
-
-[case testSliceAnnotated38]
-# flags: --python-version 3.8
+[case testSliceAnnotated]
 from typing_extensions import Annotated
 a: Annotated[int, 1:2]
 reveal_type(a)  # N: Revealed type is "builtins.int"

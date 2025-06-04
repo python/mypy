@@ -84,6 +84,9 @@ if TYPE_CHECKING:
         TypeVisitor as TypeVisitor,
     )
 
+TUPLE_NAMES: Final = ("builtins.tuple", "typing.Tuple")
+TYPE_NAMES: Final = ("builtins.type", "typing.Type")
+
 TYPE_VAR_LIKE_NAMES: Final = (
     "typing.TypeVar",
     "typing_extensions.TypeVar",
@@ -457,6 +460,11 @@ class TypeGuardedType(Type):
 
     def __repr__(self) -> str:
         return f"TypeGuard({self.type_guard})"
+
+    # This may hide some real bugs, but it is convenient for various "synthetic"
+    # visitors, similar to RequiredType and ReadOnlyType below.
+    def accept(self, visitor: TypeVisitor[T]) -> T:
+        return self.type_guard.accept(visitor)
 
 
 class RequiredType(Type):
@@ -3489,8 +3497,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"Literal[{t.value_repr()}]"
 
     def visit_union_type(self, t: UnionType, /) -> str:
-        s = self.list_str(t.items)
-        return f"Union[{s}]"
+        use_or_syntax = self.options.use_or_syntax()
+        s = self.list_str(t.items, use_or_syntax=use_or_syntax)
+        return s if use_or_syntax else f"Union[{s}]"
 
     def visit_partial_type(self, t: PartialType, /) -> str:
         if t.type is None:
@@ -3523,14 +3532,15 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_unpack_type(self, t: UnpackType, /) -> str:
         return f"Unpack[{t.type.accept(self)}]"
 
-    def list_str(self, a: Iterable[Type]) -> str:
+    def list_str(self, a: Iterable[Type], *, use_or_syntax: bool = False) -> str:
         """Convert items of an array to strings (pretty-print types)
         and join the results with commas.
         """
         res = []
         for t in a:
             res.append(t.accept(self))
-        return ", ".join(res)
+        sep = ", " if not use_or_syntax else " | "
+        return sep.join(res)
 
 
 class TrivialSyntheticTypeTranslator(TypeTranslator, SyntheticTypeVisitor[Type]):

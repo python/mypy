@@ -420,7 +420,7 @@ a: int
 a: str
 
 [case testDaemonGetType]
-$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.8
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.9
 Daemon started
 $ dmypy inspect foo:1:2:3:4
 Command "inspect" is only valid after a "check" command (that produces no parse errors)
