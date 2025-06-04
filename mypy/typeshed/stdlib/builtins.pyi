@@ -242,6 +242,8 @@ _LiteralInteger = _PositiveInteger | _NegativeInteger | Literal[0]  # noqa: Y026
 
 class int:
     @overload
+    def __new__(cls, /) -> Literal[0]: ...
+    @overload
     def __new__(cls, x: ConvertibleToInt = ..., /) -> Self: ...
     @overload
     def __new__(cls, x: str | bytes | bytearray, /, base: SupportsIndex) -> Self: ...
@@ -458,6 +460,8 @@ class _TranslateTable(Protocol):
     def __getitem__(self, key: int, /) -> str | int | None: ...
 
 class str(Sequence[str]):
+    @overload
+    def __new__(cls) -> Literal[""]: ...
     @overload
     def __new__(cls, object: object = ...) -> Self: ...
     @overload
@@ -834,6 +838,9 @@ class memoryview(Sequence[_I]):
 
 @final
 class bool(int):
+    @overload
+    def __new__(cls, /) -> Literal[False]: ...
+    @overload
     def __new__(cls, o: object = ..., /) -> Self: ...
     # The following overloads could be represented more elegantly with a TypeVar("_B", bool, int),
     # however mypy has a bug regarding TypeVar constraints (https://github.com/python/mypy/issues/11880).
