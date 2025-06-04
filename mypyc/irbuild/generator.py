@@ -32,7 +32,7 @@ from mypyc.ir.ops import (
     Unreachable,
     Value,
 )
-from mypyc.ir.rtypes import RInstance, int_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import RInstance, int32_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
@@ -415,7 +415,7 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     # the '__next__' function of the generator is called, and add it
     # as an attribute to the environment class.
     cls.next_label_target = builder.add_var_to_env_class(
-        Var(NEXT_LABEL_ATTR_NAME), int_rprimitive, cls, reassign=False
+        Var(NEXT_LABEL_ATTR_NAME), int32_rprimitive, cls, reassign=False, always_defined=True
     )
 
     # Add arguments from the original generator function to the
