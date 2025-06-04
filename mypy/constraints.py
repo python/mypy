@@ -280,6 +280,10 @@ def infer_constraints_for_callable(
 
 
 def _omit_dict_constraints_if_typeddict_found(constraints: list[Constraint]) -> list[Constraint]:
+    """If a type variable has any `TypedDict` constraints, exclude its `dict` constraints."""
+
+    # This allows inferring types generic in typeddicts when a literal *and* explicit type
+    # are present among arguments - see testInferLiteralTypedDict.
     cmap: dict[TypeVarId, list[Constraint]] = {}
     for con in constraints:
         cmap.setdefault(con.type_var, []).append(con)
