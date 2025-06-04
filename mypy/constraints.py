@@ -273,7 +273,23 @@ def infer_constraints_for_callable(
     if any(isinstance(v, ParamSpecType) for v in callee.variables):
         # As a perf optimization filter imprecise constraints only when we can have them.
         constraints = filter_imprecise_kinds(constraints)
-    return constraints
+
+    return _omit_dict_constraints_if_typeddict_found(constraints)
+
+
+def _omit_dict_constraints_if_typeddict_found(constraints: list[Constraint]) -> list[Constraint]:
+    cmap = {}
+    for con in constraints:
+        cmap.setdefault(con.type_var, []).append(con)
+    res = []
+    for group in cmap.values():
+        if not any(isinstance(c.target, TypedDictType) for c in group):
+            res.extend(group)
+            continue
+        for c in group:
+            if not isinstance(c.target, Instance) or c.target.type.fullname != "builtins.dict":
+                res.append(c)
+    return res
 
 
 def infer_constraints(
