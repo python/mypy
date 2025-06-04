@@ -1494,6 +1494,7 @@ IGNORED_MODULE_DUNDERS: Final = frozenset(
         "__loader__",
         "__spec__",
         "__annotations__",
+        "__annotate__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
         # Created by `warnings.warn`, does not make much sense to have in stubs:
@@ -1510,6 +1511,9 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         # Special attributes
         "__dict__",
         "__annotations__",
+        "__annotate__",
+        "__annotations_cache__",
+        "__annotate_func__",
         "__text_signature__",
         "__weakref__",
         "__hash__",
@@ -1518,6 +1522,7 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         "__vectorcalloffset__",  # undocumented implementation detail of the vectorcall protocol
         "__firstlineno__",
         "__static_attributes__",
+        "__classdictcell__",
         # isinstance/issubclass hooks that type-checkers don't usually care about
         "__instancecheck__",
         "__subclasshook__",
@@ -1536,6 +1541,7 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
         "__getinitargs__",
         "__reduce_ex__",
         "__reduce__",
+        "__slotnames__",  # Cached names of slots added by `copyreg` module.
         # ctypes weirdness
         "__ctype_be__",
         "__ctype_le__",

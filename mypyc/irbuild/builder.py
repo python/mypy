@@ -1300,12 +1300,19 @@ class IRBuilder:
         return self.type_to_rtype(mypy_type)
 
     def add_var_to_env_class(
-        self, var: SymbolNode, rtype: RType, base: FuncInfo | ImplicitClass, reassign: bool = False
+        self,
+        var: SymbolNode,
+        rtype: RType,
+        base: FuncInfo | ImplicitClass,
+        reassign: bool = False,
+        always_defined: bool = False,
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
         name = remangle_redefinition_name(var.name)
         self.fn_info.env_class.attributes[name] = rtype
+        if always_defined:
+            self.fn_info.env_class.attrs_with_defaults.add(name)
         attr_target = AssignmentTargetAttr(base.curr_env_reg, name)
 
         if reassign:
