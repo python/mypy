@@ -8,6 +8,8 @@ attrs==25.3.0
     # via -r test-requirements.in
 cfgv==3.4.0
     # via pre-commit
+colorama==0.4.6
+    # via pytest
 coverage==7.8.2
     # via pytest-cov
 distlib==0.3.9
@@ -23,6 +25,8 @@ identify==2.6.12
 iniconfig==2.1.0
     # via pytest
 lxml==5.4.0 ; python_version < "3.14"
+    # via -r test-requirements.in
+lxml-stubs==0.5.1
     # via -r test-requirements.in
 mypy-extensions==1.1.0
     # via -r mypy-requirements.txt
