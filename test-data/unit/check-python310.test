@@ -2639,6 +2639,164 @@ def f2() -> None:
     reveal_type(y) # N: Revealed type is "builtins.str"
 [builtins fixtures/list.pyi]
 
+[case testExhaustiveMatchNoFlag]
+
+a: int = 5
+match a:
+    case 1:
+        pass
+    case _:
+        pass
+
+b: str = "hello"
+match b:
+    case "bye":
+        pass
+    case _:
+        pass
+
+[case testNonExhaustiveMatchNoFlag]
+
+a: int = 5
+match a:
+    case 1:
+        pass
+
+b: str = "hello"
+match b:
+    case "bye":
+        pass
+
+
+[case testExhaustiveMatchWithFlag]
+# flags: --enable-error-code exhaustive-match
+
+a: int = 5
+match a:
+    case 1:
+        pass
+    case _:
+        pass
+
+b: str = "hello"
+match b:
+    case "bye":
+        pass
+    case _:
+        pass
+
+[case testNonExhaustiveMatchWithFlag]
+# flags: --enable-error-code exhaustive-match
+
+a: int = 5
+match a: # E: Match statement has unhandled case for values of type "int" \
+         # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+    case 1:
+        pass
+
+b: str = "hello"
+match b: # E: Match statement has unhandled case for values of type "str" \
+         # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+    case "bye":
+        pass
+[case testNonExhaustiveMatchEnumWithFlag]
+# flags: --enable-error-code exhaustive-match
+
+import enum
+
+class Color(enum.Enum):
+    RED = 1
+    BLUE = 2
+    GREEN = 3
+
+val: Color = Color.RED
+
+match val: # E: Match statement has unhandled case for values of type "Literal[Color.GREEN]" \
+           # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+    case Color.RED:
+        a = "red"
+    case Color.BLUE:
+        a= "blue"
+[builtins fixtures/enum.pyi]
+
+[case testExhaustiveMatchEnumWithFlag]
+# flags: --enable-error-code exhaustive-match
+
+import enum
+
+class Color(enum.Enum):
+    RED = 1
+    BLUE = 2
+
+val: Color = Color.RED
+
+match val:
+    case Color.RED:
+        a = "red"
+    case Color.BLUE:
+        a= "blue"
+[builtins fixtures/enum.pyi]
+
+[case testNonExhaustiveMatchEnumMultipleMissingMatchesWithFlag]
+# flags: --enable-error-code exhaustive-match
+
+import enum
+
+class Color(enum.Enum):
+    RED = 1
+    BLUE = 2
+    GREEN = 3
+
+val: Color = Color.RED
+
+match val: # E: Match statement has unhandled case for values of type "Literal[Color.BLUE, Color.GREEN]" \
+           # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+    case Color.RED:
+        a = "red"
+[builtins fixtures/enum.pyi]
+
+[case testExhaustiveMatchEnumFallbackWithFlag]
+# flags: --enable-error-code exhaustive-match
+
+import enum
+
+class Color(enum.Enum):
+    RED = 1
+    BLUE = 2
+    GREEN = 3
+
+val: Color = Color.RED
+
+match val:
+    case Color.RED:
+        a = "red"
+    case _:
+        a = "other"
+[builtins fixtures/enum.pyi]
+
+# Fork of testMatchNarrowingUnionTypedDictViaIndex to check behaviour with exhaustive match flag
+[case testExhaustiveMatchNarrowingUnionTypedDictViaIndex]
+# flags: --enable-error-code exhaustive-match
+
+from typing import Literal, TypedDict
+
+class A(TypedDict):
+    tag: Literal["a"]
+    name: str
+
+class B(TypedDict):
+    tag: Literal["b"]
+    num: int
+
+d: A | B
+match d["tag"]: # E: Match statement has unhandled case for values of type "Literal['b']" \
+                # N: If match statement is intended to be non-exhaustive, add `case _: pass` \
+                # E: Match statement has unhandled case for values of type "B"
+    case "a":
+        reveal_type(d)  # N: Revealed type is "TypedDict('__main__.A', {'tag': Literal['a'], 'name': builtins.str})"
+        reveal_type(d["name"])  # N: Revealed type is "builtins.str"
+[typing fixtures/typing-typeddict.pyi]
+
 [case testEnumTypeObjectMember]
 import enum
 from typing import NoReturn

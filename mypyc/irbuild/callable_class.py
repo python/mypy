@@ -55,7 +55,7 @@ def setup_callable_class(builder: IRBuilder) -> None:
     # Define the actual callable class ClassIR, and set its
     # environment to point at the previously defined environment
     # class.
-    callable_class_ir = ClassIR(name, builder.module_name, is_generated=True)
+    callable_class_ir = ClassIR(name, builder.module_name, is_generated=True, is_final_class=True)
 
     # The functools @wraps decorator attempts to call setattr on
     # nested functions, so we create a dict for these nested

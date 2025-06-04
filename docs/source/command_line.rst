@@ -845,6 +845,7 @@ of the above sections.
         x = 'a string'
         x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
+
 .. _configuring-error-messages:
 
 Configuring error messages

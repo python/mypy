@@ -2491,6 +2491,16 @@ class MessageBuilder:
             code=codes.VALID_TYPE,
         )
 
+    def match_statement_inexhaustive_match(self, typ: Type, context: Context) -> None:
+        type_str = format_type(typ, self.options)
+        msg = f"Match statement has unhandled case for values of type {type_str}"
+        self.fail(msg, context, code=codes.EXHAUSTIVE_MATCH)
+        self.note(
+            "If match statement is intended to be non-exhaustive, add `case _: pass`",
+            context,
+            code=codes.EXHAUSTIVE_MATCH,
+        )
+
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""

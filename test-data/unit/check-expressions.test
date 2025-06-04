@@ -2172,6 +2172,14 @@ class Custom(metaclass=CustomMeta): ...
 Normal == int()  # E: Non-overlapping equality check (left operand type: "type[Normal]", right operand type: "int")
 Normal == Normal
 Custom == int()
+
+n: type[Normal] = Normal
+c: type[Custom] = Custom
+
+n == int()  # E: Non-overlapping equality check (left operand type: "type[Normal]", right operand type: "int")
+n == n
+c == int()
+
 [builtins fixtures/bool.pyi]
 
 [case testCustomContainsCheckStrictEquality]
