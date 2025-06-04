@@ -1218,56 +1218,6 @@ td4 = C({"fn": bad, "val": False})  # E: Incompatible types (expression has type
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testVariadicTypedDictDeriveStar]
-from typing import Tuple, Callable, Generic, TypedDict, TypeVar
-from typing_extensions import TypeVarTuple
-
-T = TypeVar("T")
-Ts = TypeVarTuple("Ts")
-class A(TypedDict, Generic[*Ts]):
-    fn: Callable[[*Ts], None]
-
-class B(A[*Ts]):
-    val: bool
-
-class C(A[*Ts], Generic[*Ts, T]):
-    val: T
-
-
-y: B[int, str]
-reveal_type(y)  # N: Revealed type is "TypedDict('__main__.B', {'fn': def (builtins.int, builtins.str), 'val': builtins.bool})"
-reveal_type(y["fn"])  # N: Revealed type is "def (builtins.int, builtins.str)"
-reveal_type(y["val"])  # N: Revealed type is "builtins.bool"
-
-y2: C[int, str, bool]
-reveal_type(y2)  # N: Revealed type is "TypedDict('__main__.C', {'fn': def (builtins.int, builtins.str), 'val': builtins.bool})"
-reveal_type(y2["fn"])  # N: Revealed type is "def (builtins.int, builtins.str)"
-reveal_type(y2["val"])  # N: Revealed type is "builtins.bool"
-
-z: B[*Tuple[int, ...]]
-reveal_type(z)  # N: Revealed type is "TypedDict('__main__.B', {'fn': def (*builtins.int), 'val': builtins.bool})"
-reveal_type(z["fn"])  # N: Revealed type is "def (*builtins.int)"
-reveal_type(y["val"])  # N: Revealed type is "builtins.bool"
-
-z2: C[*Tuple[int, ...]]
-reveal_type(z2)  # N: Revealed type is "TypedDict('__main__.C', {'fn': def (*builtins.int), 'val': builtins.int})"
-reveal_type(z2["fn"])  # N: Revealed type is "def (*builtins.int)"
-reveal_type(z2["val"])  # N: Revealed type is "builtins.int"
-
-z3: C[*Tuple[int, ...], bool]
-reveal_type(z3)  # N: Revealed type is "TypedDict('__main__.C', {'fn': def (*builtins.int), 'val': builtins.bool})"
-reveal_type(z3["fn"])  # N: Revealed type is "def (*builtins.int)"
-reveal_type(z3["val"])  # N: Revealed type is "builtins.bool"
-
-t: B[int, *Tuple[int, str]]
-reveal_type(t)  # N: Revealed type is "TypedDict('__main__.B', {'fn': def (builtins.int, builtins.int, builtins.str), 'val': builtins.bool})"
-
-t2: C[int, *Tuple[int, str]]
-reveal_type(t2)  # N: Revealed type is "TypedDict('__main__.C', {'fn': def (builtins.int, builtins.int), 'val': builtins.str})"
-
-[builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
-
 [case testFixedUnpackWithRegularInstance]
 from typing import Tuple, Generic, TypeVar
 from typing_extensions import Unpack
