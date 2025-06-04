@@ -274,7 +274,9 @@ def infer_constraints_for_callable(
         # As a perf optimization filter imprecise constraints only when we can have them.
         constraints = filter_imprecise_kinds(constraints)
 
-    return _omit_dict_constraints_if_typeddict_found(constraints)
+    if any(isinstance(c.target, TypedDictType) for c in constraints):
+        constraints = _omit_dict_constraints_if_typeddict_found(constraints)
+    return constraints
 
 
 def _omit_dict_constraints_if_typeddict_found(constraints: list[Constraint]) -> list[Constraint]:
