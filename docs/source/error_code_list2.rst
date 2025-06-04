@@ -636,25 +636,18 @@ Example:
 
         val: Color = Color.RED
 
-        # without --enable-error-code exhaustive-match
+        # OK without --enable-error-code exhaustive-match
         match val:
             case Color.RED:
                 print("red")
 
-        # Also no issues without --enable-error-code exhaustive-match, but this is exhaustive
-        match val:
-            case Color.RED:
-                print("red")
-            case _:
-                print("other")
-
-        # with --enable-error-code exhaustive-match
-        # error: Cases within match statement do not exhaustively handle all values: "Literal[Color.BLUE]". If not intended to handle all cases, use `case _: pass`
+        # With --enable-error-code exhaustive-match
+        # Error: Match statement has unhandled case for values of type "Literal[Color.BLUE]"
         match val:
             case Color.RED:
                 print("red")
 
-        # no error with --enable-error-code exhaustive-match since all cases are handled
+        # OK with or without --enable-error-code exhaustive-match, since all cases are handled
         match val:
             case Color.RED:
                 print("red")
