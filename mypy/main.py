@@ -1496,7 +1496,7 @@ def process_options(
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
 
     if options.force_uppercase_builtins:
-        print("Warning: --force-uppercase-builtins is deprecated; Mypy only supports Python 3.9+.")
+        print("Warning: --force-uppercase-builtins is deprecated; mypy only supports Python 3.9+")
 
     # Set target.
     if special_opts.modules + special_opts.packages:
