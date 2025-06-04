@@ -183,6 +183,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
         allow_typed_dict_special_forms: bool = False,
+        allow_unpack: bool = False,
         allow_placeholder: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
