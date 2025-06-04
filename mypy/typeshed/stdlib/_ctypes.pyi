@@ -4,11 +4,9 @@ from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from ctypes import CDLL, ArgumentError as ArgumentError, c_void_p
+from types import GenericAlias
 from typing import Any, ClassVar, Generic, TypeVar, final, overload, type_check_only
 from typing_extensions import Self, TypeAlias
-
-if sys.version_info >= (3, 9):
-    from types import GenericAlias
 
 _T = TypeVar("_T")
 _CT = TypeVar("_CT", bound=_CData)
@@ -77,6 +75,8 @@ class _CData:
     _objects: Mapping[Any, int] | None
     def __buffer__(self, flags: int, /) -> memoryview: ...
     def __ctypes_from_outparam__(self, /) -> Self: ...
+    if sys.version_info >= (3, 14):
+        __pointer_type__: type
 
 # this is a union of all the subclasses of _CData, which is useful because of
 # the methods that are present on each of those subclasses which are not present
@@ -133,18 +133,23 @@ class _Pointer(_PointerLike, _CData, Generic[_CT], metaclass=_PyCPointerType):
     def __getitem__(self, key: slice, /) -> list[Any]: ...
     def __setitem__(self, key: int, value: Any, /) -> None: ...
 
-@overload
-def POINTER(type: None, /) -> type[c_void_p]: ...
-@overload
-def POINTER(type: type[_CT], /) -> type[_Pointer[_CT]]: ...
-def pointer(obj: _CT, /) -> _Pointer[_CT]: ...
+if sys.version_info < (3, 14):
+    @overload
+    def POINTER(type: None, /) -> type[c_void_p]: ...
+    @overload
+    def POINTER(type: type[_CT], /) -> type[_Pointer[_CT]]: ...
+    def pointer(obj: _CT, /) -> _Pointer[_CT]: ...
 
 # This class is not exposed. It calls itself _ctypes.CArgObject.
 @final
 @type_check_only
 class _CArgObject: ...
 
-def byref(obj: _CData | _CDataType, offset: int = ...) -> _CArgObject: ...
+if sys.version_info >= (3, 14):
+    def byref(obj: _CData | _CDataType, offset: int = 0, /) -> _CArgObject: ...
+
+else:
+    def byref(obj: _CData | _CDataType, offset: int = 0) -> _CArgObject: ...
 
 _ECT: TypeAlias = Callable[[_CData | _CDataType | None, CFuncPtr, tuple[_CData | _CDataType, ...]], _CDataType]
 _PF: TypeAlias = tuple[int] | tuple[int, str | None] | tuple[int, str | None, Any]
@@ -288,7 +293,7 @@ class Array(_CData, Generic[_CT], metaclass=_PyCArrayType):
     def _type_(self, value: type[_CT]) -> None: ...
     raw: bytes  # Note: only available if _CT == c_char
     value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
-    # TODO These methods cannot be annotated correctly at the moment.
+    # TODO: These methods cannot be annotated correctly at the moment.
     # All of these "Any"s stand for the array's element type, but it's not possible to use _CT
     # here, because of a special feature of ctypes.
     # By default, when accessing an element of an Array[_CT], the returned object has type _CT.
@@ -313,8 +318,7 @@ class Array(_CData, Generic[_CT], metaclass=_PyCArrayType):
     # Can't inherit from Sized because the metaclass conflict between
     # Sized and _CData prevents using _CDataMeta.
     def __len__(self) -> int: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
+    def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 def addressof(obj: _CData | _CDataType, /) -> int: ...
 def alignment(obj_or_type: _CData | _CDataType | type[_CData | _CDataType], /) -> int: ...

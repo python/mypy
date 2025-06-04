@@ -122,7 +122,7 @@ def freshen_function_type_vars(callee: F) -> F:
     """Substitute fresh type variables for generic function type variables."""
     if isinstance(callee, CallableType):
         if not callee.is_generic():
-            return cast(F, callee)
+            return callee
         tvs = []
         tvmap: dict[TypeVarId, Type] = {}
         for v in callee.variables:

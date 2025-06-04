@@ -78,6 +78,7 @@ class FunctionSig(NamedTuple):
     args: list[ArgSig]
     ret_type: str | None
     type_args: str = ""  # TODO implement in stubgenc and remove the default
+    docstring: str | None = None
 
     def is_special_method(self) -> bool:
         return bool(
@@ -110,6 +111,7 @@ class FunctionSig(NamedTuple):
         is_async: bool = False,
         any_val: str | None = None,
         docstring: str | None = None,
+        include_docstrings: bool = False,
     ) -> str:
         args: list[str] = []
         for arg in self.args:
@@ -144,8 +146,11 @@ class FunctionSig(NamedTuple):
 
         prefix = "async " if is_async else ""
         sig = f"{indent}{prefix}def {self.name}{self.type_args}({', '.join(args)}){retfield}:"
-        if docstring:
-            suffix = f"\n{indent}    {mypy.util.quote_docstring(docstring)}"
+        # if this object has a docstring it's probably produced by a SignatureGenerator, so it
+        # takes precedence over the passed docstring, which acts as a fallback.
+        doc = (self.docstring or docstring) if include_docstrings else None
+        if doc:
+            suffix = f"\n{indent}    {mypy.util.quote_docstring(doc)}"
         else:
             suffix = " ..."
         return f"{sig}{suffix}"
