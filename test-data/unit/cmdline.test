@@ -440,6 +440,20 @@ python_version = 3.9
 python_version = 3.14
 [out]
 
+[case testPythonVersionFallback]
+# cmd: mypy main.py
+[file main.py]
+import sys
+if sys.version_info == (3, 9):  # Update here when bumping the min Python version!
+    reveal_type("good")
+[file mypy.ini]
+\[mypy]
+python_version = 3.8
+[out]
+mypy.ini: [mypy]: python_version: Python 3.8 is not supported (must be 3.9 or higher)
+main.py:3: note: Revealed type is "Literal['good']?"
+== Return code: 0
+
 -- This should be a dumping ground for tests of plugins that are sensitive to
 -- typeshed changes.
 [case testTypeshedSensitivePlugins]
