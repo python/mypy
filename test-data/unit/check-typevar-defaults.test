@@ -812,7 +812,7 @@ class A2(Generic[T2]):
     x: T2
 
 reveal_type(A1().x)  # N: Revealed type is "TypedDict('__main__.TD', {'foo': builtins.str})"
-reveal_type(A2().x)  # N: Revealed type is "Tuple[builtins.str, fallback=__main__.NT]"
+reveal_type(A2().x)  # N: Revealed type is "tuple[builtins.str, fallback=__main__.NT]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarConstraintsDefaultSpecialTypesGeneric]
@@ -845,6 +845,6 @@ class A3(Generic[T3]):
     x: T3
 
 reveal_type(A1().x)  # N: Revealed type is "TypedDict('__main__.TD', {'foo': builtins.int})"
-reveal_type(A2().x)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.NT[builtins.int]]"
+reveal_type(A2().x)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.NT[builtins.int]]"
 reveal_type(A3().x)  # N: Revealed type is "TypedDict('__main__.TD', {'foo': builtins.int})"
 [builtins fixtures/tuple.pyi]
