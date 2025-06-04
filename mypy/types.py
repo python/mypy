@@ -2170,6 +2170,9 @@ class CallableType(FunctionLike):
             )
         )
 
+    def is_singleton_type(self) -> bool:
+        return self.is_type_obj() and self.type_object().is_final
+
     def with_normalized_var_args(self) -> Self:
         var_arg = self.var_arg()
         if not var_arg or not isinstance(var_arg.typ, UnpackType):
@@ -3134,6 +3137,11 @@ class TypeType(ProperType):
         if not isinstance(other, TypeType):
             return NotImplemented
         return self.item == other.item
+
+    def is_singleton_type(self) -> bool:
+        return (isinstance(self.item, Instance) and self.item.type.is_final) or isinstance(
+            self.item, NoneType
+        )
 
     def serialize(self) -> JsonDict:
         return {".class": "TypeType", "item": self.item.serialize()}
