@@ -43,7 +43,10 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     containing a nested function.
     """
     env_class = ClassIR(
-        f"{builder.fn_info.namespaced_name()}_env", builder.module_name, is_generated=True
+        f"{builder.fn_info.namespaced_name()}_env",
+        builder.module_name,
+        is_generated=True,
+        is_final_class=True,
     )
     env_class.attributes[SELF_NAME] = RInstance(env_class)
     if builder.fn_info.is_nested:
