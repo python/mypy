@@ -2480,6 +2480,7 @@ def check_a(obj: "A[T] | str") -> None:
     else:
         reveal_type(obj)  # N: Revealed type is "builtins.str"
 
+
 class B(Generic[T]):
     @overload
     def __init__(self, x: T) -> None: ...
@@ -2495,6 +2496,7 @@ def check_b(obj: "B[T] | str") -> None:
     else:
         reveal_type(obj)  # N: Revealed type is "builtins.str"
 
+
 class C(Generic[T]):
     @overload
     def __init__(self: C[int]) -> None: ...
@@ -2509,4 +2511,12 @@ def check_c(obj: "C[T] | str") -> None:
         reveal_type(obj)  # N: Revealed type is "__main__.C[T`-1]"
     else:
         reveal_type(obj)  # N: Revealed type is "builtins.str"
-[builtins fixtures/isinstance.pyi]
+
+
+class D(tuple[T], Generic[T]): ...
+
+def check_d(arg: D[T]) -> None:
+    if not isinstance(arg, D):
+        return
+    reveal_type(arg)  # N: Revealed type is "tuple[T`-1, fallback=__main__.D[Any]]"
+[builtins fixtures/tuple.pyi]
