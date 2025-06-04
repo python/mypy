@@ -299,7 +299,14 @@ def prepare_class_def(
                     "Inheriting from most builtin types is unimplemented", path, cdef.line
                 )
                 errors.note(
-                    "Potential workaround: @mypy_extensions.mypyc_attr(native_class=False)", path, cdef.line
+                    "Potential workaround: @mypy_extensions.mypyc_attr(native_class=False)",
+                    path,
+                    cdef.line,
+                )
+                errors.note(
+                    "https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes",
+                    path,
+                    cdef.line,
                 )
 
     # Set up the parent class

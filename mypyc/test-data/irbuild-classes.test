@@ -1376,7 +1376,8 @@ from mypy_extensions import mypyc_attr
 
 @mypyc_attr(native_class=True)
 class M(type):  # E: Inheriting from most builtin types is unimplemented \
-                # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False)
+                # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
     pass
 
 @mypyc_attr(native_class=True)
