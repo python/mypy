@@ -105,7 +105,7 @@ from typing_extensions import Annotated
 T = TypeVar('T')
 Alias = Annotated[Tuple[T, T], ...]
 x: Alias[int]
-reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotatedAliasGenericUnion]

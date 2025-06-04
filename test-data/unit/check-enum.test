@@ -601,10 +601,10 @@ T = Enum('T', keyword='a b')  # E: Unexpected keyword argument "keyword"
 U = Enum('U', *['a'])  # E: Unexpected arguments to Enum()
 V = Enum('U', **{'a': 1})  # E: Unexpected arguments to Enum()
 W = Enum('W', 'a b')
-W.c  # E: "Type[W]" has no attribute "c"
+W.c  # E: "type[W]" has no attribute "c"
 X = Enum('Something', 'a b')  # E: String argument 1 "Something" to enum.Enum(...) does not match variable name "X"
 reveal_type(X.a)  # N: Revealed type is "Literal[__main__.Something@23.a]?"
-X.asdf  # E: "Type[Something@23]" has no attribute "asdf"
+X.asdf  # E: "type[Something@23]" has no attribute "asdf"
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -931,7 +931,7 @@ class Foo(Enum):
     A = 1
     B = 2
 
-Foo._order_  # E: "Type[Foo]" has no attribute "_order_"
+Foo._order_  # E: "type[Foo]" has no attribute "_order_"
 
 x: Literal[Foo.A, Foo.B]
 if x is Foo.A:
@@ -946,7 +946,7 @@ class Bar(Enum):
     A = 1
     B = 2
 
-Bar.__order__  # E: "Type[Bar]" has no attribute "__order__"
+Bar.__order__  # E: "type[Bar]" has no attribute "__order__"
 
 y: Literal[Bar.A, Bar.B]
 if y is Bar.A:
@@ -2024,7 +2024,7 @@ class A(Enum):
 reveal_type(A.str.value)  # N: Revealed type is "Literal['foo']?"
 reveal_type(A.int.value)  # N: Revealed type is "Literal[1]?"
 reveal_type(A.bool.value)  # N: Revealed type is "Literal[False]?"
-reveal_type(A.tuple.value)  # N: Revealed type is "Tuple[Literal[1]?]"
+reveal_type(A.tuple.value)  # N: Revealed type is "tuple[Literal[1]?]"
 [builtins fixtures/tuple.pyi]
 
 [case testFinalWithPrivateAssignment]
@@ -2244,7 +2244,7 @@ from enum import Enum
 class C(Enum):
     _ignore_ = 'X'
 
-C._ignore_ # E: "Type[C]" has no attribute "_ignore_"
+C._ignore_ # E: "type[C]" has no attribute "_ignore_"
 [builtins fixtures/enum.pyi]
 
 [case testCanOverrideDunderAttributes]
@@ -2302,7 +2302,7 @@ class A(Some, Enum):
 from enum import Enum
 
 class Mixed(Enum):
-    a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
+    a = []  # E: Need type annotation for "a" (hint: "a: list[<type>] = ...")
     b = None
 
     def check(self) -> None:
@@ -2319,8 +2319,8 @@ class Mixed(Enum):
                 pass
 
 class AllPartialList(Enum):
-    a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
-    b = []  # E: Need type annotation for "b" (hint: "b: List[<type>] = ...")
+    a = []  # E: Need type annotation for "a" (hint: "a: list[<type>] = ...")
+    b = []  # E: Need type annotation for "b" (hint: "b: list[<type>] = ...")
 
     def check(self) -> None:
         reveal_type(self.value)  # N: Revealed type is "builtins.list[Any]"
@@ -2335,7 +2335,7 @@ class MyEnum(Enum):
     __my_dict = {A: "ham", B: "spam"}
 
 # TODO: change the next line to use MyEnum._MyEnum__my_dict when mypy implements name mangling
-x: MyEnum = MyEnum.__my_dict  # E: Incompatible types in assignment (expression has type "Dict[int, str]", variable has type "MyEnum")
+x: MyEnum = MyEnum.__my_dict  # E: Incompatible types in assignment (expression has type "dict[int, str]", variable has type "MyEnum")
 [builtins fixtures/enum.pyi]
 
 [case testEnumWithPrivateAttributeReachability]

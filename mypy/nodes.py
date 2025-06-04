@@ -3359,11 +3359,11 @@ class TypeInfo(SymbolNode):
                 return c
         return None
 
-    def is_metaclass(self) -> bool:
+    def is_metaclass(self, *, precise: bool = False) -> bool:
         return (
             self.has_base("builtins.type")
             or self.fullname == "abc.ABCMeta"
-            or self.fallback_to_any
+            or (self.fallback_to_any and not precise)
         )
 
     def has_base(self, fullname: str) -> bool:

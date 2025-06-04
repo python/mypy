@@ -323,7 +323,7 @@ def f() -> None:
 def f() -> None:
     class x: pass
     x = 1 # E: Cannot assign to a type \
-          # E: Incompatible types in assignment (expression has type "int", variable has type "Type[x]")
+          # E: Incompatible types in assignment (expression has type "int", variable has type "type[x]")
     y = 1
     class y: pass # E: Name "y" already defined on line 5
 

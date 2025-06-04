@@ -468,6 +468,10 @@ If we forget to handle one of the cases, mypy will generate an error:
       assert_never(direction)  # E: Argument 1 to "assert_never" has incompatible type "Direction"; expected "NoReturn"
 
 Exhaustiveness checking is also supported for match statements (Python 3.10 and later).
+For match statements specifically, inexhaustive matches can be caught
+without needing to use ``assert_never`` by using
+:option:`--enable-error-code exhaustive-match <mypy --enable-error-code>`.
+
 
 Extra Enum checks
 *****************

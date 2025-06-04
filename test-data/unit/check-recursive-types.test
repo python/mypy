@@ -12,7 +12,7 @@ if isinstance(x, list):
     x = x[0]
 
 class Bad: ...
-x = ["foo", {"bar": [Bad()]}]  # E: List item 0 has incompatible type "Bad"; expected "Union[str, List[JSON], Dict[str, JSON]]"
+x = ["foo", {"bar": [Bad()]}]  # E: List item 0 has incompatible type "Bad"; expected "Union[str, list[JSON], dict[str, JSON]]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasBasicGenericSubtype]
@@ -54,7 +54,7 @@ reveal_type(flatten([1, [2, [3]]]))  # N: Revealed type is "builtins.list[builti
 
 class Bad: ...
 x: Nested[int] = [1, [2, [3]]]
-x = [1, [Bad()]]  # E: List item 1 has incompatible type "List[Bad]"; expected "Union[int, Nested[int]]"
+x = [1, [Bad()]]  # E: List item 1 has incompatible type "list[Bad]"; expected "Union[int, Nested[int]]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasGenericInferenceNested]
@@ -95,7 +95,7 @@ A = Union[B, int]
 B = Callable[[C], int]
 C = Type[A]
 x: A
-reveal_type(x)  # N: Revealed type is "Union[def (Union[Type[def (...) -> builtins.int], Type[builtins.int]]) -> builtins.int, builtins.int]"
+reveal_type(x)  # N: Revealed type is "Union[def (Union[type[def (...) -> builtins.int], type[builtins.int]]) -> builtins.int, builtins.int]"
 
 [case testRecursiveAliasesProhibited-skip]
 from typing import Type, Callable, Union
@@ -161,7 +161,7 @@ y: C
 reveal_type(y.x)  # N: Revealed type is "builtins.int"
 reveal_type(y[0])  # N: Revealed type is "builtins.int"
 x: A
-reveal_type(x)  # N: Revealed type is "__main__.G[Tuple[builtins.int, fallback=__main__.C]]"
+reveal_type(x)  # N: Revealed type is "__main__.G[tuple[builtins.int, fallback=__main__.C]]"
 [builtins fixtures/list.pyi]
 
 [case testRecursiveAliasViaBaseClassImported]
@@ -189,7 +189,7 @@ class A(NamedTuple('A', [('attr', List[Exp])])): pass
 class B(NamedTuple('B', [('val', object)])): pass
 
 def my_eval(exp: Exp) -> int:
-    reveal_type(exp) # N: Revealed type is "Union[Tuple[builtins.list[...], fallback=__main__.A], Tuple[builtins.object, fallback=__main__.B]]"
+    reveal_type(exp) # N: Revealed type is "Union[tuple[builtins.list[...], fallback=__main__.A], tuple[builtins.object, fallback=__main__.B]]"
     if isinstance(exp, A):
         my_eval(exp[0][0])
         return my_eval(exp.attr[0])
@@ -413,7 +413,7 @@ S = Type[S]  # E: Type[...] can't contain "Type[...]"
 U = Type[Union[int, U]]  # E: Type[...] can't contain "Union[Type[...], Type[...]]" \
                          # E: Type[...] can't contain "Type[...]"
 x: U
-reveal_type(x)  # N: Revealed type is "Type[Any]"
+reveal_type(x)  # N: Revealed type is "type[Any]"
 
 D = List[F[List[T]]]  # E: Invalid recursive alias: type variable nesting on right hand side
 F = D[T]  # Error reported above
@@ -427,9 +427,9 @@ from typing import NamedTuple, Optional
 
 NT = NamedTuple("NT", [("x", Optional[NT]), ("y", int)])
 nt: NT
-reveal_type(nt)  # N: Revealed type is "Tuple[Union[..., None], builtins.int, fallback=__main__.NT]"
-reveal_type(nt.x)  # N: Revealed type is "Union[Tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
-reveal_type(nt[0])  # N: Revealed type is "Union[Tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
+reveal_type(nt)  # N: Revealed type is "tuple[Union[..., None], builtins.int, fallback=__main__.NT]"
+reveal_type(nt.x)  # N: Revealed type is "Union[tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
+reveal_type(nt[0])  # N: Revealed type is "Union[tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
 y: str
 if nt.x is not None:
     y = nt.x[0]  # E: Incompatible types in assignment (expression has type "Optional[NT]", variable has type "str")
@@ -440,9 +440,9 @@ from typing import NamedTuple, TypeVar, Tuple
 
 NT = NamedTuple("NT", [("x", NT), ("y", int)])
 nt: NT
-reveal_type(nt)  # N: Revealed type is "Tuple[..., builtins.int, fallback=__main__.NT]"
-reveal_type(nt.x)  # N: Revealed type is "Tuple[..., builtins.int, fallback=__main__.NT]"
-reveal_type(nt[0])  # N: Revealed type is "Tuple[Tuple[..., builtins.int, fallback=__main__.NT], builtins.int, fallback=__main__.NT]"
+reveal_type(nt)  # N: Revealed type is "tuple[..., builtins.int, fallback=__main__.NT]"
+reveal_type(nt.x)  # N: Revealed type is "tuple[..., builtins.int, fallback=__main__.NT]"
+reveal_type(nt[0])  # N: Revealed type is "tuple[tuple[..., builtins.int, fallback=__main__.NT], builtins.int, fallback=__main__.NT]"
 y: str
 if nt.x is not None:
     y = nt.x[0]  # E: Incompatible types in assignment (expression has type "NT", variable has type "str")
@@ -464,9 +464,9 @@ class NT(NamedTuple):
     y: int
 
 nt: NT
-reveal_type(nt)  # N: Revealed type is "Tuple[Union[..., None], builtins.int, fallback=__main__.NT]"
-reveal_type(nt.x)  # N: Revealed type is "Union[Tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
-reveal_type(nt[0])  # N: Revealed type is "Union[Tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
+reveal_type(nt)  # N: Revealed type is "tuple[Union[..., None], builtins.int, fallback=__main__.NT]"
+reveal_type(nt.x)  # N: Revealed type is "Union[tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
+reveal_type(nt[0])  # N: Revealed type is "Union[tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
 y: str
 if nt.x is not None:
     y = nt.x[0]  # E: Incompatible types in assignment (expression has type "Optional[NT]", variable has type "str")
@@ -491,7 +491,7 @@ class B(Tuple[B, int]):
     x: int
 C = NewType("C", B)
 b, _ = x
-reveal_type(b)  # N: Revealed type is "Tuple[..., builtins.int, fallback=__main__.B]"
+reveal_type(b)  # N: Revealed type is "tuple[..., builtins.int, fallback=__main__.B]"
 reveal_type(b.x)  # N: Revealed type is "builtins.int"
 
 y: CNT
@@ -516,13 +516,13 @@ class B(NamedTuple):
     y: int
 
 n: A
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Tuple[..., builtins.int, fallback=__main__.B], ...], fallback=__main__.A]"
+reveal_type(n) # N: Revealed type is "tuple[builtins.str, builtins.tuple[tuple[..., builtins.int, fallback=__main__.B], ...], fallback=__main__.A]"
 
 T = TypeVar("T")
 S = TypeVar("S")
 def foo(arg: Tuple[T, S]) -> Union[T, S]: ...
 x = foo(n)
-y: str = x  # E: Incompatible types in assignment (expression has type "Union[str, Tuple[B, ...]]", variable has type "str")
+y: str = x  # E: Incompatible types in assignment (expression has type "Union[str, tuple[B, ...]]", variable has type "str")
 [builtins fixtures/tuple.pyi]
 
 [case testMutuallyRecursiveNamedTuplesJoin]
@@ -535,7 +535,7 @@ class B(NamedTuple):
 A = NamedTuple('A', [('x', str), ('y', B)])
 n: B
 m: A
-s: str = n.x  # E: Incompatible types in assignment (expression has type "Tuple[A, int]", variable has type "str")
+s: str = n.x  # E: Incompatible types in assignment (expression has type "tuple[A, int]", variable has type "str")
 reveal_type(m[0]) # N: Revealed type is "builtins.str"
 lst = [m, n]
 
@@ -567,7 +567,7 @@ n = n.y.x
 
 t: Tuple[str, B]
 t = n
-t = m  # E: Incompatible types in assignment (expression has type "B", variable has type "Tuple[str, B]")
+t = m  # E: Incompatible types in assignment (expression has type "B", variable has type "tuple[str, B]")
 [builtins fixtures/tuple.pyi]
 
 [case testMutuallyRecursiveNamedTuplesCalls]
@@ -578,8 +578,8 @@ B = NamedTuple('B', [('x', A), ('y', int)])
 A = NamedTuple('A', [('x', str), ('y', 'B')])
 n: A
 def f(m: B) -> None: pass
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, Tuple[..., builtins.int, fallback=__main__.B], fallback=__main__.A]"
-reveal_type(f) # N: Revealed type is "def (m: Tuple[Tuple[builtins.str, ..., fallback=__main__.A], builtins.int, fallback=__main__.B])"
+reveal_type(n) # N: Revealed type is "tuple[builtins.str, tuple[..., builtins.int, fallback=__main__.B], fallback=__main__.A]"
+reveal_type(f) # N: Revealed type is "def (m: tuple[tuple[builtins.str, ..., fallback=__main__.A], builtins.int, fallback=__main__.B])"
 f(n)  # E: Argument 1 to "f" has incompatible type "A"; expected "B"
 [builtins fixtures/tuple.pyi]
 
@@ -591,7 +591,7 @@ def foo() -> None:
               # N: Recursive types are not allowed at function scope
         y: int
     b: B
-    reveal_type(b)  # N: Revealed type is "Tuple[Any, builtins.int, fallback=__main__.B@3]"
+    reveal_type(b)  # N: Revealed type is "tuple[Any, builtins.int, fallback=__main__.B@3]"
 [builtins fixtures/tuple.pyi]
 
 [case testBasicRecursiveGenericNamedTuple]
@@ -606,7 +606,7 @@ class A: ...
 class B(A): ...
 
 nti: NT[int] = NT(key=0, value=NT(key=1, value=A()))  # E: Argument "value" to "NT" has incompatible type "NT[A]"; expected "Union[int, NT[int]]"
-reveal_type(nti)  # N: Revealed type is "Tuple[builtins.int, Union[builtins.int, ...], fallback=__main__.NT[builtins.int]]"
+reveal_type(nti)  # N: Revealed type is "tuple[builtins.int, Union[builtins.int, ...], fallback=__main__.NT[builtins.int]]"
 
 nta: NT[A]
 ntb: NT[B]
@@ -807,11 +807,11 @@ Tree2 = Union[str, Tuple[Tree2, Tree2]]
 Tree3 = Union[str, Tuple[Tree3, Tree3, Tree3]]
 
 def test1() -> Tree1:
-    return 42  # E: Incompatible return value type (got "int", expected "Union[str, Tuple[Tree1]]")
+    return 42  # E: Incompatible return value type (got "int", expected "Union[str, tuple[Tree1]]")
 def test2() -> Tree2:
-    return 42  # E: Incompatible return value type (got "int", expected "Union[str, Tuple[Tree2, Tree2]]")
+    return 42  # E: Incompatible return value type (got "int", expected "Union[str, tuple[Tree2, Tree2]]")
 def test3() -> Tree3:
-    return 42  # E: Incompatible return value type (got "int", expected "Union[str, Tuple[Tree3, Tree3, Tree3]]")
+    return 42  # E: Incompatible return value type (got "int", expected "Union[str, tuple[Tree3, Tree3, Tree3]]")
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveDoubleUnionNoCrash]
@@ -892,7 +892,7 @@ from typing import List, NamedTuple
 
 Example = NamedTuple("Example", [("rec", List["Example"])])
 e: Example
-reveal_type(e)  # N: Revealed type is "Tuple[builtins.list[...], fallback=__main__.Example]"
+reveal_type(e)  # N: Revealed type is "tuple[builtins.list[...], fallback=__main__.Example]"
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveBoundFunctionScopeNoCrash]
@@ -932,7 +932,7 @@ x: A[int, str]
 
 *_, last = x
 if last is not None:
-    reveal_type(last)  # N: Revealed type is "Tuple[builtins.int, builtins.str, Union[Tuple[builtins.int, builtins.str, Union[..., None]], None]]"
+    reveal_type(last)  # N: Revealed type is "tuple[builtins.int, builtins.str, Union[tuple[builtins.int, builtins.str, Union[..., None]], None]]"
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveAliasLiteral]

@@ -11,8 +11,8 @@ def f( *b: 'B') -> None:
     ab: Tuple[B, ...]
     ac: Tuple[C, ...]
     if int():
-        b = ac # E: Incompatible types in assignment (expression has type "Tuple[C, ...]", variable has type "Tuple[B, ...]")
-        ac = b # E: Incompatible types in assignment (expression has type "Tuple[B, ...]", variable has type "Tuple[C, ...]")
+        b = ac # E: Incompatible types in assignment (expression has type "tuple[C, ...]", variable has type "tuple[B, ...]")
+        ac = b # E: Incompatible types in assignment (expression has type "tuple[B, ...]", variable has type "tuple[C, ...]")
         b = ab
         ab = b
 
@@ -121,7 +121,7 @@ T4 = TypeVar('T4')
 def f(a: T1, b: T2, c: T3, d: T4) -> Tuple[T1, T2, T3, T4]: ...
 x: Tuple[int, str]
 y: Tuple[float, bool]
-reveal_type(f(*x, *y)) # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.float, builtins.bool]"
+reveal_type(f(*x, *y)) # N: Revealed type is "tuple[builtins.int, builtins.str, builtins.float, builtins.bool]"
 [builtins fixtures/list.pyi]
 
 [case testCallVarargsFunctionWithIterableAndPositional]
@@ -141,7 +141,7 @@ it1 = (1, 2)
 it2 = ('',)
 f(*it1, 1, 2)
 f(*it1, 1, *it1, 2)
-f(*it1, 1, *it2, 2)  # E: Argument 3 to "f" has incompatible type "*Tuple[str]"; expected "int"
+f(*it1, 1, *it2, 2)  # E: Argument 3 to "f" has incompatible type "*tuple[str]"; expected "int"
 f(*it1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 [builtins fixtures/for.pyi]
 
@@ -243,7 +243,7 @@ ab: List[B]
 a: A
 b: B
 
-f(*aa)  # E: Argument 1 to "f" has incompatible type "*List[A]"; expected "B"
+f(*aa)  # E: Argument 1 to "f" has incompatible type "*list[A]"; expected "B"
 f(a, *ab) # Ok
 f(a, b)
 (cast(Any, f))(*aa)     # IDEA: Move to check-dynamic?
@@ -262,9 +262,9 @@ b: B
 c: C
 cc: CC
 
-f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "*Tuple[A, B, B]"; expected "C"
-f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "*Tuple[B, B, C]"; expected "A"
-f(a, *(b, b)) # E: Argument 2 to "f" has incompatible type "*Tuple[B, B]"; expected "C"
+f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "*tuple[A, B, B]"; expected "C"
+f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "*tuple[B, B, C]"; expected "A"
+f(a, *(b, b)) # E: Argument 2 to "f" has incompatible type "*tuple[B, B]"; expected "C"
 f(b, *(b, c)) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(*(a, b))    # E: Missing positional arguments "b", "c" in call to "f"
 f(*(a, b, c, c)) # E: Too many arguments for "f"
@@ -308,13 +308,13 @@ aa: List[A]
 ab: List[B]
 a: A
 b: B
-f(*aa)           # E: Argument 1 to "f" has incompatible type "*List[A]"; expected "B"
-f(a, *aa)        # E: Argument 2 to "f" has incompatible type "*List[A]"; expected "B"
+f(*aa)           # E: Argument 1 to "f" has incompatible type "*list[A]"; expected "B"
+f(a, *aa)        # E: Argument 2 to "f" has incompatible type "*list[A]"; expected "B"
 f(b, *ab)        # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(a, a, *ab)     # E: Argument 2 to "f" has incompatible type "A"; expected "B"
-f(a, b, *aa)     # E: Argument 3 to "f" has incompatible type "*List[A]"; expected "B"
+f(a, b, *aa)     # E: Argument 3 to "f" has incompatible type "*list[A]"; expected "B"
 f(b, b, *ab)     # E: Argument 1 to "f" has incompatible type "B"; expected "A"
-g(*ab)           # E: Argument 1 to "g" has incompatible type "*List[B]"; expected "A"
+g(*ab)           # E: Argument 1 to "g" has incompatible type "*list[B]"; expected "A"
 f(a, *ab)
 f(a, b, *ab)
 f(a, b, b, *ab)
@@ -334,14 +334,14 @@ b: B
 c: C
 cc: CC
 
-f(*(b, b, b))   # E: Argument 1 to "f" has incompatible type "*Tuple[B, B, B]"; expected "A"
-f(*(a, a, b))   # E: Argument 1 to "f" has incompatible type "*Tuple[A, A, B]"; expected "B"
-f(*(a, b, a))   # E: Argument 1 to "f" has incompatible type "*Tuple[A, B, A]"; expected "B"
-f(a, *(a, b))   # E: Argument 2 to "f" has incompatible type "*Tuple[A, B]"; expected "B"
+f(*(b, b, b))   # E: Argument 1 to "f" has incompatible type "*tuple[B, B, B]"; expected "A"
+f(*(a, a, b))   # E: Argument 1 to "f" has incompatible type "*tuple[A, A, B]"; expected "B"
+f(*(a, b, a))   # E: Argument 1 to "f" has incompatible type "*tuple[A, B, A]"; expected "B"
+f(a, *(a, b))   # E: Argument 2 to "f" has incompatible type "*tuple[A, B]"; expected "B"
 f(b, *(b, b))   # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(b, b, *(b,))  # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(a, a, *(b,))  # E: Argument 2 to "f" has incompatible type "A"; expected "B"
-f(a, b, *(a,))  # E: Argument 3 to "f" has incompatible type "*Tuple[A]"; expected "B"
+f(a, b, *(a,))  # E: Argument 3 to "f" has incompatible type "*tuple[A]"; expected "B"
 f(*())          # E: Too few arguments for "f"
 f(*(a, b, b))
 f(a, *(b, b))
@@ -384,7 +384,7 @@ class B(A): pass
 aa: List[A]
 ab: List[B]
 
-g(*aa) # E: Argument 1 to "g" has incompatible type "*List[A]"; expected "B"
+g(*aa) # E: Argument 1 to "g" has incompatible type "*list[A]"; expected "B"
 f(*aa)
 f(*ab)
 g(*ab)
@@ -401,10 +401,10 @@ class B: pass
 
 a, b = None, None # type: (A, B)
 f(*())        # E: Too few arguments for "f"
-f(a, *[a])    # E: Argument 2 to "f" has incompatible type "*List[A]"; expected "Optional[B]" \
-              # E: Argument 2 to "f" has incompatible type "*List[A]"; expected "B"
-f(a, b, *[a]) # E: Argument 3 to "f" has incompatible type "*List[A]"; expected "B"
-f(*(a, a, b)) # E: Argument 1 to "f" has incompatible type "*Tuple[A, A, B]"; expected "Optional[B]"
+f(a, *[a])    # E: Argument 2 to "f" has incompatible type "*list[A]"; expected "Optional[B]" \
+              # E: Argument 2 to "f" has incompatible type "*list[A]"; expected "B"
+f(a, b, *[a]) # E: Argument 3 to "f" has incompatible type "*list[A]"; expected "B"
+f(*(a, a, b)) # E: Argument 1 to "f" has incompatible type "*tuple[A, A, B]"; expected "Optional[B]"
 f(*(a,))
 f(*(a, b))
 f(*(a, b, b, b))
@@ -420,7 +420,7 @@ f(x=1, *[2])
 [builtins fixtures/list.pyi]
 [out]
 main:3: error: "f" gets multiple values for keyword argument "x"
-main:3: error: Argument 1 to "f" has incompatible type "*List[int]"; expected "str"
+main:3: error: Argument 1 to "f" has incompatible type "*list[int]"; expected "str"
 
 [case testVarArgsAfterKeywordArgInCall2]
 # see: mypy issue #2729
@@ -429,7 +429,7 @@ f(y='x', *[1])
 [builtins fixtures/list.pyi]
 [out]
 main:3: error: "f" gets multiple values for keyword argument "y"
-main:3: error: Argument 1 to "f" has incompatible type "*List[int]"; expected "str"
+main:3: error: Argument 1 to "f" has incompatible type "*list[int]"; expected "str"
 
 [case testVarArgsAfterKeywordArgInCall3]
 def f(x: int, y: str) -> None: pass
@@ -543,15 +543,15 @@ b: B
 aa: List[A]
 
 if int():
-    a, b = f(*aa)    # E: Argument 1 to "f" has incompatible type "*List[A]"; expected "B"
+    a, b = f(*aa)    # E: Argument 1 to "f" has incompatible type "*list[A]"; expected "B"
 if int():
-    b, b = f(*aa)    # E: Argument 1 to "f" has incompatible type "*List[A]"; expected "B"
+    b, b = f(*aa)    # E: Argument 1 to "f" has incompatible type "*list[A]"; expected "B"
 if int():
     a, a = f(b, *aa) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 if int():
-    b, b = f(b, *aa) # E: Argument 2 to "f" has incompatible type "*List[A]"; expected "B"
+    b, b = f(b, *aa) # E: Argument 2 to "f" has incompatible type "*list[A]"; expected "B"
 if int():
-    b, b = f(b, b, *aa) # E: Argument 3 to "f" has incompatible type "*List[A]"; expected "B"
+    b, b = f(b, b, *aa) # E: Argument 3 to "f" has incompatible type "*list[A]"; expected "B"
 if int():
     a, b = f(a, *a)  # E: Expected iterable as variadic argument
 if int():
@@ -579,11 +579,11 @@ a: A
 b: B
 
 if int():
-    a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "*Tuple[A, B]"; expected "A"
+    a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "*tuple[A, B]"; expected "A"
 if int():
     b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"; expected "B"
 if int():
-    a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "*Tuple[A, B]"; expected "A"
+    a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "*tuple[A, B]"; expected "A"
 if int():
     b, b = f(a, *(b,))  # E: Argument 1 to "f" has incompatible type "A"; expected "B"
 if int():
@@ -612,11 +612,11 @@ class A: pass
 class B: pass
 
 if int():
-    a, aa = G().f(*[a]) # E: Incompatible types in assignment (expression has type "List[A]", variable has type "A")
+    a, aa = G().f(*[a]) # E: Incompatible types in assignment (expression has type "list[A]", variable has type "A")
 if int():
-    aa, a = G().f(*[a]) # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "A")
+    aa, a = G().f(*[a]) # E: Incompatible types in assignment (expression has type "list[Never]", variable has type "A")
 if int():
-    ab, aa = G().f(*[a]) # E: Argument 1 to "f" of "G" has incompatible type "*List[A]"; expected "B"
+    ab, aa = G().f(*[a]) # E: Argument 1 to "f" of "G" has incompatible type "*list[A]"; expected "B"
 if int():
     ao, ao = G().f(*[a])
 if int():
@@ -686,15 +686,15 @@ a = {'a': [1, 2]}
 b = {'b': ['c', 'd']}
 c = {'c': 1.0}
 d = {'d': 1}
-f(a) # E: Argument 1 to "f" has incompatible type "Dict[str, List[int]]"; expected "Dict[str, Sequence[int]]" \
+f(a) # E: Argument 1 to "f" has incompatible type "dict[str, list[int]]"; expected "dict[str, Sequence[int]]" \
      # N: "dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Mapping" instead, which is covariant in the value type
-f(b) # E: Argument 1 to "f" has incompatible type "Dict[str, List[str]]"; expected "Dict[str, Sequence[int]]"
+f(b) # E: Argument 1 to "f" has incompatible type "dict[str, list[str]]"; expected "dict[str, Sequence[int]]"
 g(c)
-g(d) # E: Argument 1 to "g" has incompatible type "Dict[str, int]"; expected "Dict[str, float]" \
+g(d) # E: Argument 1 to "g" has incompatible type "dict[str, int]"; expected "dict[str, float]" \
      # N: "dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Mapping" instead, which is covariant in the value type
-h(c) # E: Argument 1 to "h" has incompatible type "Dict[str, float]"; expected "Dict[str, int]"
+h(c) # E: Argument 1 to "h" has incompatible type "dict[str, float]"; expected "dict[str, int]"
 h(d)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -703,13 +703,13 @@ h(d)
 from typing import List, Union
 def f(numbers: List[Union[int, float]]) -> None: pass
 a = [1, 2]
-f(a) # E: Argument 1 to "f" has incompatible type "List[int]"; expected "List[Union[int, float]]" \
+f(a) # E: Argument 1 to "f" has incompatible type "list[int]"; expected "list[Union[int, float]]" \
      # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 x = [1]
 y = ['a']
 if int():
-    x = y # E: Incompatible types in assignment (expression has type "List[str]", variable has type "List[int]")
+    x = y # E: Incompatible types in assignment (expression has type "list[str]", variable has type "list[int]")
 [builtins fixtures/list.pyi]
 
 [case testInvariantTypeConfusingNames]
@@ -720,8 +720,8 @@ def f(x: Listener) -> None: pass
 def g(y: DictReader) -> None: pass
 a = [1, 2]
 b = {'b': 1}
-f(a) # E: Argument 1 to "f" has incompatible type "List[int]"; expected "Listener"
-g(b) # E: Argument 1 to "g" has incompatible type "Dict[str, int]"; expected "DictReader"
+f(a) # E: Argument 1 to "f" has incompatible type "list[int]"; expected "Listener"
+g(b) # E: Argument 1 to "g" has incompatible type "dict[str, int]"; expected "DictReader"
 [builtins fixtures/dict.pyi]
 
 [case testInvariantTypeConfusingNames2]
@@ -822,7 +822,7 @@ Weird = TypedDict("Weird", {"@": int})
 def foo(**kwargs: Unpack[Weird]) -> None:
     reveal_type(kwargs["@"])  # N: Revealed type is "builtins.int"
 foo(**{"@": 42})
-foo(**{"no": "way"})  # E: Argument 1 to "foo" has incompatible type "**Dict[str, str]"; expected "int"
+foo(**{"no": "way"})  # E: Argument 1 to "foo" has incompatible type "**dict[str, str]"; expected "int"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
