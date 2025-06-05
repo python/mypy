@@ -6,7 +6,9 @@ def f(x: object, cb: Callable[[object], Any]) -> object:
 
 [out]
 def f(x, cb):
-    x, cb, r0, r1 :: object
+    x, cb :: object
+    r0 :: weakref.ReferenceType
+    r1 :: object
 L0:
     r0 = PyWeakref_NewRef(x, cb)
     r1 = PyWeakref_GetRef(r0)
@@ -20,7 +22,9 @@ def f(x: object, cb: Callable[[object], Any]) -> object:
 
 [out]
 def f(x, cb):
-    x, cb, r0, r1 :: object
+    x, cb :: object
+    r0 :: weakref.ReferenceType
+    r1 :: object
 L0:
     r0 = PyWeakref_NewRef(x, cb)
     r1 = PyWeakref_GetRef(r0)
