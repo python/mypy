@@ -2060,3 +2060,27 @@ class R:
 
 class Action:
     pass
+
+[case testPEP695TypeVarConstraintsDefaultAliases]
+from typing import Generic
+from typing_extensions import TypeVar
+
+type K = int
+type V = int
+type L = list[int]
+
+T1 = TypeVar("T1", str, K, default=K)
+T2 = TypeVar("T2", str, K, default=V)
+T3 = TypeVar("T3", str, L, default=L)
+
+class A1(Generic[T1]):
+    x: T1
+class A2(Generic[T2]):
+    x: T2
+class A3(Generic[T3]):
+    x: T3
+
+reveal_type(A1().x)  # N: Revealed type is "builtins.int"
+reveal_type(A2().x)  # N: Revealed type is "builtins.int"
+reveal_type(A3().x)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/tuple.pyi]

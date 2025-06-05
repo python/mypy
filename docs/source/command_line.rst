@@ -937,11 +937,6 @@ in error messages.
     useful or they may be overly noisy. If ``N`` is negative, there is
     no limit. The default limit is -1.
 
-.. option:: --force-uppercase-builtins
-
-    Always use ``List`` instead of ``list`` in error messages,
-    even on Python 3.9+.
-
 .. option:: --force-union-syntax
 
     Always use ``Union[]`` and ``Optional[]`` for union types
