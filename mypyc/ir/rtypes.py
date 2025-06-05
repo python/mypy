@@ -494,7 +494,9 @@ tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refc
 range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
 
 # Python weak reference object
-weakref_rprimitive: Final = RPrimitive("weakref.ReferenceType", is_unboxed=False, is_refcounted=True)
+weakref_rprimitive: Final = RPrimitive(
+    "weakref.ReferenceType", is_unboxed=False, is_refcounted=True
+)
 
 
 def is_tagged(rtype: RType) -> bool:
