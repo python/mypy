@@ -801,6 +801,7 @@ def process_options(
         help="Disable strict Optional checks (inverse: --strict-optional)",
     )
 
+    # This flag is deprecated, Mypy only supports Python 3.9+
     add_invertible_flag(
         "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
     )
@@ -1493,6 +1494,9 @@ def process_options(
 
     if options.strict_concatenate and not strict_option_set:
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
+
+    if options.force_uppercase_builtins:
+        print("Warning: --force-uppercase-builtins is deprecated; mypy only supports Python 3.9+")
 
     # Set target.
     if special_opts.modules + special_opts.packages:

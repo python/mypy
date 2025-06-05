@@ -3427,7 +3427,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # store the rvalue type on the variable.
             actual_lvalue_type = None
             if lvalue_node.is_inferred and not lvalue_node.explicit_self_type:
-                rvalue_type = self.expr_checker.accept(rvalue, lvalue_node.type)
+                # Don't use partial types as context, similar to regular code path.
+                ctx = lvalue_node.type if not isinstance(lvalue_node.type, PartialType) else None
+                rvalue_type = self.expr_checker.accept(rvalue, ctx)
                 actual_lvalue_type = lvalue_node.type
                 lvalue_node.type = rvalue_type
             lvalue_type, _ = self.node_type_from_base(lvalue_node.name, lvalue_node.info, lvalue)
@@ -5453,6 +5455,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
             # The second pass narrows down the types and type checks bodies.
+            unmatched_types: TypeMap = None
             for p, g, b in zip(s.patterns, s.guards, s.bodies):
                 current_subject_type = self.expr_checker.narrow_type_from_binder(
                     named_subject, subject_type
@@ -5509,6 +5512,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     else:
                         self.accept(b)
                 self.push_type_map(else_map, from_assignment=False)
+                unmatched_types = else_map
+
+            if unmatched_types is not None:
+                for typ in list(unmatched_types.values()):
+                    self.msg.match_statement_inexhaustive_match(typ, s)
 
             # This is needed due to a quirk in frame_context. Without it types will stay narrowed
             # after the match.

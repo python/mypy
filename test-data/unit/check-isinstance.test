@@ -1821,19 +1821,23 @@ if issubclass(fm, Baz):
 from typing import TypeVar
 
 class A: pass
-class B(A): pass
+class B(A):
+    attr: int
 
 T = TypeVar('T', bound=A)
 
 def f(x: T) -> None:
     if isinstance(x, B):
-        reveal_type(x) # N: Revealed type is "__main__.B"
+        reveal_type(x) # N: Revealed type is "T`-1"
+        reveal_type(x.attr)  # N: Revealed type is "builtins.int"
     else:
         reveal_type(x) # N: Revealed type is "T`-1"
+        x.attr  # E: "T" has no attribute "attr"
     reveal_type(x) # N: Revealed type is "T`-1"
+    x.attr  # E: "T" has no attribute "attr"
 [builtins fixtures/isinstance.pyi]
 
-[case testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound]
+[case testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound1]
 from typing import Union, TypeVar
 
 class A:
@@ -1845,15 +1849,35 @@ T = TypeVar("T", bound=Union[A, B])
 
 def f(x: T) -> T:
     if isinstance(x, A):
-        reveal_type(x)      # N: Revealed type is "__main__.A"
+        reveal_type(x)      # N: Revealed type is "T`-1"
         x.a
-        x.b                 # E: "A" has no attribute "b"
+        x.b                 # E: "T" has no attribute "b"
+        if bool():
+            return x
     else:
         reveal_type(x)      # N: Revealed type is "T`-1"
         x.a                 # E: "T" has no attribute "a"
         x.b
     x.a                     # E: Item "B" of the upper bound "Union[A, B]" of type variable "T" has no attribute "a"
     x.b                     # E: Item "A" of the upper bound "Union[A, B]" of type variable "T" has no attribute "b"
+    return x
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound2]
+from typing import Union, TypeVar
+
+class A:
+    a: int
+class B:
+    b: int
+
+T = TypeVar("T", bound=Union[A, B])
+
+def f(x: T) -> T:
+    if isinstance(x, A):
+        return x
+    x.a # E: "T" has no attribute "a"
+    x.b # OK
     return x
 [builtins fixtures/isinstance.pyi]
 

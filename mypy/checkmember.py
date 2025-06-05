@@ -981,6 +981,10 @@ def expand_and_bind_callable(
     assert isinstance(expanded, CallableType)
     if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
         # TODO: use check_call() to infer better type, same as for __set__().
+        if not expanded.arg_types:
+            # This can happen when accessing invalid property from its own body,
+            # error will be reported elsewhere.
+            return AnyType(TypeOfAny.from_error)
         return expanded.arg_types[0]
     else:
         return expanded.ret_type
@@ -1480,19 +1484,20 @@ def bind_self_fast(method: F, original_type: Type | None = None) -> F:
         items = [bind_self_fast(c, original_type) for c in method.items]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
-    if not method.arg_types:
+    func: CallableType = method
+    if not func.arg_types:
         # Invalid method, return something.
-        return cast(F, method)
-    if method.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
+        return method
+    if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # See typeops.py for details.
-        return cast(F, method)
+        return method
     original_type = get_proper_type(original_type)
     if isinstance(original_type, CallableType) and original_type.is_type_obj():
         original_type = TypeType.make_normalized(original_type.ret_type)
-    res = method.copy_modified(
-        arg_types=method.arg_types[1:],
-        arg_kinds=method.arg_kinds[1:],
-        arg_names=method.arg_names[1:],
+    res = func.copy_modified(
+        arg_types=func.arg_types[1:],
+        arg_kinds=func.arg_kinds[1:],
+        arg_names=func.arg_names[1:],
         bound_args=[original_type],
     )
     return cast(F, res)

@@ -415,10 +415,10 @@ def bind_self(
             ]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
-    func = method
+    func: CallableType = method
     if not func.arg_types:
         # Invalid method, return something.
-        return cast(F, func)
+        return method
     if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
@@ -427,7 +427,7 @@ def bind_self(
 
         # In the case of **kwargs we should probably emit an error, but
         # for now we simply skip it, to avoid crashes down the line.
-        return cast(F, func)
+        return method
     self_param_type = get_proper_type(func.arg_types[0])
 
     variables: Sequence[TypeVarLikeType]
@@ -1190,6 +1190,10 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
     if isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Look up __method__ on the metaclass for class objects.
         return custom_special_method(typ.fallback, name, check_all)
+    if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+        if typ.item.type.metaclass_type:
+            # Look up __method__ on the metaclass for class objects.
+            return custom_special_method(typ.item.type.metaclass_type, name, check_all)
     if isinstance(typ, AnyType):
         # Avoid false positives in uncertain cases.
         return True

@@ -632,7 +632,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_type_var(self, left: TypeVarType) -> bool:
         right = self.right
         if isinstance(right, TypeVarType) and left.id == right.id:
-            return True
+            # Fast path for most common case.
+            if left.upper_bound == right.upper_bound:
+                return True
+            # Corner case for self-types in classes generic in type vars
+            # with value restrictions.
+            if left.id.is_self():
+                return True
+            return self._is_subtype(left.upper_bound, right.upper_bound)
         if left.values and self._is_subtype(UnionType.make_union(left.values), right):
             return True
         return self._is_subtype(left.upper_bound, self.right)

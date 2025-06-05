@@ -461,6 +461,11 @@ class TypeGuardedType(Type):
     def __repr__(self) -> str:
         return f"TypeGuard({self.type_guard})"
 
+    # This may hide some real bugs, but it is convenient for various "synthetic"
+    # visitors, similar to RequiredType and ReadOnlyType below.
+    def accept(self, visitor: TypeVisitor[T]) -> T:
+        return self.type_guard.accept(visitor)
+
 
 class RequiredType(Type):
     """Required[T] or NotRequired[T]. Only usable at top-level of a TypedDict definition."""
@@ -3458,12 +3463,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_tuple_type(self, t: TupleType, /) -> str:
         s = self.list_str(t.items) or "()"
-        tuple_name = "tuple" if self.options.use_lowercase_names() else "Tuple"
         if t.partial_fallback and t.partial_fallback.type:
             fallback_name = t.partial_fallback.type.fullname
             if fallback_name != "builtins.tuple":
-                return f"{tuple_name}[{s}, fallback={t.partial_fallback.accept(self)}]"
-        return f"{tuple_name}[{s}]"
+                return f"tuple[{s}, fallback={t.partial_fallback.accept(self)}]"
+        return f"tuple[{s}]"
 
     def visit_typeddict_type(self, t: TypedDictType, /) -> str:
         def item_str(name: str, typ: str) -> str:
@@ -3506,11 +3510,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return "..."
 
     def visit_type_type(self, t: TypeType, /) -> str:
-        if self.options.use_lowercase_names():
-            type_name = "type"
-        else:
-            type_name = "Type"
-        return f"{type_name}[{t.item.accept(self)}]"
+        return f"type[{t.item.accept(self)}]"
 
     def visit_placeholder_type(self, t: PlaceholderType, /) -> str:
         return f"<placeholder {t.fullname}>"

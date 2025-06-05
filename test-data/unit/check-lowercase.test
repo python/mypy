@@ -1,64 +1,34 @@
-
-[case testTupleLowercaseSettingOff]
-# flags: --force-uppercase-builtins
-x = (3,)
-x = 3 # E: Incompatible types in assignment (expression has type "int", variable has type "Tuple[int]")
-[builtins fixtures/tuple.pyi]
-
-[case testTupleLowercaseSettingOn]
-# flags: --no-force-uppercase-builtins
+[case testTupleLowercase]
 x = (3,)
 x = 3 # E: Incompatible types in assignment (expression has type "int", variable has type "tuple[int]")
 [builtins fixtures/tuple.pyi]
 
-[case testListLowercaseSettingOff]
-# flags: --force-uppercase-builtins
-x = [3]
-x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "List[int]")
-
-[case testListLowercaseSettingOn]
-# flags: --no-force-uppercase-builtins
+[case testListLowercase]
 x = [3]
 x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "list[int]")
 
-[case testDictLowercaseSettingOff]
-# flags: --force-uppercase-builtins
-x = {"key": "value"}
-x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "Dict[str, str]")
-
-[case testDictLowercaseSettingOn]
-# flags: --no-force-uppercase-builtins
+[case testDictLowercase]
 x = {"key": "value"}
 x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "dict[str, str]")
 
-[case testSetLowercaseSettingOff]
-# flags: --force-uppercase-builtins
-x = {3}
-x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "Set[int]")
-[builtins fixtures/set.pyi]
-
-[case testSetLowercaseSettingOn]
-# flags: --no-force-uppercase-builtins
+[case testSetLowercase]
 x = {3}
 x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "set[int]")
 [builtins fixtures/set.pyi]
 
-[case testTypeLowercaseSettingOff]
-# flags: --no-force-uppercase-builtins
+[case testTypeLowercase]
 x: type[type]
 y: int
 
 y = x  # E: Incompatible types in assignment (expression has type "type[type]", variable has type "int")
 
-[case testLowercaseSettingOnTypeAnnotationHint]
-# flags: --no-force-uppercase-builtins
+[case testLowercaseTypeAnnotationHint]
 x = []  # E: Need type annotation for "x" (hint: "x: list[<type>] = ...")
 y = {}  # E: Need type annotation for "y" (hint: "y: dict[<type>, <type>] = ...")
 z = set()  # E: Need type annotation for "z" (hint: "z: set[<type>] = ...")
 [builtins fixtures/primitives.pyi]
 
-[case testLowercaseSettingOnRevealTypeType]
-# flags: --no-force-uppercase-builtins
+[case testLowercaseRevealTypeType]
 def f(t: type[int]) -> None:
     reveal_type(t)  # N: Revealed type is "type[builtins.int]"
 reveal_type(f)  # N: Revealed type is "def (t: type[builtins.int])"
