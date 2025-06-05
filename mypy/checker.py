@@ -2664,7 +2664,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 continue
             if not is_subtype(tv.default, tv.upper_bound):
                 self.fail("TypeVar default must be a subtype of the bound type", tv)
-            if tv.values and not any(tv.default == value for value in tv.values):
+            if tv.values and not any(is_same_type(tv.default, value) for value in tv.values):
                 self.fail("TypeVar default must be one of the constraint types", tv)
 
     def check_enum(self, defn: ClassDef) -> None:
