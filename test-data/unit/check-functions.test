@@ -3591,3 +3591,45 @@ class Bar(Foo):
 
     def foo(self, value: Union[int, str]) -> Union[int, str]:
         return super().foo(value)  # E: Call to abstract method "foo" of "Foo" with trivial body via super() is unsafe
+
+[case testBoundMethodsAssignedInClassBody]
+from typing import Callable
+
+class A:
+    def f(self, x: int) -> str:
+        pass
+    @classmethod
+    def g(cls, x: int) -> str:
+        pass
+    @staticmethod
+    def h(x: int) -> str:
+        pass
+    attr: Callable[[int], str]
+
+class C:
+    x1 = A.f
+    x2 = A.g
+    x3 = A().f
+    x4 = A().g
+    x5 = A.h
+    x6 = A().h
+    x7 = A().attr
+
+reveal_type(C.x1)  # N: Revealed type is "def (self: __main__.A, x: builtins.int) -> builtins.str"
+reveal_type(C.x2)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x3)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x4)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x5)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x6)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C.x7)  # N: Revealed type is "def (builtins.int) -> builtins.str"
+
+reveal_type(C().x1)  # E: Invalid self argument "C" to attribute function "x1" with type "Callable[[A, int], str]" \
+                     # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x2)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x3)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x4)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x5)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x6)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
+reveal_type(C().x7)  # E: Invalid self argument "C" to attribute function "x7" with type "Callable[[int], str]" \
+                     # N: Revealed type is "def () -> builtins.str"
+[builtins fixtures/classmethod.pyi]

@@ -644,8 +644,8 @@ class MessageBuilder:
         callee_name = callable_name(callee)
         if callee_name is not None:
             name = callee_name
-            if callee.bound_args and callee.bound_args[0] is not None:
-                base = format_type(callee.bound_args[0], self.options)
+            if object_type is not None:
+                base = format_type(object_type, self.options)
             else:
                 base = extract_type(name)
 

@@ -921,7 +921,7 @@ def analyze_var(
             bound_items = []
             for ct in call_type.items if isinstance(call_type, UnionType) else [call_type]:
                 p_ct = get_proper_type(ct)
-                if isinstance(p_ct, FunctionLike) and not p_ct.is_type_obj():
+                if isinstance(p_ct, FunctionLike) and (not p_ct.bound() or var.is_property):
                     item = expand_and_bind_callable(p_ct, var, itype, name, mx, is_trivial_self)
                 else:
                     item = expand_without_binding(ct, var, itype, original_itype, mx)
@@ -1498,6 +1498,6 @@ def bind_self_fast(method: F, original_type: Type | None = None) -> F:
         arg_types=func.arg_types[1:],
         arg_kinds=func.arg_kinds[1:],
         arg_names=func.arg_names[1:],
-        bound_args=[original_type],
+        is_bound=True,
     )
     return cast(F, res)
