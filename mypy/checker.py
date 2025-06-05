@@ -2448,7 +2448,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if not is_subtype(original_arg_type, erase_override(override_arg_type)):
                         context: Context = node
                         if isinstance(node, FuncDef) and not node.is_property:
-                            arg_node = node.arguments[i + len(override.bound_args)]
+                            arg_node = node.arguments[i + override.bound()]
                             if arg_node.line != -1:
                                 context = arg_node
                         self.msg.argument_incompatible_with_supertype(

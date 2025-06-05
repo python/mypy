@@ -4970,7 +4970,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         tp.fallback,
                         name="tuple",
                         definition=tp.definition,
-                        bound_args=tp.bound_args,
+                        is_bound=tp.is_bound,
                     )
                 self.msg.incompatible_type_application(
                     min_arg_count, len(type_vars), len(args), ctx
