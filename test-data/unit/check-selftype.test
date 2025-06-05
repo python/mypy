@@ -2219,3 +2219,44 @@ class B:
 class C(A, B):  # OK: both methods take Self
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testSelfInFuncDecoratedClassmethod]
+from collections.abc import Callable
+from typing import Self, TypeVar
+
+T = TypeVar("T")
+
+def debug(make: Callable[[type[T]], T]) -> Callable[[type[T]], T]:
+    return make
+
+class Foo:
+    @classmethod
+    @debug
+    def make(cls) -> Self:
+        return cls()
+
+class Bar(Foo): ...
+
+reveal_type(Foo.make())  # N: Revealed type is "__main__.Foo"
+reveal_type(Foo().make())  # N: Revealed type is "__main__.Foo"
+reveal_type(Bar.make())  # N: Revealed type is "__main__.Bar"
+reveal_type(Bar().make())  # N: Revealed type is "__main__.Bar"
+[builtins fixtures/tuple.pyi]
+
+[case testSelfInClassDecoratedClassmethod]
+from typing import Callable, Generic, TypeVar, Self
+
+T = TypeVar("T")
+
+class W(Generic[T]):
+    def __init__(self, fn: Callable[..., T]) -> None: ...
+    def __call__(self) -> T: ...
+
+class Check:
+    @W
+    def foo(self) -> Self:
+        ...
+
+reveal_type(Check.foo())  # N: Revealed type is "def () -> __main__.Check"
+reveal_type(Check().foo())  # N: Revealed type is "__main__.Check"
+[builtins fixtures/tuple.pyi]
