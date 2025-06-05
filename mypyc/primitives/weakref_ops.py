@@ -1,5 +1,5 @@
 from mypyc.ir.ops import ERR_MAGIC
-from mypyc.ir.rtypes import object_rprimitive
+from mypyc.ir.rtypes import object_rprimitive, weakref_rprimitive
 from mypyc.primitives.registry import ERR_NEG_INT, function_op, method_op
 
 # Weakref operations
@@ -7,14 +7,14 @@ from mypyc.primitives.registry import ERR_NEG_INT, function_op, method_op
 new_ref_op = function_op(
     name="weakref.ReferenceType",
     arg_types=[object_rprimitive, object_rprimitive],
-    return_type=object_rprimitive,
+    return_type=weakref_rprimitive,
     c_function_name="PyWeakref_NewRef",
     error_kind=ERR_MAGIC,
 )
 
 deref_op = method_op(
-    name="weakref.ReferenceType.__call__",
-    arg_types=[object_rprimitive],
+    name="__call__",
+    arg_types=[weakref_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PyWeakref_GetRef",
     error_kind=ERR_NEG_INT,
