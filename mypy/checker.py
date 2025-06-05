@@ -13,6 +13,7 @@ import mypy.checkexpr
 from mypy import errorcodes as codes, join, message_registry, nodes, operators
 from mypy.binder import ConditionalTypeBinder, Frame, get_declaration
 from mypy.checker_shared import CheckerScope, TypeCheckerSharedApi, TypeRange
+from mypy.checker_state import checker_state
 from mypy.checkmember import (
     MemberContext,
     analyze_class_attribute_access,
@@ -453,7 +454,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         Deferred functions will be processed by check_second_pass().
         """
         self.recurse_into_functions = True
-        with state.strict_optional_set(self.options.strict_optional):
+        with state.strict_optional_set(self.options.strict_optional), checker_state.set(self):
             self.errors.set_file(
                 self.path, self.tree.fullname, scope=self.tscope, options=self.options
             )
@@ -494,7 +495,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         This goes through deferred nodes, returning True if there were any.
         """
         self.recurse_into_functions = True
-        with state.strict_optional_set(self.options.strict_optional):
+        with state.strict_optional_set(self.options.strict_optional), checker_state.set(self):
             if not todo and not self.deferred_nodes:
                 return False
             self.errors.set_file(
@@ -2448,7 +2449,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if not is_subtype(original_arg_type, erase_override(override_arg_type)):
                         context: Context = node
                         if isinstance(node, FuncDef) and not node.is_property:
-                            arg_node = node.arguments[i + len(override.bound_args)]
+                            arg_node = node.arguments[i + override.bound()]
                             if arg_node.line != -1:
                                 context = arg_node
                         self.msg.argument_incompatible_with_supertype(
@@ -2663,7 +2664,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 continue
             if not is_subtype(tv.default, tv.upper_bound):
                 self.fail("TypeVar default must be a subtype of the bound type", tv)
-            if tv.values and not any(tv.default == value for value in tv.values):
+            if tv.values and not any(is_same_type(tv.default, value) for value in tv.values):
                 self.fail("TypeVar default must be one of the constraint types", tv)
 
     def check_enum(self, defn: ClassDef) -> None:
@@ -3426,7 +3427,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # store the rvalue type on the variable.
             actual_lvalue_type = None
             if lvalue_node.is_inferred and not lvalue_node.explicit_self_type:
-                rvalue_type = self.expr_checker.accept(rvalue, lvalue_node.type)
+                # Don't use partial types as context, similar to regular code path.
+                ctx = lvalue_node.type if not isinstance(lvalue_node.type, PartialType) else None
+                rvalue_type = self.expr_checker.accept(rvalue, ctx)
                 actual_lvalue_type = lvalue_node.type
                 lvalue_node.type = rvalue_type
             lvalue_type, _ = self.node_type_from_base(lvalue_node.name, lvalue_node.info, lvalue)
@@ -5452,6 +5455,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
             # The second pass narrows down the types and type checks bodies.
+            unmatched_types: TypeMap = None
             for p, g, b in zip(s.patterns, s.guards, s.bodies):
                 current_subject_type = self.expr_checker.narrow_type_from_binder(
                     named_subject, subject_type
@@ -5508,6 +5512,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     else:
                         self.accept(b)
                 self.push_type_map(else_map, from_assignment=False)
+                unmatched_types = else_map
+
+            if unmatched_types is not None:
+                for typ in list(unmatched_types.values()):
+                    self.msg.match_statement_inexhaustive_match(typ, s)
 
             # This is needed due to a quirk in frame_context. Without it types will stay narrowed
             # after the match.
@@ -6160,31 +6169,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         # considered "always right" (i.e. even if the types are not overlapping).
                         # Also note that a care must be taken to unwrap this back at read places
                         # where we use this to narrow down declared type.
-                        with self.msg.filter_errors(), self.local_type_map():
-                            # `node.callee` can be an `overload`ed function,
-                            # we need to resolve the real `overload` case.
-                            _, real_func = self.expr_checker.check_call(
-                                get_proper_type(self.lookup_type(node.callee)),
-                                node.args,
-                                node.arg_kinds,
-                                node,
-                                node.arg_names,
-                            )
-                        real_func = get_proper_type(real_func)
-                        if not isinstance(real_func, CallableType) or not (
-                            real_func.type_guard or real_func.type_is
-                        ):
-                            return {}, {}
-
-                        if real_func.type_guard is not None:
-                            return {expr: TypeGuardedType(real_func.type_guard)}, {}
+                        if node.callee.type_guard is not None:
+                            return {expr: TypeGuardedType(node.callee.type_guard)}, {}
                         else:
-                            assert real_func.type_is is not None
+                            assert node.callee.type_is is not None
                             return conditional_types_to_typemaps(
                                 expr,
                                 *self.conditional_types_with_intersection(
                                     self.lookup_type(expr),
-                                    [TypeRange(real_func.type_is, is_upper_bound=False)],
+                                    [TypeRange(node.callee.type_is, is_upper_bound=False)],
                                     expr,
                                 ),
                             )
@@ -6528,7 +6521,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # and create function that will try replaying the same lookup
             # operation against arbitrary types.
             if isinstance(expr, MemberExpr):
-                parent_expr = collapse_walrus(expr.expr)
+                parent_expr = self._propagate_walrus_assignments(expr.expr, output)
                 parent_type = self.lookup_type_or_none(parent_expr)
                 member_name = expr.name
 
@@ -6551,9 +6544,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                         return member_type
 
             elif isinstance(expr, IndexExpr):
-                parent_expr = collapse_walrus(expr.base)
+                parent_expr = self._propagate_walrus_assignments(expr.base, output)
                 parent_type = self.lookup_type_or_none(parent_expr)
 
+                self._propagate_walrus_assignments(expr.index, output)
                 index_type = self.lookup_type_or_none(expr.index)
                 if index_type is None:
                     return output
@@ -6626,6 +6620,24 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
             expr = parent_expr
             expr_type = output[parent_expr] = make_simplified_union(new_parent_types)
+
+    def _propagate_walrus_assignments(
+        self, expr: Expression, type_map: dict[Expression, Type]
+    ) -> Expression:
+        """Add assignments from walrus expressions to inferred types.
+
+        Only considers nested assignment exprs, does not recurse into other types.
+        This may be added later if necessary by implementing a dedicated visitor.
+        """
+        if isinstance(expr, AssignmentExpr):
+            if isinstance(expr.value, AssignmentExpr):
+                self._propagate_walrus_assignments(expr.value, type_map)
+            assigned_type = self.lookup_type_or_none(expr.value)
+            parent_expr = collapse_walrus(expr)
+            if assigned_type is not None:
+                type_map[parent_expr] = assigned_type
+            return parent_expr
+        return expr
 
     def refine_identity_comparison_expression(
         self,
@@ -7685,9 +7697,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         types: list[TypeRange] = []
         for typ in all_types:
             if isinstance(typ, FunctionLike) and typ.is_type_obj():
-                # Type variables may be present -- erase them, which is the best
-                # we can do (outside disallowing them here).
-                erased_type = erase_typevars(typ.items[0].ret_type)
+                # If a type is generic, `isinstance` can only narrow its variables to Any.
+                any_parameterized = fill_typevars_with_any(typ.type_object())
+                # Tuples may have unattended type variables among their items
+                if isinstance(any_parameterized, TupleType):
+                    erased_type = erase_typevars(any_parameterized)
+                else:
+                    erased_type = any_parameterized
                 types.append(TypeRange(erased_type, is_upper_bound=False))
             elif isinstance(typ, TypeType):
                 # Type[A] means "any type that is a subtype of A" rather than "precisely type A"

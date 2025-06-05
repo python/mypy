@@ -633,6 +633,11 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             new_args = infer_method_arg_types(
                 ctx.name, ctx.class_info.self_var, [arg.name for arg in args]
             )
+
+            if ctx.name == "__exit__":
+                self.import_tracker.add_import("types")
+                self.import_tracker.require_name("types")
+
             if new_args is not None:
                 args = new_args
 
