@@ -2449,7 +2449,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if not is_subtype(original_arg_type, erase_override(override_arg_type)):
                         context: Context = node
                         if isinstance(node, FuncDef) and not node.is_property:
-                            arg_node = node.arguments[i + len(override.bound_args)]
+                            arg_node = node.arguments[i + override.bound()]
                             if arg_node.line != -1:
                                 context = arg_node
                         self.msg.argument_incompatible_with_supertype(
@@ -2664,7 +2664,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 continue
             if not is_subtype(tv.default, tv.upper_bound):
                 self.fail("TypeVar default must be a subtype of the bound type", tv)
-            if tv.values and not any(tv.default == value for value in tv.values):
+            if tv.values and not any(is_same_type(tv.default, value) for value in tv.values):
                 self.fail("TypeVar default must be one of the constraint types", tv)
 
     def check_enum(self, defn: ClassDef) -> None:
@@ -5455,6 +5455,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
             # The second pass narrows down the types and type checks bodies.
+            unmatched_types: TypeMap = None
             for p, g, b in zip(s.patterns, s.guards, s.bodies):
                 current_subject_type = self.expr_checker.narrow_type_from_binder(
                     named_subject, subject_type
@@ -5511,6 +5512,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     else:
                         self.accept(b)
                 self.push_type_map(else_map, from_assignment=False)
+                unmatched_types = else_map
+
+            if unmatched_types is not None:
+                for typ in list(unmatched_types.values()):
+                    self.msg.match_statement_inexhaustive_match(typ, s)
 
             # This is needed due to a quirk in frame_context. Without it types will stay narrowed
             # after the match.
@@ -7691,9 +7697,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         types: list[TypeRange] = []
         for typ in all_types:
             if isinstance(typ, FunctionLike) and typ.is_type_obj():
-                # Type variables may be present -- erase them, which is the best
-                # we can do (outside disallowing them here).
-                erased_type = erase_typevars(typ.items[0].ret_type)
+                # If a type is generic, `isinstance` can only narrow its variables to Any.
+                any_parameterized = fill_typevars_with_any(typ.type_object())
+                # Tuples may have unattended type variables among their items
+                if isinstance(any_parameterized, TupleType):
+                    erased_type = erase_typevars(any_parameterized)
+                else:
+                    erased_type = any_parameterized
                 types.append(TypeRange(erased_type, is_upper_bound=False))
             elif isinstance(typ, TypeType):
                 # Type[A] means "any type that is a subtype of A" rather than "precisely type A"

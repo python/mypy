@@ -845,6 +845,7 @@ of the above sections.
         x = 'a string'
         x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
+
 .. _configuring-error-messages:
 
 Configuring error messages
@@ -935,11 +936,6 @@ in error messages.
     if it seems likely that most of the remaining errors will not be
     useful or they may be overly noisy. If ``N`` is negative, there is
     no limit. The default limit is -1.
-
-.. option:: --force-uppercase-builtins
-
-    Always use ``List`` instead of ``list`` in error messages,
-    even on Python 3.9+.
 
 .. option:: --force-union-syntax
 

@@ -460,14 +460,16 @@ from dataclasses import dataclass, field, KW_ONLY
 class Application:
     _: KW_ONLY
     name: str = 'Unnamed'
-    rating: int = field(kw_only=False)  # E: Attributes without a default cannot follow attributes with one
+    rating: int = field(kw_only=False)
 
 Application(name='name', rating=5)
-Application()  # E: Missing positional argument "name" in call to "Application"
-Application('name')  # E: Too many positional arguments for "Application" # E: Too few arguments for "Application"
-Application('name', 123)  # E: Too many positional arguments for "Application"
-Application('name', rating=123)  # E: Too many positional arguments for "Application"
-
+Application()  # E: Missing positional argument "rating" in call to "Application"
+Application(123)
+Application('name')  # E: Argument 1 to "Application" has incompatible type "str"; expected "int"
+Application('name', 123)  # E: Too many positional arguments for "Application" \
+                          # E: Argument 1 to "Application" has incompatible type "str"; expected "int" \
+                          # E: Argument 2 to "Application" has incompatible type "int"; expected "str"
+Application(123, rating=123)  # E: "Application" gets multiple values for keyword argument "rating"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyWithSentinelAndSubclass]
@@ -2617,4 +2619,31 @@ raw_target: object
 
 if isinstance(raw_target, type) and dataclasses.is_dataclass(raw_target):
     reveal_type(raw_target)  # N: Revealed type is "type[dataclasses.DataclassInstance]"
+[builtins fixtures/tuple.pyi]
+
+[case testDataclassKwOnlyArgsLast]
+from dataclasses import dataclass, field
+
+@dataclass
+class User:
+    id: int = field(kw_only=True)
+    name: str
+
+User("Foo", id=0)
+[builtins fixtures/tuple.pyi]
+
+[case testDataclassKwOnlyArgsDefaultAllowedNonLast]
+from dataclasses import dataclass, field
+
+@dataclass
+class User:
+    id: int = field(kw_only=True, default=0)
+    name: str
+
+User()  # E: Missing positional argument "name" in call to "User"
+User("")
+User(0)  # E: Argument 1 to "User" has incompatible type "int"; expected "str"
+User("", 0)  # E: Too many positional arguments for "User"
+User("", id=0)
+User("", name="")  # E: "User" gets multiple values for keyword argument "name"
 [builtins fixtures/tuple.pyi]

@@ -778,6 +778,23 @@ def handle(model: Model) -> int:
     return 0
 [builtins fixtures/tuple.pyi]
 
+[case testTypeGuardRestrictTypeVarUnion]
+from typing import Union, TypeVar
+from typing_extensions import TypeGuard
+
+class A:
+    x: int
+class B:
+    x: str
+
+def is_b(x: object) -> TypeGuard[B]: ...
+
+T = TypeVar("T")
+def test(x: T) -> T:
+    if isinstance(x, A) or is_b(x):
+        reveal_type(x.x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    return x
+[builtins fixtures/isinstance.pyi]
 
 [case testOverloadedTypeGuardType]
 from __future__ import annotations

@@ -6862,3 +6862,27 @@ if int():
 [out]
 [out2]
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testMethodMakeBoundIncremental]
+from a import A
+a = A()
+a.f()
+[file a.py]
+class B:
+    def f(self, s: A) -> int: ...
+
+def f(s: A) -> int: ...
+
+class A:
+    f = f
+[file a.py.2]
+class B:
+    def f(self, s: A) -> int: ...
+
+def f(s: A) -> int: ...
+
+class A:
+    f = B().f
+[out]
+[out2]
+main:3: error: Too few arguments

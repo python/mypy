@@ -934,6 +934,53 @@ def welp() -> int:
 from native import welp
 assert welp() == 35
 
+[case testSubclassUnsupportedException]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class MyError(ZeroDivisionError):
+    pass
+
+@mypyc_attr(native_class=False)
+class MyError2(ZeroDivisionError):
+    def __init__(self, s: str) -> None:
+        super().__init__(s + "!")
+        self.x = s.upper()
+
+def f() -> None:
+    raise MyError("foobar")
+
+def test_non_native_exception_subclass_basics() -> None:
+    e = MyError()
+    assert isinstance(e, MyError)
+    assert isinstance(e, ZeroDivisionError)
+    assert isinstance(e, Exception)
+
+    e = MyError("x")
+    assert repr(e) == "MyError('x')"
+
+    e2 = MyError2("ab")
+    assert repr(e2) == "MyError2('ab!')", repr(e2)
+    assert e2.x == "AB"
+
+def test_raise_non_native_exception_subclass_1() -> None:
+    try:
+        f()
+    except MyError:
+        x = True
+    else:
+        assert False
+    assert x
+
+def test_raise_non_native_exception_subclass_2() -> None:
+    try:
+        f()
+    except ZeroDivisionError:
+        x = True
+    else:
+        assert False
+    assert x
+
 [case testSubclassPy]
 from b import B, V
 class A(B):
@@ -2983,3 +3030,31 @@ class B(native.A):
 
 b: B = B.make()
 assert(B.count == 2)
+
+[case testTypeVarNarrowing]
+from typing import TypeVar
+
+class B:
+    def __init__(self, x: int) -> None:
+        self.x = x
+class C(B):
+    def __init__(self, x: int, y: str) -> None:
+        self.x = x
+        self.y = y
+
+T = TypeVar("T", bound=B)
+def f(x: T) -> T:
+    if isinstance(x, C):
+        print("C", x.y)
+        return x
+    print("B", x.x)
+    return x
+
+[file driver.py]
+from native import f, B, C
+
+f(B(1))
+f(C(1, "yes"))
+[out]
+B 1
+C yes

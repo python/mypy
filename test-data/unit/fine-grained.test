@@ -11217,3 +11217,27 @@ class A:
 [out]
 ==
 main:3: error: Property "f" defined in "A" is read-only
+
+[case testMethodMakeBoundFineGrained]
+from a import A
+a = A()
+a.f()
+[file a.py]
+class B:
+    def f(self, s: A) -> int: ...
+
+def f(s: A) -> int: ...
+
+class A:
+    f = f
+[file a.py.2]
+class B:
+    def f(self, s: A) -> int: ...
+
+def f(s: A) -> int: ...
+
+class A:
+    f = B().f
+[out]
+==
+main:3: error: Too few arguments

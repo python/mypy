@@ -271,9 +271,6 @@ class TypeFixer(TypeVisitor[None]):
             ct.ret_type.accept(self)
         for v in ct.variables:
             v.accept(self)
-        for arg in ct.bound_args:
-            if arg:
-                arg.accept(self)
         if ct.type_guard is not None:
             ct.type_guard.accept(self)
         if ct.type_is is not None:
