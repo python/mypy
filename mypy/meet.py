@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import product
 from typing import Callable
 
 from mypy import join
@@ -130,16 +131,23 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if isinstance(declared, UnionType):
         return make_simplified_union(
             [
-                narrow_declared_type(x, narrowed)
-                for x in declared.relevant_items()
+                narrow_declared_type(d, n)
+                for d, n in product(
+                    declared.relevant_items(),
+                    narrowed.relevant_items() if isinstance(narrowed, UnionType) else (narrowed,),
+                )
                 # This (ugly) special-casing is needed to support checking
                 # branches like this:
                 # x: Union[float, complex]
                 # if isinstance(x, int):
                 #     ...
+                # And assignments like this:
+                # x: float | None
+                # y: int | None
+                # x = y
                 if (
-                    is_overlapping_types(x, narrowed, ignore_promotions=True)
-                    or is_subtype(narrowed, x, ignore_promotions=False)
+                    is_overlapping_types(d, n, ignore_promotions=True)
+                    or is_subtype(n, d, ignore_promotions=False)
                 )
             ]
         )
