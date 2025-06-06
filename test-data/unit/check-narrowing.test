@@ -2436,7 +2436,7 @@ y = None
 for x in xs:
     if x is not None:
         if y is None:
-            y = {}  # E: Need type annotation for "y" (hint: "y: Dict[<type>, <type>] = ...")
+            y = {}  # E: Need type annotation for "y" (hint: "y: dict[<type>, <type>] = ...")
 
 [builtins fixtures/list.pyi]
 
