@@ -252,16 +252,16 @@ command.
 Statically inspect expressions
 ******************************
 
-The daemon allows to get declared or inferred type of an expression (or other
+The daemon allows one to get the declared or inferred type of an expression (or other
 information about an expression, such as known attributes or definition location)
-using ``dmypy inspect LOCATION`` command. The location of the expression should be
+using the ``dmypy inspect LOCATION`` command. The location of the expression should be
 specified in the format ``path/to/file.py:line:column[:end_line:end_column]``.
 Both line and column are 1-based. Both start and end position are inclusive.
 These rules match how mypy prints the error location in error messages.
 
 If a span is given (i.e. all 4 numbers), then only an exactly matching expression
 is inspected. If only a position is given (i.e. 2 numbers, line and column), mypy
-will inspect all *expressions*, that include this position, starting from the
+will inspect all expressions that include this position, starting from the
 innermost one.
 
 Consider this Python code snippet:
