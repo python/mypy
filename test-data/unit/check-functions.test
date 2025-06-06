@@ -3592,6 +3592,28 @@ class Bar(Foo):
     def foo(self, value: Union[int, str]) -> Union[int, str]:
         return super().foo(value)  # E: Call to abstract method "foo" of "Foo" with trivial body via super() is unsafe
 
+[case fullNamesOfImportedBaseClassesDisplayed]
+from a import A
+
+class B(A):
+    def f(self, x: str) -> None:  # E: Argument 1 of "f" is incompatible with supertype "a.A"; supertype defines the argument type as "int" \
+                                  # N: This violates the Liskov substitution principle \
+                                  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+        ...
+    def g(self, x: str) -> None:  # E: Signature of "g" incompatible with supertype "a.A" \
+                                  # N:      Superclass: \
+                                  # N:          def g(self) -> None \
+                                  # N:      Subclass: \
+                                  # N:          def g(self, x: str) -> None
+        ...
+
+[file a.py]
+class A:
+    def f(self, x: int) -> None:
+        ...
+    def g(self) -> None:
+        ...
+
 [case testBoundMethodsAssignedInClassBody]
 from typing import Callable
 
