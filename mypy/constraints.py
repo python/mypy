@@ -273,7 +273,33 @@ def infer_constraints_for_callable(
     if any(isinstance(v, ParamSpecType) for v in callee.variables):
         # As a perf optimization filter imprecise constraints only when we can have them.
         constraints = filter_imprecise_kinds(constraints)
+
+    if any(isinstance(get_proper_type(c.target), TypedDictType) for c in constraints):
+        constraints = _omit_dict_constraints_if_typeddict_found(constraints)
     return constraints
+
+
+def _omit_dict_constraints_if_typeddict_found(constraints: list[Constraint]) -> list[Constraint]:
+    """If a type variable has any `TypedDict` constraints, exclude its `dict` constraints."""
+
+    # This allows inferring types generic in typeddicts when a literal *and* explicit type
+    # are present among arguments - see testInferLiteralTypedDict.
+    cmap: dict[TypeVarId, list[Constraint]] = {}
+    for con in constraints:
+        cmap.setdefault(con.type_var, []).append(con)
+    res = []
+    for group in cmap.values():
+        if not any(isinstance(get_proper_type(c.target), TypedDictType) for c in group):
+            res.extend(group)
+            continue
+        for c in group:
+            proper_target = get_proper_type(c.target)
+            if (
+                not isinstance(proper_target, Instance)
+                or proper_target.type.fullname != "builtins.dict"
+            ):
+                res.append(c)
+    return res
 
 
 def infer_constraints(
