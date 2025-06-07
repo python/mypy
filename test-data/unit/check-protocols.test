@@ -4551,3 +4551,28 @@ class Test(Generic[T]):
 t = Test(Mock())
 reveal_type(t)  # N: Revealed type is "__main__.Test[Any]"
 [builtins fixtures/dict.pyi]
+
+[case testProtocolErrorReportingNoDuplicates]
+from typing import Callable, Protocol, TypeVar
+
+class P(Protocol):
+    def meth(self) -> int: ...
+
+class C:
+    def meth(self) -> str: ...
+
+def foo() -> None:
+    c: P = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "P") \
+                # N: Following member(s) of "C" have conflicts: \
+                # N:     Expected: \
+                # N:         def meth(self) -> int \
+                # N:     Got: \
+                # N:         def meth(self) -> str
+    x = defer()
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], list[T]]: ...
+
+@deco
+def defer() -> int: ...
+[builtins fixtures/list.pyi]

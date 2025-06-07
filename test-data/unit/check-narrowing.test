@@ -2366,7 +2366,6 @@ class A:
                 if z:
                     z[0] + "v"  # E: Unsupported operand types for + ("int" and "str")
                 z.append(1)
-
 [builtins fixtures/primitives.pyi]
 
 [case testPersistentUnreachableLinesNestedInInpersistentUnreachableLines]
@@ -2379,7 +2378,6 @@ while True:
         if y is not None:
             reveal_type(y)  # E: Statement is unreachable
     x = 1
-
 [builtins fixtures/bool.pyi]
 
 [case testAvoidFalseRedundantCastInLoops]
@@ -2401,7 +2399,6 @@ def main_no_cast(p: Processor) -> None:
     ed = cast(str, ...)
     while True:
         ed = p(ed)  # E: Argument 1 has incompatible type "Union[str, int]"; expected "str"
-
 [builtins fixtures/bool.pyi]
 
 [case testAvoidFalseUnreachableInLoop1]
@@ -2414,7 +2411,6 @@ x: int | None
 x = 1
 while x is not None or b():
     x = f()
-
 [builtins fixtures/bool.pyi]
 
 [case testAvoidFalseUnreachableInLoop2]
@@ -2425,7 +2421,6 @@ while y is None:
     if y is None:
         y = []
     y.append(1)
-
 [builtins fixtures/list.pyi]
 
 [case testAvoidFalseUnreachableInLoop3]
@@ -2437,7 +2432,6 @@ for x in xs:
     if x is not None:
         if y is None:
             y = {}  # E: Need type annotation for "y" (hint: "y: dict[<type>, <type>] = ...")
-
 [builtins fixtures/list.pyi]
 
 [case testAvoidFalseRedundantExprInLoop]
@@ -2450,7 +2444,6 @@ x: int | None
 x = 1
 while x is not None and b():
     x = f()
-
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypeVarMultiple]
