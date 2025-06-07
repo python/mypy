@@ -597,6 +597,10 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
 
     @property
     def setter(self) -> Decorator:
+        # Do some consistency checks first.
+        first_item = self.items[0]
+        assert isinstance(first_item, Decorator)
+        assert first_item.var.is_settable_property
         assert self.setter_index is not None
         item = self.items[self.setter_index]
         assert isinstance(item, Decorator)
