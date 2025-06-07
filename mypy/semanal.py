@@ -1558,6 +1558,7 @@ class SemanticAnalyzer(
                             )
                             assert isinstance(setter_func_type, CallableType)
                             bare_setter_type = setter_func_type
+                            defn.setter_index = i + 1
                         if first_node.name == "deleter":
                             item.func.abstract_status = first_item.func.abstract_status
                         for other_node in item.decorators[1:]:
