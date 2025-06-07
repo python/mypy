@@ -644,8 +644,8 @@ class MessageBuilder:
         callee_name = callable_name(callee)
         if callee_name is not None:
             name = callee_name
-            if callee.bound_args and callee.bound_args[0] is not None:
-                base = format_type(callee.bound_args[0], self.options)
+            if object_type is not None:
+                base = format_type(object_type, self.options)
             else:
                 base = extract_type(name)
 
@@ -1823,13 +1823,10 @@ class MessageBuilder:
                     recommended_type = f"Optional[{type_dec}]"
             elif node.type.type.fullname in reverse_builtin_aliases:
                 # partial types other than partial None
-                alias = reverse_builtin_aliases[node.type.type.fullname]
-                alias = alias.split(".")[-1]
-                if alias == "Dict":
+                name = node.type.type.fullname.partition(".")[2]
+                if name == "dict":
                     type_dec = f"{type_dec}, {type_dec}"
-                if self.options.use_lowercase_names():
-                    alias = alias.lower()
-                recommended_type = f"{alias}[{type_dec}]"
+                recommended_type = f"{name}[{type_dec}]"
         if recommended_type is not None:
             hint = f' (hint: "{node.name}: {recommended_type} = ...")'
 
@@ -2424,8 +2421,7 @@ class MessageBuilder:
         """Format very long tuple type using an ellipsis notation"""
         item_cnt = len(typ.items)
         if item_cnt > MAX_TUPLE_ITEMS:
-            return "{}[{}, {}, ... <{} more items>]".format(
-                "tuple" if self.options.use_lowercase_names() else "Tuple",
+            return "tuple[{}, {}, ... <{} more items>]".format(
                 format_type_bare(typ.items[0], self.options),
                 format_type_bare(typ.items[1], self.options),
                 str(item_cnt - 2),
@@ -2610,10 +2606,7 @@ def format_type_inner(
         if itype.type.fullname == "typing._SpecialForm":
             # This is not a real type but used for some typing-related constructs.
             return "<typing special form>"
-        if itype.type.fullname in reverse_builtin_aliases and not options.use_lowercase_names():
-            alias = reverse_builtin_aliases[itype.type.fullname]
-            base_str = alias.split(".")[-1]
-        elif verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
+        if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
             base_str = itype.type.fullname
         else:
             base_str = itype.type.name
@@ -2624,7 +2617,7 @@ def format_type_inner(
             return base_str
         elif itype.type.fullname == "builtins.tuple":
             item_type_str = format(itype.args[0])
-            return f"{'tuple' if options.use_lowercase_names() else 'Tuple'}[{item_type_str}, ...]"
+            return f"tuple[{item_type_str}, ...]"
         else:
             # There are type arguments. Convert the arguments to strings.
             return f"{base_str}[{format_list(itype.args)}]"
@@ -2660,11 +2653,7 @@ def format_type_inner(
         if typ.partial_fallback.type.fullname != "builtins.tuple":
             return format(typ.partial_fallback)
         type_items = format_list(typ.items) or "()"
-        if options.use_lowercase_names():
-            s = f"tuple[{type_items}]"
-        else:
-            s = f"Tuple[{type_items}]"
-        return s
+        return f"tuple[{type_items}]"
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name
         if not typ.is_anonymous():
@@ -2736,8 +2725,7 @@ def format_type_inner(
     elif isinstance(typ, UninhabitedType):
         return "Never"
     elif isinstance(typ, TypeType):
-        type_name = "type" if options.use_lowercase_names() else "Type"
-        return f"{type_name}[{format(typ.item)}]"
+        return f"type[{format(typ.item)}]"
     elif isinstance(typ, FunctionLike):
         func = typ
         if func.is_type_obj():

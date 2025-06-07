@@ -138,7 +138,9 @@ Foo.lol = 50  # E: Only class variables defined as ClassVar can be assigned to
 def decorator(x: Any) -> Any:
     return x
 
-class NeverMetaclass(type):  # E: Inheriting from most builtin types is unimplemented
+class NeverMetaclass(type):  # E: Inheriting from most builtin types is unimplemented \
+                             # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                             # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
     pass
 
 class Concrete1:

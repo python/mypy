@@ -6,7 +6,7 @@ import traceback
 from collections import defaultdict
 from collections.abc import Iterable
 from typing import Callable, Final, NoReturn, Optional, TextIO, TypeVar
-from typing_extensions import Literal, TypeAlias as _TypeAlias
+from typing_extensions import Literal, Self, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
 from mypy.error_formatter import ErrorFormatter
@@ -179,7 +179,7 @@ class ErrorWatcher:
         self._filter_deprecated = filter_deprecated
         self._filtered: list[ErrorInfo] | None = [] if save_filtered_errors else None
 
-    def __enter__(self) -> ErrorWatcher:
+    def __enter__(self) -> Self:
         self.errors._watchers.append(self)
         return self
 
@@ -218,6 +218,60 @@ class ErrorWatcher:
     def filtered_errors(self) -> list[ErrorInfo]:
         assert self._filtered is not None
         return self._filtered
+
+
+class LoopErrorWatcher(ErrorWatcher):
+    """Error watcher that filters and separately collects `unreachable` errors,
+    `redundant-expr` and `redundant-casts` errors, and revealed types when analysing
+    loops iteratively to help avoid making too-hasty reports."""
+
+    # Meaning of the tuple items: ErrorCode, message, line, column, end_line, end_column:
+    uselessness_errors: set[tuple[ErrorCode, str, int, int, int, int]]
+
+    # Meaning of the tuple items: function_or_member, line, column, end_line, end_column:
+    revealed_types: dict[tuple[str | None, int, int, int, int], set[str]]
+
+    # Not only the lines where the error report occurs but really all unreachable lines:
+    unreachable_lines: set[int]
+
+    def __init__(
+        self,
+        errors: Errors,
+        *,
+        filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
+        save_filtered_errors: bool = False,
+        filter_deprecated: bool = False,
+    ) -> None:
+        super().__init__(
+            errors,
+            filter_errors=filter_errors,
+            save_filtered_errors=save_filtered_errors,
+            filter_deprecated=filter_deprecated,
+        )
+        self.uselessness_errors = set()
+        self.unreachable_lines = set()
+        self.revealed_types = defaultdict(set)
+
+    def on_error(self, file: str, info: ErrorInfo) -> bool:
+
+        if info.code in (codes.UNREACHABLE, codes.REDUNDANT_EXPR, codes.REDUNDANT_CAST):
+            self.uselessness_errors.add(
+                (info.code, info.message, info.line, info.column, info.end_line, info.end_column)
+            )
+            if info.code == codes.UNREACHABLE:
+                self.unreachable_lines.update(range(info.line, info.end_line + 1))
+            return True
+
+        if info.code == codes.MISC and info.message.startswith("Revealed type is "):
+            key = info.function_or_member, info.line, info.column, info.end_line, info.end_column
+            types = info.message.split('"')[1]
+            if types.startswith("Union["):
+                self.revealed_types[key].update(types[6:-1].split(", "))
+            else:
+                self.revealed_types[key].add(types)
+            return True
+
+        return super().on_error(file, info)
 
 
 class Errors:

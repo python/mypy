@@ -810,7 +810,7 @@ from typing import TypedDict
 D = TypedDict('D', {'x': int})
 d: object
 if isinstance(d, D):   # E: Cannot use isinstance() with TypedDict type
-    reveal_type(d)     # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int})"
+    reveal_type(d)     # N: Revealed type is "__main__.D"
 issubclass(object, D)  # E: Cannot use issubclass() with TypedDict type
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-typeddict.pyi]

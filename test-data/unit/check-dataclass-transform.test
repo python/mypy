@@ -265,7 +265,7 @@ class Foo:
 
 Foo(a=5, b_=1)  # E: Unexpected keyword argument "a" for "Foo"
 Foo(a_=1, b_=1, noinit=1)  # E: Unexpected keyword argument "noinit" for "Foo"
-Foo(1, 2, 3)  # E: Too many positional arguments for "Foo"
+Foo(1, 2, 3) # (a, b, unused1)
 foo = Foo(1, 2, kwonly=3)
 reveal_type(foo.noinit)  # N: Revealed type is "builtins.int"
 reveal_type(foo.unused1)  # N: Revealed type is "builtins.int"
