@@ -28,18 +28,24 @@ def insert_spills(ir: FuncIR, env: ClassIR) -> None:
     # TODO: Actually for now, no Registers at all -- we keep the manual spills
     entry_live = {op for op in entry_live if not isinstance(op, Register)}
 
-    ir.blocks = spill_regs(ir.blocks, env, entry_live, live)
+    ir.blocks = spill_regs(ir.blocks, env, entry_live, live, ir.arg_regs[0])
 
 
 def spill_regs(
-    blocks: list[BasicBlock], env: ClassIR, to_spill: set[Value], live: AnalysisResult[Value]
+    blocks: list[BasicBlock],
+    env: ClassIR,
+    to_spill: set[Value],
+    live: AnalysisResult[Value],
+    self_reg: Register,
 ) -> list[BasicBlock]:
+    env_reg: Value
     for op in blocks[0].ops:
         if isinstance(op, GetAttr) and op.attr == "__mypyc_env__":
             env_reg = op
             break
     else:
-        raise AssertionError("could not find __mypyc_env__")
+        # Environment has been merged into generator object
+        env_reg = self_reg
 
     spill_locs = {}
     for i, val in enumerate(to_spill):

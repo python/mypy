@@ -102,7 +102,6 @@ class ASTMergeSuite(DataSuite):
         options.export_types = True
         options.show_traceback = True
         options.allow_empty_bodies = True
-        options.force_uppercase_builtins = True
         main_path = os.path.join(test_temp_dir, "main")
 
         self.str_conv.options = options

@@ -304,9 +304,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
         generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
         emit_line()
-        if del_method:
-            generate_finalize_for_class(del_method, finalize_name, emitter)
-            emit_line()
 
         if cl.allow_interpreted_subclasses:
             shadow_vtable_name: str | None = generate_vtables(
@@ -316,6 +313,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         else:
             shadow_vtable_name = None
         vtable_name = generate_vtables(cl, vtable_setup_name, vtable_name, emitter, shadow=False)
+        emit_line()
+    if del_method:
+        generate_finalize_for_class(del_method, finalize_name, emitter)
         emit_line()
     if needs_getseters:
         generate_getseter_declarations(cl, emitter)

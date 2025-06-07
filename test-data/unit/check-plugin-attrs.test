@@ -31,7 +31,7 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
 A(1, [2])
 A(1, [2], '3', 4)
-A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 [builtins fixtures/list.pyi]
 
@@ -49,7 +49,7 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
 A(1, [2])
 A(1, [2], '3', 4)
-A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 [builtins fixtures/list.pyi]
 
@@ -67,7 +67,7 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
 A(1, [2])
 A(1, [2], '3', 4)
-A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 [builtins fixtures/list.pyi]
 
@@ -120,7 +120,7 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: Any, b: builtins.list[builtins.int], c: Any =, d: Any =) -> __main__.A"
 A(1, [2])
 A(1, [2], '3', 4)
-A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]"
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "list[int]"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 [builtins fixtures/list.pyi]
 
@@ -463,7 +463,7 @@ class A(Generic[T]):
     def bar(self) -> T:
         return self.x[0]
     def problem(self) -> T:
-        return self.x  # E: Incompatible return value type (got "List[T]", expected "T")
+        return self.x  # E: Incompatible return value type (got "list[T]", expected "T")
 reveal_type(A) # N: Revealed type is "def [T] (x: builtins.list[T`1], y: T`1) -> __main__.A[T`1]"
 a = A([1], 2)
 reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
@@ -495,7 +495,7 @@ class A(Generic[T]):
     def bar(self) -> T:
         return self.x[0]
     def problem(self) -> T:
-        return self.x  # E: Incompatible return value type (got "List[T]", expected "T")
+        return self.x  # E: Incompatible return value type (got "list[T]", expected "T")
 reveal_type(A) # N: Revealed type is "def [T] (x: typing.Iterable[T`1], y: T`1) -> __main__.A[T`1]"
 a1 = A([1], 2)
 reveal_type(a1)  # N: Revealed type is "__main__.A[builtins.int]"
@@ -668,7 +668,7 @@ class A(Generic[T]):
     x: Optional[T]
     @classmethod
     def clsmeth(cls) -> None:
-       reveal_type(cls)  # N: Revealed type is "Type[__main__.A[T`1]]"
+       reveal_type(cls)  # N: Revealed type is "type[__main__.A[T`1]]"
 
 [builtins fixtures/classmethod.pyi]
 
@@ -723,7 +723,7 @@ class A:
     b: str = attr.ib()
     @classmethod
     def new(cls) -> A:
-       reveal_type(cls)  # N: Revealed type is "Type[__main__.A]"
+       reveal_type(cls)  # N: Revealed type is "type[__main__.A]"
        return cls(6, 'hello')
     @classmethod
     def bad(cls) -> A:
@@ -758,7 +758,7 @@ class A:
 
     @classmethod
     def foo(cls, x: Union[int, str]) -> Union[int, str]:
-        reveal_type(cls)            # N: Revealed type is "Type[__main__.A]"
+        reveal_type(cls)            # N: Revealed type is "type[__main__.A]"
         reveal_type(cls.other())    # N: Revealed type is "builtins.str"
         return x
 
@@ -1207,7 +1207,7 @@ def my_factory() -> int:
     return 7
 @attr.s
 class A:
-    x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "int")
+    x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "list[Never]", variable has type "int")
     y: str = attr.ib(factory=my_factory) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/list.pyi]
 
@@ -1518,7 +1518,7 @@ class A:
     b: int = attr.ib()
     c: str = attr.ib()
 
-reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
 reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
 reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[builtins.int]"
 A.__attrs_attrs__.x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
@@ -1533,7 +1533,7 @@ class A:
     b = attr.ib()
     c = attr.ib()
 
-reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[Any], attr.Attribute[Any], fallback=__main__.A.____main___A_AttrsAttributes__]"
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "tuple[attr.Attribute[Any], attr.Attribute[Any], fallback=__main__.A.____main___A_AttrsAttributes__]"
 reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[Any]"
 reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[Any]"
 A.__attrs_attrs__.x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
@@ -1548,7 +1548,7 @@ class A:
     b: int
     c: str
 
-reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
 reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
 reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[builtins.int]"
 A.__attrs_attrs__.x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
@@ -1576,8 +1576,8 @@ def takes_attrs_instance(inst: AttrsInstance) -> None:
 takes_attrs_cls(A)
 takes_attrs_instance(A(1, ""))
 
-takes_attrs_cls(A(1, ""))  # E: Argument 1 to "takes_attrs_cls" has incompatible type "A"; expected "Type[AttrsInstance]"
-takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "Type[A]"; expected "AttrsInstance" # N: ClassVar protocol member AttrsInstance.__attrs_attrs__ can never be matched by a class object
+takes_attrs_cls(A(1, ""))  # E: Argument 1 to "takes_attrs_cls" has incompatible type "A"; expected "type[AttrsInstance]"
+takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "type[A]"; expected "AttrsInstance" # N: ClassVar protocol member AttrsInstance.__attrs_attrs__ can never be matched by a class object
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsFields]
@@ -1589,7 +1589,7 @@ class A:
     b: int
     c: str
 
-reveal_type(f(A))  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
+reveal_type(f(A))  # N: Revealed type is "tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
 reveal_type(f(A)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
 reveal_type(f(A).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
 f(A).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
@@ -1613,7 +1613,7 @@ class A:
 TA = TypeVar('TA', bound=A)
 
 def f(t: TA) -> None:
-    reveal_type(fields(t))  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
+    reveal_type(fields(t))  # N: Revealed type is "tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
     reveal_type(fields(t)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
     reveal_type(fields(t).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
     fields(t).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
@@ -1632,8 +1632,8 @@ class A:
 if has(A):
     fields(A)
 else:
-    fields(A)  # E: Argument 1 to "fields" has incompatible type "Type[A]"; expected "Type[AttrsInstance]"
-fields(None)  # E: Argument 1 to "fields" has incompatible type "None"; expected "Type[AttrsInstance]"
+    fields(A)  # E: Argument 1 to "fields" has incompatible type "type[A]"; expected "type[AttrsInstance]"
+fields(None)  # E: Argument 1 to "fields" has incompatible type "None"; expected "type[AttrsInstance]"
 fields(cast(Any, 42))
 fields(cast(Type[Any], 43))
 
@@ -1651,8 +1651,8 @@ class A:
         b, c = bc
         self.__attrs_init__(b, c)
 
-reveal_type(A)  # N: Revealed type is "def (bc: Tuple[builtins.int, builtins.str]) -> __main__.A"
-reveal_type(A.__init__)  # N: Revealed type is "def (self: __main__.A, bc: Tuple[builtins.int, builtins.str])"
+reveal_type(A)  # N: Revealed type is "def (bc: tuple[builtins.int, builtins.str]) -> __main__.A"
+reveal_type(A.__init__)  # N: Revealed type is "def (self: __main__.A, bc: tuple[builtins.int, builtins.str])"
 reveal_type(A.__attrs_init__)  # N: Revealed type is "def (self: __main__.A, b: builtins.int, c: builtins.str)"
 
 [builtins fixtures/plugin_attrs.pyi]
@@ -1729,14 +1729,14 @@ class Some:
     y: str
     z: bool
 
-reveal_type(Some.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.str]"
+reveal_type(Some.__slots__)  # N: Revealed type is "tuple[builtins.str, builtins.str, builtins.str]"
 
 @dataclass(slots=True)
 class Other:
     x: int
     y: str
 
-reveal_type(Other.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+reveal_type(Other.__slots__)  # N: Revealed type is "tuple[builtins.str, builtins.str]"
 
 
 @dataclass
@@ -1744,7 +1744,7 @@ class NoSlots:
     x: int
     y: str
 
-NoSlots.__slots__  # E: "Type[NoSlots]" has no attribute "__slots__"
+NoSlots.__slots__  # E: "type[NoSlots]" has no attribute "__slots__"
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithMatchArgs]
@@ -1759,8 +1759,8 @@ class ToMatch:
     z: int = attr.field(kw_only=True)
     i: int = attr.field(init=False)
 
-reveal_type(ToMatch(x=1, y=2, z=3).__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
-reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+reveal_type(ToMatch(x=1, y=2, z=3).__match_args__)  # N: Revealed type is "tuple[Literal['x']?, Literal['y']?]"
+reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "tuple[Literal['x']?, Literal['y']?]"
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithMatchArgsDefaultCase]
@@ -1773,7 +1773,7 @@ class ToMatch1:
     y: int
 
 t1: ToMatch1
-reveal_type(t1.__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+reveal_type(t1.__match_args__)  # N: Revealed type is "tuple[Literal['x']?, Literal['y']?]"
 
 @attr.define
 class ToMatch2:
@@ -1781,7 +1781,7 @@ class ToMatch2:
     y: int
 
 t2: ToMatch2
-reveal_type(t2.__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+reveal_type(t2.__match_args__)  # N: Revealed type is "tuple[Literal['x']?, Literal['y']?]"
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithMatchArgsOverrideExisting]
@@ -1796,7 +1796,7 @@ class ToMatch:
     y: int
 
 # It works the same way runtime does:
-reveal_type(ToMatch(x=1, y=2).__match_args__)  # N: Revealed type is "Tuple[Literal['a']?, Literal['b']?]"
+reveal_type(ToMatch(x=1, y=2).__match_args__)  # N: Revealed type is "tuple[Literal['a']?, Literal['b']?]"
 
 @attr.s(auto_attribs=True)
 class WithoutMatch:
@@ -1804,7 +1804,7 @@ class WithoutMatch:
     x: int
     y: int
 
-reveal_type(WithoutMatch(x=1, y=2).__match_args__)  # N: Revealed type is "Tuple[Literal['a']?, Literal['b']?]"
+reveal_type(WithoutMatch(x=1, y=2).__match_args__)  # N: Revealed type is "tuple[Literal['a']?, Literal['b']?]"
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithMatchArgsOldVersion]
@@ -2172,7 +2172,7 @@ class B:
 a_or_b: A[int] | B
 a2 = attrs.evolve(a_or_b, x=42, y=True)
 a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')  # E: Argument "z" to "evolve" of "Union[A[int], B]" has incompatible type "str"; expected "Never"
-a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected "Never"
+a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "Union[A[int], B]" has incompatible type "dict[Never, Never]"; expected "Never"
 
 [builtins fixtures/plugin_attrs.pyi]
 
