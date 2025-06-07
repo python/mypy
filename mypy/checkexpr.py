@@ -5879,10 +5879,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         allow_none_return: bool = False,
         suppress_unreachable_errors: bool = True,
     ) -> Type:
+        ctx_items = []
+        if context is not None:
+            ctx_items.append(context)
         if self.type_context and self.type_context[-1] is not None:
-            ctx = make_simplified_union([context, self.type_context[-1]])
+            ctx_items.append(self.type_context[-1])
+        ctx: Type | None
+        if ctx_items:
+            ctx = make_simplified_union(ctx_items)
         else:
-            ctx = context
+            ctx = None
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             if map is None:
                 # We still need to type check node, in case we want to
