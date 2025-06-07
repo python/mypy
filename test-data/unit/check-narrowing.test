@@ -2346,8 +2346,7 @@ def f() -> bool: ...
 
 y = None
 while f():
-    reveal_type(y)  # N: Revealed type is "None" \
-                    # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
     y = 1
 reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
 
@@ -2370,7 +2369,42 @@ class A:
 
 [builtins fixtures/primitives.pyi]
 
-[case testAvoidFalseUnreachableInLoop]
+[case testPersistentUnreachableLinesNestedInInpersistentUnreachableLines]
+# flags: --warn-unreachable --python-version 3.11
+
+x = None
+y = None
+while True:
+    if x is not None:
+        if y is not None:
+            reveal_type(y)  # E: Statement is unreachable
+    x = 1
+
+[builtins fixtures/bool.pyi]
+
+[case testAvoidFalseRedundantCastInLoops]
+# flags: --warn-redundant-casts
+
+from typing import Callable, cast, Union
+
+ProcessorReturnValue = Union[str, int]
+Processor = Callable[[str], ProcessorReturnValue]
+
+def main_cast(p: Processor) -> None:
+    ed: ProcessorReturnValue
+    ed = cast(str, ...)
+    while True:
+        ed = p(cast(str, ed))
+
+def main_no_cast(p: Processor) -> None:
+    ed: ProcessorReturnValue
+    ed = cast(str, ...)
+    while True:
+        ed = p(ed)  # E: Argument 1 has incompatible type "Union[str, int]"; expected "str"
+
+[builtins fixtures/bool.pyi]
+
+[case testAvoidFalseUnreachableInLoop1]
 # flags: --warn-unreachable --python-version 3.11
 
 def f() -> int | None: ...
@@ -2382,6 +2416,29 @@ while x is not None or b():
     x = f()
 
 [builtins fixtures/bool.pyi]
+
+[case testAvoidFalseUnreachableInLoop2]
+# flags: --warn-unreachable --python-version 3.11
+
+y = None
+while y is None:
+    if y is None:
+        y = []
+    y.append(1)
+
+[builtins fixtures/list.pyi]
+
+[case testAvoidFalseUnreachableInLoop3]
+# flags: --warn-unreachable --python-version 3.11
+
+xs: list[int | None]
+y = None
+for x in xs:
+    if x is not None:
+        if y is None:
+            y = {}  # E: Need type annotation for "y" (hint: "y: dict[<type>, <type>] = ...")
+
+[builtins fixtures/list.pyi]
 
 [case testAvoidFalseRedundantExprInLoop]
 # flags: --enable-error-code redundant-expr --python-version 3.11
@@ -2424,3 +2481,99 @@ def f() -> None:
     assert isinstance(x, int)
     reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstance.pyi]
+
+[case testNarrowTypeVarBoundType]
+from typing import Type, TypeVar
+
+class A: ...
+class B(A):
+    other: int
+
+T = TypeVar("T", bound=A)
+def test(cls: Type[T]) -> T:
+    if issubclass(cls, B):
+        reveal_type(cls)  # N: Revealed type is "type[T`-1]"
+        reveal_type(cls().other)  # N: Revealed type is "builtins.int"
+        return cls()
+    return cls()
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowTypeVarBoundUnion]
+from typing import TypeVar
+
+class A:
+    x: int
+class B:
+    x: str
+
+T = TypeVar("T")
+def test(x: T) -> T:
+    if not isinstance(x, (A, B)):
+        return x
+    reveal_type(x)  # N: Revealed type is "T`-1"
+    reveal_type(x.x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    if isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is "T`-1"
+        reveal_type(x.x)  # N: Revealed type is "builtins.int"
+        return x
+    reveal_type(x)  # N: Revealed type is "T`-1"
+    reveal_type(x.x)  # N: Revealed type is "builtins.str"
+    return x
+[builtins fixtures/isinstance.pyi]
+
+[case testIsinstanceNarrowingWithSelfTypes]
+from typing import Generic, TypeVar, overload
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __init__(self: A[int]) -> None:
+        pass
+
+def check_a(obj: "A[T] | str") -> None:
+    reveal_type(obj)  # N: Revealed type is "Union[__main__.A[T`-1], builtins.str]"
+    if isinstance(obj, A):
+        reveal_type(obj)  # N: Revealed type is "__main__.A[T`-1]"
+    else:
+        reveal_type(obj)  # N: Revealed type is "builtins.str"
+
+
+class B(Generic[T]):
+    @overload
+    def __init__(self, x: T) -> None: ...
+    @overload
+    def __init__(self: B[int]) -> None: ...
+    def __init__(self, x: "T | None" = None) -> None:
+        pass
+
+def check_b(obj: "B[T] | str") -> None:
+    reveal_type(obj)  # N: Revealed type is "Union[__main__.B[T`-1], builtins.str]"
+    if isinstance(obj, B):
+        reveal_type(obj)  # N: Revealed type is "__main__.B[T`-1]"
+    else:
+        reveal_type(obj)  # N: Revealed type is "builtins.str"
+
+
+class C(Generic[T]):
+    @overload
+    def __init__(self: C[int]) -> None: ...
+    @overload
+    def __init__(self, x: T) -> None: ...
+    def __init__(self, x: "T | None" = None) -> None:
+        pass
+
+def check_c(obj: "C[T] | str") -> None:
+    reveal_type(obj)  # N: Revealed type is "Union[__main__.C[T`-1], builtins.str]"
+    if isinstance(obj, C):
+        reveal_type(obj)  # N: Revealed type is "__main__.C[T`-1]"
+    else:
+        reveal_type(obj)  # N: Revealed type is "builtins.str"
+
+
+class D(tuple[T], Generic[T]): ...
+
+def check_d(arg: D[T]) -> None:
+    if not isinstance(arg, D):
+        return
+    reveal_type(arg)  # N: Revealed type is "tuple[T`-1, fallback=__main__.D[Any]]"
+[builtins fixtures/tuple.pyi]
