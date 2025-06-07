@@ -263,8 +263,8 @@ f(A(), z=A()) # E: Unexpected keyword argument "z" for "f"
 from typing import Dict, Any
 def f( **kwargs: 'A') -> None:
     d1 = kwargs # type: Dict[str, A]
-    d2 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type "Dict[str, A]", variable has type "Dict[A, Any]")
-    d3 = kwargs # type: Dict[Any, str] # E: Incompatible types in assignment (expression has type "Dict[str, A]", variable has type "Dict[Any, str]")
+    d2 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type "dict[str, A]", variable has type "dict[A, Any]")
+    d3 = kwargs # type: Dict[Any, str] # E: Incompatible types in assignment (expression has type "dict[str, A]", variable has type "dict[Any, str]")
 class A: pass
 [builtins fixtures/dict.pyi]
 [out]
@@ -274,7 +274,7 @@ from typing import Dict, Any
 def f(**kwargs) -> None:
     d1 = kwargs # type: Dict[str, A]
     d2 = kwargs # type: Dict[str, str]
-    d3 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type "Dict[str, Any]", variable has type "Dict[A, Any]")
+    d3 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type "dict[str, Any]", variable has type "dict[A, Any]")
 class A: pass
 [builtins fixtures/dict.pyi]
 [out]
@@ -301,9 +301,9 @@ d: Dict[str, A]
 f(**d)
 f(x=A(), **d)
 d2: Dict[str, B]
-f(**d2)         # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
-f(x=A(), **d2)  # E: Argument 2 to "f" has incompatible type "**Dict[str, B]"; expected "A"
-f(**{'x': B()}) # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
+f(**d2)         # E: Argument 1 to "f" has incompatible type "**dict[str, B]"; expected "A"
+f(x=A(), **d2)  # E: Argument 2 to "f" has incompatible type "**dict[str, B]"; expected "A"
+f(**{'x': B()}) # E: Argument 1 to "f" has incompatible type "**dict[str, B]"; expected "A"
 [builtins fixtures/dict.pyi]
 
 [case testKwargsAllowedInDunderCall]
@@ -369,7 +369,7 @@ def f(a: 'A', b: 'B') -> None: pass
 d: Dict[str, Any]
 f(**d)
 d2: Dict[str, A]
-f(**d2) # E: Argument 1 to "f" has incompatible type "**Dict[str, A]"; expected "B"
+f(**d2) # E: Argument 1 to "f" has incompatible type "**dict[str, A]"; expected "B"
 class A: pass
 class B: pass
 [builtins fixtures/dict.pyi]
@@ -438,15 +438,15 @@ def f(a: int) -> None:
     pass
 
 s = ('',)
-f(*s) # E: Argument 1 to "f" has incompatible type "*Tuple[str]"; expected "int"
+f(*s) # E: Argument 1 to "f" has incompatible type "*tuple[str]"; expected "int"
 
 a = {'': 0}
-f(a) # E: Argument 1 to "f" has incompatible type "Dict[str, int]"; expected "int"
+f(a) # E: Argument 1 to "f" has incompatible type "dict[str, int]"; expected "int"
 f(**a) # okay
 
 b = {'': ''}
-f(b) # E: Argument 1 to "f" has incompatible type "Dict[str, str]"; expected "int"
-f(**b) # E: Argument 1 to "f" has incompatible type "**Dict[str, str]"; expected "int"
+f(b) # E: Argument 1 to "f" has incompatible type "dict[str, str]"; expected "int"
+f(**b) # E: Argument 1 to "f" has incompatible type "**dict[str, str]"; expected "int"
 
 c = {0: 0}
 f(**c) # E: Keywords must be strings
@@ -491,7 +491,7 @@ def g(arg: int = 0, **kwargs: object) -> None:
 
 d = {} # type: Dict[str, object]
 f(**d)
-g(**d)  # E: Argument 1 to "g" has incompatible type "**Dict[str, object]"; expected "int"
+g(**d)  # E: Argument 1 to "g" has incompatible type "**dict[str, object]"; expected "int"
 
 m = {} # type: Mapping[str, object]
 f(**m)
@@ -565,5 +565,5 @@ main:36: error: Argument 1 to "foo" has incompatible type "**A[str, str]"; expec
 main:37: error: Argument 1 to "foo" has incompatible type "**B[str, str]"; expected "float"
 main:38: error: Argument after ** must be a mapping, not "C[str, float]"
 main:39: error: Argument after ** must be a mapping, not "D"
-main:41: error: Argument 1 to "foo" has incompatible type "**Dict[str, str]"; expected "float"
+main:41: error: Argument 1 to "foo" has incompatible type "**dict[str, str]"; expected "float"
 [builtins fixtures/dict.pyi]

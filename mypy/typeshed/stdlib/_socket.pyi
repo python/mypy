@@ -78,7 +78,7 @@ if sys.platform == "win32":
     SO_EXCLUSIVEADDRUSE: int
 if sys.platform != "win32":
     SO_REUSEPORT: int
-    if sys.platform != "darwin":
+    if sys.platform != "darwin" or sys.version_info >= (3, 13):
         SO_BINDTODEVICE: int
 
 if sys.platform != "win32" and sys.platform != "darwin":
@@ -192,7 +192,7 @@ if sys.platform != "win32" and sys.platform != "darwin" and sys.platform != "lin
     IPPROTO_BIP: int  # Not FreeBSD either
     IPPROTO_MOBILE: int  # Not FreeBSD either
     IPPROTO_VRRP: int  # Not FreeBSD either
-if sys.version_info >= (3, 9) and sys.platform == "linux":
+if sys.platform == "linux":
     # Availability: Linux >= 2.6.20, FreeBSD >= 10.1
     IPPROTO_UDPLITE: int
 if sys.version_info >= (3, 10) and sys.platform == "linux":
@@ -229,6 +229,28 @@ if sys.platform != "win32":
     IP_RECVOPTS: int
     IP_RECVRETOPTS: int
     IP_RETOPTS: int
+if sys.version_info >= (3, 14):
+    IP_RECVTTL: int
+
+    if sys.platform == "win32" or sys.platform == "linux":
+        IPV6_RECVERR: int
+        IP_RECVERR: int
+        SO_ORIGINAL_DST: int
+
+    if sys.platform == "win32":
+        SOL_RFCOMM: int
+        SO_BTH_ENCRYPT: int
+        SO_BTH_MTU: int
+        SO_BTH_MTU_MAX: int
+        SO_BTH_MTU_MIN: int
+        TCP_QUICKACK: int
+
+    if sys.platform == "linux":
+        CAN_RAW_ERR_FILTER: int
+        IP_FREEBIND: int
+        IP_RECVORIGDSTADDR: int
+        VMADDR_CID_LOCAL: int
+
 if sys.platform != "win32" and sys.platform != "darwin":
     IP_TRANSPARENT: int
 if sys.platform != "win32" and sys.platform != "darwin" and sys.version_info >= (3, 11):
@@ -250,29 +272,26 @@ IPV6_RECVTCLASS: int
 IPV6_TCLASS: int
 IPV6_UNICAST_HOPS: int
 IPV6_V6ONLY: int
-if sys.version_info >= (3, 9) or sys.platform != "darwin":
-    IPV6_DONTFRAG: int
-    IPV6_HOPLIMIT: int
-    IPV6_HOPOPTS: int
-    IPV6_PKTINFO: int
-    IPV6_RECVRTHDR: int
-    IPV6_RTHDR: int
+IPV6_DONTFRAG: int
+IPV6_HOPLIMIT: int
+IPV6_HOPOPTS: int
+IPV6_PKTINFO: int
+IPV6_RECVRTHDR: int
+IPV6_RTHDR: int
 if sys.platform != "win32":
     IPV6_RTHDR_TYPE_0: int
-    if sys.version_info >= (3, 9) or sys.platform != "darwin":
-        IPV6_DSTOPTS: int
-        IPV6_NEXTHOP: int
-        IPV6_PATHMTU: int
-        IPV6_RECVDSTOPTS: int
-        IPV6_RECVHOPLIMIT: int
-        IPV6_RECVHOPOPTS: int
-        IPV6_RECVPATHMTU: int
-        IPV6_RECVPKTINFO: int
-        IPV6_RTHDRDSTOPTS: int
+    IPV6_DSTOPTS: int
+    IPV6_NEXTHOP: int
+    IPV6_PATHMTU: int
+    IPV6_RECVDSTOPTS: int
+    IPV6_RECVHOPLIMIT: int
+    IPV6_RECVHOPOPTS: int
+    IPV6_RECVPATHMTU: int
+    IPV6_RECVPKTINFO: int
+    IPV6_RTHDRDSTOPTS: int
 
 if sys.platform != "win32" and sys.platform != "linux":
-    if sys.version_info >= (3, 9) or sys.platform != "darwin":
-        IPV6_USE_MIN_MTU: int
+    IPV6_USE_MIN_MTU: int
 
 EAI_AGAIN: int
 EAI_BADFLAGS: int
@@ -414,16 +433,10 @@ if sys.platform == "linux":
 if sys.platform == "linux":
     # Availability: Linux >= 3.6
     CAN_RAW_FD_FRAMES: int
-
-if sys.platform == "linux" and sys.version_info >= (3, 9):
     # Availability: Linux >= 4.1
     CAN_RAW_JOIN_FILTERS: int
-
-if sys.platform == "linux":
     # Availability: Linux >= 2.6.25
     CAN_ISOTP: int
-
-if sys.platform == "linux" and sys.version_info >= (3, 9):
     # Availability: Linux >= 5.4
     CAN_J1939: int
 
@@ -566,18 +579,16 @@ if sys.platform == "linux":
     SO_VM_SOCKETS_BUFFER_MIN_SIZE: int
     VM_SOCKETS_INVALID_VERSION: int  # undocumented
 
-if sys.platform != "win32" or sys.version_info >= (3, 9):
-    # Documented as only available on BSD, macOS, but empirically sometimes
-    # available on Windows
-    if sys.platform != "linux":
-        AF_LINK: int
+# Documented as only available on BSD, macOS, but empirically sometimes
+# available on Windows
+if sys.platform != "linux":
+    AF_LINK: int
 
 has_ipv6: bool
 
 if sys.platform != "darwin" and sys.platform != "linux":
-    if sys.platform != "win32" or sys.version_info >= (3, 9):
-        BDADDR_ANY: str
-        BDADDR_LOCAL: str
+    BDADDR_ANY: str
+    BDADDR_LOCAL: str
 
 if sys.platform != "win32" and sys.platform != "darwin" and sys.platform != "linux":
     HCI_FILTER: int  # not in NetBSD or DragonFlyBSD
@@ -649,8 +660,7 @@ if sys.platform == "darwin":
     SYSPROTO_CONTROL: int
 
 if sys.platform != "darwin" and sys.platform != "linux":
-    if sys.version_info >= (3, 9) or sys.platform != "win32":
-        AF_BLUETOOTH: int
+    AF_BLUETOOTH: int
 
 if sys.platform != "win32" and sys.platform != "darwin" and sys.platform != "linux":
     # Linux and some BSD support is explicit in the docs
@@ -659,10 +669,9 @@ if sys.platform != "win32" and sys.platform != "darwin" and sys.platform != "lin
     BTPROTO_L2CAP: int
     BTPROTO_SCO: int  # not in FreeBSD
 if sys.platform != "darwin" and sys.platform != "linux":
-    if sys.version_info >= (3, 9) or sys.platform != "win32":
-        BTPROTO_RFCOMM: int
+    BTPROTO_RFCOMM: int
 
-if sys.version_info >= (3, 9) and sys.platform == "linux":
+if sys.platform == "linux":
     UDPLITE_RECV_CSCOV: int
     UDPLITE_SEND_CSCOV: int
 
@@ -842,6 +851,11 @@ if sys.platform != "win32":
 
 def if_nameindex() -> list[tuple[int, str]]: ...
 def if_nametoindex(oname: str, /) -> int: ...
-def if_indextoname(index: int, /) -> str: ...
+
+if sys.version_info >= (3, 14):
+    def if_indextoname(if_index: int, /) -> str: ...
+
+else:
+    def if_indextoname(index: int, /) -> str: ...
 
 CAPI: CapsuleType

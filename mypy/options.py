@@ -4,6 +4,7 @@ import pprint
 import re
 import sys
 import sysconfig
+import warnings
 from collections.abc import Mapping
 from re import Pattern
 from typing import Any, Callable, Final
@@ -400,6 +401,7 @@ class Options:
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
+        # Deprecated, Mypy only supports Python 3.9+
         self.force_uppercase_builtins = False
         self.force_union_syntax = False
 
@@ -413,9 +415,12 @@ class Options:
         self.mypyc_skip_c_generation = False
 
     def use_lowercase_names(self) -> bool:
-        if self.python_version >= (3, 9):
-            return not self.force_uppercase_builtins
-        return False
+        warnings.warn(
+            "options.use_lowercase_names() is deprecated and will be removed in a future version",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return True
 
     def use_or_syntax(self) -> bool:
         if self.python_version >= (3, 10):

@@ -752,7 +752,7 @@ plugins=<ROOT>/test-data/unit/plugins/common_api_incremental.py
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is "builtins.str"
-tmp/a.py:4: error: "Type[Base]" has no attribute "__magic__"
+tmp/a.py:4: error: "type[Base]" has no attribute "__magic__"
 
 [case testArgKindsMethod]
 # flags: --config-file tmp/mypy.ini
