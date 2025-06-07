@@ -2583,6 +2583,7 @@ class TypedDictType(ProperType):
         "fallback",
         "extra_items_from",
         "to_be_mutated",
+        "is_pep764",
     )
 
     items: dict[str, Type]  # item_name -> item_type
@@ -2592,6 +2593,7 @@ class TypedDictType(ProperType):
 
     extra_items_from: list[ProperType]  # only used during semantic analysis
     to_be_mutated: bool  # only used in a plugin for `.update`, `|=`, etc
+    is_pep764: bool
 
     def __init__(
         self,
@@ -2611,6 +2613,7 @@ class TypedDictType(ProperType):
         self.can_be_false = len(self.required_keys) == 0
         self.extra_items_from = []
         self.to_be_mutated = False
+        self.is_pep764 = False
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_typeddict_type(self)
