@@ -16,7 +16,7 @@ import mypy.errorcodes as codes
 from mypy import applytype, erasetype, join, message_registry, nodes, operators, types
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
 from mypy.checker_shared import ExpressionCheckerSharedApi
-from mypy.checkmember import analyze_member_access
+from mypy.checkmember import analyze_member_access, has_operator
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorWatcher, report_internal_error
@@ -3834,13 +3834,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         arg_kinds: list[ArgKind],
         context: Context,
         original_type: Type | None = None,
+        self_type: Type | None = None,
     ) -> tuple[Type, Type]:
         """Type check a call to a named method on an object.
 
         Return tuple (result type, inferred method type). The 'original_type'
-        is used for error messages.
+        is used for error messages. The self_type is to bind self in methods
+        (see analyze_member_access for more details).
         """
         original_type = original_type or base_type
+        self_type = self_type or base_type
         # Unions are special-cased to allow plugins to act on each element of the union.
         base_type = get_proper_type(base_type)
         if isinstance(base_type, UnionType):
@@ -3856,7 +3859,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             is_super=False,
             is_operator=True,
             original_type=original_type,
-            self_type=base_type,
+            self_type=self_type,
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
         )
@@ -3933,11 +3936,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             """Looks up the given operator and returns the corresponding type,
             if it exists."""
 
-            # This check is an important performance optimization,
-            # even though it is mostly a subset of
-            # analyze_member_access.
-            # TODO: Find a way to remove this call without performance implications.
-            if not self.has_member(base_type, op_name):
+            # This check is an important performance optimization.
+            if not has_operator(base_type, op_name, self.named_type):
                 return None
 
             with self.msg.filter_errors() as w:
@@ -4097,14 +4097,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 errors.append(local_errors.filtered_errors())
                 results.append(result)
             else:
-                # In theory, we should never enter this case, but it seems
-                # we sometimes do, when dealing with Type[...]? E.g. see
-                # check-classes.testTypeTypeComparisonWorks.
-                #
-                # This is probably related to the TODO in lookup_operator(...)
-                # up above.
-                #
-                # TODO: Remove this extra case
+                # Although we should not need this case anymore, we keep it just in case, as
+                # otherwise we will get a crash if we introduce inconsistency in checkmember.py
                 return result
 
         self.msg.add_errors(errors[0])
@@ -4365,13 +4359,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return self.visit_index_with_type(left_type, e)
 
     def visit_index_with_type(
-        self, left_type: Type, e: IndexExpr, original_type: ProperType | None = None
+        self,
+        left_type: Type,
+        e: IndexExpr,
+        original_type: ProperType | None = None,
+        self_type: Type | None = None,
     ) -> Type:
         """Analyze type of an index expression for a given type of base expression.
 
-        The 'original_type' is used for error messages (currently used for union types).
+        The 'original_type' is used for error messages (currently used for union types). The
+        'self_type' is to bind self in methods (see analyze_member_access for more details).
         """
         index = e.index
+        self_type = self_type or left_type
         left_type = get_proper_type(left_type)
 
         # Visit the index, just to make sure we have a type for it available
@@ -4426,16 +4426,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             ):
                 return self.named_type("types.GenericAlias")
 
-        if isinstance(left_type, TypeVarType) and not self.has_member(
-            left_type.upper_bound, "__getitem__"
-        ):
-            return self.visit_index_with_type(left_type.upper_bound, e, original_type)
+        if isinstance(left_type, TypeVarType):
+            return self.visit_index_with_type(
+                left_type.values_or_bound(), e, original_type, left_type
+            )
         elif isinstance(left_type, Instance) and left_type.type.fullname == "typing._SpecialForm":
             # Allow special forms to be indexed and used to create union types
             return self.named_type("typing._SpecialForm")
         else:
             result, method_type = self.check_method_call_by_name(
-                "__getitem__", left_type, [e.index], [ARG_POS], e, original_type=original_type
+                "__getitem__",
+                left_type,
+                [e.index],
+                [ARG_POS],
+                e,
+                original_type=original_type,
+                self_type=self_type,
             )
             e.method_type = method_type
             return result
@@ -5994,45 +6000,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             )
             or isinstance(typ, ParamSpecType)
         )
-
-    def has_member(self, typ: Type, member: str) -> bool:
-        """Does type have member with the given name?"""
-        # TODO: refactor this to use checkmember.analyze_member_access, otherwise
-        # these two should be carefully kept in sync.
-        # This is much faster than analyze_member_access, though, and so using
-        # it first as a filter is important for performance.
-        typ = get_proper_type(typ)
-
-        if isinstance(typ, TypeVarType):
-            typ = get_proper_type(typ.upper_bound)
-        if isinstance(typ, TupleType):
-            typ = tuple_fallback(typ)
-        if isinstance(typ, LiteralType):
-            typ = typ.fallback
-        if isinstance(typ, Instance):
-            return typ.type.has_readable_member(member)
-        if isinstance(typ, FunctionLike) and typ.is_type_obj():
-            return typ.fallback.type.has_readable_member(member)
-        elif isinstance(typ, AnyType):
-            return True
-        elif isinstance(typ, UnionType):
-            result = all(self.has_member(x, member) for x in typ.relevant_items())
-            return result
-        elif isinstance(typ, TypeType):
-            # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
-            # so we don't need to care about unions here.
-            item = typ.item
-            if isinstance(item, TypeVarType):
-                item = get_proper_type(item.upper_bound)
-            if isinstance(item, TupleType):
-                item = tuple_fallback(item)
-            if isinstance(item, Instance) and item.type.metaclass_type is not None:
-                return self.has_member(item.type.metaclass_type, member)
-            if isinstance(item, AnyType):
-                return True
-            return False
-        else:
-            return False
 
     def not_ready_callback(self, name: str, context: Context) -> None:
         """Called when we can't infer the type of a variable because it's not ready yet.
