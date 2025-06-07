@@ -5027,4 +5027,3 @@ attrs.evolve(obj, x=1, y=1)
 attrs.evolve(obj, x=[])
 attrs.evolve(obj, x="1")
 [builtins fixtures/plugin_attrs.pyi]
-
