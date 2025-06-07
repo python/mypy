@@ -5879,16 +5879,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         allow_none_return: bool = False,
         suppress_unreachable_errors: bool = True,
     ) -> Type:
+        if self.type_context and self.type_context[-1] is not None:
+            ctx = make_simplified_union([context, self.type_context[-1]])
+        else:
+            ctx = context
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later. Since the branch was
                 # determined to be unreachable, any errors should be suppressed.
                 with self.msg.filter_errors(filter_errors=suppress_unreachable_errors):
-                    self.accept(node, type_context=context, allow_none_return=allow_none_return)
+                    self.accept(node, type_context=ctx, allow_none_return=allow_none_return)
                 return UninhabitedType()
             self.chk.push_type_map(map)
-            return self.accept(node, type_context=context, allow_none_return=allow_none_return)
+            return self.accept(node, type_context=ctx, allow_none_return=allow_none_return)
 
     #
     # Helpers
