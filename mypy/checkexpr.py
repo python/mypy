@@ -4271,7 +4271,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ):
             self.msg.unreachable_right_operand(e.op, e.right)
 
-        right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
+        right_type = self.analyze_cond_branch(
+            right_map, e.right, self._combined_context(expanded_left_type)
+        )
 
         if left_map is None and right_map is None:
             return UninhabitedType()
@@ -5879,26 +5881,26 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         allow_none_return: bool = False,
         suppress_unreachable_errors: bool = True,
     ) -> Type:
-        ctx_items = []
-        if context is not None:
-            ctx_items.append(context)
-        if self.type_context and self.type_context[-1] is not None:
-            ctx_items.append(self.type_context[-1])
-        ctx: Type | None
-        if ctx_items:
-            ctx = make_simplified_union(ctx_items)
-        else:
-            ctx = None
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later. Since the branch was
                 # determined to be unreachable, any errors should be suppressed.
                 with self.msg.filter_errors(filter_errors=suppress_unreachable_errors):
-                    self.accept(node, type_context=ctx, allow_none_return=allow_none_return)
+                    self.accept(node, type_context=context, allow_none_return=allow_none_return)
                 return UninhabitedType()
             self.chk.push_type_map(map)
-            return self.accept(node, type_context=ctx, allow_none_return=allow_none_return)
+            return self.accept(node, type_context=context, allow_none_return=allow_none_return)
+
+    def _combined_context(self, ty: Type | None) -> Type | None:
+        ctx_items = []
+        if ty is not None:
+            ctx_items.append(ty)
+        if self.type_context and self.type_context[-1] is not None:
+            ctx_items.append(self.type_context[-1])
+        if ctx_items:
+            return make_simplified_union(ctx_items)
+        return None
 
     #
     # Helpers
