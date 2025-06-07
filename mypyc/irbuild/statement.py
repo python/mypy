@@ -905,7 +905,7 @@ def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
     next_label = len(cls.continuation_blocks)
     cls.continuation_blocks.append(next_block)
     builder.assign(cls.next_label_target, Integer(next_label), line)
-    builder.add(Return(retval))
+    builder.add(Return(retval, yield_target=next_block))
     builder.activate_block(next_block)
 
     add_raise_exception_blocks_to_generator_class(builder, line)
@@ -940,6 +940,10 @@ def emit_yield_from_or_await(
     # If it wasn't, this reraises the exception.
     builder.activate_block(stop_block)
     builder.assign(result, builder.call_c(check_stop_op, [], line), line)
+    # Clear the spilled iterator/coroutine so that it will be freed.
+    # Otherwise, the freeing of the spilled register would likely be delayed.
+    err = builder.add(LoadErrorValue(object_rprimitive))
+    builder.assign(iter_reg, err, line)
     builder.goto(done_block)
 
     builder.activate_block(main_block)

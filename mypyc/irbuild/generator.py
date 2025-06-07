@@ -10,7 +10,9 @@ mypyc.irbuild.function.
 
 from __future__ import annotations
 
-from mypy.nodes import ARG_OPT, Var
+from typing import Callable
+
+from mypy.nodes import ARG_OPT, FuncDef, Var
 from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
@@ -30,14 +32,17 @@ from mypyc.ir.ops import (
     Unreachable,
     Value,
 )
-from mypyc.ir.rtypes import RInstance, int_rprimitive, object_rprimitive
-from mypyc.irbuild.builder import IRBuilder, gen_arg_defaults
+from mypyc.ir.rtypes import RInstance, int32_rprimitive, object_rprimitive
+from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
     add_args_to_env,
+    add_vars_to_env,
     finalize_env_class,
     load_env_registers,
     load_outer_env,
+    load_outer_envs,
+    setup_func_for_recursive_call,
 )
 from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl
 from mypyc.primitives.exc_ops import (
@@ -49,42 +54,112 @@ from mypyc.primitives.exc_ops import (
 )
 
 
-def gen_generator_func(builder: IRBuilder) -> None:
+def gen_generator_func(
+    builder: IRBuilder,
+    gen_func_ir: Callable[
+        [list[Register], list[BasicBlock], FuncInfo], tuple[FuncIR, Value | None]
+    ],
+) -> tuple[FuncIR, Value | None]:
+    """Generate IR for generator function that returns generator object."""
     setup_generator_class(builder)
     load_env_registers(builder)
     gen_arg_defaults(builder)
-    finalize_env_class(builder)
-    builder.add(Return(instantiate_generator_class(builder)))
+    if builder.fn_info.can_merge_generator_and_env_classes():
+        gen = instantiate_generator_class(builder)
+        builder.fn_info._curr_env_reg = gen
+        finalize_env_class(builder)
+    else:
+        finalize_env_class(builder)
+        gen = instantiate_generator_class(builder)
+    builder.add(Return(gen))
+
+    args, _, blocks, ret_type, fn_info = builder.leave()
+    func_ir, func_reg = gen_func_ir(args, blocks, fn_info)
+    return func_ir, func_reg
+
+
+def gen_generator_func_body(
+    builder: IRBuilder, fn_info: FuncInfo, sig: FuncSignature, func_reg: Value | None
+) -> None:
+    """Generate IR based on the body of a generator function.
+
+    Add "__next__", "__iter__" and other generator methods to the generator
+    class that implements the function (each function gets a separate class).
+
+    Return the symbol table for the body.
+    """
+    builder.enter(fn_info, ret_type=sig.ret_type)
+    setup_env_for_generator_class(builder)
+
+    load_outer_envs(builder, builder.fn_info.generator_class)
+    top_level = builder.top_level_fn_info()
+    fitem = fn_info.fitem
+    if (
+        builder.fn_info.is_nested
+        and isinstance(fitem, FuncDef)
+        and top_level
+        and top_level.add_nested_funcs_to_env
+    ):
+        setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
+    create_switch_for_generator_class(builder)
+    add_raise_exception_blocks_to_generator_class(builder, fitem.line)
+
+    add_vars_to_env(builder)
+
+    builder.accept(fitem.body)
+    builder.maybe_add_implicit_return()
+
+    populate_switch_for_generator_class(builder)
+
+    # Hang on to the local symbol table, since the caller will use it
+    # to calculate argument defaults.
+    symtable = builder.symtables[-1]
+
+    args, _, blocks, ret_type, fn_info = builder.leave()
+
+    add_methods_to_generator_class(builder, fn_info, sig, args, blocks, fitem.is_coroutine)
+
+    # Evaluate argument defaults in the surrounding scope, since we
+    # calculate them *once* when the function definition is evaluated.
+    calculate_arg_defaults(builder, fn_info, func_reg, symtable)
 
 
 def instantiate_generator_class(builder: IRBuilder) -> Value:
     fitem = builder.fn_info.fitem
     generator_reg = builder.add(Call(builder.fn_info.generator_class.ir.ctor, [], fitem.line))
 
-    # Get the current environment register. If the current function is nested, then the
-    # generator class gets instantiated from the callable class' '__call__' method, and hence
-    # we use the callable class' environment register. Otherwise, we use the original
-    # function's environment register.
-    if builder.fn_info.is_nested:
-        curr_env_reg = builder.fn_info.callable_class.curr_env_reg
+    if builder.fn_info.can_merge_generator_and_env_classes():
+        # Set the generator instance to the initial state (zero).
+        zero = Integer(0)
+        builder.add(SetAttr(generator_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
     else:
-        curr_env_reg = builder.fn_info.curr_env_reg
+        # Get the current environment register. If the current function is nested, then the
+        # generator class gets instantiated from the callable class' '__call__' method, and hence
+        # we use the callable class' environment register. Otherwise, we use the original
+        # function's environment register.
+        if builder.fn_info.is_nested:
+            curr_env_reg = builder.fn_info.callable_class.curr_env_reg
+        else:
+            curr_env_reg = builder.fn_info.curr_env_reg
 
-    # Set the generator class' environment attribute to point at the environment class
-    # defined in the current scope.
-    builder.add(SetAttr(generator_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
+        # Set the generator class' environment attribute to point at the environment class
+        # defined in the current scope.
+        builder.add(SetAttr(generator_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
 
-    # Set the generator class' environment class' NEXT_LABEL_ATTR_NAME attribute to 0.
-    zero = Integer(0)
-    builder.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
+        # Set the generator instance's environment to the initial state (zero).
+        zero = Integer(0)
+        builder.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
     return generator_reg
 
 
 def setup_generator_class(builder: IRBuilder) -> ClassIR:
     name = f"{builder.fn_info.namespaced_name()}_gen"
 
-    generator_class_ir = ClassIR(name, builder.module_name, is_generated=True)
-    generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
+    generator_class_ir = ClassIR(name, builder.module_name, is_generated=True, is_final_class=True)
+    if builder.fn_info.can_merge_generator_and_env_classes():
+        builder.fn_info.env_class = generator_class_ir
+    else:
+        generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
     generator_class_ir.mro = [generator_class_ir]
 
     builder.classes.append(generator_class_ir)
@@ -181,6 +256,8 @@ def add_helper_to_generator_class(
     )
     fn_info.generator_class.ir.methods["__mypyc_generator_helper__"] = helper_fn_ir
     builder.functions.append(helper_fn_ir)
+    fn_info.env_class.env_user_function = helper_fn_ir
+
     return helper_fn_decl
 
 
@@ -329,13 +406,16 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     cls.send_arg_reg = exc_arg
 
     cls.self_reg = builder.read(self_target, fitem.line)
-    cls.curr_env_reg = load_outer_env(builder, cls.self_reg, builder.symtables[-1])
+    if builder.fn_info.can_merge_generator_and_env_classes():
+        cls.curr_env_reg = cls.self_reg
+    else:
+        cls.curr_env_reg = load_outer_env(builder, cls.self_reg, builder.symtables[-1])
 
     # Define a variable representing the label to go to the next time
     # the '__next__' function of the generator is called, and add it
     # as an attribute to the environment class.
     cls.next_label_target = builder.add_var_to_env_class(
-        Var(NEXT_LABEL_ATTR_NAME), int_rprimitive, cls, reassign=False
+        Var(NEXT_LABEL_ATTR_NAME), int32_rprimitive, cls, reassign=False, always_defined=True
     )
 
     # Add arguments from the original generator function to the

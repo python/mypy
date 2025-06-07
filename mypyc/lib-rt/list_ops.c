@@ -319,6 +319,18 @@ CPyTagged CPyList_Index(PyObject *list, PyObject *obj) {
     return index << 1;
 }
 
+PyObject *CPySequence_Sort(PyObject *seq) {
+    PyObject *newlist = PySequence_List(seq);
+    if (newlist == NULL)
+        return NULL;
+    int res = PyList_Sort(newlist);
+    if (res < 0) {
+        Py_DECREF(newlist);
+        return NULL;
+    }
+    return newlist;
+}
+
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
     Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
     if (size == -1 && PyErr_Occurred()) {
@@ -329,6 +341,14 @@ PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
 
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq) {
     return CPySequence_Multiply(seq, t_size);
+}
+
+PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size) {
+    Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
+    if (size == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    return PySequence_InPlaceRepeat(seq, size);
 }
 
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
