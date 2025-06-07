@@ -4553,7 +4553,7 @@ reveal_type(t)  # N: Revealed type is "__main__.Test[Any]"
 [builtins fixtures/dict.pyi]
 
 [case testProtocolErrorReportingNoDuplicates]
-from typing import Callable, Protocol, Generic, TypeVar
+from typing import Callable, Protocol, TypeVar
 
 class P(Protocol):
     def meth(self) -> int: ...

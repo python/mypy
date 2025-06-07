@@ -8738,7 +8738,7 @@ class NoopPowerResource:
 [builtins fixtures/property.pyi]
 
 [case testOverrideErrorReportingNoDuplicates]
-from typing import Callable, Protocol, Generic, TypeVar
+from typing import Callable, TypeVar
 
 def nested() -> None:
     class B:
