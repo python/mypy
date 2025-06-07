@@ -15,6 +15,7 @@ from mypy.message_registry import ErrorMessage
 from mypy.nodes import (
     ArgKind,
     Context,
+    Decorator,
     Expression,
     FuncItem,
     LambdaExpr,
@@ -277,6 +278,10 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
 
     @abstractmethod
     def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Type | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_property_instance(self, method: Decorator) -> Instance | None:
         raise NotImplementedError
 
 

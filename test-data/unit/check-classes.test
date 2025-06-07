@@ -1621,8 +1621,7 @@ class A:
         self.x = 1
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         return ''
-[builtins fixtures/property.pyi]
-[out]
+[builtins fixtures/property-full.pyi]
 
 [case testDynamicallyTypedProperty]
 import typing
@@ -1632,7 +1631,7 @@ class A:
 a = A()
 a.f.xx
 a.f = '' # E: Property "f" defined in "A" is read-only
-[builtins fixtures/property.pyi]
+[builtins fixtures/property-full.pyi]
 
 [case testPropertyWithSetter]
 import typing
@@ -1649,7 +1648,7 @@ a.f.x # E: "int" has no attribute "x"
 a.f = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 a.f = 1
 reveal_type(a.f)  # N: Revealed type is "builtins.int"
-[builtins fixtures/property.pyi]
+[builtins fixtures/property-full.pyi]
 
 [case testPropertyWithDeleterButNoSetter]
 import typing
@@ -1663,7 +1662,60 @@ class A:
 a = A()
 a.f = a.f # E: Property "f" defined in "A" is read-only
 a.f.x # E: "int" has no attribute "x"
-[builtins fixtures/property.pyi]
+[builtins fixtures/property-full.pyi]
+
+[case testPropertyAccessOnClass]
+class Foo:
+    @property
+    def bar(self) -> bool:
+        return True
+
+    reveal_type(bar)  # N: Revealed type is "builtins.property"
+
+reveal_type(Foo.bar)  # N: Revealed type is "builtins.property"
+reveal_type(Foo.bar(Foo()))  # E: "property" not callable \
+                             # N: Revealed type is "Any"
+reveal_type(Foo.bar.fget(Foo()))  # E: "None" not callable \
+                                  # N: Revealed type is "Any"
+
+class Bar:
+    @property
+    def bar(self) -> bool:
+        return True
+    @bar.setter
+    def bar(self, bar: bool) -> None:
+        pass
+
+    reveal_type(bar)  # N: Revealed type is "builtins.property"
+
+reveal_type(Bar.bar)  # N: Revealed type is "builtins.property"
+reveal_type(Bar.bar(Bar()))  # E: "property" not callable \
+                             # N: Revealed type is "Any"
+reveal_type(Bar.bar.fget(Bar()))  # E: "None" not callable \
+                                  # N: Revealed type is "Any"
+[builtins fixtures/property-full.pyi]
+
+[case testPropertyAccessOnClass2]
+import functools
+from functools import cached_property
+
+class Foo:
+    @cached_property
+    def foo(self) -> bool:
+        return True
+
+    @functools.cached_property
+    def bar(self) -> bool:
+        return True
+
+    reveal_type(foo)  # N: Revealed type is "functools.cached_property[Any]"
+    reveal_type(bar)  # N: Revealed type is "functools.cached_property[Any]"
+
+reveal_type(Foo.foo)  # N: Revealed type is "functools.cached_property[Any]"
+reveal_type(Foo.bar)  # N: Revealed type is "functools.cached_property[Any]"
+Foo.foo(Foo())  # E: "cached_property[Any]" not callable
+Foo.bar(Foo())  # E: "cached_property[Any]" not callable
+[builtins fixtures/property-full.pyi]
 
 -- Descriptors
 -- -----------
