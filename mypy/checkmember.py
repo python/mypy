@@ -345,8 +345,8 @@ def analyze_instance_member_access(
             assert isinstance(method, OverloadedFuncDef)
             getter = method.items[0]
             assert isinstance(getter, Decorator)
-            if mx.is_lvalue and (len(items := method.items) > 1):
-                mx.chk.warn_deprecated(items[1], mx.context)
+            if mx.is_lvalue and getter.var.is_settable_property:
+                mx.chk.warn_deprecated(method.setter, mx.context)
             return analyze_var(name, getter.var, typ, mx)
 
         if mx.is_lvalue and not mx.suppress_errors:

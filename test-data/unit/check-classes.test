@@ -8736,3 +8736,23 @@ class NoopPowerResource:
     def hardware_type(self) -> None:  # E: Invalid property setter signature
         self.hardware_type = None  # Note: intentionally recursive
 [builtins fixtures/property.pyi]
+
+[case testPropertyAllowsDeleterBeforeSetter]
+class C:
+    @property
+    def foo(self) -> str: ...
+    @foo.deleter
+    def foo(self) -> None: ...
+    @foo.setter
+    def foo(self, val: int) -> None: ...
+
+    @property
+    def bar(self) -> int: ...
+    @bar.deleter
+    def bar(self) -> None: ...
+    @bar.setter
+    def bar(self, value: int, val: int) -> None: ...  # E: Invalid property setter signature
+
+C().foo = "no"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+C().bar = "fine"
+[builtins fixtures/property.pyi]
