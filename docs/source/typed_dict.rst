@@ -303,8 +303,8 @@ to use inline TypedDict syntax. For example:
 
 .. code-block:: python
 
-    def test_values() -> TypedDict[{"int": int, "str": str}]:
-        return {"int": 42, "str": "test"}
+    def get_movie() -> TypedDict[{"name": str, "year": int}]:
+        return {"name": "Blade Runner", "year": 1982}
 
     class Response(TypedDict):
         status: int
@@ -318,8 +318,8 @@ to use inline TypedDict syntax. For example:
 
     .. code-block:: python
 
-        def test_values() -> {"int": int, "str": str}:
-            return {"int": 42, "str": "test"}
+        def get_movie() -> {"name": str, "year": int}:
+            return {"name": "Blade Runner", "year": 1982}
 
     This legacy syntax can be enabled using ``--enable-incomplete-feature=InlineTypedDict``.
     Due to ambiguity with a regular variables, the legacy syntax may only be used in

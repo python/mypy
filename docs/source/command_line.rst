@@ -1190,16 +1190,16 @@ List of currently incomplete/experimental features:
 
   .. code-block:: python
 
-     def test_values() -> TypedDict[{"int": int, "str": str}]:
-         return {"int": 42, "str": "test"}
+     def get_movie() -> TypedDict[{"name": str, "year": int}]:
+        return {"name": "Blade Runner", "year": 1982}
 
 * ``InlineTypedDict``: this feature enables non-standard syntax for inline
   :ref:`TypedDicts <typeddict>`, for example:
 
   .. code-block:: python
 
-     def test_values() -> {"int": int, "str": str}:
-         return {"int": 42, "str": "test"}
+     def get_movie() -> {"name": str, "year": int}:
+            return {"name": "Blade Runner", "year": 1982}
 
 
 Miscellaneous
