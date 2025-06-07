@@ -1039,7 +1039,7 @@ def _get_attrs_init_type(typ: Instance) -> CallableType | None | AnyType:
         if init_node is None or not init_node.plugin_generated:
             return None
         else:
-            return AnyType(TypeOfAny.special_form)
+            return init_method.type
 
     # case 2: overloaded method
     if isinstance(init_method, OverloadedFuncDef) and isinstance(init_method.type, Overloaded):
