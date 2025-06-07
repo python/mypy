@@ -1501,3 +1501,57 @@ def bind_self_fast(method: F, original_type: Type | None = None) -> F:
         is_bound=True,
     )
     return cast(F, res)
+
+
+def has_operator(typ: Type, op_method: str, named_type: Callable[[str], Instance]) -> bool:
+    """Does type have operator with the given name?
+
+    Note: this follows the rules for operator access, in particular:
+    * __getattr__ is not considered
+    * for class objects we only look in metaclass
+    * instance level attributes (i.e. extra_attrs) are not considered
+    """
+    # This is much faster than analyze_member_access, and so using
+    # it first as a filter is important for performance. This is mostly relevant
+    # in situations where we can't expect that method is likely present,
+    # e.g. for __OP__ vs __rOP__.
+    typ = get_proper_type(typ)
+
+    if isinstance(typ, TypeVarLikeType):
+        typ = typ.values_or_bound()
+    if isinstance(typ, AnyType):
+        return True
+    if isinstance(typ, UnionType):
+        return all(has_operator(x, op_method, named_type) for x in typ.relevant_items())
+    if isinstance(typ, FunctionLike) and typ.is_type_obj():
+        return typ.fallback.type.has_readable_member(op_method)
+    if isinstance(typ, TypeType):
+        # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
+        # so we don't need to care about unions here, but we need to care about
+        # Type[T], where upper bound of T is a union.
+        item = typ.item
+        if isinstance(item, TypeVarType):
+            item = item.values_or_bound()
+        if isinstance(item, UnionType):
+            return all(meta_has_operator(x, op_method, named_type) for x in item.relevant_items())
+        return meta_has_operator(item, op_method, named_type)
+    return instance_fallback(typ, named_type).type.has_readable_member(op_method)
+
+
+def instance_fallback(typ: ProperType, named_type: Callable[[str], Instance]) -> Instance:
+    if isinstance(typ, Instance):
+        return typ
+    if isinstance(typ, TupleType):
+        return tuple_fallback(typ)
+    if isinstance(typ, (LiteralType, TypedDictType)):
+        return typ.fallback
+    return named_type("builtins.object")
+
+
+def meta_has_operator(item: Type, op_method: str, named_type: Callable[[str], Instance]) -> bool:
+    item = get_proper_type(item)
+    if isinstance(item, AnyType):
+        return True
+    item = instance_fallback(item, named_type)
+    meta = item.type.metaclass_type or named_type("builtins.type")
+    return meta.type.has_readable_member(op_method)

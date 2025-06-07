@@ -615,6 +615,11 @@ class TypeVarLikeType(ProperType):
         t = get_proper_type(self.default)
         return not (isinstance(t, AnyType) and t.type_of_any == TypeOfAny.from_omitted_generics)
 
+    def values_or_bound(self) -> ProperType:
+        if isinstance(self, TypeVarType) and self.values:
+            return UnionType(self.values)
+        return get_proper_type(self.upper_bound)
+
 
 class TypeVarType(TypeVarLikeType):
     """Type that refers to a type variable."""
