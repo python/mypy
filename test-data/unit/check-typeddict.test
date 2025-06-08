@@ -4258,3 +4258,17 @@ e1: E = {"x": 0, "y": "a"}
 e2: E = {"x": "no", "y": "a"}
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAliasAsInstanceAttribute]
+from typing import TypedDict
+
+class Dicts:
+    class TF(TypedDict, total=False):
+        user_id: int
+    TotalFalse = TF
+
+dicts = Dicts()
+reveal_type(dicts.TF)  # N: Revealed type is "def (*, user_id: builtins.int =) -> TypedDict('__main__.Dicts.TF', {'user_id'?: builtins.int})"
+reveal_type(dicts.TotalFalse)  # N: Revealed type is "def (*, user_id: builtins.int =) -> TypedDict('__main__.Dicts.TF', {'user_id'?: builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
