@@ -7902,8 +7902,7 @@ class Foo:
     from mod import meth2  # E: Unsupported class scoped import
     from mod import T
 
-reveal_type(Foo.T)  # E: Type variable "Foo.T" cannot be used as an expression \
-                    # N: Revealed type is "Any"
+reveal_type(Foo.T)  # N: Revealed type is "typing.TypeVar"
 
 [file mod.pyi]
 from typing import Any, TypeVar, overload
@@ -7915,6 +7914,8 @@ def meth1(self: Any, y: str) -> str: ...
 
 T = TypeVar("T")
 def meth2(self: Any, y: T) -> T: ...
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testNewAndInitNoReturn]
 from typing import NoReturn

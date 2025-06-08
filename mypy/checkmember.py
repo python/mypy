@@ -34,7 +34,7 @@ from mypy.nodes import (
     TempNode,
     TypeAlias,
     TypeInfo,
-    TypeVarExpr,
+    TypeVarLikeExpr,
     Var,
     is_final_node,
 )
@@ -49,7 +49,6 @@ from mypy.typeops import (
     make_simplified_union,
     supported_self_type,
     tuple_fallback,
-    type_object_type,
 )
 from mypy.types import (
     AnyType,
@@ -537,24 +536,20 @@ def analyze_member_var_access(
         is_trivial_self = vv.func.is_trivial_self and not vv.decorators
         if mx.is_super and not mx.suppress_errors:
             validate_super_call(vv.func, mx)
+    if isinstance(v, FuncDef):
+        assert False, "Did not expect a function"
+    if isinstance(v, MypyFile):
+        mx.chk.module_refs.add(v.fullname)
 
-    if isinstance(vv, TypeInfo):
+    if isinstance(vv, (TypeInfo, TypeAlias, MypyFile, TypeVarLikeExpr)):
         # If the associated variable is a TypeInfo synthesize a Var node for
         # the purposes of type checking.  This enables us to type check things
-        # like accessing class attributes on an inner class.
-        v = Var(name, type=type_object_type(vv, mx.named_type))
-        v.info = info
-
-    if isinstance(vv, TypeAlias):
-        # Similar to the above TypeInfo case, we allow using
-        # qualified type aliases in runtime context if it refers to an
-        # instance type. For example:
+        # like accessing class attributes on an inner class. Similar we allow
+        # using qualified type aliases in runtime context. For example:
         #     class C:
         #         A = List[int]
         #     x = C.A() <- this is OK
-        typ = mx.chk.expr_checker.alias_type_in_runtime_context(
-            vv, ctx=mx.context, alias_definition=mx.is_lvalue
-        )
+        typ = mx.chk.expr_checker.analyze_static_reference(vv, mx.context, mx.is_lvalue)
         v = Var(name, type=typ)
         v.info = info
 
@@ -567,13 +562,6 @@ def analyze_member_var_access(
             check_final_member(name, info, mx.msg, mx.context)
 
         return analyze_var(name, v, itype, mx, implicit=implicit, is_trivial_self=is_trivial_self)
-    elif isinstance(v, FuncDef):
-        assert False, "Did not expect a function"
-    elif isinstance(v, MypyFile):
-        mx.chk.module_refs.add(v.fullname)
-        return mx.chk.expr_checker.module_type(v)
-    elif isinstance(v, TypeVarExpr):
-        return mx.chk.named_type("typing.TypeVar")
     elif (
         not v
         and name not in ["__getattr__", "__setattr__", "__getattribute__"]
@@ -1259,29 +1247,9 @@ def analyze_class_attribute_access(
         mx.not_ready_callback(name, mx.context)
         return AnyType(TypeOfAny.special_form)
 
-    if isinstance(node.node, TypeVarExpr):
-        mx.fail(message_registry.CANNOT_USE_TYPEVAR_AS_EXPRESSION.format(info.name, name))
-        return AnyType(TypeOfAny.from_error)
-
-    # TODO: some logic below duplicates analyze_ref_expr in checkexpr.py
-    if isinstance(node.node, TypeInfo):
-        if node.node.typeddict_type:
-            # We special-case TypedDict, because they don't define any constructor.
-            return mx.chk.expr_checker.typeddict_callable(node.node)
-        elif node.node.fullname == "types.NoneType":
-            # We special case NoneType, because its stub definition is not related to None.
-            return TypeType(NoneType())
-        else:
-            return type_object_type(node.node, mx.named_type)
-
-    if isinstance(node.node, MypyFile):
-        # Reference to a module object.
-        return mx.named_type("types.ModuleType")
-
-    if isinstance(node.node, TypeAlias):
-        return mx.chk.expr_checker.alias_type_in_runtime_context(
-            node.node, ctx=mx.context, alias_definition=mx.is_lvalue
-        )
+    if isinstance(node.node, (TypeInfo, TypeAlias, MypyFile, TypeVarLikeExpr)):
+        # TODO: should we apply class plugin here (similar to instance access)?
+        return mx.chk.expr_checker.analyze_static_reference(node.node, mx.context, mx.is_lvalue)
 
     if is_decorated:
         assert isinstance(node.node, Decorator)
