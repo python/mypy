@@ -538,12 +538,20 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     Overloaded variants must be consecutive in the source file.
     """
 
-    __slots__ = ("items", "unanalyzed_items", "impl", "deprecated", "_is_trivial_self")
+    __slots__ = (
+        "items",
+        "unanalyzed_items",
+        "impl",
+        "deprecated",
+        "setter_index",
+        "_is_trivial_self",
+    )
 
     items: list[OverloadPart]
     unanalyzed_items: list[OverloadPart]
     impl: OverloadPart | None
     deprecated: str | None
+    setter_index: int | None
 
     def __init__(self, items: list[OverloadPart]) -> None:
         super().__init__()
@@ -551,6 +559,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         self.deprecated = None
+        self.setter_index = None
         self._is_trivial_self: bool | None = None
         if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
@@ -586,6 +595,17 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self._is_trivial_self = True
         return True
 
+    @property
+    def setter(self) -> Decorator:
+        # Do some consistency checks first.
+        first_item = self.items[0]
+        assert isinstance(first_item, Decorator)
+        assert first_item.var.is_settable_property
+        assert self.setter_index is not None
+        item = self.items[self.setter_index]
+        assert isinstance(item, Decorator)
+        return item
+
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
 
@@ -598,6 +618,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             "impl": None if self.impl is None else self.impl.serialize(),
             "flags": get_flags(self, FUNCBASE_FLAGS),
             "deprecated": self.deprecated,
+            "setter_index": self.setter_index,
         }
 
     @classmethod
@@ -618,6 +639,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         res._fullname = data["fullname"]
         set_flags(res, data["flags"])
         res.deprecated = data["deprecated"]
+        res.setter_index = data["setter_index"]
         # NOTE: res.info will be set in the fixup phase.
         return res
 
