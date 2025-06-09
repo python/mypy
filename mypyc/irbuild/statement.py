@@ -53,6 +53,7 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     Branch,
+    Call,
     InitStatic,
     Integer,
     LoadAddress,
@@ -930,11 +931,15 @@ def emit_yield_from_or_await(
     to_yield_reg = Register(object_rprimitive)
     received_reg = Register(object_rprimitive)
 
-    get_op = coro_op if is_await else iter_op
-    if isinstance(get_op, PrimitiveDescription):
-        iter_val = builder.primitive_op(get_op, [val], line)
+    if isinstance(val, Call) and isinstance(val.type, RInstance) and val.type.class_ir.is_generated:
+        # XXX is_generator not is_generated !!!!!!! FIXME FIXME
+        iter_val = val
     else:
-        iter_val = builder.call_c(get_op, [val], line)
+        get_op = coro_op if is_await else iter_op
+        if isinstance(get_op, PrimitiveDescription):
+            iter_val = builder.primitive_op(get_op, [val], line)
+        else:
+            iter_val = builder.call_c(get_op, [val], line)
 
     iter_reg = builder.maybe_spill_assignable(iter_val)
 
