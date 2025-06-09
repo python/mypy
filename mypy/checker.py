@@ -117,7 +117,6 @@ from mypy.nodes import (
     TypeAlias,
     TypeAliasStmt,
     TypeInfo,
-    TypeVarExpr,
     UnaryExpr,
     Var,
     WhileStmt,
@@ -697,11 +696,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             assert isinstance(defn.items[0], Decorator)
             self.visit_decorator(defn.items[0])
             if defn.items[0].var.is_settable_property:
-                # TODO: here and elsewhere we assume setter immediately follows getter.
-                assert isinstance(defn.items[1], Decorator)
                 # Perform a reduced visit just to infer the actual setter type.
-                self.visit_decorator_inner(defn.items[1], skip_first_item=True)
-                setter_type = defn.items[1].var.type
+                self.visit_decorator_inner(defn.setter, skip_first_item=True)
+                setter_type = defn.setter.var.type
                 # Check if the setter can accept two positional arguments.
                 any_type = AnyType(TypeOfAny.special_form)
                 fallback_setter_type = CallableType(
@@ -712,7 +709,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     fallback=self.named_type("builtins.function"),
                 )
                 if setter_type and not is_subtype(setter_type, fallback_setter_type):
-                    self.fail("Invalid property setter signature", defn.items[1].func)
+                    self.fail("Invalid property setter signature", defn.setter.func)
                 setter_type = self.extract_callable_type(setter_type, defn)
                 if not isinstance(setter_type, CallableType) or len(setter_type.arg_types) != 2:
                     # TODO: keep precise type for callables with tricky but valid signatures.
@@ -2171,7 +2168,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         assert typ is not None and original_type is not None
 
         if not is_subtype(original_type, typ):
-            self.msg.incompatible_setter_override(defn.items[1], typ, original_type, base)
+            self.msg.incompatible_setter_override(defn.setter, typ, original_type, base)
 
     def check_method_override_for_base_with_name(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, name: str, base: TypeInfo
@@ -2859,29 +2856,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             for base2 in mro[i + 1 :]:
                 if name in base2.names and base2 not in base.mro:
                     self.check_compatibility(name, base, base2, typ)
-
-    def determine_type_of_member(self, sym: SymbolTableNode) -> Type | None:
-        # TODO: this duplicates both checkmember.py and analyze_ref_expr(), delete.
-        if sym.type is not None:
-            return sym.type
-        if isinstance(sym.node, SYMBOL_FUNCBASE_TYPES):
-            return self.function_type(sym.node)
-        if isinstance(sym.node, TypeInfo):
-            if sym.node.typeddict_type:
-                # We special-case TypedDict, because they don't define any constructor.
-                return self.expr_checker.typeddict_callable(sym.node)
-            else:
-                return type_object_type(sym.node, self.named_type)
-        if isinstance(sym.node, TypeVarExpr):
-            # Use of TypeVars is rejected in an expression/runtime context, so
-            # we don't need to check supertype compatibility for them.
-            return AnyType(TypeOfAny.special_form)
-        if isinstance(sym.node, TypeAlias):
-            with self.msg.filter_errors():
-                # Suppress any errors, they will be given when analyzing the corresponding node.
-                # Here we may have incorrect options and location context.
-                return self.expr_checker.alias_type_in_runtime_context(sym.node, ctx=sym.node)
-        return None
 
     def check_compatibility(
         self, name: str, base1: TypeInfo, base2: TypeInfo, ctx: TypeInfo

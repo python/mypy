@@ -2647,3 +2647,22 @@ User("", 0)  # E: Too many positional arguments for "User"
 User("", id=0)
 User("", name="")  # E: "User" gets multiple values for keyword argument "name"
 [builtins fixtures/tuple.pyi]
+
+[case testDataclassDefaultFactoryTypedDict]
+from dataclasses import dataclass, field
+from mypy_extensions import TypedDict
+
+class Person(TypedDict, total=False):
+    name: str
+
+@dataclass
+class Job:
+    person: Person = field(default_factory=Person)
+
+class PersonBad(TypedDict):
+    name: str
+
+@dataclass
+class JobBad:
+    person: PersonBad = field(default_factory=PersonBad)  # E: Argument "default_factory" to "field" has incompatible type "type[PersonBad]"; expected "Callable[[], PersonBad]"
+[builtins fixtures/dict.pyi]
