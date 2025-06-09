@@ -21,7 +21,7 @@ def fake_mypycify(args: list[str], **kwargs: Any) -> list[FakeExtension]:
     return [FakeExtension()]
 
 
-def fake_setup(*args, **kwargs):
+def fake_setup(*args: Any, **kwargs: Any) -> Any:
     pass
 
 
