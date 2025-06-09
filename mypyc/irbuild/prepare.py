@@ -179,6 +179,11 @@ def prepare_func_def(
     mapper: Mapper,
     options: CompilerOptions,
 ) -> FuncDecl:
+    if fdef.is_coroutine or fdef.is_generator:
+        cir = ClassIR(fdef.name, module_name, is_generated=True)
+        cir.reuse_freed_instance = True
+        mapper.fdef_to_generator[fdef] = cir
+
     kind = (
         FUNC_STATICMETHOD
         if fdef.is_static

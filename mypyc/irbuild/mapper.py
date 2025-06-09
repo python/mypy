@@ -64,6 +64,7 @@ class Mapper:
         self.type_to_ir: dict[TypeInfo, ClassIR] = {}
         self.func_to_decl: dict[SymbolNode, FuncDecl] = {}
         self.symbol_fullnames: set[str] = set()
+        self.fdef_to_generator: dict[FuncDef, ClassIR] = {}
 
     def type_to_rtype(self, typ: Type | None) -> RType:
         if typ is None:
@@ -171,7 +172,10 @@ class Mapper:
                 for typ, kind in zip(fdef.type.arg_types, fdef.type.arg_kinds)
             ]
             arg_pos_onlys = [name is None for name in fdef.type.arg_names]
-            ret = self.type_to_rtype(fdef.type.ret_type)
+            if fdef.is_coroutine or fdef.is_generator:
+                ret = RInstance(self.fdef_to_generator[fdef])
+            else:
+                ret = self.type_to_rtype(fdef.type.ret_type)
         else:
             # Handle unannotated functions
             arg_types = [object_rprimitive for _ in fdef.arguments]
