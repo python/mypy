@@ -933,7 +933,9 @@ def emit_yield_from_or_await(
 
     if isinstance(val, Call) and isinstance(val.type, RInstance) and val.type.class_ir.is_generated:
         # XXX is_generator not is_generated !!!!!!! FIXME FIXME
-        iter_val = val
+        r = Register(val.type)
+        builder.assign(r, val, line)
+        iter_val = r
     else:
         get_op = coro_op if is_await else iter_op
         if isinstance(get_op, PrimitiveDescription):
