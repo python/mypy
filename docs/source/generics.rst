@@ -93,7 +93,7 @@ Using ``Stack`` is similar to built-in container types:
    stack.push('x')
 
    stack2: Stack[str] = Stack()
-   stack2.append('x')
+   stack2.push('x')
 
 Construction of instances of generic types is type checked (Python 3.12 syntax):
 

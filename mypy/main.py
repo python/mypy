@@ -535,8 +535,27 @@ def process_options(
     # their `dest` prefixed with `special-opts:`, which will cause them to be
     # parsed into the separate special_opts namespace object.
 
-    # Note: we have a style guide for formatting the mypy --help text. See
-    # https://github.com/python/mypy/wiki/Documentation-Conventions
+    # Our style guide for formatting the output of running `mypy --help`:
+    # Flags:
+    # 1.  The flag help text should start with a capital letter but never end with a period.
+    # 2.  Keep the flag help text brief -- ideally just a single sentence.
+    # 3.  All flags must be a part of a group, unless the flag is deprecated or suppressed.
+    # 4.  Avoid adding new flags to the "miscellaneous" groups -- instead add them to an
+    #     existing group or, if applicable, create a new group. Feel free to move existing
+    #     flags to a new group: just be sure to also update the documentation to match.
+    #
+    # Groups:
+    # 1.  The group title and description should start with a capital letter.
+    # 2.  The first sentence of a group description should be written in the bare infinitive.
+    #     Tip: try substituting the group title and description into the following sentence:
+    #     > {group_title}: these flags will {group_description}
+    #     Feel free to add subsequent sentences that add additional details.
+    # 3.  If you cannot think of a meaningful description for a new group, omit it entirely.
+    #     (E.g. see the "miscellaneous" sections).
+    # 4.  The group description should end with a period (unless the last line is a link). If you
+    #     do end the group description with a link, omit the 'http://' prefix. (Some links are too
+    #     long and will break up into multiple lines if we include that prefix, so for consistency
+    #     we omit the prefix on all links.)
 
     general_group = parser.add_argument_group(title="Optional arguments")
     general_group.add_argument(
@@ -766,7 +785,7 @@ def process_options(
         title="None and Optional handling",
         description="Adjust how values of type 'None' are handled. For more context on "
         "how mypy handles values of type 'None', see: "
-        "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional",
+        "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#optional-types-and-the-none-type",
     )
     add_invertible_flag(
         "--implicit-optional",
@@ -782,6 +801,7 @@ def process_options(
         help="Disable strict Optional checks (inverse: --strict-optional)",
     )
 
+    # This flag is deprecated, Mypy only supports Python 3.9+
     add_invertible_flag(
         "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
     )
@@ -898,7 +918,7 @@ def process_options(
     add_invertible_flag(
         "--strict-bytes",
         default=False,
-        strict_flag=False,
+        strict_flag=True,
         help="Disable treating bytearray and memoryview as subtypes of bytes",
         group=strictness_group,
     )
@@ -1474,6 +1494,9 @@ def process_options(
 
     if options.strict_concatenate and not strict_option_set:
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
+
+    if options.force_uppercase_builtins:
+        print("Warning: --force-uppercase-builtins is deprecated; mypy only supports Python 3.9+")
 
     # Set target.
     if special_opts.modules + special_opts.packages:
