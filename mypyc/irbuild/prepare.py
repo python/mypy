@@ -180,7 +180,8 @@ def prepare_func_def(
     options: CompilerOptions,
 ) -> FuncDecl:
     if fdef.is_coroutine or fdef.is_generator:
-        cir = ClassIR(fdef.name, module_name, is_generated=True)
+        name = "_".join(x for x in [fdef.name, class_name] if x) + "_gen"
+        cir = ClassIR(name, module_name, is_generated=True)
         cir.reuse_freed_instance = True
         mapper.fdef_to_generator[fdef] = cir
 
