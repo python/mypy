@@ -575,6 +575,8 @@ def generate_setup_for_class(
         emitter.emit_line(f"if ({prefix}_free_instance != NULL) {{")
         emitter.emit_line(f"self = {prefix}_free_instance;")
         emitter.emit_line(f"{prefix}_free_instance = NULL;")
+        emitter.emit_line("Py_SET_REFCNT(self, 1);")
+        emitter.emit_line("PyObject_GC_Track(self);")
         emitter.emit_line("return (PyObject *)self;")
         emitter.emit_line("}")
 
@@ -806,9 +808,9 @@ def generate_dealloc_for_class(
         emitter.emit_line("if (!PyObject_GC_IsFinalized((PyObject *)self)) {")
         emitter.emit_line("Py_TYPE(self)->tp_finalize((PyObject *)self);")
         emitter.emit_line("}")
+    emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.reuse_freed_instance:
         emit_reuse_dealloc(cl, emitter)
-    emitter.emit_line("PyObject_GC_UnTrack(self);")
     # The trashcan is needed to handle deep recursive deallocations
     emitter.emit_line(f"CPy_TRASHCAN_BEGIN(self, {dealloc_func_name})")
     emitter.emit_line(f"{clear_func_name}(self);")
@@ -821,7 +823,6 @@ def emit_reuse_dealloc(cl: ClassIR, emitter: Emitter) -> None:
     prefix = cl.name_prefix(emitter.names)
     emitter.emit_line(f"if ({prefix}_free_instance == NULL) {{")
     emitter.emit_line(f"{prefix}_free_instance = self;")
-    emitter.emit_line("Py_INCREF(self);")
 
     # TODO: emit_clear_bitmaps(cl, emitter)
 
