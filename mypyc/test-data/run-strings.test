@@ -815,3 +815,15 @@ def test_unicode_range() -> None:
     assert "\u2029 \U0010AAAA\U00104444B\u205F ".strip() == "\U0010AAAA\U00104444B"
     assert " \u3000\u205F ".strip() == ""
     assert "\u2029 \U00102865\u205F ".rstrip() == "\u2029 \U00102865"
+
+[case testCount]
+def test_count() -> None:
+    string = "abcbcb"
+    assert string.count("a") == 1
+    assert string.count("b") == 3
+    assert string.count("c") == 2
+def test_count_start_end() -> None:
+    string = "abcbcb"
+    assert string.count("a", 0, 4) == 1
+    assert string.count("b", 0, 4) == 2
+    assert string.count("c", 0, 4) == 1
