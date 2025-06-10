@@ -277,6 +277,26 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# str.count(substring)
+method_op(
+    name="count",
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyStr_CountAll",
+    error_kind=ERR_MAGIC,
+)
+
+# TODO str.count(unicode, substring, start)
+
+# str.count(substring, start, end)
+method_op(
+    name="count",
+    arg_types=[str_rprimitive, str_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="PyUnicode_Count",
+    error_kind=ERR_MAGIC,
+)
+
 # str.replace(old, new)
 method_op(
     name="replace",
