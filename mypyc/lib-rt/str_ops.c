@@ -511,7 +511,12 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
     }
 }
 
-Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, Py_ssize_t start) {
+Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start) {
+    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
+    if (temp_start == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return NULL;
+    }
     Py_ssize_t end = PyUnicode_GET_LENGTH(unicode);
     return PyUnicode_Count(unicode, substring, start, end);
 }
