@@ -235,8 +235,8 @@ class TestRun(MypycDataSuite):
             else False
         )
 
-        groups = construct_groups(sources, separate, len(module_names) > 1)
-
+        groups = construct_groups(sources, separate, len(module_names) > 1, None)
+        
         try:
             compiler_options = CompilerOptions(
                 multi_file=self.multi_file,
