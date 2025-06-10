@@ -507,7 +507,7 @@ L0:
 
 [case testCountAll]
 def do_count(s: str) -> int:
-    return s.count("x")
+    return s.count("x")  # type: ignore [attr-defined]
 [out]
 def do_count(s):
     s, r0 :: str
@@ -516,7 +516,7 @@ def do_count(s):
 
 [case testCountStart]
 def do_count(s: str, start: int) -> int:
-    return s.count("x", start)
+    return s.count("x", start)  # type: ignore [attr-defined]
 [out]
 def do_count(s, start):
     s, r0 :: str
@@ -526,7 +526,7 @@ def do_count(s, start):
 
 [case testCountStartEnd]
 def do_count(s: str, start: int, end: int) -> int:
-    return s.count("x", start, end)
+    return s.count("x", start, end)  # type: ignore [attr-defined]
 [out]
 def do_count(s, start, end):
     s, r0 :: str
