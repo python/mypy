@@ -29,8 +29,8 @@ from mypy.errors import (
     ErrorInfo,
     Errors,
     ErrorWatcher,
-    IterationErrorWatcher,
     IterationDependentErrors,
+    IterationErrorWatcher,
     report_internal_error,
 )
 from mypy.expandtype import expand_type
