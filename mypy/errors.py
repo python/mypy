@@ -4,10 +4,10 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from itertools import chain
-from typing import Callable, Final, Iterator, NoReturn, Optional, TextIO, TypeVar
-from typing_extensions import Literal, NamedTuple, Self, TypeAlias as _TypeAlias
+from typing import Callable, Final, NoReturn, Optional, TextIO, TypeVar
+from typing_extensions import Literal, Self, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
 from mypy.error_formatter import ErrorFormatter
@@ -220,7 +220,6 @@ class ErrorWatcher:
     def filtered_errors(self) -> list[ErrorInfo]:
         assert self._filtered is not None
         return self._filtered
-
 
 
 class ÎterationDependentErrors:
