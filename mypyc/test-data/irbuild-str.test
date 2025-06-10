@@ -504,3 +504,22 @@ L0:
     r7 = CPyStr_Strip(s, 0)
     r8 = CPyStr_RStrip(s, 0)
     return 1
+
+[case testCountAll]
+def do_count(s: str) -> int:
+    return s.count("x")
+[out]
+def do_count(s):
+    s, r0 :: str
+    r0 = 'x'
+    return CPyStr_CountAll(s, r0)
+
+[case testCountStartEnd]
+def do_count(s: str, start: int, end: int) -> int:
+    return s.count("x", start, end)
+[out]
+def do_count(s, start, end):
+    s, r0 :: str
+    start, end :: Py_ssize_t
+    r0 = 'x'
+    return PyUnicode_Count(s, r0, start, end)
