@@ -283,7 +283,7 @@ method_op(
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name="CPyStr_Count",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_NEG_INT,
     extra_int_constants=[(0, c_pyssize_t_rprimitive)],
 )
 
@@ -293,7 +293,7 @@ method_op(
     arg_types=[str_rprimitive, str_rprimitive, int_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name="CPyStr_Count",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_NEG_INT,
 )
 
 # str.count(substring, start, end)
@@ -302,7 +302,7 @@ method_op(
     arg_types=[str_rprimitive, str_rprimitive, int_rprimitive, int_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name="PyUnicode_Count",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_NEG_INT,
 )
 
 # str.replace(old, new)
