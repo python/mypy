@@ -436,9 +436,7 @@ def mypyc_build(
         or always_use_shared_lib
     )
 
-    groups = construct_groups(
-        mypyc_sources, separate, use_shared_lib, compiler_options.group_name
-    )
+    groups = construct_groups(mypyc_sources, separate, use_shared_lib, compiler_options.group_name)
 
     if compiler_options.group_name is not None:
         assert len(groups) == 1, "If using custom group_name, only one group is expected"
