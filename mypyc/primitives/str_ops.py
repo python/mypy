@@ -284,10 +284,10 @@ method_op(
     return_type=c_pyssize_t_rprimitive,
     c_function_name="CPyStr_Count",
     error_kind=ERR_MAGIC,
-    extra_int_constants=[(0, c_int_rprimitive)],
+    extra_int_constants=[(0, c_pyssize_t_rprimitive)],
 )
 
-# str.count(unicode, substring, start)
+# str.count(substring, start)
 method_op(
     name="count",
     arg_types=[str_rprimitive, str_rprimitive, int_rprimitive],
