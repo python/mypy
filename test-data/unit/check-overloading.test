@@ -6310,6 +6310,31 @@ reveal_type(f12(A()))  # N: Revealed type is "__main__.A"
 
 [typing fixtures/typing-medium.pyi]
 
+[case testAdjacentConditionalOverloads]
+# flags: --always-true True
+from typing import overload
+
+if True:
+    @overload
+    def ham(v: str) -> list[str]: ...
+
+    @overload
+    def ham(v: int) -> list[int]: ...
+
+def ham(v: "int | str") -> "list[str] | list[int]":
+    return []
+
+if True:
+    @overload
+    def spam(v: str) -> list[str]: ...
+
+    @overload
+    def spam(v: int) -> list[int]: ...
+
+def spam(v: "int | str") -> "list[str] | list[int]":
+    return []
+
+
 [case testOverloadIfUnconditionalFuncDef]
 # flags: --always-true True --always-false False
 from typing import overload
