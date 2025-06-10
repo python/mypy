@@ -512,7 +512,17 @@ def do_count(s: str) -> int:
 def do_count(s):
     s, r0 :: str
     r0 = 'x'
-    return CPyStr_CountAll(s, r0)
+    return CPyStr_Count(s, r0, 0)
+
+[case testCountStart]
+def do_count(s: str, start: int) -> int:
+    return s.count("x", start)
+[out]
+def do_count(s, start):
+    s, r0 :: str
+    start :: Py_ssize_t
+    r0 = 'x'
+    return CPyStr_Count(s, r0, start)
 
 [case testCountStartEnd]
 def do_count(s: str, start: int, end: int) -> int:
