@@ -2577,3 +2577,26 @@ def check_d(arg: D[T]) -> None:
         return
     reveal_type(arg)  # N: Revealed type is "tuple[T`-1, fallback=__main__.D[Any]]"
 [builtins fixtures/tuple.pyi]
+
+
+[case testNarrowingUnionMixins]
+class Base: ...
+
+class FooMixin:
+    def foo(self) -> None: ...
+
+class BarMixin:
+    def bar(self) -> None: ...
+
+def baz(item: Base) -> None:
+    if not isinstance(item, (FooMixin, BarMixin)):
+        raise
+
+    reveal_type(item)  # N: Revealed type is "Union[__main__.<subclass of "__main__.Base" and "__main__.FooMixin">, __main__.<subclass of "__main__.Base" and "__main__.BarMixin">]"
+    if isinstance(item, FooMixin):
+        reveal_type(item)  # N: Revealed type is "__main__.FooMixin"
+        item.foo()
+    else:
+        reveal_type(item)  # N: Revealed type is "__main__.<subclass of "__main__.Base" and "__main__.BarMixin">"
+        item.bar()
+[builtins fixtures/isinstance.pyi]
