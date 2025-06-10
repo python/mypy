@@ -817,6 +817,7 @@ def test_unicode_range() -> None:
     assert "\u2029 \U00102865\u205F ".rstrip() == "\u2029 \U00102865"
 
 [case testCount]
+# mypy: disable-error-code="attr-defined"
 def test_count() -> None:
     string = "abcbcb"
     assert string.count("a") == 1
