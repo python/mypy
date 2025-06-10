@@ -301,7 +301,7 @@ method_op(
     name="count",
     arg_types=[str_rprimitive, str_rprimitive, int_rprimitive, int_rprimitive],
     return_type=c_pyssize_t_rprimitive,
-    c_function_name="PyUnicode_Count",
+    c_function_name="CPyStr_CountFull",
     error_kind=ERR_NEG_INT,
 )
 
