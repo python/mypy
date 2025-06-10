@@ -1319,8 +1319,8 @@ def find_member(
         is_lvalue=is_lvalue,
         is_super=False,
         is_operator=is_operator,
-        original_type=itype,
-        self_type=subtype,
+        original_type=TypeType.make_normalized(itype) if class_obj else itype,
+        self_type=TypeType.make_normalized(subtype) if class_obj else subtype,
         context=Context(),  # all errors are filtered, but this is a required argument
         chk=type_checker,
         suppress_errors=True,
