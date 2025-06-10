@@ -2453,6 +2453,25 @@ while x is not None and b():
 
 [builtins fixtures/primitives.pyi]
 
+[case testAvoidFalseUnreachableInFinally]
+# flags: --allow-redefinition-new --local-partial-types --warn-unreachable
+def f() -> None:
+    try:
+        x = 1
+        if int():
+            x = ""
+            return
+        if int():
+            x = None
+            return
+    finally:
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+        if isinstance(x, str):
+            reveal_type(x)  # N: Revealed type is "builtins.str"
+        reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+
+[builtins fixtures/isinstancelist.pyi]
+
 [case testNarrowingTypeVarMultiple]
 from typing import TypeVar
 
