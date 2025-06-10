@@ -512,14 +512,16 @@ def do_count(s: str) -> int:
 def do_count(s):
     s, r0 :: str
     r1 :: native_int
-    r2 :: object
-    r3 :: int
+    r2 :: bit
+    r3 :: object
+    r4 :: int
 L0:
     r0 = 'x'
     r1 = CPyStr_Count(s, r0, 0)
-    r2 = box(native_int, r1)
-    r3 = unbox(int, r2)
-    return r3
+    r2 = r1 >= 0 :: signed
+    r3 = box(native_int, r2)
+    r4 = unbox(int, r3)
+    return r4
 
 [case testCountStart]
 def do_count(s: str, start: int) -> int:
@@ -529,15 +531,17 @@ def do_count(s, start):
     s :: str
     start :: int
     r0 :: str
-    r1 :: native_int
-    r2 :: object
-    r3 :: int
+    r1 :: bit
+    r2 :: native_int
+    r3 :: object
+    r4 :: int
 L0:
     r0 = 'x'
     r1 = CPyStr_Count(s, r0, start)
-    r2 = box(native_int, r1)
-    r3 = unbox(int, r2)
-    return r3
+    r2 = r1 >= 0 :: signed
+    r3 = box(native_int, r2)
+    r4 = unbox(int, r3)
+    return r4
 
 [case testCountStartEnd]
 def do_count(s: str, start: int, end: int) -> int:
@@ -547,12 +551,14 @@ def do_count(s, start, end):
     s :: str
     start, end :: int
     r0 :: str
-    r1 :: native_int
-    r2 :: object
-    r3 :: int
+    r1 :: bit
+    r2 :: native_int
+    r3 :: object
+    r4 :: int
 L0:
     r0 = 'x'
-    r1 = PyUnicode_Count(s, r0, start, end)
-    r2 = box(native_int, r1)
-    r3 = unbox(int, r2)
-    return r3
+    r1 = CPyStr_CountFull(s, r0, start, end)
+    r2 = r1 >= 0 :: signed
+    r3 = box(native_int, r2)
+    r4 = unbox(int, r3)
+    return r4
