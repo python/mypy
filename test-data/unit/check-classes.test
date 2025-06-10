@@ -8738,6 +8738,28 @@ class NoopPowerResource:
         self.hardware_type = None  # Note: intentionally recursive
 [builtins fixtures/property.pyi]
 
+[case testOverrideErrorReportingNoDuplicates]
+from typing import Callable, TypeVar
+
+def nested() -> None:
+    class B:
+        def meth(self, x: str) -> int: ...
+    class C(B):
+        def meth(self) -> str:  # E: Signature of "meth" incompatible with supertype "B" \
+                # N:      Superclass: \
+                # N:          def meth(self, x: str) -> int \
+                # N:      Subclass: \
+                # N:          def meth(self) -> str
+            pass
+    x = defer()
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], list[T]]: ...
+
+@deco
+def defer() -> int: ...
+[builtins fixtures/list.pyi]
+
 [case testPropertyAllowsDeleterBeforeSetter]
 class C:
     @property
