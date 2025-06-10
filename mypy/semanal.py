@@ -2374,6 +2374,14 @@ class SemanticAnalyzer(
             tvar_expr.default = tvar_expr.default.accept(
                 TypeVarDefaultTranslator(self, tvar_expr.name, context)
             )
+            # PEP-695 type variables that are redeclared in an inner scope are warned
+            # about elsewhere.
+            if not tvar_expr.is_new_style and not self.tvar_scope.allow_binding(
+                tvar_expr.fullname
+            ):
+                self.fail(
+                    message_registry.TYPE_VAR_REDECLARED_IN_NESTED_CLASS.format(name), context
+                )
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
             if last_tvar_name_with_default is not None and not tvar_def.has_default():
                 self.msg.tvar_without_default_type(

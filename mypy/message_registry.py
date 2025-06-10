@@ -353,6 +353,10 @@ TYPE_VAR_GENERIC_CONSTRAINT_TYPE: Final = ErrorMessage(
     "TypeVar constraint type cannot be parametrized by type variables", codes.MISC
 )
 
+TYPE_VAR_REDECLARED_IN_NESTED_CLASS: Final = ErrorMessage(
+    'Type variable "{}" is bound by an outer class', codes.VALID_TYPE
+)
+
 TYPE_ALIAS_WITH_YIELD_EXPRESSION: Final = ErrorMessage(
     "Yield expression cannot be used within a type alias", codes.SYNTAX
 )
