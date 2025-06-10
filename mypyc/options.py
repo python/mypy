@@ -15,6 +15,7 @@ class CompilerOptions:
         capi_version: tuple[int, int] | None = None,
         python_version: tuple[int, int] | None = None,
         strict_dunder_typing: bool = False,
+        shared_lib_name: str | None = None,
     ) -> None:
         self.strip_asserts = strip_asserts
         self.multi_file = multi_file
@@ -38,3 +39,4 @@ class CompilerOptions:
         # will assume the return type of the method strictly, which can lead to
         # more optimization opportunities.
         self.strict_dunders_typing = strict_dunder_typing
+        self.shared_lib_name = shared_lib_name
