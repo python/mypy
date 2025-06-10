@@ -241,23 +241,7 @@ def add_helper_to_generator_class(
     fn_info: FuncInfo,
 ) -> FuncDecl:
     """Generates a helper method for a generator class, called by '__next__' and 'throw'."""
-    sig = FuncSignature(
-        (
-            RuntimeArg(SELF_NAME, object_rprimitive),
-            RuntimeArg("type", object_rprimitive),
-            RuntimeArg("value", object_rprimitive),
-            RuntimeArg("traceback", object_rprimitive),
-            RuntimeArg("arg", object_rprimitive),
-        ),
-        sig.ret_type,
-    )
-    helper_fn_decl = FuncDecl(
-        "__mypyc_generator_helper__",
-        fn_info.generator_class.ir.name,
-        builder.module_name,
-        sig,
-        internal=True,
-    )
+    helper_fn_decl = fn_info.generator_class.ir.method_decls["__mypyc_generator_helper__"]
     helper_fn_ir = FuncIR(
         helper_fn_decl, arg_regs, blocks, fn_info.fitem.line, traceback_name=fn_info.fitem.name
     )

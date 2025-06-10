@@ -946,8 +946,11 @@ def emit_yield_from_or_await(
 
     stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
 
-    if isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method("__next__"):
-        m = MethodCall(builder.read(iter_reg), "__next__", [], line)
+    helper_method = "__mypyc_generator_helper__"
+    if isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(helper_method):
+        obj = builder.read(iter_reg)
+        nn = builder.none_object()
+        m = MethodCall(obj, helper_method, [nn, nn, nn, nn], line)
         m.error_kind = ERR_NEVER
         _y_init = builder.add(m)
     else:

@@ -38,7 +38,7 @@ from mypy.nodes import (
 from mypy.semanal import refers_to_fullname
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
-from mypyc.common import PROPSET_PREFIX, get_id_from_name
+from mypyc.common import PROPSET_PREFIX, get_id_from_name, SELF_NAME
 from mypyc.crash import catch_errors
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR
@@ -62,6 +62,7 @@ from mypyc.irbuild.util import (
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
+from mypyc.ir.rtypes import object_rprimitive
 
 
 def build_type_map(
@@ -184,6 +185,26 @@ def prepare_func_def(
         cir = ClassIR(name, module_name, is_generated=True)
         cir.reuse_freed_instance = True
         mapper.fdef_to_generator[fdef] = cir
+
+        helper_sig = FuncSignature(
+            (
+                RuntimeArg(SELF_NAME, object_rprimitive),
+                RuntimeArg("type", object_rprimitive),
+                RuntimeArg("value", object_rprimitive),
+                RuntimeArg("traceback", object_rprimitive),
+                RuntimeArg("arg", object_rprimitive),
+            ),
+            RInstance(cir),
+        )
+
+        helper_fn_decl = FuncDecl(
+            "__mypyc_generator_helper__",
+            name,
+            module_name,
+            helper_sig,
+            internal=True,
+        )
+        cir.method_decls[helper_fn_decl.name] = helper_fn_decl
 
     kind = (
         FUNC_STATICMETHOD
