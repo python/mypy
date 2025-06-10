@@ -357,7 +357,7 @@ def construct_groups(
     sources: list[BuildSource],
     separate: bool | list[tuple[list[str], str | None]],
     use_shared_lib: bool,
-    shared_lib_name: str | None,
+    group_name_override: str | None,
 ) -> emitmodule.Groups:
     """Compute Groups given the input source list and separate configs.
 
@@ -387,8 +387,8 @@ def construct_groups(
     # Generate missing names
     for i, (group, name) in enumerate(groups):
         if use_shared_lib and not name:
-            if shared_lib_name is not None:
-                name = shared_lib_name
+            if group_name_override is not None:
+                name = group_name_override
             else:
                 name = group_name([source.module for source in group])
         groups[i] = (group, name)
@@ -437,11 +437,11 @@ def mypyc_build(
     )
 
     groups = construct_groups(
-        mypyc_sources, separate, use_shared_lib, compiler_options.shared_lib_name
+        mypyc_sources, separate, use_shared_lib, compiler_options.group_name
     )
 
-    if compiler_options.shared_lib_name is not None:
-        assert len(groups) == 1, "If using custom shared_lib_name, only one group is expected"
+    if compiler_options.group_name is not None:
+        assert len(groups) == 1, "If using custom group_name, only one group is expected"
 
     # We let the test harness just pass in the c file contents instead
     # so that it can do a corner-cutting version without full stubs.
@@ -486,7 +486,7 @@ def mypycify(
     target_dir: str | None = None,
     include_runtime_files: bool | None = None,
     strict_dunder_typing: bool = False,
-    shared_lib_name: str | None = None,
+    group_name: str | None = None,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -529,10 +529,10 @@ def mypycify(
         strict_dunder_typing: If True, force dunder methods to have the return type
                               of the method strictly, which can lead to more
                               optimization opportunities. Defaults to False.
-        shared_lib_name: If set, override the default shared library derived from
-                         the hash of module names. This is used for both the C
-                         file and shared library. This is onlu supported if there
-                         is a single group.
+        group_name: If set, override the default group name derived from
+                    the hash of module names. This is used for both the ouptut C
+                    files and the shared library. This is only supported if there
+                    is a single group. [Experimental]
     """
 
     # Figure out our configuration
@@ -544,7 +544,7 @@ def mypycify(
         target_dir=target_dir,
         include_runtime_files=include_runtime_files,
         strict_dunder_typing=strict_dunder_typing,
-        shared_lib_name=shared_lib_name,
+        group_name=group_name,
     )
 
     # Generate all the actual important C code
