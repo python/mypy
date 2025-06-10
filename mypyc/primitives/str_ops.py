@@ -282,16 +282,24 @@ method_op(
     name="count",
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=c_pyssize_t_rprimitive,
-    c_function_name="CPyStr_CountAll",
+    c_function_name="CPyStr_Count",
     error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, c_int_rprimitive)],
 )
 
-# TODO str.count(unicode, substring, start)
+# str.count(unicode, substring, start)
+method_op(
+    name="count",
+    arg_types=[str_rprimitive, str_rprimitive, int_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyStr_Count",
+    error_kind=ERR_MAGIC,
+)
 
 # str.count(substring, start, end)
 method_op(
     name="count",
-    arg_types=[str_rprimitive, str_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive],
+    arg_types=[str_rprimitive, str_rprimitive, int_rprimitive, int_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name="PyUnicode_Count",
     error_kind=ERR_MAGIC,
