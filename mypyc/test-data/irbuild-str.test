@@ -519,7 +519,7 @@ L0:
     r0 = 'x'
     r1 = CPyStr_Count(s, r0, 0)
     r2 = r1 >= 0 :: signed
-    r3 = box(native_int, r2)
+    r3 = box(native_int, r1)
     r4 = unbox(int, r3)
     return r4
 
@@ -531,15 +531,15 @@ def do_count(s, start):
     s :: str
     start :: int
     r0 :: str
-    r1 :: bit
-    r2 :: native_int
+    r1 :: native_int
+    r2 :: bit
     r3 :: object
     r4 :: int
 L0:
     r0 = 'x'
     r1 = CPyStr_Count(s, r0, start)
     r2 = r1 >= 0 :: signed
-    r3 = box(native_int, r2)
+    r3 = box(native_int, r1)
     r4 = unbox(int, r3)
     return r4
 
@@ -551,14 +551,14 @@ def do_count(s, start, end):
     s :: str
     start, end :: int
     r0 :: str
-    r1 :: bit
-    r2 :: native_int
+    r1 :: native_int
+    r2 :: bit
     r3 :: object
     r4 :: int
 L0:
     r0 = 'x'
     r1 = CPyStr_CountFull(s, r0, start, end)
     r2 = r1 >= 0 :: signed
-    r3 = box(native_int, r2)
+    r3 = box(native_int, r1)
     r4 = unbox(int, r3)
     return r4
