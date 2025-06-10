@@ -955,7 +955,7 @@ def emit_yield_from_or_await(
     builder.assign(result, builder.call_c(check_stop_op, [], line), line)
     # Clear the spilled iterator/coroutine so that it will be freed.
     # Otherwise, the freeing of the spilled register would likely be delayed.
-    err = builder.add(LoadErrorValue(object_rprimitive))
+    err = builder.add(LoadErrorValue(iter_reg.type))
     builder.assign(iter_reg, err, line)
     builder.goto(done_block)
 
