@@ -514,6 +514,7 @@ def do_count(s):
     r1 :: native_int
     r2 :: object
     r3 :: int
+L0:
     r0 = 'x'
     r1 = CPyStr_Count(s, r0, 0)
     r2 = box(native_int, r1)
@@ -531,6 +532,7 @@ def do_count(s, start):
     r1 :: native_int
     r2 :: object
     r3 :: int
+L0:
     r0 = 'x'
     r1 = CPyStr_Count(s, r0, start)
     r2 = box(native_int, r1)
@@ -548,6 +550,7 @@ def do_count(s, start, end):
     r1 :: native_int
     r2 :: object
     r3 :: int
+L0:
     r0 = 'x'
     r1 = PyUnicode_Count(s, r0, start, end)
     r2 = box(native_int, r1)
