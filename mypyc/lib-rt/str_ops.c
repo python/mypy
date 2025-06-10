@@ -512,7 +512,7 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
 }
 
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, Py_ssize_t start) {
-    Py_ssize_t end = PyUnicode_GET_LENGTH(unicode);
+    Py_ssize_t end = PyUnicode_GET_LENGTH(unicode) + 1;
     return PyUnicode_Count(unicode, substring, start, end);
 }
 
