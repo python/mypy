@@ -3655,3 +3655,42 @@ reveal_type(C().x6)  # N: Revealed type is "def (x: builtins.int) -> builtins.st
 reveal_type(C().x7)  # E: Invalid self argument "C" to attribute function "x7" with type "Callable[[int], str]" \
                      # N: Revealed type is "def () -> builtins.str"
 [builtins fixtures/classmethod.pyi]
+
+[case testFunctionRedefinitionDeferred]
+from typing import Callable, TypeVar
+
+def outer() -> None:
+    if bool():
+        def inner() -> str: ...
+    else:
+        def inner() -> int: ...  # E: All conditional function variants must have identical signatures \
+                                 # N: Original: \
+                                 # N:     def inner() -> str \
+                                 # N: Redefinition: \
+                                 # N:     def inner() -> int
+    x = defer()
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], list[T]]: ...
+
+@deco
+def defer() -> int: ...
+[builtins fixtures/list.pyi]
+
+[case testCheckFunctionErrorContextDuplicateDeferred]
+# flags: --show-error-context
+from typing import Callable, TypeVar
+
+def a() -> None:
+    def b() -> None:
+        1 + ""
+        x = defer()
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], list[T]]: ...
+
+@deco
+def defer() -> int: ...
+[out]
+main: note: In function "a":
+main:6: error: Unsupported operand types for + ("int" and "str")

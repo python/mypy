@@ -249,7 +249,11 @@ def add_helper_to_generator_class(
         sig.ret_type,
     )
     helper_fn_decl = FuncDecl(
-        "__mypyc_generator_helper__", fn_info.generator_class.ir.name, builder.module_name, sig
+        "__mypyc_generator_helper__",
+        fn_info.generator_class.ir.name,
+        builder.module_name,
+        sig,
+        internal=True,
     )
     helper_fn_ir = FuncIR(
         helper_fn_decl, arg_regs, blocks, fn_info.fitem.line, traceback_name=fn_info.fitem.name

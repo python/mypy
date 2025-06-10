@@ -230,9 +230,9 @@ class MessageBuilder:
         file: str | None = None,
         origin: Context | None = None,
         offset: int = 0,
-        allow_dups: bool = False,
         secondary_context: Context | None = None,
-    ) -> None:
+        parent_error: ErrorInfo | None = None,
+    ) -> ErrorInfo:
         """Report an error or note (unless disabled).
 
         Note that context controls where error is reported, while origin controls
@@ -267,7 +267,7 @@ class MessageBuilder:
             assert origin_span is not None
             origin_span = itertools.chain(origin_span, span_from_context(secondary_context))
 
-        self.errors.report(
+        return self.errors.report(
             context.line if context else -1,
             context.column if context else -1,
             msg,
@@ -278,7 +278,7 @@ class MessageBuilder:
             end_line=context.end_line if context else -1,
             end_column=context.end_column if context else -1,
             code=code,
-            allow_dups=allow_dups,
+            parent_error=parent_error,
         )
 
     def fail(
@@ -288,18 +288,11 @@ class MessageBuilder:
         *,
         code: ErrorCode | None = None,
         file: str | None = None,
-        allow_dups: bool = False,
         secondary_context: Context | None = None,
-    ) -> None:
+    ) -> ErrorInfo:
         """Report an error message (unless disabled)."""
-        self.report(
-            msg,
-            context,
-            "error",
-            code=code,
-            file=file,
-            allow_dups=allow_dups,
-            secondary_context=secondary_context,
+        return self.report(
+            msg, context, "error", code=code, file=file, secondary_context=secondary_context
         )
 
     def note(
@@ -309,10 +302,10 @@ class MessageBuilder:
         file: str | None = None,
         origin: Context | None = None,
         offset: int = 0,
-        allow_dups: bool = False,
         *,
         code: ErrorCode | None = None,
         secondary_context: Context | None = None,
+        parent_error: ErrorInfo | None = None,
     ) -> None:
         """Report a note (unless disabled)."""
         self.report(
@@ -322,9 +315,9 @@ class MessageBuilder:
             file=file,
             origin=origin,
             offset=offset,
-            allow_dups=allow_dups,
             code=code,
             secondary_context=secondary_context,
+            parent_error=parent_error,
         )
 
     def note_multiline(
@@ -333,7 +326,6 @@ class MessageBuilder:
         context: Context,
         file: str | None = None,
         offset: int = 0,
-        allow_dups: bool = False,
         code: ErrorCode | None = None,
         *,
         secondary_context: Context | None = None,
@@ -346,7 +338,6 @@ class MessageBuilder:
                 "note",
                 file=file,
                 offset=offset,
-                allow_dups=allow_dups,
                 code=code,
                 secondary_context=secondary_context,
             )
@@ -574,7 +565,7 @@ class MessageBuilder:
         context: Context,
         *,
         code: ErrorCode = codes.OPERATOR,
-    ) -> None:
+    ) -> ErrorInfo:
         """Report unsupported operand types for a binary operation.
 
         Types can be Type objects or strings.
@@ -595,7 +586,7 @@ class MessageBuilder:
             msg = f"Unsupported operand types for {op} (likely involving Union)"
         else:
             msg = f"Unsupported operand types for {op} ({left_str} and {right_str})"
-        self.fail(msg, context, code=code)
+        return self.fail(msg, context, code=code)
 
     def unsupported_left_operand(self, op: str, typ: Type, context: Context) -> None:
         if self.are_type_names_disabled():
@@ -627,7 +618,7 @@ class MessageBuilder:
         object_type: Type | None,
         context: Context,
         outer_context: Context,
-    ) -> ErrorCode | None:
+    ) -> ErrorInfo:
         """Report an error about an incompatible argument type.
 
         The argument type is arg_type, argument number is n and the
@@ -655,27 +646,24 @@ class MessageBuilder:
                     if name.startswith(f'"{variant}" of'):
                         if op == "in" or variant != method:
                             # Reversed order of base/argument.
-                            self.unsupported_operand_types(
+                            return self.unsupported_operand_types(
                                 op, arg_type, base, context, code=codes.OPERATOR
                             )
                         else:
-                            self.unsupported_operand_types(
+                            return self.unsupported_operand_types(
                                 op, base, arg_type, context, code=codes.OPERATOR
                             )
-                        return codes.OPERATOR
 
             if name.startswith('"__getitem__" of'):
-                self.invalid_index_type(
+                return self.invalid_index_type(
                     arg_type, callee.arg_types[n - 1], base, context, code=codes.INDEX
                 )
-                return codes.INDEX
 
             if name.startswith('"__setitem__" of'):
                 if n == 1:
-                    self.invalid_index_type(
+                    return self.invalid_index_type(
                         arg_type, callee.arg_types[n - 1], base, context, code=codes.INDEX
                     )
-                    return codes.INDEX
                 else:
                     arg_type_str, callee_type_str = format_type_distinctly(
                         arg_type, callee.arg_types[n - 1], options=self.options
@@ -686,8 +674,7 @@ class MessageBuilder:
                     error_msg = (
                         message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT.with_additional_msg(info)
                     )
-                    self.fail(error_msg.value, context, code=error_msg.code)
-                    return error_msg.code
+                    return self.fail(error_msg.value, context, code=error_msg.code)
 
             target = f"to {name} "
 
@@ -841,18 +828,18 @@ class MessageBuilder:
                 code = codes.TYPEDDICT_ITEM
             else:
                 code = codes.ARG_TYPE
-        self.fail(msg, context, code=code)
+        error = self.fail(msg, context, code=code)
         if notes:
             for note_msg in notes:
                 self.note(note_msg, context, code=code)
-        return code
+        return error
 
     def incompatible_argument_note(
         self,
         original_caller_type: ProperType,
         callee_type: ProperType,
         context: Context,
-        code: ErrorCode | None,
+        parent_error: ErrorInfo,
     ) -> None:
         if self.prefer_simple_messages():
             return
@@ -861,26 +848,28 @@ class MessageBuilder:
         ):
             if isinstance(callee_type, Instance) and callee_type.type.is_protocol:
                 self.report_protocol_problems(
-                    original_caller_type, callee_type, context, code=code
+                    original_caller_type, callee_type, context, parent_error=parent_error
                 )
             if isinstance(callee_type, UnionType):
                 for item in callee_type.items:
                     item = get_proper_type(item)
                     if isinstance(item, Instance) and item.type.is_protocol:
                         self.report_protocol_problems(
-                            original_caller_type, item, context, code=code
+                            original_caller_type, item, context, parent_error=parent_error
                         )
         if isinstance(callee_type, CallableType) and isinstance(original_caller_type, Instance):
             call = find_member(
                 "__call__", original_caller_type, original_caller_type, is_operator=True
             )
             if call:
-                self.note_call(original_caller_type, call, context, code=code)
+                self.note_call(original_caller_type, call, context, code=parent_error.code)
         if isinstance(callee_type, Instance) and callee_type.type.is_protocol:
             call = find_member("__call__", callee_type, callee_type, is_operator=True)
             if call:
-                self.note_call(callee_type, call, context, code=code)
-        self.maybe_note_concatenate_pos_args(original_caller_type, callee_type, context, code)
+                self.note_call(callee_type, call, context, code=parent_error.code)
+        self.maybe_note_concatenate_pos_args(
+            original_caller_type, callee_type, context, parent_error.code
+        )
 
     def maybe_note_concatenate_pos_args(
         self,
@@ -922,11 +911,11 @@ class MessageBuilder:
         context: Context,
         *,
         code: ErrorCode,
-    ) -> None:
+    ) -> ErrorInfo:
         index_str, expected_str = format_type_distinctly(
             index_type, expected_type, options=self.options
         )
-        self.fail(
+        return self.fail(
             "Invalid index type {} for {}; expected type {}".format(
                 index_str, base_str, expected_str
             ),
@@ -1193,16 +1182,16 @@ class MessageBuilder:
         original: ProperType,
         override: ProperType,
     ) -> None:
-        code = codes.OVERRIDE
         target = self.override_target(name, name_in_super, supertype)
-        self.fail(f'Signature of "{name}" incompatible with {target}', context, code=code)
+        error = self.fail(
+            f'Signature of "{name}" incompatible with {target}', context, code=codes.OVERRIDE
+        )
 
         original_str, override_str = format_type_distinctly(
             original, override, options=self.options, bare=True
         )
 
         INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
-        ALLOW_DUPS = True  # Allow duplicate notes, needed when signatures are duplicates
         ALIGN_OFFSET = 1  # One space, to account for the difference between error and note
         OFFSET = 4  # Four spaces, so that notes will look like this:
         # error: Signature of "f" incompatible with supertype "A"
@@ -1210,69 +1199,49 @@ class MessageBuilder:
         # note:          def f(self) -> str
         # note:      Subclass:
         # note:          def f(self, x: str) -> None
-        self.note(
-            "Superclass:", context, offset=ALIGN_OFFSET + OFFSET, allow_dups=ALLOW_DUPS, code=code
-        )
+        self.note("Superclass:", context, offset=ALIGN_OFFSET + OFFSET, parent_error=error)
         if isinstance(original, (CallableType, Overloaded)):
             self.pretty_callable_or_overload(
                 original,
                 context,
                 offset=ALIGN_OFFSET + 2 * OFFSET,
                 add_class_or_static_decorator=INCLUDE_DECORATOR,
-                allow_dups=ALLOW_DUPS,
-                code=code,
+                parent_error=error,
             )
         else:
-            self.note(
-                original_str,
-                context,
-                offset=ALIGN_OFFSET + 2 * OFFSET,
-                allow_dups=ALLOW_DUPS,
-                code=code,
-            )
+            self.note(original_str, context, offset=ALIGN_OFFSET + 2 * OFFSET, parent_error=error)
 
-        self.note(
-            "Subclass:", context, offset=ALIGN_OFFSET + OFFSET, allow_dups=ALLOW_DUPS, code=code
-        )
+        self.note("Subclass:", context, offset=ALIGN_OFFSET + OFFSET, parent_error=error)
         if isinstance(override, (CallableType, Overloaded)):
             self.pretty_callable_or_overload(
                 override,
                 context,
                 offset=ALIGN_OFFSET + 2 * OFFSET,
                 add_class_or_static_decorator=INCLUDE_DECORATOR,
-                allow_dups=ALLOW_DUPS,
-                code=code,
+                parent_error=error,
             )
         else:
-            self.note(
-                override_str,
-                context,
-                offset=ALIGN_OFFSET + 2 * OFFSET,
-                allow_dups=ALLOW_DUPS,
-                code=code,
-            )
+            self.note(override_str, context, offset=ALIGN_OFFSET + 2 * OFFSET, parent_error=error)
 
     def pretty_callable_or_overload(
         self,
         tp: CallableType | Overloaded,
         context: Context,
         *,
+        parent_error: ErrorInfo,
         offset: int = 0,
         add_class_or_static_decorator: bool = False,
-        allow_dups: bool = False,
-        code: ErrorCode | None = None,
     ) -> None:
         if isinstance(tp, CallableType):
             if add_class_or_static_decorator:
                 decorator = pretty_class_or_static_decorator(tp)
                 if decorator is not None:
-                    self.note(decorator, context, offset=offset, allow_dups=allow_dups, code=code)
+                    self.note(decorator, context, offset=offset, parent_error=parent_error)
             self.note(
                 pretty_callable(tp, self.options),
                 context,
                 offset=offset,
-                allow_dups=allow_dups,
-                code=code,
+                parent_error=parent_error,
             )
         elif isinstance(tp, Overloaded):
             self.pretty_overload(
@@ -1280,8 +1249,7 @@ class MessageBuilder:
                 context,
                 offset,
                 add_class_or_static_decorator=add_class_or_static_decorator,
-                allow_dups=allow_dups,
-                code=code,
+                parent_error=parent_error,
             )
 
     def argument_incompatible_with_supertype(
@@ -1533,14 +1501,14 @@ class MessageBuilder:
     def incompatible_conditional_function_def(
         self, defn: FuncDef, old_type: FunctionLike, new_type: FunctionLike
     ) -> None:
-        self.fail("All conditional function variants must have identical signatures", defn)
+        error = self.fail("All conditional function variants must have identical signatures", defn)
         if isinstance(old_type, (CallableType, Overloaded)) and isinstance(
             new_type, (CallableType, Overloaded)
         ):
             self.note("Original:", defn)
-            self.pretty_callable_or_overload(old_type, defn, offset=4)
+            self.pretty_callable_or_overload(old_type, defn, offset=4, parent_error=error)
             self.note("Redefinition:", defn)
-            self.pretty_callable_or_overload(new_type, defn, offset=4)
+            self.pretty_callable_or_overload(new_type, defn, offset=4, parent_error=error)
 
     def cannot_instantiate_abstract_class(
         self, class_name: str, abstract_attributes: dict[str, bool], context: Context
@@ -2120,7 +2088,7 @@ class MessageBuilder:
         supertype: Instance,
         context: Context,
         *,
-        code: ErrorCode | None,
+        parent_error: ErrorInfo,
     ) -> None:
         """Report possible protocol conflicts between 'subtype' and 'supertype'.
 
@@ -2184,7 +2152,7 @@ class MessageBuilder:
                         subtype.type.name, supertype.type.name
                     ),
                     context,
-                    code=code,
+                    parent_error=parent_error,
                 )
             else:
                 self.note(
@@ -2192,9 +2160,9 @@ class MessageBuilder:
                         subtype.type.name, supertype.type.name, plural_s(missing)
                     ),
                     context,
-                    code=code,
+                    parent_error=parent_error,
                 )
-                self.note(", ".join(missing), context, offset=OFFSET, code=code)
+                self.note(", ".join(missing), context, offset=OFFSET, parent_error=parent_error)
         elif len(missing) > MAX_ITEMS or len(missing) == len(supertype.type.protocol_members):
             # This is an obviously wrong type: too many missing members
             return
@@ -2212,7 +2180,11 @@ class MessageBuilder:
             or supertype.type.has_param_spec_type
         ):
             type_name = format_type(subtype, self.options, module_names=True)
-            self.note(f"Following member(s) of {type_name} have conflicts:", context, code=code)
+            self.note(
+                f"Following member(s) of {type_name} have conflicts:",
+                context,
+                parent_error=parent_error,
+            )
             for name, got, exp, is_lvalue in conflict_types[:MAX_ITEMS]:
                 exp = get_proper_type(exp)
                 got = get_proper_type(got)
@@ -2233,45 +2205,56 @@ class MessageBuilder:
                         ),
                         context,
                         offset=OFFSET,
-                        code=code,
+                        parent_error=parent_error,
                     )
                     if is_lvalue and is_subtype(got, exp, options=self.options):
                         self.note(
                             "Setter types should behave contravariantly",
                             context,
                             offset=OFFSET,
-                            code=code,
+                            parent_error=parent_error,
                         )
                 else:
                     self.note(
-                        "Expected{}:".format(setter_suffix), context, offset=OFFSET, code=code
+                        "Expected{}:".format(setter_suffix),
+                        context,
+                        offset=OFFSET,
+                        parent_error=parent_error,
                     )
                     if isinstance(exp, CallableType):
                         self.note(
                             pretty_callable(exp, self.options, skip_self=class_obj or is_module),
                             context,
                             offset=2 * OFFSET,
-                            code=code,
+                            parent_error=parent_error,
                         )
                     else:
                         assert isinstance(exp, Overloaded)
                         self.pretty_overload(
-                            exp, context, 2 * OFFSET, code=code, skip_self=class_obj or is_module
+                            exp,
+                            context,
+                            2 * OFFSET,
+                            parent_error=parent_error,
+                            skip_self=class_obj or is_module,
                         )
-                    self.note("Got:", context, offset=OFFSET, code=code)
+                    self.note("Got:", context, offset=OFFSET, parent_error=parent_error)
                     if isinstance(got, CallableType):
                         self.note(
                             pretty_callable(got, self.options, skip_self=class_obj or is_module),
                             context,
                             offset=2 * OFFSET,
-                            code=code,
+                            parent_error=parent_error,
                         )
                     else:
                         assert isinstance(got, Overloaded)
                         self.pretty_overload(
-                            got, context, 2 * OFFSET, code=code, skip_self=class_obj or is_module
+                            got,
+                            context,
+                            2 * OFFSET,
+                            parent_error=parent_error,
+                            skip_self=class_obj or is_module,
                         )
-            self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=code)
+            self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=parent_error.code)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
         conflict_flags = get_bad_protocol_flags(subtype, supertype, class_obj=class_obj)
@@ -2282,7 +2265,7 @@ class MessageBuilder:
                         supertype.type.name, name
                     ),
                     context,
-                    code=code,
+                    parent_error=parent_error,
                 )
             if not class_obj and IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
                 self.note(
@@ -2290,14 +2273,14 @@ class MessageBuilder:
                         supertype.type.name, name
                     ),
                     context,
-                    code=code,
+                    parent_error=parent_error,
                 )
             if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
                 self.note(
                     "Protocol member {}.{} expected settable variable,"
                     " got read-only attribute".format(supertype.type.name, name),
                     context,
-                    code=code,
+                    parent_error=parent_error,
                 )
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 self.note(
@@ -2305,7 +2288,7 @@ class MessageBuilder:
                         supertype.type.name, name
                     ),
                     context,
-                    code=code,
+                    parent_error=parent_error,
                 )
             if (
                 class_obj
@@ -2316,7 +2299,7 @@ class MessageBuilder:
                     "Only class variables allowed for class object access on protocols,"
                     ' {} is an instance variable of "{}"'.format(name, subtype.type.name),
                     context,
-                    code=code,
+                    parent_error=parent_error,
                 )
             if class_obj and IS_CLASSVAR in superflags:
                 self.note(
@@ -2324,9 +2307,9 @@ class MessageBuilder:
                         supertype.type.name, name
                     ),
                     context,
-                    code=code,
+                    parent_error=parent_error,
                 )
-        self.print_more(conflict_flags, context, OFFSET, MAX_ITEMS, code=code)
+        self.print_more(conflict_flags, context, OFFSET, MAX_ITEMS, code=parent_error.code)
 
     def pretty_overload(
         self,
@@ -2334,25 +2317,23 @@ class MessageBuilder:
         context: Context,
         offset: int,
         *,
+        parent_error: ErrorInfo,
         add_class_or_static_decorator: bool = False,
-        allow_dups: bool = False,
-        code: ErrorCode | None = None,
         skip_self: bool = False,
     ) -> None:
         for item in tp.items:
-            self.note("@overload", context, offset=offset, allow_dups=allow_dups, code=code)
+            self.note("@overload", context, offset=offset, parent_error=parent_error)
 
             if add_class_or_static_decorator:
                 decorator = pretty_class_or_static_decorator(item)
                 if decorator is not None:
-                    self.note(decorator, context, offset=offset, allow_dups=allow_dups, code=code)
+                    self.note(decorator, context, offset=offset, parent_error=parent_error)
 
             self.note(
                 pretty_callable(item, self.options, skip_self=skip_self),
                 context,
                 offset=offset,
-                allow_dups=allow_dups,
-                code=code,
+                parent_error=parent_error,
             )
 
     def print_more(
