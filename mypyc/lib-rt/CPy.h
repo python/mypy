@@ -752,7 +752,8 @@ bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
 PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
-Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, Py_ssize_t start);
+Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start);
+Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
 CPyTagged CPyStr_Ord(PyObject *obj);
 
 
