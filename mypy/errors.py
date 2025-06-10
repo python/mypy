@@ -221,8 +221,8 @@ class ErrorWatcher:
         return self._filtered
 
 
-class ÎterationDependentErrors:
-    """An `ÎterationDependentErrors` instance serves to collect the `unreachable`,
+class IterationDependentErrors:
+    """An `IterationDependentErrors` instance serves to collect the `unreachable`,
     `redundant-expr`, and `redundant-casts` errors, as well as the revealed types,
     handled by the individual `IterationErrorWatcher` instances sequentially applied to
     the same code section."""
@@ -252,12 +252,12 @@ class IterationErrorWatcher(ErrorWatcher):
     `redundant-expr` and `redundant-casts` errors, and revealed types when analysing
     code sections iteratively to help avoid making too-hasty reports."""
 
-    iteration_dependent_errors: ÎterationDependentErrors
+    iteration_dependent_errors: IterationDependentErrors
 
     def __init__(
         self,
         errors: Errors,
-        iteration_dependent_errors: ÎterationDependentErrors,
+        iteration_dependent_errors: IterationDependentErrors,
         *,
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
         save_filtered_errors: bool = False,

@@ -30,7 +30,7 @@ from mypy.errors import (
     Errors,
     ErrorWatcher,
     IterationErrorWatcher,
-    ÎterationDependentErrors,
+    IterationDependentErrors,
     report_internal_error,
 )
 from mypy.expandtype import expand_type
@@ -605,7 +605,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # on without bound otherwise)
             widened_old = len(self.widened_vars)
 
-            iter_errors = ÎterationDependentErrors()
+            iter_errors = IterationDependentErrors()
             iter = 1
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
@@ -4942,7 +4942,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             self.visit_try_without_finally(s, try_frame=bool(s.finally_body))
             if s.finally_body:
                 # First we check finally_body is type safe on all abnormal exit paths
-                iter_errors = ÎterationDependentErrors()
+                iter_errors = IterationDependentErrors()
                 with IterationErrorWatcher(self.msg.errors, iter_errors) as watcher:
                     self.accept(s.finally_body)
 
