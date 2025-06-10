@@ -41,6 +41,7 @@ class CompilerOptions:
         self.strict_dunders_typing = strict_dunder_typing
         # Override the automatic group name derived from the hash of module names.
         # This affects the names of generated .c, .h and shared library files.
-        # This is only supported when compiling exactly one group. This can be
-        # used to make the output names more predictable.
+        # This is only supported when compiling exactly one group, and a shared
+        # library is generated (with shims). This can be used to make the output
+        # file names more predictable.
         self.group_name = group_name

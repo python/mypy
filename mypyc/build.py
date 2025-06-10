@@ -528,9 +528,9 @@ def mypycify(
                               of the method strictly, which can lead to more
                               optimization opportunities. Defaults to False.
         group_name: If set, override the default group name derived from
-                    the hash of module names. This is used for both the ouptut C
-                    files and the shared library. This is only supported if there
-                    is a single group. [Experimental]
+                    the hash of module names. This is used for the names of the
+                    output C files and the shared library. This is only supported
+                    if there is a single group. [Experimental]
     """
 
     # Figure out our configuration
