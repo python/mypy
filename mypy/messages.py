@@ -3090,9 +3090,14 @@ def get_bad_protocol_flags(
     assert right.type.is_protocol
     all_flags: list[tuple[str, set[int], set[int]]] = []
     for member in right.type.protocol_members:
-        if find_member(member, left, left):
-            item = (member, get_member_flags(member, left), get_member_flags(member, right))
-            all_flags.append(item)
+        if find_member(member, left, left, class_obj=class_obj):
+            all_flags.append(
+                (
+                    member,
+                    get_member_flags(member, left, class_obj=class_obj),
+                    get_member_flags(member, right),
+                )
+            )
     bad_flags = []
     for name, subflags, superflags in all_flags:
         if (
