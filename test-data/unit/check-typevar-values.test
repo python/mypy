@@ -592,11 +592,10 @@ class C:
     def f(self, x: T) -> T:
         L = List[S]
         y: L[C.T] = [x]
-        C.T  # E: Type variable "C.T" cannot be used as an expression
-        A = C.T  # E: Type variable "C.T" cannot be used as an expression
+        reveal_type(C.T)  # N: Revealed type is "typing.TypeVar"
         return y[0]
-
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypeVarWithAnyTypeBound]
 # flags: --follow-imports=skip

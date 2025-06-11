@@ -446,7 +446,7 @@ class A:
   def __eq__(self, other: A) -> bool: pass  # Fail
 [builtins fixtures/plugin_attrs.pyi]
 [out]
-main:2: error: Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"
+main:2: error: Argument 1 of "__eq__" is incompatible with supertype "builtins.object"; supertype defines the argument type as "object"
 main:2: note: This violates the Liskov substitution principle
 main:2: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:2: note: It is recommended for "__eq__" to work with arbitrary objects, for example:
@@ -4341,7 +4341,7 @@ int.__eq__(3, 4)
 [builtins fixtures/args.pyi]
 [out]
 main:33: error: Too few arguments for "__eq__" of "int"
-main:33: error: Unsupported operand types for == ("int" and "type[int]")
+main:33: error: Unsupported operand types for == ("type[int]" and "type[int]")
 
 [case testDupBaseClasses]
 class A:
@@ -7951,8 +7951,7 @@ class Foo:
     from mod import meth2  # E: Unsupported class scoped import
     from mod import T
 
-reveal_type(Foo.T)  # E: Type variable "Foo.T" cannot be used as an expression \
-                    # N: Revealed type is "Any"
+reveal_type(Foo.T)  # N: Revealed type is "typing.TypeVar"
 
 [file mod.pyi]
 from typing import Any, TypeVar, overload
@@ -7964,6 +7963,8 @@ def meth1(self: Any, y: str) -> str: ...
 
 T = TypeVar("T")
 def meth2(self: Any, y: T) -> T: ...
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testNewAndInitNoReturn]
 from typing import NoReturn
@@ -8784,4 +8785,46 @@ class NoopPowerResource:
     @hardware_type.setter
     def hardware_type(self) -> None:  # E: Invalid property setter signature
         self.hardware_type = None  # Note: intentionally recursive
+[builtins fixtures/property.pyi]
+
+[case testOverrideErrorReportingNoDuplicates]
+from typing import Callable, TypeVar
+
+def nested() -> None:
+    class B:
+        def meth(self, x: str) -> int: ...
+    class C(B):
+        def meth(self) -> str:  # E: Signature of "meth" incompatible with supertype "B" \
+                # N:      Superclass: \
+                # N:          def meth(self, x: str) -> int \
+                # N:      Subclass: \
+                # N:          def meth(self) -> str
+            pass
+    x = defer()
+
+T = TypeVar("T")
+def deco(fn: Callable[[], T]) -> Callable[[], list[T]]: ...
+
+@deco
+def defer() -> int: ...
+[builtins fixtures/list.pyi]
+
+[case testPropertyAllowsDeleterBeforeSetter]
+class C:
+    @property
+    def foo(self) -> str: ...
+    @foo.deleter
+    def foo(self) -> None: ...
+    @foo.setter
+    def foo(self, val: int) -> None: ...
+
+    @property
+    def bar(self) -> int: ...
+    @bar.deleter
+    def bar(self) -> None: ...
+    @bar.setter
+    def bar(self, value: int, val: int) -> None: ...  # E: Invalid property setter signature
+
+C().foo = "no"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+C().bar = "fine"
 [builtins fixtures/property.pyi]

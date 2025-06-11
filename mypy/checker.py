@@ -25,7 +25,7 @@ from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
-from mypy.errors import Errors, ErrorWatcher, report_internal_error
+from mypy.errors import ErrorInfo, Errors, ErrorWatcher, LoopErrorWatcher, report_internal_error
 from mypy.expandtype import expand_type
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
@@ -117,7 +117,6 @@ from mypy.nodes import (
     TypeAlias,
     TypeAliasStmt,
     TypeInfo,
-    TypeVarExpr,
     UnaryExpr,
     Var,
     WhileStmt,
@@ -599,19 +598,27 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             # on without bound otherwise)
             widened_old = len(self.widened_vars)
 
-            # Disable error types that we cannot safely identify in intermediate iteration steps:
-            warn_unreachable = self.options.warn_unreachable
-            warn_redundant = codes.REDUNDANT_EXPR in self.options.enabled_error_codes
-            self.options.warn_unreachable = False
-            self.options.enabled_error_codes.discard(codes.REDUNDANT_EXPR)
-
+            # one set of `unreachable`, `redundant-expr`, and `redundant-casts` errors
+            # per iteration step:
+            uselessness_errors = []
+            # one set of unreachable line numbers per iteration step:
+            unreachable_lines = []
+            # one set of revealed types per line where `reveal_type` is used (each
+            # created set can grow during the iteration):
+            revealed_types = defaultdict(set)
             iter = 1
             while True:
                 with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
                     if on_enter_body is not None:
                         on_enter_body()
 
-                    self.accept(body)
+                    with LoopErrorWatcher(self.msg.errors) as watcher:
+                        self.accept(body)
+                    uselessness_errors.append(watcher.uselessness_errors)
+                    unreachable_lines.append(watcher.unreachable_lines)
+                    for key, values in watcher.revealed_types.items():
+                        revealed_types[key].update(values)
+
                 partials_new = sum(len(pts.map) for pts in self.partial_types)
                 widened_new = len(self.widened_vars)
                 # Perform multiple iterations if something changed that might affect
@@ -632,16 +639,29 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if iter == 20:
                     raise RuntimeError("Too many iterations when checking a loop")
 
-            # If necessary, reset the modified options and make up for the postponed error checks:
-            self.options.warn_unreachable = warn_unreachable
-            if warn_redundant:
-                self.options.enabled_error_codes.add(codes.REDUNDANT_EXPR)
-            if warn_unreachable or warn_redundant:
-                with self.binder.frame_context(can_skip=True, break_frame=2, continue_frame=1):
-                    if on_enter_body is not None:
-                        on_enter_body()
+            # Report only those `unreachable`, `redundant-expr`, and `redundant-casts`
+            # errors that could not be ruled out in any iteration step:
+            persistent_uselessness_errors = set()
+            for candidate in set(itertools.chain(*uselessness_errors)):
+                if all(
+                    (candidate in errors) or (candidate[2] in lines)
+                    for errors, lines in zip(uselessness_errors, unreachable_lines)
+                ):
+                    persistent_uselessness_errors.add(candidate)
+            for error_info in persistent_uselessness_errors:
+                context = Context(line=error_info[2], column=error_info[3])
+                context.end_line = error_info[4]
+                context.end_column = error_info[5]
+                self.msg.fail(error_info[1], context, code=error_info[0])
 
-                    self.accept(body)
+            #  Report all types revealed in at least one iteration step:
+            for note_info, types in revealed_types.items():
+                sorted_ = sorted(types, key=lambda typ: typ.lower())
+                revealed = sorted_[0] if len(types) == 1 else f"Union[{', '.join(sorted_)}]"
+                context = Context(line=note_info[1], column=note_info[2])
+                context.end_line = note_info[3]
+                context.end_column = note_info[4]
+                self.note(f'Revealed type is "{revealed}"', context)
 
             # If exit_condition is set, assume it must be False on exit from the loop:
             if exit_condition:
@@ -676,11 +696,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             assert isinstance(defn.items[0], Decorator)
             self.visit_decorator(defn.items[0])
             if defn.items[0].var.is_settable_property:
-                # TODO: here and elsewhere we assume setter immediately follows getter.
-                assert isinstance(defn.items[1], Decorator)
                 # Perform a reduced visit just to infer the actual setter type.
-                self.visit_decorator_inner(defn.items[1], skip_first_item=True)
-                setter_type = defn.items[1].var.type
+                self.visit_decorator_inner(defn.setter, skip_first_item=True)
+                setter_type = defn.setter.var.type
                 # Check if the setter can accept two positional arguments.
                 any_type = AnyType(TypeOfAny.special_form)
                 fallback_setter_type = CallableType(
@@ -691,7 +709,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     fallback=self.named_type("builtins.function"),
                 )
                 if setter_type and not is_subtype(setter_type, fallback_setter_type):
-                    self.fail("Invalid property setter signature", defn.items[1].func)
+                    self.fail("Invalid property setter signature", defn.setter.func)
                 setter_type = self.extract_callable_type(setter_type, defn)
                 if not isinstance(setter_type, CallableType) or len(setter_type.arg_types) != 2:
                     # TODO: keep precise type for callables with tricky but valid signatures.
@@ -2150,7 +2168,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         assert typ is not None and original_type is not None
 
         if not is_subtype(original_type, typ):
-            self.msg.incompatible_setter_override(defn.items[1], typ, original_type, base)
+            self.msg.incompatible_setter_override(defn.setter, typ, original_type, base)
 
     def check_method_override_for_base_with_name(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, name: str, base: TypeInfo
@@ -2267,7 +2285,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 original_type,
                 defn.name,
                 name,
-                base.name,
+                base.name if base.module_name == self.tree.fullname else base.fullname,
                 original_class_or_static,
                 override_class_or_static,
                 context,
@@ -2452,7 +2470,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     if not is_subtype(original_arg_type, erase_override(override_arg_type)):
                         context: Context = node
                         if isinstance(node, FuncDef) and not node.is_property:
-                            arg_node = node.arguments[i + len(override.bound_args)]
+                            arg_node = node.arguments[i + override.bound()]
                             if arg_node.line != -1:
                                 context = arg_node
                         self.msg.argument_incompatible_with_supertype(
@@ -2667,7 +2685,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 continue
             if not is_subtype(tv.default, tv.upper_bound):
                 self.fail("TypeVar default must be a subtype of the bound type", tv)
-            if tv.values and not any(tv.default == value for value in tv.values):
+            if tv.values and not any(is_same_type(tv.default, value) for value in tv.values):
                 self.fail("TypeVar default must be one of the constraint types", tv)
 
     def check_enum(self, defn: ClassDef) -> None:
@@ -2841,29 +2859,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             for base2 in mro[i + 1 :]:
                 if name in base2.names and base2 not in base.mro:
                     self.check_compatibility(name, base, base2, typ)
-
-    def determine_type_of_member(self, sym: SymbolTableNode) -> Type | None:
-        # TODO: this duplicates both checkmember.py and analyze_ref_expr(), delete.
-        if sym.type is not None:
-            return sym.type
-        if isinstance(sym.node, SYMBOL_FUNCBASE_TYPES):
-            return self.function_type(sym.node)
-        if isinstance(sym.node, TypeInfo):
-            if sym.node.typeddict_type:
-                # We special-case TypedDict, because they don't define any constructor.
-                return self.expr_checker.typeddict_callable(sym.node)
-            else:
-                return type_object_type(sym.node, self.named_type)
-        if isinstance(sym.node, TypeVarExpr):
-            # Use of TypeVars is rejected in an expression/runtime context, so
-            # we don't need to check supertype compatibility for them.
-            return AnyType(TypeOfAny.special_form)
-        if isinstance(sym.node, TypeAlias):
-            with self.msg.filter_errors():
-                # Suppress any errors, they will be given when analyzing the corresponding node.
-                # Here we may have incorrect options and location context.
-                return self.expr_checker.alias_type_in_runtime_context(sym.node, ctx=sym.node)
-        return None
 
     def check_compatibility(
         self, name: str, base1: TypeInfo, base2: TypeInfo, ctx: TypeInfo
@@ -3860,7 +3855,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if rvalue_needed > 0:
                     rvalues = (
                         rvalues[0:iterable_start]
-                        + [TempNode(iterable_type) for i in range(rvalue_needed)]
+                        + [TempNode(iterable_type, context=rval) for _ in range(rvalue_needed)]
                         + rvalues[iterable_end + 1 :]
                     )
 
@@ -5470,6 +5465,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
             # The second pass narrows down the types and type checks bodies.
+            unmatched_types: TypeMap = None
             for p, g, b in zip(s.patterns, s.guards, s.bodies):
                 current_subject_type = self.expr_checker.narrow_type_from_binder(
                     named_subject, subject_type
@@ -5526,6 +5522,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     else:
                         self.accept(b)
                 self.push_type_map(else_map, from_assignment=False)
+                unmatched_types = else_map
+
+            if unmatched_types is not None:
+                for typ in list(unmatched_types.values()):
+                    self.msg.match_statement_inexhaustive_match(typ, s)
 
             # This is needed due to a quirk in frame_context. Without it types will stay narrowed
             # after the match.
@@ -7195,7 +7196,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if extra_info:
             msg = msg.with_additional_msg(" (" + ", ".join(extra_info) + ")")
 
-        self.fail(msg, context)
+        error = self.fail(msg, context)
         for note in notes:
             self.msg.note(note, context, code=msg.code)
         if note_msg:
@@ -7206,7 +7207,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             and supertype.type.is_protocol
             and isinstance(subtype, (CallableType, Instance, TupleType, TypedDictType))
         ):
-            self.msg.report_protocol_problems(subtype, supertype, context, code=msg.code)
+            self.msg.report_protocol_problems(subtype, supertype, context, parent_error=error)
         if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
             call = find_member("__call__", subtype, subtype, is_operator=True)
             if call:
@@ -7535,12 +7536,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def fail(
         self, msg: str | ErrorMessage, context: Context, *, code: ErrorCode | None = None
-    ) -> None:
+    ) -> ErrorInfo:
         """Produce an error message."""
         if isinstance(msg, ErrorMessage):
-            self.msg.fail(msg.value, context, code=msg.code)
-            return
-        self.msg.fail(msg, context, code=code)
+            return self.msg.fail(msg.value, context, code=msg.code)
+        return self.msg.fail(msg, context, code=code)
 
     def note(
         self,
@@ -7706,9 +7706,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         types: list[TypeRange] = []
         for typ in all_types:
             if isinstance(typ, FunctionLike) and typ.is_type_obj():
-                # Type variables may be present -- erase them, which is the best
-                # we can do (outside disallowing them here).
-                erased_type = erase_typevars(typ.items[0].ret_type)
+                # If a type is generic, `isinstance` can only narrow its variables to Any.
+                any_parameterized = fill_typevars_with_any(typ.type_object())
+                # Tuples may have unattended type variables among their items
+                if isinstance(any_parameterized, TupleType):
+                    erased_type = erase_typevars(any_parameterized)
+                else:
+                    erased_type = any_parameterized
                 types.append(TypeRange(erased_type, is_upper_bound=False))
             elif isinstance(typ, TypeType):
                 # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
