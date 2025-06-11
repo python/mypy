@@ -2524,3 +2524,18 @@ class Base:
         self.o = Enum("o", names)  # E: Enum type as attribute is not supported \
                                    # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
 [builtins fixtures/tuple.pyi]
+
+[case testSingleUnderscoreNameEnumMember]
+# flags: --warn-unreachable
+
+# https://github.com/python/mypy/issues/19271
+from enum import Enum
+
+class Things(Enum):
+    _ = "under score"
+
+def check(thing: Things) -> None:
+    if thing is Things._:
+        return None
+    return None  # E: Statement is unreachable
+[builtins fixtures/enum.pyi]
