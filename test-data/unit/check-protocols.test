@@ -4552,6 +4552,32 @@ t = Test(Mock())
 reveal_type(t)  # N: Revealed type is "__main__.Test[Any]"
 [builtins fixtures/dict.pyi]
 
+[case testProtocolClassObjectDescriptor]
+from typing import Any, Protocol, overload
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> int: ...
+    def __get__(self, instance, owner):
+        pass
+
+class HasDesc(Protocol):
+    attr: Desc
+
+class HasInt(Protocol):
+    attr: int
+
+class C:
+    attr = Desc()
+
+x: HasInt = C()
+y: HasDesc = C
+z: HasInt = C  # E: Incompatible types in assignment (expression has type "type[C]", variable has type "HasInt") \
+               # N: Following member(s) of "C" have conflicts: \
+               # N:     attr: expected "int", got "Desc"
+
 [case testProtocolErrorReportingNoDuplicates]
 from typing import Callable, Protocol, TypeVar
 
