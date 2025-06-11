@@ -582,7 +582,7 @@ class GroupGenerator:
                             fn, emitter, self.source_paths[module_name], module_name
                         )
             if multi_file:
-                name = f"__native_{emitter.names.private_name(module_name)}.c"
+                name = f"__native_{exported_name(module_name)}.c"
                 file_contents.append((name, "".join(emitter.fragments)))
 
         # The external header file contains type declarations while
