@@ -124,6 +124,7 @@ from typing import TYPE_CHECKING, Any, Callable, NamedTuple, TypeVar
 from mypy_extensions import mypyc_attr, trait
 
 from mypy.errorcodes import ErrorCode
+from mypy.errors import ErrorInfo
 from mypy.lookup import lookup_fully_qualified
 from mypy.message_registry import ErrorMessage
 from mypy.nodes import (
@@ -240,7 +241,7 @@ class CheckerPluginInterface:
     @abstractmethod
     def fail(
         self, msg: str | ErrorMessage, ctx: Context, /, *, code: ErrorCode | None = None
-    ) -> None:
+    ) -> ErrorInfo | None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
