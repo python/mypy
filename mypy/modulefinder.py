@@ -13,8 +13,11 @@ import re
 import subprocess
 import sys
 from enum import Enum, unique
-from typing import Dict, Final, List, Optional, Tuple, Union
+from typing import Final, Optional, Union
 from typing_extensions import TypeAlias as _TypeAlias
+
+from pathspec import PathSpec
+from pathspec.patterns.gitwildmatch import GitWildMatchPatternError
 
 from mypy import pyinfo
 from mypy.errors import CompileError
@@ -53,11 +56,11 @@ class SearchPaths:
 
 
 # Package dirs are a two-tuple of path to search and whether to verify the module
-OnePackageDir = Tuple[str, bool]
-PackageDirs = List[OnePackageDir]
+OnePackageDir = tuple[str, bool]
+PackageDirs = list[OnePackageDir]
 
 # Minimum and maximum Python versions for modules in stdlib as (major, minor)
-StdlibVersions: _TypeAlias = Dict[str, Tuple[Tuple[int, int], Optional[Tuple[int, int]]]]
+StdlibVersions: _TypeAlias = dict[str, tuple[tuple[int, int], Optional[tuple[int, int]]]]
 
 PYTHON_EXTENSIONS: Final = [".pyi", ".py"]
 
@@ -317,13 +320,21 @@ class FindModuleCache:
                 use_typeshed = self._typeshed_has_version(id)
             elif top_level in self.stdlib_py_versions:
                 use_typeshed = self._typeshed_has_version(top_level)
-            self.results[id] = self._find_module(id, use_typeshed)
-            if (
-                not (fast_path or (self.options is not None and self.options.fast_module_lookup))
-                and self.results[id] is ModuleNotFoundReason.NOT_FOUND
-                and self._can_find_module_in_parent_dir(id)
-            ):
-                self.results[id] = ModuleNotFoundReason.WRONG_WORKING_DIRECTORY
+            result, should_cache = self._find_module(id, use_typeshed)
+            if should_cache:
+                if (
+                    not (
+                        fast_path or (self.options is not None and self.options.fast_module_lookup)
+                    )
+                    and result is ModuleNotFoundReason.NOT_FOUND
+                    and self._can_find_module_in_parent_dir(id)
+                ):
+                    self.results[id] = ModuleNotFoundReason.WRONG_WORKING_DIRECTORY
+                else:
+                    self.results[id] = result
+                return self.results[id]
+            else:
+                return result
         return self.results[id]
 
     def _typeshed_has_version(self, module: str) -> bool:
@@ -334,10 +345,11 @@ class FindModuleCache:
         return version >= min_version and (max_version is None or version <= max_version)
 
     def _find_module_non_stub_helper(
-        self, components: list[str], pkg_dir: str
+        self, id: str, pkg_dir: str
     ) -> OnePackageDir | ModuleNotFoundReason:
         plausible_match = False
         dir_path = pkg_dir
+        components = id.split(".")
         for index, component in enumerate(components):
             dir_path = os_path_join(dir_path, component)
             if self.fscache.isfile(os_path_join(dir_path, "py.typed")):
@@ -350,6 +362,10 @@ class FindModuleCache:
             if not self.fscache.isdir(dir_path):
                 break
         if plausible_match:
+            if self.options:
+                module_specific_options = self.options.clone_for_module(id)
+                if module_specific_options.follow_untyped_imports:
+                    return os.path.join(pkg_dir, *components[:-1]), False
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
             return ModuleNotFoundReason.NOT_FOUND
@@ -376,11 +392,16 @@ class FindModuleCache:
         while any(is_init_file(file) for file in os.listdir(working_dir)):
             working_dir = os.path.dirname(working_dir)
             parent_search.search_paths = SearchPaths((working_dir,), (), (), ())
-            if not isinstance(parent_search._find_module(id, False), ModuleNotFoundReason):
+            if not isinstance(parent_search._find_module(id, False)[0], ModuleNotFoundReason):
                 return True
         return False
 
-    def _find_module(self, id: str, use_typeshed: bool) -> ModuleSearchResult:
+    def _find_module(self, id: str, use_typeshed: bool) -> tuple[ModuleSearchResult, bool]:
+        """Try to find a module in all available sources.
+
+        Returns:
+            ``(result, can_be_cached)`` pair.
+        """
         fscache = self.fscache
 
         # Fast path for any modules in the current source set.
@@ -416,7 +437,7 @@ class FindModuleCache:
             else None
         )
         if p:
-            return p
+            return p, True
 
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
         # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
@@ -436,6 +457,9 @@ class FindModuleCache:
             for component in (components[0], components[0] + "-stubs")
             for package_dir in self.find_lib_path_dirs(component, self.search_paths.package_path)
         }
+        # Caching FOUND_WITHOUT_TYPE_HINTS is not always safe. That causes issues with
+        # typed subpackages in namespace packages.
+        can_cache_any_result = True
         for pkg_dir in self.search_paths.package_path:
             if pkg_dir not in candidate_package_dirs:
                 continue
@@ -463,10 +487,11 @@ class FindModuleCache:
                             third_party_stubs_dirs.append((path, True))
                     else:
                         third_party_stubs_dirs.append((path, True))
-            non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)
+            non_stub_match = self._find_module_non_stub_helper(id, pkg_dir)
             if isinstance(non_stub_match, ModuleNotFoundReason):
                 if non_stub_match is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     found_possible_third_party_missing_type_hints = True
+                    can_cache_any_result = False
             else:
                 third_party_inline_dirs.append(non_stub_match)
                 self._update_ns_ancestors(components, non_stub_match)
@@ -498,21 +523,24 @@ class FindModuleCache:
             dir_prefix = base_dir
             for _ in range(len(components) - 1):
                 dir_prefix = os.path.dirname(dir_prefix)
+
+            # Stubs-only packages always take precedence over py.typed packages
+            path_stubs = f"{base_path}-stubs{sepinit}.pyi"
+            if fscache.isfile_case(path_stubs, dir_prefix):
+                if verify and not verify_module(fscache, id, path_stubs, dir_prefix):
+                    near_misses.append((path_stubs, dir_prefix))
+                else:
+                    return path_stubs, True
+
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
-                path_stubs = base_path + "-stubs" + sepinit + extension
                 if fscache.isfile_case(path, dir_prefix):
                     has_init = True
                     if verify and not verify_module(fscache, id, path, dir_prefix):
                         near_misses.append((path, dir_prefix))
                         continue
-                    return path
-                elif fscache.isfile_case(path_stubs, dir_prefix):
-                    if verify and not verify_module(fscache, id, path_stubs, dir_prefix):
-                        near_misses.append((path_stubs, dir_prefix))
-                        continue
-                    return path_stubs
+                    return path, True
 
             # In namespace mode, register a potential namespace package
             if self.options and self.options.namespace_packages:
@@ -530,7 +558,7 @@ class FindModuleCache:
                     if verify and not verify_module(fscache, id, path, dir_prefix):
                         near_misses.append((path, dir_prefix))
                         continue
-                    return path
+                    return path, True
 
         # In namespace mode, re-check those entries that had 'verify'.
         # Assume search path entries xxx, yyy and zzz, and we're
@@ -559,7 +587,7 @@ class FindModuleCache:
                 for path, dir_prefix in near_misses
             ]
             index = levels.index(max(levels))
-            return near_misses[index][0]
+            return near_misses[index][0], True
 
         # Finally, we may be asked to produce an ancestor for an
         # installed package with a py.typed marker that is a
@@ -567,12 +595,12 @@ class FindModuleCache:
         # if we would otherwise return "not found".
         ancestor = self.ns_ancestors.get(id)
         if ancestor is not None:
-            return ancestor
+            return ancestor, True
 
         approved_dist_name = stub_distribution_name(id)
         if approved_dist_name:
             if len(components) == 1:
-                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
+                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED, True
             # If we're a missing submodule of an already installed approved stubs, we don't want to
             # error with APPROVED_STUBS_NOT_INSTALLED, but rather want to return NOT_FOUND.
             for i in range(1, len(components)):
@@ -580,14 +608,14 @@ class FindModuleCache:
                 if stub_distribution_name(parent_id) == approved_dist_name:
                     break
             else:
-                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
+                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED, True
             if self.find_module(parent_id) is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-            return ModuleNotFoundReason.NOT_FOUND
+                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED, True
+            return ModuleNotFoundReason.NOT_FOUND, True
 
         if found_possible_third_party_missing_type_hints:
-            return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
-        return ModuleNotFoundReason.NOT_FOUND
+            return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS, can_cache_any_result
+        return ModuleNotFoundReason.NOT_FOUND, True
 
     def find_modules_recursive(self, module: str) -> list[BuildSource]:
         module_path = self.find_module(module, fast_path=True)
@@ -620,6 +648,12 @@ class FindModuleCache:
                 subpath, self.options.exclude, self.fscache, self.options.verbosity >= 2
             ):
                 continue
+            if (
+                self.options
+                and self.options.exclude_gitignore
+                and matches_gitignore(subpath, self.fscache, self.options.verbosity >= 2)
+            ):
+                continue
 
             if self.fscache.isdir(subpath):
                 # Only recurse into packages
@@ -650,13 +684,64 @@ def matches_exclude(
     if fscache.isdir(subpath):
         subpath_str += "/"
     for exclude in excludes:
-        if re.search(exclude, subpath_str):
+        try:
+            if re.search(exclude, subpath_str):
+                if verbose:
+                    print(
+                        f"TRACE: Excluding {subpath_str} (matches pattern {exclude})",
+                        file=sys.stderr,
+                    )
+                return True
+        except re.error as e:
+            print(
+                f"error: The exclude {exclude} is an invalid regular expression, because: {e}"
+                + (
+                    "\n(Hint: use / as a path separator, even if you're on Windows!)"
+                    if "\\" in exclude
+                    else ""
+                )
+                + "\nFor more information on Python's flavor of regex, see:"
+                + " https://docs.python.org/3/library/re.html",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+    return False
+
+
+def matches_gitignore(subpath: str, fscache: FileSystemCache, verbose: bool) -> bool:
+    dir, _ = os.path.split(subpath)
+    for gi_path, gi_spec in find_gitignores(dir):
+        relative_path = os.path.relpath(subpath, gi_path)
+        if fscache.isdir(relative_path):
+            relative_path = relative_path + "/"
+        if gi_spec.match_file(relative_path):
             if verbose:
                 print(
-                    f"TRACE: Excluding {subpath_str} (matches pattern {exclude})", file=sys.stderr
+                    f"TRACE: Excluding {relative_path} (matches .gitignore) in {gi_path}",
+                    file=sys.stderr,
                 )
             return True
     return False
+
+
+@functools.lru_cache
+def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
+    parent_dir = os.path.dirname(dir)
+    if parent_dir == dir:
+        parent_gitignores = []
+    else:
+        parent_gitignores = find_gitignores(parent_dir)
+
+    gitignore = os.path.join(dir, ".gitignore")
+    if os.path.isfile(gitignore):
+        with open(gitignore) as f:
+            lines = f.readlines()
+        try:
+            return parent_gitignores + [(dir, PathSpec.from_lines("gitwildmatch", lines))]
+        except GitWildMatchPatternError:
+            print(f"error: could not parse {gitignore}", file=sys.stderr)
+            return parent_gitignores
+    return parent_gitignores
 
 
 def is_init_file(path: str) -> bool:
@@ -716,7 +801,8 @@ def default_lib_path(
             print(
                 "error: --custom-typeshed-dir does not point to a valid typeshed ({})".format(
                     custom_typeshed_dir
-                )
+                ),
+                file=sys.stderr,
             )
             sys.exit(2)
     else:
@@ -746,7 +832,7 @@ def default_lib_path(
     return path
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]]:
     """Find package directories for given python. Guaranteed to return absolute paths.
 
@@ -909,6 +995,6 @@ def parse_version(version: str) -> tuple[int, int]:
 
 def typeshed_py_version(options: Options) -> tuple[int, int]:
     """Return Python version used for checking whether module supports typeshed."""
-    # Typeshed no longer covers Python 3.x versions before 3.8, so 3.8 is
+    # Typeshed no longer covers Python 3.x versions before 3.9, so 3.9 is
     # the earliest we can support.
-    return max(options.python_version, (3, 8))
+    return max(options.python_version, (3, 9))

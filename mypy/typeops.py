@@ -8,7 +8,8 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 from __future__ import annotations
 
 import itertools
-from typing import Any, Iterable, List, Sequence, TypeVar, cast
+from collections.abc import Iterable, Sequence
+from typing import Any, Callable, TypeVar, cast
 
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -26,6 +27,7 @@ from mypy.nodes import (
     FuncItem,
     OverloadedFuncDef,
     StrExpr,
+    SymbolNode,
     TypeInfo,
     Var,
 )
@@ -62,6 +64,7 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
 )
+from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
 
 
@@ -129,6 +132,91 @@ def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Typ
         return func.arg_types[0]
     else:
         return None
+
+
+def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> ProperType:
+    """Return the type of a type object.
+
+    For a generic type G with type variables T and S the type is generally of form
+
+      Callable[..., G[T, S]]
+
+    where ... are argument types for the __init__/__new__ method (without the self
+    argument). Also, the fallback type will be 'type' instead of 'function'.
+    """
+
+    # We take the type from whichever of __init__ and __new__ is first
+    # in the MRO, preferring __init__ if there is a tie.
+    init_method = info.get("__init__")
+    new_method = info.get("__new__")
+    if not init_method or not is_valid_constructor(init_method.node):
+        # Must be an invalid class definition.
+        return AnyType(TypeOfAny.from_error)
+    # There *should* always be a __new__ method except the test stubs
+    # lack it, so just copy init_method in that situation
+    new_method = new_method or init_method
+    if not is_valid_constructor(new_method.node):
+        # Must be an invalid class definition.
+        return AnyType(TypeOfAny.from_error)
+
+    # The two is_valid_constructor() checks ensure this.
+    assert isinstance(new_method.node, (SYMBOL_FUNCBASE_TYPES, Decorator))
+    assert isinstance(init_method.node, (SYMBOL_FUNCBASE_TYPES, Decorator))
+
+    init_index = info.mro.index(init_method.node.info)
+    new_index = info.mro.index(new_method.node.info)
+
+    fallback = info.metaclass_type or named_type("builtins.type")
+    if init_index < new_index:
+        method: FuncBase | Decorator = init_method.node
+        is_new = False
+    elif init_index > new_index:
+        method = new_method.node
+        is_new = True
+    else:
+        if init_method.node.info.fullname == "builtins.object":
+            # Both are defined by object.  But if we've got a bogus
+            # base class, we can't know for sure, so check for that.
+            if info.fallback_to_any:
+                # Construct a universal callable as the prototype.
+                any_type = AnyType(TypeOfAny.special_form)
+                sig = CallableType(
+                    arg_types=[any_type, any_type],
+                    arg_kinds=[ARG_STAR, ARG_STAR2],
+                    arg_names=["_args", "_kwds"],
+                    ret_type=any_type,
+                    is_bound=True,
+                    fallback=named_type("builtins.function"),
+                )
+                return class_callable(sig, info, fallback, None, is_new=False)
+
+        # Otherwise prefer __init__ in a tie. It isn't clear that this
+        # is the right thing, but __new__ caused problems with
+        # typeshed (#5647).
+        method = init_method.node
+        is_new = False
+    # Construct callable type based on signature of __init__. Adjust
+    # return type and insert type arguments.
+    if isinstance(method, FuncBase):
+        t = function_type(method, fallback)
+    else:
+        assert isinstance(method.type, ProperType)
+        assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
+        t = method.type
+    return type_object_type_from_function(t, info, method.info, fallback, is_new)
+
+
+def is_valid_constructor(n: SymbolNode | None) -> bool:
+    """Does this node represents a valid constructor method?
+
+    This includes normal functions, overloaded functions, and decorators
+    that return a callable type.
+    """
+    if isinstance(n, SYMBOL_FUNCBASE_TYPES):
+        return True
+    if isinstance(n, Decorator):
+        return isinstance(get_proper_type(n.type), FunctionLike)
+    return False
 
 
 def type_object_type_from_function(
@@ -328,10 +416,10 @@ def bind_self(
             ]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
-    func = method
+    func: CallableType = method
     if not func.arg_types:
         # Invalid method, return something.
-        return cast(F, func)
+        return method
     if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
@@ -340,7 +428,7 @@ def bind_self(
 
         # In the case of **kwargs we should probably emit an error, but
         # for now we simply skip it, to avoid crashes down the line.
-        return cast(F, func)
+        return method
     self_param_type = get_proper_type(func.arg_types[0])
 
     variables: Sequence[TypeVarLikeType]
@@ -392,7 +480,7 @@ def bind_self(
         arg_kinds=func.arg_kinds[1:],
         arg_names=func.arg_names[1:],
         variables=variables,
-        bound_args=[original_type],
+        is_bound=True,
     )
     return cast(F, res)
 
@@ -647,9 +735,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
     return items
 
 
-def _get_type_method_ret_type(t: Type, *, name: str) -> Type | None:
-    t = get_proper_type(t)
-
+def _get_type_method_ret_type(t: ProperType, *, name: str) -> Type | None:
     # For Enum literals the ret_type can change based on the Enum
     # we need to check the type of the enum rather than the literal
     if isinstance(t, LiteralType) and t.is_enum_literal():
@@ -657,9 +743,6 @@ def _get_type_method_ret_type(t: Type, *, name: str) -> Type | None:
 
     if isinstance(t, Instance):
         sym = t.type.get(name)
-        # Fallback to the metaclass for the lookup when necessary
-        if not sym and (m := t.type.metaclass_type):
-            sym = m.type.get(name)
         if sym:
             sym_type = get_proper_type(sym.type)
             if isinstance(sym_type, CallableType):
@@ -732,7 +815,10 @@ def false_only(t: Type) -> ProperType:
         if ret_type:
             if not ret_type.can_be_false:
                 return UninhabitedType(line=t.line)
-        elif isinstance(t, Instance) and t.type.is_final:
+        elif isinstance(t, Instance):
+            if t.type.is_final or t.type.is_enum:
+                return UninhabitedType(line=t.line)
+        elif isinstance(t, LiteralType) and t.is_enum_literal():
             return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
@@ -956,7 +1042,7 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
             FAILURE = 2
             UNKNOWN = 3
 
-    ...and if we call `try_expanding_enum_to_union(Union[Color, Status], 'module.Color')`,
+    ...and if we call `try_expanding_sum_type_to_union(Union[Color, Status], 'module.Color')`,
     this function will return Literal[Color.RED, Color.BLUE, Color.YELLOW, Status].
     """
     typ = get_proper_type(typ)
@@ -983,6 +1069,8 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
 
 def try_contracting_literals_in_union(types: Sequence[Type]) -> list[ProperType]:
     """Contracts any literal types back into a sum type if possible.
+
+    Requires a flattened union and does not descend into children.
 
     Will replace the first instance of the literal with the sum type and
     remove all others.
@@ -1050,7 +1138,7 @@ def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
     return tp.accept(TypeVarExtractor(include_all=True))
 
 
-class TypeVarExtractor(TypeQuery[List[TypeVarLikeType]]):
+class TypeVarExtractor(TypeQuery[list[TypeVarLikeType]]):
     def __init__(self, include_all: bool = False) -> None:
         super().__init__(self._merge)
         self.include_all = include_all
@@ -1069,6 +1157,17 @@ class TypeVarExtractor(TypeQuery[List[TypeVarLikeType]]):
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> list[TypeVarLikeType]:
         return [t] if self.include_all else []
+
+
+def freeze_all_type_vars(member_type: Type) -> None:
+    member_type.accept(FreezeTypeVarsVisitor())
+
+
+class FreezeTypeVarsVisitor(TypeTraverserVisitor):
+    def visit_callable_type(self, t: CallableType) -> None:
+        for v in t.variables:
+            v.id.meta_level = 0
+        super().visit_callable_type(t)
 
 
 def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool:
@@ -1092,6 +1191,10 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
     if isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Look up __method__ on the metaclass for class objects.
         return custom_special_method(typ.fallback, name, check_all)
+    if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+        if typ.item.type.metaclass_type:
+            # Look up __method__ on the metaclass for class objects.
+            return custom_special_method(typ.item.type.metaclass_type, name, check_all)
     if isinstance(typ, AnyType):
         # Avoid false positives in uncertain cases.
         return True
@@ -1148,21 +1251,31 @@ def fixup_partial_type(typ: Type) -> Type:
         return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
 
 
-def get_protocol_member(left: Instance, member: str, class_obj: bool) -> ProperType | None:
+def get_protocol_member(
+    left: Instance, member: str, class_obj: bool, is_lvalue: bool = False
+) -> Type | None:
     if member == "__call__" and class_obj:
         # Special case: class objects always have __call__ that is just the constructor.
-        from mypy.checkmember import type_object_type
 
         def named_type(fullname: str) -> Instance:
             return Instance(left.type.mro[-1], [])
 
         return type_object_type(left.type, named_type)
 
-    if member == "__call__" and left.type.is_metaclass():
+    if member == "__call__" and left.type.is_metaclass(precise=True):
         # Special case: we want to avoid falling back to metaclass __call__
         # if constructor signature didn't match, this can cause many false negatives.
         return None
 
     from mypy.subtypes import find_member
 
-    return get_proper_type(find_member(member, left, left, class_obj=class_obj))
+    subtype = find_member(member, left, left, class_obj=class_obj, is_lvalue=is_lvalue)
+    if isinstance(subtype, PartialType):
+        subtype = (
+            NoneType()
+            if subtype.type is None
+            else Instance(
+                subtype.type, [AnyType(TypeOfAny.unannotated)] * len(subtype.type.type_vars)
+            )
+        )
+    return subtype

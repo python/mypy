@@ -77,7 +77,7 @@ class TkappType:
     def globalgetvar(self, *args, **kwargs): ...
     def globalsetvar(self, *args, **kwargs): ...
     def globalunsetvar(self, *args, **kwargs): ...
-    def interpaddr(self): ...
+    def interpaddr(self) -> int: ...
     def loadtk(self) -> None: ...
     def mainloop(self, threshold: int = 0, /): ...
     def quit(self): ...
@@ -113,16 +113,31 @@ TK_VERSION: Final[str]
 class TkttType:
     def deletetimerhandler(self): ...
 
-def create(
-    screenName: str | None = None,
-    baseName: str = "",
-    className: str = "Tk",
-    interactive: bool = False,
-    wantobjects: bool = False,
-    wantTk: bool = True,
-    sync: bool = False,
-    use: str | None = None,
-    /,
-): ...
+if sys.version_info >= (3, 13):
+    def create(
+        screenName: str | None = None,
+        baseName: str = "",
+        className: str = "Tk",
+        interactive: bool = False,
+        wantobjects: int = 0,
+        wantTk: bool = True,
+        sync: bool = False,
+        use: str | None = None,
+        /,
+    ): ...
+
+else:
+    def create(
+        screenName: str | None = None,
+        baseName: str = "",
+        className: str = "Tk",
+        interactive: bool = False,
+        wantobjects: bool = False,
+        wantTk: bool = True,
+        sync: bool = False,
+        use: str | None = None,
+        /,
+    ): ...
+
 def getbusywaitinterval(): ...
 def setbusywaitinterval(new_val, /): ...

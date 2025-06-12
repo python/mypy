@@ -9,7 +9,8 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 from __future__ import annotations
 
 import importlib.util
-from typing import Callable, Sequence
+from collections.abc import Sequence
+from typing import Callable
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -58,6 +59,7 @@ from mypyc.ir.ops import (
     LoadLiteral,
     LoadStatic,
     MethodCall,
+    PrimitiveDescription,
     RaiseStandardError,
     Register,
     Return,
@@ -209,12 +211,11 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         and any(t.is_refcounted for t in rvalue_reg.type.types)
     ):
         n = len(first_lvalue.items)
-        for i in range(n):
-            target = builder.get_assignment_target(first_lvalue.items[i])
-            rvalue_item = builder.add(TupleGet(rvalue_reg, i, borrow=True))
-            rvalue_item = builder.add(Unborrow(rvalue_item))
-            builder.assign(target, rvalue_item, line)
+        borrows = [builder.add(TupleGet(rvalue_reg, i, borrow=True)) for i in range(n)]
         builder.builder.keep_alive([rvalue_reg], steal=True)
+        for lvalue_item, rvalue_item in zip(first_lvalue.items, borrows):
+            rvalue_item = builder.add(Unborrow(rvalue_item))
+            builder.assign(builder.get_assignment_target(lvalue_item), rvalue_item, line)
         builder.flush_keep_alives()
         return
 
@@ -757,7 +758,7 @@ def transform_with(
         value = builder.add(MethodCall(mgr_v, f"__{al}enter__", args=[], line=line))
         exit_ = None
     else:
-        typ = builder.call_c(type_op, [mgr_v], line)
+        typ = builder.primitive_op(type_op, [mgr_v], line)
         exit_ = builder.maybe_spill(builder.py_get_attr(typ, f"__{al}exit__", line))
         value = builder.py_call(builder.py_get_attr(typ, f"__{al}enter__", line), [mgr_v], line)
 
@@ -876,7 +877,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
                     line,
                 )
         key = builder.load_str(target.attr)
-        builder.call_c(py_delattr_op, [target.obj, key], line)
+        builder.primitive_op(py_delattr_op, [target.obj, key], line)
     elif isinstance(target, AssignmentTargetRegister):
         # Delete a local by assigning an error value to it, which will
         # prompt the insertion of uninit checks.
@@ -904,7 +905,7 @@ def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
     next_label = len(cls.continuation_blocks)
     cls.continuation_blocks.append(next_block)
     builder.assign(cls.next_label_target, Integer(next_label), line)
-    builder.add(Return(retval))
+    builder.add(Return(retval, yield_target=next_block))
     builder.activate_block(next_block)
 
     add_raise_exception_blocks_to_generator_class(builder, line)
@@ -924,7 +925,10 @@ def emit_yield_from_or_await(
     received_reg = Register(object_rprimitive)
 
     get_op = coro_op if is_await else iter_op
-    iter_val = builder.call_c(get_op, [val], line)
+    if isinstance(get_op, PrimitiveDescription):
+        iter_val = builder.primitive_op(get_op, [val], line)
+    else:
+        iter_val = builder.call_c(get_op, [val], line)
 
     iter_reg = builder.maybe_spill_assignable(iter_val)
 
@@ -936,6 +940,10 @@ def emit_yield_from_or_await(
     # If it wasn't, this reraises the exception.
     builder.activate_block(stop_block)
     builder.assign(result, builder.call_c(check_stop_op, [], line), line)
+    # Clear the spilled iterator/coroutine so that it will be freed.
+    # Otherwise, the freeing of the spilled register would likely be delayed.
+    err = builder.add(LoadErrorValue(object_rprimitive))
+    builder.assign(iter_reg, err, line)
     builder.goto(done_block)
 
     builder.activate_block(main_block)

@@ -385,7 +385,7 @@ main.py:1: error: Cannot find implementation or library stub for module named "a
 \[tool.mypy]
 python_version = 3.10
 [out]
-pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.8 or higher). You may need to put quotes around your Python version
+pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.9 or higher). You may need to put quotes around your Python version
 == Return code: 0
 
 [case testPythonVersionTooOld10]
@@ -397,13 +397,13 @@ python_version = 1.0
 mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 3)
 == Return code: 0
 
-[case testPythonVersionTooOld37]
+[case testPythonVersionTooOld38]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.7
+python_version = 3.8
 [out]
-mypy.ini: [mypy]: python_version: Python 3.7 is not supported (must be 3.8 or higher)
+mypy.ini: [mypy]: python_version: Python 3.8 is not supported (must be 3.9 or higher)
 == Return code: 0
 
 [case testPythonVersionTooNew40]
@@ -426,19 +426,33 @@ usage: mypy [-h] [-v] [-V] [more options; see below]
 mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to mypy<0.980 if you need to check Python 2 code.
 == Return code: 2
 
-[case testPythonVersionAccepted38]
+[case testPythonVersionAccepted39]
 # cmd: mypy -c pass
+[file mypy.ini]
+\[mypy]
+python_version = 3.9
+[out]
+
+[case testPythonVersionAccepted314]
+# cmd: mypy -c pass
+[file mypy.ini]
+\[mypy]
+python_version = 3.14
+[out]
+
+[case testPythonVersionFallback]
+# cmd: mypy main.py
+[file main.py]
+import sys
+if sys.version_info == (3, 9):  # Update here when bumping the min Python version!
+    reveal_type("good")
 [file mypy.ini]
 \[mypy]
 python_version = 3.8
 [out]
-
-[case testPythonVersionAccepted311]
-# cmd: mypy -c pass
-[file mypy.ini]
-\[mypy]
-python_version = 3.11
-[out]
+mypy.ini: [mypy]: python_version: Python 3.8 is not supported (must be 3.9 or higher)
+main.py:3: note: Revealed type is "Literal['good']?"
+== Return code: 0
 
 -- This should be a dumping ground for tests of plugins that are sensitive to
 -- typeshed changes.
@@ -469,17 +483,16 @@ int_pow.py:10: note: Revealed type is "builtins.int"
 int_pow.py:11: note: Revealed type is "Any"
 == Return code: 0
 
-[case testDisallowAnyGenericsBuiltinCollectionsPre39]
+[case testDisallowAnyGenericsBuiltinCollections]
 # cmd: mypy m.py
 [file mypy.ini]
 \[mypy]
-python_version = 3.8
 \[mypy-m]
 disallow_any_generics = True
 [file m.py]
 def j(s: frozenset) -> None: pass
 [out]
-m.py:1: error: Implicit generic "Any". Use "typing.FrozenSet" and specify generic parameters
+m.py:1: error: Missing type parameters for generic type "frozenset"
 
 [case testDisallowAnyGenericsTypingCollections]
 # cmd: mypy m.py
@@ -526,7 +539,7 @@ strict_optional = True
 ignore_errors = False
 [out]
 a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type "List"
-a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "List[Any]"
+a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "list[Any]"
 
 [case testMissingFile]
 # cmd: mypy nope.py
@@ -651,7 +664,7 @@ def foo() -> str:
     return 9
 [out]
 s4.py:2: error: Incompatible return value type (got "int", expected "str")
-s3.py:2: error: Incompatible return value type (got "List[int]", expected "int")
+s3.py:2: error: Incompatible return value type (got "list[int]", expected "int")
 s1.py:2: error: Incompatible return value type (got "int", expected "str")
 
 [case testShadowFileWithPretty]
@@ -831,8 +844,8 @@ x = []  # type: List[float]
 y = []  # type: List[int]
 x = y
 [out]
-bad.py:4: error: Incompatible types in assignment (expression has type "List[int]", variable has type "List[float]")
-bad.py:4: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+bad.py:4: error: Incompatible types in assignment (expression has type "list[int]", variable has type "list[float]")
+bad.py:4: note: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 bad.py:4: note: Consider using "Sequence" instead, which is covariant
 Found 1 error in 1 file (checked 1 source file)
 
@@ -896,7 +909,7 @@ some_file.py:11: error: Argument 1 to "some_interesting_method" of
 [file some_file.py]
 it_looks_like_we_started_typing_something_but_then. = did_not_notice(an_extra_dot)
 [out]
-some_file.py:1: error: invalid syntax  [syntax]
+some_file.py:1: error: Invalid syntax  [syntax]
     ...ooks_like_we_started_typing_something_but_then. = did_not_notice(an_ex...
                                                         ^
 == Return code: 2
@@ -1035,15 +1048,15 @@ public static void main(String[] args)
 [file pkg/y.py]
 x: str = 0
 [out]
-pkg/x.py:1: error: invalid syntax
+pkg/x.py:1: error: Invalid syntax
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
 [out version>=3.10]
-pkg/x.py:1: error: invalid syntax. Perhaps you forgot a comma?
+pkg/x.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
 [out version>=3.10.3]
-pkg/x.py:1: error: invalid syntax
+pkg/x.py:1: error: Invalid syntax
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
 
@@ -1128,6 +1141,21 @@ b/bpkg.py:1: error: "int" not callable
 # cmd: mypy --exclude abc --exclude b/ .
 [file abc/apkg.py]
 1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+
+[case testCmdlineExcludeGitignore]
+# cmd: mypy --exclude-gitignore .
+[file .gitignore]
+abc
+[file abc/apkg.py]
+1()
+[file b/.gitignore]
+bpkg.*
 [file b/bpkg.py]
 1()
 [file c/cpkg.py]
@@ -1300,6 +1328,22 @@ foo.py:1: error: "int" not callable
 [out]
 foo/m.py:1: error: "int" not callable
 
+[case testCmdlineCfgFilesTrailingComma]
+# cmd: mypy
+[file mypy.ini]
+\[mypy]
+files =
+  a.py,
+  b.py,
+[file a.py]
+x: str = 'x'  # ok
+[file b.py]
+y: int = 'y'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[file c.py]
+# This should not trigger any errors, because it is not included:
+z: int = 'z'
+[out]
+
 [case testCmdlineCfgEnableErrorCodeTrailingComma]
 # cmd: mypy .
 [file mypy.ini]
@@ -1324,6 +1368,38 @@ disable_error_code =
 \[mypy]
 always_true =
   MY_VAR,
+[out]
+
+[case testCmdlineCfgModulesTrailingComma]
+# cmd: mypy
+[file mypy.ini]
+\[mypy]
+modules =
+  a,
+  b,
+[file a.py]
+x: str = 'x'  # ok
+[file b.py]
+y: int = 'y'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[file c.py]
+# This should not trigger any errors, because it is not included:
+z: int = 'z'
+[out]
+
+[case testCmdlineCfgPackagesTrailingComma]
+# cmd: mypy
+[file mypy.ini]
+\[mypy]
+packages =
+  a,
+  b,
+[file a/__init__.py]
+x: str = 'x'  # ok
+[file b/__init__.py]
+y: int = 'y'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[file c/__init__.py]
+# This should not trigger any errors, because it is not included:
+z: int = 'z'
 [out]
 
 [case testTypeVarTupleUnpackEnabled]

@@ -18,6 +18,7 @@ from .futures import Future
 if sys.version_info >= (3, 11):
     from contextvars import Context
 
+# Keep asyncio.__all__ updated with any changes to __all__ here
 if sys.version_info >= (3, 12):
     __all__ = (
         "Task",
@@ -78,6 +79,7 @@ if sys.version_info >= (3, 12):
     _FutureLike: TypeAlias = Future[_T] | Awaitable[_T]
 else:
     _FutureLike: TypeAlias = Future[_T] | Generator[Any, None, _T] | Awaitable[_T]
+
 _TaskYieldType: TypeAlias = Future[object] | None
 
 FIRST_COMPLETED = concurrent.futures.FIRST_COMPLETED
@@ -346,7 +348,8 @@ else:
         *coros_or_futures: _FutureLike[_T], loop: AbstractEventLoop | None = None, return_exceptions: bool
     ) -> Future[list[_T | BaseException]]: ...
 
-def run_coroutine_threadsafe(coro: _FutureLike[_T], loop: AbstractEventLoop) -> concurrent.futures.Future[_T]: ...
+# unlike some asyncio apis, This does strict runtime checking of actually being a coroutine, not of any future-like.
+def run_coroutine_threadsafe(coro: Coroutine[Any, Any, _T], loop: AbstractEventLoop) -> concurrent.futures.Future[_T]: ...
 
 if sys.version_info >= (3, 10):
     def shield(arg: _FutureLike[_T]) -> Future[_T]: ...
@@ -404,10 +407,8 @@ else:
 
 if sys.version_info >= (3, 12):
     _TaskCompatibleCoro: TypeAlias = Coroutine[Any, Any, _T_co]
-elif sys.version_info >= (3, 9):
-    _TaskCompatibleCoro: TypeAlias = Generator[_TaskYieldType, None, _T_co] | Coroutine[Any, Any, _T_co]
 else:
-    _TaskCompatibleCoro: TypeAlias = Generator[_TaskYieldType, None, _T_co] | Awaitable[_T_co]
+    _TaskCompatibleCoro: TypeAlias = Generator[_TaskYieldType, None, _T_co] | Coroutine[Any, Any, _T_co]
 
 def all_tasks(loop: AbstractEventLoop | None = None) -> set[Task[Any]]: ...
 

@@ -93,7 +93,7 @@ Using ``Stack`` is similar to built-in container types:
    stack.push('x')
 
    stack2: Stack[str] = Stack()
-   stack2.append('x')
+   stack2.push('x')
 
 Construction of instances of generic types is type checked (Python 3.12 syntax):
 
@@ -284,7 +284,7 @@ and the return type is derived from the sequence item type. Example:
 When using the legacy syntax, a single definition of a type variable
 (such as ``T`` above) can be used in multiple generic functions or
 classes. In this example we use the same type variable in two generic
-functions to declarare type parameters:
+functions to declare type parameters:
 
 .. code-block:: python
 
@@ -999,7 +999,7 @@ similarly supported via generics (Python 3.12 syntax):
 
 .. code-block:: python
 
-    from colletions.abc import Callable
+    from collections.abc import Callable
     from typing import Any
 
     def route[F: Callable[..., Any]](url: str) -> Callable[[F], F]:

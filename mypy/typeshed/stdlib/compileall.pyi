@@ -25,7 +25,7 @@ if sys.version_info >= (3, 10):
         prependdir: StrPath | None = None,
         limit_sl_dest: StrPath | None = None,
         hardlink_dupes: bool = False,
-    ) -> int: ...
+    ) -> bool: ...
     def compile_file(
         fullname: StrPath,
         ddir: StrPath | None = None,
@@ -40,9 +40,9 @@ if sys.version_info >= (3, 10):
         prependdir: StrPath | None = None,
         limit_sl_dest: StrPath | None = None,
         hardlink_dupes: bool = False,
-    ) -> int: ...
+    ) -> bool: ...
 
-elif sys.version_info >= (3, 9):
+else:
     def compile_dir(
         dir: StrPath,
         maxlevels: int | None = None,
@@ -59,7 +59,7 @@ elif sys.version_info >= (3, 9):
         prependdir: StrPath | None = None,
         limit_sl_dest: StrPath | None = None,
         hardlink_dupes: bool = False,
-    ) -> int: ...
+    ) -> bool: ...
     def compile_file(
         fullname: StrPath,
         ddir: StrPath | None = None,
@@ -74,31 +74,7 @@ elif sys.version_info >= (3, 9):
         prependdir: StrPath | None = None,
         limit_sl_dest: StrPath | None = None,
         hardlink_dupes: bool = False,
-    ) -> int: ...
-
-else:
-    def compile_dir(
-        dir: StrPath,
-        maxlevels: int = 10,
-        ddir: StrPath | None = None,
-        force: bool = False,
-        rx: _SupportsSearch | None = None,
-        quiet: int = 0,
-        legacy: bool = False,
-        optimize: int = -1,
-        workers: int = 1,
-        invalidation_mode: PycInvalidationMode | None = None,
-    ) -> int: ...
-    def compile_file(
-        fullname: StrPath,
-        ddir: StrPath | None = None,
-        force: bool = False,
-        rx: _SupportsSearch | None = None,
-        quiet: int = 0,
-        legacy: bool = False,
-        optimize: int = -1,
-        invalidation_mode: PycInvalidationMode | None = None,
-    ) -> int: ...
+    ) -> bool: ...
 
 def compile_path(
     skip_curdir: bool = ...,
@@ -108,4 +84,4 @@ def compile_path(
     legacy: bool = False,
     optimize: int = -1,
     invalidation_mode: PycInvalidationMode | None = None,
-) -> int: ...
+) -> bool: ...

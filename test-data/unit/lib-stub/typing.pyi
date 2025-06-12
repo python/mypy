@@ -23,6 +23,7 @@ NamedTuple = 0
 Type = 0
 ClassVar = 0
 Final = 0
+Literal = 0
 NoReturn = 0
 Never = 0
 NewType = 0

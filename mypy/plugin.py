@@ -119,14 +119,14 @@ analyzed.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Callable, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, TypeVar
 
 from mypy_extensions import mypyc_attr, trait
 
 from mypy.errorcodes import ErrorCode
+from mypy.errors import ErrorInfo
 from mypy.lookup import lookup_fully_qualified
 from mypy.message_registry import ErrorMessage
-from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ArgKind,
     CallExpr,
@@ -138,7 +138,6 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.options import Options
-from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
     CallableType,
     FunctionLike,
@@ -148,6 +147,10 @@ from mypy.types import (
     TypeList,
     UnboundType,
 )
+
+if TYPE_CHECKING:
+    from mypy.messages import MessageBuilder
+    from mypy.tvar_scope import TypeVarLikeScope
 
 
 @trait
@@ -170,12 +173,12 @@ class TypeAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type(self, name: str, args: list[Type]) -> Instance:
+    def named_type(self, fullname: str, args: list[Type], /) -> Instance:
         """Construct an instance of a builtin type with given name."""
         raise NotImplementedError
 
     @abstractmethod
-    def analyze_type(self, typ: Type) -> Type:
+    def analyze_type(self, typ: Type, /) -> Type:
         """Analyze an unbound type using the default mypy logic."""
         raise NotImplementedError
 
@@ -238,7 +241,7 @@ class CheckerPluginInterface:
     @abstractmethod
     def fail(
         self, msg: str | ErrorMessage, ctx: Context, /, *, code: ErrorCode | None = None
-    ) -> None:
+    ) -> ErrorInfo | None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
@@ -319,7 +322,8 @@ class SemanticAnalyzerPluginInterface:
     @abstractmethod
     def anal_type(
         self,
-        t: Type,
+        typ: Type,
+        /,
         *,
         tvar_scope: TypeVarLikeScope | None = None,
         allow_tuple_literal: bool = False,
@@ -340,7 +344,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+    def lookup_fully_qualified(self, fullname: str, /) -> SymbolTableNode:
         """Lookup a symbol by its fully qualified name.
 
         Raise an error if not found.
@@ -348,7 +352,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified_or_none(self, name: str) -> SymbolTableNode | None:
+    def lookup_fully_qualified_or_none(self, fullname: str, /) -> SymbolTableNode | None:
         """Lookup a symbol by its fully qualified name.
 
         Return None if not found.
@@ -384,12 +388,12 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> Any:
+    def add_symbol_table_node(self, name: str, symbol: SymbolTableNode) -> Any:
         """Add node to global symbol table (or to nearest class if there is one)."""
         raise NotImplementedError
 
     @abstractmethod
-    def qualified_name(self, n: str) -> str:
+    def qualified_name(self, name: str) -> str:
         """Make qualified name using current module and enclosing class (if any)."""
         raise NotImplementedError
 

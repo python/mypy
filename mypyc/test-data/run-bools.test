@@ -31,7 +31,7 @@ def test_if() -> None:
     assert f(False) is True
 
 def test_bitwise_and() -> None:
-    # Use eval() to avoid constand folding
+    # Use eval() to avoid constant folding
     t: bool = eval('True')
     f: bool = eval('False')
     assert t & t == True
@@ -44,7 +44,7 @@ def test_bitwise_and() -> None:
     assert t == False
 
 def test_bitwise_or() -> None:
-    # Use eval() to avoid constand folding
+    # Use eval() to avoid constant folding
     t: bool = eval('True')
     f: bool = eval('False')
     assert t | t == True
@@ -57,7 +57,7 @@ def test_bitwise_or() -> None:
     assert f == True
 
 def test_bitwise_xor() -> None:
-    # Use eval() to avoid constand folding
+    # Use eval() to avoid constant folding
     t: bool = eval('True')
     f: bool = eval('False')
     assert t ^ t == False

@@ -10,9 +10,9 @@ import re
 import shutil
 import sys
 import time
+from collections.abc import Container, Iterable, Sequence, Sized
 from importlib import resources as importlib_resources
-from typing import IO, Any, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
-from typing_extensions import Literal
+from typing import IO, Any, Callable, Final, Literal, TypeVar
 
 orjson: Any
 try:
@@ -30,15 +30,7 @@ except ImportError:
 
 T = TypeVar("T")
 
-if sys.version_info >= (3, 9):
-    TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
-else:
-    with importlib_resources.path(
-        "mypy",  # mypy-c doesn't support __package__
-        "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
-    ) as _resource:
-        TYPESHED_DIR = str(_resource.parent / "typeshed")
-
+TYPESHED_DIR: Final = str(importlib_resources.files("mypy") / "typeshed")
 
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
@@ -74,7 +66,7 @@ def is_dunder(name: str, exclude_special: bool = False) -> bool:
 
 
 def is_sunder(name: str) -> bool:
-    return not is_dunder(name) and name.startswith("_") and name.endswith("_")
+    return not is_dunder(name) and name.startswith("_") and name.endswith("_") and name != "_"
 
 
 def split_module_names(mod_name: str) -> list[str]:
@@ -490,10 +482,10 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 8):  # noqa: UP036
+    if sys.version_info[:2] < (3, 9):  # noqa: UP036, RUF100
         sys.exit(
-            "Running {name} with Python 3.7 or lower is not supported; "
-            "please upgrade to 3.8 or newer".format(name=program)
+            "Running {name} with Python 3.8 or lower is not supported; "
+            "please upgrade to 3.9 or newer".format(name=program)
         )
 
 
@@ -579,8 +571,7 @@ def hash_digest(data: bytes) -> str:
 
 def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
-    if sys.platform == "win32":
-        assert False, "curses is not available on Windows"
+    assert sys.platform != "win32", "curses is not available on Windows"
     set_color = "".join([cup[:-1].decode(), "m"])
     gray = curses.tparm(set_color.encode("utf-8"), 1, 9).decode()
     return gray
@@ -647,8 +638,7 @@ class FancyFormatter:
         # Windows ANSI escape sequences are only supported on Threshold 2 and above.
         # we check with an assert at runtime and an if check for mypy, as asserts do not
         # yet narrow platform
-        assert sys.platform == "win32"
-        if sys.platform == "win32":
+        if sys.platform == "win32":  # needed to find win specific sys apis
             winver = sys.getwindowsversion()
             if (
                 winver.major < MINIMUM_WINDOWS_MAJOR_VT100
@@ -670,11 +660,12 @@ class FancyFormatter:
             )
             self.initialize_vt100_colors()
             return True
-        return False
+        assert False, "Running not on Windows"
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
-        if sys.platform == "win32" or not CURSES_ENABLED:
+        is_win = sys.platform == "win32"
+        if is_win or not CURSES_ENABLED:
             return False
         try:
             # setupterm wants a fd to potentially write an "initialization sequence".
