@@ -128,18 +128,28 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if declared == narrowed:
         return original_declared
     if isinstance(declared, UnionType):
+        declared_items = declared.relevant_items()
+        if isinstance(narrowed, UnionType):
+            narrowed_items = narrowed.relevant_items()
+        else:
+            narrowed_items = [narrowed]
         return make_simplified_union(
             [
-                narrow_declared_type(x, narrowed)
-                for x in declared.relevant_items()
+                narrow_declared_type(d, n)
+                for d in declared_items
+                for n in narrowed_items
                 # This (ugly) special-casing is needed to support checking
                 # branches like this:
                 # x: Union[float, complex]
                 # if isinstance(x, int):
                 #     ...
+                # And assignments like this:
+                # x: float | None
+                # y: int | None
+                # x = y
                 if (
-                    is_overlapping_types(x, narrowed, ignore_promotions=True)
-                    or is_subtype(narrowed, x, ignore_promotions=False)
+                    is_overlapping_types(d, n, ignore_promotions=True)
+                    or is_subtype(n, d, ignore_promotions=False)
                 )
             ]
         )
