@@ -5108,12 +5108,31 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         s.inferred_item_type = item_type
         s.inferred_iterator_type = iterator_type
 
+        proper_iter_type = get_proper_type(iterator_type)
+        if isinstance(proper_iter_type, Instance) and proper_iter_type.type.fullname in (
+            "typing.Generator",
+            "types.GeneratorType",
+        ):
+            supertype = self.named_type("typing.Generator").type
+            super_instance = map_instance_to_supertype(proper_iter_type, supertype)
+            if isinstance(get_proper_type(super_instance.args[2]), UninhabitedType):
+                exit_condition = NameExpr("True")
+                exit_condition.fullname = "builtins.True"
+                print("woohoo!")
+            else:
+                exit_condition = NameExpr("False")
+                exit_condition.fullname = "builtins.False"
+        else:
+            exit_condition = NameExpr("False")
+            exit_condition.fullname = "builtins.False"
+
         self.accept_loop(
             s.body,
             s.else_body,
             on_enter_body=lambda: self.analyze_index_variables(
                 s.index, item_type, s.index_type is None, s
             ),
+            exit_condition=exit_condition,
         )
 
     def analyze_async_iterable_item_type(self, expr: Expression) -> tuple[Type, Type]:

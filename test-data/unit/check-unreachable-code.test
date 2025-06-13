@@ -1587,3 +1587,23 @@ x = 0  # not unreachable
 
 f2: Callable[[], NoReturn] = lambda: foo()
 x = 0  # not unreachable
+
+[case testUnendingForLoop]
+# flags: --warn-unreachable
+from typing import Generator, NoReturn
+
+def generator() -> Generator[int, None, NoReturn]:
+    while True:
+        yield 1
+
+def foo() -> int:
+    for x in generator():
+        return x
+
+    y = 0  # E: Statement is unreachable
+
+def bar() -> int:  # E: Missing return statement
+    for x in generator():
+        break
+
+    y = 0
