@@ -1590,7 +1590,7 @@ x = 0  # not unreachable
 
 [case testUnendingForLoop]
 # flags: --warn-unreachable
-from typing import Generator, NoReturn
+from typing import Generator, NoReturn, TypeVar
 
 def generator() -> Generator[int, None, NoReturn]:
     while True:
@@ -1607,3 +1607,31 @@ def bar() -> int:  # E: Missing return statement
         break
 
     y = 0
+
+def baz() -> int:
+    for x in generator():
+        pass
+
+A = TypeVar("A")
+B = TypeVar("B")
+C = TypeVar("C")
+
+class GeneratorSubtype(Generator[A, B, C]):
+    ...
+
+def foo2(gen: GeneratorSubtype[int, None, NoReturn]) -> int:
+    for x in gen:
+        return x
+
+    y = 0  # E: Statement is unreachable
+
+def bar2(gen: GeneratorSubtype[int, None, NoReturn]) -> int:  # E: Missing return statement
+    for x in gen:
+        break
+
+    y = 0
+
+def baz2(gen: GeneratorSubtype[int, None, NoReturn]) -> int:
+    for x in gen:
+        pass
+[builtins fixtures/tuple.pyi]

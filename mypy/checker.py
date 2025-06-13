@@ -5109,9 +5109,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         s.inferred_iterator_type = iterator_type
 
         proper_iter_type = get_proper_type(iterator_type)
-        if isinstance(proper_iter_type, Instance) and proper_iter_type.type.fullname in (
-            "typing.Generator",
-            "types.GeneratorType",
+        if isinstance(proper_iter_type, Instance) and any(
+            base.fullname == "typing.Generator" for base in proper_iter_type.type.mro
         ):
             supertype = self.named_type("typing.Generator").type
             super_instance = map_instance_to_supertype(proper_iter_type, supertype)
