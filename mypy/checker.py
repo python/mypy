@@ -5115,14 +5115,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             supertype = self.named_type("typing.Generator").type
             super_instance = map_instance_to_supertype(proper_iter_type, supertype)
             if isinstance(get_proper_type(super_instance.args[2]), UninhabitedType):
-                exit_condition = NameExpr("True")
-                exit_condition.fullname = "builtins.True"
+                exit_condition = IntExpr(1)
             else:
-                exit_condition = NameExpr("False")
-                exit_condition.fullname = "builtins.False"
+                exit_condition = IntExpr(0)
         else:
-            exit_condition = NameExpr("False")
-            exit_condition.fullname = "builtins.False"
+            exit_condition = IntExpr(0)
 
         self.accept_loop(
             s.body,
