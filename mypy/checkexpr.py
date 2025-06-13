@@ -6336,7 +6336,7 @@ def is_async_def(t: Type) -> bool:
         and len(t.args) >= 4
     ):
         t = get_proper_type(t.args[3])
-    return isinstance(t, Instance) and t.type.fullname == "typing.Coroutine"
+    return isinstance(t, Instance) and t.type.fullname == "types.CoroutineType"
 
 
 def is_non_empty_tuple(t: Type) -> bool:

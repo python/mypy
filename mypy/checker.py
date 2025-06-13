@@ -4704,7 +4704,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if isinstance(proper_type, Instance):
             # We use different error codes for generic awaitable vs coroutine.
             # Coroutines are on by default, whereas generic awaitables are not.
-            if proper_type.type.fullname == "typing.Coroutine":
+            if proper_type.type.fullname == "types.CoroutineType":
                 return ("Are you missing an await?", UNUSED_COROUTINE)
             if proper_type.type.get("__await__") is not None:
                 return ("Are you missing an await?", UNUSED_AWAITABLE)

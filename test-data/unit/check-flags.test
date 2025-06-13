@@ -430,7 +430,7 @@ async def g() -> NoReturn:
 async def h() -> NoReturn:  # E: Implicit return in function which does not return
   # Purposely not evaluating coroutine
   _ = f()
-[builtins fixtures/dict.pyi]
+[builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
 [case testNoWarnNoReturn]

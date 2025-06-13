@@ -3544,7 +3544,7 @@ def decorator2(f: Callable[P, None]) -> Callable[
 def key2(x: int) -> None:
     ...
 
-@decorator2(key2)  # E: Argument 1 has incompatible type "Callable[[Arg(int, 'y')], Coroutine[Any, Any, None]]"; expected "Callable[[Arg(int, 'x')], Awaitable[None]]"
+@decorator2(key2)  # E: Argument 1 has incompatible type "Callable[[Arg(int, 'y')], CoroutineType[Any, Any, None]]"; expected "Callable[[Arg(int, 'x')], Awaitable[None]]"
 async def foo2(y: int) -> None:
     ...
 
@@ -3555,7 +3555,7 @@ class Parent:
 class Child(Parent):
     method_without: Callable[[], "Child"]
     method_with: Callable[[str], "Child"]  # E: Incompatible types in assignment (expression has type "Callable[[str], Child]", base class "Parent" defined the type as "Callable[[Arg(str, 'param')], Parent]")
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/async_await.pyi]
 
 [case testDistinctFormattingUnion]
 from typing import Callable, Union

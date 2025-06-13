@@ -74,7 +74,7 @@ async def asynciter(iterable):
 
 async def coro() -> Generator[List[Any], None, None]:
     return ([i async for i in asynciter([0,j])] for j in [3, 5])
-reveal_type(coro)  # N: Revealed type is "def () -> typing.Coroutine[Any, Any, typing.Generator[builtins.list[Any], None, None]]"
+reveal_type(coro)  # N: Revealed type is "def () -> types.CoroutineType[Any, Any, typing.Generator[builtins.list[Any], None, None]]"
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
