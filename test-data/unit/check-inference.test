@@ -4149,3 +4149,19 @@ class Foo:
         else:
             self.qux = {}  # E: Need type annotation for "qux" (hint: "qux: dict[<type>, <type>] = ...")
 [builtins fixtures/dict.pyi]
+
+[case testConstraintSolvingFailureShowsCorrectArgument]
+from typing import Callable, TypeVar
+
+T1 = TypeVar('T1')
+T2 = TypeVar('T2')
+def foo(
+    a: T1,
+    b: T2,
+    c: Callable[[T2], T2],
+) -> tuple[T1, T2]: ...
+
+def bar(y: float) -> float: ...
+
+foo(1, None, bar)  # E: Cannot infer type argument to type parameter "T2" of "foo"
+[builtins fixtures/tuple.pyi]
