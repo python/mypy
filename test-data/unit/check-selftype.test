@@ -2219,3 +2219,16 @@ class B:
 class C(A, B):  # OK: both methods take Self
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testSelfTypeClassMethodNotSilentlyErased]
+from typing import ClassVar, Self, Optional
+
+class X:
+    _inst: Optional[Self] = None
+    @classmethod
+    def default(cls) -> Self:
+        reveal_type(cls._inst)  # N: Revealed type is "Union[Self`0, None]"
+        if cls._inst is None:
+            cls._inst = cls()
+        return cls._inst
+[builtins fixtures/tuple.pyi]
