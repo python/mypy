@@ -4608,9 +4608,9 @@ from typing import Any, Protocol, overload, ClassVar, Type
 
 class Desc:
     @overload
-    def __get__(self, instance: None, owner: Any) -> Desc: ...
+    def __get__(self, instance: None, owner: object) -> Desc: ...
     @overload
-    def __get__(self, instance: object, owner: Any) -> int: ...
+    def __get__(self, instance: object, owner: object) -> int: ...
     def __get__(self, instance, owner):
         pass
 
@@ -4628,3 +4628,21 @@ reveal_type(tt.x)  # N: Revealed type is "__main__.Desc"
 bad: P = C  # E: Incompatible types in assignment (expression has type "type[C]", variable has type "P") \
             # N: Following member(s) of "C" have conflicts: \
             # N:     x: expected "int", got "Desc"
+
+[case testProtocolClassValCallable]
+from typing import Any, Protocol, overload, ClassVar, Type, Callable
+
+class P(Protocol):
+    foo: Callable[[object], int]
+    bar: ClassVar[Callable[[object], int]]
+
+class C:
+    foo: Callable[[object], int]
+    bar: ClassVar[Callable[[object], int]]
+
+t: P = C()
+reveal_type(t.foo)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+reveal_type(t.bar)  # N: Revealed type is "def () -> builtins.int"
+tt: Type[P] = C
+reveal_type(tt.foo)  # N: Revealed type is "def (builtins.object) -> builtins.int"
+reveal_type(tt.bar)  # N: Revealed type is "def (builtins.object) -> builtins.int"
