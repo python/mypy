@@ -188,7 +188,6 @@ INVALID_PARAM_SPEC_LOCATION_NOTE: Final = (
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
-CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = 'Type variable "{}.{}" cannot be used as an expression'
 INVALID_TYPEVAR_AS_TYPEARG: Final = 'Type variable "{}" not valid as type argument value for "{}"'
 INVALID_TYPEVAR_ARG_BOUND: Final = 'Type argument {} of "{}" must be a subtype of {}'
 INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'

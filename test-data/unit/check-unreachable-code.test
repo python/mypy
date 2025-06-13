@@ -481,24 +481,100 @@ import typing
 def make() -> bool: pass
 PY2 = PY3 = make()
 
-a = PY2 and 's'
-b = PY3 and 's'
-c = PY2 or 's'
-d = PY3 or 's'
-e = (PY2 or PY3) and 's'
-f = (PY3 or PY2) and 's'
-g = (PY2 or PY3) or 's'
-h = (PY3 or PY2) or 's'
+a = PY2 and str()
+b = PY3 and str()
+c = PY2 or str()
+d = PY3 or str()
+e = (PY2 or PY3) and str()
+f = (PY3 or PY2) and str()
+g = (PY2 or PY3) or str()
+h = (PY3 or PY2) or str()
 reveal_type(a)  # N: Revealed type is "builtins.bool"
-reveal_type(b)  # N: Revealed type is "Literal['s']"
-reveal_type(c)  # N: Revealed type is "Literal['s']"
+reveal_type(b)  # N: Revealed type is "builtins.str"
+reveal_type(c)  # N: Revealed type is "builtins.str"
 reveal_type(d)  # N: Revealed type is "builtins.bool"
-reveal_type(e)  # N: Revealed type is "Literal['s']"
-reveal_type(f)  # N: Revealed type is "Literal['s']"
+reveal_type(e)  # N: Revealed type is "builtins.str"
+reveal_type(f)  # N: Revealed type is "builtins.str"
 reveal_type(g)  # N: Revealed type is "builtins.bool"
 reveal_type(h)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/ops.pyi]
 [out]
+
+[case testConditionalValuesBinaryOps]
+# flags: --platform linux
+import sys
+
+t_and_t = (sys.platform == 'linux' and sys.platform == 'linux') and str()
+t_or_t = (sys.platform == 'linux' or sys.platform == 'linux') and str()
+t_and_f = (sys.platform == 'linux' and sys.platform == 'windows') and str()
+t_or_f = (sys.platform == 'linux' or sys.platform == 'windows') and str()
+f_and_t = (sys.platform == 'windows' and sys.platform == 'linux') and str()
+f_or_t = (sys.platform == 'windows' or sys.platform == 'linux') and str()
+f_and_f = (sys.platform == 'windows' and sys.platform == 'windows') and str()
+f_or_f = (sys.platform == 'windows' or sys.platform == 'windows') and str()
+reveal_type(t_and_t) # N: Revealed type is "builtins.str"
+reveal_type(t_or_t) # N: Revealed type is "builtins.str"
+reveal_type(f_and_t) # N: Revealed type is "builtins.bool"
+reveal_type(f_or_t) # N: Revealed type is "builtins.str"
+reveal_type(t_and_f) # N: Revealed type is "builtins.bool"
+reveal_type(t_or_f) # N: Revealed type is "builtins.str"
+reveal_type(f_and_f) # N: Revealed type is "builtins.bool"
+reveal_type(f_or_f) # N: Revealed type is "builtins.bool"
+[builtins fixtures/ops.pyi]
+
+[case testConditionalValuesNegation]
+# flags: --platform linux
+import sys
+
+not_t = not sys.platform == 'linux' and str()
+not_f = not sys.platform == 'windows' and str()
+not_and_t = not (sys.platform == 'linux' and sys.platform == 'linux') and str()
+not_and_f = not (sys.platform == 'linux' and sys.platform == 'windows') and str()
+not_or_t = not (sys.platform == 'linux' or sys.platform == 'linux') and str()
+not_or_f = not (sys.platform == 'windows' or sys.platform == 'windows') and str()
+reveal_type(not_t) # N: Revealed type is "builtins.bool"
+reveal_type(not_f) # N: Revealed type is "builtins.str"
+reveal_type(not_and_t) # N: Revealed type is "builtins.bool"
+reveal_type(not_and_f) # N: Revealed type is "builtins.str"
+reveal_type(not_or_t) # N: Revealed type is "builtins.bool"
+reveal_type(not_or_f) # N: Revealed type is "builtins.str"
+[builtins fixtures/ops.pyi]
+
+[case testConditionalValuesUnsupportedOps]
+# flags: --platform linux
+import sys
+
+unary_minus = -(sys.platform == 'linux') and str()
+binary_minus = ((sys.platform == 'linux') - (sys.platform == 'linux')) and str()
+reveal_type(unary_minus) # N: Revealed type is "Union[Literal[0], builtins.str]"
+reveal_type(binary_minus) # N: Revealed type is "Union[Literal[0], builtins.str]"
+[builtins fixtures/ops.pyi]
+
+[case testMypyFalseValuesInBinaryOps_no_empty]
+# flags: --platform linux
+import sys
+from typing import TYPE_CHECKING
+
+MYPY = 0
+
+if TYPE_CHECKING and sys.platform == 'linux':
+    def foo1() -> int: ...
+if sys.platform == 'linux' and TYPE_CHECKING:
+    def foo2() -> int: ...
+if MYPY and sys.platform == 'linux':
+    def foo3() -> int: ...
+if sys.platform == 'linux' and MYPY:
+    def foo4() -> int: ...
+
+if TYPE_CHECKING or sys.platform == 'linux':
+    def bar1() -> int: ...  # E: Missing return statement
+if sys.platform == 'linux' or TYPE_CHECKING:
+    def bar2() -> int: ...  # E: Missing return statement
+if MYPY or sys.platform == 'linux':
+    def bar3() -> int: ...  # E: Missing return statement
+if sys.platform == 'linux' or MYPY:
+    def bar4() -> int: ...  # E: Missing return statement
+[builtins fixtures/ops.pyi]
 
 [case testShortCircuitAndWithConditionalAssignment]
 # flags: --platform linux

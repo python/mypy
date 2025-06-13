@@ -32,7 +32,7 @@ from mypyc.ir.ops import (
     Unreachable,
     Value,
 )
-from mypyc.ir.rtypes import RInstance, int_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import RInstance, int32_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo, GeneratorClass
 from mypyc.irbuild.env_class import (
@@ -155,7 +155,7 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
 def setup_generator_class(builder: IRBuilder) -> ClassIR:
     name = f"{builder.fn_info.namespaced_name()}_gen"
 
-    generator_class_ir = ClassIR(name, builder.module_name, is_generated=True)
+    generator_class_ir = ClassIR(name, builder.module_name, is_generated=True, is_final_class=True)
     if builder.fn_info.can_merge_generator_and_env_classes():
         builder.fn_info.env_class = generator_class_ir
     else:
@@ -249,7 +249,11 @@ def add_helper_to_generator_class(
         sig.ret_type,
     )
     helper_fn_decl = FuncDecl(
-        "__mypyc_generator_helper__", fn_info.generator_class.ir.name, builder.module_name, sig
+        "__mypyc_generator_helper__",
+        fn_info.generator_class.ir.name,
+        builder.module_name,
+        sig,
+        internal=True,
     )
     helper_fn_ir = FuncIR(
         helper_fn_decl, arg_regs, blocks, fn_info.fitem.line, traceback_name=fn_info.fitem.name
@@ -415,7 +419,7 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     # the '__next__' function of the generator is called, and add it
     # as an attribute to the environment class.
     cls.next_label_target = builder.add_var_to_env_class(
-        Var(NEXT_LABEL_ATTR_NAME), int_rprimitive, cls, reassign=False
+        Var(NEXT_LABEL_ATTR_NAME), int32_rprimitive, cls, reassign=False, always_defined=True
     )
 
     # Add arguments from the original generator function to the

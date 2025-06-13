@@ -7,7 +7,7 @@ import itertools
 import time
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import Callable, ClassVar, Final, Optional, cast, overload
 from typing_extensions import TypeAlias as _TypeAlias, assert_never
 
@@ -16,7 +16,7 @@ import mypy.errorcodes as codes
 from mypy import applytype, erasetype, join, message_registry, nodes, operators, types
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
 from mypy.checker_shared import ExpressionCheckerSharedApi
-from mypy.checkmember import analyze_member_access
+from mypy.checkmember import analyze_member_access, has_operator
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorWatcher, report_internal_error
@@ -94,6 +94,7 @@ from mypy.nodes import (
     TypedDictExpr,
     TypeInfo,
     TypeVarExpr,
+    TypeVarLikeExpr,
     TypeVarTupleExpr,
     UnaryExpr,
     Var,
@@ -174,6 +175,7 @@ from mypy.types import (
     TypeOfAny,
     TypeType,
     TypeVarId,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     UnboundType,
@@ -378,9 +380,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             result = self.analyze_var_ref(node, e)
             if isinstance(result, PartialType):
                 result = self.chk.handle_partial_var_type(result, lvalue, node, e)
-        elif isinstance(node, FuncDef):
-            # Reference to a global function.
-            result = function_type(node, self.named_type("builtins.function"))
+        elif isinstance(node, Decorator):
+            result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, OverloadedFuncDef):
             if node.type is None:
                 if self.chk.in_checked_function() and node.items:
@@ -388,16 +389,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 result = AnyType(TypeOfAny.from_error)
             else:
                 result = node.type
-        elif isinstance(node, TypeInfo):
-            # Reference to a type object.
-            if node.typeddict_type:
-                # We special-case TypedDict, because they don't define any constructor.
-                result = self.typeddict_callable(node)
-            elif node.fullname == "types.NoneType":
-                # We special case NoneType, because its stub definition is not related to None.
-                result = TypeType(NoneType())
-            else:
-                result = type_object_type(node, self.named_type)
+        elif isinstance(node, (FuncDef, TypeInfo, TypeAlias, MypyFile, TypeVarLikeExpr)):
+            result = self.analyze_static_reference(node, e, e.is_alias_rvalue or lvalue)
+        else:
+            if isinstance(node, PlaceholderNode):
+                assert False, f"PlaceholderNode {node.fullname!r} leaked to checker"
+            # Unknown reference; use any type implicitly to avoid
+            # generating extra type errors.
+            result = AnyType(TypeOfAny.from_error)
+        if isinstance(node, TypeInfo):
             if isinstance(result, CallableType) and isinstance(  # type: ignore[misc]
                 result.ret_type, Instance
             ):
@@ -409,30 +409,56 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # This is the type in a type[] expression, so substitute type
                 # variables with Any.
                 result = erasetype.erase_typevars(result)
-        elif isinstance(node, MypyFile):
-            # Reference to a module object.
-            result = self.module_type(node)
-        elif isinstance(node, Decorator):
-            result = self.analyze_var_ref(node.var, e)
+        assert result is not None
+        return result
+
+    def analyze_static_reference(
+        self,
+        node: SymbolNode,
+        ctx: Context,
+        is_lvalue: bool,
+        *,
+        include_modules: bool = True,
+        suppress_errors: bool = False,
+    ) -> Type:
+        """
+        This is the version of analyze_ref_expr() that doesn't do any deferrals.
+
+        This function can be used by member access to "static" attributes. For example,
+        when accessing module attributes in protocol checks, or accessing attributes of
+        special kinds (like TypeAlias, TypeInfo, etc.) on an instance or class object.
+        # TODO: merge with analyze_ref_expr() when we are confident about performance.
+        """
+        if isinstance(node, (Var, Decorator, OverloadedFuncDef)):
+            return node.type or AnyType(TypeOfAny.special_form)
+        elif isinstance(node, FuncDef):
+            return function_type(node, self.named_type("builtins.function"))
+        elif isinstance(node, TypeInfo):
+            # Reference to a type object.
+            if node.typeddict_type:
+                # We special-case TypedDict, because they don't define any constructor.
+                return self.typeddict_callable(node)
+            elif node.fullname == "types.NoneType":
+                # We special case NoneType, because its stub definition is not related to None.
+                return TypeType(NoneType())
+            else:
+                return type_object_type(node, self.named_type)
         elif isinstance(node, TypeAlias):
             # Something that refers to a type alias appears in runtime context.
             # Note that we suppress bogus errors for alias redefinitions,
             # they are already reported in semanal.py.
-            result = self.alias_type_in_runtime_context(
-                node, ctx=e, alias_definition=e.is_alias_rvalue or lvalue
-            )
+            with self.msg.filter_errors() if suppress_errors else nullcontext():
+                return self.alias_type_in_runtime_context(
+                    node, ctx=ctx, alias_definition=is_lvalue
+                )
         elif isinstance(node, TypeVarExpr):
             return self.named_type("typing.TypeVar")
         elif isinstance(node, (ParamSpecExpr, TypeVarTupleExpr)):
-            result = self.object_type()
-        else:
-            if isinstance(node, PlaceholderNode):
-                assert False, f"PlaceholderNode {node.fullname!r} leaked to checker"
-            # Unknown reference; use any type implicitly to avoid
-            # generating extra type errors.
-            result = AnyType(TypeOfAny.from_error)
-        assert result is not None
-        return result
+            return self.object_type()
+        elif isinstance(node, MypyFile):
+            # Reference to a module object.
+            return self.module_type(node) if include_modules else AnyType(TypeOfAny.special_form)
+        return AnyType(TypeOfAny.from_error)
 
     def analyze_var_ref(self, var: Var, context: Context) -> Type:
         if var.type:
@@ -460,20 +486,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # Fall back to a dummy 'object' type instead to
             # avoid a crash.
             result = self.named_type("builtins.object")
-        module_attrs = {}
+        module_attrs: dict[str, Type] = {}
         immutable = set()
         for name, n in node.names.items():
             if not n.module_public:
                 continue
             if isinstance(n.node, Var) and n.node.is_final:
                 immutable.add(name)
-            typ = self.chk.determine_type_of_member(n)
-            if typ:
-                module_attrs[name] = typ
+            if n.node is None:
+                module_attrs[name] = AnyType(TypeOfAny.from_error)
             else:
                 # TODO: what to do about nested module references?
                 # They are non-trivial because there may be import cycles.
-                module_attrs[name] = AnyType(TypeOfAny.special_form)
+                module_attrs[name] = self.analyze_static_reference(
+                    n.node, n.node, False, include_modules=False, suppress_errors=True
+                )
         result.extra_attrs = ExtraAttrs(module_attrs, immutable, node.fullname)
         return result
 
@@ -962,19 +989,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         assert info.special_alias is not None
         target = info.special_alias.target
         assert isinstance(target, ProperType) and isinstance(target, TypedDictType)
-        expected_types = list(target.items.values())
-        kinds = [ArgKind.ARG_NAMED] * len(expected_types)
-        names = list(target.items.keys())
-        return CallableType(
-            expected_types,
-            kinds,
-            names,
-            target,
-            self.named_type("builtins.type"),
-            variables=info.defn.type_vars,
-        )
+        return self.typeddict_callable_from_context(target, info.defn.type_vars)
 
-    def typeddict_callable_from_context(self, callee: TypedDictType) -> CallableType:
+    def typeddict_callable_from_context(
+        self, callee: TypedDictType, variables: Sequence[TypeVarLikeType] | None = None
+    ) -> CallableType:
         return CallableType(
             list(callee.items.values()),
             [
@@ -984,6 +1003,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             list(callee.items.keys()),
             callee,
             self.named_type("builtins.type"),
+            variables=variables,
+            is_bound=True,
         )
 
     def check_typeddict_call_with_kwargs(
@@ -2648,7 +2669,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         elif self.has_abstract_type_part(caller_type, callee_type):
             self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type, options=self.chk.options):
-            code = self.msg.incompatible_argument(
+            error = self.msg.incompatible_argument(
                 n,
                 m,
                 callee,
@@ -2659,10 +2680,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 outer_context=outer_context,
             )
             self.msg.incompatible_argument_note(
-                original_caller_type, callee_type, context, code=code
+                original_caller_type, callee_type, context, parent_error=error
             )
             if not self.msg.prefer_simple_messages():
-                self.chk.check_possible_missing_await(caller_type, callee_type, context, code)
+                self.chk.check_possible_missing_await(
+                    caller_type, callee_type, context, error.code
+                )
 
     def check_overload_call(
         self,
@@ -3835,13 +3858,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         arg_kinds: list[ArgKind],
         context: Context,
         original_type: Type | None = None,
+        self_type: Type | None = None,
     ) -> tuple[Type, Type]:
         """Type check a call to a named method on an object.
 
         Return tuple (result type, inferred method type). The 'original_type'
-        is used for error messages.
+        is used for error messages. The self_type is to bind self in methods
+        (see analyze_member_access for more details).
         """
         original_type = original_type or base_type
+        self_type = self_type or base_type
         # Unions are special-cased to allow plugins to act on each element of the union.
         base_type = get_proper_type(base_type)
         if isinstance(base_type, UnionType):
@@ -3857,7 +3883,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             is_super=False,
             is_operator=True,
             original_type=original_type,
-            self_type=base_type,
+            self_type=self_type,
             chk=self.chk,
             in_literal_context=self.is_literal_context(),
         )
@@ -3934,11 +3960,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             """Looks up the given operator and returns the corresponding type,
             if it exists."""
 
-            # This check is an important performance optimization,
-            # even though it is mostly a subset of
-            # analyze_member_access.
-            # TODO: Find a way to remove this call without performance implications.
-            if not self.has_member(base_type, op_name):
+            # This check is an important performance optimization.
+            if not has_operator(base_type, op_name, self.named_type):
                 return None
 
             with self.msg.filter_errors() as w:
@@ -4105,14 +4128,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 errors.append(local_errors.filtered_errors())
                 results.append(result)
             else:
-                # In theory, we should never enter this case, but it seems
-                # we sometimes do, when dealing with Type[...]? E.g. see
-                # check-classes.testTypeTypeComparisonWorks.
-                #
-                # This is probably related to the TODO in lookup_operator(...)
-                # up above.
-                #
-                # TODO: Remove this extra case
+                # Although we should not need this case anymore, we keep it just in case, as
+                # otherwise we will get a crash if we introduce inconsistency in checkmember.py
                 return result
 
         self.msg.add_errors(errors[0])
@@ -4373,13 +4390,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return self.visit_index_with_type(left_type, e)
 
     def visit_index_with_type(
-        self, left_type: Type, e: IndexExpr, original_type: ProperType | None = None
+        self,
+        left_type: Type,
+        e: IndexExpr,
+        original_type: ProperType | None = None,
+        self_type: Type | None = None,
     ) -> Type:
         """Analyze type of an index expression for a given type of base expression.
 
-        The 'original_type' is used for error messages (currently used for union types).
+        The 'original_type' is used for error messages (currently used for union types). The
+        'self_type' is to bind self in methods (see analyze_member_access for more details).
         """
         index = e.index
+        self_type = self_type or left_type
         left_type = get_proper_type(left_type)
 
         # Visit the index, just to make sure we have a type for it available
@@ -4434,16 +4457,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             ):
                 return self.named_type("types.GenericAlias")
 
-        if isinstance(left_type, TypeVarType) and not self.has_member(
-            left_type.upper_bound, "__getitem__"
-        ):
-            return self.visit_index_with_type(left_type.upper_bound, e, original_type)
+        if isinstance(left_type, TypeVarType):
+            return self.visit_index_with_type(
+                left_type.values_or_bound(), e, original_type, left_type
+            )
         elif isinstance(left_type, Instance) and left_type.type.fullname == "typing._SpecialForm":
             # Allow special forms to be indexed and used to create union types
             return self.named_type("typing._SpecialForm")
         else:
             result, method_type = self.check_method_call_by_name(
-                "__getitem__", left_type, [e.index], [ARG_POS], e, original_type=original_type
+                "__getitem__",
+                left_type,
+                [e.index],
+                [ARG_POS],
+                e,
+                original_type=original_type,
+                self_type=self_type,
             )
             e.method_type = method_type
             return result
@@ -4983,7 +5012,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         tp.fallback,
                         name="tuple",
                         definition=tp.definition,
-                        bound_args=tp.bound_args,
+                        is_bound=tp.is_bound,
                     )
                 self.msg.incompatible_type_application(
                     min_arg_count, len(type_vars), len(args), ctx
@@ -6003,45 +6032,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             or isinstance(typ, ParamSpecType)
         )
 
-    def has_member(self, typ: Type, member: str) -> bool:
-        """Does type have member with the given name?"""
-        # TODO: refactor this to use checkmember.analyze_member_access, otherwise
-        # these two should be carefully kept in sync.
-        # This is much faster than analyze_member_access, though, and so using
-        # it first as a filter is important for performance.
-        typ = get_proper_type(typ)
-
-        if isinstance(typ, TypeVarType):
-            typ = get_proper_type(typ.upper_bound)
-        if isinstance(typ, TupleType):
-            typ = tuple_fallback(typ)
-        if isinstance(typ, LiteralType):
-            typ = typ.fallback
-        if isinstance(typ, Instance):
-            return typ.type.has_readable_member(member)
-        if isinstance(typ, FunctionLike) and typ.is_type_obj():
-            return typ.fallback.type.has_readable_member(member)
-        elif isinstance(typ, AnyType):
-            return True
-        elif isinstance(typ, UnionType):
-            result = all(self.has_member(x, member) for x in typ.relevant_items())
-            return result
-        elif isinstance(typ, TypeType):
-            # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
-            # so we don't need to care about unions here.
-            item = typ.item
-            if isinstance(item, TypeVarType):
-                item = get_proper_type(item.upper_bound)
-            if isinstance(item, TupleType):
-                item = tuple_fallback(item)
-            if isinstance(item, Instance) and item.type.metaclass_type is not None:
-                return self.has_member(item.type.metaclass_type, member)
-            if isinstance(item, AnyType):
-                return True
-            return False
-        else:
-            return False
-
     def not_ready_callback(self, name: str, context: Context) -> None:
         """Called when we can't infer the type of a variable because it's not ready yet.
 
@@ -6179,7 +6169,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ):
             if not is_subtype(p_default, e.upper_bound):
                 self.chk.fail("TypeVar default must be a subtype of the bound type", e)
-            if e.values and not any(p_default == value for value in e.values):
+            if e.values and not any(is_same_type(p_default, value) for value in e.values):
                 self.chk.fail("TypeVar default must be one of the constraint types", e)
         return AnyType(TypeOfAny.special_form)
 

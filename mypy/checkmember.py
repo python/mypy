@@ -34,7 +34,7 @@ from mypy.nodes import (
     TempNode,
     TypeAlias,
     TypeInfo,
-    TypeVarExpr,
+    TypeVarLikeExpr,
     Var,
     is_final_node,
 )
@@ -49,7 +49,6 @@ from mypy.typeops import (
     make_simplified_union,
     supported_self_type,
     tuple_fallback,
-    type_object_type,
 )
 from mypy.types import (
     AnyType,
@@ -345,8 +344,8 @@ def analyze_instance_member_access(
             assert isinstance(method, OverloadedFuncDef)
             getter = method.items[0]
             assert isinstance(getter, Decorator)
-            if mx.is_lvalue and (len(items := method.items) > 1):
-                mx.chk.warn_deprecated(items[1], mx.context)
+            if mx.is_lvalue and getter.var.is_settable_property:
+                mx.chk.warn_deprecated(method.setter, mx.context)
             return analyze_var(name, getter.var, typ, mx)
 
         if mx.is_lvalue and not mx.suppress_errors:
@@ -537,24 +536,20 @@ def analyze_member_var_access(
         is_trivial_self = vv.func.is_trivial_self and not vv.decorators
         if mx.is_super and not mx.suppress_errors:
             validate_super_call(vv.func, mx)
+    if isinstance(v, FuncDef):
+        assert False, "Did not expect a function"
+    if isinstance(v, MypyFile):
+        mx.chk.module_refs.add(v.fullname)
 
-    if isinstance(vv, TypeInfo):
+    if isinstance(vv, (TypeInfo, TypeAlias, MypyFile, TypeVarLikeExpr)):
         # If the associated variable is a TypeInfo synthesize a Var node for
         # the purposes of type checking.  This enables us to type check things
-        # like accessing class attributes on an inner class.
-        v = Var(name, type=type_object_type(vv, mx.named_type))
-        v.info = info
-
-    if isinstance(vv, TypeAlias):
-        # Similar to the above TypeInfo case, we allow using
-        # qualified type aliases in runtime context if it refers to an
-        # instance type. For example:
+        # like accessing class attributes on an inner class. Similar we allow
+        # using qualified type aliases in runtime context. For example:
         #     class C:
         #         A = List[int]
         #     x = C.A() <- this is OK
-        typ = mx.chk.expr_checker.alias_type_in_runtime_context(
-            vv, ctx=mx.context, alias_definition=mx.is_lvalue
-        )
+        typ = mx.chk.expr_checker.analyze_static_reference(vv, mx.context, mx.is_lvalue)
         v = Var(name, type=typ)
         v.info = info
 
@@ -567,13 +562,6 @@ def analyze_member_var_access(
             check_final_member(name, info, mx.msg, mx.context)
 
         return analyze_var(name, v, itype, mx, implicit=implicit, is_trivial_self=is_trivial_self)
-    elif isinstance(v, FuncDef):
-        assert False, "Did not expect a function"
-    elif isinstance(v, MypyFile):
-        mx.chk.module_refs.add(v.fullname)
-        return mx.chk.expr_checker.module_type(v)
-    elif isinstance(v, TypeVarExpr):
-        return mx.chk.named_type("typing.TypeVar")
     elif (
         not v
         and name not in ["__getattr__", "__setattr__", "__getattribute__"]
@@ -921,7 +909,7 @@ def analyze_var(
             bound_items = []
             for ct in call_type.items if isinstance(call_type, UnionType) else [call_type]:
                 p_ct = get_proper_type(ct)
-                if isinstance(p_ct, FunctionLike) and not p_ct.is_type_obj():
+                if isinstance(p_ct, FunctionLike) and (not p_ct.bound() or var.is_property):
                     item = expand_and_bind_callable(p_ct, var, itype, name, mx, is_trivial_self)
                 else:
                     item = expand_without_binding(ct, var, itype, original_itype, mx)
@@ -1259,29 +1247,9 @@ def analyze_class_attribute_access(
         mx.not_ready_callback(name, mx.context)
         return AnyType(TypeOfAny.special_form)
 
-    if isinstance(node.node, TypeVarExpr):
-        mx.fail(message_registry.CANNOT_USE_TYPEVAR_AS_EXPRESSION.format(info.name, name))
-        return AnyType(TypeOfAny.from_error)
-
-    # TODO: some logic below duplicates analyze_ref_expr in checkexpr.py
-    if isinstance(node.node, TypeInfo):
-        if node.node.typeddict_type:
-            # We special-case TypedDict, because they don't define any constructor.
-            return mx.chk.expr_checker.typeddict_callable(node.node)
-        elif node.node.fullname == "types.NoneType":
-            # We special case NoneType, because its stub definition is not related to None.
-            return TypeType(NoneType())
-        else:
-            return type_object_type(node.node, mx.named_type)
-
-    if isinstance(node.node, MypyFile):
-        # Reference to a module object.
-        return mx.named_type("types.ModuleType")
-
-    if isinstance(node.node, TypeAlias):
-        return mx.chk.expr_checker.alias_type_in_runtime_context(
-            node.node, ctx=mx.context, alias_definition=mx.is_lvalue
-        )
+    if isinstance(node.node, (TypeInfo, TypeAlias, MypyFile, TypeVarLikeExpr)):
+        # TODO: should we apply class plugin here (similar to instance access)?
+        return mx.chk.expr_checker.analyze_static_reference(node.node, mx.context, mx.is_lvalue)
 
     if is_decorated:
         assert isinstance(node.node, Decorator)
@@ -1484,19 +1452,74 @@ def bind_self_fast(method: F, original_type: Type | None = None) -> F:
         items = [bind_self_fast(c, original_type) for c in method.items]
         return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
-    if not method.arg_types:
+    func: CallableType = method
+    if not func.arg_types:
         # Invalid method, return something.
-        return cast(F, method)
-    if method.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
+        return method
+    if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # See typeops.py for details.
-        return cast(F, method)
+        return method
     original_type = get_proper_type(original_type)
     if isinstance(original_type, CallableType) and original_type.is_type_obj():
         original_type = TypeType.make_normalized(original_type.ret_type)
-    res = method.copy_modified(
-        arg_types=method.arg_types[1:],
-        arg_kinds=method.arg_kinds[1:],
-        arg_names=method.arg_names[1:],
-        bound_args=[original_type],
+    res = func.copy_modified(
+        arg_types=func.arg_types[1:],
+        arg_kinds=func.arg_kinds[1:],
+        arg_names=func.arg_names[1:],
+        is_bound=True,
     )
     return cast(F, res)
+
+
+def has_operator(typ: Type, op_method: str, named_type: Callable[[str], Instance]) -> bool:
+    """Does type have operator with the given name?
+
+    Note: this follows the rules for operator access, in particular:
+    * __getattr__ is not considered
+    * for class objects we only look in metaclass
+    * instance level attributes (i.e. extra_attrs) are not considered
+    """
+    # This is much faster than analyze_member_access, and so using
+    # it first as a filter is important for performance. This is mostly relevant
+    # in situations where we can't expect that method is likely present,
+    # e.g. for __OP__ vs __rOP__.
+    typ = get_proper_type(typ)
+
+    if isinstance(typ, TypeVarLikeType):
+        typ = typ.values_or_bound()
+    if isinstance(typ, AnyType):
+        return True
+    if isinstance(typ, UnionType):
+        return all(has_operator(x, op_method, named_type) for x in typ.relevant_items())
+    if isinstance(typ, FunctionLike) and typ.is_type_obj():
+        return typ.fallback.type.has_readable_member(op_method)
+    if isinstance(typ, TypeType):
+        # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
+        # so we don't need to care about unions here, but we need to care about
+        # Type[T], where upper bound of T is a union.
+        item = typ.item
+        if isinstance(item, TypeVarType):
+            item = item.values_or_bound()
+        if isinstance(item, UnionType):
+            return all(meta_has_operator(x, op_method, named_type) for x in item.relevant_items())
+        return meta_has_operator(item, op_method, named_type)
+    return instance_fallback(typ, named_type).type.has_readable_member(op_method)
+
+
+def instance_fallback(typ: ProperType, named_type: Callable[[str], Instance]) -> Instance:
+    if isinstance(typ, Instance):
+        return typ
+    if isinstance(typ, TupleType):
+        return tuple_fallback(typ)
+    if isinstance(typ, (LiteralType, TypedDictType)):
+        return typ.fallback
+    return named_type("builtins.object")
+
+
+def meta_has_operator(item: Type, op_method: str, named_type: Callable[[str], Instance]) -> bool:
+    item = get_proper_type(item)
+    if isinstance(item, AnyType):
+        return True
+    item = instance_fallback(item, named_type)
+    meta = item.type.metaclass_type or named_type("builtins.type")
+    return meta.type.has_readable_member(op_method)
