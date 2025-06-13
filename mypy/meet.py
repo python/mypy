@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import product
 from typing import Callable
 
 from mypy import join
@@ -129,13 +128,16 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if declared == narrowed:
         return original_declared
     if isinstance(declared, UnionType):
+        declared_items = declared.relevant_items()
+        if isinstance(narrowed, UnionType):
+            narrowed_items = narrowed.relevant_items()
+        else:
+            narrowed_items = [narrowed]
         return make_simplified_union(
             [
                 narrow_declared_type(d, n)
-                for d, n in product(
-                    declared.relevant_items(),
-                    narrowed.relevant_items() if isinstance(narrowed, UnionType) else (narrowed,),
-                )
+                for d in declared_items
+                for n in narrowed_items
                 # This (ugly) special-casing is needed to support checking
                 # branches like this:
                 # x: Union[float, complex]
