@@ -5117,7 +5117,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
             if isinstance(get_proper_type(super_instance.args[2]), UninhabitedType):
                 exit_condition = NameExpr("True")
                 exit_condition.fullname = "builtins.True"
-                print("woohoo!")
             else:
                 exit_condition = NameExpr("False")
                 exit_condition.fullname = "builtins.False"
