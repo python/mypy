@@ -618,6 +618,15 @@ u, v, w = r, s = 1, 1 # E: Need more than 2 values to unpack (3 expected)
 d, e = f, g, h = 1, 1 # E: Need more than 2 values to unpack (3 expected)
 [builtins fixtures/tuple.pyi]
 
+[case testUnpackAssignmentWithStarExpr]
+a: A
+b: list[B]
+if int():
+    (a,) = (*b,)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+class A: pass
+class B: pass
+
 
 -- Assignment to starred expressions
 -- ---------------------------------
