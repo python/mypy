@@ -388,7 +388,7 @@ declare them explicitly using ``ClassVar[...]``. Continuing previous example:
    from typing import ClassVar
 
    class OtherExample(Protocol):
-       # This style is *not recommended*, but may be needed to re-use
+       # This style is *not recommended*, but may be needed to reuse
        # some complex callable types. Otherwise use regular methods.
        foo: ClassVar[Callable[[object], int]]
        # This may be needed to mimic descriptor access on Type[...] types,
