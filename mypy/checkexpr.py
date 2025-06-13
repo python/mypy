@@ -2341,7 +2341,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         for i, inferred_type in enumerate(inferred_args):
             if not inferred_type or has_erased_component(inferred_type):
                 # Could not infer a non-trivial type for a type variable.
-                self.msg.could_not_infer_type_arguments(callee_type, i + 1, context)
+                self.msg.could_not_infer_type_arguments(
+                    callee_type, callee_type.variables[i], context
+                )
                 inferred_args = [AnyType(TypeOfAny.from_error)] * len(inferred_args)
         # Apply the inferred types to the function type. In this case the
         # return type must be CallableType, since we give the right number of type
