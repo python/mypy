@@ -4412,9 +4412,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                     self.inferred_attribute_types[lvalue.def_var] = type
             self.store_type(lvalue, type)
             p_type = get_proper_type(type)
-            if isinstance(p_type, CallableType) and is_node_static(p_type.definition):
-                # TODO: handle aliases to class methods (similarly).
-                var.is_staticmethod = True
+            definition = None
+            if isinstance(p_type, CallableType):
+                definition = p_type.definition
+            elif isinstance(p_type, Overloaded):
+                # Randomly select first item, if items are different, there will
+                # be an error during semantic analysis.
+                definition = p_type.items[0].definition
+            if definition:
+                if is_node_static(definition):
+                    var.is_staticmethod = True
+                elif is_node_class(definition):
+                    var.is_classmethod = True
 
     def set_inference_error_fallback_type(self, var: Var, lvalue: Lvalue, type: Type) -> None:
         """Store best known type for variable if type inference failed.
@@ -8531,15 +8540,21 @@ class SetNothingToAny(TypeTranslator):
         return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
+def is_node_class(node: Node | None) -> bool | None:
+    """Find out if a node describes a classmethod."""
+    if isinstance(node, FuncDef):
+        return node.is_class
+    if isinstance(node, Var):
+        return node.is_classmethod
+    return None
+
+
 def is_node_static(node: Node | None) -> bool | None:
     """Find out if a node describes a static function method."""
-
     if isinstance(node, FuncDef):
         return node.is_static
-
     if isinstance(node, Var):
         return node.is_staticmethod
-
     return None
 
 

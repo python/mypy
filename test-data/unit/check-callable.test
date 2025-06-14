@@ -587,6 +587,33 @@ class C(B):
 class B: ...
 [builtins fixtures/classmethod.pyi]
 
+[case testClassMethodAliasInClass]
+from typing import overload
+
+class C:
+    @classmethod
+    def foo(cls) -> int: ...
+
+    bar = foo
+
+    @overload
+    @classmethod
+    def foo2(cls, x: int) -> int: ...
+    @overload
+    @classmethod
+    def foo2(cls, x: str) -> str: ...
+    @classmethod
+    def foo2(cls, x):
+        ...
+
+    bar2 = foo2
+
+reveal_type(C.bar)  # N: Revealed type is "def () -> builtins.int"
+reveal_type(C().bar)  # N: Revealed type is "def () -> builtins.int"
+reveal_type(C.bar2)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
+reveal_type(C().bar2)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
+[builtins fixtures/classmethod.pyi]
+
 [case testCallableUnionCallback]
 from typing import Union, Callable, TypeVar
 

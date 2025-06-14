@@ -371,8 +371,6 @@ def analyze_instance_member_access(
                     signature, mx.self_type, method.is_class, mx.context, name, mx.msg
                 )
                 signature = bind_self(signature, mx.self_type, is_classmethod=method.is_class)
-        # TODO: should we skip these steps for static methods as well?
-        # Since generic static methods should not be allowed.
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
         freeze_all_type_vars(member_type)
@@ -1218,8 +1216,11 @@ def analyze_class_attribute_access(
             #     C[int].x -> int
             t = erase_typevars(expand_type_by_instance(t, isuper), {tv.id for tv in def_vars})
 
-        is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
-            isinstance(node.node, SYMBOL_FUNCBASE_TYPES) and node.node.is_class
+        is_classmethod = (
+            (is_decorated and cast(Decorator, node.node).func.is_class)
+            or (isinstance(node.node, SYMBOL_FUNCBASE_TYPES) and node.node.is_class)
+            or isinstance(node.node, Var)
+            and node.node.is_classmethod
         )
         is_staticmethod = (is_decorated and cast(Decorator, node.node).func.is_static) or (
             isinstance(node.node, SYMBOL_FUNCBASE_TYPES) and node.node.is_static
@@ -1231,7 +1232,12 @@ def analyze_class_attribute_access(
             is_trivial_self = node.node.func.is_trivial_self and not node.node.decorators
         elif isinstance(node.node, (FuncDef, OverloadedFuncDef)):
             is_trivial_self = node.node.is_trivial_self
-        if isinstance(t, FunctionLike) and is_classmethod and not is_trivial_self:
+        if (
+            isinstance(t, FunctionLike)
+            and is_classmethod
+            and not is_trivial_self
+            and not t.bound()
+        ):
             t = check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
         t = add_class_tvars(
             t,
@@ -1400,7 +1406,7 @@ def add_class_tvars(
         tvars = original_vars if original_vars is not None else []
         if not mx.preserve_type_var_ids:
             t = freshen_all_functions_type_vars(t)
-        if is_classmethod:
+        if is_classmethod and not t.is_bound:
             if is_trivial_self:
                 t = bind_self_fast(t, mx.self_type)
             else:
