@@ -2372,9 +2372,9 @@ def pointwise_multiply(x: Array[Unpack[Ts]], y: Array[Unpack[Ts]]) -> Array[Unpa
 
 def a1(x: Array[int], y: Array[str], z: Array[int, str]) -> None:
     reveal_type(pointwise_multiply(x, x))  # N: Revealed type is "__main__.Array[builtins.int]"
-    reveal_type(pointwise_multiply(x, y))  # E: Cannot infer type argument 1 of "pointwise_multiply" \
+    reveal_type(pointwise_multiply(x, y))  # E: Cannot infer type argument to type parameter "Ts" of "pointwise_multiply" \
                                            # N: Revealed type is "__main__.Array[Unpack[builtins.tuple[Any, ...]]]"
-    reveal_type(pointwise_multiply(x, z))  # E: Cannot infer type argument 1 of "pointwise_multiply" \
+    reveal_type(pointwise_multiply(x, z))  # E: Cannot infer type argument to type parameter "Ts" of "pointwise_multiply" \
                                            # N: Revealed type is "__main__.Array[Unpack[builtins.tuple[Any, ...]]]"
 
 def func(x: Array[Unpack[Ts]], *args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
@@ -2382,9 +2382,9 @@ def func(x: Array[Unpack[Ts]], *args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
 
 def a2(x: Array[int, str]) -> None:
     reveal_type(func(x, 2, "Hello"))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
-    reveal_type(func(x, 2))           # E: Cannot infer type argument 1 of "func" \
+    reveal_type(func(x, 2))           # E: Cannot infer type argument to type parameter "Ts" of "func" \
                                       # N: Revealed type is "builtins.tuple[Any, ...]"
-    reveal_type(func(x, 2, "Hello", True))   # E: Cannot infer type argument 1 of "func" \
+    reveal_type(func(x, 2, "Hello", True))   # E: Cannot infer type argument to type parameter "Ts" of "func" \
                                              # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
 
