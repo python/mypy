@@ -8779,3 +8779,10 @@ class C:
 C().foo = "no"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 C().bar = "fine"
 [builtins fixtures/property.pyi]
+
+[case testCorrectConstructorTypeWithAnyFallback]
+class B(Unknown):  # type: ignore
+    def __init__(self) -> None: ...
+class C(B): ...
+
+reveal_type(C)  # N: Revealed type is "def () -> __main__.C"
