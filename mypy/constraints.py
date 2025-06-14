@@ -1335,6 +1335,11 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     res.extend(
                         infer_constraints(template_items[i], actual_items[i], self.direction)
                     )
+            res.extend(
+                infer_constraints(
+                    template.partial_fallback, actual.partial_fallback, self.direction
+                )
+            )
             return res
         elif isinstance(actual, AnyType):
             return self.infer_against_any(template.items, actual)
