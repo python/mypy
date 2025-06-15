@@ -907,7 +907,7 @@ def analyze_var(
                 call_type = get_proper_type(_analyze_member_access("__call__", typ, proto_mx))
                 if isinstance(call_type, CallableType):
                     call_type = call_type.copy_modified(is_bound=False)
-                elif isinstance(call_type, Overloaded)
+                elif isinstance(call_type, Overloaded):
                     call_type = Overloaded(
                         [it.copy_modified(is_bound=False) for it in call_type.items()]
                     )
