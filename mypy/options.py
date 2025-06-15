@@ -357,7 +357,7 @@ class Options:
         self.hide_error_codes = False
         self.show_error_code_links = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
-        self.pretty = False
+        self.pretty = True
         self.dump_graph = False
         self.dump_deps = False
         self.logical_deps = False
