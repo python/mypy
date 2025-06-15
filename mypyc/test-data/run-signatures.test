@@ -1,0 +1,125 @@
+[case testSignaturesBasic]
+import inspect
+
+def f1(): pass
+def f2(x): pass
+def f3(x, /): pass
+def f4(*, x): pass
+def f5(*x): pass
+def f6(**x): pass
+def f7(x=None): pass
+def f8(x=None, /): pass
+def f9(*, x=None): pass
+def f10(a, /, b, c=None, *args, d=None, **h): pass
+
+def test_basic() -> None:
+    assert str(inspect.signature(f1)) == "()"
+    assert str(inspect.signature(f2)) == "(x)"
+    assert str(inspect.signature(f3)) == "(x, /)"
+    assert str(inspect.signature(f4)) == "(*, x)"
+    assert str(inspect.signature(f5)) == "(*x)"
+    assert str(inspect.signature(f6)) == "(**x)"
+    assert str(inspect.signature(f7)) == "(x=None)"
+    assert str(inspect.signature(f8)) == "(x=None, /)"
+    assert str(inspect.signature(f9)) == "(*, x=None)"
+    assert str(inspect.signature(f10)) == "(a, /, b, c=None, *args, d=None, **h)"
+
+[case testSignaturesValidDefaults]
+import inspect
+
+def default_int(x=1): pass
+def default_str(x="a"): pass
+def default_float(x=1.0): pass
+def default_true(x=True): pass
+def default_false(x=False): pass
+def default_none(x=None): pass
+def default_tuple_empty(x=()): pass
+def default_tuple_literals(x=(1, "a", 1.0, False, True, None, (), (1,2,(3,4)))): pass
+def default_tuple_singleton(x=(1,)): pass
+
+def test_valid_defaults() -> None:
+    assert str(inspect.signature(default_int)) == "(x=1)"
+    assert str(inspect.signature(default_str)) == "(x='a')"
+    assert str(inspect.signature(default_float)) == "(x=1.0)"
+    assert str(inspect.signature(default_true)) == "(x=True)"
+    assert str(inspect.signature(default_false)) == "(x=False)"
+    assert str(inspect.signature(default_none)) == "(x=None)"
+    assert str(inspect.signature(default_tuple_empty)) == "(x=())"
+    assert str(inspect.signature(default_tuple_literals)) == "(x=(1, 'a', 1.0, False, True, None, (), (1, 2, (3, 4))))"
+
+    # Check __text_signature__ directly since inspect.signature produces
+    # an incorrect signature for 1-tuple default arguments prior to
+    # Python 3.12 (cpython#102379).
+    # assert str(inspect.signature(default_tuple_singleton)) == "(x=(1,))"
+    assert getattr(default_tuple_singleton, "__text_signature__") == "(x=(1,))"
+
+[case testSignaturesStringDefaults]
+import inspect
+
+def f1(x="'foo"): pass
+def f2(x='"foo'): pass
+def f3(x=""""Isn\'t," they said."""): pass
+def f4(x="\\ \a \b \f \n \r \t \v \x00"): pass
+def f5(x="\N{BANANA}sv"): pass
+
+def test_string_defaults() -> None:
+    assert str(inspect.signature(f1)) == """(x="'foo")"""
+    assert str(inspect.signature(f2)) == """(x='"foo')"""
+    assert str(inspect.signature(f3)) == r"""(x='"Isn\'t," they said.')"""
+    assert str(inspect.signature(f4)) == r"""(x='\\ \x07 \x08 \x0c \n \r \t \x0b \x00')"""
+    assert str(inspect.signature(f5)) == """(x='\U0001F34Csv')"""
+
+[case testSignaturesIrrepresentableDefaults]
+import inspect
+from typing import Any
+
+from testutil import assertRaises
+
+def bad1(x=[]): pass
+def bad2(x={}): pass
+def bad3(x=set()): pass
+def bad4(x=int): pass
+def bad5(x=lambda: None): pass
+def bad6(x=bad1): pass
+# note: inspect supports constant folding for defaults in text signatures
+def bad7(x=1+2): pass
+def bad8(x=1-2): pass
+def bad9(x=1|2): pass
+def bad10(x=float("nan")): pass
+def bad11(x=([],)): pass
+
+def test_irrepresentable_defaults() -> None:
+    bad: Any
+    for bad in [bad1, bad2, bad3, bad4, bad5, bad6, bad7, bad8, bad9, bad10, bad11]:
+        assert bad.__text_signature__ is None, f"{bad.__name__} has unexpected __text_signature__"
+        with assertRaises(ValueError, "no signature found for builtin"):
+            inspect.signature(bad)
+
+[case testSignaturesMethods]
+import inspect
+
+class Foo:
+    def f1(self, x): pass
+    @classmethod
+    def f2(cls, x): pass
+    @staticmethod
+    def f3(x): pass
+
+def test_methods() -> None:
+    assert getattr(Foo.f1, "__text_signature__") == "($self, x)"
+    assert str(inspect.signature(Foo.f1)) == "(self, /, x)"
+
+    assert getattr(Foo.f2, "__text_signature__") == "($cls, x)"
+    assert str(inspect.signature(Foo.f2)) == "(x)"
+
+    assert getattr(Foo.f3, "__text_signature__") == "(x)"
+    assert str(inspect.signature(Foo.f3)) == "(x)"
+
+    assert getattr(Foo().f1, "__text_signature__") == "($self, x)"
+    assert str(inspect.signature(Foo().f1)) == "(x)"
+
+    assert getattr(Foo().f2, "__text_signature__") == "($cls, x)"
+    assert str(inspect.signature(Foo().f2)) == "(x)"
+
+    assert getattr(Foo().f3, "__text_signature__") == "(x)"
+    assert str(inspect.signature(Foo().f3)) == "(x)"
