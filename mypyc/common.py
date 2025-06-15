@@ -82,6 +82,16 @@ RUNTIME_C_FILES: Final = [
     "pythonsupport.c",
 ]
 
+# Python 3.12 introduced immortal objects, specified via a special reference count
+# value. The reference counts of immortal objects are normally not modified, but it's
+# not strictly wrong to modify them. See PEP 683 for more information, but note that
+# some details in the PEP are out of date.
+HAVE_IMMORTAL: Final = sys.version_info >= (3, 12)
+
+# Are we running on a free-threaded build (GIL disabled)? This implies that
+# we are on Python 3.13 or later.
+IS_FREE_THREADED: Final = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+
 
 JsonDict = dict[str, Any]
 
@@ -98,16 +108,6 @@ def short_name(name: str) -> str:
     if name.startswith("builtins."):
         return name[9:]
     return name
-
-
-def use_vectorcall(capi_version: tuple[int, int]) -> bool:
-    # We can use vectorcalls to make calls on Python 3.8+ (PEP 590).
-    return capi_version >= (3, 8)
-
-
-def use_method_vectorcall(capi_version: tuple[int, int]) -> bool:
-    # We can use a dedicated vectorcall API to call methods on Python 3.9+.
-    return capi_version >= (3, 9)
 
 
 def get_id_from_name(name: str, fullname: str, line: int) -> str:

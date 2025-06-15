@@ -47,7 +47,6 @@ legacy_bundled_packages: dict[str, str] = {
     "mock": "types-mock",
     "OpenSSL": "types-pyOpenSSL",
     "paramiko": "types-paramiko",
-    "pkg_resources": "types-setuptools",
     "polib": "types-polib",
     "pycurl": "types-pycurl",
     "pymysql": "types-PyMySQL",
@@ -97,7 +96,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "commctrl": "types-pywin32",
     "commonmark": "types-commonmark",
     "consolemenu": "types-console-menu",
-    "corus": "types-corus",
+    "corus": "types-corus",  # codespell:ignore corus
     "cronlog": "types-python-crontab",
     "crontab": "types-python-crontab",
     "crontabs": "types-python-crontab",
@@ -291,6 +290,7 @@ non_bundled_packages_flat: dict[str, str] = {
     # for additions here
     "pandas": "pandas-stubs",  # https://github.com/pandas-dev/pandas-stubs
     "lxml": "lxml-stubs",  # https://github.com/lxml/lxml-stubs
+    "scipy": "scipy-stubs",  # https://github.com/scipy/scipy-stubs
 }
 
 

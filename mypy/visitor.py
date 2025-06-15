@@ -356,273 +356,270 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
     """Empty base class for parse tree node visitors.
 
     The T type argument specifies the return type of the visit
-    methods. As all methods defined here return None by default,
+    methods. As all methods defined here raise by default,
     subclasses do not always need to override all the methods.
-
-    TODO: make the default return value explicit, then turn on
-          empty body checking in mypy_self_check.ini.
     """
 
     # Not in superclasses:
 
     def visit_mypy_file(self, o: mypy.nodes.MypyFile, /) -> T:
-        pass
+        raise NotImplementedError()
 
     # TODO: We have a visit_var method, but no visit_typeinfo or any
     # other non-Statement SymbolNode (accepting those will raise a
     # runtime error). Maybe this should be resolved in some direction.
     def visit_var(self, o: mypy.nodes.Var, /) -> T:
-        pass
+        raise NotImplementedError()
 
     # Module structure
 
     def visit_import(self, o: mypy.nodes.Import, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_import_from(self, o: mypy.nodes.ImportFrom, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_import_all(self, o: mypy.nodes.ImportAll, /) -> T:
-        pass
+        raise NotImplementedError()
 
     # Definitions
 
     def visit_func_def(self, o: mypy.nodes.FuncDef, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_overloaded_func_def(self, o: mypy.nodes.OverloadedFuncDef, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_class_def(self, o: mypy.nodes.ClassDef, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_global_decl(self, o: mypy.nodes.GlobalDecl, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_nonlocal_decl(self, o: mypy.nodes.NonlocalDecl, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_decorator(self, o: mypy.nodes.Decorator, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_type_alias(self, o: mypy.nodes.TypeAlias, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_placeholder_node(self, o: mypy.nodes.PlaceholderNode, /) -> T:
-        pass
+        raise NotImplementedError()
 
     # Statements
 
     def visit_block(self, o: mypy.nodes.Block, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_expression_stmt(self, o: mypy.nodes.ExpressionStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_assignment_stmt(self, o: mypy.nodes.AssignmentStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_operator_assignment_stmt(self, o: mypy.nodes.OperatorAssignmentStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_while_stmt(self, o: mypy.nodes.WhileStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_for_stmt(self, o: mypy.nodes.ForStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_return_stmt(self, o: mypy.nodes.ReturnStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_assert_stmt(self, o: mypy.nodes.AssertStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_del_stmt(self, o: mypy.nodes.DelStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_if_stmt(self, o: mypy.nodes.IfStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_break_stmt(self, o: mypy.nodes.BreakStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_continue_stmt(self, o: mypy.nodes.ContinueStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_pass_stmt(self, o: mypy.nodes.PassStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_raise_stmt(self, o: mypy.nodes.RaiseStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_try_stmt(self, o: mypy.nodes.TryStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_with_stmt(self, o: mypy.nodes.WithStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_match_stmt(self, o: mypy.nodes.MatchStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_type_alias_stmt(self, o: mypy.nodes.TypeAliasStmt, /) -> T:
-        pass
+        raise NotImplementedError()
 
     # Expressions (default no-op implementation)
 
     def visit_int_expr(self, o: mypy.nodes.IntExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_str_expr(self, o: mypy.nodes.StrExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_bytes_expr(self, o: mypy.nodes.BytesExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_float_expr(self, o: mypy.nodes.FloatExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_complex_expr(self, o: mypy.nodes.ComplexExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_ellipsis(self, o: mypy.nodes.EllipsisExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_star_expr(self, o: mypy.nodes.StarExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_name_expr(self, o: mypy.nodes.NameExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_member_expr(self, o: mypy.nodes.MemberExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_yield_from_expr(self, o: mypy.nodes.YieldFromExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_yield_expr(self, o: mypy.nodes.YieldExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_call_expr(self, o: mypy.nodes.CallExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_op_expr(self, o: mypy.nodes.OpExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_comparison_expr(self, o: mypy.nodes.ComparisonExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_cast_expr(self, o: mypy.nodes.CastExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_assert_type_expr(self, o: mypy.nodes.AssertTypeExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_reveal_expr(self, o: mypy.nodes.RevealExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_super_expr(self, o: mypy.nodes.SuperExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_assignment_expr(self, o: mypy.nodes.AssignmentExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_unary_expr(self, o: mypy.nodes.UnaryExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_list_expr(self, o: mypy.nodes.ListExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_dict_expr(self, o: mypy.nodes.DictExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_tuple_expr(self, o: mypy.nodes.TupleExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_set_expr(self, o: mypy.nodes.SetExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_index_expr(self, o: mypy.nodes.IndexExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_type_application(self, o: mypy.nodes.TypeApplication, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_lambda_expr(self, o: mypy.nodes.LambdaExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_list_comprehension(self, o: mypy.nodes.ListComprehension, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_set_comprehension(self, o: mypy.nodes.SetComprehension, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_dictionary_comprehension(self, o: mypy.nodes.DictionaryComprehension, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_generator_expr(self, o: mypy.nodes.GeneratorExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_slice_expr(self, o: mypy.nodes.SliceExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_conditional_expr(self, o: mypy.nodes.ConditionalExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_type_var_expr(self, o: mypy.nodes.TypeVarExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_paramspec_expr(self, o: mypy.nodes.ParamSpecExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_type_var_tuple_expr(self, o: mypy.nodes.TypeVarTupleExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_type_alias_expr(self, o: mypy.nodes.TypeAliasExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_namedtuple_expr(self, o: mypy.nodes.NamedTupleExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_enum_call_expr(self, o: mypy.nodes.EnumCallExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_typeddict_expr(self, o: mypy.nodes.TypedDictExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_newtype_expr(self, o: mypy.nodes.NewTypeExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit__promote_expr(self, o: mypy.nodes.PromoteExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_await_expr(self, o: mypy.nodes.AwaitExpr, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_temp_node(self, o: mypy.nodes.TempNode, /) -> T:
-        pass
+        raise NotImplementedError()
 
     # Patterns
 
     def visit_as_pattern(self, o: mypy.patterns.AsPattern, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_or_pattern(self, o: mypy.patterns.OrPattern, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_value_pattern(self, o: mypy.patterns.ValuePattern, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_singleton_pattern(self, o: mypy.patterns.SingletonPattern, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_sequence_pattern(self, o: mypy.patterns.SequencePattern, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_starred_pattern(self, o: mypy.patterns.StarredPattern, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_mapping_pattern(self, o: mypy.patterns.MappingPattern, /) -> T:
-        pass
+        raise NotImplementedError()
 
     def visit_class_pattern(self, o: mypy.patterns.ClassPattern, /) -> T:
-        pass
+        raise NotImplementedError()

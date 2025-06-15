@@ -51,6 +51,7 @@ from typing import TypeVar, cast
 
 from mypy.nodes import (
     MDEF,
+    SYMBOL_NODE_EXPRESSION_TYPES,
     AssertTypeExpr,
     AssignmentStmt,
     Block,
@@ -301,7 +302,7 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_call_expr(self, node: CallExpr) -> None:
         super().visit_call_expr(node)
-        if isinstance(node.analyzed, SymbolNode):
+        if isinstance(node.analyzed, SYMBOL_NODE_EXPRESSION_TYPES):
             node.analyzed = self.fixup(node.analyzed)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> None:
@@ -330,6 +331,7 @@ class NodeReplaceVisitor(TraverserVisitor):
     def visit_var(self, node: Var) -> None:
         node.info = self.fixup(node.info)
         self.fixup_type(node.type)
+        self.fixup_type(node.setter_type)
         super().visit_var(node)
 
     def visit_type_alias(self, node: TypeAlias) -> None:

@@ -9,6 +9,7 @@ from typing import Callable, Final, Protocol, TypeVar
 
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
+from mypy.errors import ErrorInfo
 from mypy.expandtype import expand_type
 from mypy.message_registry import (
     INVALID_PARAM_SPEC_LOCATION,
@@ -47,7 +48,6 @@ from mypy.nodes import (
     Var,
     check_arg_kinds,
     check_arg_names,
-    get_nongen_builtins,
 )
 from mypy.options import INLINE_TYPEDDICT, Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
@@ -62,10 +62,14 @@ from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
     ANNOTATED_TYPE_NAMES,
     ANY_STRATEGY,
+    CONCATENATE_TYPE_NAMES,
     FINAL_TYPE_NAMES,
     LITERAL_TYPE_NAMES,
     NEVER_NAMES,
+    TUPLE_NAMES,
     TYPE_ALIAS_NAMES,
+    TYPE_NAMES,
+    UNPACK_TYPE_NAMES,
     AnyType,
     BoolTypeQuery,
     CallableArgument,
@@ -134,12 +138,6 @@ ARG_KINDS_BY_CONSTRUCTOR: Final = {
     "mypy_extensions.KwArg": ARG_STAR2,
 }
 
-GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
-    "queue.Queue",
-    "builtins._PathLike",
-    "asyncio.futures.Future",
-}
-
 SELF_TYPE_NAMES: Final = {"typing.Self", "typing_extensions.Self"}
 
 
@@ -182,17 +180,6 @@ def analyze_type_alias(
     analyzer.global_scope = global_scope
     res = analyzer.anal_type(type, nested=False)
     return res, analyzer.aliases_used
-
-
-def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
-    class_name = name.split(".")[-1]
-    msg = f'"{class_name}" is not subscriptable'
-    # This should never be called if the python_version is 3.9 or newer
-    nongen_builtins = get_nongen_builtins((3, 8))
-    replacement = nongen_builtins[name]
-    if replacement and propose_alt:
-        msg += f', use "{replacement}" instead'
-    return msg
 
 
 class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
@@ -358,14 +345,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             hook = self.plugin.get_type_analyze_hook(fullname)
             if hook is not None:
                 return hook(AnalyzeTypeContext(t, t, self))
-            if (
-                fullname in get_nongen_builtins(self.options.python_version)
-                and t.args
-                and not self.always_allow_new_syntax
-            ):
-                self.fail(
-                    no_subscript_builtin_alias(fullname, propose_alt=not self.defining_alias), t
-                )
             tvar_def = self.tvar_scope.get_binding(sym)
             if isinstance(sym.node, ParamSpecExpr):
                 if tvar_def is None:
@@ -525,7 +504,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             elif node.fullname in TYPE_ALIAS_NAMES:
                 return AnyType(TypeOfAny.special_form)
             # Concatenate is an operator, no need for a proper type
-            elif node.fullname in ("typing_extensions.Concatenate", "typing.Concatenate"):
+            elif node.fullname in CONCATENATE_TYPE_NAMES:
                 # We check the return type further up the stack for valid use locations
                 return self.apply_concatenate_operator(t)
             else:
@@ -614,7 +593,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         """
         if fullname == "builtins.None":
             return NoneType()
-        elif fullname == "typing.Any" or fullname == "builtins.Any":
+        elif fullname == "typing.Any":
             return AnyType(TypeOfAny.explicit, line=t.line, column=t.column)
         elif fullname in FINAL_TYPE_NAMES:
             if self.prohibit_special_class_field_types:
@@ -631,10 +610,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         code=codes.VALID_TYPE,
                     )
             return AnyType(TypeOfAny.from_error)
-        elif fullname == "typing.Tuple" or (
-            fullname == "builtins.tuple"
-            and (self.always_allow_new_syntax or self.options.python_version >= (3, 9))
-        ):
+        elif fullname in TUPLE_NAMES:
             # Tuple is special because it is involved in builtin import cycle
             # and may be not ready when used.
             sym = self.api.lookup_fully_qualified_or_none("builtins.tuple")
@@ -669,10 +645,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return make_optional_type(item)
         elif fullname == "typing.Callable":
             return self.analyze_callable_type(t)
-        elif fullname == "typing.Type" or (
-            fullname == "builtins.type"
-            and (self.always_allow_new_syntax or self.options.python_version >= (3, 9))
-        ):
+        elif fullname in TYPE_NAMES:
             if len(t.args) == 0:
                 if fullname == "typing.Type":
                     any_type = self.get_omitted_any(t)
@@ -702,6 +675,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     f"ClassVar[...] can't be used inside a {self.prohibit_special_class_field_types}",
                     t,
                     code=codes.VALID_TYPE,
+                )
+            if self.defining_alias:
+                self.fail(
+                    "ClassVar[...] can't be used inside a type alias", t, code=codes.VALID_TYPE
                 )
             if len(t.args) == 0:
                 return AnyType(TypeOfAny.from_omitted_generics, line=t.line, column=t.column)
@@ -779,7 +756,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ):
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type("builtins.bool")
-        elif fullname in ("typing.Unpack", "typing_extensions.Unpack"):
+        elif fullname in UNPACK_TYPE_NAMES:
             if len(t.args) != 1:
                 self.fail("Unpack[...] requires exactly one type argument", t)
                 return AnyType(TypeOfAny.from_error)
@@ -821,6 +798,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             (deprecated := info.deprecated)
             and not self.is_typeshed_stub
             and not (self.api.type and (self.api.type.fullname == info.fullname))
+            and not any(
+                info.fullname == p or info.fullname.startswith(f"{p}.")
+                for p in self.options.deprecated_calls_exclude
+            )
         ):
             for imp in self.cur_mod_node.imports:
                 if isinstance(imp, ImportFrom) and any(info.name == n[0] for n in imp.names):
@@ -862,6 +843,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             ctx.line,
             ctx.column,
         )
+        instance.end_line = ctx.end_line
+        instance.end_column = ctx.end_column
         if len(info.type_vars) == 1 and info.has_param_spec_type:
             instance.args = tuple(self.pack_paramspec_args(instance.args))
 
@@ -1501,7 +1484,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return None
         if sym.node is None:
             return None
-        if sym.node.fullname not in ("typing_extensions.Concatenate", "typing.Concatenate"):
+        if sym.node.fullname not in CONCATENATE_TYPE_NAMES:
             return None
 
         tvar_def = self.anal_type(callable_args, allow_param_spec=True)
@@ -1650,7 +1633,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         return None
             elif (
                 isinstance(arg, UnboundType)
-                and self.refers_to_full_names(arg, ("typing_extensions.Unpack", "typing.Unpack"))
+                and self.refers_to_full_names(arg, UNPACK_TYPE_NAMES)
                 or isinstance(arg, UnpackType)
             ):
                 if seen_unpack:
@@ -1998,7 +1981,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         if num_unpacks > 1:
             assert final_unpack is not None
-            self.fail("More than one Unpack in a type is not allowed", final_unpack)
+            self.fail("More than one Unpack in a type is not allowed", final_unpack.type)
         return new_items
 
     def tuple_type(self, items: list[Type], line: int, column: int) -> TupleType:
@@ -2012,7 +1995,9 @@ TypeVarLikeList = list[tuple[str, TypeVarLikeExpr]]
 
 
 class MsgCallback(Protocol):
-    def __call__(self, __msg: str, __ctx: Context, *, code: ErrorCode | None = None) -> None: ...
+    def __call__(
+        self, __msg: str, __ctx: Context, *, code: ErrorCode | None = None
+    ) -> ErrorInfo | None: ...
 
 
 def get_omitted_any(
@@ -2025,44 +2010,14 @@ def get_omitted_any(
     unexpanded_type: Type | None = None,
 ) -> AnyType:
     if disallow_any:
-        nongen_builtins = get_nongen_builtins(options.python_version)
-        if fullname in nongen_builtins:
-            typ = orig_type
-            # We use a dedicated error message for builtin generics (as the most common case).
-            alternative = nongen_builtins[fullname]
-            fail(
-                message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative),
-                typ,
-                code=codes.TYPE_ARG,
-            )
-        else:
-            typ = unexpanded_type or orig_type
-            type_str = typ.name if isinstance(typ, UnboundType) else format_type_bare(typ, options)
+        typ = unexpanded_type or orig_type
+        type_str = typ.name if isinstance(typ, UnboundType) else format_type_bare(typ, options)
 
-            fail(
-                message_registry.BARE_GENERIC.format(quote_type_string(type_str)),
-                typ,
-                code=codes.TYPE_ARG,
-            )
-            base_type = get_proper_type(orig_type)
-            base_fullname = (
-                base_type.type.fullname if isinstance(base_type, Instance) else fullname
-            )
-            # Ideally, we'd check whether the type is quoted or `from __future__ annotations`
-            # is set before issuing this note
-            if (
-                options.python_version < (3, 9)
-                and base_fullname in GENERIC_STUB_NOT_AT_RUNTIME_TYPES
-            ):
-                # Recommend `from __future__ import annotations` or to put type in quotes
-                # (string literal escaping) for classes not generic at runtime
-                note(
-                    "Subscripting classes that are not generic at runtime may require "
-                    "escaping, see https://mypy.readthedocs.io/en/stable/runtime_troubles.html"
-                    "#not-generic-runtime",
-                    typ,
-                    code=codes.TYPE_ARG,
-                )
+        fail(
+            message_registry.BARE_GENERIC.format(quote_type_string(type_str)),
+            typ,
+            code=codes.TYPE_ARG,
+        )
 
         any_type = AnyType(TypeOfAny.from_error, line=typ.line, column=typ.column)
     else:
@@ -2204,6 +2159,8 @@ def instantiate_type_alias(
         tp = Instance(node.target.type, args)
         tp.line = ctx.line
         tp.column = ctx.column
+        tp.end_line = ctx.end_line
+        tp.end_column = ctx.end_column
         return tp
     if node.tvar_tuple_index is None:
         if any(isinstance(a, UnpackType) for a in args):

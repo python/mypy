@@ -24,7 +24,6 @@ from mypyc.common import (
     NATIVE_PREFIX,
     PREFIX,
     bitmap_name,
-    use_vectorcall,
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR, RuntimeArg
@@ -62,6 +61,7 @@ def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
 
     See comment above for a summary of the arguments.
     """
+    assert not fn.internal
     return (
         "PyObject *{prefix}{name}("
         "PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)"
@@ -173,7 +173,7 @@ def generate_wrapper_function(
         arg_ptrs += [f"&obj_{groups[ARG_STAR2][0].name}" if groups[ARG_STAR2] else "NULL"]
     arg_ptrs += [f"&obj_{arg.name}" for arg in reordered_args]
 
-    if fn.name == "__call__" and use_vectorcall(emitter.capi_version):
+    if fn.name == "__call__":
         nargs = "PyVectorcall_NARGS(nargs)"
     else:
         nargs = "nargs"

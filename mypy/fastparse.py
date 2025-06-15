@@ -239,6 +239,29 @@ def parse(
             strip_function_bodies=strip_function_bodies,
             path=fnam,
         ).visit(ast)
+
+    except RecursionError as e:
+        # For very complex expressions it is possible to hit recursion limit
+        # before reaching a leaf node.
+        # Should reject at top level instead at bottom, since bottom would already
+        # be at the threshold of the recursion limit, and may fail again later.
+        # E.G. x1+x2+x3+...+xn -> BinOp(left=BinOp(left=BinOp(left=...
+        try:
+            # But to prove that is the cause of this particular recursion error,
+            # try to walk the tree using builtin visitor
+            ast3.NodeVisitor().visit(ast)
+        except RecursionError:
+            errors.report(
+                -1, -1, "Source expression too complex to parse", blocker=False, code=codes.MISC
+            )
+
+            tree = MypyFile([], [], False, {})
+
+        else:
+            # re-raise original recursion error if it *can* be unparsed,
+            # maybe this is some other issue that shouldn't be silenced/misdirected
+            raise e
+
     except SyntaxError as e:
         message = e.msg
         if feature_version > sys.version_info.minor and message.startswith("invalid syntax"):
@@ -247,7 +270,9 @@ def parse(
         errors.report(
             e.lineno if e.lineno is not None else -1,
             e.offset,
-            message,
+            re.sub(
+                r"^(\s*\w)", lambda m: m.group(1).upper(), message
+            ),  # Standardizing error message
             blocker=True,
             code=codes.SYNTAX,
         )
@@ -381,7 +406,7 @@ class ASTConverter:
     def note(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, severity="note", code=codes.SYNTAX)
 
-    def fail(self, msg: ErrorMessage, line: int, column: int, blocker: bool = True) -> None:
+    def fail(self, msg: ErrorMessage, line: int, column: int, blocker: bool) -> None:
         if blocker or not self.options.ignore_errors:
             # Make sure self.errors reflects any type ignores that we have parsed
             self.errors.set_file_ignored_lines(
@@ -406,6 +431,7 @@ class ASTConverter:
             method = "visit_" + node.__class__.__name__
             visitor = getattr(self, method)
             self.visitor_cache[typeobj] = visitor
+
         return visitor(node)
 
     def set_line(self, node: N, n: AstNode) -> N:
@@ -557,7 +583,7 @@ class ASTConverter:
         ast3.Is: "is",
         ast3.IsNot: "is not",
         ast3.In: "in",
-        ast3.NotIn: "not in",
+        ast3.NotIn: "not in",  # codespell:ignore notin
     }
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
@@ -921,7 +947,12 @@ class ASTConverter:
                 ):
                     if n.returns:
                         # PEP 484 disallows both type annotations and type comments
-                        self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
+                        self.fail(
+                            message_registry.DUPLICATE_TYPE_SIGNATURES,
+                            lineno,
+                            n.col_offset,
+                            blocker=False,
+                        )
                     arg_types = [
                         (
                             a.type_annotation
@@ -933,7 +964,12 @@ class ASTConverter:
                 else:
                     # PEP 484 disallows both type annotations and type comments
                     if n.returns or any(a.type_annotation is not None for a in args):
-                        self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
+                        self.fail(
+                            message_registry.DUPLICATE_TYPE_SIGNATURES,
+                            lineno,
+                            n.col_offset,
+                            blocker=False,
+                        )
                     translated_args: list[Type] = TypeConverter(
                         self.errors, line=lineno, override_column=n.col_offset
                     ).translate_expr_list(func_type_ast.argtypes)
@@ -948,7 +984,7 @@ class ASTConverter:
             except SyntaxError:
                 stripped_type = n.type_comment.split("#", 2)[0].strip()
                 err_msg = message_registry.TYPE_COMMENT_SYNTAX_ERROR_VALUE.format(stripped_type)
-                self.fail(err_msg, lineno, n.col_offset)
+                self.fail(err_msg, lineno, n.col_offset, blocker=False)
                 if n.type_comment and n.type_comment[0] not in ["(", "#"]:
                     self.note(
                         "Suggestion: wrap argument types in parentheses", lineno, n.col_offset
@@ -970,7 +1006,12 @@ class ASTConverter:
         func_type = None
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
-                self.fail(message_registry.ELLIPSIS_WITH_OTHER_TYPEARGS, lineno, n.col_offset)
+                self.fail(
+                    message_registry.ELLIPSIS_WITH_OTHER_TYPEARGS,
+                    lineno,
+                    n.col_offset,
+                    blocker=False,
+                )
             elif len(arg_types) > len(arg_kinds):
                 self.fail(
                     message_registry.TYPE_SIGNATURE_TOO_MANY_ARGS,
@@ -1097,7 +1138,12 @@ class ASTConverter:
             annotation = arg.annotation
             type_comment = arg.type_comment
             if annotation is not None and type_comment is not None:
-                self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, arg.lineno, arg.col_offset)
+                self.fail(
+                    message_registry.DUPLICATE_TYPE_SIGNATURES,
+                    arg.lineno,
+                    arg.col_offset,
+                    blocker=False,
+                )
             arg_type = None
             if annotation is not None:
                 arg_type = TypeConverter(self.errors, line=arg.lineno).visit(annotation)
@@ -1106,7 +1152,9 @@ class ASTConverter:
         if argument_elide_name(arg.arg):
             pos_only = True
 
-        argument = Argument(Var(arg.arg, arg_type), arg_type, self.visit(default), kind, pos_only)
+        var = Var(arg.arg, arg_type)
+        var.is_inferred = False
+        argument = Argument(var, arg_type, self.visit(default), kind, pos_only)
         argument.set_line(
             arg.lineno,
             arg.col_offset,
@@ -1116,7 +1164,7 @@ class ASTConverter:
         return argument
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
-        self.fail(ErrorMessage(msg), arg.lineno, arg.col_offset)
+        self.fail(ErrorMessage(msg), arg.lineno, arg.col_offset, blocker=True)
 
     # ClassDef(identifier name,
     #  expr* bases,
@@ -1162,18 +1210,21 @@ class ASTConverter:
                 message_registry.TYPE_VAR_YIELD_EXPRESSION_IN_BOUND,
                 type_param.lineno,
                 type_param.col_offset,
+                blocker=True,
             )
         if isinstance(incorrect_expr, ast3.NamedExpr):
             self.fail(
                 message_registry.TYPE_VAR_NAMED_EXPRESSION_IN_BOUND,
                 type_param.lineno,
                 type_param.col_offset,
+                blocker=True,
             )
         if isinstance(incorrect_expr, ast3.Await):
             self.fail(
                 message_registry.TYPE_VAR_AWAIT_EXPRESSION_IN_BOUND,
                 type_param.lineno,
                 type_param.col_offset,
+                blocker=True,
             )
 
     def translate_type_params(self, type_params: list[Any]) -> list[TypeParam]:
@@ -1788,11 +1839,26 @@ class ASTConverter:
         if incorrect_expr is None:
             return
         if isinstance(incorrect_expr, (ast3.Yield, ast3.YieldFrom)):
-            self.fail(message_registry.TYPE_ALIAS_WITH_YIELD_EXPRESSION, n.lineno, n.col_offset)
+            self.fail(
+                message_registry.TYPE_ALIAS_WITH_YIELD_EXPRESSION,
+                n.lineno,
+                n.col_offset,
+                blocker=True,
+            )
         if isinstance(incorrect_expr, ast3.NamedExpr):
-            self.fail(message_registry.TYPE_ALIAS_WITH_NAMED_EXPRESSION, n.lineno, n.col_offset)
+            self.fail(
+                message_registry.TYPE_ALIAS_WITH_NAMED_EXPRESSION,
+                n.lineno,
+                n.col_offset,
+                blocker=True,
+            )
         if isinstance(incorrect_expr, ast3.Await):
-            self.fail(message_registry.TYPE_ALIAS_WITH_AWAIT_EXPRESSION, n.lineno, n.col_offset)
+            self.fail(
+                message_registry.TYPE_ALIAS_WITH_AWAIT_EXPRESSION,
+                n.lineno,
+                n.col_offset,
+                blocker=True,
+            )
 
     # TypeAlias(identifier name, type_param* type_params, expr value)
     def visit_TypeAlias(self, n: ast_TypeAlias) -> TypeAliasStmt | AssignmentStmt:
@@ -1994,7 +2060,6 @@ class TypeConverter:
             contents = bytes_to_human_readable_repr(val)
             return RawExpressionType(contents, "builtins.bytes", self.line, column=n.col_offset)
         # Everything else is invalid.
-        return self.invalid_type(n)
 
     # UnaryOp(op, operand)
     def visit_UnaryOp(self, n: UnaryOp) -> Type:
@@ -2052,13 +2117,16 @@ class TypeConverter:
 
         value = self.visit(n.value)
         if isinstance(value, UnboundType) and not value.args:
-            return UnboundType(
+            result = UnboundType(
                 value.name,
                 params,
                 line=self.line,
                 column=value.column,
                 empty_tuple_index=empty_tuple_index,
             )
+            result.end_column = getattr(n, "end_col_offset", None)
+            result.end_line = getattr(n, "end_lineno", None)
+            return result
         else:
             return self.invalid_type(n)
 
@@ -2092,7 +2160,7 @@ class TypeConverter:
         before_dot = self.visit(n.value)
 
         if isinstance(before_dot, UnboundType) and not before_dot.args:
-            return UnboundType(f"{before_dot.name}.{n.attr}", line=self.line)
+            return UnboundType(f"{before_dot.name}.{n.attr}", line=self.line, column=n.col_offset)
         else:
             return self.invalid_type(n)
 
@@ -2164,7 +2232,7 @@ class FindAttributeAssign(TraverserVisitor):
 
 
 class FindYield(TraverserVisitor):
-    """Check if an AST contains yields or yield froms."""
+    """Check if an AST contains yields or yield froms."""  # codespell:ignore froms
 
     def __init__(self) -> None:
         self.found = False

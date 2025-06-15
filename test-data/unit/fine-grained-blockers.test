@@ -19,13 +19,13 @@ def f(x: int) -> None: pass
 def f() -> None: pass
 [out]
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
 main:2: error: Missing positional argument "x" in call to "f"
 ==
 [out version>=3.10]
 ==
-a.py:1: error: expected ':'
+a.py:1: error: Expected ':'
 ==
 main:2: error: Missing positional argument "x" in call to "f"
 ==
@@ -44,7 +44,7 @@ def f(x: int) -> None: pass
 def f() -> None: pass
 [out]
 ==
-a.py:1: error: invalid syntax  [syntax]
+a.py:1: error: Invalid syntax  [syntax]
     def f(x: int) ->
                     ^
 ==
@@ -54,7 +54,7 @@ main:3: error: Missing positional argument "x" in call to "f"  [call-arg]
 ==
 [out version>=3.10]
 ==
-a.py:1: error: expected ':'  [syntax]
+a.py:1: error: Expected ':'  [syntax]
     def f(x: int) ->
                    ^
 ==
@@ -77,16 +77,16 @@ def f(x: int
 def f(x: int) -> None: pass
 [out]
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
-a.py:2: error: invalid syntax
+a.py:2: error: Invalid syntax
 ==
 main:2: error: Missing positional argument "x" in call to "f"
 [out version>=3.10]
 ==
-a.py:1: error: expected ':'
+a.py:1: error: Expected ':'
 ==
-a.py:2: error: expected ':'
+a.py:2: error: Expected ':'
 ==
 main:2: error: Missing positional argument "x" in call to "f"
 
@@ -124,7 +124,7 @@ def f() -> None: pass
 main:3: error: Too many arguments for "f"
 main:5: error: Too many arguments for "f"
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
 main:3: error: Too many arguments for "f"
 main:5: error: Too many arguments for "f"
@@ -132,7 +132,7 @@ main:5: error: Too many arguments for "f"
 main:3: error: Too many arguments for "f"
 main:5: error: Too many arguments for "f"
 ==
-a.py:1: error: expected ':'
+a.py:1: error: Expected ':'
 ==
 main:3: error: Too many arguments for "f"
 main:5: error: Too many arguments for "f"
@@ -153,12 +153,12 @@ class C:
     def f(self, x: int) -> None: pass
 [out]
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
 main:5: error: Missing positional argument "x" in call to "f" of "C"
 [out version==3.10.0]
 ==
-a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+a.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 ==
 main:5: error: Missing positional argument "x" in call to "f" of "C"
 
@@ -173,14 +173,14 @@ def f() -> None: pass
 main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
 main:2: error: Too many arguments for "f"
 [out version==3.10.0]
 main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
-a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+a.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 ==
 main:2: error: Too many arguments for "f"
 
@@ -208,7 +208,7 @@ a.f()
 def g() -> None: pass
 [out]
 ==
-b.py:1: error: invalid syntax
+b.py:1: error: Invalid syntax
 ==
 
 [case testModifyTwoFilesOneWithBlockingError2]
@@ -235,7 +235,7 @@ def f() -> None: pass
 b.g()
 [out]
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
 
 [case testBlockingErrorRemainsUnfixed]
@@ -254,16 +254,16 @@ import b
 b.f()
 [out]
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
 a.py:2: error: Missing positional argument "x" in call to "f"
 [out version==3.10.0]
 ==
-a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+a.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 ==
-a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+a.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 ==
 a.py:2: error: Missing positional argument "x" in call to "f"
 
@@ -303,9 +303,9 @@ def g() -> None: pass
 a.f(1)
 [out]
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
 a.py:3: error: Too many arguments for "g"
 b.py:3: error: Too many arguments for "f"
@@ -325,14 +325,14 @@ x x
 [delete a.py.3]
 [out]
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
 main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 b.py:1: error: Cannot find implementation or library stub for module named "a"
 [out version==3.10.0]
 ==
-a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+a.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 ==
 main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -353,14 +353,14 @@ x x
 [delete a.py.3]
 [out]
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
 b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:1: error: Cannot find implementation or library stub for module named "a"
 [out version==3.10.0]
 ==
-a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+a.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 ==
 b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -382,17 +382,17 @@ a.f()
 [builtins fixtures/module.pyi]
 [out]
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
 b.py:2: error: Module has no attribute "f"
 b.py:3: error: "int" not callable
 [out version==3.10.0]
 ==
-a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+a.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 ==
-a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+a.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 ==
 b.py:2: error: Module has no attribute "f"
 b.py:3: error: "int" not callable
@@ -408,12 +408,12 @@ import blocker
 def f() -> None: pass
 [out]
 ==
-<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax
+<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: Invalid syntax
 ==
 a.py:1: error: "int" not callable
 [out version==3.10.0]
 ==
-<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax. Perhaps you forgot a comma?
+<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: Invalid syntax. Perhaps you forgot a comma?
 ==
 a.py:1: error: "int" not callable
 
@@ -485,16 +485,16 @@ import sys
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
-<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax
+<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: Invalid syntax
 ==
 a.py:2: error: "int" not callable
 [out version==3.10.0]
 ==
-a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+a.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 ==
-<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax. Perhaps you forgot a comma?
+<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: Invalid syntax. Perhaps you forgot a comma?
 ==
 a.py:2: error: "int" not callable
 
@@ -511,12 +511,12 @@ x = 1
 def f() -> int:
     return 0
 [out]
-a.py:1: error: invalid syntax
+a.py:1: error: Invalid syntax
 ==
 b.py:2: error: Incompatible return value type (got "str", expected "int")
 ==
 [out version==3.10.0]
-a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+a.py:1: error: Invalid syntax. Perhaps you forgot a comma?
 ==
 b.py:2: error: Incompatible return value type (got "str", expected "int")
 ==

@@ -211,8 +211,7 @@ h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
 i(arg=0)  # E: Unexpected keyword argument "arg"
 
 [case testWalrus]
-from typing import NamedTuple, Optional, List
-from typing_extensions import Final
+from typing import Final, NamedTuple, Optional, List
 
 if a := 2:
     reveal_type(a)  # N: Revealed type is "builtins.int"
@@ -385,8 +384,7 @@ reveal_type(z2)  # E: Name "z2" is not defined  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testWalrusConditionalTypeBinder]
-from typing import Tuple, Union
-from typing_extensions import Literal
+from typing import Literal, Tuple, Union
 
 class Good:
     @property
@@ -406,9 +404,9 @@ else:
 def get_things() -> Union[Tuple[Good], Tuple[Bad]]: ...
 
 if (things := get_things())[0].is_good:
-    reveal_type(things)  # N: Revealed type is "Tuple[__main__.Good]"
+    reveal_type(things)  # N: Revealed type is "tuple[__main__.Good]"
 else:
-    reveal_type(things)  # N: Revealed type is "Tuple[__main__.Bad]"
+    reveal_type(things)  # N: Revealed type is "tuple[__main__.Bad]"
 [builtins fixtures/list.pyi]
 
 [case testWalrusConditionalTypeCheck]
@@ -445,7 +443,7 @@ reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
 from typing import List
 
 def check_partial_list() -> None:
-    if (x := []):  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+    if (x := []):  # E: Need type annotation for "x" (hint: "x: list[<type>] = ...")
         pass
 
     y: List[str]
@@ -469,8 +467,7 @@ reveal_type(x)  # N: Revealed type is "Literal[0]"
 
 [case testWalrusAssignmentAndConditionScopeForProperty]
 # flags: --warn-unreachable
-
-from typing_extensions import Literal
+from typing import Literal
 
 class PropertyWrapper:
     @property
@@ -497,8 +494,7 @@ reveal_type(y)  # N: Revealed type is "Literal[False]"
 
 [case testWalrusAssignmentAndConditionScopeForFunction]
 # flags: --warn-unreachable
-
-from typing_extensions import Literal
+from typing import Literal
 
 def f() -> str: ...
 
@@ -678,7 +674,8 @@ main:16: note:     def foo(cls, float, /) -> Any
 main:16: note:     def foo(cls, a: str) -> Any
 
 [case testUnpackWithDuplicateNamePositionalOnly]
-from typing_extensions import Unpack, TypedDict
+from typing import TypedDict
+from typing_extensions import Unpack
 
 class Person(TypedDict):
     name: str
@@ -686,6 +683,7 @@ class Person(TypedDict):
 def foo(name: str, /, **kwargs: Unpack[Person]) -> None:  # Allowed
     ...
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testPossiblyUndefinedWithAssignmentExpr]
 # flags: --enable-error-code possibly-undefined
@@ -792,7 +790,7 @@ dct: Dict[str, int] = {"a": "b", **other}
 main:5: error: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
     dct: Dict[str, int] = {"a": "b", **other}
                            ^~~~~~~~
-main:5: error: Unpacked dict entry 1 has incompatible type "Dict[str, str]"; expected "SupportsKeysAndGetItem[str, int]"
+main:5: error: Unpacked dict entry 1 has incompatible type "dict[str, str]"; expected "SupportsKeysAndGetItem[str, int]"
     dct: Dict[str, int] = {"a": "b", **other}
                                        ^~~~~
 

@@ -243,6 +243,8 @@ locally.  Features are considered deprecated when decorated with ``warnings.depr
 specified in `PEP 702 <https://peps.python.org/pep-0702>`_.
 Use the :option:`--report-deprecated-as-note <mypy --report-deprecated-as-note>` option to
 turn all such errors into notes.
+Use :option:`--deprecated-calls-exclude <mypy --deprecated-calls-exclude>` to hide warnings
+for specific functions, classes and packages.
 
 .. note::
 
@@ -610,3 +612,44 @@ Example:
     # mypy: disallow-any-explicit
     from typing import Any
     x: Any = 1  # Error: Explicit "Any" type annotation  [explicit-any]
+
+
+.. _code-exhaustive-match:
+
+Check that match statements match exhaustively [exhaustive-match]
+-----------------------------------------------------------------------
+
+If enabled with :option:`--enable-error-code exhaustive-match <mypy --enable-error-code>`,
+mypy generates an error if a match statement does not match all possible cases/types.
+
+
+Example:
+
+.. code-block:: python
+
+        import enum
+
+
+        class Color(enum.Enum):
+            RED = 1
+            BLUE = 2
+
+        val: Color = Color.RED
+
+        # OK without --enable-error-code exhaustive-match
+        match val:
+            case Color.RED:
+                print("red")
+
+        # With --enable-error-code exhaustive-match
+        # Error: Match statement has unhandled case for values of type "Literal[Color.BLUE]"
+        match val:
+            case Color.RED:
+                print("red")
+
+        # OK with or without --enable-error-code exhaustive-match, since all cases are handled
+        match val:
+            case Color.RED:
+                print("red")
+            case _:
+                print("other")

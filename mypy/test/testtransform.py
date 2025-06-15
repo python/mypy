@@ -38,7 +38,6 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
         options.use_builtins_fixtures = True
         options.semantic_analysis_only = True
         options.show_traceback = True
-        options.force_uppercase_builtins = True
         result = build.build(
             sources=[BuildSource("main", None, src)], options=options, alt_lib_path=test_temp_dir
         )

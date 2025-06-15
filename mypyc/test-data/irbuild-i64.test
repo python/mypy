@@ -1677,7 +1677,7 @@ L2:
     return 1
 
 [case testI64FinalConstants]
-from typing_extensions import Final
+from typing import Final
 from mypy_extensions import i64
 
 A: Final = -1

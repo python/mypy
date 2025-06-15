@@ -203,6 +203,14 @@ class TypeVarEraser(TypeTranslator):
                     return unpacked
         return result
 
+    def visit_callable_type(self, t: CallableType) -> Type:
+        result = super().visit_callable_type(t)
+        assert isinstance(result, ProperType) and isinstance(result, CallableType)
+        # Usually this is done in semanal_typeargs.py, but erasure can create
+        # a non-normal callable from normal one.
+        result.normalize_trivial_unpack()
+        return result
+
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         if self.erase_id(t.id):
             return t.tuple_fallback.copy_modified(args=[self.replacement])

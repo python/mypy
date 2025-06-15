@@ -210,6 +210,8 @@ class NodeFixer(NodeVisitor[None]):
             v.info = self.current_info
         if v.type is not None:
             v.type.accept(self.type_fixer)
+        if v.setter_type is not None:
+            v.setter_type.accept(self.type_fixer)
 
     def visit_type_alias(self, a: TypeAlias) -> None:
         a.target.accept(self.type_fixer)
@@ -269,9 +271,6 @@ class TypeFixer(TypeVisitor[None]):
             ct.ret_type.accept(self)
         for v in ct.variables:
             v.accept(self)
-        for arg in ct.bound_args:
-            if arg:
-                arg.accept(self)
         if ct.type_guard is not None:
             ct.type_guard.accept(self)
         if ct.type_is is not None:
