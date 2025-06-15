@@ -900,7 +900,17 @@ def analyze_var(
                 and call_type.type.is_protocol
                 and call_type.type.get_method("__call__")
             ):
-                call_type = get_proper_type(_analyze_member_access("__call__", typ, mx))
+                # This is ugly, but it reflects the reality that Python treats
+                # real functions and callable objects differently in class bodies.
+                # We want to make callback protocols behave like the former.
+                proto_mx = mx.copy_modified(original_type=typ, self_type=typ, is_lvalue=False)
+                call_type = get_proper_type(_analyze_member_access("__call__", typ, proto_mx))
+                if isinstance(call_type, CallableType):
+                    call_type = call_type.copy_modified(is_bound=False)
+                elif isinstance(call_type, Overloaded)
+                    call_type = Overloaded(
+                        [it.copy_modified(is_bound=False) for it in call_type.items()]
+                    )
 
         # Bound variables with callable types are treated like methods
         # (these are usually method aliases like __rmul__ = __mul__).
