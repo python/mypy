@@ -909,7 +909,7 @@ def analyze_var(
                     call_type = call_type.copy_modified(is_bound=False)
                 elif isinstance(call_type, Overloaded):
                     call_type = Overloaded(
-                        [it.copy_modified(is_bound=False) for it in call_type.items()]
+                        [it.copy_modified(is_bound=False) for it in call_type.items]
                     )
 
         # Bound variables with callable types are treated like methods
