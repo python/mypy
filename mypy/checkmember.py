@@ -968,7 +968,13 @@ def expand_and_bind_callable(
     # TODO: a decorated property can result in Overloaded here.
     assert isinstance(expanded, CallableType)
     if var.is_settable_property and mx.is_lvalue and var.setter_type is not None:
-        # TODO: use check_call() to infer better type, same as for __set__().
+        if expanded.variables:
+            type_ctx = mx.rvalue or TempNode(AnyType(TypeOfAny.special_form), context=mx.context)
+            _, inferred_expanded = mx.chk.expr_checker.check_call(
+                expanded, [type_ctx], [ARG_POS], mx.context
+            )
+            expanded = get_proper_type(inferred_expanded)
+            assert isinstance(expanded, CallableType)
         if not expanded.arg_types:
             # This can happen when accessing invalid property from its own body,
             # error will be reported elsewhere.
