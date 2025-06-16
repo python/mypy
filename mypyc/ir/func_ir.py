@@ -458,7 +458,9 @@ def _extract_python_literal(value: Value) -> object:
         if is_none_rprimitive(value.type):
             return None
         val = value.numeric_value()
-        return bool(val) if is_bool_rprimitive(value.type) else val
+        if is_bool_rprimitive(value.type):
+            return bool(val)
+        return val
     elif isinstance(value, Float):
         return value.value
     elif isinstance(value, LoadLiteral):
