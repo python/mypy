@@ -123,3 +123,25 @@ def test_methods() -> None:
 
     assert getattr(Foo().f3, "__text_signature__") == "(x)"
     assert str(inspect.signature(Foo().f3)) == "(x)"
+
+[case testSignaturesHistoricalPositionalOnly]
+import inspect
+
+def f1(__x): pass
+def f2(__x, y): pass
+def f3(*, __y): pass
+def f4(x, *, __y): pass
+def f5(__x, *, __y): pass
+
+class A:
+    def func(self, __x): pass
+
+def test_historical_positional_only() -> None:
+    assert str(inspect.signature(f1)) == "(__x, /)"
+    assert str(inspect.signature(f2)) == "(__x, /, y)"
+    assert str(inspect.signature(f3)) == "(*, __y)"
+    assert str(inspect.signature(f4)) == "(x, *, __y)"
+    assert str(inspect.signature(f5)) == "(__x, /, *, __y)"
+
+    assert str(inspect.signature(A.func)) == "(self, __x, /)"
+    assert str(inspect.signature(A().func)) == "(__x, /)"

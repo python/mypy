@@ -412,11 +412,20 @@ def get_text_signature(fn: FuncIR) -> str | None:
     """
     parameters = []
     mark_self = fn.class_name is not None and fn.decl.kind != FUNC_STATICMETHOD
-    for arg in fn.decl.sig.args:
+    # Pre-scan for end of positional-only parameters.
+    # This is needed to handle signatures like 'def foo(self, __x)', where mypy
+    # currently sees 'self' as being positional-or-keyword and '__x' as positional-only.
+    pos_only_idx = -1
+    for idx, arg in enumerate(fn.decl.sig.args):
+        if arg.pos_only and arg.kind in (ArgKind.ARG_POS, ArgKind.ARG_OPT):
+            pos_only_idx = idx
+    for idx, arg in enumerate(fn.decl.sig.args):
         if arg.name.startswith("__bitmap") or arg.name == "__mypyc_self__":
             continue
         kind = (
-            inspect.Parameter.POSITIONAL_ONLY if arg.pos_only else _ARG_KIND_TO_INSPECT[arg.kind]
+            inspect.Parameter.POSITIONAL_ONLY
+            if idx <= pos_only_idx
+            else _ARG_KIND_TO_INSPECT[arg.kind]
         )
         default: object = inspect.Parameter.empty
         if arg.optional:
@@ -428,7 +437,7 @@ def get_text_signature(fn: FuncIR) -> str | None:
         curr_param = inspect.Parameter(arg.name, kind, default=default)
         parameters.append(curr_param)
         if mark_self:
-            # Parameter.__init__ does not accept $
+            # Parameter.__init__/Parameter.replace do not accept $
             curr_param._name = f"${arg.name}"  # type: ignore[attr-defined]
             mark_self = False
     sig = inspect.Signature(parameters)
