@@ -3817,7 +3817,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if rvalue_needed > 0:
                     rvalues = (
                         rvalues[0:iterable_start]
-                        + [TempNode(iterable_type) for i in range(rvalue_needed)]
+                        + [TempNode(iterable_type, context=rval) for _ in range(rvalue_needed)]
                         + rvalues[iterable_end + 1 :]
                     )
 
@@ -7179,7 +7179,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if (
             isinstance(supertype, Instance)
             and supertype.type.is_protocol
-            and isinstance(subtype, (CallableType, Instance, TupleType, TypedDictType))
+            and isinstance(subtype, (CallableType, Instance, TupleType, TypedDictType, TypeType))
         ):
             self.msg.report_protocol_problems(subtype, supertype, context, parent_error=error)
         if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
