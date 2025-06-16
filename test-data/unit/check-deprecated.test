@@ -113,7 +113,7 @@ class C: ...
 c: C  # E: class __main__.C is deprecated: use C2 instead
 C()  # E: class __main__.C is deprecated: use C2 instead
 C.missing()  # E: class __main__.C is deprecated: use C2 instead \
-             # E: "Type[C]" has no attribute "missing"
+             # E: "type[C]" has no attribute "missing"
 C.__init__(c)  # E: class __main__.C is deprecated: use C2 instead
 C(1)  # E: class __main__.C is deprecated: use C2 instead \
       # E: Too many arguments for "C"

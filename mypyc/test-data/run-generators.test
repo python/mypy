@@ -680,3 +680,20 @@ def test_basic() -> None:
     with context:
         assert context.x == 1
     assert context.x == 0
+
+
+[case testYieldSpill]
+from typing import Generator
+from testutil import run_generator
+
+def f() -> int:
+    return 1
+
+def yield_spill() -> Generator[str, int, int]:
+    return f() + (yield "foo")
+
+def test_basic() -> None:
+    x = run_generator(yield_spill(), [2])
+    yields, val = x
+    assert yields == ('foo',)
+    assert val == 3, val

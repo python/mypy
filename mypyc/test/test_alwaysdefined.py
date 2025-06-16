@@ -31,7 +31,7 @@ class TestAlwaysDefined(MypycDataSuite):
             return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             try:
-                ir = build_ir_for_single_file2(testcase.input, options)
+                ir = build_ir_for_single_file2(testcase.input, options)[0]
             except CompileError as e:
                 actual = e.messages
             else:

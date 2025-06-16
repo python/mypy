@@ -14,7 +14,7 @@ from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.options import Options
-from mypy.util import is_typeshed_file, short_type
+from mypy.util import is_sunder, is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
 if TYPE_CHECKING:
@@ -147,18 +147,6 @@ reverse_builtin_aliases: Final = {
     "builtins.set": "typing.Set",
     "builtins.frozenset": "typing.FrozenSet",
 }
-
-_nongen_builtins: Final = {"builtins.tuple": "typing.Tuple", "builtins.enumerate": ""}
-_nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
-# Drop OrderedDict from this for backward compatibility
-del _nongen_builtins["collections.OrderedDict"]
-# HACK: consequence of hackily treating LiteralString as an alias for str
-del _nongen_builtins["builtins.str"]
-
-
-def get_nongen_builtins(python_version: tuple[int, int]) -> dict[str, str]:
-    # After 3.9 with pep585 generic builtins are allowed
-    return _nongen_builtins if python_version < (3, 9) else {}
 
 
 RUNTIME_PROTOCOL_DECOS: Final = (
@@ -550,12 +538,20 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     Overloaded variants must be consecutive in the source file.
     """
 
-    __slots__ = ("items", "unanalyzed_items", "impl", "deprecated")
+    __slots__ = (
+        "items",
+        "unanalyzed_items",
+        "impl",
+        "deprecated",
+        "setter_index",
+        "_is_trivial_self",
+    )
 
     items: list[OverloadPart]
     unanalyzed_items: list[OverloadPart]
     impl: OverloadPart | None
     deprecated: str | None
+    setter_index: int | None
 
     def __init__(self, items: list[OverloadPart]) -> None:
         super().__init__()
@@ -563,6 +559,8 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         self.deprecated = None
+        self.setter_index = None
+        self._is_trivial_self: bool | None = None
         if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
@@ -576,6 +574,38 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             assert self.impl is not None
             return self.impl.name
 
+    @property
+    def is_trivial_self(self) -> bool:
+        """Check we can use bind_self() fast path for this overload.
+
+        This will return False if at least one overload:
+          * Has an explicit self annotation, or Self in signature.
+          * Has a non-trivial decorator.
+        """
+        if self._is_trivial_self is not None:
+            return self._is_trivial_self
+        for item in self.items:
+            if isinstance(item, FuncDef):
+                if not item.is_trivial_self:
+                    self._is_trivial_self = False
+                    return False
+            elif item.decorators or not item.func.is_trivial_self:
+                self._is_trivial_self = False
+                return False
+        self._is_trivial_self = True
+        return True
+
+    @property
+    def setter(self) -> Decorator:
+        # Do some consistency checks first.
+        first_item = self.items[0]
+        assert isinstance(first_item, Decorator)
+        assert first_item.var.is_settable_property
+        assert self.setter_index is not None
+        item = self.items[self.setter_index]
+        assert isinstance(item, Decorator)
+        return item
+
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
 
@@ -588,6 +618,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             "impl": None if self.impl is None else self.impl.serialize(),
             "flags": get_flags(self, FUNCBASE_FLAGS),
             "deprecated": self.deprecated,
+            "setter_index": self.setter_index,
         }
 
     @classmethod
@@ -608,6 +639,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         res._fullname = data["fullname"]
         set_flags(res, data["flags"])
         res.deprecated = data["deprecated"]
+        res.setter_index = data["setter_index"]
         # NOTE: res.info will be set in the fixup phase.
         return res
 
@@ -747,6 +779,7 @@ FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
     "is_decorated",
     "is_conditional",
     "is_trivial_body",
+    "is_trivial_self",
     "is_mypy_only",
 ]
 
@@ -771,6 +804,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "abstract_status",
         "original_def",
         "is_trivial_body",
+        "is_trivial_self",
         "is_mypy_only",
         # Present only when a function is decorated with @typing.dataclass_transform or similar
         "dataclass_transform_spec",
@@ -804,6 +838,10 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.dataclass_transform_spec: DataclassTransformSpec | None = None
         self.docstring: str | None = None
         self.deprecated: str | None = None
+        # This is used to simplify bind_self() logic in trivial cases (which are
+        # the majority). In cases where self is not annotated and there are no Self
+        # in the signature we can simply drop the first argument.
+        self.is_trivial_self = False
 
     @property
     def name(self) -> str:
@@ -1073,7 +1111,8 @@ class Var(SymbolNode):
         return self._fullname
 
     def __repr__(self) -> str:
-        return f"<Var {self.fullname!r} at {hex(id(self))}>"
+        name = self.fullname or self.name
+        return f"<Var {name!r} at {hex(id(self))}>"
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
         return visitor.visit_var(self)
@@ -1637,11 +1676,12 @@ class WithStmt(Statement):
 
 
 class MatchStmt(Statement):
-    __slots__ = ("subject", "patterns", "guards", "bodies")
+    __slots__ = ("subject", "subject_dummy", "patterns", "guards", "bodies")
 
     __match_args__ = ("subject", "patterns", "guards", "bodies")
 
     subject: Expression
+    subject_dummy: NameExpr | None
     patterns: list[Pattern]
     guards: list[Expression | None]
     bodies: list[Block]
@@ -1656,6 +1696,7 @@ class MatchStmt(Statement):
         super().__init__()
         assert len(patterns) == len(guards) == len(bodies)
         self.subject = subject
+        self.subject_dummy = None
         self.patterns = patterns
         self.guards = guards
         self.bodies = bodies
@@ -2075,7 +2116,7 @@ class AssignmentExpr(Expression):
 
     __match_args__ = ("target", "value")
 
-    def __init__(self, target: Expression, value: Expression) -> None:
+    def __init__(self, target: NameExpr, value: Expression) -> None:
         super().__init__()
         self.target = target
         self.value = value
@@ -3243,32 +3284,55 @@ class TypeInfo(SymbolNode):
 
     @property
     def enum_members(self) -> list[str]:
-        return [
-            name
-            for name, sym in self.names.items()
-            if (
-                (
-                    isinstance(sym.node, Var)
-                    and name not in EXCLUDED_ENUM_ATTRIBUTES
-                    and not name.startswith("__")
-                    and sym.node.has_explicit_value
-                    and not (
-                        isinstance(
-                            typ := mypy.types.get_proper_type(sym.node.type), mypy.types.Instance
-                        )
+        # TODO: cache the results?
+        members = []
+        for name, sym in self.names.items():
+            # Case 1:
+            #
+            # class MyEnum(Enum):
+            #     @member
+            #     def some(self): ...
+            if isinstance(sym.node, Decorator):
+                if any(
+                    dec.fullname == "enum.member"
+                    for dec in sym.node.decorators
+                    if isinstance(dec, RefExpr)
+                ):
+                    members.append(name)
+                    continue
+            # Case 2:
+            #
+            # class MyEnum(Enum):
+            #     x = 1
+            #
+            # Case 3:
+            #
+            # class MyEnum(Enum):
+            #     class Other: ...
+            elif isinstance(sym.node, (Var, TypeInfo)):
+                if (
+                    # TODO: properly support ignored names from `_ignore_`
+                    name in EXCLUDED_ENUM_ATTRIBUTES
+                    or is_sunder(name)
+                    or name.startswith("__")  # dunder and private
+                ):
+                    continue  # name is excluded
+
+                if isinstance(sym.node, Var):
+                    if not sym.node.has_explicit_value:
+                        continue  # unannotated value not a member
+
+                    typ = mypy.types.get_proper_type(sym.node.type)
+                    if (
+                        isinstance(typ, mypy.types.FunctionLike) and not typ.is_type_obj()
+                    ) or (  # explicit `@member` is required
+                        isinstance(typ, mypy.types.Instance)
                         and typ.type.fullname == "enum.nonmember"
-                    )
-                )
-                or (
-                    isinstance(sym.node, Decorator)
-                    and any(
-                        dec.fullname == "enum.member"
-                        for dec in sym.node.decorators
-                        if isinstance(dec, RefExpr)
-                    )
-                )
-            )
-        ]
+                    ):
+                        continue  # name is not a member
+
+                members.append(name)
+        return members
 
     def __getitem__(self, name: str) -> SymbolTableNode:
         n = self.get(name)
@@ -3317,11 +3381,11 @@ class TypeInfo(SymbolNode):
                 return c
         return None
 
-    def is_metaclass(self) -> bool:
+    def is_metaclass(self, *, precise: bool = False) -> bool:
         return (
             self.has_base("builtins.type")
             or self.fullname == "abc.ABCMeta"
-            or self.fallback_to_any
+            or (self.fallback_to_any and not precise)
         )
 
     def has_base(self, fullname: str) -> bool:
