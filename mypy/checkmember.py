@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Callable, TypeVar, cast
 
-import mypy.errorcodes as codes
 from mypy import message_registry, state, subtypes
 from mypy.checker_shared import TypeCheckerSharedApi
 from mypy.erasetype import erase_typevars
@@ -732,10 +731,6 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         object_type=descriptor_type,
     )
 
-    deprecated_disabled = False
-    if assignment and codes.DEPRECATED in mx.chk.options.enabled_error_codes:
-        mx.chk.options.enabled_error_codes.remove(codes.DEPRECATED)
-        deprecated_disabled = True
     _, inferred_dunder_get_type = mx.chk.expr_checker.check_call(
         dunder_get_type,
         [
@@ -747,7 +742,6 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         object_type=descriptor_type,
         callable_name=callable_name,
     )
-
 
     mx.chk.check_deprecated(dunder_get, mx.context)
 
@@ -827,9 +821,6 @@ def analyze_descriptor_assign(descriptor_type: Instance, mx: MemberContext) -> T
 
     # Search for possible deprecations:
     mx.chk.check_deprecated(dunder_set, mx.context)
-    mx.chk.warn_deprecated_overload_item(
-        dunder_set, mx.context, target=inferred_dunder_set_type, selftype=descriptor_type
-    )
 
     # In the following cases, a message already will have been recorded in check_call.
     if (not isinstance(inferred_dunder_set_type, CallableType)) or (
