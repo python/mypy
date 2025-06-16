@@ -104,25 +104,28 @@ class Foo:
     def f2(cls, x): pass
     @staticmethod
     def f3(x): pass
+    def __eq__(self, x: object): pass
 
 def test_methods() -> None:
     assert getattr(Foo.f1, "__text_signature__") == "($self, x)"
-    assert str(inspect.signature(Foo.f1)) == "(self, /, x)"
-
-    assert getattr(Foo.f2, "__text_signature__") == "($cls, x)"
-    assert str(inspect.signature(Foo.f2)) == "(x)"
-
-    assert getattr(Foo.f3, "__text_signature__") == "(x)"
-    assert str(inspect.signature(Foo.f3)) == "(x)"
-
     assert getattr(Foo().f1, "__text_signature__") == "($self, x)"
+    assert str(inspect.signature(Foo.f1)) == "(self, /, x)"
     assert str(inspect.signature(Foo().f1)) == "(x)"
 
+    assert getattr(Foo.f2, "__text_signature__") == "($cls, x)"
     assert getattr(Foo().f2, "__text_signature__") == "($cls, x)"
+    assert str(inspect.signature(Foo.f2)) == "(x)"
     assert str(inspect.signature(Foo().f2)) == "(x)"
 
+    assert getattr(Foo.f3, "__text_signature__") == "(x)"
     assert getattr(Foo().f3, "__text_signature__") == "(x)"
+    assert str(inspect.signature(Foo.f3)) == "(x)"
     assert str(inspect.signature(Foo().f3)) == "(x)"
+
+    assert getattr(Foo.__eq__, "__text_signature__") == "($self, value, /)"
+    assert getattr(Foo().__eq__, "__text_signature__") == "($self, value, /)"
+    assert str(inspect.signature(Foo.__eq__)) == "(self, value, /)"
+    assert str(inspect.signature(Foo().__eq__)) == "(value, /)"
 
 [case testSignaturesHistoricalPositionalOnly]
 import inspect
