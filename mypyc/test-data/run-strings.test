@@ -833,3 +833,18 @@ def test_count_start_end() -> None:
     assert string.count("a", 0, 4) == 1, string.count("a", 0, 4)
     assert string.count("b", 0, 4) == 2, string.count("b", 0, 4)
     assert string.count("c", 0, 4) == 1, string.count("c", 0, 4)
+def test_count_multi() -> None:
+    string = "aaabbbcccbbbcccbbb"
+    assert string.count("aaa") == 1
+    assert string.count("bbb") == 3
+    assert string.count("ccc") == 2
+def test_count_multi_start() -> None:
+    string = "aaabbbcccbbbcccbbb"
+    assert string.count("aaa", 2) == 0, string.count("aaa", 2)
+    assert string.count("bbb", 2) == 2, string.count("bbb", 2)
+    assert string.count("ccc", 2) == 2, string.count("ccc", 2)
+def test_count_multi_start_end() -> None:
+    string = "aaabbbcccbbbcccbbb"
+    assert string.count("aaa", 0, 4) == 1, string.count("aaa", 0, 4)
+    assert string.count("bbb", 0, 4) == 2, string.count("bbb", 0, 4)
+    assert string.count("ccc", 0, 4) == 1, string.count("ccc", 0, 4)
