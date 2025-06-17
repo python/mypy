@@ -1582,8 +1582,8 @@ def f() -> types.ModuleType:
     return types
 reveal_type(f())  # N: Revealed type is "types.ModuleType"
 reveal_type(types)  # N: Revealed type is "types.ModuleType"
-
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testClassImportAccessedInMethod]
 class C:
@@ -1997,6 +1997,7 @@ from typing import TypeVar
 T = TypeVar('T')
 def whatever(x: T) -> T: pass
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testModuleAliasToQualifiedImport2]
 import mod
@@ -2012,8 +2013,8 @@ from typing import TypeVar
 T = TypeVar('T')
 def whatever(x: T) -> T: pass
 [file othermod.py]
-
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testModuleLevelGetattr]
 import has_getattr

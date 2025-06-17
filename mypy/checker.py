@@ -25,7 +25,7 @@ from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
-from mypy.errors import Errors, ErrorWatcher, LoopErrorWatcher, report_internal_error
+from mypy.errors import ErrorInfo, Errors, ErrorWatcher, LoopErrorWatcher, report_internal_error
 from mypy.expandtype import expand_type
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
@@ -117,7 +117,6 @@ from mypy.nodes import (
     TypeAlias,
     TypeAliasStmt,
     TypeInfo,
-    TypeVarExpr,
     UnaryExpr,
     Var,
     WhileStmt,
@@ -2858,29 +2857,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if name in base2.names and base2 not in base.mro:
                     self.check_compatibility(name, base, base2, typ)
 
-    def determine_type_of_member(self, sym: SymbolTableNode) -> Type | None:
-        # TODO: this duplicates both checkmember.py and analyze_ref_expr(), delete.
-        if sym.type is not None:
-            return sym.type
-        if isinstance(sym.node, SYMBOL_FUNCBASE_TYPES):
-            return self.function_type(sym.node)
-        if isinstance(sym.node, TypeInfo):
-            if sym.node.typeddict_type:
-                # We special-case TypedDict, because they don't define any constructor.
-                return self.expr_checker.typeddict_callable(sym.node)
-            else:
-                return type_object_type(sym.node, self.named_type)
-        if isinstance(sym.node, TypeVarExpr):
-            # Use of TypeVars is rejected in an expression/runtime context, so
-            # we don't need to check supertype compatibility for them.
-            return AnyType(TypeOfAny.special_form)
-        if isinstance(sym.node, TypeAlias):
-            with self.msg.filter_errors():
-                # Suppress any errors, they will be given when analyzing the corresponding node.
-                # Here we may have incorrect options and location context.
-                return self.expr_checker.alias_type_in_runtime_context(sym.node, ctx=sym.node)
-        return None
-
     def check_compatibility(
         self, name: str, base1: TypeInfo, base2: TypeInfo, ctx: TypeInfo
     ) -> None:
@@ -3864,7 +3840,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 if rvalue_needed > 0:
                     rvalues = (
                         rvalues[0:iterable_start]
-                        + [TempNode(iterable_type) for i in range(rvalue_needed)]
+                        + [TempNode(iterable_type, context=rval) for _ in range(rvalue_needed)]
                         + rvalues[iterable_end + 1 :]
                     )
 
@@ -7205,7 +7181,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if extra_info:
             msg = msg.with_additional_msg(" (" + ", ".join(extra_info) + ")")
 
-        self.fail(msg, context)
+        error = self.fail(msg, context)
         for note in notes:
             self.msg.note(note, context, code=msg.code)
         if note_msg:
@@ -7214,9 +7190,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
         if (
             isinstance(supertype, Instance)
             and supertype.type.is_protocol
-            and isinstance(subtype, (CallableType, Instance, TupleType, TypedDictType))
+            and isinstance(subtype, (CallableType, Instance, TupleType, TypedDictType, TypeType))
         ):
-            self.msg.report_protocol_problems(subtype, supertype, context, code=msg.code)
+            self.msg.report_protocol_problems(subtype, supertype, context, parent_error=error)
         if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
             call = find_member("__call__", subtype, subtype, is_operator=True)
             if call:
@@ -7545,12 +7521,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
 
     def fail(
         self, msg: str | ErrorMessage, context: Context, *, code: ErrorCode | None = None
-    ) -> None:
+    ) -> ErrorInfo:
         """Produce an error message."""
         if isinstance(msg, ErrorMessage):
-            self.msg.fail(msg.value, context, code=msg.code)
-            return
-        self.msg.fail(msg, context, code=code)
+            return self.msg.fail(msg.value, context, code=msg.code)
+        return self.msg.fail(msg, context, code=code)
 
     def note(
         self,

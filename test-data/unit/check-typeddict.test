@@ -3358,16 +3358,13 @@ foo: Foo = {'key': 1}
 foo | 1
 
 class SubDict(dict): ...
-foo | SubDict()
+reveal_type(foo | SubDict())
 [out]
 main:7: error: No overload variant of "__or__" of "TypedDict" matches argument type "int"
 main:7: note: Possible overload variants:
 main:7: note:     def __or__(self, TypedDict({'key'?: int}), /) -> Foo
 main:7: note:     def __or__(self, dict[str, Any], /) -> dict[str, object]
-main:10: error: No overload variant of "__ror__" of "dict" matches argument type "Foo"
-main:10: note: Possible overload variants:
-main:10: note:     def __ror__(self, dict[Any, Any], /) -> dict[Any, Any]
-main:10: note:     def [T, T2] __ror__(self, dict[T, T2], /) -> dict[Union[Any, T], Union[Any, T2]]
+main:10: note: Revealed type is "builtins.dict[builtins.str, builtins.object]"
 [builtins fixtures/dict-full.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
 
@@ -3389,8 +3386,10 @@ d2: Dict[int, str]
 
 reveal_type(d1 | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
 d2 | foo  # E: Unsupported operand types for | ("dict[int, str]" and "Foo")
-1 | foo  # E: Unsupported left operand type for | ("int")
-
+1 | foo  # E: No overload variant of "__ror__" of "TypedDict" matches argument type "int" \
+         # N: Possible overload variants: \
+         # N:     def __ror__(self, TypedDict({'key'?: int}), /) -> Foo \
+         # N:     def __ror__(self, dict[str, Any], /) -> dict[str, object]
 
 class Bar(TypedDict):
     key: int
@@ -4256,5 +4255,19 @@ class E(Aint):
     y: str
 e1: E = {"x": 0, "y": "a"}
 e2: E = {"x": "no", "y": "a"}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictAliasAsInstanceAttribute]
+from typing import TypedDict
+
+class Dicts:
+    class TF(TypedDict, total=False):
+        user_id: int
+    TotalFalse = TF
+
+dicts = Dicts()
+reveal_type(dicts.TF)  # N: Revealed type is "def (*, user_id: builtins.int =) -> TypedDict('__main__.Dicts.TF', {'user_id'?: builtins.int})"
+reveal_type(dicts.TotalFalse)  # N: Revealed type is "def (*, user_id: builtins.int =) -> TypedDict('__main__.Dicts.TF', {'user_id'?: builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

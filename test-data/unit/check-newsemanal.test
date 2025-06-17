@@ -2805,6 +2805,7 @@ def get() -> int: ...
 import typing
 t = typing.typevar('t') # E: Module has no attribute "typevar"
 [builtins fixtures/module.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testNewAnalyzerImportFromTopLevelFunction]
 import a.b  # This works at runtime

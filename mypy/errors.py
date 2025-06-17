@@ -38,8 +38,6 @@ HIDE_LINK_CODES: Final = {
     codes.OVERRIDE,
 }
 
-allowed_duplicates: Final = ["@overload", "Got:", "Expected:", "Expected setter type:"]
-
 BASE_RTD_URL: Final = "https://mypy.rtfd.io/en/stable/_refs.html#code"
 
 # Keep track of the original error code when the error code of a message is changed.
@@ -93,9 +91,6 @@ class ErrorInfo:
     # Only report this particular messages once per program.
     only_once = False
 
-    # Do not remove duplicate copies of this message (ignored if only_once is True).
-    allow_dups = False
-
     # Actual origin of the error message as tuple (path, line number, end line number)
     # If end line number is unknown, use line number.
     origin: tuple[str, Iterable[int]]
@@ -106,6 +101,10 @@ class ErrorInfo:
     # If True, don't show this message in output, but still record the error (needed
     # by mypy daemon)
     hidden = False
+
+    # For notes, specifies (optionally) the error this note is attached to. This is used to
+    # simplify error code matching and de-duplication logic for complex multi-line notes.
+    parent_error: ErrorInfo | None = None
 
     def __init__(
         self,
@@ -124,10 +123,10 @@ class ErrorInfo:
         code: ErrorCode | None,
         blocker: bool,
         only_once: bool,
-        allow_dups: bool,
         origin: tuple[str, Iterable[int]] | None = None,
         target: str | None = None,
         priority: int = 0,
+        parent_error: ErrorInfo | None = None,
     ) -> None:
         self.import_ctx = import_ctx
         self.file = file
@@ -143,17 +142,17 @@ class ErrorInfo:
         self.code = code
         self.blocker = blocker
         self.only_once = only_once
-        self.allow_dups = allow_dups
         self.origin = origin or (file, [line])
         self.target = target
         self.priority = priority
+        if parent_error is not None:
+            assert severity == "note", "Only notes can specify parent errors"
+        self.parent_error = parent_error
 
 
 # Type used internally to represent errors:
-#   (path, line, column, end_line, end_column, severity, message, allow_dups, code)
-ErrorTuple: _TypeAlias = tuple[
-    Optional[str], int, int, int, int, str, str, bool, Optional[ErrorCode]
-]
+#   (path, line, column, end_line, end_column, severity, message, code)
+ErrorTuple: _TypeAlias = tuple[Optional[str], int, int, int, int, str, str, Optional[ErrorCode]]
 
 
 class ErrorWatcher:
@@ -446,12 +445,12 @@ class Errors:
         severity: str = "error",
         file: str | None = None,
         only_once: bool = False,
-        allow_dups: bool = False,
         origin_span: Iterable[int] | None = None,
         offset: int = 0,
         end_line: int | None = None,
         end_column: int | None = None,
-    ) -> None:
+        parent_error: ErrorInfo | None = None,
+    ) -> ErrorInfo:
         """Report message at the given line using the current error context.
 
         Args:
@@ -463,10 +462,10 @@ class Errors:
             severity: 'error' or 'note'
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
-            allow_dups: if True, allow duplicate copies of this message (ignored if only_once)
             origin_span: if non-None, override current context as origin
                          (type: ignores have effect here)
             end_line: if non-None, override current context as end
+            parent_error: an error this note is attached to (for notes only).
         """
         if self.scope:
             type = self.scope.current_type_name()
@@ -496,6 +495,7 @@ class Errors:
         if end_line is None:
             end_line = line
 
+        code = code or (parent_error.code if parent_error else None)
         code = code or (codes.MISC if not blocker else None)
 
         info = ErrorInfo(
@@ -513,11 +513,12 @@ class Errors:
             code=code,
             blocker=blocker,
             only_once=only_once,
-            allow_dups=allow_dups,
             origin=(self.file, origin_span),
             target=self.current_target(),
+            parent_error=parent_error,
         )
         self.add_error_info(info)
+        return info
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
         assert file not in self.flushed_files
@@ -616,7 +617,6 @@ class Errors:
                 code=None,
                 blocker=False,
                 only_once=False,
-                allow_dups=False,
             )
             self._add_error_info(file, note)
         if (
@@ -645,7 +645,6 @@ class Errors:
                 code=info.code,
                 blocker=False,
                 only_once=True,
-                allow_dups=False,
                 priority=20,
             )
             self._add_error_info(file, info)
@@ -685,7 +684,6 @@ class Errors:
             code=None,
             blocker=False,
             only_once=True,
-            allow_dups=False,
             origin=info.origin,
             target=info.target,
         )
@@ -788,7 +786,6 @@ class Errors:
                 code=codes.UNUSED_IGNORE,
                 blocker=False,
                 only_once=False,
-                allow_dups=False,
             )
             self._add_error_info(file, info)
 
@@ -840,7 +837,6 @@ class Errors:
                 code=codes.IGNORE_WITHOUT_CODE,
                 blocker=False,
                 only_once=False,
-                allow_dups=False,
             )
             self._add_error_info(file, info)
 
@@ -907,17 +903,7 @@ class Errors:
         severity 'error').
         """
         a: list[str] = []
-        for (
-            file,
-            line,
-            column,
-            end_line,
-            end_column,
-            severity,
-            message,
-            allow_dups,
-            code,
-        ) in error_tuples:
+        for file, line, column, end_line, end_column, severity, message, code in error_tuples:
             s = ""
             if file is not None:
                 if self.options.show_column_numbers and line >= 0 and column >= 0:
@@ -972,8 +958,8 @@ class Errors:
 
         error_info = self.error_info_map[path]
         error_info = [info for info in error_info if not info.hidden]
-        error_tuples = self.render_messages(self.sort_messages(error_info))
-        error_tuples = self.remove_duplicates(error_tuples)
+        error_info = self.remove_duplicates(self.sort_messages(error_info))
+        error_tuples = self.render_messages(error_info)
 
         if formatter is not None:
             errors = create_errors(error_tuples)
@@ -1025,7 +1011,7 @@ class Errors:
     def render_messages(self, errors: list[ErrorInfo]) -> list[ErrorTuple]:
         """Translate the messages into a sequence of tuples.
 
-        Each tuple is of form (path, line, col, severity, message, allow_dups, code).
+        Each tuple is of form (path, line, col, severity, message, code).
         The rendered sequence includes information about error contexts.
         The path item may be None. If the line item is negative, the
         line number is not defined for the tuple.
@@ -1054,9 +1040,7 @@ class Errors:
                     # Remove prefix to ignore from path (if present) to
                     # simplify path.
                     path = remove_path_prefix(path, self.ignore_prefix)
-                    result.append(
-                        (None, -1, -1, -1, -1, "note", fmt.format(path, line), e.allow_dups, None)
-                    )
+                    result.append((None, -1, -1, -1, -1, "note", fmt.format(path, line), None))
                     i -= 1
 
             file = self.simplify_path(e.file)
@@ -1067,22 +1051,10 @@ class Errors:
             elif e.function_or_member != prev_function_or_member or e.type != prev_type:
                 if e.function_or_member is None:
                     if e.type is None:
-                        result.append(
-                            (file, -1, -1, -1, -1, "note", "At top level:", e.allow_dups, None)
-                        )
+                        result.append((file, -1, -1, -1, -1, "note", "At top level:", None))
                     else:
                         result.append(
-                            (
-                                file,
-                                -1,
-                                -1,
-                                -1,
-                                -1,
-                                "note",
-                                f'In class "{e.type}":',
-                                e.allow_dups,
-                                None,
-                            )
+                            (file, -1, -1, -1, -1, "note", f'In class "{e.type}":', None)
                         )
                 else:
                     if e.type is None:
@@ -1095,7 +1067,6 @@ class Errors:
                                 -1,
                                 "note",
                                 f'In function "{e.function_or_member}":',
-                                e.allow_dups,
                                 None,
                             )
                         )
@@ -1111,32 +1082,17 @@ class Errors:
                                 'In member "{}" of class "{}":'.format(
                                     e.function_or_member, e.type
                                 ),
-                                e.allow_dups,
                                 None,
                             )
                         )
             elif e.type != prev_type:
                 if e.type is None:
-                    result.append(
-                        (file, -1, -1, -1, -1, "note", "At top level:", e.allow_dups, None)
-                    )
+                    result.append((file, -1, -1, -1, -1, "note", "At top level:", None))
                 else:
-                    result.append(
-                        (file, -1, -1, -1, -1, "note", f'In class "{e.type}":', e.allow_dups, None)
-                    )
+                    result.append((file, -1, -1, -1, -1, "note", f'In class "{e.type}":', None))
 
             result.append(
-                (
-                    file,
-                    e.line,
-                    e.column,
-                    e.end_line,
-                    e.end_column,
-                    e.severity,
-                    e.message,
-                    e.allow_dups,
-                    e.code,
-                )
+                (file, e.line, e.column, e.end_line, e.end_column, e.severity, e.message, e.code)
             )
 
             prev_import_context = e.import_ctx
@@ -1198,40 +1154,24 @@ class Errors:
             result.extend(a)
         return result
 
-    def remove_duplicates(self, errors: list[ErrorTuple]) -> list[ErrorTuple]:
-        """Remove duplicates from a sorted error list."""
-        res: list[ErrorTuple] = []
-        i = 0
-        while i < len(errors):
-            dup = False
-            # Use slightly special formatting for member conflicts reporting.
-            conflicts_notes = False
-            j = i - 1
-            # Find duplicates, unless duplicates are allowed.
-            if not errors[i][7]:
-                while j >= 0 and errors[j][0] == errors[i][0]:
-                    if errors[j][6].strip() == "Got:":
-                        conflicts_notes = True
-                    j -= 1
-                j = i - 1
-                while j >= 0 and errors[j][0] == errors[i][0] and errors[j][1] == errors[i][1]:
-                    if (
-                        errors[j][5] == errors[i][5]
-                        and
-                        # Allow duplicate notes in overload conflicts reporting.
-                        not (
-                            (errors[i][5] == "note" and errors[i][6].strip() in allowed_duplicates)
-                            or (errors[i][6].strip().startswith("def ") and conflicts_notes)
-                        )
-                        and errors[j][6] == errors[i][6]
-                    ):  # ignore column
-                        dup = True
-                        break
-                    j -= 1
-            if not dup:
-                res.append(errors[i])
-            i += 1
-        return res
+    def remove_duplicates(self, errors: list[ErrorInfo]) -> list[ErrorInfo]:
+        filtered_errors = []
+        seen_by_line: defaultdict[int, set[tuple[str, str]]] = defaultdict(set)
+        removed = set()
+        for err in errors:
+            if err.parent_error is not None:
+                # Notes with specified parent are removed together with error below.
+                filtered_errors.append(err)
+            elif (err.severity, err.message) not in seen_by_line[err.line]:
+                filtered_errors.append(err)
+                seen_by_line[err.line].add((err.severity, err.message))
+            else:
+                removed.add(err)
+        return [
+            err
+            for err in filtered_errors
+            if err.parent_error is None or err.parent_error not in removed
+        ]
 
 
 class CompileError(Exception):
@@ -1380,7 +1320,7 @@ def create_errors(error_tuples: list[ErrorTuple]) -> list[MypyError]:
     latest_error_at_location: dict[_ErrorLocation, MypyError] = {}
 
     for error_tuple in error_tuples:
-        file_path, line, column, _, _, severity, message, _, errorcode = error_tuple
+        file_path, line, column, _, _, severity, message, errorcode = error_tuple
         if file_path is None:
             continue
 

@@ -831,7 +831,7 @@ def generate_finalize_for_class(
 def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
     emitter.emit_line(f"static PyMethodDef {name}[] = {{")
     for fn in cl.methods.values():
-        if fn.decl.is_prop_setter or fn.decl.is_prop_getter:
+        if fn.decl.is_prop_setter or fn.decl.is_prop_getter or fn.internal:
             continue
         emitter.emit_line(f'{{"{fn.name}",')
         emitter.emit_line(f" (PyCFunction){PREFIX}{fn.cname(emitter.names)},")

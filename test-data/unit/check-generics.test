@@ -3628,3 +3628,32 @@ def draw_none(
         takes_int_str_none(c2)
         takes_int_str_none(c3)
 [builtins fixtures/tuple.pyi]
+
+[case testPropertyWithGenericSetter]
+from typing import TypeVar
+
+class B: ...
+class C(B): ...
+T = TypeVar("T", bound=B)
+
+class Test:
+    @property
+    def foo(self) -> list[C]: ...
+    @foo.setter
+    def foo(self, val: list[T]) -> None: ...
+
+t1: Test
+t2: Test
+
+lb: list[B]
+lc: list[C]
+li: list[int]
+
+t1.foo = lb
+t1.foo = lc
+t1.foo = li  # E: Value of type variable "T" of "foo" of "Test" cannot be "int"
+
+t2.foo = [B()]
+t2.foo = [C()]
+t2.foo = [1]  # E: Value of type variable "T" of "foo" of "Test" cannot be "int"
+[builtins fixtures/property.pyi]
