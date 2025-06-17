@@ -2976,3 +2976,22 @@ x: Type[Literal[1]]  # E: Type[...] can't contain "Literal[...]"
 y: Type[Union[Literal[1], Literal[2]]]  # E: Type[...] can't contain "Union[Literal[...], Literal[...]]"
 z: Type[Literal[1, 2]]  # E: Type[...] can't contain "Union[Literal[...], Literal[...]]"
 [builtins fixtures/tuple.pyi]
+
+[case testJoinLiteralAndInstance]
+from typing import Generic, TypeVar, Literal
+
+T = TypeVar("T")
+
+class A(Generic[T]): ...
+
+def f(a: A[T], t: T) -> T: ...
+def g(a: T, t: A[T]) -> T: ...
+
+def check(obj: A[Literal[1]]) -> None:
+    reveal_type(f(obj, 1))  # N: Revealed type is "Literal[1]"
+    reveal_type(f(obj, ''))  # E: Cannot infer type argument 1 of "f" \
+                             # N: Revealed type is "Any"
+    reveal_type(g(1, obj))  # N: Revealed type is "Literal[1]"
+    reveal_type(g('', obj))  # E: Cannot infer type argument 1 of "g" \
+                             # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
