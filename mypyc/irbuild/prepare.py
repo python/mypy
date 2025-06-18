@@ -185,7 +185,14 @@ def prepare_func_def(
         else (FUNC_CLASSMETHOD if fdef.is_class else FUNC_NORMAL)
     )
     sig = mapper.fdef_to_sig(fdef, options.strict_dunders_typing)
-    decl = FuncDecl(fdef.name, class_name, module_name, sig, kind)
+    decl = FuncDecl(
+        fdef.name,
+        class_name,
+        module_name,
+        sig,
+        kind=kind,
+        is_async=fdef.is_coroutine,
+    )
     mapper.func_to_decl[fdef] = decl
     return decl
 

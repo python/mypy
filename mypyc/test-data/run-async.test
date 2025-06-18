@@ -561,3 +561,16 @@ def test_bool() -> None:
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
+
+[case testIsCoroutineFunction]
+import asyncio
+import inspect
+
+async def foo():
+    return 1
+
+def test_asyncio_iscoroutinefunction():
+    assert asyncio.iscoroutinefunction(foo) is True, "foo should be recognized as coroutine function"
+
+def test_inspect_iscoroutinefunction():
+    assert inspect.iscoroutinefunction(foo) is True, "foo should be recognized as coroutine function"

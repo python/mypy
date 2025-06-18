@@ -140,6 +140,7 @@ class FuncDecl:
         is_prop_setter: bool = False,
         is_prop_getter: bool = False,
         implicit: bool = False,
+        is_async: bool = False,
     ) -> None:
         self.name = name
         self.class_name = class_name
@@ -159,6 +160,7 @@ class FuncDecl:
         # If True, not present in the mypy AST and must be synthesized during irbuild
         # Currently only supported for property getters/setters
         self.implicit = implicit
+        self.is_async = is_async
 
         # This is optional because this will be set to the line number when the corresponding
         # FuncIR is created
@@ -204,6 +206,7 @@ class FuncDecl:
             "is_prop_setter": self.is_prop_setter,
             "is_prop_getter": self.is_prop_getter,
             "implicit": self.implicit,
+            "is_async": self.is_async,
         }
 
     # TODO: move this to FuncIR?
@@ -226,6 +229,7 @@ class FuncDecl:
             data["is_prop_setter"],
             data["is_prop_getter"],
             data["implicit"],
+            data["is_async"],
         )
 
 
