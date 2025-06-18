@@ -989,7 +989,9 @@ class GroupGenerator:
         # Patch async native functions so they're recognized as coroutines
         for fn in module.functions:
             if fn.decl.is_async and fn.class_name is None:
-                emitter.emit_line(f'PyObject *func = PyObject_GetAttrString({module_static}, "{fn.decl.name}");')
+                emitter.emit_line(
+                    f'PyObject *func = PyObject_GetAttrString({module_static}, "{fn.decl.name}");'
+                )
                 emitter.emit_line("if (!func) goto fail;")
                 emitter.emit_line("if (!CPyPatchAsyncCode(func)) { Py_DECREF(func); goto fail; }")
                 emitter.emit_line("Py_DECREF(func);")
