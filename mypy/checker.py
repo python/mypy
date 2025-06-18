@@ -4605,7 +4605,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi):
                 lvalue, is_lvalue=False
             )
 
-        # Special case: if the rvalue_type is a subtype of both '__get__' type, and
+        # Special case: if the rvalue_type is a subtype of '__get__' type, and
         # '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
         # by this assignment. Technically, this is not safe, but in practice this is
         # what a user expects.
